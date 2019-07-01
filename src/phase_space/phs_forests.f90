@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -42,7 +42,7 @@ module phs_forests
   use format_defs, only: FMT_19
   use diagnostics
   use lorentz
-  use unit_tests
+  use numeric_utils
   use permutations
   use ifiles
   use syntax_rules

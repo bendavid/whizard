@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -91,12 +91,6 @@ Makefile.depend: $(libtesting_la_SOURCES)
 	done > $@
 
 DISTCLEANFILES += Makefile.depend 
-
-## Install the modules used by generated matrix element code
-## and by the user code library
-execmoddir = $(pkglibdir)/mod/testing
-nodist_execmod_HEADERS = \
-  unit_tests.$(FC_MODULE_EXT)
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):

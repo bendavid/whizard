@@ -75,9 +75,6 @@ WHIZARD:
 -- HepMC for the corresponding event file standard.	
    Available from: http://lcgapp.cern.ch/project/simu/HepMC
 
--- StdHEP for the corresponding event file standard.
-   Available from: http://cepa.fnal.gov/psm/stdhep/
-
 -- LCIO for the corresponding file standard.
    Available from: http://lcio.desy.de/
 

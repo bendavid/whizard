@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -69,15 +69,15 @@ module blha_config
   public :: blha_configuration_write
 
   integer, public, parameter :: &
-       BLHA_CT_QCD=1, BLHA_CT_EW=2, BLHA_CT_QED=3, BLHA_CT_OTHER=4
+       BLHA_CT_QCD = 1, BLHA_CT_EW = 2, BLHA_CT_QED = 3, BLHA_CT_OTHER = 4
   integer, public, parameter :: &
-       BLHA_IRREG_CDR=1, BLHA_IRREG_DRED=2, BLHA_IRREG_THV=3, &
-       BLHA_IRREG_MREG=4, BLHA_IRREG_OTHER=5
+       BLHA_IRREG_CDR = 1, BLHA_IRREG_DRED = 2, BLHA_IRREG_THV = 3, &
+       BLHA_IRREG_MREG = 4, BLHA_IRREG_OTHER = 5
   integer, public, parameter :: &
-       BLHA_MPS_ONSHELL=1, BLHA_MPS_OTHER=2
+       BLHA_MPS_ONSHELL = 1, BLHA_MPS_OTHER = 2
   integer, public, parameter :: &
-       BLHA_MODE_GOSAM=1, BLHA_MODE_FEYNARTS = 2, BLHA_MODE_GENERIC=3, &
-       BLHA_MODE_OPENLOOPS=4
+       BLHA_MODE_GOSAM = 1, BLHA_MODE_FEYNARTS = 2, BLHA_MODE_GENERIC = 3, &
+       BLHA_MODE_OPENLOOPS = 4
   integer, public, parameter :: &
        BLHA_VERSION_1 = 1, BLHA_VERSION_2 = 2
   integer, public, parameter :: &
@@ -91,14 +91,15 @@ module blha_config
        BLHA_WIDTH_RUNNING = 3, BLHA_WIDTH_POLE = 4, &
        BLHA_WIDTH_DEFAULT = 5 
 
-  integer, parameter, public :: OLP_N_MASSIVE_PARTICLES = 10
+  integer, parameter, public :: OLP_N_MASSIVE_PARTICLES = 12
   integer, dimension(OLP_N_MASSIVE_PARTICLES), public :: &
-    OLP_MASSIVE_PARTICLES = [5,-5,6,-6,15,-15,23,24,-24,25]
+    OLP_MASSIVE_PARTICLES = [5, -5, 6, -6, 13, -13, 15, -15, 23, 24, -24, 25]
   integer, parameter :: OLP_HEL_UNPOLARIZED = 0
   integer, parameter :: OLP_HEL_LEFT = -1
   integer, parameter :: OLP_HEL_RIGHT = 1
   integer, parameter :: OLP_HEL_LONG = 2
 
+  integer, parameter :: N_KNOWN_SPECIAL_OL_METHODS = 3
 
   type :: blha_particle_string_element_t
      integer :: pdg = 0
@@ -155,8 +156,11 @@ module blha_config
      integer :: alphas_power = -1, alpha_power = -1
      integer :: ew_scheme = BLHA_EW_DEFAULT
      integer :: width_scheme = BLHA_WIDTH_DEFAULT
+     logical :: openloops_use_cms = .false.
      integer :: openloops_phs_tolerance = 0
-     logical :: openloops_top_signal = .false.
+     type(string_t) :: openloops_extra_cmd
+     integer :: openloops_stability_log = 0
+     logical :: openloops_use_collier = .false.
   end type blha_configuration_t
 
   type:: blha_flv_state_t
@@ -196,6 +200,27 @@ module blha_config
 
 
 contains
+
+  subroutine check_extra_cmd (extra_cmd)
+    type(string_t), intent(in) :: extra_cmd
+    type(string_t), dimension(N_KNOWN_SPECIAL_OL_METHODS) :: known_methods
+    integer :: i
+    logical :: found
+    known_methods(1) = 'top'
+    known_methods(2) = 'not'
+    known_methods(3) = 'stop'
+    if (extra_cmd == var_str ("")) return
+    found = .false.
+    do i = 1, N_KNOWN_SPECIAL_OL_METHODS
+       found = found .or. (extra_cmd == var_str ('extra approx ') // known_methods(i))
+    end do
+    if (.not. found) &
+      call msg_fatal ("The given extra OpenLoops method is not kown ", &
+         [var_str ("Available commands are: "), &
+          var_str ("extra approx top (only WbWb signal),"), &
+          var_str ("extra approx stop (only WbWb singletop),"), &
+          var_str ("extra approx not (no top in WbWb).")])
+  end subroutine check_extra_cmd
 
   subroutine blha_particle_string_element_init_default (blha_p, id)
     class(blha_particle_string_element_t), intent(out) :: blha_p
@@ -354,19 +379,23 @@ contains
     end if
   end subroutine blha_master_init
 
-  subroutine blha_master_setup_additional_features (master, phs_tolerance, top_signal, beam_structure)
+  subroutine blha_master_setup_additional_features (master, &
+     phs_tolerance, use_cms, stability_log, use_collier, extra_cmd, beam_structure)
      class(blha_master_t), intent(inout) :: master
      integer, intent(in) :: phs_tolerance
-     logical, intent(in), optional :: top_signal
+     logical, intent(in) :: use_cms
+     type(string_t), intent(in), optional :: extra_cmd
+     integer, intent(in) :: stability_log
+     logical, intent(in) :: use_collier
      type(beam_structure_t), intent(in), optional :: beam_structure
      integer :: i_file
      logical :: polarized
-     logical :: yorn
 
-     yorn = .false.; if (present (top_signal)) yorn = top_signal     
      polarized = .false.
      if (present (beam_structure)) polarized = beam_structure%has_polarized_beams ()
 
+     if (use_cms .and. any (master%blha_mode /= BLHA_MODE_OPENLOOPS)) &
+        call cms_warning ()
      do i_file = 1, master%n_files
         if (phs_tolerance > 0) then
            select case (master%blha_mode(i_file))
@@ -374,13 +403,27 @@ contains
               if (polarized) &
                  call gosam_error_message () 
            case (BLHA_MODE_OPENLOOPS)
+              master%blha_cfg(i_file)%openloops_use_cms = use_cms
               master%blha_cfg(i_file)%openloops_phs_tolerance = phs_tolerance
               master%blha_cfg(i_file)%polarized = polarized
+              if (present (extra_cmd)) then
+                master%blha_cfg(i_file)%openloops_extra_cmd = extra_cmd
+              else
+                master%blha_cfg(i_file)%openloops_extra_cmd = var_str ('')
+              end if
+              master%blha_cfg(i_file)%openloops_stability_log = stability_log
+              master%blha_cfg(i_file)%openloops_use_collier = use_collier
            end select
         end if
-        master%blha_cfg(i_file)%openloops_top_signal = yorn
      end do
   contains
+     subroutine cms_warning ()
+        call msg_warning ("You have set ?openloops_use_cms = true, but not all matrix ", &
+           [var_str ("element methods are set to OpenLoops. Note that other "), &
+            var_str ("methods might not necessarily support the complex mass "), &
+            var_str ("scheme. This can yield inconsistencies in your NLO results!")])
+     end subroutine cms_warning
+
      subroutine gosam_error_message ()
         call msg_fatal ("You are trying to evaluate a process at NLO ", &
            [var_str ("which involves polarized beams using GoSam. "), &
@@ -435,9 +478,10 @@ contains
          blha_flavor, amp_type)
     select case (blha_cfg%mode)
     case (BLHA_MODE_GOSAM)
-       ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     case (BLHA_MODE_OPENLOOPS)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     end select 
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
          correction_type = BLHA_CT_QCD, &
@@ -460,8 +504,8 @@ contains
 
     allocate (amp_type (size (blha_flavor)*2))
     do i = 1, size (blha_flavor)
-       amp_type(2*i-1) = BLHA_AMP_LOOP
-       amp_type(2*i) = BLHA_AMP_CC
+       amp_type(2 * i - 1) = BLHA_AMP_LOOP
+       amp_type(2 * i) = BLHA_AMP_CC
     end do
     call blha_configuration_init (blha_cfg, basename // "_LOOP" , &
          model, blha_mode)
@@ -469,9 +513,11 @@ contains
          blha_flavor, amp_type)
     select case (blha_cfg%mode)
     case (BLHA_MODE_GOSAM)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     case (BLHA_MODE_OPENLOOPS)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     end select 
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
          correction_type = BLHA_CT_QCD, &
@@ -496,9 +542,9 @@ contains
 
     allocate (amp_type (size (blha_flavor)*3))
     do i = 1, size (blha_flavor)
-       amp_type(3*i-2) = BLHA_AMP_TREE
-       amp_type(3*i-1) = BLHA_AMP_CC
-       amp_type(3*i) = BLHA_AMP_SC
+       amp_type(3 * i - 2) = BLHA_AMP_TREE
+       amp_type(3 * i - 1) = BLHA_AMP_CC
+       amp_type(3 * i) = BLHA_AMP_SC
     end do
     call blha_configuration_init (blha_cfg, basename // "_SUB" , &
          model, blha_mode)
@@ -506,9 +552,11 @@ contains
          blha_flavor, amp_type)
     select case (blha_cfg%mode)
     case (BLHA_MODE_GOSAM)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     case (BLHA_MODE_OPENLOOPS)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     end select 
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
          correction_type = BLHA_CT_QCD, &
@@ -541,17 +589,18 @@ contains
          blha_flavor, amp_type)
     select case (blha_cfg%mode)
     case (BLHA_MODE_GOSAM)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     case (BLHA_MODE_OPENLOOPS)
-       ew_scheme = BLHA_EW_0
+       !ew_scheme = BLHA_EW_0
+       ew_scheme = BLHA_EW_GF
     end select 
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
          correction_type = BLHA_CT_QCD, &
          irreg = BLHA_IRREG_CDR, &
-         alphas_power = asp+1, &
+         alphas_power = asp + 1, &
          alpha_power = ap, &
          ew_scheme = ew_scheme, &
-         ! debug = .true.)
          debug = blha_mode == BLHA_MODE_GOSAM)
   end subroutine blha_init_real
 
@@ -640,8 +689,8 @@ contains
              if (.not. any (checked == i_pdg)) then
                 i_massive_tmp(k) = i_pdg
                 checked(k) = i_pdg  
-                k=k+1
-                n_massive=n_massive+1
+                k = k + 1
+                n_massive = n_massive + 1
              end if
           end if
        end do
@@ -659,7 +708,6 @@ contains
     integer, dimension(:), allocatable :: pdg_in, pdg_out
     integer, dimension(:), allocatable :: flavor_state
     integer :: proc_offset, n_proc_tot
-    integer :: h1, h2
     proc_offset = 0; n_proc_tot = 0
     do i_flv = 1, size (flavor)
        n_proc_tot = n_proc_tot + flavor(i_flv)%flv_mult
@@ -673,22 +721,22 @@ contains
        allocate (flavor_state (n_tot))
        flavor_state = flavor(i_flv)%flavors
        do i_process = 1, flavor(i_flv)%flv_mult
-          pdg_in = flavor_state (1:n_in)
-          pdg_out = flavor_state (n_in+1:)
+          pdg_in = flavor_state (1 : n_in)
+          pdg_out = flavor_state (n_in + 1 : )
           if (cfg%polarized) then
              select case (cfg%mode)
              case (BLHA_MODE_OPENLOOPS)
                 call allocate_and_init_pdg_and_helicities (current_node, &
-                   pdg_in, pdg_out, amp_type (proc_offset+i_process))
+                   pdg_in, pdg_out, amp_type (proc_offset + i_process))
              case (BLHA_MODE_GOSAM)
                 !!! Nothing special for GoSam yet. This exception is already caught
                 !!! in blha_master_setup_additional_features
              end select
           else
              call allocate_and_init_pdg (current_node, pdg_in, pdg_out, &
-                amp_type (proc_offset + i_process)) 
+                amp_type (proc_offset + i_process))
           end if
-          if (proc_offset+i_process /= n_proc_tot) then
+          if (proc_offset + i_process /= n_proc_tot) then
             allocate (current_node%next)
             current_node => current_node%next
           end if
@@ -698,7 +746,9 @@ contains
        deallocate (pdg_in, pdg_out)
        deallocate (flavor_state)
     end do
+
   contains
+
     subroutine allocate_and_init_pdg (node, pdg_in, pdg_out, amp_type)
       type(blha_cfg_process_node_t), intent(inout), pointer :: node
       integer, intent(in), dimension(:), allocatable :: pdg_in, pdg_out
@@ -715,22 +765,33 @@ contains
       integer, intent(in), dimension(:), allocatable :: pdg_in, pdg_out
       integer, intent(in) :: amp_type
       integer :: h1, h2
-      do h1 = -1, 1
-         do h2 = -1, 1
-            if (h1 == 0 .or. h2 == 0) cycle 
-            call allocate_and_init_pdg (current_node, pdg_in, pdg_out, amp_type) 
+      if (size (pdg_in) == 2) then
+         do h1 = -1, 1, 2
+            do h2 = -1, 1, 2
+               call allocate_and_init_pdg (current_node, pdg_in, pdg_out, amp_type) 
+               current_node%pdg_in(1)%polarized = .true.
+               current_node%pdg_in(2)%polarized = .true.
+               current_node%pdg_in(1)%hel = h1
+               current_node%pdg_in(2)%hel = h2
+               if (h1 + h2 /= 2) then !!! not end of loop
+                  allocate (current_node%next)
+                  current_node => current_node%next
+               end if
+            end do
+         end do
+      else
+         do h1 = -1, 1, 2
+            call allocate_and_init_pdg (current_node, pdg_in, pdg_out, amp_type)
             current_node%pdg_in(1)%polarized = .true.
-            current_node%pdg_in(2)%polarized = .true.
             current_node%pdg_in(1)%hel = h1
-            current_node%pdg_in(2)%hel = h2
-            if (h1 + h2 /= 2) then
+            if (h1 /= 1) then !!! not end of loop
                allocate (current_node%next)
                current_node => current_node%next
             end if
          end do
-      end do
+      end if
     end subroutine allocate_and_init_pdg_and_helicities
-      
+
   end subroutine blha_configuration_append_processes
 
   subroutine blha_configuration_set (cfg, &
@@ -792,9 +853,8 @@ contains
     character(4) :: hel_char
     character(len=25), parameter :: pad = ""
     logical :: write_process, no_v
-    if (present (no_version))  no_v = no_version
-    
-    u = given_output_unit (unit)
+    no_v = .false. ; if (present (no_version))  no_v = no_version
+    u = given_output_unit (unit); if (u < 0) return
     full = .true.; if (present (internal)) full = .not. internal
     if (full .and. cfg%dirty) call msg_bug ( &
        "BUG: attempted to write out a dirty BLHA configuration")
@@ -802,7 +862,7 @@ contains
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
        else
-          write (u, "(A)") "# BLHA order written by WHIZARD 2.2.8"
+          write (u, "(A)") "# BLHA order written by WHIZARD 2.3.0"
        end if
        write (u, "(A)")
     end if
@@ -859,19 +919,26 @@ contains
       if (cfg%alpha_power >= 0) write (u, '(A25,A)') &
          "CouplingPower QED " // pad, int2char (cfg%alpha_power)
     end select
-    select case (cfg%ew_scheme)
-       case (BLHA_EW_GF); buf = "alphaGF"
-       case (BLHA_EW_MZ); buf = "alphaMZ"
-       case (BLHA_EW_MSBAR); buf = "alphaMSbar"
-       case (BLHA_EW_0); buf = "alpha0"
-       case (BLHA_EW_RUN); buf = "alphaRUN"
-       case (BLHA_EW_DEFAULT); buf = "OLPDefined"
-    end select
     select case (cfg%mode)
     case (BLHA_MODE_GOSAM)
-!       write (u, '(A25, A)') "EWScheme " // pad, char (buf)
+       select case (cfg%ew_scheme)
+          case (BLHA_EW_GF); buf = "alphaGF"
+          case (BLHA_EW_MZ); buf = "alphaMZ"
+          case (BLHA_EW_MSBAR); buf = "alphaMSbar"
+          case (BLHA_EW_0); buf = "alpha0"
+          case (BLHA_EW_RUN); buf = "alphaRUN"
+          case (BLHA_EW_DEFAULT); buf = "OLPDefined"
+       end select
+       write (u, '(A25, A)') "EWScheme " // pad, char (buf)
     case (BLHA_MODE_OPENLOOPS)
-!       write (u, '(A25, A)') "ewscheme " // pad, char (buf)
+       print *, 'BLHA-MODE: ', cfg%ew_scheme
+       select case (cfg%ew_scheme)
+          case (BLHA_EW_0); buf = "alpha0"
+          case (BLHA_EW_GF); buf = "Gmu"
+          case default
+             call msg_fatal ("OpenLoops input: Only supported EW schemes are 'alpha0' and 'Gmu'")
+       end select
+       write (u, '(A25, A)') "ewscheme " // pad, char (buf)
     endselect
     select case (cfg%mode)
     case (BLHA_MODE_GOSAM)
@@ -882,14 +949,22 @@ contains
        end do
        write (u,*) 
     case (BLHA_MODE_OPENLOOPS)
-       write (u, '(A25,I1)') "extra use_cms " // pad, 0
+       if (cfg%openloops_use_cms) then
+          write (u, '(A25,I1)') "extra use_cms " // pad, 1
+       else 
+          write (u, '(A25,I1)') "extra use_cms " // pad, 0
+       end if
        write (u, '(A25,I1)') "extra me_cache " // pad, 0
        if (cfg%openloops_phs_tolerance > 0) then
           write (u, '(A25,A4,I0)') "extra psp_tolerance " // pad, "10e-", &
              cfg%openloops_phs_tolerance
        end if
-       if (cfg%openloops_top_signal) &
-          write (u, '(A)') "extra approx top"
+       call check_extra_cmd (cfg%openloops_extra_cmd)
+       write (u, '(A)') char (cfg%openloops_extra_cmd)
+       if (cfg%openloops_stability_log > 0) &
+          write (u, '(A25,I1)') "extra stability_log " // pad, cfg%openloops_stability_log
+       if (cfg%openloops_use_collier) &
+          write (u, '(A25,I1)') "extra preset " // pad, 2 
     end select
     if (full) then
        write (u, "(A)")
@@ -913,7 +988,6 @@ contains
        end select
        if (write_process) then
           write (u, '(A25, A)') "AmplitudeType " // pad, char (buf)
-   
           buf = ""
           do i = 1, size (node%pdg_in)
              call node%pdg_in(i)%write_pdg (pdg_char)

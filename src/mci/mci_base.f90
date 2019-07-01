@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -508,11 +508,11 @@ contains
     mci%md5sum = md5sum
   end subroutine mci_set_md5sum
   
-  subroutine mci_add_pass (mci, adapt_grids, adapt_weights, final)
+  subroutine mci_add_pass (mci, adapt_grids, adapt_weights, final_pass)
     class(mci_t), intent(inout) :: mci
     logical, intent(in), optional :: adapt_grids
     logical, intent(in), optional :: adapt_weights
-    logical, intent(in), optional :: final
+    logical, intent(in), optional :: final_pass
   end subroutine mci_add_pass
     
   subroutine mci_import_rng (mci, rng)
@@ -621,15 +621,18 @@ contains
     mci_instance%x = 0
   end subroutine mci_instance_base_init
     
-  subroutine mci_instance_set_channel_weights (mci_instance, weights)
+  subroutine mci_instance_set_channel_weights (mci_instance, weights, sum_non_zero)
     class(mci_instance_t), intent(inout) :: mci_instance
     real(default), dimension(:), intent(in) :: weights
+    logical, intent(out), optional :: sum_non_zero
     real(default) :: wsum
     wsum = sum (weights)
     if (wsum /= 0) then
        mci_instance%w = weights / wsum
+       if (present (sum_non_zero)) sum_non_zero = .true.
     else
-       call msg_fatal ("MC sampler initialization:&
+       if (present (sum_non_zero)) sum_non_zero = .false.
+       call msg_warning ("MC sampler initialization:&
             & sum of channel weights is zero")
     end if
   end subroutine mci_instance_set_channel_weights

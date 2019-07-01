@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,6 +39,8 @@ UNIT_TESTS = \
     pdg_arrays.run \
     expressions.run \
     beams.run \
+    su_algebra.run \
+    bloch_vectors.run \
     polarizations.run \
     md5.run \
     cputime.run \
@@ -88,6 +90,8 @@ UNIT_TESTS = \
     phs_forests.run \
     phs_wood.run \
     phs_fks_generator.run \
+    fks_regions.run \
+    nlo_color_data.run \
     rng_base.run \
     rng_tao.run \
     selectors.run \
@@ -107,7 +111,6 @@ UNIT_TESTS = \
     cascades.run \
     event_transforms.run \
     decays.run \
-    powheg.run \
     shower.run \
     events.run \
     hep_events.run \
@@ -339,7 +342,7 @@ clean-local:
 	rm -rf err-output
 	rm -rf ref-output
 	rm -f *.sin *.hbc 
-	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
+	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.mdl
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 

@@ -11,7 +11,8 @@ c
       integer istream,lok,ntries
       character *(*) filename
       character *(*) gtitle
-      character, pointer :: comm => null()
+      character (10), target :: commnt = "No comment"
+      character (10), pointer :: comm => null()
 
       logical lfirst
       data lfirst/.TRUE./
@@ -25,6 +26,7 @@ C...print version number if this is the first call
 c
 c      Initialization phase.
 c
+      comm => commnt
       lok = 0
       title = gtitle
       numblocks = 8
@@ -36,7 +38,6 @@ c
       blkids(6) = MCFIO_STDHEP4M
       blkids(7) = MCFIO_HEPEUP
       blkids(8) = MCFIO_HEPRUP
-      
       istream = mcfio_OpenWriteDirect(filename, title, comm, 
      &             ntries, blkids, numblocks)
       if (istream .eq. -1) then 

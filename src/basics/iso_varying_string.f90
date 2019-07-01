@@ -37,9 +37,12 @@
 ! Thanks    : Lawrie Schonfelder (bugfixes and design pointers), Walt Brainerd
 !             (conversion to F).
 !
-! Small modification: Wolfgang Kilian (WHIZARD), (compiler?) bug workaround
-! Another small modification: Christian Speckner (WHIZARD), fix Wolfgang's
-!    workaround for files without a final LF.
+! Small modifications: 
+!   1. Wolfgang Kilian (WHIZARD), (compiler?) bug workaround
+!   2. Christian Speckner (WHIZARD), fix Wolfgang's
+!                    workaround for files without a final LF.
+!   3. Juergen Reuter (WHIZARD): workaround for PGF bug, move 
+!                    elemental function len_ to the beginning
 
 module iso_varying_string
 
@@ -392,6 +395,48 @@ module iso_varying_string
 ! Procedures
 
 contains
+
+!****
+
+  elemental function len_ (string) result (length)
+
+    type(varying_string), intent(in) :: string
+    integer                          :: length
+
+! Get the length of a varying string
+
+    if(ALLOCATED(string%chars)) then
+       length = SIZE(string%chars)
+    else
+       length = 0
+    endif
+
+! Finish
+
+    return
+
+  end function len_
+
+!****
+
+  elemental function len_trim_ (string) result (length)
+
+    type(varying_string), intent(in) :: string
+    integer                          :: length
+
+! Get the trimmed length of a varying string
+
+    if(ALLOCATED(string%chars)) then
+       length = LEN_TRIM(char(string))
+    else
+       length = 0
+    endif
+
+! Finish
+
+    return
+
+  end function len_trim_
 
 !****
 
@@ -996,48 +1041,6 @@ contains
     return
 
   end function index_VS_CH
-
-!****
-
-  elemental function len_ (string) result (length)
-
-    type(varying_string), intent(in) :: string
-    integer                          :: length
-
-! Get the length of a varying string
-
-    if(ALLOCATED(string%chars)) then
-       length = SIZE(string%chars)
-    else
-       length = 0
-    endif
-
-! Finish
-
-    return
-
-  end function len_
-
-!****
-
-  elemental function len_trim_ (string) result (length)
-
-    type(varying_string), intent(in) :: string
-    integer                          :: length
-
-! Get the trimmed length of a varying string
-
-    if(ALLOCATED(string%chars)) then
-       length = LEN_TRIM(char(string))
-    else
-       length = 0
-    endif
-
-! Finish
-
-    return
-
-  end function len_trim_
 
 !****
 

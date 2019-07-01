@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,7 +41,7 @@ module prc_openloops
   use io_units
   use iso_varying_string, string_t => varying_string
   use constants
-  use unit_tests, only: vanishes
+  use numeric_utils
   use system_defs, only: TAB
   use diagnostics
   use system_dependencies
@@ -141,9 +141,9 @@ module prc_openloops
   abstract interface
      subroutine ol_evaluate_sc (id, pp, emitter, polvect, res) bind(C)
        import
-       integer(kind=c_int), value :: id, emitter
-       real(kind=c_double), intent(in) :: pp(5*N_EXTERNAL), polvect(4)
-       real(kind=c_double), intent(out) :: res(N_EXTERNAL)
+       integer(kind = c_int), value :: id, emitter
+       real(kind = c_double), intent(in) :: pp(5 * N_EXTERNAL), polvect(4)
+       real(kind = c_double), intent(out) :: res(N_EXTERNAL)
      end subroutine ol_evaluate_sc
   end interface
 
@@ -218,9 +218,13 @@ contains
     class(openloops_driver_t), intent(inout) :: driver
     real(default), intent(in) :: alpha_s
     integer :: ierr
-    call driver%blha_olp_set_parameter &
-       (c_char_'alphas'//c_null_char, &
-        dble (alpha_s), 0._double, ierr)
+    if (associated (driver%blha_olp_set_parameter)) then
+       call driver%blha_olp_set_parameter &
+          (c_char_'alphas'//c_null_char, &
+           dble (alpha_s), 0._double, ierr)
+    else
+       call msg_fatal ("blha_olp_set_parameter not associated!")
+    end if
     if (ierr == 0) call parameter_error_message (var_str ('alphas'))
   end subroutine openloops_driver_set_alpha_s
 
@@ -239,9 +243,9 @@ contains
     real(default), intent(in) :: GF
     integer :: ierr 
     call driver%blha_olp_set_parameter &
-       (c_char_'GF'//c_null_char, &
+       (c_char_'Gmu'//c_null_char, &
         dble(GF), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('GF'))
+    if (ierr == 0) call parameter_error_message (var_str ('Gmu'))
   end subroutine openloops_driver_set_GF
 
   subroutine openloops_driver_set_weinberg_angle (driver, sw2)
@@ -273,7 +277,7 @@ contains
     logical :: init_success
 
     call object%init_dlaccess_to_library (os_data, dlaccess, init_success)
-  
+
     c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("ol_evaluate_sc"))
     call c_f_procpointer (c_fptr, object%evaluate_spin_correlations)
     if (dlaccess_has_error (dlaccess)) &
@@ -340,7 +344,6 @@ contains
     call object%load_driver (os_data)
     call object%reset_parameters ()
     call object%set_particle_properties (model)
-    !!!call object%set_alpha_qed (model)
     call object%set_electroweak_parameters (model)
     verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
     call object%set_verbosity (verbosity)
@@ -361,7 +364,7 @@ contains
     class(prc_openloops_t), intent(inout) :: object
     integer :: ierr
     select type (driver => object%driver)
-    type is (openloops_driver_t) 
+    type is (openloops_driver_t)
        call driver%blha_olp_start (char (driver%olp_file)//c_null_char, ierr)
     end select
   end subroutine prc_openloops_start
@@ -420,19 +423,19 @@ contains
     real(double), dimension(5*object%n_particles) :: mom
     real(default) :: acc_born 
     real(double), dimension(blha_result_array_size (object%n_particles, &
-                                                        BLHA_AMP_TREE)) :: r
+                                                     BLHA_AMP_TREE)) :: r
     real(double) :: mu_dble
     real(double) :: acc_dble
     real(default) :: alpha_s
-    
-    mom = object%create_momentum_array (p) 
-    mu_dble = dble(mu)    
+
+    mu_dble = dble(mu)
     alpha_s = object%qcd%alpha%get (mu)
 
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%set_alpha_s (alpha_s)
        if (allocated (object%i_born)) then
+          mom = object%create_momentum_array (p)
           call driver%blha_olp_eval2 (object%i_born(i_born), mom, mu_dble, r, acc_dble)
           sqme = r(1)
        else
@@ -452,7 +455,6 @@ contains
     real(default), intent(in) :: ren_scale
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
-    real(default) :: mu
     real(double), dimension(5*object%n_particles) :: mom
     real(double), dimension(blha_result_array_size (object%n_particles, &
                                                     BLHA_AMP_TREE)) :: r
@@ -460,16 +462,12 @@ contains
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
- 
     mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) then
-       mu = sqrt (two * p(1) * p(2))
-    else
-       mu = ren_scale
-    end if
-    mu_dble = dble (mu)
+    if (vanishes (ren_scale)) &
+       call msg_fatal ("prc_openloops_compute_sqme_real: ren_scale vanishes")
+    mu_dble = dble (ren_scale)
 
-    alpha_s = object%qcd%alpha%get (mu)
+    alpha_s = object%qcd%alpha%get (ren_scale)
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%set_alpha_s (alpha_s)
@@ -482,29 +480,25 @@ contains
   end subroutine prc_openloops_compute_sqme_real
 
   subroutine prc_openloops_compute_sqme_sc (object, &
-                i_flv, em, p, ren_scale_in, pol_vects, &
+                i_flv, em, p, ren_scale, pol_vects, &
             me_sc, bad_point)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale_in
+    real(default), intent(in) :: ren_scale
     type(vector4_t), dimension(:) :: pol_vects
     complex(default), intent(out) :: me_sc
     logical, intent(out) :: bad_point
     real(double), dimension(5*N_EXTERNAL) :: mom
     real(double), dimension(N_EXTERNAL) :: r
-    real(default) :: ren_scale, alpha_s
+    real(default) :: alpha_s
     real(double), dimension(4) :: polvect
     integer :: i
-    
     mom = object%create_momentum_array (p)
     me_sc = zero
-    if (vanishes (ren_scale_in)) then
-       ren_scale = sqrt (two * p(1) * p(2))
-    else
-       ren_scale = ren_scale_in
-    end if
+    if (vanishes (ren_scale)) &
+       call msg_fatal ("prc_openloops_compute_sqme_sc: ren_scale vanishes")
     alpha_s = object%qcd%alpha%get (ren_scale)
 
     forall(i=1:4) polvect(i) = pol_vects(em)%p(i-1)

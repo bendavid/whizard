@@ -1,6 +1,6 @@
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -2067,16 +2067,23 @@ contains
     psibar_r%a(3:4) = psibar%a(3:4)
     j = -(gl * fggkggr (psibar_l, grav, v) + gr * fggkggr (psibar_r, grav, v))
   end function v2lr_fgr
-  pure function pr_psi (p, m, w, psi) result (ppsi)
+  pure function pr_psi (p, m, w, cms, psi) result (ppsi)
     type(bispinor) :: ppsi
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w
     type(bispinor), intent(in) :: psi
+    logical, intent(in) :: cms
     type(vector) :: vp
     complex(kind=default), parameter :: one = (1, 0)
+    complex(kind=default) :: num_mass
     vp = p
+    if (cms) then
+       num_mass = sqrt(cmplx(m**2, -m*w, kind=default))
+    else
+       num_mass = cmplx (m, 0, kind=default)
+    end if  
     ppsi = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-         * (- f_vf (one, vp, psi) + m * psi)
+         * (- f_vf (one, vp, psi) + num_mass * psi)
   end function pr_psi
   pure function pj_psi (p, m, w, psi) result (ppsi)
     type(bispinor) :: ppsi

@@ -1,6 +1,6 @@
-! $Id: parameters.Littlest.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
+ ! $Id: parameters.Littlest.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
 !
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -127,8 +127,9 @@ module parameters_littlest
 
 contains
 
-  subroutine import_from_whizard (par_array)
+  subroutine import_from_whizard (par_array, scheme)
     real(default), dimension(46), intent(in) :: par_array
+    integer, intent(in) :: scheme
     !!! This corresponds to 1/alpha = 137.03598949333
     real(default), parameter :: &
          alpha = 1.0_default/137.03598949333_default

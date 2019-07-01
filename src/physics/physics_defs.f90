@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,6 +36,7 @@
 module physics_defs
 
   use kinds, only: default
+  use iso_varying_string, string_t => varying_string
   use constants, only: one, two, three
 
   implicit none
@@ -124,10 +125,84 @@ module physics_defs
   integer, parameter, public :: BORN = 0
   integer, parameter, public :: NLO_REAL = 1
   integer, parameter, public :: NLO_VIRTUAL = 2
-  integer, parameter, public :: NLO_PDF = 3
-  integer, parameter, public :: NLO_SUBTRACTION = 4
-  integer, parameter, public :: GKS = 5
-  integer, parameter, public :: NLO_THRESHOLD_RESUMMATION = 6
+  integer, parameter, public :: NLO_MISMATCH = 3
+  integer, parameter, public :: NLO_DGLAP = 4
+  integer, parameter, public :: NLO_SUBTRACTION = 5
+  integer, parameter, public :: NLO_FULL = 6
+  integer, parameter, public :: GKS = 7
+  integer, parameter, public :: COMPONENT_UNDEFINED = 99
+
+
+  public :: component_status
+  public :: is_nlo_component
+
+  interface component_status
+     module procedure component_status_of_string
+     module procedure component_status_to_string
+  end interface
+
+contains
+
+  elemental function component_status_of_string (string) result (i)
+    integer :: i
+    type(string_t), intent(in) :: string
+    select case (char(string))
+    case ("Born")
+       i = BORN
+    case ("Real")
+       i = NLO_REAL
+    case ("Virtual")
+       i = NLO_VIRTUAL
+    case ("Mismatch")
+       i = NLO_MISMATCH
+    case ("Dglap")
+       i = NLO_DGLAP
+    case ("Subtraction")
+       i = NLO_SUBTRACTION
+    case ("Full")
+       i = NLO_FULL
+    case ("GKS")
+       i = GKS
+    case default
+       i = COMPONENT_UNDEFINED
+    end select
+  end function component_status_of_string
+
+  elemental function component_status_to_string (i) result (string)
+    type(string_t) :: string
+    integer, intent(in) :: i
+    select case (i)
+    case (BORN)
+       string = "Born"
+    case (NLO_REAL)
+       string = "Real"
+    case (NLO_VIRTUAL)
+       string = "Virtual"
+    case (NLO_MISMATCH)
+       string = "Mismatch"
+    case (NLO_DGLAP)
+       string = "Dglap"
+    case (NLO_SUBTRACTION)
+       string = "Subtraction"
+    case (NLO_FULL)
+       string = "Full"
+    case (GKS)
+       string = "GKS"
+    case default
+       string = "Undefined"
+    end select
+  end function component_status_to_string
+
+  elemental function is_nlo_component (comp) result (is_nlo)
+    logical :: is_nlo
+    integer, intent(in) :: comp
+    select case (comp)
+    case (BORN : GKS)
+       is_nlo = .true.
+    case default
+       is_nlo = .false.
+    end select
+  end function is_nlo_component
 
 
 end module physics_defs

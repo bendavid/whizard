@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -77,6 +77,7 @@ module shower
      type(os_data_t) :: os_data
      logical :: is_first_event
    contains
+     procedure :: write_name => evt_shower_write_name
      procedure :: write => evt_shower_write
      procedure :: connect => evt_shower_connect
      procedure :: init => evt_shower_init
@@ -94,6 +95,14 @@ module shower
 
 contains
 
+  subroutine evt_shower_write_name (evt, unit)
+    class(evt_shower_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: shower"
+  end subroutine evt_shower_write_name
+    
   subroutine evt_shower_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_shower_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -101,7 +110,7 @@ contains
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: shower"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (evt%particle_set_exists)  call evt%particle_set%write &
@@ -157,9 +166,14 @@ contains
     call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
     associate (settings => evt%shower%settings)
        settings%hadron_collision = .false.
-       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+       !!! !!! !!! Workaround for PGF90 v16.1
+       !!! if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 39)) then
+       if (evt%particle_set%prt(1)%flv%get_pdg_abs () <= 39 .and. &
+           evt%particle_set%prt(2)%flv%get_pdg_abs () <= 39) then
           settings%hadron_collision = .false.
-       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+       !!! else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 100)) then
+       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. & 
+                evt%particle_set%prt(2)%flv%get_pdg_abs () >= 100) then
           settings%hadron_collision = .true.
        else
           call msg_fatal ("evt_shower didn't recognize beams setup")
@@ -195,14 +209,19 @@ contains
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid, vetoed
+    integer :: i_term
+    real(default) :: fac_scale
     call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
+    i_term = 1
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
+    fac_scale = evt%process_instance%get_fac_scale (i_term)
     if (evt%is_first_event) then
        call evt%first_event ()
     end if
-    call evt%shower%import_particle_set (evt%particle_set, evt%os_data)
+    call evt%shower%import_particle_set &
+         (evt%particle_set, evt%os_data, fac_scale)
     if (allocated (evt%matching)) then
        call evt%matching%before_shower (evt%particle_set, vetoed)
        if (msg_level(D_TRANSFORMS) >= DEBUG) then
@@ -265,7 +284,7 @@ contains
      class(evt_shower_t), intent(in) :: evt
      val = .false.
      if (allocated (evt%matching)) &
-        val = evt%matching%get_method () == "POWHEG" 
+        val = evt%matching%get_method () == "POWHEG"
   end function evt_shower_contains_powheg_matching
 
   subroutine evt_shower_disable_powheg_matching (evt)

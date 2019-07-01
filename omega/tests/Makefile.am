@@ -1,11 +1,11 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7334 2015-10-26 18:21:22Z bchokoufe $
+# $Id: Makefile.am 7655 2016-07-18 16:40:19Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by
+# Copyright (C) 1999-2016 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -224,6 +224,26 @@ ects_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
 
 ########################################################################
 
+TESTS += cascade
+
+CASCADE_TESTS = \
+	bhabha-s-channel.cascade bhabha-t-channel.cascade bhabha-full.cascade \
+	ww-onlycc.cascade ww-notgc.cascade \
+	jjj-notgc.cascade \
+	vbf-noh.cascade
+
+cascade: cascade_driver.sh Makefile $(OMEGA_SM_CACHE)
+	$(SED) -e 's|%%cascade_tests%%|$(CASCADE_TESTS)|' \
+	  -e 's|%%srcdir%%|$(srcdir)|' \
+	  -e 's|%%SED%%|$(SED)|' \
+	  -e 's|%%top_builddir%%|$(top_builddir)|' \
+	  -e 's|%%OCAML_NATIVE_EXT%%|$(OCAML_NATIVE_EXT)|' $< >$@
+	chmod +x $@
+
+EXTRA_DIST += cascade_driver.sh $(CASCADE_TESTS)
+
+########################################################################
+
 TESTS += ward
 EXTRA_PROGRAMS += ward
 EXTRA_DIST += ward_driver.sh
@@ -347,7 +367,6 @@ EXTRA_DIST += compare_driver_VM.sh compare_driver_VM_wrappers.sh
 EXTRA_DIST += comparisons_VM.list
 
 compare_amplitude_VM.f90: comparisons_VM.list comparisons_VM.wrappers.o
-	rm -f *.hbc
 	$(SHELL) $(srcdir)/compare_driver_VM.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 
@@ -495,10 +514,9 @@ amplitude_benchmark_v1.o amplitude_benchmark_v2.o \
 
 if OCAML_AVAILABLE
 
-TESTS += @comment_model_file@ vertex_unit
-@comment_model_file@ EXTRA_PROGRAMS += vertex_unit
-
-@comment_model_file@ vertex_unit_SOURCES = vertex_unit.ml
+TESTS += vertex_unit
+EXTRA_PROGRAMS += vertex_unit
+vertex_unit_SOURCES = vertex_unit.ml
 
 vertex_unit: $(OMEGA_CORE) vertex_unit.cmx
 	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o vertex_unit \
@@ -508,6 +526,23 @@ vertex_unit.cmx: vertex_unit.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -c -o $@ $<
 
 vertex_unit.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+
+endif
+
+if OCAML_AVAILABLE
+
+TESTS += ufo_unit
+EXTRA_PROGRAMS += ufo_unit
+ufo_unit_SOURCES = ufo_unit.ml
+
+ufo_unit: $(OMEGA_CORE) ufo_unit.cmx
+	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o ufo_unit \
+		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) ufo_unit.cmx
+
+ufo_unit.cmx: ufo_unit.ml
+	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -c -o $@ $<
+
+ufo_unit.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 
 endif
 
@@ -537,7 +572,7 @@ clean-local: clean-macosx
 		*.o *.cmi *.cmo *.cmx amplitude_*.f90 *.$(OMEGA_CACHE_SUFFIX) \
 		$(EXTRA_PROGRAMS) ects.f90 ward.f90 compare_*.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
-		*.hbc *wrappers.f90
+		*.hbc *wrappers.f90 cascade
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

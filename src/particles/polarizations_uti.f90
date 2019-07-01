@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,7 +36,6 @@
 module polarizations_uti
 
   use kinds, only: default
-  use format_defs, only: FMT_12
   use flavors
   use model_data
 
@@ -58,6 +57,7 @@ contains
     type(flavor_t) :: flv
     real(default), dimension(3) :: alpha
     real(default) :: r, theta, phi
+    real(default), parameter :: tolerance = 1.E-14_default
 
     write (u, "(A)")  "* Test output: polarization_1"
     write (u, "(A)")  "*   Purpose: test polarization setup"
@@ -72,103 +72,101 @@ contains
     write (u, "(A)")
     
     call flv%init (1, model)
-    call polarization_init_unpolarized (pol, flv)
-    call polarization_write (pol, u)
-    write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
-    call polarization_final (pol)
+    call pol%init_unpolarized (flv)
+    call pol%write (u, state_matrix = .true.)
+    write (u, "(A,L1)")  "   diagonal =", pol%is_diagonal ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Unpolarized fermion"
     write (u, "(A)") 
     
-    call polarization_init_circular (pol, flv, 0._default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_circular (flv, 0._default)
+    call pol%write (u, state_matrix = .true., all_states = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Transversally polarized fermion, phi=0"
     write (u, "(A)")
     
-    call polarization_init_transversal (pol, flv, 0._default, 1._default)
-    call polarization_write (pol, u)
-    write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
-    call polarization_final (pol)
+    call pol%init_transversal (flv, 0._default, 1._default)
+    call pol%write (u, state_matrix = .true.)
+    write (u, "(A,L1)")  "   diagonal =", pol%is_diagonal ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Transversally polarized fermion, phi=0.9, frac=0.8"
     write (u, "(A)")
     
-    call polarization_init_transversal (pol, flv, 0.9_default, 0.8_default)
-    call polarization_write (pol, u)
-    write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
-    call polarization_final (pol)
+    call pol%init_transversal (flv, 0.9_default, 0.8_default)
+    call pol%write (u, state_matrix = .true.)
+    write (u, "(A,L1)")  "   diagonal =", pol%is_diagonal ()
     
     write (u, "(A)")
     write (u, "(A)") "* All polarization directions of a fermion"
     write (u, "(A)")
     
-    call polarization_init_generic (pol, flv)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_generic (flv)
+    call pol%write (u, state_matrix = .true.)
+
+    
     call flv%init (21, model)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized gluon, frac=0.3"
     write (u, "(A)") 
     
-    call polarization_init_circular (pol, flv, 0.3_default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)   
+    call pol%init_circular (flv, 0.3_default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+
+    
     call flv%init (23, model)
     
     write (u, "(A)") 
     write (u, "(A)") "* Circularly polarized massive vector, frac=-0.7"
     write (u, "(A)") 
     
-    call polarization_init_circular (pol, flv,  -0.7_default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_circular (flv,  -0.7_default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized massive vector"
     write (u, "(A)")
     
-    call polarization_init_circular (pol, flv, 1._default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_circular (flv, 1._default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector, frac=0.4"
     write (u, "(A)")
     
-    call polarization_init_longitudinal (pol, flv, 0.4_default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_longitudinal (flv, 0.4_default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector"
     write (u, "(A)") 
     
-    call polarization_init_longitudinal (pol, flv, 1._default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_longitudinal (flv, 1._default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Diagonally polarized massive vector"
     write (u, "(A)")
     
-    call polarization_init_diagonal &
-         (pol, flv, [0._default, 1._default, 2._default])
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_diagonal &
+         (flv, [2._default, 1._default, 0._default])
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* All polarization directions of a massive vector"
     write (u, "(A)") 
 
-    call polarization_init_generic (pol, flv)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_generic (flv)
+    call pol%write (u, state_matrix = .true.)
     call flv%init (21, model)
     
     write (u, "(A)") 
@@ -176,21 +174,29 @@ contains
     write (u, "(A)") 
     
     alpha = [0.2_default, 0.4_default, 0.6_default]
-    call polarization_init_axis (pol, flv, alpha)
-    call polarization_write (pol, u)
+    call pol%init_axis (flv, alpha)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
-    write (u, "(A)")  "   Recovered axis:"
-    alpha = polarization_get_axis (pol)
-    write (u, "(A)")  "   Angle polarization (0.5, 0.6, -1)"
+    write (u, "(A)")
+    write (u, "(1X,A)")  "Recovered axis:"
+    alpha = pol%get_axis ()
+    write (u, "(3(1X,F10.7))")  alpha
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Angle polarization (0.5, 0.6, -1)"
     r = 0.5_default
     theta = 0.6_default
     phi = -1._default
-    call polarization_init_angles (pol, flv, r, theta, phi)
-    call polarization_write (pol, u)
-    write (u, "(A)")  "   Recovered parameters (r, theta, phi):"
-    call polarization_to_angles (pol, r, theta, phi)
-    write (u, "(A,3(1x," // FMT_12 // "))")  "     ", r, theta, phi
-    call polarization_final (pol)
+    call pol%init_angles (flv, r, theta, phi)
+    write (u, "(A)")
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+
+    write (u, "(A)")
+    write (u, "(1X,A)")  "Recovered parameters (r, theta, phi):"
+    call pol%to_angles (r, theta, phi)
+    write (u, "(3(1x,F10.7))")  r, theta, phi
     
     call model%final ()
 
@@ -230,9 +236,10 @@ contains
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Transversally polarized fermion, phi=0"
@@ -249,9 +256,10 @@ contains
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Transversally polarized fermion, phi=0.9, frac=0.8"
@@ -265,9 +273,9 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Left-handed massive fermion, frac=1"
@@ -283,9 +291,10 @@ contains
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Left-handed massive fermion, frac=0.8"
@@ -298,9 +307,10 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Left-handed massless fermion"
@@ -312,9 +322,9 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Right-handed massless fermion, frac=0.5"
@@ -327,9 +337,9 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized gluon, frac=0.3"
@@ -342,9 +352,10 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)   
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()   
     
     write (u, "(A)") 
     write (u, "(A)") "* Circularly polarized massive vector, frac=0.7"
@@ -357,9 +368,10 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized massive vector"
@@ -372,9 +384,10 @@ contains
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector, frac=0.4"
@@ -390,9 +403,10 @@ contains
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector"
@@ -408,9 +422,10 @@ contains
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Axis polarization (0.2, 0.4, 0.6)"
@@ -422,15 +437,15 @@ contains
     call pmatrix%init (2, 3)
     call pmatrix%set_entry (1, [-1,-1], cmplx (1 - alpha(3), kind=default))
     call pmatrix%set_entry (2, [1,-1], &
-         cmplx (alpha(1), -alpha(2), kind=default))
+         cmplx (alpha(1),-alpha(2), kind=default))
     call pmatrix%set_entry (3, [1,1], cmplx (1 + alpha(3), kind=default))
     call pmatrix%normalize (flv, 1._default, tolerance)
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     call model%final ()
 

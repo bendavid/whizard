@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -2170,6 +2170,7 @@ contains
   subroutine sf_test_data_allocate_sf_int (data, sf_int)
     class(sf_test_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
+    if (allocated (sf_int)) deallocate (sf_int)
     allocate (sf_test_t :: sf_int)
   end subroutine sf_test_data_allocate_sf_int
     

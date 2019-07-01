@@ -28,24 +28,60 @@ parameter alpha_em_i = 125.924  # inverse QED coupling at ttbar threshold
 parameter m1S    = 172.0        # t-quark m1S mass
 parameter Vtb    = 1.0          # CKM matrix element Vtb (3rd generation decoupled)
 parameter wt_inv = 0.0          # optional t-quark partial width into invisible channels
-parameter nloop  = 1            # NRQCD order (0: LL, 1: NLL)
+parameter nrqcd_order  = 1            # NRQCD order (0: LL, 1: NLL)
 parameter sh     = 1.0          # hard scale: mu_h = m1S * sh
 parameter sf     = 1.0          # soft scale: mu_s = m1s * sh * sf * v*(sqrts)
 
-# TESTING ONLY: REMOVE BEFORE RELEASE
+# -3: matched expanded
+# -2: p0-constant resummed FF with switchoff function multiplied to all alpha_s
+# -1: matched FF
+#  0: p0-dependent resummed FF
+#  1: p0-constant resummed FF
+#  3: p0-dependent nonrelativistic O(alphas^1) expanded FF
+#  4: p0-constant nonrelativistic O(alphas^1) expanded FF, hard scale
+#  5: p0-constant nonrelativistic O(alphas^1) expanded FF, soft scale
+#  6: p0-constant nonrelativistic O(alphas^1) expanded FF, soft scale with switchoff to treelevel
+#  7: p0-dependent analytic resummed LL
+#  8: p0-constant nonrelativistic O(alphas^1) expanded FF, switch from soft to hard scale
+#  9: Set FF=1 to get the tree-level result from the signal component
+# >9: Set FF=0, signal component = 0
 parameter FF     =  1           # form factor type:
-                 # -4: matched FF (Max's matching to LO continuum)
-                 # -3: matched FF (Andre's matching to LO continuum)
-                 # -2: matched FF (Max's matching to NLO continuum)
-                 # -1: matched FF (Andre's matching to NLO continuum)
-                 #  0: p0-dependent resummed FF (no matching)
-                 #  1: p0-constant resummed FF (release 2.2.3 status)
-                 #  2: relativistic O(alphas^1) FF
-                 #  3: p0-dependent nonrelativistic O(alphas^1) FF (no resummation)
-                 #  4: p0-constant nonrelativistic O(alphas^1) FF (no resummation)
-                 #  5: ?
-                 #  6: p0-dependent analytic LL
-                 # >6: tree level
+
+#  build the sum of
+#  1st bit enables   NLO width and decay (disabled is LO): 1/0 * 1
+#
+#  2nd bit enables   factorization (disabled uses signal diagram): 1/0 * 2
+#      (only relevant if method = "threshold")
+#
+#  3rd bit enables   interference with background diagrams: 1/0 * 4
+#      (only relevant if method = "threshold" otherwise its always 1)
+#
+#  4th bit enables   on-shell projection of momenta: 1/0 * 8
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization is on)
+#
+#  5th bit enforces  LO width in propagators in signal component: 1/0 * 16
+#      (only relevant if method = "threshold" otherwise its always 0)
+#
+#  6th bit enables   helicty approximation: 1/0 * 32
+#      (only relevant if method = "threshold" otherwise its always 0)
+#
+#  7th bit allows to activate on-shell projection of momenta in
+#   production only even if 4th bit is off: 1/0 * 64
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization is on, if on-shell projection is off)
+#
+#  8th bit allows to activate on-shell projection of momenta in
+#   decay only even if 4th bit is off: 1/0 * 128
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization is on, if on-shell projection is off)
+#
+#  9th bit allows to compute the propagator with off-shell momenta: 1/0 * 256
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (highly unrecommended, only for testing, not physical)
+#
+parameter offshell_strategy = 0
+
 parameter v1     = 0.1          # for switch-off function f
 parameter v2     = 0.3          # for switch-off function f
 parameter sqrtsmin = 340.0      # minimal value of sqrts for TOPPIK grids
@@ -66,7 +102,7 @@ derived sw    = sqrt (1-cw**2)                # sin(theta-W)
 derived v     = mW * sw * sqrt(alpha_em_i/pi) # v (Higgs vev)
 
 # external t-quark parameters depending on model parameters
-external mtpole                 # pole mass: depends on m1S, nloop and sqrts
+external mtpole                 # pole mass: depends on m1S, nrqcd_order and sqrts
 external wtop                   # total width: depends on Vtb, wt_inv and masses
 
 ########################################################################
@@ -76,68 +112,68 @@ external wtop                   # total width: depends on Vtb, wt_inv and masses
 particle D_QUARK 1  parton
   spin 1/2  charge -1/3  isospin -1/2  color 3
   name d down
-  anti dbar D "d~" 
+  anti dbar D "d~"
   tex_anti "\bar{d}"
 particle U_QUARK 2  parton
   spin 1/2  charge  2/3  isospin  1/2  color 3
   name u up
-  anti ubar U "u~" 
+  anti ubar U "u~"
   tex_anti "\bar{u}"
 particle S_QUARK 3  like D_QUARK
   name s strange
-  anti sbar S "s~" 
+  anti sbar S "s~"
   tex_anti "\bar{s}"
   mass ms
 particle C_QUARK 4  like U_QUARK
   name c charm
-  anti cbar C "c~" 
+  anti cbar C "c~"
   tex_anti "\bar{c}"
   mass mc
 particle B_QUARK 5  like D_QUARK
   name b bottom
-  anti bbar B "b~" 
+  anti bbar B "b~"
   tex_anti "\bar{b}"
   mass mb
 particle T_QUARK 6  like U_QUARK
   name t top
-  anti tbar T "t~" 
+  anti tbar T "t~"
   tex_anti "\bar{t}"
   mass mtpole  width wtop
 
 # The leptons
 particle E_LEPTON 11
-  spin 1/2  charge  -1   isospin -1/2  
+  spin 1/2  charge  -1   isospin -1/2
   name "e-" e1 electron e
-  anti "e+" E1 positron 
+  anti "e+" E1 positron
   tex_name "e^-"
   tex_anti "e^+"
   mass me
 particle E_NEUTRINO 12 left
   spin 1/2  isospin  1/2
-  name nue n1 "nu_e" ve "e-neutrino" 
-  anti nuebar N1 "ve~"             
+  name nue n1 "nu_e" ve "e-neutrino"
+  anti nuebar N1 "ve~"
   tex_name "\nu_e"
   tex_anti "\bar\nu_e"
 particle MU_LEPTON 13  like E_LEPTON
-  name "mu-" e2 mu muon 
-  anti "mu+" E2       
+  name "mu-" e2 mu muon
+  anti "mu+" E2
   tex_name "\mu^-"
   tex_anti "\mu^+"
   mass mmu
 particle MU_NEUTRINO 14  like E_NEUTRINO
-  name numu "nu_mu" n2 vm "mu-neutrino" 
+  name numu "nu_mu" n2 vm "mu-neutrino"
   anti numubar N2 "vm~"
   tex_name "\nu_\mu"
   tex_anti "\bar\nu_\mu"
 particle TAU_LEPTON 15  like E_LEPTON
-  name "tau-" e3 tau "ta-" tauon 
-  anti "tau+" E3 "ta+"        
+  name "tau-" e3 tau "ta-" tauon
+  anti "tau+" E3 "ta+"
   tex_name "\tau^-"
   tex_anti "\tau^+"
   mass mtau
 particle TAU_NEUTRINO 16  like E_NEUTRINO
-  name nutau "nu_tau" n3 vt "tau_neutrino" 
-  anti nutaubar N3 "vt~"               
+  name nutau "nu_tau" n3 vt "tau_neutrino"
+  anti nutaubar N3 "vt~"
   tex_name "\nu_\tau"
   tex_anti "\bar\nu_\tau"
 
@@ -147,7 +183,7 @@ particle GLUON 21  parton gauge
   name gl g G gluon
 particle PHOTON 22  gauge
   spin 1
-  name A gamma photon 
+  name A gamma photon
   tex_name "\gamma"
 particle Z_BOSON 23  gauge
   spin 1
@@ -155,7 +191,7 @@ particle Z_BOSON 23  gauge
   mass mZ  width wZ
 particle W_BOSON 24  gauge
   spin 1  charge 1
-  name "W+" Wp 
+  name "W+" Wp
   anti "W-" Wm
   tex_name "W^+"
   tex_anti "W^-"
@@ -179,12 +215,12 @@ particle HADRON_REMNANT 90
 particle HADRON_REMNANT_SINGLET 91
   name hr1
   tex_name "had_r^{(1)}"
-particle HADRON_REMNANT_TRIPLET 92	 
+particle HADRON_REMNANT_TRIPLET 92
   color 3
   name hr3
   tex_name "had_r^{(3)}"
   anti hr3bar
-  tex_anti "had_r^{(\bar 3)}"  
+  tex_anti "had_r^{(\bar 3)}"
 particle HADRON_REMNANT_OCTET 93
   color 8
   name hr8
@@ -196,67 +232,67 @@ particle HADRON_REMNANT_OCTET 93
 # therefore, lighter particles come before heavier ones.
 
 # QED
-vertex D d A 
-vertex U u A 
-vertex S s A 
-vertex C c A 
-vertex B b A 
-vertex T t A 
+vertex D d A
+vertex U u A
+vertex S s A
+vertex C c A
+vertex B b A
+vertex T t A
 
-vertex E1 e1 A 
-vertex E2 e2 A 
-vertex E3 e3 A 
+vertex E1 e1 A
+vertex E2 e2 A
+vertex E3 e3 A
 
 # QCD
-vertex G G G 
+vertex G G G
 vertex G G G G
 
-vertex D d G 
-vertex U u G 
-vertex S s G 
-vertex C c G 
-vertex B b G 
-vertex T t G 
+vertex D d G
+vertex U u G
+vertex S s G
+vertex C c G
+vertex B b G
+vertex T t G
 
 # Neutral currents
-vertex D d Z 
-vertex U u Z 
-vertex S s Z 
-vertex C c Z 
-vertex B b Z 
-vertex T t Z 
+vertex D d Z
+vertex U u Z
+vertex S s Z
+vertex C c Z
+vertex B b Z
+vertex T t Z
 
-vertex E1 e1 Z 
-vertex E2 e2 Z 
-vertex E3 e3 Z 
+vertex E1 e1 Z
+vertex E2 e2 Z
+vertex E3 e3 Z
 vertex N1 n1 Z
-vertex N2 n2 Z 
-vertex N3 n3 Z 
+vertex N2 n2 Z
+vertex N3 n3 Z
 
 
 # Charged currents
-vertex U d Wp 
-vertex C s Wp 
-vertex T b Wp 
-vertex D u Wm 
-vertex S c Wm 
-vertex B t Wm 
+vertex U d Wp
+vertex C s Wp
+vertex T b Wp
+vertex D u Wm
+vertex S c Wm
+vertex B t Wm
 
-vertex N1 e1 Wp 
-vertex N2 e2 Wp 
-vertex N3 e3 Wp 
-vertex E1 n1 Wm 
-vertex E2 n2 Wm 
-vertex E3 n3 Wm 
+vertex N1 e1 Wp
+vertex N2 e2 Wp
+vertex N3 e3 Wp
+vertex E1 n1 Wm
+vertex E2 n2 Wm
+vertex E3 n3 Wm
 
 # Yukawa
 ### keeping only 3rd generation for the moment
-# vertex S s H 
-# vertex C c H 
-vertex B b H 
-vertex T t H 
-# vertex E2 e2 H 
-vertex E3 e3 H 
+# vertex S s H
+# vertex C c H
+vertex B b H
+vertex T t H
+# vertex E2 e2 H
+vertex E3 e3 H
 
 # Vector-boson self-interactions
 vertex Wp Wm A
@@ -271,7 +307,7 @@ vertex Wp Wm A A
 # Higgs - vector boson
 #vertex H Z A
 #vertex H A A
-#vertex H g g 
+#vertex H g g
 
 vertex H Wp Wm
 vertex H Z Z
@@ -281,5 +317,4 @@ vertex H H Z Z
 # Higgs self-interactions
 vertex H H H
 vertex H H H H
-
 

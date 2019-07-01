@@ -49,7 +49,6 @@ module model_data
 <<Use strings>>
   use format_defs, only: FMT_19
   use io_units
-  use unit_tests
   use diagnostics
   use md5
   use hashes, only: hash
@@ -1554,12 +1553,18 @@ This type collects the model data as defined above.
 
 We deliberately implement the parameter arrays as pointer arrays.  We
 thus avoid keeping track of TARGET attributes.
+
+The [[scheme]] identifier provides meta information.  It doesn't give the
+client code an extra parameter, but it tells something about the
+interpretation of the parameters.  If the scheme ID is left as default (zero),
+it is ignored.
 <<Model data: public>>=
   public :: model_data_t
 <<Model data: types>>=
   type :: model_data_t
      private
      type(string_t) :: name
+     integer :: scheme = 0
      type(modelpar_real_t), dimension(:), pointer :: par_real => null ()
      type(modelpar_complex_t), dimension(:), pointer :: par_complex => null ()
      type(field_data_t), dimension(:), allocatable :: field
@@ -1588,7 +1593,7 @@ thus avoid keeping track of TARGET attributes.
 <<Model data: procedures>>=
   subroutine model_data_write (model, unit, verbose, &
        show_md5sum, show_variables, show_parameters, &
-       show_particles, show_vertices)
+       show_particles, show_vertices, show_scheme)
     class(model_data_t), intent(in) :: model
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -1597,15 +1602,21 @@ thus avoid keeping track of TARGET attributes.
     logical, intent(in), optional :: show_parameters
     logical, intent(in), optional :: show_particles
     logical, intent(in), optional :: show_vertices
-    logical :: show_par, show_prt, show_vtx
+    logical, intent(in), optional :: show_scheme
+    logical :: show_sch, show_par, show_prt, show_vtx
     integer :: u, i
     u = given_output_unit (unit)
+    show_sch = .false.;  if (present (show_scheme)) &
+         show_sch = show_scheme
     show_par = .true.;  if (present (show_parameters)) &
          show_par = show_parameters
     show_prt = .true.;  if (present (show_particles)) &
          show_prt = show_particles
     show_vtx = .true.;  if (present (show_vertices)) &
          show_vtx = show_vertices
+    if (show_sch) then
+       write (u, "(3x,A,1X,I0)")  "scheme =", model%scheme
+    end if
     if (show_par) then
        do i = 1, size (model%par_real)
           call model%par_real(i)%write (u)
@@ -1648,6 +1659,17 @@ deep copy.
   end subroutine model_data_init
   
 @ %def model_data_init
+@ Set the scheme ID.
+<<Model data: model data: TBP>>=
+  procedure :: set_scheme_num => model_data_set_scheme_num
+<<Model data: procedures>>=
+  subroutine model_data_set_scheme_num (model, scheme)
+    class(model_data_t), intent(inout) :: model
+    integer, intent(in) :: scheme
+    model%scheme = scheme
+  end subroutine model_data_set_scheme_num
+  
+@ %def model_data_set_scheme_num
 @ Complete model data initialization.
 <<Model data: model data: TBP>>=
   procedure :: freeze_fields => model_data_freeze_fields
@@ -1668,6 +1690,7 @@ not allocate memory.
     class(model_data_t), intent(in), target :: src
     class(modelpar_data_t), pointer :: data, src_data
     integer :: i
+    model%scheme = src%scheme
     model%par_real = src%par_real
     model%par_complex = src%par_complex
     do i = 1, size (src%field)
@@ -1694,9 +1717,10 @@ not allocate memory.
   end subroutine model_data_copy
 
 @ %def model_data_copy
-@ Return the model name.
+@ Return the model name and numeric scheme.
 <<Model data: model data: TBP>>=
   procedure :: get_name => model_data_get_name
+  procedure :: get_scheme_num => model_data_get_scheme_num
 <<Model data: procedures>>=
   function model_data_get_name (model) result (name)
     class(model_data_t), intent(in) :: model
@@ -1704,10 +1728,18 @@ not allocate memory.
     name = model%name
   end function model_data_get_name
   
+  function model_data_get_scheme_num (model) result (scheme)
+    class(model_data_t), intent(in) :: model
+    integer :: scheme
+    scheme = model%scheme
+  end function model_data_get_scheme_num
+  
 @ %def model_data_get_name
+@ %def model_data_get_scheme
 @ Retrieve a MD5 sum for the current model parameter values and
 decay/polarization settings.  This is
-done by writing them to a temporary file, using a standard format.
+done by writing them to a temporary file, using a standard format.  If the
+model scheme is nonzero, it is also written.
 <<Model data: model data: TBP>>=
   procedure :: get_parameters_md5sum => model_data_get_parameters_md5sum
 <<Model data: procedures>>=
@@ -1721,6 +1753,7 @@ done by writing them to a temporary file, using a standard format.
     call model%real_parameters_to_array (par)
     unit = free_unit ()
     open (unit, status="scratch", action="readwrite")
+    if (model%scheme /= 0)  write (unit, "(I0)")  model%scheme
     write (unit, "(" // FMT_19 // ")")  par
     do i = 1, model%get_n_field ()
        field => model%get_field_ptr_by_index (i)
@@ -2595,6 +2628,7 @@ We can thus avoid dependencies on model I/O, which is not defined here.
     call field%init (var_str ("PROTON"), 2212)
     call field%set (spin_type=2)
     call field%set (name = [var_str ("p")], anti = [var_str ("pbar")])
+!    call field%set (mass_data=model%get_par_real_ptr (12))
     i = i + 1
     field => model%get_field_ptr_by_index (i)
     call field%init (var_str ("HADRON_REMNANT_SINGLET"), 91)
@@ -2649,9 +2683,9 @@ assign real routines to the hooks (procedure pointers of abstract type) before
 unit tests are called.  The unit tests can call the abstract routines without
 knowing about their implementation.
 <<[[model_testbed.f90]]>>=
-  module model_testbed
-
 <<File header>>
+
+module model_testbed
 
 <<Use strings>>
   use model_data
@@ -2776,31 +2810,31 @@ However, Interp.\ F08/0033 prohibited this.  The reason is that, in principle,
 the call could result in the execution of an impure finalizer for a type
 extension of [[hel]] (ugh).
 <<Helicities: helicity: TBP>>=
-  generic :: init => helicity_init0, helicity_init1, helicity_init2
-  procedure, private :: helicity_init0
-  procedure, private :: helicity_init1
-  procedure, private :: helicity_init2
+  generic :: init => helicity_init_empty, helicity_init_same, helicity_init_different
+  procedure, private :: helicity_init_empty
+  procedure, private :: helicity_init_same
+  procedure, private :: helicity_init_different
 <<Helicities: procedures>>=
-  elemental subroutine helicity_init0 (hel)
+  elemental subroutine helicity_init_empty (hel)
     class(helicity_t), intent(inout) :: hel
     hel%defined = .false.
-  end subroutine helicity_init0
+  end subroutine helicity_init_empty
 
-  elemental subroutine helicity_init1 (hel, h)
+  elemental subroutine helicity_init_same (hel, h)
     class(helicity_t), intent(inout) :: hel
     integer, intent(in) :: h
     hel%defined = .true.
     hel%h1 = h
     hel%h2 = h
-  end subroutine helicity_init1
+  end subroutine helicity_init_same
 
-  elemental subroutine helicity_init2 (hel, h2, h1)
+  elemental subroutine helicity_init_different (hel, h2, h1)
     class(helicity_t), intent(inout) :: hel
     integer, intent(in) :: h1, h2
     hel%defined = .true.
     hel%h2 = h2
     hel%h1 = h1
-  end subroutine helicity_init2
+  end subroutine helicity_init_different
 
 @ %def helicity_init
 @ Undefine:
@@ -3009,11 +3043,11 @@ match.
     type(helicity_t) :: hel
     class(helicity_t), intent(in) :: hel1, hel2
     if (hel1%defined .and. hel2%defined) then
-       call helicity_init2 (hel, hel2%h1, hel1%h1)       
+       call hel%init (hel2%h1, hel1%h1)       
     else if (hel1%defined) then
-       call helicity_init2 (hel, hel1%h2, hel1%h1)
+       call hel%init (hel1%h2, hel1%h1)
     else if (hel2%defined) then
-       call helicity_init2 (hel, hel2%h2, hel2%h1)
+       call hel%init (hel2%h2, hel2%h1)
     end if
   end function merge_helicities
 
@@ -3037,8 +3071,8 @@ require non-diagonal color matrices.
 module colors
 
 <<Use kinds>>
+<<Use strings>>
   use io_units
-  use unit_tests
   use diagnostics
   
 <<Standard module head>>
@@ -4016,23 +4050,18 @@ their corresponding anticolors of outgoing particles.
     type(color_t), dimension(:), intent(in) :: col
     type(color_t), dimension(size(col)) :: cc
     integer :: i, n, offset
-    ! print *, "Count color loops:"      !!! Debugging
-    ! call color_write (col); print *    !!! Debugging
     cc = col
     n = size (cc)
     offset = n
     call color_add_offset (cc, offset)
-    ! print *, offset                    !!! Debugging
-    ! call color_write (cc); print *     !!! Debugging
     count = 0
     SCAN_LOOPS: do
        do i = 1, n
-          ! print *, i, ':', cc(i)%c1    !!! Debugging 
           if (color_is_nonzero (cc(i))) then
              if (any (cc(i)%c1 > offset)) then
-                ! print *, 'start', i    !!! Debugging
                 count = count + 1
                 call follow_line1 (pick_new_line (cc(i)%c1, count, 1))
+                !!! TODO: (cw 2016-03-03) This can better be done with recursive subroutines
                 cycle SCAN_LOOPS
              end if
           end if
@@ -4059,6 +4088,7 @@ their corresponding anticolors of outgoing particles.
          call color_mismatch
       end if
     end function pick_new_line
+
     subroutine reset_line (c, line)
       integer, dimension(:), intent(inout) :: c
       integer, intent(in) :: line
@@ -4070,44 +4100,43 @@ their corresponding anticolors of outgoing particles.
          end if
       end do
     end subroutine reset_line
+
     recursive subroutine follow_line1 (line)
       integer, intent(in) :: line
       integer :: i
-      ! print *, 'follow line 1:', line     !!! Debugging
-      if (line == count) then
-         ! print *, 'loop closed'           !!! Debugging
-         return
-      end if
+      if (line == count) return
       do i = 1, n
          if (any (cc(i)%c1 == -line)) then
             call reset_line (cc(i)%c1, -line)
-            ! print *, 'found', -line, ' resetting c1:'   !!! Debugging
-            ! call color_write (cc); print *              !!! Debugging
             call follow_line2 (pick_new_line (cc(i)%c2, 0, sign (1, -line)))
             return
          end if
       end do
       call color_mismatch ()
     end subroutine follow_line1
+
     recursive subroutine follow_line2 (line)
       integer, intent(in) :: line
       integer :: i
-      ! print *, 'follow line 2:', line     !!! Debugging   
       do i = 1, n
          if (any (cc(i)%c2 == -line)) then
             call reset_line (cc(i)%c2, -line)
-            ! print *, 'found', -line, ' resetting c2:'   !!! Debugging
-            ! call color_write (cc); print *              !!! Debugging
             call follow_line1 (pick_new_line (cc(i)%c1, 0, sign (1, -line)))
             return
          end if
       end do
       call color_mismatch ()
     end subroutine follow_line2
+
     subroutine color_mismatch ()
       call color_write (col)
       print *
-      call msg_bug (" Color flow mismatch (color loops should be closed)")
+      call msg_fatal ("Color flow mismatch: Non-closed color lines appear during ", &
+         [var_str ("the evaluation of color correlations. This can happen if there "), &
+          var_str ("are different color structures in the initial or final state of "), &
+          var_str ("the process definition. If so, please use separate processes for "), &
+          var_str ("the different initial / final states. In a future WHIZARD version "), &
+          var_str ("this will be fixed.")])
     end subroutine color_mismatch
   end function count_color_loops
 
@@ -4490,52 +4519,52 @@ extension), so we stick to intent(inout) and (re)set all components
 explicitly.
 <<Flavors: flavor: TBP>>=
   generic :: init => &
-       flavor_init0_empty, &
-       flavor_init0, &
-       flavor_init0_field_data, &
-       flavor_init0_model, &
-       flavor_init0_model_alt, &
-       flavor_init0_name_model
-  procedure, private :: flavor_init0_empty
-  procedure, private :: flavor_init0
-  procedure, private :: flavor_init0_field_data
-  procedure, private :: flavor_init0_model
-  procedure, private :: flavor_init0_model_alt
-  procedure, private :: flavor_init0_name_model
+       flavor_init_empty, &
+       flavor_init, &
+       flavor_init_field_data, &
+       flavor_init_model, &
+       flavor_init_model_alt, &
+       flavor_init_name_model
+  procedure, private :: flavor_init_empty
+  procedure, private :: flavor_init
+  procedure, private :: flavor_init_field_data
+  procedure, private :: flavor_init_model
+  procedure, private :: flavor_init_model_alt
+  procedure, private :: flavor_init_name_model
 <<Flavors: procedures>>=
-  elemental subroutine flavor_init0_empty (flv)
+  elemental subroutine flavor_init_empty (flv)
     class(flavor_t), intent(inout) :: flv
     flv%f = UNDEFINED
     flv%radiated = .false.
     flv%field_data => null ()
-  end subroutine flavor_init0_empty
+  end subroutine flavor_init_empty
 
-  elemental subroutine flavor_init0 (flv, f)
+  elemental subroutine flavor_init (flv, f)
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     flv%f = f
     flv%radiated = .false.
     flv%field_data => null ()
-  end subroutine flavor_init0
+  end subroutine flavor_init
 
-  impure elemental subroutine flavor_init0_field_data (flv, field_data)
+  impure elemental subroutine flavor_init_field_data (flv, field_data)
     class(flavor_t), intent(inout) :: flv
     type(field_data_t), intent(in), target :: field_data
     flv%f = field_data%get_pdg ()
     flv%radiated = .false.
     flv%field_data => field_data
-  end subroutine flavor_init0_field_data
+  end subroutine flavor_init_field_data
 
-  impure elemental subroutine flavor_init0_model (flv, f, model)
+  impure elemental subroutine flavor_init_model (flv, f, model)
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model
     flv%f = f
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (f, check=.true.)
-  end subroutine flavor_init0_model
+  end subroutine flavor_init_model
 
-  impure elemental subroutine flavor_init0_model_alt (flv, f, model, alt_model)
+  impure elemental subroutine flavor_init_model_alt (flv, f, model, alt_model)
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model, alt_model
@@ -4552,66 +4581,16 @@ explicitly.
           call msg_fatal ()
        end if
     end if
-  end subroutine flavor_init0_model_alt
+  end subroutine flavor_init_model_alt
 
-!   subroutine flavor_init1_model (flv, f, model)
-!     type(flavor_t), dimension(:), intent(out) :: flv
-!     integer, dimension(:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model
-!     integer :: i
-!     do i = 1, size (f)
-!        call flavor_init0_model (flv(i), f(i), model)
-!     end do
-!   end subroutine flavor_init1_model
-! 
-!   subroutine flavor_init1_model_alt (flv, f, model, alt_model)
-!     type(flavor_t), dimension(:), intent(out) :: flv
-!     integer, dimension(:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model, alt_model
-!     integer :: i
-!     do i = 1, size (f)
-!        call flavor_init0_model_alt (flv(i), f(i), model, alt_model)
-!     end do
-!   end subroutine flavor_init1_model_alt
-! 
-!   subroutine flavor_init2_model (flv, f, model)
-!     type(flavor_t), dimension(:,:), intent(out) :: flv
-!     integer, dimension(:,:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model
-!     integer :: i
-!     do i = 1, size (f, 2)
-!        call flavor_init1_model (flv(:,i), f(:,i), model)
-!     end do
-!   end subroutine flavor_init2_model
-! 
-!   subroutine flavor_init2_model_alt (flv, f, model, alt_model)
-!     type(flavor_t), dimension(:,:), intent(out) :: flv
-!     integer, dimension(:,:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model, alt_model
-!     integer :: i
-!     do i = 1, size (f, 2)
-!        call flavor_init1_model_alt (flv(:,i), f(:,i), model, alt_model)
-!     end do
-!   end subroutine flavor_init2_model_alt
-! 
-  impure elemental subroutine flavor_init0_name_model (flv, name, model)
+  impure elemental subroutine flavor_init_name_model (flv, name, model)
     class(flavor_t), intent(inout) :: flv
     type(string_t), intent(in) :: name
     class(model_data_t), intent(in), target :: model
     flv%f = model%get_pdg (name)
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (name, check=.true.)
-  end subroutine flavor_init0_name_model
-! 
-!   subroutine flavor_init1_name_model (flv, name, model)
-!     type(flavor_t), dimension(:), intent(out) :: flv
-!     type(string_t), dimension(:), intent(in) :: name
-!     class(model_data_t), intent(in), target :: model
-!     integer :: i
-!     do i = 1, size (name)
-!        call flavor_init0_name_model (flv(i), name(i), model)
-!     end do
-!   end subroutine flavor_init1_name_model
+  end subroutine flavor_init_name_model
 
 @ %def flavor_init
 @ Set the [[radiated]] flag.
@@ -5356,73 +5335,73 @@ Some elemental initializers are impure because they set the [[flv]]
 component.  This implies transfer of a pointer behind the scenes.
 <<Quantum numbers: quantum numbers: TBP>>=
   generic :: init => &
-     quantum_numbers_init0_f, &
-     quantum_numbers_init0_c, &
-     quantum_numbers_init0_h, &
-     quantum_numbers_init0_fc, &
-     quantum_numbers_init0_fh, &
-     quantum_numbers_init0_ch, &
-     quantum_numbers_init0_fch
-  procedure, private :: quantum_numbers_init0_f
-  procedure, private :: quantum_numbers_init0_c
-  procedure, private :: quantum_numbers_init0_h
-  procedure, private :: quantum_numbers_init0_fc
-  procedure, private :: quantum_numbers_init0_fh
-  procedure, private :: quantum_numbers_init0_ch
-  procedure, private :: quantum_numbers_init0_fch
+     quantum_numbers_init_f, &
+     quantum_numbers_init_c, &
+     quantum_numbers_init_h, &
+     quantum_numbers_init_fc, &
+     quantum_numbers_init_fh, &
+     quantum_numbers_init_ch, &
+     quantum_numbers_init_fch
+  procedure, private :: quantum_numbers_init_f
+  procedure, private :: quantum_numbers_init_c
+  procedure, private :: quantum_numbers_init_h
+  procedure, private :: quantum_numbers_init_fc
+  procedure, private :: quantum_numbers_init_fh
+  procedure, private :: quantum_numbers_init_ch
+  procedure, private :: quantum_numbers_init_fch
 <<Quantum numbers: procedures>>=
-  impure elemental subroutine quantum_numbers_init0_f (qn, flv)
+  impure elemental subroutine quantum_numbers_init_f (qn, flv)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     qn%f = flv
     call qn%c%undefine ()
     call qn%h%undefine ()
-  end subroutine quantum_numbers_init0_f
+  end subroutine quantum_numbers_init_f
 
-  elemental subroutine quantum_numbers_init0_c (qn, col)
+  elemental subroutine quantum_numbers_init_c (qn, col)
     class(quantum_numbers_t), intent(inout) :: qn
     type(color_t), intent(in) :: col
     call qn%f%undefine ()
     qn%c = col
     call qn%h%undefine ()
-  end subroutine quantum_numbers_init0_c
+  end subroutine quantum_numbers_init_c
 
-  elemental subroutine quantum_numbers_init0_h (qn, hel)
+  elemental subroutine quantum_numbers_init_h (qn, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(helicity_t), intent(in) :: hel
     call qn%f%undefine ()
     call qn%c%undefine ()
     qn%h = hel
-  end subroutine quantum_numbers_init0_h
+  end subroutine quantum_numbers_init_h
 
-  impure elemental subroutine quantum_numbers_init0_fc (qn, flv, col)
+  impure elemental subroutine quantum_numbers_init_fc (qn, flv, col)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     type(color_t), intent(in) :: col
     qn%f = flv
     qn%c = col
     call qn%h%undefine ()
-  end subroutine quantum_numbers_init0_fc
+  end subroutine quantum_numbers_init_fc
 
-  impure elemental subroutine quantum_numbers_init0_fh (qn, flv, hel)
+  impure elemental subroutine quantum_numbers_init_fh (qn, flv, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     type(helicity_t), intent(in) :: hel
     qn%f = flv
     call qn%c%undefine ()
     qn%h = hel
-  end subroutine quantum_numbers_init0_fh
+  end subroutine quantum_numbers_init_fh
 
-  elemental subroutine quantum_numbers_init0_ch (qn, col, hel)
+  elemental subroutine quantum_numbers_init_ch (qn, col, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(color_t), intent(in) :: col
     type(helicity_t), intent(in) :: hel
     call qn%f%undefine ()
     qn%c = col
     qn%h = hel
-  end subroutine quantum_numbers_init0_ch
+  end subroutine quantum_numbers_init_ch
 
-  impure elemental subroutine quantum_numbers_init0_fch (qn, flv, col, hel)
+  impure elemental subroutine quantum_numbers_init_fch (qn, flv, col, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     type(color_t), intent(in) :: col
@@ -5430,7 +5409,7 @@ component.  This implies transfer of a pointer behind the scenes.
     qn%f = flv
     qn%c = col
     qn%h = hel
-  end subroutine quantum_numbers_init0_fch
+  end subroutine quantum_numbers_init_fch
 
 @ %def quantum_numbers_init
 @ 
@@ -7986,7 +7965,9 @@ present, are considered.  For this array, color is ignored.
 If the optional [[correlated_state]] is provided, it is assigned the
 correlated density matrix for the selected flavor-color branch, so
 multi-particle spin correlations remain available even if they are
-dropped in the single-particle density matrices.
+dropped in the single-particle density matrices.  This should be
+done by the caller for the choice [[FM_CORRELATED_HELICITY]], which otherwise
+is handled as [[FM_IGNORE_HELICITY]].
 
 The algorithm is as follows: First, we determine the normalization by
 summing over all diagonal matrix elements.  In a second scan, we
@@ -8014,8 +7995,10 @@ cuts.
   integer, parameter, public :: FM_IGNORE_HELICITY = 1
   integer, parameter, public :: FM_SELECT_HELICITY = 2
   integer, parameter, public :: FM_FACTOR_HELICITY = 3
+  integer, parameter, public :: FM_CORRELATED_HELICITY = 4
 
 @ %def FM_IGNORE_HELICITY FM_SELECT_HELICITY FM_FACTOR_HELICITY
+@ %def FM_CORRELATED_HELICITY
 <<State matrices: state matrix: TBP>>=
   procedure :: factorize => state_matrix_factorize
 <<State matrices: procedures>>=
@@ -8111,7 +8094,8 @@ cuts.
           end do
           value = it%get_matrix_element ()
           select case (mode)
-          case (FM_IGNORE_HELICITY)  ! trace over diagonal states that match qn
+          case (FM_IGNORE_HELICITY, FM_CORRELATED_HELICITY)
+             ! trace over diagonal states that match qn
              if (all (diagonal)) then
                 do i = 1, depth
                    call single_state(i)%add_state &

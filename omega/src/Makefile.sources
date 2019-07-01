@@ -1,11 +1,11 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 7295 2015-09-30 05:28:53Z jr_reuter $
+# $Id: Makefile.sources 7655 2016-07-18 16:40:19Z ohl $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by
+# Copyright (C) 1999-2016 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -58,20 +58,20 @@ CASCADE_MLD = $(CASCADE_MLL:.mll=.ml) $(CASCADE_MLY:.mly=.ml)
 CASCADE_ML_PRIMARY = cascade_syntax.ml cascade.ml
 CASCADE_ML = cascade_syntax.ml $(CASCADE_MLD) cascade.ml
 
-COMPHEP_MLL = comphep_lexer.mll
-COMPHEP_MLY = comphep_parser.mly
-COMPHEP_MLD = $(COMPHEP_MLL:.mll=.ml) $(COMPHEP_MLY:.mly=.ml)
-COMPHEP_ML_PRIMARY = comphep_syntax.ml comphep.ml
-COMPHEP_ML = comphep_syntax.ml $(COMPHEP_MLD) comphep.ml
-
-VERTEX_MLL = @comment_model_file@ vertex_lexer.mll
-VERTEX_MLY = @comment_model_file@ vertex_parser.mly
+VERTEX_MLL = vertex_lexer.mll
+VERTEX_MLY = vertex_parser.mly
 VERTEX_MLD = $(VERTEX_MLL:.mll=.ml) $(VERTEX_MLY:.mly=.ml)
-VERTEX_ML_PRIMARY = @comment_model_file@ vertex_syntax.ml vertex.ml
-VERTEX_ML = @comment_model_file@ vertex_syntax.ml $(VERTEX_MLD) vertex.ml
+VERTEX_ML_PRIMARY = vertex_syntax.ml vertex.ml
+VERTEX_ML = vertex_syntax.ml $(VERTEX_MLD) vertex.ml
 
-OMEGA_MLL = $(CASCADE_MLL) $(COMPHEP_MLL) $(VERTEX_MLL)
-OMEGA_MLY = $(CASCADE_MLY) $(COMPHEP_MLY) $(VERTEX_MLY)
+UFO_MLL = uFOx_lexer.mll uFO_lexer.mll
+UFO_MLY = uFOx_parser.mly uFO_parser.mly
+UFO_MLD = $(UFO_MLL:.mll=.ml) $(UFO_MLY:.mly=.ml)
+UFO_ML_PRIMARY = uFOx_syntax.ml uFOx.ml uFO_syntax.ml uFO.ml
+UFO_ML = uFOx_syntax.ml uFO_syntax.ml $(UFO_MLD) uFOx.ml uFO.ml
+
+OMEGA_MLL = $(CASCADE_MLL) $(VERTEX_MLL) $(UFO_MLL)
+OMEGA_MLY = $(CASCADE_MLY) $(VERTEX_MLY) $(UFO_MLY)
 
 OMEGA_DERIVED_CAML = \
     $(OMEGA_MLL:.mll=.mli) $(OMEGA_MLL:.mll=.ml) \
@@ -99,10 +99,10 @@ OMEGA_CORE_ML_PART1 = \
     charges.ml color.ml modeltools.ml whizard.ml
 
 OMEGA_CORE_ML_PART2 = \
-    $(VERTEX_ML) $(COMPHEP_ML) $(CASCADE_ML)
+    $(VERTEX_ML) $(UFO_ML) $(CASCADE_ML)
 
 OMEGA_CORE_ML_PART2_PRIMARY = \
-    $(VERTEX_ML_PRIMARY) $(COMPHEP_ML_PRIMARY) $(CASCADE_ML_PRIMARY)
+    $(VERTEX_ML_PRIMARY) $(UFO_ML_PRIMARY) $(CASCADE_ML_PRIMARY)
 
 OMEGA_CORE_ML_PART3 = \
     colorize.ml process.ml fusion.ml omega.ml
@@ -123,6 +123,7 @@ OMEGA_MODELLIB_ML = \
     modellib_NMSSM.ml \
     modellib_PSSSM.ml \
     modellib_BSM.ml \
+    modellib_WZW.ml \
     modellib_Zprime.ml
 
 OMEGA_MODELLIB_MLI = $(OMEGA_MODELLIB_ML:.ml=.mli)
@@ -187,6 +188,7 @@ OMEGA_APPLICATIONS_ML = \
     omega_SSC_2.ml \
     omega_SSC_AltT.ml \
     omega_UED.ml \
+    omega_WZW.ml \
     omega_Zprime.ml \
     omega_Zprime_VM.ml \
     omega_Threeshl.ml \
@@ -194,7 +196,8 @@ OMEGA_APPLICATIONS_ML = \
     omega_HSExt.ml \
     omega_HSExt_VM.ml \
     omega_Template.ml \
-    omega_SYM.ml
+    omega_SYM.ml \
+    omega_UFO.ml
 
 OMEGA_CORE_CMO = $(OMEGA_CORE_ML:.ml=.cmo)
 OMEGA_CORE_CMX = $(OMEGA_CORE_ML:.ml=.cmx)

@@ -13,7 +13,6 @@ c
 
       logical lfirst
       data lfirst/.TRUE./
-      save lfirst
 
 C...print version number if this is the first call
       if(lfirst)then
@@ -25,6 +24,5 @@ c      Initialization phase.
 c
       call mcfio_init()
       call stdxwopen(filename,title,ntries,istream,lok)
-        
       return
       end

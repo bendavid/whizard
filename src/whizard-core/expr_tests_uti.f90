@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -434,8 +434,8 @@ contains
     call reset_interaction_counter ()
 
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
 
     call var_list_append_real &
          (var_list, var_str ("tolerance"), 0._default)
@@ -633,8 +633,8 @@ contains
     call reset_interaction_counter ()
 
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
 
     call process%set_var_list (var_list)
     call var_list%final ()

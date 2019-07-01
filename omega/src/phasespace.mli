@@ -1,6 +1,6 @@
-(* $Id: phasespace.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: phasespace.mli 7444 2016-02-17 15:37:20Z jr_reuter $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

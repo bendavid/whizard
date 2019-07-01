@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -47,8 +47,7 @@ contains
   subroutine powheg_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-    call test (powheg_1, "powheg_1", &
-              "Initialization", u, results)
+  
   end subroutine powheg_test
 
 

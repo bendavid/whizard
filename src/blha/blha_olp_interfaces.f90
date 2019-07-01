@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,7 +41,7 @@ module blha_olp_interfaces
   use kinds
   use iso_varying_string, string_t => varying_string
   use constants
-  use unit_tests, only: vanishes
+  use numeric_utils
   use io_units
   use string_utils
   use physics_defs
@@ -82,7 +82,6 @@ module blha_olp_interfaces
   public :: olp_finalize
   public :: olp_print_parameter
   public :: blha_result_array_size
-!  public :: create_blha_momentum_array
   public :: parameter_error_message
 
   integer, parameter, public :: OLP_PARAMETER_LIMIT = 10
@@ -104,6 +103,8 @@ module blha_olp_interfaces
     integer :: I_SUB = 3
     logical, dimension(0:3) :: compute_component
     logical :: include_polarizations = .false.
+    logical :: switch_off_muon_yukawas = .false.
+    real(default) :: external_top_yukawa = -1._default
   contains
     procedure :: init => blha_template_init
     procedure :: set_born => blha_template_set_born
@@ -120,7 +121,6 @@ module blha_olp_interfaces
 
   type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
     integer :: n_particles
-    real(default) :: maximum_accuracy = 10000.0
     integer, dimension(:), allocatable :: i_born, i_sc, i_cc
     integer, dimension(:), allocatable :: i_real
     integer, dimension(:), allocatable :: i_virt
@@ -139,7 +139,6 @@ module blha_olp_interfaces
      procedure :: init_blha => prc_blha_init_blha
     procedure :: set_particle_properties => prc_blha_set_particle_properties
     procedure :: init_ew_parameters => prc_blha_init_ew_parameters
-    procedure :: set_bquark_mass => prc_blha_set_bquark_mass
     procedure :: compute_sqme_virt => prc_blha_compute_sqme_virt
     procedure(prc_blha_compute_sqme_real), deferred :: &
         compute_sqme_real
@@ -158,6 +157,8 @@ module blha_olp_interfaces
   type, abstract, extends (user_defined_driver_t) :: blha_driver_t 
     type(string_t) :: contract_file
     logical :: include_polarizations = .false.
+    logical :: switch_off_muon_yukawas = .false.
+    real(default) :: external_top_yukawa = -1.0
     procedure(olp_start),nopass,  pointer :: &
               blha_olp_start => null ()
     procedure(olp_eval), nopass, pointer :: &
@@ -214,33 +215,33 @@ module blha_olp_interfaces
 
 
   interface 
-    subroutine olp_start (contract_file_name, ierr) bind (C,name="OLP_Start")
+    subroutine olp_start (contract_file_name, ierr) bind (C,name = "OLP_Start")
       import
-      character(kind=c_char, len=1), intent(in) :: contract_file_name
-      integer(kind=c_int), intent(out) :: ierr
+      character(kind = c_char, len = 1), intent(in) :: contract_file_name
+      integer(kind = c_int), intent(out) :: ierr
     end subroutine olp_start
   end interface
 
   interface
     subroutine olp_eval (label, momenta, mu, parameters, res) &
-         bind (C,name="OLP_EvalSubProcess")
+         bind (C, name = "OLP_EvalSubProcess")
       import
-      integer(kind=c_int), value, intent(in) :: label
-      real(kind=c_double), value, intent(in) :: mu
-      real(kind=c_double), dimension(OLP_MOMENTUM_LIMIT), intent(in) :: &
+      integer(kind = c_int), value, intent(in) :: label
+      real(kind = c_double), value, intent(in) :: mu
+      real(kind = c_double), dimension(OLP_MOMENTUM_LIMIT), intent(in) :: &
            momenta
-      real(kind=c_double), dimension(OLP_PARAMETER_LIMIT), intent(in) :: &
+      real(kind = c_double), dimension(OLP_PARAMETER_LIMIT), intent(in) :: &
            parameters
-      real(kind=c_double), dimension(OLP_RESULTS_LIMIT), intent(out) :: res
+      real(kind = c_double), dimension(OLP_RESULTS_LIMIT), intent(out) :: res
     end subroutine olp_eval
   end interface
 
   interface
     subroutine olp_info (olp_file, olp_version, message) bind(C)
       import
-      character(kind=c_char), intent(inout), dimension(15) :: olp_file
-      character(kind=c_char), intent(inout), dimension(15) :: olp_version
-      character(kind=c_char), intent(inout), dimension(255) :: message
+      character(kind = c_char), intent(inout), dimension(15) :: olp_file
+      character(kind = c_char), intent(inout), dimension(15) :: olp_version
+      character(kind = c_char), intent(inout), dimension(255) :: message
     end subroutine olp_info
   end interface
 
@@ -248,36 +249,36 @@ module blha_olp_interfaces
     subroutine olp_set_parameter &
          (variable_name, real_part, complex_part, success) bind(C)
       import
-      character(kind=c_char,len=1), intent(in) :: variable_name
-      real(kind=c_double), intent(in) :: real_part, complex_part
-      integer(kind=c_int), intent(out) :: success
+      character(kind = c_char,len = 1), intent(in) :: variable_name
+      real(kind = c_double), intent(in) :: real_part, complex_part
+      integer(kind = c_int), intent(out) :: success
     end subroutine olp_set_parameter
   end interface
 
   interface
     subroutine olp_eval2 (label, momenta, mu, res, acc) bind(C)
       import
-      integer(kind=c_int), intent(in) :: label
-      real(kind=c_double), intent(in) :: mu
-      real(kind=c_double), dimension(OLP_MOMENTUM_LIMIT), intent(in) :: momenta
-      real(kind=c_double), dimension(OLP_RESULTS_LIMIT), intent(out) :: res
-      real(kind=c_double), intent(out) :: acc
+      integer(kind = c_int), intent(in) :: label
+      real(kind = c_double), intent(in) :: mu
+      real(kind = c_double), dimension(OLP_MOMENTUM_LIMIT), intent(in) :: momenta
+      real(kind = c_double), dimension(OLP_RESULTS_LIMIT), intent(out) :: res
+      real(kind = c_double), intent(out) :: acc
     end subroutine olp_eval2
   end interface
 
   interface
     subroutine olp_option (line, stat) bind(C)
       import
-      character(kind=c_char, len=1), intent(in) :: line
-      integer(kind=c_int), intent(out) :: stat
+      character(kind = c_char, len=1), intent(in) :: line
+      integer(kind = c_int), intent(out) :: stat
     end subroutine
   end interface
 
   interface
     subroutine olp_polvec (p, q, eps) bind(C)
       import
-      real(kind=c_double), dimension(0:3), intent(in) :: p, q
-      real(kind=c_double), dimension(0:7), intent(out) :: eps
+      real(kind = c_double), dimension(0:3), intent(in) :: p, q
+      real(kind = c_double), dimension(0:7), intent(out) :: eps
     end subroutine
   end interface
 
@@ -290,7 +291,7 @@ module blha_olp_interfaces
   interface
     subroutine olp_print_parameter (filename) bind(C)
       import
-      character(kind=c_char, len=1), intent(in) :: filename
+      character(kind = c_char, len = 1), intent(in) :: filename
     end subroutine olp_print_parameter
   end interface
 
@@ -395,9 +396,9 @@ contains
        case (BLHA_AMP_LOOP)
           rsize = 4
        case (BLHA_AMP_CC)
-          rsize = n_part*(n_part-1)/2
+          rsize = n_part * (n_part - 1) / 2
        case (BLHA_AMP_SC)
-          rsize = 2*n_part**2
+          rsize = 2 * n_part**2
        case default
           rsize = 0
      end select
@@ -412,21 +413,24 @@ contains
     n = size (p)
     if (n > 10) call msg_fatal ("Number of external particles exceeds" &
                                  // "size of BLHA-internal momentum array")
-    mom = 0._default
+    mom = zero
     k = 1
     do i = 1, n
-       mom(k:k+3) = vector4_get_components (p(i))
-       mom(k+4) = invariant_mass (p(i))
-       k = k+5
+       mom(k : k + 3) = vector4_get_components (p(i))
+       mom(k + 4) = invariant_mass (p(i))
+       k = k + 5
     end do
-!    mom (k:50) = 0.0
   end function prc_blha_create_momentum_array
 
-  subroutine blha_template_init (template, requires_polarizations)
+  subroutine blha_template_init (template, requires_polarizations, &
+       switch_off_muon_yukawas, external_top_yukawa)
     class(blha_template_t), intent(inout) :: template
-    logical, intent(in) :: requires_polarizations
+    logical, intent(in) :: requires_polarizations, switch_off_muon_yukawas
+    real(default), intent(in) :: external_top_yukawa
     template%compute_component = .false.
     template%include_polarizations = requires_polarizations
+    template%switch_off_muon_yukawas = switch_off_muon_yukawas
+    template%external_top_yukawa = external_top_yukawa
   end subroutine blha_template_init
 
   subroutine blha_template_set_born (template)
@@ -523,7 +527,7 @@ contains
     integer :: ierr
     if (present (mass)) then
        buf = 'mass(' // str (abs(i_pdg)) // ')'
-       c_string = char(buf)//c_null_char
+       c_string = char(buf) // c_null_char
        call driver%blha_olp_set_parameter &
                 (c_string, dble(mass), 0._double, ierr)
        if (ierr == 0) then
@@ -607,24 +611,24 @@ contains
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in), dimension(:,:) :: flavors
     integer, intent(out), dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
-    integer, intent(out), dimension(N_MAX_FLAVORS,2) :: helicities
+    integer, intent(out), dimension(:,:) :: helicities
     integer :: unit, filestat
     character(len=LEN_MAX_FLAVOR_STRING) :: rd_line 
     logical :: read_flavor, born_found
     integer :: k, i_flv
-    integer :: i_hel
+    integer :: i_hel, n_in
     integer :: i_next, n_entries
     integer, dimension(size(flavors, 1) + 2) :: i_array
     integer, dimension(size(flavors, 1) + 2) :: hel_array
     integer, parameter :: NO_NUMBER = -1000
     integer, parameter :: PROC_NOT_FOUND = -1001
-
     amp_type = -1; flv_index = -1; label = -1
     helicities = 0
-    n_entries = size(flavors, 1) + 2
+    n_in = size (helicities, dim = 2)
+    n_entries = size (flavors, 1) + 2
     unit = free_unit ()
-    open (unit, file=char(driver%contract_file), status="old") 
-    read_flavor=.false.
+    open (unit, file = char (driver%contract_file), status="old")
+    read_flavor = .false.
     k = 1
     i_hel = 0
     do
@@ -633,15 +637,15 @@ contains
          exit
       else
          if (rd_line(1:13) == 'AmplitudeType') then
-            if (i_hel > 3) i_hel = 0
+            if (i_hel > 2 * n_in - 1) i_hel = 0
             i_next = find_next_word_index (rd_line, 13) 
-            if (rd_line(i_next:i_next+4) == 'Loop') then
+            if (rd_line(i_next : i_next + 4) == 'Loop') then
                amp_type(k) = BLHA_AMP_LOOP
-            else if (rd_line(i_next:i_next+4) == 'Tree') then
+            else if (rd_line(i_next : i_next + 4) == 'Tree') then
                amp_type(k) = BLHA_AMP_TREE
-            else if (rd_line(i_next:i_next+6) == 'ccTree') then
+            else if (rd_line(i_next : i_next + 6) == 'ccTree') then
                amp_type(k) = BLHA_AMP_CC
-            else if (rd_line(i_next:i_next+6) == 'scTree') then
+            else if (rd_line(i_next : i_next + 6) == 'scTree') then
                amp_type(k) = BLHA_AMP_SC
             else
                call msg_fatal ("AmplitudeType present but &
@@ -650,10 +654,10 @@ contains
             read_flavor = .true.
          else if (read_flavor) then
             born_found = .false.
-            i_array = create_flavor_string (rd_line, n_entries)           
+            i_array = create_flavor_string (rd_line, n_entries)
             if (driver%include_polarizations) then
                hel_array = create_helicity_string (rd_line, n_entries)
-               call check_helicity_array (hel_array, n_entries)
+               call check_helicity_array (hel_array, n_entries, n_in)
             else
                hel_array = 0
             end if
@@ -665,12 +669,11 @@ contains
                      var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
                      var_str ("more information")])
                do i_flv = 1, size (flavors, 2)
-                   if (all (i_array (1:n_entries-2) == flavors (:,i_flv))) then
+                   if (all (i_array (1 : n_entries - 2) == flavors (:,i_flv))) then
                       label(k) = i_array (n_entries)
                       flv_index (k) = i_flv + i_hel
                       if (driver%include_polarizations) then
-                         helicities (label(k), 1) = hel_array (1)
-                         helicities (label(k), 2) = hel_array (2)
+                         helicities (label(k), :) = hel_array (1:n_in)
                          i_hel = i_hel + 1
                       end if
                       born_found = .true.
@@ -679,12 +682,13 @@ contains
                       exit
                    end if
                end do
-            if (.not. born_found) call msg_fatal & 
+            if (.not. born_found) call msg_fatal &
                      ("No underlying Born found")
-         end if   
+         end if
       end if
     end do
     close(unit)
+
   contains
 
     function create_flavor_string (s, n_entries) result (i_array)
@@ -709,7 +713,7 @@ contains
                end if
             else if (i_entry == PROC_NOT_FOUND) then
                i_array = PROC_NOT_FOUND
-               return 
+               return
             else
                call increment_current_position (s, current_position)
             end if
@@ -720,13 +724,13 @@ contains
     end function create_flavor_string
 
     function create_helicity_string (s, n_entries) result (hel_array)
-      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      character(len = LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(in) :: n_entries
       integer, dimension(n_entries) :: hel_array
       integer :: k, current_position
       integer :: hel
       k = 1; current_position = 1
-      do 
+      do
          if (current_position > LEN_MAX_FLAVOR_STRING) &
             call msg_fatal ("Read OLC File: Current position exceeds maximum value")
          if (s(current_position:current_position) /= " ") then
@@ -749,15 +753,15 @@ contains
     end function create_helicity_string
 
     subroutine increment_current_position (s, current_position)
-      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      character(len = LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(inout) :: current_position
       current_position = find_next_word_index (s, current_position)
     end subroutine increment_current_position
 
     subroutine get_next_buffer (s, current_position, buf, last_buffer_index)
-      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      character(len = LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(inout) :: current_position
-      character(len=10), intent(out) :: buf
+      character(len = 10), intent(out) :: buf
       integer, intent(out) :: last_buffer_index
       integer :: i
       i = 1; buf = ""
@@ -774,10 +778,10 @@ contains
 
     function is_particle_buffer (buf, i) result (valid)
       logical :: valid
-      character(len=10), intent(in) :: buf
+      character(len = 10), intent(in) :: buf
       integer, intent(in) :: i
-      valid = (buf(1:i-1) /= "->" .and. buf(1:i-1) /= "|" &
-         .and. buf(1:i-1) /= "Process")
+      valid = (buf(1 : i - 1) /= "->" .and. buf(1 : i - 1) /= "|" &
+         .and. buf(1 : i - 1) /= "Process")
     end function is_particle_buffer
  
     subroutine create_flavor (s, i_particle, current_position)
@@ -790,8 +794,8 @@ contains
       i = last_buffer_index
       if (is_particle_buffer (buf, i)) then
          call strip_helicity (buf, i)
-         i_particle = read_ival (var_str (buf(1:i-1)))
-      else if (buf(1:i-1) == "Process") then
+         i_particle = read_ival (var_str (buf(1 : i - 1)))
+      else if (buf(1 : i - 1) == "Process") then
          i_particle = PROC_NOT_FOUND
       else
          i_particle = NO_NUMBER
@@ -799,10 +803,10 @@ contains
     end subroutine create_flavor
 
     subroutine create_helicity (s, helicity, current_position)
-      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      character(len = LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(out) :: helicity
       integer, intent(inout) :: current_position
-      character(len=10) :: buf
+      character(len = 10) :: buf
       integer :: i, last_buffer_index
       logical :: success
       call get_next_buffer (s, current_position, buf, last_buffer_index)
@@ -815,20 +819,20 @@ contains
     end subroutine create_helicity
 
     subroutine strip_helicity (buf, i)
-      character(len=10), intent(in) :: buf
+      character(len = 10), intent(in) :: buf
       integer, intent(inout) :: i
       integer :: i_last
       i_last = i - 1
       if (i_last < 4) return
-      if (buf(i_last-2:i_last) == "(1)") then
+      if (buf(i_last - 2 : i_last) == "(1)") then
          i = i - 3
-      else if (buf(i_last-3:i_last) == "(-1)") then
+      else if (buf(i_last - 3 : i_last) == "(-1)") then
          i = i - 4
       end if
-    end subroutine strip_helicity  
+    end subroutine strip_helicity
 
     subroutine strip_flavor (buf, i, helicity, success)
-      character(len=10), intent(in) :: buf
+      character(len = 10), intent(in) :: buf
       integer, intent(in) :: i
       integer, intent(out) :: helicity
       logical, intent(out) :: success
@@ -836,24 +840,24 @@ contains
       i_last = i - 1
       helicity = 0
       if (i_last < 4) return
-      if (buf(i_last-2:i_last) == "(1)") then
+      if (buf(i_last - 2 : i_last) == "(1)") then
          helicity = 1
          success = .true.
-      else if (buf(i_last-3:i_last) == "(-1)") then
+      else if (buf(i_last - 3 : i_last) == "(-1)") then
          helicity = -1
          success = .true.
       else
          success = .false.
       end if
     end subroutine strip_flavor
-         
+
     function find_next_word_index (word, i_start) result (i_next)
-      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: word
+      character(len = LEN_MAX_FLAVOR_STRING), intent(in) :: word
       integer, intent(in) :: i_start
       integer :: i_next
       i_next = i_start + 1
       do
-         if (word(i_next:i_next) /= " ") then
+         if (word(i_next : i_next) /= " ") then
             exit
          else
             i_next = i_next + 1
@@ -863,16 +867,17 @@ contains
       end do
     end function find_next_word_index
 
-    subroutine check_helicity_array (hel_array, n_entries)
+    subroutine check_helicity_array (hel_array, n_entries, n_in)
       integer, intent(in), dimension(:) :: hel_array
-      integer, intent(in) :: n_entries
-      integer :: n_particles
+      integer, intent(in) :: n_entries, n_in
+      integer :: n_particles, i
       logical :: valid
       n_particles = n_entries - 2
-      valid = all (hel_array (3:n_particles) == 0)
-      valid = valid .and. &
-         (hel_array(1) == 1 .or. hel_array(1) == -1) .and. &
-         (hel_array(2) == 1 .or. hel_array(2) == -1)
+      !!! only allow polarisations for incoming fermions for now
+      valid = all (hel_array (n_in + 1 : n_particles) == 0)
+      do i = 1, n_in
+         valid = valid .and. (hel_array(i) == 1 .or. hel_array(i) == -1)
+      end do
       if (.not. valid) &
          call msg_fatal ("Invalid helicities encountered!")
     end subroutine check_helicity_array
@@ -919,7 +924,7 @@ contains
   subroutine prc_blha_set_electroweak_parameters (object, model)
      class(prc_blha_t), intent(inout) :: object
      type(model_data_t), intent(in), target :: model
-     if (object%ew_parameter_mask (I_ALPHA)) call object%set_alpha_qed (model)
+     !if (object%ew_parameter_mask (I_ALPHA)) call object%set_alpha_qed (model)
      if (object%ew_parameter_mask (I_GF)) call object%set_GF (model)
      if (object%ew_parameter_mask (I_SW2)) call object%set_weinberg_angle (model)
   end subroutine prc_blha_set_electroweak_parameters
@@ -928,8 +933,9 @@ contains
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flavors
     integer, dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
-    integer, dimension(N_MAX_FLAVORS,2) :: helicities
+    integer, dimension(:,:), allocatable :: helicities
     integer :: i_proc
+    allocate (helicities (N_MAX_FLAVORS, object%data%n_in))
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%read_contract_file (flavors, amp_type, flv_index, label, helicities)
@@ -940,10 +946,9 @@ contains
        case (BLHA_AMP_TREE)
           if (allocated (object%i_born)) then
              object%i_born(flv_index(i_proc)) = label(i_proc)
-          
           else if (allocated (object%i_real)) then
              object%i_real(flv_index(i_proc)) = label(i_proc)
-          else 
+          else
              call msg_fatal ("Tree matrix element present, &
                   &but neither Born nor real indices are allocated!")
           end if
@@ -978,13 +983,14 @@ contains
     end do
   end subroutine prc_blha_read_contract_file
 
-  subroutine prc_blha_print_parameter_file (object)
+  subroutine prc_blha_print_parameter_file (object, i_component)
     class(prc_blha_t), intent(in) :: object
+    integer, intent(in) :: i_component
     type(string_t) :: filename
     
     select type (def => object%def)
     class is (blha_def_t)
-       filename = def%basename // '.olp_parameters'
+       filename = def%basename // '_' // str (i_component) // '.olp_parameters'
     end select
     select type (driver => object%driver)
     class is (blha_driver_t)
@@ -1007,40 +1013,48 @@ contains
     class is (blha_state_t)
       core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
     end select
-    amp = 0.0
+    amp = zero
   end function prc_blha_compute_amplitude
 
   subroutine prc_blha_init_blha (object, blha_template)
     class(prc_blha_t), intent(inout) :: object
     type(blha_template_t), intent(inout) :: blha_template
-    logical :: include_polarizations 
     object%n_particles = size (object%data%flv_state, 1)
     object%n_flv = size (object%data%flv_state, 2)
-    include_polarizations = blha_template%include_polarizations
     if (blha_template%compute_loop ()) then
-       if (include_polarizations) then
-          allocate (object%i_virt (object%n_flv * 4), &
-                    object%i_cc (object%n_flv * 4))
-          allocate (object%i_hel (object%n_flv * 4, 2))
+       if (blha_template%include_polarizations) then
+          allocate (object%i_virt (object%n_flv * object%data%n_in * 2), &
+                    object%i_cc (object%n_flv * object%data%n_in * 2))
+          allocate (object%i_hel (object%n_flv * object%data%n_in * 2, &
+               object%data%n_in))
        else
           allocate (object%i_virt (object%n_flv), &
                     object%i_cc (object%n_flv))
        end if
+       object%i_virt = 0
+       object%i_cc = 0
     else if (blha_template%compute_subtraction ()) then
        allocate (object%i_born (object%n_flv), &
                  object%i_cc (object%n_flv) , &
                  object%i_sc (object%n_flv))
+       object%i_born = 0
+       object%i_cc = 0
+       object%i_sc = 0
     else if (blha_template%compute_real_trees ()) then
        allocate (object%i_real (object%n_flv))
+       object%i_real = 0
     else if (blha_template%compute_born ()) then
        allocate (object%i_born (object%n_flv))
+       object%i_born = 0
     end if
 
     call object%init_ew_parameters ()
 
     select type (driver => object%driver)
     class is (blha_driver_t)
-       driver%include_polarizations = include_polarizations
+       driver%include_polarizations = blha_template%include_polarizations
+       driver%switch_off_muon_yukawas = blha_template%switch_off_muon_yukawas
+       driver%external_top_yukawa = blha_template%external_top_yukawa
     end select
   end subroutine prc_blha_init_blha
 
@@ -1051,17 +1065,30 @@ contains
     type(flavor_t) :: flv
     real(default) :: mass, width
     integer :: ierr
+    real(default) :: top_yukawa
     do i = 1, OLP_N_MASSIVE_PARTICLES
        i_pdg = OLP_MASSIVE_PARTICLES(i)
+       if (i_pdg < 0) cycle
        call flv%init (i_pdg, model)
        mass = flv%get_mass (); width = flv%get_width ()
        select type (driver => object%driver)
        class is (blha_driver_t)
-          call driver%set_mass_and_width (i_pdg, mass=mass, width=width)
+          call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
           if (i_pdg == 5) call driver%blha_olp_set_parameter &
              ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
-          if (i_pdg == 6) call driver%blha_olp_set_parameter &
-             ('yuk(6)'//c_null_char, dble(mass), 0._double, ierr)
+          if (i_pdg == 6) then
+             if (driver%external_top_yukawa > 0._default) then
+                top_yukawa = driver%external_top_yukawa
+             else
+                top_yukawa = mass
+             end if
+             call driver%blha_olp_set_parameter &
+                ('yuk(6)'//c_null_char, dble(top_yukawa), 0._double, ierr)
+          end if
+          if (driver%switch_off_muon_yukawas) then
+             if (i_pdg == 13) call driver%blha_olp_set_parameter &
+                ('yuk(13)' //c_null_char, 0._double, 0._double, ierr)
+          end if
        end select
     end do
   end subroutine prc_blha_set_particle_properties
@@ -1073,47 +1100,29 @@ contains
     object%ew_parameter_mask (I_SW2) = .false.
   end subroutine prc_blha_init_ew_parameters
 
-  subroutine prc_blha_set_bquark_mass (object, model)
-    class(prc_blha_t), intent(inout) :: object
-    class(model_data_t), intent(in), target :: model
-    type(flavor_t) :: flv
-    real(default) :: mass, width
-    integer :: ierr
-    call flv%init (5, model)
-    mass = flv%get_mass (); width = flv%get_width ()
-    select type (driver => object%driver)
-    class is (blha_driver_t)
-       call driver%set_mass_and_width (5, mass=mass, width=width)
-       call driver%blha_olp_set_parameter ('yuk(5)'//c_null_char, &
-          dble(mass), 0._double, ierr)
-    end select
-  end subroutine prc_blha_set_bquark_mass
-
   subroutine prc_blha_compute_sqme_virt (object, &
                 i_flv, p, ren_scale, sqme, bad_point)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
-    logical, intent(out) :: bad_point
     real(default), dimension(4), intent(out) :: sqme
-    real(double), dimension(5*object%n_particles) :: mom
+    logical, intent(out) :: bad_point
+    real(double), dimension(5 * object%n_particles) :: mom
     real(double), dimension(blha_result_array_size (object%n_particles, &
                                                     BLHA_AMP_LOOP)) :: r
     real(double) :: mu_dble
-    real(default) :: mu
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
-
+    call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
+    call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
+    call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv)", object%i_virt(i_flv))
     mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) then
-      mu = sqrt (2* (p(1)*p(2)))
-    else
-      mu = ren_scale
-    end if
-    mu_dble = dble(mu)
-    alpha_s = object%qcd%alpha%get (mu)
+    if (vanishes (ren_scale)) &
+       call msg_fatal ("prc_blha_compute_sqme_real: ren_scale vanishes")
+    mu_dble = dble(ren_scale)
+    alpha_s = object%qcd%alpha%get (ren_scale)
     select type (driver => object%driver)
     class is (blha_driver_t)
       call driver%set_alpha_s (alpha_s)
@@ -1138,7 +1147,6 @@ contains
     real(double), dimension(5*object%n_particles) :: mom
     real(double), dimension(blha_result_array_size (object%n_particles, &
                                               BLHA_AMP_CC)) :: r
-    real(default) :: mu
     real(double) :: mu_dble
     real(default) :: alpha_s
     integer :: i, j, pos
@@ -1150,45 +1158,43 @@ contains
     integer, dimension(:), allocatable :: flavors
 
     mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) then
-       mu = sqrt (2*p(1)*p(2))
-    else
-       mu = ren_scale
-    end if
-    mu_dble = dble(mu)
-    alpha_s = object%qcd%alpha%get (mu)
+    if (vanishes (ren_scale)) &
+       call msg_fatal ("prc_blha_compute_sqme_cc: ren_scale vanishes")
+    mu_dble = dble(ren_scale)
+    alpha_s = object%qcd%alpha%get (ren_scale)
+    !!! !!! !!! Workaround for ifort 16.0 missing default allocate-on-assignment
+    allocate (flavors (object%get_n_flvs (i_flv)))
+    !!! !!! !!! End of workaround
     flavors = object%get_flv_state (i_flv)
 
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%set_alpha_s (alpha_s)
        if (allocated (object%i_born)) then
-          call object%compute_sqme_born (i_flv, p, mu, born, bad_point2)
+          call object%compute_sqme_born (i_flv, p, ren_scale, born, bad_point2)
        else
-          born = 0._default
-          acc = 0._default
+          born = zero
+          acc = zero
        end if
        if (present (born_out)) born_out = born
        call driver%blha_olp_eval2 (object%i_cc(i_flv), &
-                                    mom, mu_dble, r, acc_dble)
+          mom, mu_dble, r, acc_dble)
     end select
 
     do j = 1, size (p)
       do i = 1, j
-        if (i <= 2 .or. j <= 2) then
-          born_cc (i,j) = 0._default
-        else if (i == j) then
+        if (i == j) then
           if (is_quark (abs(flavors (i)))) then
-             born_cc (i,j) = -cf*born 
+             born_cc (i,j) = -cf * born 
           else if (is_gluon (flavors (i))) then
-             born_cc (i,j) = -ca*born
+             born_cc (i,j) = -ca * born
           else 
              born_cc (i,j) = zero
           end if
         else
-          im1 = i-1; jm1 = j-1
-          pos = im1 + jm1*(jm1-1)/2 + 1
-          born_cc (i,j) = -r(pos)
+          im1 = i - 1; jm1 = j - 1
+          pos = im1 + jm1 * (jm1 - 1) / 2 + 1
+          born_cc (i,j) = - r(pos)
         end if
         born_cc (j,i) = born_cc (i,j)
       end do
@@ -1199,9 +1205,10 @@ contains
   end subroutine prc_blha_compute_sqme_cc
 
   function prc_blha_get_beam_helicities_single (object, i) result (hel)
-    integer, dimension(2) :: hel
+    integer, dimension(:), allocatable :: hel
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i
+    allocate (hel (object%data%n_in))
     hel = object%i_hel (i, :)
   end function prc_blha_get_beam_helicities_single
 
@@ -1218,9 +1225,9 @@ contains
     integer, dimension(:,:), allocatable :: hel
     class(prc_blha_t), intent(in) :: object
     integer :: i, n_hel
-    n_hel = object%n_flv * 4
-    allocate (hel (n_hel, 2))
-    do i = 1, n_hel 
+    n_hel = object%n_flv * (2 * object%data%n_in)
+    allocate (hel (n_hel, object%data%n_in))
+    do i = 1, n_hel
        hel(i,:) = object%get_beam_helicities (i)
     end do
   end function prc_blha_get_beam_helicities_array

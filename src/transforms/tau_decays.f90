@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -52,6 +52,7 @@ module tau_decays
      type(model_t), pointer :: model_hadrons => null()
      type(qcd_t), pointer :: qcd_t => null()
    contains
+     procedure :: write_name => evt_tau_decays_write_name
      procedure :: write => evt_tau_decays_write
      procedure :: generate_weighted => evt_tau_decays_generate_weighted
      procedure :: make_particle_set => evt_tau_decays_make_particle_set
@@ -61,6 +62,14 @@ module tau_decays
 
 contains
 
+  subroutine evt_tau_decays_write_name (evt, unit)
+    class(evt_tau_decays_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: tau decays"
+  end subroutine evt_tau_decays_write_name
+   
   subroutine evt_tau_decays_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_tau_decays_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -68,7 +77,7 @@ contains
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: tau decays"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (evt%particle_set_exists)  &

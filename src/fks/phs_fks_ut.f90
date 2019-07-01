@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -48,12 +48,21 @@ contains
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
     call test(phs_fks_generator_1, "phs_fks_generator_1", &
-              "Test the generation of FKS phase spaces", u, results)
+       "Test the generation of FKS phase spaces", u, results)
     call test(phs_fks_generator_2, "phs_fks_generator_2", &
-              "Test the generation of an ISR FKS phase space", u, results)
+       "Test the generation of an ISR FKS phase space", u, results)
     call test(phs_fks_generator_3, "phs_fks_generator_3", &
-              "Test the generation of a real phase space for decays", &
-              u, results)
+       "Test the generation of a real phase space for decays", &
+       u, results)
+    call test(phs_fks_generator_4, "phs_fks_generator_4", &
+       "Test the generation of an FSR phase space with "&
+       &"conserved invariant resonance masses", u, results)
+    call test(phs_fks_generator_5, "phs_fks_generator_5", &
+       "Test the phase space generation for the factorized threshold computation", &
+       u, results)       
+    call test(phs_fks_generator_6, "phs_fks_generator_6", &
+       "Test the generation of a real phase space for 1 -> 3 decays", &
+       u, results)
   end subroutine phs_fks_generator_test
 
 

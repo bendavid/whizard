@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -551,7 +551,7 @@ contains
     end if
   end function operator_binary_get_signature
        
-  function operator_get_opname (object, i) result (name)
+  pure function operator_get_opname (object, i) result (name)
     class(operator_t), intent(in) :: object
     integer, intent(in), optional :: i
     type(string_t) :: name

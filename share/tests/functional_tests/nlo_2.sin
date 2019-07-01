@@ -27,10 +27,6 @@ process nlo_2_p1 = E1, e1 => t, T { nlo_calculation = "Full" }
 
 seed = 2222
 
-# Default parameters for FKS mapping
-fks_dij_exp1 = 1.0
-fks_mapping_type = 1
-
 sqrts = 500 GeV
 
 integrate (nlo_2_p1) { iterations = 1:30000:"gw" }

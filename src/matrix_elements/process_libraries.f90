@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,8 +41,7 @@ module process_libraries
   use io_units
   use diagnostics
   use md5
-  use physics_defs, only: BORN, NLO_REAL, NLO_VIRTUAL, NLO_PDF
-  use physics_defs, only: NLO_SUBTRACTION, GKS, NLO_THRESHOLD_RESUMMATION
+  use physics_defs
   use os_interface
   use model_data
   use particle_specifiers
@@ -96,8 +95,10 @@ module process_libraries
      character(32) :: md5sum = ""
      integer :: nlo_type = BORN
      integer, dimension(N_ASSOCIATED_COMPONENTS) :: associated_components = 0
-     logical :: active_nlo_component
+     logical :: active_component
      integer :: fixed_emitter = -1
+     integer :: alpha_power = 0
+     integer :: alphas_power = 0
    contains
      procedure :: write => process_component_def_write
      procedure :: read => process_component_def_read
@@ -125,10 +126,11 @@ module process_libraries
                   => process_component_def_get_associated_real_sing
      procedure :: get_association_list &
                   => process_component_def_get_association_list
-     procedure :: is_active_nlo_component &
-                  => process_component_def_is_active_nlo_component
+     procedure :: is_active_component &
+                  => process_component_def_is_active_component
      procedure :: get_associated_real => process_component_def_get_associated_real
      procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
+     procedure :: get_coupling_powers => process_component_def_get_coupling_powers
   end type process_component_def_t
   
   type :: process_def_t
@@ -153,6 +155,7 @@ module process_libraries
      procedure :: import_component => process_def_import_component
      procedure :: get_n_components => process_def_get_n_components
      procedure :: set_fixed_emitter => process_def_set_fixed_emitter
+     procedure :: set_coupling_powers => process_def_set_coupling_powers
      procedure :: set_associated_components => &
                       process_def_set_associated_components
      procedure :: compute_md5sum => process_def_compute_md5sum
@@ -498,7 +501,7 @@ contains
     md5sum = component%md5sum
   end function process_component_def_get_md5sum
   
-  function process_component_def_get_nlo_type (component) result (nlo_type)
+  elemental function process_component_def_get_nlo_type (component) result (nlo_type)
     class(process_component_def_t), intent(in) :: component
     integer :: nlo_type
     nlo_type = component%nlo_type
@@ -522,12 +525,11 @@ contains
     i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
   end function process_component_def_get_associated_real_sing
 
-
-  elemental function process_component_def_is_active_nlo_component (component) result (active)
+  elemental function process_component_def_is_active_component (component) result (active)
     class(process_component_def_t), intent(in) :: component
     logical :: active
-    active = component%active_nlo_component
-  end function process_component_def_is_active_nlo_component
+    active = component%active_component
+  end function process_component_def_is_active_component
 
   function process_component_def_get_association_list (component, i_skip_in) result (list)
     class(process_component_def_t), intent(in) :: component
@@ -540,14 +542,13 @@ contains
     n = count (component%associated_components /= 0) - 1
     if (i_skip > 0) n = n-1
     allocate (list (n))
-
     j = 1
     do i = 1, N_ASSOCIATED_COMPONENTS 
        valid = component%associated_components(i) /= 0 &
                .and. i /= ASSOCIATED_SUB .and. i /= i_skip
        if (valid) then
           list(j) = component%associated_components(i)
-          j = j+1
+          j = j + 1
        end if
     end do
   end function process_component_def_get_association_list
@@ -564,6 +565,13 @@ contains
      emitter = component%fixed_emitter
   end function process_component_def_get_fixed_emitter
      
+  subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
+    class(process_component_def_t), intent(in) :: component
+    integer, intent(out) :: alpha_power, alphas_power
+    alpha_power = component%alpha_power
+    alphas_power = component%alphas_power
+  end subroutine process_component_def_get_coupling_powers
+
   subroutine process_def_write (object, unit)
     class(process_def_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -675,7 +683,7 @@ contains
        end do
     end if
   end subroutine process_def_show
-    
+
   subroutine process_def_init (def, id, &
        model, model_name, n_in, n_components, num_id, nlo_process)
     class(process_def_t), intent(out) :: def
@@ -765,9 +773,9 @@ contains
         comp%nlo_type = nlo_type
       end if
       if (present (active)) then
-         comp%active_nlo_component = active
+         comp%active_component = active
       else
-         comp%active_nlo_component = .true.
+         comp%active_component = .true.
       end if
       if (allocated (comp%prt_in) .and. allocated (comp%prt_out)) then
          associate (d => comp%description)
@@ -782,42 +790,20 @@ contains
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              if (def%nlo_process .and. .not. comp%active_nlo_component) then
+              if ((def%nlo_process .and. .not. comp%active_component) .or. &
+                   comp%nlo_type == NLO_SUBTRACTION) then
                  d = d // " [inactive]"
               else
                  d = d // " [" // comp%method // "]"
               end if
            end if
-           nlo_type_string = get_nlo_type_string (comp%nlo_type)
+           nlo_type_string = component_status (comp%nlo_type)
            if (nlo_type_string /= "Born") then
              d = d // ", [" // nlo_type_string // "]"
            end if
          end associate
       end if
     end associate
-  contains
-    function get_nlo_type_string (nlo_type) result (nlo_type_string)
-      integer, intent(in) :: nlo_type
-      type(string_t) :: nlo_type_string
-      select case (nlo_type)
-      case (BORN) 
-         nlo_type_string = 'Born'
-      case (NLO_REAL)
-         nlo_type_string = 'Real'
-      case (NLO_VIRTUAL)
-         nlo_type_string = 'Virtual'
-      case (NLO_PDF)
-         nlo_type_string  = 'PDF'
-      case (NLO_SUBTRACTION)
-         nlo_type_string = 'Subtraction'
-      case (GKS)
-         nlo_type_string = 'GKS'
-      case (NLO_THRESHOLD_RESUMMATION)
-         nlo_type_string = 'NLL_Resummation'
-      case default 
-         call msg_fatal ("No component specifier for this NLO type")
-      end select
-    end function get_nlo_type_string
   end subroutine process_def_import_component
 
   function process_def_get_n_components (def) result (n)
@@ -831,6 +817,13 @@ contains
     integer, intent(in) :: i, emitter
     def%initial(i)%fixed_emitter = emitter
   end subroutine process_def_set_fixed_emitter 
+
+  subroutine process_def_set_coupling_powers (def, alpha_power, alphas_power)
+    class(process_def_t), intent(inout) :: def
+    integer, intent(in) :: alpha_power, alphas_power
+    def%initial(1)%alpha_power = alpha_power
+    def%initial(1)%alphas_power = alphas_power
+  end subroutine process_def_set_coupling_powers
 
   subroutine process_def_set_associated_components (def, i, &
                      i_born, i_real, i_virt, i_sub, &

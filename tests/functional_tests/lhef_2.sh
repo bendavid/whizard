@@ -3,7 +3,6 @@
 echo "Running script $0"
 if test -f OCAML_FLAG; then
     rm -f @script@_lib.* @script@_p?.*
-    rm -f default_prclib.*
     s=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QCD
     echo "LHEF file contents:" >> $s.log

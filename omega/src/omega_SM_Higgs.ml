@@ -1,6 +1,6 @@
 (* $Id: omega_SM_Higgs.ml 3611 2011-11-29 16:27:29Z jr_reuter $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

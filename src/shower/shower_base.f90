@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -51,6 +51,7 @@ module shower_base
   use variables
   use model_data
   use pdf
+  use tauola_interface
 
   implicit none
   private
@@ -81,6 +82,7 @@ module shower_base
      logical :: isr_active = .false.
      logical :: fsr_active = .false.
      logical :: muli_active = .false.
+     logical :: tau_dec = .false.
      logical :: verbose = .false.
      integer :: method = PS_UNDEFINED
      logical :: hadronization_active = .false.
@@ -117,6 +119,7 @@ module shower_base
      type(string_t) :: name
      type(pdf_data_t) :: pdf_data
      type(shower_settings_t) :: settings
+     type(taudec_settings_t) :: taudec_settings
    contains
      procedure :: write_msg => shower_base_write_msg
      procedure :: import_rng => shower_base_import_rng
@@ -131,10 +134,11 @@ module shower_base
 
 
   abstract interface
-    subroutine shower_base_init (shower, settings, pdf_data)
+    subroutine shower_base_init (shower, settings, taudec_settings, pdf_data)
       import
       class(shower_base_t), intent(out) :: shower
       type(shower_settings_t), intent(in) :: settings
+      type(taudec_settings_t), intent(in) :: taudec_settings
       type(pdf_data_t), intent(in) :: pdf_data
     end subroutine shower_base_init
    end interface
@@ -149,11 +153,12 @@ module shower_base
 
   abstract interface
      subroutine shower_base_import_particle_set &
-            (shower, particle_set, os_data)
+            (shower, particle_set, os_data, scale)
        import
        class(shower_base_t), target, intent(inout) :: shower
        type(particle_set_t), intent(in) :: particle_set
        type(os_data_t), intent(in) :: os_data
+       real(default), intent(in) :: scale
      end subroutine shower_base_import_particle_set
   end interface
 
@@ -228,6 +233,8 @@ contains
          var_list%get_lval (var_str ("?ps_fsr_active"))
     shower_settings%isr_active = &
          var_list%get_lval (var_str ("?ps_isr_active"))
+    shower_settings%tau_dec = &
+         var_list%get_lval (var_str ("?ps_taudec_active"))    
     shower_settings%muli_active = &
          var_list%get_lval (var_str ("?muli_active"))
     shower_settings%hadronization_active = &
@@ -299,6 +306,8 @@ contains
          "ps_isr_active                = ", settings%isr_active
     write (u, "(3x,A,1x,L1)") &
          "ps_fsr_active                = ", settings%fsr_active
+    write (u, "(3x,A,1x,L1)") &
+         "ps_tau_dec                   = ", settings%tau_dec
     write (u, "(3x,A,1x,L1)") &
          "muli_active                  = ", settings%muli_active
     write (u, "(1x,A)")  "General settings:"

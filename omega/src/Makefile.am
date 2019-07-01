@@ -1,11 +1,11 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7295 2015-09-30 05:28:53Z jr_reuter $
+# $Id: Makefile.am 7653 2016-07-18 11:37:04Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -90,11 +90,14 @@ omega_models.cma: $(OMEGA_MODELS_CMO)
 cascade_lexer.mli: cascade_lexer.ml cascade_parser.cmi
 	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
 
-comphep_lexer.mli: comphep_lexer.ml comphep_parser.cmi
-	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
-
 vertex_lexer.mli: vertex_lexer.ml vertex_parser.cmi
-	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
+	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
+
+uFO_lexer.mli: uFO_lexer.ml uFO_parser.cmi
+	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
+
+uFOx_lexer.mli: uFOx_lexer.ml uFOx_parser.cmi
+	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
 endif
 
@@ -161,7 +164,7 @@ if OCAML_AVAILABLE
 
 @am__include@ @am__quote@Makefile.depend_ocaml@am__quote@
 
-PARSERS = cascade comphep vertex
+PARSERS = cascade vertex uFO uFOx
 
 Makefile.depend_ocaml: $(OMEGA_CAML_PRIMARY)
 	@rm -f $@

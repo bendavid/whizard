@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -62,7 +62,7 @@ fastjet.lo: \
   ../basics/kinds.$(FC_MODULE_EXT) \
   ../physics/lorentz.$(FC_MODULE_EXT)
 
-AM_FCFLAGS += -I../basics -I../utilities -I../system -I../physics
+AM_FCFLAGS += -I../basics -I../utilities -I../testing -I../system -I../physics
 
 MODULES= \
   cpp_strings.$(FC_MODULE_EXT) \

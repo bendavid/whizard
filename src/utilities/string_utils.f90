@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -49,6 +49,7 @@ module string_utils
   public :: str
   public :: read_rval
   public :: read_ival
+  public :: split_string
 
   interface upper_case
      module procedure upper_case_char, upper_case_string
@@ -60,7 +61,8 @@ module string_utils
      module procedure string_f2c_char, string_f2c_var_str
   end interface string_f2c
   interface str
-     module procedure str_log, str_int, str_real
+     module procedure str_log, str_logs, str_int, str_ints, &
+            str_real, str_reals, str_complex, str_complexs
   end interface
 
 contains
@@ -130,7 +132,18 @@ contains
        s = "False"
     end if
   end function str_log
-  
+
+  function str_logs (x) result (s)
+    logical, dimension(:), intent(in) :: x
+    type(string_t) :: s
+    integer :: i
+    s = '['
+    do i = 1, size(x) - 1
+       s = s // str(x(i)) // ', '
+    end do
+    s = s // str(x(size(x))) // ']'
+  end function str_logs
+
   function str_int (i) result (s)
     integer, intent(in) :: i
     type(string_t) :: s
@@ -138,7 +151,18 @@ contains
     write (buffer, "(I0)")  i
     s = var_str (trim (adjustl (buffer)))
   end function str_int
-  
+
+  function str_ints (x) result (s)
+    integer, dimension(:), intent(in) :: x
+    type(string_t) :: s
+    integer :: i
+    s = '['
+    do i = 1, size(x) - 1
+       s = s // str(x(i)) // ', '
+    end do
+    s = s // str(x(size(x))) // ']'
+  end function str_ints
+
   function str_real (x) result (s)
     real(default), intent(in) :: x
     type(string_t) :: s
@@ -146,7 +170,35 @@ contains
     write (buffer, "(ES17.10)")  x
     s = var_str (trim (adjustl (buffer)))
   end function str_real
-  
+
+  function str_reals (x) result (s)
+    real(default), dimension(:), intent(in) :: x
+    type(string_t) :: s
+    integer :: i
+    s = '['
+    do i = 1, size(x) - 1
+       s = s // str(x(i)) // ', '
+    end do
+    s = s // str(x(size(x))) // ']'
+  end function str_reals
+
+  function str_complex (x) result (s)
+    complex(default), intent(in) :: x
+    type(string_t) :: s
+    s = str_real (real (x)) // " + i " // str_real (aimag (x))
+  end function str_complex
+
+  function str_complexs (x) result (s)
+    complex(default), dimension(:), intent(in) :: x
+    type(string_t) :: s
+    integer :: i
+    s = '['
+    do i = 1, size(x) - 1
+       s = s // str(x(i)) // ', '
+    end do
+    s = s // str(x(size(x))) // ']'
+  end function str_complexs
+
   function read_rval (s) result (rval)
     type(string_t), intent(in) :: s
     real(default) :: rval
@@ -163,5 +215,32 @@ contains
     read (buffer, *)  ival
   end function read_ival
     
+  function split_string (str, separator) result (str_array)
+    type(string_t), dimension(:), allocatable :: str_array
+    type(string_t), intent(in) :: str, separator
+    type(string_t) :: str_tmp, str_out
+    integer :: n_str
+    n_str = 0; str_tmp = str
+    do while (contains_word (str_tmp, separator))
+       n_str = n_str + 1
+       call split (str_tmp, str_out, separator)
+    end do
+    allocate (str_array (n_str))
+    n_str = 1; str_tmp = str
+    do while (contains_word (str_tmp, separator))
+       call split (str_tmp, str_array (n_str), separator)
+       n_str = n_str + 1
+    end do
+  contains
+    function contains_word (str, word) result (val)
+      logical :: val
+      type(string_t), intent(in) :: str, word
+      type(string_t) :: str_tmp, str_out
+      str_tmp = str
+      call split (str_tmp, str_out, word)
+      val = str_out /= "" 
+    end function contains_word
+  end function split_string      
+
 
 end module string_utils

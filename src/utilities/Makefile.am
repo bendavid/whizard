@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -35,7 +35,8 @@ libutilities_la_SOURCES = \
   file_registries.f90 \
   string_utils.f90 \
   format_utils.f90 \
-  format_defs.f90
+  format_defs.f90 \
+  numeric_utils.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = utilities.nw
@@ -127,7 +128,8 @@ nodist_execmod_HEADERS = \
   file_utils.$(FC_MODULE_EXT) \
   string_utils.$(FC_MODULE_EXT) \
   format_utils.$(FC_MODULE_EXT) \
-  format_defs.$(FC_MODULE_EXT)
+  format_defs.$(FC_MODULE_EXT) \
+  numeric_utils.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE

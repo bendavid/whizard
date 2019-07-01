@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -89,7 +89,7 @@ contains
 
        call prc_config%init (prc_name, size (prt_in), n_components, global)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -115,7 +115,7 @@ contains
 
        call prc_config%init (prc_name, size (prt_in), n_components, global)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -141,7 +141,7 @@ contains
 
        call prc_config%init (prc_name, size (prt_in), n_components, global)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -232,7 +232,7 @@ contains
     call global%set_log (var_str ("?report_progress"), &
          .true., is_known = .true.)
     call prc_config%setup_component (1, &
-         new_prt_spec (prt_in), new_prt_spec (prt_out), global)
+         new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
 
     call global%set_log (var_str ("?report_progress"), &
          .false., is_known = .true.)
@@ -244,7 +244,7 @@ contains
          var_str ("-fusion:progress_file omega_prc_config.log"), &
          is_known = .true.)
     call prc_config%setup_component (2, &
-         new_prt_spec (prt_in), new_prt_spec (prt_out), global)
+         new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
     
     call prc_config%record (global)
 

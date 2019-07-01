@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -128,7 +128,7 @@ contains
        type is (eio_stdhep_hepevt_t)
           eio%extension = "hep"
        type is (eio_stdhep_hepev4_t)
-          eio%extension = "ev4.hep"          
+          eio%extension = "ev4.hep"
        type is (eio_stdhep_hepeup_t)
           eio%extension = "up.hep"
        end select
@@ -212,17 +212,17 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.8", eio%n_events_expected)
+               "WHIZARD 2.3.0", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t) 
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.8", eio%n_events_expected) 
+               "WHIZARD 2.3.0", eio%n_events_expected) 
           call stdhep_write (100)
        type is (eio_stdhep_hepev4_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.8", eio%n_events_expected) 
-          call stdhep_write (100)          
+               "WHIZARD 2.3.0", eio%n_events_expected)
+          call stdhep_write (100)
        end select
     end if
   end subroutine eio_stdhep_split_out
@@ -258,18 +258,18 @@ contains
                error = data%error(i))          
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.8", eio%n_events_expected)
+            "WHIZARD 2.3.0", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.8", eio%n_events_expected) 
+            "WHIZARD 2.3.0", eio%n_events_expected) 
        call stdhep_write (100)
     type is (eio_stdhep_hepev4_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.8", eio%n_events_expected) 
-       call stdhep_write (100)       
-    end select    
+            "WHIZARD 2.3.0", eio%n_events_expected)
+       call stdhep_write (100)
+    end select
     if (present (success))  success = .true.
   end subroutine eio_stdhep_init_out
     
@@ -328,20 +328,20 @@ contains
           call stdhep_write (STDHEP_HEPEUP)
        type is (eio_stdhep_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &                         
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call stdhep_write (STDHEP_HEPEVT)
        type is (eio_stdhep_hepev4_t)
           call hepevt_from_event (event, &
-               process_index = eio%proc_num_id (i_prc), &               
-               i_evt = event%get_index (), &                         
+               process_index = eio%proc_num_id (i_prc), &
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order, &
                fill_hepev4 = .true.)
-          call stdhep_write (STDHEP_HEPEV4)          
+          call stdhep_write (STDHEP_HEPEV4)
        end select       
     else
        call eio%write ()

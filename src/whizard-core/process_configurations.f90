@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -42,6 +42,7 @@ module process_configurations
   use particle_specifiers
   use process_libraries
   use rt_data
+  use variables
 
   use dispatch, only: dispatch_core_def
   
@@ -58,6 +59,7 @@ module process_configurations
      procedure :: init => process_configuration_init
      procedure :: setup_component => process_configuration_setup_component
      procedure :: set_fixed_emitter => process_configuration_set_fixed_emitter
+     procedure :: set_coupling_powers => process_configuration_set_coupling_powers
      generic :: set_component_associations => &
                     set_component_associations_default, &
                     set_component_associations_pdf, &
@@ -85,7 +87,7 @@ contains
     logical :: nlo_process
     model => global%model
     config%id = prc_name
-    nlo_process = global%nlo_fixed_order .or. global%nlo_threshold_matching
+    nlo_process = global%nlo_fixed_order
     allocate (config%entry)
     if (global%var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
@@ -101,13 +103,14 @@ contains
   end subroutine process_configuration_init
     
   subroutine process_configuration_setup_component &
-       (config, i_component, prt_in, prt_out, global, &
+       (config, i_component, prt_in, prt_out, model, var_list, &
         nlo_type, active_in)
     class(process_configuration_t), intent(inout) :: config
     integer, intent(in) :: i_component
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
     type(prt_spec_t), dimension(:), intent(in) :: prt_out
-    type(rt_data_t), intent(inout) :: global
+    type(model_t), pointer, intent(in) :: model
+    type(var_list_t), intent(in) :: var_list
     integer, intent(in), optional :: nlo_type
     logical, intent(in), optional :: active_in
     type(string_t), dimension(:), allocatable :: prt_str_in
@@ -128,9 +131,8 @@ contains
     end if
 
     call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
-                            global, config%id, nlo_type)
-    method = &
-         global%var_list%get_sval (var_str ("$method"))
+                            model, var_list, config%id, nlo_type)
+    method = var_list%get_sval (var_str ("$method"))
     call config%entry%import_component (i_component, &
        n_out = size (prt_out), &
        prt_in = prt_in, &
@@ -146,6 +148,12 @@ contains
      integer, intent(in) :: i, emitter
      call config%entry%set_fixed_emitter (i, emitter)
   end subroutine process_configuration_set_fixed_emitter
+
+  subroutine process_configuration_set_coupling_powers (config, alpha_power, alphas_power)
+    class(process_configuration_t), intent(inout) :: config
+    integer, intent(in) :: alpha_power, alphas_power
+    call config%entry%set_coupling_powers (alpha_power, alphas_power)
+  end subroutine process_configuration_set_coupling_powers
 
   subroutine process_configuration_set_component_associations_default &
        (config, i_list)

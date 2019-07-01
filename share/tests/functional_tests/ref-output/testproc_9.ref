@@ -212,7 +212,7 @@ Contents of testproc_9_1.debug:
  Flux * PHS volume:
    8.000511761705E+03
  Jacobian factors per channel:
-   1: 9.6824584E-01 [selected]
+   1:  9.6824584E-01 [selected]
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 0:1 0:2
@@ -1233,7 +1233,7 @@ n_tot* => 4
  Flux * PHS volume:
    8.000511761705E+03
  Jacobian factors per channel:
-   1: 9.6824584E-01 [selected]
+   1:  9.6824584E-01 [selected]
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 0:1 0:2
@@ -1658,7 +1658,7 @@ n_tot* => 4
  Flux * PHS volume:
    1.591549430919E-04
  Jacobian factors per channel:
-   1: 6.0000000E-01 [selected]
+   1:  6.0000000E-01 [selected]
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 0:1
@@ -2032,7 +2032,7 @@ n_tot* => 3
  Flux * PHS volume:
    1.591549430919E-04
  Jacobian factors per channel:
-   1: 6.0000000E-01 [selected]
+   1:  6.0000000E-01 [selected]
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 0:1

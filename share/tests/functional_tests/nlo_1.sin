@@ -14,6 +14,7 @@ model = "SM"
 openmp_num_threads = 1
 
 $loop_me_method = "dummy"
+?use_vamp_equivalences = false
 
 process nlo_1_p1 = e1, E1 => u, U { nlo_calculation = "Real" }
 

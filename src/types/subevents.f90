@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -203,15 +203,16 @@ contains
     call prt_set (prt, 0, p, p**2, src)
   end subroutine prt_init_combine
 
-  subroutine prt_init_pseudojet (prt, jet, src)
+  subroutine prt_init_pseudojet (prt, jet, src, pdg)
     type(prt_t), intent(out) :: prt
     type(pseudojet_t), intent(in) :: jet
     integer, dimension(:), intent(in) :: src
+    integer, intent(in) :: pdg
     type(vector4_t) :: p
     prt%type = PRT_COMPOSITE
     p = vector4_moving (jet%e(), &
          vector3_moving ([jet%px(), jet%py(), jet%pz()]))
-    call prt_set (prt, 0, p, p**2, src)
+    call prt_set (prt, pdg, p, p**2, src)
   end subroutine prt_init_pseudojet
   
   elemental function prt_get_pdg (prt) result (pdg)
@@ -811,17 +812,18 @@ contains
     end do
   end subroutine subevt_collect
 
-  subroutine subevt_cluster (subevt, pl1, mask1, jet_def)
+  subroutine subevt_cluster (subevt, pl1, mask1, jet_def, keep_jets)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1
     logical, dimension(:), intent(in) :: mask1
     type(jet_definition_t), intent(in) :: jet_def
+    logical, intent(in) :: keep_jets
     integer, dimension(:), allocatable :: src, src_tmp
     integer, dimension(:), allocatable :: map, jet_idx
     type(pseudojet_t), dimension(:), allocatable :: jet_in, jet_out
     type(pseudojet_vector_t) :: jv_in, jv_out
     type(cluster_sequence_t) :: cs
-    integer :: i, j, k, n_src, n_active
+    integer :: i, prt_idx, k, n_src, n_active, this_jet, combined_pdg, pdg, n_quarks
     n_active = 0
     allocate (map (pl1%n_active), source = 0)
     allocate (src (0))
@@ -847,20 +849,33 @@ contains
     allocate (jet_out (jv_out%size ()))
     jet_out = jv_out
     call subevt_reset (subevt, size (jet_out))
-    do i = 1, size (jet_out)
+    do this_jet = 1, size (jet_out)
        src = 0
        n_src = 0
-       do j = 1, size (jet_idx)
-          if (jet_idx(j) == i) then
-             associate (prt => pl1%prt(map(j)))
+       combined_pdg = 0
+       n_quarks = 0
+       do prt_idx = 1, size (jet_idx)
+          if (jet_idx(prt_idx) == this_jet) then
+             associate (prt => pl1%prt(map(prt_idx)))
                do k = 1, size (prt%src)
                   src(n_src + k) = prt%src(k)
                end do
                n_src = n_src + size (prt%src)
+               if (is_quark (prt%pdg)) then
+                  n_quarks = n_quarks + 1
+                  if (combined_pdg == 0) then
+                     combined_pdg = prt%pdg
+                  end if
+               end if
              end associate
           end if
        end do
-       call prt_init_pseudojet (subevt%prt(i), jet_out(i), src(:n_src))
+       if (keep_jets .and. n_quarks == 1) then
+          pdg = combined_pdg
+       else
+          pdg = 0
+       end if
+       call prt_init_pseudojet (subevt%prt(this_jet), jet_out(this_jet), src(:n_src), pdg)
     end do
     do i = 1, size (jet_out)
        call jet_out(i)%final ()
@@ -933,9 +948,18 @@ contains
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     real(default), dimension(:), intent(in) :: rval
+    integer, dimension(size(rval)) :: idx
+    integer :: i
     call subevt_reset (subevt, pl%n_active)
     subevt%n_active = pl%n_active
-    subevt%prt = pl%prt( order (rval) )
+    if (allocated (subevt%prt))  deallocate (subevt%prt)
+    allocate (subevt%prt (size(pl%prt)))
+    !!! !!! !!! Workaround for the ifort 16.0/1
+    !subevt%prt = pl%prt(order (rval))
+    idx = order (rval)
+    do i = 1, size(idx)
+       subevt%prt(i) = pl%prt(idx(i))
+    end do
   end subroutine subevt_sort_real
 
   subroutine subevt_select_pdg_code (subevt, aval, subevt_in, prt_type)

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -141,7 +141,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -199,7 +200,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
@@ -295,7 +297,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
    
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -440,7 +443,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -536,7 +540,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -682,7 +687,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -839,7 +845,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
@@ -955,7 +962,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
@@ -1188,7 +1196,8 @@ contains
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -1288,7 +1297,8 @@ contains
     write (u, "(A)")
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_single_config_t :: phs_config_template)
@@ -1425,7 +1435,8 @@ contains
          model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
@@ -1526,7 +1537,8 @@ contains
          model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
 
     allocate (process)
-    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_single_config_t :: phs_config_template)

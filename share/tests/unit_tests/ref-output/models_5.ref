@@ -23,6 +23,7 @@ f* = PDG(6)
 fbar* = PDG(-6)
 F* = PDG(-6)
 charged* = PDG(6, -6)
+neutral* = PDG(25)
 colored* = PDG(6, -6)
 
 * Check parameter status
@@ -58,6 +59,7 @@ f* = PDG(6)
 fbar* = PDG(-6)
 F* = PDG(-6)
 charged* = PDG(6, -6)
+neutral* = PDG(25)
 colored* = PDG(6, -6)
 
 * Cleanup

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -139,7 +139,8 @@ contains
           call blha_master%set_polarization (i)
        end do
     end if
-    call blha_master%setup_additional_features (openloops_phs_tolerance)
+    call blha_master%setup_additional_features &
+       (openloops_phs_tolerance, .false., 0, .false.)
 
     do i = 1, 4
        call write_separator(u)

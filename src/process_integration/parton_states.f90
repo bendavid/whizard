@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -508,14 +508,15 @@ contains
   end subroutine parton_state_send_kinematics
 
   subroutine connected_state_evaluate_expressions (state, passed, &
-       scale, fac_scale, ren_scale, weight, scale_forced)
+       scale, fac_scale, ren_scale, weight, scale_forced, force_evaluation)
     class(connected_state_t), intent(inout) :: state
     logical, intent(out) :: passed
     real(default), intent(out) :: scale, fac_scale, ren_scale, weight
     real(default), intent(in), allocatable, optional :: scale_forced
+    logical, intent(in), optional :: force_evaluation
     if (state%has_expr) then
        call state%expr%evaluate (passed, scale, fac_scale, ren_scale, weight, &
-            scale_forced)
+            scale_forced, force_evaluation)
     end if
   end subroutine connected_state_evaluate_expressions
     

@@ -1,6 +1,6 @@
-(* $Id: modellib_SM.mli 7377 2015-11-20 15:59:02Z jr_reuter $
+(* $Id: modellib_SM.mli 7444 2016-02-17 15:37:20Z jr_reuter $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

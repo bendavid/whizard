@@ -2,8 +2,73 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.8
+	Version 2.3.0
 
+2016-07-21
+	RELEASE: version 2.3.0
+
+2016-07-20
+	UFO file support (alpha version) in O'Mega
+	
+2016-07-13
+	New (more) stable of WHIZARD GUI
+	Support for EW schemes for OpenLoops
+	Factorized NLO top decays for threshold model
+	
+2016-06-15
+	Passing factorization scale to PYTHIA6
+	Adding charge and neutral observables
+
+2016-06-14
+	Correcting angular distribution/tweaked kinematics in
+	   non-collinear structure functions splittings
+	
+2016-05-10
+	Include (Fortran) TAUOLA/PHOTOS for tau decays via PYTHIA6
+	   (backwards validation of LC CDR/TDR samples)
+
+2016-04-27
+	Within OpenLoops virtuals: support for Collier library
+	
+2016-04-25
+	O'Mega vertex tables only loaded at first usage
+	
+2016-04-21
+	New CJ15 PDF parameterizations added
+	
+2016-04-21
+	Support for hadron collisions at NLO QCD
+	
+2016-04-05
+	Support for different (parameter) schemes in model files
+	
+2016-03-31
+	Correct transferral of lifetime/vertex from PYTHIA/TAUOLA
+	  into the event record
+	
+2016-03-21
+	New internal implementation of polarization 
+	  via Bloch vectors, remove pointer constructions
+	
+2016-03-13
+	Extension of cascade syntax for processes:
+	  exclude propagators/vertices etc. possible
+	
+2016-02-24
+	Full support for OpenLoops QCD NLO matrix
+	  elements, inclusion in test suite
+	
+2016-02-12
+	Substantial progress on QCD NLO support
+	
+2016-02-02
+	Automated resonance mapping for FKS subtraction
+	
+2015-12-17
+	New BSM model WZW for diphoton resonances
+	
+##################################################################
+	
 2015-11-22
 	RELEASE: version 2.2.8
 

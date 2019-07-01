@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -44,6 +44,7 @@ module pdg_arrays
 
   public :: pdg_array_t
   public :: pdg_array_write
+  public :: pdg_array_write_set
   public :: assignment(=)
   public :: pdg_array_init
   public :: pdg_array_delete
@@ -55,6 +56,7 @@ module pdg_arrays
   public :: operator(.match.)
   public :: is_quark
   public :: is_gluon
+  public :: is_colored
   public :: is_lepton
   public :: is_massless_vector
   public :: is_massive_vector
@@ -182,6 +184,16 @@ contains
     write (u, "(A)", advance="no")  ")"
   end subroutine pdg_array_write
 
+  subroutine pdg_array_write_set (aval, unit)
+    type(pdg_array_t), intent(in), dimension(:) :: aval
+    integer, intent(in), optional :: unit
+    integer :: i
+    do i = 1, size (aval)
+       call aval(i)%write (unit)
+       print *, ''
+    end do
+  end subroutine pdg_array_write_set
+
   subroutine pdg_array_from_int_array (aval, iarray)
     type(pdg_array_t), intent(out) :: aval
     integer, dimension(:), intent(in) :: iarray
@@ -305,19 +317,19 @@ contains
     end if
   end function pdg_array_match_integer
 
-  function is_quark (pdg_nr) result(res)
-      integer, intent(in) :: pdg_nr
+  elemental function is_quark (pdg_nr) result(res)
       logical :: res
-      if (pdg_nr >= 1 .and. pdg_nr <= 6) then 
+      integer, intent(in) :: pdg_nr
+      if (abs (pdg_nr) >= 1 .and. abs (pdg_nr) <= 6) then 
         res = .true.
       else
         res = .false.
       end if
    end function is_quark
 
-   function is_gluon (pdg_nr) result(res)
-     integer, intent(in) :: pdg_nr
+   elemental function is_gluon (pdg_nr) result(res)
      logical :: res
+     integer, intent(in) :: pdg_nr
      if (pdg_nr == 21) then
        res = .true.
      else
@@ -325,10 +337,16 @@ contains
      end if
    end function is_gluon
 
+  elemental function is_colored (pdg_nr) result (res)
+    logical :: res
+    integer, intent(in) :: pdg_nr
+    res = is_quark (pdg_nr) .or. is_gluon (pdg_nr)
+  end function is_colored
+
   function is_lepton (pdg_nr) result(res)
     integer, intent(in) :: pdg_nr
     logical :: res
-    if (pdg_nr >= 11 .and. pdg_nr <= 16) then
+    if (abs (pdg_nr) >= 11 .and. abs (pdg_nr) <= 16) then
       res = .true.
     else
       res = .false.
@@ -362,7 +380,7 @@ contains
     colored = .false.
     do i = 1, size (pdg%pdg)
       pdg_nr = pdg%pdg(i)
-      if (is_quark (abs (pdg_nr)) .or. is_gluon (pdg_nr)) then
+      if (is_quark (pdg_nr) .or. is_gluon (pdg_nr)) then
          colored = .true.
          exit
       end if

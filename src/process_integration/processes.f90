@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,7 +40,7 @@ module processes
   use constants, only: zero, one
   use io_units
   use format_utils, only: write_separator
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use md5
   use cputime
@@ -67,22 +67,25 @@ module processes
   use phs_base
   use rng_base
   use mci_base
+  use mci_vamp, only: mci_vamp_instance_t
   use process_libraries
   use prc_test
 
   use integration_results
   use prc_core
   use parton_states
+  use cascades, only: operator(==), assignment(=)
 
   use pcm_base, only: pcm_t, pcm_instance_t
   use nlo_data, only: sqme_collector_t
-  use nlo_data, only: fks_template_t
+  use nlo_data, only: fks_template_t, nlo_settings_t
+  use nlo_data, only: phs_point_set_t
+  use models, only: model_t
   use nlo_controller, only: nlo_controller_t
 
   use phs_wood, only: phs_wood_config_t, phs_wood_t
-  use phs_fks, only: phs_fks_config_t, phs_fks_t
-  use phs_fks, only: PHS_MODE_ADDITIONAL_PARTICLE
-  use phs_fks, only: PHS_MODE_COLLINEAR_REMNANT
+  use phs_fks
+  use fks_regions, only: region_data_t
 
   use prc_gosam, only: prc_gosam_t
   use prc_openloops, only: prc_openloops_t
@@ -92,7 +95,7 @@ module processes
 
   use blha_config, only: blha_master_t
   use blha_olp_interfaces, only: blha_template_t, prc_blha_t
-  
+
   implicit none
   private
 
@@ -124,9 +127,10 @@ module processes
   integer, parameter, public :: COMP_VIRT = 3
   integer, parameter, public :: COMP_REAL = 4
   integer, parameter, public :: COMP_REAL_SING = 5
-  integer, parameter, public :: COMP_PDF = 6
-  integer, parameter, public :: COMP_SUB = 7
-  integer, parameter, public :: COMP_RESUM = 8
+  integer, parameter, public :: COMP_MISMATCH = 6
+  integer, parameter, public :: COMP_PDF = 7
+  integer, parameter, public :: COMP_SUB = 8
+  integer, parameter, public :: COMP_RESUM = 9
 
   integer, parameter :: DAMPING_NONE = 0
   integer, parameter :: DAMPING_SINGULAR = 1
@@ -137,7 +141,7 @@ module processes
      integer :: total = 0
      integer :: failed_kinematics = 0
      integer :: failed_cuts = 0
-     integer :: passed = 0
+     integer :: has_passed = 0
      integer :: evaluated = 0
      integer :: complete = 0
    contains
@@ -175,6 +179,7 @@ module processes
      procedure :: init_sf_chain => kinematics_init_sf_chain
      procedure :: init_phs => kinematics_init_phs
      procedure :: init_ptr => kinematics_init_ptr
+     procedure :: evaluate_radiation_kinematics => kinematics_evaluate_radiation_kinematics
      procedure :: compute_selected_channel => kinematics_compute_selected_channel
      procedure :: compute_other_channels => kinematics_compute_other_channels
      procedure :: get_incoming_momenta => kinematics_get_incoming_momenta
@@ -192,7 +197,7 @@ module processes
      type(kinematics_t) :: k_seed
      type(vector4_t), dimension(:), allocatable :: p_seed
      logical :: sqme_known = .false.
-     real(default) :: sqme = 0
+     real(default) :: sqme = zero
      class(prc_core_state_t), allocatable :: core_state
      type(nlo_controller_t), pointer :: nlo_controller => null ()
      integer :: nlo_type = BORN
@@ -204,6 +209,7 @@ module processes
      procedure :: setup_fks_kinematics => component_instance_setup_fks_kinematics
      procedure :: compute_seed_kinematics => &
           component_instance_compute_seed_kinematics
+     procedure :: redo_sf_chain => component_instance_redo_sf_chain
      procedure :: recover_mcpar => component_instance_recover_mcpar
      procedure :: compute_hard_kinematics => &
           component_instance_compute_hard_kinematics
@@ -212,20 +218,20 @@ module processes
      procedure :: compute_other_channels => &
           component_instance_compute_other_channels
      procedure :: return_beam_momenta => component_instance_return_beam_momenta
-     procedure :: supply_damping_factor => component_instance_supply_damping_factor
+     procedure :: apply_damping_factor => component_instance_apply_damping_factor
      procedure :: evaluate_sqme_born => component_instance_evaluate_sqme_born
      procedure :: compute_sqme_born_from_blha => component_instance_compute_sqme_born_from_blha
      procedure :: evaluate_sqme => component_instance_evaluate_sqme
      procedure :: evaluate_sqme_virt => component_instance_evaluate_sqme_virt
-     procedure :: evaluate_sqme_pdf => component_instance_evaluate_sqme_pdf 
+     procedure :: evaluate_sqme_mismatch => component_instance_evaluate_sqme_mismatch
+     procedure :: evaluate_sqme_dglap => component_instance_evaluate_sqme_dglap 
      procedure :: evaluate_sqme_real => component_instance_evaluate_sqme_real
+     procedure :: apply_subtraction => component_instance_apply_subtraction
      procedure :: get_nlo_type => component_instance_get_nlo_type
      procedure :: get_component_type => &
                       component_instance_get_component_type
      procedure :: get_n_particles => component_instance_get_n_particles 
      procedure :: get_lorentz_transformation => component_instance_get_lorentz_transformation
-     procedure :: set_component_type => &
-                      component_instance_set_component_type
   end type component_instance_t
   
   type :: term_instance_t
@@ -257,8 +263,8 @@ module processes
      procedure :: setup_expressions => term_instance_setup_expressions
      procedure :: setup_expressions_real => term_instance_setup_expressions_real
      procedure :: setup_event_data => term_instance_setup_event_data
-     procedure :: setup_real_interaction => term_instance_setup_real_interaction
      procedure :: evaluate_real_phase_space => term_instance_evaluate_real_phase_space
+     procedure :: update_real_interactions => term_instance_update_real_interactions
      procedure :: reset => term_instance_reset
      procedure :: set_alpha_qcd_forced => term_instance_set_alpha_qcd_forced
      procedure :: compute_eff_kinematics => &
@@ -269,14 +275,17 @@ module processes
           term_instance_evaluate_expressions
      procedure :: evaluate_interaction => term_instance_evaluate_interaction
      procedure :: evaluate_trace => term_instance_evaluate_trace
+     procedure :: evaluate_trace_real => term_instance_evaluate_trace_real
      procedure :: evaluate_event_data => term_instance_evaluate_event_data
      procedure :: evaluate_interaction_real &
-                  => term_instance_evaluate_interaction_real
+        => term_instance_evaluate_interaction_real
+     procedure :: evaluate_interaction_sub => term_instance_evaluate_interaction_sub
      procedure :: evaluate_interaction_real_rad => &
-                           term_instance_evaluate_interaction_real_rad
+        term_instance_evaluate_interaction_real_rad
      procedure :: set_fac_scale => term_instance_set_fac_scale
      procedure :: get_fac_scale => term_instance_get_fac_scale
      procedure :: get_alpha_s => term_instance_get_alpha_s
+     procedure :: reset_phs_identifiers => term_instance_reset_phs_identifiers
   end type term_instance_t
   
   type :: mci_work_t
@@ -284,6 +293,7 @@ module processes
      real(default), dimension(:), allocatable :: x
      class(mci_instance_t), pointer :: mci => null ()
      type(process_counter_t) :: counter
+     logical :: keep_failed_events = .false.
    contains
      procedure :: write => mci_work_write
      procedure :: final => mci_work_final
@@ -315,18 +325,13 @@ module processes
      type(term_instance_t), dimension(:), allocatable :: term
      type(mci_work_t), dimension(:), allocatable :: mci_work
      class(pcm_instance_t), allocatable :: pcm
-!     class(pcm_instance_t), allocatable :: sqme_collector
-!     type(nlo_controller_t), pointer :: nlo_controller => null()
-!     logical :: collect_matrix_elements = .false.
-!     integer :: active_real_component = 1
    contains
      procedure :: write_header => process_instance_write_header
      procedure :: write => process_instance_write
      procedure :: final => process_instance_final
      procedure :: reset => process_instance_reset
      procedure :: activate => process_instance_activate
-     procedure :: disable_virtual_components => &
-                  process_instance_disable_virtual_components
+     procedure :: get_associated_real => process_instance_get_associated_real
      procedure :: init => process_instance_init
      procedure :: init_nlo_configuration => &
           process_instance_init_nlo_configuration
@@ -361,7 +366,12 @@ module processes
      procedure :: evaluate_trace => process_instance_evaluate_trace
      procedure :: evaluate_event_data => process_instance_evaluate_event_data
      procedure :: evaluate_trace_real => process_instance_evaluate_trace_real
+     procedure :: evaluate_trace_real_for_phs &
+         => process_instance_evaluate_trace_real_for_phs
      procedure :: evaluate_trace_real_rad => process_instance_evaluate_trace_real_rad
+     procedure :: evaluate_trace_real_rad_sub => process_instance_evaluate_trace_real_rad_sub
+     procedure :: apply_fks_factors_for_powheg => &
+        process_instance_apply_fks_factors_for_powheg 
      procedure :: compute_sqme_real_rad => process_instance_compute_sqme_real_rad
      procedure :: compute_sqme_real_sub => process_instance_compute_sqme_real_sub
      procedure :: get_sqrts => process_instance_get_sqrts
@@ -382,6 +392,9 @@ module processes
      procedure :: get_trace_int_ptr => process_instance_get_trace_int_ptr
      procedure :: get_matrix_int_ptr => process_instance_get_matrix_int_ptr
      procedure :: get_flows_int_ptr => process_instance_get_flows_int_ptr
+     procedure :: get_trace_int_ptr_real => process_instance_get_trace_int_ptr_real
+     procedure :: get_matrix_int_ptr_real => process_instance_get_matrix_int_ptr_real
+     procedure :: get_flows_int_ptr_real => process_instance_get_flows_int_ptr_real
      procedure :: get_state_flv => process_instance_get_state_flv
      procedure :: get_isolated_state_ptr => &
           process_instance_get_isolated_state_ptr
@@ -400,16 +413,18 @@ module processes
      procedure :: record_call => process_instance_record_call
      procedure :: get_counter => process_instance_get_counter
      procedure :: get_actual_calls_total => process_instance_get_actual_calls_total
+     procedure :: reset_nlo_matrix_elements => process_instance_reset_nlo_matrix_elements
      procedure :: get_trace => process_instance_get_trace
      procedure :: set_trace => process_instance_set_trace
      procedure :: set_alpha_qcd_forced => process_instance_set_alpha_qcd_forced
-     procedure :: display_real_kinematics => &
-          process_instance_display_real_kinematics
      procedure :: has_nlo_component => process_instance_has_nlo_component
+     procedure :: keep_failed_events => process_instance_keep_failed_events
      procedure :: has_blha_component => process_instance_has_blha_component
+     procedure :: needs_extra_code => process_instance_needs_extra_code
      procedure :: get_fixed_emitter => process_instance_get_fixed_emitter
+     procedure :: get_coupling_powers => process_instance_get_coupling_powers
      procedure :: create_blha_interface => process_instance_create_blha_interface
-     procedure :: load_blha_libraries => process_instance_load_blha_libraries
+     procedure :: create_and_load_extra_libraries => process_instance_create_and_load_extra_libraries
      procedure :: get_lorentz_transformation => process_instance_get_lorentz_transformation
      procedure :: is_cm_frame => process_instance_is_cm_frame
   end type process_instance_t
@@ -525,7 +540,7 @@ module processes
      procedure :: write => process_mci_entry_write
      procedure :: init => process_mci_entry_init
      procedure :: create_component_list => &
-                        process_mci_entry_create_component_list
+        process_mci_entry_create_component_list
      procedure :: deactivate_real_component => &
         process_mci_entry_deactivate_real_component 
      procedure :: set_combined_integration => &
@@ -559,7 +574,7 @@ module processes
      type(process_component_def_t), pointer :: config => null ()
      integer :: index = 0
      class(prc_core_t), allocatable :: core
-     class(prc_core_t), pointer :: core_sub_born
+     class(prc_core_t), pointer :: core_sub_born => null ()
      logical :: active = .false.
      class(mci_t), allocatable :: mci_template
      integer, dimension(:), allocatable :: i_term
@@ -580,8 +595,9 @@ module processes
      procedure :: get_pdg_in => process_component_get_pdg_in
      procedure :: extract_phs_config => process_component_extract_phs_config
      procedure :: restore_phs_config => process_component_restore_phs_config
+     procedure :: get_nlo_type => process_component_get_nlo_type
      procedure :: needs_mci_entry => process_component_needs_mci_entry
-     procedure :: is_active_nlo_component => process_component_is_active_nlo_component
+     procedure :: is_active_component => process_component_is_active_component
   end type process_component_t
 
   type :: process_term_t
@@ -648,6 +664,7 @@ module processes
      procedure :: collect_channels => process_collect_channels
      procedure :: contains_trivial_component => process_contains_trivial_component
      procedure :: deactivate_real_component => process_deactivate_real_component
+     procedure :: deactivate_components => process_deactivate_components
      procedure :: i_mci_to_i_component => process_i_mci_to_i_component
      procedure :: setup_mci => process_setup_mci
      procedure :: set_cuts => process_set_cuts
@@ -689,7 +706,8 @@ module processes
      procedure :: get_component_associated_born &
                => process_get_component_associated_born
      procedure :: get_n_allowed_born => process_get_n_allowed_born
-     procedure :: is_active_nlo_component => process_is_active_nlo_component 
+     procedure :: is_active_component => process_is_active_component 
+     procedure :: extract_active_component => process_extract_active_component
      procedure :: uses_powheg_damping_factors => process_uses_powheg_damping_factors
      procedure :: get_md5sum_prc => process_get_md5sum_prc
      procedure :: get_md5sum_mci => process_get_md5sum_mci
@@ -927,8 +945,8 @@ contains
     end if
   end subroutine process_final
     
-  subroutine process_init &
-       (process, proc_id, run_id, lib, os_data, qcd, rng_factory, model)
+  subroutine process_init (process, proc_id, run_id, &
+       lib, os_data, qcd, rng_factory, model)
     class(process_t), intent(out) :: process
     type(string_t), intent(in) :: proc_id
     type(string_t), intent(in) :: run_id
@@ -947,7 +965,8 @@ contains
     end if
     associate (meta => process%meta)
       call meta%init (proc_id, run_id, lib)
-      call process%config%init (meta, os_data, qcd, rng_factory, model)
+      call process%config%init &
+           (meta, os_data, qcd, rng_factory, model)
       allocate (process%component (meta%n_components))
     end associate
     if (.not. lib%get_nlo_process (proc_id)) then
@@ -1177,20 +1196,25 @@ contains
                     rebuild, ignore_mismatch, verbose=verbose)
             class is (pcm_nlo_t)
                select case (component%config%get_nlo_type ())
-               case (BORN, NLO_VIRTUAL, NLO_SUBTRACTION, NLO_THRESHOLD_RESUMMATION)
+               case (BORN, NLO_VIRTUAL, NLO_SUBTRACTION)
                   call component%configure_phs (sqrts, process%beam_config, &
                        rebuild, ignore_mismatch, verbose=verbose)
                   call check_and_extend_phs (component, combined_integration)
-               case (NLO_REAL, NLO_PDF)
+               case (NLO_REAL, NLO_MISMATCH, NLO_DGLAP)
                   i_born = component%config%get_associated_born ()
                   call check_and_extend_phs (component, combined_integration)
                   call process%component(i_born)%extract_phs_config (phs_config_born)
-                  select type (phs_config_born)
-                  type is (phs_wood_config_t)
-                     call  component%configure_phs (sqrts, &
-                          process%beam_config, rebuild, ignore_mismatch, &
-                          phs_config_born, verbose=verbose)
+                  select type (config => component%phs_config)
+                  type is (phs_fks_config_t)
+                     select type (phs_config_born)
+                     type is (phs_wood_config_t)
+                        call config%set_born_config (phs_config_born)
+                        call config%set_mode (component%config%get_nlo_type ())
+                     end select
                   end select
+                  call component%configure_phs (sqrts, &
+                     process%beam_config, rebuild, ignore_mismatch, &
+                     verbose=verbose)
                   call process%component(i_born)%restore_phs_config (phs_config_born)
                end select
             class default
@@ -1202,17 +1226,15 @@ contains
   contains
     subroutine check_and_extend_phs (component, combined_integration)
       type(process_component_t), intent(inout) :: component
-      logical, intent(in), optional :: combined_integration
-      if (present (combined_integration)) then
-         if (combined_integration) then
-            select type (phs_config => component%phs_config)
-            type is (phs_wood_config_t)
-               call phs_config%set_extended_phs ()
-               call phs_config%increase_n_par ()
-            type is (phs_fks_config_t)
-               call phs_config%set_extended_phs ()
-            end select
-         end if
+      logical, intent(in) :: combined_integration
+      if (combined_integration) then
+         select type (phs_config => component%phs_config)
+         type is (phs_wood_config_t)
+            call phs_config%set_extended_phs ()
+            call phs_config%increase_n_par ()
+         type is (phs_fks_config_t)
+            call phs_config%set_extended_phs ()
+         end select
       end if
     end subroutine check_and_extend_phs
   end subroutine process_configure_phs
@@ -1289,9 +1311,9 @@ contains
   subroutine process_deactivate_real_component (process)
     class(process_t), intent(inout) :: process
     integer :: i
+    call process%mci_entry(1)%deactivate_real_component &
+       (process%component(1))
     do i = 1, process%meta%n_components
-       call process%mci_entry(1)%deactivate_real_component &
-          (process%component(i))
        select case (process%component(i)%component_type)
        case (COMP_REAL)
           process%component(i)%active = .false.
@@ -1299,6 +1321,18 @@ contains
     end do
   end subroutine process_deactivate_real_component
 
+  subroutine process_deactivate_components (process, fixed_mci)
+    class(process_t), intent(inout) :: process
+    integer, intent(in) :: fixed_mci
+    integer :: i_mci, i_component
+    do i_mci = 1, size (process%mci_entry)
+       if (i_mci /= fixed_mci) then
+          i_component = process%i_mci_to_i_component (i_mci)
+          process%component(i_component)%active = .false.
+       end if
+    end do
+  end subroutine process_deactivate_components
+ 
   function process_i_mci_to_i_component (process, i_mci) result (i_component)
      integer :: i_component
      class(process_t), intent(in) :: process
@@ -1433,7 +1467,6 @@ contains
     logical, intent(in), optional :: final, pacify
     call process%mci_entry(i_mci)%integrate (instance, n_it, n_calls, &
          adapt_grids, adapt_weights, final, pacify, i_mci)        
-    call instance%display_real_kinematics (i_mci)
   end subroutine process_integrate
 
   subroutine process_final_integration (process, i_mci)
@@ -1618,92 +1651,104 @@ contains
   end subroutine process_recover_event
 
   function process_has_integral_mci (process, i_mci) result (flag)
+    logical :: flag
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_mci
-    logical :: flag
     flag = process%mci_entry(i_mci)%has_integral ()
   end function process_has_integral_mci
 
   function process_has_integral_tot (process) result (flag)
-    class(process_t), intent(in) :: process
     logical :: flag
-    integer :: i
+    class(process_t), intent(in) :: process
+    integer :: i, j, i_component
     flag = .true.
     do i = 1, size (process%mci_entry)
-       if (process%is_active_nlo_component (i)) &
-          flag = flag .and. process%mci_entry(i)%has_integral ()
+       do j = 1, size (process%mci_entry(i)%i_component)
+          i_component = process%mci_entry(i)%i_component(j)
+          if (process%is_active_component (i_component)) &
+             flag = flag .and. process%mci_entry(i)%has_integral ()
+       end do
     end do
   end function process_has_integral_tot
   
   function process_get_integral_mci (process, i_mci) result (integral)
+    real(default) :: integral
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_mci
-    real(default) :: integral
     integral = process%mci_entry(i_mci)%get_integral ()
   end function process_get_integral_mci
   
   function process_get_error_mci (process, i_mci) result (error)
+    real(default) :: error
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_mci
-    real(default) :: error
     error = process%mci_entry(i_mci)%get_error ()
   end function process_get_error_mci
   
   function process_get_efficiency_mci (process, i_mci) result (efficiency)
+    real(default) :: efficiency
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_mci
-    real(default) :: efficiency
     efficiency = process%mci_entry(i_mci)%get_efficiency ()
   end function process_get_efficiency_mci
   
   function process_get_integral_tot (process) result (integral)
-    class(process_t), intent(in) :: process
     real(default) :: integral
-    integer :: i
-    integral = 0
+    class(process_t), intent(in) :: process
+    integer :: i, j, i_component
+    integral = zero
     if (allocated (process%mci_entry)) then
        do i = 1, size (process%mci_entry)
-          if (process%is_active_nlo_component(i)) &
-               integral = integral + process%mci_entry(i)%get_integral ()
+          do j = 1, size (process%mci_entry(i)%i_component)
+             i_component = process%mci_entry(i)%i_component(j)
+             if (process%is_active_component(i_component)) &
+                  integral = integral + process%mci_entry(i)%get_integral ()
+          end do
        end do
     end if
   end function process_get_integral_tot
   
   function process_get_error_tot (process) result (error)
+    real(default) :: variance
     class(process_t), intent(in) :: process
     real(default) :: error
-    real(default) :: variance
-    integer :: i
-    variance = 0
+    integer :: i, j, i_component
+    variance = zero
     if (allocated (process%mci_entry)) then
        do i = 1, size (process%mci_entry)
-          if (process%is_active_nlo_component(i)) &
-               variance = variance + process%mci_entry(i)%get_error () ** 2
+          do j = 1, size (process%mci_entry(i)%i_component)
+             i_component = process%mci_entry(i)%i_component(j)
+             if (process%is_active_component(i_component)) &
+                  variance = variance + process%mci_entry(i)%get_error () ** 2
+          end do
        end do
     end if
     error = sqrt (variance)
   end function process_get_error_tot
   
   function process_get_efficiency_tot (process) result (efficiency)
-    class(process_t), intent(in) :: process
     real(default) :: efficiency
+    class(process_t), intent(in) :: process
     real(default) :: den, eff, int
-    integer :: i
-    den = 0
+    integer :: i, j, i_component
+    den = zero
     if (allocated (process%mci_entry)) then
        do i = 1, size (process%mci_entry)
-          if (process%is_active_nlo_component(i)) then
-             int = process%get_integral (i)
-             if (int > 0) then
-                eff = process%mci_entry(i)%get_efficiency ()
-                if (eff > 0) then
-                   den = den + int / eff
-                else
-                   efficiency = 0
-                   return
+          do j = 1, size (process%mci_entry(i)%i_component)
+             i_component = process%mci_entry(i)%i_component(j)
+             if (process%is_active_component(i_component)) then
+                int = process%get_integral (i)
+                if (int > 0) then
+                   eff = process%mci_entry(i)%get_efficiency ()
+                   if (eff > 0) then
+                      den = den + int / eff
+                   else
+                      efficiency = 0
+                      return
+                   end if
                 end if
              end if
-          end if
+          end do
        end do
     end if
     if (den > 0) then
@@ -1714,30 +1759,35 @@ contains
   end function process_get_efficiency_tot
   
   function process_get_correction (process) result (ratio)
-    class(process_t), intent(in) :: process
     real(default) :: ratio
-    real(default) :: int_real, int_virt, int_born
+    class(process_t), intent(in) :: process
+    integer :: i_mci
+    real(default) :: int_born, int_nlo
+    int_nlo = zero
     int_born = process%mci_entry(1)%get_integral ()
-    int_real = process%mci_entry(2)%get_integral ()
-    int_virt = process%mci_entry(3)%get_integral ()
-    ratio = (int_real + int_virt) / int_born
+    do i_mci = 2, size (process%mci_entry)
+       if (process%is_active_component (i_mci)) &
+          int_nlo = int_nlo + process%mci_entry(i_mci)%get_integral ()
+    end do
+    ratio = int_nlo / int_born * 100
   end function process_get_correction
 
   function process_get_correction_error (process) result (error)
-    class(process_t), intent(in) :: process
     real(default) :: error
-    real(default) :: int_born, int_real, int_virt
-    real(default) :: err_born, err_real, err_virt
-    real(default) :: err2
+    class(process_t), intent(in) :: process
+    real(default) :: int_born, sum_int_nlo
+    real(default) :: err_born, err2
+    integer :: i_mci
+    sum_int_nlo = zero; err2 = zero
     int_born = process%mci_entry(1)%get_integral ()
-    int_real = process%mci_entry(2)%get_integral ()
-    int_virt = process%mci_entry(3)%get_integral ()
     err_born = process%mci_entry(1)%get_error ()
-    err_real = process%mci_entry(2)%get_error ()
-    err_virt = process%mci_entry(3)%get_error ()
-    err2 = (int_real + int_virt)**2 / int_born**4 * err_born**2 &
-             + (err_real**2 + err_virt**2) / int_born**2
-    error = sqrt (err2)
+    do i_mci = 2, size (process%mci_entry)
+       if (process%is_active_component (i_mci)) then
+          sum_int_nlo = sum_int_nlo + process%mci_entry(i_mci)%get_integral ()
+          err2 = err2 + process%mci_entry(i_mci)%get_error()**2
+       end if
+    end do 
+    error = sqrt (err2 / int_born**2 + sum_int_nlo**2 * err_born**2 / int_born**4) * 100
   end function process_get_correction_error
 
   subroutine process_component_reset_helicity(proc, i)
@@ -1756,8 +1806,8 @@ contains
   end subroutine process_component_reset_helicity
 
   function process_is_nlo_calculation (process) result (nlo)
-    class(process_t), intent(in) :: process
     logical :: nlo
+    class(process_t), intent(in) :: process
     select type (pcm => process%pcm)
     class is (pcm_nlo_t)
        nlo = .true.
@@ -1766,11 +1816,11 @@ contains
     end select
   end function process_is_nlo_calculation
 
-  function process_get_component_nlo_type (process, i_component) &
+  elemental function process_get_component_nlo_type (process, i_component) &
            result (nlo_type)
+    integer :: nlo_type
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_component
-    integer :: nlo_type
     nlo_type = process%component(i_component)%config%get_nlo_type ()
   end function process_get_component_nlo_type
 
@@ -1790,16 +1840,43 @@ contains
 
   end function process_get_n_allowed_born
 
-  function process_is_active_nlo_component (process, i_component) &
+  function process_is_active_component (process, i_component) &
            result (active)
+    logical :: active
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_component
-    logical :: active
     associate (component => process%component(i_component))
-       active = component%is_active_nlo_component () &
+       active = component%is_active_component () &
                 .and. component%component_type <= COMP_MASTER
     end associate
-  end function process_is_active_nlo_component
+  end function process_is_active_component
+
+  function process_extract_active_component (process) result (i_active)
+    integer :: i_active
+    class(process_t), intent(in) :: process
+    integer :: i_mci, j, i_component, n_active
+    call count_n_active ()
+    if (n_active /= 1) i_active = 0
+  contains
+    subroutine count_n_active ()
+       n_active = 0
+       do i_mci = 1, size (process%mci_entry)
+          associate (mci_entry => process%mci_entry(i_mci))
+             do j = 1, size (mci_entry%i_component)
+                i_component = mci_entry%i_component(j)
+                associate (component => process%component (i_component))
+                   if (component%is_active_component () .and. &
+                      component%component_type <= COMP_MASTER .and. &
+                      component%get_nlo_type () /= NLO_SUBTRACTION) then
+                      i_active = i_mci
+                      n_active = n_active + 1
+                   end if
+                end associate
+             end do
+          end associate
+       end do
+    end subroutine count_n_active
+  end function process_extract_active_component
 
   function process_uses_powheg_damping_factors (process) result (val)
      logical :: val
@@ -1808,9 +1885,9 @@ contains
   end function process_uses_powheg_damping_factors
 
   function process_get_md5sum_prc (process, i_component) result (md5sum)
+    character(32) :: md5sum
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_component
-    character(32) :: md5sum
     if (process%component(i_component)%active) then
        md5sum = process%component(i_component)%config%get_md5sum ()
     else
@@ -1819,15 +1896,15 @@ contains
   end function process_get_md5sum_prc
     
   function process_get_md5sum_mci (process, i_mci) result (md5sum)
+    character(32) :: md5sum
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_mci
-    character(32) :: md5sum
     md5sum = process%mci_entry(i_mci)%get_md5sum ()
   end function process_get_md5sum_mci
     
   function process_get_md5sum_cfg (process) result (md5sum)
-    class(process_t), intent(in) :: process
     character(32) :: md5sum
+    class(process_t), intent(in) :: process
     md5sum = process%config%md5sum
   end function process_get_md5sum_cfg
 
@@ -1932,7 +2009,7 @@ contains
           else
              write (u, "(5x,I0,9A)")  i, ": '", &
                   char (meta%component_id (i)), "':   ", &
-                  char (meta%component_description (i))             
+                  char (meta%component_description (i))
           end if
        end do
     end if
@@ -1940,7 +2017,7 @@ contains
        write (msg_buffer, "(A)")  repeat ("-", 72)
        call msg_message ()
     else
-       call write_separator (u)       
+       call write_separator (u)
     end if
     if (screen)  return
     if (var_list) then
@@ -2302,13 +2379,12 @@ contains
     class(process_beam_config_t), intent(in) :: beam_config
     integer :: pdf_set
     integer :: i
+    pdf_set = 0
     if (allocated (beam_config%sf)) then
        do i = 1, size (beam_config%sf)
           pdf_set = beam_config%sf(i)%get_pdf_set ()
           if (pdf_set /= 0)  return
        end do
-    else
-       pdf_set = 0
     end if
   end function process_beam_config_get_pdf_set
   
@@ -2335,7 +2411,7 @@ contains
        write (u, "(3x,A,I0)")  "total       = ", object%total
        write (u, "(3x,A,I0)")  "failed kin. = ", object%failed_kinematics
        write (u, "(3x,A,I0)")  "failed cuts = ", object%failed_cuts
-       write (u, "(3x,A,I0)")  "passed cuts = ", object%passed
+       write (u, "(3x,A,I0)")  "passed cuts = ", object%has_passed
        write (u, "(3x,A,I0)")  "evaluated   = ", object%evaluated
     else
        write (u, "(1x,A)")  "Call statistics (current run): [no calls]"
@@ -2354,7 +2430,7 @@ contains
     else if (status <= STAT_FAILED_CUTS) then
        counter%failed_cuts = counter%failed_cuts + 1
     else if (status <= STAT_PASSED_CUTS) then
-       counter%passed = counter%passed + 1
+       counter%has_passed = counter%has_passed + 1
     else
        counter%evaluated = counter%evaluated + 1
     end if
@@ -2434,7 +2510,7 @@ contains
   end subroutine process_mci_entry_init
   
   subroutine process_mci_entry_create_component_list (mci_entry, &
-                                     i_component, component)
+     i_component, component)
     class (process_mci_entry_t), intent(inout) :: mci_entry
     integer, intent(in) :: i_component
     type(process_component_t), intent(in), target :: component
@@ -2483,13 +2559,20 @@ contains
     class(process_mci_entry_t), intent(inout) :: mci_entry
     type(process_component_t), intent(in), target :: component
     integer, dimension(:), allocatable :: i_list
+    integer :: n_component_old, i, j
     if (allocated (mci_entry%i_component)) then
+       n_component_old = size (mci_entry%i_component)
        deallocate (mci_entry%i_component)
-       allocate (mci_entry%i_component (2))
+       allocate (mci_entry%i_component (n_component_old - 1))
        allocate (i_list (size (component%config%get_association_list ())))
        i_list = component%config%get_association_list ()
-       mci_entry%i_component(1) = i_list(1)
-       mci_entry%i_component(2) = i_list(3)
+       j = 1
+       do i = 1, n_component_old
+          if (i_list(i) /= 2) then
+             mci_entry%i_component(j) = i_list(i)
+             j = j + 1
+          end if
+       end do
     else
        call msg_fatal ("Trying to reset deallocated component list")
     end if
@@ -2565,12 +2648,11 @@ contains
     integer, intent(in), optional :: i_component
     integer :: u_log
     integer :: nlo_type
+    nlo_type = BORN
     if (present (i_component)) then
       if (associated (instance%component(i_component)%config)) then
         nlo_type = instance%component(i_component)%config%config%get_nlo_type ()
       end if
-    else
-      nlo_type = BORN
     end if
     u_log = logfile_unit ()
     call instance%choose_mci (mci_entry%i_mci)
@@ -2586,7 +2668,7 @@ contains
     call mci_entry%results%new_pass ()
     associate (mci_instance => instance%mci_work(mci_entry%i_mci)%mci)
       select case (nlo_type)
-      case (NLO_VIRTUAL, NLO_REAL, NLO_PDF)
+      case (NLO_VIRTUAL, NLO_REAL, NLO_MISMATCH, NLO_DGLAP)
          mci_instance%negative_weights = .true.
       end select
       call mci_entry%mci%add_pass (adapt_grids, adapt_weights, final)
@@ -2639,12 +2721,22 @@ contains
   subroutine process_mci_entry_generate_weighted_event (mci_entry, instance)
     class(process_mci_entry_t), intent(inout) :: mci_entry
     type(process_instance_t), intent(inout) :: instance
+    logical :: generate_new
     call instance%choose_mci (mci_entry%i_mci)
+    generate_new = .true.
     associate (mci_instance => instance%mci_work(mci_entry%i_mci)%mci)
-      REJECTION: do
+      REJECTION: do while (generate_new)
          call mci_entry%mci%generate_weighted_event (mci_instance, instance)
          if (signal_is_pending ())  return
-         if (instance%is_valid ())  exit REJECTION
+         if (.not. instance%is_valid()) then
+            if (instance%keep_failed_events ()) then
+               generate_new = .false.
+            else
+               generate_new = .true.
+            end if
+         else
+            generate_new = .false.
+         end if
       end do REJECTION
     end associate
   end subroutine process_mci_entry_generate_weighted_event
@@ -2775,10 +2867,11 @@ contains
     class(phs_config_t), intent(in), allocatable :: phs_config_template
     type(blha_template_t), intent(inout), optional :: blha_template
     type(fks_template_t), intent(in), optional :: fks_template
+    logical :: activate_blha
 
     component%index = i_component
     component%config => meta%lib%get_component_def_ptr (meta%id, i_component)
-    allocate (component%core, source=core_template)
+    allocate (component%core, source = core_template)
     call component%core%init (component%config%get_core_def_ptr (), &
          meta%lib, meta%id, i_component)
     if (present (fks_template)) then
@@ -2786,12 +2879,14 @@ contains
     end if
     select type (core => component%core)
     class is (prc_blha_t)
-       if (component%config%is_active_nlo_component()) then
+       activate_blha = component%config%is_active_component () &
+          .or. component%config%get_nlo_type () == NLO_SUBTRACTION
+       if (activate_blha) then
           if (present (blha_template)) then
              call core%init_blha (blha_template)
           else
-             call msg_bug ("process_component_init: BLHA core cannot be initialized - &
-                           & missing template")
+             call msg_bug ("process_component_init: BLHA core cannot " // &
+                  "be initialized - missing template")
           end if
           call core%init_driver (config%os_data)
        end if
@@ -2799,7 +2894,7 @@ contains
     component%active = component%core%has_matrix_element ()
     if (component%active) then
        if (allocated (mci_template)) &
-            allocate (component%mci_template, source=mci_template)
+          allocate (component%mci_template, source=mci_template)
        allocate (component%phs_config, source=phs_config_template)
        call component%phs_config%init (component%core%data, config%model)
     end if
@@ -2807,26 +2902,18 @@ contains
 
   subroutine process_component_configure_phs &
        (component, sqrts, beam_config, rebuild, &
-        ignore_mismatch, phs_config, verbose)
+        ignore_mismatch, verbose)
     class(process_component_t), intent(inout) :: component
     real(default), intent(in) :: sqrts
     type(process_beam_config_t), intent(in) :: beam_config
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(phs_wood_config_t), intent(in), optional, target :: phs_config
     logical, intent(in), optional :: verbose
     logical :: no_strfun, verb
     integer :: nlo_type
     no_strfun = beam_config%n_strfun == 0
     verb = .true.;  if (present (verbose))  verb = verbose
     nlo_type = component%config%get_nlo_type ()
-    if (present (phs_config)) then
-       select type (config => component%phs_config)
-       type is (phs_fks_config_t)
-          call config%set_born_config (phs_config)
-          call config%set_mode (nlo_type)
-       end select
-    end if
     call component%phs_config%configure (sqrts, &
          azimuthal_dependence = beam_config%azimuthal_dependence, &
          sqrts_fixed = no_strfun, &
@@ -2886,6 +2973,12 @@ contains
     class(phs_config_t), intent(inout), allocatable :: phs_config
     call move_alloc (from = phs_config, to = component%phs_config)
   end subroutine process_component_restore_phs_config
+
+  function process_component_get_nlo_type (component) result (nlo_type)
+     integer :: nlo_type
+     class(process_component_t), intent(in) :: component
+     nlo_type = component%config%get_nlo_type ()
+  end function process_component_get_nlo_type
 
   subroutine process_term_write (term, unit)
     class(process_term_t), intent(in) :: term
@@ -3453,7 +3546,7 @@ contains
        write (u, "(2x,ES19.12)")  object%phs_factor
        write (u, "(1x,A)")  "Jacobian factors per channel:"
        do c = 1, size (object%f)
-          write (u, "(3x,I0,':',1x,ES13.7)", advance="no")  c, object%f(c)
+          write (u, "(3x,I0,':',1x,ES14.7)", advance="no")  c, object%f(c)
           if (c == object%selected_channel) then
              write (u, "(1x,A)")  "[selected]"
           else
@@ -3546,6 +3639,25 @@ contains
     k%f => k_in%f
   end subroutine kinematics_init_ptr
   
+  subroutine kinematics_evaluate_radiation_kinematics (k, r_in, reg_data)
+    class(kinematics_t), intent(inout) :: k
+    real(default), intent(in), dimension(:) :: r_in
+    type(region_data_t), intent(in) :: reg_data
+    logical :: use_contributors
+    use_contributors = allocated (reg_data%alr_contributors)
+    select type (phs => k%phs)
+    type is (phs_fks_t)
+       if (use_contributors) then
+          call phs%compute_xi_ref_momenta (reg_data%alr_contributors)
+       else
+          call phs%compute_xi_ref_momenta ()
+       end if
+       call phs%generate_radiation_variables & 
+          (r_in(phs%n_r_born + 1 : phs%n_r_born + 3))
+       call phs%compute_cms_energy ()
+    end select
+  end subroutine kinematics_evaluate_radiation_kinematics
+
   subroutine kinematics_compute_selected_channel &
        (k, mci_work, phs_channel, p, success)
     class(kinematics_t), intent(inout) :: k
@@ -3738,9 +3850,9 @@ contains
       n_in = core%data%n_in
       n_tot = n_in + core%data%n_out
       select case (nlo_type)
-      case (NLO_REAL)
-        allocate (component%p_seed (n_tot-1))
-      case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_SUBTRACTION, NLO_THRESHOLD_RESUMMATION)
+      case (NLO_REAL, NLO_MISMATCH)
+        allocate (component%p_seed (n_tot - 1))
+      case (BORN, NLO_VIRTUAL, NLO_DGLAP, NLO_SUBTRACTION)
         allocate (component%p_seed (n_tot))
       end select
       call core%allocate_workspace (component%core_state)
@@ -3748,7 +3860,7 @@ contains
   end subroutine component_instance_init
 
   subroutine component_instance_setup_kinematics (component, sf_chain, config, &
-                                                  combined_integration)
+     combined_integration)
     class(component_instance_t), intent(inout) :: component
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_beam_config_t), intent(in) :: config
@@ -3767,17 +3879,23 @@ contains
          (component%config%core, sf_chain, config, component%core_state)
     call component%k_seed%init_phs (component%config%phs_config)
     call component%k_seed%set_nlo_info (nlo_type)
+    select type (phs => component%k_seed%phs)
+    type is (phs_fks_t)
+       call phs%init_phs_identifiers (component%nlo_controller%reg_data)
+       call component%nlo_controller%set_alr_to_i_phs (phs%phs_identifiers)
+    end select
   end subroutine component_instance_setup_kinematics
 
-  subroutine component_instance_setup_fks_kinematics (component, var_list)
+  subroutine component_instance_setup_fks_kinematics (component, var_list, mode)
     class(component_instance_t), intent(inout), target :: component
     type(var_list_t), intent(in) :: var_list
+    integer, intent(in), optional :: mode
     logical :: singular_jacobian
     singular_jacobian = var_list%get_lval (var_str ("?powheg_use_singular_jacobian"))
     select type (phs => component%k_seed%phs)
     type is (phs_fks_t)
        call component%nlo_controller%setup_generator &
-            (phs%generator, phs%config%sqrts, singular_jacobian)
+            (phs%generator, phs%config%sqrts, singular_jacobian, mode)
     class default 
        call msg_fatal ("Phase space should be an FKS phase space!")
     end select
@@ -3794,16 +3912,30 @@ contains
     type is (phs_fks_t)
        call component%k_seed%compute_selected_channel &
             (mci_work, phs_channel, component%p_seed, success)
+       if (phs%mode == PHS_MODE_ADDITIONAL_PARTICLE) &
+          call component%k_seed%evaluate_radiation_kinematics (mci_work%get_x_process (), &
+             component%nlo_controller%reg_data)
        sf_channel = component%k_seed%phs%config%get_sf_channel (phs_channel)
        call component%nlo_controller%sf_born%compute_kinematics (sf_channel, mci_work%get_x_strfun ())
-       call component%nlo_controller%int_born%set_momenta &
-            (component%p_seed)
+       if (success) &
+          call component%nlo_controller%int_born%set_momenta (component%p_seed)
     class default
        call component%k_seed%compute_selected_channel &
             (mci_work, phs_channel, component%p_seed, success)
     end select
   end subroutine component_instance_compute_seed_kinematics
     
+  subroutine component_instance_redo_sf_chain (component, mci_work, phs_channel)
+    class(component_instance_t), intent(inout) :: component
+    type(mci_work_t), intent(in) :: mci_work
+    integer, intent(in) :: phs_channel
+    integer :: sf_channel
+    associate (k => component%k_seed)
+       sf_channel = k%phs%config%get_sf_channel (phs_channel)
+       call k%sf_chain%compute_kinematics (sf_channel, mci_work%get_x_strfun ())
+    end associate
+  end subroutine component_instance_redo_sf_chain
+
   subroutine component_instance_recover_mcpar (component, mci_work, phs_channel)
     class(component_instance_t), intent(inout), target :: component
     type(mci_work_t), intent(inout) :: mci_work
@@ -3875,50 +4007,47 @@ contains
     call component%k_seed%return_beam_momenta ()
   end subroutine component_instance_return_beam_momenta
     
-  subroutine component_instance_supply_damping_factor (component, sqme)
+  subroutine component_instance_apply_damping_factor (component, sqme)
     class(component_instance_t), intent(in) :: component
     real(default), intent(inout) :: sqme
     real(default) :: E_gluon
     integer :: nlegs
     associate (nlo_controller => component%nlo_controller)
-       nlegs = nlo_controller%particle_data%n_in + nlo_controller%particle_data%n_out_real
-       E_gluon = nlo_controller%real_kinematics%p_real_lab(nlegs)%p(0)
        select case (component%config%component_type)
-       case (COMP_REAL_FIN)
-          sqme = sqme * (one - nlo_controller%powheg_damping%get_f (E_gluon))
-       case (COMP_REAL_SING)
-          sqme = sqme * nlo_controller%powheg_damping%get_f (E_gluon)
+       case (COMP_REAL_FIN, COMP_REAL_SING)
+          nlegs = nlo_controller%particle_data%n_in + nlo_controller%particle_data%n_out_real
+          E_gluon = energy (nlo_controller%real_kinematics%p_real_lab%phs_point(1)%p(nlegs))
+          select case (component%config%component_type)
+          case (COMP_REAL_FIN)
+             sqme = sqme * (one - nlo_controller%powheg_damping%get_f (E_gluon))
+          case (COMP_REAL_SING)
+             sqme = sqme * nlo_controller%powheg_damping%get_f (E_gluon)
+          end select
        end select
     end associate
-  end subroutine component_instance_supply_damping_factor
+  end subroutine component_instance_apply_damping_factor
 
-  subroutine component_instance_evaluate_sqme_born (component, term, set_me)
+  subroutine component_instance_evaluate_sqme_born (component, term, not_virtual, pure_born)
     class(component_instance_t), intent(inout) :: component
     type(term_instance_t), intent(inout), target :: term
-    logical, intent(out) :: set_me
+    logical, intent(out) :: not_virtual, pure_born
     real(default) :: sqme
     integer :: n_flv, i_flv
-
-    if (term%nlo_type == NLO_VIRTUAL) then
-       set_me = .false.
-       return
-    else
-       set_me = .true.
-    end if
-
+    not_virtual = term%nlo_type /= NLO_VIRTUAL
+    pure_born = term%nlo_type == BORN
+    if (.not. not_virtual) return
     i_flv = 1
     sqme = zero
-
-    if (term%nlo_type == NLO_REAL) then
+    if (term%nlo_type == NLO_REAL .or. term%nlo_type == NLO_MISMATCH) then
        select type (core => component%config%core_sub_born)
        class is (prc_blha_t)
           sqme = component%compute_sqme_born_from_blha (core, i_flv, term, .true.)
        class is (prc_user_defined_base_t)
-          sqme = core%compute_sqme (i_flv, term%int_hard%get_momenta ())
+          sqme = core%compute_sqme (i_flv, term%nlo_controller%int_born%get_momenta ())
        class default
           sqme = real (term%connected%trace%get_matrix_element (1))
        end select
-    else 
+    else
        select type (core => component%config%core)
        class is (prc_blha_t)
           n_flv = term%config%data%n_flv
@@ -3936,7 +4065,7 @@ contains
        end select
     end if
     component%sqme = sqme * term%weight
-  end subroutine component_instance_evaluate_sqme_born    
+  end subroutine component_instance_evaluate_sqme_born
 
   function component_instance_compute_sqme_born_from_blha &
      (component, core, i_flv, term, subtraction) result (sqme)
@@ -3957,15 +4086,15 @@ contains
            term%ren_scale, sqme, bad_point)
      end if
 
-     call core%apply_structure_functions (component%k_seed%sf_chain, term%config%data%flv_state (1:2,i_flv)) 
+     call core%apply_structure_functions (component%k_seed%sf_chain, &
+          term%config%data%flv_state (1:2,i_flv))
      sqme = sqme * core%get_sf_value ()
-    
   end function component_instance_compute_sqme_born_from_blha
 
   subroutine component_instance_evaluate_sqme (component, term)
     class(component_instance_t), intent(inout) :: component
     type(term_instance_t), dimension(:), intent(inout), target :: term
-    logical :: set_me
+    logical :: not_virtual, pure_born
     integer :: j, i
 
     component%sqme = zero
@@ -3974,12 +4103,15 @@ contains
       do j = 1, size (i_term)
          i = i_term(j)
          if (term(i)%passed) then
-            call component%evaluate_sqme_born (term(i), set_me)
-            if (set_me) &
-               call associate_sqme_born (component, component%sqme * term(i)%weight, 1)
-            call component%evaluate_sqme_real (term(i))
+            call component%evaluate_sqme_born (term(i), not_virtual, pure_born)
+            if (pure_born) &
+               call set_pure_born (component, component%sqme * term(i)%weight, 1) 
+            if (not_virtual) &
+               call set_subtraction_born (component, component%sqme * term(i)%weight, 1)
+            call component%evaluate_sqme_real (term(i), 1)
             call component%evaluate_sqme_virt (term(i))
-            call component%evaluate_sqme_pdf (term(i))
+            call component%evaluate_sqme_mismatch (term(i))
+            call component%evaluate_sqme_dglap (term(i))
          end if
       end do
     end associate
@@ -3989,23 +4121,29 @@ contains
   subroutine reset_nlo_components (component)
      type(component_instance_t), intent(inout) :: component
      select case (component%config%config%get_nlo_type ())
-     case (NLO_REAL, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
+     case (NLO_REAL, NLO_VIRTUAL, NLO_DGLAP, NLO_MISMATCH)
         associate (collector => component%nlo_controller%sqme_collector)
-           collector%sqme_real_non_sub = 0
+           collector%sqme_real_non_sub = zero
         end associate
      end select
   end subroutine reset_nlo_components
 
-  subroutine associate_sqme_born (component, summand, i_flv, i_hel)
-     type(component_instance_t), intent(inout) :: component
-     real(default), intent(in) :: summand
-     integer, intent(in) :: i_flv
-     integer, intent(in), optional :: i_hel
-     if (debug_active (D_SUBTRACTION)) &
-        call msg_debug (D_SUBTRACTION, "Associate Born matrix element", i_flv)
-     if (associated (component%nlo_controller)) &
-        component%nlo_controller%sqme_collector%sqme_born_list(i_flv) = summand
-  end subroutine associate_sqme_born
+  subroutine set_subtraction_born (component, sqme_born, i_flv)
+    type(component_instance_t), intent(inout) :: component
+    real(default), intent(in) :: sqme_born
+    integer, intent(in) :: i_flv
+    if (associated (component%nlo_controller)) &
+        component%nlo_controller%sqme_collector%sqme_subtraction_born_list (i_flv) &
+           = sqme_born
+  end subroutine set_subtraction_born
+
+  subroutine set_pure_born (component, sqme_born, i_flv)
+    type(component_instance_t), intent(inout) :: component
+    real(default), intent(in) :: sqme_born
+    integer, intent(in) :: i_flv
+    if (associated (component%nlo_controller)) &
+       component%nlo_controller%sqme_collector%sqme_born_list (i_flv) = sqme_born
+  end subroutine set_pure_born
 
   subroutine component_instance_evaluate_sqme_virt (component, term)
      class(component_instance_t), intent(inout) :: component
@@ -4017,47 +4155,48 @@ contains
      if (term%nlo_type /= NLO_VIRTUAL) return
      associate (nlo_controller => component%nlo_controller)
 
-        if (debug_active (D_VIRTUAL)) then
-           call msg_debug (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
+        if (debug2_active (D_VIRTUAL)) then
+           call msg_debug2 (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
            print *, 'alpha_s: ', component%config%core%get_alpha_s (component%core_state)
            print *, 'ren_scale: ', term%ren_scale
            print *, 'fac_scale: ', term%fac_scale
         end if
 
         call nlo_controller%set_alpha_s_born &
-                  (component%config%core%get_alpha_s (component%core_state))
+           (component%config%core%get_alpha_s (component%core_state))
         call nlo_controller%virtual_terms%set_ren_scale &
-                   (term%int_hard%get_momenta (), term%ren_scale) 
+           (term%int_hard%get_momenta (), term%ren_scale) 
         call nlo_controller%virtual_terms%set_fac_scale &
-                   (term%int_hard%get_momenta (), term%fac_scale)
+           (term%int_hard%get_momenta (), term%fac_scale)
+        call nlo_controller%virtual_terms%set_ellis_sexton_scale ()
         select type (core => component%config%core)
         class is (prc_user_defined_base_t)
            call core%update_alpha_s (component%core_state, term%fac_scale)
            do i_flv = 1, core%get_nflv()
-                 if (nlo_controller%beams_are_polarized ()) then
-                   do i_hel = 0, 3
-                      call compute_sqme_virt_single_helicity (core, component, term, &
-                         i_flv, i_hel, sqme_virt, bad_point)
-                      call nlo_controller%virtual_terms%set_vfin (sqme_virt(3))
-                      call nlo_controller%virtual_terms%set_bad_point (bad_point)
-                      nlo_controller%sqme_collector%sqme_virt_born_list (i_flv, i_hel+1) = sqme_virt (4)
-                      nlo_controller%sqme_collector%sqme_virt_list (i_flv, i_hel+1) = &
-                         nlo_controller%compute_virt (i_flv, i_hel+1, term%int_hard%get_momenta ()) * term%weight
-                    end do
-                 else
-                    call compute_sqme_virt_all_helicities (core, component, term, &
-                       i_flv, sqme_virt, bad_point)
-                    call nlo_controller%virtual_terms%set_vfin (sqme_virt(3))
-                    call nlo_controller%virtual_terms%set_bad_point (bad_point)
-                    nlo_controller%sqme_collector%sqme_virt_born_list (i_flv, 1) = sqme_virt (4)             
-                    nlo_controller%sqme_collector%sqme_virt_list (i_flv, 1) = &
-                       nlo_controller%compute_virt (i_flv, 1, term%int_hard%get_momenta ()) * term%weight
-                 end if
-           end do   
+              if (nlo_controller%beams_are_polarized ()) then
+                do i_hel = 0, nlo_controller%particle_data%n_in * 2 - 1
+                   call compute_sqme_virt_single_helicity (core, component, term, &
+                      i_flv, i_hel, sqme_virt, bad_point)
+                   call nlo_controller%virtual_terms%set_vfin (sqme_virt(3))
+                   call nlo_controller%virtual_terms%set_bad_point (bad_point)
+                   nlo_controller%sqme_collector%sqme_virt_born_list (i_flv, i_hel + 1) = sqme_virt (4)
+                   nlo_controller%sqme_collector%sqme_virt_list (i_flv, i_hel + 1) = &
+                      nlo_controller%compute_virt (i_flv, i_hel + 1, term%int_hard%get_momenta ()) * term%weight
+                 end do
+              else
+                 call compute_sqme_virt_all_helicities (core, component, term, &
+                    i_flv, sqme_virt, bad_point)
+                 call nlo_controller%virtual_terms%set_vfin (sqme_virt(3))
+                 call nlo_controller%virtual_terms%set_bad_point (bad_point)
+                 nlo_controller%sqme_collector%sqme_virt_born_list (i_flv, 1) = sqme_virt (4)
+                 nlo_controller%sqme_collector%sqme_virt_list (i_flv, 1) = &
+                    nlo_controller%compute_virt (i_flv, 1, term%int_hard%get_momenta ()) * term%weight
+              end if
+           end do
         end select
 
         if (nlo_controller%beams_are_polarized ()) then
-           do i_hel = 1, 4
+           do i_hel = 1, nlo_controller%particle_data%n_in * 2
               call nlo_controller%pol_sqme(i_hel)%set_value &
                  (sum (nlo_controller%sqme_collector%sqme_virt_list (:,i_hel)))
            end do
@@ -4078,28 +4217,26 @@ contains
      logical, intent(out) :: bad_point
      type(vector4_t), dimension(:), allocatable :: p
      real(default) :: ren_scale
-    
+     call msg_debug2 (D_PROCESS_INTEGRATION, &
+          "compute_sqme_virt_single_helicity: term%ren_scale", term%ren_scale)
      allocate (p (size (term%int_hard%get_momenta ())))
      p = term%int_hard%get_momenta ()
      ren_scale = term%ren_scale
-    
+
      call core%compute_sqme_virt (i_flv + i_hel, p, ren_scale, &
         sqme_virt, bad_point)
      call core%apply_structure_functions (component%k_seed%sf_chain, &
-        term%config%data%flv_state (1:2,i_flv))
+        term%config%data%flv_state (1 : 2,i_flv))
      sqme_virt = sqme_virt * core%get_sf_value ()
 
-     if (debug_active (D_VIRTUAL)) then
-     end if
-
      associate (nlo_controller => component%nlo_controller)
-        if (.not. nlo_controller%use_internal_color_correlations) &
+        if (.not. nlo_controller%settings%use_internal_color_correlations) &
            call core%compute_sqme_cc (i_flv + i_hel, p, ren_scale, &
               born_cc = nlo_controller%sqme_collector%sqme_born_cc (:,:,i_flv), &
               bad_point = bad_point)
      end associate
   end subroutine compute_sqme_virt_single_helicity
-        
+
   subroutine compute_sqme_virt_all_helicities (core, component, term, &
       i_flv, sqme_virt, bad_point)
     class(prc_user_defined_base_t), intent(inout) :: core
@@ -4108,113 +4245,134 @@ contains
     integer, intent(in) :: i_flv
     real(default), intent(out), dimension(4) :: sqme_virt
     logical, intent(out) :: bad_point
-    
     call compute_sqme_virt_single_helicity (core, component, term, &
        i_flv, 0, sqme_virt, bad_point)
   end subroutine compute_sqme_virt_all_helicities
 
-  subroutine component_instance_evaluate_sqme_pdf (component, term)
+  subroutine component_instance_evaluate_sqme_mismatch (component, term)
     class(component_instance_t), intent(inout) :: component
     type(term_instance_t), intent(inout) :: term
-    if (term%nlo_type /= NLO_PDF) return
+    logical :: bad_point
+    if (term%nlo_type /= NLO_MISMATCH) return
     associate (nlo_controller => component%nlo_controller)
-       if (.not. nlo_controller%pdf_subtraction_is_required ()) then
-          component%sqme = 0._default
+       select type (core_sub_born => component%config%core_sub_born)
+       class is (prc_blha_t)
+          call core_sub_born%update_alpha_s &
+             (component%core_state, term%fac_scale)
+       end select
+       call nlo_controller%set_alpha_s_born &
+          (component%config%core_sub_born%get_alpha_s (component%core_state))
+       call term%nlo_controller%evaluate_color_correlations &
+          (component%config%core_sub_born, component%core_state, &
+          term%fac_scale, 1, bad_point)
+       call nlo_controller%compute_sqme_mismatch ()
+       component%sqme = nlo_controller%sqme_collector%sqme_mismatch
+       !!! mismatch might vanish if the exponents get large with smaller precisions
+       !!! TODO: (cw 2016-03-29) Check whether this problem also occurs for higher precisions.
+       nlo_controller%nlo_cuts%passed_born = .not. vanishes (component%sqme)
+    end associate
+  end subroutine component_instance_evaluate_sqme_mismatch
+
+  subroutine component_instance_evaluate_sqme_dglap (component, term)
+    class(component_instance_t), intent(inout) :: component
+    type(term_instance_t), intent(inout) :: term
+    if (term%nlo_type /= NLO_DGLAP) return
+    associate (nlo_controller => component%nlo_controller)
+       if (.not. nlo_controller%dglap_remnant_is_required ()) then
+          component%sqme = zero
           return
        end if
        call nlo_controller%set_alpha_s_born &
                  (component%config%core%get_alpha_s (component%core_state))
-       call nlo_controller%evaluate_pdf_subtraction (component%sqme)
+       call nlo_controller%evaluate_dglap_remnant (component%sqme)
+       !!! TODO: (cw 2016-04-26) Use correct i_flv_born
+       component%sqme = nlo_controller%sqme_collector%sqme_dglap_list (1)
     end associate
-  end subroutine component_instance_evaluate_sqme_pdf
+  end subroutine component_instance_evaluate_sqme_dglap
 
-  subroutine component_instance_evaluate_sqme_real (component, term)
+  subroutine component_instance_evaluate_sqme_real (component, term, i_phs)
      class(component_instance_t), intent(inout) :: component
      type(term_instance_t), intent(inout), target :: term
+     integer, intent(in) :: i_phs
      type(vector4_t), dimension(:), allocatable :: p_real
      integer :: i_flv, i_flv_born
      logical :: bad_point
-
      if (term%nlo_type /= NLO_REAL) return
-     if (component%config%component_type == COMP_REAL_FIN) &
-        call component%nlo_controller%disable_subtraction ()
-     allocate (p_real &
-          (1:size(term%nlo_controller%get_momenta (born_phsp = .false.))))
-     p_real = term%nlo_controller%get_momenta (born_phsp = .false.)
-     i_flv = term%nlo_controller%active_flavor_structure_real
-     select type (core => component%config%core)
-     type is (prc_omega_t)
-        component%nlo_controller%sqme_collector%sqme_real_non_sub (i_flv) = &
-             real (term%connected_real%trace%get_matrix_element (1))
-     class is (prc_blha_t)
-        call core%update_alpha_s (component%core_state, term%fac_scale)
-        call core%compute_sqme_real (i_flv, p_real, 0._default, &
-           component%nlo_controller%sqme_collector%sqme_real_non_sub(i_flv), &
-           bad_point)
-     class is (prc_user_defined_base_t)
-        call core%update_alpha_s (component%core_state, term%fac_scale)
-        component%nlo_controller%sqme_collector%sqme_real_non_sub (i_flv) = &
-           core%compute_sqme (i_flv, p_real)
-     end select 
-     call component%supply_damping_factor (component%nlo_controller%sqme_collector%sqme_real_non_sub (i_flv))
-     if (debug_active (D_SUBTRACTION)) &
-        call msg_debug (D_SUBTRACTION, "non-subtracted real matrix element", &
-                  component%nlo_controller%sqme_collector%sqme_real_non_sub(i_flv))
-     !!! Get the necessary subtraction matrix elements.
-     associate (nlo_controller => component%nlo_controller)
-       if (nlo_controller%is_subtraction_active ()) then
-          associate (collector => nlo_controller%sqme_collector)
-            do i_flv = 1, nlo_controller%get_n_flv_born ()
-               i_flv_born = term%nlo_controller%reg_data%underlying_borns (i_flv)
-               select type (core_born => component%config%core_sub_born)
-               class is (prc_user_defined_base_t)
-                  if (.not. nlo_controller%use_internal_color_correlations) then
-                     call core_born%update_alpha_s (component%core_state, term%fac_scale)
-                     call core_born%compute_sqme_cc (i_flv, &
-                             nlo_controller%int_born%get_momenta (), &
-                             0._default, &
-                             collector%sqme_born_list (i_flv_born), &
-                             collector%sqme_born_cc (:,:,i_flv_born), &
-                             bad_point)
-                  else
-                  !!! Implementation for color-correlations using color_data
-                  end if
-               type is (prc_omega_t)
-                  collector%sqme_born_cc (:,:,i_flv_born) = collector%sqme_born_list (i_flv_born) * &
-                       nlo_controller%color_data%beta_ij (:,:,i_flv_born)
-               end select
+     call msg_debug2 (D_SUBTRACTION, "component_instance_evaluate_sqme_real")
+     associate (nlo_controller => component%nlo_controller, &
+                collector => component%nlo_controller%sqme_collector)
+        if (component%config%component_type == COMP_REAL_FIN) &
+           call nlo_controller%disable_subtraction ()
+        allocate (p_real (1 : term%nlo_controller%get_n_particles_real ()))
+        p_real = term%nlo_controller%get_momenta (born_phsp = .false., i_phs = i_phs)
+        i_flv = term%nlo_controller%active_flavor_structure_real
+        select type (core => component%config%core)
+        type is (prc_omega_t)
+           collector%sqme_real_non_sub (i_flv, i_phs) = &
+              real (term%connected_real%trace%get_matrix_element (1))
+        class is (prc_blha_t)
+           call core%update_alpha_s (component%core_state, term%fac_scale)
+           call core%compute_sqme_real (i_flv, p_real, term%ren_scale, &
+              collector%sqme_real_non_sub(i_flv, i_phs), bad_point)
+        class is (prc_user_defined_base_t)
+           call core%update_alpha_s (component%core_state, term%fac_scale)
+           collector%sqme_real_non_sub (i_flv, i_phs) = &
+              core%compute_sqme (i_flv, p_real)
+        end select
+        call component%apply_damping_factor &
+           (collector%sqme_real_non_sub (i_flv, i_phs))
+        call msg_debug2 (D_SUBTRACTION, "non-subtracted real matrix element", &
+             collector%sqme_real_non_sub(i_flv, i_phs))
+     end associate
+  end subroutine component_instance_evaluate_sqme_real
 
-               if (nlo_controller%requires_spin_correlation (i_flv)) then
+  subroutine component_instance_apply_subtraction (component, term)
+    class(component_instance_t), intent(inout) :: component
+    type(term_instance_t), intent(inout) :: term
+    integer :: i_flv_born
+    logical :: bad_point
+    if (term%nlo_type /= NLO_REAL) return
+    associate (nlo_controller => component%nlo_controller, &
+       collector => component%nlo_controller%sqme_collector)
+       if (nlo_controller%is_subtraction_active ()) then
+            do i_flv_born = 1, nlo_controller%get_n_flv_born ()
+               call term%nlo_controller%evaluate_color_correlations &
+                  (component%config%core_sub_born, component%core_state, &
+                  term%fac_scale, i_flv_born, bad_point)
+
+               if (nlo_controller%requires_spin_correlation (i_flv_born)) then
                   select type (core_born => component%config%core_sub_born)
                   type is (prc_omega_t)
-                     call msg_fatal ("Computation of spin-correlated matrix elements not possible with O'Mega!")
+                     call msg_fatal ("Computation of spin-correlated " // &
+                          "matrix elements not possible with O'Mega!")
                   type is (prc_gosam_t)
-                     call core_born%update_alpha_s (component%core_state, term%fac_scale)
+                     call core_born%update_alpha_s (component%core_state, &
+                          term%fac_scale)
                      call core_born%compute_sqme_sc (i_flv_born, &
                         nlo_controller%get_active_emitter(), &
                         nlo_controller%int_born%get_momenta(), &
-                        0._default, collector%sqme_born_sc(i_flv_born), bad_point)
+                        zero, collector%sqme_born_sc(i_flv_born), bad_point)
                   type is (prc_openloops_t) 
-                     call core_born%update_alpha_s (component%core_state, term%fac_scale)
+                     call core_born%update_alpha_s (component%core_state, &
+                          term%fac_scale)
                      call nlo_controller%compute_k_perp ()
                      call core_born%compute_sqme_sc (i_flv_born, &
                         nlo_controller%get_active_emitter(), &
                         nlo_controller%int_born%get_momenta(), &
-                        0._default, nlo_controller%get_k_perp(), &
+                        zero, nlo_controller%get_k_perp(), &
                         collector%sqme_born_sc(i_flv_born), bad_point)
                   class is (prc_user_defined_base_t)
                      collector%sqme_born_sc (i_flv_born) = zero
                   end select
                end if
             end do
-          end associate
        end if
        call nlo_controller%set_alpha_s_born &
-            (component%config%core%get_alpha_s (component%core_state))
+          (component%config%core%get_alpha_s (component%core_state))
        nlo_controller%sqme_collector%current_sqme_real = &
-            nlo_controller%compute_sqme_real_fin (term%weight) 
-     end associate
-  end subroutine component_instance_evaluate_sqme_real
+          nlo_controller%compute_sqme_real_fin ()
+    end associate
+  end subroutine component_instance_apply_subtraction
 
   elemental function component_instance_get_nlo_type (component) &
        result (nlo_type)
@@ -4241,24 +4399,18 @@ contains
     lt = component%k_seed%phs%get_lorentz_transformation ()
   end function component_instance_get_lorentz_transformation
 
-  subroutine component_instance_set_component_type (component, val)
-    class(component_instance_t), intent(in) :: component
-    integer, intent(in) :: val
-    component%config%component_type = val
-  end subroutine component_instance_set_component_type
-
   function process_component_needs_mci_entry (component) result (value)
     class(process_component_t), intent(in) :: component
     logical :: value
     value = component%active .and. component%core%needs_mcset () &
-            .and. component%component_type <= COMP_MASTER 
+            .and. component%component_type <= COMP_MASTER
   end function process_component_needs_mci_entry
 
-  elemental function process_component_is_active_nlo_component (component) result (active)
+  elemental function process_component_is_active_component (component) result (active)
     logical :: active
     class(process_component_t), intent(in) :: component
-    active = component%config%is_active_nlo_component ()
-  end function process_component_is_active_nlo_component
+    active = component%config%is_active_component ()
+  end function process_component_is_active_component
 
   subroutine term_instance_write (term, unit, show_eff_state, testflag)
     class(term_instance_t), intent(in) :: term
@@ -4319,10 +4471,14 @@ contains
     call term%int_hard%final ()
     select case (term%nlo_type)
     case (NLO_REAL)
+       call final_real ()
+    end select
+  contains
+    subroutine final_real ()
       call term%connected_real%final ()
       call term%isolated_real%final ()
       call term%int_hard_real%final ()
-    end select
+    end subroutine final_real
   end subroutine term_instance_final
   
   subroutine term_instance_init (term, &
@@ -4384,7 +4540,7 @@ contains
           select case (phs%mode)
           case (PHS_MODE_ADDITIONAL_PARTICLE)
              term%nlo_controller%int_born = int_sav
-             term%nlo_controller%sf_born = sf_sav
+             term%nlo_controller%sf_born => sf_sav
              do j = 1, n_in
                 i = term%nlo_controller%sf_born%get_out_i (j)
                 call term%nlo_controller%int_born%set_source_link &
@@ -4392,7 +4548,7 @@ contains
              end do
              call term%isolated%init (term%nlo_controller%sf_born, &
                                       term%nlo_controller%int_born)
-             call term%setup_real_interaction (term%int_hard)
+             term%int_hard_real = term%int_hard
           case (PHS_MODE_COLLINEAR_REMNANT)
              call term%isolated%init (term%k_term%sf_chain, term%int_hard)
           end select
@@ -4404,27 +4560,23 @@ contains
     mask_in = term%k_term%sf_chain%get_out_mask ()
     select type (phs => term%k_term%phs)
       type is (phs_wood_t)
-      call term%isolated%setup_square_trace (core, mask_in, term%config%col)
-      if (.not. allocated (col_sav)) then
-        allocate (col_sav (size (term%config%col)))
-        col_sav = term%config%col
-      end if
-      !!!select type (core)
-      !!!type is (prc_omega_t)
-      !!!  core_sav = core
-      !!!end select
-      if (.not. allocated (core_sav)) allocate (core_sav, source=core)
+         call term%isolated%setup_square_trace (core, mask_in, term%config%col)
+         if (allocated (col_sav)) deallocate (col_sav)
+         allocate (col_sav (size (term%config%col)))
+         col_sav = term%config%col
+         if (allocated (core_sav)) deallocate (core_sav)
+         allocate (core_sav, source = core)
       type is (phs_fks_t)
-        select case (phs%mode)
-        case (PHS_MODE_ADDITIONAL_PARTICLE)
-           mask_in = sf_sav%get_out_mask ()
-           call term%isolated%setup_square_trace (core_sav, mask_in, col_sav)
-           call term%init_states (core)
-        case (PHS_MODE_COLLINEAR_REMNANT)
-           call term%isolated%setup_square_trace (core, mask_in, term%config%col)
-        end select      
+         select case (phs%mode)
+         case (PHS_MODE_ADDITIONAL_PARTICLE)
+            mask_in = sf_sav%get_out_mask ()
+            call term%isolated%setup_square_trace (core_sav, mask_in, col_sav)
+            call term%init_states (core)
+         case (PHS_MODE_COLLINEAR_REMNANT)
+            call term%isolated%setup_square_trace (core, mask_in, term%config%col)
+         end select      
       class default
-        call term%isolated%setup_square_trace (core, mask_in, term%config%col)
+         call term%isolated%setup_square_trace (core, mask_in, term%config%col)
     end select
     call term%connected%setup_connected_trace (term%isolated)
     associate (int_eff => term%isolated%int_eff)
@@ -4475,16 +4627,22 @@ contains
     term%nlo_type = nlo_type
     select case (term%nlo_type)
     case (NLO_REAL)
-       allocate (f_out_real (n_out+1))
-       f_out_real (1:n_out) = f_out
-       f_out_real (n_out+1) = term%nlo_controller%reg_data%flv_extra
-       call term%connected_real%setup_subevt &
-            (term%isolated_real%sf_chain_eff, &
-            beam_config%data%flv, f_in, f_out_real)
-       call term%connected_real%setup_var_list &
-            (process_var_list, beam_config%data)
+       call setup_real_subevt ()
     end select
+  contains
 
+   subroutine setup_real_subevt ()
+      allocate (f_out_real (n_out + 1))
+      f_out_real (1:n_out) = f_out
+      f_out_real (n_out + 1) = term%nlo_controller%reg_data%flv_extra
+
+      call term%connected_real%setup_subevt &
+         (term%isolated_real%sf_chain_eff, &
+         beam_config%data%flv, f_in, f_out_real)
+      call term%connected_real%setup_var_list &
+         (process_var_list, beam_config%data)
+   end subroutine setup_real_subevt
+    
   end subroutine term_instance_init
 
   subroutine term_instance_init_states (term, core)
@@ -4522,93 +4680,178 @@ contains
     class(term_instance_t), intent(inout), target :: term
     type(process_config_data_t), intent(in) :: config
     if (allocated (config%ef_cuts)) &
-         call term%connected_real%setup_cuts (config%ef_cuts)
+       call term%connected_real%setup_cuts (config%ef_cuts)
     if (allocated (config%ef_scale)) &
-         call term%connected_real%setup_scale (config%ef_scale)
+       call term%connected_real%setup_scale (config%ef_scale)
     if (allocated (config%ef_fac_scale)) &
-         call term%connected_real%setup_fac_scale (config%ef_fac_scale)
+       call term%connected_real%setup_fac_scale (config%ef_fac_scale)
     if (allocated (config%ef_ren_scale)) &
-         call term%connected_real%setup_ren_scale (config%ef_ren_scale)
+       call term%connected_real%setup_ren_scale (config%ef_ren_scale)
     if (allocated (config%ef_weight)) &
-         call term%connected_real%setup_weight (config%ef_weight)
+       call term%connected_real%setup_weight (config%ef_weight)
   end subroutine term_instance_setup_expressions_real
 
-  subroutine term_instance_setup_event_data (term, core, model)
+  subroutine term_instance_setup_event_data (term, core, model, core_born)
     class(term_instance_t), intent(inout), target :: term
     class(prc_core_t), intent(in) :: core
     class(model_data_t), intent(in), target :: model
+    class(prc_core_t), intent(in), optional :: core_born
     integer :: n_in
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
+    integer, dimension(:), allocatable, save :: col_born
     n_in = term%int_hard%get_n_in ()
     allocate (mask_in (n_in))
     mask_in = term%k_term%sf_chain%get_out_mask ()
     select case (term%nlo_type)
-    case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
-      call term%isolated%setup_square_matrix (core, model, mask_in, &
-         term%config%col)
-      call term%isolated%setup_square_flows (core, model, mask_in)
-      call term%connected%setup_connected_matrix (term%isolated)
-      call term%connected%setup_connected_flows (term%isolated)
-      call term%connected%setup_state_flv (term%isolated%get_n_out ())
-    case (NLO_REAL)
-      call term%isolated_real%setup_square_matrix (core, model, mask_in, &
-               term%config%col)
-      call term%isolated_real%setup_square_flows (core, model, mask_in)
-      call term%connected_real%setup_connected_matrix &
-                (term%isolated_real)
-      call term%connected_real%setup_connected_flows &
-                (term%isolated_real)
-      call term%connected_real%setup_state_flv (term%isolated_real%get_n_out ())
+    case (BORN, NLO_VIRTUAL, NLO_DGLAP)
+      call setup_isolated (term%isolated, core, model, mask_in, term%config%col)
+      call setup_connected (term%connected, term%isolated)
+      call extract_born_color_configuration ()
+    case (NLO_REAL, NLO_MISMATCH)
+      if (present (core_born)) then
+         call setup_isolated (term%isolated, core_born, model, mask_in, col_born)
+         call setup_connected (term%connected, term%isolated)
+      else
+         call msg_fatal ("NLO event setup: Born core is required!")
+      end if
+      call setup_isolated (term%isolated_real, core, model, mask_in, term%config%col)
+      call setup_connected (term%connected_real, term%isolated_real) 
     end select
+ contains
+   subroutine setup_isolated (isolated, core, model, mask, color)
+     type(isolated_state_t), intent(inout), target :: isolated
+     class(prc_core_t), intent(in) :: core
+     class(model_data_t), intent(in), target :: model
+     type(quantum_numbers_mask_t), intent(in), dimension(:) :: mask
+     integer, intent(in), dimension(:) :: color
+     call isolated%setup_square_matrix (core, model, mask, color)
+     call isolated%setup_square_flows (core, model, mask)
+   end subroutine setup_isolated
+
+   subroutine setup_connected (connected, isolated)
+     type(connected_state_t), intent(inout), target :: connected
+     type(isolated_state_t), intent(in), target :: isolated
+     call connected%setup_connected_matrix (isolated)
+     call connected%setup_connected_flows (isolated)
+     call connected%setup_state_flv (isolated%get_n_out ())
+   end subroutine setup_connected
+
+   subroutine extract_born_color_configuration ()
+      if (.not. allocated (col_born)) then
+         allocate (col_born (size (term%config%col)))
+         col_born = term%config%col
+      end if
+   end subroutine extract_born_color_configuration
  end subroutine term_instance_setup_event_data
     
-  subroutine term_instance_setup_real_interaction (term, int)
+  subroutine term_instance_evaluate_real_phase_space (term, emitter, i_con)
     class(term_instance_t), intent(inout) :: term
-    type(interaction_t), intent(in) :: int
-    term%int_hard_real = int
-  end subroutine term_instance_setup_real_interaction
-
-  subroutine term_instance_evaluate_real_phase_space (term)
-    class(term_instance_t), intent(inout) :: term
-    integer :: emitter
+    integer, intent(in) :: emitter
+    integer, intent(in), optional :: i_con
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(vector4_t), dimension(:), allocatable :: p_real
+    integer :: i_phs
     integer :: n_in
-    
-    emitter = term%nlo_controller%get_active_emitter ()
-    allocate (p_born(1:size(term%nlo_controller%int_born%get_momenta ())))
+    type(phs_point_set_t) :: p_real
+    logical :: evaluate_phs, resonance_contributors_exist
+    allocate (p_born(1 : size(term%nlo_controller%int_born%get_momenta ())))
     p_born = term%nlo_controller%int_born%get_momenta ()
+
     select type (phs => term%k_term%phs)
     type is (phs_fks_t)
        n_in = term%nlo_controller%get_n_in ()
-       if (emitter > n_in) then
-          call phs%generate_fsr (emitter, p_real)
-       else
-          call phs%generate_isr (p_born, p_real)
-       end if
-       if (debug_active (D_SUBTRACTION)) call debug_message_phase_space
+       call p_real%init (term%nlo_controller%get_n_particles_real (), &
+          size (phs%phs_identifiers))
+       resonance_contributors_exist = allocated (term%nlo_controller%reg_data%alr_contributors)
+       do i_phs = 1, size (phs%phs_identifiers)
+          if (resonance_contributors_exist) then
+             associate (contributors => term%nlo_controller%reg_data%alr_contributors(i_con)%c)
+                evaluate_phs = phs%phs_identifiers(i_phs)%check (emitter, contributors) &
+                   .and. .not. phs%phs_identifiers(i_phs)%evaluated
+             end associate
+          else
+             evaluate_phs = phs%phs_identifiers(i_phs)%check (emitter) &
+                .and. .not. phs%phs_identifiers(i_phs)%evaluated
+          end if 
+          if (evaluate_phs) then
+             if (emitter > n_in) then
+                call phs%generate_fsr (emitter, i_phs, p_real%phs_point(i_phs), i_con)
+             else
+                call phs%generate_isr (i_phs, p_born, p_real%phs_point(i_phs))
+             end if
+
+             phs%phs_identifiers(i_phs)%evaluated = .true.
+
+             if (debug2_active (D_SUBTRACTION)) then
+                if (resonance_contributors_exist) then
+                   call debug_message_phase_space &
+                      (i_phs, term%nlo_controller%reg_data%alr_contributors(i_con)%c)
+                else
+                   call debug_message_phase_space (i_phs)
+                end if
+             end if
+
+             exit
+          end if
+       end do
     class default 
        call msg_fatal ("Evaluate real interaction: Phase space not of FKS-type!")
     end select
-
-    call term%int_hard_real%set_momenta (p_real)
-
-    call term%isolated_real%receive_kinematics ()
-    call term%connected_real%receive_kinematics ()
-
-    call term%connected_real%evaluate_expressions (term%passed, &
-         term%scale, term%fac_scale, term%ren_scale, term%weight)
   contains
-    subroutine debug_message_phase_space ()
-       call msg_debug (D_SUBTRACTION, "Generated real phase space")
-       call msg_debug (D_SUBTRACTION, "Born phase space:")
-       call vector4_write_set (p_born, show_mass = .true.)
-       call msg_debug (D_SUBTRACTION, "emitter", emitter)
-       call msg_debug (D_SUBTRACTION, "Real phase space:") 
-       call vector4_write_set (p_real, show_mass = .true.)
+    subroutine debug_message_phase_space (i_phs, contributors)
+      integer, intent(in) :: i_phs
+      integer, intent(in), dimension(:), optional :: contributors
+      type(vector4_t) :: p_sum
+      integer :: i
+      call msg_debug (D_SUBTRACTION, "Generated real phase space")
+      call vector4_write_set (p_born, show_mass = .true.)
+      if (present (contributors)) then
+         p_sum = vector4_null
+         call msg_debug (D_SUBTRACTION, 'Check conservation of invariant masses: ')
+         print *, 'Resonance contributors: ', contributors
+         do i = 1, size (contributors)
+            p_sum = p_sum + p_born(contributors(i))
+         end do
+         print *, 'm_born: ', p_sum**1
+      end if
+      call msg_debug (D_SUBTRACTION, "emitter", emitter)
+      call msg_debug (D_SUBTRACTION, "Real phase space:")
+      call p_real%write (i_phs, contributors)
     end subroutine debug_message_phase_space
 
   end subroutine term_instance_evaluate_real_phase_space
+
+  subroutine term_instance_update_real_interactions (term, i_phs)
+    class(term_instance_t), intent(inout) :: term
+    integer, intent(in) :: i_phs
+    type(vector4_t), dimension(:), allocatable :: p
+    real(default) :: xi
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug      
+    allocate (p (term%nlo_controller%get_n_particles_real()))
+    p = term%nlo_controller%get_momenta (born_phsp = .false., i_phs = i_phs)
+    call term%int_hard_real%set_momenta (p)
+    call term%isolated_real%receive_kinematics ()
+    call term%connected_real%receive_kinematics ()
+    associate (scales => term%nlo_controller%real_terms%scales)
+       call term%connected_real%evaluate_expressions (term%passed, &
+          term%scale, term%fac_scale, term%ren_scale, &
+          term%weight, force_evaluation = .true.)
+       if (.not. term%passed) return
+       scales%scale_born = scales%scale
+       scales%fac_scale_born = term%fac_scale
+       scales%ren_scale_born = term%ren_scale
+       select type (phs => term%k_term%phs)
+       type is (phs_fks_t)
+          if (phs%i_phs_is_isr (i_phs)) then
+             associate (rad_var => term%nlo_controller%real_kinematics)
+                xi = rad_var%xi_tilde * rad_var%xi_max (i_phs)
+             end associate
+             scales%scale = scales%scale / sqrt (one - xi)
+             scales%fac_scale = scales%fac_scale / sqrt (one - xi)
+             scales%ren_scale = scales%ren_scale / sqrt (one - xi)
+          end if
+       end select
+    end associate
+  end subroutine term_instance_update_real_interactions
 
   subroutine term_instance_reset (term)
     class(term_instance_t), intent(inout) :: term
@@ -4637,24 +4880,25 @@ contains
        ! should evaluate k_term first if allocated separately, not impl. yet
        i_component = term%config%i_component
        i_term = term%config%i_term
-      associate (core => component(i_component)%config%core)
-         select case (term%nlo_type)
-         case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
-           call core%compute_eff_kinematics &
-              (i_term, term%int_hard, term%isolated%int_eff, &
-              component(i_component)%core_state)
-         case (NLO_REAL)
-           call component(i_component)%config%core_sub_born%compute_eff_kinematics & 
+       associate (core => component(i_component)%config%core)
+          select case (term%nlo_type)
+          case (BORN, NLO_VIRTUAL, NLO_DGLAP)
+             call core%compute_eff_kinematics &
+                (i_term, term%int_hard, term%isolated%int_eff, &
+                component(i_component)%core_state)
+          case (NLO_REAL, NLO_MISMATCH)
+             call component(i_component)%config%core_sub_born%compute_eff_kinematics & 
                 (i_term, term%nlo_controller%int_born, term%isolated%int_eff, &
                 component(i_component)%core_state)
-         end select
-        select case (term%nlo_type)
-        case (NLO_REAL)
-          call core%compute_eff_kinematics &
-                (i_term, term%int_hard_real, term%isolated_real%int_eff, &
+          end select
+          select case (term%nlo_type)
+          case (NLO_REAL, NLO_MISMATCH)
+             call core%compute_eff_kinematics &
+                (i_term, term%int_hard_real, &
+                 term%isolated_real%int_eff, &
                  component(i_component)%core_state)
-        end select
-      end associate
+          end select
+       end associate
     end if
     call term%isolated%receive_kinematics ()
     call term%connected%receive_kinematics ()
@@ -4673,8 +4917,8 @@ contains
     class(term_instance_t), intent(inout) :: term
     real(default), intent(in), allocatable, optional :: scale_forced
     call term%connected%evaluate_expressions (term%passed, &
-         term%scale, term%fac_scale, term%ren_scale, term%weight, &
-         scale_forced)
+       term%scale, term%fac_scale, term%ren_scale, term%weight, &
+       scale_forced)
     term%checked = .true.
   end subroutine term_instance_evaluate_expressions
        
@@ -4686,7 +4930,7 @@ contains
     i_term = term%config%i_term
     term%p_hard = term%int_hard%get_momenta ()
     select case (term%nlo_type)
-    case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
+    case (BORN, NLO_VIRTUAL, NLO_DGLAP)
        associate (core => component(i_component)%config%core)
           do i = 1, term%config%n_allowed
              term%amp(i) = core%compute_amplitude (i_term, term%p_hard, &
@@ -4695,11 +4939,14 @@ contains
                 component(i_component)%core_state)
           end do
           call term%int_hard%set_matrix_element (term%amp)
-          if (associated (term%nlo_controller)) call term%nlo_controller%set_fac_scale (term%fac_scale)
+          if (associated (term%nlo_controller)) &
+             call term%nlo_controller%set_fac_scale (term%fac_scale)
        end associate 
     case (NLO_REAL)
-       call term%evaluate_real_phase_space
+       call term%evaluate_real_phase_space (term%nlo_controller%get_active_emitter ())
        call term%evaluate_interaction_real (component(i_component), i_term)
+    case (NLO_MISMATCH)
+       call term%evaluate_interaction_sub (component(i_component), 1, 1)
     end select  
   end subroutine term_instance_evaluate_interaction
   
@@ -4708,25 +4955,38 @@ contains
     call term%k_term%evaluate_sf_chain (term%fac_scale)
     select case (term%nlo_type)
     case (NLO_REAL)
-      call term%nlo_controller%sf_born%evaluate (term%fac_scale)
-      call term%isolated_real%evaluate_trace ()
-      call term%connected_real%evaluate_trace ()
+      call term%evaluate_trace_real () 
     end select
     call term%isolated%evaluate_sf_chain (term%fac_scale)
     call term%isolated%evaluate_trace ()
     call term%connected%evaluate_trace ()
   end subroutine term_instance_evaluate_trace
   
+  subroutine term_instance_evaluate_trace_real (term)
+     class(term_instance_t), intent(inout) :: term
+     
+     call term%nlo_controller%sf_born%evaluate (term%fac_scale)
+
+     call term%isolated_real%evaluate_trace ()
+     call term%connected_real%evaluate_trace ()
+  end subroutine term_instance_evaluate_trace_real
+
   subroutine term_instance_evaluate_event_data (term)
     class(term_instance_t), intent(inout) :: term
     select case (term%nlo_type)
-    case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
+    case (BORN, NLO_VIRTUAL, NLO_DGLAP)
       call term%isolated%evaluate_event_data ()
       call term%connected%evaluate_event_data ()
-    case (NLO_REAL)
+    case (NLO_REAL, NLO_MISMATCH)
+       call term%isolated%evaluate_event_data ()
+       call term%connected%evaluate_event_data ()
+       call evaluate_event_data_real ()
+    end select
+  contains
+    subroutine evaluate_event_data_real ()
       call term%isolated_real%evaluate_event_data ()
       call term%connected_real%evaluate_event_data ()
-    end select
+    end subroutine evaluate_event_data_real
   end subroutine term_instance_evaluate_event_data
   
   subroutine term_instance_evaluate_interaction_real (term, component, i_term)
@@ -4735,114 +4995,157 @@ contains
      integer, intent(in) :: i_term
      integer :: i
      integer :: i_flv_real, i_flv_born
-    
+     real(default) :: ren_scale, fac_scale
+
      i_flv_real = term%nlo_controller%active_flavor_structure_real
      i_flv_born = term%nlo_controller%reg_data%underlying_borns (i_flv_real)
-     if (debug_active (D_SUBTRACTION)) &
-         call msg_debug (D_SUBTRACTION, "underlying Born: ", i_flv_born)
-     call term%nlo_controller%set_fac_scale (term%fac_scale)
-     if (term%passed) then
-        if (i_flv_real == 1) call component%core_state%reset_new_kinematics ()
-        select type (core => component%config%core)
-        type is (prc_omega_t)
-           do i = 1, term%config%n_allowed
-              if (term%config%flv(i) == i_flv_real) then
-                 term%amp(i) = core%compute_amplitude (i_term, &
-                    term%int_hard_real%get_momenta (), &
-                    term%config%flv(i), term%config%hel(i), term%config%col(i), &
-                    term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
-                    component%core_state)
-              else
-                 term%amp(i) = 0
-              end if
-           end do
-        class is (prc_user_defined_base_t)
-           call core%update_alpha_s (component%core_state, term%fac_scale)
-           term%amp = 0._default
-        end select
-        call term%int_hard_real%set_matrix_element (term%amp)
-        if (i_flv_born == 1) call component%core_state%reset_new_kinematics ()
-        select type (core_sub_born => component%config%core_sub_born)
-        type is (prc_omega_t)
-           do i = 1, term%nlo_controller%n_allowed_born
-              if (term%nlo_controller%get_flv_born(i) == i_flv_born) then
-                 term%nlo_controller%amp_born(i) = &
-                      core_sub_born%compute_amplitude (i_term, &
-                      term%nlo_controller%int_born%get_momenta (), &
-                      term%nlo_controller%get_flv_born(i), &
-                      term%nlo_controller%get_hel_born(i), &
-                      term%nlo_controller%get_col_born(i), &
-                      term%fac_scale, term%ren_scale, &
-                      term%alpha_qcd_forced, &
-                      component%core_state)
-              else
-                 term%nlo_controller%amp_born(i) = 0
-              end if
-           end do
-        class is (prc_user_defined_base_t)
-           call core_sub_born%update_alpha_s &
-                (component%core_state, term%fac_scale)
-           term%nlo_controller%amp_born = 0._default
-        class default
-           call msg_fatal ("Invalid core type set up for subtraction matrix elements")
-        end select 
-        call term%nlo_controller%int_born%set_matrix_element &
-             (term%nlo_controller%amp_born) 
-     end if
+     call msg_debug2 (D_SUBTRACTION, "underlying Born ", i_flv_born)
+
+     associate (scales => term%nlo_controller%real_terms%scales)
+        fac_scale = scales%fac_scale
+        ren_scale = scales%ren_scale
+        call term%nlo_controller%set_fac_scale (scales%fac_scale_born)
+     end associate
+     if (i_flv_real == 1) call component%core_state%reset_new_kinematics ()
+
+     select type (core => component%config%core)
+     type is (prc_omega_t)
+        do i = 1, term%config%n_allowed
+           if (term%config%flv(i) == i_flv_real) then
+              term%amp(i) = core%compute_amplitude (i_term, &
+                 term%int_hard_real%get_momenta (), &
+                 term%config%flv(i), term%config%hel(i), term%config%col(i), &
+                 term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
+                 component%core_state)
+           else
+              term%amp(i) = zero
+           end if
+        end do
+     class is (prc_user_defined_base_t)
+        call core%update_alpha_s (component%core_state, fac_scale)
+        term%amp = zero
+     end select
+     call term%int_hard_real%set_matrix_element (term%amp)
+     if (i_flv_born == 1) call component%core_state%reset_new_kinematics ()
+     call term%evaluate_interaction_sub (component, i_term, i_flv_born)
   end subroutine term_instance_evaluate_interaction_real
 
-  subroutine term_instance_evaluate_interaction_real_rad (term, &
-                          component, p_born, p_real, i_term, alpha_s_external)
+  subroutine term_instance_evaluate_interaction_sub (term, component, i_term, i_flv_born)
     class(term_instance_t), intent(inout) :: term
     type(component_instance_t), intent(inout) :: component
-    type(vector4_t), intent(in), dimension(:) :: p_born, p_real
-    integer, intent(in) :: i_term
-    real(default), intent(in), optional :: alpha_s_external
+    integer, intent(in) :: i_term, i_flv_born
     integer :: i
-    real(default), allocatable :: alpha_qcd_forced
+    real(default) :: fac_scale, ren_scale
 
-    call term%nlo_controller%int_born%set_momenta (p_born)
-    call term%int_hard_real%set_momenta (p_real)
-
-    call term%isolated_real%receive_kinematics ()
-    call term%connected_real%receive_kinematics ()
-    
-    call term%connected_real%evaluate_expressions (term%passed, &
-         term%scale, term%fac_scale, term%ren_scale, term%weight)
-
-    call component%core_state%reset_new_kinematics ()
-    select type (core => component%config%core)
-    type is (prc_omega_t)
-       if (present (alpha_s_external)) then
-          allocate (alpha_qcd_forced, source = alpha_s_external)
-       else
-          if (allocated (term%alpha_qcd_forced)) &
-             allocate (alpha_qcd_forced, source = term%alpha_qcd_forced)
-       end if
-       do i = 1, term%config%n_allowed
-          term%amp(i) = core%compute_amplitude (i_term, &
-             term%int_hard_real%get_momenta (), &
-             term%config%flv(i), term%config%hel(i), term%config%col(i), &
-             term%fac_scale, term%ren_scale, alpha_qcd_forced, &
-             component%core_state)
-       end do
-    class is (prc_user_defined_base_t)
-       call core%update_alpha_s (component%core_state, term%fac_scale)
-       term%amp = 0._default
+    select case (term%nlo_type)
+    case (NLO_REAL) 
+       associate (scales => term%nlo_controller%real_terms%scales)
+          fac_scale = scales%fac_scale_born
+          ren_scale = scales%ren_scale_born
+       end associate
+    case default
+       fac_scale = term%fac_scale
+       ren_scale = term%ren_scale
     end select
-    call term%int_hard_real%set_matrix_element (term%amp)
-    call component%core_state%reset_new_kinematics ()
+
     select type (core_sub_born => component%config%core_sub_born)
     type is (prc_omega_t)
        do i = 1, term%nlo_controller%n_allowed_born
-          term%nlo_controller%amp_born(i) = core_sub_born%compute_amplitude (i_term, &
-              term%nlo_controller%int_born%get_momenta (), &
-              term%nlo_controller%get_flv_born(i), term%nlo_controller%get_hel_born(i), &
-              term%nlo_controller%get_col_born(i), term%fac_scale, term%ren_scale, &
-              alpha_qcd_forced, component%core_state)
+          if (term%nlo_controller%get_flv_born(i) == i_flv_born) then
+             term%nlo_controller%amp_born(i) = &
+                  core_sub_born%compute_amplitude (i_term, &
+                  term%nlo_controller%int_born%get_momenta (), &
+                  term%nlo_controller%get_flv_born(i), &
+                  term%nlo_controller%get_hel_born(i), &
+                  term%nlo_controller%get_col_born(i), &
+                  term%fac_scale, term%ren_scale, &
+                  term%alpha_qcd_forced, &
+                  component%core_state)
+          else
+             term%nlo_controller%amp_born(i) = zero
+          end if
        end do
     class is (prc_user_defined_base_t)
-       term%nlo_controller%amp_born = 0._default
+       call core_sub_born%update_alpha_s (component%core_state, fac_scale)
+       term%nlo_controller%amp_born = zero
+    class default
+       call msg_fatal ("Invalid core type set up for subtraction matrix elements")
+    end select
+    call term%nlo_controller%int_born%set_matrix_element &
+       (term%nlo_controller%amp_born)
+  end subroutine term_instance_evaluate_interaction_sub
+
+  subroutine term_instance_evaluate_interaction_real_rad (term, &
+     component, i_term, i_phs, i_flv_real, alpha_s_external, only_born)
+    class(term_instance_t), intent(inout) :: term
+    type(component_instance_t), intent(inout) :: component
+    integer, intent(in) :: i_term, i_phs, i_flv_real
+    real(default), intent(in), optional :: alpha_s_external
+    logical, intent(in), optional :: only_born
+    integer :: i
+    real(default), allocatable :: alpha_qcd_forced
+    logical :: yorn
+    integer :: i_flv_born
+
+    yorn = .false.; if (present (only_born)) yorn = only_born
+    if (present (alpha_s_external)) then
+       allocate (alpha_qcd_forced, source = alpha_s_external)
+    else
+       if (allocated (term%alpha_qcd_forced)) &
+          allocate (alpha_qcd_forced, source = term%alpha_qcd_forced)
+    end if
+    call term%update_real_interactions (i_phs)
+    select type (phs => term%k_term%phs)
+    type is (phs_fks_t)
+       call term%nlo_controller%set_active_phase_space (i_phs)
+       call term%nlo_controller%set_active_emitter &
+          (phs%phs_identifiers(i_phs)%emitter)
+    end select
+
+    i_flv_born = term%nlo_controller%reg_data%underlying_borns (i_flv_real)
+    if (i_flv_real == 1) call component%core_state%reset_new_kinematics ()
+
+    if (.not. yorn) then
+       call component%core_state%reset_new_kinematics ()
+       select type (core => component%config%core)
+       type is (prc_omega_t)
+          do i = 1, term%config%n_allowed
+             if (term%config%flv(i) == i_flv_real) then
+                term%amp(i) = core%compute_amplitude (i_term, &
+                   term%int_hard_real%get_momenta (), &
+                   term%config%flv(i), term%config%hel(i), term%config%col(i), &
+                   term%fac_scale, term%ren_scale, alpha_qcd_forced, &
+                   component%core_state)
+             else
+                term%amp(i) = zero
+             end if
+          end do
+       class is (prc_user_defined_base_t)
+          call core%update_alpha_s (component%core_state, term%fac_scale)
+          term%amp = zero
+       end select
+       call term%int_hard_real%set_matrix_element (term%amp)
+    end if
+    call component%nlo_controller%int_born%set_momenta &
+       (component%nlo_controller%real_kinematics%p_born_cms%phs_point(1)%p)
+    if (i_flv_born == 1) call component%core_state%reset_new_kinematics ()
+    select type (core_sub_born => component%config%core_sub_born)
+    type is (prc_omega_t)
+       do i = 1, term%nlo_controller%n_allowed_born
+          if (term%nlo_controller%get_flv_born(i) == i_flv_born) then
+             term%nlo_controller%amp_born(i) = core_sub_born%compute_amplitude (i_term, &
+                 term%nlo_controller%int_born%get_momenta (), &
+                 term%nlo_controller%get_flv_born(i), &
+                 term%nlo_controller%get_hel_born(i), &
+                 term%nlo_controller%get_col_born(i), &
+                 term%fac_scale, term%ren_scale, &
+                 alpha_qcd_forced, component%core_state)
+          else
+             term%nlo_controller%amp_born(i) = zero
+          end if
+       end do
+    class is (prc_user_defined_base_t)
+       term%nlo_controller%amp_born = zero
        call core_sub_born%update_alpha_s (component%core_state, term%fac_scale)
     end select 
     call term%nlo_controller%int_born%set_matrix_element &
@@ -4873,6 +5176,14 @@ contains
     if (alpha_s < 0)  alpha_s = term%config%alpha_s
   end function term_instance_get_alpha_s
   
+  subroutine term_instance_reset_phs_identifiers (term)
+    class(term_instance_t), intent(inout) :: term
+    select type (phs => term%k_term%phs)
+    type is (phs_fks_t)
+       phs%phs_identifiers%evaluated = .false.
+    end select
+  end subroutine term_instance_reset_phs_identifiers
+
   subroutine mci_work_write (mci_work, unit, testflag)
     class(mci_work_t), intent(in) :: mci_work
     integer, intent(in), optional :: unit
@@ -4950,11 +5261,14 @@ contains
     x = mci_work%x(mci_work%config%n_par_sf + 1 : mci_work%config%n_par)
   end function mci_work_get_x_process
 
-  subroutine mci_work_init_simulation (mci_work, safety_factor)
+  subroutine mci_work_init_simulation (mci_work, safety_factor, keep_failed_events)
     class(mci_work_t), intent(inout) :: mci_work
     real(default), intent(in), optional :: safety_factor
+    logical, intent(in), optional :: keep_failed_events
     call mci_work%mci%init_simulation (safety_factor)
     call mci_work%counter%reset ()
+    if (present (keep_failed_events)) &
+       mci_work%keep_failed_events = keep_failed_events
   end subroutine mci_work_init_simulation
 
   subroutine mci_work_final_simulation (mci_work)
@@ -5145,31 +5459,30 @@ contains
     instance%evaluation_status = STAT_ACTIVATED
   end subroutine process_instance_activate
   
-  subroutine process_instance_disable_virtual_components (instance)
-    class(process_instance_t), intent(inout) :: instance
-    integer :: i
+  function process_instance_get_associated_real (instance) result (i_real)
+    integer :: i_real
+    class(process_instance_t), intent(in) :: instance
     select type (pcm => instance%pcm)
-    class is (pcm_instance_nlo_t)
-       if (.not. pcm%collect_matrix_elements) &
-            call msg_fatal ("Sqme collector must be allocated to prepare for&
-            &component selection")
-       do i = 1, size (instance%component)
-          associate (component => instance%component(i))
-            if (component%config%component_type == COMP_VIRT) then
-               component%active = .false.
-               instance%term(component%config%i_term)%active = .false.
-            end if
-          end associate
-       end do
+    type is (pcm_instance_nlo_t)
+       associate (config => instance%component(pcm%active_real_component)%config)
+          select case (config%component_type)
+          case (COMP_MASTER)
+             i_real = config%config%get_associated_real ()
+             if (i_real == 0) i_real = config%config%get_associated_real_sing ()
+          case (COMP_REAL_FIN)
+             i_real = config%config%get_associated_real_fin ()
+          case default
+             i_real = config%config%get_associated_real ()
+          end select
+       end associate
     end select
-  end subroutine process_instance_disable_virtual_components
-          
+  end function process_instance_get_associated_real
+
   subroutine process_instance_init (instance, process, &
-       cc_flag, combined_integration)
+       nlo_settings)
     class(process_instance_t), intent(out), target :: instance
     type(process_t), intent(inout), target :: process
-    logical, intent(in), optional :: cc_flag
-    logical, intent(in), optional :: combined_integration
+    type(nlo_settings_t), intent(in), optional :: nlo_settings
     integer :: i, i_component
 
     instance%process => process
@@ -5194,15 +5507,13 @@ contains
        do i = 1, size (instance%component)
           if (process%component(i)%active) then
              associate (component => instance%component(i))
-               call component%setup_kinematics &
-                    (instance%sf_chain, process%beam_config, &
-                    combined_integration)
+                call component%setup_kinematics &
+                    (instance%sf_chain, process%beam_config)
              end associate
           end if
        end do
     else
-       call instance%init_nlo_configuration &
-            (cc_flag, combined_integration)
+       call instance%init_nlo_configuration (nlo_settings)
     end if
     
     call instance%setup_blha_structure_functions ()
@@ -5231,16 +5542,19 @@ contains
   end subroutine process_instance_init
   
   subroutine process_instance_init_nlo_configuration &
-       (instance, cc_flag, combined_integration)
+       (instance, nlo_settings)
     class(process_instance_t), intent(inout), target :: instance
-    logical, intent(in), optional :: cc_flag
-    logical, intent(in), optional :: combined_integration
+    type(nlo_settings_t), intent(in), optional :: nlo_settings
     type(process_t), pointer :: process
-    integer :: i_component
+    integer :: i_component, i_term
     type(process_constants_t), dimension(2), save :: prc_constants
     integer :: nlo_type
     integer :: i_born
     logical :: use_internal_cc, use_internal_sc
+    logical :: use_resonance_mappings
+    logical :: test_soft_limit, test_coll_limit, test_anti_coll_limit
+    integer :: generator_mode
+    integer :: fixed_alr
 
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
@@ -5256,38 +5570,64 @@ contains
                case (BORN)
                case (NLO_REAL)
                   i_born = component%config%config%get_associated_born ()
+                  i_term = component%config%i_term(1)
                   call process%term(i_born)%fetch_constants &
                        (prc_constants(1))
                   call process%term(i_component)%fetch_constants &
                        (prc_constants(2))
-                  if (present (cc_flag)) then
-                     use_internal_cc = cc_flag
+                  if (present (nlo_settings)) then
+                     use_internal_cc = nlo_settings%use_internal_color_correlations
                      use_internal_sc = .false.
+                     use_resonance_mappings = nlo_settings%use_resonance_mappings
+                     test_soft_limit = nlo_settings%test_soft_limit
+                     test_coll_limit = nlo_settings%test_coll_limit
+                     test_anti_coll_limit = nlo_settings%test_coll_limit
+                     fixed_alr = nlo_settings%fixed_alr
                   else
                      use_internal_cc = .true.
                      use_internal_sc = .false.
+                     use_resonance_mappings = .false.
+                     test_soft_limit = .false.
+                     test_coll_limit = .false.
+                     test_anti_coll_limit = .false.
+                     fixed_alr = 0
                   end if
                   component%nlo_type = NLO_REAL
                   associate (nlo_controller => component%nlo_controller)
                     if (nlo_controller%needs_initialization) then
-                       call component%nlo_controller%set_internal_procedures &
-                            (use_internal_cc, use_internal_sc)
+                       call nlo_controller%set_internal_procedures &
+                          (use_internal_cc, use_internal_sc)
+                       associate (settings => nlo_controller%settings)
+                          settings%use_resonance_mappings = use_resonance_mappings
+                          settings%test_soft_limit = test_soft_limit
+                          settings%test_coll_limit = test_coll_limit
+                          settings%test_anti_coll_limit = test_anti_coll_limit
+                          settings%fixed_alr = fixed_alr
+                          if (present (nlo_settings)) then
+                             settings%combined_integration = nlo_settings%combined_integration
+                          end if
+                       end associate
                        process%component(i_component)%fks_template%id = &
-                            prc_constants(1)%id
-                       call component%nlo_controller%init (prc_constants, &
-                            process%component(i_component)%fks_template, &
-                            process%config%model)
-                       call component%nlo_controller%set_flv_born &
-                            (process%term(i_born)%flv)
-                       call component%nlo_controller%set_col_born &
-                            (process%term(i_born)%col)
-                       call component%nlo_controller%set_hel_born &
-                            (process%term(i_born)%hel)
+                          prc_constants(1)%id
+                       call nlo_controller%check_if_threshold_method (component%config%core)
+                       select type (model => process%config%model)
+                       type is (model_t)
+                          call nlo_controller%init_regions_and_resonances (prc_constants, &
+                             process%component(i_component)%fks_template, &
+                             process%component(i_component)%phs_config, model)
+                       end select
+                       call nlo_controller%init_color_data (prc_constants, &
+                          process%term(i_term)%flv, process%term(i_term)%col)
+                       call nlo_controller%setup_real_terms &
+                          (process%component(i_component)%fks_template, &
+                           process%component(i_component)%phs_config%sqrts)
+                       call nlo_controller%set_flv_born (process%term(i_born)%flv)
+                       call nlo_controller%set_col_born (process%term(i_born)%col)
+                       call nlo_controller%set_hel_born (process%term(i_born)%hel)
                        allocate (instance%sqme_real &
-                            (component%nlo_controller%reg_data%n_flv_real, &
-                            size (component%nlo_controller%reg_data%regions)))
-                       call component%nlo_controller%init_born_amps &
-                            (process%get_n_allowed_born (i_born))
+                          (nlo_controller%reg_data%n_flv_real, &
+                          component%nlo_controller%reg_data%n_phs))
+                       call nlo_controller%init_born_amps (process%get_n_allowed_born (i_born))
                        nlo_controller%needs_initialization = .false.
                     end if
                   end associate
@@ -5298,33 +5638,62 @@ contains
                   i_born = component%config%config%get_associated_born ()
                   component%nlo_type = NLO_VIRTUAL
                   call component%nlo_controller%init_virtual ()
-               case (NLO_PDF)
+                  if (.not. nlo_settings%with_virtual_subtraction) &
+                     call component%nlo_controller%disable_virtual_subtraction ()
+               case (NLO_MISMATCH)
+                  component%nlo_type = NLO_MISMATCH
+               case (NLO_DGLAP)
                   i_born = component%config%config%get_associated_born ()
-                  component%nlo_type = NLO_PDF
-                  call component%nlo_controller%init_pdf_subtraction ()
+                  component%nlo_type = NLO_DGLAP
+                  call component%nlo_controller%init_dglap_remnant ()
                case (NLO_SUBTRACTION)
                   component%nlo_type = NLO_SUBTRACTION
-               case (NLO_THRESHOLD_RESUMMATION)
-                  component%nlo_type = NLO_THRESHOLD_RESUMMATION
                end select
                call component%setup_kinematics &
-                    (instance%sf_chain, process%beam_config, &
-                    combined_integration)
-               if (nlo_type == NLO_REAL .or. nlo_type == NLO_PDF) &
-                    call component%setup_fks_kinematics (process%meta%var_list)
+                  (instance%sf_chain, process%beam_config, &
+                     nlo_settings%combined_integration)
+               if (nlo_type == NLO_REAL) then
+                  generator_mode = check_generator_mode (GEN_REAL_PHASE_SPACE)
+                  call component%setup_fks_kinematics (process%meta%var_list, &
+                     generator_mode)
+               else if (nlo_type == NLO_DGLAP) then
+                  call component%setup_fks_kinematics (process%meta%var_list)
+               else if (nlo_type == NLO_MISMATCH) then
+                  generator_mode = check_generator_mode (GEN_SOFT_MISMATCH)
+                  call component%setup_fks_kinematics (process%meta%var_list, &
+                     generator_mode) 
+               end if
              end associate
           end if
        end do
 
-       if (present (combined_integration)) then
-          if (combined_integration) then
-             pcm%collect_matrix_elements = .true.
-          end if
-       end if
-       
+       if (present (nlo_settings)) &
+          pcm%collect_matrix_elements = nlo_settings%combined_integration
+
     end select
+  contains
+    function check_generator_mode (gen_mode_default) result (gen_mode)
+       integer :: gen_mode
+       integer, intent(in) :: gen_mode_default
+       if (nlo_settings%test_coll_limit .and. nlo_settings%test_anti_coll_limit) &
+          call msg_fatal ("You cannot check the collinear and anti-collinear limit "&
+             &"at the same time!")
+       if (nlo_settings%test_soft_limit .and. .not. nlo_settings%test_coll_limit) then
+          gen_mode = GEN_SOFT_LIMIT_TEST
+       else if (.not. nlo_settings%test_soft_limit .and. nlo_settings%test_coll_limit) then
+          gen_mode = GEN_COLL_LIMIT_TEST
+       else if (.not. nlo_settings%test_soft_limit .and. nlo_settings%test_anti_coll_limit) then
+          gen_mode = GEN_ANTI_COLL_LIMIT_TEST
+       else if (nlo_settings%test_soft_limit .and. nlo_settings%test_coll_limit) then
+          gen_mode = GEN_SOFT_COLL_LIMIT_TEST
+       else if (nlo_settings%test_soft_limit .and. nlo_settings%test_anti_coll_limit) then
+          gen_mode = GEN_SOFT_ANTI_COLL_LIMIT_TEST
+       else
+          gen_mode = gen_mode_default
+       end if
+    end function check_generator_mode
   end subroutine process_instance_init_nlo_configuration
-  
+
   subroutine process_instance_setup_blha_structure_functions (instance)
      class(process_instance_t), intent(inout) :: instance
      integer :: i
@@ -5347,21 +5716,22 @@ contains
      integer :: i, j, n_flv
      type(quantum_numbers_t), dimension(:), allocatable :: qn
      type(helicity_t) :: hel
-     integer, dimension(2) :: h
+     integer, dimension(:), allocatable :: h
      state_hel = config%data%get_helicity_state_matrix ()
-     call state_hel%get_diagonal_entries (i_diag) 
+     call state_hel%get_diagonal_entries (i_diag)
      allocate (qn (state_hel%get_depth()))
      select type (pcm => instance%pcm)
      type is (pcm_instance_nlo_t)
+        allocate (h (pcm%controller%particle_data%n_in))
         call pcm%controller%init_pol_density_matrix (size (i_diag))
         f = state_hel%get_matrix_element (i_diag)
         do i = 1, size (i_diag)
-           qn = state_hel%get_quantum_numbers (i)
+           qn = state_hel%get_quantum_numbers (i_diag(i))
            do j = 1, size (qn)
               hel = qn(j)%get_helicity ()
               call hel%get_indices (h(j), h(j))
            end do
-           call pcm%controller%pol_density_matrix(i)%set_helicities (h(1), h(2))
+           call pcm%controller%pol_density_matrix(i)%set_helicities (h)
            call pcm%controller%pol_density_matrix(i)%set_value (f(i))
         end do
         associate (collector => pcm%controller%sqme_collector)
@@ -5372,7 +5742,6 @@ contains
            allocate (collector%sqme_virt_list (n_flv, 4))
            collector%sqme_virt_born_list = zero
            collector%sqme_virt_list = zero
-           !call pcm%controller%set_real_sqme_born_pointer (collector%sqme_born_list)
         end associate
      end select
   end subroutine process_instance_setup_polarized_beams_for_virtuals
@@ -5416,7 +5785,8 @@ contains
          if (associated (term%config)) then
             i_component = term%config%i_component
             associate (component => instance%process%component(i_component))
-              call term%setup_event_data (component%core, current_model)
+              call term%setup_event_data (component%core, current_model, &
+                 component%core_sub_born)
             end associate
          end if
        end associate
@@ -5507,12 +5877,10 @@ contains
        end if
     end if
     associate (mci_work => instance%mci_work(instance%i_mci))
-       if (mci_work%config%combined_integration) then
-          select type (pcm => instance%pcm)
-          class is (pcm_instance_nlo_t)
-             call pcm%controller%set_x_rad (mci_work%get_x_process ())
-          end select
-       end if
+       select type (pcm => instance%pcm)
+       class is (pcm_instance_nlo_t)
+          call pcm%controller%set_x_rad (mci_work%get_x_process ())
+       end select
     end associate
   end subroutine process_instance_compute_seed_kinematics
 
@@ -5541,7 +5909,7 @@ contains
        do i = 1, size (instance%component)
           if (instance%component(i)%active) then
             select case (instance%component(i)%config%config%get_nlo_type())
-            case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
+            case (BORN, NLO_VIRTUAL, NLO_DGLAP)
               real_phsp = .false.
             case (NLO_REAL)
               real_phsp = .true.
@@ -5646,25 +6014,15 @@ contains
   subroutine process_instance_evaluate_trace (instance)
     class(process_instance_t), intent(inout) :: instance
     integer :: i, i_real
-    instance%sqme = 0
+    instance%sqme = zero
     i_real = 0
+    call instance%reset_nlo_matrix_elements ()
     if (instance%evaluation_status >= STAT_PASSED_CUTS) then
        do i = 1, size (instance%term)
           associate (term => instance%term(i))
             if (term%active .and. term%passed) then
               select case (term%nlo_type)
-              case (NLO_REAL)
-                 select type (pcm => instance%pcm)
-                 class is (pcm_instance_nlo_t)
-                    if (.not. pcm%collect_matrix_elements) then
-                       if (debug_active (D_SUBTRACTION)) &
-                            call msg_debug (D_SUBTRACTION, "Evaluate real trace")
-                       call instance%evaluate_trace_real (term, i)
-                    else
-                       i_real = i
-                    end if
-                 end select
-              case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
+              case (BORN, NLO_VIRTUAL, NLO_MISMATCH, NLO_DGLAP)
                  call term%evaluate_interaction (instance%component)
                  call term%evaluate_trace ()
               end select
@@ -5675,23 +6033,41 @@ contains
           associate (component => instance%component(i))
             if (component%active) then
               select case (component%config%config%get_nlo_type())
-              case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
-                call component%evaluate_sqme (instance%term)
-                instance%sqme = instance%sqme + component%sqme
-                instance%evaluation_status = STAT_EVALUATED_TRACE
+              case (BORN, NLO_VIRTUAL, NLO_MISMATCH, NLO_DGLAP)
+                 call component%evaluate_sqme (instance%term)
+                 instance%sqme = instance%sqme + component%sqme
+                 instance%evaluation_status = STAT_EVALUATED_TRACE
               end select
             end if
           end associate
        end do
-       select type (pcm => instance%pcm)
-       class is (pcm_instance_nlo_t)
-          if (pcm%collect_matrix_elements .and. i_real > 0) &
-            call instance%evaluate_trace_real (instance%term(i_real), i_real)
-       end select
     else
        ! failed kinematics, failed cuts: set sqme to zero
-       instance%sqme = 0
+       instance%sqme = zero
     end if
+    if (instance%evaluation_status < STAT_SEED_KINEMATICS) return
+    select type (pcm => instance%pcm)
+    class is (pcm_instance_nlo_t)
+       do i = 1, size (instance%term)
+          associate (term => instance%term(i))
+             if (term%active) then
+                select case (term%nlo_type)
+                case (NLO_REAL)
+                   pcm%controller%nlo_cuts%passed_born = &
+                      instance%evaluation_status >= STAT_PASSED_CUTS
+                   if (.not. pcm%collect_matrix_elements) then
+                      call msg_debug2 (D_SUBTRACTION, "Evaluate real trace")
+                      call instance%evaluate_trace_real (term, i)
+                   else
+                      i_real = i
+                   end if
+                end select
+             end if
+          end associate
+       end do
+       if (pcm%collect_matrix_elements .and. i_real > 0) &
+          call instance%evaluate_trace_real (instance%term(i_real), i_real)
+    end select
   end subroutine process_instance_evaluate_trace
 
   subroutine process_instance_evaluate_event_data (instance, weight)
@@ -5716,73 +6092,62 @@ contains
        end if
        instance%evaluation_status = STAT_EVENT_COMPLETE
     else
-       ! failed kinematics etc.: set weight to zero
-       instance%weight = 0
+       !!! failed kinematics etc.: set weight to zero
+       instance%weight = zero
+       !!! Maybe we want to keep the event nevertheless
+       if (instance%keep_failed_events ()) then
+          !!! Force factorization scale, otherwise writing to event output fails
+          do i = 1, size (instance%term)
+             instance%term(i)%fac_scale = zero
+          end do
+          instance%evaluation_status = STAT_EVENT_COMPLETE
+       end if
     end if
   end subroutine process_instance_evaluate_event_data
 
-  subroutine process_instance_evaluate_trace_real (instance, term, i)
+  subroutine process_instance_evaluate_trace_real (instance, term, i_component)
      class(process_instance_t), intent(inout) :: instance
      type(term_instance_t), intent(inout) :: term
-     integer, intent(in) :: i
-     logical :: set_me
-     integer :: j, ireg, i_flv_real, i_flv_born
-     integer :: nlegs
-     integer :: fixed_emitter
-     real(default) :: sqme_born
-     call msg_debug (D_SUBTRACTION, "process_instance_evaluate_trace_real")
+     integer, intent(in) :: i_component
+     integer :: i_phs, alr, nlegs
+     logical :: use_contributors
+     type(vector4_t), dimension(:), allocatable :: p_born
+
+     call msg_debug2 (D_SUBTRACTION, "process_instance_evaluate_trace_real")
 
      select type (pcm => instance%pcm)
      type is (pcm_instance_nlo_t)
-        nlegs = term%nlo_controller%reg_data%nlegs_real
-        ireg = 1
-        instance%sqme_real = 0
+        nlegs = term%nlo_controller%reg_data%n_legs_real
+        instance%sqme_real = zero
 
-        fixed_emitter = instance%get_fixed_emitter (i)
+        associate (reg_data => term%nlo_controller%reg_data)
+           use_contributors = allocated (reg_data%alr_contributors)
+           allocate (p_born(1 : size(term%nlo_controller%int_born%get_momenta ())))
+           p_born = term%nlo_controller%int_born%get_momenta ()
+           call term%reset_phs_identifiers ()
+           do alr = 1, reg_data%n_regions
+              if (use_contributors) then
+                 call term%evaluate_real_phase_space (reg_data%get_emitter(alr), &
+                    reg_data%alr_to_i_contributor(alr))
+              else
+                 call term%evaluate_real_phase_space (reg_data%get_emitter(alr))
+              end if
+           end do
+        end associate
 
-        if (debug_active (D_SUBTRACTION)) then
-           call msg_debug (D_SUBTRACTION, "Loop over emitters: ") 
-           print *, term%nlo_controller%reg_data%emitters
-        end if
-        
-        do j = 0, nlegs
-           if (fixed_emitter >= 0 .and. j /= fixed_emitter) cycle
-           if (any (term%nlo_controller%reg_data%emitters == j)) then
-              if (debug_active (D_SUBTRACTION)) call msg_debug (D_SUBTRACTION, "active emitter", j)
-              call term%nlo_controller%set_active_emitter (j)
-              call term%evaluate_real_phase_space ()
-              do i_flv_real = 1, term%nlo_controller%reg_data%n_flv_real
-                 i_flv_born = term%nlo_controller%reg_data%underlying_borns (i_flv_real) 
-                 if (debug_active (D_SUBTRACTION)) &
-                      call msg_debug (D_SUBTRACTION, "active real flavor", i_flv_real)
-                 term%nlo_controller%active_flavor_structure_real = i_flv_real
-                 call term%evaluate_interaction_real (instance%component(i), i)
-                 if (.not. term%passed) then
-                    !!! Cuts failed, leave subroutine
-                    instance%evaluation_status = STAT_FAILED_CUTS
-                    instance%sqme_real = 0
-                    return
-                 end if
-                 call term%evaluate_trace ()
-                 if (instance%component(i)%active) then
-                    associate (component => instance%component(i))
-                      call component%evaluate_sqme_born (term, set_me)
-                      sqme_born = component%sqme
-                      if (set_me) &
-                         call associate_sqme_born (component, sqme_born * term%weight, i_flv_born)
-                      call component%evaluate_sqme_real (term)
-                      instance%sqme_real(i_flv_real, ireg) = &
-                           pcm%collector%current_sqme_real
-                      if (pcm%collect_matrix_elements) then
-                         pcm%collector%sqme_real_per_emitter(i_flv_real,j) = &
-                              pcm%collector%current_sqme_real 
-                      end if
-                    end associate
-                 end if
-              end do
-              ireg = ireg + 1 
-           end if
-        end do
+        select type (phs => term%k_term%phs)
+        type is (phs_fks_t)
+           do i_phs = 1, size (phs%phs_identifiers)
+              call term%update_real_interactions (i_phs)
+              term%nlo_controller%nlo_cuts%passed_real (i_phs)  = term%passed
+              call term%nlo_controller%set_active_emitter &
+                 (phs%phs_identifiers(i_phs)%emitter)
+              call term%nlo_controller%set_active_phase_space (i_phs)
+              call instance%evaluate_trace_real_for_phs (term, pcm, &
+                 i_component, i_phs)
+           end do
+        end select
+
         instance%sqme = instance%sqme + sum (instance%sqme_real)
         if (pcm%collect_matrix_elements) then
            pcm%collector%sqme_real_sum = sum (instance%sqme_real)
@@ -5791,82 +6156,156 @@ contains
      end select
   end subroutine process_instance_evaluate_trace_real
 
-  subroutine process_instance_evaluate_trace_real_rad (instance, term, i)
+  subroutine process_instance_evaluate_trace_real_for_phs (instance, term, pcm, &
+     i_component, i_phs)
     class(process_instance_t), intent(inout) :: instance
     type(term_instance_t), intent(inout) :: term
-    integer, intent(in) :: i
-    integer :: emitter
-    call msg_debug (D_SUBTRACTION, "process_instance_evaluate_trace_real_rad")
+    type(pcm_instance_nlo_t), intent(inout) :: pcm
+    integer, intent(in) :: i_component
+    integer, intent(in) :: i_phs
+    integer :: i_flv_real, i_flv_born
+    logical :: not_virtual, pure_born
+    real(default) :: sqme_born
+
+    do i_flv_real = 1, term%nlo_controller%get_n_flv_real ()
+       i_flv_born = term%nlo_controller%reg_data%underlying_borns (i_flv_real) 
+       call msg_debug2 (D_SUBTRACTION, "active real flavor", i_flv_real)
+       term%nlo_controller%active_flavor_structure_real = i_flv_real
+       associate (component => instance%component(i_component), &
+          passed_born => term%nlo_controller%nlo_cuts%passed_born, &
+          passed_real => term%nlo_controller%nlo_cuts%passed_real(i_phs)) 
+          if (passed_real) then
+             call term%evaluate_interaction_real (component, i_component)
+             call term%evaluate_trace ()
+          end if
+          if (component%active) then
+             !!! Since this is now looped over we should extract this from the routine or
+             !!! at least make sure that it is only evaluated once. Also, the loop over
+             !!! real flavor structures has to be changed with the one over resonances
+             !!! in this case.
+             if (passed_born) then
+                call component%evaluate_sqme_born (term, not_virtual, pure_born)
+                sqme_born = component%sqme
+                call msg_debug2 (D_SUBTRACTION, "sqme_born", sqme_born)
+                if (pcm%controller%nlo_cuts%passed_born .and. not_virtual) &
+                   call set_subtraction_born (component, sqme_born * term%weight, i_flv_born)
+                call set_pure_born (component, sqme_born * term%weight, i_flv_born)
+             end if
+             if (passed_real) &
+                call component%evaluate_sqme_real (term, i_phs)
+             if (passed_real .or. passed_born) then
+                call component%apply_subtraction (term)
+                instance%sqme_real(i_flv_real, i_phs) = pcm%collector%current_sqme_real
+             end if
+             if (pcm%collect_matrix_elements) then
+                pcm%collector%sqme_real_per_phs (i_flv_real, i_phs) &
+                   = pcm%collector%current_sqme_real 
+             end if
+          end if
+       end associate
+    end do
+  end subroutine process_instance_evaluate_trace_real_for_phs
+ 
+  subroutine process_instance_evaluate_trace_real_rad (instance, term, i, i_phs, i_flv)
+    class(process_instance_t), intent(inout) :: instance
+    type(term_instance_t), intent(inout) :: term
+    integer, intent(in) :: i, i_phs, i_flv
+    call msg_debug2 (D_SUBTRACTION, "process_instance_evaluate_trace_real_rad")
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
-       term%nlo_controller%active_flavor_structure_real = 1
+       !!! TODO: (cw 2016-03-01) This must become more flexible even for simple Drell-Yan
+       term%nlo_controller%active_flavor_structure_real = i_flv
        call term%evaluate_trace ()
-       emitter = term%nlo_controller%active_emitter
        associate (component => instance%component(i))
-         call component%evaluate_sqme_real (term)
-         pcm%collector%sqme_real_per_emitter (1, emitter) = &
-              pcm%collector%current_sqme_real
+          call component%evaluate_sqme_real (term, i_phs)
+          call component%apply_subtraction (term)
+          pcm%collector%sqme_real_per_phs (i_flv, i_phs) = &
+             pcm%collector%current_sqme_real
        end associate
     end select
   end subroutine process_instance_evaluate_trace_real_rad
-    
-  subroutine process_instance_compute_sqme_real_rad &
-       (instance, emitter, p_born, p_real, alpha_s_external)
+
+  subroutine process_instance_evaluate_trace_real_rad_sub (instance, term, i, i_phs)
     class(process_instance_t), intent(inout) :: instance
-    integer, intent(in) :: emitter
-    type(vector4_t), intent(in), dimension(:) :: p_born 
-    type(vector4_t), intent(in), dimension(:) :: p_real
+    type(term_instance_t), intent(inout) :: term
+    integer, intent(in) :: i, i_phs
+    integer :: i_flv_real
+
+    call msg_debug2 (D_SUBTRACTION, "process_instance_evaluate_trace_real_rad_sub")
+    select type (pcm => instance%pcm)
+    type is (pcm_instance_nlo_t)
+       do i_flv_real = 1, pcm%controller%get_n_flv_real () 
+          term%nlo_controller%active_flavor_structure_real = i_flv_real
+          !!! TODO: (cw 2016-03-02) Avoid multiple evaluation of that
+          call term%evaluate_trace ()
+          call instance%component(i)%apply_subtraction (term)
+          pcm%collector%sqme_real_per_phs (i_flv_real, i_phs) = &
+             pcm%collector%current_sqme_real
+       end do
+    end select
+  end subroutine process_instance_evaluate_trace_real_rad_sub
+
+  subroutine process_instance_apply_fks_factors_for_powheg (instance, i_phs)
+    class(process_instance_t), intent(inout) :: instance
+    integer, intent(in) :: i_phs
+    integer :: i_real
+    select type (pcm => instance%pcm)
+    type is (pcm_instance_nlo_t)
+       i_real = instance%get_associated_real ()
+       associate (term => instance%term(i_real))
+          call term%nlo_controller%set_active_phase_space (i_phs)
+          call instance%component(i_real)%apply_subtraction (term)
+       end associate
+    end select
+  end subroutine process_instance_apply_fks_factors_for_powheg
+
+  subroutine process_instance_compute_sqme_real_rad &
+       (instance, i_phs, i_flv, alpha_s_external)
+    class(process_instance_t), intent(inout) :: instance
+    integer, intent(in) :: i_phs, i_flv
     real(default), intent(in), optional :: alpha_s_external
     integer :: i_real
     
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
        if (.not. pcm%collect_matrix_elements) &
-            call msg_fatal ("Compute radiation matrix elements: " // &
-            "Sqme collector must be allocated!")
-       call pcm%controller%set_active_emitter (emitter)
+          call msg_fatal ("Compute radiation matrix elements: " // &
+             "sqme_collector must be allocated!")
        call pcm%controller%disable_subtraction () 
-       associate (config => instance%component(pcm%active_real_component)%config)
-         select case (config%component_type)
-         case (COMP_MASTER)
-            i_real = config%config%get_associated_real ()
-            if (i_real == 0) i_real = config%config%get_associated_real_sing ()
-         case (COMP_REAL_FIN)
-            i_real = config%config%get_associated_real_fin ()
-         end select
-       end associate
+       i_real = instance%get_associated_real ()
+
+       call instance%component(i_real)%redo_sf_chain &
+          (instance%mci_work(instance%i_mci), instance%selected_channel)
        
        associate (term => instance%term(i_real))
          call term%evaluate_interaction_real_rad (instance%component(i_real), &
-              p_born, p_real, i_real, alpha_s_external)
-         call instance%evaluate_trace_real_rad (term, i_real)
+            i_real, i_phs, i_flv, alpha_s_external)
+         call instance%evaluate_trace_real_rad (term, i_real, i_phs, i_flv)
        end associate
        associate (component => instance%component(i_real))
-         call component%supply_damping_factor (component%sqme)
+         call component%apply_damping_factor (component%sqme)
        end associate
     end select
   end subroutine process_instance_compute_sqme_real_rad
 
   subroutine process_instance_compute_sqme_real_sub &
-       (instance, emitter, p_born, p_real, alpha_s_external)
+       (instance, i_phs, alpha_s_external)
     class(process_instance_t), intent(inout) :: instance
-    integer, intent(in) :: emitter
-    type(vector4_t), intent(in), dimension(:) :: p_born
-    type(vector4_t), intent(in), dimension(:) :: p_real
+    integer, intent(in) :: i_phs
     real(default), intent(in), optional :: alpha_s_external
     integer :: i_real
 
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
-       call pcm%controller%set_active_emitter (emitter)
        call pcm%controller%disable_sqme_np1 ()
-       i_real = instance%component(1)%config%config%get_associated_real ()
+       i_real = instance%get_associated_real ()
 
        associate (term => instance%term(i_real))
          call term%evaluate_interaction_real_rad (instance%component(i_real), &
-              p_born, p_real, i_real, alpha_s_external)
-         call instance%evaluate_trace_real_rad (term, i_real)
+            i_real, i_phs, 1, alpha_s_external, only_born = .true.)
+         call instance%evaluate_trace_real_rad_sub (term, i_real, i_phs)
        end associate
+       call pcm%controller%disable_subtraction ()
     end select
   end subroutine process_instance_compute_sqme_real_sub
 
@@ -5981,11 +6420,13 @@ contains
     end do FIND_COMPONENT
   end subroutine process_instance_fetch
   
-  subroutine process_instance_init_simulation (instance, i_mci, safety_factor)
+  subroutine process_instance_init_simulation (instance, i_mci, &
+     safety_factor, keep_failed_events)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: i_mci
     real(default), intent(in), optional :: safety_factor
-    call instance%mci_work(i_mci)%init_simulation (safety_factor)
+    logical, intent(in), optional :: keep_failed_events
+    call instance%mci_work(i_mci)%init_simulation (safety_factor, keep_failed_events)
   end subroutine process_instance_init_simulation
 
   subroutine process_instance_final_simulation (instance, i_mci)
@@ -6045,31 +6486,42 @@ contains
     type(interaction_t), pointer :: ptr
     ptr => instance%term(i_term)%connected%get_trace_int_ptr ()
   end function process_instance_get_trace_int_ptr
-  
+
   function process_instance_get_matrix_int_ptr (instance, i_term) result (ptr)
     class(process_instance_t), intent(in), target :: instance
     integer, intent(in) :: i_term
     type(interaction_t), pointer :: ptr
-    select case (instance%term(i_term)%nlo_type)
-    case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
-      ptr => instance%term(i_term)%connected%get_matrix_int_ptr ()
-    case (NLO_REAL)
-      ptr => instance%term(i_term)%connected_real%get_matrix_int_ptr ()
-    end select
+    ptr => instance%term(i_term)%connected%get_matrix_int_ptr ()
   end function process_instance_get_matrix_int_ptr
-  
+
   function process_instance_get_flows_int_ptr (instance, i_term) result (ptr)
     class(process_instance_t), intent(in), target :: instance
     integer, intent(in) :: i_term
     type(interaction_t), pointer :: ptr
-    select case (instance%term(i_term)%nlo_type)
-    case (BORN, NLO_VIRTUAL, NLO_PDF, NLO_THRESHOLD_RESUMMATION)
-      ptr => instance%term(i_term)%connected%get_flows_int_ptr ()
-    case (NLO_REAL)
-      ptr => instance%term(i_term)%connected_real%get_flows_int_ptr ()
-    end select
+    ptr => instance%term(i_term)%connected%get_flows_int_ptr ()
   end function process_instance_get_flows_int_ptr
-  
+
+  function process_instance_get_trace_int_ptr_real (instance, i_term) result (ptr)
+    class(process_instance_t), intent(in), target :: instance
+    integer, intent(in) :: i_term
+    type(interaction_t), pointer :: ptr
+    ptr => instance%term(i_term)%connected_real%get_trace_int_ptr ()
+  end function process_instance_get_trace_int_ptr_real
+
+  function process_instance_get_matrix_int_ptr_real (instance, i_term) result (ptr)
+    class(process_instance_t), intent(in), target :: instance
+    integer, intent(in) :: i_term
+    type(interaction_t), pointer :: ptr
+    ptr => instance%term(i_term)%connected_real%get_matrix_int_ptr ()
+  end function process_instance_get_matrix_int_ptr_real
+
+  function process_instance_get_flows_int_ptr_real (instance, i_term) result (ptr)
+    class(process_instance_t), intent(in), target :: instance
+    integer, intent(in) :: i_term
+    type(interaction_t), pointer :: ptr
+    ptr => instance%term(i_term)%connected_real%get_flows_int_ptr ()
+  end function process_instance_get_flows_int_ptr_real
+
   function process_instance_get_state_flv (instance, i_term) result (state_flv)
     class(process_instance_t), intent(in) :: instance
     integer, intent(in) :: i_term
@@ -6195,6 +6647,14 @@ contains
     end do
   end function process_instance_get_actual_calls_total
     
+  subroutine process_instance_reset_nlo_matrix_elements (instance)
+    class(process_instance_t), intent(inout) :: instance
+    select type (pcm => instance%pcm)
+    class is (pcm_instance_nlo_t)
+       call pcm%controller%sqme_collector%reset ()
+    end select
+  end subroutine process_instance_reset_nlo_matrix_elements
+
   subroutine pcm_nlo_allocate_instance (pcm, instance)
     class(pcm_nlo_t), intent(in) :: pcm
     class(pcm_instance_t), intent(inout), allocatable :: instance
@@ -6235,37 +6695,66 @@ contains
     call instance%term(i_term)%set_alpha_qcd_forced (alpha_qcd)
   end subroutine process_instance_set_alpha_qcd_forced
   
-  subroutine process_instance_display_real_kinematics (instance, i)
-     class(process_instance_t), intent(in) :: instance
-     integer, intent(in) :: i
-     if (associated (instance%term(i)%nlo_controller)) then
-        if (instance%term(i)%nlo_controller%counter_active) &
-            call instance%term(i)%nlo_controller%counter%display ()
-     end if
-  end subroutine process_instance_display_real_kinematics
-
   function process_instance_has_nlo_component (instance) result (nlo)
     class(process_instance_t), intent(in) :: instance
     logical :: nlo
     nlo = instance%process%is_nlo_calculation ()
   end function process_instance_has_nlo_component
 
+  function process_instance_keep_failed_events (instance) result (keep)
+    logical :: keep
+    class(process_instance_t), intent(in) :: instance
+    keep = instance%mci_work(instance%i_mci)%keep_failed_events
+  end function process_instance_keep_failed_events
+
   function process_instance_has_blha_component (instance) result (val)
     logical :: val
     class(process_instance_t), intent(in) :: instance
     integer :: i
+    logical :: skip
     val = .false.
     do i = 1, size (instance%component)
        if (associated (instance%component(i)%config)) then
-          if (.not. instance%component(i)%config%is_active_nlo_component ()) cycle
-          select type (core => instance%component(i)%config%core)
-          class is (prc_blha_t)
-             val = .true.
-             exit
-          end select
+          associate (config => instance%component(i)%config)
+             !!! Always take into account the subtraction component
+             skip = .not. config%is_active_component () .and. &
+                .not. config%get_nlo_type () == NLO_SUBTRACTION 
+             if (skip) cycle
+             select type (core => config%core)
+             class is (prc_blha_t)
+                val = .true.
+                exit
+             end select
+          end associate
        end if
     end do
   end function process_instance_has_blha_component
+
+  function process_instance_needs_extra_code (instance) result (val)
+    logical :: val
+    class(process_instance_t), intent(in) :: instance
+    integer :: i
+    logical :: skip
+    val = .false.
+    do i = 1, size (instance%component)
+       if (associated (instance%component(i)%config)) then
+          !!! Always take into account the subtraction component
+          associate (config => instance%component(i)%config)
+             skip = .not. config%get_nlo_type () == NLO_SUBTRACTION &
+                .and. .not. config%is_active_component ()
+             if (skip) cycle
+             select type (core => config%core)
+             class is (prc_blha_t)
+                val = .true.
+                exit
+             class is (prc_threshold_t)
+                val = .true.
+                exit
+             end select
+          end associate
+       end if
+    end do
+  end function process_instance_needs_extra_code
 
   function process_instance_get_fixed_emitter (instance, i) result (emitter)
      integer :: emitter
@@ -6273,6 +6762,12 @@ contains
      integer, intent(in) :: i
      emitter = instance%component(i)%config%config%get_fixed_emitter ()
   end function process_instance_get_fixed_emitter
+
+  subroutine process_instance_get_coupling_powers (instance, alpha_power, alphas_power)
+    class(process_instance_t), intent(in) :: instance
+    integer, intent(out) :: alpha_power, alphas_power
+    call instance%component(1)%config%config%get_coupling_powers (alpha_power, alphas_power)
+  end subroutine process_instance_get_coupling_powers
 
   subroutine process_instance_create_blha_interface (instance, beam_structure)
     class(process_instance_t), intent(inout) :: instance
@@ -6290,8 +6785,9 @@ contains
     type(string_t) :: real_tree_me_method
     type(string_t) :: loop_me_method
     type(string_t) :: correlation_me_method
-    integer :: openloops_phs_tolerance
-    logical :: openloops_top_signal
+    integer :: openloops_phs_tolerance, openloops_stability_log
+    logical :: use_cms, use_collier
+    type(string_t) :: openloops_extra_cmd
 
     associate (process => instance%process)
        associate (var_list => process%meta%var_list)
@@ -6299,26 +6795,37 @@ contains
           real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
           loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
           correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-          alpha_power = var_list%get_ival (&
-                                           var_str ('alpha_power'))
-          alphas_power = var_list%get_ival (&
-                                           var_str ('alphas_power'))
-          openloops_phs_tolerance = var_list%get_ival (var_str ('openloops_phs_tolerance'))
-          openloops_top_signal = var_list%get_lval (var_str ('?openloops_top_signal'))
+          openloops_phs_tolerance = var_list%get_ival (var_str ("openloops_phs_tolerance"))
+          openloops_stability_log = var_list%get_ival (var_str ("openloops_stability_log"))
+          openloops_extra_cmd = var_list%get_sval (var_str ("$openloops_extra_cmd"))
+          use_cms = var_list%get_lval (var_str ("?openloops_use_cms"))
+          use_collier = var_list%get_lval (var_str ("?openloops_use_collier"))
        end associate
+       call instance%get_coupling_powers (alpha_power, alphas_power)
        do i = 1, size (process%term)
           if (instance%component(i)%nlo_type == BORN) then
+             !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+             if (.not. allocated (flv_born)) &
+                allocate (flv_born (size (process%term(i)%data%flv_state, 1), &
+                   size (process%term(i)%data%flv_state, 2)))
              flv_born = process%term(i)%data%flv_state
              n_in = process%term(i)%data%n_in
           else if (instance%component(i)%nlo_type == NLO_REAL) then
+             !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+             if (.not. allocated (flv_real)) &
+                allocate (flv_real (size (process%term(i)%data%flv_state, 1), &
+                   size (process%term(i)%data%flv_state, 2)))
              flv_real = process%term(i)%data%flv_state
              n_in = process%term(i)%data%n_in
           end if
        end do
        use_external_borns = born_me_method /= 'omega'
-       use_external_real_trees = instance%has_nlo_component () .and. (real_tree_me_method /= 'omega')
-       use_external_loops = instance%has_nlo_component () .and. (loop_me_method /= 'omega')
-       use_external_correlations = instance%has_nlo_component () .and. (correlation_me_method /= 'omega')
+       use_external_real_trees = &
+          instance%has_nlo_component () .and. (real_tree_me_method /= 'omega')
+       use_external_loops = &
+          instance%has_nlo_component () .and. (loop_me_method /= 'omega')
+       use_external_correlations = &
+          instance%has_nlo_component () .and. (correlation_me_method /= 'omega')
 
        select case (char (loop_me_method))
        case ('gosam')
@@ -6349,25 +6856,36 @@ contains
           use_external_loops, use_external_correlations)
        call blha_master%allocate_config_files ()
        call blha_master%setup_additional_features (openloops_phs_tolerance, &
-          top_signal = openloops_top_signal, beam_structure = beam_structure)
+          use_cms, &
+          openloops_stability_log, &
+          use_collier, &
+          extra_cmd = openloops_extra_cmd, &
+          beam_structure = beam_structure)
        call blha_master%init (process%meta%id, process%config%model, &
-                              n_in, alpha_power, alphas_power, &
-                              flv_born, flv_real)
+          n_in, alpha_power, alphas_power, flv_born, flv_real)
        call blha_master%generate (process%meta%id)
     end associate 
-  end subroutine process_instance_create_blha_interface 
+  end subroutine process_instance_create_blha_interface
 
-  subroutine process_instance_load_blha_libraries (instance, os_data)
+  subroutine process_instance_create_and_load_extra_libraries (instance, beam_structure, os_data)
     class(process_instance_t), intent(inout), target :: instance
+    type(beam_structure_t), intent(in) :: beam_structure
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: libname
     integer :: i
     type(process_component_t), pointer :: component_config => null ()
-    
+    logical :: skip
+
+    if (instance%has_blha_component ())  &
+         call instance%create_blha_interface (beam_structure)
     do i = 1, size (instance%component)
        component_config => instance%component(i)%config
        if (associated (component_config)) then
-          if (.not. component_config%config%is_active_nlo_component ()) cycle
+          !!! Always load libraries for the subtraction component so that
+          !!! other components can use it
+          skip = .not. component_config%get_nlo_type () == NLO_SUBTRACTION &
+             .and. .not. component_config%config%is_active_component ()
+          if (skip) cycle
           select type (core => component_config%core)
           type is (prc_gosam_t)
              libname = instance%process%get_library_name ()
@@ -6376,20 +6894,24 @@ contains
              call core%read_contract_file (instance%process%term(i)%data%flv_state)
              call core%set_particle_properties (instance%process%config%model)
              call core%set_electroweak_parameters (instance%process%config%model)
-             call core%print_parameter_file ()
+             call core%print_parameter_file (i)
           type is (prc_openloops_t)
              call core%set_n_external (instance%component(i)%get_n_particles ())
              call core%prepare_library (os_data, instance%process%config%model, &
                   instance%process%meta%var_list)
              call core%start ()
              call core%read_contract_file (instance%process%term(i)%data%flv_state)
-             call core%print_parameter_file ()
+             call core%print_parameter_file (i)
              if (core%includes_polarization ()) call instance%transfer_helicities (core)
+          type is (prc_threshold_t)
+             if (component_config%config%get_nlo_type () == NLO_VIRTUAL) then
+                libname = instance%process%get_library_name ()
+                call core%load_extra_libraries (os_data, libname, component_config%config%get_nlo_type ())
+             end if
           end select
        end if
     end do
-    nullify (component_config)
-  end subroutine process_instance_load_blha_libraries
+  end subroutine process_instance_create_and_load_extra_libraries
 
   function process_instance_get_lorentz_transformation (instance, i_component) result (lt)
     type(lorentz_transformation_t) :: lt
@@ -6429,9 +6951,9 @@ contains
 
     do i_component = 1, n_components
        select case (process%get_component_nlo_type (i_component))
-       case (NLO_REAL, NLO_VIRTUAL)
+       case (NLO_REAL, NLO_VIRTUAL, NLO_MISMATCH)
           associate (component => process%component (i_component))
-             component%core_sub_born => process%component(i_sub)%core 
+             component%core_sub_born => process%component(i_sub)%core
           end associate
        end select
     end do

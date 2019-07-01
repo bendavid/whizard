@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -44,12 +44,17 @@ TESTS_EXTENDED = \
 	extra_shower_3_z_nu.run \
 	extra_shower_3_z_tau.run \
 	extra_shower_4_ee.run \
-	extra_shower_5.run
+	extra_shower_5.run \
+	extra_shower_6.run
 
-XFAIL_TESTS_EXTENDED =
+XFAIL_TESTS_EXTENDED = \
+	extra_shower_4_ee.run
 
 TESTS_REQ_GAMELAN = \
 	extra_shower_2.run
+
+TESTS_REQ_SLHA = \
+	extra_shower_6.run
 
 TEST_DRIVERS_RUN = \
     $(TESTS_EXTENDED)
@@ -80,9 +85,12 @@ SUFFIXES = .sh .run
 	$(SED) -i 's|@share_dir@|$(top_srcdir)/share/tests/|g' $@
 	@chmod +x $@
 
+$(TESTS_REQ_SLHA): nmssm.slha
+nmssm.slha: $(top_srcdir)/share/tests/nmssm.slha
+	cp $< $@
+
 if MPOST_AVAILABLE
 $(TESTS_REQ_GAMELAN): gamelan.sty
-$(UNIT_TESTS_REQ_GAMELAN): gamelan.sty
 gamelan.sty: $(top_builddir)/src/gamelan/gamelan.sty
 	cp $< $@
 
@@ -200,6 +208,7 @@ clean-local:
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
+	rm -f nmssm.slha
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 if FC_SUBMODULES
 	rm -f *.smod

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -111,6 +111,7 @@ module commands
   type, extends (command_t) :: cmd_model_t
      private
      type(string_t) :: name
+     type(string_t) :: scheme
    contains
      procedure :: write => cmd_model_write
      procedure :: compile => cmd_model_compile
@@ -141,7 +142,7 @@ module commands
   type, extends (command_t) :: cmd_nlo_t
     private
     type(parse_node_p), dimension(3) :: pn_components
-    logical, dimension(4) :: active_component  
+    logical, dimension(6) :: active_component = .false.
   contains
       procedure :: write => cmd_nlo_write
       procedure :: compile => cmd_nlo_compile
@@ -914,31 +915,57 @@ contains
   subroutine cmd_model_compile (cmd, global)
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    type(parse_node_t), pointer :: pn_name
+    type(parse_node_t), pointer :: pn_name, pn_arg, pn_scheme
     type(model_t), pointer :: model
-    pn_name => parse_node_get_sub_ptr (cmd%pn, 3)
-    cmd%name = parse_node_get_string (pn_name)
-    model => null ()
-    if (associated (global%model)) then
-       if (global%model%get_name () == cmd%name)  model => global%model
+    pn_name => cmd%pn%get_sub_ptr (3)
+    pn_arg => pn_name%get_next_ptr ()
+    if (associated (pn_arg)) then
+       pn_scheme => pn_arg%get_sub_ptr ()
+    else
+       pn_scheme => null ()
     end if
-    if (.not. associated (model)) then
-       if (global%model_list%model_exists (cmd%name)) then
-          model => global%model_list%get_model_ptr (cmd%name)
-       else
-          call global%read_model (cmd%name, model)
-       end if
+    cmd%name = pn_name%get_string ()
+    if (associated (pn_scheme)) then
+       cmd%scheme = pn_scheme%get_string ()
+       call preload_model (model, cmd%name, cmd%scheme)
+    else
+       cmd%scheme = ""
+       call preload_model (model, cmd%name)
     end if
     global%model => model
     if (associated (global%model)) then
        call global%model%link_var_list (global%var_list)
     end if
+  contains
+    subroutine preload_model (model, name, scheme)
+      type(model_t), pointer, intent(out) :: model
+      type(string_t), intent(in) :: name
+      type(string_t), intent(in), optional :: scheme
+      model => null ()
+      if (associated (global%model)) then
+         if (global%model%matches (name, scheme)) then
+            model => global%model
+         end if
+      end if
+      if (.not. associated (model)) then
+         if (global%model_list%model_exists (name, scheme)) then
+            model => global%model_list%get_model_ptr (name, scheme)
+         else
+            call global%read_model (name, model, scheme)
+         end if
+      end if
+    end subroutine preload_model
   end subroutine cmd_model_compile
 
   subroutine cmd_model_execute (cmd, global)
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    call global%select_model (cmd%name)
+    type(model_t), pointer :: model
+    if (cmd%scheme /= "") then
+       call global%select_model (cmd%name, cmd%scheme)
+    else
+       call global%select_model (cmd%name)
+    end if
     if (.not. associated (global%model)) &
          call msg_fatal ("Switching to model '" &
          // char (cmd%name) // "': model not found")
@@ -1029,7 +1056,7 @@ contains
     integer, dimension(:), allocatable :: pdg
     integer, dimension(:), allocatable :: i_term
     integer :: i, j, n_in, n_out, n_terms, n_components
-    logical :: nlo_fixed_order, nlo_threshold_matching
+    logical :: nlo_fixed_order
     type(string_t), dimension(:), allocatable :: prt_in_nlo, prt_out_nlo
     type(radiation_generator_t) :: radiation_generator
     type(pdg_list_t) :: pl_in, pl_out
@@ -1037,37 +1064,34 @@ contains
     type(string_t) :: real_tree_me_method
     type(string_t) :: loop_me_method
     type(string_t) :: correlation_me_method
-    type(string_t) :: current_me_method 
     integer, dimension(:), allocatable :: i_list
-    logical :: combined_nlo_integration = .false.
-    logical :: powheg_active = .false. 
-    logical :: use_powheg_damping_factors = .false.
-    logical :: gks_active = .false.
-    logical :: initial_state_colored = .false.
-    logical :: has_structure_functions = .false.
+    logical :: use_powheg_damping
+    logical :: gks_active
+    logical :: initial_state_colored
+    logical :: has_structure_functions
     integer :: n_components_extra, component_offset
     integer :: gks_multiplicity
     integer :: i_real, n_real
     integer :: n_emitters
     integer, dimension(:), allocatable :: emitters
     integer :: n_components_init
-    
-    nlo_fixed_order = cmd%local%nlo_fixed_order                
-    nlo_threshold_matching = cmd%local%nlo_threshold_matching
-    combined_nlo_integration = &
-       global%var_list%get_lval (var_str ('?combined_nlo_integration'))
-    powheg_active = & 
-       global%var_list%get_lval (var_str ('?powheg_matching')) 
-    use_powheg_damping_factors = &
-       global%var_list%get_lval (var_str ('?use_powheg_damping'))    
-
-    gks_multiplicity = &
-           global%var_list%get_ival (var_str ('gks_multiplicity'))
-    gks_active = gks_multiplicity > 2
-
-    call check_nlo_options (nlo_fixed_order, combined_nlo_integration, powheg_active)
+    integer :: alpha_power, alphas_power
+    logical :: requires_soft_mismatch
 
     var_list => cmd%local%get_var_list_ptr ()
+
+    nlo_fixed_order = cmd%local%nlo_fixed_order
+    use_powheg_damping = &
+       var_list%get_lval (var_str ('?use_powheg_damping'))
+    gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
+    gks_active = gks_multiplicity > 2
+    born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+    real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+    loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
+    correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
+    call check_nlo_options (nlo_fixed_order, var_list)
+    if (any (cmd%local%active_nlo_components))  &
+       call override_local_me_method (born_me_method)
 
     n_in = size (cmd%pn_pdg_in)
     allocate (prt_in (n_in), prt_spec_in (n_in))
@@ -1077,227 +1101,177 @@ contains
        prt_in(i) = make_flavor_string (pdg_in, cmd%local%model)
        prt_spec_in(i) = new_prt_spec (prt_in(i))
     end do
-    
     call compile_prt_expr &
          (prt_expr_out, cmd%pn_out, var_list, cmd%local%model)
     call prt_expr_out%expand ()
-    n_terms = prt_expr_out%get_n_terms ()
-    allocate (pdg_out_tab (n_terms))
-    allocate (i_term (n_terms), source = 0)
-    n_components = 0
-    SCAN_COMPONENTS: do i = 1, n_terms
-       if (allocated (pdg))  deallocate (pdg)
-       call prt_expr_out%term_to_array (prt_spec_out, i)
-       n_out = size (prt_spec_out)
-       allocate (pdg (n_out))
-       do j = 1, n_out
-          prt_out = prt_spec_out(j)%to_string ()
-          call split (prt_out, prt_out1, ":")
-          pdg(j) = cmd%local%model%get_pdg (prt_out1)
-       end do
-       pdg_out = sort (pdg)
-       do j = 1, n_components
-          if (pdg_out == pdg_out_tab(j))  cycle SCAN_COMPONENTS
-       end do
-       n_components = n_components + 1
-       i_term(n_components) = i
-       pdg_out_tab(n_components) = pdg_out
-    end do SCAN_COMPONENTS
-
-    if (nlo_fixed_order .or. nlo_threshold_matching .or. gks_active) then
-       call split_prt (prt_spec_in, n_in, pl_in)
-       call split_prt (prt_spec_out, n_out, pl_out)
-       call radiation_generator%init (pl_in, pl_out, qcd = .true., qed = .false.)
-       call radiation_generator%set_n (n_in, n_out, 0)
-
-       initial_state_colored = pdg_in%has_colored_particles()
-       has_structure_functions = global%beam_structure%get_n_record () > 0
-       if (initial_state_colored .and. has_structure_functions) &
-          call radiation_generator%set_initial_state_emissions ()
-
-       call radiation_generator%set_constraints (.false., .false., .true., .true.)
-       call radiation_generator%init_radiation_model (cmd%local%radiation_model)
-       call radiation_generator%setup_if_table ()
-    end if
-
-    if (use_powheg_damping_factors) then
-       emitters = radiation_generator%get_emitter_indices()
-       n_emitters = size (emitters)
-    end if
-
-    if (nlo_fixed_order) then
-       if (initial_state_colored) then
-          if (has_structure_functions) then
-             n_components_extra = 5
-          else
-             n_components_extra = 4
-          end if
-       else if (use_powheg_damping_factors) then
-          n_components_extra = 4 + n_emitters
-       else
-          n_components_extra = 4
-       end if
-       allocate (i_list (n_components_extra))
-    else if (nlo_threshold_matching) then
-       n_components_extra = 5
-       allocate (i_list (n_components_extra))
-    else if (gks_active) then
-       call radiation_generator%generate_multiple (gks_multiplicity)
-       n_components_extra = radiation_generator%get_n_gks_states ()
-    end if
-
-    
-    if (nlo_fixed_order .and..not. use_powheg_damping_factors) then
-       n_components_init = n_components * n_components_extra
-       !call prc_config%init (cmd%id, n_in, n_components*n_components_extra, cmd%local)
-    else if (nlo_fixed_order .and. use_powheg_damping_factors) then
-       !call prc_config%init (cmd%id, n_in, n_components*(n_components_extra), cmd%local)
-       n_components_init = n_components * n_components_extra
-    else if (nlo_threshold_matching) then
-       n_components_init = n_components * n_components_extra
-    else if (gks_active) then
-       !call prc_config%init (cmd%id, n_in, n_components*(n_components_extra+1), cmd%local)
-       n_components_init = n_components * (n_components_extra + 1)
-    else
-       !call prc_config%init (cmd%id, n_in, n_components, cmd%local)
-       n_components_init = n_components
-    end if
-
+    call scan_components ()
+    call determine_needed_components ()
     call prc_config%init (cmd%id, n_in, n_components_init, cmd%local)
+
+    alpha_power = var_list%get_ival (var_str ("alpha_power"))
+    alphas_power = var_list%get_ival (var_str ("alphas_power"))
+    call prc_config%set_coupling_powers (alpha_power, alphas_power)
 
     do i = 1, n_components
        call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
-       if (nlo_fixed_order .or. nlo_threshold_matching) then
+       if (nlo_fixed_order) then
           associate (active_comp => cmd%local%active_nlo_components)
-             i_list(1) = i
-             i_list(2) = i + n_components
-             i_list(3) = i + 2*n_components
-             i_list(4) = i + 3*n_components
-             if (initial_state_colored .and. has_structure_functions) then
-                i_list(5) = i + 4*n_components
-             else if (use_powheg_damping_factors) then
-                component_offset = 4
-                do j = component_offset, component_offset + n_emitters - 1
-                   i_list(j+1) = i + 4*n_components
-                end do
-             end if
-             born_me_method = var_list%get_sval (var_str ("$born_me_method"))
-             real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-             loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
-             correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
+             call set_component_list (i_list, i, n_components, &
+                  initial_state_colored, has_structure_functions, &
+                  requires_soft_mismatch, use_powheg_damping, n_emitters)
 
-             current_me_method = global%get_me_method ()
-             call switch_method (current_me_method, born_me_method)
-
+             call override_local_me_method (born_me_method)
              call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-                  cmd%local, BORN, &
+                  cmd%local%model, var_list, BORN, &
                   active_in = active_comp (1))
              call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
 
-             call switch_method (current_me_method, real_tree_me_method)
-
-             n_real = 1; if (use_powheg_damping_factors) n_real = n_emitters + 1
+             call override_local_me_method (real_tree_me_method)
+             n_real = 1; if (use_powheg_damping) n_real = n_emitters + 1
              do i_real = 1, n_real
-                call prc_config%setup_component (n_components*i_real+i, &
-                     new_prt_spec (prt_in_nlo), &
-                     new_prt_spec (prt_out_nlo),&
-                     cmd%local, NLO_REAL, &
-                     active_in = active_comp (2))
+                call prc_config%setup_component (n_components * i_real + i, &
+                   new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                     cmd%local%model, var_list, NLO_REAL, &
+                     active_in = active_comp (NLO_REAL + 1))
                 if (i_real > 1) &
-                     call prc_config%set_fixed_emitter (n_components*i_real+i, emitters(i_real-1))
+                   call prc_config%set_fixed_emitter (n_components * i_real + i, &
+                      emitters(i_real - 1))
              end do
 
-             call switch_method (current_me_method, loop_me_method)
-
+             call override_local_me_method (loop_me_method)
              i_real = n_real + 1
-             call prc_config%setup_component (n_components*i_real+i, prt_spec_in, &
-                  prt_spec_out, global, NLO_VIRTUAL, &
-                  active_in = active_comp (3))
+             call prc_config%setup_component (n_components * i_real + i, &
+                  prt_spec_in, prt_spec_out, cmd%local%model, var_list, &
+                  NLO_VIRTUAL, active_in = active_comp (NLO_VIRTUAL + 1))
 
-             call switch_method (current_me_method, correlation_me_method)
-
+             call override_local_me_method (correlation_me_method)
              i_real = i_real + 1
-             call prc_config%setup_component (n_components*i_real+i, prt_spec_in, &
-                  prt_spec_out, global, NLO_SUBTRACTION, &
-                  active_in = active_comp (4))
-             
-             i_real = i_real + 1
-             if (nlo_threshold_matching) then 
-                 i_list(5) = i + 4*n_components
-                 call global%set_me_method (var_str ("threshold"))
-                 call prc_config%setup_component (n_components*i_real + i, &
-                    prt_spec_in, prt_spec_out, global, NLO_THRESHOLD_RESUMMATION, &
-                    .true.)
-             end if
-
+             call prc_config%setup_component (n_components * i_real + i, prt_spec_in, &
+                prt_spec_out, cmd%local%model, var_list, NLO_SUBTRACTION, &
+                active_in = active_comp (NLO_SUBTRACTION + 1))
              if (initial_state_colored .and. has_structure_functions) then
-                if (current_me_method /= "omega") then
-                   call global%set_me_method (var_str ("omega"))
-                   current_me_method = "omega"
-                end if
-                call prc_config%setup_component (n_components*4+i, prt_spec_in, &
-                     prt_spec_out, global, NLO_PDF, &
-                     .false.)                     
+                ! TODO: (bcn 2016-01-26) why only omega here?
+                call override_local_me_method (var_str ("omega"))
+                call prc_config%setup_component (n_components * 4 + i, prt_spec_in, &
+                   prt_spec_out, cmd%local%model, var_list, NLO_DGLAP, active_in = active_comp (NLO_DGLAP + 1))
              end if
 
-             if (use_powheg_damping_factors) then
-                call prc_config%set_component_associations (i_list, 1, 3+n_emitters, &
-                     4+n_emitters, 2, 3)
+             if (requires_soft_mismatch) then
+                ! TODO: (bcn 2016-01-26) why only omega here?
+                call override_local_me_method (var_str ("omega"))
+                call prc_config%setup_component (n_components * 4 + i, &
+                   new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                   cmd%local%model, var_list, NLO_MISMATCH, active_in = active_comp (NLO_MISMATCH + 1))
+             end if
+
+             if (use_powheg_damping) then
+                call prc_config%set_component_associations (i_list, 1, 3 + n_emitters, &
+                     4 + n_emitters, 2, 3)
              else if (initial_state_colored .and. has_structure_functions) then
+                call prc_config%set_component_associations (i_list, 5)
+             else if (requires_soft_mismatch) then
                 call prc_config%set_component_associations (i_list, 5)
              else
                 call prc_config%set_component_associations (i_list)
              end if
           end associate
        else if (gks_active) then
+          call override_local_me_method (var_str ("omega"))
           call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-               cmd%local, BORN, &
-               active_in = .true.)
+               cmd%local%model, var_list, BORN, active_in = .true.)
           call radiation_generator%reset_queue ()
           do j = 1, n_components_extra
              prt_out_nlo =  radiation_generator%get_next_state ()
-             call prc_config%setup_component (i+j, &
-                  new_prt_spec (prt_in), &
-                  new_prt_spec (prt_out_nlo), &
-                  cmd%local, GKS, &
-                  active_in = .false.)
-          end do  
+             call prc_config%setup_component (i + j, &
+                new_prt_spec (prt_in), new_prt_spec (prt_out_nlo), &
+                cmd%local%model, var_list, GKS, active_in = .false.)
+          end do
        else
-          current_me_method = var_str ('omega')
-          born_me_method = var_list%get_sval (var_str ("$born_me_method"))
-          call switch_method (current_me_method, born_me_method)
-          call prc_config%setup_component (i, prt_spec_in, prt_spec_out, cmd%local)
+          call prc_config%setup_component (i, prt_spec_in, prt_spec_out, cmd%local%model, var_list)
        end if
     end do
     call prc_config%record (cmd%local)
- 
-  contains
-    subroutine check_nlo_options (nlo, combined, powheg)
-      logical, intent(in) :: nlo, combined, powheg
-      logical :: case_lo_but_any_other
-      logical :: case_nlo_powheg_but_not_combined
-      case_lo_but_any_other = .not. nlo .and. &
-                              any ([combined, powheg])
-      case_nlo_powheg_but_not_combined = &
-                              nlo .and. powheg .and. .not. combined
-      if (case_lo_but_any_other) then
-          call msg_fatal ("Option mismatch: Leading order process is selected &
-                          &but either powheg_matching or combined_nlo_integration &
-                          &is set to true.")
-      else if (case_nlo_powheg_but_not_combined) then
-          call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
-                          &to be set to true.")
-      end if
-    end subroutine check_nlo_options
 
-    subroutine switch_method (current_method, use_method)
-       type(string_t), intent(inout) :: current_method
-       type(string_t), intent(in) :: use_method
-       if (current_method /= use_method) then
-          call global%set_me_method (use_method)
-          current_method = use_method
-       end if
-    end subroutine switch_method
+  contains
+
+    subroutine override_local_me_method (me_method)
+      type(string_t), intent(in) :: me_method
+      call var_list%set_string (var_str ("$method"), me_method, is_known=.true.)
+    end subroutine override_local_me_method
+
+    subroutine determine_needed_components ()
+      type(string_t) :: fks_method
+      if (nlo_fixed_order .or. gks_active) &
+           call setup_radiation_generator ()
+
+      if (use_powheg_damping) then
+         emitters = radiation_generator%get_emitter_indices()
+         n_emitters = size (emitters)
+      end if
+
+      if (nlo_fixed_order) then
+         fks_method = var_list%get_sval (var_str ('$fks_mapping_type'))
+         requires_soft_mismatch = fks_method == var_str ('resonances')
+         n_components_extra = needed_extra_components (initial_state_colored, &
+              has_structure_functions, requires_soft_mismatch, &
+              use_powheg_damping, n_emitters)
+         allocate (i_list (n_components_extra))
+      else if (gks_active) then
+         call radiation_generator%generate_multiple (gks_multiplicity)
+         n_components_extra = radiation_generator%get_n_gks_states ()
+      end if
+
+      if (nlo_fixed_order .and. .not. use_powheg_damping) then
+         n_components_init = n_components * n_components_extra
+      else if (nlo_fixed_order .and. use_powheg_damping) then
+         n_components_init = n_components * n_components_extra
+      else if (gks_active) then
+         n_components_init = n_components * (n_components_extra + 1)
+      else
+         n_components_init = n_components
+      end if
+    end subroutine determine_needed_components
+
+    subroutine setup_radiation_generator ()
+      call split_prt (prt_spec_in, n_in, pl_in)
+      call split_prt (prt_spec_out, n_out, pl_out)
+      call radiation_generator%init (pl_in, pl_out, qcd = .true., qed = .false.)
+      call radiation_generator%set_n (n_in, n_out, 0)
+
+      initial_state_colored = pdg_in%has_colored_particles()
+      has_structure_functions = global%beam_structure%get_n_record () > 0
+      if (initial_state_colored .and. has_structure_functions) &
+         call radiation_generator%set_initial_state_emissions ()
+
+      call radiation_generator%set_constraints (.false., .false., .true., .true.)
+      call radiation_generator%set_radiation_model (cmd%local%radiation_model)
+      call radiation_generator%setup_if_table ()
+    end subroutine setup_radiation_generator
+
+    subroutine scan_components ()
+      n_terms = prt_expr_out%get_n_terms ()
+      allocate (pdg_out_tab (n_terms))
+      allocate (i_term (n_terms), source = 0)
+      n_components = 0
+      SCAN: do i = 1, n_terms
+         if (allocated (pdg))  deallocate (pdg)
+         call prt_expr_out%term_to_array (prt_spec_out, i)
+         n_out = size (prt_spec_out)
+         allocate (pdg (n_out))
+         do j = 1, n_out
+            prt_out = prt_spec_out(j)%to_string ()
+            call split (prt_out, prt_out1, ":")
+            pdg(j) = cmd%local%model%get_pdg (prt_out1)
+         end do
+         pdg_out = sort (pdg)
+         do j = 1, n_components
+            if (pdg_out == pdg_out_tab(j))  cycle SCAN
+         end do
+         n_components = n_components + 1
+         i_term(n_components) = i
+         pdg_out_tab(n_components) = pdg_out
+      end do SCAN
+    end subroutine scan_components 
 
     subroutine split_prt (prt, n_out, pl)
       type(prt_spec_t), intent(in), dimension(:), allocatable :: prt
@@ -1317,21 +1291,97 @@ contains
            call split (prt_string, prt_tmp, ":")
            if (prt_tmp /= "") then
              i_particle(n) = cmd%local%model%get_pdg (prt_tmp)
-             n=n+1
+             n = n + 1
            else
              exit
            end if
          end do
-         call pdg_array_init (pdg, n-1)
-         do j = 1, n-1 
+         call pdg_array_init (pdg, n - 1)
+         do j = 1, n - 1
            call pdg%set (j, i_particle(j))
          end do
          call pl%set (i, pdg)
          call pdg_array_delete (pdg)
       end do
     end subroutine split_prt
-             
+
+
   end subroutine cmd_process_execute
+
+  subroutine check_nlo_options (nlo, var_list)
+    logical, intent(in) :: nlo
+    type(var_list_t), intent(in) :: var_list
+    logical :: combined, powheg
+    logical :: case_lo_but_any_other
+    logical :: case_nlo_powheg_but_not_combined
+    logical :: vamp_equivalences_enabled
+    combined = var_list%get_lval (var_str ('?combined_nlo_integration'))
+    powheg = var_list%get_lval (var_str ('?powheg_matching')) 
+    case_lo_but_any_other = .not. nlo .and. any ([combined, powheg])
+    case_nlo_powheg_but_not_combined = &
+         nlo .and. powheg .and. .not. combined
+    if (case_lo_but_any_other) then
+        call msg_fatal ("Option mismatch: Leading order process is selected &
+                        &but either powheg_matching or combined_nlo_integration &
+                        &is set to true.")
+    else if (case_nlo_powheg_but_not_combined) then
+        call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
+                        &to be set to true.")
+    end if
+    vamp_equivalences_enabled = var_list%get_lval &
+       (var_str ('?use_vamp_equivalences'))
+    if (nlo .and. vamp_equivalences_enabled) &
+       call msg_warning ("You have switched on VAMP equivalences. ", &
+                         [var_str ("Note that they are automatically switched off "), &
+                          var_str ("for NLO calculations.")])
+  end subroutine check_nlo_options
+
+  pure subroutine set_component_list (i_list, i, n_components, &
+                  initial_state_colored, has_structure_functions, &
+                  requires_soft_mismatch, use_powheg_damping, n_emitters)
+    integer, dimension(:), intent(out) :: i_list
+    integer, intent(in) :: i, n_components, n_emitters
+    logical, intent(in) :: initial_state_colored, &
+         has_structure_functions, use_powheg_damping, &
+         requires_soft_mismatch
+    integer :: j, component_offset
+    i_list(1) = i
+    i_list(2) = i + n_components
+    i_list(3) = i + 2 * n_components
+    i_list(4) = i + 3 * n_components
+    if (initial_state_colored .and. has_structure_functions &
+        .or. requires_soft_mismatch) then
+       i_list(5) = i + 4 * n_components
+    else if (use_powheg_damping) then
+       component_offset = 4
+       do j = component_offset, component_offset + n_emitters - 1
+          i_list(j + 1) = i + 4 * n_components
+       end do
+    end if
+  end subroutine set_component_list
+
+  pure function needed_extra_components (initial_state_colored, &
+            has_structure_functions, requires_soft_mismatch, &
+            use_powheg_damping, n_emitters) result (n)
+    integer :: n
+    logical, intent(in) :: initial_state_colored, &
+         has_structure_functions, use_powheg_damping, &
+         requires_soft_mismatch
+    integer, intent(in) :: n_emitters
+    if (initial_state_colored) then
+       if (has_structure_functions) then
+          n = 5
+       else
+          n = 4
+       end if
+    else if (use_powheg_damping) then
+       n = 4 + n_emitters
+    else if (requires_soft_mismatch) then
+       n = 5
+    else
+       n = 4
+    end if
+  end function needed_extra_components
 
   function make_flavor_string (aval, model) result (prt)
     type(string_t) :: prt
@@ -1439,7 +1489,7 @@ contains
       if (associated (pn_comp)) then
          cmd%pn_components(i)%ptr => pn_comp
          pn_comp => parse_node_get_next_ptr (cmd%pn_components(i)%ptr)
-         i = i+1
+         i = i + 1
       else
          exit
       end if
@@ -1451,48 +1501,37 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: current_component
     type(string_t) :: component_type
-    integer :: i
+    type(string_t) :: string
+    integer :: i, comp, j
 
     cmd%active_component = .false.
 
     current_component => cmd%pn_components(1)%ptr
     i = 2
-    do 
-      if (associated (current_component)) then
-         component_type = eval_string (current_component, global%var_list)
-         select case (char (component_type))
-         case ('Born')
-            cmd%active_component(1) = .true.
-         case ('Real')
-            cmd%active_component(2) = .true.
-         case ('Virtual')
-            cmd%active_component(3) = .true.
-         case ('Pdf')
-            cmd%active_component(4) = .true.
-         case ('Full')
-            cmd%active_component = .true.
-         case ('Threshold_matched')
-            cmd%active_component = .true.
-            global%nlo_threshold_matching = .true.
-         case ('Threshold_only')
-            cmd%active_component(4) = .true.
-            global%nlo_threshold_matching = .true.
-         case default
-            call msg_fatal ("Invalid NLO mode! " // &
-               "Valid inputs are: 'Born', 'Real', " // &
-               "'Virtual', 'Pdf', 'Full', 'Threshold_matched' and " // &
-               "'Threshold_only'")
-         end select
-         if (i >= 4) exit
-         current_component => cmd%pn_components(i)%ptr
-         i = i+1
-      else
-         exit
-      end if
-    end do   
-    global%nlo_fixed_order = (cmd%active_component(2) &
-      .or. cmd%active_component(3) .or. cmd%active_component(4)) & 
-      .and..not. global%nlo_threshold_matching
+    do while (associated (current_component))
+       component_type = eval_string (current_component, global%var_list)
+       comp = component_status (component_type)
+       select case (comp)
+       case (BORN, NLO_VIRTUAL, NLO_MISMATCH, NLO_DGLAP)
+          cmd%active_component(comp + 1) = .true.
+       case (NLO_REAL)
+         cmd%active_component(comp + 1) = .true.
+         cmd%active_component(NLO_SUBTRACTION + 1) = .true.
+       case (NLO_FULL)
+          cmd%active_component = .true.
+       case default
+          string = var_str ("")
+          do j = BORN, NLO_DGLAP
+             string = string // component_status (j) // ", "
+          end do
+          string = string // component_status (NLO_FULL)
+          call msg_fatal (char("Invalid NLO mode! Valid inputs are: " // string))
+       end select
+       if (i >= 5) exit
+       current_component => cmd%pn_components(i)%ptr
+       i = i + 1
+    end do
+    global%nlo_fixed_order = any (cmd%active_component(2:5))
     global%active_nlo_components = cmd%active_component
   end subroutine cmd_nlo_execute
 
@@ -2941,7 +2980,8 @@ contains
     class(cmd_alt_setup_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     if (allocated (global%pn%alt_setup))  deallocate (global%pn%alt_setup)
-    allocate (global%pn%alt_setup (size (cmd%setup)), source = cmd%setup)
+    allocate (global%pn%alt_setup (size (cmd%setup)))
+    global%pn%alt_setup = cmd%setup
   end subroutine cmd_alt_setup_execute
 
   subroutine cmd_integrate_write (cmd, unit, indent)
@@ -4098,10 +4138,10 @@ contains
           call prc_config%init (process_id(i), 1, 1, global)
           !!! Causes runtime error with gfortran 4.9.1 
           ! call prc_config%setup_component (1, &
-          !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global)
+          !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global%model, global%var_list)
           !!! Workaround:
           call prc_config%setup_component (1, &
-               [new_prt_spec (prt_in)], new_prt_spec (prt_out), global)       
+               [new_prt_spec (prt_in)], new_prt_spec (prt_out), global%model, global%var_list)
           call prc_config%record (global)
           deallocate (prt_out)
           deallocate (pa_out)
@@ -5783,10 +5823,13 @@ contains
          // "cmd_analysis | cmd_alt_setup | " &
          // "cmd_open_out | cmd_close_out | cmd_printf | " &
          // "cmd_write_analysis | cmd_compile_analysis | cmd_nlo | cmd_components")
-    call ifile_append (ifile, "SEQ cmd_model = model '=' model_name")
+    call ifile_append (ifile, "SEQ cmd_model = model '=' model_name model_arg?")
     call ifile_append (ifile, "KEY model")
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
     call ifile_append (ifile, "IDE model_id")
+    call ifile_append (ifile, "ARG model_arg = ( model_scheme? )")
+    call ifile_append (ifile, "ALT model_scheme = scheme_id | string_literal")
+    call ifile_append (ifile, "IDE scheme_id")
     call ifile_append (ifile, "SEQ cmd_library = library '=' lib_name")
     call ifile_append (ifile, "KEY library")
     call ifile_append (ifile, "ALT lib_name = lib_id | string_literal")

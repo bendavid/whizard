@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,7 +39,7 @@ module sf_escan
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_defs, only: FMT_12
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use diagnostics
   use lorentz
   use pdg_arrays
@@ -179,8 +179,8 @@ contains
     real(default), dimension(2) :: m2
     real(default), dimension(0) :: mr2
     type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
-    type(polarization_t) :: pol1, pol2
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     integer :: j1, j2
     select type (data)
     type is (escan_data_t)
@@ -195,7 +195,7 @@ contains
           call qn_fc(3)%init ( &
                flv = data%flv_in(j1,1), &
                col = color_from_flavor (data%flv_in(j1,1)))
-          call polarization_init_generic (pol1, data%flv_in(j1,1))
+          call pol1%init_generic (data%flv_in(j1,1))
           do j2 = 1, data%n_flv(2)
              call qn_fc(2)%init ( &
                   flv = data%flv_in(j2,2), &
@@ -203,24 +203,24 @@ contains
              call qn_fc(4)%init ( &
                   flv = data%flv_in(j2,2), &
                   col = color_from_flavor (data%flv_in(j2,2)))
-             call polarization_init_generic (pol2, data%flv_in(j2,2))
-             call it_hel1%init (pol1%state)
+             call pol2%init_generic (data%flv_in(j2,2))
+             call it_hel1%init (pol1)
              do while (it_hel1%is_valid ())
-                qn_hel(1:1) = it_hel1%get_quantum_numbers ()
-                qn_hel(3:3) = it_hel1%get_quantum_numbers ()
-                call it_hel2%init (pol2%state)
+                qn_hel(1) = it_hel1%get_quantum_numbers ()
+                qn_hel(3) = it_hel1%get_quantum_numbers ()
+                call it_hel2%init (pol2)
                 do while (it_hel2%is_valid ())
-                   qn_hel(2:2) = it_hel2%get_quantum_numbers ()
-                   qn_hel(4:4) = it_hel2%get_quantum_numbers ()
+                   qn_hel(2) = it_hel2%get_quantum_numbers ()
+                   qn_hel(4) = it_hel2%get_quantum_numbers ()
                    qn = qn_hel .merge. qn_fc
                    call sf_int%add_state (qn)
                    call it_hel2%advance ()
                 end do
                 call it_hel1%advance ()
              end do
-             call polarization_final (pol2)
+             ! call pol2%final ()
           end do
-          call polarization_final (pol1)
+          ! call pol1%final ()
        end do
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])

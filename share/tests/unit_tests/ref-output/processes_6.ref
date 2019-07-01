@@ -262,8 +262,8 @@ weight = n_tot * n_in * n_out * (eval Phi / pi [s])
  Flux * PHS volume:
    3.133842031921E+08
  Jacobian factors per channel:
-   1: 1.0000000E+00 [selected]
-   2: 1.3333333E+00
+   1:  1.0000000E+00 [selected]
+   2:  1.3333333E+00
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 0:1 0:2

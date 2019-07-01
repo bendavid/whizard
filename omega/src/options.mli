@@ -1,6 +1,6 @@
-(* $Id: options.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: options.mli 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -23,15 +23,22 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 type t
+
 val empty : t
-val merge : t -> t -> t
-val extend : t -> (string * Arg.spec * string) list -> t
 val create : (string * Arg.spec * string) list -> t
-val parse : t -> string * string -> unit
-val list : t -> (string * string) list
+
+val extend : t -> (string * Arg.spec * string) list -> t
+(*i val merge : t -> t -> t i*)
+
 val cmdline : string -> t -> (string * Arg.spec * string) list
 
-exception Invalid of string * string
+(*i val list : t -> (string * string) list i*)
+(*i val parse : t -> string * string -> unit i*)
+(*i exception Invalid of string * string i*)
+
+(* This is a clone of [Arg.parse] with a delayed usage string. *)
+val parse : (string * Arg.spec * string) list ->
+  (string -> unit) -> (unit -> string) -> unit
 
 (*i
  *  Local Variables:

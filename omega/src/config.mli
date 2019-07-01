@@ -1,6 +1,6 @@
-(* $Id: config.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: config.mli 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,6 +21,8 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
+
+val default_UFO_dir : string
 
 (* Cache writing is attempted in the order [[system_cache_dir]], [[user_cache_dir]], [["."]]
    and cache reading in the opposite order. *)

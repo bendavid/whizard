@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -45,8 +45,6 @@ module system_dependencies
        "@BUILDDIR@/src/basics"
   character(*), parameter :: WHIZARD_TEST_UTILITIES_MODPATH = &
        "@BUILDDIR@/src/utilities"
-  character(*), parameter :: WHIZARD_TEST_TESTING_MODPATH = &
-       "@BUILDDIR@/src/testing"
   character(*), parameter :: WHIZARD_TEST_COMBINATORICS_MODPATH = &
        "@BUILDDIR@/src/combinatorics"
   character(*), parameter :: WHIZARD_TEST_SYSTEM_MODPATH = &
@@ -108,10 +106,10 @@ module system_dependencies
       "-I" // WHIZARD_TEST_ME_MODPATH // " " // &
       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_TESTING_MODPATH // " " // &
       "-I" // WHIZARD_TEST_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_BASICS_MODPATH
+      "-I" // WHIZARD_TEST_BASICS_MODPATH // " " // &
+      "@OPENLOOPS_INCLUDES@"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_TEST_LDFLAGS = &
@@ -123,7 +121,7 @@ module system_dependencies
       "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
-       "@LDFLAGS_LOOPTOOLS@"
+       "@LDFLAGS_LOOPTOOLS@ @LDFLAGS_OPENLOOPS@"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -154,8 +152,6 @@ module system_dependencies
        PKGLIBDIR // "/mod/basics"
   character(*), parameter :: WHIZARD_UTILITIES_MODPATH = &
        PKGLIBDIR // "/mod/utilities"
-  character(*), parameter :: WHIZARD_TESTING_MODPATH = &
-       PKGLIBDIR // "/mod/testing"
   character(*), parameter :: WHIZARD_COMBINATORICS_MODPATH = &
        PKGLIBDIR // "/mod/combinatorics"
   character(*), parameter :: WHIZARD_SYSTEM_MODPATH = &
@@ -208,16 +204,16 @@ module system_dependencies
       "-I" // WHIZARD_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_SYSTEM_MODPATH // " " // &
       "-I" // WHIZARD_COMBINATORICS_MODPATH // " " // &
-      "-I" // WHIZARD_TESTING_MODPATH // " " // &
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
-      "-I" // WHIZARD_BASICS_MODPATH
+      "-I" // WHIZARD_BASICS_MODPATH // " " // &
+      "@OPENLOOPS_INCLUDES@"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
-       "@LDFLAGS_LOOPTOOLS@"
+       "@LDFLAGS_LOOPTOOLS@ @LDFLAGS_OPENLOOPS@"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &

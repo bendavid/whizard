@@ -1,19 +1,18 @@
 WHIZARD Core
-* Release 2.2
+* Release 2.4
   - large event numbers (still a problem??)
 
-* 2.3
+* 2.4
   - EWA implementation (some progress in 2.2.0-2)
   - integration of multiple observables (cf. VAMP)
   - jet finder (partially done)
   - reenabling underlying event 
   
-* 2.4
+* 2.5
   - Mathematica interface
   - Parton shower matching (MLM done, CKKW pending)
-  - GUI (Tim?)
-  - parallelization (OpenMP done, MPI pending)
-  - NLO/GoSAM/FKS (beta status)
+  - GUI extension
+  - parallelization (OpenMP done, MPI in progress)
   - Dark Matter
   - Use omega restrictions on diagrams for phase space
 
@@ -24,36 +23,35 @@ Technical stuff
   - include STAT and ERRMSG in allocate and deallocate statements (?)
 
 O'Mega
-* 2.3
+* 2.4
   - arbitrary Lorentz structure
   - flavor sums
   - model files unification
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.3
+* Release 2.4 (Zhijie)
   - Tests for 7, 8 fermions ... 
 
-* 2.3
+* 2.4
   - W-gamma couplings to resonances
   - W'
 
 VAMP
-* 2.2
+* 2.4
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
-* 2.3
+* 2.5
   - integration of multiple observables
 
 configure
-* 2.3
+* 2.4
   - Windows support?
 
 Misc
-* Release 2.3
-  - ATLAS/CMS software environment
+* Release 2.4
   - Manual + O'Mega Paper (partially done)
 
-* 2.3
+* 2.4
   - review gamelan (partially done, esp. docu)
 

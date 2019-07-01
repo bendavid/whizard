@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,7 +38,7 @@ module grids_uti
   use kinds, only: default
   use constants, only: zero, one, two, three, four, tiny_07
   use file_utils, only: delete_file
-  use unit_tests, only: nearly_equal, assert, assert_equal
+  use numeric_utils
 
   use grids
 

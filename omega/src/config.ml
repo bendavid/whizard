@@ -1,6 +1,6 @@
-(* $Id: config.ml.in 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: config.ml.in 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,11 +21,14 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+let default_UFO_dir = "/Users/reuter/local/share/UFO"
+
 let system_cache_dir = "/Users/reuter/local/var/cache"
 let user_cache_dir = "/Users/reuter/.whizard/var/cache"
 
 (* \begin{dubious}
-     This relies on the fast that the executable names should be unique.
+     This relies on the assumption that executable names are unique,
+     which is not true for the UFO version.
    \end{dubious} *)
 let cache_prefix =
   let basename = Filename.basename Sys.executable_name in

@@ -3,7 +3,6 @@
 echo "Running script $0"
 if test -f OCAML_FLAG; then
     rm -f @script@_lib.* @script@_p?.*
-    rm -f default_prclib.*
     name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QCD
     cat $name.log | sed -e 's/WHIZARD 2.*$/WHIZARD [version]/' > $name.log.tmp

@@ -42,10 +42,6 @@ scale = 2 * mtop
 # Needs OpenLoops library eett
 process extra_nlo_tt = E1, e1 => t, T { nlo_calculation = "Full" }
 
-# Default parameters for FKS mapping
-fks_dij_exp1 = 1.0
-fks_mapping_type = 1
-
 sqrts = 500 GeV
 
 iterations = 5:50000:"gw", 5:50000:""
@@ -62,7 +58,7 @@ show (error(extra_nlo_tt))
 expect (integral(extra_nlo_tt) == seperate_integral)
   {tolerance = 3 * sqrt (seperate_error**2 + error(extra_nlo_tt)**2)}
 
-?nlo_fixed_order = true
+?fixed_order_nlo_events = true
 ?unweighted = false
 n_events = 200000
 sample_format = hepmc

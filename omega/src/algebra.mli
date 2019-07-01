@@ -1,6 +1,6 @@
-(* $Id: algebra.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: algebra.mli 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -45,9 +45,18 @@ module type Rational =
     include CRing
     val is_null : t -> bool
     val is_unit : t -> bool
+    val is_positive : t -> bool
+    val is_negative : t -> bool
+    val is_integer : t -> bool
     val make : int -> int -> t
+    val abs : t -> t
+    val inv : t -> t
+    val div : t -> t -> t
+    val pow : t -> int -> t
+    val sum : t list -> t
     val to_ratio : t -> int * int
     val to_float : t -> float
+    val to_integer : t -> int
   end
 
 (* \thocwmodulesection{Naive Rational Arithmetic} *)

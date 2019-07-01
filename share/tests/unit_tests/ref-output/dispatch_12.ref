@@ -9,6 +9,7 @@
  Master switches:
    ps_isr_active                =  F
    ps_fsr_active                =  F
+   ps_tau_dec                   =  F
    muli_active                  =  F
  General settings:
     [ISR and FSR off]
@@ -30,6 +31,7 @@
  Master switches:
    ps_isr_active                =  T
    ps_fsr_active                =  T
+   ps_tau_dec                   =  F
    muli_active                  =  F
  General settings:
    shower_method                =  PYTHIA6

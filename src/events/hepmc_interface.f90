@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -790,8 +790,8 @@ contains
     type(hepmc_polarization_t), intent(out) :: hpol
     type(polarization_t), intent(in) :: pol
     real(default) :: r, theta, phi
-    if (polarization_is_polarized (pol)) then
-       call polarization_to_angles (pol, r, theta, phi)
+    if (pol%is_polarized ()) then
+       call pol%to_angles (r, theta, phi)
        if (r >= 0.5) then
           hpol%polarized = .true.
           hpol%obj = new_polarization &
@@ -848,7 +848,7 @@ contains
     real(default) :: theta, phi
     theta = polarization_theta (hpol%obj)
     phi = polarization_phi (hpol%obj)
-    call polarization_init_angles (pol, flv, 1._default, theta, phi)
+    call pol%init_angles (flv, 1._default, theta, phi)
   end subroutine hepmc_polarization_to_pol
 
   subroutine hepmc_polarization_to_hel (hpol, flv, hel)

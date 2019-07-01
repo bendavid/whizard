@@ -29,6 +29,7 @@ module shower_base
   use variables
   use model_data
   use pdf
+  use tauola_interface
 
 <<Standard module head>>
 
@@ -121,6 +122,7 @@ $P_t$-ordered ISR is [[isr_pt_ordered]].
      logical :: isr_active = .false.
      logical :: fsr_active = .false.
      logical :: muli_active = .false.
+     logical :: tau_dec = .false.
      logical :: verbose = .false.
      integer :: method = PS_UNDEFINED
      logical :: hadronization_active = .false.
@@ -165,6 +167,8 @@ hadronization are switched on).
          var_list%get_lval (var_str ("?ps_fsr_active"))
     shower_settings%isr_active = &
          var_list%get_lval (var_str ("?ps_isr_active"))
+    shower_settings%tau_dec = &
+         var_list%get_lval (var_str ("?ps_taudec_active"))    
     shower_settings%muli_active = &
          var_list%get_lval (var_str ("?muli_active"))
     shower_settings%hadronization_active = &
@@ -242,6 +246,8 @@ hadronization are switched on).
     write (u, "(3x,A,1x,L1)") &
          "ps_fsr_active                = ", settings%fsr_active
     write (u, "(3x,A,1x,L1)") &
+         "ps_tau_dec                   = ", settings%tau_dec
+    write (u, "(3x,A,1x,L1)") &
          "muli_active                  = ", settings%muli_active
     write (u, "(1x,A)")  "General settings:"
     if (settings%isr_active .or. settings%fsr_active) then
@@ -316,6 +322,7 @@ emissions.
      type(string_t) :: name
      type(pdf_data_t) :: pdf_data
      type(shower_settings_t) :: settings
+     type(taudec_settings_t) :: taudec_settings
    contains
    <<Shower base: shower base: TBP>>
   end type shower_base_t
@@ -348,10 +355,11 @@ emissions.
   procedure (shower_base_init), deferred :: init
 <<Shower base: interfaces>>=
   abstract interface
-    subroutine shower_base_init (shower, settings, pdf_data)
+    subroutine shower_base_init (shower, settings, taudec_settings, pdf_data)
       import
       class(shower_base_t), intent(out) :: shower
       type(shower_settings_t), intent(in) :: settings
+      type(taudec_settings_t), intent(in) :: taudec_settings
       type(pdf_data_t), intent(in) :: pdf_data
     end subroutine shower_base_init
    end interface
@@ -376,11 +384,12 @@ emissions.
 <<Shower base: interfaces>>=
   abstract interface
      subroutine shower_base_import_particle_set &
-            (shower, particle_set, os_data)
+            (shower, particle_set, os_data, scale)
        import
        class(shower_base_t), target, intent(inout) :: shower
        type(particle_set_t), intent(in) :: particle_set
        type(os_data_t), intent(in) :: os_data
+       real(default), intent(in) :: scale
      end subroutine shower_base_import_particle_set
   end interface
 
@@ -1879,7 +1888,7 @@ module shower_core
   use io_units
   use constants
   use format_utils, only: write_separator
-  use unit_tests, only: vanishes, nearly_equal
+  use numeric_utils
   use system_defs, only: TAB
   use diagnostics
   use physics_defs
@@ -1897,6 +1906,7 @@ module shower_core
   use shower_partons
   use muli, only: muli_t
   use hep_common
+  use tauola_interface
 
 <<Standard module head>>
 
@@ -1961,12 +1971,14 @@ $k_T$-ordered showers.
 <<Shower core: shower: TBP>>=
   procedure :: init => shower_init
 <<Shower core: procedures>>=
-  subroutine shower_init (shower, settings, pdf_data)
+  subroutine shower_init (shower, settings, taudec_settings, pdf_data)
     class(shower_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
+    type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
     call msg_debug (D_SHOWER, "shower_init")
     shower%settings = settings
+    shower%taudec_settings = taudec_settings
     call shower%pdf_data%init (pdf_data)
     shower%name = "WHIZARD internal"
     call shower%write_msg ()
@@ -2030,10 +2042,11 @@ $k_T$-ordered showers.
 <<Shower core: shower: TBP>>=
   procedure :: import_particle_set => shower_import_particle_set
 <<Shower core: procedures>>=
-  subroutine shower_import_particle_set (shower, particle_set, os_data)
+  subroutine shower_import_particle_set (shower, particle_set, os_data, scale)
     class(shower_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     type(os_data_t), intent(in) :: os_data
+    real(default), intent(in) :: scale
     !integer, dimension(:), allocatable :: connections
     type(parton_t), dimension(:), allocatable, target, save :: partons, hadrons
     type(parton_pointer_t), dimension(:), allocatable :: &
@@ -2074,7 +2087,10 @@ $k_T$-ordered showers.
 <<Shower core: shower import particle set: procedures>>=
   subroutine setup_hadrons_from_particle_set ()
     j = 0
-    if (n_beam > 0 .and. all (particle_set%prt(1:2)%flv%get_pdg_abs () > TAU)) then
+    !!! !!! !!! Workaround for Portland 16.1 compiler bug
+    !!! if (n_beam > 0 .and. all (particle_set%prt(1:2)%flv%get_pdg_abs () > TAU)) then
+    if (n_beam > 0 .and. particle_set%prt(1)%flv%get_pdg_abs () > TAU .and. &
+         particle_set%prt(2)%flv%get_pdg_abs () > TAU) then
        call msg_debug (D_SHOWER, 'Copy hadrons from particle_set to hadrons')
        if (.not. allocated (hadrons))  allocate (hadrons (1:2))
        do i = 1, n_tot
@@ -3955,7 +3971,9 @@ proper flavor information, by the ISR shower.
     hard_colored_ids = pack ([(i, i=1, size (particles))], hard_colored_mask)
     allocate (shower_partons_ids (n_shower_partons))
     shower_partons_ids = [(n_tot_old + n_remnants + i, i=1, n_shower_partons)]
+    allocate (incoming_ids(n_in))
     incoming_ids = [(n_beam +  i, i=1, n_in)]
+    allocate (outgoing_ids(n_out))
     outgoing_ids = [(n_tot_old - n_out  + i, i=1, n_out )]
     if (debug_active (D_SHOWER)) then
         print *, 'n_remnants =    ', n_remnants
@@ -6075,7 +6093,7 @@ lastQ2 = dble(Q2)
 lastx  = dble(x)
 @
 @ Convert Whizard shower to Pythia6.  Currently only works for one
-interaction
+interaction.
 <<Shower core: shower: TBP>>=
   procedure :: converttopythia => shower_converttopythia
 <<Shower core: procedures>>=
@@ -6284,6 +6302,8 @@ module shower_pythia6
   use model_data
   use hep_common
   use pdf
+  use helicities
+  use tauola_interface
 
 <<Standard module head>>
 
@@ -6324,12 +6344,14 @@ contains
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: init => shower_pythia6_init
 <<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_init (shower, settings, pdf_data)
+  subroutine shower_pythia6_init (shower, settings, taudec_settings, pdf_data)
     class(shower_pythia6_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
+    type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
     call msg_debug (D_SHOWER, "shower_pythia6_init")
     shower%settings = settings
+    shower%taudec_settings = taudec_settings
     call pythia6_set_verbose (settings%verbose)
     call shower%pdf_data%init (pdf_data)
     shower%name = "PYTHIA6"
@@ -6342,7 +6364,7 @@ contains
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: prepare_new_event => shower_pythia6_prepare_new_event
 <<Shower pythia6: procedures>>=
-  pure subroutine shower_pythia6_prepare_new_event (shower)
+  subroutine shower_pythia6_prepare_new_event (shower)
     class(shower_pythia6_t), intent(inout) :: shower
   end subroutine shower_pythia6_prepare_new_event
 
@@ -6351,10 +6373,11 @@ contains
   procedure :: import_particle_set => shower_pythia6_import_particle_set
 <<Shower pythia6: procedures>>=
   subroutine shower_pythia6_import_particle_set &
-         (shower, particle_set, os_data)
+         (shower, particle_set, os_data, scale)
     class(shower_pythia6_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     type(os_data_t), intent(in) :: os_data
+    real(default), intent(in) :: scale
     type(particle_set_t) :: pset_reduced
     call msg_debug (D_SHOWER, "shower_pythia6_import_particle_set")
     if (debug_active (D_SHOWER)) then
@@ -6369,8 +6392,9 @@ contains
        print *, 'After particle_set%reduce: pset_reduced'
        call pset_reduced%write (summary=.true., compressed=.true.)
     end if
-    call hepeup_from_particle_set (pset_reduced)
-    call hepeup_set_event_parameters (proc_id=1)
+    call hepeup_from_particle_set (pset_reduced, tauola_convention=.true.)
+    call hepeup_set_event_parameters (proc_id = 1)
+    call hepeup_set_event_parameters (scale = scale)
   end subroutine shower_pythia6_import_particle_set
 
 @ %def shower_pythia6_import_particle_set
@@ -6380,13 +6404,19 @@ contains
 <<Shower pythia6: procedures>>=
   subroutine shower_pythia6_generate_emissions &
          (shower, valid, number_of_emissions)
+    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+    IMPLICIT INTEGER(I-N)
+    COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
+    SAVE/PYDAT1/
     class(shower_pythia6_t), intent(inout), target :: shower
     logical, intent(out) :: valid
     integer, optional, intent(in) :: number_of_emissions
     integer :: N, NPAD, K
     real(double) :: P, V
     common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
-    save /PYJETS/
+    COMMON/PYDAT2/KCHG(500,4),PMAS(500,4),PARF(2000),VCKM(4,4)
+    COMMON/PYINT4/MWID(500),WIDS(500,5)
+    save /PYJETS/,/PYDAT2/,/PYINT4/
     integer :: u_W2P
     integer :: i
     real(double) :: beta_z, pz_in, E_in
@@ -6401,6 +6431,10 @@ contains
     rewind (u_W2P)
     call pythia6_set_last_treated_line(6)
     call shower%transfer_settings ()
+    if (debug_active (D_SHOWER)) then
+       print *, ' Before pyevnt, before boosting :'
+       call pylist(2)
+    end if
     call msg_debug (D_SHOWER, "calling pyevnt")
     ! TODO: (bcn 2015-04-24) doesnt change anything I think
     ! P(1,1:5) = pset_reduced%prt(1)%momentum_to_pythia6 ()
@@ -6425,6 +6459,16 @@ contains
     if (debug_active (D_SHOWER)) then
        print *, ' After pyevnt, after boosting :'
        call pylist(2)
+       if (debug2_active (D_SHOWER)) then
+          call pystat (5)
+          do i = 1, 200
+             print *, 'MSTJ (', i, ') = ', MSTJ(i)
+             print *, 'MSTU (', i, ') = ', MSTU(i)
+             print *, 'PMAS (', i, ') = ', PMAS(i,1), PMAS(i,2)
+             print *, 'MWID (', i, ') = ', MWID(i)
+             print *, 'PARJ (', i, ') = ', PARJ(i)
+          end do
+       end if
     end if
     close (u_W2P)
     valid = pythia6_handle_errors ()
@@ -6453,26 +6497,30 @@ contains
     class(shower_pythia6_t), intent(inout) :: shower
     character(len=10) :: buffer
     real(default) :: rand
-    if (shower%settings%isr_active) then
-       call pygive ("MSTP(61)=1")
-    else
-       call pygive ("MSTP(61)=0")  !!! switch off ISR
-    end if
-    if (shower%settings%fsr_active) then
-       call pygive ("MSTP(71)=1")
-    else
-       call pygive ("MSTP(71)=0")   !!! switch off FSR
-    end if
+    logical, save :: tauola_initialized = .false.
+    call msg_debug (D_SHOWER, "shower_pythia6_transfer_settings")
+    !!! We repeat these as they are overwritten by the hadronization
     call pygive ("MSTP(111)=1")     !!! Allow hadronization and decays
     call pygive ("MSTJ(1)=0")       !!! No jet fragmentation
     call pygive ("MSTJ(21)=1")      !!! Allow decays but no jet fragmentation
-    call pygive ("MSTP(11)=0")      !!! Disable Pythias QED-ISR per default
-    call pygive ("MSTP(171)=1")     !!! Allow variable energies
 
     if (shower%initialized_for_NPRUP >= NPRUP) then
-       call msg_debug (D_SHOWER, "calling upinit")
-       call upinit
+      call msg_debug (D_SHOWER, "calling upinit")
+      call upinit ()
     else
+       if (shower%settings%isr_active) then
+          call pygive ("MSTP(61)=1")
+       else
+          call pygive ("MSTP(61)=0")  !!! switch off ISR
+       end if
+       if (shower%settings%fsr_active) then
+          call pygive ("MSTP(71)=1")
+       else
+          call pygive ("MSTP(71)=0")   !!! switch off FSR
+       end if
+       call pygive ("MSTP(11)=0")      !!! Disable Pythias QED-ISR per default
+       call pygive ("MSTP(171)=1")     !!! Allow variable energies
+
        write (buffer, "(F10.5)") sqrt (abs (shower%settings%min_virtuality))
        call pygive ("PARJ(82)=" // buffer)
        write (buffer, "(F10.5)") shower%settings%isr_tscalefactor
@@ -6512,6 +6560,7 @@ contains
           call pygive ("MSTP(62)=2")
           call pygive ("MSTP(67)=0")
        end if
+       call pythia6_set_config (shower%settings%pythia6_pygive)
        call msg_debug (D_SHOWER, "calling pyinit")
        call PYINIT ("USER", "", "", 0D0)
        call shower%rng%generate (rand)
@@ -6520,6 +6569,13 @@ contains
        call pygive ("MRPY(2)=0")
        call pythia6_set_config (shower%settings%pythia6_pygive)
        shower%initialized_for_NPRUP = NPRUP
+    end if
+    if (shower%settings%tau_dec) then
+       call pygive ("MSTJ(28)=2")
+    end if
+    if (pythia6_tauola_active() .and. .not. tauola_initialized) then
+       call wo_tauola_init_call (shower%taudec_settings)
+       tauola_initialized = .true.
     end if
   end subroutine shower_pythia6_transfer_settings
 
@@ -6575,12 +6631,10 @@ added back in by Pythia.
     class(model_data_t), pointer :: model
     type(vector4_t) :: momentum
     type(particle_t), dimension(:), allocatable :: particles, beams
-    type(particle_t), dimension(2) :: incomings
     integer :: dangling_col, dangling_anti_col, color, anti_color
     integer :: i, j, py_entries, next_color, n_tot_old, parent, real_parent
-    integer :: pdg, status, child, hadro_start
-    integer, allocatable, dimension(:) :: old_index, new_index, &
-         backup_parents, incoming_ids
+    integer :: pdg, status, child, hadro_start, i_py, i_whz
+    integer, allocatable, dimension(:) :: py_index, whz_index
     logical, allocatable, dimension(:) :: valid
     real(default), parameter :: py_tiny = 1E-10_default
     integer :: N, NPAD, K
@@ -6595,7 +6649,8 @@ added back in by Pythia.
        call msg_debug (D_SHOWER, 'Particle set before replacing')
        call particle_set%write (summary=.true., compressed=.true.)
        call pylist (2)
-       call msg_debug (D_SHOWER, "settings%hadron_collision", settings%hadron_collision)
+       call msg_debug (D_SHOWER, string = "settings%hadron_collision", &
+          value = settings%hadron_collision)
     end if
     if (settings%method == PS_PYTHIA6 .and. settings%hadron_collision) then
        call pythia6_set_last_treated_line(2)
@@ -6607,6 +6662,7 @@ added back in by Pythia.
          call particle_set%write (summary=.true., compressed=.true.)
        end if
     end if
+    call fill_hepevt_block_from_pythia ()
     call count_valid_entries_in_pythia_record ()
     call particle_set%without_hadronic_remnants &
          (particles, n_tot_old, py_entries)
@@ -6623,6 +6679,7 @@ added back in by Pythia.
     else
        call set_parent_child_relations_from_hepevt ()
     end if
+    !call fix_nonemitting_outgoings ()
     if (settings%method == PS_WHIZARD) then
        call fudge_whizard_partons_in_hadro ()
     end if
@@ -6647,29 +6704,39 @@ added back in by Pythia.
 @ %def pythia6_combine_with_particle_set
 <<Shower pythia6: combine with particle set: procedures>>=
   subroutine count_valid_entries_in_pythia_record ()
+  <<HEPEVT BLOCK>>
     integer :: pset_idx
+    logical :: comes_from_cmshower, emitted_zero_momentum_photon, &
+         direct_decendent
+    integer, parameter :: cmshower = 94
     hadro_start = 0
     allocate (valid(N))
     valid = .false.
-    FIND: do i = 5, N
-       if (K(i,2) >= 91 .and. K(i,2) <= 94) then
-          hadro_start = i
+    FIND: do i_py = 5, N
+       !if (K(i_py,2) >= 91 .and. K(i_py,2) <= 94) then
+       if (K(i_py,2) >= 91 .and. K(i_py,2) <= 93) then
+          hadro_start = i_py
           exit FIND
        end if
     end do FIND
-    do i = N, N_old+1, -1
-       status = K(i,1)
-       if (any (P(i,1:4) > 1E-8_default * P(1,4)) .and. (status >= 1 .and. status <= 21)) then
-          pset_idx = find_pythia_particle (i, more_fuzzy=.false.)
-          if (pset_idx == 0) then
-             valid(i) = .true.
-          end if
+    do i_py = N, N_old+1, -1
+       status = K(i_py,1)
+       if (any (P(i_py,1:4) > 1E-8_default * P(1,4)) .and. &
+            (status >= 1 .and. status <= 21)) then
+          pset_idx = find_pythia_particle (i_py, more_fuzzy=.false.)
+          direct_decendent = IDHEP(JMOHEP(1,i_py)) == cmshower .and. &
+               JMOHEP(2,i_py) == 0
+          emitted_zero_momentum_photon = find_pythia_particle &
+               (JMOHEP(1,i_py), more_fuzzy=.false.) == pset_idx
+          comes_from_cmshower = status == 1 .and. &
+               (direct_decendent .or. emitted_zero_momentum_photon)
+          valid(i_py) = pset_idx == 0 .or. comes_from_cmshower
        end if
     end do
     py_entries = count (valid)
-    allocate (old_index (py_entries))
-    allocate (new_index (N))
-    new_index = 0
+    allocate (py_index (py_entries))
+    allocate (whz_index (N))
+    whz_index = 0
   end subroutine count_valid_entries_in_pythia_record
 
 @
@@ -6677,24 +6744,28 @@ added back in by Pythia.
   subroutine add_particles_of_pythia ()
     integer :: whizard_status
     integer :: pset_idx, start_in_py
+    integer :: ihelicity
+    type(helicity_t) :: hel
+    real(default) :: lifetime
+    type(vector4_t) :: vertex
     dangling_col = 0
     dangling_anti_col = 0
     next_color = 500
-    j = 1
+    i_whz = 1
     if (settings%method == PS_PYTHIA6 .and. settings%hadron_collision) then
        start_in_py = 3
     else
        start_in_py = 7
     end if
-    do i = start_in_py, N
-       status = K(i,1)
-       if (valid(i)) then
+    do i_py = start_in_py, N
+       status = K(i_py,1)
+       if (valid(i_py)) then
           call assign_colors (color, anti_color)
-          momentum = real ([P(i,4), P(i,1:3)], kind=default)
-          pdg = K(i,2)
-          parent = K(i,3)
+          momentum = real ([P(i_py,4), P(i_py,1:3)], kind=default)
+          pdg = K(i_py,2)
+          parent = K(i_py,3)
           call find_model (model, pdg, model_in, model_hadrons)
-          if (i <= 4) then
+          if (i_py <= 4) then
              whizard_status = PRT_INCOMING
           else
              if (status <= 10) then
@@ -6703,14 +6774,30 @@ added back in by Pythia.
                 whizard_status = PRT_VIRTUAL
              end if
           end if
-          call particles(n_tot_old+j)%init &
+          call particles(n_tot_old+i_whz)%init &
                (whizard_status, pdg, model, color, anti_color, momentum)
-          old_index(j) = i
-          new_index(i) = n_tot_old + j
-          j = j + 1
+          lifetime = V(i_py,5)
+          vertex = [real (V(i_py,4), kind=default), &
+                    real (V(i_py,1), kind=default), &
+                    real (V(i_py,2), kind=default), &
+                    real (V(i_py,3), kind=default)]
+          if (lifetime /= 0) &
+               call particles(n_tot_old+i_whz)%set_lifetime (lifetime)
+          if (any (V(i_py,1:4) /= 0)) &
+               call particles(n_tot_old+i_whz)%set_vertex (vertex)
+          !!! Set tau helicity set by TAUOLA
+          if (abs (pdg) == 15) then
+            call wo_tauola_get_helicity (i_py, ihelicity)
+            call hel%init (ihelicity)
+            call particles(n_tot_old+i_whz)%set_helicity(hel)
+            call particles(n_tot_old+i_whz)%set_polarization(PRT_DEFINITE_HELICITY)
+          end if
+          py_index(i_whz) = i_py
+          whz_index(i_py) = n_tot_old + i_whz
+          i_whz = i_whz + 1
        else
-          pset_idx = find_pythia_particle (i, more_fuzzy=.true.)
-          new_index(i) = pset_idx
+          pset_idx = find_pythia_particle (i_py, more_fuzzy=.true.)
+          whz_index(i_py) = pset_idx
        end if
     end do
   end subroutine add_particles_of_pythia
@@ -6719,27 +6806,27 @@ added back in by Pythia.
 <<Shower pythia6: combine with particle set: procedures>>=
   subroutine assign_colors (color, anti_color)
     integer, intent(out) :: color, anti_color
-    if ((K(I,2) == 21) .or. (abs (K(I,2)) <= 8) .or. &
-         (abs (K(I,2)) >= KSUSY1+1 .and. abs (K(I,2)) <= KSUSY1+8) .or. &
-         (abs (K(I,2)) >= KSUSY2+1 .and. abs (K(I,2)) <= KSUSY2+8) .or. &
-         (abs (K(I,2)) >= 1000 .and. abs (K(I,2)) <= 9999) .and. &
+    if ((K(i_py,2) == 21) .or. (abs (K(i_py,2)) <= 8) .or. &
+         (abs (K(i_py,2)) >= KSUSY1+1 .and. abs (K(i_py,2)) <= KSUSY1+8) .or. &
+         (abs (K(i_py,2)) >= KSUSY2+1 .and. abs (K(i_py,2)) <= KSUSY2+8) .or. &
+         (abs (K(i_py,2)) >= 1000 .and. abs (K(i_py,2)) <= 9999) .and. &
          hadro_start == 0) then
        if (dangling_col == 0 .and. dangling_anti_col == 0) then
           ! new color string
           ! Gluon and gluino only color octets implemented so far
-          if (K(I,2) == 21 .or. K(I,2) == 1000021) then
+          if (K(i_py,2) == 21 .or. K(i_py,2) == 1000021) then
              color = next_color
              dangling_col = color
              next_color = next_color + 1
              anti_color = next_color
              dangling_anti_col = anti_color
              next_color = next_color + 1
-          else if (K(I,2) > 0) then  ! particles have color
+          else if (K(i_py,2) > 0) then  ! particles have color
              color = next_color
              dangling_col = color
              anti_color = 0
              next_color = next_color + 1
-          else if (K(I,2) < 0) then  ! antiparticles have anticolor
+          else if (K(i_py,2) < 0) then  ! antiparticles have anticolor
              anti_color = next_color
              dangling_anti_col = anti_color
              color = 0
@@ -6773,68 +6860,81 @@ added back in by Pythia.
     end if
   end subroutine assign_colors
 
+@
+<<Shower pythia6: combine with particle set: procedures>>=
+  subroutine fill_hepevt_block_from_pythia ()
+    integer :: first_daughter, second_mother_of_first_daughter, i_hep
+    logical :: inconsistent_mother, more_than_one_points_to_first_daugther
+  <<HEPEVT BLOCK>>
+    call pyhepc(1)
+    do i_hep = 1, NHEP
+       first_daughter = JDAHEP(1,i_hep)
+       if (first_daughter > 0) then
+          more_than_one_points_to_first_daugther = &
+               count (JDAHEP(1,i_hep:NHEP) == first_daughter) > 1
+          if (more_than_one_points_to_first_daugther) then
+             second_mother_of_first_daughter = JMOHEP(2,first_daughter)
+             ! Only entries with codes 91-94 should have a second mother
+             if (second_mother_of_first_daughter == 0) then
+                inconsistent_mother = JMOHEP(1,first_daughter) /= i_hep
+                if (inconsistent_mother) then
+                   JMOHEP(1,first_daughter) = i_hep
+                   do j = i_hep + 1, NHEP
+                     if (JDAHEP(1,j) == first_daughter) then
+                        JMOHEP(2,first_daughter) = j
+                     end if
+                   end do
+                end if
+             end if
+          end if
+       end if
+    end do
+  end subroutine fill_hepevt_block_from_pythia
+
+<<HEPEVT BLOCK>>=
+  integer, parameter :: NMXHEP = 4000
+  integer :: NEVHEP
+  integer :: NHEP
+  integer, dimension(NMXHEP) :: ISTHEP
+  integer, dimension(NMXHEP) :: IDHEP
+  integer, dimension(2, NMXHEP) :: JMOHEP
+  integer, dimension(2, NMXHEP) :: JDAHEP
+  double precision, dimension(5, NMXHEP) :: PHEP
+  double precision, dimension(4, NMXHEP) :: VHEP
+  common /HEPEVT/ &
+   NEVHEP, NHEP, ISTHEP, IDHEP, &
+   JMOHEP, JDAHEP, PHEP, VHEP
+  save /HEPEVT/
 @ Use HEPEVT for parent-child informations
 <<Shower pythia6: combine with particle set: procedures>>=
   subroutine set_parent_child_relations_from_hepevt ()
     integer, allocatable, dimension(:) :: parents
+  <<HEPEVT BLOCK>>
     integer:: parent2, parent1, npar
-    integer, parameter :: NMXHEP = 4000
-    integer :: NEVHEP
-    integer :: NHEP
-    integer, dimension(NMXHEP) :: ISTHEP
-    integer, dimension(NMXHEP) :: IDHEP
-    integer, dimension(2, NMXHEP) :: JMOHEP
-    integer, dimension(2, NMXHEP) :: JDAHEP
-    double precision, dimension(5, NMXHEP) :: PHEP
-    double precision, dimension(4, NMXHEP) :: VHEP
-    common /HEPEVT/ &
-     NEVHEP, NHEP, ISTHEP, IDHEP, &
-     JMOHEP, JDAHEP, PHEP, VHEP
-    save /HEPEVT/
-    integer :: i,j
     call msg_debug (D_SHOWER, &
          "set_parent_child_relations_from_hepevt")
-    call pyhepc(1)
-    do i = 1, NHEP
-      if (JDAHEP(1,i) > 0) then
-         if (count (JDAHEP(1,i:NHEP) == JDAHEP(1,i)) > 1) then
-           if (JMOHEP(2,JDAHEP(1,i)) == 0) then
-             if (JMOHEP(1,JDAHEP(1,i)) /= i ) then
-                call msg_error('problem in set_parent_child_' // &
-                     'relations_of_known_pythia_parents')
-             end if
-             JMOHEP(1,JDAHEP(1,i)) = i
-             do j = i + 1, NHEP
-               if (JDAHEP(1,j) == JDAHEP(1,i)) then
-                  JMOHEP(2,JDAHEP(1,i)) = j
-               end if
-             end do
-           end if
-         end if
-      end if
-    end do
     if (debug_active (D_SHOWER)) then
-       print *, '  NHEP, n, py_entries:' , NHEP, n, py_entries
+       print *, 'NHEP, n, py_entries:' , NHEP, n, py_entries
     end if
-    do j = 1, py_entries
-       parent1 = JMOHEP(1,old_index(j))
+    do i_whz = 1, py_entries
+       parent1 = JMOHEP(1,py_index(i_whz))
        parent2 = parent1
-       if (JMOHEP(2,old_index(j)) > 0 ) then
-         parent2 = JMOHEP(2,old_index(j))
+       if (JMOHEP(2,py_index(i_whz)) > 0) then
+         parent2 = JMOHEP(2,py_index(i_whz))
        end if
        allocate (parents(parent2-parent1+1))
        parents = 0
-       child = n_tot_old + j
+       child = n_tot_old + i_whz
        npar = 0
        do parent = parent1, parent2
           if (parent > 0) then
              if (parent <= 2) then
                 call particle_set%parent_add_child (parent, child)
              else
-                if (new_index(parent) > 0) then
+                if (whz_index(parent) > 0) then
                    npar = npar + 1
-                   parents(npar) = new_index(parent)
-                   call particle_set%prt(new_index(parent))%add_child (child)
+                   parents(npar) = whz_index(parent)
+                   call particle_set%prt(whz_index(parent))%add_child (child)
                 end if
              end if
           end if
@@ -6848,15 +6948,35 @@ added back in by Pythia.
 
 @
 <<Shower pythia6: combine with particle set: procedures>>=
+  subroutine fix_nonemitting_outgoings ()
+    integer, dimension(1) :: child
+    integer, parameter :: cmshower = 94
+    do i = 1, size (particle_set%prt)
+       associate (p => particle_set%prt(i))
+          if (p%get_n_children () == 1) then
+             child = p%get_children ()
+             if (particle_set%prt(child(1))%get_pdg () == cmshower) then
+                j = particle_set%reverse_find_particle (p%get_pdg (), p%p)
+                if (j == i) then
+                   deallocate (p%child)
+                   p%status = PRT_OUTGOING
+                end if
+             end if
+          end if
+       end associate
+    end do
+  end subroutine fix_nonemitting_outgoings 
+
+<<Shower pythia6: combine with particle set: procedures>>=
   subroutine set_parent_child_relations_from_K ()
     do j = 1, py_entries
-       parent = K(old_index(j),3)
+       parent = K(py_index(j),3)
        child = n_tot_old + j
        if (parent > 0) then
           if (parent >= 1 .and. parent <= 2) then
              call particle_set%parent_add_child (parent, child)
           else
-             real_parent = new_index (parent)
+             real_parent = whz_index (parent)
              if (real_parent > 0 .and. real_parent /= child) then
                 call particle_set%parent_add_child (real_parent, child)
              end if
@@ -6892,9 +7012,9 @@ added back in by Pythia.
           end do
           allocate (parents (end_string - begin_string + 1))
           parents = 0
-          real_child = new_index (old_start)
+          real_child = whz_index (old_start)
           do i = begin_string, end_string
-             real_parent = new_index (i)
+             real_parent = whz_index (i)
              if (real_parent > 0) then
                 call particle_set%prt(real_parent)%add_child (real_child)
                 parents (i - begin_string + 1) = real_parent
@@ -6911,13 +7031,13 @@ added back in by Pythia.
 @ We allow to be [[more_fuzzy]] when finding particles for parent child
 relations than when deciding whether we add particles or not.
 <<Shower pythia6: combine with particle set: procedures>>=
-  function find_pythia_particle (i, more_fuzzy) result (j)
+  function find_pythia_particle (i_py, more_fuzzy) result (j)
     integer :: j
-    integer, intent(in) :: i
+    integer, intent(in) :: i_py
     logical, intent(in) :: more_fuzzy
     real(default) :: rel_small
-    pdg = K(i,2)
-    momentum = real([P(i,4), P(i,1:3)], kind=default)
+    pdg = K(i_py,2)
+    momentum = real([P(i_py,4), P(i_py,1:3)], kind=default)
     if (more_fuzzy) then
        rel_small = 1E-6_default
     else
@@ -6980,187 +7100,6 @@ with the ordering of the color string but am not sure.
   end subroutine shower_pythia6_get_final_colored_ME_momenta
 
 @ %def shower_pythia6_get_final_colored_ME_momenta
-@
-<<Shower pythia6: public>>=
-  public :: pylheo
-<<Shower pythia6: procedures>>=
-!!!!!!!!!!PYTHIA STYLE!!!!!!!!!!!!!
-!!! originally PYLHEF subroutine from PYTHIA 6.4.22
-
-  !C...Write out the showered event to a Les Houches Event File.
-
-  subroutine pylheo (u_P2W)
-
-  !C...Double precision and integer declarations.
-    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-    IMPLICIT INTEGER(I-N)
-    integer, intent(in) :: u_P2W
-
-    !C...PYTHIA commonblock: only used to provide read/write units and version.
-    common /PYPARS/ MSTP(200), PARP(200), MSTI(200), PARI(200)
-    common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
-    save /PYPARS/
-    save /PYJETS/
-
-    !C...User process initialization commonblock.
-    !C...User process event common block.
-    integer, parameter :: MAXPUP = 100, MAXNUP = 500
-    integer :: IDBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, LPRUP
-    integer :: NUP, IDPRUP, IDUP, ISTUP, MOTHUP, ICOLUP
-    real(double) :: EBMUP, XSECUP, XERRUP, XMAXUP
-    real(double) :: XWGTUP, SCALUP, AQEDUP, AQCDUP, PUP, VTIMUP, SPINUP
-    integer, parameter :: KSUSY1 = 1000000, KSUSY2 = 2000000
-    common /HEPRUP/ &
-         IDBMUP(2), EBMUP(2), PDFGUP(2), PDFSUP(2), IDWTUP, NPRUP, &
-         XSECUP(MAXPUP), XERRUP(MAXPUP), XMAXUP(MAXPUP), LPRUP(MAXPUP)
-    save /HEPRUP/
-    common /HEPEUP/ &
-         NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP, IDUP(MAXNUP), &
-         ISTUP(MAXNUP), MOTHUP(2,MAXNUP), ICOLUP(2,MAXNUP), &
-         PUP(5,MAXNUP), VTIMUP(MAXNUP), SPINUP(MAXNUP)
-    save /HEPEUP/
-
-    !C...Lines to read in assumed never longer than 200 characters.
-    PARAMETER (MAXLEN=200)
-    character(len=maxlen) :: string
-
-    integer :: LEN, ndangling_color, ndangling_antic, ncolor
-
-    !C...Format for reading lines.
-    character(len=6) :: strfmt
-    STRFMT='(A000)'
-    write (STRFMT(3:5),'(I3)') MAXLEN
-
-    !C...Rewind initialization and event files.
-    rewind MSTP(161)
-    rewind MSTP(162)
-
-    !C...Write header info.
-    write (u_P2W, "(A)")  '<LesHouchesEvents version="1.0">'
-    write (u_P2W, "(A)")  "<!--"
-    write (u_P2W, "(A,I1,A1,I3)")  "File generated with PYTHIA ", &
-         MSTP(181), ".", MSTP(182)
-    write (u_P2W, "(A)")  " and the WHIZARD2 interface"
-    write (u_P2W, "(A)")  "-->"
-
-    !C...Loop until finds line beginning with "<init>" or "<init ".
-100 READ(MSTP(161),STRFMT,END=400,ERR=400) STRING
-    IBEG=0
-110 IBEG=IBEG+1
-    !C...Allow indentation.
-    IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110
-    IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
-
-    !C...Read first line of initialization info and get number of processes.
-    READ(MSTP(161),'(A)',END=400,ERR=400) STRING
-    READ(STRING,*,ERR=400) IDBMUP(1),IDBMUP(2),EBMUP(1),EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
-
-    !C...Copy initialization lines, omitting trailing blanks.
-    !C...Embed in <init> ... </init> block.
-    WRITE(u_P2W,'(A)') '<init>'
-    do IPR = 0, NPRUP
-       IF(IPR.GT.0) READ(MSTP(161),'(A)',END=400,ERR=400) STRING
-       LEN=MAXLEN+1
-120    LEN=LEN-1
-       IF(LEN.GT.1.AND.STRING(LEN:LEN).EQ.' ') GOTO 120
-       WRITE(u_P2W,'(A)',ERR=400) STRING(1:LEN)
-    end DO
-    write (u_P2W, "(A)")  "</init>"
-
-    !!! Find the numbers of entries of the <event block>
-    NENTRIES = 0
-    do I = 1, N
-       if (K(I,1) == 1 .or. K(I,1) == 2 .or. K(I,1) == 21) then
-          NENTRIES = NENTRIES + 1
-       end if
-    end do
-
-    !C...Begin an <event> block. Copy event lines, omitting trailing blanks.
-    write (u_P2W, "(A)")  "<event>"
-    write (u_P2W, *)  NENTRIES, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
-
-    ndangling_color = 0
-    ncolor = 0
-    ndangling_antic = 0
-    NANTIC = 0
-    NNEXTC = 1   ! TODO find next free color number ??
-    do I = 1, N
-       if (signal_is_pending ()) return
-       if ((K(I,1) >= 1 .and. K(I,1) <= 15) .or. (K(I,1) == 21)) then
-          if ((K(I,2).eq.21) .or. (IABS(K(I,2)) <= 8) .or. &
-               (IABS(K(I,2)) >= KSUSY1+1 .and. IABS(K(I,2)) <= KSUSY1+8) &
-               .or. &
-               (IABS(K(I,2)) >= KSUSY2+1 .and. IABS(K(I,2)) <= KSUSY2+8) .or. &
-               (IABS(K(I,2)) >= 1000 .and. IABS(K(I,2)) <= 9999) ) then
-             if (ndangling_color.eq.0 .and. ndangling_antic.eq.0) then
-                ! new color string
-                ! Gluon and gluino only color octets implemented so far
-                if (K(I,2).eq.21 .or. K(I,2).eq.1000021) then
-                   ncolor = NNEXTC
-                   ndangling_color = ncolor
-                   NNEXTC = NNEXTC + 1
-                   NANTIC = NNEXTC
-                   ndangling_antic = NANTIC
-                   NNEXTC = NNEXTC + 1
-                else if (K(I,2) .gt. 0) then  ! particles to have color
-                   ncolor = NNEXTC
-                   ndangling_color = ncolor
-                   NANTIC = 0
-                   NNEXTC = NNEXTC + 1
-                else if (K(I,2) .lt. 0) then  ! antiparticles to have anticolor
-                   NANTIC = NNEXTC
-                   ndangling_antic = NANTIC
-                   ncolor = 0
-                   NNEXTC = NNEXTC + 1
-                end if
-             else if(K(I,1).eq.1) then
-                ! end of string
-                ncolor = ndangling_antic
-                NANTIC = ndangling_color
-                ndangling_color = 0
-                ndangling_antic = 0
-             else
-                ! inside the string
-                if(ndangling_color .ne. 0) then
-                   NANTIC = ndangling_color
-                   ncolor = NNEXTC
-                   ndangling_color = NNEXTC
-                   NNEXTC = NNEXTC +1
-                else if(ndangling_antic .ne. 0) then
-                   ncolor = ndangling_antic
-                   NANTIC = NNEXTC
-                   ndangling_antic = NNEXTC
-                   NNEXTC = NNEXTC +1
-                else
-                   print *, "ERROR IN PYLHEO"
-                end if
-             end if
-          else
-             ncolor = 0
-             NANTIC = 0
-          end if
-       !!! As no intermediate are given out here, assume the
-       !!!   incoming partons to be the mothers
-          write (u_P2W,*)  K(I,2), K(I,1), K(I,3), K(I,3), &
-               ncolor, NANTIC, (P(I,J),J=1,5), 0, -9
-       end if
-    end do
-
-    !C..End the <event> block. Loop back to look for next event.
-    write (MSTP(163), "(A)")  "</event>"
-
-    !C...Successfully reached end of event loop: write closing tag
-    !C...and remove temporary intermediate files (unless asked not to).
-    write (MSTP(163), "(A)")  "</LesHouchesEvents>"
-    return
-
-    !!C...Error exit.
-400 write(*,*) ' PYLHEO file joining failed!'
-
-    return
-  end subroutine pylheo
-
-@ %def pylheo
 @
 <<Shower pythia6: public>>=
   public :: pythia6_setup_lhe_io_units
@@ -7244,6 +7183,20 @@ with the ordering of the color string but am not sure.
 @ %def pythia6_get_error
 @
 <<Shower pythia6: public>>=
+  public :: pythia6_tauola_active
+<<Shower pythia6: procedures>>=
+  function pythia6_tauola_active () result (active)
+    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+    IMPLICIT INTEGER(I-N)
+    COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
+    SAVE/PYDAT1/
+    logical :: active
+    active = MSTJ(28) == 2
+  end function pythia6_tauola_active
+
+@ %def pythia6_tauola_active
+@
+<<Shower pythia6: public>>=
   public :: pythia6_handle_errors
 <<Shower pythia6: procedures>>=
   function pythia6_handle_errors () result (valid)
@@ -7282,62 +7235,6 @@ with the ordering of the color string but am not sure.
 @ %def pythia6_set_last_treated_line
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-<<[[pythia6_up.f]]>>=
-C*********************************************************************
-C*********************************************************************
-C*                                                                  **
-C*                                                       Mar 2011   **
-C*                                                                  **
-C*                       The Lund Monte Carlo                       **
-C*                                                                  **
-C*                        PYTHIA version 6.4                        **
-C*                                                                  **
-C*                        Torbjorn Sjostrand                        **
-C*                 Department of Theoretical Physics                **
-C*                         Lund University                          **
-C*               Solvegatan 14A, S-223 62 Lund, Sweden              **
-C*                    E-mail torbjorn@thep.lu.se                    **
-C*                                                                  **
-C*                  SUSY and Technicolor parts by                   **
-C*                         Stephen Mrenna                           **
-C*                       Computing Division                         **
-C*            Generators and Detector Simulation Group              **
-C*              Fermi National Accelerator Laboratory               **
-C*                 MS 234, Batavia, IL  60510, USA                  **
-C*                   phone + 1 - 630 - 840 - 2556                   **
-C*                      E-mail mrenna@fnal.gov                      **
-C*                                                                  **
-C*         New multiple interactions and more SUSY parts by         **
-C*                          Peter Skands                            **
-C*               CERN/PH, CH-1211 Geneva, Switzerland               **
-C*                    phone +41 - 22 - 767 2447                     **
-C*                   E-mail peter.skands@cern.ch                    **
-C*                                                                  **
-C*         Several parts are written by Hans-Uno Bengtsson          **
-C*          PYSHOW is written together with Mats Bengtsson          **
-C*               PYMAEL is written by Emanuel Norrbin               **
-C*     advanced popcorn baryon production written by Patrik Eden    **
-C*    code for virtual photons mainly written by Christer Friberg   **
-C*    code for low-mass strings mainly written by Emanuel Norrbin   **
-C*        Bose-Einstein code mainly written by Leif Lonnblad        **
-C*      CTEQ  parton distributions are by the CTEQ collaboration    **
-C*      GRV 94 parton distributions are by Glueck, Reya and Vogt    **
-C*   SaS photon parton distributions together with Gerhard Schuler  **
-C*     g + g and q + qbar -> t + tbar + H code by Zoltan Kunszt     **
-C*         MSSM Higgs mass calculation code by M. Carena,           **
-C*           J.R. Espinosa, M. Quiros and C.E.M. Wagner             **
-C*  UED implementation by M. Elkacimi, D. Goujdami, H. Przysiezniak **
-C*         PYGAUS adapted from CERN library (K.S. Kolbig)           **
-C*        NRQCD/colour octet production of onium by S. Wolf         **
-C*                                                                  **
-C*   The latest program version and documentation is found on WWW   **
-C*            http://www.thep.lu.se/~torbjorn/Pythia.html           **
-C*                                                                  **
-C*              Copyright Torbjorn Sjostrand, Lund 2010             **
-C*                                                                  **
-C*********************************************************************
-C*********************************************************************
-
 @
 <<[[pythia6_up.f]]>>=
 C...UPINIT

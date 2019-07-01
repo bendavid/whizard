@@ -43,10 +43,6 @@ alphas_power = 0
 !!! Needs OpenLoops library ppllj
 $loop_me_method = "openloops"
 
-# Default parameters for FKS mapping
-fks_dij_exp1 = 1.0
-fks_mapping_type = 1
-
 sqrts = 500 GeV
 
 iterations = 3:10000:"gw"

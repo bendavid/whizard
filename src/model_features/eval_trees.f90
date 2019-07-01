@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -2046,6 +2046,8 @@ contains
     integer :: n, i
     !!! Should not be initialized for every event
     type(jet_definition_t) :: jet_def
+    logical :: keep_jets
+    integer :: pdg
     call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
     n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
@@ -2059,7 +2061,12 @@ contains
     else
        mask1 = .true.
     end if
-    call subevt_cluster (subevt, en1%pval, mask1, jet_def)
+    if (associated (en1%var_list)) then
+       keep_jets = en1%var_list%get_lval (var_str("?keep_flavors_when_clustering"))
+    else
+       keep_jets = .false.
+    end if
+    call subevt_cluster (subevt, en1%pval, mask1, jet_def, keep_jets)
     call jet_def%final ()
   end subroutine cluster_p
 
@@ -4972,6 +4979,7 @@ contains
              call msg_fatal &
                ("'cluster' function requires FastJet, which is not enabled")
           end if
+          en1%var_list => var_list
           call eval_node_init_prt_fun_unary (en, en1, key, cluster_p)
           call var_list%get_iptr (var_str ("jet_algorithm"), en1%jet_algorithm)
           call var_list%get_rptr (var_str ("jet_r"), en1%jet_r)
@@ -5616,20 +5624,20 @@ contains
        end if
        if (en%value_is_known) then
           select case (en%result_type)
-          case (V_LOG);  en%lval = en% op1_log  (en%arg1)
-          case (V_INT);  en%ival = en% op1_int  (en%arg1)
-          case (V_REAL); en%rval = en% op1_real (en%arg1)
-          case (V_CMPLX); en%cval = en% op1_cmplx (en%arg1)          
+          case (V_LOG);  en%lval = en%op1_log  (en%arg1)
+          case (V_INT);  en%ival = en%op1_int  (en%arg1)
+          case (V_REAL); en%rval = en%op1_real (en%arg1)
+          case (V_CMPLX); en%cval = en%op1_cmplx (en%arg1)          
           case (V_PDG);  
-             call en% op1_pdg  (en%aval, en%arg1)
+             call en%op1_pdg  (en%aval, en%arg1)
           case (V_SEV)
              if (associated (en%arg0)) then
-                call en% op1_sev (en%pval, en%arg1, en%arg0)
+                call en%op1_sev (en%pval, en%arg1, en%arg0)
              else
-                call en% op1_sev (en%pval, en%arg1)
+                call en%op1_sev (en%pval, en%arg1)
              end if
           case (V_STR)
-             call en% op1_str (en%sval, en%arg1)
+             call en%op1_str (en%sval, en%arg1)
           end select
        end if
     case (EN_BINARY)
@@ -5643,20 +5651,20 @@ contains
        end if
        if (en%value_is_known) then
           select case (en%result_type)
-          case (V_LOG);  en%lval = en% op2_log  (en%arg1, en%arg2)
-          case (V_INT);  en%ival = en% op2_int  (en%arg1, en%arg2)
-          case (V_REAL); en%rval = en% op2_real (en%arg1, en%arg2)
-          case (V_CMPLX); en%cval = en% op2_cmplx (en%arg1, en%arg2)          
+          case (V_LOG);  en%lval = en%op2_log  (en%arg1, en%arg2)
+          case (V_INT);  en%ival = en%op2_int  (en%arg1, en%arg2)
+          case (V_REAL); en%rval = en%op2_real (en%arg1, en%arg2)
+          case (V_CMPLX); en%cval = en%op2_cmplx (en%arg1, en%arg2)          
           case (V_PDG)
-             call en% op2_pdg  (en%aval, en%arg1, en%arg2)
+             call en%op2_pdg  (en%aval, en%arg1, en%arg2)
           case (V_SEV)
              if (associated (en%arg0)) then
-                call en% op2_sev (en%pval, en%arg1, en%arg2, en%arg0)
+                call en%op2_sev (en%pval, en%arg1, en%arg2, en%arg0)
              else
-                call en% op2_sev (en%pval, en%arg1, en%arg2)
+                call en%op2_sev (en%pval, en%arg1, en%arg2)
              end if
           case (V_STR)
-             call en% op2_str (en%sval, en%arg1, en%arg2)
+             call en%op2_str (en%sval, en%arg1, en%arg2)
           end select
        end if
     case (EN_BLOCK)
@@ -5802,16 +5810,16 @@ contains
           end if
        end if
     case (EN_OBS1_INT)
-       en%ival = en% obs1_int (en%prt1)
+       en%ival = en%obs1_int (en%prt1)
        en%value_is_known = .true.
     case (EN_OBS2_INT)
-       en%ival = en% obs2_int (en%prt1, en%prt2)
+       en%ival = en%obs2_int (en%prt1, en%prt2)
        en%value_is_known = .true.
     case (EN_OBS1_REAL)
-       en%rval = en% obs1_real (en%prt1)
+       en%rval = en%obs1_real (en%prt1)
        en%value_is_known = .true.
     case (EN_OBS2_REAL)
-       en%rval = en% obs2_real (en%prt1, en%prt2)
+       en%rval = en%obs2_real (en%prt1, en%prt2)
        en%value_is_known = .true.
     case (EN_UOBS1_INT)
        en%ival = user_obs_int_p (en%arg0, en%prt1)
@@ -5832,9 +5840,9 @@ contains
           if (associated (en%arg0)) then
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
-             call en% op1_sev (en%pval, en%arg1, en%arg0)
+             call en%op1_sev (en%pval, en%arg1, en%arg0)
           else
-             call en% op1_sev (en%pval, en%arg1)
+             call en%op1_sev (en%pval, en%arg1)
           end if
        end if
     case (EN_PRT_FUN_BINARY)
@@ -5847,9 +5855,9 @@ contains
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
              en%arg0%prt2 => en%prt2
-             call en% op2_sev (en%pval, en%arg1, en%arg2, en%arg0)
+             call en%op2_sev (en%pval, en%arg1, en%arg2, en%arg0)
           else
-             call en% op2_sev (en%pval, en%arg1, en%arg2)
+             call en%op2_sev (en%pval, en%arg1, en%arg2)
           end if
        end if
     case (EN_EVAL_FUN_UNARY)
@@ -5882,7 +5890,7 @@ contains
        if (en%value_is_known) then
           en%arg0%index => en%index
           en%arg0%prt1 => en%prt1
-          en%lval = en% op1_cut (en%arg1, en%arg0)
+          en%lval = en%op1_cut (en%arg1, en%arg0)
        end if
     case (EN_LOG_FUN_BINARY)
        call eval_node_evaluate (en%arg1)
@@ -5892,7 +5900,7 @@ contains
           en%arg0%index => en%index
           en%arg0%prt1 => en%prt1
           en%arg0%prt2 => en%prt2
-          en%lval = en% op2_cut (en%arg1, en%arg2, en%arg0)
+          en%lval = en%op2_cut (en%arg1, en%arg2, en%arg0)
        end if
     case (EN_INT_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
@@ -5901,9 +5909,9 @@ contains
           if (associated (en%arg0)) then
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
-             call en% op1_evi (en%ival, en%arg1, en%arg0)
+             call en%op1_evi (en%ival, en%arg1, en%arg0)
           else
-             call en% op1_evi (en%ival, en%arg1)
+             call en%op1_evi (en%ival, en%arg1)
           end if
        end if
     case (EN_INT_FUN_BINARY)
@@ -5917,9 +5925,9 @@ contains
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
              en%arg0%prt2 => en%prt2
-             call en% op2_evi (en%ival, en%arg1, en%arg2, en%arg0)
+             call en%op2_evi (en%ival, en%arg1, en%arg2, en%arg0)
           else
-             call en% op2_evi (en%ival, en%arg1, en%arg2) 
+             call en%op2_evi (en%ival, en%arg1, en%arg2) 
           end if
        end if
     case (EN_REAL_FUN_UNARY)
@@ -5929,9 +5937,9 @@ contains
           if (associated (en%arg0)) then
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
-             call en% op1_evr (en%rval, en%arg1, en%arg0)
+             call en%op1_evr (en%rval, en%arg1, en%arg0)
           else
-             call en% op1_evr (en%rval, en%arg1)
+             call en%op1_evr (en%rval, en%arg1)
           end if
        end if
     case (EN_REAL_FUN_BINARY)
@@ -5945,9 +5953,9 @@ contains
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
              en%arg0%prt2 => en%prt2
-             call en% op2_evr (en%rval, en%arg1, en%arg2, en%arg0)
+             call en%op2_evr (en%rval, en%arg1, en%arg2, en%arg0)
           else
-             call en% op2_evr (en%rval, en%arg1, en%arg2) 
+             call en%op2_evr (en%rval, en%arg1, en%arg2) 
           end if
        end if
     case (EN_FORMAT_STR)
@@ -5970,8 +5978,8 @@ contains
           end if
        end if
     end select
-    if (debug_active (D_MODEL_F)) then
-       print *, "evaluated"
+    if (debug2_active (D_MODEL_F)) then
+       print *, "eval_node_evaluate"
        call eval_node_write (en)
     end if
   end subroutine eval_node_evaluate

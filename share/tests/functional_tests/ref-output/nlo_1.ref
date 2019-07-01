@@ -4,6 +4,7 @@
 ?pacify = true
 openmp_num_threads = 1
 $loop_me_method = "dummy"
+?use_vamp_equivalences = false
 | Process library 'nlo_1_lib': recorded process 'nlo_1_p1'
 seed = 0
 sqrts =  2.5000000E+02
@@ -41,7 +42,7 @@ sqrts =  2.5000000E+02
 | Phase space: writing configuration file 'nlo_1_p1_i1.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -52,20 +53,19 @@ sqrts =  2.5000000E+02
 | Phase space: writing configuration file 'nlo_1_p1_i3.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'nlo_1_p1_i4.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'nlo_1_p1' part 2
+| Starting integration for process 'nlo_1_p1' part 'Real'
 | Integrate: iterations = 2:9000
 | Integrator: 2 chains, 2 channels, 5 dimensions
-| Integrator: Using VAMP channel equivalences
 | Integrator: 9000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|

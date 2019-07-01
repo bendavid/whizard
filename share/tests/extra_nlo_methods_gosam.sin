@@ -41,10 +41,6 @@ alphas_power = 0
 !!! The loop methods is fixed for the whole test
 $loop_me_method = "gosam"
 
-# Default parameters for FKS mapping
-fks_dij_exp1 = 1.0
-fks_mapping_type = 1
-
 sqrts = 500 GeV
 
 iterations = 3:10000:"gw"

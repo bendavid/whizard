@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -13,6 +13,7 @@
 #     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt
+#     Hans-Werner Boschmann, Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -53,13 +54,15 @@ SUBDIRS = \
   xdr events \
   phase_space \
   mci variables \
+  tauola \
   muli shower \
   user \
-  fks blha \
+  threshold \
+  blha \
   gosam openloops \
   looptools \
   model_features \
-  threshold \
+  fks \
   process_integration \
   matching \
   transforms \
@@ -94,6 +97,7 @@ libwhizard_la_LIBADD = \
   ../circe1/src/libcirce1.la \
   ../circe2/src/libcirce2.la \
   shower/libshower.la \
+  tauola/libtauola_interface.la \
   muli/libmuli.la \
   pdf_builtin/libpdf_builtin.la \
   model_features/libmodel_features.la \

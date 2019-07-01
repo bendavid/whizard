@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,7 +38,7 @@ module sf_aux
   use kinds, only: default
   use io_units
   use constants, only: twopi
-  use unit_tests, only: vanishes
+  use numeric_utils
 
   use lorentz
 
@@ -132,10 +132,14 @@ contains
     real(default) :: tp, tm
     if (present (x))  d%x = x
     if (present (xb)) d%xb = xb
-    if (.not. vanishes (d%xb)) then
-       d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
+    if (vanishes (d%u)) then
+       d%pb = d%E
     else
-       d%pb = 0
+       if (.not. vanishes (d%xb)) then
+          d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
+       else
+          d%pb = 0
+       end if
     end if
     tp = -2 * d%xb * d%E**2 + d%s + d%u
     tm = -2 * d%xb * d%p * d%pb
@@ -229,7 +233,7 @@ contains
        tt0 = max (d%t - d%t0, 0._default)
        tt1 = min (d%t - d%t1, 0._default)
        if (den**2 <= epsilon(den)) then
-          st2 = 1
+          st2 = 0
        else
           st2 = - (tt0 * tt1) / den ** 2
        end if
@@ -239,6 +243,9 @@ contains
        ct2 = 1 - st2
        st = sqrt (max (st2, 0._default))
        ct = sqrt (max (ct2, 0._default))
+       if ((d%t - d%t0 + d%t - d%t1) < 0) then
+          ct = - ct
+       end if
        sp = sin (d%phi)
        cp = cos (d%phi)
        rot = rotation_to_2nd (3, space_part (k))

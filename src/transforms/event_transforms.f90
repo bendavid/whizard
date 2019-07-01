@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -69,6 +69,7 @@ module event_transforms
    contains
      procedure :: final => evt_final
      procedure :: base_final => evt_final
+     procedure (evt_write_name), deferred :: write_name
      procedure (evt_write), deferred :: write
      procedure :: base_write => evt_base_write
      procedure :: connect => evt_connect
@@ -87,12 +88,21 @@ module event_transforms
 
   type, extends (evt_t) :: evt_trivial_t
    contains
+     procedure :: write_name => evt_trivial_write_name
      procedure :: write => evt_trivial_write
      procedure :: prepare_new_event => evt_trivial_prepare_new_event
      procedure :: generate_weighted => evt_trivial_generate_weighted
      procedure :: make_particle_set => evt_trivial_make_particle_set
   end type evt_trivial_t
 
+
+  abstract interface
+     subroutine evt_write_name (evt, unit)
+       import
+       class(evt_t), intent(in) :: evt
+       integer, intent(in), optional :: unit
+     end subroutine evt_write_name
+  end interface
 
   abstract interface
      subroutine evt_write (evt, unit, verbose, more_verbose, testflag)
@@ -240,6 +250,14 @@ contains
     call evt%particle_set%reset_status (in_index, PRT_INCOMING)
   end subroutine evt_tag_incoming
 
+  subroutine evt_trivial_write_name (evt, unit)
+    class(evt_trivial_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: trivial (hard process)"
+  end subroutine evt_trivial_write_name
+   
   subroutine evt_trivial_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_trivial_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -247,7 +265,7 @@ contains
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: trivial (hard process)"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag)
   end subroutine evt_trivial_write

@@ -1,6 +1,6 @@
-(* $Id: thoArray.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: thoArray.mli 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -47,10 +47,20 @@ val embedding2 : 'a compressed2 -> int array
 val compress2 : 'a array array -> 'a compressed2
 val uncompress2 : 'a compressed2 -> 'a array array
 
+(* Searching arrays *)
+
+val find_first : ('a -> bool) -> 'a array -> int
+val match_first : 'a -> 'a array -> int
+val find_all : ('a -> bool) -> 'a array -> int list
+val match_all : 'a -> 'a array -> int list
+
+val num_rows : 'a array array -> int
+val num_columns : 'a array array -> int
+
+module Test : sig val suite : OUnit.test end
 
 (*i
  *  Local Variables:
- *  mode:caml
  *  indent-tabs-mode:nil
  *  page-delimiter:"^(\\* .*\n"
  *  End:

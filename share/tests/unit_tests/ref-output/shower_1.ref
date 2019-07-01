@@ -65,6 +65,7 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
  Master switches:
    ps_isr_active                =  F
    ps_fsr_active                =  F
+   ps_tau_dec                   =  F
    muli_active                  =  F
  General settings:
     [ISR and FSR off]

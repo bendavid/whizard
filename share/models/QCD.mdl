@@ -1,10 +1,21 @@
 ########################################################################
 # QCD with six quarks
 model "QCD"
+schemes = "default", "massive"
 
 # Independent parameters
 ### DO NOT CHANGE THE ORDER OF THESE PARAMETERS
 parameter alphas = 0.1178    # Strong coupling (at Z pole)
+
+select scheme
+scheme "massive"
+  parameter md = 0           # d-quark mass
+  parameter mu = 0           # u-quark mass
+scheme other
+  derived md = 0           # d-quark mass fixed to zero
+  derived mu = 0           # u-quark mass fixed to zero
+end select
+
 parameter ms     = 0.12      # s-quark mass                         
 parameter mc     = 1.25      # c-quark mass                         
 parameter mb     = 4.2       # b-quark mass                         
@@ -20,11 +31,13 @@ particle D_QUARK 1  parton
   name d down
   anti dbar D "d~" 
   tex_anti "\bar{d}"
+  mass md
 particle U_QUARK 2  parton
   spin 1/2  charge  2/3  isospin 1/2  color 3
   name u up
   anti ubar U "u~" 
   tex_anti "\bar{u}"
+  mass mu
 particle S_QUARK 3  like D_QUARK
   name s strange
   anti sbar S "s~" 

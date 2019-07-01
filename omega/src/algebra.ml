@@ -1,6 +1,6 @@
-(* $Id: algebra.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: algebra.ml 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -50,9 +50,18 @@ module type Rational =
     include CRing
     val is_null : t -> bool
     val is_unit : t -> bool
+    val is_positive : t -> bool
+    val is_negative : t -> bool
+    val is_integer : t -> bool
     val make : int -> int -> t
+    val abs : t -> t
+    val inv : t -> t
+    val div : t -> t -> t
+    val pow : t -> int -> t
+    val sum : t list -> t
     val to_ratio : t -> int * int
     val to_float : t -> float
+    val to_integer : t -> int
   end
 
 (* \thocwmodulesection{Naive Rational Arithmetic} *)
@@ -77,15 +86,30 @@ module Small_Rational : Rational =
     type t = int * int
     let is_null (n, _) = (n = 0)
     let is_unit (n, d) = (n <> 0) && (n = d)
+    let is_positive (n, d) = n * d > 0
+    let is_negative (n, d) = n * d < 0
+    let is_integer (n, d) = (gcd n d = d)
     let null = (0, 1)
     let unit = (1, 1)
     let make n d =
       let c = gcd n d in
       (n / c, d / c)
+    let abs (n, d) = (abs n, abs d)
+    let inv (n, d) = (d, n)
     let mul (n1, d1) (n2, d2) = make (n1 * n2) (d1 * d2)
+    let div q1 q2 = mul q1 (inv q2)
     let add (n1, d1) (n2, d2) = make (n1 * d2 + n2 * d1) (d1 * d2)
     let sub (n1, d1) (n2, d2) = make (n1 * d2 - n2 * d1) (d1 * d2)
     let neg (n, d) = (- n, d)
+    let rec pow q p =
+      if p = 0 then
+	unit
+      else if p < 0 then
+	pow (inv q) (-p)
+      else
+	mul q (pow q (pred p))
+    let sum qs =
+      List.fold_right add qs null
     let to_ratio (n, d) =
       if d < 0 then
         (-n, -d)
@@ -96,7 +120,13 @@ module Small_Rational : Rational =
       if d = 1 then
         Printf.sprintf "%d" n
       else
+        let n, d = to_ratio (n, d) in
         Printf.sprintf "(%d/%d)" n d
+    let to_integer (n, d) =
+      if is_integer (n, d) then
+        n
+      else
+        invalid_arg "Algebra.Small_Rational.to_integer"
   end
 
 (* \thocwmodulesection{Expressions: Terms, Rings and Linear Combinations} *)

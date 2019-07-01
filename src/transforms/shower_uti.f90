@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -55,6 +55,7 @@ module shower_uti
   use models
   use processes
   use event_transforms
+  use tauola_interface !NODEP!
 
   use pdf
   use shower_base
@@ -172,6 +173,7 @@ contains
     class(evt_t), allocatable, target :: evt_trivial
     class(evt_t), allocatable, target :: evt_shower
     type(shower_settings_t) :: settings
+    type(taudec_settings_t) :: taudec_settings
 
     write (u, "(A)")  "* Test output: shower_1"
     write (u, "(A)")  "*   Purpose: Two-jet event with disabled shower"
@@ -216,7 +218,7 @@ contains
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
        call evt_shower%connect (process_instance, model)
     end select
 
@@ -265,6 +267,7 @@ contains
     class(evt_t), allocatable, target :: evt_trivial
     class(evt_t), allocatable, target :: evt_shower
     type(shower_settings_t) :: settings
+    type(taudec_settings_t) :: taudec_settings
 
     write (u, "(A)")  "* Test output: shower_2"
     write (u, "(A)")  "*   Purpose: Two-jet event with FSR shower"
@@ -311,7 +314,7 @@ contains
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
        call evt_shower%connect (process_instance, model)
     end select
 

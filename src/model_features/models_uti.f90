@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -52,6 +52,8 @@ module models_uti
   public :: models_3
   public :: models_4
   public :: models_5
+  public :: models_6
+  public :: models_7
 
 contains
 
@@ -340,6 +342,186 @@ contains
     write (u, "(A)")  "* Test output end: models_5"
 
   end subroutine models_5
+
+  subroutine models_6 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(var_list_t), pointer :: var_list
+    type(model_t), pointer :: model
+
+    write (u, "(A)")  "* Test output: models_6"
+    write (u, "(A)")  "*   Purpose: read a model from file &
+         &with non-canonical parameter ordering"
+    write (u, *)
+
+    open (newunit=um, file="Test6.mdl", status="replace", action="readwrite")
+    write (um, "(A)")  'model "Test6"'
+    write (um, "(A)")  '   parameter a =  1.000000000000E+00'
+    write (um, "(A)")  '   derived   b =  2 * a'
+    write (um, "(A)")  '   parameter c =  3.000000000000E+00'
+    write (um, "(A)")  '   unused    d'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=1)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+1   continue
+    close (um)
+    
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    call model_list%read_model (var_str ("Test6"), var_str ("Test6.mdl"), &
+         os_data, model)
+
+    write (u, *)
+    write (u, "(A)")  "* Variable list"
+    write (u, *)
+    
+    var_list => model%get_var_list_ptr ()
+    call var_list%write (u)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_6"
+
+  end subroutine models_6
+
+  subroutine models_7 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(var_list_t), pointer :: var_list
+    type(model_t), pointer :: model
+
+    write (u, "(A)")  "* Test output: models_7"
+    write (u, "(A)")  "*   Purpose: read a model from file &
+         &with scheme selection"
+    write (u, *)
+
+    open (newunit=um, file="Test7.mdl", status="replace", action="readwrite")
+    write (um, "(A)")  'model "Test7"'
+    write (um, "(A)")  '  schemes = "foo", "bar", "gee"'
+    write (um, "(A)")  ''
+    write (um, "(A)")  '  select scheme'
+    write (um, "(A)")  '  scheme "foo"'
+    write (um, "(A)")  '    parameter a = 1'
+    write (um, "(A)")  '    derived   b = 2 * a'
+    write (um, "(A)")  '  scheme other'
+    write (um, "(A)")  '    parameter b = 4'
+    write (um, "(A)")  '    derived   a = b / 2'
+    write (um, "(A)")  '  end select'
+    write (um, "(A)")  ''
+    write (um, "(A)")  '  parameter c = 3'
+    write (um, "(A)")  ''
+    write (um, "(A)")  '  select scheme'
+    write (um, "(A)")  '  scheme "foo", "gee"'
+    write (um, "(A)")  '    derived   d = b + c'
+    write (um, "(A)")  '  scheme other'
+    write (um, "(A)")  '    unused    d'
+    write (um, "(A)")  '  end select'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=1)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+1   continue
+    close (um)
+    
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, *)
+    write (u, "(A)")  "* Model output, default scheme (= foo)"
+    write (u, *)
+    
+    call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
+         os_data, model)
+    call model%write (u, show_md5sum=.false.)
+    call show_var_list ()
+    call show_par_array ()
+
+    call model_list%final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Model output, scheme foo"
+    write (u, *)
+    
+    call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
+         os_data, model, scheme = var_str ("foo"))
+    call model%write (u, show_md5sum=.false.)
+    call show_var_list ()
+    call show_par_array ()
+
+    call model_list%final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Model output, scheme bar"
+    write (u, *)
+    
+    call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
+         os_data, model, scheme = var_str ("bar"))
+    call model%write (u, show_md5sum=.false.)
+    call show_var_list ()
+    call show_par_array ()
+
+    call model_list%final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Model output, scheme gee"
+    write (u, *)
+    
+    call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
+         os_data, model, scheme = var_str ("gee"))
+    call model%write (u, show_md5sum=.false.)
+    call show_var_list ()
+    call show_par_array ()
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_7"
+
+  contains
+    
+    subroutine show_var_list ()
+      write (u, *)
+      write (u, "(A)")  "* Variable list"
+      write (u, *)
+      var_list => model%get_var_list_ptr ()
+      call var_list%write (u)
+    end subroutine show_var_list
+
+    subroutine show_par_array ()
+      real(default), dimension(:), allocatable :: par
+      integer :: n
+      write (u, *)
+      write (u, "(A)")  "* Parameter array"
+      write (u, *)
+      n = model%get_n_real ()
+      allocate (par (n))
+      call model%real_parameters_to_array (par)
+      write (u, 1)  par
+1     format (1X,F6.3)
+    end subroutine show_par_array
+
+  end subroutine models_7
 
 
 end module models_uti

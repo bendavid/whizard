@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -167,7 +167,7 @@ contains
          local%prclib, &
          local%os_data, intg%qcd, rng_factory, model_instance)
   end subroutine integration_init_process
-    
+
   subroutine integration_setup_process (intg, local, verbose)
     class(integration_t), intent(inout) :: intg
     type(rt_data_t), intent(inout), target :: local
@@ -196,11 +196,10 @@ contains
     type(blha_template_t) :: blha_template
     type(string_t) :: me_method
     type(eval_tree_factory_t) :: expr_factory
-    logical :: use_powheg_damping_factors
+    logical :: use_powheg_damping
     integer :: i = 0
-  
+
     verb = .true.; if (present (verbose))  verb = verbose
-    
     call intg%process%set_var_list (local%get_var_list_ptr ())
     var_list => intg%process%get_var_list_ptr ()
 
@@ -260,26 +259,29 @@ contains
           call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
        end if
     end if
-    
+
     helicity_selection = local%get_helicity_selection ()
 
     intg%vis_history = &
          var_list%get_lval (var_str ("?vis_history"))
     use_color_factors = var_list%get_lval &
          (var_str ("?read_color_factors"))
-    
+
     n_components = intg%process%get_n_components ()
     n_in = intg%process%get_n_in ()
 
-    call blha_template%init (local%beam_structure%has_polarized_beams())
-    intg%combined_integration = var_list%get_lval (&
-                                var_str ('?combined_nlo_integration')) &
-                                .and. intg%process%is_nlo_calculation ()
+    call blha_template%init (local%beam_structure%has_polarized_beams(), &
+       var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
+       var_list%get_rval (var_str ("blha_use_top_yukawa")))
+
+    intg%combined_integration = var_list%get_lval &
+       (var_str ('?combined_nlo_integration')) .and. intg%process%is_nlo_calculation ()
 
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
        call dispatch_core (core_template, config%get_core_def_ptr (), &
-            intg%process%get_model_ptr (), helicity_selection, intg%qcd, &
+            intg%process%get_model_ptr (), &
+            helicity_selection, intg%qcd, &
             use_color_factors)
        select case (config%get_nlo_type ())
        case (NLO_VIRTUAL)
@@ -295,7 +297,7 @@ contains
             call intg%process%set_component_type (i_component, COMP_VIRT)
        case (NLO_REAL)
          me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-         use_powheg_damping_factors = var_list%get_lval (var_str ("?use_powheg_damping"))
+         use_powheg_damping = var_list%get_lval (var_str ("?powheg_use_damping"))
          select case (char (me_method))
          case ('gosam', 'openloops')
             call blha_template%set_real_trees ()
@@ -309,7 +311,7 @@ contains
              phs_config_template_other, fks_template = fks_template, &
              blha_template = blha_template)
          if (intg%combined_integration) then
-            if (use_powheg_damping_factors) then
+            if (use_powheg_damping) then
                if (i == 0) then
                   call intg%process%set_component_type (i_component, COMP_REAL_SING)
                   i = i + 1
@@ -320,7 +322,15 @@ contains
                call intg%process%set_component_type (i_component, COMP_REAL)
             end if
          end if
-       case (NLO_PDF)
+       case (NLO_MISMATCH)
+         call dispatch_phs (phs_config_template_other, local, &
+            intg%process_id, mapping_defs, phs_par, var_str ('fks')) 
+         call intg%process%init_component & 
+            (i_component, core_template, mci_template, &
+            phs_config_template_other)
+         if (intg%combined_integration) &
+            call intg%process%set_component_type (i_component, COMP_MISMATCH)
+       case (NLO_DGLAP)
          call dispatch_phs (phs_config_template_other, local, &
              intg%process_id, mapping_defs, phs_par, &
              var_str ('fks'))
@@ -355,12 +365,7 @@ contains
             call intg%process%set_component_type (i_component, COMP_SUB)
        case (GKS)
          call intg%process%init_component &
-             (i_component, core_template, mci_template, phs_config_template) 
-       case (NLO_THRESHOLD_RESUMMATION)
-         call intg%process%init_component &
              (i_component, core_template, mci_template, phs_config_template)
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_RESUM)
        case default
          call msg_fatal ("setup_process: NLO type not implemented!")
        end select
@@ -370,13 +375,13 @@ contains
     end do
 
     if (verb)  call intg%process%write (screen = .true.)
-    
+
     intg%process_has_me = intg%process%has_matrix_element ()
     if (.not. intg%process_has_me) then
        call msg_warning ("Process '" &
             // char (intg%process_id) // "': matrix element vanishes")
     end if
-    
+
     sqrts = local%get_sqrts ()
     decay_rest_frame = &
          var_list%get_lval (var_str ("?decay_rest_frame"))    
@@ -389,7 +394,7 @@ contains
        call intg%process%beams_startup_message &
             (beam_structure = local%beam_structure)
     end if
-    
+
     if (intg%process_has_me) then
        call intg%process%get_pdg_in (pdg_prc)
     else
@@ -427,7 +432,7 @@ contains
        call phs_channel_collection%final ()
        if (verb)  call intg%process%sf_startup_message (sf_string)    
     end if
-    
+
     call intg%setup_process_mci ()
     call intg%process%setup_terms ()
 
@@ -437,7 +442,7 @@ contains
        call intg%process%set_cuts (expr_factory)
     else
        if (verb)  call msg_warning ("No cuts have been defined.")
-    end if    
+    end if
     if (associated (local%pn%scale_expr)) then
        if (verb) call msg_message ("Using user-defined general scale.")
        call expr_factory%init (local%pn%scale_expr)
@@ -508,7 +513,12 @@ contains
     class(integration_t), intent(inout) :: intg
     type(rt_data_t), intent(in) :: local
     integer :: n_pass, pass
+    type(iterations_list_t) :: it_list
     n_pass = local%it_list%get_n_pass ()
+    if (n_pass == 0) then
+       call intg%make_iterations_list (it_list)
+       n_pass = it_list%get_n_pass ()
+    end if 
     associate (it_multipliers => intg%iteration_multipliers)
        allocate (it_multipliers%n_calls0 (n_pass))
        do pass = 1, n_pass
@@ -518,8 +528,8 @@ contains
            (var_str ("mult_call_real"))
        it_multipliers%mult_virt = local%var_list%get_rval &
            (var_str ("mult_call_virt"))
-       it_multipliers%mult_pdf = local%var_list%get_rval &
-           (var_str ("mult_call_pdf"))
+       it_multipliers%mult_dglap = local%var_list%get_rval &
+           (var_str ("mult_call_dglap"))
     end associate
   end subroutine integration_init_iteration_multipliers
 
@@ -539,17 +549,17 @@ contains
              multiplier = multipliers%mult_real
           case (NLO_VIRTUAL)
              multiplier = multipliers%mult_virt
-          case (NLO_PDF)
-             multiplier = multipliers%mult_pdf
-          case (NLO_THRESHOLD_RESUMMATION)
-             multiplier = multipliers%mult_threshold
+          case (NLO_DGLAP)
+             multiplier = multipliers%mult_dglap
           case default
              return
           end select
        end associate
-       n_calls0 = intg%iteration_multipliers%n_calls0 (pass)
-       n_calls = floor (multiplier * n_calls0)
-       call it_list%set_n_calls (pass, n_calls)
+       if (n_pass <= size (intg%iteration_multipliers%n_calls0)) then
+          n_calls0 = intg%iteration_multipliers%n_calls0 (pass)
+          n_calls = floor (multiplier * n_calls0)
+          call it_list%set_n_calls (pass, n_calls)
+       end if
     end do
   end subroutine integration_apply_call_multipliers
 
@@ -586,21 +596,28 @@ contains
     integer :: i_component
     integer :: nlo_type
     logical :: display_summed
-    logical :: use_internal_color_correlations
+    logical :: nlo_active
     type(string_t) :: color_method
+    type(nlo_settings_t) :: nlo_settings
 
     var_list => intg%process%get_var_list_ptr ()
-    
     color_method = var_list%get_sval (var_str ('$correlation_me_method'))
-    use_internal_color_correlations = color_method == 'omega'
+    nlo_settings%use_internal_color_correlations = color_method == 'omega' & 
+       .or. color_method == 'threshold'
+    nlo_settings%combined_integration = intg%combined_integration
+    nlo_settings%test_soft_limit = var_list%get_lval (var_str ('?test_soft_limit'))
+    nlo_settings%test_coll_limit = var_list%get_lval (var_str ('?test_coll_limit'))
+    nlo_settings%test_anti_coll_limit = var_list%get_lval (var_str ('?test_anti_coll_limit'))
+    nlo_settings%fixed_alr = var_list%get_ival (var_str ('fixed_alpha_region'))
+    nlo_settings%with_virtual_subtraction = &
+       .not. var_list%get_lval (var_str ('?switch_off_virtual_subtraction'))
 
     allocate (process_instance)
-    call process_instance%init (intg%process, use_internal_color_correlations, &
-                                combined_integration = intg%combined_integration)
+    call process_instance%init (intg%process, nlo_settings)
 
-    if (process_instance%has_blha_component ()) then
-       call process_instance%create_blha_interface (local%beam_structure)
-       call process_instance%load_blha_libraries (local%os_data)
+    if (process_instance%needs_extra_code ()) then
+       call process_instance%create_and_load_extra_libraries &
+               (local%beam_structure, local%os_data)
     end if
 
     call openmp_set_num_threads_verbose &
@@ -618,57 +635,66 @@ contains
     end if
     call intg%setup_component_cores ()
 
+    nlo_active = any (intg%process%get_component_nlo_type &
+         ([(i_mci, i_mci = 1, n_mci)]) /= BORN)
     do i_mci = 1, n_mci
        i_component = intg%process%i_mci_to_i_component (i_mci)
-       if (intg%process%is_active_nlo_component (i_component)) then
+       nlo_type = intg%process%get_component_nlo_type (i_component)
+       if (intg%process%is_active_component (i_component)) then
           select type (pcm => process_instance%pcm)
           class is (pcm_instance_nlo_t)
              if (pcm%collect_matrix_elements)  call pcm%collector%reset ()
           end select
-         if (n_mci > 1) then
-            write (msg_buffer, "(A,A,A,I0)") &
-                 "Starting integration for process '", &
-                 char (intg%process%get_id ()), "' part ", i_mci
-            call msg_message ()
-         end if
-         n_pass = local%it_list%get_n_pass ()
-         if (n_pass == 0) then
-            call msg_message ("Integrate: iterations not specified, &
-                 &using default")
-            call intg%make_iterations_list (it_list)
-            n_pass = it_list%get_n_pass ()
-         else
-            it_list = local%it_list
-         end if
-         call intg%apply_call_multipliers (n_pass, i_mci, it_list)
-         call msg_message ("Integrate: " // char (it_list%to_string ()))
-         do pass = 1, n_pass
-            call intg%evaluate (process_instance, i_mci, pass, it_list, pacify)
-            if (signal_is_pending ())  return
-         end do
-         call intg%process%final_integration (i_mci)       
-         if (intg%vis_history) then
-            call intg%process%display_integration_history &
-                 (i_mci, intg%history_filename, local%os_data, eff_reset)
-         end if       
-         if (local%logfile == intg%log_filename) then
-            if (intg%run_id /= "") then
-               log_filename = intg%process_id // "." // intg%run_id // &
-                    ".var.log"
-            else
-               log_filename = intg%process_id // ".var.log"
-            end if
-            call msg_message ("Name clash for global logfile and process log: ", &
-                 arr =[var_str ("| Renaming log file from ") // local%logfile, &
-                       var_str ("|   to ") // log_filename // var_str (" .")])
-         else
-            log_filename = intg%log_filename
-         end if
-         call intg%process%write_logfile (i_mci, log_filename)    
+          if (n_mci > 1) then
+             if (nlo_active) then
+                write (msg_buffer, "(A,A,A,A,A)") &
+                     "Starting integration for process '", &
+                     char (intg%process%get_id ()), "' part '", &
+                     char (component_status (nlo_type)), "'"
+             else
+                write (msg_buffer, "(A,A,A,I0)") &
+                     "Starting integration for process '", &
+                     char (intg%process%get_id ()), "' part ", i_mci
+             end if
+             call msg_message ()
+          end if
+          n_pass = local%it_list%get_n_pass ()
+          if (n_pass == 0) then
+             call msg_message ("Integrate: iterations not specified, &
+                  &using default")
+             call intg%make_iterations_list (it_list)
+             n_pass = it_list%get_n_pass ()
+          else
+             it_list = local%it_list
+          end if
+          call intg%apply_call_multipliers (n_pass, i_mci, it_list)
+          call msg_message ("Integrate: " // char (it_list%to_string ()))
+          do pass = 1, n_pass
+             call intg%evaluate (process_instance, i_mci, pass, it_list, pacify)
+             if (signal_is_pending ())  return
+          end do
+          call intg%process%final_integration (i_mci)       
+          if (intg%vis_history) then
+             call intg%process%display_integration_history &
+                  (i_mci, intg%history_filename, local%os_data, eff_reset)
+          end if
+          if (local%logfile == intg%log_filename) then
+             if (intg%run_id /= "") then
+                log_filename = intg%process_id // "." // intg%run_id // &
+                     ".var.log"
+             else
+                log_filename = intg%process_id // ".var.log"
+             end if
+             call msg_message ("Name clash for global logfile and process log: ", &
+                  arr =[var_str ("| Renaming log file from ") // local%logfile, &
+                        var_str ("|   to ") // log_filename // var_str (" .")])
+          else
+             log_filename = intg%log_filename
+          end if
+          call intg%process%write_logfile (i_mci, log_filename)
        else
-         nlo_type = intg%process%get_component_nlo_type (i_mci)
-         if (nlo_type /= NLO_SUBTRACTION) display_summed = .false.
-       end if          
+          if (nlo_type /= NLO_SUBTRACTION) display_summed = .false.
+       end if
     end do
 
     if (n_mci > 1 .and. display_summed) then
@@ -697,7 +723,7 @@ contains
     class(integration_t), intent(inout) :: intg
     call intg%process%integrate_dummy ()
   end subroutine integration_integrate_dummy
-     
+
   subroutine integration_sampler_test (intg)
     class(integration_t), intent(inout) :: intg
     type(process_instance_t), allocatable, target :: process_instance

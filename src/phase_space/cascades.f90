@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,8 +39,9 @@ module cascades
   use kinds, only: TC, i8, i32
   use iso_varying_string, string_t => varying_string
   use io_units
+  use constants, only: one
   use format_defs, only: FMT_12, FMT_19
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use hashes
   use sorting
@@ -48,6 +49,7 @@ module cascades
   use physics_defs, only: UNDEFINED
   use model_data
   use flavors
+  use lorentz
   use phs_forests
 
   implicit none
@@ -61,6 +63,14 @@ module cascades
   public :: cascade_set_write_graph_format
   public :: cascade_set_write
   public :: cascade_set_generate
+  public :: resonance_contributors_t
+  public :: operator(==)
+  public :: assignment(=)
+  public :: resonance_info_t
+  public :: operator(>)
+  public :: resonance_history_t
+  public :: cascade_set_get_n_trees
+  public :: cascade_set_get_resonance_histories
 
   integer, parameter :: &
        & EXTERNAL_PRT = -1, &
@@ -70,6 +80,7 @@ module cascades
        & ON_SHELL = 99
   real, parameter, public :: CASCADE_SET_FILL_RATIO = 0.1
   integer, parameter, public :: MAX_WARN_RESONANCE = 50
+  integer, parameter :: n_max_resonances = 10
 
   type :: cascade_t
      private
@@ -155,6 +166,34 @@ module cascades
      type(hash_entry_t), dimension(:), allocatable :: entry
   end type cascade_set_t
 
+  type :: resonance_contributors_t
+     integer, dimension(:), allocatable :: c
+  end type resonance_contributors_t
+
+  type :: resonance_info_t
+     type(flavor_t) :: flavor
+     type(resonance_contributors_t) :: contributors
+  contains
+     procedure :: write => resonance_info_write
+     procedure :: init => resonance_info_init
+     procedure :: mapping => resonance_info_mapping
+  end type resonance_info_t
+
+  type :: resonance_history_t
+     type(resonance_info_t), dimension(:), allocatable :: resonances
+     integer :: n_resonances = 0
+  contains
+     procedure :: write => resonance_history_write
+     procedure :: add_resonance => resonance_history_add_resonance
+     procedure :: remove_resonance => resonance_history_remove_resonance
+     procedure :: of_cascade => resonance_history_of_cascade
+     procedure :: add_offset => resonance_history_add_offset
+     procedure :: contains_leg => resonance_history_contains_leg
+     procedure :: mapping => resonance_history_mapping
+     procedure :: only_has_n_contributors => resonance_history_only_has_n_contributors
+     procedure :: has_flavor => resonance_history_has_flavor
+  end type resonance_history_t
+
 
   interface operator(.disjunct.)
      module procedure cascade_disjunct
@@ -173,6 +212,21 @@ module cascades
      module procedure cascade_set_add_incoming1
   end interface
  
+  interface operator(==)
+    module procedure resonance_contributors_equal
+  end interface
+
+  interface assignment(=)
+     module procedure resonance_contributors_assign
+  end interface
+
+  interface operator(==)
+     module procedure resonance_info_equal
+     module procedure resonance_history_equal
+  end interface
+  interface operator(>)
+     module procedure resonance_history_contains
+  end interface
 
 contains
 
@@ -748,7 +802,7 @@ contains
           fmt_head = fmt_head // ",1x,'  '"
        end if
     end do
-    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug              
+    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
     do i = 1, n_tot
        fmt_proc(i) = fmt_proc(i) // ")"
     end do
@@ -1918,7 +1972,7 @@ contains
           cascade => cascade%next
        end do
        call cascade_set_final (cset(i))
-    end do           
+    end do
     cascade_set%first_k => cascade_set%first
     call cascade_set_assign_resonance_hash (cascade_set)
     call cascade_set_assign_groves (cascade_set)
@@ -1992,6 +2046,323 @@ contains
        flag = .true.;  return
     end if
   end function phase_space_vanishes
-       
+
+  elemental function resonance_contributors_equal (c1, c2) result (equal)
+    logical :: equal
+    class(resonance_contributors_t), intent(in) :: c1, c2
+    equal = allocated (c1%c) .and. allocated (c2%c)
+    if (equal) equal = size (c1%c) == size (c2%c)
+    if (equal) equal = all (c1%c == c2%c)
+  end function resonance_contributors_equal
+
+  pure subroutine resonance_contributors_assign (contributors_out, contributors_in)
+    type(resonance_contributors_t), intent(out) :: contributors_out
+    type(resonance_contributors_t), intent(in) :: contributors_in
+    if (allocated (contributors_in%c)) then
+       allocate (contributors_out%c (size (contributors_in%c)))
+       contributors_out%c = contributors_in%c
+    end if
+  end subroutine resonance_contributors_assign
+
+  subroutine resonance_info_write (resonance, unit)
+    class(resonance_info_t), intent(in) :: resonance
+    integer, optional, intent(in) :: unit
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, '(A)', advance='no') "Resonance contributors: "
+    do i = 1, size(resonance%contributors%c)
+       write (u, '(I0,1X)', advance='no') resonance%contributors%c(i)
+    end do
+    if (resonance%flavor%is_defined ()) call resonance%flavor%write (u)
+    write (u, '(A)')
+  end subroutine resonance_info_write
+
+  subroutine resonance_info_init (resonance, mom_id, pdg, model, n_out)
+    class(resonance_info_t), intent(out) :: resonance
+    integer, intent(in) :: mom_id, pdg, n_out
+    class(model_data_t), intent(in), target :: model
+    integer :: i
+    logical, dimension(n_out) :: contrib
+    integer, dimension(n_out) :: tmp
+    call msg_debug (D_PHASESPACE, "resonance_info_init")
+    do i = 1, n_out
+       tmp(i) = i
+    end do
+    contrib = btest (mom_id, tmp - 1)
+    allocate (resonance%contributors%c (count (contrib)))
+    resonance%contributors%c = pack (tmp, contrib)
+    call resonance%flavor%init (pdg, model)
+  end subroutine resonance_info_init
+
+  function resonance_info_mapping (resonance, s) result (bw)
+    real(default) :: bw
+    class(resonance_info_t), intent(in) :: resonance
+    real(default), intent(in) :: s
+    real(default) :: m, gamma
+    if (resonance%flavor%is_defined ()) then
+       m = resonance%flavor%get_mass ()
+       gamma = resonance%flavor%get_width ()
+       bw = m**4 / ((s - m**2)**2 + gamma**2 * m**2)
+    else
+       bw = one
+    end if
+  end function resonance_info_mapping
+
+  elemental function resonance_info_equal (r1, r2) result (equal)
+    logical :: equal
+    class(resonance_info_t), intent(in) :: r1, r2
+    equal = r1%flavor == r2%flavor .and. r1%contributors == r2%contributors
+  end function resonance_info_equal
+
+  elemental function resonance_history_equal (rh1, rh2) result (equal)
+    logical :: equal
+    class(resonance_history_t), intent(in) :: rh1, rh2
+    integer :: i
+    equal = .false.
+    if (rh1%n_resonances == rh2%n_resonances) then
+       if (size (rh1%resonances) == size (rh2%resonances)) then
+          do i = 1, rh1%n_resonances
+             if (.not. rh1%resonances(i) == rh2%resonances(i)) then
+                return
+             end if
+          end do
+          equal = .true.
+       end if
+    end if
+  end function resonance_history_equal
+
+  elemental function resonance_history_contains (rh1, rh2) result (is_sub_res)
+    logical :: is_sub_res
+    class(resonance_history_t), intent(in) :: rh1, rh2
+    integer :: i_res
+    is_sub_res = .false.
+    if (rh1%n_resonances > rh2%n_resonances) then
+       do i_res = 1, rh1%n_resonances
+          is_sub_res = is_sub_res .or. any (rh1%resonances(i_res) == rh2%resonances)
+       end do
+    end if
+  end function resonance_history_contains
+
+  subroutine resonance_history_write (res_hist, unit)
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, optional, intent(in) :: unit
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write(u, '(A,I0,A)') "Resonance history with ", &
+         res_hist%n_resonances, " resonances:"
+    do i = 1, res_hist%n_resonances
+       call res_hist%resonances(i)%write (u)
+    end do
+  end subroutine resonance_history_write
+
+  subroutine resonance_history_add_resonance (res_hist, resonance)
+    class(resonance_history_t), intent(inout) :: res_hist
+    type(resonance_info_t), intent(in) :: resonance
+    type(resonance_info_t), dimension(:), allocatable :: tmp
+    logical :: create_new_array, extend_array
+    call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
+    res_hist%n_resonances = res_hist%n_resonances + 1
+    create_new_array = .not. allocated (res_hist%resonances)
+    extend_array = .false. 
+    if (.not. create_new_array) &
+       extend_array = res_hist%n_resonances > size (res_hist%resonances)
+    if (create_new_array .or. extend_array) then
+       if (extend_array) then
+          call copy (tmp, res_hist%resonances)
+          deallocate (res_hist%resonances)
+       end if
+       call copy (res_hist%resonances, tmp)
+    end if
+    res_hist%resonances(res_hist%n_resonances) = resonance
+    call msg_debug (D_PHASESPACE, "res_hist%n_resonances", res_hist%n_resonances)
+  contains
+    pure subroutine copy (A,B)
+      type(resonance_info_t), dimension(:), allocatable, intent(inout) :: A, B
+      integer :: i
+      allocate (A (res_hist%n_resonances + n_max_resonances))
+      do i = 1, res_hist%n_resonances - 1
+         A(i) = B(i)
+      end do
+    end subroutine copy
+  end subroutine resonance_history_add_resonance
+
+  subroutine resonance_history_remove_resonance (res_hist, i_res)
+    class(resonance_history_t), intent(inout) :: res_hist
+    integer, intent(in) :: i_res
+    integer :: i
+    res_hist%n_resonances = res_hist%n_resonances - 1
+    if (res_hist%n_resonances == 0) then
+       deallocate (res_hist%resonances)
+    else
+       do i = i_res + 1, size (res_hist%resonances)
+          res_hist%resonances (i - 1) = res_hist%resonances (i)
+       end do
+    end if
+  end subroutine resonance_history_remove_resonance
+
+  !pure
+  subroutine resonance_history_of_cascade (res_hist, cascade, model, n_out)
+    class(resonance_history_t), intent(out) :: res_hist
+    type(cascade_t), intent(in), target :: cascade
+    class(model_data_t), intent(in), target :: model
+    integer, intent(in) :: n_out
+    type(resonance_info_t) :: resonance
+    integer :: i, mom_id, pdg
+    call msg_debug2 (D_PHASESPACE, "resonance_history_of_cascade")
+    if (cascade%n_resonances > 0) then
+       if (cascade%has_children) then
+          call msg_debug2 (D_PHASESPACE, "cascade has resonances and children")
+          do i = 1, size(cascade%tree_resonant)
+             if (cascade%tree_resonant (i)) then
+                mom_id = cascade%tree (i)
+                pdg = cascade%tree_pdg (i)
+                call resonance%init (mom_id, pdg, model, n_out)
+                if (debug2_active (D_PHASESPACE)) then
+                   print *, 'D: Adding resonance'
+                   call resonance%write ()
+                end if
+                call res_hist%add_resonance (resonance)
+             end if
+          end do
+       end if
+    end if
+  end subroutine resonance_history_of_cascade
+
+  subroutine resonance_history_add_offset (res_hist, n)
+    class(resonance_history_t), intent(inout) :: res_hist
+    integer, intent(in) :: n
+    integer :: i_res
+    do i_res = 1, res_hist%n_resonances
+       associate (contributors => res_hist%resonances(i_res)%contributors%c)
+          contributors = contributors + n
+       end associate
+    end do
+  end subroutine resonance_history_add_offset
+
+  function resonance_history_contains_leg (res_hist, i_leg) result (val)
+    logical :: val
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, intent(in) :: i_leg
+    integer :: i_res
+    val = .false.
+    do i_res = 1, res_hist%n_resonances
+       if (any (res_hist%resonances(i_res)%contributors%c == i_leg)) then
+          val = .true.
+          exit
+       end if
+    end do
+  end function resonance_history_contains_leg
+
+  function resonance_history_mapping (res_hist, p, i_gluon) result (p_map)
+    real(default) :: p_map
+    class(resonance_history_t), intent(in) :: res_hist
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in), optional :: i_gluon
+    integer :: i_res
+    real(default) :: s
+    p_map = one
+    do i_res = 1, res_hist%n_resonances
+       associate (res => res_hist%resonances(i_res))
+          s = compute_resonance_mass (p, res%contributors%c, i_gluon)**2
+          p_map = p_map * res%mapping (s)
+       end associate
+    end do
+  end function resonance_history_mapping
+
+  function resonance_history_only_has_n_contributors (res_hist, n) result (value)
+    logical :: value
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, intent(in) :: n
+    integer :: i_res
+    value = .true.
+    do i_res = 1, res_hist%n_resonances
+       associate (res => res_hist%resonances(i_res))
+          value = value .and. size (res%contributors%c) == n
+       end associate
+    end do
+  end function resonance_history_only_has_n_contributors
+
+  function resonance_history_has_flavor (res_hist, flv) result (has_flv)
+    logical :: has_flv
+    class(resonance_history_t), intent(in) :: res_hist
+    type(flavor_t), intent(in) :: flv
+    integer :: i
+    has_flv = .false.
+    do i = 1, res_hist%n_resonances
+       has_flv = has_flv .or. res_hist%resonances(i)%flavor == flv
+    end do
+  end function resonance_history_has_flavor
+
+  function cascade_set_get_n_trees (cascade_set) result (n)
+    type(cascade_set_t), intent(in), target :: cascade_set
+    integer :: n
+    type(cascade_t), pointer :: cascade
+    integer :: grove
+    call msg_debug (D_PHASESPACE, "cascade_set_get_n_trees")
+    n = 0
+    do grove = 1, cascade_set%n_groves
+       cascade => cascade_set%first_k
+       do while (associated (cascade))
+          if (cascade%active .and. cascade%complete) then
+             if (cascade%grove == grove) then
+                n = n + 1
+             end if
+          end if
+          cascade => cascade%next
+       end do
+    end do
+    call msg_debug (D_PHASESPACE, "n", n)
+  end function cascade_set_get_n_trees
+
+  subroutine cascade_set_get_resonance_histories (cascade_set, n_filter, res_hists)
+    type(cascade_set_t), intent(in), target :: cascade_set
+    integer, intent(in), optional :: n_filter
+    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hists
+    type(resonance_history_t), dimension(:), allocatable :: tmp
+    type(cascade_t), pointer :: cascade
+    type(resonance_history_t) :: res_hist
+    type(resonance_info_t), dimension(:), allocatable :: resonances
+    integer :: grove, i, n_hists
+    logical :: included, add_to_list
+    call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")
+    n_hists = 0
+    allocate (tmp (cascade_set_get_n_trees (cascade_set)))
+    do grove = 1, cascade_set%n_groves
+       cascade => cascade_set%first_k
+       do while (associated (cascade))
+          if (cascade%active .and. cascade%complete) then
+             if (cascade%grove == grove) then
+                call msg_debug2 (D_PHASESPACE, "grove", grove)
+                call res_hist%of_cascade (cascade, cascade_set%model, cascade_set%n_out)
+                if (res_hist%n_resonances > 0) then
+                   included = .false.
+                   call msg_debug (D_PHASESPACE, "Checking if res_hist is already included")
+                   do i = 1, n_hists
+                      included = tmp (i) == res_hist
+                      if (included) then
+                         exit
+                      end if
+                   end do
+                   call msg_debug (D_PHASESPACE, "included", included)
+                   add_to_list = .not. included
+                   if (present (n_filter)) &
+                      add_to_list = add_to_list &
+                         .and. res_hist%only_has_n_contributors (n_filter)
+                   if (add_to_list) then
+                      n_hists = n_hists + 1
+                      tmp(n_hists) = res_hist
+                   end if
+                end if
+             end if
+          end if
+          cascade => cascade%next
+       end do
+    end do
+    allocate (res_hists (n_hists))
+    do i = 1, n_hists
+       res_hists(i) = tmp(i)
+    end do
+  end subroutine cascade_set_get_resonance_histories
+
 
 end module cascades

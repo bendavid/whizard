@@ -1,6 +1,6 @@
 ! $Id: parameters.MSSM_CKM.f90,v 1.1 2005/06/17 12:24:25 kilian Exp $
 !
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -413,8 +413,9 @@ module parameters_mssm_ckm
     g_yuk1_1_3
 
 contains
-  subroutine import_from_whizard (par_array)
+  subroutine import_from_whizard (par_array, scheme)
     real(default), dimension(144), intent(in) :: par_array
+    integer, intent(in) :: scheme
     type :: parameter_set 
        real(default) :: gf
        real(default) :: mZ

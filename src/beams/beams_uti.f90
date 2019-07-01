@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -75,9 +75,58 @@ contains
 
     call model%init_sm_test ()
 
-    write (u, "(A)")  "* 1: Scattering process"
+    write (u, "(A)")  "* Unpolarized scattering, massless fermions"
     write (u, "(A)")
     
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([1,-1], model)
+
+    call beam_data%init_sqrts (sqrts, flv)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massless bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call beam_data%init_sqrts (sqrts, flv)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call beam_data%init_sqrts (sqrts, flv)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized scattering, massless fermions"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
     sqrts = 500
     call flv%init ([1,-1], model)
 
@@ -85,17 +134,12 @@ contains
     call smatrix(1)%set_entry (1, [1,1], (1._default, 0._default))
     pol_f(1) = 0.5_default
 
-    !!! 2.1 version:
-    ! call polarization_init_circular (pol(1), flv(1), 0.5_default)
-
     call smatrix(2)%init (2, 3)
     call smatrix(2)%set_entry (1, [1,1], (1._default, 0._default))
     call smatrix(2)%set_entry (2, [-1,-1], (1._default, 0._default))
     call smatrix(2)%set_entry (3, [-1,1], (1._default, 0._default))
     pol_f(2) = 1._default
 
-    !!! 2.1 version:
-    ! call polarization_init_transversal (pol(2), flv(2), 0._default, 1._default)
     call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
     call beam_data%write (u)
     write (u, "(A)")
@@ -105,15 +149,74 @@ contains
     call beam_data%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
+    write (u, "(A)")  "* Semi-polarized scattering, massless bosons"
     write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call smatrix(1)%init (2, 0)
+    pol_f(1) = 0._default
+
+    call smatrix(2)%init (2, 1)
+    call smatrix(2)%set_entry (1, [1,1], (1._default, 0._default))
+    pol_f(2) = 1._default
+
+    call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Semi-polarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call smatrix(1)%init (2, 0)
+    pol_f(1) = 0._default
+
+    call smatrix(2)%init (2, 1)
+    call smatrix(2)%set_entry (1, [0,0], (1._default, 0._default))
+    pol_f(2) = 1._default
+
+    call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized decay, massive boson"
+    write (u, "(A)")
+
+    call reset_interaction_counter ()
+    call flv(1)%init (23, model)
+
+    call beam_data%init_decay (flv(1:1))
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized decay, massive boson"
+    write (u, "(A)")
+
+    call reset_interaction_counter ()
     call flv(1)%init (23, model)
     call smatrix(1)%init (2, 1)
     call smatrix(1)%set_entry (1, [0,0], (1._default, 0._default))
     pol_f(1) = 0.4_default
 
-    !!! 2.1 version:
-    ! call polarization_init_longitudinal (pol(1), flv(1), 0.4_default)
     call beam_data%init_decay (flv(1:1), smatrix(1:1), pol_f(1:1))
     call beam_data%write (u)
     write (u, "(A)")
@@ -151,17 +254,83 @@ contains
     write (u, "(A)")  "* Reading model file"
     write (u, "(A)") 
 
-    call reset_interaction_counter ()
-
     call model%init_sm_test ()
 
-    write (u, "(A)")  "* 1: Scattering process"
+    write (u, "(A)")  "* Unpolarized scattering, massless fermions"
     write (u, "(A)")
     
+    call reset_interaction_counter ()
     sqrts = 500
     call flv%init ([1,-1], model)
     call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%final_pol ()
 
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massless bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%final_pol ()
+
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%final_pol ()
+
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized scattering, massless fermions"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([1,-1], model)
+    call beam_structure%init_sf (flv%get_name (), no_records)
     call beam_structure%init_pol (2)
 
     call beam_structure%init_smatrix (1, 1)
@@ -189,9 +358,85 @@ contains
     call beam_structure%final_sf ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
+    write (u, "(A)")  "* Semi-polarized scattering, massless bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%init_pol (2)
+
+    call beam_structure%init_smatrix (1, 0)
+
+    call beam_structure%init_smatrix (2, 1)
+    call beam_structure%set_sentry (2, 1, [1,1], (1._default, 0._default))
+
+    call beam_structure%set_pol_f ([0._default, 1._default])
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+ 
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Semi-polarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%init_pol (2)
+
+    call beam_structure%init_smatrix (1, 0)
+
+    call beam_structure%init_smatrix (2, 1)
+    call beam_structure%set_sentry (2, 1, [0,0], (1._default, 0._default))
+    call beam_structure%write (u)
+
+    write (u, "(A)")
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+ 
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized decay, massive boson"
     write (u, "(A)")
 
+    call reset_interaction_counter ()
+    call flv(1)%init (23, model)
+
+    call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
+    call beam_structure%final_pol ()
+    call beam_structure%write (u)
+
+    write (u, "(A)")
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized decay, massive boson"
+    write (u, "(A)")
+
+    call reset_interaction_counter ()
     call flv(1)%init (23, model)
     call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
 

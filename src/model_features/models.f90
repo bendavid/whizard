@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -64,10 +64,8 @@ module models
   public :: syntax_model_file_final
   public :: syntax_model_file_write
   public :: model_list_t
-!   public :: model_pointer_to_instance
-!   public :: model_pointer_delete_instance
 
-  integer, parameter :: PAR_NONE = 0
+  integer, parameter :: PAR_NONE = 0, PAR_UNUSED = -1
   integer, parameter :: PAR_INDEPENDENT = 1, PAR_DERIVED = 2
   integer, parameter :: PAR_EXTERNAL = 3
 
@@ -83,6 +81,7 @@ module models
      procedure :: init_independent => parameter_init_independent
      procedure :: init_derived => parameter_init_derived
      procedure :: init_external => parameter_init_external
+     procedure :: init_unused => parameter_init_unused
      procedure :: final => parameter_final
      procedure :: reset_derived => parameter_reset_derived
      procedure :: write => parameter_write
@@ -92,6 +91,8 @@ module models
   type, extends (model_data_t) :: model_t
      private
      character(32) :: md5sum = ""
+     type(string_t), dimension(:), allocatable :: schemes
+     type(string_t), allocatable :: selected_scheme
      type(parameter_t), dimension(:), allocatable :: par
      integer :: max_par_name_length = 0
      integer :: max_field_name_length = 0
@@ -120,6 +121,8 @@ module models
           set_parameter_parse_node => model_set_parameter_parse_node
      procedure :: &
           set_parameter_external => model_set_parameter_external
+     procedure :: &
+          set_parameter_unused => model_set_parameter_unused
      procedure, private :: copy_parameter => model_copy_parameter
      procedure :: update_parameters => model_parameters_update
      procedure, private :: init_field => model_init_field
@@ -131,10 +134,16 @@ module models
      procedure :: set_real => model_var_set_real
      procedure :: get_rval => model_var_get_rval
      procedure :: get_var_list_ptr => model_get_var_list_ptr
+     procedure :: has_schemes => model_has_schemes
+     procedure :: enable_schemes => model_enable_schemes
+     procedure :: set_scheme => model_set_scheme
+     procedure :: get_scheme => model_get_scheme
+     procedure :: matches => model_matches
      procedure :: read => model_read
      procedure, private :: read_parameter => model_read_parameter
      procedure, private :: read_derived => model_read_derived
      procedure, private :: read_external => model_read_external
+     procedure, private :: read_unused => model_read_unused
      procedure, private :: read_field => model_read_field
      procedure, private :: read_vertex => model_read_vertex
      procedure, private :: append_field_vars => model_append_field_vars
@@ -215,8 +224,8 @@ contains
        call expr%init_expr (pn, var_list=var_list)
     end select
     par%data => par_data
-    call par%expr%evaluate ()
-    call par%data%init (name, par%expr%get_real ())
+!    call par%expr%evaluate ()
+    call par%data%init (name, 0._default)
   end subroutine parameter_init_derived
 
   subroutine parameter_init_external (par, par_data, name)
@@ -227,6 +236,15 @@ contains
     par%data => par_data
     call par%data%init (name, 0._default)
   end subroutine parameter_init_external
+
+  subroutine parameter_init_unused (par, par_data, name)
+    class(parameter_t), intent(out) :: par
+    class(modelpar_data_t), intent(in), target :: par_data
+    type(string_t), intent(in) :: name
+    par%type = PAR_UNUSED
+    par%data => par_data
+    call par%data%init (name, 0._default)
+  end subroutine parameter_init_unused
 
   subroutine parameter_final (par)
     class(parameter_t), intent(inout) :: par
@@ -255,12 +273,17 @@ contains
     select case (par%type)
     case (PAR_INDEPENDENT)
        write (u, "(3x,A)", advance="no")  "parameter"
+       call par%data%write (u)
     case (PAR_DERIVED)
        write (u, "(3x,A)", advance="no")  "derived"
+       call par%data%write (u)
     case (PAR_EXTERNAL)
        write (u, "(3x,A)", advance="no")  "external"
+       call par%data%write (u)
+    case (PAR_UNUSED)
+       write (u, "(3x,A)", advance="no")  "unused"
+       write (u, "(1x,A)", advance="no")  char (par%data%get_name ())
     end select
-    call par%data%write (u)
     select case (par%type)
     case (PAR_DERIVED)
        if (defs) then
@@ -290,7 +313,10 @@ contains
     integer, intent(in) :: n_par, n_prt, n_vtx
     type(c_funptr) :: c_fptr
     type(string_t) :: libpath
+    integer :: scheme_num
+    scheme_num = model%get_scheme_num ()
     call model%basic_init (name, n_par, n_prt, n_vtx)
+    call model%set_scheme_num (scheme_num)
     if (libname /= "") then
        if (.not. os_data%use_testfiles) then
           libpath = os_data%whizard_models_libpath_local
@@ -354,7 +380,7 @@ contains
 
   subroutine model_write (model, unit, verbose, &
        show_md5sum, show_variables, show_parameters, &
-       show_particles, show_vertices)
+       show_particles, show_vertices, show_scheme)
     class(model_t), intent(in) :: model
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -363,6 +389,7 @@ contains
     logical, intent(in), optional :: show_parameters
     logical, intent(in), optional :: show_particles
     logical, intent(in), optional :: show_vertices
+    logical, intent(in), optional :: show_scheme
     logical :: verb, show_md5, show_par, show_var
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
@@ -376,6 +403,20 @@ contains
     write (u, "(A,A,A)") 'model "', char (model%get_name ()), '"'
     if (show_md5 .and. model%md5sum /= "") &
          write (u, "(1x,A,A,A)") "! md5sum = '", model%md5sum, "'"
+    if (model%has_schemes ()) then
+       write (u, "(1x,A)", advance="no")  "! schemes ="
+       do i = 1, size (model%schemes)
+          if (i > 1)  write (u, "(',')", advance="no")
+          write (u, "(1x,A,A,A)", advance="no") &
+               "'", char (model%schemes(i)), "'"
+       end do
+       write (u, *)
+       if (allocated (model%selected_scheme)) then
+          write (u, "(1x,A,A,A,I0,A)")  &
+               "! selected scheme = '", char (model%get_scheme ()), &
+               "' (", model%get_scheme_num (), ")"
+       end if
+    end if
     if (show_par) then
        write (u, "(A)")
        do i = 1, size (model%par)
@@ -386,7 +427,8 @@ contains
          show_md5sum, show_variables, &
          show_parameters=.false., &
          show_particles=show_particles, &
-         show_vertices=show_vertices)
+         show_vertices=show_vertices, &
+         show_scheme=show_scheme)
     if (show_var) then
        write (u, "(A)")
        call var_list_write (model%var_list, unit, follow_link=.false.)
@@ -399,6 +441,10 @@ contains
     integer :: i, u, l
     u = given_output_unit (unit)
     write (u, "(A,1x,A)")  "Model:", char (model%get_name ())
+    if (model%has_schemes ()) then
+       write (u, "(2x,A,A,A,I0,A)")  "Scheme: '", &
+            char (model%get_scheme ()), "' (", model%get_scheme_num (), ")"
+    end if
     l = model%max_field_name_length
     call model%show_fields (l, u)
     l = model%max_par_name_length
@@ -418,6 +464,12 @@ contains
        write (u, "(2x,A)")  "External parameters:"
        do i = 1, size (model%par)
           call model%par(i)%show (l, u, PAR_EXTERNAL)
+       end do
+    end if
+    if (any (model%par%type == PAR_UNUSED)) then
+       write (u, "(2x,A)")  "Unused parameters:"
+       do i = 1, size (model%par)
+          call model%par(i)%show (l, u, PAR_UNUSED)
        end do
     end if
   end subroutine model_show
@@ -582,6 +634,18 @@ contains
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_external
 
+  subroutine model_set_parameter_unused (model, i, name)
+    class(model_t), intent(inout), target :: model
+    integer, intent(in) :: i
+    type(string_t), intent(in) :: name
+    class(modelpar_data_t), pointer :: par_data
+    par_data => model%get_par_real_ptr (i)
+    call model%par(i)%init_unused (par_data, name)
+    call var_list_append_real (model%var_list, &
+         name, locked=.true., intrinsic=.true.)
+    model%max_par_name_length = max (model%max_par_name_length, len (name))
+  end subroutine model_set_parameter_unused
+
   subroutine model_copy_parameter (model, i, par)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
@@ -603,6 +667,8 @@ contains
             constant = .false.)
     case (PAR_EXTERNAL)
        call model%set_parameter_external (i, name)
+    case (PAR_UNUSED)
+       call model%set_parameter_unused (i, name)
     end select
   end subroutine model_copy_parameter
   
@@ -692,14 +758,96 @@ contains
     var_list => model%var_list
   end function model_get_var_list_ptr
 
+  function model_has_schemes (model) result (flag)
+    logical :: flag
+    class(model_t), intent(in) :: model
+    flag = allocated (model%schemes)
+  end function model_has_schemes
+  
+  subroutine model_enable_schemes (model, scheme)
+    class(model_t), intent(inout) :: model
+    type(string_t), dimension(:), intent(in) :: scheme
+    allocate (model%schemes (size (scheme)), source = scheme)
+  end subroutine model_enable_schemes
+  
+  subroutine model_set_scheme (model, scheme)
+    class(model_t), intent(inout) :: model
+    type(string_t), intent(in), optional :: scheme
+    logical :: ok
+    integer :: i
+    if (model%has_schemes ()) then
+       if (present (scheme)) then
+          ok = .false.
+          CHECK_SCHEME: do i = 1, size (model%schemes)
+             if (scheme == model%schemes(i)) then
+                allocate (model%selected_scheme, source = scheme)
+                call model%set_scheme_num (i)
+                ok = .true.
+                exit CHECK_SCHEME
+             end if
+          end do CHECK_SCHEME
+          if (.not. ok) then
+             call msg_fatal &
+                  ("Model '" // char (model%get_name ()) &
+                  // "': scheme '" // char (scheme) // "' not supported")
+          end if
+       else
+          allocate (model%selected_scheme, source = model%schemes(1))
+          call model%set_scheme_num (1)
+       end if
+    else
+       if (present (scheme)) then
+          call msg_error &
+                  ("Model '" // char (model%get_name ()) &
+                  // "' does not support schemes")
+       end if
+    end if
+  end subroutine model_set_scheme
+  
+  function model_get_scheme (model) result (scheme)
+    class(model_t), intent(in) :: model
+    type(string_t) :: scheme
+    if (allocated (model%selected_scheme)) then
+       scheme = model%selected_scheme
+    else
+       scheme = ""
+    end if
+  end function model_get_scheme
+  
+  function model_matches (model, name, scheme) result (flag)
+    logical :: flag
+    class(model_t), intent(in) :: model
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: scheme
+    flag = model%get_name () == name
+    if (flag) then
+       if (model%has_schemes ()) then
+          if (present (scheme)) then
+             flag = model%get_scheme () == scheme
+          else
+             flag = model%get_scheme_num () == 1
+          end if
+       else
+          flag = .not. present (scheme)
+       end if
+    end if
+  end function model_matches
+  
   subroutine define_model_file_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "SEQ model_def = model_name_def " // &
-         "parameters derived_pars external_pars particles vertices")
+         "scheme_header parameters external_pars particles vertices")
     call ifile_append (ifile, "SEQ model_name_def = model model_name")
     call ifile_append (ifile, "KEY model")
     call ifile_append (ifile, "QUO model_name = '""'...'""'")
-    call ifile_append (ifile, "SEQ parameters = parameter_def*")
+    call ifile_append (ifile, "SEQ scheme_header = scheme_decl?")
+    call ifile_append (ifile, "SEQ scheme_decl = schemes '=' scheme_list")
+    call ifile_append (ifile, "KEY schemes")
+    call ifile_append (ifile, "LIS scheme_list = scheme_name+")
+    call ifile_append (ifile, "QUO scheme_name = '""'...'""'")
+    call ifile_append (ifile, "SEQ parameters = generic_par_def*")
+    call ifile_append (ifile, "ALT generic_par_def = &
+         &parameter_def | derived_def | unused_def | scheme_block")
     call ifile_append (ifile, "SEQ parameter_def = parameter par_name " // &
          "'=' any_real_value")
     call ifile_append (ifile, "ALT any_real_value = " &
@@ -709,13 +857,26 @@ contains
     call ifile_append (ifile, "KEY parameter")
     call ifile_append (ifile, "IDE par_name")
     ! call ifile_append (ifile, "KEY '='")          !!! Key already exists
-    call ifile_append (ifile, "SEQ derived_pars = derived_def*")
     call ifile_append (ifile, "SEQ derived_def = derived par_name " // &
          "'=' expr")
     call ifile_append (ifile, "KEY derived")
+    call ifile_append (ifile, "SEQ unused_def = unused par_name")
+    call ifile_append (ifile, "KEY unused")
     call ifile_append (ifile, "SEQ external_pars = external_def*")
     call ifile_append (ifile, "SEQ external_def = external par_name")
     call ifile_append (ifile, "KEY external")
+    call ifile_append (ifile, "SEQ scheme_block = &
+         &scheme_block_beg scheme_block_body scheme_block_end")
+    call ifile_append (ifile, "SEQ scheme_block_beg = select scheme")
+    call ifile_append (ifile, "SEQ scheme_block_body = scheme_block_case*")
+    call ifile_append (ifile, "SEQ scheme_block_case = &
+         &scheme scheme_id parameters")
+    call ifile_append (ifile, "ALT scheme_id = scheme_list | other")
+    call ifile_append (ifile, "SEQ scheme_block_end = end select")
+    call ifile_append (ifile, "KEY select")
+    call ifile_append (ifile, "KEY scheme")
+    call ifile_append (ifile, "KEY other")
+    call ifile_append (ifile, "KEY end")
     call ifile_append (ifile, "SEQ particles = particle_def*")
     call ifile_append (ifile, "SEQ particle_def = particle prt_longname " // &
          "prt_pdg prt_details")
@@ -778,7 +939,7 @@ contains
          comment_chars = "#!", &
          quote_chars = '"{', &
          quote_match = '"}', &
-         single_chars = ":()", &
+         single_chars = ":(),", &
          special_class = [ "+-*/^", "<>=  " ] , &
          keyword_list = syntax_get_keyword_list_ptr (syntax_model_file))
   end subroutine lexer_init_model_file
@@ -792,24 +953,24 @@ contains
     call syntax_write (syntax_model_file, unit)
   end subroutine syntax_model_file_write
 
-  subroutine model_read (model, filename, os_data, exist)
+  subroutine model_read (model, filename, os_data, exist, scheme)
     class(model_t), intent(out), target :: model
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     logical, intent(out), optional :: exist
+    type(string_t), intent(in), optional :: scheme
     type(string_t) :: file
     type(stream_t), target :: stream
     type(lexer_t) :: lexer
     integer :: unit
     character(32) :: model_md5sum
     type(parse_node_t), pointer :: nd_model_def, nd_model_name_def
-    type(parse_node_t), pointer :: nd_parameters, nd_derived_pars
+    type(parse_node_t), pointer :: nd_schemes, nd_scheme_decl
+    type(parse_node_t), pointer :: nd_parameters
     type(parse_node_t), pointer :: nd_external_pars
     type(parse_node_t), pointer :: nd_particles, nd_vertices
     type(string_t) :: model_name, lib_name
-    integer :: n_par, n_der, n_ext, n_prt, n_vtx
-    real(c_default_float), dimension(:), allocatable :: par
-    integer :: i
+    integer :: n_schemes, n_parblock, n_par, i_par, n_ext, n_prt, n_vtx
     type(parse_node_t), pointer :: nd_par_def
     type(parse_node_t), pointer :: nd_der_def
     type(parse_node_t), pointer :: nd_ext_def
@@ -832,118 +993,274 @@ contains
        return
     end if
     if (present (exist))  exist = .true.
+
     if (logging) call msg_message ("Reading model file '" // char (file) // "'")
-    call lexer_init_model_file (lexer)
+
     unit = free_unit ()
     open (file=char(file), unit=unit, action="read", status="old")
     model_md5sum = md5sum (unit)
     close (unit)
+    
+    call lexer_init_model_file (lexer)
     call stream_init (stream, char (file))
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (model%parse_tree, syntax_model_file, lexer)
     call stream_final (stream)
     call lexer_final (lexer)
+
     nd_model_def => model%parse_tree%get_root_ptr ()
     nd_model_name_def => parse_node_get_sub_ptr (nd_model_def)
     model_name = parse_node_get_string &
          (parse_node_get_sub_ptr (nd_model_name_def, 2))
-    nd_parameters => parse_node_get_next_ptr (nd_model_name_def)
-    if (associated (nd_parameters)) then
-       if (parse_node_get_rule_key (nd_parameters) == "parameters") then
-          n_par = parse_node_get_n_sub (nd_parameters)
-          nd_par_def => parse_node_get_sub_ptr (nd_parameters)
-          nd_derived_pars => parse_node_get_next_ptr (nd_parameters)
-       else
-          n_par = 0
-          nd_derived_pars => nd_parameters
-          nd_parameters => null ()
-       end if
-    else
-       n_par = 0
-       nd_derived_pars => null ()
-    end if
-    if (associated (nd_derived_pars)) then
-       if (parse_node_get_rule_key (nd_derived_pars) == "derived_pars") then
-          n_der = parse_node_get_n_sub (nd_derived_pars)
-          nd_der_def => parse_node_get_sub_ptr (nd_derived_pars)
-          nd_external_pars => parse_node_get_next_ptr (nd_derived_pars)
-       else
-          n_der = 0
-          nd_external_pars => nd_derived_pars
-          nd_derived_pars => null ()
-       end if
-    else
-       n_der = 0
-       nd_external_pars => null ()
-    end if
+    nd_schemes => nd_model_name_def%get_next_ptr ()
+
+    call find_block &
+         ("scheme_header", nd_schemes, nd_scheme_decl, nd_next=nd_parameters)
+    call find_block &
+         ("parameters", nd_parameters, nd_par_def, n_parblock, nd_external_pars)
+    call find_block &
+         ("external_pars", nd_external_pars, nd_ext_def, n_ext, nd_particles)
+    call find_block &
+         ("particles", nd_particles, nd_prt, n_prt, nd_vertices)
+    call find_block &
+         ("vertices", nd_vertices, nd_vtx, n_vtx)
+    
     if (associated (nd_external_pars)) then
-       if (parse_node_get_rule_key (nd_external_pars) == "external_pars") then
-          n_ext = parse_node_get_n_sub (nd_external_pars)
-          lib_name = "external." // model_name
-          nd_ext_def => parse_node_get_sub_ptr (nd_external_pars)
-          nd_particles => parse_node_get_next_ptr (nd_external_pars)
-       else
-          n_ext = 0
-          lib_name = ""
-          nd_particles => nd_external_pars
-          nd_external_pars => null ()
-       end if
+       lib_name = "external." // model_name
     else
-       n_ext = 0
        lib_name = ""
-       nd_particles => null ()
     end if
-    if (associated (nd_particles)) then
-       if (parse_node_get_rule_key (nd_particles) == "particles") then
-          n_prt = parse_node_get_n_sub (nd_particles)
-          nd_prt => parse_node_get_sub_ptr (nd_particles)
-          nd_vertices => parse_node_get_next_ptr (nd_particles)
-       else
-          n_prt = 0
-          nd_vertices => nd_particles
-          nd_particles => null ()
-       end if
-    else
-       n_prt = 0
-       nd_vertices => null ()
+
+    if (associated (nd_scheme_decl)) then
+       call handle_schemes (nd_scheme_decl, scheme)
     end if
-    if (associated (nd_vertices)) then
-       n_vtx = parse_node_get_n_sub (nd_vertices)
-       nd_vtx => parse_node_get_sub_ptr (nd_vertices)
-    else
-       n_vtx = 0
-    end if
-    call model%init (model_name, lib_name, os_data, &
-         n_par + n_der + n_ext, n_prt, n_vtx)
+
+    n_par = 0
+    call count_parameters (nd_par_def, n_parblock, n_par)
+
+    call model%init (model_name, lib_name, os_data, n_par + n_ext, n_prt, n_vtx)
     model%md5sum = model_md5sum
-    do i = 1, n_par
-       call model%read_parameter (i, nd_par_def)
-       nd_par_def => parse_node_get_next_ptr (nd_par_def)
-    end do
-    do i = n_par + 1, n_par + n_der
-       call model%read_derived (i, nd_der_def)
-       nd_der_def => parse_node_get_next_ptr (nd_der_def)
-    end do
-    do i = n_par + n_der + 1, n_par + n_der + n_ext
-       call model%read_external (i, nd_ext_def)
-       nd_ext_def => parse_node_get_next_ptr (nd_ext_def)
-    end do
-    if (associated (model% init_external_parameters)) then
-       allocate (par (model%get_n_real ()))
-       call model%real_parameters_to_c_array (par)
-       call model%init_external_parameters (par)
-       call model%real_parameters_from_c_array (par)
+
+    if (associated (nd_par_def)) then
+       i_par = 0
+       call handle_parameters (nd_par_def, n_parblock, i_par)
     end if
-    do i = 1, n_prt
-       call model%read_field (i, nd_prt)
-       nd_prt => parse_node_get_next_ptr (nd_prt)
-    end do
-    do i = 1, n_vtx
-       call model%read_vertex (i, nd_vtx)
-       nd_vtx => parse_node_get_next_ptr (nd_vtx)
-    end do
+    if (associated (nd_ext_def)) then
+       call handle_external (nd_ext_def, n_par, n_ext)
+    end if
+    call model%update_parameters ()
+    if (associated (nd_prt)) then
+       call handle_fields (nd_prt, n_prt)
+    end if
+    if (associated (nd_vtx)) then
+       call handle_vertices (nd_vtx, n_vtx)
+    end if
+    
     call model%freeze_vertices ()
     call model%append_field_vars ()
+
+  contains
+    
+    subroutine find_block (key, nd, nd_item, n_item, nd_next)
+      character(*), intent(in) :: key
+      type(parse_node_t), pointer, intent(inout) :: nd
+      type(parse_node_t), pointer, intent(out) :: nd_item
+      integer, intent(out), optional :: n_item
+      type(parse_node_t), pointer, intent(out), optional :: nd_next
+      if (associated (nd)) then
+         if (nd%get_rule_key () == key) then
+            nd_item => nd%get_sub_ptr ()
+            if (present (n_item))  n_item = nd%get_n_sub ()
+            if (present (nd_next))  nd_next => nd%get_next_ptr ()
+         else
+            nd_item => null ()
+            if (present (n_item))  n_item = 0
+            if (present (nd_next))  nd_next => nd
+            nd => null ()
+         end if
+      else
+         nd_item => null ()
+         if (present (n_item))  n_item = 0
+         if (present (nd_next))  nd_next => null ()
+      end if
+    end subroutine find_block
+
+    subroutine handle_schemes (nd_scheme_decl, scheme)
+      type(parse_node_t), pointer, intent(in) :: nd_scheme_decl
+      type(string_t), intent(in), optional :: scheme
+      type(parse_node_t), pointer :: nd_list, nd_entry
+      type(string_t), dimension(:), allocatable :: schemes
+      integer :: i, n_schemes
+      nd_list => nd_scheme_decl%get_sub_ptr (3)
+      nd_entry => nd_list%get_sub_ptr ()
+      n_schemes = nd_list%get_n_sub ()
+      allocate (schemes (n_schemes))
+      do i = 1, n_schemes
+         schemes(i) = nd_entry%get_string ()
+         nd_entry => nd_entry%get_next_ptr ()
+      end do
+      if (present (scheme)) then
+         do i = 1, n_schemes
+            if (schemes(i) == scheme)  goto 10   ! block exit
+         end do
+         call msg_fatal ("Scheme '" // char (scheme) &
+              // "' is not supported by model '" // char (model_name) // "'")
+      end if
+10    continue
+      call model%enable_schemes (schemes)
+      call model%set_scheme (scheme)
+    end subroutine handle_schemes
+
+    subroutine select_scheme (nd_scheme_block, n_parblock_sub, nd_par_def)
+      type(parse_node_t), pointer, intent(in) :: nd_scheme_block
+      integer, intent(out) :: n_parblock_sub
+      type(parse_node_t), pointer, intent(out) :: nd_par_def
+      type(parse_node_t), pointer :: nd_scheme_body
+      type(parse_node_t), pointer :: nd_scheme_case, nd_scheme_id, nd_scheme
+      type(string_t) :: scheme
+      integer :: n_cases, i
+      scheme = model%get_scheme ()
+      nd_scheme_body => nd_scheme_block%get_sub_ptr (2)
+      nd_parameters => null ()
+      select case (char (nd_scheme_body%get_rule_key ()))
+      case ("scheme_block_body")
+         n_cases = nd_scheme_body%get_n_sub ()
+         FIND_SCHEME: do i = 1, n_cases
+            nd_scheme_case => nd_scheme_body%get_sub_ptr (i)
+            nd_scheme_id => nd_scheme_case%get_sub_ptr (2)
+            select case (char (nd_scheme_id%get_rule_key ()))
+            case ("scheme_list")
+               nd_scheme => nd_scheme_id%get_sub_ptr ()
+               do while (associated (nd_scheme))
+                  if (scheme == nd_scheme%get_string ()) then
+                     nd_parameters => nd_scheme_id%get_next_ptr ()
+                     exit FIND_SCHEME
+                  end if
+                  nd_scheme => nd_scheme%get_next_ptr ()
+               end do
+            case ("other")
+               nd_parameters => nd_scheme_id%get_next_ptr ()
+               exit FIND_SCHEME
+            case default
+               print *, "'", char (nd_scheme_id%get_rule_key ()), "'"
+               call msg_bug ("Model read: impossible scheme rule")
+            end select
+         end do FIND_SCHEME
+      end select
+      if (associated (nd_parameters)) then
+         select case (char (nd_parameters%get_rule_key ()))
+         case ("parameters")
+            n_parblock_sub = nd_parameters%get_n_sub ()
+            if (n_parblock_sub > 0) then
+               nd_par_def => nd_parameters%get_sub_ptr ()
+            else
+               nd_par_def => null ()
+            end if
+         case default
+            n_parblock_sub = 0
+            nd_par_def => null ()
+         end select
+      else
+         n_parblock_sub = 0
+         nd_par_def => null ()
+      end if
+    end subroutine select_scheme
+
+    recursive subroutine count_parameters (nd_par_def_in, n_parblock, n_par)
+      type(parse_node_t), pointer, intent(in) :: nd_par_def_in
+      integer, intent(in) :: n_parblock
+      integer, intent(inout) :: n_par
+      type(parse_node_t), pointer :: nd_par_def, nd_par_key
+      type(parse_node_t), pointer :: nd_par_def_sub
+      integer :: n_parblock_sub
+      integer :: i
+      nd_par_def => nd_par_def_in
+      do i = 1, n_parblock
+         nd_par_key => nd_par_def%get_sub_ptr ()
+         select case (char (nd_par_key%get_rule_key ()))
+         case ("parameter", "derived", "unused")
+            n_par = n_par + 1
+         case ("scheme_block_beg")
+            call select_scheme (nd_par_def, n_parblock_sub, nd_par_def_sub)
+            if (n_parblock_sub > 0) then
+               call count_parameters (nd_par_def_sub, n_parblock_sub, n_par)
+            end if
+         case default
+            print *, "'", char (nd_par_key%get_rule_key ()), "'"
+            call msg_bug ("Model read: impossible parameter rule")
+         end select
+         nd_par_def => parse_node_get_next_ptr (nd_par_def)
+      end do
+    end subroutine count_parameters
+
+    recursive subroutine handle_parameters (nd_par_def_in, n_parblock, i_par)
+      type(parse_node_t), pointer, intent(in) :: nd_par_def_in
+      integer, intent(in) :: n_parblock
+      integer, intent(inout) :: i_par
+      type(parse_node_t), pointer :: nd_par_def, nd_par_key
+      type(parse_node_t), pointer :: nd_par_def_sub
+      integer :: n_parblock_sub
+      integer :: i
+      nd_par_def => nd_par_def_in
+      do i = 1, n_parblock
+         nd_par_key => nd_par_def%get_sub_ptr ()
+         select case (char (nd_par_key%get_rule_key ()))
+         case ("parameter")
+            i_par = i_par + 1
+            call model%read_parameter (i_par, nd_par_def)
+         case ("derived")
+            i_par = i_par + 1
+            call model%read_derived (i_par, nd_par_def)
+         case ("unused")
+            i_par = i_par + 1
+            call model%read_unused (i_par, nd_par_def)
+         case ("scheme_block_beg")
+            call select_scheme (nd_par_def, n_parblock_sub, nd_par_def_sub)
+            if (n_parblock_sub > 0) then
+               call handle_parameters (nd_par_def_sub, n_parblock_sub, i_par)
+            end if
+         end select
+         nd_par_def => parse_node_get_next_ptr (nd_par_def)
+      end do
+    end subroutine handle_parameters
+
+    subroutine handle_external (nd_ext_def, n_par, n_ext)
+      type(parse_node_t), pointer, intent(inout) :: nd_ext_def
+      integer, intent(in) :: n_par, n_ext
+      real(c_default_float), dimension(:), allocatable :: par
+      integer :: i
+      do i = n_par + 1, n_par + n_ext
+         call model%read_external (i, nd_ext_def)
+         nd_ext_def => parse_node_get_next_ptr (nd_ext_def)
+      end do
+!       if (associated (model%init_external_parameters)) then
+!          allocate (par (model%get_n_real ()))
+!          call model%real_parameters_to_c_array (par)
+!          call model%init_external_parameters (par)
+!          call model%real_parameters_from_c_array (par)
+!       end if
+    end subroutine handle_external
+    
+    subroutine handle_fields (nd_prt, n_prt)
+      type(parse_node_t), pointer, intent(inout) :: nd_prt
+      integer, intent(in) :: n_prt
+      integer :: i
+      do i = 1, n_prt
+         call model%read_field (i, nd_prt)
+         nd_prt => parse_node_get_next_ptr (nd_prt)
+      end do
+    end subroutine handle_fields
+
+    subroutine handle_vertices (nd_vtx, n_vtx)
+      type(parse_node_t), pointer, intent(inout) :: nd_vtx
+      integer, intent(in) :: n_vtx
+      integer :: i
+      do i = 1, n_vtx
+         call model%read_vertex (i, nd_vtx)
+         nd_vtx => parse_node_get_next_ptr (nd_vtx)
+      end do
+    end subroutine handle_vertices
+      
   end subroutine model_read
 
   subroutine model_read_parameter (model, i, node)
@@ -977,6 +1294,15 @@ contains
     name = parse_node_get_string (parse_node_get_sub_ptr (node, 2))
     call model%set_parameter_external (i, name)
   end subroutine model_read_external
+
+  subroutine model_read_unused (model, i, node)
+    class(model_t), intent(inout), target :: model
+    integer, intent(in) :: i
+    type(parse_node_t), intent(in), target :: node
+    type(string_t) :: name
+    name = parse_node_get_string (parse_node_get_sub_ptr (node, 2))
+    call model%set_parameter_unused (i, name)
+  end subroutine model_read_unused
 
   subroutine model_read_field (model, i, node)
     class(model_t), intent(inout), target :: model
@@ -1174,6 +1500,14 @@ contains
           aval, locked = .true., intrinsic=.true.)
     do i = 1, size (pdg)
        field => model%get_field_ptr (pdg(i))
+       mask(i) = field%get_charge_type () == 1
+    end do
+    aval = pack (pdg, mask)
+    call var_list_append_pdg_array &
+         (model%var_list, var_str ("neutral"), &
+          aval, locked = .true., intrinsic=.true.)    
+    do i = 1, size (pdg)
+       field => model%get_field_ptr (pdg(i))
        mask(i) = field%get_color_type () /= 1
     end do
     aval = pack (pdg, mask)
@@ -1245,17 +1579,19 @@ contains
     end if
   end subroutine model_list_add
 
-  subroutine model_list_read_model (model_list, name, filename, os_data, model)
+  subroutine model_list_read_model &
+       (model_list, name, filename, os_data, model, scheme)
     class(model_list_t), intent(inout), target :: model_list
     type(string_t), intent(in) :: name, filename
     type(os_data_t), intent(in) :: os_data
     type(model_t), pointer, intent(inout) :: model
+    type(string_t), intent(in), optional :: scheme
     class(model_list_t), pointer :: global_model_list
     type(model_entry_t), pointer :: current
     logical :: exist
-    if (.not. model_list%model_exists (name, follow_link=.true.)) then
+    if (.not. model_list%model_exists (name, scheme, follow_link=.true.)) then
        allocate (current)
-       call current%read (filename, os_data, exist)
+       call current%read (filename, os_data, exist, scheme=scheme)
        if (.not. exist)  return
        if (current%get_name () /= name) then
           call msg_fatal ("Model file '" // char (filename) // &
@@ -1270,7 +1606,7 @@ contains
        end do
        call global_model_list%import (current, model)
     else
-       model => model_list%get_model_ptr (name)
+       model => model_list%get_model_ptr (name, scheme)
     end if
   end subroutine model_list_read_model
 
@@ -1284,49 +1620,51 @@ contains
     call model_list%import (copy, model)
   end subroutine model_list_append_copy
     
-  recursive function model_list_model_exists (model_list, name, follow_link) &
-       result (exists)
+  recursive function model_list_model_exists &
+       (model_list, name, scheme, follow_link) result (exists)
     class(model_list_t), intent(in) :: model_list
     logical :: exists
     type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%get_name () == name) then
+       if (current%matches (name, scheme)) then
           exists = .true.
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       exists = model_list%context%model_exists (name, follow_link)
+       exists = model_list%context%model_exists (name, scheme, follow_link)
     else
        exists = .false.
     end if
   end function model_list_model_exists
 
-  recursive function model_list_get_model_ptr (model_list, name, follow_link) &
-       result (model)
+  recursive function model_list_get_model_ptr &
+       (model_list, name, scheme, follow_link) result (model)
     class(model_list_t), intent(in) :: model_list
     type(model_t), pointer :: model
     type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%get_name () == name) then
+       if (current%matches (name, scheme)) then
           model => current%model_t
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       model => model_list%context%get_model_ptr (name, follow_link)
+       model => model_list%context%get_model_ptr (name, scheme, follow_link)
     else
        model => null ()
     end if
@@ -1353,6 +1691,15 @@ contains
     n_prt = orig%get_n_field ()
     n_vtx = orig%get_n_vtx ()
     call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
+    if (allocated (orig%schemes)) then
+       allocate (model%schemes (size (orig%schemes)))
+       model%schemes(:) = orig%schemes(:)
+       if (allocated (orig%selected_scheme)) then
+          allocate (model%selected_scheme)
+          model%selected_scheme = orig%selected_scheme
+          call model%set_scheme_num (orig%get_scheme_num ())
+       end if
+    end if
     model%md5sum = orig%md5sum
     do i = 1, n_par
        call model%copy_parameter (i, orig%par(i))
@@ -1363,21 +1710,5 @@ contains
     call model%append_field_vars ()
   end subroutine model_copy
   
-!   subroutine model_pointer_to_instance (model)
-!     type(model_t), pointer, intent(inout) :: model
-!     type(model_t), pointer :: model_tmp
-!     model_tmp => model
-!     allocate (model)
-!     call model%init_instance (model_tmp)
-!   end subroutine model_pointer_to_instance
-    
-!   subroutine model_pointer_delete_instance (model)
-!     type(model_t), pointer, intent(inout) :: model
-!     if (associated (model)) then
-!        call model%final ()
-!        deallocate (model)
-!     end if
-!   end subroutine model_pointer_delete_instance
-    
 
 end module models

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -52,6 +52,7 @@ module prc_user_defined
   use prclib_interfaces
   use prc_core_def
   use prc_core
+  use prc_omega, only: omega_state_t
 
   use sf_base
   use sf_pdf_builtin, only: pdf_builtin_t
@@ -91,6 +92,7 @@ module prc_user_defined
     real(default) :: alpha_qcd = -1
   contains
     procedure :: reset_new_kinematics => user_defined_state_reset_new_kinematics
+    procedure :: get_alpha_qcd => user_defined_state_get_alpha_qcd
   end type user_defined_state_t
 
   type, abstract, extends (prc_core_driver_t) :: user_defined_driver_t
@@ -106,8 +108,11 @@ module prc_user_defined
     type(qcd_t) :: qcd
     integer :: n_flv = 1
     real(default), dimension(:), allocatable :: par
+    integer :: scheme = 0
     type(sf_handler_t) :: sf_handler
+    real(default) :: maximum_accuracy = 10000.0
   contains
+    procedure :: get_n_flvs => prc_user_defined_base_get_n_flvs
     procedure :: get_flv_state => prc_user_defined_base_get_flv_state
     procedure :: compute_sqme => prc_user_defined_base_compute_sqme
     procedure :: compute_sqme_virt => prc_user_defined_base_compute_sqme_virt
@@ -192,7 +197,7 @@ module prc_user_defined
        real(c_default_float), intent(in) :: alpha_s
      end subroutine omega_update_alpha_s
   end interface
-  
+
   abstract interface
      subroutine omega_is_allowed (flv, hel, col, flag) bind(C)
        import
@@ -279,6 +284,19 @@ contains
     object%new_kinematics = .true.
   end subroutine user_defined_state_reset_new_kinematics
 
+  function user_defined_state_get_alpha_qcd (object) result (alpha_qcd)
+    real(default) :: alpha_qcd
+    class(user_defined_state_t), intent(in) :: object
+    alpha_qcd = object%alpha_qcd
+  end function user_defined_state_get_alpha_qcd
+
+  pure function prc_user_defined_base_get_n_flvs (object, i_flv) result (n)
+    integer :: n
+    class(prc_user_defined_base_t), intent(in) :: object
+    integer, intent(in) :: i_flv
+    n = size (object%data%flv_state (:,i_flv))
+  end function prc_user_defined_base_get_n_flvs
+
   function prc_user_defined_base_get_flv_state (object, i_flv) result (flv)
     integer, dimension(:), allocatable :: flv
     class(prc_user_defined_base_t), intent(in) :: object
@@ -303,6 +321,7 @@ contains
     real(default), intent(in) :: ren_scale
     logical, intent(out) :: bad_point
     real(default), dimension(4), intent(out) :: sqme
+    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_virt")
     sqme(1) = 0.001_default
     sqme(2) = 0.001_default
     sqme(3) = 0.001_default
@@ -319,12 +338,12 @@ contains
     real(default), intent(out), optional :: born_out
     real(default), intent(inout), dimension(:,:) :: born_cc
     logical, intent(out) :: bad_point
-
-    born_out = 0.0015_default
-    born_cc = 0._default
-    born_cc(3,3) = -CF*born_out
-    born_cc(4,4) = -CF*born_out
-    born_cc(3,4) = CF*born_out
+    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
+    if (present (born_out))  born_out = 0.0015_default
+    born_cc = zero
+    born_cc(3,3) = - CF * born_out
+    born_cc(4,4) = - CF * born_out
+    born_cc(3,4) = CF * born_out
     born_cc(4,3) = born_cc(3,4)
     bad_point = .false.
   end subroutine prc_user_defined_base_compute_sqme_cc
@@ -336,12 +355,14 @@ contains
     if (allocated (core_state)) then
       select type (core_state)
       class is (user_defined_state_t)
-        alpha = core_state%alpha_qcd
+         alpha = core_state%alpha_qcd
+      type is (omega_state_t)
+         alpha = core_state%alpha_qcd
       class default
-        alpha = zero
+         alpha = zero
       end select
     else
-      alpha = zero
+       alpha = zero
     end if
   end function prc_user_defined_base_get_alpha_s
 
@@ -414,8 +435,8 @@ contains
     p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
   end subroutine prc_user_defined_base_recover_kinematics
 
-  subroutine prc_user_defined_base_set_parameters (object, qcd, &
-    use_color_factors, model)
+  subroutine prc_user_defined_base_set_parameters &
+       (object, qcd, use_color_factors, model)
     class(prc_user_defined_base_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
     logical, intent(in) :: use_color_factors
@@ -425,7 +446,8 @@ contains
     if (present (model)) then
        if (.not. allocated (object%par)) &
             allocate (object%par (model%get_n_real ()))
-       call model%real_parameters_to_c_array (object%par)
+       call model%real_parameters_to_array (object%par)
+       object%scheme = model%get_scheme_num ()
     end if
   end subroutine prc_user_defined_base_set_parameters
 
@@ -442,6 +464,8 @@ contains
        end select 
        select type (core_state)
        class is (user_defined_state_t)
+          core_state%alpha_qcd = alpha_qcd
+       type is (omega_state_t)
           core_state%alpha_qcd = alpha_qcd
        end select
     end if
@@ -511,7 +535,7 @@ contains
     flag = .true.
   end function user_def_needs_code
 
-  subroutine user_defined_writer_init &
+  pure subroutine user_defined_writer_init &
        (writer, model_name, prt_in, prt_out, restrictions)
     class(prc_user_defined_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
@@ -557,14 +581,16 @@ contains
     write (unit, *)
     select case (char (feature))
     case ("init")
-       write (unit, "(9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(9A)")  "subroutine ", char (name), &
+            " (par, scheme) bind(C)"
        write (unit, "(2x,9A)")  "use iso_c_binding"
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "real(c_default_float), dimension(*), &
             &intent(in) :: par"
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "call ", char (feature), " (par)"
+       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: scheme"
+       if (c_default_float == default .and. c_int == kind (1)) then
+          write (unit, "(2x,9A)")  "call ", char (feature), " (par, scheme)"
        end if
        write (unit, "(9A)")  "end subroutine ", char (name)
     case ("update_alpha_s")
@@ -622,7 +648,7 @@ contains
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(2x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(2x,9A)")  "amp = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -640,10 +666,12 @@ contains
     write (unit, "(2x,9A)")  "interface"
     select case (char (feature))
     case ("init")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(5x,9A)")  "subroutine ", char (name), &
+            " (par, scheme) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "real(c_default_float), dimension(*), &
             &intent(in) :: par"
+       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: scheme"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("update_alpha_s")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"

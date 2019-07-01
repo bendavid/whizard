@@ -23,7 +23,6 @@
 %%% Macro section
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcommand{\email}[2]{\thanks{\ahref{#1@{}#2}{#1@{}#2}}}
-\newcommand{\whizardpage}{\url{http://whizard.event-generator.org}}
 \newcommand{\hepforgepage}{\url{http://whizard.hepforge.org}}
 \newcommand{\whizardwiki}{\url{http://projects.hepforge.org/whizard/trac/wiki}}
 \tocnumber
@@ -269,7 +268,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.8}
+\newcommand{\thisversion}{2.3.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -278,9 +277,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.2 \\
+%HEVEA WHIZARD 2.3 \\
 %BEGIN LATEX
- \texttt{\huge WHIZARD 2.2} \\[\baselineskip]
+ \texttt{\huge WHIZARD 2.3} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -311,7 +310,9 @@ Parameter & Value & Default & Description \\
   Christian Speckner
     \thanks{e-mail: \texttt{cnspeckn@googlemail.com}},
   Florian Staub
-     \thanks{e-mail: \texttt{fnstaub@th.physik.uni-bonn.de}}}
+     \thanks{e-mail: \texttt{fnstaub@th.physik.uni-bonn.de}},
+  Christian Weiss
+     \thanks{e-mail: \texttt{christian.weiss@desy.de}}}
 
 %BEGIN LATEX
 \address{%
@@ -365,7 +366,7 @@ initial and final states.  Quark or lepton flavors can be
 summed over automatically where needed.  
 \\[\baselineskip]
 For hadron collider physics, we ship the package with the most recent
-PDF sets from the MSTW/MMHT and CTEQ/CT10/CJ12/CT14
+PDF sets from the MSTW/MMHT and CTEQ/CT10/CJ12/CJ15/CT14
 collaborations. Furthermore, an interface to the \lhapdf\ library is
 provided. 
 \\[\baselineskip]
@@ -415,7 +416,7 @@ where also the \texttt{svn} repository is located.
   improved soon.  To find updated versions of the manual,
   visit the \whizard\ website}
 \begin{center}
-  \whizardpage
+  \hepforgepage
 \end{center}
 \emph{or consult the current version in the \texttt{svn} repository
   on \hepforgepage\ directly. Note, that the most recent version of
@@ -644,7 +645,11 @@ of \whizard:
   revalidation of ILC event chain \\ 
   2.2.8 & 11/2015 & support for quadruple precision; StdHEP included;
   SM dim 6 operators supported
-  \\\hline 
+  \\\hline
+  2.3.0 & 07/2016 & NLO: resonance mappings for FKS subtraction; more
+  advanced cascade syntax; GUI ($\alpha$ version); UFO support
+  ($\alpha$ version); ILC v1.9x-v2.x final validation
+  \\\hline   
 \end{tabular}
 \end{center}
 
@@ -740,13 +745,7 @@ similar general system for all sorts of software, called
 \subsection{Tarball Distribution}
 
 This is the recommended way of obtaining \whizard.  You may download
-the current stable distribution 
-%%% either 
-from the \whizard\ webpage, 
-%%% \begin{quote}
-%%%   \whizardpage
-%%% \end{quote}
-%%% or the HepForge webpage
+the current stable distribution from the \whizard\ webpage, 
 hosted at the HepForge webpage
 \begin{quote}
   \hepforgepage
@@ -808,8 +807,8 @@ to be available as an external package. As their distribution is frozen
 with the final version v5.06.01, and it used to be notoriously difficult to
 compile and link \stdhep\ into \whizard, it was decided to include \stdhep\
 into \whizard. This is the case from version v2.2.8 of \whizard\ on. Linking
-against an external version of \stdhep\ is precluded from there on. Nevertheless,
-we list some explanations in Sec.~\ref{sec:stdhep}. 
+against an external version of \stdhep\ is precluded from there
+on. Nevertheless, we list some explanations in Sec.~\ref{sec:stdhep}. 
 Once these prerequisites are met, you may unpack the package in a
 directory of your choice
 \begin{quote}\small\tt
@@ -881,26 +880,28 @@ subset of the \fortranOThree\ standard.  At the time of this writing,
 this subset is supported by, at least, the following compilers:
 \begin{itemize}
 \item
-  \ttt{gfortran} (GNU, Open Source).  You will need version 4.7.1
+  \ttt{gfortran} (GNU, Open Source).  You will need version 4.7.4
   or higher\footnote{Note that \whizard\ versions 2.0.0 until 2.1.1 compiled
   with \ttt{gfortran} 4.5.x and 4.6.x, but the object-oriented
   refactoring of the \whizard\ code from 2.2 on made a switch to
-  \ttt{gfortran} 4.7.1 or higher necessary. \ttt{gcc} 4.7.0 contains a
+  \ttt{gfortran} 4.7.4 or higher necessary. \ttt{gcc} 4.7.0 contains a
   major bug in the static \ttt{libstdc++} library which prevented
-  static builds of \whizard\ with external \ttt{C++} libraries.}. 
+  static builds of \whizard\ with external \ttt{C++} libraries.}.
+  \ttt{gcc} 4.7.1-3 suffer from too many bugs in the object-orientation.
 \item
   \ttt{nagfor} (NAG).  You will need version 5.2 or higher.
+\item
+  \ttt{ifort} (Intel). You will need version 16.0.0 or higher.
 \end{itemize}
 There are some commercial compilers that might be able to compile
-\whizard\ 2.2 in the near future, but at the time of writing, all of
+\whizard\ 2.3 in the near future, but at the time of writing, all of
 the compilers listed below contained compiler bugs. Consult the
 \whizard\ website for updates on this situation. 
 \begin{itemize}
 \item
-  \ttt{ifort} (Intel).  You will need at least version 15 or higher
-  than 14.2.
-\item
-  \ttt{pgfortran} (PGI).  You will need a more modern version than 14.4.
+  \ttt{pgfortran} (PGI).  You will need a more modern version than
+  15.10.
+\item{ekopath}. You will need a more modern version than 4.0.  
 \end{itemize}
 
 %%%%%
@@ -1224,24 +1225,25 @@ configure: --------------------------------------------------------------
 \label{sec:stdhep}
 
 \stdhep\ is a  library for handling collider scattering
-events.  In particular, it provides a portable format for event
-files. Until version 2.2.7 of \whizard, \stdhep\ that was maintained
-by Fermilab, could be linked as an externally compiled library. As
-the \stdhep\ package is frozen in its final release v5.06.1 and no
-longer maintained, it has from version 2.2.8 been included \whizard.
-This eases many things, as it was notoriously difficult to compile
-and link \stdhep\ in a way compatible with \whizard. Not the full package
-has been included, but only the libraries for file I/O (\texttt{mcfio}, the
-library for the XDR conversion), while the various translation tools for
-\pythia, \herwig, etc.  have been abandoned. Note that \stdhep\ has
-largely been replaced in the hadron collider community by the
-\hepmc\ format, and in the lepton collider community by \lcio. \whizard\ might
-serve as a conversion tools for all these formats, but other tools also
-exist, of course.
+events~\cite{stdhep}.  In particular, it provides a portable format
+for event files. Until version 2.2.7 of \whizard, \stdhep\ that was
+maintained by Fermilab, could be linked as an externally compiled
+library. As the \stdhep\ package is frozen in its final release
+v5.06.1 and no longer maintained, it has from version 2.2.8 been
+included \whizard. This eases many things, as it was notoriously
+difficult to compile and link \stdhep\ in a way compatible with
+\whizard. Not the full package has been included, but only the
+libraries for file I/O (\texttt{mcfio}, the library for the XDR
+conversion), while the various translation tools for \pythia, \herwig,
+etc.  have been abandoned. Note that \stdhep\ has largely been
+replaced in the hadron collider community by the \hepmc\ format, and
+in the lepton collider community by \lcio. \whizard\ might serve as a
+conversion tools for all these formats, but other tools also exist, of
+course. 
 
-If the \stdhep\ library is linked with the installation, \whizard\ is
-able to write files in the \stdhep\ format, the  corresponding configure output
-notifies you that \stdhep\ is always included:
+If the \stdhep\ library is linked with the installation, \whizard\ is 
+able to write files in the \stdhep\ format, the  corresponding
+configure output notifies you that \stdhep\ is always included:
 \begin{footnotesize}
 \begin{verbatim}
 configure: --------------------------------------------------------------
@@ -2361,7 +2363,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.8
+		|                               WHIZARD 2.3.0
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2392,7 +2394,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.8
+|                               WHIZARD 2.3.0
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2451,7 +2453,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.8
+ |                               WHIZARD 2.3.0
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -3639,7 +3641,7 @@ given range.
 Tests for equality and inequality with machine-precision real numbers are
 notoriously unreliable and should be avoided altogether.  To deal with this
 problem, SINDARIN has the possibility to make the comparison operators
-``fuzzy'' which should be read as ``equal (unequal) up to a
+``fuzzy'' which should be read as ``equal (unequal) up to an absolute
 tolerance'', where the tolerance is given by the real-valued intrinsic
 variable \ttt{tolerance}. This variable is initially zero, but can be
 set to any value (for instance, \ttt{tolerance = 1.e-13} by the user.
@@ -5545,6 +5547,11 @@ Tag & Name & Notes & References \\\hline\hline
 \texttt{CJ12\_min} & CJ12\_min & \mbox{}\hfill---\hfill\mbox{} &
    \cite{Owens:2012bv} \\\hline
 \hline
+\texttt{CJ15LO} & CJ15LO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Accardi:2016qay} \\\hline
+\texttt{CJ15NLO} & CJ15NLO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Accardi:2016qay} \\\hline
+\hline
 \texttt{mmht2014lo} & MMHT2014LO & \mbox{}\hfill---\hfill\mbox{} &
    \cite{Harland-Lang:2014zoa} \\\hline
 \texttt{mmht2014nlo} & MMHT2014NLO & \mbox{}\hfill---\hfill\mbox{} &
@@ -5693,7 +5700,9 @@ Parameter & Default & Meaning \\\hline\hline
 emission \\\hline
 \ttt{isr\_mass} & \ttt{0}/intrinsic & mass of the radiating lepton  \\\hline
 \ttt{isr\_q\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for ISR \\\hline
-\ttt{?isr\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$ 
+\ttt{?isr\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$ \\\hline
+\ttt{?isr\_keep\_energy} & \ttt{false} & recoil flag to conserve
+energy in splitting
 \\\hline
 \end{tabular}}\mbox{}
 
@@ -6000,7 +6009,10 @@ Parameter & Default & Meaning \\\hline\hline
 \ttt{epa\_q\_min} & \ttt{0.} & minimal $\gamma$ momentum transfer \\\hline
 \ttt{epa\_mass} & \ttt{0}/intrinsic & mass of the radiating fermion (mandatory)  \\\hline
 \ttt{epa\_e\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for EPA \\\hline
-\ttt{?epa\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$ 
+\ttt{?epa\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$
+\\\hline
+\ttt{?epa\_keep\_energy} & \ttt{false} & recoil flag to conserve
+energy in splitting
 \\\hline
 \end{tabular}}\mbox{}
 
@@ -6117,9 +6129,10 @@ Parameter & Default & Meaning \\\hline\hline
 \\\hline
 \ttt{ewa\_mass} & \ttt{0}/intrinsic & mass of the radiating fermion  \\\hline
 \ttt{ewa\_pt\_max} & \ttt{0}/$\sqrt{\hat{s}}$ & upper cutoff for EWA \\\hline
-\ttt{?ewa\_keep\_energy} & \ttt{false} & recoil switch, energy conservation 
+\ttt{?ewa\_recoil} & \ttt{false} & recoil switch
 \\\hline
-\ttt{?ewa\_keep\_momentum} & \ttt{false} & recoil switch, momentum conservation 
+\ttt{?ewa\_keep\_energy} & \ttt{false} & energy conservation for
+recoil in splitting
 \\\hline
 \end{tabular}}\mbox{}
 
@@ -6136,14 +6149,19 @@ of the electroweak boson, that can be set via
 is logarithmically divergent in that variable. If it is not set by the
 user, it is estimated from $\sqrt{s}$ and the splitting kinematics. 
 
-For the EWA, there are two flags to switch on a recoil for the
-electroweak boson against the radiating fermion. Note that this is an
-experimental feature that is not completely tested. In any case, the
-non-collinear kinematics violates 4-four momentum conservation, so
-there are two choices: either to conserve the energy
-(\ttt{?ewa\_keep\_energy}) or to conserve 3-momentum
-(\ttt{?ewa\_keep\_momentum}). Both flags are \ttt{false} per default,
-and kinematics is collinear as a standard. 
+For the EWA, there is a flag to switch on a recoil for the
+electroweak boson against the radiating fermion,
+\ttt{?ewa\_recoil}. Note that this is an experimental feature that is
+not completely tested. In any case, the non-collinear kinematics
+violates 4-four momentum conservation, so there are two choices:
+either to conserve the energy (\ttt{?ewa\_keep\_energy = true}) or to
+conserve 3-momentum (\ttt{?ewa\_keep\_energy = false}). Momentum
+conservation for the kinematics is the default. This is due to the
+fact that for energy conservation, there will be a net total momentum
+in the event including the beam remnants (ISR/EPA/EWA radiated
+particles) that leeds to unexpected or unphysical features in the
+energy distributions of the beam remnants recoiling against the rest
+of the event.
 
 More details about the physics can be found in
 Chap.~\ref{chap:hardint}. 
@@ -7665,6 +7683,8 @@ state:
 process wj  = u, gl => d, Wp
 process wen = Wp => E1, n1
 
+integrate (wen)
+
 sqrts = 7 TeV
 beams = p, p => pdf_builtin
 unstable Wp (wen)
@@ -8327,17 +8347,15 @@ needs to be installed.
 %%%%%
 
 \subsubsection{Setting up \openloops}
+\label{sec:openloops-setup}
 
 The installation of \openloops\ is explained in detail on the HepForge page
 \url{http://openloops.hepforge.org}. In the following the main steps for usage with \whizard\
 are summarized.
 
-Automatized NLO corrections in \whizard\ are still an experimental feature, and so are 
-some features of \openloops\ used by it, e.g. leptonic initial-states and 
-decay matrix-elements. For this reason, the beta version of \openloops\ should be
-checked out. The relevant URL is
+\openloops\ can be checked out using the URL
 \begin{code}
-   \url{http://openloops.hepforge.org/svn/OpenLoops/branches/public\_beta}.
+   \url{http://openloops.hepforge.org/svn/OpenLoops/branches/public}.
 \end{code}
 The program can simply be installed by running \texttt{scons}, of which a local version
 is included in the \openloops directory. This produces the binary file \openloops, 
@@ -8348,8 +8366,13 @@ each individual process. This requires the file \texttt{openloops.cfg}, which sh
 the following content:
 \begin{code}
    [OpenLoops]
-   process\_repositories=public, whizard, public_beta
+   process\_repositories=public, whizard\\
+   compile\_extra=1
 \end{code}
+The first line instructs \openloops to also look for process libraries in an additional lepton collider
+repository. The second line triggers the inclusion of $N+1$-particle tree-level matrix elements
+in the process directory, so that a complete NLO calculation including real amplitudes can be
+performed only with \openloops.\\
 The libraries can then be installed via
 \begin{code}
    ./openloops libinstall proc_name
@@ -8358,14 +8381,17 @@ A list of supported library names can be found on the \openloops\ web page. Note
 also includes all possible permutated processes, i.e. the process library $ppll$, for example, can 
 also be used to compute the matrix elements for $e^+ e^- \rightarrow q \bar{q}$ (massless quarks only).
 
-For some \whizard\ applications, additional repositories have to be used. These libraries are:
+The \texttt{whizard} repository mentioned above contains dedicated loop routines for lepton collisions and decays.
+They are not listed on the \openloops\ webpage. These libraries are:
 \begin{itemize}
   \item \texttt{eett},
-  \item \texttt{eetth},
+  \item \texttt{eehtt},
+  \item \texttt{eettv},
   \item \texttt{eetttt},
   \item \texttt{eetbw},
   \item \texttt{eevjj},
   \item \texttt{eevvjj} (\texttt{v} corresponds to massive vector bosons, i.e. $W^\pm$ and $Z$, so this library also includes the process $e^+ e^- \rightarrow bW^+\bar{b}W^-$),
+  \item \texttt{eehvvjj}, 
   \item \texttt{eellllbb} (Off-shell top-quark pair production with leptonic vector boson decay),
   \item \texttt{tbw} (Loops for top decay)
 \end{itemize}
@@ -8378,21 +8404,117 @@ where \texttt{\$OPENLOOPS\_PATH} is the directory the \openloops\ binary is loca
 \begin{code}
   $loop_me_method = "openloops".
 \end{code}
+\subsubsection{\openloops Sindarin flags}
+Several sindarin options exist to control the behaviour of \openloops.
+\begin{itemize}
+  \item \texttt{openloops\_verbosity}:\\
+	  Decide how much \openloops output is printed. Can have values 0, 1 and 2.
+  \item \texttt{?openloops\_use\_cms}:\\
+	  Activates the complex mass scheme
+  \item \texttt{openloops\_phs\_tolerance}:\\
+  \item \texttt{openloops\_switch\_off\_muon\_yukawa}:\\
+	  Sets the Yukawa coupling of muons to zero in order to assure
+	  agreement with \oMega, which is possibly used for other
+	  components and per default does not take $H\mu\mu$ couplings
+	  into account.
+  \item \texttt{openloops\_stability\_log}:\\
+	  Creates the directory \texttt{stability\_log} containing information about the performance
+	  of the matrix elements. Possible values are
+	  \begin{itemize}
+		\item 0: No output (default),
+		\item 1: On finish() call,
+		\item 2: Adaptive,
+		\item 3: Always
+	 \end{itemize}
+  \item \texttt{openloops\_top\_signal}: Only possible if the process is $e^+ e^- \to t \bar{t}$. Loads a special library which
+	  only contains the signal diagram.
+  \item \texttt{?openloops\_use\_collier}: Use Collier as the reduction method (default true).
+\end{itemize}
 \subsection{NLO cross sections}
 NLO computation can be switched on in \sindarin\ with
 \begin{code}
   process proc_nlo = in1, in2 => out1, ..., outN { nlo_calculation = "Components" },
 \end{code}
-where after the \texttt{nlo\_calculation} can be followed by a list of strings specifying the desired NLO-components to
-be integrated, i.e. \texttt{"Born"}, \texttt{"Real"}, \texttt{"Virtual"}, (\texttt{"Pdf"}, for hadron collisions) or
-\texttt{"Full"}. The \texttt{"Full"}-option implies all components. For example, specifying 
+where after the \texttt{nlo\_calculation} can be followed by a list of
+strings specifying the desired NLO-components to be integrated,
+i.e. \texttt{"Born"}, \texttt{"Real"}, \texttt{"Virtual"},
+\texttt{"Pdf"}, (for hadron collisions) or \texttt{"Mismatch"} (for
+the soft mismatch in resonance-aware computations) and
+\texttt{"Full"}. The \texttt{"Full"}-option switches on all components
+and is required if the total NLO result is desired. For example,
+specifying
 \begin{code}
   nlo_calculation = "Born", "Virtual"
 \end{code}
-will result in the computation of the Born and virtual component. 
+will result in the computation of the Born and virtual component.
+
+The integration can be carried out in two different modes: Combined
+and separate integration. In the separate integration mode, each
+component is integrated individually, allowing for a good overview of
+their contributions to the total cross section. In the combined
+integration mode, all components are added up during integration so
+that the sum of them is evaluated. Here, only one integration pass
+will be displayed. The default method is the separate integration.
+
+The convergence of the integration can crucially be influenced by the
+presence of resonances. A better convergence in this case is achieved
+activating the resonance-aware FKS subtraction, 
+\begin{code}
+  $fks_method = "resonances".
+\end{code}
+This mode comes with an additional integration component, the
+so-called soft mismatch. 
 
 \subsection{Fixed-order NLO events}
-
+Fixed-order NLO events can be produced in two different modes: Combined and separated.
+\begin{itemize}
+\item Combined:\\
+In the combined mode, one single integration grid is produced, from which events
+are generated with the total NLO weight. The corresponding event file contains 
+$N$ events with born-like kinematics and weight equal to $\mathcal{B} + \mathcal{V} + \sum_{\alpha_r} \mathcal{C}_{\alpha_r}$,
+where $\mathcal{B}$ is the Born matrix element, $\mathcal{V}$ is the virtual matrix element
+and $\mathcal{C}_{\alpha_r}$ are the subtraction terms in each singular region. For resonance-aware processes,
+also the mismatch value is added. Each born-like event is followed by $N_{\text{phs}}$ associated events with
+real kinematics, i.e. events where one additional QCD particle is present. $N_{\text{phs}}$
+the number of distinct phase spaces. Two phase spaces are distinct if they share the same
+resonance history but have different emitters. So, two $\alpha_r$ can share the same phase
+space index.\\
+The combined event mode is activated by
+\begin{code}
+  ?combined_nlo_integration
+  ?unweighted = false
+  ?fixed_order_nlo_events = true
+\end{code}
+Moreover, the process must be specified at next-to-leading-order in its definition using
+\texttt{nlo\_calculation = "Full"}.
+\whizard then proceeds as in the usual simulation mode. I.e. it first checks whether
+integration grids are already present and uses them if they fit. Otherwise, it
+starts an integration.
+\item Separete:\\
+In the separate mode, grids and events are generated for each individual component of the
+NLO process. This method is preferable for complicated processes, since it allows to individually
+tune each grid generation. Moreover, the grid generation then occurs trivially parallelized.
+The event files either contain only born-like kinematics with weight $\mathcal{B}$ or $\mathcal{V}$
+(and mismatch in case of a resonance-aware process) or mixed born-like and real kinematics like
+in the combined mode. However, the born-like events have weight $\sum_{\alpha_r} \mathcal{C}_{\alpha_r}$.\\
+The separate event mode is activated by
+\begin{code}
+  ?unweighted = false
+  ?negative_weights = true
+  ?fixed_order_nlo_events = true
+\end{code}
+Note that negative weights have to be switched on because, in contrast to the combined mode, the
+total cross sections of the individual components can be negative.\\
+Also, the desired component has to appear in the process NLO specification, e.g. using
+\texttt{nlo\_calculation = "Real"}.
+\end{itemize}
+Fixed-order NLO events are so far only supported in the \texttt{HepMC}-format. The output
+can either be written to disk or put into a FIFO to interface it to an analysis program.\\
+The weights in the real event output, both in the combined and separate mode, are multiplied
+with a factor $N_{\text{phs}} + 1$. This is to account for the fact that the number of events
+in the output file is artificially enhanced by this factor. Thus, if $w_i$ are the event weights,
+$\frac{1}{N_{\text{real}}} \sum_{i} w_i$, with $N_{\text{real}} = N_{\text{born}} \cdot (1 + N_{\text{phs}})$
+does not correctly reproduce the total cross section.
 \subsection{Powheg matching}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -9495,7 +9617,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.8</generator_version>
+  <generator_version>2.3.0</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -9578,6 +9700,8 @@ invoked by the following \sindarin\ keywords:\\[2ex]
 parton showers\\\hline 
 \ttt{?ps\_isr\_active = true} & master switch for initial-state parton
 showers\\\hline 
+\ttt{?ps\_taudec\_active = true} & master switch for $\tau$ decays (at
+the moment only via \texttt{TAUOLA}\\\hline 
 \ttt{?hadronization\_active = true} & master switch to enable
 hadronization\\\hline 
 \ttt{\$shower\_method = "PYTHIA6"} & switch to use \pythiasix's parton
@@ -12467,7 +12591,7 @@ parameters if \texttt{WOAutoGauge} is
 selected at the same time). This feature can be used to automatically extend
 models implemented in Feynman gauge to the $R_\xi$ gauges.
 
-Since \whizard\ (at least until the release series 2.2) is a
+Since \whizard\ (at least until the release series 2.3) is a
 tree-level tool working with helicity amplitudes, the ghost sector is
 irrelevant for \whizard\ and hence dropped by the interface.
 
@@ -13311,6 +13435,13 @@ default, it is switched on. (cf. also \ttt{?ps\_ ....}, \ttt{\$ps\_
   ...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active}) 
 %%%%%
 \item
+\ttt{alpha\_power}, \ttt{alphas\_power} \qquad (default: 0) \newline
+Fixes the electroweak and strong coupling powers used by BLHA matrix element
+generators. Setting these values is necessary for the correct generation
+of OLP-files. Having inconsistent values yields to error messages by the
+corresponding OLP-providers.
+%%%%%
+\item
 \ttt{?alpha\_s\_from\_lambda\_qcd} \qquad (default: \ttt{false})
 \newline 
 Flag that tells \whizard\ to use its internal running $\alpha_s$ from
@@ -13596,6 +13727,25 @@ decay of a moving particle. (cf. also \ttt{beams}, \ttt{beams\_phi},
 \ttt{beams\_pol\_fraction})
 %%%%%
 \item
+\ttt{blha\_use\_top\_yukawa} \newline
+If this value is set, the given value will be used as the top Yukawa coupling
+instead of the top mass. Note that having different values for $y_t$ and $m_t$
+must be supported by your OLP-library and yield errors if this is not the case.
+%%%%%
+\item
+\ttt{\$born\_me\_method} \qquad (default: \ttt{"omega"}) \newline
+This string variable specifies the method for the matrix elements to be used in
+the evaluation of the Born part of the NLO computation. The default is the
+intrinsic O'Mega matrix element generator (\ttt{"omega"}), other options are:
+\ttt{"ovm"}, \ttt{"unit\_test"}, \ttt{"template"}, \ttt{"template\_unity"},
+\ttt{"threshold"}, \ttt{"gosam"}, \ttt{"openloops"}. (cf. also
+\ttt{\$real\_tree\_me\_method}, \ttt{\$loop\_me\_method} and
+\ttt{\$correlation\_me\_method}.)
+Note that this option is inoperative if no NLO calculation is specified in
+the process definition. If you want ot use different matrix element methods
+in a LO computation, use the usual \ttt{method} command.
+%%%%%
+\item
 \ttt{by} \newline
 Constructor that replaces the default sorting criterion (according to
 PDG codes) of the ($\to$) \ttt{sort} function on particle
@@ -13644,6 +13794,14 @@ Setting this to false turns off all sanity checks when reading a raw
 event file with previously generated events.  Use this at your own
 risk; the program may return wrong results or crash if data do not
 match. (cf. also \ttt{?check\_grid\_file}, \ttt{?check\_phs\_file})
+%%%%%
+\item
+\ttt{?check\_event\_weights\_against\_xsection} \qquad (default: \ttt{false}) \\
+Activates an internal recording of event weights when unweighted events are generated.
+At the end of the simulation, the mean value of the weights and its standard
+deviation are displayed. This allows to cross-check event generation and integration,
+because the value displayed must be equal to the integration result.
+%%%%m
 \item
 \ttt{?check\_grid\_file} \qquad (default: \ttt{true}) \\
 Setting this to false turns off all sanity checks when reading a grid
@@ -13849,7 +14007,8 @@ if the \fastjet\ package is linked.
 \ttt{kt\_algorithm}, \newline \ttt{cambridge\_[for\_passive\_]algorithm},
 \ttt{antikt\_algorithm}, \ttt{plugin\_algorithm}, \newline
 \ttt{genkt\_[for\_passive\_]algorithm}, 
-\ttt{ee\_kt\_algorithm}, \ttt{ee\_genkt\_algorithm})
+\ttt{ee\_kt\_algorithm}, \ttt{ee\_genkt\_algorithm},
+\ttt{?keep\_flavors\_when\_clustering})
 %%%%%
 \item
 \ttt{collect} \newline
@@ -13873,6 +14032,13 @@ particles in the two input lists \ttt{list1}, {list2}. For example,
 of an incoming lepton with an outgoing lepton (an alias for the
 leptons has to be defined, of course). (cf. also \ttt{collect},
 \ttt{select}, \ttt{extract}, \ttt{sort}, \ttt{+})
+%%%%%
+\ttt{combined\_nlo\_integration} (default: \ttt{false}) \newline
+When this option is set to \ttt{true}, the NLO integration will not
+be performed in the separate components, but instead the sum of all
+components will be integrated directly. When fixed-order NLO events
+are requested, this integration mode is possible, but not necessary.
+However, it is necessary for Powheg events.
 %%%%%
 \item
 \ttt{compile} \newline 
@@ -13904,6 +14070,16 @@ producing postscript or PDF output of the data (unless the flag
 $\rightarrow$ \ttt{?analysis\_file\_only} is set to \ttt{true}).
 (cf. also \ttt{\$out\_file}, \ttt{write\_analysis},
 \ttt{?analysis\_file\_only}) 
+%%%%%
+\item
+\ttt{\$correlation\_me\_method} \qquad (default: \ttt{"omega"}) \newline
+This string variable specifies the method for the matrix elements to be used in
+the evaluation of the color (and helicity) correlated part of the NLO
+computation. The default is the intrinsic O'Mega matrix element generator
+(\ttt{"omega"}), other options are: \ttt{"ovm"}, \ttt{"unit\_test"},
+\ttt{"template"}, \ttt{"template\_unity"}, \ttt{"threshold"}, \ttt{"gosam"},
+\ttt{"openloops"}. (cf. also \ttt{\$real\_tree\_me\_method},
+\ttt{\$loop\_me\_method} and \ttt{\$born\_me\_method}.)
 %%%%%
 \item
 \ttt{cos} \newline
@@ -14043,6 +14219,11 @@ spin correlations to take only the diagonal entries in the
 spin-density matrix (i.e. classical spin correlations). (cf. also 
 \ttt{unstable}, \ttt{?auto\_decays},
 \ttt{decay\_helicity}, \ttt{?isotropic\_decay})
+%%%%%
+\item
+\ttt{?disable\_subtraction} \qquad (default: \ttt{false}) \newline
+Disables the subtraction of soft and collinear divergences from the
+real matrix element.
 %%%%%
 \item
 \ttt{Dist} \newline
@@ -14225,7 +14406,7 @@ e.g. \ttt{beams = e1, E1 => epa} (applied to both beams), or
 e.g. \ttt{beams = e1, u => epa, none} (applied to only one
 beam). (cf. also \ttt{beams}, \ttt{epa\_alpha}, \ttt{epa\_x\_min},
 \ttt{epa\_mass}, \ttt{epa\_e\_max}, \ttt{epa\_q\_min},
-\ttt{?epa\_recoil}) 
+\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}) 
 %%%%%
 \item
 \ttt{epa\_alpha} \qquad (default: \ttt{0}/internal from model)
@@ -14234,7 +14415,8 @@ For the equivalent photon approximation (EPA), this real parameter
 sets the value of $\alpha_{em}$ used in the structure function. If not
 set, it is taken from the parameter set of the physics model in use
 (cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass},
-\ttt{epa\_e\_max}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil})
+\ttt{epa\_e\_max}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil},
+\ttt{?epa\_keep\_energy})
 %%%%%
 \item
 \ttt{epa\_e\_max} \qquad (default: \ttt{0}/internal $\sqrt{s}$)
@@ -14243,7 +14425,16 @@ This real parameter allows to set the upper energy cutoff for the
 equivalent-photon approximation (EPA). If not set, \whizard\ simply
 takes the collider energy, $\sqrt{s}$. (cf. also \ttt{epa},
 \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha},
-\ttt{epa\_q\_min}, \ttt{?epa\_recoil}) 
+\ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})
+%%%%%
+\item
+\ttt{?epa\_keep\_energy} \qquad (default: \ttt{false}) \newline
+As the splitting kinematics for the EPA structure function
+violates Lorentz invariance when the recoil is switched on, this flag
+forces energy conservation when set to true, otherwise  
+violating energy conservation. (cf. also \ttt{epa},
+\ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha},
+\ttt{epa\_q\_min}, \ttt{?epa\_recoil})
 %%%%%
 \item
 \ttt{epa\_mass} \qquad (default: \ttt{0}/internal from model) \newline 
@@ -14251,7 +14442,8 @@ This real parameter allows to set by hand the mass of the incoming
 particle for the equivalent-photon approximation (EPA). If not
 set, the mass for the initial beam particle is taken from the model in
 use. (cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_e\_max},
-\ttt{epa\_alpha}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil}) 
+\ttt{epa\_alpha}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil},
+\ttt{?epa\_keep\_energy}) 
 %%%%%
 \item
 \ttt{epa\_q\_min} \qquad (default: \ttt{0})
@@ -14260,14 +14452,16 @@ In the equivalent-photon approximation (EPA), this real parameters
 sets the minimal value for the transferred momentum. Either this
 parameter or the mass of the beam particle has to be non-zero.
 (cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass},
-\ttt{epa\_alpha}, \ttt{epa\_e\_max}, \ttt{?epa\_recoil}) 
+\ttt{epa\_alpha}, \ttt{epa\_e\_max}, \ttt{?epa\_recoil},
+\ttt{?epa\_keep\_energy}) 
 %%%%%
 \item
 \ttt{?epa\_recoil} \qquad (default: \ttt{false}) \newline
 Flag to switch on recoil, i.e. a non-vanishing $p_T$-kick for the
 equivalent-photon approximation (EPA). 
 (cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass},
-\ttt{epa\_alpha}, \ttt{epa\_e\_max}, \ttt{epa\_q\_min}) 
+\ttt{epa\_alpha}, \ttt{epa\_e\_max}, \ttt{epa\_q\_min},
+\ttt{?epa\_keep\_energy}) 
 %%%%%
 \item
 \ttt{epa\_x\_min} \qquad (default: \ttt{0}) \newline
@@ -14275,7 +14469,8 @@ Real parameter that sets the lower cutoff for the energy fraction in
 the splitting for the equivalent-photon approximation (EPA). This
 parameter has to be set by the user to a non-zero value smaller than
 one. (cf. also \ttt{epa}, \ttt{epa\_e\_max}, \ttt{epa\_mass},
-\ttt{epa\_alpha}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil}) 
+\ttt{epa\_alpha}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil},
+\ttt{?epa\_keep\_energy}) 
 %%%%%
 \item
 \ttt{\$err\_options} \newline
@@ -14357,25 +14552,23 @@ Beam structure specifier for the equivalent-photon approximation
 e.g. \ttt{beams = e1, u => ewa, none} (applied to only one
 beam). (cf. also \ttt{beams}, \ttt{ewa\_x\_min}, \ttt{ewa\_pt\_max},
 \ttt{ewa\_mass}, \ttt{?ewa\_keep\_energy}, 
-\ttt{?ewa\_keep\_momentum}) 
+\ttt{?ewa\_recoil}) 
+%%%%%
+\item
+\ttt{?ewa\_recoil} \qquad (default: \ttt{false}) \newline
+For the equivalent $W$ approximation (EWA), this flag switches on
+recoil, i.e. non-collinear splitting.  (cf. also \ttt{ewa},
+\ttt{ewa\_x\_min}, \ttt{ewa\_pt\_max},  \ttt{ewa\_mass},
+\ttt{?ewa\_keep\_energy}) 
 %%%%%
 \item
 \ttt{?ewa\_keep\_energy} \qquad (default: \ttt{false}) \newline
-For the equivalent $W$ approximation (EWA), this flag switches on
-recoil, i.e. non-collinear splitting. As the splitting kinematics
-violates Lorentz invariance, this flag forces energy conservation,
-while violating momentum conservation. (cf. also \ttt{ewa},
+As the splitting kinematics for the equivalent $W$ approximation (EWA) 
+violates Lorentz invariance when the recoil is switched on, this flag
+forces energy conservation when set to true, otherwise  
+violating energy conservation. (cf. also \ttt{ewa},
 \ttt{ewa\_x\_min}, \ttt{ewa\_pt\_max},  \ttt{ewa\_mass},
-\ttt{?ewa\_keep\_momentum}) 
-%%%%%
-\item
-\ttt{?ewa\_keep\_momentum} \qquad (default: \ttt{false}) \newline
-For the equivalent $W$ approximation (EWA), this flag switches on
-recoil, i.e. non-collinear splitting. As the splitting kinematics
-violates Lorentz invariance, this flag forces momentum conservation,
-while violating energy conservation. (cf. also \ttt{ewa},
-\ttt{ewa\_x\_min}, \ttt{ewa\_pt\_max},  \ttt{ewa\_mass},
-\ttt{?ewa\_keep\_energy}) 
+\ttt{?ewa\_recoil}) 
 %%%%%
 \item
 \ttt{ewa\_mass} \qquad (default: \ttt{0}/internal from model) \newline 
@@ -14383,7 +14576,7 @@ This real parameter allows to set by hand the mass of the incoming
 particle for the equivalent $W$ approximation (EWA). If not
 set, the mass for the initial beam particle is taken from the model in
 use. (cf. also \ttt{ewa}, \ttt{ewa\_x\_min}, \ttt{ewa\_pt\_max}, 
-\ttt{?ewa\_keep\_energy}, \ttt{?ewa\_keep\_momentum}) 
+\ttt{?ewa\_keep\_energy}, \ttt{?ewa\_recoil}) 
 %%%%%
 \item
 \ttt{ewa\_pt\_max} \qquad (default: \ttt{0}/internal $\sqrt{s}$)
@@ -14392,7 +14585,7 @@ This real parameter allows to set the upper $p_T$ cutoff for the
 equivalent $W$ approximation (EWA). If not set, \whizard\ simply
 takes the collider energy, $\sqrt{s}$. (cf. also \ttt{ewa},
 \ttt{ewa\_x\_min}, \ttt{ewa\_mass}, \ttt{?ewa\_keep\_energy},
-\ttt{?ewa\_keep\_momentum})  
+\ttt{?ewa\_recoil})  
 %%%%%
 \item
 \ttt{ewa\_x\_min} \qquad (default: \ttt{0}) \newline
@@ -14400,7 +14593,7 @@ Real parameter that sets the lower cutoff for the energy fraction in
 the splitting for the equivalent $W$ approximation (EWA). This
 parameter has to be set by the user to a non-zero value smaller than
 one. (cf. also \ttt{ewa}, \ttt{ewa\_pt\_max}, \ttt{ewa\_mass},
-\ttt{?ewa\_keep\_energy}, \ttt{?ewa\_keep\_momentum}) 
+\ttt{?ewa\_keep\_energy}, \ttt{?ewa\_recoil}) 
 %%%%%
 \item
 \ttt{exec} \newline
@@ -14656,6 +14849,37 @@ e.g. \ttt{int i = floor (4.56789)} gives \ttt{i = 4}. (cf. also
 \ttt{int}, \ttt{nint}, \ttt{ceiling})
 %%%%%
 \item
+\ttt{fixed\_alpha\_region} \newline
+Fixes the $\alpha_r$ in the real subtraction component. Allows for testing
+in one individual singular region.
+%%%%%
+\item
+\ttt{?fixed\_order\_nlo\_events} \qquad (default: \ttt{false}) \newline
+Induces the generation of fixed-order NLO events.
+Deprecated name: \ttt{?nlo\_fixed\_order}. 
+%%%%%
+\item
+\ttt{fks\_dij\_exp1}, \ttt{fks\_dij\_exp2} \qquad (default: 1) \newline
+Fine-tuning parameters of the FKS partition functions. The exact meaning
+depends on the mapping implementation.
+%%%%%
+\item
+\ttt{\$fks\_mapping\_type} \newline
+Sets the FKS mapping type. Possible values are \ttt{"default"} and
+\ttt{"resonances"}. The latter option activates the resonance-aware
+subtraction mode and induces the generation of a soft mismatch component.
+%%%%%
+\item
+\ttt{form\_threads} \qquad (default: 2) \newline
+The number of threads used by \gosam when matrix elements are evaluated
+using \ttt{FORM}
+%%%%%
+\item
+\ttt{form\_workspace} \qquad (default: 1000) \newline
+The size of the workspace \gosam requires from \ttt{FORM}. Inside \ttt{FORM},
+it corresponds to the heap size used by the algebra processor.
+%%%%%
+\item
 \ttt{gaussian} \newline
 Beam structure specifier that imposes a Gaussian energy distribution,
 separately for each beam.  The $\sigma$ values are set by
@@ -14699,6 +14923,10 @@ energy unit of WHIZARD. (cf. also \ttt{eV}, \ttt{keV}, \ttt{MeV}, \ttt{meV},
 \ttt{TeV})
 %%%%%
 \item
+\ttt{gks\_multiplicity} \newline
+Jet multiplicity for the GKS merging scheme.
+%%%%%
+\item
 \ttt{\$gmlcode\_bg} \qquad (default: \ttt{""}/off) \newline
 Settings for \whizard's internal graphics output: string variable that
 allows to define a background for plots and histograms (i.e. it is
@@ -14731,6 +14959,18 @@ overwrites the plot/histogram), e.g. a grid:
 \newline \ttt{?fill\_curve}, \ttt{?draw\_curve}, \ttt{?draw\_errors},
 \ttt{?draw\_symbols}, \ttt{\$fill\_options}, \newline \ttt{\$draw\_options},
 \ttt{\$err\_options}, \ttt{\$symbol})
+%%%%%
+\item
+\ttt{\$gosam\_fc} \newline
+The Fortran compiler used by \gosam.
+%%%%%
+\item
+\ttt{\$gosam\_filter\_lo} \newline
+The filter string given to \gosam in order to filter out tree-level diagrams.
+%%%%%
+\item
+\ttt{\$gosam\_filter\_nlo} \newline
+The same as above, but for loop matrix elements.
 %%%%%
 \item
 \ttt{graph} \newline
@@ -14959,7 +15199,7 @@ radiation (ISR) structure function: e.g. \ttt{beams = e1, E1 => isr}
 (applied to both beams), or e.g. \ttt{beams = e1, u => isr, none}
 (applied to only one beam). (cf. also \ttt{beams}, \ttt{isr\_alpha},
 \ttt{isr\_q\_max}, \ttt{isr\_mass}, \ttt{isr\_order}, 
-\ttt{?isr\_recoil})
+\ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy})
 %%%%%
 \item
 \ttt{isr\_alpha} \qquad (default: \ttt{0}/internal from model)
@@ -14968,7 +15208,16 @@ For lepton collider initial-state QED radiation (ISR), this real parameter
 sets the value of $\alpha_{em}$ used in the structure function. If not
 set, it is taken from the parameter set of the physics model in use
 (cf. also \ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_mass}, \ttt{isr\_order},
-\ttt{?isr\_recoil})
+\ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy})
+%%%%%
+\item
+\ttt{?isr\_keep\_energy} \qquad (default: \ttt{false}) \newline
+As the splitting kinematics for the ISR structure function
+violates Lorentz invariance when the recoil is switched on, this flag
+forces energy conservation when set to true, otherwise  
+violating energy conservation.
+(cf. also \ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_mass}, \ttt{isr\_order},
+\ttt{?isr\_recoil}, \ttt{?isr\_alpha})
 %%%%%
 \item
 \ttt{isr\_mass} \qquad (default: \ttt{0}/internal from model) \newline 
@@ -14976,7 +15225,7 @@ This real parameter allows to set by hand the mass of the incoming
 particle for lepton collider initial-state QED radiation (ISR). If not
 set, the mass for the initial beam particle is taken from the model in
 use. (cf. also \ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_alpha},
-\ttt{isr\_order}, \ttt{?isr\_recoil})
+\ttt{isr\_order}, \ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy})
 %%%%%
 \item
 \ttt{isr\_order} \qquad (default: \ttt{3}) \newline
@@ -14984,7 +15233,7 @@ For lepton collider initial-state QED radiation (ISR), this integer
 parameter allows to set the order up to which hard-collinear radiation
 is taken into account. Default is the highest available, namely third
 order. (cf. also \ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_mass},
-\ttt{isr\_alpha}, \ttt{?isr\_recoil})
+\ttt{isr\_alpha}, \ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy})
 %%%%%
 \item
 \ttt{isr\_q\_max} \qquad (default: \ttt{0}/internal $\sqrt{s}$)
@@ -14993,7 +15242,7 @@ This real parameter allows to set the scale of the initial-state
 QED radiation (ISR) structure function. If not set, it is taken internally
 to be $\sqrt{s}$.
 (cf. also \ttt{isr}, \ttt{isr\_alpha}, \ttt{isr\_mass},
-\ttt{isr\_order}, \ttt{?isr\_recoil})
+\ttt{isr\_order}, \ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy})
 %%%%%
 \item
 \ttt{?isr\_recoil} \qquad (default: \ttt{false}) \newline
@@ -15052,6 +15301,20 @@ The logical variable \texttt{?keep\_beams = true/false} specifies whether
 beam particles and beam remnants are included when writing event files.
 For example, in order to read Les Houches accord event files into \pythia,
 no beam particles are allowed.
+%%%%%
+\item
+\ttt{?keep\_failed\_events} \qquad (default: \ttt{false}) \newline
+In the context of weighted event generation, if set to \ttt{true}, 
+events with failed kinematics will be written to the event output
+with an associated weight of zero. This way, the total cross section
+can be reconstructed from the event output.
+%%%%%
+\item
+\ttt{?keep\_flavors\_when\_clustering} \qquad (default: \ttt{false}) \newline
+The logical variable \texttt{?keep\_flavors\_when\_clustering = true/false}
+specifies whether the flavor of a jet should be kept during \ttt{cluster}
+when a jet consists of one quark and zero or more gluons. Especially useful for
+cuts on b-tagged jets (cf. also \ttt{cluster}).
 %%%%%
 \item
 \ttt{?keep\_remnants} \qquad (default: \ttt{true}) \newline
@@ -15280,6 +15543,14 @@ files. (cf. also \ttt{\$sample},
 \ttt{sample\_format}) 
 %%%%%
 \item
+\ttt{\$loop\_me\_method} \qquad (default: \ttt{"openloops"}) \newline
+This string variable specifies the method for the matrix elements to be used in
+the evaluation of the virtual part of the NLO
+computation. The default is OpenLoops (\ttt{"openloops"}), other options are:
+\ttt{"threshold"}, \ttt{"openloops"}. (cf. also \ttt{\$real\_tree\_me\_method},
+\ttt{\$correlation\_me\_method} and \ttt{\$born\_me\_method}.)
+%%%%%
+\item
 \ttt{luminosity} \qquad (default: \ttt{0}) \newline
 This specifier \ttt{luminosity = {\em <num>}} sets the integrated luminosity
 (in inverse femtobarns, fb${}^{-1}$) for the event generation of the
@@ -15324,7 +15595,10 @@ integration dimension. (cf. \ttt{iterations}, \ttt{min\_bins},
 This string variable specifies the method for the matrix elements
 to be used in the evaluation. The default is the intrinsic O'Mega
 matrix element generator (\ttt{"omega"}), other options are: 
-\ttt{"ovm"}, \ttt{"unit\_test"}, \ttt{"template"}, \ttt{"template\_unity"}.
+\ttt{"ovm"}, \ttt{"unit\_test"}, \ttt{"template"}, \ttt{"template\_unity"}, 
+\ttt{"threshold"}. For processes defined with \ttt{nlo\_calculation = ...},
+please refer to \ttt{\$born\_me\_method}, \ttt{\$real\_tree\_me\_method},
+\ttt{\$loop\_me\_method} and \ttt{\$correlation\_me\_method}.
 %%%%%
 \item
 \ttt{meV} \newline
@@ -15523,6 +15797,17 @@ colliders. Note that this feature is still experimental. (cf. also
   ...})  
 %%%%%
 \item
+\ttt{mult\_call\_real} \qquad (default: 1.0) \newline
+(Real-valued) multiplier for the number of calls used in the integration
+of the real subtraction component. This way, a higher accuracy can be achieved
+for the real component, while simultaneously avoiding redundant integration
+calls for the other components.
+%%%%%
+\item
+\ttt{mult\_call\_virt} \qquad (default: 1.0) \newline
+Same as above, for the virtual component.
+%%%%%
+\item
 \ttt{nbarn} \newline
 Physical unit, stating that a number is in nanobarns ($10^{-9}$
 barn). (cf. also \ttt{abarn}, \ttt{fbarn}, \ttt{pbarn})
@@ -15667,7 +15952,7 @@ physical unit to a plotted or histogrammed observable. (cf. also
 \ttt{\$err\_options})
 %%%%%
 \item
-\ttt{\$omega\_flag} \qquad (default: \ttt{""}) \newline
+\ttt{\$omega\_flags} \qquad (default: \ttt{""}) \newline
 String variable that allows to pass flags to the \oMega\ matrix
 element generator. Normally, \whizard\ takes care of all flags
 automatically. Note that for restrictions of intermediate states,
@@ -15707,6 +15992,37 @@ multi-threading. Note that this parameter can only be accessed, but
 not reset by the user. (cf. also \ttt{?openmp\_logging},
 \ttt{openmp\_num\_threads},
 \ttt{?omega\_openmp})
+%%%%%
+\item
+\ttt{openloops\_phs\_tolerance}
+%%%%%
+\item
+\ttt{openloops\_stability\_log} \qquad(default: 0) \newline
+Creates the directory \ttt{stability\_log} containing information about the
+performance of the \openloops matrix elements. Possible values are 0 (No output),
+1 (On \ttt{finish()}-call), 2 (Adaptive) and 3 (Always).
+%%%%%
+\item
+\ttt{?openloops\_switch\_off\_muon\_yukawa} \newline
+Sets the Yukawa coupling of muons to zero.
+%%%%%
+\item
+\ttt{?openloops\_top\_signal} \newline
+Loads a special library which only contains the signal diagram for the process
+$e^+ e^- \to t\bar{t}$. Relevant in the context of $t\bar{t}$-threshold matching.
+%%%%%
+\item
+\ttt{?openloops\_use\_cms} \newline
+Activates the complex mass scheme in \openloops
+%%%%%
+\item
+\ttt{?openloops\_use\_collier} \qquad (default: true) \newline
+Use Collier (citation?) as the reduction method of \openloops.
+%%%%%
+\item
+\ttt{?openloops\_verbosity} \qquad (default: 1) \newline
+Decides how much \openloops output is printed. Can have values 0, 1 and 2,
+where 2 is the highest verbosity level.
 %%%%%
 \item
 \ttt{open\_out} \newline
@@ -15973,6 +16289,55 @@ state particles in the event files, and perform analysis on polarized
 event samples. (cf. also \ttt{simulate}, \ttt{polarized}, \ttt{unpolarized})
 %%%%%
 \item
+\ttt{powheg\_grid\_sampling\_points} \qquad (default: 500000) \newline
+Number of calls used to initialize the Powheg grid.
+%%%%%
+\item
+\ttt{powheg\_grid\_size\_xi} \qquad (default: 5) \newline
+Number of $\xi$-points in the Powheg grid.
+%%%%%
+\item
+\ttt{powheg\_grid\_size\_y} \qquad (default: 5) \newline
+Number of $y$-points in the Powheg grid.
+%%%%%
+\item
+\ttt{powheg\_lambda} \qquad (defaul: $\Lambda_{\text{QCD}}$) \newline
+Reference scale of the $\alpha_s$-evolution in the Powheg matching algorithm.
+%%%%%
+\item
+\ttt{?powheg\_matching} \qquad (default: \ttt{false}) \newline
+Activates Powheg matching. Needs to be combined with the
+\ttt{?combined\_nlo\_integration}-method.
+%%%%%
+\item
+\ttt{powheg\_pt\_min} \qquad (default: \ttt{1.0}) \newline
+Lower $p_T$-cut-off for the Powheg hardest emission.
+%%%%%
+\item
+\ttt{?powheg\_rebuild\_grids} \newline
+If set to \ttt{true}, the existing Powheg grid is discarded and a
+new one is generated.
+%%%%
+\item
+\ttt{?powheg\_test\_sudakov} \newline
+Performs an internal consistency check on the Powheg event generation.
+%%%%
+\item
+\ttt{?powheg\_use\_damping} \newline
+If set to \ttt{true}, the real matrix element is split into a finite
+and a singular part using a partition function $f$, such that
+\begin{equation*}
+	\mathcal{R} = [1-f(p_T^2)]\mathcal{R} + f(p_T^2)\mathcal{R}
+	            = \mathcal{R}_{\text{fin}} + \mathcal{R}_{\text{sing}}.
+\end{equation*}
+The emission generation is then performed using $\mathcal{R}_{\text{sing}}$,
+whereas $\mathcal{R}_{\text{fin}}$ is added to $\bar{B}$. 
+%%%%%
+\item
+\ttt{?powheg\_use\_singular\_jacobian} \newline
+...
+%%%%%
+\item
 \ttt{printf} \newline
 Command that allows to print data as screen messages, into logfiles or
 into user-defined output files: \ttt{printf "{\em <string\_expr>}"}. There
@@ -16153,7 +16518,76 @@ attached \pythia\ parton shower or hadronization, e.g.:
 \ttt{?ps\_PYTHIA\_verbose} \qquad (default: \ttt{false}) \newline
 Flag to switch on verbose messages when using the \pythia\ shower
 and/or hadronization. (cf. also \ttt{?allow\_shower}, \ttt{?ps\_
-...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active})  
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?hadronization\_active})  
+%%%%%
+\item
+\ttt{?ps\_taudec\_active} \qquad (default: \ttt{false}) \newline
+Flag to switch on $\tau$ decays, at the moment only via the included 
+external package \texttt{TAUOLA} and \texttt{PHOTOS}. 
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?hadronization\_active})  
+%%%%%
+\item
+\ttt{ps\_tauola\_dec\_mode1/2} \qquad (default: \ttt{0}) \newline
+Integer code to request a specific $\tau$ decay within \texttt{TAUOLA}
+for the decaying $\tau$, and -- in correlated decays -- for the second
+$\tau$. For more information cf. the comments in the code or the 
+\texttt{TAUOLA} manual. 
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})  
+%%%%%
+\item
+\ttt{ps\_tauola\_mh} \qquad (default: \ttt{125.}) \newline
+Real option to set the Higgs mass for Higgs decays into $\tau$ leptons 
+in the interface to \texttt{TAUOLA}. 
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})  
+%%%%%
+\item
+\ttt{ps\_tauola\_mix\_angle} \qquad (default: \ttt{0.}) \newline
+Option to set the mixing angle between scalar and pseudoscalar Higgs
+bosons for Higgs decays into $\tau$ leptons
+in the interface to \texttt{TAUOLA}. 
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})  
+%%%%%
+\item
+\ttt{?ps\_tauola\_photos} \qquad (default: \ttt{false}) \newline
+Flag to switch on \texttt{PHOTOS} for photon showering inside the
+\texttt{TAUOLA} package.  
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})
+%%%%%
+\item
+\ttt{?ps\_tauola\_pol\_vector} \qquad (default: \ttt{false}) \newline
+Flag to decide whether for transverse $\tau$ polarization,
+polarization information should be taken from \ttt{TAUOLA} or not.
+The default is just based on random numbers.
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})  
+%%%%%
+\item
+\ttt{?ps\_tauola\_rad\_cor} \qquad (default: \ttt{false}) \newline
+Flag to switch radiative corrections for $\tau$ decays in
+\texttt{TAUOLA} on or off.
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})  
+%%%%%
+\item
+\ttt{?ps\_tauola\_transverse} \qquad (default: \ttt{false}) \newline
+Flag to switch transverse $\tau$ polarization on or off for Higgs
+decays into $\tau$ leptons. 
+(cf. also \ttt{?allow\_shower}, \ttt{?ps\_
+...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...},
+\ttt{?ps\_taudec\_active})  
 %%%%%
 \item
 \ttt{Pt} \newline
@@ -16255,6 +16689,16 @@ the \fortran\ compiler with which \whizard\ has been built.
 Predefined real; the smallest number which can be represented by the
 floating point type of the \fortran\ compiler with which \whizard\ has
 been built.
+%%%%%
+\item
+\ttt{\$real\_tree\_me\_method} \qquad (default: \ttt{"omega"}) \newline
+This string variable specifies the method for the matrix elements to be used in
+the evaluation of the real part of the NLO computation. The default is the
+intrinsic O'Mega matrix element generator (\ttt{"omega"}), other options are:
+\ttt{"ovm"}, \ttt{"unit\_test"}, \ttt{"template"}, \ttt{"template\_unity"},
+\ttt{"threshold"}, \ttt{"gosam"}, \ttt{"openloops"}. (cf. also
+\ttt{\$correlation\_me\_method}, \ttt{\$loop\_me\_method} and
+\ttt{\$born\_me\_method}.)
 %%%%%
 \item
 \ttt{?rebuild\_events} \qquad (default: \ttt{false}) \newline
@@ -16367,6 +16811,12 @@ parameter input, or defining a completely new alternative setup ($\to$
 \ttt{\$rescan\_input\_format} \qquad (default: \ttt{"raw"}) \newline
 String variable that allows to set the event format of the event file 
 that is to be rescanned by the ($\to$) \ttt{rescan} command. 
+%%%%%
+\item
+\ttt{\$resonances\_exclude\_particles}
+Accepts a string of particle names. These particles will be ignored
+when the resonance histories are generated. If \ttt{\$fks\_mapping\_type}
+is not \ttt{"resonances"}, this option does nothing.
 %%%%%
 \item
 \ttt{\$restrictions} \newline
@@ -16778,6 +17228,26 @@ variables. Note that its inverse function is part of the
 \ttt{sinh}) 
 %%%%%
 \item
+\ttt{?test\_anti\_coll\_limit} \qquad (default: \ttt{false}) \newline
+Sets the fixed values $\tilde{\xi} = 0.5$ and $y = -0.999$ as radiation variables.
+This way, only anti-collinear, but non-soft phase space points are generated,
+which allows for testing subtraction in this region. Can be combined with
+\ttt{?test\_soft\_limit} to probe soft-collinear regions.
+%%%%%
+\item
+\ttt{?test\_coll\_limit} \qquad (default: \ttt{false}) \newline
+Sets the fixed values $\tilde{\xi} = 0.5$ and $y = 0.999$ as radiation variables.
+This way, only collinear, but non-soft phase space points are generated,
+which allows for testing subtraction in this region. Can be combined with
+\ttt{?test\_soft\_limit} to probe soft-collinear regions.
+%%%%%
+\item
+\ttt{?test\_soft\_limit} \qquad (default: \ttt{false}) \newline
+Sets the fixed values $\tilde{\xi} = 0.0001$ and $y = 0.5$ as radiation variables.
+This way, only soft, but non-collinear phase space points are generated,
+which allows for testing subtraction in this region.
+%%%%%
+\item
 \ttt{TeV} \newline
 Physical unit, for energies in $10^{12}$ electron volt. (cf. also
 \ttt{eV}, \ttt{keV}, \ttt{MeV}, \ttt{meV}, \ttt{GeV}) 
@@ -16834,7 +17304,7 @@ analysis file, but not in the screen output of the analysis.
 %%%%%
 \item
 \ttt{tolerance} \qquad (default: \ttt{0.}) \newline
-Real variable that defines the tolerance with which the (logical)
+Real variable that defines the absolute tolerance with which the (logical)
 function \ttt{expect} accepts equality or inequality:
 \ttt{tolerance = {\em <num>}}. This can e.g. be used for cross-section tests
 and backwards compatibility checks.
@@ -17592,6 +18062,11 @@ respectively.
   M.E. Peskin, D.V.Schroeder, {\em An Introduction to Quantum Field
     Theory}, Addison-Wesley Publishing Co., 1995.
 
+\bibitem{stdhep}
+  L.~Garren, {\em StdHep, Monte Carlo Standardization at FNAL}, 
+  Fermilab CS-doc-903,
+  \url{http://cd-docdb.fnal.gov/cgi-bin/ShowDocument?docid=903}
+
 \bibitem{LHAPDF}
   W.~Giele {\it et al.},
   {\em The QCD / SM working group: Summary report}, 
@@ -17657,6 +18132,12 @@ respectively.
   Phys.\ Rev.\ D {\bf 87}, no. 9, 094012 (2013)
   [arXiv:1212.1702 [hep-ph]].
   %%CITATION = ARXIV:1212.1702;%%
+%\cite{Accardi:2016qay}
+\bibitem{Accardi:2016qay} 
+  A.~Accardi, L.~T.~Brady, W.~Melnitchouk, J.~F.~Owens and N.~Sato,
+  %``Constraints on large-$x$ parton distributions from new weak boson production and deep-inelastic scattering data,''
+  arXiv:1602.03154 [hep-ph].
+  %%CITATION = ARXIV:1602.03154;%%
 %\cite{Harland-Lang:2014zoa}
 \bibitem{Harland-Lang:2014zoa} 
   L.~A.~Harland-Lang, A.~D.~Martin, P.~Motylinski and R.~S.~Thorne,

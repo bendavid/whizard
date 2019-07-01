@@ -1,6 +1,6 @@
 ! $Id: parameters.PSSSM.f90,v 1.1 2005/10/25 09:21:48 reuter Exp $
 !
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -283,9 +283,10 @@ module parameters_psssm
    complex(kind=default) :: sina, cosa
 
 contains
-  subroutine import_from_whizard (par_array)
+  subroutine import_from_whizard (par_array, scheme)
     real(default), dimension(508), intent(in) :: par_array
-   type :: parameter_set
+    integer, intent(in) :: scheme
+    type :: parameter_set
       real(default) :: gf
       real(default) :: mz
       real(default) :: mw

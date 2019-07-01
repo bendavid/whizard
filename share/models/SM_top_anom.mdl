@@ -292,7 +292,7 @@ vertex U u A
 vertex S s A 
 vertex C c A 
 vertex B b A 
-vertex T t A 
+vertex T t A
 vertex T c A
 vertex C t A
 
@@ -309,7 +309,9 @@ vertex U u G
 vertex S s G 
 vertex C c G 
 vertex B b G 
-vertex T t G 
+vertex T t G
+vertex T c G
+vertex C t G
 
 # Neutral currents
 vertex D d Z 
@@ -317,7 +319,9 @@ vertex U u Z
 vertex S s Z 
 vertex C c Z 
 vertex B b Z 
-vertex T t Z 
+vertex T t Z
+vertex T c Z
+vertex C t Z
 
 vertex E1 e1 Z 
 vertex E2 e2 Z 

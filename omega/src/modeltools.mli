@@ -1,6 +1,6 @@
-(* $Id: modeltools.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: modeltools.mli 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -49,11 +49,27 @@ module type Fusions =
 module Fusions : functor (F : Flavor) ->
   Fusions with type f = F.f and type c = F.c
 
+(* \thocwmodulesection{Coupling Constants} *)
+
+(* There is no [Model.constant_of_string] function, but we can
+   construct one by inverting [Model.constant_symbol] on the set
+   of all coupling constants appearing in the vertices. *)
+
+module type Constant =
+  sig
+    type t
+    val of_string : string -> t
+  end
+
+module Constant : functor (M : Model.T) -> Constant with type t = M.constant
+
 (* \thocwmodulesection{Mutable Models} *)
 
 module Mutable : functor (FGC : sig type f and g and c end) ->
   Model.Mutable with type flavor = FGC.f and type gauge = FGC.g 
   and type constant = FGC.c
+
+module Static (M : Model.T) : Model.Mutable
 
 (*i
  *  Local Variables:

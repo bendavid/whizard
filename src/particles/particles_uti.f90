@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,7 +37,7 @@ module particles_uti
 
   use kinds, only: default
   use io_units
-  use unit_tests, only: assert_equal
+  use numeric_utils
   use constants, only: one, tiny_07
   use lorentz
   use flavors
@@ -870,7 +870,7 @@ contains
     call pset%prt(3)%set_momentum (vector4_at_rest (2._default))
     call pset%prt(4)%set_momentum (vector4_at_rest (4._default))
 
-    allocate (flv (5))
+    allocate (flv (4))
     call flv%init ([6,5,12,-11])
     do i = 1, 4
        call pset%prt(i)%set_flavor (flv(i))

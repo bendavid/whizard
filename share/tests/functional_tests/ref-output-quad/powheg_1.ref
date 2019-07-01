@@ -20,8 +20,6 @@ powheg_grid_sampling_points = 1000
 powheg_pt_min =  1.0000000E+00
 ?powheg_use_singular_jacobian = false
 | Process library 'powheg_1_lib': recorded process 'powheg_1_p1'
-fks_dij_exp1 =  1.0000000E+00
-fks_mapping_type = 1
 sqrts =  5.0000000E+02
 | Integrate: current process library needs compilation
 | Process library 'powheg_1_lib': compiling ...
@@ -46,7 +44,7 @@ sqrts =  5.0000000E+02
 |     1: 'powheg_1_p1_i1':   e+, e- => t, tbar [omega]
 |     2: 'powheg_1_p1_i2':   e+, e- => t, tbar, gl [omega], [Real]
 |     3: 'powheg_1_p1_i3':   e+, e- => t, tbar [dummy], [Virtual]
-|     4: 'powheg_1_p1_i4':   e+, e- => t, tbar [omega], [Subtraction]
+|     4: 'powheg_1_p1_i4':   e+, e- => t, tbar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
@@ -233,6 +231,7 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
  Master switches:
    ps_isr_active                =  F
    ps_fsr_active                =  F
+   ps_tau_dec                   =  F
    muli_active                  =  F
  General settings:
     [ISR and FSR off]
@@ -344,6 +343,7 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
  Master switches:
    ps_isr_active                =  F
    ps_fsr_active                =  F
+   ps_tau_dec                   =  F
    muli_active                  =  F
  General settings:
     [ISR and FSR off]

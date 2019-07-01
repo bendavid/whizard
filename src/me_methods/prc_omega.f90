@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -64,6 +64,7 @@ module prc_omega
   public :: omega_driver_t
   public :: omega_make_process_component
   public :: prc_omega_t
+  public :: omega_state_t
 
   type, abstract, extends (prc_core_def_t) :: omega_def_t
    contains
@@ -136,6 +137,7 @@ module prc_omega
 
   type, extends (prc_core_t) :: prc_omega_t
      real(default), dimension(:), allocatable :: par
+     integer :: scheme = 0
      type(helicity_selection_t) :: helicity_selection
      type(qcd_t) :: qcd
    contains
@@ -165,9 +167,10 @@ module prc_omega
   
 
   abstract interface
-     subroutine init_t (par) bind(C)
+     subroutine init_t (par, scheme) bind(C)
        import
        real(c_default_float), dimension(*), intent(in) :: par
+       integer(c_int), intent(in) :: scheme
      end subroutine init_t
   end interface
   
@@ -625,10 +628,12 @@ contains
     write (unit, "(2x,9A)")  "interface"
     select case (char (feature))
     case ("init")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(5x,9A)")  "subroutine ", char (name), &
+            " (par, scheme) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "real(c_default_float), dimension(*), &
             &intent(in) :: par"
+       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: scheme"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("update_alpha_s")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"
@@ -676,14 +681,16 @@ contains
     write (unit, *)
     select case (char (feature))
     case ("init")
-       write (unit, "(9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(9A)")  "subroutine ", char (name), &
+            " (par, scheme) bind(C)"
        write (unit, "(2x,9A)")  "use iso_c_binding"
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "real(c_default_float), dimension(*), &
             &intent(in) :: par"
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "call ", char (feature), " (par)"
+       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: scheme"
+       if (c_default_float == default .and. c_int == kind(1)) then
+          write (unit, "(2x,9A)")  "call ", char (feature), " (par, scheme)"
        end if
        write (unit, "(9A)")  "end subroutine ", char (name)
     case ("update_alpha_s")
@@ -833,7 +840,8 @@ contains
     if (present (model)) then
        if (.not. allocated (prc_omega%par)) &
             allocate (prc_omega%par (model%get_n_real ()))
-       call model%real_parameters_to_c_array (prc_omega%par)
+       call model%real_parameters_to_array (prc_omega%par)
+       prc_omega%scheme = model%get_scheme_num ()
     end if
     if (present (helicity_selection)) then
        prc_omega%helicity_selection = helicity_selection
@@ -862,7 +870,9 @@ contains
        if (allocated (object%par)) then
           select type (driver => object%driver)
           type is (omega_driver_t)
-             if (associated (driver%init))  call driver%init (object%par)
+             if (associated (driver%init)) then
+                call driver%init (object%par, object%scheme)
+             end if
           end select
        else
           call msg_bug ("prc_omega_activate: parameter set is not allocated")
@@ -1008,7 +1018,7 @@ contains
        end if
     end select
   end function prc_omega_compute_amplitude
-    
+
   function prc_omega_get_alpha_s (object, core_state) result (alpha)
     class(prc_omega_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state

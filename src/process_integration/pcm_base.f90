@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -35,10 +35,6 @@
 
 module pcm_base
 
-!  use kinds
-!  use io_units
-!  use iso_varying_string, string_t => varying_string
-
   implicit none
   private
 
@@ -62,9 +58,5 @@ module pcm_base
      end subroutine pcm_allocate_instance
   end interface
   
-
-contains
-
-
 
 end module pcm_base

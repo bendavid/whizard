@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -86,6 +86,7 @@ module hadrons
      logical :: is_first_event
    contains
      procedure :: init => evt_hadrons_init
+     procedure :: write_name => evt_hadrons_write_name
      procedure :: write => evt_hadrons_write
      procedure :: first_event => evt_hadrons_first_event
      procedure :: generate_weighted => evt_hadrons_generate_weighted
@@ -185,6 +186,7 @@ contains
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
+    call pygive ("MSTJ(28)=0")     !!! Switch off tau decays   
     if (debug_active (D_TRANSFORMS)) then
        call msg_debug (D_TRANSFORMS, "N", N)
        call pylist(2)
@@ -236,7 +238,7 @@ contains
     valid = .true.
   end subroutine hadrons_pythia8_hadronize
 
-  pure subroutine hadrons_pythia8_make_particle_set &
+  subroutine hadrons_pythia8_make_particle_set &
          (hadrons, particle_set, model, valid)
     class(hadrons_pythia8_t), intent(in) :: hadrons
     type(particle_set_t), intent(inout) :: particle_set
@@ -266,6 +268,14 @@ contains
     evt%is_first_event = .true.
   end subroutine evt_hadrons_init
 
+  subroutine evt_hadrons_write_name (evt, unit)
+    class(evt_hadrons_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: hadronization"
+  end subroutine evt_hadrons_write_name
+   
   subroutine evt_hadrons_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_hadrons_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -273,7 +283,7 @@ contains
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: hadronization"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (evt%particle_set_exists)  &
@@ -288,9 +298,14 @@ contains
     call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
     associate (settings => evt%hadrons%settings)
        settings%hadron_collision = .false.
-       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+       !!! !!! !!! Workaround for PGF90 16.1
+       !!! if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 39)) then
+       if (evt%particle_set%prt(1)%flv%get_pdg_abs () <= 39 .and. &
+           evt%particle_set%prt(2)%flv%get_pdg_abs () <= 39) then
           settings%hadron_collision = .false.
-       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+       !!! else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 100)) then
+       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. &
+                evt%particle_set%prt(2)%flv%get_pdg_abs () >= 100) then
           settings%hadron_collision = .true.
        else
           call msg_fatal ("evt_hadrons didn't recognize beams setup")

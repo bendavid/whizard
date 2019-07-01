@@ -1,6 +1,6 @@
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -29,7 +29,7 @@ module omega_vectors
   use constants
   implicit none
   private
-  public :: assignment (=)
+  public :: assignment (=), operator(==)
   public :: operator (*), operator (+), operator (-), operator (.wedge.)
   public :: abs, conjg
   public :: random_momentum
@@ -57,6 +57,9 @@ module omega_vectors
   end interface
   private :: momentum_of_array, vector_of_momentum, vector_of_array, &
        vector_of_double_array, array_of_momentum, array_of_vector
+  interface operator(==)
+     module procedure momentum_eq
+  end interface
   interface operator (*)
      module procedure momentum_momentum, vector_vector, &
           vector_momentum, momentum_vector, tensor2odd_tensor2odd
@@ -177,6 +180,12 @@ contains
     v%t = p%t
     v%x = p%x
   end subroutine vector_of_momentum
+  elemental function momentum_eq (lhs, rhs) result (yorn)
+    logical :: yorn
+    type(momentum), intent(in) :: lhs
+    type(momentum), intent(in) :: rhs
+    yorn = all (abs(lhs%x - rhs%x) < eps0) .and. abs(lhs%t - rhs%t) < eps0
+  end function momentum_eq
   pure function momentum_momentum (x, y) result (xy)
     type(momentum), intent(in) :: x
     type(momentum), intent(in) :: y

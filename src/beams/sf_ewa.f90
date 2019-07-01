@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,7 +40,7 @@ module sf_ewa
   use io_units
   use constants, only: pi
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
   use physics_defs, only: W_BOSON, Z_BOSON
   use lorentz
@@ -91,8 +91,8 @@ module sf_ewa
      real(default) :: mZ
      real(default) :: coeff
      logical :: mass_set = .false.
-     logical :: keep_momentum
-     logical :: keep_energy     
+     logical :: recoil = .false.
+     logical :: keep_energy = .false.
      integer :: id = 0 
      integer :: error = NONE
    contains
@@ -126,12 +126,12 @@ module sf_ewa
 contains
 
   subroutine ewa_data_init (data, model, pdg_in, x_min, pt_max, &
-        sqrts, keep_momentum, keep_energy, mass)
+        sqrts, recoil, keep_energy, mass)
     class(ewa_data_t), intent(inout) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     real(default), intent(in) :: x_min, pt_max, sqrts
-    logical, intent(in) :: keep_momentum, keep_energy
+    logical, intent(in) :: recoil, keep_energy
     real(default), intent(in), optional :: mass
     real(default) :: g, ee
     integer :: n_flv, i
@@ -170,7 +170,7 @@ contains
     data%cv = g / 2._default
     data%ca = g / 2._default   
     data%coeff = 1._default / (8._default * PI**2)
-    data%keep_momentum = keep_momentum
+    data%recoil = recoil
     data%keep_energy = keep_energy
     if (present (mass)) then
        data%mass = mass
@@ -282,8 +282,8 @@ contains
        write (u, "(3x,A," // FMT_19 // ")") "  sinthw    = ", data%sinthw    
        write (u, "(3x,A," // FMT_19 // ")") "  mZ        = ", data%mZ
        write (u, "(3x,A," // FMT_19 // ")") "  mW        = ", data%mW
-       write (u, "(3x,A,L2)")      "  keep_mom. = ", data%keep_momentum
-       write (u, "(3x,A,L2)")      "  keep_en.  = ", data%keep_energy 
+       write (u, "(3x,A,L2)")      "  recoil    = ", data%recoil
+       write (u, "(3x,A,L2)")      "  keep en.  = ", data%keep_energy 
        write (u, "(3x,A,I2)")      "  PDG (VB)  = ", data%id
     else
        write (u, "(3x,A)") "[undefined]"
@@ -293,7 +293,7 @@ contains
   function ewa_data_get_n_par (data) result (n)
     class(ewa_data_t), intent(in) :: data
     integer :: n
-    if (data%keep_energy .or. data%keep_momentum) then
+    if (data%recoil) then
        n = 3
     else
        n = 1
@@ -356,12 +356,12 @@ contains
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     integer, dimension(3) :: hel_lock
-    type(polarization_t) :: pol
-    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel, qn_fc_fin
+    type(polarization_t), target :: pol
+    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_fc_fin
     type(flavor_t) :: flv_z, flv_wp, flv_wm
     type(color_t) :: col0
-    type(quantum_numbers_t) :: qn_z, qn_wp, qn_wm, qn, qn_rad, qn_w
-    type(state_iterator_t) :: it_hel
+    type(quantum_numbers_t) :: qn_hel, qn_z, qn_wp, qn_wm, qn, qn_rad, qn_w
+    type(polarization_iterator_t) :: it_hel
     integer :: i, isospin
     select type (data)
     type is (ewa_data_t)   
@@ -378,20 +378,20 @@ contains
           call flv_z%init (Z_BOSON, data%model)
           call qn_z%init (flv_z, col0)
           do i = 1, size (data%flv_in)
-             call polarization_init_generic (pol, data%flv_in(i))
+             call pol%init_generic (data%flv_in(i))
              call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
                   col = color_from_flavor (data%flv_in(i), 1))
-             call it_hel%init (pol%state)
+             call it_hel%init (pol)
              do while (it_hel%is_valid ())
                 qn_hel = it_hel%get_quantum_numbers ()
-                qn = qn_hel(1) .merge. qn_fc(1)
+                qn = qn_hel .merge. qn_fc(1)
                 qn_rad = qn
                 call qn_rad%tag_radiated ()
                 call sf_int%add_state ([qn, qn_rad, qn_z])
                 call it_hel%advance ()
              end do
-             call polarization_final (pol)
+             !  call pol%final ()
           end do
        case (24)    
           call sf_int%base_init (mask, [data%mass**2], [data%m_out**2], &
@@ -418,39 +418,32 @@ contains
                    qn_w = qn_wm
                 end if
              end if
-             call polarization_init_generic (pol, data%flv_in(i))
+             call pol%init_generic (data%flv_in(i))
              call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
                   col = color_from_flavor (data%flv_in(i), 1))
              call qn_fc_fin(1)%init ( &
                   flv = data%flv_out(i), &
                   col = color_from_flavor (data%flv_out(i), 1))
-             call it_hel%init (pol%state)
+             call it_hel%init (pol)
              do while (it_hel%is_valid ())
                 qn_hel = it_hel%get_quantum_numbers ()
-                qn = qn_hel(1) .merge. qn_fc(1)
-                qn_rad = qn_hel(1) .merge. qn_fc_fin(1)
+                qn = qn_hel .merge. qn_fc(1)
+                qn_rad = qn_hel .merge. qn_fc_fin(1)
                 call qn_rad%tag_radiated ()
                 call sf_int%add_state ([qn, qn_rad, qn_w])
                 call it_hel%advance ()
              end do
-             call polarization_final (pol)    
+             ! call pol%final ()    
           end do
        case default
           call msg_fatal ("EWA initialization failed: wrong particle type.")
        end select
        call sf_int%freeze ()
-       if (data%keep_momentum) then
-          if (data%keep_energy) then
-             call msg_fatal ("EWA: momentum and energy" // &
-                  "cannot be simultaneously conserved.")
-          else          
-             sf_int%on_shell_mode = KEEP_MOMENTUM
-          end if
+       if (data%keep_energy) then
+          sf_int%on_shell_mode = KEEP_ENERGY
        else 
-          if (data%keep_energy) then
-             sf_int%on_shell_mode = KEEP_ENERGY
-          end if
+          sf_int%on_shell_mode = KEEP_MOMENTUM
        end if
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
@@ -459,7 +452,7 @@ contains
   end subroutine ewa_init
     
   subroutine ewa_setup_constants (sf_int)
-    class(ewa_t), intent(inout) :: sf_int
+    class(ewa_t), intent(inout), target :: sf_int
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     real(default) :: q, t3
@@ -516,7 +509,7 @@ contains
     real(default) :: xb1, e_1
     real(default) :: x0, x1, lx0, lx1, lx
     e_1 = energy (sf_int%get_momentum (1))
-    if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
+    if (sf_int%data%recoil) then
        select case (sf_int%data%id)
        case (23)
           x0 = max (sf_int%data%x_min, sf_int%data%mz / e_1)
@@ -574,7 +567,7 @@ contains
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     e_1 = energy (sf_int%get_momentum (1))    
-    if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
+    if (sf_int%data%recoil) then
        select case (sf_int%data%id)
        case (23)
           x0 = max (sf_int%data%x_min, sf_int%data%mz / e_1)

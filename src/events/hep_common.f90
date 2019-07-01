@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,7 +41,7 @@ module hep_common
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use physics_defs, only: HADRON_REMNANT
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -108,7 +108,7 @@ module hep_common
   double precision, public :: SCALUP
   double precision, public :: AQEDUP
   double precision, public :: AQCDUP
-  integer, dimension(MAXNUP) :: IDUP
+  integer, dimension(MAXNUP), public :: IDUP
   integer, dimension(MAXNUP), public :: ISTUP
   integer, dimension(2,MAXNUP), public :: MOTHUP
   integer, dimension(2,MAXNUP), public :: ICOLUP
@@ -129,17 +129,17 @@ module hep_common
 
   integer :: NEVHEP
 
-  integer :: NHEP
+  integer, public :: NHEP
 
-  integer, dimension(NMXHEP) :: ISTHEP
+  integer, dimension(NMXHEP), public :: ISTHEP
 
-  integer, dimension(NMXHEP) :: IDHEP
+  integer, dimension(NMXHEP), public :: IDHEP
 
-  integer, dimension(2, NMXHEP) :: JMOHEP
+  integer, dimension(2, NMXHEP), public :: JMOHEP
 
-  integer, dimension(2, NMXHEP) :: JDAHEP
+  integer, dimension(2, NMXHEP), public :: JDAHEP
 
-  double precision, dimension(5, NMXHEP) :: PHEP
+  double precision, dimension(5, NMXHEP), public :: PHEP
   
   double precision, dimension(4, NMXHEP) :: VHEP
   
@@ -181,7 +181,7 @@ module hep_common
        eventweightlh, alphaqedlh, alphaqcdlh, scalelh, &
        spinlh, icolorflowlh, idruplh
   save /HEPEV4/
-       
+
 
 contains
   
@@ -403,7 +403,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")      
-    call tag_gen_v%write (var_str ("2.2.8"), unit)
+    call tag_gen_v%write (var_str ("2.3.0"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -666,7 +666,7 @@ contains
     type(vector4_t), intent(in) :: p_mother
     type(vector3_t) :: s3, p3
     type(vector4_t) :: s4
-    s3 = vector3_moving (polarization_get_axis (pol))
+    s3 = vector3_moving (pol%get_axis ())
     p3 = space_part (p)
     s4 = rotation_to_2nd (3, p3) * vector4_moving (0._default, s3)
     SPINUP(i) = enclosed_angle_ct (s4, p_mother)
@@ -812,23 +812,11 @@ contains
        end if
        if (present (pol) .and. &
             pol_status == PRT_GENERIC_POLARIZATION) then
-          if (polarization_is_polarized (pol)) then
-             call polarization_to_angles (pol, r, theta, phi)
-             spinlh(:,i) = [r, theta, phi]
-          end if
+          if (pol%is_polarized ()) &
+             spinlh(:,i) = pol%get_axis ()
        else
-          if (pol_status == PRT_DEFINITE_HELICITY) then
-             select case (hel)
-             case (1:)
-                spinlh(:,i) = [one, zero, zero]
-             case (:-1)
-                spinlh(:,i) = [one, PI, zero]
-             case (0)
-                spinlh(:,i) = [one, PI/2, zero]
-             end select
-          else
-             spinlh(:,i) = [zero, zero, zero]
-          end if
+          spinlh(:,i) = zero
+          spinlh(3,i) = hel
        end if
     end if
   end subroutine hepevt_set_particle
@@ -1045,16 +1033,17 @@ contains
   end subroutine hepeup_read_lhef
 
   subroutine hepeup_from_particle_set (pset_in, &
-     keep_beams, keep_remnants)
+     keep_beams, keep_remnants, tauola_convention)
     type(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), target :: pset
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: tauola_convention
     integer :: i, n_parents, status, n_tot
     integer, dimension(1) :: i_mother
-    logical :: activate_remnants
-    activate_remnants = .true.
-    if (present (keep_remnants))  activate_remnants = keep_remnants
+    logical :: kr, tc
+    kr = .true.;  if (present (keep_remnants))  kr = keep_remnants
+    tc = .false.;  if (present (tauola_convention))  tc = tauola_convention
     call pset_in%filter_particles (pset, real_parents = .true. , &
        keep_beams = keep_beams, keep_virtuals = .false.)
     n_tot = pset%get_n_tot ()
@@ -1062,9 +1051,8 @@ contains
     do i = 1, n_tot
        associate (prt => pset%prt(i))
          status = prt%get_status ()
-         if (activate_remnants &
-              .and. status == PRT_BEAM_REMNANT &
-              .and. prt%get_n_children () == 0) &
+         if (kr .and. status == PRT_BEAM_REMNANT &
+                .and. prt%get_n_children () == 0) &
               status = PRT_OUTGOING
          call hepeup_set_particle (i, &
               prt%get_pdg (), &
@@ -1074,14 +1062,23 @@ contains
               prt%get_momentum (), &
               prt%get_p2 ())
          n_parents = prt%get_n_parents ()
-         if (n_parents == 1) then
-            i_mother = prt%get_parents ()
+         call hepeup_set_particle_lifetime (i, &
+              prt%get_lifetime ())
+         if (.not. tc) then
+            if (n_parents == 1) then
+               i_mother = prt%get_parents ()
+               select case (prt%get_polarization_status ())
+               case (PRT_GENERIC_POLARIZATION)
+                  call hepeup_set_particle_spin (i, &
+                       prt%get_momentum (), &
+                       prt%get_polarization (), &
+                       pset%prt(i_mother(1))%get_momentum ())
+               end select
+            end if
+         else
             select case (prt%get_polarization_status ())
-            case (PRT_GENERIC_POLARIZATION)
-               call hepeup_set_particle_spin (i, &
-                    prt%get_momentum (), &
-                    prt%get_polarization (), &
-                    pset%prt(i_mother(1))%get_momentum ())
+            case (PRT_DEFINITE_HELICITY)
+              SPINUP(i) = prt%get_helicity()
             end select
          end if
        end associate
@@ -1205,7 +1202,7 @@ contains
                  prt%get_vertex (), &
                  prt%get_color (), &
                  prt%get_polarization_status (), &
-                 fill_hepev4 = fill_hepev4)            
+                 fill_hepev4 = fill_hepev4)
          end select
        end associate
     end do

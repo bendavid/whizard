@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -105,8 +105,8 @@ contains
 
     allocate (process)
     run_id = "run1"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
     call stack%push (process)
     
     allocate (model)
@@ -114,8 +114,8 @@ contains
 
     allocate (process)
     run_id = "run2"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
     call stack%push (process)
     
     call stack%write (u)
@@ -220,8 +220,8 @@ contains
 
     allocate (process)
     run_id = "run1"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
     call stack1%push (process)
     
     write (u, "(A)")  "* Initialize second process"
@@ -237,8 +237,8 @@ contains
 
     allocate (process)
     run_id = "run2"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model) 
     call stack2%push (process)
     
     write (u, "(A)")  "* Show linked stacks"

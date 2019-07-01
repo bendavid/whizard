@@ -1,6 +1,6 @@
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -76,7 +76,7 @@ program test_omega95_bispinors
   vv%a(2) = (0.0_default, 2.0_default)
   vv%a(3) = (1.0_default, 0.0_default)
   vv%a(4) = (3.0_default, 0.0_default)
-  vv = pr_psi(p, m, w, vv)
+  vv = pr_psi(p, m, w, .false., vv)
   print *, "*** Checking the equations of motion ***:"
   call expect (abs(f_vf(c_one,vp,u(m,p,+1))-m*u(m,p,+1)), 0, "|[p-m]u(+)|=0", passed)
   call expect (abs(f_vf(c_one,vp,u(m,p,-1))-m*u(m,p,-1)), 0, "|[p-m]u(-)|=0", passed)

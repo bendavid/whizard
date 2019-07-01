@@ -1,6 +1,6 @@
 ! $Id: parameters.SM_ac.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -67,8 +67,9 @@ module parameters_sm_ac
   public :: import_from_whizard, model_update_alpha_s
 
 contains
-  subroutine import_from_whizard (par_array)
+  subroutine import_from_whizard (par_array, scheme)
     real(default), dimension(52), intent(in) :: par_array
+    integer, intent(in) :: scheme
     type :: parameter_set
        real(default) :: gf
        real(default) :: mZ

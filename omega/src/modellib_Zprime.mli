@@ -1,10 +1,11 @@
-(* $Id: modellib_SM.mli 6264 2014-11-14 15:40:49Z fbach $
+(* $Id: modellib_Zprime.mli 6264 2014-11-14 15:40:49Z fbach $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it

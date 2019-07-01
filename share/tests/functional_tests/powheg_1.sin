@@ -37,10 +37,6 @@ scale = eval Pt [sort by -Pt [colored]]
 
 process powheg_1_p1 = E1, e1 => t, T { nlo_calculation = "Full" }
 
-# Default parameters for FKS mapping
-fks_dij_exp1 = 1.0
-fks_mapping_type = 1
-
 sqrts = 500 GeV
 
 iterations = 5:50000:"gw", 5:50000:""

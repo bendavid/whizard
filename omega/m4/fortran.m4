@@ -207,14 +207,7 @@ AC_SUBST([OBJ_EXT])
 AC_DEFUN([WO_FC_LIBRARY_LDFLAGS],
 [dnl
 AC_REQUIRE([AC_PROG_FC])
-case "$FC" in
-nagfor*)
-  WO_NAGFOR_LIBRARY_LDFLAGS()
-  ;;
-*)
   AC_FC_LIBRARY_LDFLAGS
-  ;;
-esac
 ])
 
 ### Check the NAG Fortran compiler
@@ -646,8 +639,8 @@ NAG)
   ;;
 Intel)
   wo_cv_fc_openmp="yes"
-  wo_cv_fcflags_openmp="-openmp"
-  wo_cv_fc_openmp_header="use :: omp_lib"
+  wo_cv_fcflags_openmp="-qopenmp"
+  wo_cv_fc_openmp_header="use :: omp_lib !NODEP!"
   ;;
 PGI)
   wo_cv_fc_openmp="yes"

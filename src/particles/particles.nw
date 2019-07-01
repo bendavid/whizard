@@ -12,23 +12,2131 @@ quantum number set.  This involves tracing over all other particles,
 as far as polarization is concerned.  Thus, a particle has definite
 flavor, color, and a single-particle density matrix for polarization.
 \begin{description}
+\item[su\_algebra]
+  We make use of $su(N)$ generators as the basis for representing
+  polarization matrices.  This module defines the basis and provides
+  the necessary transformation routines.
+\item[bloch\_vectors]
+  This defines polarization objects in Bloch representation.  The
+  object describes the spin density matrix of a particle,
+  currently restricted to spin $0\ldots 2$.
 \item[polarizations]
-  The polarization object is based on a [[state_matrix_t]] object.  It
-  describes the spin density matrix of a particle.
+  This extends the basic polarization object such that it supports
+  properties of physical particles and appropriate constructors.
 \item[particles]
   Particle objects and particle lists, as the base of event records.
 \end{description}
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Polarization}
+\section{$su(N)$ Algebra}
+We need a specific choice of basis for a well-defined component
+representation.  The matrix elements of $T^a$ are
+ordered as $m=\ell,\ell-1,\ldots -\ell$, i.e., from highest down to
+lowest weight, for both row and column.  
+
+We list first the generators of the $su(2)$ subalgebras which leave
+$|m|$ invariant ($|m|\neq 0$):
+\begin{equation}
+  T^{b+1,b+2,b+3} \equiv \sigma^{1,2,3}
+\end{equation}
+acting on the respective subspace $|m|=\ell,\ell-1,\ldots$ for
+$b=0,1,\ldots$.  This defines generators $T^a$ for $a=1,\ldots 3N/2$
+($\ldots 3(N-1)/2$) for $N$ even (odd), respectively.
+
+The following generators successively extend this to $su(4)$, $su(6)$,
+\ldots until $su(N)$ by adding first the missing off-diagonal and then
+diagonal generators.  The phase conventions are analogous.
+
+(It should be possible to code these conventions for generic spin, but
+in the current implementation we restrict ourselves to $s\leq 2$, i.e.,
+$N\leq 5$.)
+<<[[su_algebra.f90]]>>=
+<<File header>>
+
+module su_algebra
+
+<<Use kinds>>
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+
+<<Standard module head>>
+
+<<su algebra: public>>
+
+contains
+
+<<su algebra: procedures>>
+
+end module su_algebra
+@ %def su_algebra
+@
+\subsection{$su(N)$ fundamental representation}
+The dimension of the basis for a given spin type.  consecutively, starting at
+[[SCALAR=1]].
+<<su algebra: public>>=
+  public :: algebra_dimension
+<<su algebra: procedures>>=
+  function algebra_dimension (s) result (n)
+    integer :: n
+    integer, intent(in) :: s
+    n = fundamental_dimension (s) ** 2 - 1
+  end function algebra_dimension
+    
+@ %def algebra_dimension
+@ The dimension of the fundamental (defining) representation that we
+use.  This implementation assumes that the spin type is numerically
+equal to the fundamental dimension.
+<<su algebra: public>>=
+  public :: fundamental_dimension
+<<su algebra: procedures>>=
+  function fundamental_dimension (s) result (d)
+    integer :: d
+    integer, intent(in) :: s
+    d = s
+  end function fundamental_dimension
+  
+@ %def fundamental_dimension
+@
+\subsection{Mapping between helicity and matrix index}
+Return the helicity that corresponds to a particular entry in the
+polarization matrix representation.  Helicities are counted downwards,
+in integers, and zero helicity is included (omitted) for odd (even)
+spin, respectively.
+<<su algebra: public>>=
+  public :: helicity_value
+<<su algebra: procedures>>=
+  function helicity_value (s, i) result (h)
+    integer :: h
+    integer, intent(in) :: s, i
+    integer, dimension(1), parameter :: hh1 = [0]
+    integer, dimension(2), parameter :: hh2 = [1, -1]
+    integer, dimension(3), parameter :: hh3 = [1,  0, -1]
+    integer, dimension(4), parameter :: hh4 = [2,  1, -1, -2]
+    integer, dimension(5), parameter :: hh5 = [2,  1,  0, -1, -2]
+    h = 0
+    select case (s)
+    case (SCALAR)
+       select case (i)
+       case (1:1);  h = hh1(i)
+       end select
+    case (SPINOR)
+       select case (i)
+       case (1:2);  h = hh2(i)
+       end select
+    case (VECTOR)
+       select case (i)
+       case (1:3);  h = hh3(i)
+       end select
+    case (VECTORSPINOR)
+       select case (i)
+       case (1:4);  h = hh4(i)
+       end select
+    case (TENSOR)
+       select case (i)
+       case (1:5);  h = hh5(i)
+       end select
+    end select
+  end function helicity_value
+  
+@ %def helicity_value
+@ Inverse: return the index that corresponds to a certain
+helicity value in the chosen representation.
+<<su algebra: public>>=
+  public :: helicity_index
+<<su algebra: procedures>>=
+  function helicity_index (s, h) result (i)
+    integer, intent(in) :: s, h
+    integer :: i
+    integer, dimension(0:0), parameter :: hi1 = [1]
+    integer, dimension(-1:1), parameter :: hi2 = [2, 0, 1]
+    integer, dimension(-1:1), parameter :: hi3 = [3, 2, 1]
+    integer, dimension(-2:2), parameter :: hi4 = [4, 3, 0, 2, 1]
+    integer, dimension(-2:2), parameter :: hi5 = [5, 4, 3, 2, 1]
+    select case (s)
+    case (SCALAR)
+       i = hi1(h)
+    case (SPINOR)
+       i = hi2(h)
+    case (VECTOR)
+       i = hi3(h)
+    case (VECTORSPINOR)
+       i = hi4(h)
+    case (TENSOR)
+       i = hi5(h)
+    end select
+  end function helicity_index
+  
+@ %def helicity_index
+@
+\subsection{Generator Basis: Cartan Generators}
+For each supported spin type, we return specific properties of the
+set of generators via inquiry functions.  This is equivalent to using
+explicit representations of the generators.
+
+For easy access, the properties are hard-coded and selected via case
+expressions.
+
+Return true if the generator \#[[i]] is in the Cartan subalgebra,
+i.e., a diagonal matrix for spin type [[s]].
+<<su algebra: public>>=
+  public :: is_cartan_generator
+<<su algebra: procedures>>=
+  elemental function is_cartan_generator (s, i) result (cartan)
+    logical :: cartan
+    integer, intent(in) :: s, i
+    select case (s)
+    case (SCALAR)
+    case (SPINOR)
+       select case (i)
+       case (3);  cartan = .true.
+       case default
+          cartan = .false.
+       end select
+    case (VECTOR)
+       select case (i)
+       case (3,8);  cartan = .true.
+       case default
+          cartan = .false.
+       end select
+    case (VECTORSPINOR)
+       select case (i)
+       case (3,6,15);  cartan = .true.
+       case default
+          cartan = .false.
+       end select
+    case (TENSOR)
+       select case (i)
+       case (3,6,15,24);  cartan = .true.
+       case default
+          cartan = .false.
+       end select
+    case default
+       cartan = .false.
+    end select
+  end function is_cartan_generator
+  
+@ %def is_cartan_generator
+@ Return the index of Cartan generator \#[[k]] in the chosen
+representation.  This has to conform to [[cartan]] above.
+<<su algebra: public>>=
+  public :: cartan_index
+<<su algebra: procedures>>=
+  elemental function cartan_index (s, k) result (ci)
+    integer :: ci
+    integer, intent(in) :: s, k
+    integer, dimension(1), parameter :: ci2 = [3]
+    integer, dimension(2), parameter :: ci3 = [3,8]
+    integer, dimension(3), parameter :: ci4 = [3,6,15]
+    integer, dimension(4), parameter :: ci5 = [3,6,15,24]
+    select case (s)
+    case (SPINOR)
+       ci = ci2(k)
+    case (VECTOR)
+       ci = ci3(k)
+    case (VECTORSPINOR)
+       ci = ci4(k)
+    case (TENSOR)
+       ci = ci5(k)
+    case default
+       ci = 0
+    end select
+  end function cartan_index
+  
+@ %def cartan_index
+@ The element \#[[k]] of the result vector [[a]] is equal to the
+$(h,h)$ diagonal entry of the generator matrix $T^k$.  That is,
+evaluating this for all allowed values of [[h]], we recover the set of
+Cartan generator matrices.
+<<su algebra: public>>=
+  public :: cartan_element
+<<su algebra: procedures>>=
+  function cartan_element (s, h) result (a)
+    real(default), dimension(:), allocatable :: a
+    integer, intent(in) :: s, h
+    real(default), parameter :: sqrt2 = sqrt (2._default)
+    real(default), parameter :: sqrt3 = sqrt (3._default)
+    real(default), parameter :: sqrt10 = sqrt (10._default)
+    allocate (a (algebra_dimension (s)), source = 0._default)
+    select case (s)
+    case (SCALAR)
+    case (SPINOR)
+       select case (h)
+       case (1)
+          a(3) =  1._default / 2
+       case (-1)
+          a(3) = -1._default / 2
+       end select
+    case (VECTOR)
+       select case (h)
+       case (1)
+          a(3) =  1._default / 2
+          a(8) =  1._default / (2 * sqrt3)
+       case (-1)
+          a(3) = -1._default / 2
+          a(8) =  1._default / (2 * sqrt3)
+       case (0)
+          a(8) = -1._default / sqrt3
+       end select
+    case (VECTORSPINOR)
+       select case (h)
+       case (2)
+          a(3)  =  1._default / 2
+          a(15) =  1._default / (2 * sqrt2)
+       case (-2)
+          a(3)  = -1._default / 2
+          a(15) =  1._default / (2 * sqrt2)
+       case (1)
+          a(6)  =  1._default / 2
+          a(15) = -1._default / (2 * sqrt2)
+       case (-1)
+          a(6)  = -1._default / 2
+          a(15) = -1._default / (2 * sqrt2)
+       end select
+    case (TENSOR)
+       select case (h)
+       case (2)
+          a(3)  =  1._default / 2
+          a(15) =  1._default / (2 * sqrt2)
+          a(24) =  1._default / (2 * sqrt10)
+       case (-2)
+          a(3)  = -1._default / 2
+          a(15) =  1._default / (2 * sqrt2)
+          a(24) =  1._default / (2 * sqrt10)
+       case (1)
+          a(6)  =  1._default / 2
+          a(15) = -1._default / (2 * sqrt2)
+          a(24) =  1._default / (2 * sqrt10)
+       case (-1)
+          a(6)  = -1._default / 2
+          a(15) = -1._default / (2 * sqrt2)
+          a(24) =  1._default / (2 * sqrt10)
+       case (0)
+          a(24) = -4._default / (2 * sqrt10)
+       end select
+    end select
+  end function cartan_element
+       
+@ %def cartan_element
+@ Given an array of diagonal matrix elements [[rd]] of a generator,
+compute the array [[a]] of basis coefficients.  The array must be
+ordered as defined by [[helicity_value]], i.e., highest weight first.
+The calculation is organized such that the trace of the generator,
+i.e., the sum of [[rd]] values, drops out.  The result array [[a]] has
+coefficients for all basis generators, but only Cartan generators can
+get a nonzero coefficient.
+<<su algebra: public>>=
+  public :: cartan_coeff
+<<su algebra: procedures>>=
+  function cartan_coeff (s, rd) result (a)
+    real(default), dimension(:), allocatable :: a
+    integer, intent(in) :: s
+    real(default), dimension(:), intent(in) :: rd
+    real(default), parameter :: sqrt2 = sqrt (2._default)
+    real(default), parameter :: sqrt3 = sqrt (3._default)
+    real(default), parameter :: sqrt10 = sqrt (10._default)
+    integer :: n
+    n = algebra_dimension (s)
+    allocate (a (n), source = 0._default)
+    select case (s)
+    case (SPINOR)
+       a(3) = rd(1) - rd(2)
+    case (VECTOR)
+       a(3) = rd(1) - rd(3)
+       a(8) = (rd(1) - 2 * rd(2) + rd(3)) / sqrt3
+    case (VECTORSPINOR)
+       a(3) = rd(1) - rd(4)
+       a(6) = rd(2) - rd(3)
+       a(15) = (rd(1) - rd(2) - rd(3) + rd(4)) / sqrt2
+    case (TENSOR)
+       a(3) = rd(1) - rd(5)
+       a(6) = rd(2) - rd(4)
+       a(15) = (rd(1) - rd(2) - rd(4) + rd(5)) / sqrt2
+       a(24) = (rd(1) + rd(2) - 4 * rd(3) + rd(4) + rd(5)) / sqrt10
+    end select
+  end function cartan_coeff
+          
+@ %def cartan_coeff
+@
+\subsection{Roots (Off-Diagonal Generators)}
+Return the appropriate generator index for a given off-diagonal helicity
+combination.  We require $h_1>h_2$.  We return the index of the
+appropriate real-valued generator if [[r]] is true, else the
+complex-valued one.
+
+This is separate from the [[cartan_coeff]] function above.  The reason
+is that the off-diagonal generators have only a single nonzero matrix
+element, so there is a one-to-one correspondence of helicity and index.
+<<su algebra: public>>=
+  public :: root_index
+<<su algebra: procedures>>=
+  function root_index (s, h1, h2, r) result (ai)
+    integer :: ai
+    integer, intent(in) :: s, h1, h2
+    logical :: r
+    ai = 0
+    select case (s)
+    case (SCALAR)
+    case (SPINOR)
+       select case (h1)
+       case (1)
+          select case (h2)
+          case (-1);  ai = 1
+          end select
+       end select
+    case (VECTOR)
+       select case (h1)
+       case (1)
+          select case (h2)
+          case (-1);  ai = 1
+          case (0);   ai = 4
+          end select
+       case (0)
+          select case (h2)
+          case (-1);  ai = 6
+          end select
+       end select
+    case (VECTORSPINOR)
+       select case (h1)
+       case (2)
+          select case (h2)
+          case (-2);  ai = 1
+          case (1);   ai = 7
+          case (-1);  ai = 11
+          end select
+       case (1)
+          select case (h2)
+          case (-1);  ai = 4
+          case (-2);  ai = 13
+          end select
+       case (-1)
+          select case (h2)
+          case (-2);  ai = 9
+          end select
+       end select
+    case (TENSOR)
+       select case (h1)
+       case (2)
+          select case (h2)
+          case (-2);  ai = 1
+          case (1);   ai = 7
+          case (-1);  ai = 11
+          case (0);   ai = 16
+          end select
+       case (1)
+          select case (h2)
+          case (-1);  ai = 4
+          case (-2);  ai = 13
+          case (0);   ai = 20
+          end select
+       case (-1)
+          select case (h2)
+          case (-2);  ai = 9
+          end select
+       case (0)
+          select case (h2)
+          case (-2);  ai = 18
+          case (-1);  ai = 22
+          end select
+       end select
+    end select
+    if (ai /= 0 .and. .not. r)  ai = ai + 1
+  end function root_index
+
+@ %def root_index
+@ Inverse: return the helicity values ($h_2>h_1$) for an off-diagonal
+generator.  The flag [[r]] tells whether this is a real or diagonal
+generator.   The others are Cartan generators.
+<<su algebra: public>>=
+  public :: root_helicity
+<<su algebra: procedures>>=
+  subroutine root_helicity (s, i, h1, h2, r)
+    integer, intent(in) :: s, i
+    integer, intent(out) :: h1, h2
+    logical, intent(out) :: r
+    h1 = 0
+    h2 = 0
+    r  = .false.
+    select case (s)
+    case (SCALAR)
+    case (SPINOR)
+       select case (i)
+       case ( 1, 2);  h1 =  1;  h2 = -1;  r = i == 1
+       end select
+    case (VECTOR)
+       select case (i)
+       case ( 1, 2);  h1 =  1;  h2 = -1;  r = i == 1
+       case ( 4, 5);  h1 =  1;  h2 =  0;  r = i == 4
+       case ( 6, 7);  h1 =  0;  h2 = -1;  r = i == 6
+       end select
+    case (VECTORSPINOR)
+       select case (i)
+       case ( 1, 2);  h1 =  2;  h2 = -2;  r = i == 1
+       case ( 4, 5);  h1 =  1;  h2 = -1;  r = i == 4
+       case ( 7, 8);  h1 =  2;  h2 =  1;  r = i == 7
+       case ( 9,10);  h1 = -1;  h2 = -2;  r = i == 9
+       case (11,12);  h1 =  2;  h2 = -1;  r = i ==11
+       case (13,14);  h1 =  1;  h2 = -2;  r = i ==13
+       end select
+    case (TENSOR)
+       select case (i)
+       case ( 1, 2);  h1 =  2;  h2 = -2;  r = i == 1
+       case ( 4, 5);  h1 =  1;  h2 = -1;  r = i == 4
+       case ( 7, 8);  h1 =  2;  h2 =  1;  r = i == 7
+       case ( 9,10);  h1 = -1;  h2 = -2;  r = i == 9
+       case (11,12);  h1 =  2;  h2 = -1;  r = i ==11
+       case (13,14);  h1 =  1;  h2 = -2;  r = i ==13
+       case (16,17);  h1 =  2;  h2 =  0;  r = i ==16
+       case (18,19);  h1 =  0;  h2 = -2;  r = i ==18
+       case (20,21);  h1 =  1;  h2 =  0;  r = i ==20
+       case (22,23);  h1 =  0;  h2 = -1;  r = i ==22
+       end select
+    end select
+  end subroutine root_helicity
+  
+@ %def root_helicity
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[su_algebra_ut.f90]]>>=
+<<File header>>
+
+module su_algebra_ut
+  use unit_tests
+  use su_algebra_uti
+  
+<<Standard module head>>
+
+<<su algebra: public test>>
+
+contains
+  
+<<su algebra: test driver>>
+
+end module su_algebra_ut
+@ %def su_algebra_ut
+@
+<<[[su_algebra_uti.f90]]>>=
+<<File header>>
+
+module su_algebra_uti
+
+<<Use kinds>>
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+  use su_algebra
+
+<<Standard module head>>
+
+<<su algebra: test declarations>>
+
+contains
+
+<<su algebra: tests>>
+
+end module su_algebra_uti
+@ %def su_algebra_ut
+@ API: driver for the unit tests below.
+<<su algebra: public test>>=
+  public :: su_algebra_test
+<<su algebra: test driver>>=
+  subroutine su_algebra_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<su algebra: execute tests>>
+  end subroutine su_algebra_test
+
+@  %def su_algebra_test
+@
+\subsubsection{Generator Ordering}
+Show the position of Cartan generators in the sequence of basis generators.
+<<su algebra: execute tests>>=
+  call test (su_algebra_1, "su_algebra_1", &
+       "generator ordering", &
+       u, results)
+<<su algebra: test declarations>>= 
+  public :: su_algebra_1
+<<su algebra: tests>>= 
+  subroutine su_algebra_1 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: su_algebra_1"
+    write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* su(N) generators: &
+         &list and mark Cartan subalgebra"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call cartan_check (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call cartan_check (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call cartan_check (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call cartan_check (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call cartan_check (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: su_algebra_1"    
+      
+  contains
+    
+    subroutine cartan_check (s)
+      integer, intent(in) :: s
+      integer :: i
+      write (u, *)
+      do i = 1, algebra_dimension (s)
+         write (u, "(1x,L1)", advance="no")  is_cartan_generator (s, i)
+      end do
+      write (u, *)
+      
+    end subroutine cartan_check
+
+  end subroutine su_algebra_1
+
+@ %def su_algebra_1
+@
+\subsubsection{Cartan Generator Basis}
+Show the explicit matrix representation for all Cartan generators and
+check their traces and Killing products.
+
+Also test helicity index mappings.
+<<su algebra: execute tests>>=
+  call test (su_algebra_2, "su_algebra_2", &
+       "Cartan generator representation", &
+       u, results)
+<<su algebra: test declarations>>= 
+  public :: su_algebra_2
+<<su algebra: tests>>= 
+  subroutine su_algebra_2 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: su_algebra_2"
+    write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* diagonal su(N) generators: &
+         &show explicit representation"
+    write (u, "(A)")  "* and check trace and Killing form"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call cartan_show (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call cartan_show (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call cartan_show (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call cartan_show (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: su_algebra_2"    
+      
+  contains
+    
+    subroutine cartan_show (s)
+      integer, intent(in) :: s
+      real(default), dimension(:,:), allocatable :: rd
+      integer, dimension(:), allocatable :: ci
+      integer :: n, d, h, i, j, k, l
+
+      n = algebra_dimension (s)
+      d = fundamental_dimension (s)
+      
+      write (u, *)
+      write (u, "(A2,5X)", advance="no")  "h:"
+      do i = 1, d
+         j = helicity_index (s, helicity_value (s, i))
+         write (u, "(1x,I2,5X)", advance="no")  helicity_value (s, j)
+      end do
+      write (u, "(8X)", advance="no")
+      write (u, "(1X,A)")  "tr"
+      
+      allocate (rd (n,d), source = 0._default)
+      do i = 1, d
+         h = helicity_value (s, i)
+         rd(:,i) = cartan_element (s, h)
+      end do
+
+      allocate (ci (d-1), source = 0)
+      do k = 1, d-1
+         ci(k) = cartan_index (s, k)
+      end do
+
+      write (u, *)
+      do k = 1, d-1
+         write (u, "('T',I2,':',1X)", advance="no")  ci(k)
+         do i = 1, d
+            write (u, 1, advance="no")  rd(ci(k),i)
+         end do
+         write (u, "(8X)", advance="no")
+         write (u, 1)  sum (rd(ci(k),:))
+      end do
+      
+      write (u, *)
+      write (u, "(6X)", advance="no")
+      do k = 1, d-1
+         write (u, "(2X,'T',I2,3X)", advance="no")  ci(k)
+      end do 
+      write (u, *)
+      
+      do k = 1, d-1
+         write (u, "('T',I2,2X)", advance="no")  ci(k)
+         do l = 1, d-1
+            write (u, 1, advance="no")  dot_product (rd(ci(k),:), rd(ci(l),:))
+         end do
+         write (u, *)
+      end do
+
+1     format (1x,F7.4)
+      
+    end subroutine cartan_show
+
+  end subroutine su_algebra_2
+
+@ %def su_algebra_2
+@
+\subsubsection{Bloch Representation: Cartan Generators}
+Transform from Bloch vectors to matrix and back, considering Cartan
+generators only.
+<<su algebra: execute tests>>=
+  call test (su_algebra_3, "su_algebra_3", &
+       "Cartan generator mapping", &
+       u, results)
+<<su algebra: test declarations>>= 
+  public :: su_algebra_3
+<<su algebra: tests>>= 
+  subroutine su_algebra_3 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: su_algebra_3"
+    write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* diagonal su(N) generators: &
+         &transform to matrix and back"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call cartan_expand (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call cartan_expand (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call cartan_expand (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call cartan_expand (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: su_algebra_3"    
+      
+  contains
+    
+    subroutine cartan_expand (s)
+      integer, intent(in) :: s
+      real(default), dimension(:,:), allocatable :: rd
+      integer, dimension(:), allocatable :: ci
+      real(default), dimension(:), allocatable :: a
+      logical, dimension(:), allocatable :: mask
+      integer :: n, d, h, i, k, l
+
+      n = algebra_dimension (s)
+      d = fundamental_dimension (s)
+      
+      allocate (rd (n,d), source = 0._default)
+      do i = 1, d
+         h = helicity_value (s, i)
+         rd(:,i) = cartan_element (s, h)
+      end do
+
+      allocate (ci (d-1), source = 0)
+      do k = 1, d-1
+         ci(k) = cartan_index (s, k)
+      end do
+
+      allocate (a (n))
+
+      write (u, *)
+      do k = 1, d-1
+         a(:) = cartan_coeff (s, rd(ci(k),:))
+         write (u, "('T',I2,':',1X)", advance="no")  ci(k)
+         do i = 1, n
+            if (is_cartan_generator (s, i)) then
+               write (u, 1, advance="no")  a(i)
+            else if (a(i) /= 0) then
+               ! this should not happen (nonzero non-Cartan entry)
+               write (u, "(1X,':',I2,':',3X)", advance="no")  i
+            end if
+         end do
+         write (u, *)
+      end do
+
+1     format (1X,F7.4)
+      
+    end subroutine cartan_expand
+
+  end subroutine su_algebra_3
+
+@ %def su_algebra_3
+@
+\subsubsection{Bloch Representation: Roots}
+List the mapping between helicity transitions and (real) off-diagonal
+generators.
+<<su algebra: execute tests>>=
+  call test (su_algebra_4, "su_algebra_4", &
+       "Root-helicity mapping", &
+       u, results)
+<<su algebra: test declarations>>= 
+  public :: su_algebra_4
+<<su algebra: tests>>= 
+  subroutine su_algebra_4 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: su_algebra_4"
+    write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* off-diagonal su(N) generators: &
+         &mapping from/to helicity pair"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call root_expand (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call root_expand (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call root_expand (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call root_expand (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: su_algebra_4"    
+      
+  contains
+    
+    subroutine root_expand (s)
+      integer, intent(in) :: s
+      integer :: n, d, i, j, h1, h2
+      logical :: r
+
+      n = algebra_dimension (s)
+      
+      write (u, *)
+      do i = 1, n
+         if (is_cartan_generator (s, i))  cycle
+         call root_helicity (s, i, h1, h2, r)
+         j = root_index (s, h1, h2, r)
+         write (u, "('T',I2,':')", advance="no")  j
+         write (u, "(2(1x,I2))", advance="no")  h1, h2
+         if (r) then
+            write (u, *)
+         else
+            write (u, "('*')")
+         end if
+      end do
+      
+    end subroutine root_expand
+
+  end subroutine su_algebra_4
+
+@ %def su_algebra_4
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Bloch Representation}
 Particle polarization is determined by a particular quantum state
-which has just helicity information.  For defining polarizations, we
-adopt the phase convention for a spin-1/2 particle that
+which has just helicity information.  Physically, this is the spin
+density matrix $\rho$, where we do not restrict ourselves to pure
+states. 
+
+We adopt the phase convention for a spin-1/2 particle that
 \begin{equation}
   \rho = \tfrac12(1 + \vec\alpha\cdot\vec\sigma)
 \end{equation}
-with the polarization axis $\vec\alpha$.  Using this, we define
+with the polarization axis $\vec\alpha$.  For a particle with
+arbitrary spin $s$, and thus $N=2s+1$ spin states, we extend the above
+definition to generalized Bloch form
+\begin{equation}
+  \rho = \frac1N\left(1 + \sqrt{2N(N-1)}\alpha^aT^a\right)
+\end{equation}
+where the $T^a$ ($a=1,\ldots N^2-1$) are a basis of $su(N)$ algebra
+generators.  These $N\times N$ matrices are hermitean, traceless, and
+orthogonal via
+\begin{equation}
+  \mathop{\rm Tr}T^aT^b = \frac12 \delta^{ab}
+\end{equation}
+In the spin-1/2 case, this reduces to the above (standard Bloch)
+representation since $T^a = \sigma^a/2$, $a=1,2,3$.  For the spin-1
+case, we could use $T^a = \lambda^a/2$ with the Gell-Mann matrices,
+\begin{equation}
+  \rho = \frac13\left(1 + \sqrt{3}\alpha^a\lambda^a\right),
+\end{equation}
+The normalization is chosen that $|alpha|\leq 1$ for allowed density
+matrix, where $|\alpha|=1$ is a necessary, but not sufficient,
+condition for a pure state.
+
+We need a specific choice of basis for a well-defined component
+representation.  The matrix elements of $T^a$ are
+ordered as $m=\ell,\ell-1,\ldots -\ell$, i.e., from highest down to
+lowest weight, for both row and column.  
+
+We list first the generators of the $su(2)$ subalgebras which leave
+$|m|$ invariant ($|m|\neq 0$):
+\begin{equation}
+  T^{b+1,b+2,b+3} \equiv \sigma^{1,2,3}
+\end{equation}
+acting on the respective subspace $|m|=\ell,\ell-1,\ldots$ for
+$b=0,1,\ldots$.  This defines generators $T^a$ for $a=1,\ldots 3N/2$
+($\ldots 3(N-1)/2$) for $N$ even (odd), respectively.
+
+The following generators successively extend this to $su(4)$, $su(6)$,
+\ldots until $su(N)$ by adding first the missing off-diagonal and then
+diagonal generators.  The phase conventions are analogous.
+
+(It should be possible to code these conventions for generic spin, but
+in the current implementation we restrict ourselves to $s\leq 2$, i.e.,
+$N\leq 5$.)
+
+Particle polarization is determined by a particular quantum state
+which has just helicity information.  Physically, this is the spin
+density matrix $\rho$, where we do not restrict ourselves to pure
+states. 
+
+We adopt the phase convention for a spin-1/2 particle that
+\begin{equation}
+  \rho = \tfrac12(1 + \vec\alpha\cdot\vec\sigma)
+\end{equation}
+with the polarization axis $\vec\alpha$.  For a particle with
+arbitrary spin $s$, and thus $N=2s+1$ spin states, we extend the above
+definition to generalized Bloch form
+\begin{equation}
+  \rho = \frac1N\left(1 + \sqrt{2N(N-1)}\alpha^aT^a\right)
+\end{equation}
+where the $T^a$ ($a=1,\ldots N^2-1$) are a basis of $su(N)$ algebra
+generators.  These $N\times N$ matrices are hermitean, traceless, and
+orthogonal via
+\begin{equation}
+  \mathop{\rm Tr}T^aT^b = \frac12 \delta^{ab}
+\end{equation}
+In the spin-1/2 case, this reduces to the above (standard Bloch)
+representation since $T^a = \sigma^a/2$, $a=1,2,3$.  For the spin-1
+case, we could use $T^a = \lambda^a/2$ with the Gell-Mann matrices,
+\begin{equation}
+  \rho = \frac13\left(1 + \sqrt{3}\alpha^a\lambda^a\right),
+\end{equation}
+The normalization is chosen that $|alpha|\leq 1$ for allowed density
+matrix, where $|\alpha|=1$ is a necessary, but not sufficient,
+condition for a pure state.
+<<[[bloch_vectors.f90]]>>=
+<<File header>>
+
+module bloch_vectors
+
+<<Use kinds>>
+  use physics_defs, only: UNKNOWN, SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+  use su_algebra
+
+<<Standard module head>>
+
+<<Bloch vectors: public>>
+
+<<Bloch vectors: types>>
+
+contains
+
+<<Bloch vectors: procedures>>
+
+end module bloch_vectors
+@ %def bloch_vectors
+@
+\subsection{Preliminaries}
+The normalization factor $\sqrt{2N(N-1)}/N$ that enters the Bloch
+representation.
+<<Bloch vectors: procedures>>=
+  function bloch_factor (s) result (f)
+    real(default) :: f
+    integer, intent(in) :: s
+    select case (s)
+    case (SCALAR)
+       f = 0
+    case (SPINOR)
+       f = 1
+    case (VECTOR)
+       f = 2 * sqrt (3._default) / 3
+    case (VECTORSPINOR)
+       f = 2 * sqrt (6._default) / 4
+    case (TENSOR)
+       f = 2 * sqrt (10._default) / 5
+    case default
+       f = 0
+    end select
+  end function bloch_factor
+    
+@ %def bloch_factor
+@ 
+\subsection{The basic polarization type}
+The basic polarization object holds just the entries of the Bloch
+vector as an allocatable array. 
+
+Bloch is active whenever the coefficient array is allocated.
+For convenience, we store the spin type ($2s$) and the multiplicity
+($N$) together with the coefficient array ($\alpha$).  We have to allow for
+the massless case where $s$ is arbitrary $>0$ but $N=2$, and
+furthermore the chiral massless case where $N=1$.  In the latter case,
+the array remains deallocated but the chirality is set to $\pm 1$.
+
+In the Bloch vector implementation, we do not distinguish between
+particle and antiparticle.  If the distinction applies, it must be
+made by the caller when transforming between density matrix and Bloch vector.
+<<Bloch vectors: public>>=
+  public :: bloch_vector_t
+<<Bloch vectors: types>>=
+  type :: bloch_vector_t
+     private
+     integer :: spin_type = UNKNOWN
+     real(default), dimension(:), allocatable :: a
+   contains
+   <<Bloch vectors: bloch vector: TBP>>
+end type bloch_vector_t
+
+@ %def bloch_vector_t
+@ 
+\subsection{Direct Access}
+This basic initializer just sets the spin type, leaving the Bloch vector
+unallocated.  The object therefore does not support nonzero polarization.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: init_unpolarized => bloch_vector_init_unpolarized
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_init_unpolarized (pol, spin_type)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    pol%spin_type = spin_type
+  end subroutine bloch_vector_init_unpolarized
+    
+@ %def bloch_vector_init_unpolarized
+@ The standard initializer allocates the Bloch vector and initializes
+with zeros, so we can define a polarization later.  We make sure that
+this works only for the supported spin type.  Initializing with
+[[UNKNOWN]] spin type resets the Bloch vector to undefined, i.e.,
+unpolarized state.
+<<Bloch vectors: bloch vector: TBP>>=
+  generic :: init => bloch_vector_init
+  procedure, private :: bloch_vector_init
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_init (pol, spin_type)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    pol%spin_type = spin_type
+    select case (spin_type)
+    case (SCALAR,SPINOR,VECTOR,VECTORSPINOR,TENSOR)
+       allocate (pol%a (algebra_dimension (spin_type)), source = 0._default)
+    end select
+  end subroutine bloch_vector_init
+    
+@ %def bloch_vector_init
+@ 
+Fill the Bloch vector from an array, no change of normalization.  No
+initialization and no check, we assume that the shapes do match.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: from_array => bloch_vector_from_array
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_from_array (pol, a)
+    class(bloch_vector_t), intent(inout) :: pol
+    real(default), dimension(:), allocatable, intent(in) :: a
+    pol%a(:) = a
+  end subroutine bloch_vector_from_array
+    
+@ %def bloch_vector_from_array
+@
+Transform to an array of reals, i.e., extract the Bloch vector as-is.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: to_array => bloch_vector_to_array
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_to_array (pol, a)
+    class(bloch_vector_t), intent(in) :: pol
+    real(default), dimension(:), allocatable, intent(out) :: a
+    if (pol%is_defined ())  allocate (a (size (pol%a)), source = pol%a)
+  end subroutine bloch_vector_to_array
+
+@ %def bloch_vector_to_array
+@
+\subsection{Raw I/O}
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: write_raw => bloch_vector_write_raw
+  procedure :: read_raw => bloch_vector_read_raw
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_write_raw (pol, u)
+    class(bloch_vector_t), intent(in) :: pol
+    integer, intent(in) :: u
+    write (u) pol%spin_type
+    write (u) allocated (pol%a)
+    if (allocated (pol%a)) then
+       write (u) pol%a
+    end if
+  end subroutine bloch_vector_write_raw
+
+  subroutine bloch_vector_read_raw (pol, u, iostat)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: u
+    integer, intent(out) :: iostat
+    integer :: s
+    logical :: polarized
+    read (u, iostat=iostat) s
+    read (u, iostat=iostat) polarized
+    if (iostat /= 0)  return
+    if (polarized) then
+       call pol%init (s)
+       read (u, iostat=iostat) pol%a
+    else
+       call pol%init_unpolarized (s)
+    end if
+  end subroutine bloch_vector_read_raw
+
+@ %def bloch_vector_write_raw
+@ %def bloch_vector_read_raw
+@ 
+\subsection{Properties}
+Re-export algebra functions that depend on the spin type.  These
+functions do not depend on the Bloch vector being allocated.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: get_n_states
+  procedure :: get_length
+  procedure :: hel_index => bv_helicity_index
+  procedure :: hel_value => bv_helicity_value
+  procedure :: bloch_factor => bv_factor
+<<Bloch vectors: procedures>>=
+  function get_n_states (pol) result (n)
+    class(bloch_vector_t), intent(in) :: pol
+    integer :: n
+    n = fundamental_dimension (pol%spin_type)
+  end function get_n_states
+    
+  function get_length (pol) result (n)
+    class(bloch_vector_t), intent(in) :: pol
+    integer :: n
+    n = algebra_dimension (pol%spin_type)
+  end function get_length
+
+  function bv_helicity_index (pol, h) result (i)
+    class(bloch_vector_t), intent(in) :: pol
+    integer, intent(in) :: h
+    integer :: i
+    i = helicity_index (pol%spin_type, h)
+  end function bv_helicity_index
+    
+  function bv_helicity_value (pol, i) result (h)
+    class(bloch_vector_t), intent(in) :: pol
+    integer, intent(in) :: i
+    integer :: h
+    h = helicity_value (pol%spin_type, i)
+  end function bv_helicity_value
+    
+  function bv_factor (pol) result (f)
+    class(bloch_vector_t), intent(in) :: pol
+    real(default) :: f
+    f = bloch_factor (pol%spin_type)
+  end function bv_factor
+
+@ %def get_n_states
+@ %def helicity_index
+@ %def helicity_value
+@ If the Bloch vector object is defined, the spin type is anything else but
+[[UNKNOWN]].  This allows us the provide the representation-specific
+functions above.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: is_defined => bloch_vector_is_defined
+<<Bloch vectors: procedures>>=
+  function bloch_vector_is_defined (pol) result (flag)
+    class(bloch_vector_t), intent(in) :: pol
+    logical :: flag
+    flag = pol%spin_type /= UNKNOWN
+  end function bloch_vector_is_defined
+  
+@ %def bloch_vector_is_defined
+@ If the Bloch vector object is (technically) polarized, it is
+defined, and the vector coefficient array has been allocated.
+However, the vector value may be zero.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: is_polarized => bloch_vector_is_polarized
+<<Bloch vectors: procedures>>=
+  function bloch_vector_is_polarized (pol) result (flag)
+    class(bloch_vector_t), intent(in) :: pol
+    logical :: flag
+    flag = allocated (pol%a)
+  end function bloch_vector_is_polarized
+  
+@ %def bloch_vector_is_polarized
+@ Return true if the polarization is diagonal, i.e., all entries in
+the density matrix are on the diagonal.  This is equivalent to
+requiring that only Cartan generator coefficients are nonzero in the
+Bloch vector.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: is_diagonal => bloch_vector_is_diagonal
+<<Bloch vectors: procedures>>=
+  function bloch_vector_is_diagonal (pol) result (diagonal)
+    class(bloch_vector_t), intent(in) :: pol
+    logical :: diagonal
+    integer :: s, i
+    s = pol%spin_type
+    diagonal = .true.
+    if (pol%is_polarized ()) then
+       do i = 1, size (pol%a)
+          if (is_cartan_generator (s, i))  cycle
+          if (pol%a(i) /= 0) then
+             diagonal = .false.
+             return
+          end if
+       end do
+    end if
+  end function bloch_vector_is_diagonal
+
+@ %def bloch_vector_is_diagonal
+@
+Return the Euclidean norm of the Bloch vector.  This is equal to the
+Killing form value of the corresponding algebra generator.  We assume
+that the polarization object has been initialized. 
+
+For a pure state, the norm is unity.  All other allowed states have a
+norm less than unity.  (For $s\geq 1$, this is a necessary but not
+sufficient condition.)
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: get_norm => bloch_vector_get_norm
+<<Bloch vectors: procedures>>=
+  function bloch_vector_get_norm (pol) result (norm)
+    class(bloch_vector_t), intent(in) :: pol
+    real(default) :: norm
+    select case (pol%spin_type)
+    case (SPINOR,VECTOR,VECTORSPINOR,TENSOR)
+       norm = sqrt (dot_product (pol%a, pol%a))
+    case default
+       norm = 1
+    end select
+  end function bloch_vector_get_norm
+       
+@ %def bloch_vector_get_norm
+@
+\subsection{Diagonal density matrix}
+This initializer takes a diagonal density matrix, represented by a
+real-valued array.  We assume that the trace is unity, and that the
+array has the correct shape for the given [[spin_type]].
+
+The [[bloch_factor]] renormalization is necessary such that a pure
+state maps to a Bloch vector with unit norm.
+<<Bloch vectors: bloch vector: TBP>>=
+  generic :: init => bloch_vector_init_diagonal
+  procedure, private :: bloch_vector_init_diagonal
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_init_diagonal (pol, spin_type, rd)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    real(default), dimension(:), intent(in) :: rd
+    call pol%init (spin_type)
+    call pol%set (rd)
+  end subroutine bloch_vector_init_diagonal
+    
+@ %def bloch_vector_init_diagonal
+@ Set a Bloch vector, given a diagonal density matrix as a real array.
+The Bloch vector must be initialized with correct characteristics.
+<<Bloch vectors: bloch vector: TBP>>=
+  generic :: set => bloch_vector_set_diagonal
+  procedure, private :: bloch_vector_set_diagonal
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_set_diagonal (pol, rd)
+    class(bloch_vector_t), intent(inout) :: pol
+    real(default), dimension(:), intent(in) :: rd
+    integer :: s
+    s = pol%spin_type
+    select case (s)
+    case (SCALAR,SPINOR,VECTOR,VECTORSPINOR,TENSOR)
+       pol%a(:) = cartan_coeff (s, rd) / bloch_factor (s)
+    end select
+  end subroutine bloch_vector_set_diagonal
+  
+@ %def bloch_vector_set_diagonal
+@
+@
+\subsection{Massless density matrix}
+This is a specific variant which initializes an equipartition for
+the maximum helicity, corresponding to an unpolarized massless particle.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: init_max_weight => bloch_vector_init_max_weight
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_init_max_weight (pol, spin_type)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    call pol%init (spin_type)
+    select case (spin_type)
+    case (VECTOR)
+       call pol%set ([0.5_default, 0._default, 0.5_default])
+    case (VECTORSPINOR)
+       call pol%set ([0.5_default, 0._default, 0._default, 0.5_default])
+    case (TENSOR)
+       call pol%set ([0.5_default, 0._default, 0._default, 0._default, 0.5_default])
+    end select
+  end subroutine bloch_vector_init_max_weight
+  
+@ %def bloch_vector_init_max_weight
+@ Initialize the maximum-weight submatrix with a three-component Bloch
+vector.  This is not as trivial as it seems because we need the above
+initialization for the generalized Bloch in order to remove the lower
+weights from the density matrix.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: init_vector => bloch_vector_init_vector
+  procedure :: to_vector => bloch_vector_to_vector
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_init_vector (pol, s, a)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: s
+    real(default), dimension(3), intent(in) :: a
+    call pol%init_max_weight (s)
+    select case (s)
+    case (SPINOR, VECTOR, VECTORSPINOR, TENSOR)
+       pol%a(1:3) = a / bloch_factor (s)
+    end select
+  end subroutine bloch_vector_init_vector
+  
+  subroutine bloch_vector_to_vector (pol, a)
+    class(bloch_vector_t), intent(in) :: pol
+    real(default), dimension(3), intent(out) :: a
+    integer :: s
+    s = pol%spin_type
+    select case (s)
+    case (SPINOR, VECTOR, VECTORSPINOR, TENSOR)
+       a = pol%a(1:3) * bloch_factor (s)
+    case default
+       a = 0
+    end select
+  end subroutine bloch_vector_to_vector
+  
+@ %def bloch_vector_init_vector
+@ %def bloch_vector_to_vector
+@
+\subsection{Arbitrary density matrix}
+Initialize the Bloch vector from a density matrix.  We assume that the
+density is valid.  In particular, the shape should match, the matrix
+should be hermitian, and the trace should be unity.
+
+We first fill the diagonal, then add the off-diagonal parts.
+<<Bloch vectors: bloch vector: TBP>>=
+  generic :: init => bloch_vector_init_matrix
+  procedure, private :: bloch_vector_init_matrix
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_init_matrix (pol, spin_type, r)
+    class(bloch_vector_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    complex(default), dimension(:,:), intent(in) :: r
+    select case (spin_type)
+    case (SCALAR,SPINOR,VECTOR,VECTORSPINOR,TENSOR)
+       call pol%init (spin_type)
+       call pol%set (r)
+    case default
+       call pol%init (UNKNOWN)
+    end select
+  end subroutine bloch_vector_init_matrix
+
+@ %def bloch_vector_init_matrix
+@ Set a Bloch vector, given an arbitrary density matrix as a real
+array.  The Bloch vector must be initialized with correct
+characteristics.
+<<Bloch vectors: bloch vector: TBP>>=
+  generic :: set => bloch_vector_set_matrix
+  procedure, private :: bloch_vector_set_matrix
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_set_matrix (pol, r)
+    class(bloch_vector_t), intent(inout) :: pol
+    complex(default), dimension(:,:), intent(in) :: r
+    real(default), dimension(:), allocatable :: rd
+    integer :: s, d, i, j, h1, h2, ir, ii
+    s = pol%spin_type
+    select case (s)
+    case (SCALAR,SPINOR,VECTOR,VECTORSPINOR,TENSOR)
+       d = fundamental_dimension (s)
+       allocate (rd (d))
+       do i = 1, d
+          rd(i) = r(i,i)
+       end do
+       call pol%set (rd)
+       do i = 1, d
+          h1 = helicity_value (s, i)
+          do j = i+1, d
+             h2 = helicity_value (s, j)
+             ir = root_index (s, h1, h2, .true.)
+             ii = root_index (s, h1, h2, .false.)
+             pol%a(ir) = real (r(j,i) + r(i,j)) / bloch_factor (s)
+             pol%a(ii) = aimag (r(j,i) - r(i,j)) / bloch_factor (s)
+          end do
+       end do
+    end select
+  end subroutine bloch_vector_set_matrix
+  
+@ %def bloch_vector_set_matrix
+@ Allocate and fill the density matrix [[r]] (with the index ordering as
+defined in [[su_algebra]]) that corresponds to a given Bloch vector.
+
+If the optional [[only_max_weight]] is set, the resulting matrix has
+entries only for $\pm h_\text{max}$, as appropriate for a massless
+particle (for spin $\geq 1$).  Note that we always add the unit
+matrix, as this is part of the Bloch-vector definition.
+<<Bloch vectors: bloch vector: TBP>>=
+  procedure :: to_matrix => bloch_vector_to_matrix
+<<Bloch vectors: procedures>>=
+  subroutine bloch_vector_to_matrix (pol, r, only_max_weight)
+    class(bloch_vector_t), intent(in) :: pol
+    complex(default), dimension(:,:), intent(out), allocatable :: r
+    logical, intent(in), optional :: only_max_weight
+    integer :: d, s, h0, ng, ai, h, h1, h2, i, j
+    logical :: is_real, only_max
+    complex(default) :: val
+    if (.not. pol%is_polarized ())  return
+    s = pol%spin_type
+    only_max = .false.
+    select case (s)
+    case (VECTOR, VECTORSPINOR, TENSOR)
+       if (present (only_max_weight))  only_max = only_max_weight
+    end select
+    if (only_max) then
+       ng = 2
+       h0 = helicity_value (s, 1)
+    else
+       ng = algebra_dimension (s)
+       h0 = 0
+    end if
+    d = fundamental_dimension (s)
+    allocate (r (d, d), source = (0._default, 0._default))
+    do i = 1, d
+       h = helicity_value (s, i)
+       if (abs (h) < h0)  cycle
+       r(i,i) = 1._default / d &
+            + dot_product (cartan_element (s, h), pol%a) * bloch_factor (s)
+    end do
+    do ai = 1, ng
+       if (is_cartan_generator (s, ai))  cycle
+       call root_helicity (s, ai, h1, h2, is_real)
+       i = helicity_index (s, h1)
+       j = helicity_index (s, h2)
+       if (is_real) then
+          val = cmplx (pol%a(ai) / 2 * bloch_factor (s), 0._default, &
+               kind=default)
+          r(i,j) = r(i,j) + val
+          r(j,i) = r(j,i) + val
+       else
+          val = cmplx (0._default, pol%a(ai) / 2 * bloch_factor (s), &
+               kind=default)
+          r(i,j) = r(i,j) - val
+          r(j,i) = r(j,i) + val
+       end if
+    end do
+  end subroutine bloch_vector_to_matrix
+    
+@ %def bloch_vector_to_matrix
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[bloch_vectors_ut.f90]]>>=
+<<File header>>
+
+module bloch_vectors_ut
+  use unit_tests
+  use bloch_vectors_uti
+  
+<<Standard module head>>
+
+<<Bloch vectors: public test>>
+
+contains
+  
+<<Bloch vectors: test driver>>
+
+end module bloch_vectors_ut
+@ %def bloch_vectors_ut
+@
+<<[[bloch_vectors_uti.f90]]>>=
+<<File header>>
+
+module bloch_vectors_uti
+
+<<Use kinds>>
+  use physics_defs, only: UNKNOWN, SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+  use su_algebra, only: algebra_dimension, fundamental_dimension, helicity_value
+
+  use bloch_vectors
+
+<<Standard module head>>
+
+<<Bloch vectors: test declarations>>
+
+contains
+
+<<Bloch vectors: tests>>
+
+end module bloch_vectors_uti
+@ %def bloch_vectors_ut
+@ API: driver for the unit tests below.
+<<Bloch vectors: public test>>=
+  public :: bloch_vectors_test
+<<Bloch vectors: test driver>>=
+  subroutine bloch_vectors_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Bloch vectors: execute tests>>
+  end subroutine bloch_vectors_test
+
+@  %def bloch_vectors_test
+@
+\subsubsection{Initialization}
+Initialize the Bloch vector for any spin type.  First as unpolarized
+(no array), then as polarized but with zero polarization.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_1, "bloch_vectors_1", &
+       "initialization", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_1
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_1 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_1"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Initialization (unpolarized)"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* unknown"
+    call bloch_init (UNKNOWN)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_init (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_init (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_init (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_init (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_init (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_1"    
+      
+  contains
+    
+    subroutine bloch_init (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      real(default), dimension(:), allocatable :: a
+      integer :: i
+      write (u, *)
+      write (u, "(1X,L1,L1)", advance="no") &
+           pol%is_defined (), pol%is_polarized ()
+      call pol%init_unpolarized (s)
+      write (u, "(1X,L1,L1)", advance="no") &
+           pol%is_defined (), pol%is_polarized ()
+      call pol%init (s)
+      write (u, "(1X,L1,L1)", advance="no") &
+           pol%is_defined (), pol%is_polarized ()
+      write (u, *)
+      call pol%to_array (a)
+      if (allocated (a)) then
+         write (u, "(*(F7.4))")  a
+         a(:) = [(real (mod (i, 10), kind=default), i = 1, size (a))]
+         call pol%from_array (a)
+         call pol%to_array (a)
+         write (u, "(*(F7.4))")  a
+      else
+         write (u, *)
+         write (u, *)
+      end if
+    end subroutine bloch_init
+
+  end subroutine bloch_vectors_1
+
+@ %def bloch_vectors_1
+@
+\subsubsection{Pure state (diagonal)}
+Initialize the Bloch vector with a pure state of definite helicity and
+check the normalization.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_2, "bloch_vectors_2", &
+       "pure state (diagonal)", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_2
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_2 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_2"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Initialization (polarized, diagonal): &
+         &display vector and norm"
+    write (u, "(A)")  "*   transform back"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_diagonal (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_diagonal (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_diagonal (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_diagonal (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_diagonal (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_2"    
+      
+  contains
+    
+    subroutine bloch_diagonal (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      real(default), dimension(:), allocatable :: a
+      real(default), dimension(:), allocatable :: rd
+      complex(default), dimension(:,:), allocatable :: r
+      integer :: i, j, d
+      real(default) :: rj
+      real, parameter :: tolerance = 1.E-14_default
+      d = fundamental_dimension (s)
+      do i = 1, d
+         allocate (rd (d), source = 0._default)
+         rd(i) = 1
+         call pol%init (s, rd)
+         call pol%to_array (a)
+         write (u, *)
+         write (u, "(A,1X,I2)")  "h:", helicity_value (s, i)
+         write (u, 1, advance="no")  a
+         write (u, "(1X,L1)")  pol%is_diagonal ()
+         write (u, 1)  pol%get_norm ()
+         call pol%to_matrix (r)
+         do j = 1, d
+            rj = real (r(j,j))
+            if (abs (rj) < tolerance)  rj = 0
+            write (u, 1, advance="no")  rj
+         end do
+         write (u, "(1X,L1)")  matrix_is_diagonal (r)
+         deallocate (a, rd, r)
+      end do
+1     format (99(1X,F7.4,:))
+    end subroutine bloch_diagonal
+
+    function matrix_is_diagonal (r) result (diagonal)
+      complex(default), dimension(:,:), intent(in) :: r
+      logical :: diagonal
+      integer :: i, j
+      diagonal = .true.
+      do j = 1, size (r, 2)
+         do i = 1, size (r, 1)
+            if (i == j)  cycle
+            if (r(i,j) /= 0) then
+               diagonal = .false.
+               return
+            end if
+         end do
+      end do
+    end function matrix_is_diagonal
+
+  end subroutine bloch_vectors_2
+
+@ %def bloch_vectors_2
+@
+\subsubsection{Pure state (arbitrary)}
+Initialize the Bloch vector with an arbitrarily chosen pure state,
+check the normalization, and transform back to the density matrix.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_3, "bloch_vectors_3", &
+       "pure state (arbitrary)", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_3
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_3 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_3"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Initialization (pure polarized, arbitrary):"
+    write (u, "(A)")  "*   input matrix, transform, display norm, transform back"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_arbitrary (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_arbitrary (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_arbitrary (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_arbitrary (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_arbitrary (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_3"    
+      
+  contains
+    
+    subroutine bloch_arbitrary (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      complex(default), dimension(:,:), allocatable :: r
+      integer :: d
+      d = fundamental_dimension (s)
+      write (u, *)
+      call init_matrix (d, r)
+      call write_matrix (d, r)
+      call pol%init (s, r)
+      write (u, *)
+      write (u, 2)  pol%get_norm (), pol%is_diagonal ()
+      write (u, *)
+      call pol%to_matrix (r)
+      call write_matrix (d, r)
+2     format (1X,F7.4,1X,L1)
+    end subroutine bloch_arbitrary
+
+    subroutine init_matrix (d, r)
+      integer, intent(in) :: d
+      complex(default), dimension(:,:), allocatable, intent(out) :: r
+      complex(default), dimension(:), allocatable :: a
+      real(default) :: norm
+      integer :: i, j
+      allocate (a (d))
+      norm = 0
+      do i = 1, d
+         a(i) = cmplx (2*i-1, 2*i, kind=default)
+         norm = norm + conjg (a(i)) * a(i)
+      end do
+      a = a / sqrt (norm)
+      allocate (r (d,d))
+      do i = 1, d
+         do j = 1, d
+            r(i,j) = conjg (a(i)) * a(j)
+         end do
+      end do
+    end subroutine init_matrix
+    
+    subroutine write_matrix (d, r)
+      integer, intent(in) :: d
+      complex(default), dimension(:,:), intent(in) :: r
+      integer :: i, j
+      do i = 1, d
+         do j = 1, d
+            write (u, 1, advance="no")  r(i,j)
+         end do
+         write (u, *)
+      end do
+1     format (99(1X,'(',F7.4,',',F7.4,')',:))
+    end subroutine write_matrix
+
+  end subroutine bloch_vectors_3
+
+@ %def bloch_vectors_3
+@
+\subsubsection{Raw I/O}
+Check correct input/output in raw format.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_4, "bloch_vectors_4", &
+       "raw I/O", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_4
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_4 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_4"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Raw I/O"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_io (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_io (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_io (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_io (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_io (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_4"    
+      
+  contains
+    
+    subroutine bloch_io (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      real(default), dimension(:), allocatable :: a
+      integer :: n, i, utmp, iostat
+      n = algebra_dimension (s)
+      allocate (a (n))
+      a(:) = [(real (mod (i, 10), kind=default), i = 1, size (a))]
+      write (u, *)
+      write (u, "(*(F7.4))")  a
+      call pol%init (s)
+      call pol%from_array (a)
+      open (newunit = utmp, status = "scratch", action = "readwrite", &
+           form = "unformatted")
+      call pol%write_raw (utmp)
+      rewind (utmp)
+      call pol%read_raw (utmp, iostat=iostat)
+      close (utmp)
+      call pol%to_array (a)
+      write (u, "(*(F7.4))")  a
+    end subroutine bloch_io
+
+  end subroutine bloch_vectors_4
+
+@ %def bloch_vectors_4
+@
+\subsubsection{Convenience Methods}
+Check some further TBP that are called by the [[polarizations]]
+module.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_5, "bloch_vectors_5", &
+       "massless state (unpolarized)", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_5
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_5 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_5"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Massless states: equipartition"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_massless_unpol (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_massless_unpol (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_massless_unpol (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_massless_unpol (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_massless_unpol (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_5"    
+      
+  contains
+    
+    subroutine bloch_massless_unpol (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      complex(default), dimension(:,:), allocatable :: r
+      real(default), dimension(:), allocatable :: a
+      integer :: d
+      d = fundamental_dimension (s)
+      call pol%init_max_weight (s)
+      call pol%to_matrix (r, only_max_weight = .false.)
+      write (u, *)
+      where (abs (r) < 1.e-14_default)  r = 0
+      call write_matrix (d, r)
+      call pol%to_matrix (r, only_max_weight = .true.)
+      write (u, *)
+      call write_matrix (d, r)
+    end subroutine bloch_massless_unpol
+
+    subroutine write_matrix (d, r)
+      integer, intent(in) :: d
+      complex(default), dimension(:,:), intent(in) :: r
+      integer :: i, j
+      do i = 1, d
+         do j = 1, d
+            write (u, 1, advance="no")  r(i,j)
+         end do
+         write (u, *)
+      end do
+1     format (99(1X,'(',F7.4,',',F7.4,')',:))
+    end subroutine write_matrix
+
+  end subroutine bloch_vectors_5
+
+@ %def bloch_vectors_5
+@
+\subsubsection{Massless state (arbitrary)}
+Initialize the Bloch vector with an arbitrarily chosen pure state
+which consists only of highest-weight components.  Transform back to
+the density matrix.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_6, "bloch_vectors_6", &
+       "massless state (arbitrary)", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_6
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_6 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_6"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Initialization (pure polarized massless, arbitrary):"
+    write (u, "(A)")  "*   input matrix, transform, display norm, transform back"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_massless (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_massless (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_massless (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_massless (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_massless (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_6"    
+      
+  contains
+    
+    subroutine bloch_massless (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      complex(default), dimension(:,:), allocatable :: r
+      integer :: d
+      d = fundamental_dimension (s)
+      write (u, *)
+      call init_matrix (d, r)
+      call write_matrix (d, r)
+      call pol%init (s, r)
+      write (u, *)
+      write (u, 2)  pol%get_norm (), pol%is_diagonal ()
+      write (u, *)
+      call pol%to_matrix (r, only_max_weight = .true.)
+      call write_matrix (d, r)
+2     format (1X,F7.4,1X,L1)
+    end subroutine bloch_massless
+
+    subroutine init_matrix (d, r)
+      integer, intent(in) :: d
+      complex(default), dimension(:,:), allocatable, intent(out) :: r
+      complex(default), dimension(:), allocatable :: a
+      real(default) :: norm
+      integer :: i, j
+      allocate (a (d), source = (0._default, 0._default))
+      norm = 0
+      do i = 1, d, max (d-1, 1)
+         a(i) = cmplx (2*i-1, 2*i, kind=default)
+         norm = norm + conjg (a(i)) * a(i)
+      end do
+      a = a / sqrt (norm)
+      allocate (r (d,d), source = (0._default, 0._default))
+      do i = 1, d, max (d-1, 1)
+         do j = 1, d, max (d-1, 1)
+            r(i,j) = conjg (a(i)) * a(j)
+         end do
+      end do
+    end subroutine init_matrix
+    
+    subroutine write_matrix (d, r)
+      integer, intent(in) :: d
+      complex(default), dimension(:,:), intent(in) :: r
+      integer :: i, j
+      do i = 1, d
+         do j = 1, d
+            write (u, 1, advance="no")  r(i,j)
+         end do
+         write (u, *)
+      end do
+1     format (99(1X,'(',F7.4,',',F7.4,')',:))
+    end subroutine write_matrix
+
+  end subroutine bloch_vectors_6
+
+@ %def bloch_vectors_6
+@
+\subsubsection{Massless state (Bloch vector)}
+Initialize the (generalized) Bloch vector with an ordinary
+three-component Bloch vector that applies to the highest-weight part only.
+<<Bloch vectors: execute tests>>=
+  call test (bloch_vectors_7, "bloch_vectors_7", &
+       "massless state (vector)", &
+       u, results)
+<<Bloch vectors: test declarations>>= 
+  public :: bloch_vectors_7
+<<Bloch vectors: tests>>= 
+  subroutine bloch_vectors_7 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: bloch_vectors_7"
+    write (u, "(A)")  "*   Purpose: test Bloch-vector &
+         &polarization implementation"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Initialization &
+         &(pure polarized massless, arbitrary Bloch vector):"
+    write (u, "(A)")  "*   input vector, transform, display norm, &
+         &transform back"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 0"
+    call bloch_massless_vector (SCALAR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1/2"
+    call bloch_massless_vector (SPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 1"
+    call bloch_massless_vector (VECTOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 3/2"
+    call bloch_massless_vector (VECTORSPINOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* s = 2"
+    call bloch_massless_vector (TENSOR)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: bloch_vectors_7"    
+      
+  contains
+    
+    subroutine bloch_massless_vector (s)
+      integer, intent(in) :: s
+      type(bloch_vector_t) :: pol
+      real(default), dimension(3) :: a
+      complex(default), dimension(:,:), allocatable :: r
+      write (u, *)
+      a =  [1._default, 2._default, 4._default]
+      a = a / sqrt (sum (a ** 2))
+      write (u, 2)  a
+      call pol%init_vector (s, a)
+      write (u, 2)  pol%get_norm ()
+      call pol%to_vector (a)
+      write (u, 2)  a
+      call pol%to_matrix (r, only_max_weight = .false.)
+      write (u, *)
+      where (abs (r) < 1.e-14_default)  r = 0
+      call write_matrix (r)
+      call pol%to_matrix (r, only_max_weight = .true.)
+      write (u, *)
+      call write_matrix (r)
+2     format (99(1X,F7.4,:))
+    end subroutine bloch_massless_vector
+
+    subroutine write_matrix (r)
+      complex(default), dimension(:,:), intent(in) :: r
+      integer :: i, j
+      do i = 1, size (r, 1)
+         do j = 1, size (r, 2)
+            write (u, 1, advance="no")  r(i,j)
+         end do
+         write (u, *)
+      end do
+1     format (99(1X,'(',F7.4,',',F7.4,')',:))
+    end subroutine write_matrix
+
+  end subroutine bloch_vectors_7
+
+@ %def bloch_vectors_7
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Polarization}
+Using generalized Bloch vectors and the $su(N)$ algebra (see above)
+for the internal representation, we can define various modes of
+polarization.  For 
+spin-1/2, and analogously for massless spin-$s$ particles, we introduce
 \begin{enumerate}
 \item Trivial polarization: $\vec\alpha=0$. [This is unpolarized, but
   distinct from the particular undefined polarization matrix which has
@@ -41,31 +2149,34 @@ with the polarization axis $\vec\alpha$.  Using this, we define
 \item Axis polarization, where we explicitly give $\vec\alpha$.
 \end{enumerate}
 For higher spin, we retain this definition, but apply it to the two
-components with maximum and minimum weight.  For massless particles,
-this is sufficient.  For massive particles, we add the possibilities:
+components with maximum and minimum weight.  In effect, we concentrate
+on the first three entries in the $\alpha^a$ array.  For massless
+particles, this is sufficient.  For massive particles, we then add the
+possibilities:
 \begin{enumerate}\setcounter{enumi}{4}
 \item Longitudinal polarization: Only the 0-component is set.  This is
   possible only for bosons.
 \item Diagonal polarization: Explicitly specify all components in the
-  helicity basis.
+  helicity basis.  The $su(N)$ representation consists of diagonal
+  generators only, the Cartan subalgebra.
 \end{enumerate}
 Obviously, this does not exhaust the possible density matrices for
-higher spin, but it should cover all practical applications.
+higher spin, but it should cover practical applications.
 <<[[polarizations.f90]]>>=
 <<File header>>
 
 module polarizations
 
 <<Use kinds>>
-  use constants, only: imago
   use io_units
   use format_defs, only: FMT_19
   use diagnostics
-  use physics_defs, only: SCALAR
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
   use flavors
   use helicities
   use quantum_numbers
   use state_matrices
+  use bloch_vectors
 
 <<Standard module head>>
 
@@ -83,286 +2194,337 @@ end module polarizations
 @ %def polarizations
 @ 
 \subsection{The polarization type}
-This is not an extension, but rather a restriction of the quantum
-state.  Flavor and color are ignored, there is just a one-particle
-helicity density matrix.
+Polarization is active whenever the coefficient array is allocated.
+For convenience, we store the spin type ($2s$) and the multiplicity
+($N$) together with the coefficient array ($\alpha$).  We have to allow for
+the massless case where $s$ is arbitrary $>0$ but $N=2$, and
+furthermore the chiral massless case where $N=1$.  In the latter case,
+the array remains deallocated but the chirality is set to $\pm 1$.
+
+There is a convention that an antiparticle transforms according to the
+complex conjugate representation.  We apply this only when
+transforming from/to polarization defined by a three-vector.  For
+antiparticles, the two-component flips sign in that case.  When
+transforming from/to a state matrix or [[pmatrix]] representation, we
+do not apply this sign flip.
+
+TODO: Check these conventions for consistency.
 <<Polarizations: public>>=
   public :: polarization_t
 <<Polarizations: types>>=
   type :: polarization_t
-     logical :: polarized = .false.
-     integer :: spin_type = 0
-     integer :: multiplicity = 0
-     type(state_matrix_t) :: state
+     private
+     integer :: spin_type = SCALAR
+     integer :: multiplicity = 1
+     integer :: chirality = 0
+     logical :: anti = .false.
+     type(bloch_vector_t) :: bv
+   contains
+   <<Polarizations: polarization: TBP>>
   end type polarization_t
 
 @ %def polarization_t
 @ 
 \subsection{Basic initializer and finalizer}
 We need the particle flavor for determining the allowed helicity
-values.  The density matrix is not set, but prepared to be filled
-later.  This is private.
+values.  The Bloch vector is left undefined, so this initializer (in
+two versions) creates an unpolarized particle.  Exception: a chiral
+particle is always polarized with definite helicity, it doesn't need a
+Bloch vector.
+
+This is private.
+<<Polarizations: polarization: TBP>>=
+  generic, private :: init => polarization_init, polarization_init_flv
+  procedure, private :: polarization_init
+  procedure, private :: polarization_init_flv
 <<Polarizations: procedures>>=
-  subroutine polarization_init (pol, flv)
-    type(polarization_t), intent(out) :: pol
-    type(flavor_t), intent(in) :: flv
-    pol%spin_type = flv%get_spin_type ()
-    pol%multiplicity = flv%get_multiplicity ()
-    call pol%state%init (store_values = .true.)
+  subroutine polarization_init (pol, spin_type, multiplicity, &
+       anti, left_handed, right_handed)
+    class(polarization_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    integer, intent(in) :: multiplicity
+    logical, intent(in) :: anti
+    logical, intent(in) :: left_handed
+    logical, intent(in) :: right_handed
+    pol%spin_type = spin_type
+    pol%multiplicity = multiplicity
+    pol%anti = anti
+    select case (pol%multiplicity)
+    case (1)
+       if (left_handed) then
+          pol%chirality = -1
+       else if (right_handed) then
+          pol%chirality = 1
+       end if
+    end select
+    select case (pol%chirality)
+    case (0)
+       call pol%bv%init_unpolarized (spin_type)
+    end select
   end subroutine polarization_init
     
-@ %def polarization_init
-@ The finalizer has to be public.  The quantum state contains memory
-allocated to pointers.
-<<Polarizations: public>>=
-  public :: polarization_final
+  subroutine polarization_init_flv (pol, flv)
+    class(polarization_t), intent(out) :: pol
+    type(flavor_t), intent(in) :: flv
+    call pol%init ( &
+         spin_type = flv%get_spin_type (), &
+         multiplicity = flv%get_multiplicity (), &
+         anti = flv%is_antiparticle (), &
+         left_handed = flv%is_left_handed (), &
+         right_handed = flv%is_right_handed ())
+  end subroutine polarization_init_flv
+    
+@ %def polarization_init polarization_init_flv
+@ Generic polarization: as before, but create a polarized particle
+(Bloch vector defined) with initial polarization zero.
+<<Polarizations: polarization: TBP>>=
+  generic :: init_generic => &
+       polarization_init_generic, &
+       polarization_init_generic_flv
+  procedure, private :: polarization_init_generic
+  procedure, private :: polarization_init_generic_flv
 <<Polarizations: procedures>>=
-  subroutine polarization_final (pol)
-    type(polarization_t), intent(inout) :: pol
-    call pol%state%final ()
-  end subroutine polarization_final
+  subroutine polarization_init_generic (pol, spin_type, multiplicity, &
+       anti, left_handed, right_handed)
+    class(polarization_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    integer, intent(in) :: multiplicity
+    logical, intent(in) :: anti
+    logical, intent(in) :: left_handed
+    logical, intent(in) :: right_handed
+    call pol%init (spin_type, multiplicity, &
+         anti, left_handed, right_handed)
+    select case (pol%chirality)
+    case (0)
+       if (pol%multiplicity == pol%bv%get_n_states ()) then
+          call pol%bv%init (spin_type)
+       else
+          call pol%bv%init_max_weight (spin_type)
+       end if
+    end select
+  end subroutine polarization_init_generic
 
-@ %def polarization_final
-@ 
+  subroutine polarization_init_generic_flv (pol, flv)
+    class(polarization_t), intent(out) :: pol
+    type(flavor_t), intent(in) :: flv
+    call pol%init_generic ( &
+         spin_type = flv%get_spin_type (), &
+         multiplicity = flv%get_multiplicity (), &
+         anti = flv%is_antiparticle (), &
+         left_handed = flv%is_left_handed (), &
+         right_handed = flv%is_right_handed ())
+  end subroutine polarization_init_generic_flv
+
+@ %def polarization_init_generic
+@ A finalizer is no longer necessary.
+
 \subsection{I/O}
-<<Polarizations: public>>=
-  public :: polarization_write
+The default setting produces a tabular output of the polarization
+vector entries.  Optionally, we can create a state matrix and write
+its contents, emulating the obsolete original implementation.
+
+If [[all_states]] is true (default), we generate all helity
+combinations regardless of the matrix-element value.  Otherwise, skip
+helicities with zero entry, or absolute value less than [[tolerance]],
+if also given.
+<<Polarizations: polarization: TBP>>=
+  procedure :: write => polarization_write
 <<Polarizations: procedures>>=
-  subroutine polarization_write (pol, unit)
-    type(polarization_t), intent(in) :: pol
+  subroutine polarization_write (pol, unit, state_matrix, all_states, tolerance)
+    class(polarization_t), intent(in) :: pol
     integer, intent(in), optional :: unit
-    integer :: u
+    logical, intent(in), optional :: state_matrix, all_states
+    real(default), intent(in), optional :: tolerance
+    logical :: state_m
+    type(state_matrix_t) :: state
+    real(default), dimension(:), allocatable :: a
+    integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,A,I1,A,I1,A)")  &
-         "Polarization: [spin_type = ", pol%spin_type, &
-         ", mult = ", pol%multiplicity, "]"
-    call pol%state%write (unit=unit)
+    state_m = .false.;  if (present (state_matrix))  state_m = state_matrix
+    if (pol%anti) then
+       write (u, "(1x,A,I1,A,I1,A,L1,A)")  &
+            "Polarization: [spin_type = ", pol%spin_type, &
+            ", mult = ", pol%multiplicity, ", anti = ", pol%anti, "]"
+    else
+       write (u, "(1x,A,I1,A,I1,A)")  &
+            "Polarization: [spin_type = ", pol%spin_type, &
+            ", mult = ", pol%multiplicity, "]"
+    end if
+    if (state_m) then
+       call pol%to_state (state, all_states, tolerance)
+       call state%write (unit=unit)
+       call state%final ()
+    else if (pol%chirality == 1) then
+       write (u, "(1x,A)")  "chirality = +"
+    else if (pol%chirality == -1) then
+       write (u, "(1x,A)")  "chirality = -"
+    else if (pol%bv%is_polarized ()) then
+       call pol%bv%to_array (a)
+       do i = 1, size (a)
+          write (u, "(1x,I2,':',1x,F10.7)")  i, a(i)
+       end do
+    else
+       write (u, "(1x,A)")  "[unpolarized]"
+    end if
   end subroutine polarization_write
 
 @ %def polarization_write
-@ Defined assignment: deep copy
-<<Polarizations: public>>=
-  public :: assignment(=)
-<<Polarizations: interfaces>>=
-  interface assignment(=)
-     module procedure polarization_assign
-  end interface
-
-<<Polarizations: procedures>>=
-  subroutine polarization_assign (pol_out, pol_in)
-    type(polarization_t), intent(out) :: pol_out
-    type(polarization_t), intent(in) :: pol_in
-    pol_out%polarized = pol_in%polarized
-    pol_out%spin_type = pol_in%spin_type
-    pol_out%multiplicity = pol_in%multiplicity
-    pol_out%state = pol_in%state
-  end subroutine polarization_assign
-
-@ %def polarization_assign
 @ Binary I/O.
-<<Polarizations: public>>=
-  public :: polarization_write_raw
-  public :: polarization_read_raw
+<<Polarizations: polarization: TBP>>=
+  procedure :: write_raw => polarization_write_raw
+  procedure :: read_raw => polarization_read_raw
 <<Polarizations: procedures>>=
   subroutine polarization_write_raw (pol, u)
-    type(polarization_t), intent(in) :: pol
+    class(polarization_t), intent(in) :: pol
     integer, intent(in) :: u
-    write (u) pol%polarized
     write (u) pol%spin_type
     write (u) pol%multiplicity
-    call pol%state%write_raw (u)
+    write (u) pol%chirality
+    write (u) pol%anti
+    call pol%bv%write_raw (u)
   end subroutine polarization_write_raw
 
   subroutine polarization_read_raw (pol, u, iostat)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     integer, intent(in) :: u
     integer, intent(out), optional :: iostat
-    read (u, iostat=iostat) pol%polarized
     read (u, iostat=iostat) pol%spin_type
     read (u, iostat=iostat) pol%multiplicity
-    call pol%state%read_raw (u, iostat=iostat)
+    read (u, iostat=iostat) pol%chirality
+    read (u, iostat=iostat) pol%anti
+    call pol%bv%read_raw (u, iostat)
   end subroutine polarization_read_raw
 
 @ %def polarization_read_raw
 @ 
 \subsection{Accessing contents}
-Return true if the particle is polarized.  This is the case if the
-first (and only) entry in the quantum state has undefined helicity.
-<<Polarizations: public>>=
-  public :: polarization_is_polarized
+Return true if the particle is technically polarized.  The particle
+is either chiral, or its Bloch vector has been defined.  The
+function returns true even if the Bloch vector is zero or the particle
+is scalar.
+<<Polarizations: polarization: TBP>>=
+  procedure :: is_polarized => polarization_is_polarized
 <<Polarizations: procedures>>=
-  elemental function polarization_is_polarized (pol) result (polarized)
+  function polarization_is_polarized (pol) result (polarized)
+    class(polarization_t), intent(in) :: pol
     logical :: polarized
-    type(polarization_t), intent(in) :: pol
-    polarized = pol%polarized
+    polarized = pol%chirality /= 0 .or. pol%bv%is_polarized ()
   end function polarization_is_polarized
 
 @ %def polarization_is_polarized
 @ Return true if the polarization is diagonal, i.e., all entries in
-the density matrix are diagonal.
-<<Polarizations: public>>=
-  public :: polarization_is_diagonal
-<<Polarizations: interfaces>>=
-  interface polarization_is_diagonal
-     module procedure polarization_is_diagonal0
-     module procedure polarization_is_diagonal1
-  end interface
-
+the density matrix are diagonal.  For an unpolarized particle, we also
+return [[.true.]] since the density matrix is proportional to the unit
+matrix.
+<<Polarizations: polarization: TBP>>=
+  procedure :: is_diagonal => polarization_is_diagonal
 <<Polarizations: procedures>>=
-  function polarization_is_diagonal0 (pol) result (diagonal)
+  function polarization_is_diagonal (pol) result (diagonal)
+    class(polarization_t), intent(in) :: pol
     logical :: diagonal
-    type(polarization_t), intent(in) :: pol
-    type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn
-    diagonal = .true.
-    allocate (qn (pol%state%get_depth ()))
-    call it%init (pol%state)
-    do while (it%is_valid ())
-       qn = it%get_quantum_numbers ()
-       diagonal = all (qn%are_diagonal ())
-       if (.not. diagonal) exit
-       call it%advance ()
-    end do
-  end function polarization_is_diagonal0
-
-  function polarization_is_diagonal1 (pol) result (diagonal)
-    type(polarization_t), dimension(:), intent(in) :: pol
-    logical, dimension(size(pol)) :: diagonal
-    integer :: i
-    do i = 1, size (pol)
-       diagonal(i) = polarization_is_diagonal0 (pol(i))
-    end do
-  end function polarization_is_diagonal1
+    select case (pol%chirality)
+    case (0)
+       diagonal = pol%bv%is_diagonal ()
+    case default
+       diagonal = .true.
+    end select
+  end function polarization_is_diagonal
 
 @ %def polarization_is_diagonal
 @ 
-\subsection{Initialization from state matrix}
-Here, the state matrix is already known (but not necessarily
-normalized).  The result will be either unpolarized, or a normalized
-spin density matrix.
-<<Polarizations: public>>=
-  public :: polarization_init_state_matrix
+\subsection{Mapping between polarization and state matrix}
+Create the polarization object that corresponds to a state matrix.  The state
+matrix is not necessarily normalized.  The result will be either unpolarized,
+or a generalized Bloch vector that we compute in terms of the appropriate spin
+generator basis.  To this end, we first construct the complete density
+matrix, then set the Bloch vector with this input.
+
+For a naturally chiral particle (i.e., neutrino), we do not set the
+polarization vector, it is implied.
+
+TODO: The state matrix does not support an antiparticle flag.
+Therefore, we cannot account for any sign flip and transform as-is.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_state_matrix => polarization_init_state_matrix
 <<Polarizations: procedures>>=
   subroutine polarization_init_state_matrix (pol, state)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(state_matrix_t), intent(in), target :: state
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    complex(default) :: value, t
+    integer :: d, h1, h2, i, j
+    complex(default), dimension(:,:), allocatable :: r
+    complex(default) :: me
+    real(default) :: trace
     call it%init (state)
     flv = it%get_flavor (1)
     hel = it%get_helicity (1)
     if (hel%is_defined ()) then
-       call polarization_init (pol, flv)
-       pol%polarized = .true.
-       t = 0
-       do while (it%is_valid ())
-          hel = it%get_helicity (1)
-          call qn(1)%init (hel)
-          value = it%get_matrix_element ()
-          call pol%state%add_state (qn, value=value)
-          if (hel%is_diagonal ())  t = t + value
-          call it%advance ()
-       end do
-       call pol%state%freeze ()
-       if (t /= 0)  call pol%state%renormalize (1._default / t)
+       call pol%init_generic (flv)
+       select case (pol%chirality)
+       case (0)
+          trace = 0
+          d = pol%bv%get_n_states ()
+          allocate (r (d, d), source = (0._default, 0._default))
+          do while (it%is_valid ())
+             hel = it%get_helicity (1)
+             call hel%get_indices (h1, h2)
+             i = pol%bv%hel_index (h1)
+             j = pol%bv%hel_index (h2)
+             me = it%get_matrix_element ()
+             r(i,j) = me
+             if (i == j)  trace = trace + real (me)
+             call it%advance ()
+          end do
+          if (trace /= 0)  call pol%bv%set (r / trace)
+       end select
     else
-       call polarization_init_unpolarized (pol, flv)
+       call pol%init (flv)
     end if
   end subroutine polarization_init_state_matrix
 
 @ %def polarization_init_state_matrix
-@
-\subsection{Specific initializers}
-Unpolarized particle, no helicity labels in the density matrix.  The
-value is specified as $1/N$, where $N$ is the multiplicity.
-
-Exception: for left-handed or right-handed particles (neutrinos),
-polarization is always circular with fraction unity.
-<<Polarizations: public>>=
-  public :: polarization_init_unpolarized
+@ Create the state matrix that corresponds to a given polarization.  We make
+use of the polarization iterator as defined below, which should iterate
+according to the canonical helicity ordering.
+<<Polarizations: polarization: TBP>>=
+  procedure :: to_state => polarization_to_state_matrix
 <<Polarizations: procedures>>=
-  subroutine polarization_init_unpolarized (pol, flv)
-    type(polarization_t), intent(inout) :: pol
-    type(flavor_t), intent(in) :: flv
+  subroutine polarization_to_state_matrix (pol, state, all_states, tolerance)
+    class(polarization_t), intent(in), target :: pol
+    type(state_matrix_t), intent(out) :: state
+    logical, intent(in), optional :: all_states
+    real(default), intent(in), optional :: tolerance
+    type(polarization_iterator_t) :: it
     type(quantum_numbers_t), dimension(1) :: qn
     complex(default) :: value
-    if (flv%is_left_handed ()) then
-       call polarization_init_circular (pol, flv, -1._default)
-    else if (flv%is_right_handed ()) then
-       call polarization_init_circular (pol, flv, 1._default)
-    else
-       call polarization_init (pol, flv)
-       value = 1._default / flv%get_multiplicity ()
-       call pol%state%add_state (qn)
-       call pol%state%freeze ()
-       call pol%state%set_matrix_element (value)
-    end if
+    call it%init (pol, all_states, tolerance)
+    call state%init (store_values = .true.)
+    do while (it%is_valid ())
+       value = it%get_value ()
+       qn(1) = it%get_quantum_numbers ()
+       call state%add_state (qn, value = value)
+       call it%advance ()
+    end do
+    call state%freeze ()
+  end subroutine polarization_to_state_matrix
+    
+@ %def polarization_to_state_matrix
+@
+\subsection{Specific initializers}
+Unpolarized particle, no nontrivial entries in the density matrix.  This
+is the default initialization mode.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_unpolarized => polarization_init_unpolarized
+<<Polarizations: procedures>>=
+  subroutine polarization_init_unpolarized (pol, flv)
+    class(polarization_t), intent(out) :: pol
+    type(flavor_t), intent(in) :: flv
+    call pol%init (flv)
   end subroutine polarization_init_unpolarized
     
 @ %def polarization_init_unpolarized
-@ Unpolarized particle, but explicit density matrix with helicity
-states allocated according to given flavor.  Note that fermions have
-even spin type, bosons odd.  The spin density matrix entries are
-scaled by [[fraction]].  This is used for initializing other
-polarizations:
-\begin{equation*}
-  \rho(f) = 
-  \frac{|f|}{N}\mathbf{1}.
-\end{equation*}
-<<Polarizations: public>>=
-  public :: polarization_init_trivial
-<<Polarizations: procedures>>=
-  subroutine polarization_init_trivial (pol, flv, fraction)
-    type(polarization_t), intent(out) :: pol
-    type(flavor_t), intent(in) :: flv
-    real(default), intent(in), optional :: fraction
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    integer :: h, hmax
-    logical :: fermion
-    complex(default) :: value
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    if (present (fraction)) then
-       value = fraction / pol%multiplicity
-    else
-       value = 1._default / pol%multiplicity
-    end if
-    fermion = mod (pol%spin_type, 2) == 0
-    hmax = pol%spin_type / 2
-    select case (pol%multiplicity)
-    case (1)
-       if (flv%is_left_handed ()) then
-          call hel%init (-hmax)
-       else if (flv%is_right_handed ()) then
-          call hel%init (hmax)
-       else
-          call hel%init (0)
-       end if
-       call qn(1)%init (hel)
-       call pol%state%add_state (qn)
-    case (2)
-       do h = -hmax, hmax, 2*hmax
-          call hel%init (h)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn)
-       end do
-    case default
-       do h = -hmax, hmax
-          if (fermion .and. h == 0)  cycle
-          call hel%init (h)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn)
-       end do
-    end select
-    call pol%state%freeze ()
-    call pol%state%set_matrix_element (value)
-  end subroutine polarization_init_trivial
-
-@ %def polarization_init_trivial
 @ The following three modes are useful mainly for spin-1/2 particle
 and massless particles of any nonzero spin.  Only the highest-weight
 components are filled.
@@ -378,41 +2540,23 @@ states is
     \begin{pmatrix} 0 & 0 \\ 0 & 1 \end{pmatrix}, & f < 0,
   \end{cases}
 \end{equation*}
-If the polarization fraction $|f|$ is unity, we need only one entry in the
-density matrix.
-<<Polarizations: public>>=
-  public :: polarization_init_circular
+In the generalized Bloch representation, this is an entry for the $T^3$
+generator only, regardless of the spin representation.
+
+A chiral particle is not affected.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_circular => polarization_init_circular
 <<Polarizations: procedures>>=
-  subroutine polarization_init_circular (pol, flv, fraction)
-    type(polarization_t), intent(out) :: pol
+  subroutine polarization_init_circular (pol, flv, f)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), intent(in) :: fraction
-    type(helicity_t), dimension(2) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    complex(default) :: value
-    integer :: hmax
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    hmax = pol%spin_type / 2
-    call hel(1)%init ( hmax)
-    call hel(2)%init (-hmax)
-    if (abs (fraction) /= 1) then
-       value = (1 + fraction) / 2
-       call qn(1)%init (hel(1))
-       call pol%state%add_state (qn, value=value)
-       value = (1 - fraction) / 2
-       call qn(1)%init (hel(2))
-       call pol%state%add_state (qn, value=value)
-    else
-       value = abs (fraction)
-       if (fraction > 0) then
-          call qn(1)%init (hel(1))
-       else
-          call qn(1)%init (hel(2))
-       end if
-       call pol%state%add_state (qn, value=value)
-    end if
-    call pol%state%freeze ()
+    real(default), intent(in) :: f
+    call pol%init (flv)
+    select case (pol%chirality)
+    case (0)
+       call pol%bv%init_vector (pol%spin_type, &
+            [0._default, 0._default, f])
+    end select
   end subroutine polarization_init_circular
 
 @ %def polarization_init_circular
@@ -424,22 +2568,37 @@ density matrix
   + \frac{|f|}{2}  \begin{pmatrix} 1 & e^{-i\phi} \\ e^{i\phi} & 1
   \end{pmatrix}.
 \end{equation*}
+for the highest-weight subspace.  The lower weights are unaffected.
 The phase is $\phi=0$ for the $x$-axis, $\phi=90^\circ$ for the $y$
-axis as polarization vector.  For an antiparticle, the phase switches
-sign, and for $f<0$, the off-diagonal elements switch sign.  
-<<Polarizations: public>>=
-  public :: polarization_init_transversal
+axis as polarization vector.  
+
+For an antiparticle, the phase switches sign, and for $f<0$, the
+off-diagonal elements switch sign.
+
+A chiral particle is not affected.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_transversal => polarization_init_transversal
 <<Polarizations: procedures>>=
-  subroutine polarization_init_transversal (pol, flv, phi, fraction)
-    type(polarization_t), intent(inout) :: pol
+  subroutine polarization_init_transversal (pol, flv, phi, f)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), intent(in) :: phi, fraction
-    call polarization_init_axis &
-         (pol, flv, fraction * [ cos (phi), sin (phi), 0._default])
+    real(default), intent(in) :: phi, f
+    call pol%init (flv)
+    select case (pol%chirality)
+    case (0)
+       if (pol%anti) then
+          call pol%bv%init_vector (pol%spin_type, &
+               [f * cos (phi), f * sin (phi), 0._default])
+       else
+          call pol%bv%init_vector (pol%spin_type, &
+               [f * cos (phi),-f * sin (phi), 0._default])
+       end if
+    end select
   end subroutine polarization_init_transversal
 
 @ %def polarization_init_transversal
-@ For axis polarization, we again set only the entries with maximum weight.
+@ For axis polarization, we again set only the entries with maximum weight,
+which for spin $1/2$ means
 \begin{equation*}
   \rho(f,\phi) = 
   \frac{1}{2} \begin{pmatrix} 
@@ -447,48 +2606,30 @@ sign, and for $f<0$, the off-diagonal elements switch sign.
                  \alpha_1 + i\alpha_2 & 1 - \alpha_3 
               \end{pmatrix}.
 \end{equation*}
-For an antiparticle, $\alpha_2$ switches sign (complex conjugate).
-<<Polarizations: public>>=
-  public :: polarization_init_axis
+For an antiparticle, the imaginary part proportional to $\alpha_2$ switches
+sign (complex conjugate).  A chiral particle is not affected.
+
+In the generalized Bloch representation, this translates into coefficients for
+$T^{1,2,3}$, all others stay zero.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_axis => polarization_init_axis
 <<Polarizations: procedures>>=
   subroutine polarization_init_axis (pol, flv, alpha)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), dimension(3), intent(in) :: alpha
-    type(quantum_numbers_t), dimension(1) :: qn
-    type(helicity_t), dimension(2,2) :: hel
-    complex(default), dimension(2,2) :: value
-    integer :: hmax
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    hmax = pol%spin_type / 2
-    call hel(1,1)%init ( hmax, hmax)
-    call hel(1,2)%init ( hmax,-hmax)
-    call hel(2,1)%init (-hmax, hmax)
-    call hel(2,2)%init (-hmax,-hmax)
-    value(1,1) = (1 + alpha(3)) / 2
-    value(2,2) = (1 - alpha(3)) / 2
-    if (flv%is_antiparticle ()) then
-       value(1,2) = (alpha(1) + imago * alpha(2)) / 2
-    else
-       value(1,2) = (alpha(1) - imago * alpha(2)) / 2
-    end if
-    value(2,1) = conjg (value(1,2))
-    if (value(1,1) /= 0) then
-       call qn(1)%init (hel(1,1))
-       call pol%state%add_state (qn, value=value(1,1))
-    end if
-    if (value(2,2) /= 0) then
-       call qn(1)%init (hel(2,2))
-       call pol%state%add_state (qn, value=value(2,2))
-    end if
-    if (value(1,2) /= 0) then
-       call qn(1)%init (hel(1,2))
-       call pol%state%add_state (qn, value=value(1,2))
-       call qn(1)%init (hel(2,1))
-       call pol%state%add_state (qn, value=value(2,1))
-    end if
-    call pol%state%freeze ()
+    integer :: i
+    call pol%init (flv)
+    select case (pol%chirality)
+    case (0)
+       if (pol%anti) then
+          call pol%bv%init_vector (pol%spin_type, &
+               [alpha(1), alpha(2), alpha(3)])
+       else
+          call pol%bv%init_vector (pol%spin_type, &
+               [alpha(1),-alpha(2), alpha(3)])
+       end if
+    end select
   end subroutine polarization_init_axis
 
 @ %def polarization_init_axis
@@ -498,173 +2639,74 @@ For an antiparticle, $\alpha_2$ switches sign (complex conjugate).
 If one of the angles is a nonzero multiple of $\pi$, roundoff errors
 typically will result in tiny contributions to unwanted components.
 Therefore, include a catch for small numbers.
-<<Polarizations: public>>=
-  public :: polarization_init_angles
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_angles => polarization_init_angles
 <<Polarizations: procedures>>=
   subroutine polarization_init_angles (pol, flv, r, theta, phi)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), intent(in) :: r, theta, phi
     real(default), dimension(3) :: alpha
     real(default), parameter :: eps = 10 * epsilon (1._default)
+    
     alpha(1) = r * sin (theta) * cos (phi)
     alpha(2) = r * sin (theta) * sin (phi)
     alpha(3) = r * cos (theta)
     where (abs (alpha) < eps)  alpha = 0
-    call polarization_init_axis (pol, flv, alpha)
+    call pol%init_axis (flv, alpha)
   end subroutine polarization_init_angles
 
 @ %def polarization_init_angles
 @ Longitudinal polarization is defined only for massive bosons.  Only
 the zero component is filled.  Otherwise, unpolarized.
-<<Polarizations: public>>=
-  public :: polarization_init_longitudinal
+
+In the generalized Bloch representation, the zero component corresponds to a
+linear combination of all diagonal (Cartan) generators.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_longitudinal => polarization_init_longitudinal
 <<Polarizations: procedures>>=
-  subroutine polarization_init_longitudinal (pol, flv, fraction)
-    type(polarization_t), intent(out) :: pol
+  subroutine polarization_init_longitudinal (pol, flv, f)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), intent(in) :: fraction
-    integer :: spin_type, multiplicity
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    complex(default) :: value
-    integer :: n_values
-    value = abs (fraction)
-    spin_type = flv%get_spin_type ()
-    multiplicity = flv%get_multiplicity ()
-    if (mod (spin_type, 2) == 1 .and. multiplicity > 2) then
-       if (fraction /= 1) then
-          call polarization_init_trivial (pol, flv, 1 - fraction)
-          n_values = pol%state%get_n_matrix_elements ()
-          call pol%state%add_to_matrix_element (n_values/2 + 1, value)
-       else
-          call polarization_init (pol, flv)
-          pol%polarized = .true.
-          call hel%init (0)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn)
-          call pol%state%freeze ()
-          call pol%state%set_matrix_element (value)
+    real(default), intent(in) :: f
+    real(default), dimension(:), allocatable :: rd
+    integer :: s, d
+    s = flv%get_spin_type ()
+    select case (s)
+    case (VECTOR, TENSOR)
+       call pol%init_generic (flv)
+       if (pol%bv%is_polarized ()) then
+          d = pol%bv%get_n_states ()
+          allocate (rd (d), source = 0._default)
+          rd(pol%bv%hel_index (0)) = f
+          call pol%bv%set (rd)
        end if
-    else
-       call polarization_init_unpolarized (pol, flv)
-    end if
+    case default
+       call pol%init_unpolarized (flv)
+    end select
   end subroutine polarization_init_longitudinal
 
 @ %def polarization_init_longitudinal
 @ This is diagonal polarization: we specify all components explicitly.
-We use only the positive components.  The sum is normalized to unity.
-We assume that the length of [[alpha]] is equal to the particle
+[[rd]] is the array of diagonal elements of the density matrix.  We
+assume that the length of [[rd]] is equal to the particle
 multiplicity.
-<<Polarizations: public>>=
-  public :: polarization_init_diagonal
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_diagonal => polarization_init_diagonal
 <<Polarizations: procedures>>=
-  subroutine polarization_init_diagonal (pol, flv, alpha)
-    type(polarization_t), intent(inout) :: pol
+  subroutine polarization_init_diagonal (pol, flv, rd)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), dimension(:), intent(in) :: alpha
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    logical, dimension(size(alpha)) :: mask
-    real(default) :: norm
-    complex(default), dimension(:), allocatable :: value
-    logical :: fermion
-    integer :: h, hmax, i
-    mask = alpha > 0
-    norm = sum (alpha, mask);  if (norm == 0)  norm = 1
-    allocate (value (count (mask)))
-    value = pack (alpha / norm, mask)
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    fermion = mod (pol%spin_type, 2) == 0
-    hmax = pol%spin_type / 2
-    i = 0
-    select case (pol%multiplicity)
-    case (1)
-       if (flv%is_left_handed ()) then
-          call hel%init (-hmax)
-       else if (flv%is_right_handed ()) then
-          call hel%init ( hmax)
-       else
-          call hel%init (0)
-       end if
-       call qn(1)%init (hel)
-       call pol%state%add_state (qn)
-    case (2)
-       do h = -hmax, hmax, 2*hmax
-          i = i + 1
-          if (mask(i)) then
-             call hel%init (h)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end if
-       end do
-    case default
-       do h = -hmax, hmax
-          if (fermion .and. h == 0)  cycle
-          i = i + 1
-          if (mask(i)) then
-             call hel%init (h)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end if
-       end do
-    end select
-    call pol%state%freeze ()
-    call pol%state%set_matrix_element (value)
+    real(default), dimension(:), intent(in) :: rd
+    real(default) :: trace
+    call pol%init_generic (flv)
+    if (pol%bv%is_polarized ()) then
+       trace = sum (rd)
+       if (trace /= 0)  call pol%bv%set (rd / trace)
+    end if
   end subroutine polarization_init_diagonal
 
 @ %def polarization_init_diagonal
-@ Generic polarization: we generate all possible density matrix
-entries, but the values are left zero.
-<<Polarizations: public>>=
-  public :: polarization_init_generic
-<<Polarizations: procedures>>=
-  subroutine polarization_init_generic (pol, flv)
-    type(polarization_t), intent(out) :: pol
-    type(flavor_t), intent(in) :: flv
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    logical :: fermion
-    integer :: hmax, h1, h2
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    fermion = mod (pol%spin_type, 2) == 0
-    hmax = pol%spin_type / 2
-    select case (pol%multiplicity)
-    case (1)
-       if (flv%is_left_handed ()) then
-          call hel%init (-hmax)
-       else if (flv%is_right_handed ()) then
-          call hel%init ( hmax)
-       else
-          call hel%init (0)
-       end if
-       call qn(1)%init (hel)
-       call pol%state%add_state (qn)
-    case (2)
-       do h1 = -hmax, hmax, 2*hmax
-          do h2 = -hmax, hmax, 2*hmax
-             call hel%init (h1, h2)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end do
-       end do
-    case default
-       do h1 = -hmax, hmax
-          if (fermion .and. h1 == 0)  cycle
-          do h2 = -hmax, hmax
-             if (fermion .and. h2 == 0)  cycle
-             call hel%init (h1, h2)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end do
-       end do
-    end select
-    call pol%state%freeze ()
-  end subroutine polarization_init_generic
-
-@ %def polarization_init_generic
 @ 
 \subsection{Operations}
 Combine polarization states by computing the outer product of the
@@ -675,85 +2717,76 @@ state matrices.
   subroutine combine_polarization_states (pol, state)
     type(polarization_t), dimension(:), intent(in), target :: pol
     type(state_matrix_t), intent(out) :: state
-    call outer_multiply (pol%state, state)
+    type(state_matrix_t), dimension(size(pol)), target :: pol_state
+    integer :: i
+    do i = 1, size (pol)
+       call pol(i)%to_state (pol_state(i))
+    end do
+    call outer_multiply (pol_state, state)
+    do i = 1, size (pol)
+       call pol_state(i)%final ()
+    end do
   end subroutine combine_polarization_states
 
 @ %def combine_polarization_states
-@ 
-Transform a polarization density matrix into a polarization vector.
-This is possible without information loss only for spin-1/2 and for
-massless particles.  To get a unique answer in all cases, we consider
-only the components with highest weight.  Obviously, this loses the
-longitudinal component of a massive vector, for instance.
+@ Transform a polarization density matrix into a polarization vector.  This is
+possible without information loss only for spin-1/2 and for massless
+particles.  To get a unique answer in all cases, we consider only the
+components with highest weight.  Obviously, this loses the longitudinal
+component of a massive vector, for instance.  The norm of the returned axis is
+the polarization fraction for the highest-weight subspace.  For a scalar
+particle, we return a zero vector.  The same result applies if the
+highest-weight component vanishes.
 
 This is the inverse operation of [[polarization_init_axis]] above,
 where the polarization fraction is set to unity.
-<<Polarizations: public>>=
-  public :: polarization_get_axis
+
+For an antiparticle, the [[alpha(2)]] coefficient flips sign.
+<<Polarizations: polarization: TBP>>=
+  procedure :: get_axis => polarization_get_axis
 <<Polarizations: procedures>>=
   function polarization_get_axis (pol) result (alpha)
+    class(polarization_t), intent(in), target :: pol
     real(default), dimension(3) :: alpha
-    type(polarization_t), intent(in), target :: pol
-    type(state_iterator_t) :: it
-    complex(default), dimension(2,2) :: value
-    type(helicity_t), dimension(2,2) :: hel
-    type(helicity_t), dimension(1) :: hel1
-    integer :: hmax, i, j
-    if (pol%polarized) then
-       hmax = pol%spin_type / 2
-       call hel(1,1)%init ( hmax, hmax)
-       call hel(1,2)%init ( hmax,-hmax)
-       call hel(2,1)%init (-hmax, hmax)
-       call hel(2,2)%init (-hmax,-hmax)
-       value = 0
-       call it%init (pol%state)
-       do while (it%is_valid ())
-          hel1 = it%get_helicity ()
-          SCAN_HEL: do i = 1, 2
-             do j = 1, 2
-                if (hel1(1) == hel(i,j)) then
-                   value(i,j) = it%get_matrix_element ()
-                   exit SCAN_HEL
-                end if
-             end do
-          end do SCAN_HEL
-          call it%advance ()
-       end do
-       alpha(1) = real(value(1,2) + value(2,1))
-       alpha(2) = - aimag(value(1,2) - value(2,1))
-       alpha(3) = real(value(1,1) - value(2,2))
-    else
-       alpha = 0
-    end if
+    integer :: i
+    select case (pol%chirality)
+    case (0)
+       call pol%bv%to_vector (alpha)
+       if (.not. pol%anti)  alpha(2) = - alpha(2)
+    case (-1)
+       alpha = [0._default, 0._default, -1._default]
+    case (1)
+       alpha = [0._default, 0._default, 1._default]
+    end select
   end function polarization_get_axis
 
 @ %def polarization_get_axis
 @ This function returns polarization degree and polar and azimuthal
-angles ($\theta,\phi$) of the polarization axis.
-<<Polarizations: public>>=
-  public :: polarization_to_angles
+angles ($\theta,\phi$) of the polarization axis.  The same restrictions apply
+as above.
+
+Since we call the [[get_axis]] method, the phase flips sign for an
+antiparticle.
+<<Polarizations: polarization: TBP>>=
+  procedure :: to_angles => polarization_to_angles
 <<Polarizations: procedures>>=
   subroutine polarization_to_angles (pol, r, theta, phi)
-    type(polarization_t), intent(in) :: pol
+    class(polarization_t), intent(in) :: pol
     real(default), intent(out) :: r, theta, phi
     real(default), dimension(3) :: alpha
-    real(default) :: r12
-    if (pol%polarized) then
-       alpha = polarization_get_axis (pol)
-       r = sqrt (sum (alpha**2))
-       if (any (alpha /= 0)) then
-          r12 = sqrt (alpha(1)**2 + alpha(2)**2)
-          theta = atan2 (r12, alpha(3))
-          if (any (alpha(1:2) /= 0)) then
-             phi = atan2 (alpha(2), alpha(1))
-          else
-             phi = 0
-          end if
+    real(default) :: norm, r12
+    alpha = pol%get_axis ()
+    norm = sum (alpha**2)
+    r = sqrt (norm)
+    if (norm > 0) then
+       r12 = sqrt (alpha(1)**2 + alpha(2)**2)
+       theta = atan2 (r12, alpha(3))
+       if (any (alpha(1:2) /= 0)) then
+          phi = atan2 (alpha(2), alpha(1))
        else
-          theta = 0
+          phi = 0
        end if
     else
-       r = 0
        theta = 0
        phi = 0
     end if
@@ -761,16 +2794,222 @@ angles ($\theta,\phi$) of the polarization axis.
 
 @ %def polarization_to_angles
 @
+\subsection{Polarization Iterator}
+The iterator acts like a state matrix iterator, i.e., it points to one
+helicity combination at a time and can return the corresponding helicity
+object and matrix-element value.
+
+Since the polarization is stored as a Bloch vector, we recover the
+whole density matrix explicitly upon initialization, store it inside
+the iterator object, and then just return its elements one at a time.
+
+For an unpolarized particle, the iterator returns a single state with
+undefined helicity.  The value is the value of any diagonal density
+matrix element, $1/n$ where $n$ is the multiplicity.
+<<Polarizations: public>>=
+  public :: polarization_iterator_t
+<<Polarizations: types>>=
+  type :: polarization_iterator_t
+     private
+     type(polarization_t), pointer :: pol => null ()
+     logical :: polarized = .false.
+     integer :: h1 = 0
+     integer :: h2 = 0
+     integer :: i = 0
+     integer :: j = 0
+     complex(default), dimension(:,:), allocatable :: r
+     complex(default) :: value = 1._default
+     real(default) :: tolerance = -1._default
+     logical :: valid = .false.
+   contains
+   <<Polarizations: polarization iterator: TBP>>
+  end type polarization_iterator_t
+  
+@ %def polarization_iterator_t
+@ Output for debugging purposes only, therefore no format for real/complex.
+<<Polarizations: polarization iterator: TBP>>=
+  procedure :: write => polarization_iterator_write
+<<Polarizations: procedures>>=
+  subroutine polarization_iterator_write (it, unit)
+    class(polarization_iterator_t), intent(in) :: it
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(1X,A)")  "Polarization iterator:"
+    write (u, "(3X,A,L1)")  "assigned = ", associated (it%pol)
+    write (u, "(3X,A,L1)")  "valid    = ", it%valid
+    if (it%valid) then
+       write (u, "(3X,A,2(1X,I2))")  "i, j     = ", it%i, it%j
+       write (u, "(3X,A,2(1X,I2))")  "h1, h2   = ", it%h1, it%h2
+       write (u, "(3X,A)", advance="no")  "value    = "
+       write (u, *)  it%value
+       if (allocated (it%r)) then
+          do i = 1, size (it%r, 2)
+             write (u, *)  it%r(i,:)
+          end do
+       end if
+    end if
+  end subroutine polarization_iterator_write
+  
+@ %def polarization_iterator_write
+@ Initialize, i.e., (virtually) point to the first helicity state
+supported by the polarization object.  If the density matrix is
+nontrivial, we calculate it here.
+
+Following the older state-matrix
+conventions, the iterator sequence starts at the lowest helicity
+value.  In the current internal representation, this corresponds to
+the highest index value. 
+
+If the current matrix-element value is zero, advance the iterator.
+Advancing will stop at a nonzero value or if the iterator becomes
+invalid.
+
+If [[tolerance]] is given, any state matrix entry less or equal will
+be treated as zero, causing the iterator to skip an entry.  By
+default, the value is negative, so no entry is skipped.
+<<Polarizations: polarization iterator: TBP>>=
+  procedure :: init => polarization_iterator_init
+<<Polarizations: procedures>>=
+  subroutine polarization_iterator_init (it, pol, all_states, tolerance)
+    class(polarization_iterator_t), intent(out) :: it
+    type(polarization_t), intent(in), target :: pol
+    logical, intent(in), optional :: all_states
+    real(default), intent(in), optional :: tolerance
+    integer :: i, d
+    logical :: only_max_weight
+    it%pol => pol
+    if (present (all_states)) then
+       if (.not. all_states) then
+          if (present (tolerance)) then
+             it%tolerance = tolerance
+          else
+             it%tolerance = 0
+          end if
+       end if
+    end if
+    select case (pol%chirality)
+    case (0)
+       d = pol%bv%get_n_states ()
+       only_max_weight = pol%multiplicity < d
+       it%polarized = pol%bv%is_polarized ()
+       if (it%polarized) then
+          it%i = d
+          it%j = it%i
+          it%h1 = pol%bv%hel_value (it%i)
+          it%h2 = it%h1
+          call pol%bv%to_matrix (it%r, only_max_weight)
+          it%value = it%r(it%i, it%j)
+       else
+          it%value = 1._default / d
+       end if
+       it%valid = .true.
+    case (1,-1)
+       it%polarized = .true.
+       select case (pol%spin_type)
+       case (SPINOR)
+          it%h1 = pol%chirality
+       case (VECTORSPINOR)
+          it%h1 = 2 * pol%chirality
+       end select
+       it%h2 = it%h1
+       it%valid = .true.
+    end select
+    if (it%valid .and. abs (it%value) <= it%tolerance)  call it%advance ()
+  end subroutine polarization_iterator_init
+  
+@ %def polarization_iterator_init
+@ Advance to the next valid helicity state.  Repeat if the returned value is
+zero.
+
+For an unpolarized object, we iterate through the diagonal helicity
+states with a constant value.
+<<Polarizations: polarization iterator: TBP>>=
+  procedure :: advance => polarization_iterator_advance
+<<Polarizations: procedures>>=
+  recursive subroutine polarization_iterator_advance (it)
+    class(polarization_iterator_t), intent(inout) :: it
+    if (it%valid) then
+       select case (it%pol%chirality)
+       case (0)
+          if (it%polarized) then
+             if (it%j > 1) then
+                it%j = it%j - 1
+                it%h2 = it%pol%bv%hel_value (it%j)
+                it%value = it%r(it%i, it%j)
+             else if (it%i > 1) then
+                it%j = it%pol%bv%get_n_states ()
+                it%h2 = it%pol%bv%hel_value (it%j)
+                it%i = it%i - 1
+                it%h1 = it%pol%bv%hel_value (it%i)
+                it%value = it%r(it%i, it%j)
+             else
+                it%valid = .false.
+             end if
+          else
+             it%valid = .false.
+          end if
+       case default
+          it%valid = .false.
+       end select
+       if (it%valid .and. abs (it%value) <= it%tolerance)  call it%advance ()
+    end if
+  end subroutine polarization_iterator_advance
+
+@ %def polarization_iterator_advance
+@ This is true as long as the iterator points to a valid helicity state.
+<<Polarizations: polarization iterator: TBP>>=
+  procedure :: is_valid => polarization_iterator_is_valid
+<<Polarizations: procedures>>=
+  function polarization_iterator_is_valid (it) result (is_valid)
+    logical :: is_valid
+    class(polarization_iterator_t), intent(in) :: it
+    is_valid = it%valid
+  end function polarization_iterator_is_valid
+
+@ %def polarization_iterator_is_valid
+@ Return the matrix element value for the helicity that we are currently
+pointing at.
+<<Polarizations: polarization iterator: TBP>>=
+  procedure :: get_value => polarization_iterator_get_value
+<<Polarizations: procedures>>=
+  function polarization_iterator_get_value (it) result (value)
+    complex(default) :: value
+    class(polarization_iterator_t), intent(in) :: it
+    if (it%valid) then
+       value = it%value
+    else
+       value = 0
+    end if
+  end function polarization_iterator_get_value
+  
+@ %def polarization_iterator_get_value
+@ Return a quantum number object for the helicity that we are currently
+pointing at.  This is a single quantum number object, not an array.
+
+Note that the [[init]] method of the helicity object has the order reversed.
+<<Polarizations: polarization iterator: TBP>>=
+  procedure :: get_quantum_numbers => polarization_iterator_get_quantum_numbers
+<<Polarizations: procedures>>=
+  function polarization_iterator_get_quantum_numbers (it) result (qn)
+    class(polarization_iterator_t), intent(in) :: it
+    type(helicity_t) :: hel
+    type(quantum_numbers_t) :: qn
+    if (it%polarized) then
+       call hel%init (it%h2, it%h1)
+    end if
+    call qn%init (hel)
+  end function polarization_iterator_get_quantum_numbers
+    
+@ %def polarization_iterator_get_quantum_numbers
+@
 \subsection{Sparse Matrix}
-We introduce a simpler implementation of a sparse matrix that should represent
-polarization.  It consists of an integer array that represents the index
+We introduce a simple implementation of a sparse matrix that can represent
+polarization (or similar concepts) for transfer to I/O within the
+program.  It consists of an integer array that represents the index 
 values, and a complex array that represents the nonvanishing entries.  The
 number of nonvanishing entries must be known for initialization, but the
 entries are filled one at a time.
-
-This should eventually replace the more baroque polarization definition above,
-but in the first stage we introduce it just as an intermediage storage
-container.
 
 Here is a base type without the special properties of a spin-density matrix.
 <<Polarizations: public>>=
@@ -865,6 +3104,14 @@ As an extension of the more generic [[smatrix]] type, we implement a proper
 spin-density matrix.  After the matrix has been filled, we can fix spin type
 and multiplicity for a particle, check the matrix for consistency, and
 normalize it if necessary.
+
+TODO: This implementation does not have an antiparticle flag, just
+like the state matrix object.  We therefore cannot account for sign
+flips when using this object.
+
+TODO: The [[pure]] flag is for informational purposes only, and it
+only represents a necessary condition if spin is greater than $1/2$.
+We may either check purity for all spins or drop this.
 <<Polarizations: public>>=
   public :: pmatrix_t
 <<Polarizations: types>>=
@@ -925,8 +3172,10 @@ The required properties are:
 \item the trace is nonnegative and equal to the polarization degree (the
   remainder, proportional to the unit matrix, is understood to be present)
 \item the trace of the matrix square is positive and less or equal
-  to the trace of the matrix itself, which is the polarization degree.  (If it
-  is equal, we are dealing with a pure state).
+  to the trace of the matrix itself, which is the polarization degree.
+\item If the trace of the matrix square and the trace of the matrix are unity,
+  we may have a pure state.  (For spin up to $1/2$, this is actually
+  sufficient.)
 \end{enumerate}
 <<Polarizations: pmatrix: TBP>>=
   procedure :: normalize => pmatrix_normalize
@@ -1065,80 +3314,61 @@ Check if there are only diagonal entries.
   
 @ %def pmatrix_is_diagonal
 @
-\subsection{Data Translation}
+\subsection{Data Transformation}
 Create a [[polarization_t]] object from the contents of a normalized
-[[pmatrix_t]] object.
+[[pmatrix_t]] object.  We scan the entries as present in [[pmatrix]] and
+transform them into a density matrix, if necessary.  The density
+matrix then initializes the Bloch vector.  This is
+analogous to [[polarization_init_state_matrix]].
 
-Note for off diagonal entries: the convention for the arguments of
-[[helicity_init]] is [[(h2,h1)]], so the helicity of the conjugate state is
-inserted first.
-<<Polarizations: public>>=
-  public :: polarization_init_pmatrix
+There is a subtlety associated with massless particles.  Since the
+[[pmatrix]] doesn't contain the full density matrix but just the
+nontrivial part, we have to initialize the polarization object with
+the massless equipartion, which contains nonzero entries for the
+Cartan generators.  The [[set]] method therefore should not erase
+those initial contents.  This is a constraint for the implementation
+of [[set]], as applied to the Bloch vector.
+
+TODO: As mentioned above, [[pmatrix_t]] does not support an
+antiparticle flag.
+<<Polarizations: polarization: TBP>>=
+  procedure :: init_pmatrix => polarization_init_pmatrix
 <<Polarizations: procedures>>=
   subroutine polarization_init_pmatrix (pol, pmatrix)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(pmatrix_t), intent(in) :: pmatrix
-    type(quantum_numbers_t), dimension(1) :: qn
-    type(helicity_t) :: hel
-    integer :: i, h, h1, h2, hmin, hmax, dh
-    logical :: fermion
-    complex(default) :: value
-    pol%polarized = .true.
-    pol%spin_type = pmatrix%spin_type
-    pol%multiplicity = pmatrix%multiplicity
-    call pol%state%init (store_values = .true.)
-    fermion = mod (pol%spin_type, 2) == 0
-    h = pol%spin_type / 2
-    select case (pmatrix%chirality)
-    case (-1)
-       hmin = -h
-       hmax = -h
-    case (0)
-       hmin = -h
-       hmax = h
-    case (1)
-       hmin = h
-       hmax = h
-    end select
-    if (pol%multiplicity == 1) then
-       dh = 1
-    else if (pol%multiplicity == 2) then
-       dh = hmax - hmin
-    else
-       dh = 1
-    end if
-    if (pmatrix%degree < 1) then
-       value = (1 - pmatrix%degree) / pol%multiplicity
-       do h = hmin, hmax, dh
-          if (h == 0 .and. fermion)  cycle
-          call hel%init (h)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn, value = value)
+    integer :: d, i, j, k, h1, h2
+    complex(default), dimension(:,:), allocatable :: r
+    call pol%init_generic ( &
+         spin_type = pmatrix%spin_type, &
+         multiplicity = pmatrix%multiplicity, &
+         anti = .false., &                     !!! SUFFICIENT?
+         left_handed = pmatrix%chirality < 0, &
+         right_handed = pmatrix%chirality > 0)
+    if (pol%bv%is_polarized ()) then
+       d = pol%bv%get_n_states ()
+       allocate (r (d, d), source = (0._default, 0._default))
+       if (d == pmatrix%multiplicity) then
+          do i = 1, d
+             r(i,i) = (1 - pmatrix%degree) / d
+          end do
+       else if (d > pmatrix%multiplicity) then
+          r(1,1) = (1 - pmatrix%degree) / 2
+          r(d,d) = r(1,1)
+       end if
+       do k = 1, size (pmatrix%value)
+          h1 = pmatrix%index(1,k)
+          h2 = pmatrix%index(2,k)
+          i = pol%bv%hel_index (h1)
+          j = pol%bv%hel_index (h2)
+          r(i,j) = r(i,j) + pmatrix%value(k)
+          r(j,i) = conjg (r(i,j))
        end do
+       call pol%bv%set (r)
     end if
-    do i = 1, pmatrix%n_entry
-       associate (index => pmatrix%index(:,i), value => pmatrix%value(i))
-         h1 = index(1)
-         h2 = index(2)
-         if (h1 == h2) then
-            call hel%init (h1)
-            call qn(1)%init (hel)
-            call pol%state%add_state (qn, value = value, &
-                 sum_values = .true.)
-         else
-            call hel%init (h2, h1)
-            call qn(1)%init (hel)
-            call pol%state%add_state (qn, value = value)
-            call hel%init (h1, h2)
-            call qn(1)%init (hel)
-            call pol%state%add_state (qn, value = conjg (value))
-         end if
-       end associate
-    end do
-    call pol%state%freeze ()
   end subroutine polarization_init_pmatrix
 
-@ %def polarization_init_generic
+@ %def polarization_init_pmatrix
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -1166,7 +3396,6 @@ end module polarizations_ut
 module polarizations_uti
 
 <<Use kinds>>
-  use format_defs, only: FMT_12
   use flavors
   use model_data
 
@@ -1211,6 +3440,7 @@ Checking the setup for polarization.
     type(flavor_t) :: flv
     real(default), dimension(3) :: alpha
     real(default) :: r, theta, phi
+    real(default), parameter :: tolerance = 1.E-14_default
 
     write (u, "(A)")  "* Test output: polarization_1"
     write (u, "(A)")  "*   Purpose: test polarization setup"
@@ -1225,103 +3455,101 @@ Checking the setup for polarization.
     write (u, "(A)")
     
     call flv%init (1, model)
-    call polarization_init_unpolarized (pol, flv)
-    call polarization_write (pol, u)
-    write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
-    call polarization_final (pol)
+    call pol%init_unpolarized (flv)
+    call pol%write (u, state_matrix = .true.)
+    write (u, "(A,L1)")  "   diagonal =", pol%is_diagonal ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Unpolarized fermion"
     write (u, "(A)") 
     
-    call polarization_init_circular (pol, flv, 0._default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_circular (flv, 0._default)
+    call pol%write (u, state_matrix = .true., all_states = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Transversally polarized fermion, phi=0"
     write (u, "(A)")
     
-    call polarization_init_transversal (pol, flv, 0._default, 1._default)
-    call polarization_write (pol, u)
-    write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
-    call polarization_final (pol)
+    call pol%init_transversal (flv, 0._default, 1._default)
+    call pol%write (u, state_matrix = .true.)
+    write (u, "(A,L1)")  "   diagonal =", pol%is_diagonal ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Transversally polarized fermion, phi=0.9, frac=0.8"
     write (u, "(A)")
     
-    call polarization_init_transversal (pol, flv, 0.9_default, 0.8_default)
-    call polarization_write (pol, u)
-    write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
-    call polarization_final (pol)
+    call pol%init_transversal (flv, 0.9_default, 0.8_default)
+    call pol%write (u, state_matrix = .true.)
+    write (u, "(A,L1)")  "   diagonal =", pol%is_diagonal ()
     
     write (u, "(A)")
     write (u, "(A)") "* All polarization directions of a fermion"
     write (u, "(A)")
     
-    call polarization_init_generic (pol, flv)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_generic (flv)
+    call pol%write (u, state_matrix = .true.)
+
+    
     call flv%init (21, model)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized gluon, frac=0.3"
     write (u, "(A)") 
     
-    call polarization_init_circular (pol, flv, 0.3_default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)   
+    call pol%init_circular (flv, 0.3_default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+
+    
     call flv%init (23, model)
     
     write (u, "(A)") 
     write (u, "(A)") "* Circularly polarized massive vector, frac=-0.7"
     write (u, "(A)") 
     
-    call polarization_init_circular (pol, flv,  -0.7_default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_circular (flv,  -0.7_default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized massive vector"
     write (u, "(A)")
     
-    call polarization_init_circular (pol, flv, 1._default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_circular (flv, 1._default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector, frac=0.4"
     write (u, "(A)")
     
-    call polarization_init_longitudinal (pol, flv, 0.4_default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_longitudinal (flv, 0.4_default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector"
     write (u, "(A)") 
     
-    call polarization_init_longitudinal (pol, flv, 1._default)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_longitudinal (flv, 1._default)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Diagonally polarized massive vector"
     write (u, "(A)")
     
-    call polarization_init_diagonal &
-         (pol, flv, [0._default, 1._default, 2._default])
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_diagonal &
+         (flv, [2._default, 1._default, 0._default])
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
     write (u, "(A)") 
     write (u, "(A)")  "* All polarization directions of a massive vector"
     write (u, "(A)") 
 
-    call polarization_init_generic (pol, flv)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_generic (flv)
+    call pol%write (u, state_matrix = .true.)
     call flv%init (21, model)
     
     write (u, "(A)") 
@@ -1329,21 +3557,29 @@ Checking the setup for polarization.
     write (u, "(A)") 
     
     alpha = [0.2_default, 0.4_default, 0.6_default]
-    call polarization_init_axis (pol, flv, alpha)
-    call polarization_write (pol, u)
+    call pol%init_axis (flv, alpha)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
     
-    write (u, "(A)")  "   Recovered axis:"
-    alpha = polarization_get_axis (pol)
-    write (u, "(A)")  "   Angle polarization (0.5, 0.6, -1)"
+    write (u, "(A)")
+    write (u, "(1X,A)")  "Recovered axis:"
+    alpha = pol%get_axis ()
+    write (u, "(3(1X,F10.7))")  alpha
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Angle polarization (0.5, 0.6, -1)"
     r = 0.5_default
     theta = 0.6_default
     phi = -1._default
-    call polarization_init_angles (pol, flv, r, theta, phi)
-    call polarization_write (pol, u)
-    write (u, "(A)")  "   Recovered parameters (r, theta, phi):"
-    call polarization_to_angles (pol, r, theta, phi)
-    write (u, "(A,3(1x," // FMT_12 // "))")  "     ", r, theta, phi
-    call polarization_final (pol)
+    call pol%init_angles (flv, r, theta, phi)
+    write (u, "(A)")
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+
+    write (u, "(A)")
+    write (u, "(1X,A)")  "Recovered parameters (r, theta, phi):"
+    call pol%to_angles (r, theta, phi)
+    write (u, "(3(1x,F10.7))")  r, theta, phi
     
     call model%final ()
 
@@ -1395,9 +3631,10 @@ polarization.
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Transversally polarized fermion, phi=0"
@@ -1414,9 +3651,10 @@ polarization.
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Transversally polarized fermion, phi=0.9, frac=0.8"
@@ -1430,9 +3668,9 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Left-handed massive fermion, frac=1"
@@ -1448,9 +3686,10 @@ polarization.
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Left-handed massive fermion, frac=0.8"
@@ -1463,9 +3702,10 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Left-handed massless fermion"
@@ -1477,9 +3717,9 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Right-handed massless fermion, frac=0.5"
@@ -1492,9 +3732,9 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized gluon, frac=0.3"
@@ -1507,9 +3747,10 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)   
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()   
     
     write (u, "(A)") 
     write (u, "(A)") "* Circularly polarized massive vector, frac=0.7"
@@ -1522,9 +3763,10 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized massive vector"
@@ -1537,9 +3779,10 @@ polarization.
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector, frac=0.4"
@@ -1555,9 +3798,10 @@ polarization.
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Longitudinally polarized massive vector"
@@ -1573,9 +3817,10 @@ polarization.
     write (u, "(1x,A,L1)")  "diagonal = ", pmatrix%is_diagonal ()
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true., &
+         all_states = .false., tolerance = tolerance)
+    ! call pol%final ()
     
     write (u, "(A)") 
     write (u, "(A)")  "* Axis polarization (0.2, 0.4, 0.6)"
@@ -1587,15 +3832,15 @@ polarization.
     call pmatrix%init (2, 3)
     call pmatrix%set_entry (1, [-1,-1], cmplx (1 - alpha(3), kind=default))
     call pmatrix%set_entry (2, [1,-1], &
-         cmplx (alpha(1), -alpha(2), kind=default))
+         cmplx (alpha(1),-alpha(2), kind=default))
     call pmatrix%set_entry (3, [1,1], cmplx (1 + alpha(3), kind=default))
     call pmatrix%normalize (flv, 1._default, tolerance)
     call pmatrix%write (u)
     write (u, *) 
 
-    call polarization_init_pmatrix (pol, pmatrix)
-    call polarization_write (pol, u)
-    call polarization_final (pol)
+    call pol%init_pmatrix (pmatrix)
+    call pol%write (u, state_matrix = .true.)
+    ! call pol%final ()
     
     call model%final ()
 
@@ -1606,6 +3851,7 @@ polarization.
 
 @ %def polarization_2
 @ 
+\clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{Particles}
 This module defines the [[particle_t]] object type, and the methods
@@ -1621,7 +3867,7 @@ module particles
   use format_utils, only: write_compressed_integer_array, write_separator
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_16, FMT_19
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use diagnostics
   use lorentz
   use model_data
@@ -1674,9 +3920,15 @@ it has a generic polarization, the [[pol]] component is defined.  For
 each particle we store the four-momentum and the invariant mass
 squared, i.e., the squared norm of the four-momentum.  There is also
 an optional list of parent and child particles, for bookkeeping in
-physical events. The vertex is an optional component that consists of
+physical events. The [[vertex]] is an optional component that consists of
 a Lorentz 4-vector, denoting the position and time of the vertex
-(displaced vertex/time).
+(displaced vertex/time). [[lifetime]] is an optional component that
+accounts for the finite lifetime $\tau$ of a decaying particle. In
+case there is no magnetic field etc., the true decay vertex of a
+particle in the detector would be $\vec{v}^\prime = \vec{v} + \tau
+\times \vec{p}/p^0$, where $p^0$ and $\vec{p}$ are the energy and
+3-momentum of the particle.
+
 <<Particles: public>>=
   public :: particle_t
 <<Particles: types>>=
@@ -1691,6 +3943,7 @@ a Lorentz 4-vector, denoting the position and time of the vertex
      type(vector4_t) :: p = vector4_null
      real(default) :: p2 = 0
      type(vector4_t), allocatable :: vertex
+     real(default), allocatable :: lifetime
      integer, dimension(:), allocatable :: parent
      integer, dimension(:), allocatable :: child
    contains
@@ -1717,6 +3970,8 @@ relations.
     prt_out%p2 = prt_in%p2
     if (allocated (prt_in%vertex))  &
        allocate (prt_out%vertex, source=prt_in%vertex)
+    if (allocated (prt_in%lifetime))  &
+         allocate (prt_out%lifetime, source=prt_in%lifetime)
   end subroutine particle_init_particle
 
 @ %def particle_init_particle
@@ -1730,7 +3985,7 @@ relations.
     class(particle_t), intent(out) :: particle
     integer, intent(in) :: status, pdg, col, anti_col
     class(model_data_t), pointer, intent(in) :: model
-    type(vector4_t) :: mom
+    type(vector4_t), intent(in) :: mom
     type(flavor_t) :: flavor
     type(color_t) :: color
     call flavor%init (pdg, model)
@@ -1753,7 +4008,7 @@ polarization.  This mode is translated into the polarization status.
 <<Particles: procedures>>=
   subroutine particle_init_state (prt, state, status, mode)
     class(particle_t), intent(out) :: prt
-    type(state_matrix_t), intent(in) :: state
+    type(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: status, mode
     type(state_iterator_t) :: it
     prt%status = status
@@ -1768,20 +4023,20 @@ polarization.  This mode is translated into the polarization status.
           prt%polarization = PRT_DEFINITE_HELICITY
        end if
     case (FM_FACTOR_HELICITY)
-       call polarization_init_state_matrix (prt%pol, state)
+       call prt%pol%init_state_matrix (state)
        prt%polarization = PRT_GENERIC_POLARIZATION
     end select
   end subroutine particle_init_state
 
 @ %def particle_init_state
-@ Finalizer.  The polarization component has pointers allocated.
+@ Finalizer.
 <<Particles: particle: TBP>>=
   procedure :: final => particle_final
 <<Particles: procedures>>=
   subroutine particle_final (prt)
     class(particle_t), intent(inout) :: prt
-    call polarization_final (prt%pol)
     if (allocated (prt%vertex))  deallocate (prt%vertex)
+    if (allocated (prt%lifetime))  deallocate (prt%lifetime)
   end subroutine particle_final
 
 @ %def particle_final
@@ -1790,17 +4045,18 @@ polarization.  This mode is translated into the polarization status.
 <<Particles: particle: TBP>>=
   procedure :: write => particle_write
 <<Particles: procedures>>=
-  subroutine particle_write (prt, unit, testflag, compressed)
+  subroutine particle_write (prt, unit, testflag, compressed, polarization)
     class(particle_t), intent(in) :: prt
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: testflag, compressed
-    logical :: comp, pacified
-    integer :: u
+    logical, intent(in), optional :: testflag, compressed, polarization
+    logical :: comp, pacified, pol
+    integer :: u, h1, h2
     real(default) :: pp2
     character(len=7) :: fmt
     character(len=20) :: buffer
     comp = .false.; if (present (compressed))  comp = compressed
     pacified = .false.;  if (present (testflag))  pacified = testflag
+    pol = .true.;  if (present (polarization))  pol = polarization
     call pac_fmt (fmt, FMT_19, FMT_16, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
     pp2 = prt%p2
@@ -1817,6 +4073,20 @@ polarization.  This mode is translated into the polarization status.
     write (u, "(1x)", advance="no")
     if (comp) then
        write (u, "(A7,1X)", advance="no") char (prt%flv%get_name ())
+       if (pol) then
+          select case (prt%polarization)
+          case (PRT_DEFINITE_HELICITY)
+             ! Integer helicity, assumed diagonal
+             call prt%hel%get_indices (h1, h2)
+             write (u, "(I2,1X)", advance="no") h1
+          case (PRT_GENERIC_POLARIZATION)
+             ! No space for full density matrix here
+             write (u, "(A2,1X)", advance="no") "*"
+          case default
+             ! Blank entry if helicity is undefined
+             write (u, "(A2,1X)", advance="no") " "
+          end select
+       end if
        write (u, "(2(I4,1X))", advance="no") &
             prt%col%get_col (), prt%col%get_acl ()
        call write_compressed_integer_array (buffer, prt%parent)
@@ -1830,16 +4100,20 @@ polarization.  This mode is translated into the polarization status.
        if (prt%col%is_nonzero ()) then
           call color_write (prt%col, unit)
        end if
-       select case (prt%polarization)
-       case (PRT_DEFINITE_HELICITY)
-          call prt%hel%write (unit)
+       if (pol) then
+          select case (prt%polarization)
+          case (PRT_DEFINITE_HELICITY)
+             call prt%hel%write (unit)
+             write (u, *)
+          case (PRT_GENERIC_POLARIZATION)
+             write (u, *)
+             call prt%pol%write (unit, state_matrix = .true.)
+          case default
+             write (u, *)
+          end select
+       else
           write (u, *)
-       case (PRT_GENERIC_POLARIZATION)
-          write (u, *)
-          call polarization_write (prt%pol, unit)
-       case default
-          write (u, *)
-       end select
+       end if
        call prt%p%write (unit, testflag = testflag)
        write (u, "(1x,A,1x," // fmt // ")")  "T = ", pp2
        if (allocated (prt%parent)) then
@@ -1857,6 +4131,10 @@ polarization.  This mode is translated into the polarization status.
           write (u, "(1x,A,1x," // fmt // ")")  "Vtx x = ", prt%vertex%p(1)
           write (u, "(1x,A,1x," // fmt // ")")  "Vtx y = ", prt%vertex%p(2)
           write (u, "(1x,A,1x," // fmt // ")")  "Vtx z = ", prt%vertex%p(3)
+       end if
+       if (allocated (prt%lifetime)) then
+          write (u, "(1x,A,1x," // fmt // ")")  "Lifetime = ", &
+               prt%lifetime
        end if
     end if
   end subroutine particle_write
@@ -1877,7 +4155,7 @@ polarization.  This mode is translated into the polarization status.
     case (PRT_DEFINITE_HELICITY)
        call prt%hel%write_raw (u)
     case (PRT_GENERIC_POLARIZATION)
-       call polarization_write_raw (prt%pol, u)
+       call prt%pol%write_raw (u)
     end select
     call vector4_write_raw (prt%p, u)
     write (u) prt%p2
@@ -1895,13 +4173,18 @@ polarization.  This mode is translated into the polarization status.
     if (allocated (prt%vertex)) then
        call vector4_write_raw (prt%vertex, u)
     end if    
+    write (u) allocated (prt%lifetime)
+    if (allocated (prt%lifetime)) then
+       write (u) prt%lifetime
+    end if
   end subroutine particle_write_raw
 
   subroutine particle_read_raw (prt, u, iostat)
     class(particle_t), intent(out) :: prt
     integer, intent(in) :: u
     integer, intent(out) :: iostat
-    logical :: allocated_parent, allocated_child, allocated_vertex
+    logical :: allocated_parent, allocated_child
+    logical :: allocated_vertex, allocated_lifetime
     integer :: size_parent, size_child
     read (u, iostat=iostat) prt%status, prt%polarization
     call prt%flv%read_raw (u, iostat=iostat)
@@ -1910,7 +4193,7 @@ polarization.  This mode is translated into the polarization status.
     case (PRT_DEFINITE_HELICITY)
        call prt%hel%read_raw (u, iostat=iostat)
     case (PRT_GENERIC_POLARIZATION)
-       call polarization_read_raw (prt%pol, u, iostat=iostat)
+       call prt%pol%read_raw (u, iostat=iostat)
     end select
     call vector4_read_raw (prt%p, u, iostat=iostat)
     read (u, iostat=iostat) prt%p2
@@ -1930,6 +4213,11 @@ polarization.  This mode is translated into the polarization status.
     if (allocated_vertex) then
        allocate (prt%vertex)
        read (u, iostat=iostat) prt%vertex%p
+    end if
+    read (u, iostat=iostat) allocated_lifetime
+    if (allocated_lifetime) then
+       allocate (prt%lifetime)
+       read (u, iostat=iostat) prt%lifetime
     end if
   end subroutine particle_read_raw
 
@@ -2189,6 +4477,18 @@ particles.
 @ %def particle_set_vertex_from_vector4
 @ %def particle_set_vertex_from_xyz
 @ %def particle_set_vertex_from_xyzt
+@ Set the lifetime of a particle.
+<<Particles: particle: TBP>>=
+  procedure :: set_lifetime => particle_set_lifetime
+<<Particles: procedures>>=
+  elemental subroutine particle_set_lifetime (prt, lifetime)
+    class(particle_t), intent(inout) :: prt
+    real(default), intent(in) :: lifetime
+    if (allocated (prt%lifetime))  deallocate (prt%lifetime)
+    allocate (prt%lifetime, source=lifetime)
+  end subroutine particle_set_lifetime
+
+@ %def particle_set_lifetime
 @
 \subsubsection{Accessing contents}
 The status code.
@@ -2295,13 +4595,13 @@ The status code.
   end function particle_get_color
   
 @ %def particle_get_color  
-@ Return the polarization density matrix (as a shallow copy).
+@ Return a copy of the polarization density matrix.
 <<Particles: particle: TBP>>=
   procedure :: get_polarization => particle_get_polarization
 <<Particles: procedures>>=
   function particle_get_polarization (prt) result (pol)
     class(particle_t), intent(in) :: prt
-    class(polarization_t), allocatable :: pol
+    type(polarization_t) :: pol
     pol = prt%pol
   end function particle_get_polarization
 
@@ -2462,6 +4762,21 @@ The status code.
   end function particle_get_vertex
 
 @ %def particle_get_vertex
+@ Return the lifetime of a particle.
+<<Particles: particle: TBP>>=
+  procedure :: get_lifetime => particle_get_lifetime
+<<Particles: procedures>>=
+  elemental function particle_get_lifetime (prt) result (lifetime)
+    real(default) :: lifetime
+    class(particle_t), intent(in) :: prt
+    if (allocated (prt%lifetime)) then
+       lifetime = prt%lifetime
+    else
+       lifetime = 0
+    end if
+  end function particle_get_lifetime
+
+@ %def particle_get_lifetime
 @
 <<Particles: particle: TBP>>=
   procedure :: momentum_to_pythia6 => particle_momentum_to_pythia6
@@ -2489,6 +4804,7 @@ correlations that are lost in the individual particle entries.
      integer :: n_vir = 0
      integer :: n_out = 0
      integer :: n_tot = 0
+     integer :: factorization_mode = FM_IGNORE_HELICITY
      type(particle_t), dimension(:), allocatable :: prt
      type(state_matrix_t) :: correlated_state
    contains
@@ -2501,7 +4817,6 @@ HepMC event record.
 <<Particles: particle set: TBP>>=
   generic :: init => init_interaction
   procedure :: init_interaction => particle_set_init_interaction
-@ %def particle_set_init 
 @ When a particle set is initialized from a given interaction, we have
 to determine the branch within the original state matrix that fixes
 the particle quantum numbers.  This is done with the appropriate
@@ -2570,6 +4885,7 @@ possible, in particular if the squared matrix element is zero.
        particle_set%n_vir = 0
        particle_set%n_tot = n_in + n_out
     end if
+    particle_set%factorization_mode = mode
     call int%factorize &
          (FM_IGNORE_HELICITY, x(1), is_valid, flavor_state)
     allocate (qn (n_tot,1))
@@ -2621,6 +4937,30 @@ possible, in particular if the squared matrix element is zero.
   end subroutine particle_set_init_interaction
 
 @ %def particle_set_init_interaction
+<<Particles: particle set: TBP>>=
+  generic :: init => init_particle_set
+  procedure :: init_particle_set => particle_set_init_particle_set
+<<Particles: procedures>>=
+  subroutine particle_set_init_particle_set (pset_out, pset_in)
+    class(particle_set_t), intent(out) :: pset_out
+    type(particle_set_t), intent(in) :: pset_in
+    integer :: i
+    pset_out%n_beam = pset_in%n_beam
+    pset_out%n_in   = pset_in%n_in
+    pset_out%n_vir  = pset_in%n_vir
+    pset_out%n_out  = pset_in%n_out
+    pset_out%n_tot  = pset_in%n_tot
+    pset_out%factorization_mode = pset_in%factorization_mode
+    if (allocated (pset_in%prt)) then
+       allocate (pset_out%prt (size (pset_in%prt)))
+       do i = 1, size (pset_in%prt)
+          pset_out%prt(i) = pset_in%prt(i)
+       end do
+    end if
+    pset_out%correlated_state = pset_in%correlated_state      
+  end subroutine particle_set_init_particle_set
+
+@ %def particle_set_init_particle_set
 @ Manually set the model for the stored particles.
 <<Particles: particle set: TBP>>=
   procedure :: set_model => particle_set_set_model
@@ -2636,6 +4976,13 @@ possible, in particular if the squared matrix element is zero.
   end subroutine particle_set_set_model
     
 @ %def particle_set_set_model
+@ Duplicate implementation.
+<<Particles: interfaces>>=
+  interface assignment(=)
+     module procedure particle_set_init_particle_set
+  end interface
+
+@
 @ Pointer components are hidden inside the particle polarization, and
 in the correlated state matrix.
 <<Particles: particle set: TBP>>=
@@ -2784,11 +5131,11 @@ the [[particle_set]].
      i_in2 = i_in1; i_beam2 = i_beam1; i_remnant2 = i_remnant1
 
      allocate (i_virt2 (n_virt2))
-     i_virt2(1:n_virt1) = i_virt1
-     i_virt2(n_virt1+1:n_virt2) = i_out1 
+     i_virt2(1 : n_virt1) = i_virt1
+     i_virt2(n_virt1 + 1 : n_virt2) = i_out1 
 
      allocate (i_out2 (n_out2))
-     i_out2(1:n_out1) = i_out1(1:n_out1) + n_out1
+     i_out2(1 : n_out1) = i_out1(1 : n_out1) + n_out1
      i_out2(n_out2) = n_tot 
  
      new_particle_set%n_beam = n_beam2
@@ -2798,12 +5145,14 @@ the [[particle_set]].
      new_particle_set%n_tot = n_tot
      new_particle_set%correlated_state = particle_set%correlated_state
      allocate (new_particle_set%prt (n_tot))
-     new_particle_set%prt(i_beam2) = particle_set%prt(i_beam1)
-     new_particle_set%prt(i_remnant2) = particle_set%prt(i_remnant1)
-     new_particle_set%prt(i_virt2(1:n_virt1)) = particle_set%prt(i_virt1) 
+     if (size (i_beam1) > 0) new_particle_set%prt(i_beam2) = particle_set%prt(i_beam1)
+     if (size (i_remnant1) > 0) new_particle_set%prt(i_remnant2) = particle_set%prt(i_remnant1)
+     do i = 1, n_virt1
+        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_virt1(i))
+     end do
 
      do i = n_virt1 + 1, n_virt2
-        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_out1(i-n_virt1))
+        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_out1(i - n_virt1))
         call new_particle_set%prt(i_virt2(i))%reset_status (PRT_VIRTUAL)
      end do
      
@@ -2812,7 +5161,7 @@ the [[particle_set]].
         new_particle_set%prt(i_in2(i))%p = p_radiated (i)
      end do
 
-     do i = 1, n_out2-1
+     do i = 1, n_out2 - 1
         new_particle_set%prt(i_out2(i)) = particle_set%prt(i_out1(i))
         new_particle_set%prt(i_out2(i))%p = p_radiated(i + n_in2)
         call new_particle_set%prt(i_out2(i))%reset_status (PRT_OUTGOING)
@@ -2846,11 +5195,7 @@ the [[particle_set]].
      do i = n_in2 + n_beam2 + n_remnant2 + n_virt2 + 1, n_tot
         call new_particle_set%prt(i)%set_parents (parents)
      end do
-     !!! Overwrite old particle set
-     select type (particle_set)
-     type is (particle_set_t)
-        particle_set = new_particle_set
-     end select
+     call particle_set%init (new_particle_set)
   contains
 
     <<build radiation: set color offset>>
@@ -2859,11 +5204,11 @@ the [[particle_set]].
       integer, intent(in) :: i_rad, i_em
       real(default), intent(in) :: r_col
       type(color_t) :: col_rad, col_em
-      if (is_quark (abs (i_em)) .and. is_gluon (i_rad)) then
+      if (is_quark (i_em) .and. is_gluon (i_rad)) then
          call reassign_colors_qg (prt_emitter, col_rad, col_em)
       else if (is_gluon (i_em) .and. is_gluon (i_rad)) then
          call reassign_colors_gg (prt_emitter, r_col, col_rad, col_em)
-      else if (is_gluon (i_em) .and. is_quark (abs (i_rad))) then
+      else if (is_gluon (i_em) .and. is_quark (i_rad)) then
          call reassign_colors_qq (prt_emitter, i_em, col_rad, col_em)
       else
          call msg_fatal ("Invalid splitting")
@@ -2980,18 +5325,30 @@ from the record-keeping Born particles in the LHE-output if the virtual entries 
     class(particle_set_t), intent(in) :: particle_set
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag, summary, compressed
-    logical :: summ, comp
+    logical :: summ, comp, pol
     type(vector4_t) :: sum_vec
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
     summ = .false.; if (present (summary)) summ = summary
     comp = .false.; if (present (compressed)) comp = compressed
+    pol = particle_set%factorization_mode /= FM_IGNORE_HELICITY
     write (u, "(1x,A)") "Particle set:"
     call write_separator (u)
-    if (comp) write (u, &
-         "((A4,1X),(A6,1X),(A7,1X),2(A4,1X),2(A20,1X),5(A12,1X))") &
-         "Nr", "Status", "Flavor", "Col", "ACol", "Parents", "Children", &
-         "P(0)", "P(1)", "P(2)", "P(3)", "P^2"
+    if (comp) then
+       if (pol) then
+          write (u, &
+               "((A4,1X),(A6,1X),(A7,1X),(A3),2(A4,1X),2(A20,1X),5(A12,1X))") &
+               "Nr", "Status", "Flavor", "Hel", "Col", "ACol", &
+               "Parents", "Children", &
+               "P(0)", "P(1)", "P(2)", "P(3)", "P^2"
+       else
+          write (u, &
+               "((A4,1X),(A6,1X),(A7,1X),2(A4,1X),2(A20,1X),5(A12,1X))") &
+               "Nr", "Status", "Flavor", "Col", "ACol", &
+               "Parents", "Children", &
+               "P(0)", "P(1)", "P(2)", "P(3)", "P^2"
+       end if
+    end if
     if (particle_set%n_tot /= 0) then
        do i = 1, particle_set%n_tot
           if (comp) then
@@ -3000,7 +5357,7 @@ from the record-keeping Born particles in the LHE-output if the virtual entries 
              write (u, "(1x,A,1x,I0)", advance="no") "Particle", i
           end if
           call particle_set%prt(i)%write (u, testflag = testflag, &
-               compressed = comp)
+               compressed = comp, polarization = pol)
        end do
        if (particle_set%correlated_state%is_defined ()) then
           call write_separator (u)
@@ -3063,6 +5420,7 @@ flavor values read from file.
     write (u) &
          particle_set%n_beam, particle_set%n_in, &
          particle_set%n_vir, particle_set%n_out
+    write (u) particle_set%factorization_mode
     write (u) particle_set%n_tot
     do i = 1, particle_set%n_tot
        call particle_set%prt(i)%write_raw (u)
@@ -3078,6 +5436,7 @@ flavor values read from file.
     read (u, iostat=iostat) &
          particle_set%n_beam, particle_set%n_in, &
          particle_set%n_vir, particle_set%n_out
+    read (u, iostat=iostat) particle_set%factorization_mode
     read (u, iostat=iostat) particle_set%n_tot
     allocate (particle_set%prt (particle_set%n_tot))
     do i = 1, size (particle_set%prt)
@@ -3266,6 +5625,26 @@ particle set.
   end function particle_set_get_indices
 
 @ %def particle_set_get_indices
+@
+<<Particles: particle set: TBP>>=
+  procedure :: get_in_and_out_momenta => particle_set_get_in_and_out_momenta
+<<Particles: procedures>>=
+  function particle_set_get_in_and_out_momenta (pset) result (phs_point)
+    type(phs_point_t) :: phs_point
+    class(particle_set_t), intent(in) :: pset
+    logical, dimension(:), allocatable :: mask
+    integer, dimension(:), allocatable :: indices
+    type(vector4_t), dimension(:), allocatable :: p
+    allocate (mask (pset%get_n_tot ()))
+    allocate (p (size (pset%prt)))
+    mask = pset%prt%status == PRT_INCOMING .or. &
+           pset%prt%status == PRT_OUTGOING
+    allocate (indices (count (mask)))
+    indices = pset%get_indices (mask) 
+    phs_point = pset%get_momenta (indices)
+  end function particle_set_get_in_and_out_momenta
+
+@ %def particle_set_get_in_and_out_momenta
 @
 \subsubsection{Tools}
 Build a new particles array without hadronic remnants but with
@@ -3636,6 +6015,7 @@ ignored.
     logical :: kb
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     allocate (status (pset_in%n_tot))    
+    pset_out%factorization_mode = pset_in%factorization_mode
     !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     do i = 1, pset_in%n_tot
        status(i) = pset_in%prt(i)%get_status ()
@@ -4413,7 +6793,7 @@ module particles_uti
 
 <<Use kinds>>
   use io_units
-  use unit_tests, only: assert_equal
+  use numeric_utils
   use constants, only: one, tiny_07
   use lorentz
   use flavors
@@ -5386,7 +7766,7 @@ Reconstruct a hard decay interaction from a shuffled particle set.
     call pset%prt(3)%set_momentum (vector4_at_rest (2._default))
     call pset%prt(4)%set_momentum (vector4_at_rest (4._default))
 
-    allocate (flv (5))
+    allocate (flv (4))
     call flv%init ([6,5,12,-11])
     do i = 1, 4
        call pset%prt(i)%set_flavor (flv(i))

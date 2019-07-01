@@ -35,11 +35,20 @@ here are more specific for particle physics.
 module physics_defs
 
 <<Use kinds>>
+<<Use strings>>
   use constants, only: one, two, three
 
 <<Standard module head>>
 
 <<Physics defs: public parameters>>
+
+<<Physics defs: public>>
+
+<<Physics defs: interfaces>>
+
+contains
+
+<<Physics defs: procedures>>
 
 end module physics_defs
 @ %def physics_defs
@@ -204,16 +213,95 @@ Color types are defined as the dimension of the representation.
 Used to specify whether a component of a process instance is associated
 with a Born, real-subtracted, virtual-subtracted or subtraction-dummy
 matrix element.
-<<Physics defs: public parameters>>= 
+<<Physics defs: public parameters>>=
   integer, parameter, public :: BORN = 0
   integer, parameter, public :: NLO_REAL = 1
   integer, parameter, public :: NLO_VIRTUAL = 2
-  integer, parameter, public :: NLO_PDF = 3
-  integer, parameter, public :: NLO_SUBTRACTION = 4
-  integer, parameter, public :: GKS = 5
-  integer, parameter, public :: NLO_THRESHOLD_RESUMMATION = 6
+  integer, parameter, public :: NLO_MISMATCH = 3
+  integer, parameter, public :: NLO_DGLAP = 4
+  integer, parameter, public :: NLO_SUBTRACTION = 5
+  integer, parameter, public :: NLO_FULL = 6
+  integer, parameter, public :: GKS = 7
+  integer, parameter, public :: COMPONENT_UNDEFINED = 99
 
 @ % def BORN, NLO_REAL, NLO_VIRTUAL, NLO_SUBTRACTION, GKS
+@ [[NLO_FULL]] is not strictly a component status code but having it is
+convenient.
+<<Physics defs: public>>=
+  public :: component_status
+<<Physics defs: interfaces>>=
+  interface component_status
+     module procedure component_status_of_string
+     module procedure component_status_to_string
+  end interface
+<<Physics defs: procedures>>=
+  elemental function component_status_of_string (string) result (i)
+    integer :: i
+    type(string_t), intent(in) :: string
+    select case (char(string))
+    case ("Born")
+       i = BORN
+    case ("Real")
+       i = NLO_REAL
+    case ("Virtual")
+       i = NLO_VIRTUAL
+    case ("Mismatch")
+       i = NLO_MISMATCH
+    case ("Dglap")
+       i = NLO_DGLAP
+    case ("Subtraction")
+       i = NLO_SUBTRACTION
+    case ("Full")
+       i = NLO_FULL
+    case ("GKS")
+       i = GKS
+    case default
+       i = COMPONENT_UNDEFINED
+    end select
+  end function component_status_of_string
+
+  elemental function component_status_to_string (i) result (string)
+    type(string_t) :: string
+    integer, intent(in) :: i
+    select case (i)
+    case (BORN)
+       string = "Born"
+    case (NLO_REAL)
+       string = "Real"
+    case (NLO_VIRTUAL)
+       string = "Virtual"
+    case (NLO_MISMATCH)
+       string = "Mismatch"
+    case (NLO_DGLAP)
+       string = "Dglap"
+    case (NLO_SUBTRACTION)
+       string = "Subtraction"
+    case (NLO_FULL)
+       string = "Full"
+    case (GKS)
+       string = "GKS"
+    case default
+       string = "Undefined"
+    end select
+  end function component_status_to_string
+
+@ %def component_status
+@
+<<Physics defs: public>>=
+  public :: is_nlo_component
+<<Physics defs: procedures>>=
+  elemental function is_nlo_component (comp) result (is_nlo)
+    logical :: is_nlo
+    integer, intent(in) :: comp
+    select case (comp)
+    case (BORN : GKS)
+       is_nlo = .true.
+    case default
+       is_nlo = .false.
+    end select
+  end function is_nlo_component
+
+@ %def is_nlo_component
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -302,6 +390,7 @@ elemental (or pure, if this is not possible).
 module lorentz
 
 <<Use kinds with double>>
+  use numeric_utils
   use io_units
   use constants, only: pi, twopi, degree, zero, one, two, eps0, tiny_07
   use format_defs, only: FMT_11, FMT_13, FMT_15, FMT_19
@@ -696,8 +785,8 @@ the time-critical applications do not involve four-vector operations.
     if (comp) then
        write (u, "(4(F12.3,1X))", advance="no")  p%p(0:3)
     else
-       write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
-       write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
+       write (u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
+       write (u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
        if (sm) then
           m = p**1
           if (tf)  call pacify (m, tolerance = 1E-6_default)
@@ -1154,6 +1243,125 @@ optional mass-squared value instead.
   end function vector4_to_c_prt
 
 @ %def vector4_to_c_prt
+@
+<<Lorentz: public>>=
+  public :: phs_point_t
+<<Lorentz: types>>=
+  type :: phs_point_t
+     type(vector4_t), dimension(:), allocatable :: p
+     integer :: n_momenta = 0
+  contains
+  <<Lorentz: phs point: TBP>>
+  end type phs_point_t
+
+@ %def phs_point_t
+@
+<<Lorentz: interfaces>>=
+  interface operator(==)
+     module procedure phs_point_eq
+  end interface
+<<Lorentz: procedures>>=
+  elemental function phs_point_eq (phs_point_1, phs_point_2) result (eq)
+    logical :: eq
+    type(phs_point_t), intent(in) :: phs_point_1, phs_point_2
+    eq = all (phs_point_1%p == phs_point_2%p)
+  end function phs_point_eq
+
+@ %def phs_point_eq
+@
+<<Lorentz: interfaces>>=
+  interface operator(*)
+     module procedure prod_LT_phs_point
+  end interface
+<<Lorentz: procedures>>=
+  elemental function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
+    type(phs_point_t) :: phs_point_LT
+    type(lorentz_transformation_t), intent(in) :: L
+    type(phs_point_t), intent(in) :: phs_point
+    phs_point_LT = size (phs_point%p)
+    phs_point_LT%p = L * phs_point%p
+  end function prod_LT_phs_point
+
+@ %def prod_LT_phs_point
+@
+<<Lorentz: interfaces>>=
+  interface assignment(=)
+     module procedure phs_point_from_n, phs_point_from_vector4, &
+                      phs_point_from_phs_point
+  end interface
+<<Lorentz: procedures>>=
+  pure subroutine phs_point_from_n (phs_point, n_particles)
+    type(phs_point_t), intent(out) :: phs_point
+    integer, intent(in) :: n_particles
+    allocate (phs_point%p (n_particles))
+    phs_point%n_momenta = n_particles
+    phs_point%p = vector4_null
+  end subroutine phs_point_from_n
+
+@ %def phs_point_init_from_n
+@ 
+<<Lorentz: phs point: TBP>>=
+<<Lorentz: procedures>>=
+  pure subroutine phs_point_from_vector4 (phs_point, p)
+    type(phs_point_t), intent(out) :: phs_point
+    type(vector4_t), intent(in), dimension(:) :: p
+    phs_point%n_momenta = size (p)
+    allocate (phs_point%p (phs_point%n_momenta), source = p)
+  end subroutine phs_point_from_vector4
+
+@ %def phs_point_init_from_p
+@
+<<Lorentz: procedures>>=
+  pure subroutine phs_point_from_phs_point (phs_point, phs_point_in)
+    type(phs_point_t), intent(out) :: phs_point
+    type(phs_point_t), intent(in) :: phs_point_in
+    phs_point%n_momenta = phs_point_in%n_momenta
+    allocate (phs_point%p (phs_point%n_momenta))
+    phs_point%p = phs_point_in%p
+  end subroutine phs_point_from_phs_point
+
+@ %def phs_point_from_phs_point
+@
+<<Lorentz: phs point: TBP>>=
+  procedure :: final => phs_point_final
+<<Lorentz: procedures>>=
+  subroutine phs_point_final (phs_point)
+    class(phs_point_t), intent(inout) :: phs_point
+    deallocate (phs_point%p)
+    phs_point%n_momenta = 0
+  end subroutine phs_point_final
+
+@ %def phs_point_final
+@
+<<Lorentz: phs point: TBP>>=
+  procedure :: write => phs_point_write 
+<<Lorentz: procedures>>=
+  subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
+      check_conservation, ultra, n_in)
+    class(phs_point_t), intent(in) :: phs_point
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag, ultra
+    logical, intent(in), optional :: check_conservation
+    integer, intent(in), optional :: n_in
+    call vector4_write_set (phs_point%p, unit = unit, show_mass = show_mass, &
+       testflag = testflag, check_conservation = check_conservation, &
+       ultra = ultra, n_in = n_in)
+  end subroutine phs_point_write
+
+@ %def phs_point_write
+@
+<<Lorentz: phs point: TBP>>=
+  procedure :: get_x => phs_point_get_x
+<<Lorentz: procedures>>=
+  function phs_point_get_x (phs_point, E_beam) result (x)
+    real(default), dimension(2) :: x
+    class(phs_point_t), intent(in) :: phs_point
+    real(default), intent(in) :: E_beam
+    x = phs_point%p(1:2)%p(0) / E_beam
+  end function phs_point_get_x
+
+@ %def phs_point_get_x
 @
 \subsection{Angles}
 Return the angles in a canonical system.  The angle $\phi$ is defined
@@ -1843,10 +2051,44 @@ epsilon.
     type(vector3_t), intent(inout) :: p
     real(default) :: abs
     abs = sqrt (p%p(1)**2 + p%p(2)**2 + p%p(3)**2)
-    p = p/abs
+    p = p / abs
   end subroutine normalize
 
 @ %def normalize
+@ Computes the invariant mass of the momenta sum given by the indices in
+[[i_res_born]] and the optional argument [[i_emitter]].
+<<Lorentz: public>>=
+  public :: compute_resonance_mass
+<<Lorentz: procedures>>=
+  pure function compute_resonance_mass (p, i_res_born, i_gluon) result (m)
+    real(default) :: m
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in), dimension(:) :: i_res_born
+    integer, intent(in), optional :: i_gluon
+    type(vector4_t) :: p_res
+    p_res = get_resonance_momentum (p, i_res_born, i_gluon)
+    m = p_res**1
+  end function compute_resonance_mass
+
+@ %def compute_resonance_mass
+@
+<<Lorentz: public>>=
+  public :: get_resonance_momentum
+<<Lorentz: procedures>>=
+  pure function get_resonance_momentum (p, i_res_born, i_gluon) result (p_res)
+    type(vector4_t) :: p_res
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in), dimension(:) :: i_res_born
+    integer, intent(in), optional :: i_gluon
+    integer :: i
+    p_res = vector4_null
+    do i = 1, size (i_res_born)
+       p_res = p_res + p (i_res_born(i))
+    end do
+    if (present (i_gluon)) p_res = p_res + p (i_gluon)
+  end function get_resonance_momentum
+
+@ %def get_resonance_momentum
 @
 \subsection{Boosts}
 We build Lorentz transformations from boosts and rotations.  In both
@@ -2265,7 +2507,8 @@ The second variant applies if there is no rotation
 @ %def axis_from_p_r3_r2_b3 axis_from_p_b3
 @
 \subsection{Special functions}
-The standard phase space function:
+The K\"all\'en function, mostly used for the phase space.
+This is equivalent to $\lambda(x,y,z)=x^2+y^2+z^2-2xy-2xz-2yz$.
 <<Lorentz: public functions>>=
   public :: lambda
 <<Lorentz: procedures>>=
@@ -2407,9 +2650,10 @@ transformations.
     real(default), dimension(0:3) :: p_tot
     character(len=7) :: fmt
     integer :: u
-    logical :: yorn
+    logical :: yorn, is_test
     integer :: n
     extreme = .false.; if (present (ultra))  extreme = ultra
+    is_test = .false.; if (present (testflag)) is_test = testflag
     u = given_output_unit (unit);  if (u < 0)  return
     n = 2; if (present (n_in)) n = n_in
     p_tot = 0
@@ -2428,15 +2672,45 @@ transformations.
     else
        call pac_fmt (fmt, FMT_19, FMT_15, testflag)
     end if
-    if (present (testflag)) then
-       if (testflag)  call pacify (p_tot, 1.E-9_default)
+    if (is_test)  call pacify (p_tot, 1.E-9_default)
+    if (.not. is_test) then
+       write (u, "(A5)") 'Total: '
+       write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)
+       write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(1:)
     end if
-    write (u, "(A5)") 'Total: '
-    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)
-    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(1:)
   end subroutine vector4_write_set
 
 @ %def vector4_write_set
+@
+<<Lorentz: public>>=
+  public :: vector4_check_momentum_conservation
+<<Lorentz: procedures>>=
+  subroutine vector4_check_momentum_conservation (p, n_in, unit, abs_smallness, rel_smallness)
+    type(vector4_t), dimension(:), intent(in) :: p
+    integer, intent(in) :: n_in
+    integer, intent(in), optional :: unit
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    integer :: u, i
+    type(vector4_t) :: psum_in, psum_out
+    u = given_output_unit (unit);  if (u < 0)  return
+    psum_in = vector4_null
+    do i = 1, n_in
+       psum_in = psum_in + p(i)
+    end do
+    psum_out = vector4_null
+    do i = n_in + 1, size (p)
+       psum_out = psum_out + p(i)
+    end do
+    if (.not. all (nearly_equal (psum_in%p, psum_out%p, abs_smallness, rel_smallness))) then
+       call msg_warning ("Momentum conservation violated!")
+       write (u, "(A)") "Incoming:"
+       call vector4_write (psum_in, u)
+       write (u, "(A)") "Outgoing:"
+       call vector4_write (psum_out, u)
+    end if
+  end subroutine vector4_check_momentum_conservation
+
+@ %def vector4_check_momentum_conservation
 @ This computes the quantities
 \begin{align*}
   \langle ij \rangle &= \sqrt{|S_{ij}|} e^{i\phi_{ij}},
@@ -2496,7 +2770,7 @@ module sm_physics
 <<Use kinds>>
   use io_units
   use constants
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use physics_defs
   use lorentz
@@ -3876,7 +4150,7 @@ end module sm_physics_ut
 module sm_physics_uti
 
 <<Use kinds>>
-  use unit_tests, only: nearly_equal, vanishes, assert, assert_equal
+  use numeric_utils
   use format_defs, only: FMT_15
   use constants
 
@@ -4016,6 +4290,7 @@ end module sm_physics_uti
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.118 !(Z pole, NLL running to mu_h)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
+    write (u, "(A," // FMT_15 // ")")  "*   alphas = ", alphas
     gamma1 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1 = ", gamma1
 
@@ -4047,7 +4322,7 @@ module sm_qcd
 <<Use kinds>>
   use io_units
   use format_defs, only: FMT_12
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use md5
   use physics_defs
@@ -4131,7 +4406,7 @@ value.  By default, this is the value at $M_Z$.
     class(alpha_qcd_fixed_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QCD parameters (fixed coupling):"
     write (u, "(5x,A," // FMT_12 // ")")  "alpha = ", object%val
   end subroutine alpha_qcd_fixed_write
@@ -4177,7 +4452,7 @@ approximation.
     class(alpha_qcd_from_scale_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QCD parameters (running coupling):"
     write (u, "(5x,A," // FMT_12 // ")")  "Scale mu  = ", object%mu_ref
     write (u, "(5x,A," // FMT_12 // ")")  "alpha(mu) = ", object%ref
@@ -4227,7 +4502,7 @@ the order of the approximation.
     class(alpha_qcd_from_lambda_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QCD parameters (Lambda_QCD as input):"
     write (u, "(5x,A," // FMT_12 // ")")  "Lambda_QCD = ", object%lambda
     write (u, "(5x,A,I0)")      "LL order   = ", object%order
@@ -4279,7 +4554,7 @@ then any extra components.
     logical, intent(in), optional :: show_md5sum
     logical :: show_md5
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     show_md5 = .true.;  if (present (show_md5sum))  show_md5 = show_md5sum
     if (allocated (qcd%alpha)) then
        call qcd%alpha%write (u)

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -631,7 +631,7 @@ contains
     do i = 1, size (pl)
        call table%record (pl(i), 0, 0, constraints, passed)
        if (.not. passed) then
-          call msg_fatal ("Registering process components: constraint failed")
+          call msg_fatal ("ps_table: Registering process components failed")
        end if
     end do
   end subroutine ps_table_init
@@ -819,9 +819,16 @@ contains
     type(split_constraints_t), intent(in) :: constraints
     logical, intent(out) :: passed
     type(ps_entry_t), pointer :: current
-    if (.not. pl%is_regular ())  return
+    passed = .false.
+    if (.not. pl%is_regular ()) then
+       call msg_warning ("Record ps_table entry: Irregular pdg-list encountered!")
+       return
+    end if
     call constraints%check_before_record (table, pl, n_loop, passed)
-    if (.not. passed)  return
+    if (.not. passed)  then
+       call msg_warning ("Record ps_table entry: Constraints not fulfilled!")
+       return
+    end if
     current => table%first
     do while (associated (current))
        if (pl == current) then

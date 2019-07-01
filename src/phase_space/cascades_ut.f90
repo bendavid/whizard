@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,20 +36,22 @@
 module cascades_ut
   use unit_tests
   use cascades_uti
-  
+
   implicit none
   private
 
   public :: cascades_test
 
 contains
-  
+
   subroutine cascades_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-    call test (cascade_1, "cascade_1", &
+    call test (cascades_1, "cascades_1", &
          "check cascade setup", &
          u, results)
+    call test(cascades_2, "cascades_2", &
+              "Check resonance history", u, results)
   end subroutine cascades_test
 
 

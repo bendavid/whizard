@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,7 +38,7 @@ module sm_qcd
   use kinds, only: default
   use io_units
   use format_defs, only: FMT_12
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use md5
   use physics_defs
@@ -119,7 +119,7 @@ contains
     class(alpha_qcd_fixed_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QCD parameters (fixed coupling):"
     write (u, "(5x,A," // FMT_12 // ")")  "alpha = ", object%val
   end subroutine alpha_qcd_fixed_write
@@ -135,7 +135,7 @@ contains
     class(alpha_qcd_from_scale_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QCD parameters (running coupling):"
     write (u, "(5x,A," // FMT_12 // ")")  "Scale mu  = ", object%mu_ref
     write (u, "(5x,A," // FMT_12 // ")")  "alpha(mu) = ", object%ref
@@ -156,7 +156,7 @@ contains
     class(alpha_qcd_from_lambda_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QCD parameters (Lambda_QCD as input):"
     write (u, "(5x,A," // FMT_12 // ")")  "Lambda_QCD = ", object%lambda
     write (u, "(5x,A,I0)")      "LL order   = ", object%order
@@ -177,7 +177,7 @@ contains
     logical, intent(in), optional :: show_md5sum
     logical :: show_md5
     integer :: u
-    u = given_output_unit (unit)
+    u = given_output_unit (unit);  if (u < 0)  return
     show_md5 = .true.;  if (present (show_md5sum))  show_md5 = show_md5sum
     if (allocated (qcd%alpha)) then
        call qcd%alpha%write (u)

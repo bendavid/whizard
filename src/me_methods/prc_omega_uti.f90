@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -200,7 +200,7 @@ contains
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (par)
+       call driver%init (par, 0)
 
        call driver%new_event (p)
 
@@ -515,7 +515,7 @@ contains
     write (u, "(2x,A,F6.4)")  "mmu  = ", par(3)
     write (u, "(2x,A,F6.4)")  "mtau = ", par(4)
 
-    call prc1%set_parameters (model, helicity_selection)
+    call prc1%set_parameters (model, helicity_selection=helicity_selection)
 
     write (u, "(A)")
     write (u, "(A)")  "* Helicity states of omega3_a_i1:"
@@ -550,7 +550,7 @@ contains
     helicity_selection%cutoff = 4
     call helicity_selection%write (u)
     
-    call prc1%set_parameters (model, helicity_selection)
+    call prc1%set_parameters (model, helicity_selection=helicity_selection)
     call prc1%reset_helicity_selection ()
 
     write (u, "(A)")
@@ -632,7 +632,7 @@ contains
     class(prc_core_driver_t), allocatable :: driver
     integer, parameter :: cdf = c_default_float
     integer, parameter :: ci = c_int
-    real(cdf), dimension(6) :: par
+    real(cdf), dimension(8) :: par
     real(cdf), dimension(0:3,4) :: p
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
@@ -688,13 +688,16 @@ contains
 
     alpha_s = 0.1178_cdf
     
-    par = [alpha_s, 0._cdf, 0._cdf, 0._cdf, 173.1_cdf, 1.523_cdf]
+    par = [alpha_s, &
+         0._cdf, 0._cdf, 0._cdf, 0._cdf, 0._cdf, 173.1_cdf, 1.523_cdf]
     write (u, "(2x,A,F8.4)")  "alpha_s = ", par(1)
-    write (u, "(2x,A,F8.4)")  "ms      = ", par(2)
-    write (u, "(2x,A,F8.4)")  "mc      = ", par(3)
-    write (u, "(2x,A,F8.4)")  "mb      = ", par(4)
-    write (u, "(2x,A,F8.4)")  "mtop    = ", par(5)
-    write (u, "(2x,A,F8.4)")  "wtop    = ", par(6)
+    write (u, "(2x,A,F8.4)")  "md      = ", par(2)
+    write (u, "(2x,A,F8.4)")  "mu      = ", par(3)
+    write (u, "(2x,A,F8.4)")  "ms      = ", par(4)
+    write (u, "(2x,A,F8.4)")  "mc      = ", par(5)
+    write (u, "(2x,A,F8.4)")  "mb      = ", par(6)
+    write (u, "(2x,A,F8.4)")  "mtop    = ", par(7)
+    write (u, "(2x,A,F8.4)")  "wtop    = ", par(8)
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
@@ -714,7 +717,7 @@ contains
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (par)
+       call driver%init (par, 0)
 
        write (u, "(A)")
        write (u, "(A)")  "* Compute matrix element:"

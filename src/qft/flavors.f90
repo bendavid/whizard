@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -62,18 +62,18 @@ module flavors
      type(field_data_t), pointer :: field_data => null ()
    contains
      generic :: init => &
-          flavor_init0_empty, &
-          flavor_init0, &
-          flavor_init0_field_data, &
-          flavor_init0_model, &
-          flavor_init0_model_alt, &
-          flavor_init0_name_model
-     procedure, private :: flavor_init0_empty
-     procedure, private :: flavor_init0
-     procedure, private :: flavor_init0_field_data
-     procedure, private :: flavor_init0_model
-     procedure, private :: flavor_init0_model_alt
-     procedure, private :: flavor_init0_name_model
+          flavor_init_empty, &
+          flavor_init, &
+          flavor_init_field_data, &
+          flavor_init_model, &
+          flavor_init_model_alt, &
+          flavor_init_name_model
+     procedure, private :: flavor_init_empty
+     procedure, private :: flavor_init
+     procedure, private :: flavor_init_field_data
+     procedure, private :: flavor_init_model
+     procedure, private :: flavor_init_model_alt
+     procedure, private :: flavor_init_name_model
      procedure :: tag_radiated => flavor_tag_radiated
      procedure :: undefine => flavor_undefine
      procedure :: write => flavor_write
@@ -135,39 +135,39 @@ module flavors
        
 contains
 
-  elemental subroutine flavor_init0_empty (flv)
+  elemental subroutine flavor_init_empty (flv)
     class(flavor_t), intent(inout) :: flv
     flv%f = UNDEFINED
     flv%radiated = .false.
     flv%field_data => null ()
-  end subroutine flavor_init0_empty
+  end subroutine flavor_init_empty
 
-  elemental subroutine flavor_init0 (flv, f)
+  elemental subroutine flavor_init (flv, f)
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     flv%f = f
     flv%radiated = .false.
     flv%field_data => null ()
-  end subroutine flavor_init0
+  end subroutine flavor_init
 
-  impure elemental subroutine flavor_init0_field_data (flv, field_data)
+  impure elemental subroutine flavor_init_field_data (flv, field_data)
     class(flavor_t), intent(inout) :: flv
     type(field_data_t), intent(in), target :: field_data
     flv%f = field_data%get_pdg ()
     flv%radiated = .false.
     flv%field_data => field_data
-  end subroutine flavor_init0_field_data
+  end subroutine flavor_init_field_data
 
-  impure elemental subroutine flavor_init0_model (flv, f, model)
+  impure elemental subroutine flavor_init_model (flv, f, model)
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model
     flv%f = f
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (f, check=.true.)
-  end subroutine flavor_init0_model
+  end subroutine flavor_init_model
 
-  impure elemental subroutine flavor_init0_model_alt (flv, f, model, alt_model)
+  impure elemental subroutine flavor_init_model_alt (flv, f, model, alt_model)
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model, alt_model
@@ -184,66 +184,16 @@ contains
           call msg_fatal ()
        end if
     end if
-  end subroutine flavor_init0_model_alt
+  end subroutine flavor_init_model_alt
 
-!   subroutine flavor_init1_model (flv, f, model)
-!     type(flavor_t), dimension(:), intent(out) :: flv
-!     integer, dimension(:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model
-!     integer :: i
-!     do i = 1, size (f)
-!        call flavor_init0_model (flv(i), f(i), model)
-!     end do
-!   end subroutine flavor_init1_model
-! 
-!   subroutine flavor_init1_model_alt (flv, f, model, alt_model)
-!     type(flavor_t), dimension(:), intent(out) :: flv
-!     integer, dimension(:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model, alt_model
-!     integer :: i
-!     do i = 1, size (f)
-!        call flavor_init0_model_alt (flv(i), f(i), model, alt_model)
-!     end do
-!   end subroutine flavor_init1_model_alt
-! 
-!   subroutine flavor_init2_model (flv, f, model)
-!     type(flavor_t), dimension(:,:), intent(out) :: flv
-!     integer, dimension(:,:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model
-!     integer :: i
-!     do i = 1, size (f, 2)
-!        call flavor_init1_model (flv(:,i), f(:,i), model)
-!     end do
-!   end subroutine flavor_init2_model
-! 
-!   subroutine flavor_init2_model_alt (flv, f, model, alt_model)
-!     type(flavor_t), dimension(:,:), intent(out) :: flv
-!     integer, dimension(:,:), intent(in) :: f
-!     class(model_data_t), intent(in), target :: model, alt_model
-!     integer :: i
-!     do i = 1, size (f, 2)
-!        call flavor_init1_model_alt (flv(:,i), f(:,i), model, alt_model)
-!     end do
-!   end subroutine flavor_init2_model_alt
-! 
-  impure elemental subroutine flavor_init0_name_model (flv, name, model)
+  impure elemental subroutine flavor_init_name_model (flv, name, model)
     class(flavor_t), intent(inout) :: flv
     type(string_t), intent(in) :: name
     class(model_data_t), intent(in), target :: model
     flv%f = model%get_pdg (name)
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (name, check=.true.)
-  end subroutine flavor_init0_name_model
-! 
-!   subroutine flavor_init1_name_model (flv, name, model)
-!     type(flavor_t), dimension(:), intent(out) :: flv
-!     type(string_t), dimension(:), intent(in) :: name
-!     class(model_data_t), intent(in), target :: model
-!     integer :: i
-!     do i = 1, size (name)
-!        call flavor_init0_name_model (flv(i), name(i), model)
-!     end do
-!   end subroutine flavor_init1_name_model
+  end subroutine flavor_init_name_model
 
   elemental subroutine flavor_tag_radiated (flv)
     class(flavor_t), intent(inout) :: flv

@@ -942,8 +942,9 @@ contains
     u = given_output_unit ()
     if (object%screen) then
       call write_hline (u)
-      call msg_message ("NLO Results: O(alpha_s+1)/O(alpha_s)")
-      write(u,'(1X,F6.4,A4,F7.5)') corr, ' +- ', err
+      call msg_message ("NLO Correction: [O(alpha_s+1)/O(alpha_s)]")
+      write(msg_buffer,'(1X,A1,F8.4,A4,F9.5,1X,A3)') '(', corr, ' +- ', err, ') %'
+      call msg_message ()
     end if
   end subroutine integration_results_record_correction
 

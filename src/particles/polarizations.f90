@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,51 +36,81 @@
 module polarizations
 
   use kinds, only: default
-  use constants, only: imago
   use io_units
   use format_defs, only: FMT_19
   use diagnostics
-  use physics_defs, only: SCALAR
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
   use flavors
   use helicities
   use quantum_numbers
   use state_matrices
+  use bloch_vectors
 
   implicit none
   private
 
   public :: polarization_t
-  public :: polarization_final
-  public :: polarization_write
-  public :: assignment(=)
-  public :: polarization_write_raw
-  public :: polarization_read_raw
-  public :: polarization_is_polarized
-  public :: polarization_is_diagonal
-  public :: polarization_init_state_matrix
-  public :: polarization_init_unpolarized
-  public :: polarization_init_trivial
-  public :: polarization_init_circular
-  public :: polarization_init_transversal
-  public :: polarization_init_axis
-  public :: polarization_init_angles
-  public :: polarization_init_longitudinal
-  public :: polarization_init_diagonal
-  public :: polarization_init_generic
   public :: combine_polarization_states
-  public :: polarization_get_axis
-  public :: polarization_to_angles
+  public :: polarization_iterator_t
   public :: smatrix_t
   public :: pmatrix_t
-  public :: polarization_init_pmatrix
 
   type :: polarization_t
-     logical :: polarized = .false.
-     integer :: spin_type = 0
-     integer :: multiplicity = 0
-     type(state_matrix_t) :: state
+     private
+     integer :: spin_type = SCALAR
+     integer :: multiplicity = 1
+     integer :: chirality = 0
+     logical :: anti = .false.
+     type(bloch_vector_t) :: bv
+   contains
+     generic, private :: init => polarization_init, polarization_init_flv
+     procedure, private :: polarization_init
+     procedure, private :: polarization_init_flv
+     generic :: init_generic => &
+          polarization_init_generic, &
+          polarization_init_generic_flv
+     procedure, private :: polarization_init_generic
+     procedure, private :: polarization_init_generic_flv
+     procedure :: write => polarization_write
+     procedure :: write_raw => polarization_write_raw
+     procedure :: read_raw => polarization_read_raw
+     procedure :: is_polarized => polarization_is_polarized
+     procedure :: is_diagonal => polarization_is_diagonal
+     procedure :: init_state_matrix => polarization_init_state_matrix
+     procedure :: to_state => polarization_to_state_matrix
+     procedure :: init_unpolarized => polarization_init_unpolarized
+     procedure :: init_circular => polarization_init_circular
+     procedure :: init_transversal => polarization_init_transversal
+     procedure :: init_axis => polarization_init_axis
+     procedure :: init_angles => polarization_init_angles
+     procedure :: init_longitudinal => polarization_init_longitudinal
+     procedure :: init_diagonal => polarization_init_diagonal
+     procedure :: get_axis => polarization_get_axis
+     procedure :: to_angles => polarization_to_angles
+     procedure :: init_pmatrix => polarization_init_pmatrix
   end type polarization_t
 
+  type :: polarization_iterator_t
+     private
+     type(polarization_t), pointer :: pol => null ()
+     logical :: polarized = .false.
+     integer :: h1 = 0
+     integer :: h2 = 0
+     integer :: i = 0
+     integer :: j = 0
+     complex(default), dimension(:,:), allocatable :: r
+     complex(default) :: value = 1._default
+     real(default) :: tolerance = -1._default
+     logical :: valid = .false.
+   contains
+     procedure :: write => polarization_iterator_write
+     procedure :: init => polarization_iterator_init
+     procedure :: advance => polarization_iterator_advance
+     procedure :: is_valid => polarization_iterator_is_valid
+     procedure :: get_value => polarization_iterator_get_value
+     procedure :: get_quantum_numbers => polarization_iterator_get_quantum_numbers
+  end type polarization_iterator_t
+  
   type :: smatrix_t
      private
      integer :: dim = 0
@@ -112,487 +142,483 @@ module polarizations
   end type pmatrix_t
   
 
-  interface assignment(=)
-     module procedure polarization_assign
-  end interface
-
-  interface polarization_is_diagonal
-     module procedure polarization_is_diagonal0
-     module procedure polarization_is_diagonal1
-  end interface
 
 
 contains
 
-  subroutine polarization_init (pol, flv)
-    type(polarization_t), intent(out) :: pol
-    type(flavor_t), intent(in) :: flv
-    pol%spin_type = flv%get_spin_type ()
-    pol%multiplicity = flv%get_multiplicity ()
-    call pol%state%init (store_values = .true.)
+  subroutine polarization_init (pol, spin_type, multiplicity, &
+       anti, left_handed, right_handed)
+    class(polarization_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    integer, intent(in) :: multiplicity
+    logical, intent(in) :: anti
+    logical, intent(in) :: left_handed
+    logical, intent(in) :: right_handed
+    pol%spin_type = spin_type
+    pol%multiplicity = multiplicity
+    pol%anti = anti
+    select case (pol%multiplicity)
+    case (1)
+       if (left_handed) then
+          pol%chirality = -1
+       else if (right_handed) then
+          pol%chirality = 1
+       end if
+    end select
+    select case (pol%chirality)
+    case (0)
+       call pol%bv%init_unpolarized (spin_type)
+    end select
   end subroutine polarization_init
     
-  subroutine polarization_final (pol)
-    type(polarization_t), intent(inout) :: pol
-    call pol%state%final ()
-  end subroutine polarization_final
+  subroutine polarization_init_flv (pol, flv)
+    class(polarization_t), intent(out) :: pol
+    type(flavor_t), intent(in) :: flv
+    call pol%init ( &
+         spin_type = flv%get_spin_type (), &
+         multiplicity = flv%get_multiplicity (), &
+         anti = flv%is_antiparticle (), &
+         left_handed = flv%is_left_handed (), &
+         right_handed = flv%is_right_handed ())
+  end subroutine polarization_init_flv
+    
+  subroutine polarization_init_generic (pol, spin_type, multiplicity, &
+       anti, left_handed, right_handed)
+    class(polarization_t), intent(out) :: pol
+    integer, intent(in) :: spin_type
+    integer, intent(in) :: multiplicity
+    logical, intent(in) :: anti
+    logical, intent(in) :: left_handed
+    logical, intent(in) :: right_handed
+    call pol%init (spin_type, multiplicity, &
+         anti, left_handed, right_handed)
+    select case (pol%chirality)
+    case (0)
+       if (pol%multiplicity == pol%bv%get_n_states ()) then
+          call pol%bv%init (spin_type)
+       else
+          call pol%bv%init_max_weight (spin_type)
+       end if
+    end select
+  end subroutine polarization_init_generic
 
-  subroutine polarization_write (pol, unit)
-    type(polarization_t), intent(in) :: pol
+  subroutine polarization_init_generic_flv (pol, flv)
+    class(polarization_t), intent(out) :: pol
+    type(flavor_t), intent(in) :: flv
+    call pol%init_generic ( &
+         spin_type = flv%get_spin_type (), &
+         multiplicity = flv%get_multiplicity (), &
+         anti = flv%is_antiparticle (), &
+         left_handed = flv%is_left_handed (), &
+         right_handed = flv%is_right_handed ())
+  end subroutine polarization_init_generic_flv
+
+  subroutine polarization_write (pol, unit, state_matrix, all_states, tolerance)
+    class(polarization_t), intent(in) :: pol
     integer, intent(in), optional :: unit
-    integer :: u
+    logical, intent(in), optional :: state_matrix, all_states
+    real(default), intent(in), optional :: tolerance
+    logical :: state_m
+    type(state_matrix_t) :: state
+    real(default), dimension(:), allocatable :: a
+    integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,A,I1,A,I1,A)")  &
-         "Polarization: [spin_type = ", pol%spin_type, &
-         ", mult = ", pol%multiplicity, "]"
-    call pol%state%write (unit=unit)
+    state_m = .false.;  if (present (state_matrix))  state_m = state_matrix
+    if (pol%anti) then
+       write (u, "(1x,A,I1,A,I1,A,L1,A)")  &
+            "Polarization: [spin_type = ", pol%spin_type, &
+            ", mult = ", pol%multiplicity, ", anti = ", pol%anti, "]"
+    else
+       write (u, "(1x,A,I1,A,I1,A)")  &
+            "Polarization: [spin_type = ", pol%spin_type, &
+            ", mult = ", pol%multiplicity, "]"
+    end if
+    if (state_m) then
+       call pol%to_state (state, all_states, tolerance)
+       call state%write (unit=unit)
+       call state%final ()
+    else if (pol%chirality == 1) then
+       write (u, "(1x,A)")  "chirality = +"
+    else if (pol%chirality == -1) then
+       write (u, "(1x,A)")  "chirality = -"
+    else if (pol%bv%is_polarized ()) then
+       call pol%bv%to_array (a)
+       do i = 1, size (a)
+          write (u, "(1x,I2,':',1x,F10.7)")  i, a(i)
+       end do
+    else
+       write (u, "(1x,A)")  "[unpolarized]"
+    end if
   end subroutine polarization_write
 
-  subroutine polarization_assign (pol_out, pol_in)
-    type(polarization_t), intent(out) :: pol_out
-    type(polarization_t), intent(in) :: pol_in
-    pol_out%polarized = pol_in%polarized
-    pol_out%spin_type = pol_in%spin_type
-    pol_out%multiplicity = pol_in%multiplicity
-    pol_out%state = pol_in%state
-  end subroutine polarization_assign
-
   subroutine polarization_write_raw (pol, u)
-    type(polarization_t), intent(in) :: pol
+    class(polarization_t), intent(in) :: pol
     integer, intent(in) :: u
-    write (u) pol%polarized
     write (u) pol%spin_type
     write (u) pol%multiplicity
-    call pol%state%write_raw (u)
+    write (u) pol%chirality
+    write (u) pol%anti
+    call pol%bv%write_raw (u)
   end subroutine polarization_write_raw
 
   subroutine polarization_read_raw (pol, u, iostat)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     integer, intent(in) :: u
     integer, intent(out), optional :: iostat
-    read (u, iostat=iostat) pol%polarized
     read (u, iostat=iostat) pol%spin_type
     read (u, iostat=iostat) pol%multiplicity
-    call pol%state%read_raw (u, iostat=iostat)
+    read (u, iostat=iostat) pol%chirality
+    read (u, iostat=iostat) pol%anti
+    call pol%bv%read_raw (u, iostat)
   end subroutine polarization_read_raw
 
-  elemental function polarization_is_polarized (pol) result (polarized)
+  function polarization_is_polarized (pol) result (polarized)
+    class(polarization_t), intent(in) :: pol
     logical :: polarized
-    type(polarization_t), intent(in) :: pol
-    polarized = pol%polarized
+    polarized = pol%chirality /= 0 .or. pol%bv%is_polarized ()
   end function polarization_is_polarized
 
-  function polarization_is_diagonal0 (pol) result (diagonal)
+  function polarization_is_diagonal (pol) result (diagonal)
+    class(polarization_t), intent(in) :: pol
     logical :: diagonal
-    type(polarization_t), intent(in) :: pol
-    type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn
-    diagonal = .true.
-    allocate (qn (pol%state%get_depth ()))
-    call it%init (pol%state)
-    do while (it%is_valid ())
-       qn = it%get_quantum_numbers ()
-       diagonal = all (qn%are_diagonal ())
-       if (.not. diagonal) exit
-       call it%advance ()
-    end do
-  end function polarization_is_diagonal0
-
-  function polarization_is_diagonal1 (pol) result (diagonal)
-    type(polarization_t), dimension(:), intent(in) :: pol
-    logical, dimension(size(pol)) :: diagonal
-    integer :: i
-    do i = 1, size (pol)
-       diagonal(i) = polarization_is_diagonal0 (pol(i))
-    end do
-  end function polarization_is_diagonal1
+    select case (pol%chirality)
+    case (0)
+       diagonal = pol%bv%is_diagonal ()
+    case default
+       diagonal = .true.
+    end select
+  end function polarization_is_diagonal
 
   subroutine polarization_init_state_matrix (pol, state)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(state_matrix_t), intent(in), target :: state
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    complex(default) :: value, t
+    integer :: d, h1, h2, i, j
+    complex(default), dimension(:,:), allocatable :: r
+    complex(default) :: me
+    real(default) :: trace
     call it%init (state)
     flv = it%get_flavor (1)
     hel = it%get_helicity (1)
     if (hel%is_defined ()) then
-       call polarization_init (pol, flv)
-       pol%polarized = .true.
-       t = 0
-       do while (it%is_valid ())
-          hel = it%get_helicity (1)
-          call qn(1)%init (hel)
-          value = it%get_matrix_element ()
-          call pol%state%add_state (qn, value=value)
-          if (hel%is_diagonal ())  t = t + value
-          call it%advance ()
-       end do
-       call pol%state%freeze ()
-       if (t /= 0)  call pol%state%renormalize (1._default / t)
+       call pol%init_generic (flv)
+       select case (pol%chirality)
+       case (0)
+          trace = 0
+          d = pol%bv%get_n_states ()
+          allocate (r (d, d), source = (0._default, 0._default))
+          do while (it%is_valid ())
+             hel = it%get_helicity (1)
+             call hel%get_indices (h1, h2)
+             i = pol%bv%hel_index (h1)
+             j = pol%bv%hel_index (h2)
+             me = it%get_matrix_element ()
+             r(i,j) = me
+             if (i == j)  trace = trace + real (me)
+             call it%advance ()
+          end do
+          if (trace /= 0)  call pol%bv%set (r / trace)
+       end select
     else
-       call polarization_init_unpolarized (pol, flv)
+       call pol%init (flv)
     end if
   end subroutine polarization_init_state_matrix
 
-  subroutine polarization_init_unpolarized (pol, flv)
-    type(polarization_t), intent(inout) :: pol
-    type(flavor_t), intent(in) :: flv
+  subroutine polarization_to_state_matrix (pol, state, all_states, tolerance)
+    class(polarization_t), intent(in), target :: pol
+    type(state_matrix_t), intent(out) :: state
+    logical, intent(in), optional :: all_states
+    real(default), intent(in), optional :: tolerance
+    type(polarization_iterator_t) :: it
     type(quantum_numbers_t), dimension(1) :: qn
     complex(default) :: value
-    if (flv%is_left_handed ()) then
-       call polarization_init_circular (pol, flv, -1._default)
-    else if (flv%is_right_handed ()) then
-       call polarization_init_circular (pol, flv, 1._default)
-    else
-       call polarization_init (pol, flv)
-       value = 1._default / flv%get_multiplicity ()
-       call pol%state%add_state (qn)
-       call pol%state%freeze ()
-       call pol%state%set_matrix_element (value)
-    end if
+    call it%init (pol, all_states, tolerance)
+    call state%init (store_values = .true.)
+    do while (it%is_valid ())
+       value = it%get_value ()
+       qn(1) = it%get_quantum_numbers ()
+       call state%add_state (qn, value = value)
+       call it%advance ()
+    end do
+    call state%freeze ()
+  end subroutine polarization_to_state_matrix
+    
+  subroutine polarization_init_unpolarized (pol, flv)
+    class(polarization_t), intent(out) :: pol
+    type(flavor_t), intent(in) :: flv
+    call pol%init (flv)
   end subroutine polarization_init_unpolarized
     
-  subroutine polarization_init_trivial (pol, flv, fraction)
-    type(polarization_t), intent(out) :: pol
+  subroutine polarization_init_circular (pol, flv, f)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), intent(in), optional :: fraction
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    integer :: h, hmax
-    logical :: fermion
-    complex(default) :: value
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    if (present (fraction)) then
-       value = fraction / pol%multiplicity
-    else
-       value = 1._default / pol%multiplicity
-    end if
-    fermion = mod (pol%spin_type, 2) == 0
-    hmax = pol%spin_type / 2
-    select case (pol%multiplicity)
-    case (1)
-       if (flv%is_left_handed ()) then
-          call hel%init (-hmax)
-       else if (flv%is_right_handed ()) then
-          call hel%init (hmax)
-       else
-          call hel%init (0)
-       end if
-       call qn(1)%init (hel)
-       call pol%state%add_state (qn)
-    case (2)
-       do h = -hmax, hmax, 2*hmax
-          call hel%init (h)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn)
-       end do
-    case default
-       do h = -hmax, hmax
-          if (fermion .and. h == 0)  cycle
-          call hel%init (h)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn)
-       end do
+    real(default), intent(in) :: f
+    call pol%init (flv)
+    select case (pol%chirality)
+    case (0)
+       call pol%bv%init_vector (pol%spin_type, &
+            [0._default, 0._default, f])
     end select
-    call pol%state%freeze ()
-    call pol%state%set_matrix_element (value)
-  end subroutine polarization_init_trivial
-
-  subroutine polarization_init_circular (pol, flv, fraction)
-    type(polarization_t), intent(out) :: pol
-    type(flavor_t), intent(in) :: flv
-    real(default), intent(in) :: fraction
-    type(helicity_t), dimension(2) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    complex(default) :: value
-    integer :: hmax
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    hmax = pol%spin_type / 2
-    call hel(1)%init ( hmax)
-    call hel(2)%init (-hmax)
-    if (abs (fraction) /= 1) then
-       value = (1 + fraction) / 2
-       call qn(1)%init (hel(1))
-       call pol%state%add_state (qn, value=value)
-       value = (1 - fraction) / 2
-       call qn(1)%init (hel(2))
-       call pol%state%add_state (qn, value=value)
-    else
-       value = abs (fraction)
-       if (fraction > 0) then
-          call qn(1)%init (hel(1))
-       else
-          call qn(1)%init (hel(2))
-       end if
-       call pol%state%add_state (qn, value=value)
-    end if
-    call pol%state%freeze ()
   end subroutine polarization_init_circular
 
-  subroutine polarization_init_transversal (pol, flv, phi, fraction)
-    type(polarization_t), intent(inout) :: pol
+  subroutine polarization_init_transversal (pol, flv, phi, f)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), intent(in) :: phi, fraction
-    call polarization_init_axis &
-         (pol, flv, fraction * [ cos (phi), sin (phi), 0._default])
+    real(default), intent(in) :: phi, f
+    call pol%init (flv)
+    select case (pol%chirality)
+    case (0)
+       if (pol%anti) then
+          call pol%bv%init_vector (pol%spin_type, &
+               [f * cos (phi), f * sin (phi), 0._default])
+       else
+          call pol%bv%init_vector (pol%spin_type, &
+               [f * cos (phi),-f * sin (phi), 0._default])
+       end if
+    end select
   end subroutine polarization_init_transversal
 
   subroutine polarization_init_axis (pol, flv, alpha)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), dimension(3), intent(in) :: alpha
-    type(quantum_numbers_t), dimension(1) :: qn
-    type(helicity_t), dimension(2,2) :: hel
-    complex(default), dimension(2,2) :: value
-    integer :: hmax
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    hmax = pol%spin_type / 2
-    call hel(1,1)%init ( hmax, hmax)
-    call hel(1,2)%init ( hmax,-hmax)
-    call hel(2,1)%init (-hmax, hmax)
-    call hel(2,2)%init (-hmax,-hmax)
-    value(1,1) = (1 + alpha(3)) / 2
-    value(2,2) = (1 - alpha(3)) / 2
-    if (flv%is_antiparticle ()) then
-       value(1,2) = (alpha(1) + imago * alpha(2)) / 2
-    else
-       value(1,2) = (alpha(1) - imago * alpha(2)) / 2
-    end if
-    value(2,1) = conjg (value(1,2))
-    if (value(1,1) /= 0) then
-       call qn(1)%init (hel(1,1))
-       call pol%state%add_state (qn, value=value(1,1))
-    end if
-    if (value(2,2) /= 0) then
-       call qn(1)%init (hel(2,2))
-       call pol%state%add_state (qn, value=value(2,2))
-    end if
-    if (value(1,2) /= 0) then
-       call qn(1)%init (hel(1,2))
-       call pol%state%add_state (qn, value=value(1,2))
-       call qn(1)%init (hel(2,1))
-       call pol%state%add_state (qn, value=value(2,1))
-    end if
-    call pol%state%freeze ()
+    integer :: i
+    call pol%init (flv)
+    select case (pol%chirality)
+    case (0)
+       if (pol%anti) then
+          call pol%bv%init_vector (pol%spin_type, &
+               [alpha(1), alpha(2), alpha(3)])
+       else
+          call pol%bv%init_vector (pol%spin_type, &
+               [alpha(1),-alpha(2), alpha(3)])
+       end if
+    end select
   end subroutine polarization_init_axis
 
   subroutine polarization_init_angles (pol, flv, r, theta, phi)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), intent(in) :: r, theta, phi
     real(default), dimension(3) :: alpha
     real(default), parameter :: eps = 10 * epsilon (1._default)
+    
     alpha(1) = r * sin (theta) * cos (phi)
     alpha(2) = r * sin (theta) * sin (phi)
     alpha(3) = r * cos (theta)
     where (abs (alpha) < eps)  alpha = 0
-    call polarization_init_axis (pol, flv, alpha)
+    call pol%init_axis (flv, alpha)
   end subroutine polarization_init_angles
 
-  subroutine polarization_init_longitudinal (pol, flv, fraction)
-    type(polarization_t), intent(out) :: pol
+  subroutine polarization_init_longitudinal (pol, flv, f)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), intent(in) :: fraction
-    integer :: spin_type, multiplicity
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    complex(default) :: value
-    integer :: n_values
-    value = abs (fraction)
-    spin_type = flv%get_spin_type ()
-    multiplicity = flv%get_multiplicity ()
-    if (mod (spin_type, 2) == 1 .and. multiplicity > 2) then
-       if (fraction /= 1) then
-          call polarization_init_trivial (pol, flv, 1 - fraction)
-          n_values = pol%state%get_n_matrix_elements ()
-          call pol%state%add_to_matrix_element (n_values/2 + 1, value)
-       else
-          call polarization_init (pol, flv)
-          pol%polarized = .true.
-          call hel%init (0)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn)
-          call pol%state%freeze ()
-          call pol%state%set_matrix_element (value)
+    real(default), intent(in) :: f
+    real(default), dimension(:), allocatable :: rd
+    integer :: s, d
+    s = flv%get_spin_type ()
+    select case (s)
+    case (VECTOR, TENSOR)
+       call pol%init_generic (flv)
+       if (pol%bv%is_polarized ()) then
+          d = pol%bv%get_n_states ()
+          allocate (rd (d), source = 0._default)
+          rd(pol%bv%hel_index (0)) = f
+          call pol%bv%set (rd)
        end if
-    else
-       call polarization_init_unpolarized (pol, flv)
-    end if
+    case default
+       call pol%init_unpolarized (flv)
+    end select
   end subroutine polarization_init_longitudinal
 
-  subroutine polarization_init_diagonal (pol, flv, alpha)
-    type(polarization_t), intent(inout) :: pol
+  subroutine polarization_init_diagonal (pol, flv, rd)
+    class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    real(default), dimension(:), intent(in) :: alpha
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    logical, dimension(size(alpha)) :: mask
-    real(default) :: norm
-    complex(default), dimension(:), allocatable :: value
-    logical :: fermion
-    integer :: h, hmax, i
-    mask = alpha > 0
-    norm = sum (alpha, mask);  if (norm == 0)  norm = 1
-    allocate (value (count (mask)))
-    value = pack (alpha / norm, mask)
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    fermion = mod (pol%spin_type, 2) == 0
-    hmax = pol%spin_type / 2
-    i = 0
-    select case (pol%multiplicity)
-    case (1)
-       if (flv%is_left_handed ()) then
-          call hel%init (-hmax)
-       else if (flv%is_right_handed ()) then
-          call hel%init ( hmax)
-       else
-          call hel%init (0)
-       end if
-       call qn(1)%init (hel)
-       call pol%state%add_state (qn)
-    case (2)
-       do h = -hmax, hmax, 2*hmax
-          i = i + 1
-          if (mask(i)) then
-             call hel%init (h)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end if
-       end do
-    case default
-       do h = -hmax, hmax
-          if (fermion .and. h == 0)  cycle
-          i = i + 1
-          if (mask(i)) then
-             call hel%init (h)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end if
-       end do
-    end select
-    call pol%state%freeze ()
-    call pol%state%set_matrix_element (value)
+    real(default), dimension(:), intent(in) :: rd
+    real(default) :: trace
+    call pol%init_generic (flv)
+    if (pol%bv%is_polarized ()) then
+       trace = sum (rd)
+       if (trace /= 0)  call pol%bv%set (rd / trace)
+    end if
   end subroutine polarization_init_diagonal
-
-  subroutine polarization_init_generic (pol, flv)
-    type(polarization_t), intent(out) :: pol
-    type(flavor_t), intent(in) :: flv
-    type(helicity_t) :: hel
-    type(quantum_numbers_t), dimension(1) :: qn
-    logical :: fermion
-    integer :: hmax, h1, h2
-    call polarization_init (pol, flv)
-    pol%polarized = .true.
-    fermion = mod (pol%spin_type, 2) == 0
-    hmax = pol%spin_type / 2
-    select case (pol%multiplicity)
-    case (1)
-       if (flv%is_left_handed ()) then
-          call hel%init (-hmax)
-       else if (flv%is_right_handed ()) then
-          call hel%init ( hmax)
-       else
-          call hel%init (0)
-       end if
-       call qn(1)%init (hel)
-       call pol%state%add_state (qn)
-    case (2)
-       do h1 = -hmax, hmax, 2*hmax
-          do h2 = -hmax, hmax, 2*hmax
-             call hel%init (h1, h2)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end do
-       end do
-    case default
-       do h1 = -hmax, hmax
-          if (fermion .and. h1 == 0)  cycle
-          do h2 = -hmax, hmax
-             if (fermion .and. h2 == 0)  cycle
-             call hel%init (h1, h2)
-             call qn(1)%init (hel)
-             call pol%state%add_state (qn)
-          end do
-       end do
-    end select
-    call pol%state%freeze ()
-  end subroutine polarization_init_generic
 
   subroutine combine_polarization_states (pol, state)
     type(polarization_t), dimension(:), intent(in), target :: pol
     type(state_matrix_t), intent(out) :: state
-    call outer_multiply (pol%state, state)
+    type(state_matrix_t), dimension(size(pol)), target :: pol_state
+    integer :: i
+    do i = 1, size (pol)
+       call pol(i)%to_state (pol_state(i))
+    end do
+    call outer_multiply (pol_state, state)
+    do i = 1, size (pol)
+       call pol_state(i)%final ()
+    end do
   end subroutine combine_polarization_states
 
   function polarization_get_axis (pol) result (alpha)
+    class(polarization_t), intent(in), target :: pol
     real(default), dimension(3) :: alpha
-    type(polarization_t), intent(in), target :: pol
-    type(state_iterator_t) :: it
-    complex(default), dimension(2,2) :: value
-    type(helicity_t), dimension(2,2) :: hel
-    type(helicity_t), dimension(1) :: hel1
-    integer :: hmax, i, j
-    if (pol%polarized) then
-       hmax = pol%spin_type / 2
-       call hel(1,1)%init ( hmax, hmax)
-       call hel(1,2)%init ( hmax,-hmax)
-       call hel(2,1)%init (-hmax, hmax)
-       call hel(2,2)%init (-hmax,-hmax)
-       value = 0
-       call it%init (pol%state)
-       do while (it%is_valid ())
-          hel1 = it%get_helicity ()
-          SCAN_HEL: do i = 1, 2
-             do j = 1, 2
-                if (hel1(1) == hel(i,j)) then
-                   value(i,j) = it%get_matrix_element ()
-                   exit SCAN_HEL
-                end if
-             end do
-          end do SCAN_HEL
-          call it%advance ()
-       end do
-       alpha(1) = real(value(1,2) + value(2,1))
-       alpha(2) = - aimag(value(1,2) - value(2,1))
-       alpha(3) = real(value(1,1) - value(2,2))
-    else
-       alpha = 0
-    end if
+    integer :: i
+    select case (pol%chirality)
+    case (0)
+       call pol%bv%to_vector (alpha)
+       if (.not. pol%anti)  alpha(2) = - alpha(2)
+    case (-1)
+       alpha = [0._default, 0._default, -1._default]
+    case (1)
+       alpha = [0._default, 0._default, 1._default]
+    end select
   end function polarization_get_axis
 
   subroutine polarization_to_angles (pol, r, theta, phi)
-    type(polarization_t), intent(in) :: pol
+    class(polarization_t), intent(in) :: pol
     real(default), intent(out) :: r, theta, phi
     real(default), dimension(3) :: alpha
-    real(default) :: r12
-    if (pol%polarized) then
-       alpha = polarization_get_axis (pol)
-       r = sqrt (sum (alpha**2))
-       if (any (alpha /= 0)) then
-          r12 = sqrt (alpha(1)**2 + alpha(2)**2)
-          theta = atan2 (r12, alpha(3))
-          if (any (alpha(1:2) /= 0)) then
-             phi = atan2 (alpha(2), alpha(1))
-          else
-             phi = 0
-          end if
+    real(default) :: norm, r12
+    alpha = pol%get_axis ()
+    norm = sum (alpha**2)
+    r = sqrt (norm)
+    if (norm > 0) then
+       r12 = sqrt (alpha(1)**2 + alpha(2)**2)
+       theta = atan2 (r12, alpha(3))
+       if (any (alpha(1:2) /= 0)) then
+          phi = atan2 (alpha(2), alpha(1))
        else
-          theta = 0
+          phi = 0
        end if
     else
-       r = 0
        theta = 0
        phi = 0
     end if
   end subroutine polarization_to_angles
 
+  subroutine polarization_iterator_write (it, unit)
+    class(polarization_iterator_t), intent(in) :: it
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(1X,A)")  "Polarization iterator:"
+    write (u, "(3X,A,L1)")  "assigned = ", associated (it%pol)
+    write (u, "(3X,A,L1)")  "valid    = ", it%valid
+    if (it%valid) then
+       write (u, "(3X,A,2(1X,I2))")  "i, j     = ", it%i, it%j
+       write (u, "(3X,A,2(1X,I2))")  "h1, h2   = ", it%h1, it%h2
+       write (u, "(3X,A)", advance="no")  "value    = "
+       write (u, *)  it%value
+       if (allocated (it%r)) then
+          do i = 1, size (it%r, 2)
+             write (u, *)  it%r(i,:)
+          end do
+       end if
+    end if
+  end subroutine polarization_iterator_write
+  
+  subroutine polarization_iterator_init (it, pol, all_states, tolerance)
+    class(polarization_iterator_t), intent(out) :: it
+    type(polarization_t), intent(in), target :: pol
+    logical, intent(in), optional :: all_states
+    real(default), intent(in), optional :: tolerance
+    integer :: i, d
+    logical :: only_max_weight
+    it%pol => pol
+    if (present (all_states)) then
+       if (.not. all_states) then
+          if (present (tolerance)) then
+             it%tolerance = tolerance
+          else
+             it%tolerance = 0
+          end if
+       end if
+    end if
+    select case (pol%chirality)
+    case (0)
+       d = pol%bv%get_n_states ()
+       only_max_weight = pol%multiplicity < d
+       it%polarized = pol%bv%is_polarized ()
+       if (it%polarized) then
+          it%i = d
+          it%j = it%i
+          it%h1 = pol%bv%hel_value (it%i)
+          it%h2 = it%h1
+          call pol%bv%to_matrix (it%r, only_max_weight)
+          it%value = it%r(it%i, it%j)
+       else
+          it%value = 1._default / d
+       end if
+       it%valid = .true.
+    case (1,-1)
+       it%polarized = .true.
+       select case (pol%spin_type)
+       case (SPINOR)
+          it%h1 = pol%chirality
+       case (VECTORSPINOR)
+          it%h1 = 2 * pol%chirality
+       end select
+       it%h2 = it%h1
+       it%valid = .true.
+    end select
+    if (it%valid .and. abs (it%value) <= it%tolerance)  call it%advance ()
+  end subroutine polarization_iterator_init
+  
+  recursive subroutine polarization_iterator_advance (it)
+    class(polarization_iterator_t), intent(inout) :: it
+    if (it%valid) then
+       select case (it%pol%chirality)
+       case (0)
+          if (it%polarized) then
+             if (it%j > 1) then
+                it%j = it%j - 1
+                it%h2 = it%pol%bv%hel_value (it%j)
+                it%value = it%r(it%i, it%j)
+             else if (it%i > 1) then
+                it%j = it%pol%bv%get_n_states ()
+                it%h2 = it%pol%bv%hel_value (it%j)
+                it%i = it%i - 1
+                it%h1 = it%pol%bv%hel_value (it%i)
+                it%value = it%r(it%i, it%j)
+             else
+                it%valid = .false.
+             end if
+          else
+             it%valid = .false.
+          end if
+       case default
+          it%valid = .false.
+       end select
+       if (it%valid .and. abs (it%value) <= it%tolerance)  call it%advance ()
+    end if
+  end subroutine polarization_iterator_advance
+
+  function polarization_iterator_is_valid (it) result (is_valid)
+    logical :: is_valid
+    class(polarization_iterator_t), intent(in) :: it
+    is_valid = it%valid
+  end function polarization_iterator_is_valid
+
+  function polarization_iterator_get_value (it) result (value)
+    complex(default) :: value
+    class(polarization_iterator_t), intent(in) :: it
+    if (it%valid) then
+       value = it%value
+    else
+       value = 0
+    end if
+  end function polarization_iterator_get_value
+  
+  function polarization_iterator_get_quantum_numbers (it) result (qn)
+    class(polarization_iterator_t), intent(in) :: it
+    type(helicity_t) :: hel
+    type(quantum_numbers_t) :: qn
+    if (it%polarized) then
+       call hel%init (it%h2, it%h1)
+    end if
+    call qn%init (hel)
+  end function polarization_iterator_get_quantum_numbers
+    
   subroutine smatrix_write (object, unit, indent)
     class(smatrix_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
@@ -784,66 +810,37 @@ contains
   end function pmatrix_is_diagonal
   
   subroutine polarization_init_pmatrix (pol, pmatrix)
-    type(polarization_t), intent(out) :: pol
+    class(polarization_t), intent(out) :: pol
     type(pmatrix_t), intent(in) :: pmatrix
-    type(quantum_numbers_t), dimension(1) :: qn
-    type(helicity_t) :: hel
-    integer :: i, h, h1, h2, hmin, hmax, dh
-    logical :: fermion
-    complex(default) :: value
-    pol%polarized = .true.
-    pol%spin_type = pmatrix%spin_type
-    pol%multiplicity = pmatrix%multiplicity
-    call pol%state%init (store_values = .true.)
-    fermion = mod (pol%spin_type, 2) == 0
-    h = pol%spin_type / 2
-    select case (pmatrix%chirality)
-    case (-1)
-       hmin = -h
-       hmax = -h
-    case (0)
-       hmin = -h
-       hmax = h
-    case (1)
-       hmin = h
-       hmax = h
-    end select
-    if (pol%multiplicity == 1) then
-       dh = 1
-    else if (pol%multiplicity == 2) then
-       dh = hmax - hmin
-    else
-       dh = 1
-    end if
-    if (pmatrix%degree < 1) then
-       value = (1 - pmatrix%degree) / pol%multiplicity
-       do h = hmin, hmax, dh
-          if (h == 0 .and. fermion)  cycle
-          call hel%init (h)
-          call qn(1)%init (hel)
-          call pol%state%add_state (qn, value = value)
+    integer :: d, i, j, k, h1, h2
+    complex(default), dimension(:,:), allocatable :: r
+    call pol%init_generic ( &
+         spin_type = pmatrix%spin_type, &
+         multiplicity = pmatrix%multiplicity, &
+         anti = .false., &                     !!! SUFFICIENT?
+         left_handed = pmatrix%chirality < 0, &
+         right_handed = pmatrix%chirality > 0)
+    if (pol%bv%is_polarized ()) then
+       d = pol%bv%get_n_states ()
+       allocate (r (d, d), source = (0._default, 0._default))
+       if (d == pmatrix%multiplicity) then
+          do i = 1, d
+             r(i,i) = (1 - pmatrix%degree) / d
+          end do
+       else if (d > pmatrix%multiplicity) then
+          r(1,1) = (1 - pmatrix%degree) / 2
+          r(d,d) = r(1,1)
+       end if
+       do k = 1, size (pmatrix%value)
+          h1 = pmatrix%index(1,k)
+          h2 = pmatrix%index(2,k)
+          i = pol%bv%hel_index (h1)
+          j = pol%bv%hel_index (h2)
+          r(i,j) = r(i,j) + pmatrix%value(k)
+          r(j,i) = conjg (r(i,j))
        end do
+       call pol%bv%set (r)
     end if
-    do i = 1, pmatrix%n_entry
-       associate (index => pmatrix%index(:,i), value => pmatrix%value(i))
-         h1 = index(1)
-         h2 = index(2)
-         if (h1 == h2) then
-            call hel%init (h1)
-            call qn(1)%init (hel)
-            call pol%state%add_state (qn, value = value, &
-                 sum_values = .true.)
-         else
-            call hel%init (h2, h1)
-            call qn(1)%init (hel)
-            call pol%state%add_state (qn, value = value)
-            call hel%init (h1, h2)
-            call qn(1)%init (hel)
-            call pol%state%add_state (qn, value = conjg (value))
-         end if
-       end associate
-    end do
-    call pol%state%freeze ()
   end subroutine polarization_init_pmatrix
 
 

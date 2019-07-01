@@ -258,8 +258,8 @@
  Flux * PHS volume:
    4.991105593680E+08
  Jacobian factors per channel:
-   1: 1.0000000E+00 [selected]
-   2: 1.0666667E+02
+   1:  1.0000000E+00 [selected]
+   2:  1.0666667E+02
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 1:3 2:3
@@ -809,8 +809,8 @@ Channel 2:
  Flux * PHS volume:
    4.991105593680E+08
  Jacobian factors per channel:
-   1: 1.0000000E+00
-   2: 1.0666667E+02 [selected]
+   1:  1.0000000E+00
+   2:  1.0666667E+02 [selected]
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 1:3 2:3
@@ -1353,8 +1353,8 @@ n_tot* => 6
  Flux * PHS volume:
    4.991105593680E+08
  Jacobian factors per channel:
-   1: 1.0000000E+00
-   2: 1.0666667E+02 [selected]
+   1:  1.0000000E+00
+   2:  1.0666667E+02 [selected]
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 1:3 2:3

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -48,10 +48,10 @@ module helicities
      logical :: defined = .false.
      integer :: h1, h2
    contains
-     generic :: init => helicity_init0, helicity_init1, helicity_init2
-     procedure, private :: helicity_init0
-     procedure, private :: helicity_init1
-     procedure, private :: helicity_init2
+     generic :: init => helicity_init_empty, helicity_init_same, helicity_init_different
+     procedure, private :: helicity_init_empty
+     procedure, private :: helicity_init_same
+     procedure, private :: helicity_init_different
      procedure :: undefine => helicity_undefine
      procedure :: diagonalize => helicity_diagonalize
      procedure :: get_indices => helicity_get_indices
@@ -97,26 +97,26 @@ contains
     call hel%init (h2, h1)
   end function helicity2
   
-  elemental subroutine helicity_init0 (hel)
+  elemental subroutine helicity_init_empty (hel)
     class(helicity_t), intent(inout) :: hel
     hel%defined = .false.
-  end subroutine helicity_init0
+  end subroutine helicity_init_empty
 
-  elemental subroutine helicity_init1 (hel, h)
+  elemental subroutine helicity_init_same (hel, h)
     class(helicity_t), intent(inout) :: hel
     integer, intent(in) :: h
     hel%defined = .true.
     hel%h1 = h
     hel%h2 = h
-  end subroutine helicity_init1
+  end subroutine helicity_init_same
 
-  elemental subroutine helicity_init2 (hel, h2, h1)
+  elemental subroutine helicity_init_different (hel, h2, h1)
     class(helicity_t), intent(inout) :: hel
     integer, intent(in) :: h1, h2
     hel%defined = .true.
     hel%h2 = h2
     hel%h1 = h1
-  end subroutine helicity_init2
+  end subroutine helicity_init_different
 
   elemental subroutine helicity_undefine (hel)
     class(helicity_t), intent(inout) :: hel
@@ -244,11 +244,11 @@ contains
     type(helicity_t) :: hel
     class(helicity_t), intent(in) :: hel1, hel2
     if (hel1%defined .and. hel2%defined) then
-       call helicity_init2 (hel, hel2%h1, hel1%h1)       
+       call hel%init (hel2%h1, hel1%h1)       
     else if (hel1%defined) then
-       call helicity_init2 (hel, hel1%h2, hel1%h1)
+       call hel%init (hel1%h2, hel1%h1)
     else if (hel2%defined) then
-       call helicity_init2 (hel, hel2%h2, hel2%h1)
+       call hel%init (hel2%h2, hel2%h1)
     end if
   end function merge_helicities
 

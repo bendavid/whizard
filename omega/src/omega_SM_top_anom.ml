@@ -1,6 +1,6 @@
 (* $Id: omega_SM_top_anom.ml 1340 2009-12-02 23:45:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

@@ -1,7 +1,7 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
-% $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+% $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 %
-%  Copyright (C) 1999-2015 by
+%  Copyright (C) 1999-2016 by
 %      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 %      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 %      Juergen Reuter <juergen.reuter@desy.de>
@@ -825,7 +825,7 @@ module omega_vectors
   use constants
   implicit none
   private
-  public :: assignment (=)
+  public :: assignment (=), operator(==)
   public :: operator (*), operator (+), operator (-), operator (.wedge.)
   public :: abs, conjg
   public :: random_momentum
@@ -903,6 +903,19 @@ pure subroutine vector_of_momentum (v, p)
   v%t = p%t
   v%x = p%x
 end subroutine vector_of_momentum
+@
+<<Declaration of operations for vectors>>=
+interface operator(==)
+   module procedure momentum_eq
+end interface
+@
+<<Implementation of operations for vectors>>=
+elemental function momentum_eq (lhs, rhs) result (yorn)
+  logical :: yorn
+  type(momentum), intent(in) :: lhs
+  type(momentum), intent(in) :: rhs
+  yorn = all (abs(lhs%x - rhs%x) < eps0) .and. abs(lhs%t - rhs%t) < eps0
+end function momentum_eq
 @
 \subsection{Inner Products}
 <<Declaration of operations for vectors>>=
@@ -2443,15 +2456,22 @@ ambiguities.
 NB: we used to use the constructor [[vector (p%t, p%x)]] instead of
 the temporary variable, but the Intel Fortran Compiler choked on it.
 <<Implementation of propagators>>=
-pure function pr_unitarity (p, m, w, e) result (pe)
+pure function pr_unitarity (p, m, w, cms, e) result (pe)
   type(vector) :: pe
   type(momentum), intent(in) :: p
   real(kind=default), intent(in) :: m, w
   type(vector), intent(in) :: e
+  logical, intent(in) :: cms
   type(vector) :: pv
+  complex(kind=default) :: c_mass2
   pv = p
+  if (cms) then
+     c_mass2 = cmplx (m**2, -m*w)
+  else
+     c_mass2 = m**2
+  end if
   pe = - (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-       * (e - (p*e / m**2) * pv)
+       * (e - (p*e / c_mass2) * pv)
 end function pr_unitarity
 @
 \begin{equation}
@@ -5720,16 +5740,23 @@ NB: the sign of the momentum comes about because all momenta are
 treated as \emph{outgoing} and the particle charge flow is therefore
 opposite to the momentum.
 <<Implementation of spinor propagators>>=
-pure function pr_psi (p, m, w, psi) result (ppsi)
+pure function pr_psi (p, m, w, cms, psi) result (ppsi)
   type(spinor) :: ppsi
   type(momentum), intent(in) :: p
   real(kind=default), intent(in) :: m, w
   type(spinor), intent(in) :: psi
-  type(vector) :: vp
+  logical, intent(in) :: cms
+  type(vector) :: vp  
   complex(kind=default), parameter :: one = (1, 0)
+  complex(kind=default) :: num_mass
   vp = p
+  if (cms) then
+     num_mass = sqrt(cmplx(m**2, -m*w, kind=default))
+  else
+     num_mass = cmplx (m, 0, kind=default)
+  end if
   ppsi = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-       * (- f_vf (one, vp, psi) + m * psi)
+       * (- f_vf (one, vp, psi) + num_mass * psi)
 end function pr_psi
 @
 \begin{equation}
@@ -5767,16 +5794,23 @@ NB: the sign of the momentum comes about because all momenta are
 treated as \emph{outgoing} and the antiparticle charge flow is
 therefore parallel to the momentum.
 <<Implementation of spinor propagators>>=
-pure function pr_psibar (p, m, w, psibar) result (ppsibar)
+pure function pr_psibar (p, m, w, cms, psibar) result (ppsibar)
   type(conjspinor) :: ppsibar
   type(momentum), intent(in) :: p
   real(kind=default), intent(in) :: m, w
   type(conjspinor), intent(in) :: psibar
+  logical, intent(in) :: cms  
   type(vector) :: vp
   complex(kind=default), parameter :: one = (1, 0)
+  complex(kind=default) :: num_mass
   vp = p
+  if (cms) then
+     num_mass = sqrt(cmplx(m**2, -m*w, kind=default))
+  else
+     num_mass = cmplx (m, 0, kind=default)
+  end if
   ppsibar = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-       * (f_fv (one, psibar, vp) + m * psibar)
+       * (f_fv (one, psibar, vp) + num_mass * psibar)
 end function pr_psibar
 @
 \begin{equation}
@@ -8983,16 +9017,23 @@ NB: the sign of the momentum comes about because all momenta are
 treated as \emph{outgoing} and the particle charge flow is therefore
 opposite to the momentum.
 <<Implementation of bispinor propagators>>=
-pure function pr_psi (p, m, w, psi) result (ppsi)
+pure function pr_psi (p, m, w, cms, psi) result (ppsi)
   type(bispinor) :: ppsi
   type(momentum), intent(in) :: p
   real(kind=default), intent(in) :: m, w
   type(bispinor), intent(in) :: psi
+  logical, intent(in) :: cms
   type(vector) :: vp
   complex(kind=default), parameter :: one = (1, 0)
+  complex(kind=default) :: num_mass
   vp = p
+  if (cms) then
+     num_mass = sqrt(cmplx(m**2, -m*w, kind=default))
+  else
+     num_mass = cmplx (m, 0, kind=default)
+  end if  
   ppsi = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-       * (- f_vf (one, vp, psi) + m * psi)
+       * (- f_vf (one, vp, psi) + num_mass * psi)
 end function pr_psi
 @
 \begin{equation}
@@ -10833,7 +10874,7 @@ program test_omega95_bispinors
   vv%a(2) = (0.0_default, 2.0_default)
   vv%a(3) = (1.0_default, 0.0_default)
   vv%a(4) = (3.0_default, 0.0_default)
-  vv = pr_psi(p, m, w, vv)
+  vv = pr_psi(p, m, w, .false., vv)
   <<Test [[omega95_bispinors]]>>
   if (.not. passed) then
     stop 1
@@ -11814,7 +11855,7 @@ subroutine vm_run (vm, mom, flavor, color, helicity)
   !class(helicity_t), dimension(:), optional, target, intent(in) :: helicity
   integer, dimension(:), optional, intent(in) :: helicity
   integer :: i, h, hi
-  do i = 1, vm%N_momenta
+  do i = 1, vm%N_particles
     if (i <= vm%N_prt_in) then
       vm%momenta(i) = - mom(:, i)          ! incoming, crossing symmetry
     else
@@ -12027,8 +12068,7 @@ subroutine extended_version_check (vm, IO)
   character(256) :: buffer
   read(vm%bytecode_fh, fmt = *, iostat = IO) buffer
   if (vm%model /= buffer) then
-    print *, "Bytecode has been generated for another/older model."
-    stop 1
+    print *, "Warning: Bytecode has been generated with an older SVN revision."
   else
     if (vm%verbose) then
        write (vm%out_fh, fmt = *) "Using the model: "
@@ -12084,8 +12124,7 @@ subroutine alloc_and_count (vm)
   integer :: i, IO
   read(vm%bytecode_fh, fmt = *, iostat = IO) buffer
   if (vm%version /= buffer) then
-    print *, "Bytecode has been generated with another Omega.Targets."
-    stop 1
+    print *, "Warning: Bytecode has been generated with an older SVN revision."
   else
     if (vm%verbose) then
        write (vm%out_fh, fmt = *) "Bytecode version fits."
@@ -12765,48 +12804,48 @@ case (ovm_PROPAGATE_SCALAR : ovm_PROPAGATE_NONE)
 <<propagator [[case]]s in [[decode]]>>=
 case (ovm_PROPAGATE_SCALAR)
   vm%scalars(i(4))%v = pr_phi(<<p>>, <<m>>, &
-                              w, vm%scalars(i(4))%v)
+       w, vm%scalars(i(4))%v)
   vm%scalars(i(4))%c = .True.
 
 case (ovm_PROPAGATE_COL_SCALAR)
   vm%scalars(i(4))%v = - one / N_ * pr_phi(<<p>>, &
-                       <<m>>, w, vm%scalars(i(4))%v)
+       <<m>>, w, vm%scalars(i(4))%v)
   vm%scalars(i(4))%c = .True.
 
 case (ovm_PROPAGATE_GHOST)
   vm%scalars(i(4))%v = imago * pr_phi(<<p>>, <<m>>, &
-                                      w, vm%scalars(i(4))%v)
+       w, vm%scalars(i(4))%v)
   vm%scalars(i(4))%c = .True.
 
 case (ovm_PROPAGATE_SPINOR)
   vm%spinors(i(4))%v = pr_psi(<<p>>, <<m>>, &
-                              w, vm%spinors(i(4))%v)
+       w, .false., vm%spinors(i(4))%v)
   vm%spinors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_CONJSPINOR)
   vm%conjspinors(i(4))%v = pr_psibar(<<p>>, <<m>>, &
-                                 w, vm%conjspinors(i(4))%v)
+       w, .false., vm%conjspinors(i(4))%v)
   vm%conjspinors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_MAJORANA)
   vm%bispinors(i(4))%v = bi_pr_psi(<<p>>, <<m>>, &
-                                w, vm%bispinors(i(4))%v)
+       w, .false., vm%bispinors(i(4))%v)
   vm%bispinors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_COL_MAJORANA)
   vm%bispinors(i(4))%v = (- one / N_) * &
-                         bi_pr_psi(<<p>>, <<m>>, &
-                                w, vm%bispinors(i(4))%v)
+       bi_pr_psi(<<p>>, <<m>>, &
+       w, .false., vm%bispinors(i(4))%v)
   vm%bispinors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_UNITARITY)
   vm%vectors(i(4))%v = pr_unitarity(<<p>>, <<m>>, &
-                                    w, vm%vectors(i(4))%v)
+       w, .false., vm%vectors(i(4))%v)
   vm%vectors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_COL_UNITARITY)
   vm%vectors(i(4))%v = - one / N_ * pr_unitarity(<<p>>, &
-                       <<m>>, w, vm%vectors(i(4))%v)
+       <<m>>, w, .false., vm%vectors(i(4))%v)
   vm%vectors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_FEYNMAN)
@@ -12815,17 +12854,17 @@ case (ovm_PROPAGATE_FEYNMAN)
 
 case (ovm_PROPAGATE_COL_FEYNMAN)
   vm%vectors(i(4))%v = - one / N_ * &
-                       pr_feynman(<<p>>, vm%vectors(i(4))%v)
+       pr_feynman(<<p>>, vm%vectors(i(4))%v)
   vm%vectors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_VECTORSPINOR)
   vm%vectorspinors(i(4))%v = pr_grav(<<p>>, <<m>>, &
-                                w, vm%vectorspinors(i(4))%v)
+       w, vm%vectorspinors(i(4))%v)
   vm%vectorspinors(i(4))%c = .True.
 
 case (ovm_PROPAGATE_TENSOR2)
   vm%tensors_2(i(4))%v = pr_tensor(<<p>>, <<m>>, &
-                                   w, vm%tensors_2(i(4))%v)
+       w, vm%tensors_2(i(4))%v)
   vm%tensors_2(i(4))%c = .True.
 
 case (ovm_PROPAGATE_NONE)
@@ -13328,9 +13367,9 @@ end function vm_get_amplitude
 @
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<Copyleft>>=
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>

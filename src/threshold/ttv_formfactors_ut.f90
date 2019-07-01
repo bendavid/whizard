@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -49,6 +49,8 @@ contains
     type(test_results_t), intent(inout) :: results
     call test(ttv_formfactors_1, "ttv_formfactors_1", &
               "Basic setup", u, results)
+    call test(ttv_formfactors_2, "ttv_formfactors_2", &
+              "Test flags", u, results)
   end subroutine ttv_formfactors_test
 
 

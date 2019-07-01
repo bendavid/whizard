@@ -1,6 +1,6 @@
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -613,7 +613,7 @@ contains
     !class(helicity_t), dimension(:), optional, target, intent(in) :: helicity
     integer, dimension(:), optional, intent(in) :: helicity
     integer :: i, h, hi
-    do i = 1, vm%N_momenta
+    do i = 1, vm%N_particles
       if (i <= vm%N_prt_in) then
         vm%momenta(i) = - mom(:, i)          ! incoming, crossing symmetry
       else
@@ -796,8 +796,7 @@ contains
     character(256) :: buffer
     read(vm%bytecode_fh, fmt = *, iostat = IO) buffer
     if (vm%model /= buffer) then
-      print *, "Bytecode has been generated for another/older model."
-      stop 1
+      print *, "Warning: Bytecode has been generated with an older SVN revision."
     else
       if (vm%verbose) then
          write (vm%out_fh, fmt = *) "Using the model: "
@@ -851,8 +850,7 @@ contains
     integer :: i, IO
     read(vm%bytecode_fh, fmt = *, iostat = IO) buffer
     if (vm%version /= buffer) then
-      print *, "Bytecode has been generated with another Omega.Targets."
-      stop 1
+      print *, "Warning: Bytecode has been generated with an older SVN revision."
     else
       if (vm%verbose) then
          write (vm%out_fh, fmt = *) "Bytecode version fits."
@@ -1342,48 +1340,48 @@ contains
          select case (i(1))
          case (ovm_PROPAGATE_SCALAR)
            vm%scalars(i(4))%v = pr_phi(vm%momenta(i(5)), vm%mass(i(2)), &
-                                       w, vm%scalars(i(4))%v)
+                w, vm%scalars(i(4))%v)
            vm%scalars(i(4))%c = .True.
 
          case (ovm_PROPAGATE_COL_SCALAR)
            vm%scalars(i(4))%v = - one / N_ * pr_phi(vm%momenta(i(5)), &
-                                vm%mass(i(2)), w, vm%scalars(i(4))%v)
+                vm%mass(i(2)), w, vm%scalars(i(4))%v)
            vm%scalars(i(4))%c = .True.
 
          case (ovm_PROPAGATE_GHOST)
            vm%scalars(i(4))%v = imago * pr_phi(vm%momenta(i(5)), vm%mass(i(2)), &
-                                               w, vm%scalars(i(4))%v)
+                w, vm%scalars(i(4))%v)
            vm%scalars(i(4))%c = .True.
 
          case (ovm_PROPAGATE_SPINOR)
            vm%spinors(i(4))%v = pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
-                                       w, vm%spinors(i(4))%v)
+                w, .false., vm%spinors(i(4))%v)
            vm%spinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_CONJSPINOR)
            vm%conjspinors(i(4))%v = pr_psibar(vm%momenta(i(5)), vm%mass(i(2)), &
-                                          w, vm%conjspinors(i(4))%v)
+                w, .false., vm%conjspinors(i(4))%v)
            vm%conjspinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_MAJORANA)
            vm%bispinors(i(4))%v = bi_pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
-                                         w, vm%bispinors(i(4))%v)
+                w, .false., vm%bispinors(i(4))%v)
            vm%bispinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_COL_MAJORANA)
            vm%bispinors(i(4))%v = (- one / N_) * &
-                                  bi_pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
-                                         w, vm%bispinors(i(4))%v)
+                bi_pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
+                w, .false., vm%bispinors(i(4))%v)
            vm%bispinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_UNITARITY)
            vm%vectors(i(4))%v = pr_unitarity(vm%momenta(i(5)), vm%mass(i(2)), &
-                                             w, vm%vectors(i(4))%v)
+                w, .false., vm%vectors(i(4))%v)
            vm%vectors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_COL_UNITARITY)
            vm%vectors(i(4))%v = - one / N_ * pr_unitarity(vm%momenta(i(5)), &
-                                vm%mass(i(2)), w, vm%vectors(i(4))%v)
+                vm%mass(i(2)), w, .false., vm%vectors(i(4))%v)
            vm%vectors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_FEYNMAN)
@@ -1392,17 +1390,17 @@ contains
 
          case (ovm_PROPAGATE_COL_FEYNMAN)
            vm%vectors(i(4))%v = - one / N_ * &
-                                pr_feynman(vm%momenta(i(5)), vm%vectors(i(4))%v)
+                pr_feynman(vm%momenta(i(5)), vm%vectors(i(4))%v)
            vm%vectors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_VECTORSPINOR)
            vm%vectorspinors(i(4))%v = pr_grav(vm%momenta(i(5)), vm%mass(i(2)), &
-                                         w, vm%vectorspinors(i(4))%v)
+                w, vm%vectorspinors(i(4))%v)
            vm%vectorspinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_TENSOR2)
            vm%tensors_2(i(4))%v = pr_tensor(vm%momenta(i(5)), vm%mass(i(2)), &
-                                            w, vm%tensors_2(i(4))%v)
+                w, vm%tensors_2(i(4))%v)
            vm%tensors_2(i(4))%c = .True.
 
          case (ovm_PROPAGATE_NONE)

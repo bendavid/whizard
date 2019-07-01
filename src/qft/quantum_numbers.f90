@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -71,20 +71,20 @@ module quantum_numbers
      type(helicity_t) :: h
    contains
      generic :: init => &
-        quantum_numbers_init0_f, &
-        quantum_numbers_init0_c, &
-        quantum_numbers_init0_h, &
-        quantum_numbers_init0_fc, &
-        quantum_numbers_init0_fh, &
-        quantum_numbers_init0_ch, &
-        quantum_numbers_init0_fch
-     procedure, private :: quantum_numbers_init0_f
-     procedure, private :: quantum_numbers_init0_c
-     procedure, private :: quantum_numbers_init0_h
-     procedure, private :: quantum_numbers_init0_fc
-     procedure, private :: quantum_numbers_init0_fh
-     procedure, private :: quantum_numbers_init0_ch
-     procedure, private :: quantum_numbers_init0_fch
+        quantum_numbers_init_f, &
+        quantum_numbers_init_c, &
+        quantum_numbers_init_h, &
+        quantum_numbers_init_fc, &
+        quantum_numbers_init_fh, &
+        quantum_numbers_init_ch, &
+        quantum_numbers_init_fch
+     procedure, private :: quantum_numbers_init_f
+     procedure, private :: quantum_numbers_init_c
+     procedure, private :: quantum_numbers_init_h
+     procedure, private :: quantum_numbers_init_fc
+     procedure, private :: quantum_numbers_init_fh
+     procedure, private :: quantum_numbers_init_ch
+     procedure, private :: quantum_numbers_init_fch
      procedure :: write => quantum_numbers_write_single
      procedure :: write_raw => quantum_numbers_write_raw
      procedure :: read_raw => quantum_numbers_read_raw
@@ -182,58 +182,58 @@ module quantum_numbers
 
 contains
 
-  impure elemental subroutine quantum_numbers_init0_f (qn, flv)
+  impure elemental subroutine quantum_numbers_init_f (qn, flv)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     qn%f = flv
     call qn%c%undefine ()
     call qn%h%undefine ()
-  end subroutine quantum_numbers_init0_f
+  end subroutine quantum_numbers_init_f
 
-  elemental subroutine quantum_numbers_init0_c (qn, col)
+  elemental subroutine quantum_numbers_init_c (qn, col)
     class(quantum_numbers_t), intent(inout) :: qn
     type(color_t), intent(in) :: col
     call qn%f%undefine ()
     qn%c = col
     call qn%h%undefine ()
-  end subroutine quantum_numbers_init0_c
+  end subroutine quantum_numbers_init_c
 
-  elemental subroutine quantum_numbers_init0_h (qn, hel)
+  elemental subroutine quantum_numbers_init_h (qn, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(helicity_t), intent(in) :: hel
     call qn%f%undefine ()
     call qn%c%undefine ()
     qn%h = hel
-  end subroutine quantum_numbers_init0_h
+  end subroutine quantum_numbers_init_h
 
-  impure elemental subroutine quantum_numbers_init0_fc (qn, flv, col)
+  impure elemental subroutine quantum_numbers_init_fc (qn, flv, col)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     type(color_t), intent(in) :: col
     qn%f = flv
     qn%c = col
     call qn%h%undefine ()
-  end subroutine quantum_numbers_init0_fc
+  end subroutine quantum_numbers_init_fc
 
-  impure elemental subroutine quantum_numbers_init0_fh (qn, flv, hel)
+  impure elemental subroutine quantum_numbers_init_fh (qn, flv, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     type(helicity_t), intent(in) :: hel
     qn%f = flv
     call qn%c%undefine ()
     qn%h = hel
-  end subroutine quantum_numbers_init0_fh
+  end subroutine quantum_numbers_init_fh
 
-  elemental subroutine quantum_numbers_init0_ch (qn, col, hel)
+  elemental subroutine quantum_numbers_init_ch (qn, col, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(color_t), intent(in) :: col
     type(helicity_t), intent(in) :: hel
     call qn%f%undefine ()
     qn%c = col
     qn%h = hel
-  end subroutine quantum_numbers_init0_ch
+  end subroutine quantum_numbers_init_ch
 
-  impure elemental subroutine quantum_numbers_init0_fch (qn, flv, col, hel)
+  impure elemental subroutine quantum_numbers_init_fch (qn, flv, col, hel)
     class(quantum_numbers_t), intent(inout) :: qn
     type(flavor_t), intent(in) :: flv
     type(color_t), intent(in) :: col
@@ -241,7 +241,7 @@ contains
     qn%f = flv
     qn%c = col
     qn%h = hel
-  end subroutine quantum_numbers_init0_fch
+  end subroutine quantum_numbers_init_fch
 
   subroutine quantum_numbers_write_single (qn, unit, col_verbose)
     class(quantum_numbers_t), intent(in) :: qn

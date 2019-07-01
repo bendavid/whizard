@@ -18,7 +18,8 @@ IRregularisation         CDR
 MassiveParticleScheme    OnShell
 CouplingPower QCD        0
 CouplingPower QED        4
-MassiveParticles          5  6 15 23 24 25
+EWScheme                 alphaGF
+MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -44,7 +45,8 @@ IRregularisation         CDR
 MassiveParticleScheme    OnShell
 CouplingPower QCD        0
 CouplingPower QED        4
-MassiveParticles          5  6 15 23 24 25
+EWScheme                 alphaGF
+MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -73,7 +75,8 @@ IRregularisation         CDR
 MassiveParticleScheme    OnShell
 CouplingPower QCD        1
 CouplingPower QED        4
-MassiveParticles          5  6 15 23 24 25
+EWScheme                 alphaGF
+MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -96,7 +99,8 @@ IRregularisation         CDR
 MassiveParticleScheme    OnShell
 CouplingPower QCD        0
 CouplingPower QED        4
-MassiveParticles          5  6 15 23 24 25
+EWScheme                 alphaGF
+MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -120,9 +124,11 @@ Extra AnswerFile         BLHA_Test_LOOP.olc
 IRregularisation         CDR
 CouplingPower QCD        0
 CouplingPower QED        4
+ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
 extra psp_tolerance      10e-7
+
 
 # Process definitions
 
@@ -147,9 +153,11 @@ Extra AnswerFile         BLHA_Test_SUB.olc
 IRregularisation         CDR
 CouplingPower QCD        0
 CouplingPower QED        4
+ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
 extra psp_tolerance      10e-7
+
 
 # Process definitions
 
@@ -174,9 +182,11 @@ Extra AnswerFile         BLHA_Test_REAL.olc
 IRregularisation         CDR
 CouplingPower QCD        1
 CouplingPower QED        4
+ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
 extra psp_tolerance      10e-7
+
 
 # Process definitions
 
@@ -198,9 +208,11 @@ Extra AnswerFile         BLHA_Test_BORN.olc
 IRregularisation         CDR
 CouplingPower QCD        0
 CouplingPower QED        4
+ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
 extra psp_tolerance      10e-7
+
 
 # Process definitions
 

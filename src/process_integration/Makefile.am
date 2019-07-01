@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -73,6 +73,7 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../combinatorics/Modules \
+  ../user/Modules \
   ../rng/Modules \
   ../physics/Modules \
   ../qft/Modules \
@@ -82,6 +83,7 @@ module_lists = \
   ../particles/Modules \
   ../beams/Modules \
   ../me_methods/Modules \
+  ../model_features/Modules \
   ../phase_space/Modules \
   ../mci/Modules \
   ../blha/Modules \
@@ -90,7 +92,8 @@ module_lists = \
   ../fks/Modules \
   ../variables/Modules \
   ../parsing/Modules \
-  ../shower/Modules
+  ../shower/Modules \
+  ../threshold/Modules
 
 include_modules_bare = ${module_lists:/Modules=}
 include_modules = ${include_modules_bare:../%=-I../%}

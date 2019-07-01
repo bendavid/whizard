@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -50,7 +50,13 @@ program main
 
   integer, parameter :: CMDLINE_ARG_LEN = 1000
 
-  ! Main program variable declarations
+!!! (WK 02/2016) Interface for the separate external routine below
+  interface
+     subroutine print_usage ()
+     end subroutine print_usage
+  end interface
+
+! Main program variable declarations
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
@@ -195,20 +201,16 @@ program main
            case ("--debug")
               call no_option_value (long_option, value)
               area = d_area (get_option_value (i, long_option, value))
-              if (area == D_ALL) then
-                 msg_level = DEBUG
-              else
-                 msg_level(area) = DEBUG
-              end if
+              msg_level(area) = DEBUG
               cycle SCAN_CMDLINE
            case ("--debug2")
               call no_option_value (long_option, value)
               area = d_area (get_option_value (i, long_option, value))
-              if (area == D_ALL) then
-                 msg_level = DEBUG2
-              else
-                 msg_level(area) = DEBUG2
-              end if
+              msg_level(area) = DEBUG2
+              cycle SCAN_CMDLINE
+           case ("--single-event")
+              call no_option_value (long_option, value)
+              single_event = .true.
               cycle SCAN_CMDLINE
            case ("--banner")
               call no_option_value (long_option, value)
@@ -440,14 +442,21 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION 
-    print "(A)", "Copyright (C) 1999-2015 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2016 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
     print *
   end subroutine print_version
 
+end program main
+
+!!! (WK 02/2016)
+!!! Separate subroutine, because this becomes a procedure pointer target
+!!! Internal procedures as targets are not supported by some compilers.
+
   subroutine print_usage ()
+    use system_dependencies, only: WHIZARD_VERSION
     print "(A)", "WHIZARD " // WHIZARD_VERSION
     print "(A)", "Usage: whizard [OPTIONS] [FILE]"
     print "(A)", "Run WHIZARD with the command list taken from FILE(s)"
@@ -467,6 +476,7 @@ contains
     print "(A)", "    --debug AREA      switch on debug output for AREA."
     print "(A)", "                      AREA can be one of Whizard's src dirs or 'all'"
     print "(A)", "    --debug2 AREA     switch on more verbose debug output for AREA."
+    print "(A)", "    --single-event    only compute one phase-space point (for debugging)"
     print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"
     print "(A)", "-i, --interactive     run interactively after reading FILE(s)"
     print "(A)", "-l, --library         preload process library NAME"
@@ -503,4 +513,3 @@ contains
     print "(A)", "With no FILE, read standard input."
   end subroutine print_usage
 
-end program main

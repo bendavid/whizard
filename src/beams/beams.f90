@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,7 +39,7 @@ module beams
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use diagnostics
   use md5
   use lorentz
@@ -279,12 +279,12 @@ contains
     integer :: i
     allocate (pol (beam_data%n))
     do i = 1, beam_data%n
-       call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
+       call pol(i)%init_pmatrix (beam_data%pmatrix(i))
     end do
     call combine_polarization_states (pol, state_hel)
-    do i = 1, beam_data%n
-       call polarization_final (pol(i))
-    end do
+    ! do i = 1, beam_data%n   !!! Obsolete
+       ! call pol(i)%final ()
+    ! end do
   end function beam_data_get_helicity_state_matrix
 
   function beam_data_is_initialized (beam_data) result (initialized)
@@ -481,16 +481,20 @@ contains
   subroutine beam_init (beam, beam_data)
     type(beam_t), intent(out) :: beam
     type(beam_data_t), intent(in), target :: beam_data
-    type(quantum_numbers_mask_t), dimension(beam_data%n) :: mask
+    logical, dimension(beam_data%n) :: polarized, diagonal
+    type(quantum_numbers_mask_t), dimension(beam_data%n) :: mask, mask_d
     type(state_matrix_t), target :: state_hel, state_fc, state_tmp
     type(state_iterator_t) :: it_hel, it_tmp
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    !type(polarization_t), dimension(:), allocatable :: pol
-    integer :: i
-    real(default), dimension(:,:), allocatable :: pol_matrix
+    complex(default) :: value
+    real(default), parameter :: tolerance = 100 * epsilon (1._default)
+    polarized = beam_data%pmatrix%is_polarized () 
+    diagonal = beam_data%pmatrix%is_diagonal ()
     mask = quantum_numbers_mask (.false., .false., &
-         .not. beam_data%pmatrix%is_polarized (), &
-         mask_hd = beam_data%pmatrix%is_diagonal ())
+         mask_h = .not. polarized, &
+         mask_hd = diagonal)
+    mask_d = quantum_numbers_mask (.false., .false., .false., &
+         mask_hd = polarized .and. diagonal)
     call beam%int%basic_init &
          (0, 0, beam_data%n, mask=mask, store_values=.true.)
     state_hel = beam_data%get_helicity_state_matrix ()
@@ -502,8 +506,15 @@ contains
     call it_hel%init (state_hel)
     call it_tmp%init (state_tmp)
     do while (it_hel%is_valid ())
-       call beam%int%add_state (it_tmp%get_quantum_numbers (), &
-            value=it_hel%get_matrix_element ())
+       qn = it_tmp%get_quantum_numbers ()
+       value = it_hel%get_matrix_element ()
+       if (any (qn%are_redundant (mask_d))) then
+          ! skip off-diagonal elements for diagonal polarization
+       else if (abs (value) <= tolerance) then
+          ! skip zero entries
+       else
+          call beam%int%add_state (qn, value = value)
+       end if
        call it_hel%advance ()
        call it_tmp%advance ()
     end do

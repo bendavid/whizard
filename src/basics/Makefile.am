@@ -5,7 +5,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -42,13 +42,15 @@ noinst_LTLIBRARIES = libbasics.la
 # endif
 # EXTRA_DIST = iso_fortran_env_stub.f90
 
+nodist_libbasics_la_SOURCES = \
+  kinds.f90
 libbasics_la_SOURCES = \
   iso_varying_string.f90 \
   io_units.f90 \
   constants.f90
 
 # Dump module names into file Modules
-libbasics_Modules = kinds ${libbasics_la_SOURCES:.f90=} 
+libbasics_Modules = ${nodist_libbasics_la_SOURCES:.f90=} ${libbasics_la_SOURCES:.f90=} 
 Modules: Makefile
 	@for module in $(libbasics_Modules); do \
           echo $$module >> $@.new; \

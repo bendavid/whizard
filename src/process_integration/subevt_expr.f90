@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,6 +38,7 @@ module subevt_expr
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
+  use constants, only: zero
   use diagnostics
   use lorentz
   use subevents
@@ -458,7 +459,7 @@ contains
   end subroutine parton_expr_fill_subevt
     
   subroutine parton_expr_evaluate &
-       (expr, passed, scale, fac_scale, ren_scale, weight, scale_forced)
+       (expr, passed, scale, fac_scale, ren_scale, weight, scale_forced, force_evaluation)
     class(parton_expr_t), intent(inout) :: expr
     logical, intent(out) :: passed
     real(default), intent(out) :: scale
@@ -466,11 +467,13 @@ contains
     real(default), intent(out) :: ren_scale
     real(default), intent(out) :: weight
     real(default), intent(in), allocatable, optional :: scale_forced
-    logical :: force_scale
-    force_scale = .false.
+    logical, intent(in), optional :: force_evaluation
+    logical :: force_scale, force_eval
+    force_scale = .false.; force_eval = .false.
     if (present (scale_forced))  force_scale = allocated (scale_forced)
+    if (present (force_evaluation)) force_eval = force_evaluation
     call expr%base_evaluate (passed)
-    if (passed) then
+    if (passed .or. force_eval) then
        if (force_scale) then
           scale = scale_forced
        else if (expr%has_scale) then

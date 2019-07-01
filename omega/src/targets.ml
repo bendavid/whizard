@@ -1,6 +1,6 @@
-(* $Id: targets.ml 7372 2015-11-18 18:07:59Z jr_reuter $
+(* $Id: targets.ml 7506 2016-04-05 14:39:23Z jr_reuter $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -27,8 +27,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 7372 $";
-      RCS.date = "$Date: 2015-11-18 19:07:59 +0100 (Wed, 18 Nov 2015) $";
+    { RCS.revision = "$Revision: 7506 $";
+      RCS.date = "$Date: 2016-04-05 16:39:23 +0200 (Tue, 05 Apr 2016) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets.ml $" }
@@ -1376,6 +1376,7 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
         | Vanishing | Fudged -> 0
         | Constant -> 1
         | Timelike -> 2
+	| Complex_Mass -> 3
         | Running -> failwith "Targets.VM: running width not available"
         | Custom _ -> failwith "Targets.VM: custom width not available"
         end
@@ -1581,10 +1582,11 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
       end in
       let print_interface whizard =
       if whizard then begin
-        print_line "  subroutine init (par)";
+        print_line "  subroutine init (par, scheme)";
         print_line "    real(kind=default), dimension(*), intent(in) :: par";
+        print_line "    integer, intent(in) :: scheme";
         print_line ("     bytecode_file = '" ^ !bytecode_file ^ "'");
-        print_line "    call import_from_whizard (par)";
+        print_line "    call import_from_whizard (par, scheme)";
         print_line "    call initialize_vm (vm, bytecode_file)";
         print_line "  end subroutine init";
         nl ();
@@ -4914,51 +4916,56 @@ i*)
       let minus_third = "(-1.0_" ^ !kind ^ "/3.0_" ^ !kind ^ ")" in
       let w =
         begin match CM.width f with
-        | Vanishing | Fudged -> "0.0_" ^ !kind
-        | Constant -> gamma
-        | Timelike -> "wd_tl(" ^ p ^ "," ^ gamma ^ ")"
-        | Running ->
+          | Vanishing | Fudged -> "0.0_" ^ !kind
+          | Constant | Complex_Mass -> gamma
+          | Timelike -> "wd_tl(" ^ p ^ "," ^ gamma ^ ")"
+          | Running ->
             failwith "Targets.Fortran: running width not yet available"
-        | Custom f -> f ^ "(" ^ p ^ "," ^ gamma ^ ")"
+          | Custom f -> f ^ "(" ^ p ^ "," ^ gamma ^ ")"
         end in
+      let cms =
+	begin match CM.width f with
+	  | Complex_Mass -> ".true."
+	  | _ -> ".false."
+	end in
       match CM.propagator f with
-      | Prop_Scalar ->
+	| Prop_Scalar ->
           printf "pr_phi(%s,%s,%s," p m w
-      | Prop_Col_Scalar ->
+	| Prop_Col_Scalar ->
           printf "%s * pr_phi(%s,%s,%s," minus_third p m w
-      | Prop_Ghost -> printf "(0,1) * pr_phi(%s, %s, %s," p m w
-      | Prop_Spinor ->
-          printf "%s(%s,%s,%s," Fermions.psi_propagator p m w
-      | Prop_ConjSpinor ->
-          printf "%s(%s,%s,%s," Fermions.psibar_propagator p m w
-      | Prop_Majorana ->
-          printf "%s(%s,%s,%s," Fermions.chi_propagator p m w
-      | Prop_Col_Majorana ->
-          printf "%s * %s(%s,%s,%s," minus_third Fermions.chi_propagator p m w
-      | Prop_Unitarity ->
-          printf "pr_unitarity(%s,%s,%s," p m w
-      | Prop_Col_Unitarity ->
-          printf "%s * pr_unitarity(%s,%s,%s," minus_third p m w
-      | Prop_Feynman ->
+	| Prop_Ghost -> printf "(0,1) * pr_phi(%s, %s, %s," p m w
+	| Prop_Spinor ->
+          printf "%s(%s,%s,%s,%s," Fermions.psi_propagator p m w cms
+	| Prop_ConjSpinor ->
+          printf "%s(%s,%s,%s,%s," Fermions.psibar_propagator p m w cms
+	| Prop_Majorana ->
+          printf "%s(%s,%s,%s,%s," Fermions.chi_propagator p m w cms
+	| Prop_Col_Majorana ->
+          printf "%s * %s(%s,%s,%s,%s" minus_third Fermions.chi_propagator p m w cms
+	| Prop_Unitarity ->
+          printf "pr_unitarity(%s,%s,%s,%s," p m w cms
+	| Prop_Col_Unitarity ->
+          printf "%s * pr_unitarity(%s,%s,%s,%s," minus_third p m w cms
+	| Prop_Feynman ->
           printf "pr_feynman(%s," p
-      | Prop_Col_Feynman ->
+	| Prop_Col_Feynman ->
           printf "%s * pr_feynman(%s," minus_third p
-      | Prop_Gauge xi ->
+	| Prop_Gauge xi ->
           printf "pr_gauge(%s,%s," p (CM.gauge_symbol xi)
-      | Prop_Rxi xi ->
+	| Prop_Rxi xi ->
           printf "pr_rxi(%s,%s,%s,%s," p m w (CM.gauge_symbol xi)
-      | Prop_Tensor_2 ->
+	| Prop_Tensor_2 ->
           printf "pr_tensor(%s,%s,%s," p m w
-      | Prop_Tensor_pure ->
+	| Prop_Tensor_pure ->
           printf "pr_tensor_pure(%s,%s,%s," p m w
-      | Prop_Vector_pure ->
+	| Prop_Vector_pure ->
           printf "pr_vector_pure(%s,%s,%s," p m w
-      | Prop_Vectorspinor ->
+	| Prop_Vectorspinor ->
           printf "pr_grav(%s,%s,%s," p m w
-      | Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
-      | Aux_Vector | Aux_Tensor_1 -> printf "("
-      | Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
-      | Only_Insertion -> printf "("
+	| Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
+	| Aux_Vector | Aux_Tensor_1 -> printf "("
+	| Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
+	| Only_Insertion -> printf "("
 
     let print_projector f p m gamma =
       let minus_third = "(-1.0_" ^ !kind ^ "/3.0_" ^ !kind ^ ")" in
@@ -5759,9 +5766,10 @@ i*)
 
     let print_maintenance_functions () =
       if !whizard then begin
-        printf "  subroutine init (par)"; nl ();
+        printf "  subroutine init (par, scheme)"; nl ();
         printf "    real(kind=%s), dimension(*), intent(in) :: par" !kind; nl ();
-        printf "    call import_from_whizard (par)"; nl ();
+        printf "    integer, intent(in) :: scheme"; nl ();
+        printf "    call import_from_whizard (par, scheme)"; nl ();
         printf "  end subroutine init"; nl ();
         nl ();
         printf "  subroutine final ()"; nl ();

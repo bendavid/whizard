@@ -1,6 +1,6 @@
 General:
 
-* WHIZARD 2.2 currently runs only with the NAGFOR 6.0 (or newer) and 
+* WHIZARD 2.3 currently runs only with the NAGFOR 6.0 (or newer) and 
   gfortran 4.7.4 (or newer) Fortran compilers as well as Intel ifort
   16.0.0 (or newer)
 
@@ -8,7 +8,7 @@ General:
    and pathscale.  See the file EXTENSIONS for the list of Fortran 2003 
    features that the compiler must support.]
 
-* WHIZARD 2.2 incorporates all features from WHIZARD 1, making the
+* WHIZARD 2.3 incorporates all features from WHIZARD 1, making the
   legacy branch obsolete now.
   
 * Please report bugs and problems or performance issues 
@@ -34,7 +34,7 @@ Known bugs:
 
 Manual:
 
-* WHIZARD 2.2, the new features, is still mostly undocumented.  The manual
+* WHIZARD 2.3, the new features, is still mostly undocumented.  The manual
   is still quite sparse. We are working on that. Regular updates independent
   from the subreleases can be found on the Hepforge webpage:
   http://projects.hepforge.org/whizard/manual.pdf

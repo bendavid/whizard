@@ -1,6 +1,6 @@
 (* $Id: omega_AltH.ml 3670 2014-03-21 17:07:07Z msekulla $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

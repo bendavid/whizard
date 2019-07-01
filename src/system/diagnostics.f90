@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -51,9 +51,12 @@ module diagnostics
 
   public :: RESULT, DEBUG, DEBUG2
   public :: d_area
-  public :: D_ALL, D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
-       D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD
+  public :: D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
+       D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD, &
+       D_PHASESPACE, D_MISMATCH, D_ME_METHODS, D_PROCESS_INTEGRATION, &
+       D_TAUOLA
   public :: msg_level
+  public :: term_col
   public :: mask_fatal_errors
   public :: msg_count
   public :: msg_list_clear
@@ -64,6 +67,7 @@ module diagnostics
   public :: msg_bug, msg_fatal, msg_error, msg_warning
   public :: msg_message, msg_result
   public :: msg_debug
+  public :: msg_print_color
   public :: msg_debug2
   public :: debug_active
   public :: debug2_active
@@ -92,6 +96,8 @@ module diagnostics
   public :: release_term_signals
   public :: signal_is_pending
   public :: terminate_now_if_signal
+  public :: single_event
+  public :: terminate_now_if_single_event
 
   integer, parameter :: TERMINATE=-2, BUG=-1, FATAL=1, &
        ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, &
@@ -99,8 +105,24 @@ module diagnostics
   integer, parameter :: D_ALL=0, D_PARTICLES=1, D_EVENTS=2, &
        D_SHOWER=3, D_MODEL_F=4, &
        D_MATCHING=5, D_TRANSFORMS=6, &
-       D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9
+       D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9, D_PHASESPACE=10, &
+       D_MISMATCH=11, D_ME_METHODS=12, D_PROCESS_INTEGRATION=13, &
+       D_TAUOLA=14, &
+       D_LAST=14
+  integer, parameter, public :: COL_UNDEFINED = -1
+  integer, parameter, public :: COL_GREY = 90, COL_PEACH = 91, COL_LIGHT_GREEN = 92, &
+     COL_LIGHT_YELLOW = 93, COL_LIGHT_BLUE = 94, COL_PINK = 95, &
+     COL_LIGHT_AQUA = 96, COL_PEARL_WHITE = 97, COL_BLACK = 30, &
+     COL_RED = 31, COL_GREEN = 32, COL_YELLOW = 33, COL_BLUE = 34, &
+     COL_PURPLE = 35, COL_AQUA = 36
+
   integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
+
+  type :: terminal_color_t
+     integer :: color = COL_UNDEFINED
+  contains
+  
+  end type terminal_color_t
 
   type :: string_list
      character(len=BUFFER_SIZE) :: string
@@ -111,7 +133,7 @@ module diagnostics
   end type string_list_pointer
   
 
-  integer, save, dimension(D_ALL:20) :: msg_level = RESULT
+  integer, save, dimension(D_ALL:D_LAST) :: msg_level = RESULT
   logical, save :: mask_fatal_errors = .false.
   integer, save :: handle_fatal_errors = TERM_EXIT
   integer, dimension(TERMINATE:WARNING), save :: msg_count = 0
@@ -128,22 +150,36 @@ module diagnostics
   integer(c_int), bind(C), volatile :: wo_sigxcpu = 0
   integer(c_int), bind(C), volatile :: wo_sigxfsz = 0
 
+  logical :: single_event = .false.
 
   interface d_area
      module procedure d_area_of_string
      module procedure d_area_to_string
   end interface
+  interface term_col
+     module procedure term_col_int
+     module procedure term_col_char
+  end interface term_col
+
   interface msg_debug
      module procedure msg_debug_none
      module procedure msg_debug_logical
      module procedure msg_debug_integer
      module procedure msg_debug_real
+     module procedure msg_debug_complex
+  end interface
+  interface msg_print_color
+     module procedure msg_print_color_none
+     module procedure msg_print_color_logical
+     module procedure msg_print_color_integer
+     module procedure msg_print_color_real
   end interface
   interface msg_debug2
      module procedure msg_debug2_none
      module procedure msg_debug2_logical
      module procedure msg_debug2_integer
      module procedure msg_debug2_real
+     module procedure msg_debug2_complex
   end interface
   interface
      subroutine exit (status) bind (C)
@@ -208,12 +244,10 @@ module diagnostics
 
 contains
 
-  elemental function d_area_of_string (string) result (i)
+  function d_area_of_string (string) result (i)
     integer :: i
     type(string_t), intent(in) :: string
     select case (char (string))
-    case ("all")
-       i = D_ALL
     case ("particles")
        i = D_PARTICLES
     case ("events")
@@ -232,8 +266,22 @@ contains
        i = D_VIRTUAL
     case ("threshold")
        i = D_THRESHOLD
+    case ("phasespace")
+       i = D_PHASESPACE
+    case ("mismatch")
+       i = D_MISMATCH
+    case ("me_methods")
+       i = D_ME_METHODS
+    case ("process_integration")
+       i = D_PROCESS_INTEGRATION
+    case ("tauola")
+       i = D_TAUOLA
     case default
-       i = D_ALL
+       print "(A)", "Possible values for --debug are:"
+       do i = 1, D_LAST
+          print "(A)", char ('  ' // d_area_to_string(i))
+       end do
+       call msg_fatal ("Please use one of the listed areas")
     end select
   end function d_area_of_string
 
@@ -241,8 +289,6 @@ contains
     type(string_t) :: string
     integer, intent(in) :: i
     select case (i)
-    case (D_ALL)
-       string = "all"
     case (D_PARTICLES)
        string = "particles"
     case (D_EVENTS)
@@ -261,11 +307,68 @@ contains
        string = "virtual"
     case (D_THRESHOLD)
        string = "threshold"
+    case (D_PHASESPACE)
+       string = "phasespace"
+    case (D_MISMATCH)
+       string = "mismatch"
+    case (D_ME_METHODS)
+       string = "me_methods"
+    case (D_PROCESS_INTEGRATION)
+       string = "process_integration"
+    case (D_TAUOLA)
+       string = "tauola"
     case default
        string = "undefined"
     end select
   end function d_area_to_string
 
+  function term_col_int (col_int) result (color)
+    type(terminal_color_t) :: color
+    integer, intent(in) :: col_int
+    color%color = col_int
+  end function term_col_int
+
+  function term_col_char (col_char) result (color)
+    type(terminal_color_t) :: color
+    character(len=*), intent(in) :: col_char
+    type(string_t) :: buf
+    select case (col_char)
+    case ('Grey')
+       color%color = COL_GREY
+    case ('Peach')
+       color%color = COL_PEACH
+    case ('Light Green')
+       color%color = COL_LIGHT_GREEN
+    case ('Light Yellow')
+       color%color = COL_LIGHT_YELLOW
+    case ('Light Blue')
+       color%color = COL_LIGHT_BLUE
+    case ('Pink')
+       color%color = COL_PINK
+    case ('Light Aqua')
+       color%color = COL_LIGHT_AQUA
+    case ('Pearl White')
+       color%color = COL_PEARL_WHITE
+    case ('Black')
+       color%color = COL_BLACK
+    case ('Red')
+       color%color = COL_RED
+    case ('Green')
+       color%color = COL_GREEN
+    case ('Yellow')
+       color%color = COL_YELLOW
+    case ('Blue')
+       color%color = COL_BLUE
+    case ('Purple')
+       color%color = COL_PURPLE
+    case ('Aqua')
+       color%color = COL_AQUA
+    case default
+       buf = var_str ('Color ') // var_str (col_char) // var_str (' is not defined')
+       call msg_warning (char (buf))
+       color%color = COL_UNDEFINED
+    end select
+  end function term_col_char
   subroutine msg_add (level)
     integer, intent(in) :: level
     type(string_list), pointer :: message
@@ -341,14 +444,23 @@ contains
     msg_buffer = " "
   end subroutine buffer_clear
 
-  subroutine message_print (level, string, str_arr, unit, logfile, area)
+  function create_col_string (color) result (col_string)
+     type(string_t) :: col_string
+     integer, intent(in) :: color
+     character(2) :: buf
+     write (buf, '(I2)') color
+     col_string = var_str ("[") // var_str (buf) // var_str ("m")
+  end function create_col_string
+
+  subroutine message_print (level, string, str_arr, unit, logfile, area, color)
     integer, intent(in) :: level
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: str_arr
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: logfile
     integer, intent(in), optional :: area
-    type(string_t) :: prep_string, aux_string, head_footer, app_string
+    integer, intent(in), optional :: color
+    type(string_t) :: col_string, prep_string, aux_string, head_footer, app_string
     integer :: lu, i, ar
     logical :: severe, is_error
     ar = D_ALL; if (present (area))  ar = area
@@ -379,11 +491,17 @@ contains
     case (MESSAGE)
        prep_string = "| "
     case (DEBUG, DEBUG2)
-       prep_string = achar(27) // "[34mD: "
-       app_string = achar(27) // "[0m"
+       prep_string = "D: "
     case default
        prep_string = ""
     end select
+    if (present (color)) then
+       if (color > COL_UNDEFINED) then
+          col_string = create_col_string (color) 
+          prep_string = achar(27) // col_string // prep_string
+          app_string = app_string // achar(27) // "[0m"
+       end if
+    end if
     if (present(string))  msg_buffer = string
     lu = log_unit
     if (present(unit)) then
@@ -543,84 +661,164 @@ contains
     end if
   end subroutine msg_error
 
-  subroutine msg_warning (string, arr, unit)
+  subroutine msg_warning (string, arr, unit, color)
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: arr
-    call message_print (WARNING, string, arr, unit)
+    type(terminal_color_t), intent(in), optional :: color
+    integer :: cl
+    cl = COL_UNDEFINED; if (present (color)) cl = color%color
+    call message_print (level = WARNING, string = string, &
+       str_arr = arr, unit = unit, color = cl)
   end subroutine msg_warning
 
-  subroutine msg_message (string, unit, arr, logfile)
+  subroutine msg_message (string, unit, arr, logfile, color)
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: arr
     logical, intent(in), optional :: logfile
-    call message_print (MESSAGE, string, arr, unit, logfile)
+    type(terminal_color_t), intent(in), optional :: color
+    integer :: cl
+    cl = COL_UNDEFINED; if (present (color)) cl = color%color
+    call message_print (level = MESSAGE, &
+       string = string, str_arr = arr, unit = unit, &
+       logfile = logfile, color = cl)
   end subroutine msg_message
 
-  subroutine msg_result (string, arr, unit, logfile)
+  subroutine msg_result (string, arr, unit, logfile, color)
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: arr
     logical, intent(in), optional :: logfile
-    call message_print (RESULT, string, arr, unit, logfile)
+    type(terminal_color_t), intent(in), optional :: color
+    integer :: cl
+    cl = COL_UNDEFINED; if (present (color)) cl = color%color
+    call message_print (level = RESULT, string = string, &
+       str_arr = arr, unit = unit, logfile = logfile, color = cl)
   end subroutine msg_result
 
-  subroutine msg_debug_none (area, string)
+  subroutine msg_debug_none (area, string, color)
     integer, intent(in) :: area
     character(len=*), intent(in), optional :: string
-    call message_print (DEBUG, string, unit=output_unit, &
-         area=area, logfile=.false.)
+    type(terminal_color_t), intent(in), optional :: color
+    integer :: cl
+    cl = COL_BLUE; if (present (color)) cl = color%color
+    call message_print (DEBUG, string, unit = output_unit, &
+         area = area, logfile = .false., color = cl)
   end subroutine msg_debug_none
 
-  subroutine msg_debug_logical (area, string, value)
+  subroutine msg_debug_logical (area, string, value, color)
+    logical, intent(in) :: value
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
-    logical, intent(in) :: value
-    call msg_debug_none (area, char (string // " = " // str (value)))
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug_none (area, char (string // " = " // str (value)), &
+       color = color)
   end subroutine msg_debug_logical
 
-  subroutine msg_debug_integer (area, string, value)
+  subroutine msg_debug_integer (area, string, value, color)
+    integer, intent(in) :: value
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
-    integer, intent(in) :: value
-    call msg_debug_none (area, char (string // " = " // str (value)))
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug_none (area, char (string // " = " // str (value)), &
+       color = color)
   end subroutine msg_debug_integer
 
-  subroutine msg_debug_real (area, string, value)
+  subroutine msg_debug_real (area, string, value, color)
+    real(default), intent(in) :: value
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
-    real(default), intent(in) :: value
-    call msg_debug_none (area, char (string // " = " // str (value)))
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug_none (area, char (string // " = " // str (value)), &
+       color = color)
   end subroutine msg_debug_real
 
-  subroutine msg_debug2_none (area, string)
+  subroutine msg_debug_complex (area, string, value, color)
+    complex(default), intent(in) :: value
     integer, intent(in) :: area
-    character(len=*), intent(in), optional :: string
-    call message_print (DEBUG2, string, unit=output_unit, &
-         area=area, logfile=.false.)
-  end subroutine msg_debug2_none
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug_none (area, char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_debug_complex
 
-  subroutine msg_debug2_logical (area, string, value)
-    integer, intent(in) :: area
+  subroutine msg_print_color_none (string, color)
+    character(len=*), intent(in) :: string
+    !!!type(terminal_color_t), intent(in) :: color
+    integer, intent(in) :: color
+    call message_print (0, string, color = color)
+  end subroutine msg_print_color_none
+
+  subroutine msg_print_color_logical (string, value, color)
     character(len=*), intent(in) :: string
     logical, intent(in) :: value
-    call msg_debug2_none (area, char (string // " = " // str (value)))
-  end subroutine msg_debug2_logical
+    integer, intent(in) :: color
+    call msg_print_color_none (char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_print_color_logical
 
-  subroutine msg_debug2_integer (area, string, value)
-    integer, intent(in) :: area
+  subroutine msg_print_color_integer (string, value, color)
     character(len=*), intent(in) :: string
     integer, intent(in) :: value
-    call msg_debug2_none (area, char (string // " = " // str (value)))
-  end subroutine msg_debug2_integer
+    integer, intent(in) :: color
+    call msg_print_color_none (char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_print_color_integer
 
-  subroutine msg_debug2_real (area, string, value)
-    integer, intent(in) :: area
+  subroutine msg_print_color_real (string, value, color)
     character(len=*), intent(in) :: string
     real(default), intent(in) :: value
-    call msg_debug2_none (area, char (string // " = " // str (value)))
+    integer, intent(in) :: color
+    call msg_print_color_none (char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_print_color_real
+
+  subroutine msg_debug2_none (area, string, color)
+    integer, intent(in) :: area
+    character(len=*), intent(in), optional :: string
+    type(terminal_color_t), intent(in), optional :: color
+    integer :: cl
+    cl = COL_BLUE; if (present (color)) cl = color%color
+    call message_print (DEBUG2, string, unit = output_unit, &
+         area = area, logfile = .false., color = cl)
+  end subroutine msg_debug2_none
+
+  subroutine msg_debug2_logical (area, string, value, color)
+    logical, intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug2_none (area, char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_debug2_logical
+
+  subroutine msg_debug2_integer (area, string, value, color)
+    integer, intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug2_none (area, char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_debug2_integer
+
+  subroutine msg_debug2_real (area, string, value, color)
+    real(default), intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug2_none (area, char (string // " = " // str (value)), &
+       color = color)
   end subroutine msg_debug2_real
+
+  subroutine msg_debug2_complex (area, string, value, color)
+    complex(default), intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug2_none (area, char (string // " = " // str (value)), &
+       color = color)
+  end subroutine msg_debug2_complex
 
   elemental function debug_active (area) result (active)
     logical :: active
@@ -885,7 +1083,7 @@ contains
          wo_sigxcpu /= 0 .or. &
          wo_sigxfsz /= 0
   end function signal_is_pending
-  
+
   subroutine terminate_now_if_signal ()
     if (wo_sigint /= 0) then
        call msg_terminate ("Signal SIGINT (keyboard interrupt) received.", &
@@ -900,7 +1098,15 @@ contains
        call msg_terminate ("Signal SIGXFSZ (file size limit exceeded) received.", &
           quit_code=int (wo_sigxfsz))
     end if
-  end subroutine terminate_now_if_signal    
+  end subroutine terminate_now_if_signal
+
+  subroutine terminate_now_if_single_event ()
+    integer, save :: n_calls = 0
+    n_calls = n_calls + 1
+    if (single_event .and. n_calls > 1) then
+       call msg_terminate ("Stopping after one event", quit_code=0)
+    end if
+  end subroutine terminate_now_if_single_event
 
 
 end module diagnostics

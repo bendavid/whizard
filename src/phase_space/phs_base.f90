@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,7 +40,7 @@ module phs_base
   use io_units
   use constants, only: TWOPI, TWOPI4
   use format_defs, only: FMT_19
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use md5
   use physics_defs
@@ -248,7 +248,7 @@ module phs_base
        logical, intent(in), optional :: azimuthal_dependence
        logical, intent(in), optional :: rebuild
        logical, intent(in), optional :: ignore_mismatch
-       integer, intent(inout), optional :: nlo_type
+       integer, intent(in), optional :: nlo_type
      end subroutine phs_config_configure
   end interface
 

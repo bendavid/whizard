@@ -880,7 +880,6 @@ module md5
 
   use kinds, only: i8, i32, i64
   use io_units
-  use unit_tests
   use system_defs, only: BUFFER_SIZE
   use system_defs, only: LF, EOR, EOF
   use diagnostics
@@ -2048,9 +2047,13 @@ subarrays to merge should contain at least one element.
 <<Sorting: order1>>=
   integer :: n, i, s, b1, b2, e1, e2
   n = size (idx)
-  forall (i = 1:n)
+  !!! !!! !!! Work around ifort 16.0.(0/1) compiler bug
+  !forall (i = 1:n)
+     !idx(i) = i
+  !end forall
+  do i = 1, n
      idx(i) = i
-  end forall
+  end do
   s = 1
   do while (s < n)
      do b1 = 1, n-s, 2*s
@@ -2778,7 +2781,7 @@ module grids_uti
 <<Use kinds>>
   use constants, only: zero, one, two, three, four, tiny_07
   use file_utils, only: delete_file
-  use unit_tests, only: nearly_equal, assert, assert_equal
+  use numeric_utils
 
   use grids
 
@@ -3033,7 +3036,7 @@ module solver
 
 <<Use kinds>>
   use constants, only: tiny_10
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
 
 <<Standard module head>>
@@ -3250,8 +3253,8 @@ module solver_uti
 
 <<Use kinds>>
   use constants, only: zero, one, two
-  use unit_tests, only: assert, assert_equal
-  
+  use numeric_utils
+
   use solver
 
 <<Standard module head>>

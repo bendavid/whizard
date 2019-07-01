@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,10 +33,14 @@ noinst_LTLIBRARIES = libparticles.la
 check_LTLIBRARIES = libparticles_ut.la
 
 libparticles_la_SOURCES = \
+  su_algebra.f90 \
+  bloch_vectors.f90 \
   polarizations.f90 \
   particles.f90
 
 libparticles_ut_la_SOURCES = \
+  su_algebra_uti.f90 su_algebra_ut.f90 \
+  bloch_vectors_uti.f90 bloch_vectors_ut.f90 \
   polarizations_uti.f90 polarizations_ut.f90 \
   particles_uti.f90 particles_ut.f90
 

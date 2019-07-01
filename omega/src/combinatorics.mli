@@ -1,6 +1,6 @@
-(* $Id: combinatorics.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: combinatorics.mli 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -152,13 +152,18 @@ val permute_tensor_signed : 'a seq list -> (int * 'a seq list) list
 val permute_tensor_even : 'a seq list -> 'a seq list list
 val permute_tensor_odd : 'a seq list -> 'a seq list list
 
+val sign : ?cmp:('a -> 'a -> int) -> 'a seq -> int
+
 (* \thocwmodulesubsection{Sorting} *)
 
-val sort_signed : ('a -> 'a -> int) -> 'a list -> int * 'a list
+val sort_signed : ?cmp:('a -> 'a -> int) -> 'a seq -> int * 'a seq
+
+(* \thocwmodulesubsection{Unit Tests} *)
+
+module Test : sig val suite : OUnit.test end
 
 (*i
  *  Local Variables:
- *  mode:caml
  *  indent-tabs-mode:nil
  *  page-delimiter:"^(\\* .*\n"
  *  End:

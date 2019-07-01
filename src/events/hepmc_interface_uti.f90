@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -79,8 +79,8 @@ contains
     call photon_data%set (spin_type=VECTOR)
     call photon_data%freeze ()
     call flv%init (photon_data)
-    call polarization_init_angles &
-         (pol, flv, 0.6_default, 1._default, 0.5_default)
+    call pol%init_angles &
+         (flv, 0.6_default, 1._default, 0.5_default)
 
     ! Event initialization
     call hepmc_event_init (evt, 20, 1)
@@ -178,7 +178,7 @@ contains
     write (u, "(A)")
         
     ! Wrapup
-    call polarization_final (pol)
+    ! call pol%final ()
     call hepmc_event_final (evt)
 
     write (u, "(A)")

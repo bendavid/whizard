@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,6 +36,7 @@
 module lorentz
 
   use kinds, only: default, double
+  use numeric_utils
   use io_units
   use constants, only: pi, twopi, degree, zero, one, two, eps0, tiny_07
   use format_defs, only: FMT_11, FMT_13, FMT_15, FMT_19
@@ -67,14 +68,18 @@ module lorentz
   public :: vector4_get_components
   public :: assignment (=)
   public :: vector4_to_c_prt
+  public :: phs_point_t
   public :: lorentz_transformation_t
   public :: lorentz_transformation_write
   public :: lorentz_transformation_get_components
   public :: identity
   public :: space_reflection
+  public :: compute_resonance_mass
+  public :: get_resonance_momentum
   public :: vector_set_reshuffle
   public :: vector_set_is_cms
   public :: vector4_write_set
+  public :: vector4_check_momentum_conservation
   public :: spinor_product
 
   public :: operator(==), operator(/=)
@@ -137,6 +142,15 @@ module lorentz
     procedure :: write => vector4_write
     procedure :: to_pythia6 => vector4_to_pythia6
   end type vector4_t
+  type :: phs_point_t
+     type(vector4_t), dimension(:), allocatable :: p
+     integer :: n_momenta = 0
+  contains
+    procedure :: final => phs_point_final
+    procedure :: write => phs_point_write 
+    procedure :: get_x => phs_point_get_x
+  end type phs_point_t
+
   type :: lorentz_transformation_t
      private
      real(default), dimension(0:3, 0:3) :: L
@@ -266,6 +280,16 @@ module lorentz
   end interface
   interface assignment (=)
      module procedure vector4_from_c_prt, c_prt_from_vector4
+  end interface
+  interface operator(==)
+     module procedure phs_point_eq
+  end interface
+  interface operator(*)
+     module procedure prod_LT_phs_point
+  end interface
+  interface assignment(=)
+     module procedure phs_point_from_n, phs_point_from_vector4, &
+                      phs_point_from_phs_point
   end interface
   interface azimuthal_angle
      module procedure vector3_azimuthal_angle
@@ -587,8 +611,8 @@ contains
     if (comp) then
        write (u, "(4(F12.3,1X))", advance="no")  p%p(0:3)
     else
-       write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
-       write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
+       write (u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
+       write (u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
        if (sm) then
           m = p**1
           if (tf)  call pacify (m, tolerance = 1E-6_default)
@@ -878,6 +902,69 @@ contains
        c_prt%p2 = p ** 2
     end if
   end function vector4_to_c_prt
+
+  elemental function phs_point_eq (phs_point_1, phs_point_2) result (eq)
+    logical :: eq
+    type(phs_point_t), intent(in) :: phs_point_1, phs_point_2
+    eq = all (phs_point_1%p == phs_point_2%p)
+  end function phs_point_eq
+
+  elemental function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
+    type(phs_point_t) :: phs_point_LT
+    type(lorentz_transformation_t), intent(in) :: L
+    type(phs_point_t), intent(in) :: phs_point
+    phs_point_LT = size (phs_point%p)
+    phs_point_LT%p = L * phs_point%p
+  end function prod_LT_phs_point
+
+  pure subroutine phs_point_from_n (phs_point, n_particles)
+    type(phs_point_t), intent(out) :: phs_point
+    integer, intent(in) :: n_particles
+    allocate (phs_point%p (n_particles))
+    phs_point%n_momenta = n_particles
+    phs_point%p = vector4_null
+  end subroutine phs_point_from_n
+
+  pure subroutine phs_point_from_vector4 (phs_point, p)
+    type(phs_point_t), intent(out) :: phs_point
+    type(vector4_t), intent(in), dimension(:) :: p
+    phs_point%n_momenta = size (p)
+    allocate (phs_point%p (phs_point%n_momenta), source = p)
+  end subroutine phs_point_from_vector4
+
+  pure subroutine phs_point_from_phs_point (phs_point, phs_point_in)
+    type(phs_point_t), intent(out) :: phs_point
+    type(phs_point_t), intent(in) :: phs_point_in
+    phs_point%n_momenta = phs_point_in%n_momenta
+    allocate (phs_point%p (phs_point%n_momenta))
+    phs_point%p = phs_point_in%p
+  end subroutine phs_point_from_phs_point
+
+  subroutine phs_point_final (phs_point)
+    class(phs_point_t), intent(inout) :: phs_point
+    deallocate (phs_point%p)
+    phs_point%n_momenta = 0
+  end subroutine phs_point_final
+
+  subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
+      check_conservation, ultra, n_in)
+    class(phs_point_t), intent(in) :: phs_point
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag, ultra
+    logical, intent(in), optional :: check_conservation
+    integer, intent(in), optional :: n_in
+    call vector4_write_set (phs_point%p, unit = unit, show_mass = show_mass, &
+       testflag = testflag, check_conservation = check_conservation, &
+       ultra = ultra, n_in = n_in)
+  end subroutine phs_point_write
+
+  function phs_point_get_x (phs_point, E_beam) result (x)
+    real(default), dimension(2) :: x
+    class(phs_point_t), intent(in) :: phs_point
+    real(default), intent(in) :: E_beam
+    x = phs_point%p(1:2)%p(0) / E_beam
+  end function phs_point_get_x
 
   elemental function vector3_azimuthal_angle (p) result (phi)
     real(default) :: phi
@@ -1222,8 +1309,31 @@ contains
     type(vector3_t), intent(inout) :: p
     real(default) :: abs
     abs = sqrt (p%p(1)**2 + p%p(2)**2 + p%p(3)**2)
-    p = p/abs
+    p = p / abs
   end subroutine normalize
+
+  pure function compute_resonance_mass (p, i_res_born, i_gluon) result (m)
+    real(default) :: m
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in), dimension(:) :: i_res_born
+    integer, intent(in), optional :: i_gluon
+    type(vector4_t) :: p_res
+    p_res = get_resonance_momentum (p, i_res_born, i_gluon)
+    m = p_res**1
+  end function compute_resonance_mass
+
+  pure function get_resonance_momentum (p, i_res_born, i_gluon) result (p_res)
+    type(vector4_t) :: p_res
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in), dimension(:) :: i_res_born
+    integer, intent(in), optional :: i_gluon
+    integer :: i
+    p_res = vector4_null
+    do i = 1, size (i_res_born)
+       p_res = p_res + p (i_res_born(i))
+    end do
+    if (present (i_gluon)) p_res = p_res + p (i_gluon)
+  end function get_resonance_momentum
 
   elemental function boost_from_rest_frame (p, m) result (L)
     type(lorentz_transformation_t) :: L
@@ -1591,9 +1701,10 @@ contains
     real(default), dimension(0:3) :: p_tot
     character(len=7) :: fmt
     integer :: u
-    logical :: yorn
+    logical :: yorn, is_test
     integer :: n
     extreme = .false.; if (present (ultra))  extreme = ultra
+    is_test = .false.; if (present (testflag)) is_test = testflag
     u = given_output_unit (unit);  if (u < 0)  return
     n = 2; if (present (n_in)) n = n_in
     p_tot = 0
@@ -1612,13 +1723,38 @@ contains
     else
        call pac_fmt (fmt, FMT_19, FMT_15, testflag)
     end if
-    if (present (testflag)) then
-       if (testflag)  call pacify (p_tot, 1.E-9_default)
+    if (is_test)  call pacify (p_tot, 1.E-9_default)
+    if (.not. is_test) then
+       write (u, "(A5)") 'Total: '
+       write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)
+       write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(1:)
     end if
-    write (u, "(A5)") 'Total: '
-    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)
-    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(1:)
   end subroutine vector4_write_set
+
+  subroutine vector4_check_momentum_conservation (p, n_in, unit, abs_smallness, rel_smallness)
+    type(vector4_t), dimension(:), intent(in) :: p
+    integer, intent(in) :: n_in
+    integer, intent(in), optional :: unit
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    integer :: u, i
+    type(vector4_t) :: psum_in, psum_out
+    u = given_output_unit (unit);  if (u < 0)  return
+    psum_in = vector4_null
+    do i = 1, n_in
+       psum_in = psum_in + p(i)
+    end do
+    psum_out = vector4_null
+    do i = n_in + 1, size (p)
+       psum_out = psum_out + p(i)
+    end do
+    if (.not. all (nearly_equal (psum_in%p, psum_out%p, abs_smallness, rel_smallness))) then
+       call msg_warning ("Momentum conservation violated!")
+       write (u, "(A)") "Incoming:"
+       call vector4_write (psum_in, u)
+       write (u, "(A)") "Outgoing:"
+       call vector4_write (psum_out, u)
+    end if
+  end subroutine vector4_check_momentum_conservation
 
   subroutine spinor_product (p1, p2, prod1, prod2)
     type(vector4_t), intent(in) :: p1, p2

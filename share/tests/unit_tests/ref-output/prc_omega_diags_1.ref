@@ -128,7 +128,7 @@
     \fmfdot{v1}
     \fmfdot{v1}
     \fmf{fermion}{v1,i2}
-    \fmf{gluon,label=\begin{scriptsize}${}$\end{scriptsize}}{v1,v5}
+    \fmf{boson,label=\begin{scriptsize}${}$\end{scriptsize}}{v1,v5}
     \fmfdot{v1,v5}
     \fmfdot{v5}
     \fmf{fermion,tension=0.5}{o4,v5}
@@ -170,28 +170,6 @@
     \fmfdot{v1}
     \fmfdot{v1}
     \fmf{fermion}{v1,i2}
-    \fmf{boson,label=\begin{scriptsize}${}$\end{scriptsize}}{v1,v5}
-    \fmfdot{v1,v5}
-    \fmfdot{v5}
-    \fmf{fermion,tension=0.5}{o4,v5}
-    \fmfdot{v5}
-    \fmf{fermion,tension=0.5}{v5,o3}
-  \end{fmfgraph*}}\hfil\allowbreak
-\subsection{$ {u}_{\mathstrut 2} {\bar{u}}_{\mathstrut\overline{1}} \to {d}_{\mathstrut 2} {\bar{d}}_{\mathstrut\overline{1}} $}
-\fmfframe(8,7)(8,6){%
-  \begin{fmfgraph*}(35,30)
-   \fmfpen{thin}
-   \fmfset{arrow_len}{2mm}
-    \fmfleft{i1,i2}
-    \fmfright{o3,o4}
-    \fmflabel{${{u}_{\mathstrut 2}(1)}$}{i1}
-    \fmflabel{${{\bar{u}}_{\mathstrut\overline{1}}(2)}$}{i2}
-    \fmflabel{${{d}_{\mathstrut 2}(3)}$}{o3}
-    \fmflabel{${{\bar{d}}_{\mathstrut\overline{1}}(4)}$}{o4}
-    \fmf{fermion}{i1,v1}
-    \fmfdot{v1}
-    \fmfdot{v1}
-    \fmf{fermion}{v1,i2}
     \fmf{gluon,label=\begin{scriptsize}${}$\end{scriptsize}}{v1,v5}
     \fmfdot{v1,v5}
     \fmfdot{v5}
@@ -199,6 +177,7 @@
     \fmfdot{v5}
     \fmf{fermion,tension=0.5}{v5,o3}
   \end{fmfgraph*}}\hfil\allowbreak
+\subsection{$ {u}_{\mathstrut 2} {\bar{u}}_{\mathstrut\overline{1}} \to {d}_{\mathstrut 2} {\bar{d}}_{\mathstrut\overline{1}} $}
 \fmfframe(8,7)(8,6){%
   \begin{fmfgraph*}(35,30)
    \fmfpen{thin}
@@ -219,6 +198,27 @@
     \fmf{fermion,tension=0.5}{o4,v4}
     \fmfdot{v1}
     \fmf{fermion,tension=0.5}{v1,o3}
+  \end{fmfgraph*}}\hfil\allowbreak
+\fmfframe(8,7)(8,6){%
+  \begin{fmfgraph*}(35,30)
+   \fmfpen{thin}
+   \fmfset{arrow_len}{2mm}
+    \fmfleft{i1,i2}
+    \fmfright{o3,o4}
+    \fmflabel{${{u}_{\mathstrut 2}(1)}$}{i1}
+    \fmflabel{${{\bar{u}}_{\mathstrut\overline{1}}(2)}$}{i2}
+    \fmflabel{${{d}_{\mathstrut 2}(3)}$}{o3}
+    \fmflabel{${{\bar{d}}_{\mathstrut\overline{1}}(4)}$}{o4}
+    \fmf{fermion}{i1,v1}
+    \fmfdot{v1}
+    \fmfdot{v1}
+    \fmf{fermion}{v1,i2}
+    \fmf{gluon,label=\begin{scriptsize}${}$\end{scriptsize}}{v1,v5}
+    \fmfdot{v1,v5}
+    \fmfdot{v5}
+    \fmf{fermion,tension=0.5}{o4,v5}
+    \fmfdot{v5}
+    \fmf{fermion,tension=0.5}{v5,o3}
   \end{fmfgraph*}}\hfil\allowbreak
 
 \end{fmffile}

@@ -1,6 +1,6 @@
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -1330,15 +1330,22 @@ contains
     complex(kind=default), intent(in) :: phi
     pphi = ((0, 1) * gauss (p*p, m, w)) * phi
   end function pg_phi
-  pure function pr_unitarity (p, m, w, e) result (pe)
+  pure function pr_unitarity (p, m, w, cms, e) result (pe)
     type(vector) :: pe
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w
     type(vector), intent(in) :: e
+    logical, intent(in) :: cms
     type(vector) :: pv
+    complex(kind=default) :: c_mass2
     pv = p
+    if (cms) then
+       c_mass2 = cmplx (m**2, -m*w)
+    else
+       c_mass2 = m**2
+    end if
     pe = - (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-         * (e - (p*e / m**2) * pv)
+         * (e - (p*e / c_mass2) * pv)
   end function pr_unitarity
   pure function pj_unitarity (p, m, w, e) result (pe)
     type(vector) :: pe

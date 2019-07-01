@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -167,7 +167,7 @@ contains
     value = object%p%value
   end function integer_p_get_value
   
-  pure subroutine integer_final (object)
+  subroutine integer_final (object)
     class(integer_t), intent(inout) :: object
   end subroutine integer_final
  

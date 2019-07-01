@@ -12440,9 +12440,9 @@ $x_2$ is done by CUBA, the root function is approximated by
 module muli_dsigma
 <<Use kinds>>
   use constants
+  use muli_base
   use muli_momentum
   use muli_interactions
-  use muli_base
   use muli_cuba
   use muli_trapezium
   use muli_aq

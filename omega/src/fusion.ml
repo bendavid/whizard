@@ -1,6 +1,6 @@
-(* $Id: fusion.ml 7377 2015-11-20 15:59:02Z jr_reuter $
+(* $Id: fusion.ml 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -24,9 +24,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 7377 $";
-      RCS.date = "$Date: 2015-11-20 16:59:02 +0100 (Fri, 20 Nov 2015) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 7653 $";
+      RCS.date = "$Date: 2016-07-18 13:37:04 +0200 (Mon, 18 Jul 2016) $";
+      RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/fusion.ml $" }
 
@@ -50,6 +50,8 @@ module type T =
     val sign : rhs -> int
     val coupling : rhs -> constant Coupling.t
     val coupling_tag : rhs -> string option
+    type exclusions
+    val no_exclusions : exclusions
     val children : rhs -> wf list
     type fusion
     val lhs : fusion -> wf
@@ -59,7 +61,7 @@ module type T =
     val ket : braket -> rhs list
     type amplitude
     type selectors
-    val amplitudes : bool -> selectors ->
+    val amplitudes : bool -> exclusions -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
     val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
     val incoming : amplitude -> flavor list
@@ -199,8 +201,8 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     let permutation lines =
       let fout, fin = List.split lines in
-      let eps_in, _ = Combinatorics.sort_signed compare fin
-      and eps_out, _ = Combinatorics.sort_signed compare fout in
+      let eps_in, _ = Combinatorics.sort_signed fin
+      and eps_out, _ = Combinatorics.sort_signed fout in
       (eps_in * eps_out)
 
 (* \begin{dubious}
@@ -417,6 +419,9 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
         val sign : rhs -> int
         val coupling : rhs -> constant Coupling.t
         val coupling_tag : rhs -> string option
+	type exclusions
+	val no_exclusions : exclusions
+	    
         val children : rhs -> wf list
 
         type fusion = wf * rhs list
@@ -552,6 +557,10 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
         let sign (c, _) = Tagged_Coupling.sign c
         let coupling (c, _) = Tagged_Coupling.coupling c
         let coupling_tag (c, _) = Tagged_Coupling.coupling_tag c
+	type exclusions =
+	  { x_flavors : flavor list;
+	    x_couplings : coupling list }
+	let no_exclusions = { x_flavors = []; x_couplings = [] }
         let children (_, wfs) = PT.to_list wfs
 
         type fusion = wf * rhs list
@@ -668,7 +677,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
       Cache.Make (struct type t = vertex_table end) (struct type t = RCS.t * vertices end)
 
     let vertices_cache = ref None
-    let hash = VCache.hash (M.vertices ())
+    let hash () = VCache.hash (M.vertices ())
 
 (* \begin{dubious}
      Can we do better than the executable name provided by [Config.cache_prefix]???
@@ -687,7 +696,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
         " >>> Initializing vertex table for model %s.  This may take some time ... "
         (RCS.name M.rcs);
       flush stderr;
-      VCache.write_dir hash dir !cache_name
+      VCache.write_dir (hash ()) dir !cache_name
         (M.rcs, vertices_nocache  (M.max_degree ()) (M.flavors()));
       Printf.eprintf "done. <<< \n"
 
@@ -696,7 +705,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
       | None -> 
           begin match !cache_option with
           | Cache_Use ->
-              begin match VCache.maybe_read hash !cache_name with
+              begin match VCache.maybe_read (hash ()) !cache_name with
               | VCache.Hit (rcs, result) ->
                   result
               | VCache.Miss ->
@@ -705,7 +714,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
                     (RCS.name M.rcs);
                   flush stderr;
                   let result = vertices_nocache max_degree flavors in
-                  VCache.write hash !cache_name (M.rcs, result);
+                  VCache.write (hash ()) !cache_name (M.rcs, result);
                   vertices_cache := Some result;
                   Printf.eprintf "done. <<< \n";
                   flush stderr;
@@ -717,7 +726,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
                   Printf.eprintf "This may take some time ... ";
                   flush stderr;
                   let result = vertices_nocache max_degree flavors in
-                  VCache.write hash !cache_name (M.rcs, result);
+                  VCache.write (hash ()) !cache_name (M.rcs, result);
                   vertices_cache := Some result;
                   Printf.eprintf "done. <<< \n";
                   flush stderr;
@@ -729,7 +738,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
                 (RCS.name M.rcs);
               flush stderr;
               let result = vertices_nocache max_degree flavors in
-              VCache.write hash !cache_name (M.rcs, result);
+              VCache.write (hash ()) !cache_name (M.rcs, result);
               vertices_cache := Some result;
               Printf.eprintf "done. <<< \n";
               flush stderr;
@@ -746,6 +755,43 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               result
           end
       | Some result -> result
+
+(* Note that we must perform any filtering of the vertices \emph{after}
+   caching, because the restrictions \emph{must not} influence the
+   cache (unless we tag the cache with model and restrictions).  *)
+
+(*i
+    let unpack_constant = function
+      | Coupling.V3 (_, _, cs) -> cs
+      | Coupling.V4 (_, _, cs) -> cs
+      | Coupling.Vn (_, _, cs) -> cs
+
+    let coupling_and_flavors_to_string (c, fs) =
+      M.constant_symbol (unpack_constant c) ^ "[" ^
+	String.concat ", " (List.map M.flavor_to_string (PT.to_list fs)) ^ "]"
+
+    let fusions_to_string (f, cfs) =
+      M.flavor_to_string f ^ " <- { " ^
+	String.concat " | " (List.map coupling_and_flavors_to_string cfs) ^
+	" }"
+
+    let vertices_to_string vertices =
+      String.concat "; " (List.map fusions_to_string vertices)
+  i*)
+
+    let filter_vertices select_vtx vertices =
+      List.fold_left
+	(fun acc (f, cfs) ->
+	  let f' = M.conjugate f in
+	  let cfs =
+	    List.filter
+	      (fun (c, fs) -> select_vtx c f' (PT.to_list fs))
+	      cfs
+	  in
+	  match cfs with
+	  | [] -> acc
+	  | cfs -> (f, cfs) :: acc)
+	[] vertices
 
 (* \thocwmodulesubsection{Partitions} *)
 
@@ -965,7 +1011,7 @@ i*)
    Record only the the sign \emph{relative} to the children.
    (The type annotation is only for documentation.) *)
 
-    let fuse select_wf wfss : (A.wf * stat * A.rhs) list =
+    let fuse select_wf select_vtx wfss : (A.wf * stat * A.rhs) list =
       if PT.for_all (fun (wf, _) -> is_source wf) wfss then
         try
           let wfs, ss = PT.split wfss in
@@ -976,7 +1022,9 @@ i*)
 (*i	  let wft = PT.fold_left Tags.fuse wf_tags in i*)
           List.fold_left
             (fun acc (f, c) ->
-              if select_wf f p (PT.to_list momenta) && kmatrix_cuts c momenta then
+              if select_wf f p (PT.to_list momenta)
+		&& select_vtx c f (PT.to_list flavors)
+		&& kmatrix_cuts c momenta then
                 let s = stat_fuse ss f in
                 let flip =
                   PT.fold_left (fun acc s' -> acc * stat_sign s') (stat_sign s) ss in
@@ -1066,11 +1114,11 @@ i*)
      expected that no element appears twice and that this ordering is
      not necessary \ldots
    \end{dubious} *)
-    let grow select_wf tower =
+    let grow select_wf select_vtx tower =
       let rank = succ (Array.length tower) in
       List.sort Pervasives.compare
         (PT.graded_sym_power_fold rank
-           (fun wfs acc -> fuse select_wf wfs @ acc) tower [])
+           (fun wfs acc -> fuse select_wf select_vtx wfs @ acc) tower [])
 
     let add_offspring dag (wf, _, rhs) =
       A.D.add_offspring wf rhs dag
@@ -1078,12 +1126,12 @@ i*)
     let filter_offspring fusions =
       List.map (fun (wf, s, _) -> (wf, s)) fusions
 
-    let rec fusion_tower' n_max select_wf tower dag : (A.wf * stat) list array * A.D.t =
+    let rec fusion_tower' n_max select_wf select_vtx tower dag : (A.wf * stat) list array * A.D.t =
       if Array.length tower >= n_max then
         (tower, dag)
       else
-        let tower' = grow select_wf tower in
-        fusion_tower' n_max select_wf
+        let tower' = grow select_wf select_vtx tower in
+        fusion_tower' n_max select_wf select_vtx
           (Array.append tower [|filter_offspring tower'|])
           (List.fold_left add_offspring dag tower')
 
@@ -1099,9 +1147,9 @@ i*)
     module Stat_Map =
       Map.Make (struct type t = A.wf let compare = A.order_wf end)
 
-    let fusion_tower height select_wf wfs : (A.wf -> stat) * A.D.t =
+    let fusion_tower height select_wf select_vtx wfs : (A.wf -> stat) * A.D.t =
       let tower, dag =
-        fusion_tower' height select_wf [|wfs|] (make_external_dag wfs) in
+        fusion_tower' height select_wf select_vtx [|wfs|] (make_external_dag wfs) in
       let stats = mixed_fold_left
           (fun m (wf, s) -> Stat_Map.add wf s m) Stat_Map.empty tower in
       ((fun wf -> Stat_Map.find wf stats), dag)
@@ -1109,13 +1157,13 @@ i*)
 (* Calculate the minimal tower of fusions that suffices for calculating
    the amplitude.  *)
 
-    let minimal_fusion_tower n select_wf wfs : (A.wf -> stat) * A.D.t =
-      fusion_tower (T.max_subtree n) select_wf wfs
+    let minimal_fusion_tower n select_wf select_vtx wfs : (A.wf -> stat) * A.D.t =
+      fusion_tower (T.max_subtree n) select_wf select_vtx wfs
 
 (* Calculate the complete tower of fusions.  It is much larger than required,
    but it allows a complete set of gauge checks.  *)
-    let complete_fusion_tower select_wf wfs : (A.wf -> stat) * A.D.t =
-      fusion_tower (List.length wfs - 1) select_wf wfs
+    let complete_fusion_tower select_wf select_vtx wfs : (A.wf -> stat) * A.D.t =
+      fusion_tower (List.length wfs - 1) select_wf select_vtx wfs
 
 (* \begin{dubious}
      There is a natural product of two DAGs using [fuse].  Can this be
@@ -1280,22 +1328,24 @@ i*)
         match fin with
         | [_] -> C.select_wf selectors P.Decay.timelike
         | _ -> C.select_wf selectors P.Scattering.timelike in
+      let select_vtx = C.select_vtx selectors in
 
       (* Build the full fusion tower (including nodes that are never
          needed in the amplitude). *)
       let stats, tower =
 
         if goldstones then
-          complete_fusion_tower select_wf wfs
+          complete_fusion_tower select_wf select_vtx wfs
         else
-          minimal_fusion_tower n select_wf wfs in
+          minimal_fusion_tower n select_wf select_vtx wfs in
 
       (* Find all vertices for which \emph{all} off shell wavefunctions
          are defined by the tower. *)
 
       let brakets =
         flavor_keystones (filter_keystone stats tower) select_p n
-          (vertices (M.max_degree ()) (M.flavors ()))
+          (filter_vertices select_vtx
+	     (vertices (M.max_degree ()) (M.flavors ())))
           (T.keystones (ThoList.range 1 n)) in
 
       (* Remove the part of the DAG that is never needed in the amplitude. *)
@@ -1545,7 +1595,7 @@ i*)
             amps)
         [] (CM.amplitude a.A.incoming a.A.outgoing)
 
-    let amplitudes goldstones selectors fin fout =
+    let amplitudes goldstones exclusions selectors fin fout =
       colorize_amplitudes (amplitude goldstones selectors fin fout)
 
     type flavor = CA.flavor
@@ -1564,6 +1614,8 @@ i*)
     let sign = CA.sign
     let coupling = CA.coupling
     let coupling_tag = CA.coupling_tag
+    type exclusions = CA.exclusions
+    let no_exclusions = CA.no_exclusions
 
     type 'a children = 'a CA.children
     type rhs = CA.rhs
@@ -1938,7 +1990,7 @@ i*)
           raise Impossible
 i*)
 
-    let permutation lines = fst(Combinatorics.sort_signed compare lines)   
+    let permutation lines = fst (Combinatorics.sort_signed lines)   
 
     let stat_sign = function
       | Boson lines -> permutation lines
@@ -1977,9 +2029,12 @@ module type Multi =
     type amplitude
     type fusion
     type wf
+    type exclusions
+    val no_exclusions : exclusions
     type selectors
     type amplitudes
-    val amplitudes : bool -> int option -> selectors -> process list -> amplitudes
+    val amplitudes : bool -> int option ->
+      exclusions -> selectors -> process list -> amplitudes
     val empty : amplitudes
     val initialize_cache : string -> unit
     val set_cache_name : string -> unit
@@ -2037,6 +2092,8 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     type amplitude = F.amplitude
     type fusion = F.fusion
     type wf = F.wf
+    type exclusions = F.exclusions
+    let no_exclusions = F.no_exclusions
     type selectors = F.selectors
 
     type flavors = flavor list array
@@ -2260,7 +2317,7 @@ i*)
 
 (* \thocwmodulesubsection{Calculate All The Amplitudes} *)
 
-    let amplitudes goldstones unphysical select_wf processes =
+    let amplitudes goldstones unphysical exclusions select_wf processes =
 
 (* \begin{dubious}
      Eventually, we might want to support inhomogeneous helicities.  However,
@@ -2284,7 +2341,7 @@ i*)
         ThoList.flatmap
           (fun (fi, fo) ->
             Progress.begin_step progress (process_to_string fi fo);
-            let amps = F.amplitudes goldstones select_wf fi fo in
+            let amps = F.amplitudes goldstones exclusions select_wf fi fo in
             begin match amps with
             | [] -> Progress.end_step progress "forbidden"
             | _ -> Progress.end_step progress "allowed"

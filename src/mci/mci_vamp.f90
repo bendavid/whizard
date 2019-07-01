@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -800,9 +800,9 @@ contains
     allocate (mci_vamp_instance_t :: mci_instance)
   end subroutine mci_vamp_allocate_instance
   
-  subroutine mci_vamp_add_pass (mci, adapt_grids, adapt_weights, final)
+  subroutine mci_vamp_add_pass (mci, adapt_grids, adapt_weights, final_pass)
     class(mci_vamp_t), intent(inout) :: mci
-    logical, intent(in), optional :: adapt_grids, adapt_weights, final
+    logical, intent(in), optional :: adapt_grids, adapt_weights, final_pass
     integer :: i_pass, i_it
     type(pass_t), pointer :: new
     allocate (new)
@@ -828,8 +828,8 @@ contains
     else
        new%adapt_weights = .false.
     end if
-    if (present (final)) then
-       new%is_final_pass = final
+    if (present (final_pass)) then
+       new%is_final_pass = final_pass
     else
        new%is_final_pass = .false.
     end if
@@ -1649,6 +1649,7 @@ contains
     integer :: n_ch, ch, n_underflow
     logical, dimension(:), allocatable :: mask, underflow
     type(exception) :: vamp_exception
+    logical :: wsum_non_zero
     if (instance%enable_adapt_weights .and. instance%allow_adapt_weights) then
        associate (mci => instance%mci)
          if (instance%grids_defined) then
@@ -1688,9 +1689,9 @@ contains
                   end if
                end if
             end if
-            call instance%set_channel_weights (weights)
-            call vamp_update_weights (instance%grids, weights, &
-                 exc = vamp_exception)
+            call instance%set_channel_weights (weights, wsum_non_zero)
+            if (wsum_non_zero) call vamp_update_weights &
+               (instance%grids, weights, exc = vamp_exception)
             call handle_vamp_exception (vamp_exception, mci%verbose)
          else
             call msg_bug ("VAMP: adapt weights: grids undefined")
@@ -1840,6 +1841,7 @@ contains
           call handle_vamp_exception (exc, verbose)
           call terminate_now_if_signal ()
        end if
+       call terminate_now_if_single_event ()
        f = instance%get_value ()
     end select
   end function vamp_sampling_function

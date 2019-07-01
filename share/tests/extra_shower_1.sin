@@ -24,6 +24,6 @@ cuts = all Pt > 5 GeV  and Theta > 10 degree and Theta < 170 degree ["mu+":"mu-"
 ?keep_beams = true
 ?ps_fsr_active = true
 $shower_method = "PYTHIA6"
-n_events = 10**6
+n_events = 10**5
 $sample = "extra_shower_1"
 simulate (extra_shower_1_p1)

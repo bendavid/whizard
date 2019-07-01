@@ -3583,7 +3583,7 @@ to the operator name.
     flag = .false.
   end function composite_show_opname
     
-  function composite_get_opname (object, i) result (name)
+  pure function composite_get_opname (object, i) result (name)
     class(composite_t), intent(in) :: object
     integer, intent(in), optional :: i
     type(string_t) :: name
@@ -6595,7 +6595,7 @@ expression.  However, we provide a default where name and notation coincide.
 <<Expr: operator: TBP>>=
   procedure :: get_opname => operator_get_opname
 <<Expr: procedures>>=
-  function operator_get_opname (object, i) result (name)
+  pure function operator_get_opname (object, i) result (name)
     class(operator_t), intent(in) :: object
     integer, intent(in), optional :: i
     type(string_t) :: name
@@ -6755,7 +6755,7 @@ Finalizer is empty.
 <<Logical: logical: TBP>>=
   procedure :: final => logical_final
 <<Logical: procedures>>=
-  pure subroutine logical_final (object)
+  subroutine logical_final (object)
     class(logical_t), intent(inout) :: object
   end subroutine logical_final
  
@@ -9333,7 +9333,7 @@ Finalizer is empty.
 <<Integer: integer: TBP>>=
   procedure :: final => integer_final
 <<Integer: procedures>>=
-  pure subroutine integer_final (object)
+  subroutine integer_final (object)
     class(integer_t), intent(inout) :: object
   end subroutine integer_final
  

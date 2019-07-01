@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -65,8 +65,9 @@ module event_base
 
   type :: nlo_event_info_t
     logical :: nlo_event = .false.
-    type(string_t), dimension(N_SUPPORTED_EVENT_FORMATS) :: &
+    type(string_t), dimension(:), allocatable :: &
        supported_event_formats
+    integer :: fixed_mci = 0
   contains
     procedure :: init_sample_formats => nlo_event_info_init_sample_formats
     procedure :: check_supported_sample_formats &
@@ -148,6 +149,7 @@ module event_base
      procedure :: pacify_particle_set => generic_event_pacify_particle_set
      procedure :: set_nlo_event => generic_event_set_nlo_event
      procedure :: is_nlo_event => generic_event_is_nlo_event
+     procedure :: get_fixed_mci => generic_event_get_fixed_mci
      procedure :: init_sample_formats => generic_event_init_sample_formats
      procedure :: check_supported_sample_formats &
         => generic_event_check_supported_sample_formats
@@ -286,6 +288,7 @@ contains
   
   subroutine nlo_event_info_init_sample_formats (nlo_info)
     class(nlo_event_info_t), intent(inout) :: nlo_info
+    allocate (nlo_info%supported_event_formats (N_SUPPORTED_EVENT_FORMATS))
     nlo_info%supported_event_formats(1) = var_str ("hepmc")
     nlo_info%supported_event_formats(2) = var_str ("debug")
   end subroutine nlo_event_info_init_sample_formats
@@ -585,6 +588,12 @@ contains
     class(generic_event_t), intent(in) :: event
     value = event%nlo_info%nlo_event
   end function generic_event_is_nlo_event
+
+  function generic_event_get_fixed_mci (event) result (i_mci)
+    integer :: i_mci
+    class(generic_event_t), intent(in) :: event
+    i_mci = event%nlo_info%fixed_mci
+  end function generic_event_get_fixed_mci
 
   subroutine generic_event_init_sample_formats (event)
     class(generic_event_t), intent(inout) :: event

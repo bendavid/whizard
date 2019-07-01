@@ -1,10 +1,10 @@
-# $Id: eeww_polarized.sin 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: eeww_polarized.sin 7444 2016-02-17 15:37:20Z jr_reuter $
 # Use WHIZARD's initial and final state polarization facilities to
 # examine the angular distributions for all 36 helicity combinations
 # in e+, e- -> W+, W-
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>

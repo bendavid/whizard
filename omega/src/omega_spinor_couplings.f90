@@ -1,6 +1,6 @@
-!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
+!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
 !
-!  Copyright (C) 1999-2015 by
+!  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -960,16 +960,23 @@ contains
         - f_fv ((g8 * m), psibar, kkb)) * t_tr - &
           f_fv (g8,psibar,(t*kkb + kkb*t))
   end function f_fgrav
-  pure function pr_psi (p, m, w, psi) result (ppsi)
+  pure function pr_psi (p, m, w, cms, psi) result (ppsi)
     type(spinor) :: ppsi
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w
     type(spinor), intent(in) :: psi
-    type(vector) :: vp
+    logical, intent(in) :: cms
+    type(vector) :: vp  
     complex(kind=default), parameter :: one = (1, 0)
+    complex(kind=default) :: num_mass
     vp = p
+    if (cms) then
+       num_mass = sqrt(cmplx(m**2, -m*w, kind=default))
+    else
+       num_mass = cmplx (m, 0, kind=default)
+    end if
     ppsi = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-         * (- f_vf (one, vp, psi) + m * psi)
+         * (- f_vf (one, vp, psi) + num_mass * psi)
   end function pr_psi
   pure function pj_psi (p, m, w, psi) result (ppsi)
     type(spinor) :: ppsi
@@ -991,16 +998,23 @@ contains
     vp = p
     ppsi = gauss(p*p, m, w) *  (- f_vf (one, vp, psi) + m * psi)
   end function pg_psi
-  pure function pr_psibar (p, m, w, psibar) result (ppsibar)
+  pure function pr_psibar (p, m, w, cms, psibar) result (ppsibar)
     type(conjspinor) :: ppsibar
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w
     type(conjspinor), intent(in) :: psibar
+    logical, intent(in) :: cms  
     type(vector) :: vp
     complex(kind=default), parameter :: one = (1, 0)
+    complex(kind=default) :: num_mass
     vp = p
+    if (cms) then
+       num_mass = sqrt(cmplx(m**2, -m*w, kind=default))
+    else
+       num_mass = cmplx (m, 0, kind=default)
+    end if
     ppsibar = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-         * (f_fv (one, psibar, vp) + m * psibar)
+         * (f_fv (one, psibar, vp) + num_mass * psibar)
   end function pr_psibar
   pure function pj_psibar (p, m, w, psibar) result (ppsibar)
     type(conjspinor) :: ppsibar

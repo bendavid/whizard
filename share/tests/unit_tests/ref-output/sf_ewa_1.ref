@@ -23,8 +23,8 @@
      sinthw    =  4.714339240339E-01
      mZ        =  9.118820000000E+01
      mW        =  8.041900000000E+01
-     keep_mom. =  F
-     keep_en.  =  F
+     recoil    =  F
+     keep en.  =  F
      PDG (VB)  = 23
 
  Outgoing particle codes:
@@ -47,8 +47,8 @@
      sinthw    =  4.714339240339E-01
      mZ        =  9.118820000000E+01
      mW        =  8.041900000000E+01
-     keep_mom. =  F
-     keep_en.  =  F
+     recoil    =  F
+     keep en.  =  F
      PDG (VB)  = 24
 
  Outgoing particle codes:

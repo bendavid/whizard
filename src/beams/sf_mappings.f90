@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,7 +39,7 @@ module sf_mappings
   use kinds, only: double
   use io_units
   use constants, only: pi, zero, one
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
 
   implicit none
@@ -1377,29 +1377,28 @@ contains
     real(default) :: log1, log2, a1, a2, a3
     log1 = log_prec (r(1), rb(1))
     log2 = log_prec (r(2), rb(2))
-    a1 = - rb(1) / log2
-    a2 = - rb(1) ** 2 * (one / log2**2 + one/(2*log2))
     if (abs (log2**3) < epsilon (one)) then
        if (abs(log1) < epsilon (one)) then
           y = zero
        else
-          y = one / (one+log2/log1)
+          y = one / (one + log2 / log1)
        end if
        if (abs(log2) < epsilon (one)) then
           yb = zero
        else 
-          yb = one / (one+log1/log2)
+          yb = one / (one + log1 / log2)
        end if
        return
-    else
-       a3 = - rb(1) ** 3 * (one / log2**3 + one/log2**2 + one/(3 * log2))
     end if
+    a1 = - rb(1) / log2
+    a2 = - rb(1) ** 2 * (one / log2**2 + one / (2 * log2))
+    a3 = - rb(1) ** 3 * (one / log2**3 + one / log2**2 + one/(3 * log2))
     if (abs (a3) < epsilon (a3)) then
        y  = a1 + a2 + a3
        yb = one - y
     else
-       y  = one / (one+log2/log1)
-       yb = one / (one+log1/log2)
+       y  = one / (one + log2 / log1)
+       yb = one / (one + log1 / log2)
     end if
   end subroutine inverse_prec_y
   

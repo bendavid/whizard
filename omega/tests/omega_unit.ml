@@ -1,6 +1,6 @@
-(* $Id: omega_unit.ml 7277 2015-09-25 13:22:46Z ohl $
+(* $Id: omega_unit.ml 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -178,10 +178,12 @@ let suite =
   "omega" >:::
     [selftest_suite;
      ThoList_Unit_Tests.suite;
+     ThoArray.Test.suite;
      Partial.Test.suite;
      Permutation_Test_Using_Lists.suite;
      Permutation_Test_Using_Arrays.suite;
-     Combinatorics_Unit_Tests.suite]
+     Combinatorics_Unit_Tests.suite;
+     Combinatorics.Test.suite]
 
 let _ =
   ignore

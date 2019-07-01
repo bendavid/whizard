@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -46,19 +46,30 @@ module nlo_data
   private
 
   public :: fks_template_t
+  public :: phs_identifier_t
+  public :: check_for_phs_identifier
+  public :: phs_point_set_t
   public :: real_kinematics_t
   public :: compute_dalitz_bounds
+  public :: real_scales_t
   public :: isr_kinematics_t
-  public :: kinematics_counter_t
   public :: pdf_container_t
   public :: powheg_damping_t
   public :: powheg_damping_simple_t
+  public :: nlo_settings_t
   public :: nlo_particle_data_t
   public :: nlo_states_t
   public :: sqme_collector_t
+  public :: nlo_cuts_t
 
   integer, parameter, public :: I_PLUS = 1
   integer, parameter, public :: I_MINUS = 2
+
+  integer, parameter, public :: FKS_DEFAULT = 1
+  integer, parameter, public :: FKS_RESONANCES = 2
+
+  integer, parameter, public :: NO_FACTORIZATION = 0
+  integer, parameter, public :: FACTORIZATION_THRESHOLD = 1
 
   integer, parameter, public :: FSR_SIMPLE = 1
   integer, parameter, public :: FSR_MASSIVE = 2
@@ -67,10 +78,11 @@ module nlo_data
   type :: fks_template_t
     type(string_t) :: id
     logical :: subtraction_disabled = .false.
-    integer :: mapping_type
+    integer :: mapping_type = FKS_DEFAULT
     logical :: count_kinematics = .false.
     real(default) :: fks_dij_exp1
     real(default) :: fks_dij_exp2
+    type(string_t), dimension(:), allocatable :: excluded_resonances
   contains
     procedure :: write => fks_template_write
     procedure :: set_dij_exp => fks_template_set_dij_exp
@@ -78,6 +90,36 @@ module nlo_data
     procedure :: set_counter => fks_template_set_counter
     procedure :: disable_subtraction => fks_template_disable_subtraction
   end type fks_template_t
+
+  type :: phs_identifier_t
+     integer, dimension(:), allocatable :: contributors
+     integer :: emitter = -1
+     logical :: evaluated = .false.
+  contains
+    generic :: init => init_from_emitter, init_from_emitter_and_contributors
+    procedure :: init_from_emitter => phs_identifier_init_from_emitter
+    procedure :: init_from_emitter_and_contributors &
+       => phs_identifier_init_from_emitter_and_contributors
+    procedure :: check => phs_identifier_check
+    procedure :: write => phs_identifier_write
+  end type phs_identifier_t
+
+  type :: phs_point_set_t
+     type(phs_point_t), dimension(:), allocatable :: phs_point
+     logical :: initialized = .false.
+  contains
+    procedure :: init => phs_point_set_init
+    procedure :: write => phs_point_set_write
+    procedure :: get_n_momenta => phs_point_set_get_n_momenta
+    procedure :: get_momenta => phs_point_set_get_momenta
+    procedure :: get_momentum => phs_point_set_get_momentum
+    procedure :: get_energy => phs_point_set_get_energy
+    procedure :: set_momenta => phs_point_set_set_momenta
+    procedure :: get_n_particles => phs_point_set_get_n_particles
+    procedure :: get_n_phs => phs_point_set_get_n_phs
+    procedure :: get_invariant_mass => phs_point_set_get_invariant_mass
+    procedure :: write_phs_point => phs_point_set_write_phs_point
+  end type phs_point_set_t
 
   type :: real_jacobian_t
     real(default), dimension(4) :: jac = 1._default
@@ -90,16 +132,20 @@ module nlo_data
     real(default) :: xi_tilde
     real(default) :: phi
     real(default), dimension(:), allocatable :: xi_max, y
+    real(default) :: xi_mismatch, y_mismatch
     type(real_jacobian_t), dimension(:), allocatable :: jac
-    type(vector4_t), dimension(:), allocatable :: p_born_cms
-    type(vector4_t), dimension(:), allocatable :: p_born_lab
-    type(vector4_t), dimension(:), allocatable :: p_real_cms
-    type(vector4_t), dimension(:), allocatable :: p_real_lab
+    real(default) :: jac_mismatch
+    type(phs_point_set_t) :: p_born_cms
+    type(phs_point_set_t) :: p_born_lab
+    type(phs_point_set_t) :: p_real_cms
+    type(phs_point_set_t) :: p_real_lab
+    integer, dimension(:), allocatable :: alr_to_i_phs
     real(default), dimension(3) :: x_rad
     real(default), dimension(:), allocatable :: jac_rand
     real(default), dimension(:), allocatable :: y_soft
     real(default) :: cms_energy2
     type(vector4_t), dimension(:), allocatable :: k_perp
+    type(vector4_t), dimension(:), allocatable :: xi_ref_momenta
   contains
     procedure :: init => real_kinematics_init
     procedure :: write => real_kinematics_write
@@ -108,28 +154,25 @@ module nlo_data
     procedure :: compute_k_perp_fsr => real_kinematics_compute_k_perp_fsr
   end type real_kinematics_t
 
+  type :: real_scales_t
+     real(default) :: scale
+     real(default) :: ren_scale
+     real(default) :: fac_scale
+     real(default) :: scale_born
+     real(default) :: fac_scale_born
+     real(default) :: ren_scale_born
+  end type real_scales_t
+
   type :: isr_kinematics_t
     integer :: n_in
-    real(default), dimension(2) :: x = 1._default
-    real(default), dimension(2) :: z = 0._default
-    real(default) :: sqrts_born = 0._default
-    real(default) :: beam_energy = 0._default
-    real(default) :: fac_scale = 0._default
-    real(default), dimension(2) :: jacobian = 1._default
+    real(default), dimension(2) :: x = one
+    real(default), dimension(2) :: z = zero
+    real(default), dimension(2) :: z_coll = zero
+    real(default) :: sqrts_born = zero
+    real(default) :: beam_energy = zero
+    real(default) :: fac_scale = zero
+    real(default), dimension(2) :: jacobian = one
   end type isr_kinematics_t
-
-  type :: kinematics_counter_t
-    integer :: n_bins = 0
-    integer, dimension(:), allocatable :: histo_xi
-    integer, dimension(:), allocatable :: histo_xi_tilde
-    integer, dimension(:), allocatable :: histo_xi_max
-    integer, dimension(:), allocatable :: histo_y
-    integer, dimension(:), allocatable :: histo_phi
-  contains
-    procedure :: init => kinematics_counter_init
-    procedure :: record => kinematics_counter_record
-    procedure :: display => kinematics_counter_display
-  end type kinematics_counter_t
 
   type :: pdf_container_t
      real(default), dimension(-6:6) :: f
@@ -148,6 +191,21 @@ module nlo_data
     procedure :: get_f => powheg_damping_simple_get_f
   end type powheg_damping_simple_t
 
+  type :: nlo_settings_t
+     logical :: use_internal_color_correlations = .true.
+     logical :: use_internal_spin_correlations = .false.
+     logical :: use_resonance_mappings = .false.
+     logical :: combined_integration = .false.
+     logical :: with_virtual_subtraction = .true.
+     logical :: test_soft_limit = .false.
+     logical :: test_coll_limit = .false.
+     logical :: test_anti_coll_limit = .false.
+     integer :: fixed_alr = -1
+     integer :: factorization_mode = NO_FACTORIZATION
+  contains
+  
+  end type nlo_settings_t
+
   type :: nlo_particle_data_t
     integer :: n_in
     integer :: n_out_born, n_out_real
@@ -164,20 +222,28 @@ module nlo_data
 
   type :: sqme_collector_t
     real(default) :: current_sqme_real
-    real(default), dimension(:,:), allocatable :: sqme_real_per_emitter
-    real(default), dimension(:), allocatable :: sqme_real_non_sub
+    real(default), dimension(:,:), allocatable :: sqme_real_per_phs
+    real(default), dimension(:,:), allocatable :: sqme_real_non_sub
     real(default), dimension(:,:,:), allocatable :: sqme_born_cc
     complex(default), dimension(:), allocatable :: sqme_born_sc
     real(default) :: sqme_real_sum
     real(default), dimension(:), allocatable :: sqme_born_list
+    real(default), dimension(:), allocatable :: sqme_subtraction_born_list
     real(default), dimension(:,:), allocatable :: sqme_virt_born_list
     real(default), dimension(:,:), allocatable :: sqme_virt_list
+    real(default) :: sqme_mismatch
+    real(default), dimension(:), allocatable :: sqme_dglap_list
   contains
     procedure :: get_sqme_sum => sqme_collector_get_sqme_sum
     procedure :: get_sqme_born => sqme_collector_get_sqme_born
-    procedure :: setup_sqme_real => sqme_collector_setup_sqme_real
     procedure :: reset => sqme_collector_reset
+    procedure :: write => sqme_collector_write
   end type sqme_collector_t
+
+  type :: nlo_cuts_t
+    logical :: passed_born
+    logical, dimension(:), allocatable :: passed_real
+  end type nlo_cuts_t
 
 
   abstract interface
@@ -192,85 +258,286 @@ module nlo_data
 
 contains
 
-  subroutine fks_template_write (object, unit)
-    class(fks_template_t), intent(in) :: object
+  subroutine fks_template_write (template, unit)
+    class(fks_template_t), intent(in) :: template
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
     write (u,'(1x,A)') 'FKS Template: '
-    write (u,'(1x,A,I0)') 'Mapping Type: ', object%mapping_type
-    write (u,'(1x,A,ES4.3,ES4.3)') 'd_ij exponentials: ', object%fks_dij_exp1, object%fks_dij_exp2
+    write (u,'(1x,A,I0)') 'Mapping Type: ', template%mapping_type
+    write (u,'(1x,A,ES4.3,ES4.3)') 'd_ij exponentials: ', &
+       template%fks_dij_exp1, template%fks_dij_exp2
   end subroutine fks_template_write
 
-  subroutine fks_template_set_dij_exp (object, exp1, exp2)
-    class(fks_template_t), intent(inout) :: object
+  subroutine fks_template_set_dij_exp (template, exp1, exp2)
+    class(fks_template_t), intent(inout) :: template
     real(default), intent(in) :: exp1, exp2
-    object%fks_dij_exp1 = exp1
-    object%fks_dij_exp2 = exp2
+    template%fks_dij_exp1 = exp1
+    template%fks_dij_exp2 = exp2
   end subroutine fks_template_set_dij_exp
 
-  subroutine fks_template_set_mapping_type (object, val)
-    class(fks_template_t), intent(inout) :: object
+  subroutine fks_template_set_mapping_type (template, val)
+    class(fks_template_t), intent(inout) :: template
     integer, intent(in) :: val
-    object%mapping_type = val
+    template%mapping_type = val
   end subroutine fks_template_set_mapping_type
 
-  subroutine fks_template_set_counter (object)
-    class(fks_template_t), intent(inout) :: object
-    object%count_kinematics = .true.
+  subroutine fks_template_set_counter (template)
+    class(fks_template_t), intent(inout) :: template
+    template%count_kinematics = .true.
   end subroutine fks_template_set_counter
 
-  subroutine fks_template_disable_subtraction (object)
-    class(fks_template_t), intent(inout) :: object
-    object%subtraction_disabled = .true.
+  subroutine fks_template_disable_subtraction (template)
+    class(fks_template_t), intent(inout) :: template
+    template%subtraction_disabled = .true.
   end subroutine fks_template_disable_subtraction
 
-  subroutine real_kinematics_init (r, n_tot)
+  subroutine phs_identifier_init_from_emitter (phs_id, emitter)
+    class(phs_identifier_t), intent(out) :: phs_id
+    integer, intent(in) :: emitter
+    phs_id%emitter = emitter
+  end subroutine phs_identifier_init_from_emitter
+
+  subroutine phs_identifier_init_from_emitter_and_contributors &
+     (phs_id, emitter, contributors)
+     class(phs_identifier_t), intent(out) :: phs_id
+     integer, intent(in) :: emitter
+     integer, intent(in), dimension(:) :: contributors
+     allocate (phs_id%contributors (size (contributors)))
+     phs_id%contributors = contributors
+     phs_id%emitter = emitter
+  end subroutine phs_identifier_init_from_emitter_and_contributors
+  function phs_identifier_check (phs_id, emitter, contributors) result (check)
+    logical :: check
+    class(phs_identifier_t), intent(in) :: phs_id
+    integer, intent(in) :: emitter
+    integer, intent(in), dimension(:), optional :: contributors
+    check = phs_id%emitter == emitter
+    if (present (contributors)) then
+       if (.not. allocated (phs_id%contributors)) &
+          call msg_fatal ("Phs identifier: contributors not allocated!")
+       check = check .and. all (phs_id%contributors == contributors)
+    end if
+  end function phs_identifier_check
+
+  subroutine phs_identifier_write (phs_id, unit)
+    class(phs_identifier_t), intent(in) :: phs_id
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, '(A)') 'phs_identifier: '
+    write (u, '(A,1X,I1)') 'Emitter: ', phs_id%emitter
+    if (allocated (phs_id%contributors)) then
+       write (u, '(A)', advance = 'no') 'Resonance contributors: '
+       do i = 1, size (phs_id%contributors)
+          write (u, '(I1,1X)', advance = 'no') phs_id%contributors(i)
+       end do
+    else
+       write (u, '(A)') 'No Contributors allocated'
+    end if
+  end subroutine phs_identifier_write
+
+  subroutine check_for_phs_identifier (phs_id, n_in, emitter, contributors, phs_exist, i_phs)
+     type(phs_identifier_t), intent(in), dimension(:) :: phs_id
+     integer, intent(in) :: n_in, emitter
+     integer, intent(in), dimension(:), optional :: contributors
+     logical, intent(out) :: phs_exist
+     integer, intent(out) :: i_phs
+     integer :: i
+     phs_exist = .false.
+     i_phs = -1
+     do i = 1, size (phs_id)
+        if (phs_id(i)%emitter < 0) then
+           i_phs = i
+           exit
+        end if 
+        if (emitter > n_in) then
+           phs_exist = phs_id(i)%emitter == emitter
+        else
+           phs_exist = phs_id(i)%emitter <= n_in
+        end if
+        if (present (contributors)) &
+           phs_exist = phs_exist .and. all (phs_id(i)%contributors == contributors)
+        if (phs_exist) then
+           i_phs = i
+           exit
+        end if
+     end do
+  end subroutine check_for_phs_identifier
+
+  subroutine phs_point_set_init (phs_point_set, n_particles, n_phs)
+    class(phs_point_set_t), intent(out) :: phs_point_set
+    integer, intent(in) :: n_particles, n_phs
+    integer :: i_phs
+    allocate (phs_point_set%phs_point (n_phs))
+    do i_phs = 1, n_phs
+       phs_point_set%phs_point(i_phs) = n_particles
+    end do
+    phs_point_set%initialized = .true.
+  end subroutine phs_point_set_init
+
+  subroutine phs_point_set_write (phs_point_set, i_phs, contributors, unit)
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in), optional :: i_phs
+    integer, intent(in), dimension(:), optional :: contributors
+    integer, intent(in), optional :: unit
+    integer :: i, u
+    type(vector4_t) :: p_sum
+    u = given_output_unit (unit); if (u < 0) return
+    if (present (i_phs)) then
+       call phs_point_set%phs_point(i_phs)%write (u, show_mass = .true.)
+    else
+       do i = 1, size(phs_point_set%phs_point)
+          call phs_point_set%phs_point(i_phs)%write (u, show_mass = .true.)
+       end do
+    end if
+    if (present (contributors)) then
+       p_sum = vector4_null
+       call msg_debug (D_SUBTRACTION, "Invariant masses for real emission: ")
+       associate (p => phs_point_set%phs_point(i_phs)%p)
+          do i = 1, size (contributors)
+             p_sum = p_sum + p(contributors(i))
+          end do
+          p_sum = p_sum + p(size(p))
+       end associate
+       if (debug_active (D_SUBTRACTION)) call vector4_write (p_sum, show_mass = .true.)
+    end if
+  end subroutine phs_point_set_write
+
+  elemental function phs_point_set_get_n_momenta (phs_point_set, i_res) result (n)
+    integer :: n
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_res
+    n = phs_point_set%phs_point(i_res)%n_momenta
+  end function phs_point_set_get_n_momenta
+
+  function phs_point_set_get_momenta (phs_point_set, i_phs) result (p)
+    type(vector4_t), dimension(:), allocatable :: p
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_phs
+    allocate (p (phs_point_set%phs_point(i_phs)%n_momenta), &
+       source = phs_point_set%phs_point(i_phs)%p)
+  end function phs_point_set_get_momenta
+
+  pure function phs_point_set_get_momentum (phs_point_set, i_phs, i_mom) result (p)
+    type(vector4_t) :: p
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_phs, i_mom
+    p = phs_point_set%phs_point(i_phs)%p(i_mom)
+  end function phs_point_set_get_momentum
+
+  pure function phs_point_set_get_energy (phs_point_set, i_phs, i_mom) result (E)
+    real(default) :: E
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_phs, i_mom
+    E = phs_point_set%phs_point(i_phs)%p(i_mom)%p(0)
+  end function phs_point_set_get_energy
+
+  subroutine phs_point_set_set_momenta (phs_point_set, i_phs, p)
+    class(phs_point_set_t), intent(inout) :: phs_point_set
+    integer, intent(in) :: i_phs
+    type(vector4_t), intent(in), dimension(:) :: p
+    phs_point_set%phs_point(i_phs)%p = p
+  end subroutine phs_point_set_set_momenta
+
+  function phs_point_set_get_n_particles (phs_point_set, i) result (n_particles)
+    integer :: n_particles
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in), optional :: i
+    integer :: j
+    j = 1; if (present (i)) j = i
+    n_particles = size (phs_point_set%phs_point(j)%p)
+  end function phs_point_set_get_n_particles
+
+  function phs_point_set_get_n_phs (phs_point_set) result (n_phs)
+    integer :: n_phs
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    n_phs = size (phs_point_set%phs_point)
+  end function phs_point_set_get_n_phs
+
+  function phs_point_set_get_invariant_mass (phs_point_set, i_phs, i_part) result (m2)
+    real(default) :: m2
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_phs
+    integer, intent(in), dimension(:) :: i_part
+    type(vector4_t) :: p
+    integer :: i
+    p = vector4_null
+    do i = 1, size (i_part)
+       p = p + phs_point_set%phs_point(i_phs)%p(i_part(i))
+    end do
+    m2 = p**2
+  end function phs_point_set_get_invariant_mass
+
+  subroutine phs_point_set_write_phs_point (phs_point_set, i_phs, unit, show_mass, &
+     testflag, check_conservation, ultra, n_in)
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_phs
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag, ultra
+    logical, intent(in), optional :: check_conservation
+    integer, intent(in), optional :: n_in
+    call phs_point_set%phs_point(i_phs)%write (unit, show_mass, testflag, &
+       check_conservation, ultra, n_in)
+  end subroutine phs_point_set_write_phs_point
+
+  subroutine real_kinematics_init (r, n_tot, n_phs, n_alr, n_contr)
     class(real_kinematics_t), intent(inout) :: r
-    integer, intent(in) :: n_tot
-    allocate (r%xi_max (n_tot))
-    allocate (r%y (n_tot))
-    allocate (r%y_soft (n_tot))
-    allocate (r%p_born_cms (n_tot), &
-              r%p_born_lab (n_tot), &
-              r%p_real_cms (n_tot+1), &
-              r%p_real_lab (n_tot+1))
-    allocate (r%jac (n_tot), r%jac_rand (n_tot))
+    integer, intent(in) :: n_tot, n_phs, n_alr, n_contr
+    allocate (r%xi_max (n_phs))
+    allocate (r%y (n_phs))
+    allocate (r%y_soft (n_phs))
+    call r%p_born_cms%init (n_tot, 1)
+    call r%p_born_lab%init (n_tot, 1)
+    call r%p_real_cms%init (n_tot + 1, n_phs)
+    call r%p_real_lab%init (n_tot + 1, n_phs)
+    allocate (r%jac (n_phs), r%jac_rand (n_phs))
     allocate (r%k_perp (n_tot))
-    r%xi_tilde = zero
+    allocate (r%alr_to_i_phs (n_alr))
+    allocate (r%xi_ref_momenta (n_contr))
+    r%alr_to_i_phs = 0
+    r%xi_tilde = zero; r%xi_mismatch = zero
     r%xi_max = zero
-    r%y = zero
+    r%y = zero; r%y_mismatch = zero
+    r%y_soft = zero
     r%phi = zero
     r%cms_energy2 = zero
+    r%xi_ref_momenta = vector4_null
+    r%jac_mismatch = one
+    r%jac_rand = one
   end subroutine real_kinematics_init
-    
+
   subroutine real_kinematics_write (r, unit)
     class(real_kinematics_t), intent(in) :: r
     integer, intent(in), optional :: unit
-    integer :: u
+    integer :: u, i
     u = given_output_unit (unit); if (u < 0) return
     write (u,"(A)") "Real kinematics: "
     write (u,"(A,F5.3)") "xi_tilde: ", r%xi_tilde
     write (u,"(A,F5.3)") "phi: ", r%phi
-    write (u,"(A,100F5.3,1X)") "xi_max: ", r%xi_max
-    write (u,"(A,100F5.3,1X)") "y: ", r%y
-    write (u,"(A,100F5.3,1X)") "jac_rand: ", r%jac_rand
-    write (u,"(A,100F5.3,1X)") "y_soft: ", r%y_soft
+    do i = 1, size (r%xi_max)
+       write (u,"(A,I1,1X)") "i_phs: ", i
+       write (u,"(A,100F5.3,1X)") "xi_max: ", r%xi_max(i)
+       write (u,"(A,100F5.3,1X)") "y: ", r%y(i)
+       write (u,"(A,100F5.3,1X)") "jac_rand: ", r%jac_rand(i)
+       write (u,"(A,100F5.3,1X)") "y_soft: ", r%y_soft(i)
+    end do
   end subroutine real_kinematics_write
 
   pure subroutine compute_dalitz_bounds (q0, m2, mrec2, z1, z2, k0_rec_max)
     real(default), intent(in) :: q0, m2, mrec2
     real(default), intent(out) :: z1, z2, k0_rec_max
-    k0_rec_max = (q0**2-m2+mrec2)/(2*q0)
-    z1 = (k0_rec_max+sqrt(k0_rec_max**2-mrec2))/q0
-    z2 = (k0_rec_max-sqrt(k0_rec_max**2-mrec2))/q0
+    k0_rec_max = (q0**2 - m2 + mrec2) / (two * q0)
+    z1 = (k0_rec_max + sqrt(k0_rec_max**2 - mrec2)) / q0
+    z2 = (k0_rec_max - sqrt(k0_rec_max**2 - mrec2)) / q0
   end subroutine compute_dalitz_bounds
 
   function real_kinematics_kt2 &
-         (real_kinematics, emitter, kt2_type, xi, y) result (kt2)
+     (real_kinematics, i_phs, emitter, kt2_type, xi, y) result (kt2)
     real(default) :: kt2
     class(real_kinematics_t), intent(in) :: real_kinematics
-    integer, intent(in) :: emitter, kt2_type
+    integer, intent(in) :: emitter, i_phs, kt2_type
     real(default), intent(in), optional :: xi, y
     real(default) :: xii, yy
     real(default) :: q, E_em, z, z1, z2, m2, mrec2, k0_rec_max
@@ -278,30 +545,30 @@ contains
     if (present (y)) then
        yy = y
     else
-       yy = real_kinematics%y (emitter)
+       yy = real_kinematics%y (i_phs)
     end if
     if (present (xi)) then
        xii = xi
     else
-       xii = real_kinematics%xi_tilde * real_kinematics%xi_max (emitter)
+       xii = real_kinematics%xi_tilde * real_kinematics%xi_max (i_phs)
     end if
     select case (kt2_type)
     case (FSR_SIMPLE)
-       kt2 = real_kinematics%cms_energy2 / 2 * xii**2 * (1 - yy)
+       kt2 = real_kinematics%cms_energy2 / two * xii**2 * (1 - yy)
     case (FSR_MASSIVE)
        q = sqrt (real_kinematics%cms_energy2)
-       p_emitter = real_kinematics%p_born_cms(emitter)
+       p_emitter = real_kinematics%p_born_cms%phs_point(1)%p(emitter)
        mrec2 = (q - p_emitter%p(0))**2 - sum (p_emitter%p(1:3)**2)
        m2 = p_emitter**2
        E_em = energy (p_emitter)
        call compute_dalitz_bounds (q, m2, mrec2, z1, z2, k0_rec_max)
        z = z2 - (z2 - z1) * (one + yy) / two
        kt2 = xii**2 * q**3 * (one - z) / &
-            (2 * E_em - z * xii * q)
+          (two * E_em - z * xii * q)
     case (FSR_MASSLESS_RECOILER)
-       kt2 = real_kinematics%cms_energy2 / 2 * xii**2 * (1 - yy**2) / 2
+       kt2 = real_kinematics%cms_energy2 / two * xii**2 * (1 - yy**2) / two
     case default
-       kt2 = 0.0
+       kt2 = zero
        call msg_bug ("kt2_type must be set to a known value")
     end select
   end function real_kinematics_kt2
@@ -310,10 +577,10 @@ contains
     class(real_kinematics_t), intent(inout) :: real_kin
     integer, intent(in) :: emitter
     associate (k => real_kin%k_perp(emitter))
-       k%p(0) = 0._default
+       k%p(0) = zero
        k%p(1) = cos(real_kin%phi)
        k%p(2) = sin(real_kin%phi)
-       k%p(3) = 0._default
+       k%p(3) = zero
     end associate
   end subroutine real_kinematics_compute_k_perp_isr
 
@@ -322,83 +589,16 @@ contains
     integer, intent(in) :: emitter
     type(vector3_t) :: vec
     type(lorentz_transformation_t) :: rot
-    associate (p => real_kin%p_born_cms(emitter), k => real_kin%k_perp(emitter))
-       vec = p%p(1:3)/p%p(0)
-       k%p(0) = 0._default
+    associate (p => real_kin%p_born_cms%phs_point(1)%p(emitter), k => real_kin%k_perp(emitter))
+       vec = p%p(1:3) / p%p(0)
+       k%p(0) = zero
        k%p(1) = p%p(1); k%p(2) = p%p(2)
-       k%p(3) = -(p%p(1)**2 + p%p(2)**2) / p%p(3)
+       k%p(3) = - (p%p(1)**2 + p%p(2)**2) / p%p(3)
        rot = rotation (cos(real_kin%phi), sin(real_kin%phi), vec)
-       k = rot*k
+       k = rot * k
        k%p(1:3) = k%p(1:3) / space_part_norm (k)
     end associate
   end subroutine real_kinematics_compute_k_perp_fsr
-
-  subroutine kinematics_counter_init (counter, n_bins)
-    class(kinematics_counter_t), intent(inout) :: counter
-    integer, intent(in) :: n_bins
-    counter%n_bins = n_bins
-    allocate (counter%histo_xi (n_bins), counter%histo_xi_tilde (n_bins))
-    allocate (counter%histo_y (n_bins), counter%histo_phi (n_bins))
-    allocate (counter%histo_xi_max (n_bins))
-    counter%histo_xi = 0
-    counter%histo_xi_tilde = 0
-    counter%histo_xi_max = 0
-    counter%histo_y = 0
-    counter%histo_phi = 0
-  end subroutine kinematics_counter_init
-
-  subroutine kinematics_counter_record (counter, xi, xi_tilde, &
-                                        xi_max, y, phi)
-     class(kinematics_counter_t), intent(inout) :: counter
-     real(default), intent(in), optional :: xi, xi_tilde, xi_max
-     real(default), intent(in), optional :: y, phi
-
-     if (counter%n_bins > 0) then
-       if (present (xi)) then
-          call fill_histogram (counter%histo_xi, xi, &
-                               0.0_default, 1.0_default)
-       end if
-       if (present (xi_tilde)) then
-          call fill_histogram (counter%histo_xi_tilde, xi_tilde, &
-                               0.0_default, 1.0_default)
-       end if
-       if (present (xi_max)) then
-          call fill_histogram (counter%histo_xi_max, xi_max, &
-                               0.0_default, 1.0_default)
-       end if
-       if (present (y)) then
-          call fill_histogram (counter%histo_y, y, -1.0_default, 1.0_default)
-       end if
-       if (present (phi)) then
-          call fill_histogram (counter%histo_phi, phi, 0.0_default, twopi)
-       end if
-     end if
-  contains
-     subroutine fill_histogram (histo, value, val_min, val_max)
-        integer, dimension(:), allocatable :: histo
-        real(default), intent(in) :: value, val_min, val_max
-        real(default) :: step, lo, hi
-        integer :: bin
-        step = (val_max-val_min) / counter%n_bins
-        do bin = 1, counter%n_bins
-           lo = (bin-1) * step
-           hi = bin * step
-           if (value >= lo .and. value < hi) then
-               histo (bin) = histo (bin) + 1
-               exit
-           end if
-        end do
-     end subroutine fill_histogram
-  end subroutine kinematics_counter_record
-
-  subroutine kinematics_counter_display (counter)
-     class(kinematics_counter_t), intent(in) :: counter
-     print *, 'xi: ', counter%histo_xi
-     print *, 'xi_tilde: ', counter%histo_xi_tilde
-     print *, 'xi_max: ', counter%histo_xi_max
-     print *, 'y: ', counter%histo_y
-     print *, 'phi: ', counter%histo_phi
-  end subroutine kinematics_counter_display
 
   function powheg_damping_simple_get_f (damping, pt2) result (f)
     real(default) :: f
@@ -412,12 +612,12 @@ contains
     real(default) :: sqme
     sqme = sum (collector%sqme_born_list) + &
            collector%sqme_real_sum + &
-           sum (collector%sqme_virt_list)
-    if (debug_active (D_SUBTRACTION)) then
+           sum (collector%sqme_virt_list) + &
+           collector%sqme_mismatch + &
+           sum (collector%sqme_dglap_list)
+    if (debug2_active (D_SUBTRACTION)) then
        call msg_debug (D_SUBTRACTION, "Get content of sqme lists: ")
-       print *, 'Born: ', collector%sqme_born_list
-       print *, 'Real: ', collector%sqme_real_sum
-       print *, 'Virt: ', collector%sqme_virt_list
+       call collector%write ()
        print *, 'Sum: ', sqme
     end if
   end function sqme_collector_get_sqme_sum
@@ -429,20 +629,23 @@ contains
     sqme = collector%sqme_born_list (i_flv)
   end function sqme_collector_get_sqme_born
 
-  subroutine sqme_collector_setup_sqme_real (collector, n_flv, n_particles)
-    class(sqme_collector_t), intent(inout) :: collector
-    integer, intent(in) :: n_flv, n_particles
-    if (.not. allocated (collector%sqme_real_per_emitter)) &
-       allocate (collector%sqme_real_per_emitter (n_flv, n_particles))
-    collector%sqme_real_per_emitter = 0._default
-  end subroutine sqme_collector_setup_sqme_real
-
   subroutine sqme_collector_reset (collector)
     class(sqme_collector_t), intent(inout) :: collector
-       collector%sqme_born_list = 0._default
-       collector%sqme_real_sum = 0._default
-       collector%sqme_virt_list = 0._default
+       collector%sqme_born_list = zero
+       collector%sqme_real_sum = zero
+       collector%sqme_virt_list = zero
+       collector%sqme_mismatch = zero
+       collector%sqme_dglap_list = zero
   end subroutine sqme_collector_reset
+
+  subroutine sqme_collector_write (collector)
+    class(sqme_collector_t), intent(in) :: collector
+    print *, 'Born: ', collector%sqme_born_list 
+    print *, 'Real: ', collector%sqme_real_sum
+    print *, 'Virt: ', collector%sqme_virt_list
+    print *, 'Dglap: ', collector%sqme_dglap_list
+    print *, 'Mismatch: ', collector%sqme_mismatch
+  end subroutine sqme_collector_write
 
 
 end module nlo_data

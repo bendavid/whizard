@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -93,6 +93,7 @@ module_lists = \
   ../model_features/Modules \
   ../variables/Modules \
   ../shower/Modules \
+  ../threshold/Modules \
   ../process_integration/Modules
 
 $(module_lists):
@@ -137,7 +138,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../beams -I../matrix_elements -I../me_methods -I../events -I../muli -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../openloops -I../fks -I../model_features -I../variables -I../shower -I../process_integration -I../fastjet -I../../vamp/src -I../lhapdf -I../pdf_builtin
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../beams -I../matrix_elements -I../me_methods -I../events -I../muli -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../openloops -I../fks -I../model_features -I../variables -I../tauola -I../shower -I../threshold -I../process_integration -I../fastjet -I../../vamp/src -I../lhapdf -I../pdf_builtin
 
 ########################################################################
 ## Default Fortran compiler options

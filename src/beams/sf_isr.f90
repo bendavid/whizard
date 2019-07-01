@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,7 +40,7 @@ module sf_isr
   use io_units
   use constants, only: pi
   use format_defs, only: FMT_15, FMT_19
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
   use physics_defs, only: PHOTON
   use lorentz
@@ -50,8 +50,8 @@ module sf_isr
   use flavors
   use colors
   use quantum_numbers
-  use state_matrices
   use polarizations
+  use sf_aux
   use sf_mappings
   use sf_base
 
@@ -81,6 +81,7 @@ module sf_isr
      real(default) :: eps = 0
      real(default) :: log = 0
      logical :: recoil = .false.
+     logical :: keep_energy = .true.
      integer :: order = 3
      integer :: error = NONE
    contains
@@ -113,8 +114,8 @@ module sf_isr
 
 contains
 
-  subroutine isr_data_init &
-       (data, model, pdg_in, alpha, q_max, mass, order, recoil)
+  subroutine isr_data_init (data, model, pdg_in, alpha, q_max, &
+       mass, order, recoil, keep_energy)
     class(isr_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
@@ -123,6 +124,7 @@ contains
     real(default), intent(in), optional :: mass
     integer, intent(in), optional :: order
     logical, intent(in), optional :: recoil
+    logical, intent(in), optional :: keep_energy
     integer :: i, n_flv
     real(default) :: charge
     data%model => model
@@ -138,6 +140,9 @@ contains
     end if
     if (present (recoil)) then
        data%recoil = recoil
+    end if
+    if (present (keep_energy)) then
+       data%keep_energy = keep_energy
     end if
     data%real_mass = data%flv_in(1)%get_mass ()
     if (present (mass)) then
@@ -219,13 +224,14 @@ contains
           call data%flv_in(i)%write (u)
        end do
        write (u, *)    
-       write (u, "(3x,A," // FMT_19 // ")") "  alpha  = ", data%alpha
-       write (u, "(3x,A," // FMT_19 // ")") "  q_max  = ", data%q_max
-       write (u, "(3x,A," // FMT_19 // ")") "  mass   = ", data%mass
-       write (u, "(3x,A," // FMT_19 // ")") "  eps    = ", data%eps
-       write (u, "(3x,A," // FMT_19 // ")") "  log    = ", data%log
-       write (u, "(3x,A,I2)")      "  order  = ", data%order
-       write (u, "(3x,A,L2)")      "  recoil = ", data%recoil
+       write (u, "(3x,A," // FMT_19 // ")") "  alpha    = ", data%alpha
+       write (u, "(3x,A," // FMT_19 // ")") "  q_max    = ", data%q_max
+       write (u, "(3x,A," // FMT_19 // ")") "  mass     = ", data%mass
+       write (u, "(3x,A," // FMT_19 // ")") "  eps      = ", data%eps
+       write (u, "(3x,A," // FMT_19 // ")") "  log      = ", data%log
+       write (u, "(3x,A,I2)")      "  order    = ", data%order
+       write (u, "(3x,A,L2)")      "  recoil   = ", data%recoil
+       write (u, "(3x,A,L2)")      "  keep en. = ", data%keep_energy
     else
        write (u, "(3x,A)") "[undefined]"       
     end if
@@ -377,12 +383,12 @@ contains
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     integer, dimension(3) :: hel_lock
-    type(polarization_t) :: pol
-    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel
+    type(polarization_t), target :: pol
+    type(quantum_numbers_t), dimension(1) :: qn_fc
     type(flavor_t) :: flv_photon
     type(color_t) :: col_photon
-    type(quantum_numbers_t) :: qn_photon, qn
-    type(state_iterator_t) :: it_hel
+    type(quantum_numbers_t) :: qn_hel, qn_photon, qn
+    type(polarization_iterator_t) :: it_hel
     real(default) :: m2
     integer :: i
     mask = quantum_numbers_mask (.false., .false., &
@@ -399,20 +405,25 @@ contains
        call qn_photon%init (flv_photon, col_photon)
        call qn_photon%tag_radiated ()
        do i = 1, size (data%flv_in)
-          call polarization_init_generic (pol, data%flv_in(i))
+          call pol%init_generic (data%flv_in(i))
           call qn_fc(1)%init (&
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i), 1))
-          call it_hel%init (pol%state)
+          call it_hel%init (pol)
           do while (it_hel%is_valid ())
              qn_hel = it_hel%get_quantum_numbers ()
-             qn = qn_hel(1) .merge. qn_fc(1)
+             qn = qn_hel .merge. qn_fc(1)
              call sf_int%add_state ([qn, qn_photon, qn])
              call it_hel%advance ()
           end do
-          call polarization_final (pol)
-       end do
+          ! call pol%final ()  !!! Obsolete
+       end do       
        call sf_int%freeze ()
+       if (data%keep_energy) then
+          sf_int%on_shell_mode = KEEP_ENERGY
+       else 
+          sf_int%on_shell_mode = KEEP_MOMENTUM
+       end if
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])

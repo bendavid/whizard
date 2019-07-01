@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -121,12 +121,11 @@
     logical :: look_for_options
     logical :: interactive
     logical :: banner
-    type(string_t) :: files, this, model, default_lib, library, libraries
+    type(string_t) :: files, model, default_lib, library, libraries
 !     type(string_t) :: check, checks
     type(string_t) :: logfile
     type(test_results_t) :: test_results
     logical :: success
-    logical :: user_code_enable = .false.
     integer :: n_user_src = 0, n_user_lib = 0
     type(string_t) :: user_src, user_lib
     type(paths_t) :: paths
@@ -138,7 +137,6 @@
     type(whizard_t), pointer :: whizard_instance
     
     ! Exit status
-    logical :: quit = .false.
     integer :: quit_code = 0
   
     ! Initial values
@@ -405,7 +403,6 @@
     type(command_list_t), pointer :: cmd_list
     type(whizard_t), pointer :: whizard_instance
    
-    integer :: i_evt
     type(simulation_t), target :: sim
    
     character(kind=c_char), intent(in) :: c_id(*)

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -117,7 +117,7 @@ contains
 
     call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
+    call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
     select type (core_def)
     type is (prc_test_def_t)
        call core_def%write (u)
@@ -131,7 +131,7 @@ contains
 
     call global%set_string (var_str ("$method"), &
          var_str ("omega"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
+    call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
     select type (core_def)
     type is (omega_omega_def_t)
        call core_def%write (u)
@@ -167,7 +167,7 @@ contains
 
     call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
+    call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
     call dispatch_core (core, core_def)
     select type (core)
     type is (test_t)
@@ -183,7 +183,7 @@ contains
 
     call global%set_string (var_str ("$method"), &
          var_str ("omega"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
+    call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
 
     call global%select_model (var_str ("Test"))
 
@@ -198,7 +198,8 @@ contains
          10, is_known = .true.)
     
     call dispatch_core (core, core_def, &
-         global%model, global%get_helicity_selection ())
+         global%model, &
+         global%get_helicity_selection ())
     call core_def%allocate_driver (core%driver, var_str (""))
 
     select type (core)
@@ -768,7 +769,7 @@ contains
 
     call global%set_string (var_str ("$method"), &
          var_str ("omega"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
+    call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
 
     call global%select_model (var_str ("Test"))
 
@@ -800,7 +801,8 @@ contains
          var_str ("helicity_selection_cutoff"), &
          5, is_known = .true.)
     
-    call dispatch_core_update (core, global%model, &
+    call dispatch_core_update (core, &
+         global%model, &
          global%get_helicity_selection (), &
          saved_core = saved_core)
     select type (core)

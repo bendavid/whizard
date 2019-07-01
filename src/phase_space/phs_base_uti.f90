@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -423,8 +423,8 @@ contains
   end subroutine phs_test_config_write
   
   subroutine phs_test_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
-       nlo_type)
+       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, &
+       ignore_mismatch, nlo_type)
     class(phs_test_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -432,7 +432,7 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    integer, intent(inout), optional :: nlo_type
+    integer, intent(in), optional :: nlo_type
     phs_config%n_channel = 2
     phs_config%n_par = 2
     phs_config%sqrts = sqrts

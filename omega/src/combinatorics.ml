@@ -1,6 +1,6 @@
-(* $Id: combinatorics.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: combinatorics.ml 7654 2016-07-18 15:45:57Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -379,6 +379,8 @@ let permute_tensor_even l =
 let permute_tensor_odd l =
   filter_sign (-1) (permute_tensor_signed l)
 
+(* \thocwmodulesubsection{Sorting} *)
+
 let insert_inorder_signed order x (eps, l) =
   let rec insert eps' accu = function
     | [] -> (eps * eps', List.rev_append accu [x])
@@ -393,14 +395,85 @@ let insert_inorder_signed order x (eps, l) =
   in
   insert 1 [] l
 
-(* \thocwmodulesubsection{Sorting} *)
+let sort_signed ?(cmp=Pervasives.compare) l =
+  List.fold_right (insert_inorder_signed cmp) l (1, [])
 
-let sort_signed order l =
-  List.fold_left (fun acc x -> insert_inorder_signed order x acc) (1, []) l
+let sign ?(cmp=Pervasives.compare) l =
+  let eps, _ = sort_signed ~cmp l in
+  eps
+
+let sign2 ?(cmp=Pervasives.compare) l =
+  let a = Array.of_list l in
+  let eps = ref 1 in
+  for j = 0 to Array.length a - 1 do
+    for i = 0 to j - 1 do
+      if cmp a.(i) a.(j) > 0 then
+        eps := - !eps
+    done
+  done;
+  !eps
+
+module Test =
+  struct
+
+    open OUnit
+
+    let sort_signed_not_unique =
+      "not unique" >::
+	(fun () ->
+	  assert_raises
+            (Invalid_argument
+               "Combinatorics.insert_inorder_signed: identical elements")
+            (fun () -> sort_signed [1;2;3;4;2]))
+        
+    let sort_signed_even =
+      "even" >::
+	(fun () ->
+	  assert_equal (1, [1;2;3;4;5;6])
+            (sort_signed [1;2;4;3;6;5]))
+
+    let sort_signed_odd =
+      "odd" >::
+	(fun () ->
+	  assert_equal (-1, [1;2;3;4;5;6])
+            (sort_signed [2;3;1;5;4;6]))
+
+    let sort_signed_all =
+      "all" >::
+      (fun () ->
+        let l = ThoList.range 1 8 in
+        assert_bool "all signed permutations"
+          (List.for_all
+             (fun (eps, p) ->
+               let eps', p' = sort_signed p in
+               eps' = eps && p' = l)
+             (permute_signed l)))
+
+    let sign_sign2 =
+      "sign/sign2" >::
+      (fun () ->
+        let l = ThoList.range 1 8 in
+          assert_bool "all permutations"
+          (List.for_all
+             (fun p -> sign p = sign2 p)
+             (permute l)))
+
+    let suite_sort_signed =
+      "sort_signed" >:::
+	[sort_signed_not_unique;
+         sort_signed_even;
+         sort_signed_odd;
+         sort_signed_all;
+         sign_sign2]
+
+    let suite =
+      "Combinatorics" >:::
+	[suite_sort_signed]
+
+  end
 
 (*i
  *  Local Variables:
- *  mode:caml
  *  indent-tabs-mode:nil
  *  page-delimiter:"^(\\* .*\n"
  *  End:

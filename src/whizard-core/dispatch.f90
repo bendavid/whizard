@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,6 +39,7 @@ module dispatch
   use kinds, only: i16
   use iso_varying_string, string_t => varying_string
   use constants, only: PI
+  use string_utils, only: split_string
   use io_units
   use diagnostics
   use system_defs, only: LF  
@@ -60,7 +61,7 @@ module dispatch
   use prc_openloops
   use prc_threshold
   use processes
-  use unit_tests, only: vanishes
+  use numeric_utils
   use pdg_arrays
   use sf_base
   use sf_mappings
@@ -90,6 +91,7 @@ module dispatch
   use nlo_data
   use phs_fks
   use rt_data
+  use variables
   use eio_base
   use eio_raw
   use eio_checkpoints
@@ -112,7 +114,8 @@ module dispatch
   use decays
   use hadrons
   use evt_nlo
-  
+  use tauola_interface !NODEP!
+
   implicit none
   private
 
@@ -152,12 +155,13 @@ module dispatch
 contains
   
   subroutine dispatch_core_def (core_def, prt_in, prt_out, &
-                                global, id, nlo_type)
+                                model, var_list, id, nlo_type)
 
     class(prc_core_def_t), allocatable, intent(inout) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    type(rt_data_t), intent(in) :: global
+    type(model_t), pointer, intent(in) :: model
+    type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in), optional :: id
     integer, intent(in), optional :: nlo_type
     type(string_t) :: method
@@ -167,128 +171,124 @@ contains
     logical :: report_progress
     logical :: diags, diags_color
     type(string_t) :: extra_options
-    type(model_t), pointer :: model
-
-    model => global%model
-    associate (var_list => global%get_var_list_ptr ())
-      method = var_list%get_sval (var_str ("$method"))
-      if (associated (model)) then
-         model_name = model%get_name ()
-      else
-         model_name = ""
-      end if
-      select case (char (method))
-      case ("unit_test")
-         allocate (prc_test_def_t :: core_def)
-         select type (core_def)
-         type is (prc_test_def_t)
-            call core_def%init (model_name, prt_in, prt_out)
-         end select
-      case ("template")
-         allocate (template_me_def_t :: core_def)
-         select type (core_def)
-         type is (template_me_def_t)
-            call core_def%init (model, prt_in, prt_out, unity = .false.)
-         end select
-      case ("template_unity")
-         allocate (template_me_def_t :: core_def)
-         select type (core_def)
-         type is (template_me_def_t)
-            call core_def%init (model, prt_in, prt_out, unity = .true.)
-         end select                  
-      case ("omega")
-         diags = var_list%get_lval (&
-              var_str ("?vis_diags"))
-         diags_color = var_list%get_lval (&
-              var_str ("?vis_diags_color"))         
-         restrictions = var_list%get_sval (&
-              var_str ("$restrictions"))
-         openmp_support = var_list%get_lval (&
-              var_str ("?omega_openmp"))
-         report_progress = var_list%get_lval (&
-              var_str ("?report_progress"))
-         extra_options = var_list%get_sval (&
-              var_str ("$omega_flags"))
-         allocate (omega_omega_def_t :: core_def)
-         select type (core_def)
-         type is (omega_omega_def_t)
-            call core_def%init (model_name, prt_in, prt_out, &
-                 restrictions, openmp_support, report_progress, &
-                 extra_options, diags, diags_color)
-         end select
-      case ("ovm")
-         diags = var_list%get_lval (&
-              var_str ("?vis_diags"))
-         diags_color = var_list%get_lval (&
-              var_str ("?vis_diags_color"))         
-         restrictions = var_list%get_sval (&
-              var_str ("$restrictions"))
-         openmp_support = var_list%get_lval (&
-              var_str ("?omega_openmp"))
-         report_progress = var_list%get_lval (&
-              var_str ("?report_progress"))
-         extra_options = var_list%get_sval (&
-              var_str ("$omega_flags"))
-         allocate (omega_ovm_def_t :: core_def)
-         select type (core_def)
-         type is (omega_ovm_def_t)
-            call core_def%init (model_name, prt_in, prt_out, &
-                 restrictions, openmp_support, report_progress, &
-                 extra_options, diags, diags_color)
-         end select         
-      case ("gosam")
-        allocate (gosam_def_t :: core_def)
-        select type (core_def)
-        type is (gosam_def_t)
-          if (present (id)) then
-             if (present (nlo_type)) then
-                call core_def%init (id, model_name, prt_in, &
-                   prt_out, nlo_type, var_list)
-             else
-                call core_def%init (id, model_name, prt_in, &
-                   prt_out, BORN, var_list)
-             end if
-          else
-             call msg_fatal ("Dispatch GoSam def: No id!")
-          end if
-        end select
-      case ("openloops")
-         allocate (openloops_def_t :: core_def)
-         select type (core_def)
-         type is (openloops_def_t)
-            if (present (id)) then
-               if (present (nlo_type)) then
-                  call core_def%init (id, model_name, prt_in, &
-                     prt_out, nlo_type)
-               else
-                  call core_def%init (id, model_name, prt_in, &
-                     prt_out, BORN)
-               end if
-            else
-               call msg_fatal ("Dispatch OpenLoops def: No id!")
-            end if
-         end select
-      case ("dummy")
-         allocate (user_defined_test_def_t :: core_def)
-         select type (core_def)
-         type is (user_defined_test_def_t)
-            call core_def%init (id, model_name, prt_in, prt_out)
-         end select 
-      case ("threshold")
-         restrictions = var_list%get_sval (&
-              var_str ("$restrictions"))
-         allocate (threshold_def_t :: core_def)
-         select type (core_def)
-         type is (threshold_def_t)
-            call core_def%init (id, model_name, prt_in, prt_out, restrictions)
-         end select
-      case default
-         call msg_fatal ("Process configuration: method '" &
-              // char (method) // "' not implemented")
+    integer :: nlo
+    nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
+    method = var_list%get_sval (var_str ("$method"))
+    if (associated (model)) then
+       model_name = model%get_name ()
+    else
+       model_name = ""
+    end if
+    select case (char (method))
+    case ("unit_test")
+       allocate (prc_test_def_t :: core_def)
+       select type (core_def)
+       type is (prc_test_def_t)
+          call core_def%init (model_name, prt_in, prt_out)
+       end select
+    case ("template")
+       allocate (template_me_def_t :: core_def)
+       select type (core_def)
+       type is (template_me_def_t)
+          call core_def%init (model, prt_in, prt_out, unity = .false.)
+       end select
+    case ("template_unity")
+       allocate (template_me_def_t :: core_def)
+       select type (core_def)
+       type is (template_me_def_t)
+          call core_def%init (model, prt_in, prt_out, unity = .true.)
+       end select
+    case ("omega")
+       diags = var_list%get_lval (&
+            var_str ("?vis_diags"))
+       diags_color = var_list%get_lval (&
+            var_str ("?vis_diags_color"))
+       restrictions = var_list%get_sval (&
+            var_str ("$restrictions"))
+       openmp_support = var_list%get_lval (&
+            var_str ("?omega_openmp"))
+       report_progress = var_list%get_lval (&
+            var_str ("?report_progress"))
+       extra_options = var_list%get_sval (&
+            var_str ("$omega_flags"))
+       allocate (omega_omega_def_t :: core_def)
+       select type (core_def)
+       type is (omega_omega_def_t)
+          call core_def%init (model_name, prt_in, prt_out, &
+               restrictions, openmp_support, report_progress, &
+               extra_options, diags, diags_color)
+       end select
+    case ("ovm")
+       diags = var_list%get_lval (&
+            var_str ("?vis_diags"))
+       diags_color = var_list%get_lval (&
+            var_str ("?vis_diags_color"))         
+       restrictions = var_list%get_sval (&
+            var_str ("$restrictions"))
+       openmp_support = var_list%get_lval (&
+            var_str ("?omega_openmp"))
+       report_progress = var_list%get_lval (&
+            var_str ("?report_progress"))
+       extra_options = var_list%get_sval (&
+            var_str ("$omega_flags"))
+       allocate (omega_ovm_def_t :: core_def)
+       select type (core_def)
+       type is (omega_ovm_def_t)
+          call core_def%init (model_name, prt_in, prt_out, &
+               restrictions, openmp_support, report_progress, &
+               extra_options, diags, diags_color)
+       end select
+    case ("gosam")
+      allocate (gosam_def_t :: core_def)
+      select type (core_def)
+      type is (gosam_def_t)
+        if (present (id)) then
+           call core_def%init (id, model_name, prt_in, &
+              prt_out, nlo, var_list)
+        else
+           call msg_fatal ("Dispatch GoSam def: No id!")
+        end if
       end select
-    end associate
+    case ("openloops")
+       allocate (openloops_def_t :: core_def)
+       select type (core_def)
+       type is (openloops_def_t)
+          if (present (id)) then
+             call core_def%init (id, model_name, prt_in, &
+                prt_out, nlo)
+          else
+             call msg_fatal ("Dispatch OpenLoops def: No id!")
+          end if
+       end select
+    case ("dummy")
+       allocate (user_defined_test_def_t :: core_def)
+       select type (core_def)
+       type is (user_defined_test_def_t)
+          if (present (id)) then
+             call core_def%init (id, model_name, prt_in, prt_out)
+          else
+             call msg_fatal ("Dispatch User-Defined Test def: No id!")
+          end if
+       end select 
+    case ("threshold")
+       restrictions = var_list%get_sval (&
+            var_str ("$restrictions"))
+       allocate (threshold_def_t :: core_def)
+       select type (core_def)
+       type is (threshold_def_t)
+          if (present (id)) then
+             call core_def%init (id, model_name, prt_in, prt_out, &
+                  nlo, restrictions)
+          else
+             call msg_fatal ("Dispatch Threshold def: No id!")
+          end if
+       end select
+    case default
+       call msg_fatal ("Process configuration: method '" &
+            // char (method) // "' not implemented")
+    end select
   end subroutine dispatch_core_def
-    
+
   subroutine dispatch_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors)
     
@@ -331,7 +331,7 @@ contains
       if (.not. allocated (core)) allocate (prc_user_defined_test_t :: core)
       select type (core)
       type is (prc_user_defined_test_t)
-         call core%set_parameters (qcd, use_color_factors)
+         call core%set_parameters (qcd, use_color_factors, model)
       end select
     type is (threshold_def_t)
       if (.not. allocated (core)) allocate (prc_threshold_t :: core)
@@ -344,8 +344,8 @@ contains
     end select
   end subroutine dispatch_core
 
-  subroutine dispatch_core_update (core, model, helicity_selection, qcd, &
-       saved_core)
+  subroutine dispatch_core_update &
+       (core, model, helicity_selection, qcd, saved_core)
     
     class(prc_core_t), allocatable, intent(inout) :: core
     class(model_data_t), intent(in), optional, target :: model
@@ -394,9 +394,9 @@ contains
     type(grid_parameters_t) :: grid_par
     type(history_parameters_t) :: history_par
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
-    logical :: neg_w
+    logical :: dispatch_nlo = .false.
 
-    neg_w = .false.; if (present (is_nlo)) neg_w = is_nlo
+    if (present (is_nlo)) dispatch_nlo = is_nlo
     integration_method = &
          global%var_list%get_sval (var_str ("$integration_method"))
     select case (char (integration_method))
@@ -416,8 +416,12 @@ contains
               var_list%get_ival (var_str ("max_bins"))
          grid_par%stratified = &
               var_list%get_lval (var_str ("?stratified"))
-         grid_par%use_vamp_equivalences = &
-              var_list%get_lval (var_str ("?use_vamp_equivalences"))
+         if (.not. dispatch_nlo) then
+            grid_par%use_vamp_equivalences = &
+                 var_list%get_lval (var_str ("?use_vamp_equivalences"))
+         else
+            grid_par%use_vamp_equivalences = .false.
+         end if
          grid_par%channel_weights_power = &
               var_list%get_rval (var_str ("channel_weights_power"))
          grid_par%accuracy_goal = &
@@ -443,7 +447,7 @@ contains
          rebuild_grids = &
               var_list%get_lval (var_str ("?rebuild_grids"))
          negative_weights = &
-              var_list%get_lval (var_str ("?negative_weights")) .or. neg_w
+              var_list%get_lval (var_str ("?negative_weights")) .or. dispatch_nlo
        end associate
        allocate (mci_vamp_t :: mci)
        select type (mci)
@@ -466,7 +470,7 @@ contains
   end subroutine dispatch_mci
   
   subroutine dispatch_phs (phs, global, process_id, mapping_defaults, phs_par, &
-                           phs_method_in)
+     phs_method_in)
     
     class(phs_config_t), allocatable, intent(inout) :: phs
     type(rt_data_t), intent(in) :: global
@@ -540,29 +544,39 @@ contains
   end subroutine dispatch_phs
   
   subroutine dispatch_fks (fks_template, global)
-    
     type(fks_template_t), intent(inout) :: fks_template
     type(rt_data_t), intent(in) :: global
     real(default) :: fks_dij_exp1, fks_dij_exp2
-    integer :: fks_mapping_type
-    logical :: kinematics_counter_active 
+    type(string_t) :: fks_mapping_type
+    logical :: kinematics_counter_active
     logical :: subtraction_disabled
-    
+    type(string_t) :: exclude_from_resonance
+
     fks_dij_exp1 = &
        global%var_list%get_rval (var_str ("fks_dij_exp1"))
     fks_dij_exp2 = &
-       global%var_list%get_rval (var_str ("fks_dij_exp2")) 
+       global%var_list%get_rval (var_str ("fks_dij_exp2"))
     fks_mapping_type = &
-       global%var_list%get_ival (var_str ("fks_mapping_type"))
+       global%var_list%get_sval (var_str ("$fks_mapping_type"))
     kinematics_counter_active = &
        global%var_list%get_lval (var_str ("?fks_count_kinematics"))
     subtraction_disabled = &
-       global%var_list%get_lval (var_str ("?disable_subtraction"))  
+       global%var_list%get_lval (var_str ("?disable_subtraction"))
+
+    exclude_from_resonance = &
+       global%var_list%get_sval (var_str ("$resonances_exclude_particles"))
+    if (exclude_from_resonance /= var_str ("default")) &
+       fks_template%excluded_resonances = split_string (exclude_from_resonance, var_str (":"))
 
     call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
-    call fks_template%set_mapping_type (fks_mapping_type)
-    if (subtraction_disabled) call fks_template%disable_subtraction () 
-    
+    select case (char (fks_mapping_type))
+    case ("default")
+       call fks_template%set_mapping_type (FKS_DEFAULT)
+    case ("resonances")
+       call fks_template%set_mapping_type (FKS_RESONANCES)
+    end select
+    if (subtraction_disabled) call fks_template%disable_subtraction ()
+
   end subroutine dispatch_fks
 
   subroutine dispatch_rng_factory (rng_factory, global, local_input)
@@ -620,11 +634,11 @@ contains
     type(pdg_array_t), dimension(:), allocatable :: pdg_out
     real(default) :: sqrts, isr_alpha, isr_q_max, isr_mass
     integer :: isr_order
-    logical :: isr_recoil
+    logical :: isr_recoil, isr_keep_energy
     real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass
-    logical :: epa_recoil
+    logical :: epa_recoil, epa_keep_energy
     real(default) :: ewa_x_min, ewa_pt_max, ewa_mass
-    logical :: ewa_keep_momentum, ewa_keep_energy   
+    logical :: ewa_recoil, ewa_keep_energy   
     type(pdg_array_t), dimension(:), allocatable :: pdg_prc1
     integer :: ewa_id
     type(string_t) :: pdf_name
@@ -740,11 +754,13 @@ contains
          isr_mass   = var_list%get_rval (var_str ("isr_mass"))
          isr_order  = var_list%get_ival (var_str ("isr_order"))
          isr_recoil = var_list%get_lval (var_str ("?isr_recoil")) 
+         isr_keep_energy = var_list%get_lval (var_str ("?isr_keep_energy"))
          select type (data)
          type is (isr_data_t)
             call data%init &
                  (model, pdg_in (i_beam(1)), isr_alpha, isr_q_max, &
-                 isr_mass, isr_order, isr_recoil)
+                 isr_mass, isr_order, recoil = isr_recoil, keep_energy = &
+                 isr_keep_energy)
             call data%check ()
             sf_prop%isr_eps(i_beam(1)) = data%get_eps ()
          end select
@@ -763,11 +779,13 @@ contains
          end if
          epa_mass   = var_list%get_rval (var_str ("epa_mass"))
          epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
+         epa_keep_energy = var_list%get_lval (var_str ("?epa_keep_energy"))
          select type (data)            
          type is (epa_data_t)
             call data%init &
                  (model, pdg_in (i_beam(1)), epa_alpha, epa_x_min, &
-                 epa_q_min, epa_e_max, epa_mass, epa_recoil)
+                 epa_q_min, epa_e_max, epa_mass, recoil = epa_recoil, &
+                 keep_energy = epa_keep_energy)
             call data%check ()
          end select
       case ("ewa")
@@ -786,18 +804,15 @@ contains
             ewa_pt_max = sqrts
          end if
          ewa_mass = var_list%get_rval (var_str ("ewa_mass"))  
-         ewa_keep_momentum = var_list%get_lval (&
-              var_str ("?ewa_keep_momentum"))
+         ewa_recoil = var_list%get_lval (&
+              var_str ("?ewa_recoil"))
          ewa_keep_energy = var_list%get_lval (&
-              var_str ("?ewa_keep_energy"))                  
-         if (ewa_keep_momentum .and. ewa_keep_energy) &
-              call msg_fatal (" EWA cannot conserve both energy " &
-                 // "and momentum.")          
+              var_str ("?ewa_keep_energy"))
          select type (data)
          type is (ewa_data_t)
             call data%init &
                  (model, pdg_in (i_beam(1)), ewa_x_min, &
-                 ewa_pt_max, sqrts, ewa_keep_momentum, &
+                 ewa_pt_max, sqrts, ewa_recoil, &
                  ewa_keep_energy, ewa_mass)
             call data%set_id (ewa_id)
             call data%check ()
@@ -1438,11 +1453,11 @@ contains
           call eio%set_parameters (recover_beams, &
                use_alpha_s_from_file, use_scale_from_file, &
                extension_lcio)
-       end select       
+       end select
     case ("stdhep")
        allocate (eio_stdhep_hepevt_t :: eio)
        select type (eio)
-       type is (eio_stdhep_hepevt_t)                   
+       type is (eio_stdhep_hepevt_t)
           extension_stdhep = &
                global%var_list%get_sval (var_str ("$extension_stdhep"))
           call eio%set_parameters &
@@ -1452,17 +1467,17 @@ contains
     case ("stdhep_up")
        allocate (eio_stdhep_hepeup_t :: eio)
        select type (eio)
-       type is (eio_stdhep_hepeup_t)          
+       type is (eio_stdhep_hepeup_t)
           extension_stdhep_up = &
                global%var_list%get_sval (var_str ("$extension_stdhep_up")) 
           call eio%set_parameters (keep_beams, keep_remnants, ensure_order, &
                recover_beams, use_alpha_s_from_file, &
-               use_scale_from_file, extension_stdhep_up)          
+               use_scale_from_file, extension_stdhep_up)
        end select
     case ("stdhep_ev4")
        allocate (eio_stdhep_hepev4_t :: eio)
        select type (eio)
-       type is (eio_stdhep_hepev4_t)                   
+       type is (eio_stdhep_hepev4_t)
           extension_stdhep_ev4 = &
                global%var_list%get_sval (var_str ("$extension_stdhep_ev4"))
           call eio%set_parameters &
@@ -1734,12 +1749,18 @@ contains
     type(string_t) :: lhapdf_file, lhapdf_dir, process_name
     integer :: lhapdf_member
     type(shower_settings_t) :: settings
+    type(taudec_settings_t) :: taudec_settings
     type(var_list_t), pointer :: var_list
 
     call msg_message ("Simulate: activating parton shower")
     var_list => global%get_var_list_ptr ()
     allocate (evt_shower_t :: evt)
     call settings%init (var_list)
+    if (associated (global%model)) then
+       call taudec_settings%init (var_list, global%model)
+    else
+       call taudec_settings%init (var_list, global%fallback_model)
+    end if
     if (present (process)) then
        process_name = process%get_id ()
     else
@@ -1770,7 +1791,7 @@ contains
             char (global%get_sval (var_str ("$shower_method"))) // &
             'not implemented!')
        end select
-       call evt%shower%init (settings, evt%pdf_data)
+       call evt%shower%init (settings, taudec_settings, evt%pdf_data)
     end select
     call dispatch_matching (evt, settings, var_list, process_name)
   end subroutine dispatch_evt_shower

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -124,8 +124,8 @@ module radiation_generator
       radiation_generator_reset_particle_content_pdg_list
     procedure :: reset_particle_content_pdg_array => &
       radiation_generator_reset_particle_content_pdg_array
-    procedure :: init_radiation_model => &
-                      radiation_generator_init_radiation_model
+    procedure :: set_radiation_model => &
+                      radiation_generator_set_radiation_model
     procedure :: set_n => radiation_generator_set_n
     procedure :: set_constraints => radiation_generator_set_constraints
     procedure :: generate => radiation_generator_generate
@@ -512,11 +512,11 @@ contains
     call generator%reset_particle_content (pl)
   end subroutine radiation_generator_reset_particle_content_pdg_array
 
-  subroutine radiation_generator_init_radiation_model (generator, model)
+  subroutine radiation_generator_set_radiation_model (generator, model)
     class(radiation_generator_t), intent(inout) :: generator
     class(model_data_t), intent(in), target :: model
     generator%radiation_model => model
-  end subroutine radiation_generator_init_radiation_model
+  end subroutine radiation_generator_set_radiation_model
 
   subroutine radiation_generator_set_n (generator, n_in, n_out, n_loops)
     class(radiation_generator_t), intent(inout) :: generator
@@ -553,48 +553,48 @@ contains
       n = 1
       call constraints%init (n_constraints)
       call constraints%set (n, constrain_n_tot (generator%n_tot))
-      n = n+1
+      n = n + 1
       if (set_n_loop) then
          call constraints%set (n, constrain_n_loop(generator%n_loops))
-         n = n+1
+         n = n + 1
       end if 
       if (set_mass_sum) then
         call constraints%set (n, constrain_mass_sum(generator%mass_sum))
-        n = n+1
+        n = n + 1
       end if
       if (set_required_particles) then
-        if (generator%fs_gluon) then
-           do i = 1, generator%n_out
-              pdg_tmp = generator%pl_out%get(i)
-              if (pdg_tmp%search_for_particle (GLUON)) then
-                 i_skip(i) = i
-              end if
-           end do
+         if (generator%fs_gluon) then
+            do i = 1, generator%n_out
+               pdg_tmp = generator%pl_out%get(i)
+               if (pdg_tmp%search_for_particle (GLUON)) then
+                  i_skip(i) = i
+               end if
+            end do
 
-           n_skip = count (i_skip > 0)
-           call pl_req%init (generator%n_out-n_skip)
-        else
-           call pl_req%init (generator%n_out)
-        end if
-        j = 1
-        do i = 1, generator%n_out
-           if (any (i == i_skip)) cycle
-           call pl_req%set (j, generator%pl_out%get(i))
-           j = j+1
-        end do          
-        call constraints%set (n, constrain_require (pl_req))
-        n = n+1
+            n_skip = count (i_skip > 0)
+            call pl_req%init (generator%n_out-n_skip)
+         else
+            call pl_req%init (generator%n_out)
+         end if
+         j = 1
+         do i = 1, generator%n_out
+            if (any (i == i_skip)) cycle
+            call pl_req%set (j, generator%pl_out%get(i))
+            j = j + 1
+         end do          
+         call constraints%set (n, constrain_require (pl_req))
+         n = n + 1
       end if
       if (set_selected_particles) then
         if (generator%only_final_state ) then
-           call pl_insert%init (generator%n_out+1)
+           call pl_insert%init (generator%n_out + 1)
            do i = 1, generator%n_out
               call pl_insert%set(i, generator%pl_out%get(i))
            end do
            last_index = generator%n_out + 1
         else
            call generator%pl_in%create_antiparticles (pl_antiparticles, n_new_particles)
-           call pl_insert%init (generator%n_tot+n_new_particles+1)
+           call pl_insert%init (generator%n_tot + n_new_particles + 1)
            do i = 1, generator%n_in
               call pl_insert%set(i, generator%pl_in%get(i))
            end do
@@ -647,8 +647,6 @@ contains
     call pl_in(1)%create_pdg_array (pdg_in)
     call pl_out(1)%create_pdg_array (pdg_out)
 
-    !!!call if_table%init &
-    !!!     (generator%radiation_model, pl_in, pl_out, generator%constraints)
     associate (if_table => generator%if_table)
        call if_table%radiate (generator%constraints)
 
@@ -656,11 +654,11 @@ contains
           call generator%if_table%get_pdg_out (i, pdg_tmp)
           if (size (pdg_tmp) == generator%n_tot) then
              call if_table%get_particle_string (i, &
-                prt_in0(flv+1)%prt, prt_out0(flv+1)%prt)
+                prt_in0(flv + 1)%prt, prt_out0(flv + 1)%prt)
              call pdg_reshuffle (pdg_out, pdg_tmp, reshuffle_list_local)
              call reshuffle_list%append (reshuffle_list_local)
              found = .true.
-             flv = flv+1
+             flv = flv + 1
           end if
        end do
     end associate
@@ -681,7 +679,7 @@ contains
             call fill_buffer (buf(i), prt_in0(j)%prt(i))
          end do
       end do
-      prt_tot_in = buf(1:generator%n_in)
+      prt_tot_in = buf(1 : generator%n_in)
       
       do j = 1, flv
          reshuffle_list_local = reshuffle_list%get(j)
@@ -692,9 +690,9 @@ contains
                               prt_out(j)%prt(reshuffle_list_local(i)))
          end do
       end do
-      prt_tot_out = buf(generator%n_in+1:generator%n_tot)
+      prt_tot_out = buf(generator%n_in + 1 : generator%n_tot)
     else
-      call msg_fatal ("No NLO QCD corrections for this process!")
+      call msg_fatal ("No NLO QCD corrections found for this process!")
     end if
   contains
     subroutine pdg_reshuffle (pdg_born, pdg_real, list)

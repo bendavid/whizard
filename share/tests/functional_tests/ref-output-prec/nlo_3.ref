@@ -12,8 +12,6 @@ SM.mtop =>  1.7500000E+02
 ?alpha_s_from_mz = true
 | Process library 'nlo_3_lib': recorded process 'nlo_3_p1'
 seed = 2222
-fks_dij_exp1 =  1.0000000E+00
-fks_mapping_type = 1
 sqrts =  5.0000000E+02
 | Integrate: current process library needs compilation
 | Process library 'nlo_3_lib': compiling ...
@@ -38,7 +36,7 @@ sqrts =  5.0000000E+02
 |     1: 'nlo_3_p1_i1':   e+, e- => t, tbar [omega]
 |     2: 'nlo_3_p1_i2':   e+, e- => t, tbar, gl [omega], [Real]
 |     3: 'nlo_3_p1_i3':   e+, e- => t, tbar [dummy], [Virtual]
-|     4: 'nlo_3_p1_i4':   e+, e- => t, tbar [omega], [Subtraction]
+|     4: 'nlo_3_p1_i4':   e+, e- => t, tbar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):

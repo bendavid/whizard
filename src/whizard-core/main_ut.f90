@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,21 +37,148 @@ program main_ut
 
   use iso_varying_string, string_t => varying_string
   use unit_tests
+  use io_units
   use system_dependencies
   use diagnostics
   use os_interface
 
   use cmdline_options
 
+  use model_testbed !NODEP!
+    
+  use eio_base_ut, only: eio_prepare_test
+  use eio_base_ut, only: eio_cleanup_test
+  use eio_base_ut, only: eio_prepare_fallback_model
+  use eio_base_ut, only: eio_cleanup_fallback_model
+  use dispatch, only: dispatch_rng_factory_extra
+  use dispatch_ut, only: dispatch_rng_factory_test
+  use dispatch, only: dispatch_sf_data_extra
+  use dispatch_ut, only: dispatch_sf_data_test
+  use formats_ut, only: format_test
+  use md5_ut, only: md5_test
+  use os_interface_ut, only: os_interface_test
+  use sorting_ut, only: sorting_test
+  use codes_ut, only: codes_test
+  use object_base_ut, only: object_base_test
+  use object_builder_ut, only: object_builder_test
+  use object_logical_ut, only: object_logical_test
+  use object_integer_ut, only: object_integer_test
+  use object_container_ut, only: object_container_test
+  use object_comparison_ut, only: object_comparison_test
+  use object_conditional_ut, only: object_conditional_test
+  use sindarin_parser_ut, only: sindarin_parser_test
+  use grids_ut, only: grids_test
+  use solver_ut, only: solver_test
+  use cputime_ut, only: cputime_test
+  use sm_qcd_ut, only: sm_qcd_test
+  use sm_physics_ut, only: sm_physics_test
+  use lexers_ut, only: lexer_test
+  use parser_ut, only: parse_test
+  use xml_ut, only: xml_test
+  use colors_ut, only: color_test
+  use state_matrices_ut, only: state_matrix_test
+  use analysis_ut, only: analysis_test
+  use particles_ut, only: particles_test
+  use models_ut, only: models_test
+  use auto_components_ut, only: auto_components_test
+  use radiation_generator_ut, only: radiation_generator_test
+  use blha_ut, only: blha_test
+  use evaluators_ut, only: evaluator_test
+  use eval_trees_ut, only: expressions_test
+  use phs_forests_ut, only: phs_forests_test
+  use beams_ut, only: beams_test
+  use su_algebra_ut, only: su_algebra_test
+  use bloch_vectors_ut, only: bloch_vectors_test
+  use polarizations_ut, only: polarizations_test
+  use sf_aux_ut, only: sf_aux_test
+  use sf_mappings_ut, only: sf_mappings_test
+  use sf_base_ut, only: sf_base_test
+  use sf_pdf_builtin_ut, only: sf_pdf_builtin_test
+  use sf_lhapdf_ut, only: sf_lhapdf_test
+  use sf_isr_ut, only: sf_isr_test
+  use sf_epa_ut, only: sf_epa_test
+  use sf_ewa_ut, only: sf_ewa_test
+  use sf_circe1_ut, only: sf_circe1_test
+  use sf_circe2_ut, only: sf_circe2_test
+  use sf_gaussian_ut, only: sf_gaussian_test
+  use sf_beam_events_ut, only: sf_beam_events_test
+  use sf_escan_ut, only: sf_escan_test
+  use phs_base_ut, only: phs_base_test
+  use phs_single_ut, only: phs_single_test
+  use phs_wood_ut, only: phs_wood_test
+  use phs_wood_ut, only: phs_wood_vis_test
+  use phs_fks_ut, only: phs_fks_generator_test
+  use fks_regions_ut, only: fks_regions_test
+  use nlo_controller_ut, only: nlo_color_data_test
+  use rng_base_ut, only: rng_base_test
+  use rng_tao_ut, only: rng_tao_test
+  use selectors_ut, only: selectors_test
+  use mci_base_ut, only: mci_base_test
+  use mci_midpoint_ut, only: mci_midpoint_test
+  use mci_vamp_ut, only: mci_vamp_test
+  use prclib_interfaces_ut, only: prclib_interfaces_test
+  use particle_specifiers_ut, only: particle_specifiers_test
+  use process_libraries_ut, only: process_libraries_test
+  use prclib_stacks_ut, only: prclib_stacks_test
+  use hepmc_interface_ut, only: hepmc_interface_test
+  use lcio_interface_ut, only: lcio_interface_test
+  use jets_ut, only: jets_test
+  use pdg_arrays_ut, only: pdg_arrays_test
+  use interactions_ut, only: interaction_test
+  use slha_interface_ut, only: slha_test
+  use cascades_ut, only: cascades_test
+  use prc_test_ut, only: prc_test_test
+  use prc_template_me_ut, only: prc_template_me_test
+  use prc_omega_ut, only: prc_omega_test
+  use prc_omega_ut, only: prc_omega_diags_test
+  use expr_tests_ut, only: subevt_expr_test
+  use processes_ut, only: processes_test
+  use process_stacks_ut, only: process_stacks_test
+  use event_transforms_ut, only: event_transforms_test
+  use decays_ut, only: decays_test
+  use shower_ut, only: shower_test
+  use events_ut, only: events_test
+  use hep_events_ut, only: hep_events_test
+  use eio_data_ut, only: eio_data_test
+  use eio_base_ut, only: eio_base_test
+  use eio_raw_ut, only: eio_raw_test
+  use eio_checkpoints_ut, only: eio_checkpoints_test
+  use eio_lhef_ut, only: eio_lhef_test
+  use eio_hepmc_ut, only: eio_hepmc_test
+  use eio_lcio_ut, only: eio_lcio_test
+  use eio_stdhep_ut, only: eio_stdhep_test
+  use eio_ascii_ut, only: eio_ascii_test
+  use eio_weights_ut, only: eio_weights_test
+  use eio_dump_ut, only: eio_dump_test
+  use iterations_ut, only: iterations_test
+  use beam_structures_ut, only: beam_structures_test
+  use rt_data_ut, only: rt_data_test
+  use dispatch_ut, only: dispatch_test
+  use process_configurations_ut, only: process_configurations_test
+  use compilations_ut, only: compilations_test
+  use compilations_ut, only: compilations_static_test
+  use integrations_ut, only: integrations_test
+  use integrations_ut, only: integrations_history_test
+  use event_streams_ut, only: event_streams_test
+  use simulations_ut, only: simulations_test
+  use commands_ut, only: commands_test
+  use ttv_formfactors_ut, only: ttv_formfactors_test
+    
   implicit none
 
   integer, parameter :: CMDLINE_ARG_LEN = 1000
+
+!!! (WK 02/2016) Interface for the separate external routine below
+  interface
+     subroutine print_usage ()
+     end subroutine print_usage
+  end interface
 
   ! Main program variable declarations
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
-  integer :: i, j, arg_len, arg_status
+  integer :: i, j, arg_len, arg_status, area
   logical :: look_for_options
   logical :: banner
   type(string_t) :: check, checks
@@ -59,7 +186,6 @@ program main_ut
   logical :: success
 
   ! Exit status
-  logical :: quit = .false.
   integer :: quit_code = 0
 
   ! Initial values
@@ -106,6 +232,16 @@ program main_ut
            case ("--check")
               check = get_option_value (i, long_option, value)
               checks = checks // " " // check
+              cycle SCAN_CMDLINE
+           case ("--debug")
+              call no_option_value (long_option, value)
+              area = d_area (get_option_value (i, long_option, value))
+              msg_level(area) = DEBUG
+              cycle SCAN_CMDLINE
+           case ("--debug2")
+              call no_option_value (long_option, value)
+              area = d_area (get_option_value (i, long_option, value))
+              msg_level(area) = DEBUG
               cycle SCAN_CMDLINE
            case default
               call print_usage ()
@@ -156,7 +292,6 @@ program main_ut
       end do RUN_CHECKS
       call test_results%wrapup (6, success)
       if (.not. success)  quit_code = 7
-      quit = .true.
    end if
 
    call msg_terminate (quit_code = quit_code)
@@ -166,24 +301,12 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
-    print "(A)", "Copyright (C) 1999-2015 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2016 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
     print *
   end subroutine print_version
-
-  subroutine print_usage ()
-    print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
-    print "(A)", "Usage: whizard_ut [OPTIONS] [FILE]"
-    print "(A)", "Run WHIZARD unit tests as given on the command line"
-    print "(A)", "Options:"
-    print "(A)", "-h, --help            display this help and exit"
-    print "(A)", "    --banner          display banner at startup (default)"
-    print "(A)", "    --no-banner       do not display banner at startup"
-    print "(A)", "-V, --version         output version information and exit"
-    print "(A)", "    --check TEST      run unit test TEST"
-  end subroutine print_usage
 
   subroutine prepare_eio_test (event, unweighted, n_alt)
     use variables
@@ -296,123 +419,6 @@ contains
   end subroutine prepare_fallback_model
     
   subroutine whizard_check (check, results)
-    use io_units
-    use model_testbed
-    
-    use eio_base_ut, only: eio_prepare_test
-    use eio_base_ut, only: eio_cleanup_test
-    use eio_base_ut, only: eio_prepare_fallback_model
-    use eio_base_ut, only: eio_cleanup_fallback_model
-    use dispatch, only: dispatch_rng_factory_extra
-    use dispatch_ut, only: dispatch_rng_factory_test
-    use dispatch, only: dispatch_sf_data_extra
-    use dispatch_ut, only: dispatch_sf_data_test
-    use formats_ut, only: format_test
-    use md5_ut, only: md5_test
-    use os_interface_ut, only: os_interface_test
-    use sorting_ut, only: sorting_test
-    use codes_ut, only: codes_test
-    use object_base_ut, only: object_base_test
-    use object_builder_ut, only: object_builder_test
-    use object_logical_ut, only: object_logical_test
-    use object_integer_ut, only: object_integer_test
-    use object_container_ut, only: object_container_test
-    use object_comparison_ut, only: object_comparison_test
-    use object_conditional_ut, only: object_conditional_test
-    use sindarin_parser_ut, only: sindarin_parser_test
-    use grids_ut, only: grids_test
-    use solver_ut, only: solver_test
-    use cputime_ut, only: cputime_test
-    use sm_qcd_ut, only: sm_qcd_test
-    use sm_physics_ut, only: sm_physics_test
-    use lexers_ut, only: lexer_test
-    use parser_ut, only: parse_test
-    use xml_ut, only: xml_test
-    use colors_ut, only: color_test
-    use state_matrices_ut, only: state_matrix_test
-    use analysis_ut, only: analysis_test
-    use particles_ut, only: particles_test
-    use models_ut, only: models_test
-    use auto_components_ut, only: auto_components_test
-    use radiation_generator_ut, only: radiation_generator_test
-    use blha_ut, only: blha_test
-    use evaluators_ut, only: evaluator_test
-    use eval_trees_ut, only: expressions_test
-    use phs_forests_ut, only: phs_forests_test
-    use beams_ut, only: beams_test
-    use polarizations_ut, only: polarizations_test
-    use sf_aux_ut, only: sf_aux_test
-    use sf_mappings_ut, only: sf_mappings_test
-    use sf_base_ut, only: sf_base_test
-    use sf_pdf_builtin_ut, only: sf_pdf_builtin_test
-    use sf_lhapdf_ut, only: sf_lhapdf_test
-    use sf_isr_ut, only: sf_isr_test
-    use sf_epa_ut, only: sf_epa_test
-    use sf_ewa_ut, only: sf_ewa_test
-    use sf_circe1_ut, only: sf_circe1_test
-    use sf_circe2_ut, only: sf_circe2_test
-    use sf_gaussian_ut, only: sf_gaussian_test
-    use sf_beam_events_ut, only: sf_beam_events_test
-    use sf_escan_ut, only: sf_escan_test
-    use phs_base_ut, only: phs_base_test
-    use phs_single_ut, only: phs_single_test
-    use phs_wood_ut, only: phs_wood_test
-    use phs_wood_ut, only: phs_wood_vis_test
-    use phs_fks_ut, only: phs_fks_generator_test
-    use rng_base_ut, only: rng_base_test
-    use rng_tao_ut, only: rng_tao_test
-    use selectors_ut, only: selectors_test
-    use mci_base_ut, only: mci_base_test
-    use mci_midpoint_ut, only: mci_midpoint_test
-    use mci_vamp_ut, only: mci_vamp_test
-    use prclib_interfaces_ut, only: prclib_interfaces_test
-    use particle_specifiers_ut, only: particle_specifiers_test
-    use process_libraries_ut, only: process_libraries_test
-    use prclib_stacks_ut, only: prclib_stacks_test
-    use hepmc_interface_ut, only: hepmc_interface_test
-    use lcio_interface_ut, only: lcio_interface_test
-    use jets_ut, only: jets_test
-    use pdg_arrays_ut, only: pdg_arrays_test
-    use interactions_ut, only: interaction_test
-    use slha_interface_ut, only: slha_test
-    use cascades_ut, only: cascades_test
-    use prc_test_ut, only: prc_test_test
-    use prc_template_me_ut, only: prc_template_me_test
-    use prc_omega_ut, only: prc_omega_test
-    use prc_omega_ut, only: prc_omega_diags_test
-    use expr_tests_ut, only: subevt_expr_test
-    use processes_ut, only: processes_test
-    use process_stacks_ut, only: process_stacks_test
-    use event_transforms_ut, only: event_transforms_test
-    use decays_ut, only: decays_test
-    use powheg_matching_ut, only: powheg_test
-    use shower_ut, only: shower_test
-    use events_ut, only: events_test
-    use hep_events_ut, only: hep_events_test
-    use eio_data_ut, only: eio_data_test
-    use eio_base_ut, only: eio_base_test
-    use eio_raw_ut, only: eio_raw_test
-    use eio_checkpoints_ut, only: eio_checkpoints_test
-    use eio_lhef_ut, only: eio_lhef_test
-    use eio_hepmc_ut, only: eio_hepmc_test
-    use eio_lcio_ut, only: eio_lcio_test
-    use eio_stdhep_ut, only: eio_stdhep_test
-    use eio_ascii_ut, only: eio_ascii_test
-    use eio_weights_ut, only: eio_weights_test
-    use eio_dump_ut, only: eio_dump_test
-    use iterations_ut, only: iterations_test
-    use beam_structures_ut, only: beam_structures_test
-    use rt_data_ut, only: rt_data_test
-    use dispatch_ut, only: dispatch_test
-    use process_configurations_ut, only: process_configurations_test
-    use compilations_ut, only: compilations_test
-    use compilations_ut, only: compilations_static_test
-    use integrations_ut, only: integrations_test
-    use integrations_ut, only: integrations_history_test
-    use event_streams_ut, only: event_streams_test
-    use simulations_ut, only: simulations_test
-    use commands_ut, only: commands_test
-    use ttv_formfactors_ut, only: ttv_formfactors_test
     
     type(string_t), intent(in) :: check
     type(test_results_t), intent(inout) :: results
@@ -501,6 +507,10 @@ contains
        call phs_forests_test (u, results)
     case ("beams")
        call beams_test (u, results)
+    case ("su_algebra")
+       call su_algebra_test (u, results)
+    case ("bloch_vectors")
+       call bloch_vectors_test (u, results)
     case ("polarizations")
        call polarizations_test (u, results)
     case ("sf_aux")
@@ -539,6 +549,10 @@ contains
        call phs_wood_vis_test (u, results)
     case ("phs_fks_generator")
        call phs_fks_generator_test (u, results)
+    case ("fks_regions")
+       call fks_regions_test (u, results)
+    case ("nlo_color_data")
+       call nlo_color_data_test (u, results)
     case ("rng_base")
        call rng_base_test (u, results)
     case ("rng_tao")
@@ -591,8 +605,6 @@ contains
        call event_transforms_test (u, results)
     case ("decays")
        call decays_test (u, results)
-    case ("powheg")
-       call powheg_test (u, results)
     case ("shower")
        call shower_test (u, results)
     case ("events")
@@ -681,6 +693,8 @@ contains
        call expressions_test (u, results)
        call phs_forests_test (u, results)
        call beams_test (u, results)
+       call su_algebra_test (u, results)
+       call bloch_vectors_test (u, results)
        call polarizations_test (u, results)
        call sf_aux_test (u, results)
        call sf_mappings_test (u, results)
@@ -700,6 +714,8 @@ contains
        call phs_wood_test (u, results)
        call phs_wood_vis_test (u, results)
        call phs_fks_generator_test (u, results)
+       call fks_regions_test (u, results)
+       call nlo_color_data_test (u, results)
        call rng_base_test (u, results)
        call rng_tao_test (u, results)
        call selectors_test (u, results)
@@ -726,7 +742,6 @@ contains
        call process_stacks_test (u, results)
        call event_transforms_test (u, results)
        call decays_test (u, results)
-       call powheg_test (u, results)
        call shower_test (u, results)
        call events_test (u, results)
        call hep_events_test (u, results)
@@ -762,3 +777,23 @@ contains
 
 
 end program main_ut
+
+!!! (WK 02/2016)
+!!! Separate subroutine, because this becomes a procedure pointer target
+!!! Internal procedures as targets are not supported by some compilers.
+
+  subroutine print_usage ()
+    use system_dependencies, only: WHIZARD_VERSION
+    print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
+    print "(A)", "Usage: whizard_ut [OPTIONS] [FILE]"
+    print "(A)", "Run WHIZARD unit tests as given on the command line"
+    print "(A)", "Options:"
+    print "(A)", "-h, --help            display this help and exit"
+    print "(A)", "    --banner          display banner at startup (default)"
+    print "(A)", "    --no-banner       do not display banner at startup"
+    print "(A)", "    --debug AREA      switch on debug output for AREA."
+    print "(A)", "                      AREA can be one of Whizard's src dirs or 'all'"
+    print "(A)", "    --debug2 AREA     switch on more verbose debug output for AREA."
+    print "(A)", "-V, --version         output version information and exit"
+    print "(A)", "    --check TEST      run unit test TEST"
+  end subroutine print_usage

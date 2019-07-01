@@ -11,8 +11,6 @@ SM.mtop =>  1.7500000E+02
 ?alpha_s_from_mz = true
 | Process library 'nlo_2_lib': recorded process 'nlo_2_p1'
 seed = 2222
-fks_dij_exp1 =  1.0000000E+00
-fks_mapping_type = 1
 sqrts =  5.0000000E+02
 | Integrate: current process library needs compilation
 | Process library 'nlo_2_lib': compiling ...
@@ -37,7 +35,7 @@ sqrts =  5.0000000E+02
 |     1: 'nlo_2_p1_i1':   e+, e- => t, tbar [omega]
 |     2: 'nlo_2_p1_i2':   e+, e- => t, tbar, gl [omega], [Real]
 |     3: 'nlo_2_p1_i3':   e+, e- => t, tbar [dummy], [Virtual]
-|     4: 'nlo_2_p1_i4':   e+, e- => t, tbar [omega], [Subtraction]
+|     4: 'nlo_2_p1_i4':   e+, e- => t, tbar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
@@ -70,7 +68,7 @@ sqrts =  5.0000000E+02
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'nlo_2_p1' part 1
+| Starting integration for process 'nlo_2_p1' part 'Born'
 | Integrate: iterations = 1:30000:"gw"
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: 30000 initial calls, 20 bins, stratified = T
@@ -82,7 +80,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1      25088     5.436E+02   1.60E-02    0.00    0.00    48.6
 |=============================================================================|
-| Starting integration for process 'nlo_2_p1' part 2
+| Starting integration for process 'nlo_2_p1' part 'Real'
 | Integrate: iterations = 1:30000:"gw"
 | Integrator: 1 chains, 1 channels, 5 dimensions
 | Integrator: 30000 initial calls, 20 bins, stratified = T
@@ -94,7 +92,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1      30000    -7.275E+01   2.46E-01    0.34    0.59    37.7
 |=============================================================================|
-| Starting integration for process 'nlo_2_p1' part 3
+| Starting integration for process 'nlo_2_p1' part 'Virtual'
 | Integrate: iterations = 1:30000:"gw"
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: 30000 initial calls, 20 bins, stratified = T
@@ -111,7 +109,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1          0  4.9085509E+02  2.47E-01    0.05    0.00*  43.11
-| NLO Results: O(alpha_s+1)/O(alpha_s)
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  ( -9.7062 +-   0.04527 ) %
 |=============================================================================|
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

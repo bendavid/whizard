@@ -74,7 +74,7 @@ Littlest_Tpar.mH =>  1.250000000000E+02
 | Process library 'model_test_1_lib': recorded process 'models_ccww_nmssm_hgg'
 | Switching to model 'PSSSM'
 | Process library 'model_test_1_lib': recorded process 'models_ccww_psssm'
-| Switching to model 'QCD'
+| Switching to model 'QCD', scheme 'default'
 | Process library 'model_test_1_lib': recorded process 'models_uudd_qcd'
 | Switching to model 'QED'
 | Process library 'model_test_1_lib': recorded process 'models_eemm_qed'
@@ -144,6 +144,9 @@ SSC_AltT.mH =>  1.250000000000E+02
 | Switching to model 'Xdim'
 Xdim.mH =>  1.250000000000E+02
 | Process library 'model_test_1_lib': recorded process 'models_ccww_xdim'
+| Switching to model 'WZW'
+WZW.mH =>  1.250000000000E+02
+| Process library 'model_test_1_lib': recorded process 'models_ccww_wzw'
 | Switching to model 'Zprime'
 Zprime.mH =>  1.250000000000E+02
 | Process library 'model_test_1_lib': recorded process 'models_ccww_zprime'
@@ -1685,11 +1688,50 @@ Warning: No cuts have been defined.
 seed = 39
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 39
+| Initializing integration for process models_ccww_wzw:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_wzw'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 41
+|   Process components:
+|     1: 'models_ccww_wzw_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   c     (mass = 1.2000000E+00 GeV)
+|   cbar  (mass = 1.2000000E+00 GeV)
+|   sqrts = 2.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'models_ccww_wzw_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'models_ccww_wzw'
+| Integrate: iterations = 3:100
+| Integrator: 2 chains, 3 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1         99  7.6063186E+03  6.93E+02    9.10    0.91*  41.07
+   2         99  6.9438589E+03  5.98E+02    8.62    0.86*  37.29
+   3         99  6.8560122E+03  5.95E+02    8.68    0.86   36.66
+|-----------------------------------------------------------------------------|
+   3        297  7.0909614E+03  3.60E+02    5.08    0.88   36.66    0.39   3
+|=============================================================================|
+seed = 40
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 40
 | Initializing integration for process models_ccww_zprime:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_zprime'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 41
+|   Process index = 42
 |   Process components:
 |     1: 'models_ccww_zprime_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1715,13 +1757,15 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  7.6063186E+03  6.93E+02    9.10    0.91*  41.07
-   2         99  6.9438589E+03  5.98E+02    8.62    0.86*  37.29
-   3         99  6.8560122E+03  5.95E+02    8.68    0.86   36.66
+   1         99  5.9222102E+03  6.23E+02   10.52    1.05*  31.63
+   2         99  7.5559856E+03  6.41E+02    8.48    0.84*  40.32
+   3         99  6.3160668E+03  5.87E+02    9.29    0.92   33.70
 |-----------------------------------------------------------------------------|
-   3        297  7.0909614E+03  3.60E+02    5.08    0.88   36.66    0.39   3
+   3        297  6.5692167E+03  3.56E+02    5.41    0.93   33.70    1.82   3
 |=============================================================================|
 models_ccww_zprime:
+   6.5692167E+03 +- 3.56E+02 fb
+models_ccww_wzw:
    7.0909614E+03 +- 3.60E+02 fb
 models_ccww_xdim:
    6.0413688E+08 +- 2.66E+07 fb
@@ -1801,6 +1845,6 @@ models_ccww_2hdm_ckm:
    6.5655673E+03 +- 3.56E+02 fb
 models_ccww_2hdm:
    7.7757776E+03 +- 3.78E+02 fb
-| There were no errors and   40 warning(s).
+| There were no errors and   41 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

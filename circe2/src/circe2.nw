@@ -1,8 +1,9 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % circe2/circe2.nw -- 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation of [[circe2]]}
 <<Version>>=
-'Version 2.2.8'
+'Version 2.3.0'
 @ 
 <<[[implicit none]]>>=
 implicit none
@@ -27,7 +28,7 @@ end module circe2
 is going to hijack such code.  But let us include it anyway to spread
 the gospel of free software:
 <<Copyleft notice>>=
-! Copyright (C) 2001-2015 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+! Copyright (C) 2001-2016 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !
 ! Circe2 is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -1935,11 +1936,3 @@ end module circe2_moments_library
 \bibitem{Atkinson/Whittaker:1979:beta_distribution}
   A. Atkinson and J. Whittaker, Appl.\ Stat.\ {\bf 28},  90  (1979).
 \end{thebibliography}
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

@@ -1,6 +1,6 @@
-(* $Id: color.ml 6672 2015-03-05 18:04:59Z jr_reuter $
+(* $Id: color.ml 7444 2016-02-17 15:37:20Z jr_reuter $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

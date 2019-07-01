@@ -2,7 +2,7 @@
 % $Id: custom.hva,v 1.2 2000/11/24 12:45:51 kilian Exp $
 % Wolfgang's version, continued by JRR
 % Specials
-\newcommand{\thisversion}{2.2.8}
+\newcommand{\thisversion}{2.3.0}
 \newenvironment{interaction}{\small\verbatim}{\endverbatim\endsmall}
 \newenvironment{syntax}{\begin{quote}\begin{flushleft}\tt}{\end{flushleft}\end{quote}}
 \newcommand{\var}[1]{$\langle$\textit{#1}$\rangle$}   

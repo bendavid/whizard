@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -288,14 +288,14 @@ contains
     logical, dimension(6) :: mask_h
     type(quantum_numbers_mask_t), dimension(6) :: mask 
     integer, dimension(6) :: hel_lock 
-    type(polarization_t) :: pol1, pol2
-    type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_hel1, qn_fc2, qn_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_fc2
     type(flavor_t) :: flv_photon
     type(color_t) :: col0
     real(default), dimension(2) :: mi2, mr2, mo2
-    type(quantum_numbers_t) :: qn_photon, qn1, qn2
+    type(quantum_numbers_t) :: qn_hel1, qn_hel2, qn_photon, qn1, qn2
     type(quantum_numbers_t), dimension(6) :: qn
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     hel_lock = 0
     mask_h = .false.
     select type (data)
@@ -327,25 +327,25 @@ contains
           call flv_photon%init (PHOTON, data%model)
           call col0%init ()
           call qn_photon%init (flv_photon, col0)
-          call polarization_init_generic (pol1, data%flv_in(1))
+          call pol1%init_generic (data%flv_in(1))
           call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
-          call polarization_init_generic (pol2, data%flv_in(2))
+          call pol2%init_generic (data%flv_in(2))
           call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
-          call it_hel1%init (pol1%state)
+          call it_hel1%init (pol1)
           
           do while (it_hel1%is_valid ()) 
              qn_hel1 = it_hel1%get_quantum_numbers ()
-             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn1 = qn_hel1 .merge. qn_fc1(1) 
              qn(1) = qn1
              if (data%photon(1)) then
                 qn(3) = qn1;  qn(5) = qn_photon
              else
                 qn(3) = qn_photon;  qn(5) = qn1
              end if
-             call it_hel2%init (pol2%state) 
+             call it_hel2%init (pol2) 
              do while (it_hel2%is_valid ()) 
                 qn_hel2 = it_hel2%get_quantum_numbers () 
-                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn2 = qn_hel2 .merge. qn_fc2(1) 
                 qn(2) = qn2
                 if (data%photon(2)) then
                    qn(4) = qn2;  qn(6) = qn_photon
@@ -358,8 +358,8 @@ contains
              end do
              call it_hel1%advance ()
           end do
-          call polarization_final (pol1)
-          call polarization_final (pol2)
+!           call pol1%final ()
+!           call pol2%final ()
           call sf_int%freeze () 
           call sf_int%set_incoming ([1,2])
           call sf_int%set_radiated ([3,4])
@@ -386,25 +386,25 @@ contains
           call flv_photon%init (PHOTON, data%model)
           call col0%init ()
           call qn_photon%init (flv_photon, col0)
-          call polarization_init_generic (pol1, data%flv_in(1))
+          call pol1%init_generic (data%flv_in(1))
           call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
-          call polarization_init_generic (pol2, data%flv_in(2))
+          call pol2%init_generic (data%flv_in(2))
           call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
-          call it_hel1%init (pol1%state)
+          call it_hel1%init (pol1)
           
           do while (it_hel1%is_valid ()) 
              qn_hel1 = it_hel1%get_quantum_numbers ()
-             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn1 = qn_hel1 .merge. qn_fc1(1) 
              qn(1) = qn1
              if (data%photon(1)) then
                 qn(3) = qn_photon
              else
                 qn(3) = qn1
              end if
-             call it_hel2%init (pol2%state) 
+             call it_hel2%init (pol2) 
              do while (it_hel2%is_valid ()) 
                 qn_hel2 = it_hel2%get_quantum_numbers () 
-                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn2 = qn_hel2 .merge. qn_fc2(1) 
                 qn(2) = qn2
                 if (data%photon(2)) then
                    qn(4) = qn_photon
@@ -416,8 +416,8 @@ contains
              end do
              call it_hel1%advance ()
           end do
-          call polarization_final (pol1)
-          call polarization_final (pol2)
+!           call pol1%final ()
+!           call pol2%final ()
           call sf_int%freeze () 
           call sf_int%set_incoming ([1,2])
           call sf_int%set_outgoing ([3,4])

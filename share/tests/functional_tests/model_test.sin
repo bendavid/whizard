@@ -1,4 +1,4 @@
-# $Id: model_test.sin 7369 2015-11-16 18:03:59Z jr_reuter $
+# $Id: model_test.sin 7405 2015-12-17 17:56:41Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
 
 library = "model_test_1_lib"
@@ -165,6 +165,10 @@ model = "Xdim"
 mH = 125 GeV
 process models_ccww_xdim	   = 	c, C	=>	Wp, Wm
 
+model = "WZW"
+mH = 125 GeV
+process models_ccww_wzw		   =    c, C	=>	Wp, Wm
+
 model = "Zprime"
 mH = 125 GeV
 process models_ccww_zprime	   = 	c, C	=>	Wp, Wm
@@ -219,6 +223,7 @@ integrate (models_wwww_ssc_2)        { seed = 35 }
 integrate (models_wwww_ssc_altt)     { seed = 36 }
 integrate (models_wwww_alth)         { seed = 37 }
 integrate (models_ccww_xdim)         { seed = 38 }
-integrate (models_ccww_zprime)       { seed = 39 }
+integrate (models_ccww_wzw)	     { seed = 39 }
+integrate (models_ccww_zprime)       { seed = 40 }
  
 show (results)

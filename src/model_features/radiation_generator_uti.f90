@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -70,7 +70,7 @@ contains
     call model_list%read_model &
        (var_str ("SM_rad"), var_str ("SM_rad.mdl"), &
         os_data, radiation_model)
-    call generator%init_radiation_model (radiation_model)
+    call generator%set_radiation_model (radiation_model)
     write (u, "(A)") "* Success"    
 
     allocate (pdg_in (2))
@@ -180,7 +180,7 @@ contains
     call model_list%read_model &
        (var_str ("SM_rad"), var_str ("SM_rad.mdl"), &
         os_data, radiation_model)
-    call generator%init_radiation_model (radiation_model)
+    call generator%set_radiation_model (radiation_model)
     write (u, "(A)") "* Success"
 
     allocate (pdg_in (2))

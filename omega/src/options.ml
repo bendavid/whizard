@@ -1,6 +1,6 @@
-(* $Id: options.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: options.ml 7654 2016-07-18 15:45:57Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -35,11 +35,17 @@ let extend old options =
       (fun a (s, f, _) -> A.add s f a) old.actions options;
     raw = options @ old.raw }
 
-let create = extend empty
-
+(*i
 let merge o1 o2 =
   extend o1 o2.raw
+i*)
 
+let create = extend empty
+
+let cmdline prefix options =
+  List.map (fun (o, f, d) -> (prefix ^ o, f, d)) options.raw
+
+(*i
 exception Invalid of string * string
 
 let parse options (name, value) =
@@ -57,10 +63,38 @@ let parse options (name, value) =
 
 let list options =
   List.map (fun (o, _, d) -> (o, d)) options.raw
+i*)
 
-let cmdline prefix options =
-  List.map (fun (o, f, d) -> (prefix ^ o, f, d)) options.raw
-  
+(*i
+let parse specs anonymous usage =
+  let help () =
+    raise (Arg.Help (Arg.usage_string specs (usage ()))) in
+  let specs' =
+    [("-help", Arg.Unit help, "Display this list of options");
+     ("--help", Arg.Unit help, "Display this list of options")] @ specs in
+  try
+    Arg.parse_argv Sys.argv specs' anonymous (usage ())
+  with
+  | Arg.Bad msg -> Printf.eprintf "%s\n" msg; exit 2;
+  | Arg.Help msg -> Printf.printf "%s\n" msg; exit 0
+i*)
+
+(* Starting with O'Caml version 3.12.1 we can provide a better
+   \verb*--help* option using [Arg.usage_string].  Alas, we
+   must disable it if we want to remain compatible with O'Caml versions
+   up to 3.12.0.  *)
+    
+let parse specs anonymous usage =
+  let help () =
+    raise (Arg.Help (usage ())) in
+  let specs' =
+    [("-usage", Arg.Unit help, "Display the external particles");
+     ("--usage", Arg.Unit help, "Display the external particles")] @ specs in
+  try
+    Arg.parse_argv Sys.argv specs' anonymous (usage ())
+  with
+  | Arg.Bad msg -> Printf.eprintf "%s\n" msg; exit 2;
+  | Arg.Help msg -> Printf.printf "%s\n" msg; exit 0
 
 (*i
  *  Local Variables:

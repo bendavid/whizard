@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -57,6 +57,7 @@ TESTS_DEFAULT = \
     testproc_8.run \
     testproc_9.run \
     testproc_10.run \
+    model_scheme_1.run \
     rebuild_1.run \
     rebuild_4.run \
     susyhit.run \
@@ -103,6 +104,7 @@ TESTS_REQ_OCAML = \
     qcdtest_3.run \
     qcdtest_4.run \
     qcdtest_5.run \
+    qcdtest_6.run \
     observables_1.run \
     event_weights_1.run \
     event_weights_2.run \
@@ -162,6 +164,7 @@ TESTS_REQ_OCAML = \
     nlo_2.run \
     nlo_3.run \
     nlo_4.run \
+    openloops_1.run \
     powheg_1.run \
     spincor_1.run \
     show_1.run \
@@ -176,6 +179,7 @@ TESTS_REQ_OCAML = \
     flvsum_1.run \
     decay_err_1.run \
     decay_err_2.run \
+    polarized_1.run \
     pdf_builtin.run \
     ep_1.run \
     ep_2.run \
@@ -218,7 +222,8 @@ TESTS_REQ_OCAML = \
     parton_shower_2.run \
     mlm_matching_fsr.run \
     user_cuts.run \
-    user_prc_threshold.run \
+    user_prc_threshold_1.run \
+    user_prc_threshold_2.run \
     $(TESTS_USER_STRFUN) 
 
 XFAIL_TESTS_REQ_OCAML = \
@@ -256,6 +261,8 @@ TESTS_REQ_PYTHIA6 = \
     pythia6_2.run \
     pythia6_3.run \
     pythia6_4.run \
+    tauola_1.run \
+    tauola_2.run \
     mlm_matching_isr.run \
     mlm_pythia6_isr.run
 XFAIL_TESTS_REQ_PYTHIA6 = 
@@ -321,17 +328,17 @@ EXTRA_DIST = $(TEST_DRIVERS_SH) \
 
 VPATH = $(srcdir)
 
-SUFFIXES = .sh .run 
+SUFFIXES = .sh .run
 
 .sh.run:
 	@rm -f $@
 	@if test -f $(top_builddir)/share/tests/functional_tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_builddir)/share/tests/functional_tests/$*|g' $< > $@; \
+		$(SED) 's|@script@|$(top_builddir)/share/tests/functional_tests/$*|g' $< > $@; \
 	elif test -f $(top_srcdir)/share/tests/functional_tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_srcdir)/share/tests/functional_tests/$*|g' $< > $@; \
+		$(SED) 's|@script@|$(top_srcdir)/share/tests/functional_tests/$*|g' $< > $@; \
 	else \
-	  echo "$*.sin not found!" 1>&2; \
-	  exit 2; \
+		echo "$*.sin not found!" 1>&2; \
+		exit 2; \
 	fi
 	@chmod +x $@
 
@@ -376,12 +383,12 @@ WT_OMEGA_CACHE_SUFFIX=vertices
 WT_OCAML_NATIVE_EXT=opt
 
 if OCAML_AVAILABLE
-qedtest_1.run qedtest_2.run qedtest_3.run qedtest_4.run qedtest_5.run qedtest_6.run: omega_QED.$(WT_OMEGA_CACHE_SUFFIX)
+qedtest_1.run qedtest_2.run qedtest_3.run qedtest_4.run qedtest_5.run qedtest_6.run qedtest_7.run qedtest_8.run qedtest_9.run qedtest_10.run: omega_QED.$(WT_OMEGA_CACHE_SUFFIX)
 OMEGA_QED = $(top_builddir)/omega/bin/omega_QED.$(WT_OCAML_NATIVE_EXT)
 omega_QED.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_QED)
 	$(OMEGA_QED) -initialize .
 
-qcdtest_1.run qcdtest_2.run: omega_QCD.$(WT_OMEGA_CACHE_SUFFIX)
+qcdtest_1.run qcdtest_2.run qcdtest_3.run qcdtest_4.run qcdtest_5.run qcdtest_6.run: omega_QCD.$(WT_OMEGA_CACHE_SUFFIX)
 OMEGA_QCD = $(top_builddir)/omega/bin/omega_QCD.$(WT_OCAML_NATIVE_EXT)
 omega_QCD.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_QCD)
 	$(OMEGA_QCD) -initialize .
@@ -408,6 +415,9 @@ endif
 stdhep_4.run: stdhep_rd
 stdhep_5.run: stdhep_rd
 stdhep_6.run: stdhep_rd
+polarized_1.run: stdhep_rd
+tauola_1.run: stdhep_rd
+tauola_2.run: stdhep_rd
 stdhep_rd: $(top_builddir)/src/xdr/stdhep_rd
 	cp $< $@
 
@@ -425,6 +435,7 @@ BUILT_SOURCES = \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
     PYTHIA6_FLAG \
+    OPENLOOPS_FLAG \
     STATIC_FLAG \
     ref-output
 
@@ -474,6 +485,11 @@ if PYTHIA6_AVAILABLE
 	touch $@
 endif
 
+OPENLOOPS_FLAG:
+if OPENLOOPS_AVAILABLE
+	touch $@
+endif
+
 EVENT_ANALYSIS_FLAG:
 if EVENT_ANALYSIS_AVAILABLE
 	touch $@
@@ -516,7 +532,7 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
 	rm -f TESTFLAG GAMELAN_FLAG 
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
+	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out
@@ -526,7 +542,8 @@ clean-local:
 	rm -f *.grid
 	rm -rf err-output
 	rm -rf ref-output
-	rm -f *.sin *.hbc 
+	rm -f *.sin *.hbc
+	rm -f *.olc *.olp *.olp_parameters
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
@@ -545,6 +562,3 @@ endif
 maintainer-clean-local: maintainer-clean-fc
 	-rm -f *~
 .PHONY: maintainer-clean-local
-
-
-

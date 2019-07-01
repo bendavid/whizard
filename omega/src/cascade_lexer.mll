@@ -1,6 +1,6 @@
-(* $Id: cascade_lexer.mll 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: cascade_lexer.mll 7469 2016-03-13 16:44:17Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -47,11 +47,14 @@ rule token = parse
   | '#'        { GAUSS }
   | '!'        { NOT }
   | '&' '&'?   { AND }
-  | '|' '|'?   { OR }
   | '('        { LPAREN }
   | ')'        { RPAREN }
-  | char [^ ' ' '\t' '\n' '|' '&' '(' ')' ':']*
-               { FLAVOR (Lexing.lexeme lexbuf) }
+  | '^'        { HAT }
+  | ','        { COMMA }
+  | '['        { LBRACKET }
+  | ']'        { RBRACKET }
+  | char [^ ' ' '\t' '\n' '&' '(' ')' '[' ']' ':' ',' ]*
+               { STRING (Lexing.lexeme lexbuf) }
   | '"' [^ '"']* '"'
-               { FLAVOR (unquote (Lexing.lexeme lexbuf)) }
+               { STRING (unquote (Lexing.lexeme lexbuf)) }
   | eof        { END }

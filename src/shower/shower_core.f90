@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,7 +40,7 @@ module shower_core
   use io_units
   use constants
   use format_utils, only: write_separator
-  use unit_tests, only: vanishes, nearly_equal
+  use numeric_utils
   use system_defs, only: TAB
   use diagnostics
   use physics_defs
@@ -58,6 +58,7 @@ module shower_core
   use shower_partons
   use muli, only: muli_t
   use hep_common
+  use tauola_interface
 
   implicit none
   private
@@ -146,12 +147,14 @@ module shower_core
 
 contains
 
-  subroutine shower_init (shower, settings, pdf_data)
+  subroutine shower_init (shower, settings, taudec_settings, pdf_data)
     class(shower_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
+    type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
     call msg_debug (D_SHOWER, "shower_init")
     shower%settings = settings
+    shower%taudec_settings = taudec_settings
     call shower%pdf_data%init (pdf_data)
     shower%name = "WHIZARD internal"
     call shower%write_msg ()
@@ -199,10 +202,11 @@ contains
          n2=shower%interactions(1)%i%partons(2)%p%parent%nr)
   end subroutine shower_activate_multiple_interactions
 
-  subroutine shower_import_particle_set (shower, particle_set, os_data)
+  subroutine shower_import_particle_set (shower, particle_set, os_data, scale)
     class(shower_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     type(os_data_t), intent(in) :: os_data
+    real(default), intent(in) :: scale
     !integer, dimension(:), allocatable :: connections
     type(parton_t), dimension(:), allocatable, target, save :: partons, hadrons
     type(parton_pointer_t), dimension(:), allocatable :: &
@@ -236,7 +240,10 @@ contains
 
     subroutine setup_hadrons_from_particle_set ()
       j = 0
-      if (n_beam > 0 .and. all (particle_set%prt(1:2)%flv%get_pdg_abs () > TAU)) then
+      !!! !!! !!! Workaround for Portland 16.1 compiler bug
+      !!! if (n_beam > 0 .and. all (particle_set%prt(1:2)%flv%get_pdg_abs () > TAU)) then
+      if (n_beam > 0 .and. particle_set%prt(1)%flv%get_pdg_abs () > TAU .and. &
+           particle_set%prt(2)%flv%get_pdg_abs () > TAU) then
          call msg_debug (D_SHOWER, 'Copy hadrons from particle_set to hadrons')
          if (.not. allocated (hadrons))  allocate (hadrons (1:2))
          do i = 1, n_tot
@@ -1826,7 +1833,9 @@ contains
       hard_colored_ids = pack ([(i, i=1, size (particles))], hard_colored_mask)
       allocate (shower_partons_ids (n_shower_partons))
       shower_partons_ids = [(n_tot_old + n_remnants + i, i=1, n_shower_partons)]
+      allocate (incoming_ids(n_in))
       incoming_ids = [(n_beam +  i, i=1, n_in)]
+      allocate (outgoing_ids(n_out))
       outgoing_ids = [(n_tot_old - n_out  + i, i=1, n_out )]
       if (debug_active (D_SHOWER)) then
           print *, 'n_remnants =    ', n_remnants

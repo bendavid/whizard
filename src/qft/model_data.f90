@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -43,7 +43,6 @@ module model_data
   use iso_varying_string, string_t => varying_string
   use format_defs, only: FMT_19
   use io_units
-  use unit_tests
   use diagnostics
   use md5
   use hashes, only: hash
@@ -215,6 +214,7 @@ module model_data
   type :: model_data_t
      private
      type(string_t) :: name
+     integer :: scheme = 0
      type(modelpar_real_t), dimension(:), pointer :: par_real => null ()
      type(modelpar_complex_t), dimension(:), pointer :: par_complex => null ()
      type(field_data_t), dimension(:), allocatable :: field
@@ -225,9 +225,11 @@ module model_data
      procedure :: write => model_data_write
      generic :: init => model_data_init
      procedure, private :: model_data_init
+     procedure :: set_scheme_num => model_data_set_scheme_num
      procedure :: freeze_fields => model_data_freeze_fields
      procedure :: copy_from => model_data_copy
      procedure :: get_name => model_data_get_name
+     procedure :: get_scheme_num => model_data_get_scheme_num
      procedure :: get_parameters_md5sum => model_data_get_parameters_md5sum
      procedure :: get_md5sum => model_data_get_md5sum
      generic :: init_par => model_data_init_par_real, model_data_init_par_complex
@@ -1384,7 +1386,7 @@ contains
   
   subroutine model_data_write (model, unit, verbose, &
        show_md5sum, show_variables, show_parameters, &
-       show_particles, show_vertices)
+       show_particles, show_vertices, show_scheme)
     class(model_data_t), intent(in) :: model
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -1393,15 +1395,21 @@ contains
     logical, intent(in), optional :: show_parameters
     logical, intent(in), optional :: show_particles
     logical, intent(in), optional :: show_vertices
-    logical :: show_par, show_prt, show_vtx
+    logical, intent(in), optional :: show_scheme
+    logical :: show_sch, show_par, show_prt, show_vtx
     integer :: u, i
     u = given_output_unit (unit)
+    show_sch = .false.;  if (present (show_scheme)) &
+         show_sch = show_scheme
     show_par = .true.;  if (present (show_parameters)) &
          show_par = show_parameters
     show_prt = .true.;  if (present (show_particles)) &
          show_prt = show_particles
     show_vtx = .true.;  if (present (show_vertices)) &
          show_vtx = show_vertices
+    if (show_sch) then
+       write (u, "(3x,A,1X,I0)")  "scheme =", model%scheme
+    end if
     if (show_par) then
        do i = 1, size (model%par_real)
           call model%par_real(i)%write (u)
@@ -1436,6 +1444,12 @@ contains
     allocate (model%vtx (n_vtx))
   end subroutine model_data_init
   
+  subroutine model_data_set_scheme_num (model, scheme)
+    class(model_data_t), intent(inout) :: model
+    integer, intent(in) :: scheme
+    model%scheme = scheme
+  end subroutine model_data_set_scheme_num
+  
   subroutine model_data_freeze_fields (model)
     class(model_data_t), intent(inout) :: model
     call model%field%freeze ()
@@ -1446,6 +1460,7 @@ contains
     class(model_data_t), intent(in), target :: src
     class(modelpar_data_t), pointer :: data, src_data
     integer :: i
+    model%scheme = src%scheme
     model%par_real = src%par_real
     model%par_complex = src%par_complex
     do i = 1, size (src%field)
@@ -1477,6 +1492,12 @@ contains
     name = model%name
   end function model_data_get_name
   
+  function model_data_get_scheme_num (model) result (scheme)
+    class(model_data_t), intent(in) :: model
+    integer :: scheme
+    scheme = model%scheme
+  end function model_data_get_scheme_num
+  
   function model_data_get_parameters_md5sum (model) result (par_md5sum)
     character(32) :: par_md5sum
     class(model_data_t), intent(in) :: model
@@ -1487,6 +1508,7 @@ contains
     call model%real_parameters_to_array (par)
     unit = free_unit ()
     open (unit, status="scratch", action="readwrite")
+    if (model%scheme /= 0)  write (unit, "(I0)")  model%scheme
     write (unit, "(" // FMT_19 // ")")  par
     do i = 1, model%get_n_field ()
        field => model%get_field_ptr_by_index (i)
@@ -2145,6 +2167,7 @@ contains
     call field%init (var_str ("PROTON"), 2212)
     call field%set (spin_type=2)
     call field%set (name = [var_str ("p")], anti = [var_str ("pbar")])
+!    call field%set (mass_data=model%get_par_real_ptr (12))
     i = i + 1
     field => model%get_field_ptr_by_index (i)
     call field%init (var_str ("HADRON_REMNANT_SINGLET"), 91)

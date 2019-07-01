@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -105,8 +105,7 @@ module rt_data
      integer :: quit_code = 0
      type(string_t) :: logfile 
      logical :: nlo_fixed_order = .false.
-     logical :: nlo_threshold_matching = .false.
-     logical, dimension(4) :: active_nlo_components
+     logical, dimension(6) :: active_nlo_components = .false.
    contains
      procedure :: write => rt_data_write
      procedure :: write_vars => rt_data_write_vars
@@ -164,8 +163,6 @@ module rt_data
      procedure :: show_beams => rt_data_show_beams
      procedure :: get_sqrts => rt_data_get_sqrts
      procedure :: pacify => rt_data_pacify
-     procedure :: set_me_method => rt_data_set_me_method
-     procedure :: get_me_method => rt_data_get_me_method
      procedure :: set_event_callback => rt_data_set_event_callback
      procedure :: has_event_callback => rt_data_has_event_callback
      procedure :: get_event_callback => rt_data_get_event_callback
@@ -527,6 +524,9 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?isr_recoil"), .false., &
           intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?isr_keep_energy"), .false., &
+          intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("epa_alpha"), 0._default, &
           intrinsic=.true.)
@@ -545,6 +545,9 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?epa_recoil"), .false., &
           intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?epa_keep_energy"), .false., &
+          intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("ewa_x_min"), 0._default, &
           intrinsic=.true.)
@@ -555,11 +558,11 @@ contains
          (global%var_list, var_str ("ewa_mass"), 0._default, &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?ewa_keep_momentum"), .false., &
-          intrinsic=.true.)       
+         (global%var_list, var_str ("?ewa_recoil"), .false., &
+         intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?ewa_keep_energy"), .false., &
-          intrinsic=.true.)               
+          intrinsic=.true.)    
     call var_list_append_log &
          (global%var_list, var_str ("?circe1_photon1"), .false., &
           intrinsic=.true.)     
@@ -1031,10 +1034,18 @@ contains
     call var_list_append_real (global%var_list, &
          var_str ("jet_ycut"), 0._default, &
          intrinsic = .true.)
+    call var_list_append_log (global%var_list, &
+         var_str ("?keep_flavors_when_clustering"), .false., &
+         intrinsic = .true.)
     call var_list_append_log &
          (global%var_list, var_str ("?polarized_events"), .false., &
             intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$polarization_mode"), &
+         var_str ("helicity"), &
+         intrinsic=.true.)
     call set_shower_defaults ()
+    call set_tauola_defaults  ()
     call set_hadronization_defaults ()
     call set_mlm_matching_defaults ()
     call set_powheg_matching_defaults ()
@@ -1193,6 +1204,9 @@ contains
            (global%var_list, var_str ("?ps_isr_active"), .false., &
               intrinsic=.true.)
       call var_list_append_log &
+           (global%var_list, var_str ("?ps_taudec_active"), .false., &
+              intrinsic=.true.)
+      call var_list_append_log &
            (global%var_list, var_str ("?muli_active"), .false., &
               intrinsic=.true.)
       call var_list_append_string &
@@ -1239,6 +1253,25 @@ contains
       call var_list_append_log (global%var_list, var_str &
            ("?ps_isr_only_onshell_emitted_partons"), .false., intrinsic=.true.)
     end subroutine set_shower_defaults
+
+    subroutine set_tauola_defaults ()
+      call var_list_append_log (global%var_list, &
+           var_str ("?ps_tauola_photos"), .false., intrinsic=.true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?ps_tauola_transverse"), .false., intrinsic=.true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?ps_tauola_dec_rad_cor"), .true., intrinsic=.true.)
+      call var_list_append_int (global%var_list, &
+           var_str ("ps_tauola_dec_mode1"), 0, intrinsic = .true.)
+      call var_list_append_int (global%var_list, &
+           var_str ("ps_tauola_dec_mode2"), 0, intrinsic = .true.)
+      call var_list_append_real (global%var_list, &
+           var_str ("ps_tauola_mh"), 125._default, intrinsic = .true.)
+      call var_list_append_real (global%var_list, &
+           var_str ("ps_tauola_mix_angle"), 90._default, intrinsic = .true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?ps_tauola_pol_vector"), .false., intrinsic = .true.)
+    end subroutine set_tauola_defaults
 
     subroutine set_mlm_matching_defaults ()
       call var_list_append_log &
@@ -1296,7 +1329,7 @@ contains
            (global%var_list, var_str ("?powheg_rebuild_grids"), &
             .false., intrinsic = .true.)
       call var_list_append_log &
-           (global%var_list, var_str ("?use_powheg_damping"), &
+           (global%var_list, var_str ("?powheg_use_damping"), &
             .false., intrinsic = .true.)
       call var_list_append_log &
            (global%var_list, var_str ("?powheg_test_sudakov"), &
@@ -1343,22 +1376,46 @@ contains
            var_str ("omega"), intrinsic = .true.)
       call var_list_append_string &
            (global%var_list, var_str ("$loop_me_method"), &
-           var_str ("gosam"), intrinsic = .true.)
+           var_str ("openloops"), intrinsic = .true.)
       call var_list_append_string &
            (global%var_list, var_str ("$correlation_me_method"), &
            var_str ("omega"), intrinsic = .true.)
       call var_list_append_string &
            (global%var_list, var_str ("$real_tree_me_method"), &
            var_str ("omega"), intrinsic = .true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?test_soft_limit"), .false., intrinsic = .true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?test_coll_limit"), .false., intrinsic = .true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?test_anti_coll_limit"), .false., intrinsic = .true.)
+      call var_list_append_int (global%var_list, &
+           var_str ("fixed_alpha_region"), 0, intrinsic = .true.)
+      call var_list_append_log (global%var_list, &
+           var_str ("?switch_off_virtual_subtraction"), .false., intrinsic = .true.)
+      call var_list_append_real (global%var_list, &
+           var_str ("blha_use_top_yukawa"), -1._default, intrinsic = .true.)
       call var_list_append_int &
            (global%var_list, var_str ("openloops_verbosity"), 1, &
            intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?openloops_use_cms"), &
+           .false., intrinsic = .true.)
       call var_list_append_int &
            (global%var_list, var_str ("openloops_phs_tolerance"), 7, &
            intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("openloops_stability_log"), 0, &
+           intrinsic = .true.)
       call var_list_append_log &
-           (global%var_list, var_str ("?openloops_top_signal"), &
+           (global%var_list, var_str ("?openloops_switch_off_muon_yukawa"), &
            .false., intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$openloops_extra_cmd"), &
+            var_str (""), intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?openloops_use_collier"), &
+           .true., intrinsic = .true.)
       call var_list_append_log &
            (global%var_list, var_str ("?disable_subtraction"), &
            .false., intrinsic = .true.)
@@ -1368,12 +1425,12 @@ contains
       call var_list_append_real &
            (global%var_list, var_str ("fks_dij_exp2"), &
            1._default, intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("fks_mapping_type"), &
-           1, intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?fks_count_kinematics"), &
-           .false., intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$fks_mapping_type"), &
+           var_str ("default"), intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$resonances_exclude_particles"), &
+           var_str ("default"), intrinsic = .true.)
       call var_list_append_int &
            (global%var_list, var_str ("alpha_power"), &
            2, intrinsic = .true.)
@@ -1384,7 +1441,13 @@ contains
            (global%var_list, var_str ("?combined_nlo_integration"), &
            .false., intrinsic = .true.)
       call var_list_append_log &
-           (global%var_list, var_str ("?nlo_fixed_order"), &
+           (global%var_list, var_str ("?fixed_order_nlo_events"), &
+           .false., intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?check_event_weights_against_xsection"), &
+           .false., intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?keep_failed_events"), &
            .false., intrinsic = .true.)
       call var_list_append_int &
            (global%var_list, var_str ("gks_multiplicity"), &
@@ -1414,7 +1477,7 @@ contains
            var_str ("mult_call_virt"), 1._default, &
            intrinsic = .true.)
       call var_list_append_real (global%var_list, &
-           var_str ("mult_call_pdf"), 1._default, &
+           var_str ("mult_call_dglap"), 1._default, &
            intrinsic = .true.)
     end subroutine set_nlo_defaults
 
@@ -1502,14 +1565,19 @@ contains
     class(rt_data_t), intent(inout), target :: local
     class(rt_data_t), intent(inout), optional, target :: global
     logical, intent(in), optional :: keep_local
-    type(string_t) :: global_model, local_model
+    type(string_t) :: local_model, local_scheme
     logical :: same_model, delete
     delete = .true.;  if (present (keep_local))  delete = .not. keep_local
     if (present (global)) then
        if (associated (global%model) .and. associated (local%model)) then 
-          global_model = global%model%get_name ()
           local_model = local%model%get_name ()
-          same_model = global_model == local_model
+          if (global%model%has_schemes ()) then
+             local_scheme = local%model%get_scheme ()
+             same_model = &
+                  global%model%matches (local_model, local_scheme)
+          else
+             same_model = global%model%matches (local_model)
+          end if
        else
           same_model = .false.
        end if
@@ -1520,8 +1588,15 @@ contains
        else if (associated (local%model)) then
           call local%ensure_model_copy ()
        end if
-       if (.not. same_model .and. global_model /= "") then
-          call msg_message ("Restoring model '" // char (global_model) // "'")
+       if (.not. same_model .and. associated (global%model)) then
+          if (global%model%has_schemes ()) then
+             call msg_message ("Restoring model '" // &
+                  char (global%model%get_name ()) // "', scheme '" // &
+                  char (global%model%get_scheme ()) // "'")
+          else
+             call msg_message ("Restoring model '" // &
+                  char (global%model%get_name ()) // "'")
+          end if
        end if
        if (associated (global%model)) then
           call global%model%link_var_list (global%var_list)
@@ -1563,14 +1638,15 @@ contains
     call local%var_list%final (follow_link=.false.)
   end subroutine rt_data_local_final
 
-  subroutine rt_data_read_model (global, name, model)
+  subroutine rt_data_read_model (global, name, model, scheme)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: scheme
     type(model_t), pointer, intent(out) :: model
     type(string_t) :: filename
     filename = name // ".mdl"
     call global%model_list%read_model &
-         (name, filename, global%os_data, model)
+         (name, filename, global%os_data, model, scheme)
   end subroutine rt_data_read_model
     
   subroutine rt_data_init_fallback_model (global, name, filename)
@@ -1587,23 +1663,25 @@ contains
          (name, filename, global%os_data, global%radiation_model)
   end subroutine rt_data_init_radiation_model
   
-  subroutine rt_data_select_model (global, name)
+  subroutine rt_data_select_model (global, name, scheme)
     class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: scheme
     logical :: same_model
     if (associated (global%model)) then
-       same_model = global%model%get_name () == name
+       same_model = global%model%matches (name, scheme)
     else
        same_model = .false.
     end if
     if (.not. same_model) then
-       global%model => global%model_list%get_model_ptr (name)
+       global%model => global%model_list%get_model_ptr (name, scheme)
        if (.not. associated (global%model)) then
           call global%read_model (name, global%model)
           global%model_is_copy = .false.
        else if (associated (global%context)) then
           global%model_is_copy = &
-               global%model_list%model_exists (name, follow_link=.false.)
+               global%model_list%model_exists (name, scheme, &
+               follow_link=.false.)
        else
           global%model_is_copy = .false.
        end if
@@ -1612,7 +1690,12 @@ contains
        call global%model%link_var_list (global%var_list)
        call global%var_list%set_string (var_str ("$model_name"), &
             name, is_known = .true.)
-       call msg_message ("Switching to model '" // char (name) // "'")
+       if (global%model%has_schemes ()) then
+          call msg_message ("Switching to model '" // char (name) // "', " &
+               // "scheme '" // char (global%model%get_scheme ()) // "'")
+       else
+          call msg_message ("Switching to model '" // char (name) // "'")
+       end if
     else
        call global%var_list%set_string (var_str ("$model_name"), &
             var_str (""), is_known = .false.)
@@ -1996,30 +2079,34 @@ contains
          end if
       end if
       if (beams%contains ("isr")) then
-         write (u, "(2x,A," // FMT_19 // ")") "ISR alpha =", &
+         write (u, "(2x,A," // FMT_19 // ")") "ISR alpha        =", &
               var_list%get_rval (var_str ("isr_alpha"))
-         write (u, "(2x,A," // FMT_19 // ")") "ISR Q max =", &
+         write (u, "(2x,A," // FMT_19 // ")") "ISR Q max        =", &
               var_list%get_rval (var_str ("isr_q_max"))
-         write (u, "(2x,A," // FMT_19 // ")") "ISR mass  =", &
+         write (u, "(2x,A," // FMT_19 // ")") "ISR mass         =", &
               var_list%get_rval (var_str ("isr_mass"))
-         write (u, "(2x,A,1x,I0)") "ISR order  =", &
+         write (u, "(2x,A,1x,I0)") "ISR order        =", &
               var_list%get_ival (var_str ("isr_order"))
-         write (u, "(2x,A,1x,L1)") "ISR recoil =", &
+         write (u, "(2x,A,1x,L1)") "ISR recoil       =", &
               var_list%get_lval (var_str ("?isr_recoil"))
+         write (u, "(2x,A,1x,L1)") "ISR energy cons. =", &
+              var_list%get_lval (var_str ("?isr_keep_energy"))         
       end if
       if (beams%contains ("epa")) then
-         write (u, "(2x,A," // FMT_19 // ")") "EPA alpha  =", &
-              var_list%get_rval (var_str ("epa_alpha"))
-         write (u, "(2x,A," // FMT_19 // ")") "EPA x min  =", &
-              var_list%get_rval (var_str ("epa_x_min"))
-         write (u, "(2x,A," // FMT_19 // ")") "EPA Q min  =", &
-              var_list%get_rval (var_str ("epa_q_min"))
-         write (u, "(2x,A," // FMT_19 // ")") "EPA E max  =", &
-              var_list%get_rval (var_str ("epa_e_max"))
-         write (u, "(2x,A," // FMT_19 // ")") "EPA mass   =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EPA alpha         =", &
+              var_list%get_rval (var_str ("epa_alpha"))          
+         write (u, "(2x,A," // FMT_19 // ")") "EPA x min         =", &
+              var_list%get_rval (var_str ("epa_x_min"))          
+         write (u, "(2x,A," // FMT_19 // ")") "EPA Q min         =", &
+              var_list%get_rval (var_str ("epa_q_min"))          
+         write (u, "(2x,A," // FMT_19 // ")") "EPA E max         =", &
+              var_list%get_rval (var_str ("epa_e_max"))          
+         write (u, "(2x,A," // FMT_19 // ")") "EPA mass          =", &
               var_list%get_rval (var_str ("epa_mass"))
-         write (u, "(2x,A,1x,L1)") "EPA recoil =", &
+         write (u, "(2x,A,1x,L1)") "EPA recoil        =", &
               var_list%get_lval (var_str ("?epa_recoil"))
+         write (u, "(2x,A,1x,L1)") "EPA  energy cons. =", &
+              var_list%get_lval (var_str ("?epa_keep_energy"))
       end if
       if (beams%contains ("ewa")) then
          write (u, "(2x,A," // FMT_19 // ")") "EWA x min       =", &
@@ -2028,12 +2115,10 @@ contains
               var_list%get_rval (var_str ("ewa_pt_max"))
          write (u, "(2x,A," // FMT_19 // ")") "EWA mass        =", &
               var_list%get_rval (var_str ("ewa_mass"))
-         write (u, "(2x,A,1x,L1)") "EWA mom cons.   =", &
-              var_list%get_lval (&
-              var_str ("?ewa_keep_momentum"))
-         write (u, "(2x,A,1x,L1)") "EWA energ. cons. =", &
-              var_list%get_lval (&
-              var_str ("ewa_keep_energy"))
+         write (u, "(2x,A,1x,L1)") "EWA recoil       =", &
+              var_list%get_lval (var_str ("?ewa_recoil"))
+         write (u, "(2x,A,1x,L1)") "EWA energy cons. =", &
+              var_list%get_lval (var_str ("ewa_keep_energy"))
       end if
       if (beams%contains ("circe1")) then
          write (u, "(2x,A,1x,I0)") "CIRCE1 version    =", &
@@ -2100,21 +2185,6 @@ contains
        process => process%next
     end do    
   end subroutine rt_data_pacify
-
- subroutine rt_data_set_me_method (global, me_method)
-   class(rt_data_t), intent(inout) :: global
-   type(string_t), intent(in) :: me_method
-   logical :: success
-   success = global%var_list%contains (var_str ("$method"))
-   if (success) &
-      call global%var_list%set_sval (var_str ("$method"), me_method)
- end subroutine rt_data_set_me_method
- 
-  function rt_data_get_me_method (global) result (me_method)
-    type(string_t) :: me_method
-    class(rt_data_t), intent(in) :: global
-    me_method = global%var_list%get_sval (var_str ("$method"))
-  end function rt_data_get_me_method
 
   subroutine rt_data_set_event_callback (global, callback)
     class(rt_data_t), intent(inout) :: global

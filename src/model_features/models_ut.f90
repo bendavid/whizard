@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -61,6 +61,12 @@ contains
          u, results)
     call test (models_5, "models_5", &
          "handle parameters", &
+         u, results)
+    call test (models_6, "models_6", &
+         "read model parameters", &
+         u, results)
+    call test (models_7, "models_7", &
+         "handle schemes", &
          u, results)
   end subroutine models_test
 

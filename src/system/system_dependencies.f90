@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.8"
-  character(*), parameter :: WHIZARD_DATE = "Nov 22 2015"
+  character(*), parameter :: WHIZARD_VERSION = "2.3.0"
+  character(*), parameter :: WHIZARD_DATE = "July 21 2016"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -45,8 +45,6 @@ module system_dependencies
        "/Users/reuter/Physik/whizard/trunk/build/src/basics"
   character(*), parameter :: WHIZARD_TEST_UTILITIES_MODPATH = &
        "/Users/reuter/Physik/whizard/trunk/build/src/utilities"
-  character(*), parameter :: WHIZARD_TEST_TESTING_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/testing"
   character(*), parameter :: WHIZARD_TEST_COMBINATORICS_MODPATH = &
        "/Users/reuter/Physik/whizard/trunk/build/src/combinatorics"
   character(*), parameter :: WHIZARD_TEST_SYSTEM_MODPATH = &
@@ -108,10 +106,10 @@ module system_dependencies
       "-I" // WHIZARD_TEST_ME_MODPATH // " " // &
       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_TESTING_MODPATH // " " // &
       "-I" // WHIZARD_TEST_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_BASICS_MODPATH
+      "-I" // WHIZARD_TEST_BASICS_MODPATH // " " // &
+      "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_TEST_LDFLAGS = &
@@ -123,7 +121,8 @@ module system_dependencies
       "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
-       "-L/usr/local/ -looptools"
+       "-L/usr/local/ -looptools -L/usr/local/packages/OpenLoops/lib -&
+       &lopenloops"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -154,8 +153,6 @@ module system_dependencies
        PKGLIBDIR // "/mod/basics"
   character(*), parameter :: WHIZARD_UTILITIES_MODPATH = &
        PKGLIBDIR // "/mod/utilities"
-  character(*), parameter :: WHIZARD_TESTING_MODPATH = &
-       PKGLIBDIR // "/mod/testing"
   character(*), parameter :: WHIZARD_COMBINATORICS_MODPATH = &
        PKGLIBDIR // "/mod/combinatorics"
   character(*), parameter :: WHIZARD_SYSTEM_MODPATH = &
@@ -208,16 +205,17 @@ module system_dependencies
       "-I" // WHIZARD_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_SYSTEM_MODPATH // " " // &
       "-I" // WHIZARD_COMBINATORICS_MODPATH // " " // &
-      "-I" // WHIZARD_TESTING_MODPATH // " " // &
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
-      "-I" // WHIZARD_BASICS_MODPATH
+      "-I" // WHIZARD_BASICS_MODPATH // " " // &
+      "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
-       "-L/usr/local/ -looptools"
+       "-L/usr/local/ -looptools -L/usr/local/packages/OpenLoops/lib -&
+       &lopenloops"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -312,7 +310,7 @@ module system_dependencies
 
   ! OpenLoops
   character(*), parameter :: OPENLOOPS_DIR = &
-       "/usr/local"
+       "/usr/local/packages/OpenLoops"
 
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &

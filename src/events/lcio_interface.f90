@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -464,7 +464,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.2.8")
+         "WHIZARD version:" // "2.3.0")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -611,8 +611,8 @@ contains
     type(lcio_particle_t), intent(inout) :: prt
     type(polarization_t), intent(in) :: pol
     real(default) :: r, theta, phi
-    if (polarization_is_polarized (pol)) then
-       call polarization_to_angles (pol, r, theta, phi)
+    if (pol%is_polarized ()) then
+       call pol%to_angles (r, theta, phi)
        call lcio_particle_set_spin (prt%obj, &
             real(r, c_double), real (theta, c_double), real (phi, c_double))
     end if
@@ -662,7 +662,7 @@ contains
     degree = lcio_polarization_degree (prt%obj)
     theta = lcio_polarization_theta (prt%obj)
     phi = lcio_polarization_phi (prt%obj)
-    call polarization_init_angles (pol, flv, degree, theta, phi)
+    call pol%init_angles (flv, degree, theta, phi)
   end subroutine lcio_particle_to_pol
 
   subroutine lcio_particle_to_hel (prt, flv, hel)

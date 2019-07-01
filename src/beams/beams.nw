@@ -1144,7 +1144,7 @@ module beams
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use diagnostics
   use md5
   use lorentz
@@ -1418,12 +1418,12 @@ parameters.
     integer :: i
     allocate (pol (beam_data%n))
     do i = 1, beam_data%n
-       call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
+       call pol(i)%init_pmatrix (beam_data%pmatrix(i))
     end do
     call combine_polarization_states (pol, state_hel)
-    do i = 1, beam_data%n
-       call polarization_final (pol(i))
-    end do
+    ! do i = 1, beam_data%n   !!! Obsolete
+       ! call pol(i)%final ()
+    ! end do
   end function beam_data_get_helicity_state_matrix
 
 @ %def beam_data_get_helicity_state_matrix
@@ -1714,22 +1714,31 @@ of the two particles (where flavor and color are unique, while several
 helicity states are possible).  Then, we transfer this state together
 with the associated values from the spin density matrix into the
 [[interaction_t]] object.
+
+Calling the [[add_state]] method of the interaction object, we keep
+the entries of the helicity density matrix without adding them up.
+This ensures that for unpolarized states, we do not normalize but end
+up with an $1/N$ entry, where $N$ is the initial-state multiplicity.
 <<Beams: public>>=
   public :: beam_init
 <<Beams: procedures>>=
   subroutine beam_init (beam, beam_data)
     type(beam_t), intent(out) :: beam
     type(beam_data_t), intent(in), target :: beam_data
-    type(quantum_numbers_mask_t), dimension(beam_data%n) :: mask
+    logical, dimension(beam_data%n) :: polarized, diagonal
+    type(quantum_numbers_mask_t), dimension(beam_data%n) :: mask, mask_d
     type(state_matrix_t), target :: state_hel, state_fc, state_tmp
     type(state_iterator_t) :: it_hel, it_tmp
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    !type(polarization_t), dimension(:), allocatable :: pol
-    integer :: i
-    real(default), dimension(:,:), allocatable :: pol_matrix
+    complex(default) :: value
+    real(default), parameter :: tolerance = 100 * epsilon (1._default)
+    polarized = beam_data%pmatrix%is_polarized () 
+    diagonal = beam_data%pmatrix%is_diagonal ()
     mask = quantum_numbers_mask (.false., .false., &
-         .not. beam_data%pmatrix%is_polarized (), &
-         mask_hd = beam_data%pmatrix%is_diagonal ())
+         mask_h = .not. polarized, &
+         mask_hd = diagonal)
+    mask_d = quantum_numbers_mask (.false., .false., .false., &
+         mask_hd = polarized .and. diagonal)
     call beam%int%basic_init &
          (0, 0, beam_data%n, mask=mask, store_values=.true.)
     state_hel = beam_data%get_helicity_state_matrix ()
@@ -1741,8 +1750,15 @@ with the associated values from the spin density matrix into the
     call it_hel%init (state_hel)
     call it_tmp%init (state_tmp)
     do while (it_hel%is_valid ())
-       call beam%int%add_state (it_tmp%get_quantum_numbers (), &
-            value=it_hel%get_matrix_element ())
+       qn = it_tmp%get_quantum_numbers ()
+       value = it_hel%get_matrix_element ()
+       if (any (qn%are_redundant (mask_d))) then
+          ! skip off-diagonal elements for diagonal polarization
+       else if (abs (value) <= tolerance) then
+          ! skip zero entries
+       else
+          call beam%int%add_state (qn, value = value)
+       end if
        call it_hel%advance ()
        call it_tmp%advance ()
     end do
@@ -1927,9 +1943,58 @@ end module beams_uti
 
     call model%init_sm_test ()
 
-    write (u, "(A)")  "* 1: Scattering process"
+    write (u, "(A)")  "* Unpolarized scattering, massless fermions"
     write (u, "(A)")
     
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([1,-1], model)
+
+    call beam_data%init_sqrts (sqrts, flv)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massless bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call beam_data%init_sqrts (sqrts, flv)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call beam_data%init_sqrts (sqrts, flv)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized scattering, massless fermions"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
     sqrts = 500
     call flv%init ([1,-1], model)
 
@@ -1937,17 +2002,12 @@ end module beams_uti
     call smatrix(1)%set_entry (1, [1,1], (1._default, 0._default))
     pol_f(1) = 0.5_default
 
-    !!! 2.1 version:
-    ! call polarization_init_circular (pol(1), flv(1), 0.5_default)
-
     call smatrix(2)%init (2, 3)
     call smatrix(2)%set_entry (1, [1,1], (1._default, 0._default))
     call smatrix(2)%set_entry (2, [-1,-1], (1._default, 0._default))
     call smatrix(2)%set_entry (3, [-1,1], (1._default, 0._default))
     pol_f(2) = 1._default
 
-    !!! 2.1 version:
-    ! call polarization_init_transversal (pol(2), flv(2), 0._default, 1._default)
     call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
     call beam_data%write (u)
     write (u, "(A)")
@@ -1957,15 +2017,74 @@ end module beams_uti
     call beam_data%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
+    write (u, "(A)")  "* Semi-polarized scattering, massless bosons"
     write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call smatrix(1)%init (2, 0)
+    pol_f(1) = 0._default
+
+    call smatrix(2)%init (2, 1)
+    call smatrix(2)%set_entry (1, [1,1], (1._default, 0._default))
+    pol_f(2) = 1._default
+
+    call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Semi-polarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call smatrix(1)%init (2, 0)
+    pol_f(1) = 0._default
+
+    call smatrix(2)%init (2, 1)
+    call smatrix(2)%set_entry (1, [0,0], (1._default, 0._default))
+    pol_f(2) = 1._default
+
+    call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized decay, massive boson"
+    write (u, "(A)")
+
+    call reset_interaction_counter ()
+    call flv(1)%init (23, model)
+
+    call beam_data%init_decay (flv(1:1))
+    call beam_data%write (u)
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized decay, massive boson"
+    write (u, "(A)")
+
+    call reset_interaction_counter ()
     call flv(1)%init (23, model)
     call smatrix(1)%init (2, 1)
     call smatrix(1)%set_entry (1, [0,0], (1._default, 0._default))
     pol_f(1) = 0.4_default
 
-    !!! 2.1 version:
-    ! call polarization_init_longitudinal (pol(1), flv(1), 0.4_default)
     call beam_data%init_decay (flv(1:1), smatrix(1:1), pol_f(1:1))
     call beam_data%write (u)
     write (u, "(A)")
@@ -2012,17 +2131,83 @@ end module beams_uti
     write (u, "(A)")  "* Reading model file"
     write (u, "(A)") 
 
-    call reset_interaction_counter ()
-
     call model%init_sm_test ()
 
-    write (u, "(A)")  "* 1: Scattering process"
+    write (u, "(A)")  "* Unpolarized scattering, massless fermions"
     write (u, "(A)")
     
+    call reset_interaction_counter ()
     sqrts = 500
     call flv%init ([1,-1], model)
     call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%final_pol ()
 
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massless bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%final_pol ()
+
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%final_pol ()
+
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized scattering, massless fermions"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([1,-1], model)
+    call beam_structure%init_sf (flv%get_name (), no_records)
     call beam_structure%init_pol (2)
 
     call beam_structure%init_smatrix (1, 1)
@@ -2050,9 +2235,85 @@ end module beams_uti
     call beam_structure%final_sf ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
+    write (u, "(A)")  "* Semi-polarized scattering, massless bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([22,22], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%init_pol (2)
+
+    call beam_structure%init_smatrix (1, 0)
+
+    call beam_structure%init_smatrix (2, 1)
+    call beam_structure%set_sentry (2, 1, [1,1], (1._default, 0._default))
+
+    call beam_structure%set_pol_f ([0._default, 1._default])
+    call beam_structure%write (u)
+    write (u, *)
+    
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+ 
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Semi-polarized scattering, massive bosons"
+    write (u, "(A)")
+    
+    call reset_interaction_counter ()
+    sqrts = 500
+    call flv%init ([24,-24], model)
+
+    call beam_structure%init_sf (flv%get_name (), no_records)
+    call beam_structure%init_pol (2)
+
+    call beam_structure%init_smatrix (1, 0)
+
+    call beam_structure%init_smatrix (2, 1)
+    call beam_structure%set_sentry (2, 1, [0,0], (1._default, 0._default))
+    call beam_structure%write (u)
+
+    write (u, "(A)")
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+ 
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    call beam_final (beam)
+    call beam_data%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Unpolarized decay, massive boson"
     write (u, "(A)")
 
+    call reset_interaction_counter ()
+    call flv(1)%init (23, model)
+
+    call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
+    call beam_structure%final_pol ()
+    call beam_structure%write (u)
+
+    write (u, "(A)")
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
+
+    write (u, "(A)")
+    call beam_init (beam, beam_data)
+    call beam_write (beam, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Polarized decay, massive boson"
+    write (u, "(A)")
+
+    call reset_interaction_counter ()
     call flv(1)%init (23, model)
     call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
 
@@ -2208,7 +2469,7 @@ module sf_aux
 <<Use kinds>>
   use io_units
   use constants, only: twopi
-  use unit_tests, only: vanishes
+  use numeric_utils
 
   use lorentz
 
@@ -2441,10 +2702,14 @@ tolerated.
     real(default) :: tp, tm
     if (present (x))  d%x = x
     if (present (xb)) d%xb = xb
-    if (.not. vanishes (d%xb)) then
-       d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
+    if (vanishes (d%u)) then
+       d%pb = d%E
     else
-       d%pb = 0
+       if (.not. vanishes (d%xb)) then
+          d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
+       else
+          d%pb = 0
+       end if
     end if
     tp = -2 * d%xb * d%E**2 + d%s + d%u
     tm = -2 * d%xb * d%p * d%pb
@@ -2587,7 +2852,7 @@ for dropping the on-shell condition here.
        tt0 = max (d%t - d%t0, 0._default)
        tt1 = min (d%t - d%t1, 0._default)
        if (den**2 <= epsilon(den)) then
-          st2 = 1
+          st2 = 0
        else
           st2 = - (tt0 * tt1) / den ** 2
        end if
@@ -2597,6 +2862,9 @@ for dropping the on-shell condition here.
        ct2 = 1 - st2
        st = sqrt (max (st2, 0._default))
        ct = sqrt (max (ct2, 0._default))
+       if ((d%t - d%t0 + d%t - d%t1) < 0) then
+          ct = - ct
+       end if
        sp = sin (d%phi)
        cp = cos (d%phi)
        rot = rotation_to_2nd (3, space_part (k))
@@ -3734,7 +4002,7 @@ module sf_mappings
   use kinds, only: double
   use io_units
   use constants, only: pi, zero, one
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
 
 <<Standard module head>>
@@ -5549,29 +5817,28 @@ exchanged.)
     real(default) :: log1, log2, a1, a2, a3
     log1 = log_prec (r(1), rb(1))
     log2 = log_prec (r(2), rb(2))
-    a1 = - rb(1) / log2
-    a2 = - rb(1) ** 2 * (one / log2**2 + one/(2*log2))
     if (abs (log2**3) < epsilon (one)) then
        if (abs(log1) < epsilon (one)) then
           y = zero
        else
-          y = one / (one+log2/log1)
+          y = one / (one + log2 / log1)
        end if
        if (abs(log2) < epsilon (one)) then
           yb = zero
        else 
-          yb = one / (one+log1/log2)
+          yb = one / (one + log1 / log2)
        end if
        return
-    else
-       a3 = - rb(1) ** 3 * (one / log2**3 + one/log2**2 + one/(3 * log2))
     end if
+    a1 = - rb(1) / log2
+    a2 = - rb(1) ** 2 * (one / log2**2 + one / (2 * log2))
+    a3 = - rb(1) ** 3 * (one / log2**3 + one / log2**2 + one/(3 * log2))
     if (abs (a3) < epsilon (a3)) then
        y  = a1 + a2 + a3
        yb = one - y
     else
-       y  = one / (one+log2/log1)
-       yb = one / (one+log1/log2)
+       y  = one / (one + log2 / log1)
+       yb = one / (one + log1 / log2)
     end if
   end subroutine inverse_prec_y
   
@@ -7865,11 +8132,15 @@ only be performed after the interaction object got its final shape, i.e.,
 redundant helicities have been eliminated by matching with beams and process.
 
 The default implementation does nothing.
+
+The [[target]] attribute is formally required since some overriding
+implementations use a temporary pointer (iterator) to the state-matrix
+component.  It doesn't appear to make a real difference, though.
 <<SF base: sf int: TBP>>=
   procedure :: setup_constants => sf_int_setup_constants
 <<SF base: procedures>>=
   subroutine sf_int_setup_constants (sf_int)
-    class(sf_int_t), intent(inout) :: sf_int
+    class(sf_int_t), intent(inout), target :: sf_int
   end subroutine sf_int_setup_constants
   
 @ %def sf_int_setup_constants
@@ -9820,6 +10091,7 @@ splitting, 3 otherwise.
   subroutine sf_test_data_allocate_sf_int (data, sf_int)
     class(sf_test_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
+    if (allocated (sf_int)) deallocate (sf_int)
     allocate (sf_test_t :: sf_int)
   end subroutine sf_test_data_allocate_sf_int
     
@@ -12707,7 +12979,7 @@ module sf_isr
   use io_units
   use constants, only: pi
   use format_defs, only: FMT_15, FMT_19
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
   use physics_defs, only: PHOTON
   use lorentz
@@ -12717,8 +12989,8 @@ module sf_isr
   use flavors
   use colors
   use quantum_numbers
-  use state_matrices
   use polarizations
+  use sf_aux
   use sf_mappings
   use sf_base
 
@@ -12893,6 +13165,7 @@ singularity which should in principle be resummed.
      real(default) :: eps = 0
      real(default) :: log = 0
      logical :: recoil = .false.
+     logical :: keep_energy = .true.
      integer :: order = 3
      integer :: error = NONE
    contains
@@ -12914,8 +13187,8 @@ singularity which should in principle be resummed.
 <<SF isr: isr data: TBP>>=
   procedure :: init => isr_data_init
 <<SF isr: procedures>>=
-  subroutine isr_data_init &
-       (data, model, pdg_in, alpha, q_max, mass, order, recoil)
+  subroutine isr_data_init (data, model, pdg_in, alpha, q_max, &
+       mass, order, recoil, keep_energy)
     class(isr_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
@@ -12924,6 +13197,7 @@ singularity which should in principle be resummed.
     real(default), intent(in), optional :: mass
     integer, intent(in), optional :: order
     logical, intent(in), optional :: recoil
+    logical, intent(in), optional :: keep_energy
     integer :: i, n_flv
     real(default) :: charge
     data%model => model
@@ -12939,6 +13213,9 @@ singularity which should in principle be resummed.
     end if
     if (present (recoil)) then
        data%recoil = recoil
+    end if
+    if (present (keep_energy)) then
+       data%keep_energy = keep_energy
     end if
     data%real_mass = data%flv_in(1)%get_mass ()
     if (present (mass)) then
@@ -13036,13 +13313,14 @@ initialization, unless we are sure everything is ok.
           call data%flv_in(i)%write (u)
        end do
        write (u, *)    
-       write (u, "(3x,A," // FMT_19 // ")") "  alpha  = ", data%alpha
-       write (u, "(3x,A," // FMT_19 // ")") "  q_max  = ", data%q_max
-       write (u, "(3x,A," // FMT_19 // ")") "  mass   = ", data%mass
-       write (u, "(3x,A," // FMT_19 // ")") "  eps    = ", data%eps
-       write (u, "(3x,A," // FMT_19 // ")") "  log    = ", data%log
-       write (u, "(3x,A,I2)")      "  order  = ", data%order
-       write (u, "(3x,A,L2)")      "  recoil = ", data%recoil
+       write (u, "(3x,A," // FMT_19 // ")") "  alpha    = ", data%alpha
+       write (u, "(3x,A," // FMT_19 // ")") "  q_max    = ", data%q_max
+       write (u, "(3x,A," // FMT_19 // ")") "  mass     = ", data%mass
+       write (u, "(3x,A," // FMT_19 // ")") "  eps      = ", data%eps
+       write (u, "(3x,A," // FMT_19 // ")") "  log      = ", data%log
+       write (u, "(3x,A,I2)")      "  order    = ", data%order
+       write (u, "(3x,A,L2)")      "  recoil   = ", data%recoil
+       write (u, "(3x,A,L2)")      "  keep en. = ", data%keep_energy
     else
        write (u, "(3x,A)") "[undefined]"       
     end if
@@ -13312,12 +13590,12 @@ current sampling point (but maybe another channel).
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     integer, dimension(3) :: hel_lock
-    type(polarization_t) :: pol
-    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel
+    type(polarization_t), target :: pol
+    type(quantum_numbers_t), dimension(1) :: qn_fc
     type(flavor_t) :: flv_photon
     type(color_t) :: col_photon
-    type(quantum_numbers_t) :: qn_photon, qn
-    type(state_iterator_t) :: it_hel
+    type(quantum_numbers_t) :: qn_hel, qn_photon, qn
+    type(polarization_iterator_t) :: it_hel
     real(default) :: m2
     integer :: i
     mask = quantum_numbers_mask (.false., .false., &
@@ -13334,20 +13612,25 @@ current sampling point (but maybe another channel).
        call qn_photon%init (flv_photon, col_photon)
        call qn_photon%tag_radiated ()
        do i = 1, size (data%flv_in)
-          call polarization_init_generic (pol, data%flv_in(i))
+          call pol%init_generic (data%flv_in(i))
           call qn_fc(1)%init (&
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i), 1))
-          call it_hel%init (pol%state)
+          call it_hel%init (pol)
           do while (it_hel%is_valid ())
              qn_hel = it_hel%get_quantum_numbers ()
-             qn = qn_hel(1) .merge. qn_fc(1)
+             qn = qn_hel .merge. qn_fc(1)
              call sf_int%add_state ([qn, qn_photon, qn])
              call it_hel%advance ()
           end do
-          call polarization_final (pol)
-       end do
+          ! call pol%final ()  !!! Obsolete
+       end do       
        call sf_int%freeze ()
+       if (data%keep_energy) then
+          sf_int%on_shell_mode = KEEP_ENERGY
+       else 
+          sf_int%on_shell_mode = KEEP_MOMENTUM
+       end if
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -14145,7 +14428,7 @@ module sf_epa
   use io_units
   use constants, only: pi
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use physics_defs, only: PHOTON
   use lorentz
@@ -14157,6 +14440,7 @@ module sf_epa
   use state_matrices
   use polarizations
   use interactions
+  use sf_aux
   use sf_base
   
 <<Standard module head>>
@@ -14281,6 +14565,7 @@ particle mass.
      real(default) :: dc
      integer :: error = NONE
      logical :: recoil = .false.
+     logical :: keep_energy = .true.
    contains
    <<SF epa: epa data: TBP>>  
   end type epa_data_t
@@ -14297,14 +14582,15 @@ particle mass.
 <<SF epa: epa data: TBP>>=
   procedure :: init => epa_data_init
 <<SF epa: procedures>>=
-  subroutine epa_data_init &
-       (data, model, pdg_in, alpha, x_min, q_min, E_max, mass, recoil)
+  subroutine epa_data_init (data, model, pdg_in, alpha, &
+       x_min, q_min, E_max, mass, recoil, keep_energy)
     class(epa_data_t), intent(inout) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     real(default), intent(in) :: alpha, x_min, q_min, E_max
     real(default), intent(in), optional :: mass
     logical, intent(in), optional :: recoil
+    logical, intent(in), optional :: keep_energy
     integer :: n_flv, i
     data%model => model
     n_flv = pdg_array_get_length (pdg_in)
@@ -14327,6 +14613,9 @@ particle mass.
     end select     
     if (present (recoil)) then
        data%recoil = recoil
+    end if
+    if (present (keep_energy)) then
+       data%keep_energy = keep_energy
     end if
     if (present (mass)) then
        data%mass = mass
@@ -14390,18 +14679,19 @@ initialization, unless we are sure everything is ok.
           call data%flv_in(i)%write (u)
        end do
        write (u, *)
-       write (u, "(3x,A," // FMT_19 // ")") "  alpha  = ", data%alpha
-       write (u, "(3x,A," // FMT_19 // ")") "  x_min  = ", data%x_min
-       write (u, "(3x,A," // FMT_19 // ")") "  x_max  = ", data%x_max
-       write (u, "(3x,A," // FMT_19 // ")") "  q_min  = ", data%q_min
-       write (u, "(3x,A," // FMT_19 // ")") "  q_max  = ", data%q_max
-       write (u, "(3x,A," // FMT_19 // ")") "  E_max  = ", data%e_max
-       write (u, "(3x,A," // FMT_19 // ")") "  mass   = ", data%mass
-       write (u, "(3x,A," // FMT_19 // ")") "  a      = ", data%a
-       write (u, "(3x,A," // FMT_19 // ")") "  c0     = ", data%c0
-       write (u, "(3x,A," // FMT_19 // ")") "  c1     = ", data%c1
-       write (u, "(3x,A," // FMT_19 // ")") "  log    = ", data%log
-       write (u, "(3x,A,L2)")      "  recoil = ", data%recoil
+       write (u, "(3x,A," // FMT_19 // ")") "  alpha    = ", data%alpha
+       write (u, "(3x,A," // FMT_19 // ")") "  x_min    = ", data%x_min
+       write (u, "(3x,A," // FMT_19 // ")") "  x_max    = ", data%x_max
+       write (u, "(3x,A," // FMT_19 // ")") "  q_min    = ", data%q_min
+       write (u, "(3x,A," // FMT_19 // ")") "  q_max    = ", data%q_max
+       write (u, "(3x,A," // FMT_19 // ")") "  E_max    = ", data%e_max
+       write (u, "(3x,A," // FMT_19 // ")") "  mass     = ", data%mass
+       write (u, "(3x,A," // FMT_19 // ")") "  a        = ", data%a
+       write (u, "(3x,A," // FMT_19 // ")") "  c0       = ", data%c0
+       write (u, "(3x,A," // FMT_19 // ")") "  c1       = ", data%c1
+       write (u, "(3x,A," // FMT_19 // ")") "  log      = ", data%log
+       write (u, "(3x,A,L2)")      "  recoil   = ", data%recoil
+       write (u, "(3x,A,L2)")      "  keep en. = ", data%keep_energy
     else
        write (u, "(3x,A)") "[undefined]"
     end if
@@ -14528,12 +14818,12 @@ elements for all flavor and helicity combinations.
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     integer, dimension(3) :: hel_lock
-    type(polarization_t) :: pol
-    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel
+    type(polarization_t), target :: pol
+    type(quantum_numbers_t), dimension(1) :: qn_fc
     type(flavor_t) :: flv_photon
     type(color_t) :: col_photon
-    type(quantum_numbers_t) :: qn_photon, qn, qn_rad
-    type(state_iterator_t) :: it_hel
+    type(quantum_numbers_t) :: qn_hel, qn_photon, qn, qn_rad
+    type(polarization_iterator_t) :: it_hel
     integer :: i
     mask = quantum_numbers_mask (.false., .false., &
          mask_h = [.false., .false., .true.])
@@ -14547,22 +14837,27 @@ elements for all flavor and helicity combinations.
        call col_photon%init ()
        call qn_photon%init (flv_photon, col_photon)
        do i = 1, size (data%flv_in)
-          call polarization_init_generic (pol, data%flv_in(i))
+          call pol%init_generic (data%flv_in(i))
           call qn_fc(1)%init ( &
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i), 1))
-          call it_hel%init (pol%state)
+          call it_hel%init (pol)
           do while (it_hel%is_valid ())
              qn_hel = it_hel%get_quantum_numbers ()
-             qn = qn_hel(1) .merge. qn_fc(1)
+             qn = qn_hel .merge. qn_fc(1)
              qn_rad = qn
              call qn_rad%tag_radiated ()
              call sf_int%add_state ([qn, qn_rad, qn_photon])
              call it_hel%advance ()
           end do
-          call polarization_final (pol)
+          !  call pol%final ()
        end do
        call sf_int%freeze ()
+       if (data%keep_energy) then
+          sf_int%on_shell_mode = KEEP_ENERGY
+       else 
+          sf_int%on_shell_mode = KEEP_MOMENTUM
+       end if       
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -14576,7 +14871,7 @@ the state matrix may be helicity-contracted.
   procedure :: setup_constants => epa_setup_constants
 <<SF epa: procedures>>=
   subroutine epa_setup_constants (sf_int)
-    class(epa_t), intent(inout) :: sf_int
+    class(epa_t), intent(inout), target :: sf_int
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     integer :: i, n_me
@@ -15375,7 +15670,7 @@ module sf_ewa
   use io_units
   use constants, only: pi
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
   use physics_defs, only: W_BOSON, Z_BOSON
   use lorentz
@@ -15532,8 +15827,8 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
      real(default) :: mZ
      real(default) :: coeff
      logical :: mass_set = .false.
-     logical :: keep_momentum
-     logical :: keep_energy     
+     logical :: recoil = .false.
+     logical :: keep_energy = .false.
      integer :: id = 0 
      integer :: error = NONE
    contains
@@ -15557,12 +15852,12 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
   procedure :: init => ewa_data_init
 <<SF ewa: procedures>>=
   subroutine ewa_data_init (data, model, pdg_in, x_min, pt_max, &
-        sqrts, keep_momentum, keep_energy, mass)
+        sqrts, recoil, keep_energy, mass)
     class(ewa_data_t), intent(inout) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     real(default), intent(in) :: x_min, pt_max, sqrts
-    logical, intent(in) :: keep_momentum, keep_energy
+    logical, intent(in) :: recoil, keep_energy
     real(default), intent(in), optional :: mass
     real(default) :: g, ee
     integer :: n_flv, i
@@ -15601,7 +15896,7 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
     data%cv = g / 2._default
     data%ca = g / 2._default   
     data%coeff = 1._default / (8._default * PI**2)
-    data%keep_momentum = keep_momentum
+    data%recoil = recoil
     data%keep_energy = keep_energy
     if (present (mass)) then
        data%mass = mass
@@ -15729,8 +16024,8 @@ initialization, unless we are sure everything is ok.
        write (u, "(3x,A," // FMT_19 // ")") "  sinthw    = ", data%sinthw    
        write (u, "(3x,A," // FMT_19 // ")") "  mZ        = ", data%mZ
        write (u, "(3x,A," // FMT_19 // ")") "  mW        = ", data%mW
-       write (u, "(3x,A,L2)")      "  keep_mom. = ", data%keep_momentum
-       write (u, "(3x,A,L2)")      "  keep_en.  = ", data%keep_energy 
+       write (u, "(3x,A,L2)")      "  recoil    = ", data%recoil
+       write (u, "(3x,A,L2)")      "  keep en.  = ", data%keep_energy 
        write (u, "(3x,A,I2)")      "  PDG (VB)  = ", data%id
     else
        write (u, "(3x,A)") "[undefined]"
@@ -15738,16 +16033,15 @@ initialization, unless we are sure everything is ok.
   end subroutine ewa_data_write
 
 @ %def ewa_data_write
-@ The number of parameters is one for collinear splitting, in case one
-of the options [[keep_energy]] or [[keep_momentum]] is set, we take
-the recoil into account.
+@ The number of parameters is one for collinear splitting, in case the
+[[recoil]] option is set, we take the recoil into account.
 <<SF ewa: ewa data: TBP>>=
   procedure :: get_n_par => ewa_data_get_n_par
 <<SF ewa: procedures>>=
   function ewa_data_get_n_par (data) result (n)
     class(ewa_data_t), intent(in) :: data
     integer :: n
-    if (data%keep_energy .or. data%keep_momentum) then
+    if (data%recoil) then
        n = 3
     else
        n = 1
@@ -15870,12 +16164,12 @@ particles, therefore we need to probe only the first one.
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     integer, dimension(3) :: hel_lock
-    type(polarization_t) :: pol
-    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel, qn_fc_fin
+    type(polarization_t), target :: pol
+    type(quantum_numbers_t), dimension(1) :: qn_fc, qn_fc_fin
     type(flavor_t) :: flv_z, flv_wp, flv_wm
     type(color_t) :: col0
-    type(quantum_numbers_t) :: qn_z, qn_wp, qn_wm, qn, qn_rad, qn_w
-    type(state_iterator_t) :: it_hel
+    type(quantum_numbers_t) :: qn_hel, qn_z, qn_wp, qn_wm, qn, qn_rad, qn_w
+    type(polarization_iterator_t) :: it_hel
     integer :: i, isospin
     select type (data)
     type is (ewa_data_t)   
@@ -15892,20 +16186,20 @@ particles, therefore we need to probe only the first one.
           call flv_z%init (Z_BOSON, data%model)
           call qn_z%init (flv_z, col0)
           do i = 1, size (data%flv_in)
-             call polarization_init_generic (pol, data%flv_in(i))
+             call pol%init_generic (data%flv_in(i))
              call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
                   col = color_from_flavor (data%flv_in(i), 1))
-             call it_hel%init (pol%state)
+             call it_hel%init (pol)
              do while (it_hel%is_valid ())
                 qn_hel = it_hel%get_quantum_numbers ()
-                qn = qn_hel(1) .merge. qn_fc(1)
+                qn = qn_hel .merge. qn_fc(1)
                 qn_rad = qn
                 call qn_rad%tag_radiated ()
                 call sf_int%add_state ([qn, qn_rad, qn_z])
                 call it_hel%advance ()
              end do
-             call polarization_final (pol)
+             !  call pol%final ()
           end do
        case (24)    
           call sf_int%base_init (mask, [data%mass**2], [data%m_out**2], &
@@ -15932,39 +16226,32 @@ particles, therefore we need to probe only the first one.
                    qn_w = qn_wm
                 end if
              end if
-             call polarization_init_generic (pol, data%flv_in(i))
+             call pol%init_generic (data%flv_in(i))
              call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
                   col = color_from_flavor (data%flv_in(i), 1))
              call qn_fc_fin(1)%init ( &
                   flv = data%flv_out(i), &
                   col = color_from_flavor (data%flv_out(i), 1))
-             call it_hel%init (pol%state)
+             call it_hel%init (pol)
              do while (it_hel%is_valid ())
                 qn_hel = it_hel%get_quantum_numbers ()
-                qn = qn_hel(1) .merge. qn_fc(1)
-                qn_rad = qn_hel(1) .merge. qn_fc_fin(1)
+                qn = qn_hel .merge. qn_fc(1)
+                qn_rad = qn_hel .merge. qn_fc_fin(1)
                 call qn_rad%tag_radiated ()
                 call sf_int%add_state ([qn, qn_rad, qn_w])
                 call it_hel%advance ()
              end do
-             call polarization_final (pol)    
+             ! call pol%final ()    
           end do
        case default
           call msg_fatal ("EWA initialization failed: wrong particle type.")
        end select
        call sf_int%freeze ()
-       if (data%keep_momentum) then
-          if (data%keep_energy) then
-             call msg_fatal ("EWA: momentum and energy" // &
-                  "cannot be simultaneously conserved.")
-          else          
-             sf_int%on_shell_mode = KEEP_MOMENTUM
-          end if
+       if (data%keep_energy) then
+          sf_int%on_shell_mode = KEEP_ENERGY
        else 
-          if (data%keep_energy) then
-             sf_int%on_shell_mode = KEEP_ENERGY
-          end if
+          sf_int%on_shell_mode = KEEP_MOMENTUM
        end if
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
@@ -15979,7 +16266,7 @@ the state matrix may be helicity-contracted.
   procedure :: setup_constants => ewa_setup_constants
 <<SF ewa: procedures>>=
   subroutine ewa_setup_constants (sf_int)
-    class(ewa_t), intent(inout) :: sf_int
+    class(ewa_t), intent(inout), target :: sf_int
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     real(default) :: q, t3
@@ -16051,7 +16338,7 @@ discussed above is applied.
     real(default) :: xb1, e_1
     real(default) :: x0, x1, lx0, lx1, lx
     e_1 = energy (sf_int%get_momentum (1))
-    if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
+    if (sf_int%data%recoil) then
        select case (sf_int%data%id)
        case (23)
           x0 = max (sf_int%data%x_min, sf_int%data%mz / e_1)
@@ -16116,7 +16403,7 @@ can set momenta by the same formula as for normal kinematics.
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     e_1 = energy (sf_int%get_momentum (1))    
-    if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
+    if (sf_int%data%recoil) then
        select case (sf_int%data%id)
        case (23)
           x0 = max (sf_int%data%x_min, sf_int%data%mz / e_1)
@@ -16402,7 +16689,7 @@ structure function.
     select type (data)
     type is (ewa_data_t)
        call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000._default, .false., .false.)
+            500._default, 3000._default, .false., .true.)
        call data%set_id (24)
     end select
        
@@ -16527,7 +16814,7 @@ structure function, applying the standard single-particle mapping.
     select type (data)
     type is (ewa_data_t)
        call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000._default, .false., .false.)
+            500._default, 3000._default, .false., .true.)
        call data%set_id (24)
     end select
     
@@ -16652,7 +16939,7 @@ structure function.
     select type (data)
     type is (ewa_data_t)
        call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000.0_default, .false., .true.)
+            500._default, 3000.0_default, .true., .true.)
        call data%set_id (24)
     end select    
 
@@ -16778,7 +17065,7 @@ non-uniform quantum numbers.
     select type (data)
     type is (ewa_data_t)
        call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000._default, .false., .false.)
+            500._default, 3000._default, .false., .true.)
        call data%set_id (24)
     end select
        
@@ -16874,7 +17161,7 @@ module sf_escan
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_12
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use diagnostics
   use lorentz
   use pdg_arrays
@@ -17067,8 +17354,8 @@ are always using only one beam parameter.
     real(default), dimension(2) :: m2
     real(default), dimension(0) :: mr2
     type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
-    type(polarization_t) :: pol1, pol2
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     integer :: j1, j2
     select type (data)
     type is (escan_data_t)
@@ -17083,7 +17370,7 @@ are always using only one beam parameter.
           call qn_fc(3)%init ( &
                flv = data%flv_in(j1,1), &
                col = color_from_flavor (data%flv_in(j1,1)))
-          call polarization_init_generic (pol1, data%flv_in(j1,1))
+          call pol1%init_generic (data%flv_in(j1,1))
           do j2 = 1, data%n_flv(2)
              call qn_fc(2)%init ( &
                   flv = data%flv_in(j2,2), &
@@ -17091,24 +17378,24 @@ are always using only one beam parameter.
              call qn_fc(4)%init ( &
                   flv = data%flv_in(j2,2), &
                   col = color_from_flavor (data%flv_in(j2,2)))
-             call polarization_init_generic (pol2, data%flv_in(j2,2))
-             call it_hel1%init (pol1%state)
+             call pol2%init_generic (data%flv_in(j2,2))
+             call it_hel1%init (pol1)
              do while (it_hel1%is_valid ())
-                qn_hel(1:1) = it_hel1%get_quantum_numbers ()
-                qn_hel(3:3) = it_hel1%get_quantum_numbers ()
-                call it_hel2%init (pol2%state)
+                qn_hel(1) = it_hel1%get_quantum_numbers ()
+                qn_hel(3) = it_hel1%get_quantum_numbers ()
+                call it_hel2%init (pol2)
                 do while (it_hel2%is_valid ())
-                   qn_hel(2:2) = it_hel2%get_quantum_numbers ()
-                   qn_hel(4:4) = it_hel2%get_quantum_numbers ()
+                   qn_hel(2) = it_hel2%get_quantum_numbers ()
+                   qn_hel(4) = it_hel2%get_quantum_numbers ()
                    qn = qn_hel .merge. qn_fc
                    call sf_int%add_state (qn)
                    call it_hel2%advance ()
                 end do
                 call it_hel1%advance ()
              end do
-             call polarization_final (pol2)
+             ! call pol2%final ()
           end do
-          call polarization_final (pol1)
+          ! call pol1%final ()
        end do
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
@@ -17654,8 +17941,8 @@ needs a random-number generator, obviously.
     type(quantum_numbers_mask_t), dimension(4) :: mask
     integer, dimension(4) :: hel_lock
     type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
-    type(polarization_t) :: pol1, pol2
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     integer :: i
     select type (data)
     type is (gaussian_data_t)
@@ -17672,24 +17959,24 @@ needs a random-number generator, obviously.
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i)))
        end do
-       call polarization_init_generic (pol1, data%flv_in(1))
-       call it_hel1%init (pol1%state)
+       call pol1%init_generic (data%flv_in(1))
+       call it_hel1%init (pol1)
        do while (it_hel1%is_valid ())
-          qn_hel(1:1) = it_hel1%get_quantum_numbers ()
-          qn_hel(3:3) = it_hel1%get_quantum_numbers ()
-          call polarization_init_generic (pol2, data%flv_in(2))
-          call it_hel2%init (pol2%state)
+          qn_hel(1) = it_hel1%get_quantum_numbers ()
+          qn_hel(3) = it_hel1%get_quantum_numbers ()
+          call pol2%init_generic (data%flv_in(2))
+          call it_hel2%init (pol2)
           do while (it_hel2%is_valid ())
-             qn_hel(2:2) = it_hel2%get_quantum_numbers ()
-             qn_hel(4:4) = it_hel2%get_quantum_numbers ()
+             qn_hel(2) = it_hel2%get_quantum_numbers ()
+             qn_hel(4) = it_hel2%get_quantum_numbers ()
              qn = qn_hel .merge. qn_fc
              call sf_int%add_state (qn)
              call it_hel2%advance ()
           end do
-          call polarization_final (pol2)
+          ! call pol2%final ()
           call it_hel1%advance ()
        end do
-       call polarization_final (pol2)
+       ! call pol1%final ()
        call sf_int%freeze ()
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
@@ -18318,8 +18605,8 @@ Flavor and polarization carried through, no radiated particles.
     type(quantum_numbers_mask_t), dimension(4) :: mask
     integer, dimension(4) :: hel_lock
     type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
-    type(polarization_t) :: pol1, pol2
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     integer :: i
     select type (data)
     type is (beam_events_data_t)
@@ -18336,24 +18623,24 @@ Flavor and polarization carried through, no radiated particles.
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i)))
        end do
-       call polarization_init_generic (pol1, data%flv_in(1))
-       call it_hel1%init (pol1%state)
+       call pol1%init_generic (data%flv_in(1))
+       call it_hel1%init (pol1)
        do while (it_hel1%is_valid ())
-          qn_hel(1:1) = it_hel1%get_quantum_numbers ()
-          qn_hel(3:3) = it_hel1%get_quantum_numbers ()
-          call polarization_init_generic (pol2, data%flv_in(2))
-          call it_hel2%init (pol2%state)
+          qn_hel(1) = it_hel1%get_quantum_numbers ()
+          qn_hel(3) = it_hel1%get_quantum_numbers ()
+          call pol2%init_generic (data%flv_in(2))
+          call it_hel2%init (pol2)
           do while (it_hel2%is_valid ())
-             qn_hel(2:2) = it_hel2%get_quantum_numbers ()
-             qn_hel(4:4) = it_hel2%get_quantum_numbers ()
+             qn_hel(2) = it_hel2%get_quantum_numbers ()
+             qn_hel(4) = it_hel2%get_quantum_numbers ()
              qn = qn_hel .merge. qn_fc
              call sf_int%add_state (qn)
              call it_hel2%advance ()
           end do
-          call polarization_final (pol2)
+          ! call pol2%final ()
           call it_hel1%advance ()
        end do
-       call polarization_final (pol2)
+       ! call pol1%final ()
        call sf_int%freeze ()
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
@@ -19210,14 +19497,14 @@ depends. Hence, a dummy routine.
     logical, dimension(6) :: mask_h
     type(quantum_numbers_mask_t), dimension(6) :: mask 
     integer, dimension(6) :: hel_lock 
-    type(polarization_t) :: pol1, pol2
-    type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_hel1, qn_fc2, qn_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_fc2
     type(flavor_t) :: flv_photon
     type(color_t) :: col0
     real(default), dimension(2) :: mi2, mr2, mo2
-    type(quantum_numbers_t) :: qn_photon, qn1, qn2
+    type(quantum_numbers_t) :: qn_hel1, qn_hel2, qn_photon, qn1, qn2
     type(quantum_numbers_t), dimension(6) :: qn
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     hel_lock = 0
     mask_h = .false.
     select type (data)
@@ -19249,25 +19536,25 @@ depends. Hence, a dummy routine.
           call flv_photon%init (PHOTON, data%model)
           call col0%init ()
           call qn_photon%init (flv_photon, col0)
-          call polarization_init_generic (pol1, data%flv_in(1))
+          call pol1%init_generic (data%flv_in(1))
           call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
-          call polarization_init_generic (pol2, data%flv_in(2))
+          call pol2%init_generic (data%flv_in(2))
           call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
-          call it_hel1%init (pol1%state)
+          call it_hel1%init (pol1)
           
           do while (it_hel1%is_valid ()) 
              qn_hel1 = it_hel1%get_quantum_numbers ()
-             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn1 = qn_hel1 .merge. qn_fc1(1) 
              qn(1) = qn1
              if (data%photon(1)) then
                 qn(3) = qn1;  qn(5) = qn_photon
              else
                 qn(3) = qn_photon;  qn(5) = qn1
              end if
-             call it_hel2%init (pol2%state) 
+             call it_hel2%init (pol2) 
              do while (it_hel2%is_valid ()) 
                 qn_hel2 = it_hel2%get_quantum_numbers () 
-                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn2 = qn_hel2 .merge. qn_fc2(1) 
                 qn(2) = qn2
                 if (data%photon(2)) then
                    qn(4) = qn2;  qn(6) = qn_photon
@@ -19280,8 +19567,8 @@ depends. Hence, a dummy routine.
              end do
              call it_hel1%advance ()
           end do
-          call polarization_final (pol1)
-          call polarization_final (pol2)
+!           call pol1%final ()
+!           call pol2%final ()
           call sf_int%freeze () 
           call sf_int%set_incoming ([1,2])
           call sf_int%set_radiated ([3,4])
@@ -19308,25 +19595,25 @@ depends. Hence, a dummy routine.
           call flv_photon%init (PHOTON, data%model)
           call col0%init ()
           call qn_photon%init (flv_photon, col0)
-          call polarization_init_generic (pol1, data%flv_in(1))
+          call pol1%init_generic (data%flv_in(1))
           call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
-          call polarization_init_generic (pol2, data%flv_in(2))
+          call pol2%init_generic (data%flv_in(2))
           call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
-          call it_hel1%init (pol1%state)
+          call it_hel1%init (pol1)
           
           do while (it_hel1%is_valid ()) 
              qn_hel1 = it_hel1%get_quantum_numbers ()
-             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn1 = qn_hel1 .merge. qn_fc1(1) 
              qn(1) = qn1
              if (data%photon(1)) then
                 qn(3) = qn_photon
              else
                 qn(3) = qn1
              end if
-             call it_hel2%init (pol2%state) 
+             call it_hel2%init (pol2) 
              do while (it_hel2%is_valid ()) 
                 qn_hel2 = it_hel2%get_quantum_numbers () 
-                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn2 = qn_hel2 .merge. qn_fc2(1) 
                 qn(2) = qn2
                 if (data%photon(2)) then
                    qn(4) = qn_photon
@@ -19338,8 +19625,8 @@ depends. Hence, a dummy routine.
              end do
              call it_hel1%advance ()
           end do
-          call polarization_final (pol1)
-          call polarization_final (pol2)
+!           call pol1%final ()
+!           call pol2%final ()
           call sf_int%freeze () 
           call sf_int%set_incoming ([1,2])
           call sf_int%set_outgoing ([3,4])
@@ -19917,7 +20204,7 @@ module sf_circe2
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
   use os_interface
   use physics_defs, only: PHOTON, ELECTRON

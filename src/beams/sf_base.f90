@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -463,7 +463,7 @@ contains
   end subroutine sf_int_set_outgoing
 
   subroutine sf_int_setup_constants (sf_int)
-    class(sf_int_t), intent(inout) :: sf_int
+    class(sf_int_t), intent(inout), target :: sf_int
   end subroutine sf_int_setup_constants
   
   subroutine sf_int_set_beam_index (sf_int, beam_index)

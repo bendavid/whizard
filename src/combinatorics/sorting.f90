@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -105,9 +105,13 @@ contains
     integer, dimension(size(val)) :: idx
     integer :: n, i, s, b1, b2, e1, e2
     n = size (idx)
-    forall (i = 1:n)
+    !!! !!! !!! Work around ifort 16.0.(0/1) compiler bug
+    !forall (i = 1:n)
+       !idx(i) = i
+    !end forall
+    do i = 1, n
        idx(i) = i
-    end forall
+    end do
     s = 1
     do while (s < n)
        do b1 = 1, n-s, 2*s
@@ -125,9 +129,13 @@ contains
     integer, dimension(size(val)) :: idx
     integer :: n, i, s, b1, b2, e1, e2
     n = size (idx)
-    forall (i = 1:n)
+    !!! !!! !!! Work around ifort 16.0.(0/1) compiler bug
+    !forall (i = 1:n)
+       !idx(i) = i
+    !end forall
+    do i = 1, n
        idx(i) = i
-    end forall
+    end do
     s = 1
     do while (s < n)
        do b1 = 1, n-s, 2*s
@@ -145,9 +153,13 @@ contains
     integer, dimension(size(val)) :: idx
     integer :: n, i, s, b1, b2, e1, e2
     n = size (idx)
-    forall (i = 1:n)
+    !!! !!! !!! Work around ifort 16.0.(0/1) compiler bug
+    !forall (i = 1:n)
+       !idx(i) = i
+    !end forall
+    do i = 1, n
        idx(i) = i
-    end forall
+    end do
     s = 1
     do while (s < n)
        do b1 = 1, n-s, 2*s

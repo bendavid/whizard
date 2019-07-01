@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,12 +36,14 @@ libfks_la_SOURCES = \
   nlo_data.f90 \
   virtual.f90 \
   real_subtraction.f90 \
-  pdf_subtraction.f90 \
+  dglap_remnant.f90 \
   nlo_controller.f90 \
   phs_fks.f90
 
 libfks_ut_la_SOURCES = \
-  phs_fks_uti.f90 phs_fks_ut.f90
+  phs_fks_uti.f90 phs_fks_ut.f90 \
+  fks_regions_uti.f90 fks_regions_ut.f90 \
+  nlo_controller_uti.f90 nlo_controller_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = fks.nw
@@ -67,16 +69,19 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../parsing/Modules \
+  ../user/Modules \
   ../rng/Modules \
   ../physics/Modules \
   ../qft/Modules \
+  ../model_features/Modules \
   ../types/Modules \
   ../particles/Modules \
   ../matrix_elements/Modules \
   ../beams/Modules \
   ../me_methods/Modules \
   ../phase_space/Modules \
-  ../variables/Modules
+  ../variables/Modules \
+  ../threshold/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -120,7 +125,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../lhapdf -I../pdf_builtin -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../user -I../rng -I../physics -I../qft -I../model_features -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../threshold -I../lhapdf -I../pdf_builtin -I../fastjet
 
 
 ########################################################################

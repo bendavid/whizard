@@ -43,6 +43,6 @@ with open(filename, 'r') as infile:
 chi2_per_dof = sum_chi2 / dof
 print (4 * '{:<30s}').format("Max Pull", "Chi2", "dof", "Chi2/dof")
 print (4 * '{:<30.10f}').format(pull_max, sum_chi2, dof, chi2_per_dof)
-returncode = 0 if pull_max < 3 and chi2_per_dof < 2 else 1
+returncode = 0 if pull_max < 3 and chi2_per_dof < 3 else 1
 print returncode
 sys.exit(returncode)

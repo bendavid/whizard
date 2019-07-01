@@ -108,8 +108,9 @@ This type stores information about fixed-order NLO events.
 <<Event base: types>>=
   type :: nlo_event_info_t
     logical :: nlo_event = .false.
-    type(string_t), dimension(N_SUPPORTED_EVENT_FORMATS) :: &
+    type(string_t), dimension(:), allocatable :: &
        supported_event_formats
+    integer :: fixed_mci = 0
   contains
   <<Event base: nlo event info: TBP>>
   end type nlo_event_info_t
@@ -122,6 +123,7 @@ specification in an array. Therefore, it has to be done separately.
 <<Event base: procedures>>=
   subroutine nlo_event_info_init_sample_formats (nlo_info)
     class(nlo_event_info_t), intent(inout) :: nlo_info
+    allocate (nlo_info%supported_event_formats (N_SUPPORTED_EVENT_FORMATS))
     nlo_info%supported_event_formats(1) = var_str ("hepmc")
     nlo_info%supported_event_formats(2) = var_str ("debug")
   end subroutine nlo_event_info_init_sample_formats
@@ -746,6 +748,17 @@ are not deleted.  In particular, the initialization is kept.
 @ %def generic_event_is_nlo_event
 @
 <<Event base: generic event: TBP>>=
+  procedure :: get_fixed_mci => generic_event_get_fixed_mci
+<<Event base: procedures>>=
+  function generic_event_get_fixed_mci (event) result (i_mci)
+    integer :: i_mci
+    class(generic_event_t), intent(in) :: event
+    i_mci = event%nlo_info%fixed_mci
+  end function generic_event_get_fixed_mci
+
+@ %def generic_event_get_fixed_mci
+@ 
+<<Event base: generic event: TBP>>=
   procedure :: init_sample_formats => generic_event_init_sample_formats
 <<Event base: procedures>>=
   subroutine generic_event_init_sample_formats (event)
@@ -947,7 +960,7 @@ module eio_data
 <<Use kinds>>
 <<Use strings>>
   use io_units
-  use unit_tests, only: vanishes
+  use numeric_utils
   use diagnostics
 
   use event_base
@@ -5053,7 +5066,7 @@ module hep_common
 <<Use strings>>
   use io_units
   use diagnostics
-  use unit_tests, only: nearly_equal
+  use numeric_utils
   use physics_defs, only: HADRON_REMNANT
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -5121,7 +5134,7 @@ undefined).
 \subsection{Particle characteristics}
 The PDG code:
 <<HEP common: variables>>=
-  integer, dimension(MAXNUP) :: IDUP
+  integer, dimension(MAXNUP), public :: IDUP
 @ %def IDUP
 @ The status code.  Incoming: $-1$, outgoing: $+1$.  Intermediate
 t-channel propagator: $-2$ (currently not used by WHIZARD).
@@ -5860,7 +5873,7 @@ requires this computation.
     type(vector4_t), intent(in) :: p_mother
     type(vector3_t) :: s3, p3
     type(vector4_t) :: s4
-    s3 = vector3_moving (polarization_get_axis (pol))
+    s3 = vector3_moving (pol%get_axis ())
     p3 = space_part (p)
     s4 = rotation_to_2nd (3, p3) * vector4_moving (0._default, s3)
     SPINUP(i) = enclosed_angle_ct (s4, p_mother)
@@ -5947,7 +5960,7 @@ values as follows:
 @ %def NEVHEP
 @  [[NHEP]] holds the number of entries for this event.
 <<HEP common: variables>>=
-  integer :: NHEP
+  integer, public :: NHEP
 
 @ %def NHEP
 @ The entry [[ISTHEP(N)]] gives the status code for the [[N]]th entry,
@@ -5961,28 +5974,28 @@ with the following semantics:
   11-200   at the disposal of each model builder.
  201-      at the disposal of users.
 <<HEP common: variables>>=
-  integer, dimension(NMXHEP) :: ISTHEP
+  integer, dimension(NMXHEP), public :: ISTHEP
 
 @ %def ISTHEP 
 @ 
 The Particle Data Group has proposed standard particle codes,
 which are to be stored in [[IDHEP(N)]].
 <<HEP common: variables>>=
-  integer, dimension(NMXHEP) :: IDHEP
+  integer, dimension(NMXHEP), public :: IDHEP
 
 @ %def IDHEP
 @ [[JMOHEP(1,N)]] points to the mother of the [[N]]th entry, if any.
 It is set to zero for initial entries.
 [[JMOHEP(2,N)]] points to the second mother, if any.
 <<HEP common: variables>>=
-  integer, dimension(2, NMXHEP) :: JMOHEP
+  integer, dimension(2, NMXHEP), public :: JMOHEP
 
 @ %def JMOHEP
 @ [[JDAHEP(1,N)]] and [[JDAHEP(2,N)]] point to the first and last daughter 
 of the [[N]]th entry, if any.  These are zero for entries which have not
 yet decayed.  The other daughters are stored in between these two.
 <<HEP common: variables>>=
-  integer, dimension(2, NMXHEP) :: JDAHEP
+  integer, dimension(2, NMXHEP), public :: JDAHEP
 
 @ %def JDAHEP
 @ In [[PHEP]] we store the momentum of the particle, more specifically
@@ -5992,7 +6005,7 @@ people), measured in GeV/c.  [[PHEP(4,N)]] contains the energy in GeV
 and [[PHEP(5,N)]] the mass in GeV$/c^2$.  The latter may be negative for
 spacelike partons.
 <<HEP common: variables>>=
-  double precision, dimension(5, NMXHEP) :: PHEP
+  double precision, dimension(5, NMXHEP), public :: PHEP
   
 @ %def PHEP
 @ Finally [[VHEP]] is the place to store the position of the production
@@ -6074,7 +6087,7 @@ flow etc.
        eventweightlh, alphaqedlh, alphaqcdlh, scalelh, &
        spinlh, icolorflowlh, idruplh
   save /HEPEV4/
-       
+
 @ %def HEPEV4
 @ Filling HEPEVT: If the event count is not provided, set [[NEVHEP]]
 to zero.  If the event count is [[-1]] or [[-2]], the record
@@ -6191,23 +6204,11 @@ the exception of lifetime and spin, where default values are stored.
        end if
        if (present (pol) .and. &
             pol_status == PRT_GENERIC_POLARIZATION) then
-          if (polarization_is_polarized (pol)) then
-             call polarization_to_angles (pol, r, theta, phi)
-             spinlh(:,i) = [r, theta, phi]
-          end if
+          if (pol%is_polarized ()) &
+             spinlh(:,i) = pol%get_axis ()
        else
-          if (pol_status == PRT_DEFINITE_HELICITY) then
-             select case (hel)
-             case (1:)
-                spinlh(:,i) = [one, zero, zero]
-             case (:-1)
-                spinlh(:,i) = [one, PI, zero]
-             case (0)
-                spinlh(:,i) = [one, PI/2, zero]
-             end select
-          else
-             spinlh(:,i) = [zero, zero, zero]
-          end if
+          spinlh(:,i) = zero
+          spinlh(3,i) = hel
        end if
     end if
   end subroutine hepevt_set_particle
@@ -6491,20 +6492,25 @@ From this set we fill the common block.  Event information such as
 process ID and weight is not transferred here; this has to be done by
 the caller.  The spin information is set only if the particle has a
 unique mother, and if its polarization is fully defined.
+
+We use this routine also to hand over information to Pythia which lets
+Tauola access SPINUP. Tauola expects in SPINUP the helicity and not the
+LHA convention. We switch to this mode with [[tauola_convention]].
 <<HEP common: public>>=
   public :: hepeup_from_particle_set
 <<HEP common: procedures>>=
   subroutine hepeup_from_particle_set (pset_in, &
-     keep_beams, keep_remnants)
+     keep_beams, keep_remnants, tauola_convention)
     type(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), target :: pset
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: tauola_convention
     integer :: i, n_parents, status, n_tot
     integer, dimension(1) :: i_mother
-    logical :: activate_remnants
-    activate_remnants = .true.
-    if (present (keep_remnants))  activate_remnants = keep_remnants
+    logical :: kr, tc
+    kr = .true.;  if (present (keep_remnants))  kr = keep_remnants
+    tc = .false.;  if (present (tauola_convention))  tc = tauola_convention
     call pset_in%filter_particles (pset, real_parents = .true. , &
        keep_beams = keep_beams, keep_virtuals = .false.)
     n_tot = pset%get_n_tot ()
@@ -6512,9 +6518,8 @@ unique mother, and if its polarization is fully defined.
     do i = 1, n_tot
        associate (prt => pset%prt(i))
          status = prt%get_status ()
-         if (activate_remnants &
-              .and. status == PRT_BEAM_REMNANT &
-              .and. prt%get_n_children () == 0) &
+         if (kr .and. status == PRT_BEAM_REMNANT &
+                .and. prt%get_n_children () == 0) &
               status = PRT_OUTGOING
          call hepeup_set_particle (i, &
               prt%get_pdg (), &
@@ -6524,14 +6529,23 @@ unique mother, and if its polarization is fully defined.
               prt%get_momentum (), &
               prt%get_p2 ())
          n_parents = prt%get_n_parents ()
-         if (n_parents == 1) then
-            i_mother = prt%get_parents ()
+         call hepeup_set_particle_lifetime (i, &
+              prt%get_lifetime ())
+         if (.not. tc) then
+            if (n_parents == 1) then
+               i_mother = prt%get_parents ()
+               select case (prt%get_polarization_status ())
+               case (PRT_GENERIC_POLARIZATION)
+                  call hepeup_set_particle_spin (i, &
+                       prt%get_momentum (), &
+                       prt%get_polarization (), &
+                       pset%prt(i_mother(1))%get_momentum ())
+               end select
+            end if
+         else
             select case (prt%get_polarization_status ())
-            case (PRT_GENERIC_POLARIZATION)
-               call hepeup_set_particle_spin (i, &
-                    prt%get_momentum (), &
-                    prt%get_polarization (), &
-                    pset%prt(i_mother(1))%get_momentum ())
+            case (PRT_DEFINITE_HELICITY)
+              SPINUP(i) = prt%get_helicity()
             end select
          end if
        end associate
@@ -6675,7 +6689,7 @@ its polarization is fully defined.
                  prt%get_vertex (), &
                  prt%get_color (), &
                  prt%get_polarization_status (), &
-                 fill_hepev4 = fill_hepev4)            
+                 fill_hepev4 = fill_hepev4)
          end select
        end associate
     end do
@@ -6943,8 +6957,8 @@ polarization density matrix, or for a definite (diagonal) helicity.
     type(hepmc_polarization_t), intent(out) :: hpol
     type(polarization_t), intent(in) :: pol
     real(default) :: r, theta, phi
-    if (polarization_is_polarized (pol)) then
-       call polarization_to_angles (pol, r, theta, phi)
+    if (pol%is_polarized ()) then
+       call pol%to_angles (r, theta, phi)
        if (r >= 0.5) then
           hpol%polarized = .true.
           hpol%obj = new_polarization &
@@ -7037,7 +7051,7 @@ abovementioned deficiencies).
     real(default) :: theta, phi
     theta = polarization_theta (hpol%obj)
     phi = polarization_phi (hpol%obj)
-    call polarization_init_angles (pol, flv, 1._default, theta, phi)
+    call pol%init_angles (flv, 1._default, theta, phi)
   end subroutine hepmc_polarization_to_pol
 
 @ %def hepmc_polarization_to_pol
@@ -8735,8 +8749,8 @@ object can be correctly initialized.
     call photon_data%set (spin_type=VECTOR)
     call photon_data%freeze ()
     call flv%init (photon_data)
-    call polarization_init_angles &
-         (pol, flv, 0.6_default, 1._default, 0.5_default)
+    call pol%init_angles &
+         (flv, 0.6_default, 1._default, 0.5_default)
 
     ! Event initialization
     call hepmc_event_init (evt, 20, 1)
@@ -8834,7 +8848,7 @@ object can be correctly initialized.
     write (u, "(A)")
         
     ! Wrapup
-    call polarization_final (pol)
+    ! call pol%final ()
     call hepmc_event_final (evt)
 
     write (u, "(A)")
@@ -9442,8 +9456,8 @@ not specified in the HepMC format).
     type(lcio_particle_t), intent(inout) :: prt
     type(polarization_t), intent(in) :: pol
     real(default) :: r, theta, phi
-    if (polarization_is_polarized (pol)) then
-       call polarization_to_angles (pol, r, theta, phi)
+    if (pol%is_polarized ()) then
+       call pol%to_angles (r, theta, phi)
        call lcio_particle_set_spin (prt%obj, &
             real(r, c_double), real (theta, c_double), real (phi, c_double))
     end if
@@ -9522,7 +9536,7 @@ abovementioned deficiencies).
     degree = lcio_polarization_degree (prt%obj)
     theta = lcio_polarization_theta (prt%obj)
     phi = lcio_polarization_phi (prt%obj)
-    call polarization_init_angles (pol, flv, degree, theta, phi)
+    call pol%init_angles (flv, degree, theta, phi)
   end subroutine lcio_particle_to_pol
 
 @ %def lcio_polarization_to_pol
@@ -10066,8 +10080,8 @@ end module lcio_interface_uti
     call photon_data%set (spin_type=VECTOR)
     call photon_data%freeze ()
     call flv%init (photon_data)
-    call polarization_init_angles &
-         (pol, flv, 0.6_default, 1._default, 0.5_default)
+    call pol%init_angles &
+         (flv, 0.6_default, 1._default, 0.5_default)
 
     ! Event initialization
     call lcio_event_init (evt, 20, 1, 42)
@@ -10168,7 +10182,7 @@ end module lcio_interface_uti
     write (u, "(A)")
         
     ! Wrapup
-    call polarization_final (pol)
+    ! call pol%final ()
     call lcio_event_final (evt)
     
     write (u, "(A)")
@@ -10208,7 +10222,7 @@ module hep_events
 <<Use strings>>
   use diagnostics
   use lorentz
-  use unit_tests, only: vanishes
+  use numeric_utils
   use flavors
   use colors
   use helicities
@@ -11207,7 +11221,7 @@ module eio_lhef
 <<Use strings>>
   use io_units
   use string_utils
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use os_interface
   use xml
@@ -13230,7 +13244,7 @@ Set parameters that are specifically used with STDHEP file formats.
        type is (eio_stdhep_hepevt_t)
           eio%extension = "hep"
        type is (eio_stdhep_hepev4_t)
-          eio%extension = "ev4.hep"          
+          eio%extension = "ev4.hep"
        type is (eio_stdhep_hepeup_t)
           eio%extension = "up.hep"
        end select
@@ -13348,8 +13362,8 @@ the common block contents are still intact.)
           call stdhep_write (100)
        type is (eio_stdhep_hepev4_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD <<Version>>", eio%n_events_expected) 
-          call stdhep_write (100)          
+               "WHIZARD <<Version>>", eio%n_events_expected)
+          call stdhep_write (100)
        end select
     end if
   end subroutine eio_stdhep_split_out
@@ -13399,9 +13413,9 @@ the common block contents are still intact.)
        call stdhep_write (100)
     type is (eio_stdhep_hepev4_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD <<Version>>", eio%n_events_expected) 
-       call stdhep_write (100)       
-    end select    
+            "WHIZARD <<Version>>", eio%n_events_expected)
+       call stdhep_write (100)
+    end select
     if (present (success))  success = .true.
   end subroutine eio_stdhep_init_out
     
@@ -13476,20 +13490,20 @@ squared matrix element, then the particle set.
           call stdhep_write (STDHEP_HEPEUP)
        type is (eio_stdhep_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &                         
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call stdhep_write (STDHEP_HEPEVT)
        type is (eio_stdhep_hepev4_t)
           call hepevt_from_event (event, &
-               process_index = eio%proc_num_id (i_prc), &               
-               i_evt = event%get_index (), &                         
+               process_index = eio%proc_num_id (i_prc), &
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order, &
                fill_hepev4 = .true.)
-          call stdhep_write (STDHEP_HEPEV4)          
+          call stdhep_write (STDHEP_HEPEV4)
        end select       
     else
        call eio%write ()
@@ -13660,7 +13674,7 @@ module eio_stdhep_uti
   use event_base
   use eio_data
   use eio_base
-  use xdr_stdhep
+  use xdr_wo_stdhep
 
   use eio_stdhep
 

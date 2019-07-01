@@ -120,6 +120,20 @@ instance is a pointer and should not be finalized here.
   end subroutine evt_final
 
 @ %def evt_final
+@ Print out the type of the [[evt]].
+<<Event transforms: evt: TBP>>=
+  procedure (evt_write_name), deferred :: write_name
+<<Event transforms: interfaces>>=
+  abstract interface
+     subroutine evt_write_name (evt, unit)
+       import
+       class(evt_t), intent(in) :: evt
+       integer, intent(in), optional :: unit
+     end subroutine evt_write_name
+  end interface
+
+@ %def evt_write_name
+@
 <<Event transforms: evt: TBP>>=
   procedure (evt_write), deferred :: write
 <<Event transforms: interfaces>>=
@@ -365,6 +379,19 @@ instance.  The [[generate]] methods do nothing.
   end type evt_trivial_t
 
 @ %def evt_trivial_t
+@ 
+<<Event transforms: evt trivial: TBP>>=
+  procedure :: write_name => evt_trivial_write_name
+<<Event transforms: procedures>>=
+  subroutine evt_trivial_write_name (evt, unit)
+    class(evt_trivial_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: trivial (hard process)"
+  end subroutine evt_trivial_write_name
+   
+@ %def evt_trivial_write_name
 @ The finalizer is trivial.  Some output:
 <<Event transforms: evt trivial: TBP>>=
   procedure :: write => evt_trivial_write
@@ -376,7 +403,7 @@ instance.  The [[generate]] methods do nothing.
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: trivial (hard process)"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag)
   end subroutine evt_trivial_write
@@ -551,8 +578,8 @@ nothing but to trigger event generation for an elementary process.
     call model%init_test ()
 
     allocate (process)
-    call process%init &
-         (procname1, run_id, lib, os_data, qcd, rng_factory, model)
+    call process%init (procname1, run_id, &
+         lib, os_data, qcd, rng_factory, model)
 
     allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
@@ -812,6 +839,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
+    call pygive ("MSTJ(28)=0")     !!! Switch off tau decays   
     if (debug_active (D_TRANSFORMS)) then
        call msg_debug (D_TRANSFORMS, "N", N)
        call pylist(2)
@@ -894,7 +922,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
 <<Hadrons: hadrons pythia8: TBP>>=
   procedure :: make_particle_set => hadrons_pythia8_make_particle_set
 <<Hadrons: procedures>>=
-  pure subroutine hadrons_pythia8_make_particle_set &
+  subroutine hadrons_pythia8_make_particle_set &
          (hadrons, particle_set, model, valid)
     class(hadrons_pythia8_t), intent(in) :: hadrons
     type(particle_set_t), intent(inout) :: particle_set
@@ -950,6 +978,19 @@ shower.
   end subroutine evt_hadrons_init
 
 @ %def evt_hadrons_init
+@
+<<Hadrons: evt hadrons: TBP>>=
+  procedure :: write_name => evt_hadrons_write_name
+<<Hadrons: procedures>>=
+  subroutine evt_hadrons_write_name (evt, unit)
+    class(evt_hadrons_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: hadronization"
+  end subroutine evt_hadrons_write_name
+   
+@ %def evt_hadrons_write_name
 @ Output.
 <<Hadrons: evt hadrons: TBP>>=
   procedure :: write => evt_hadrons_write
@@ -961,7 +1002,7 @@ shower.
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: hadronization"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (evt%particle_set_exists)  &
@@ -981,9 +1022,14 @@ shower.
     call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
     associate (settings => evt%hadrons%settings)
        settings%hadron_collision = .false.
-       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+       !!! !!! !!! Workaround for PGF90 16.1
+       !!! if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 39)) then
+       if (evt%particle_set%prt(1)%flv%get_pdg_abs () <= 39 .and. &
+           evt%particle_set%prt(2)%flv%get_pdg_abs () <= 39) then
           settings%hadron_collision = .false.
-       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+       !!! else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 100)) then
+       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. &
+                evt%particle_set%prt(2)%flv%get_pdg_abs () >= 100) then
           settings%hadron_collision = .true.
        else
           call msg_fatal ("evt_hadrons didn't recognize beams setup")
@@ -1089,6 +1135,18 @@ This is the type for the tau decay event transform.
   end type evt_tau_decays_t
 
 @ %def evt_tau_decays_t
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: write_name => evt_tau_decays_write_name
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_write_name (evt, unit)
+    class(evt_tau_decays_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: tau decays"
+  end subroutine evt_tau_decays_write_name
+   
+@ %def evt_tau_decays_write_name
 @ Output.
 <<Tau decays: evt tau decays: TBP>>=
   procedure :: write => evt_tau_decays_write
@@ -1100,7 +1158,7 @@ This is the type for the tau decay event transform.
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: tau decays"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (evt%particle_set_exists)  &
@@ -1169,7 +1227,7 @@ module decays
   use io_units
   use format_utils, only: write_indent, write_separator
   use format_defs, only: FMT_15
-  use unit_tests, only: nearly_equal, vanishes
+  use numeric_utils
   use diagnostics
   use flavors
   use helicities
@@ -3058,6 +3116,19 @@ transform) abstract type.
   end type evt_decay_t
 
 @ %def evt_decay_t
+@
+<<Decays: evt decay: TBP>>=
+  procedure :: write_name => evt_decay_write_name
+<<Decays: procedures>>=
+  subroutine evt_decay_write_name (evt, unit)
+    class(evt_decay_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: partonic decays"
+  end subroutine evt_decay_write_name
+
+@ %def evt_decay_write_name
 @ Output.  We display the currently selected decay tree, which
 includes configuration data, and the decay chain, i.e., the evaluators.
 <<Decays: evt decay: TBP>>=
@@ -3073,7 +3144,7 @@ includes configuration data, and the decay chain, i.e., the evaluators.
     verb = .true.;  if (present (verbose))  verb = verbose
     verb2 = .false.;  if (present (more_verbose))  verb2 = more_verbose
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: partonic decays"
+    call evt%write_name (u)
     call write_separator (u, 2)
     call evt%base_write (u, testflag = testflag)
     if (verb) then
@@ -4046,6 +4117,19 @@ hadrons that can be generated in the shower.
   end type evt_shower_t
 
 @ %def evt_shower_t
+@
+<<Shower: evt shower: TBP>>=
+  procedure :: write_name => evt_shower_write_name
+<<Shower: procedures>>=
+  subroutine evt_shower_write_name (evt, unit)
+    class(evt_shower_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: shower"
+  end subroutine evt_shower_write_name
+    
+@ %def evt_shower_write_name
 @ Output.
 <<Shower: evt shower: TBP>>=
   procedure :: write => evt_shower_write
@@ -4057,7 +4141,7 @@ hadrons that can be generated in the shower.
     integer :: u
     u = given_output_unit (unit)
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: shower"
+    call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (evt%particle_set_exists)  call evt%particle_set%write &
@@ -4141,9 +4225,14 @@ transformation chain is evaluated.
     call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
     associate (settings => evt%shower%settings)
        settings%hadron_collision = .false.
-       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+       !!! !!! !!! Workaround for PGF90 v16.1
+       !!! if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 39)) then
+       if (evt%particle_set%prt(1)%flv%get_pdg_abs () <= 39 .and. &
+           evt%particle_set%prt(2)%flv%get_pdg_abs () <= 39) then
           settings%hadron_collision = .false.
-       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+       !!! else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 100)) then
+       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. & 
+                evt%particle_set%prt(2)%flv%get_pdg_abs () >= 100) then
           settings%hadron_collision = .true.
        else
           call msg_fatal ("evt_shower didn't recognize beams setup")
@@ -4192,14 +4281,19 @@ we mark the particle set as invalid. This procedure directly takes the
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid, vetoed
+    integer :: i_term
+    real(default) :: fac_scale
     call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
+    i_term = 1
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
+    fac_scale = evt%process_instance%get_fac_scale (i_term)
     if (evt%is_first_event) then
        call evt%first_event ()
     end if
-    call evt%shower%import_particle_set (evt%particle_set, evt%os_data)
+    call evt%shower%import_particle_set &
+         (evt%particle_set, evt%os_data, fac_scale)
     if (allocated (evt%matching)) then
        call evt%matching%before_shower (evt%particle_set, vetoed)
        if (msg_level(D_TRANSFORMS) >= DEBUG) then
@@ -4275,7 +4369,7 @@ outgoing particles or add to the beam remnant.
      class(evt_shower_t), intent(in) :: evt
      val = .false.
      if (allocated (evt%matching)) &
-        val = evt%matching%get_method () == "POWHEG" 
+        val = evt%matching%get_method () == "POWHEG"
   end function evt_shower_contains_powheg_matching
 
 @ %def evt_shower_contains_powheg_matching
@@ -4366,6 +4460,7 @@ module shower_uti
   use models
   use processes
   use event_transforms
+  use tauola_interface !NODEP!
 
   use pdf
   use shower_base
@@ -4516,6 +4611,7 @@ in disabled mode.
     class(evt_t), allocatable, target :: evt_trivial
     class(evt_t), allocatable, target :: evt_shower
     type(shower_settings_t) :: settings
+    type(taudec_settings_t) :: taudec_settings
 
     write (u, "(A)")  "* Test output: shower_1"
     write (u, "(A)")  "*   Purpose: Two-jet event with disabled shower"
@@ -4560,7 +4656,7 @@ in disabled mode.
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
        call evt_shower%connect (process_instance, model)
     end select
 
@@ -4620,6 +4716,7 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     class(evt_t), allocatable, target :: evt_trivial
     class(evt_t), allocatable, target :: evt_shower
     type(shower_settings_t) :: settings
+    type(taudec_settings_t) :: taudec_settings
 
     write (u, "(A)")  "* Test output: shower_2"
     write (u, "(A)")  "*   Purpose: Two-jet event with FSR shower"
@@ -4666,7 +4763,7 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
        call evt_shower%connect (process_instance, model)
     end select
 
@@ -4729,6 +4826,8 @@ This procedure is implemented using the [[evt_nlo]] transform.
 module evt_nlo
 
 <<Use kinds>>
+<<Use strings>>
+  use io_units, only: given_output_unit
   use constants
   use lorentz
   use diagnostics
@@ -4739,12 +4838,16 @@ module evt_nlo
   use process_stacks
   use event_transforms
 
-  use nlo_data, only: sqme_collector_t
+  use nlo_data, only: sqme_collector_t, phs_identifier_t, phs_point_set_t
+  use cascades, only: resonance_contributors_t
   use phs_fks
+  use nlo_controller, only: nlo_controller_t
 
 <<Standard module head>>
 
 <<Evt Nlo: public>>
+
+<<Evt Nlo: public parameters>>
 
 <<Evt Nlo: types>>
 
@@ -4755,6 +4858,22 @@ contains
 end module evt_nlo
 
 @ %def evt_nlo
+@
+<<Evt Nlo: types>>=
+  type :: nlo_event_deps_t
+     logical :: cm_frame = .true.
+     type(phs_point_set_t) :: p_born_cms
+     type(phs_point_set_t) :: p_born_lab
+     type(phs_point_set_t) :: p_real_cms
+     type(phs_point_set_t) :: p_real_lab
+     type(resonance_contributors_t), dimension(:), allocatable :: contributors
+     type(phs_identifier_t), dimension(:), allocatable :: phs_identifiers
+     integer, dimension(:), allocatable :: i_evaluation_to_i_phs
+     integer, dimension(:), allocatable :: alr_to_i_con
+     integer :: n_phs = 0
+  end type nlo_event_deps_t
+
+@ %def nlo_event_deps_t
 @ This event transformation is for the generation of fixed-order NLO events. It
 takes an event with Born kinematics and creates $N_\alpha + 1$ modified weighted events.
 The first one has Born kinematics and its weight is the sum of Born, Real and subtraction
@@ -4763,21 +4882,43 @@ element, evaluated with the phase space corresponding to the emitter of the $\al
 All NLO event objects share the same event transformation. For this reason, we save the
 particle set of the current $\alpha$-region in the array [[particle_set_radiated]]. Otherwise
 it would be unretrievable if the usual particle set of the event object was used.@
+<<Evt Nlo: public parameters>>=
+  integer, parameter, public :: EVT_NLO_UNDEFINED = 0
+  integer, parameter, public :: EVT_NLO_SEPARATE_BORNLIKE = 1
+  integer, parameter, public :: EVT_NLO_SEPARATE_REAL = 2
+  integer, parameter, public :: EVT_NLO_COMBINED = 3
 <<Evt Nlo: public>>=
   public :: evt_nlo_t
 <<Evt Nlo: types>>=
   type, extends (evt_t) :: evt_nlo_t
     type(phs_fks_generator_t) :: phs_fks_generator
-    real(default) :: sqme_rad
-    integer :: i_evaluation
-    integer, dimension(:), allocatable :: emitters
+    real(default) :: sqme_rad = zero
+    integer :: i_evaluation = 0
+    integer :: weight_multiplier = 1
     type(particle_set_t), dimension(:), allocatable :: particle_set_radiated
     type(qcd_t), pointer :: qcd => null ()
+    type(nlo_event_deps_t) :: event_deps
+    integer :: mode = EVT_NLO_UNDEFINED
+    integer, dimension(:), allocatable :: &
+       i_evaluation_to_i_phs, i_evaluation_to_i_flv, i_evaluation_to_emitter
   contains
   <<Evt Nlo: evt nlo: TBP>>
   end type evt_nlo_t
 
 @ %def evt_nlo_t
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: write_name => evt_nlo_write_name
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_write_name (evt, unit)
+    class(evt_nlo_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)") "Event transform: NLO"
+  end subroutine evt_nlo_write_name
+
+@ %def evt_nlo_write_name
 @
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: write => evt_nlo_write
@@ -4802,17 +4943,132 @@ object in [[nlo_controller]].
     type(process_stack_t), intent(in), optional :: process_stack
     real(default) :: sqrts
     call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
+    call evt%base_connect (process_instance, model, process_stack)
     select type (pcm => process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       call evt%base_connect (process_instance, model, process_stack)
        associate (generator => evt%phs_fks_generator)
          sqrts = process_instance%get_sqrts ()
          call pcm%controller%setup_generator (generator, sqrts)
        end associate
+       call evt%set_i_evaluation_mappings (pcm%controller)
     end select
+    call evt%set_mode (process_instance) 
+    if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) &
+       call evt%setup_event_kinematics (process_instance)
+    call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
   end subroutine evt_nlo_connect
 
 @ %def evt_nlo_connect
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: set_i_evaluation_mappings => evt_nlo_set_i_evaluation_mappings
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_set_i_evaluation_mappings (evt, controller)
+    class(evt_nlo_t), intent(inout) :: evt
+    type(nlo_controller_t), intent(in) :: controller
+    integer :: n_flv, n_phs, alr
+    integer :: i_evaluation, i_phs, i_flv, emitter
+    integer, parameter :: N_MAX_PHS = 10, N_MAX_FLV = 100, N_MAX_EMITTER = 10
+    logical :: checked
+    type :: registered_triple_t
+      integer, dimension(3) :: phs_flv_em
+      type(registered_triple_t), pointer :: next => null ()
+    end type registered_triple_t
+    type(registered_triple_t), pointer :: check_list => null ()
+    i_evaluation = 1
+    associate (reg_data => controller%reg_data)
+       n_phs = reg_data%n_phs; n_flv = reg_data%n_flv_real
+       evt%weight_multiplier = n_phs * n_flv + 1
+       allocate (evt%i_evaluation_to_i_phs (n_phs * n_flv), source = 0)
+       allocate (evt%i_evaluation_to_i_flv (n_phs * n_flv), source = 0)
+       allocate (evt%i_evaluation_to_emitter (n_phs * n_flv), source = -1)
+       do alr = 1, reg_data%n_regions
+          i_phs = controller%real_kinematics%alr_to_i_phs (alr)
+          i_flv = reg_data%regions(alr)%real_index 
+          emitter = reg_data%regions(alr)%emitter 
+          call search_check_list (checked)
+          if (.not. checked) then
+             evt%i_evaluation_to_i_phs (i_evaluation) = i_phs
+             evt%i_evaluation_to_i_flv (i_evaluation) = i_flv
+             evt%i_evaluation_to_emitter (i_evaluation) = emitter
+             i_evaluation = i_evaluation + 1
+          end if
+       end do 
+    end associate
+    if (.not. (all (evt%i_evaluation_to_i_phs > 0) &
+       .and. all (evt%i_evaluation_to_i_flv > 0) &
+       .and. all (evt%i_evaluation_to_emitter > -1))) then
+       call msg_fatal ("evt_nlo: Inconsistent mappings!")
+    else
+       if (debug2_active (D_TRANSFORMS)) then
+          print *, 'evt_nlo Mappings, i_evaluation -> '
+          print *, 'i_phs: ', evt%i_evaluation_to_i_phs
+          print *, 'i_flv: ', evt%i_evaluation_to_i_flv
+          print *, 'emitter: ', evt%i_evaluation_to_emitter
+       end if
+    end if
+  contains
+    subroutine search_check_list (found)
+      logical, intent(out) :: found
+      type(registered_triple_t), pointer :: current_triple => null ()
+      if (associated (check_list)) then
+         current_triple => check_list
+         do
+            if (all (current_triple%phs_flv_em == [i_phs, i_flv, emitter])) then
+               found = .true.
+               exit
+            end if 
+            if (.not. associated (current_triple%next)) then
+               allocate (current_triple%next)
+               current_triple%next%phs_flv_em = [i_phs, i_flv, emitter]
+               found = .false.
+               exit
+            else
+               current_triple => current_triple%next
+            end if
+         end do
+      else
+         allocate (check_list)
+         check_list%phs_flv_em = [i_phs, i_flv, emitter]
+         found = .false.
+      end if
+    end subroutine search_check_list
+  end subroutine evt_nlo_set_i_evaluation_mappings
+
+@ %def evt_nlo_set_i_evaluation_mappings
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: get_i_phs => evt_nlo_get_i_phs
+<<Evt Nlo: procedures>>=
+  function evt_nlo_get_i_phs (evt) result (i_phs)
+    integer :: i_phs
+    class(evt_nlo_t), intent(in) :: evt
+    i_phs = evt%i_evaluation_to_i_phs (evt%i_evaluation)
+  end function evt_nlo_get_i_phs
+
+@ %def evt_nlo_get_i_phs
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: get_i_flv => evt_nlo_get_i_flv
+<<Evt Nlo: procedures>>=
+  function evt_nlo_get_i_flv (evt) result (i_flv)
+    integer :: i_flv
+    class(evt_nlo_t), intent(in) :: evt
+    i_flv = evt%i_evaluation_to_i_flv (evt%i_evaluation)
+  end function evt_nlo_get_i_flv
+
+@ %def evt_nlo_get_i_flv
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: get_emitter => evt_nlo_get_emitter
+<<Evt Nlo: procedures>>=
+  function evt_nlo_get_emitter (evt) result (emitter)
+    integer :: emitter
+    class(evt_nlo_t), intent(in) :: evt
+    emitter = evt%i_evaluation_to_emitter (evt%i_evaluation)
+  end function evt_nlo_get_emitter
+
+@ %def evt_nlo_get_emitter
 @
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: prepare_new_event => evt_nlo_prepare_new_event
@@ -4832,7 +5088,7 @@ Note that for the first event, the computed weights are added to
 [[probability]], which at this point is equal to $\mathcal{B} +
 \mathcal{V}$, whereas for all other runs [[probability]] is replaced.
 To keep $<\sum{w_i}>=N\times\sigma$ as it is for weighted LO
-events, we have to multiply by $N_{\alpha_r} + 1$ since the cross section
+events, we have to multiply by $N_{\rm{phs}} + 1$ since the cross section
 is distributed over the real and Born subevents.
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: generate_weighted => evt_nlo_generate_weighted
@@ -4841,25 +5097,71 @@ is distributed over the real and Born subevents.
     class(evt_nlo_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     real(default) :: weight
-    integer :: emitter
-    call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
-    call msg_debug (D_TRANSFORMS, "probability (before)", probability)
-    call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+    call print_debug_info ()
     evt%particle_set = evt%previous%particle_set
-    if (evt%i_evaluation == 0) then
-       weight = evt%compute_subtraction_weights ()
-       probability = probability + weight
-    else
-       emitter = evt%emitters (evt%i_evaluation)
-       call evt%compute_real (emitter)
-       probability = evt%sqme_rad
+    if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) then
+       if (evt%i_evaluation == 0) then
+          call evt%reset_phs_identifiers ()
+          call evt%evaluate_real_kinematics ()
+          weight = evt%compute_subtraction_weights ()
+          if (evt%mode == EVT_NLO_SEPARATE_REAL) then
+             probability = weight
+          else
+             probability = probability + weight
+          end if
+       else
+          call evt%compute_real ()
+          probability = evt%sqme_rad
+       end if
+       call msg_debug2 (D_TRANSFORMS, "event weight multiplier:", evt%weight_multiplier)
+       probability = probability * evt%weight_multiplier
     end if
-    probability = probability * (size (evt%emitters) + 1)
     call msg_debug (D_TRANSFORMS, "probability (after)", probability)
     evt%particle_set_exists = .true.
+  contains
+    function status_code_to_string (mode) result (smode)
+      type(string_t) :: smode
+      integer, intent(in) :: mode
+      select case (mode)
+      case (EVT_NLO_UNDEFINED)
+         smode = var_str ("Undefined")
+      case (EVT_NLO_SEPARATE_BORNLIKE)
+         smode = var_str ("Born-like")
+      case (EVT_NLO_SEPARATE_REAL)
+         smode = var_str ("Real")
+      case (EVT_NLO_COMBINED)
+         smode = var_str ("Combined")
+      end select  
+    end function status_code_to_string
+
+    subroutine print_debug_info ()
+       call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
+       call msg_debug (D_TRANSFORMS, char ("mode: " // status_code_to_string (evt%mode)))
+       call msg_debug (D_TRANSFORMS, "probability (before)", probability)
+       call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+       if (debug2_active (D_TRANSFORMS)) then
+          if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) then
+             if (evt%i_evaluation == 0) then
+                print *, 'Evaluate subtraction component'
+             else
+                print *, 'Evaluate radiation component'
+             end if
+          end if
+       end if
+    end subroutine print_debug_info
   end subroutine evt_nlo_generate_weighted
 
 @ %def evt_nlo_generate_weighted
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: reset_phs_identifiers => evt_nlo_reset_phs_identifiers
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_reset_phs_identifiers (evt)
+     class(evt_nlo_t), intent(inout) :: evt
+     evt%event_deps%phs_identifiers%evaluated = .false.
+  end subroutine evt_nlo_reset_phs_identifiers
+
+@ %def evt_nlo_reset_phs_identifiers
 @
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: make_particle_set => evt_nlo_make_particle_set
@@ -4870,6 +5172,7 @@ is distributed over the real and Born subevents.
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
+    evt%particle_set_exists = .true.
   end subroutine evt_nlo_make_particle_set
 
 @ %def evt_nlo_make_particle_set
@@ -4887,29 +5190,113 @@ mother-daughter relations and color information.
     type(vector4_t), dimension(:), allocatable :: p_new
     integer, dimension(:), allocatable :: flv_radiated
     real(default) :: r_col
+    integer :: i_phs, i_flv
     call msg_debug (D_TRANSFORMS, "evt_nlo_build_radiated_particle_set")
     call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+    evt%particle_set_radiated(i_event) = evt%particle_set
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       evt%particle_set_radiated(i_event) = evt%particle_set
        if (evt%i_evaluation /= 0) then
-          allocate (flv_radiated (size (pcm%controller%get_flv_state_real (1))))
-          flv_radiated = pcm%controller%get_flv_state_real (1)
+          i_flv = evt%get_i_flv ()
+          allocate (flv_radiated (size (pcm%controller%get_flv_state_real (i_flv))))
+          flv_radiated = pcm%controller%get_flv_state_real (i_flv)
           call evt%rng%generate (r_col)
           call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
           if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
-          emitter = evt%emitters (evt%i_evaluation)
+          i_phs = evt%get_i_phs()
+          emitter = evt%get_emitter ()
+          if (emitter == 0) emitter = choose_in_or_out ()
           call msg_debug (D_TRANSFORMS, "emitter", emitter)
-          allocate (p_new (size (pcm%controller%get_momenta (born_phsp = .false.))))
-          p_new = pcm%controller%get_momenta (born_phsp = .false.)
+          allocate (p_new (size (pcm%controller%get_momenta &
+             (born_phsp = .false., i_phs = i_phs))))
+          p_new = pcm%controller%get_momenta (born_phsp = .false., i_phs = i_phs)
           call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
-               evt%process_instance%process%get_model_ptr (), r_col)
+             evt%process_instance%process%get_model_ptr (), r_col)
        end if
        evt%i_evaluation = evt%i_evaluation + 1
     end select
+  contains
+    function choose_in_or_out () result (em)
+      integer :: em
+      real(default) :: r
+      call evt%rng%generate (r)
+      if (r > 0.5_default) then
+         em = 2
+      else
+         em = 1
+      end if
+    end function choose_in_or_out
   end subroutine evt_nlo_build_radiated_particle_set
 
 @ %def evt_nlo_build_radiated_particle_set
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: evaluate_real_kinematics => evt_nlo_evaluate_real_kinematics
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_evaluate_real_kinematics (evt)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer :: alr, i_phs, i_con, emitter
+    real(default), dimension(3) :: x_rad
+    logical :: use_contributors
+
+    select type (pcm => evt%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       x_rad = pcm%controller%real_kinematics%x_rad
+       associate (event_deps => evt%event_deps)
+          event_deps%p_born_lab%phs_point(1) = &
+             evt%particle_set%get_in_and_out_momenta ()
+          event_deps%p_born_cms%phs_point(1) &
+             = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1)) 
+          call evt%phs_fks_generator%set_sqrts_hat &
+             (event_deps%p_born_cms%get_energy (1, 1))
+          use_contributors = allocated (event_deps%contributors)
+          do alr = 1, size (event_deps%i_evaluation_to_i_phs)
+             i_phs = event_deps%i_evaluation_to_i_phs(alr)
+             if (event_deps%phs_identifiers(i_phs)%evaluated) cycle
+             emitter = event_deps%phs_identifiers(i_phs)%emitter 
+             associate (generator => evt%phs_fks_generator)
+                if (emitter <= 2) then
+                   !!!call msg_fatal ("NLO Events only supply final-state emissions")
+                   call generator%prepare_generation (x_rad, i_phs, emitter, &
+                      event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
+                   call generator%generate_isr (i_phs, &
+                      event_deps%p_born_lab%phs_point(1)%p, &
+                      event_deps%p_real_lab%phs_point(i_phs))
+                   event_deps%p_real_cms%phs_point(i_phs) &
+                      = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
+                else
+                   if (use_contributors) then
+                      i_con = event_deps%alr_to_i_con(alr)
+                      call generator%prepare_generation (x_rad, i_phs, emitter, &
+                         event_deps%p_born_cms%phs_point(1)%p, &
+                         event_deps%phs_identifiers, event_deps%contributors, i_con)
+                      call generator%generate_fsr (emitter, i_phs, i_con, &
+                         event_deps%p_born_cms%phs_point(1)%p, &
+                         event_deps%p_real_cms%phs_point(i_phs))
+                   else
+                      call generator%prepare_generation (x_rad, i_phs, emitter, &
+                         event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
+                      call generator%generate_fsr (emitter, i_phs, &
+                         event_deps%p_born_cms%phs_point(1)%p, &
+                         event_deps%p_real_cms%phs_point(i_phs))
+                   end if
+                end if
+                event_deps%p_real_lab%phs_point(i_phs) &
+                   = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
+             end associate
+             call pcm%controller%set_momenta &
+                (event_deps%p_born_lab%phs_point(1)%p, &
+                event_deps%p_real_lab%phs_point(i_phs)%p, i_phs)
+             call pcm%controller%set_momenta &
+                (event_deps%p_born_cms%phs_point(1)%p, &
+                event_deps%p_real_cms%phs_point(i_phs)%p, i_phs, cms = .true.)
+             event_deps%phs_identifiers(i_phs)%evaluated = .true.
+          end do
+       end associate
+    end select
+  end subroutine evt_nlo_evaluate_real_kinematics
+
+@ %def evt_nlo_evaluate_real_kinematics 
 @ This routine calls the evaluation of the singular regions only for the
 subtraction terms.
 <<Evt Nlo: evt nlo: TBP>>=
@@ -4918,41 +5305,22 @@ subtraction terms.
   function evt_nlo_compute_subtraction_weights (evt) result (weight)
     class(evt_nlo_t), intent(inout) :: evt
     real(default) :: weight
-    type(vector4_t), dimension(:), allocatable :: p_born, p_real
-    integer, dimension(:), allocatable :: emitters
-    real(default), dimension(3) :: x_rad
-    integer :: i, emitter
+    integer :: i_phs
     call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
     weight = zero
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       allocate (emitters (size (pcm%controller%get_emitter_list ())))       
-       allocate (p_born (size (evt%particle_set%get_momenta ())))
-       emitters = pcm%controller%get_emitter_list ()
-       x_rad = pcm%controller%real_kinematics%x_rad
-       p_born = evt%particle_set%get_momenta ()
-       call evt%phs_fks_generator%set_beam_energy (p_born(1)%p(0))
-       call evt%phs_fks_generator%generate_radiation_variables (x_rad, p_born)
-       do i = 1, size (emitters)
-          emitter = emitters(i)
-          if (emitter <= 2) then
-             call msg_fatal ("NLO Events only for lepton collisions so far")
-          else
-             allocate (p_real (size (evt%phs_fks_generator%generate_fsr_from_x &
-                  (x_rad, emitter, p_born))))
-             p_real = evt%phs_fks_generator%generate_fsr_from_x &
-                  (x_rad, emitter, p_born)
-          end if
-          call pcm%controller%set_momenta (p_born, p_real)
-          call pcm%controller%set_momenta (p_born, p_real, cms=.true.)
-          call evt%process_instance%compute_sqme_real_sub &
-               (emitter, p_born, p_real)
-          call msg_debug (D_TRANSFORMS, &
-               "instance%sqme_collector%sqme_real_per_emitter(1,emitter)", &
-               pcm%collector%sqme_real_per_emitter(1,emitter))
-          weight = weight + pcm%collector%sqme_real_per_emitter (1,emitter)
-          deallocate (p_real)
-       end do
+       associate (event_deps => evt%event_deps)
+          do i_phs = 1, evt%event_deps%n_phs           
+             call evt%process_instance%compute_sqme_real_sub (i_phs)
+             if (debug2_active (D_TRANSFORMS)) then
+                call msg_debug (D_TRANSFORMS, &
+                   "instance%sqme_collector%sqme_real_per_phs(:, i_phs)")
+                print *, pcm%collector%sqme_real_per_phs(:, i_phs)
+             end if
+             weight = weight + sum (pcm%collector%sqme_real_per_phs (:, i_phs))
+          end do
+       end associate
     end select
   end function evt_nlo_compute_subtraction_weights
 
@@ -4962,39 +5330,159 @@ emission matrix elements.
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: compute_real => evt_nlo_compute_real
 <<Evt Nlo: procedures>>=
-  subroutine evt_nlo_compute_real (evt, emitter)
+  subroutine evt_nlo_compute_real (evt)
     class(evt_nlo_t), intent(inout) :: evt
-    integer, intent(in) :: emitter
-    type(vector4_t), dimension(:), allocatable :: p_born, p_real
-    real(default), dimension(3) :: x_rad
+    integer :: i_phs, i_flv
     call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
-    allocate (p_born (size (evt%particle_set%get_momenta ())))
-    p_born = evt%particle_set%get_momenta ()
+    i_phs = evt%get_i_phs ()
+    i_flv = evt%get_i_flv ()
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       x_rad = pcm%controller%real_kinematics%x_rad
-       call evt%phs_fks_generator%generate_radiation_variables (x_rad, p_born)
-       if (emitter <= 2) then
-          call msg_fatal ("NLO Events only for lepton collisions so far")
-       else
-          if (allocated (p_real))  deallocate (p_real)
-          allocate (p_real (size (evt%phs_fks_generator%generate_fsr_from_x &
-              (x_rad, emitter, p_born))))
-          p_real = evt%phs_fks_generator%generate_fsr_from_x &
-              (x_rad, emitter, p_born)
-       end if
-       call pcm%controller%set_momenta (p_born, p_real)
-       call pcm%controller%set_momenta (p_born, p_real, cms=.true.)
-       call evt%process_instance%compute_sqme_real_rad (emitter, p_born, p_real)
-       call msg_debug (D_TRANSFORMS, &
-            "instance%sqme_collector%sqme_real_per_emitter(1,emitter)", &
-            pcm%collector%sqme_real_per_emitter(1,emitter))
-       evt%sqme_rad = pcm%collector%sqme_real_per_emitter (1, emitter)
+       associate (event_deps => evt%event_deps)
+          call evt%process_instance%compute_sqme_real_rad (i_phs, i_flv)
+          call msg_debug (D_TRANSFORMS, &
+               "instance%sqme_collector%sqme_real_per_phs(i_flv, i_phs)", &
+               pcm%collector%sqme_real_per_phs(i_flv, i_phs))
+          evt%sqme_rad = pcm%collector%sqme_real_per_phs (i_flv, i_phs)
+       end associate
     end select
   end subroutine evt_nlo_compute_real
 
 @ %def evt_nlo_compute_real
 @
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: boost_to_cms => evt_nlo_boost_to_cms
+<<Evt Nlo: procedures>>=
+  function evt_nlo_boost_to_cms (evt, p_lab) result (p_cms)
+    type(phs_point_t), intent(in) :: p_lab
+    class(evt_nlo_t), intent(in) :: evt
+    type(phs_point_t) :: p_cms
+    type(lorentz_transformation_t) :: lt_lab_to_cms
+    integer :: i_real
+    if (evt%event_deps%cm_frame) then
+       lt_lab_to_cms = identity
+    else
+       i_real = evt%process_instance%get_associated_real ()
+       lt_lab_to_cms = inverse (evt%process_instance%get_lorentz_transformation (i_real))
+    end if
+    p_cms = lt_lab_to_cms * p_lab
+  end function evt_nlo_boost_to_cms
+
+@ %def evt_nlo_boost_to_cms
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: boost_to_lab => evt_nlo_boost_to_lab
+<<Evt Nlo: procedures>>=
+  function evt_nlo_boost_to_lab (evt, p_cms) result (p_lab)
+    type(phs_point_t) :: p_lab
+    class(evt_nlo_t), intent(in) :: evt
+    type(phs_point_t), intent(in) :: p_cms
+    type(lorentz_transformation_t) :: lt_cms_to_lab
+    integer :: i_real
+    if (evt%event_deps%cm_frame) then
+       lt_cms_to_lab = identity
+    else
+       i_real = evt%process_instance%get_associated_real ()
+       lt_cms_to_lab = evt%process_instance%get_lorentz_transformation (i_real)
+    end if
+    p_lab = lt_cms_to_lab * p_cms
+  end function evt_nlo_boost_to_lab
+
+@ %def evt_nlo_boost_to_lab
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: setup_event_kinematics => evt_nlo_setup_event_kinematics
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_setup_event_kinematics (evt, process_instance)
+    class(evt_nlo_t), intent(inout) :: evt
+    type(process_instance_t), intent(in) :: process_instance
+    integer :: n_born, n_real, n_phs 
+    integer :: i_real
+    associate (event_deps => evt%event_deps)
+       event_deps%cm_frame = process_instance%is_cm_frame (1)
+       select type (pcm => process_instance%pcm)
+       class is (pcm_instance_nlo_t)
+          n_born = pcm%controller%get_n_particles ()
+          n_real = pcm%controller%get_n_particles_real ()
+       end select
+       call event_deps%p_born_cms%init (n_born, 1)
+       call event_deps%p_born_lab%init (n_born, 1)
+       i_real = process_instance%get_associated_real ()
+       select type (phs => process_instance%term(i_real)%k_term%phs)
+       type is (phs_fks_t)
+          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+          allocate (event_deps%phs_identifiers (size (phs%phs_identifiers)))
+          event_deps%phs_identifiers = phs%phs_identifiers
+       end select
+       n_phs = size (event_deps%phs_identifiers)
+       call event_deps%p_real_cms%init (n_real, n_phs)
+       call event_deps%p_real_lab%init (n_real, n_phs)
+       associate (nlo_controller => process_instance%component(i_real)%nlo_controller)
+          allocate (event_deps%i_evaluation_to_i_phs &
+             (size (nlo_controller%real_kinematics%alr_to_i_phs)))
+          event_deps%i_evaluation_to_i_phs = nlo_controller%real_kinematics%alr_to_i_phs
+          if (allocated (nlo_controller%reg_data%alr_contributors)) then
+             allocate (event_deps%contributors (size (nlo_controller%reg_data%alr_contributors)))
+             event_deps%contributors = nlo_controller%reg_data%alr_contributors
+          end if
+          if (allocated (nlo_controller%reg_data%alr_to_i_contributor)) then
+             allocate (event_deps%alr_to_i_con &
+                (size (nlo_controller%reg_data%alr_to_i_contributor)))
+             event_deps%alr_to_i_con = nlo_controller%reg_data%alr_to_i_contributor
+          end if
+       end associate
+    end associate
+  end subroutine evt_nlo_setup_event_kinematics
+
+@ %def evt_nlo_setup_event_kinematics
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: set_mode => evt_nlo_set_mode
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_set_mode (evt, process_instance)
+    class(evt_nlo_t), intent(inout) :: evt
+    type(process_instance_t), intent(in) :: process_instance
+    integer :: i_real
+    select type (pcm => process_instance%pcm)
+    type is (pcm_instance_nlo_t)
+       associate (nlo_settings => pcm%controller%settings)
+          if (nlo_settings%combined_integration) then
+             evt%mode = EVT_NLO_COMBINED
+          else
+             i_real = evt%process_instance%get_associated_real ()
+             if (i_real == evt%process%extract_active_component ()) then
+                evt%mode = EVT_NLO_SEPARATE_REAL
+             else
+                evt%mode = EVT_NLO_SEPARATE_BORNLIKE
+             end if
+          end if
+       end associate
+    end select
+  end subroutine evt_nlo_set_mode
+
+@ %def evt_nlo_set_mode
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: is_valid_event => evt_nlo_is_valid_event
+<<Evt Nlo: procedures>>=
+  function evt_nlo_is_valid_event (evt) result (valid)
+    logical :: valid
+    class(evt_nlo_t), intent(in) :: evt
+    select type (pcm => evt%process_instance%pcm)
+    type is (pcm_instance_nlo_t)
+       associate (nlo_cuts => pcm%controller%nlo_cuts)
+          if (evt%i_evaluation == 0) then
+             valid = nlo_cuts%passed_born 
+          else
+             valid = nlo_cuts%passed_real (evt%get_i_phs ())
+          end if
+       end associate
+    class default
+       valid = .true.
+    end select
+  end function evt_nlo_is_valid_event
+
+@ %def evt_nlo_is_valid_event
 \section{Complete Events}
 
 This module combines hard processes with decay chains, shower, and
@@ -5011,13 +5499,13 @@ module events
   use io_units
   use format_utils, only: pac_fmt, write_separator
   use format_defs, only: FMT_12, FMT_14, FMT_19
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use variables
   use expr_base
   use model_data
-  use state_matrices, only: &
-       FM_IGNORE_HELICITY, FM_SELECT_HELICITY, FM_FACTOR_HELICITY
+  use state_matrices, only: FM_IGNORE_HELICITY, &
+       FM_SELECT_HELICITY, FM_FACTOR_HELICITY, FM_CORRELATED_HELICITY
   use particles
   use subevt_expr
   use rng_base
@@ -5337,7 +5825,7 @@ first one.
     class(event_t), intent(out) :: event
     type(var_list_t), intent(in), optional :: var_list
     integer, intent(in), optional :: n_alt
-    type(string_t) :: norm_string
+    type(string_t) :: norm_string, mode_string
     logical :: polarized_events
     if (present (n_alt)) then
        call event%base_init (n_alt)
@@ -5355,7 +5843,21 @@ first one.
        polarized_events = &
             var_list%get_lval (var_str ("?polarized_events"))
        if (polarized_events) then
-          event%config%factorization_mode = FM_SELECT_HELICITY
+          mode_string = &
+               var_list%get_sval (var_str ("$polarization_mode"))
+          select case (char (mode_string))
+          case ("ignore")
+             event%config%factorization_mode = FM_IGNORE_HELICITY
+          case ("helicity")
+             event%config%factorization_mode = FM_SELECT_HELICITY
+          case ("factorized")
+             event%config%factorization_mode = FM_FACTOR_HELICITY
+          case ("correlated")
+             event%config%factorization_mode = FM_CORRELATED_HELICITY
+          case default
+             call msg_fatal ("Polarization mode " &
+                  // char (mode_string) // " is undefined")
+          end select
        else
           event%config%factorization_mode = FM_IGNORE_HELICITY
        end if
@@ -5543,10 +6045,17 @@ For testing purpose, we allow for providing them explicitly, as an option.
        call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
        call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        do while (associated (evt))
+          call print_transform_name_if_debug ()
           if (evt%only_weighted_events) then
-             sigma_over_sqme = event%weight_prc / event%sqme_prc
-             call evt%generate_weighted (event%sqme_prc)
-             event%weight_prc = sigma_over_sqme * event%sqme_prc
+             select type (evt)
+             type is (evt_nlo_t)
+                if (.not. evt%is_valid_event ()) return
+             end select
+             if (abs (event%weight_prc) > 0._default) then
+                sigma_over_sqme = event%weight_prc / event%sqme_prc
+                call evt%generate_weighted (event%sqme_prc)
+                event%weight_prc = sigma_over_sqme * event%sqme_prc
+             end if
           else
              call evt%generate_unweighted ()
           end if
@@ -5562,9 +6071,9 @@ For testing purpose, we allow for providing them explicitly, as an option.
           if (event%is_nlo_event()) then
              select type (evt)
              type is (evt_nlo_t)
-                call evt%build_radiated_particle_set (event%i_event+1)
+                call evt%build_radiated_particle_set (event%i_event + 1)
                 call event%link_particle_set &
-                   (evt%particle_set_radiated(event%i_event+1))
+                   (evt%particle_set_radiated(event%i_event + 1))
              end select
           else
              call event%link_particle_set (evt%particle_set)
@@ -5573,7 +6082,15 @@ For testing purpose, we allow for providing them explicitly, as an option.
        call msg_debug (D_TRANSFORMS, "After event transformations")
        call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
        call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
     end if
+  contains
+    subroutine print_transform_name_if_debug ()
+       if (debug_active (D_TRANSFORMS)) then
+          print *, 'Current event transform: '
+          call evt%write_name ()
+       end if
+    end subroutine print_transform_name_if_debug
   end subroutine event_evaluate_transforms
 
 @ %def event_evaluate_transforms
@@ -5827,9 +6344,8 @@ for deterministic testing.
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
-       if (event%is_nlo_event()) &
-          call event%process%deactivate_real_component ()
-       if (generate_new) call event%process%generate_weighted_event (event%instance, i_mci)
+       if (generate_new) &
+          call event%process%generate_weighted_event (event%instance, i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
     end if

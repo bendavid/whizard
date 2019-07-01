@@ -2,11 +2,18 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@googlemail.com>
+#     with contributions from
+#     Fabian Bach <fabian.bach@t-online.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
+#     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@kit.edu>
+#     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt
+#     Hans-Werner Boschmann, Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -25,7 +32,18 @@
 ########################################################################
 
 ## Subdirectories to configure
-SUBDIRS = doc susy models cuts beam-sim tests examples muli interfaces SM_tt_threshold_data
+SUBDIRS = \
+  doc \
+  susy \
+  models \
+  cuts \
+  beam-sim \
+  tests \
+  examples \
+  muli \
+  interfaces \
+  SM_tt_threshold_data \
+  gui
 
 ## Data files needed for running WHIZARD
 ## to be installed with the 'models' prefix kept
@@ -70,11 +88,13 @@ dist_models_DATA = \
   models/SSC_AltT.mdl \
   models/Template.mdl \
   models/UED.mdl \
+  models/WZW.mdl \
   models/Xdim.mdl \
   models/Zprime.mdl \
   models/Threeshl.mdl \
   models/Threeshl_nohf.mdl \
-  models/Test.mdl 
+  models/Test.mdl \
+  models/Test_schemes.mdl
 
 ## SLHA parameter input files
 ## to be installed with the 'susy' prefix kept
@@ -141,6 +161,8 @@ dist_pdf_DATA = \
 	pdf_builtin/CJ12_max_00.tbl \
 	pdf_builtin/CJ12_mid_00.tbl \
 	pdf_builtin/CJ12_min_00.tbl \
+	pdf_builtin/CJ15LO_00.tbl \
+	pdf_builtin/CJ15NLO_00.tbl \
 	pdf_builtin/mmht2014lo.00.dat \
 	pdf_builtin/mmht2014nlo.00.dat \
 	pdf_builtin/mmht2014nnlo.00.dat \
@@ -159,4 +181,5 @@ dist_muli_DATA = \
 thresholddir = $(pkgdatadir)/SM_tt_threshold_data
 dist_threshold_DATA = \
   SM_tt_threshold_data/download_data.sh \
+  SM_tt_threshold_data/threshold_Virtual.f90 \
   SM_tt_threshold_data/threshold.f90

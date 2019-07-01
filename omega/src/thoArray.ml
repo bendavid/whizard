@@ -1,6 +1,6 @@
-(* $Id: thoArray.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: thoArray.ml 7653 2016-07-18 11:37:04Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -92,9 +92,149 @@ let uncompress2 a =
   let a2 = uncompress { uniq = a.uniq2; embedding = a.embedding2 } in
   transpose (uncompress { uniq = transpose a2; embedding = a.embedding1 })
 
+let find_first f a =
+  let l = Array.length a in
+  let rec find_first' i =
+    if i >= l then
+      raise Not_found
+    else if f (a.(i)) then
+      i
+    else
+      find_first' (succ i)
+  in
+  find_first' 0
+
+let match_first x a =
+  find_first (fun x' -> x = x') a
+
+let find_all f a =
+  let matches = ref [] in
+  for i = Array.length a - 1 downto 0 do
+    if f (a.(i)) then
+      matches := i :: !matches
+  done;
+  !matches
+
+let match_all x a =
+  find_all (fun x' -> x = x') a
+
+let num_rows a =
+  Array.length a
+
+let num_columns a =
+  match ThoList.classify (List.map Array.length (Array.to_list a)) with
+  | [ (_, n) ] -> n
+  | _ -> invalid_arg "ThoArray.num_columns: inhomogeneous array"
+
+
+module Test =
+  struct
+
+    open OUnit
+
+    let test_find_first_not_found =
+      "not found" >::
+	(fun () ->
+	  assert_raises Not_found
+            (fun () -> find_first (fun n -> n mod 2 = 0) [|1;3;5|]))
+        
+    let test_find_first_first =
+      "first" >::
+	(fun () ->
+	  assert_equal 0
+            (find_first (fun n -> n mod 2 = 0) [|2;3;4;5|]))
+        
+    let test_find_first_not_last =
+      "last" >::
+	(fun () ->
+	  assert_equal 1
+            (find_first (fun n -> n mod 2 = 0) [|1;2;3;4|]))
+        
+    let test_find_first_last =
+      "not last" >::
+	(fun () ->
+	  assert_equal 1
+            (find_first (fun n -> n mod 2 = 0) [|1;2|]))
+        
+    let suite_find_first =
+      "find_first" >:::
+	[test_find_first_not_found;
+         test_find_first_first;
+         test_find_first_not_last;
+         test_find_first_last]
+
+    let test_find_all_empty =
+      "empty" >::
+	(fun () ->
+	  assert_equal []
+            (find_all (fun n -> n mod 2 = 0) [|1;3;5|]))
+        
+    let test_find_all_first =
+      "first" >::
+	(fun () ->
+	  assert_equal [0;2]
+            (find_all (fun n -> n mod 2 = 0) [|2;3;4;5|]))
+        
+    let test_find_all_not_last =
+      "last" >::
+	(fun () ->
+	  assert_equal [1;3]
+            (find_all (fun n -> n mod 2 = 0) [|1;2;3;4;5|]))
+        
+    let test_find_all_last =
+      "not last" >::
+	(fun () ->
+	  assert_equal [1;3]
+            (find_all (fun n -> n mod 2 = 0) [|1;2;3;4|]))
+        
+    let suite_find_all =
+      "find_all" >:::
+	[test_find_all_empty;
+         test_find_all_first;
+         test_find_all_last;
+         test_find_all_not_last]
+
+    let test_num_columns_ok2 =
+      "ok/2" >::
+	(fun () ->
+	  assert_equal 2
+            (num_columns [| [| 11; 12 |];
+                            [| 21; 22 |];
+                            [| 31; 32 |] |]))
+
+    let test_num_columns_ok0 =
+      "ok/0" >::
+	(fun () ->
+	  assert_equal 0
+            (num_columns [| [| |];
+                            [| |];
+                            [| |] |]))
+
+    let test_num_columns_not_ok =
+      "not_ok" >::
+	(fun () ->
+	  assert_raises (Invalid_argument
+                           "ThoArray.num_columns: inhomogeneous array")
+            (fun () -> num_columns [| [| 11; 12 |];
+                                      [| 21 |];
+                                      [| 31; 32 |] |]))
+
+    let suite_num_columns =
+      "num_columns" >:::
+	[test_num_columns_ok2;
+         test_num_columns_ok0;
+         test_num_columns_not_ok]
+
+    let suite =
+      "ThoArrays" >:::
+	[suite_find_first;
+         suite_find_all;
+         suite_num_columns]
+
+  end
+
 (*i
  *  Local Variables:
- *  mode:caml
  *  indent-tabs-mode:nil
  *  page-delimiter:"^(\\* .*\n"
  *  End:

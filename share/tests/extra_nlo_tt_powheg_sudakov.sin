@@ -52,10 +52,6 @@ scale = 2 * mtop
 # Needs OpenLoops library eett
 process extra_nlo_tt_powheg_sudakov = E1, e1 => t, T { nlo_calculation = "Full" }
 
-# Default parameters for FKS mapping
-!fks_dij_exp1 = 1.0
-!fks_mapping_type = 1
-
 sqrts = 500 GeV
 
 iterations = 5:20000:"gw", 5:20000:""

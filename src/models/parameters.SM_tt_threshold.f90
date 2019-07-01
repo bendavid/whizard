@@ -1,6 +1,6 @@
 ! $Id: parameters.SM_tt_threshold.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2012 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -8,13 +8,13 @@
 !     Fabian Bach <fabian.bach@desy.de> (only this file)
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -29,19 +29,21 @@ module parameters_sm_tt_threshold
   use omega_vectors
   use ttv_formfactors
   use diagnostics
+  use numeric_utils
   implicit none
   private
 
   real(default), dimension(27), public :: mass, width
+  real(default) :: wt_inv
   real(default), public :: as
   complex(default), public :: gs, igs
 
-  real(default), public :: e, g, e_em
+  real(default), public :: e, g, Vtb, alphaemi
   real(default), public :: sinthw, costhw, sin2thw, tanthw
   real(default), public :: qelep, qeup, qedwn
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
-       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 
+       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, &
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   complex(default), public :: &
        gccq11 = 0, gccq12 = 0, gccq13 = 0, gccq21 = 0, &
@@ -50,16 +52,17 @@ module parameters_sm_tt_threshold
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn
 
-  integer, public :: FF
+  integer, public :: FF, offshell_strategy
 
   public :: import_from_whizard, model_update_alpha_s, &
-       ttv_formfactor, va_ilc_tta, va_ilc_ttz, ttv_mtpole, &
-       onshell_tops, expanded_amp2
+       ttv_formfactor, va_ilc_tta, va_ilc_ttz, ttv_mtpole, ttv_wtpole, &
+       onshell_tops
 
 contains
 
-  subroutine import_from_whizard (par_array)
-    real(default), dimension(40), intent(in) :: par_array
+  subroutine import_from_whizard (par_array, scheme)
+    real(default), dimension(41), intent(in) :: par_array
+    integer, intent(in) :: scheme
     type :: parameter_set
        real(default) :: mZ
        real(default) :: mW
@@ -83,10 +86,11 @@ contains
        real(default) :: m1s
        real(default) :: Vtb
        real(default) :: wt_inv
-       real(default) :: nloop
+       real(default) :: nrqcd_order
        real(default) :: sh
        real(default) :: sf
        real(default) :: FF
+       real(default) :: offshell_strategy
        real(default) :: v1
        real(default) :: v2
        real(default) :: scan_sqrts_min
@@ -103,12 +107,8 @@ contains
        real(default) :: wtop
     end type parameter_set
     type(parameter_set) :: par
-    !!! This corresponds to 1/alpha = 137.03598949333
-    real(default), parameter :: &
-         alpha = 1.0_default/137.03598949333_default
     logical :: no_pwave, mpole_fixed
     call msg_debug (D_THRESHOLD, "import_from_whizard")
-    e_em = sqrt(4.0_default * PI * alpha)
     par%mZ     = par_array(1)
     par%mW     = par_array(2)
     par%mH     = par_array(3)
@@ -131,24 +131,25 @@ contains
     par%m1s    = par_array(20)
     par%Vtb    = par_array(21)
     par%wt_inv = par_array(22)
-    par%nloop  = par_array(23)
+    par%nrqcd_order  = par_array(23)
     par%sh     = par_array(24)
     par%sf     = par_array(25)
     par%FF     = par_array(26)
-    par%v1     = par_array(27)
-    par%v2     = par_array(28)
-    par%scan_sqrts_min = par_array(29)
-    par%scan_sqrts_max = par_array(30)
-    par%scan_sqrts_stepsize = par_array(31)
-    par%test   = par_array(32)
-    par%no_pwave = par_array(33)
-    par%mpole_fixed = par_array(34)
-    par%ee     = par_array(35)
-    par%cw     = par_array(36)
-    par%sw     = par_array(37)
-    par%v      = par_array(38)
-    par%mtpole = par_array(39)
-    par%wtop   = par_array(40)
+    par%offshell_strategy = par_array(27)
+    par%v1     = par_array(28)
+    par%v2     = par_array(29)
+    par%scan_sqrts_min = par_array(30)
+    par%scan_sqrts_max = par_array(31)
+    par%scan_sqrts_stepsize = par_array(32)
+    par%test   = par_array(33)
+    par%no_pwave = par_array(34)
+    par%mpole_fixed = par_array(35)
+    par%ee     = par_array(36)
+    par%cw     = par_array(37)
+    par%sw     = par_array(38)
+    par%v      = par_array(39)
+    par%mtpole = par_array(40)
+    par%wtop   = par_array(41)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -169,7 +170,9 @@ contains
     width(26) = 0
     mass(27) = par%xipm * mass(24)
     width(27) = 0
+    wt_inv = par%wt_inv
     FF = par%FF
+    offshell_strategy = par%offshell_strategy
     vev = par%v
     e = par%ee
     sinthw = par%sw
@@ -190,6 +193,7 @@ contains
     gccq31 = 0.0_default
     gccq32 = 0.0_default
     gccq33 = gcc * par%Vtb
+    Vtb = par%Vtb
     gncneu(1) = - g / 2 / costhw * ( + 0.5_default)
     gnclep(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qelep * sin2thw)
     gncup(1)  = - g / 2 / costhw * ( + 0.5_default - 2 * qeup  * sin2thw)
@@ -231,13 +235,15 @@ contains
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
     mpole_fixed = par%mpole_fixed > 0.0_default
+    alphaemi = par%alphaemi
     call init_parameters &
          (mass(6), width(6), par%m1s, par%Vtb, par%wt_inv, &
           par%alphaemi, par%sw, par%alphas, par%mZ, par%mW, &
-          mass(5), par%sh, par%sf, par%nloop, par%FF, &
-          par%v1, par%v2, par%scan_sqrts_min, par%scan_sqrts_max, &
-          par%scan_sqrts_stepsize, mpole_fixed)
+          mass(5), par%sh, par%sf, par%nrqcd_order, par%FF, &
+          par%offshell_strategy, par%v1, par%v2, par%scan_sqrts_min, &
+          par%scan_sqrts_max, par%scan_sqrts_stepsize, mpole_fixed)
     call init_threshold_grids (par%test)
+    call threshold%formfactor%activate ()
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
@@ -246,7 +252,7 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
   end subroutine model_update_alpha_s
 
-  !pure
+  !!! Note: these functions use OMega's momentum type
   function ttv_formfactor (p, k, i, FF_mode) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
@@ -256,14 +262,13 @@ contains
     integer :: this_FF
     call ps%init (p*p, k*k, (k+p)*(k+p), mass(6))
     this_FF = FF; if (present (FF_mode))  this_FF = FF_mode
-    c = FF_master (ps, i, this_FF)
+    c = threshold%formfactor%compute (ps, i, this_FF)
     !!! form factors include tree level: FF = 1 + O(alphas)
-    !!! subtract tree level contribution ~ 1 already included in SM couplings
+    !!! subtract tree level contribution (1) already included in SM couplings
     c = c - 1.0_default
   end function ttv_formfactor
 
-  !pure
-  function onshell_tops (p, k) result (onshell)
+  pure function onshell_tops (p, k) result (onshell)
     logical :: onshell
     type(momentum), intent(in) :: p, k
     type(phase_space_point_t) :: ps
@@ -271,7 +276,6 @@ contains
     onshell = ps%onshell
   end function onshell_tops
 
-  !pure
   function va_ilc_tta (p, k, i) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
@@ -280,7 +284,6 @@ contains
     if (i==1) c = qup * ttv_formfactor (p, k, 1)
   end function va_ilc_tta
 
-  !pure
   function va_ilc_ttz (p, k, i) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
@@ -288,19 +291,53 @@ contains
     c = gncup(i) * ttv_formfactor (p, k, i)
   end function va_ilc_ttz
 
-  !pure
-  function ttv_mtpole (s) result (m)
-    real(default), intent(in) :: s
+  pure function ttv_mtpole (s) result (m)
     real(default) :: m
+    real(default), intent(in) :: s
     m = m1s_to_mpole (sqrt (s))
   end function ttv_mtpole
 
-  !pure
-  function expanded_amp2 (amp_tree, amp_blob) result (amp2)
-    real(default) :: amp2
-    complex(default), dimension(:), intent(in) :: amp_tree, amp_blob
-    amp2 = sum (amp_tree * conjg (amp_tree) + &
-         amp_tree * conjg (amp_blob) + &
-         amp_blob * conjg (amp_tree))
-  end function expanded_amp2
+  function ttv_wtpole (s_or_minv, ff, use_as_minv) result (w)
+    real(default) :: w
+    real(default), intent(in) :: s_or_minv
+    integer, intent(in) :: ff
+    logical, intent(in), optional :: use_as_minv
+    real(default), save :: last_m = zero, last_w = zero
+    logical :: uam
+    real(default) :: m
+    uam = .false.;  if (present (use_as_minv))  uam = use_as_minv
+    if (uam) then
+       m = s_or_minv
+    else
+       m = ttv_mtpole (s_or_minv)
+    end if
+    if (nearly_equal (m, last_m)) then
+       w = last_w
+       return
+    else
+       if (threshold%settings%use_nlo_width (ff)) then
+          w = top_width_nlo (m)
+       else
+          w = top_width_lo (m)
+       end if
+       last_m = m
+       last_w = w
+    end if
+  end function ttv_wtpole
+
+ ! TODO: (bcn 2015-11-11) Vtb is not considered in NLO width
+  pure function top_width_nlo (minv) result (w)
+    real(default) :: w
+    real(default), intent(in) :: minv
+    w = top_width_sm_qcd_nlo (one / alphaemi, sinthw, minv, &
+         mass(24), mass(5), AS_HARD) + wt_inv
+  end function top_width_nlo
+
+  pure function top_width_lo (minv) result (w)
+    real(default) :: w
+    real(default), intent(in) :: minv
+    w = top_width_sm_lo (one / alphaemi, sinthw, Vtb, minv, mass(24), &
+         mass(5)) + wt_inv
+  end function top_width_lo
+
 end module parameters_sm_tt_threshold

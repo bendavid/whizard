@@ -31,6 +31,7 @@ f = PDG(6)
 fbar = PDG(-6)
 F = PDG(-6)
 charged = PDG(6, -6)
+neutral = PDG(25)
 colored = PDG(6, -6)
 [user variable] tolerance =  0.000000000000E+00
 ------------------------------------------------------------------------
@@ -218,8 +219,8 @@ colored = PDG(6, -6)
  Flux * PHS volume:
    3.133842031921E+08
  Jacobian factors per channel:
-   1: 0.0000000E+00 [selected]
-   2: 0.0000000E+00
+   1:  0.0000000E+00 [selected]
+   2:  0.0000000E+00
 ------------------------------------------------------------------------
  Structure-function chain instance: [kinematics set]
    outgoing (interactions) = 0:1 0:2
@@ -481,8 +482,8 @@ o [all] = false
  Flux * PHS volume:
    3.133842031921E+08
  Jacobian factors per channel:
-   1: 1.0000000E+00 [selected]
-   2: 1.3333333E+00
+   1:  1.0000000E+00 [selected]
+   2:  1.3333333E+00
 ------------------------------------------------------------------------
  Structure-function chain instance: [evaluated]
    outgoing (interactions) = 0:1 0:2

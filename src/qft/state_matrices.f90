@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -60,6 +60,7 @@ module state_matrices
   integer, parameter, public :: FM_IGNORE_HELICITY = 1
   integer, parameter, public :: FM_SELECT_HELICITY = 2
   integer, parameter, public :: FM_FACTOR_HELICITY = 3
+  integer, parameter, public :: FM_CORRELATED_HELICITY = 4
 
        
   type :: node_t
@@ -1372,7 +1373,8 @@ contains
           end do
           value = it%get_matrix_element ()
           select case (mode)
-          case (FM_IGNORE_HELICITY)  ! trace over diagonal states that match qn
+          case (FM_IGNORE_HELICITY, FM_CORRELATED_HELICITY)
+             ! trace over diagonal states that match qn
              if (all (diagonal)) then
                 do i = 1, depth
                    call single_state(i)%add_state &

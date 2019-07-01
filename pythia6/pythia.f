@@ -10102,7 +10102,8 @@ C...Construct 'trivial' kinematical variables needed.
         KFL2=IDUP(2)
         VINT(41)=PUP(4,1)/EBMUP(1)
         VINT(42)=PUP(4,2)/EBMUP(2)
-        IF (VINT(41).GT.1.000001.OR.VINT(42).GT.1.000001) THEN
+        !!! BCN: Relaxing the Pythia warnings that are frequent for beam events
+        IF (VINT(41).GT.1.1.OR.VINT(42).GT.1.1) THEN
           CALL PYERRM(9,'(PYRAND:) x > 1 in external event '//
      &        '(listing follows):') 
           CALL PYLIST(7)
@@ -42100,7 +42101,10 @@ C...Double precision declaration.
          AF(I) = 0.D0
          SBX = 1.D0
          DO 100 K = 0, MLFVEC(IFL)
-            AF(I) = AF(I) + SBX*AM(I,K,IFL)
+C...JRR: Catching arithmetic exception
+            IF(MEXVEC(IFL) .GE. I) THEN
+               AF(I) = AF(I) + SBX*AM(I,K,IFL)
+            ENDIF
             SBX = SB1*SBX
   100    CONTINUE
   110 CONTINUE
@@ -42355,7 +42359,10 @@ C...Double precision declaration.
          AF(I) = 0.D0
          SBX = 1.D0
          DO 100 K = 0, MLFVEC(IFL)
-            AF(I) = AF(I) + SBX*AM(I,K,IFL)
+C...JRR: Catching arithmetic exception
+            IF (MEXVEC(IFL) .GE. I) THEN
+               AF(I) = AF(I) + SBX*AM(I,K,IFL)
+            ENDIF
             SBX = SB1*SBX
   100    CONTINUE
   110 CONTINUE
@@ -68208,6 +68215,8 @@ C...Local arrays.
      &WTCOR(10),PTAU(4),PCMTAU(4),DBETAU(3)
       CHARACTER CIDC*4
       DATA WTCOR/2D0,5D0,15D0,60D0,250D0,1500D0,1.2D4,1.2D5,150D0,16D0/
+      logical :: first, second
+      integer :: idx
  
 C...Functions: momentum in two-particle decays and four-product.
       PAWT(A,B,C)=SQRT((A**2-(B+C)**2)*(A**2-(B-C)**2))/(2D0*A)
@@ -68265,13 +68274,26 @@ C...If no known origin then impossible to do anything further.
           KFORIG=0
           IORIG=0
  
-        ELSEIF(K(IMTAU,2).EQ.K(ITAU,2)) THEN
+        ELSEIF(K(IMTAU,2) == K(ITAU,2)) THEN
 C...If tau -> tau + gamma then add gamma energy and loop.
-          IF(K(K(IMTAU,4),2).EQ.22) THEN
+!!! BCN: Catching invalid access to K(0,2)
+          idx = K(IMTAU,4)
+          IF(idx > 0) THEN
+            first = K(idx,2) == 22
+          ELSE
+            first = .false.
+          END IF
+          idx = K(IMTAU,5)
+          IF(idx > 0) THEN
+            second = K(idx,2) == 22
+          ELSE
+            second = .false.
+          END IF
+          IF(first) THEN
             DO 130 J=1,4
               PCMTAU(J)=PCMTAU(J)+P(K(IMTAU,4),J)
   130       CONTINUE
-          ELSEIF(K(K(IMTAU,5),2).EQ.22) THEN
+          ELSEIF(second) THEN
             DO 140 J=1,4
               PCMTAU(J)=PCMTAU(J)+P(K(IMTAU,5),J)
   140       CONTINUE
@@ -68320,12 +68342,12 @@ C...and rotate it to sit along +z axis.
 C...Call tau decay routine (if meaningful) and fill extra info.
         IF(KFORIG.NE.0.OR.MSTJ(28).EQ.2) THEN
           CALL PYTAUD(ITAU,IORIG,KFORIG,NDECAY)
-          DO 200 II=NSAV+1,NSAV+NDECAY
-            K(II,1)=1
-            K(II,3)=IP
-            K(II,4)=0
-            K(II,5)=0
-  200     CONTINUE
+C          DO 200 II=NSAV+1,NSAV+NDECAY
+C            K(II,1)=1
+C            K(II,3)=IP
+C            K(II,4)=0
+C            K(II,5)=0
+C  200     CONTINUE
           N=NSAV+NDECAY
         ENDIF
  
@@ -68337,7 +68359,34 @@ C...Boost back decay tau and decay products.
           CALL PYROBO(NSAV+1,N,THETAU,PHITAU,0D0,0D0,0D0)
           IF(KFORIG.NE.0) CALL PYROBO(NSAV+1,N,0D0,0D0,DBETAU(1),
      &    DBETAU(2),DBETAU(3))
- 
+
+C...  call pylist (2)
+          
+C... If Parent is Higgs (IORIG=25,35,36), another tau is boosted and rotate.
+C... Only Higgs to tau pair decay
+        IF(KFORIG.EQ.25.OR.KFORIG.EQ.35.OR.KFORIG.EQ.36) THEN
+          ITFOUND=0
+          IF (.NOT.(K(IORIG,4).EQ.0.OR.K(IORIG,5).EQ.0)) THEN
+             DO 60210 J=K(IORIG,4), K(IORIG,5)
+                IF( ABS(K(J,2)).EQ.15 ) THEN
+                   ITFOUND=ITFOUND+1
+                   IF( ITFOUND.GT.3 ) THEN
+                      PRINT *,'%%Fatal error in PYDCAY after PYTAUD,'
+                      PRINT *,'call: Higgs has >2 tau daughters.'
+                      STOP
+                   ENDIF
+                   CALL PYROBO(J,J,THETAU,PHITAU,0D0,0D0,0D0)
+                   CALL PYROBO(J,J,0D0,0D0,DBETAU(1),
+     &                  DBETAU(2),DBETAU(3))
+                ENDIF
+60210        CONTINUE
+          ENDIF
+C     ... In the case of single tau decay, copy momentum before PYTAUD
+        ELSE
+          DO 211 J=1,4
+            P(ITAU,J)=PTAU(J)
+ 211     CONTINUE
+      ENDIF
 C...Skip past ordinary tau decay treatment.
           MMAT=0
           MBST=0
@@ -81088,30 +81137,30 @@ C...in positions N+1 through N+NDECAY. For each product I you must
 C...give the flavour codes K(I,2) and the five-momenta P(I,1), P(I,2),
 C...P(I,3), P(I,4) and P(I,5). The rest will be stored automatically.
  
-      SUBROUTINE PYTAUD(ITAU,IORIG,KFORIG,NDECAY)
- 
-C...Double precision and integer declarations.
-      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-      IMPLICIT INTEGER(I-N)
-      INTEGER PYK,PYCHGE,PYCOMP
-C...Commonblocks.
-      COMMON/PYJETS/N,NPAD,K(4000,5),P(4000,5),V(4000,5)
-      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
-      SAVE /PYJETS/,/PYDAT1/
- 
-C...Stop program if this routine is ever called.
-C...You should not copy these lines to your own routine.
-      NDECAY=ITAU+IORIG+KFORIG
-      WRITE(MSTU(11),5000)
-      CALL PYSTOP(10)
- 
-C...Format for error printout.
- 5000 FORMAT(1X,'Error: you did not link your PYTAUD routine ',
-     &'correctly.'/1X,'Dummy routine in PYTHIA file called instead.'/
-     &1X,'Execution stopped!')
- 
-      RETURN
-      END
+CAM      SUBROUTINE PYTAUD(ITAU,IORIG,KFORIG,NDECAY)
+CAM 
+CAMC...Double precision and integer declarations.
+CAM      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+CAM      IMPLICIT INTEGER(I-N)
+CAM      INTEGER PYK,PYCHGE,PYCOMP
+CAMC...Commonblocks.
+CAM      COMMON/PYJETS/N,NPAD,K(4000,5),P(4000,5),V(4000,5)
+CAM      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
+CAM      SAVE /PYJETS/,/PYDAT1/
+CAM 
+CAMC...Stop program if this routine is ever called.
+CAMC...You should not copy these lines to your own routine.
+CAM      NDECAY=ITAU+IORIG+KFORIG
+CAM      WRITE(MSTU(11),5000)
+CAM      CALL PYSTOP(10)
+CAM 
+CAMC...Format for error printout.
+CAM 5000 FORMAT(1X,'Error: you did not link your PYTAUD routine ',
+CAM     &'correctly.'/1X,'Dummy routine in PYTHIA file called instead.'/
+CAM     &1X,'Execution stopped!')
+CAM 
+CAM      RETURN
+CAM      END
  
 C*********************************************************************
  

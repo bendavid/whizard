@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,13 +41,13 @@ module events
   use io_units
   use format_utils, only: pac_fmt, write_separator
   use format_defs, only: FMT_12, FMT_14, FMT_19
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use variables
   use expr_base
   use model_data
-  use state_matrices, only: &
-       FM_IGNORE_HELICITY, FM_SELECT_HELICITY, FM_FACTOR_HELICITY
+  use state_matrices, only: FM_IGNORE_HELICITY, &
+       FM_SELECT_HELICITY, FM_FACTOR_HELICITY, FM_CORRELATED_HELICITY
   use particles
   use subevt_expr
   use rng_base
@@ -311,7 +311,7 @@ contains
     class(event_t), intent(out) :: event
     type(var_list_t), intent(in), optional :: var_list
     integer, intent(in), optional :: n_alt
-    type(string_t) :: norm_string
+    type(string_t) :: norm_string, mode_string
     logical :: polarized_events
     if (present (n_alt)) then
        call event%base_init (n_alt)
@@ -329,7 +329,21 @@ contains
        polarized_events = &
             var_list%get_lval (var_str ("?polarized_events"))
        if (polarized_events) then
-          event%config%factorization_mode = FM_SELECT_HELICITY
+          mode_string = &
+               var_list%get_sval (var_str ("$polarization_mode"))
+          select case (char (mode_string))
+          case ("ignore")
+             event%config%factorization_mode = FM_IGNORE_HELICITY
+          case ("helicity")
+             event%config%factorization_mode = FM_SELECT_HELICITY
+          case ("factorized")
+             event%config%factorization_mode = FM_FACTOR_HELICITY
+          case ("correlated")
+             event%config%factorization_mode = FM_CORRELATED_HELICITY
+          case default
+             call msg_fatal ("Polarization mode " &
+                  // char (mode_string) // " is undefined")
+          end select
        else
           event%config%factorization_mode = FM_IGNORE_HELICITY
        end if
@@ -437,10 +451,17 @@ contains
        call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
        call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        do while (associated (evt))
+          call print_transform_name_if_debug ()
           if (evt%only_weighted_events) then
-             sigma_over_sqme = event%weight_prc / event%sqme_prc
-             call evt%generate_weighted (event%sqme_prc)
-             event%weight_prc = sigma_over_sqme * event%sqme_prc
+             select type (evt)
+             type is (evt_nlo_t)
+                if (.not. evt%is_valid_event ()) return
+             end select
+             if (abs (event%weight_prc) > 0._default) then
+                sigma_over_sqme = event%weight_prc / event%sqme_prc
+                call evt%generate_weighted (event%sqme_prc)
+                event%weight_prc = sigma_over_sqme * event%sqme_prc
+             end if
           else
              call evt%generate_unweighted ()
           end if
@@ -456,9 +477,9 @@ contains
           if (event%is_nlo_event()) then
              select type (evt)
              type is (evt_nlo_t)
-                call evt%build_radiated_particle_set (event%i_event+1)
+                call evt%build_radiated_particle_set (event%i_event + 1)
                 call event%link_particle_set &
-                   (evt%particle_set_radiated(event%i_event+1))
+                   (evt%particle_set_radiated(event%i_event + 1))
              end select
           else
              call event%link_particle_set (evt%particle_set)
@@ -467,7 +488,15 @@ contains
        call msg_debug (D_TRANSFORMS, "After event transformations")
        call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
        call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
     end if
+  contains
+    subroutine print_transform_name_if_debug ()
+       if (debug_active (D_TRANSFORMS)) then
+          print *, 'Current event transform: '
+          call evt%write_name ()
+       end if
+    end subroutine print_transform_name_if_debug
   end subroutine event_evaluate_transforms
 
   subroutine event_evaluate_expressions (event)
@@ -635,9 +664,8 @@ contains
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
-       if (event%is_nlo_event()) &
-          call event%process%deactivate_real_component ()
-       if (generate_new) call event%process%generate_weighted_event (event%instance, i_mci)
+       if (generate_new) &
+          call event%process%generate_weighted_event (event%instance, i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
     end if

@@ -1,6 +1,6 @@
-(* $Id: fusion.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: fusion.mli 7469 2016-03-13 16:44:17Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -68,6 +68,9 @@ module type T =
 
     val coupling_tag : rhs -> string option
 
+    type exclusions
+    val no_exclusions : exclusions
+
 (* In renormalized perturbation theory, couplings come in different orders
    of the loop expansion.  Be prepared: [val order : rhs -> int] *)
 
@@ -101,7 +104,7 @@ module type T =
    identities. *)
     type amplitude
     type selectors
-    val amplitudes : bool -> selectors ->
+    val amplitudes : bool -> exclusions -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
 
     val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
@@ -237,11 +240,14 @@ module type Multi =
     type amplitude
     type fusion
     type wf
+    type exclusions
+    val no_exclusions : exclusions
     type selectors
     type amplitudes
 
     (* Construct all possible color flow amplitudes for a given process. *)
-    val amplitudes : bool -> int option -> selectors -> process list -> amplitudes
+    val amplitudes : bool -> int option ->
+      exclusions -> selectors -> process list -> amplitudes
     val empty : amplitudes
 
     (* Precompute the vertex table cache. *)

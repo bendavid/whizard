@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -113,6 +113,7 @@ module prc_template_me
 
   type, extends (prc_core_t) :: prc_template_me_t
      real(default), dimension(:), allocatable :: par
+     integer :: scheme = 0
    contains
      procedure :: allocate_workspace => prc_template_me_allocate_workspace
      procedure :: write => prc_template_me_write
@@ -140,9 +141,10 @@ module prc_template_me
   
 
   abstract interface
-     subroutine init_t (par) bind(C)
+     subroutine init_t (par, scheme) bind(C)
        import
        real(c_default_float), dimension(*), intent(in) :: par
+       integer(c_int), intent(in) :: scheme
      end subroutine init_t
   end interface
   
@@ -492,8 +494,9 @@ contains
     write (u, "(A)") "    md5sum = """ // writer%md5sum // """"
     write (u, "(A)") "  end function md5sum"
     write (u, "(A)") "                                           "          
-    write (u, "(A)") "  subroutine init (par)"
+    write (u, "(A)") "  subroutine init (par, scheme)"
     write (u, "(A)") "    real(default), dimension(*), intent(in) :: par"    
+    write (u, "(A)") "    integer, intent(in) :: scheme"
     write (u, "(A)") "  end subroutine init"    
     write (u, "(A)") "                                           " 
     write (u, "(A)") "  subroutine final ()" 
@@ -735,10 +738,12 @@ contains
     write (unit, "(2x,9A)")  "interface"
     select case (char (feature))
     case ("init")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(5x,9A)")  "subroutine ", char (name), &
+            " (par, scheme) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "real(c_default_float), dimension(*), &
             &intent(in) :: par"
+       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: scheme"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("update_alpha_s")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"
@@ -779,14 +784,16 @@ contains
     write (unit, *)
     select case (char (feature))
     case ("init")
-       write (unit, "(9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(9A)")  "subroutine ", char (name), &
+            " (par, scheme) bind(C)"
        write (unit, "(2x,9A)")  "use iso_c_binding"
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use tpr_", char (id)
        write (unit, "(2x,9A)")  "real(c_default_float), dimension(*), &
             &intent(in) :: par"
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "call ", char (feature), " (par)"
+       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: scheme"
+       if (c_default_float == default .and. c_int == kind(1)) then
+          write (unit, "(2x,9A)")  "call ", char (feature), " (par, scheme)"
        end if
        write (unit, "(9A)")  "end subroutine ", char (name)
     case ("update_alpha_s")
@@ -909,7 +916,8 @@ contains
     if (present (model)) then
        if (.not. allocated (prc_template_me%par)) &
             allocate (prc_template_me%par (model%get_n_real ()))
-       call model%real_parameters_to_c_array (prc_template_me%par)
+       call model%real_parameters_to_array (prc_template_me%par)
+       prc_template_me%scheme = model%get_scheme_num ()
     end if
   end subroutine prc_template_me_set_parameters
   
@@ -929,7 +937,9 @@ contains
        if (allocated (object%par)) then
           select type (driver => object%driver)
           type is (template_me_driver_t)
-             if (associated (driver%init))  call driver%init (object%par)
+             if (associated (driver%init)) then
+                call driver%init (object%par, object%scheme)
+             end if
           end select
        else
           call msg_bug ("prc_template_me_activate: parameter set is not allocated")
@@ -1042,6 +1052,6 @@ contains
        end if
     end select
   end function prc_template_me_compute_amplitude
-    
+
 
 end module prc_template_me

@@ -1,17 +1,20 @@
 type token =
-  | FLAVOR of ( string )
+  | STRING of ( string )
   | INT of ( int )
   | LPAREN
   | RPAREN
+  | LBRACKET
+  | RBRACKET
   | AND
-  | OR
   | PLUS
   | COLON
+  | COMMA
   | NOT
+  | HAT
   | ONSHELL
   | OFFSHELL
   | GAUSS
   | END
 
 val main :
-  (Lexing.lexbuf  -> token) -> Lexing.lexbuf ->  (string, int list) Cascade_syntax.t 
+  (Lexing.lexbuf  -> token) -> Lexing.lexbuf ->  (string, int list, string) Cascade_syntax.t 

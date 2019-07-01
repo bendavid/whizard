@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -129,7 +129,6 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
-# TODO: (cw 2015-03-26) Fix this
 if OPENLOOPS_AVAILABLE
 AM_FCFLAGS += -L$(OPENLOOPS_DIR)/lib -lcuttools -lopenloops -loneloop -lolcommon -lrambo
 endif

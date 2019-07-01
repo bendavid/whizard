@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -47,16 +47,6 @@ module unit_tests
   public :: test_results_t
   public :: unit_test
   public :: test
-  public :: assert
-  public:: assert_equal
-  interface assert_equal
-     module procedure assert_equal_real, assert_equal_complex, assert_equal_integer
-  end interface
-  public :: nearly_equal
-  public:: vanishes
-  interface vanishes
-     module procedure vanishes_real, vanishes_complex
-  end interface
 
   character(*), parameter :: ref_prefix = "ref-output/"
   character(*), parameter :: ref = ".ref"
@@ -236,129 +226,6 @@ contains
     close (u_test)
     call results%add (name, description, success)
   end subroutine test
-
-  subroutine assert (unit, ok, description)
-    integer, intent(in) :: unit
-    logical, intent(in) :: ok
-    character(*), intent(in), optional :: description
-    if (.not. ok) then
-       if (present(description)) then
-          write (unit, "(A)") "* FAIL: " // description
-       else
-          write (unit, "(A)") "* FAIL: Assertion error"
-       end if
-    end if
-  end subroutine assert
-
-  subroutine assert_equal_real (unit, lhs, rhs, description, &
-                                abs_smallness, rel_smallness)
-    integer, intent(in) :: unit
-    real(default), intent(in) :: lhs, rhs
-    character(*), intent(in), optional :: description
-    real(default), intent(in), optional :: abs_smallness, rel_smallness
-    logical :: ok
-    ok = nearly_equal (lhs, rhs, abs_smallness, rel_smallness)
-    if (.not. ok) then
-       if (present(description)) then
-          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
-               "* FAIL: " // description // ": ", lhs, " /= ", rhs
-       else
-          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
-               "* FAIL: Assertion error: ", lhs, " /= ", rhs
-       end if
-    end if
-  end subroutine assert_equal_real
-
-  subroutine assert_equal_complex (unit, lhs, rhs, description, &
-                                abs_smallness, rel_smallness)
-    integer, intent(in) :: unit
-    complex(default), intent(in) :: lhs, rhs
-    character(*), intent(in), optional :: description
-    real(default), intent(in), optional :: abs_smallness, rel_smallness
-    logical :: ok
-    ok = nearly_equal (real(lhs), real(rhs), abs_smallness, rel_smallness)
-    if (.not. ok) then
-       if (present(description)) then
-          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
-               "* FAIL: " // description // ": ", real(lhs), " /= ", real(rhs)
-       else
-          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
-               "* FAIL: Assertion error: ", real(lhs), " /= ", real(rhs)
-       end if
-    end if
-    ok = nearly_equal (aimag(lhs), aimag(rhs), abs_smallness, rel_smallness)
-    if (.not. ok) then
-       if (present(description)) then
-          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
-               "* FAIL: " // description // ": ", aimag(lhs), " /= ", aimag(rhs)
-       else
-          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
-               "* FAIL: Assertion error: ", aimag(lhs), " /= ", aimag(rhs)
-       end if
-    end if
-  end subroutine assert_equal_complex
-
-  subroutine assert_equal_integer (unit, lhs, rhs, description)
-    integer, intent(in) :: unit
-    integer, intent(in) :: lhs, rhs
-    character(*), intent(in), optional :: description
-    logical :: ok
-    ok = lhs == rhs
-    if (.not. ok) then
-       if (present(description)) then
-          write (unit, "(A,I0,A,I0)") &
-               "* FAIL: " // description // ": ", lhs, " /= ", rhs
-       else
-          write (unit, "(A,I0,A,I0)") &
-               "* FAIL: Assertion error: ", lhs, " /= ", rhs
-       end if
-    end if
-  end subroutine assert_equal_integer
-
-  elemental function ieee_is_nan (x) result (yorn)
-    logical :: yorn
-    real(default), intent(in) :: x
-    yorn = (x /= x)
-  end function ieee_is_nan
-
-  elemental function nearly_equal (a, b, abs_smallness, rel_smallness) result (r)
-    logical :: r
-    real(default), intent(in) :: a, b
-    real(default), intent(in), optional :: abs_smallness, rel_smallness
-    real(default) :: abs_a, abs_b, diff, abs_small, rel_small
-    abs_a = abs (a)
-    abs_b = abs (b)
-    diff = abs (a - b)
-    ! shortcut, handles infinities and nans
-    if (a == b) then
-       r = .true.
-       return
-    else if (ieee_is_nan (a) .or. ieee_is_nan (b) .or. ieee_is_nan (diff)) then
-       r = .false.
-       return
-    end if
-    abs_small = tiny_13; if (present (abs_smallness)) abs_small = abs_smallness
-    rel_small = tiny_10; if (present (rel_smallness)) rel_small = rel_smallness
-    if (abs_a < abs_small .and. abs_b < abs_small) then
-       r = diff < abs_small
-    else
-       r = diff / max (abs_a, abs_b) < rel_small
-    end if
-  end function nearly_equal
-
-  elemental function vanishes_real (x, abs_smallness, rel_smallness) result (r)
-    logical :: r
-    real(default), intent(in) :: x
-    real(default), intent(in), optional :: abs_smallness, rel_smallness
-    r = nearly_equal (x, zero, abs_smallness, rel_smallness)
-  end function vanishes_real
-
-  elemental function vanishes_complex (x, abs_smallness, rel_smallness) result (r)
-    logical :: r
-    complex(default), intent(in) :: x
-    real(default), intent(in), optional :: abs_smallness, rel_smallness
-    r = vanishes_real (abs (x), abs_smallness, rel_smallness)
-  end function vanishes_complex
 
 
 end module unit_tests

@@ -1,6 +1,6 @@
-(* $Id: cascade_syntax.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: cascade_syntax.ml 7469 2016-03-13 16:44:17Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -28,7 +28,9 @@
    determining the significance of a specified intermediate state. 
    So we select them in the same manner as on-shell states. *)
 
-type ('flavor, 'p) t =
+(* [False] is probably redundant.  *)
+
+type ('flavor, 'p, 'constant) t =
   | True
   | False
   | On_shell of 'flavor list * 'p
@@ -38,8 +40,9 @@ type ('flavor, 'p) t =
   | Gauss of 'flavor list * 'p
   | Gauss_not of 'flavor list * 'p
   | Any_flavor of 'p
-  | Or of ('flavor, 'p) t list
-  | And of ('flavor, 'p) t list
+  | And of ('flavor, 'p, 'constant) t list
+  | X_Flavor of 'flavor list
+  | X_Vertex of 'constant list * 'flavor list list
 
 let mk_true () = True
 let mk_false () = False
@@ -51,14 +54,6 @@ let mk_gauss f p = Gauss (f, p)
 let mk_gauss_not f p = Gauss_not (f, p)
 let mk_any_flavor p = Any_flavor p
 
-let mk_or c1 c2 =
-  match c1, c2 with
-  | _, True | True, _ -> True
-  | c, False | False, c -> c
-  | Or cs, Or cs' -> Or (cs @ cs')
-  | Or cs, c | c, Or cs -> Or (c::cs)
-  | c, c' -> Or [c; c']
-
 let mk_and c1 c2 =
   match c1, c2 with
   | c, True | True, c -> c
@@ -67,34 +62,43 @@ let mk_and c1 c2 =
   | And cs, c | c, And cs -> And (c::cs)
   | c, c' -> And [c; c']
 
-let to_string flavor_to_string momentum_to_string cascades =
+let mk_x_flavor f = X_Flavor f
+let mk_x_vertex c fs = X_Vertex (c, fs)
+    
+let to_string flavor_to_string momentum_to_string coupling_to_string cascades =
+  let flavors_to_string fs =
+    String.concat ":" (List.map flavor_to_string fs)
+  and couplings_to_string cs =
+    String.concat ":" (List.map coupling_to_string cs) in
   let rec to_string' = function
     | True -> "true"
     | False -> "false"
     | On_shell (fs, p) ->
-        momentum_to_string p ^ " = " ^ (String.concat ":" (List.map flavor_to_string fs))
+        momentum_to_string p ^ " = " ^ flavors_to_string fs
     | On_shell_not (fs, p) ->
-        momentum_to_string p ^ " = !" ^ (String.concat ":" (List.map flavor_to_string fs))
+        momentum_to_string p ^ " = !" ^ flavors_to_string fs
     | Off_shell (fs, p) ->
-        momentum_to_string p  ^ " ~ " ^
-        (String.concat ":" (List.map flavor_to_string fs))
+        momentum_to_string p  ^ " ~ " ^ flavors_to_string fs
     | Off_shell_not (fs, p) ->
-        momentum_to_string p  ^ " ~ !" ^
-        (String.concat ":" (List.map flavor_to_string fs))
+        momentum_to_string p  ^ " ~ !" ^ flavors_to_string fs
     | Gauss (fs, p) ->
-        momentum_to_string p ^ " # " ^ (String.concat ":" (List.map flavor_to_string fs))
+        momentum_to_string p ^ " # " ^ flavors_to_string fs
     | Gauss_not (fs, p) ->
-        momentum_to_string p ^ " # !" ^ (String.concat ":" (List.map flavor_to_string fs))
+        momentum_to_string p ^ " # !" ^ flavors_to_string fs
     | Any_flavor p ->
         momentum_to_string p ^ " ~ ?"
-    | Or cs ->
-        String.concat " || " (List.map (fun c -> "(" ^ to_string' c ^ ")") cs)
     | And cs ->
-        String.concat " && " (List.map (fun c -> "(" ^ to_string' c ^ ")") cs) in
+        String.concat " && " (List.map (fun c -> "(" ^ to_string' c ^ ")") cs)
+    | X_Flavor fs ->
+        "!" ^ String.concat ":" (List.map flavor_to_string fs)
+    | X_Vertex (cs, fss) ->
+        "^" ^ couplings_to_string cs ^
+        "[" ^ (String.concat "," (List.map flavors_to_string fss)) ^ "]"
+  in
   to_string' cascades
 
 let int_list_to_string p =
-  String.concat "+" (List.map string_of_int (Sort.list (<) p))
+  String.concat "+" (List.map string_of_int (List.sort compare p))
 
 exception Syntax_Error of string * int * int
 

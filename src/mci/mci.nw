@@ -379,11 +379,11 @@ implementation overrides this.
 <<MCI base: mci: TBP>>=
   procedure :: add_pass => mci_add_pass
 <<MCI base: procedures>>=
-  subroutine mci_add_pass (mci, adapt_grids, adapt_weights, final)
+  subroutine mci_add_pass (mci, adapt_grids, adapt_weights, final_pass)
     class(mci_t), intent(inout) :: mci
     logical, intent(in), optional :: adapt_grids
     logical, intent(in), optional :: adapt_weights
-    logical, intent(in), optional :: final
+    logical, intent(in), optional :: final_pass
   end subroutine mci_add_pass
     
 @ %def mci_add_pass
@@ -710,15 +710,18 @@ The weights are initialized with an uniform normalized value.
 <<MCI base: mci instance: TBP>>=
   procedure :: set_channel_weights => mci_instance_set_channel_weights
 <<MCI base: procedures>>=
-  subroutine mci_instance_set_channel_weights (mci_instance, weights)
+  subroutine mci_instance_set_channel_weights (mci_instance, weights, sum_non_zero)
     class(mci_instance_t), intent(inout) :: mci_instance
     real(default), dimension(:), intent(in) :: weights
+    logical, intent(out), optional :: sum_non_zero
     real(default) :: wsum
     wsum = sum (weights)
     if (wsum /= 0) then
        mci_instance%w = weights / wsum
+       if (present (sum_non_zero)) sum_non_zero = .true.
     else
-       call msg_fatal ("MC sampler initialization:&
+       if (present (sum_non_zero)) sum_non_zero = .false.
+       call msg_warning ("MC sampler initialization:&
             & sum of channel weights is zero")
     end if
   end subroutine mci_instance_set_channel_weights
@@ -2687,7 +2690,7 @@ flags for a specific pass.
   type :: iteration_multipliers_t
     real(default) :: mult_real = 1._default
     real(default) :: mult_virt = 1._default
-    real(default) :: mult_pdf = 1._default
+    real(default) :: mult_dglap = 1._default
     real(default) :: mult_threshold = 1._default
     integer, dimension(:), allocatable :: n_calls0 
   end type iteration_multipliers_t
@@ -4011,8 +4014,9 @@ matrix elements.
     u = given_output_unit ()
     if (object%screen) then
       call write_hline (u)
-      call msg_message ("NLO Results: O(alpha_s+1)/O(alpha_s)")
-      write(u,'(1X,F6.4,A4,F7.5)') corr, ' +- ', err
+      call msg_message ("NLO Correction: [O(alpha_s+1)/O(alpha_s)]")
+      write(msg_buffer,'(1X,A1,F8.4,A4,F9.5,1X,A3)') '(', corr, ' +- ', err, ') %'
+      call msg_message ()
     end if
   end subroutine integration_results_record_correction
 
@@ -6672,9 +6676,9 @@ that the user wants to perform and average all iterations in this pass.
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: add_pass => mci_vamp_add_pass
 <<MCI vamp: procedures>>=
-  subroutine mci_vamp_add_pass (mci, adapt_grids, adapt_weights, final)
+  subroutine mci_vamp_add_pass (mci, adapt_grids, adapt_weights, final_pass)
     class(mci_vamp_t), intent(inout) :: mci
-    logical, intent(in), optional :: adapt_grids, adapt_weights, final
+    logical, intent(in), optional :: adapt_grids, adapt_weights, final_pass
     integer :: i_pass, i_it
     type(pass_t), pointer :: new
     allocate (new)
@@ -6700,8 +6704,8 @@ that the user wants to perform and average all iterations in this pass.
     else
        new%adapt_weights = .false.
     end if
-    if (present (final)) then
-       new%is_final_pass = final
+    if (present (final_pass)) then
+       new%is_final_pass = final_pass
     else
        new%is_final_pass = .false.
     end if
@@ -7765,6 +7769,7 @@ channel weights are reduced accordingly.
     integer :: n_ch, ch, n_underflow
     logical, dimension(:), allocatable :: mask, underflow
     type(exception) :: vamp_exception
+    logical :: wsum_non_zero
     if (instance%enable_adapt_weights .and. instance%allow_adapt_weights) then
        associate (mci => instance%mci)
          if (instance%grids_defined) then
@@ -7804,9 +7809,9 @@ channel weights are reduced accordingly.
                   end if
                end if
             end if
-            call instance%set_channel_weights (weights)
-            call vamp_update_weights (instance%grids, weights, &
-                 exc = vamp_exception)
+            call instance%set_channel_weights (weights, wsum_non_zero)
+            if (wsum_non_zero) call vamp_update_weights &
+               (instance%grids, weights, exc = vamp_exception)
             call handle_vamp_exception (vamp_exception, mci%verbose)
          else
             call msg_bug ("VAMP: adapt weights: grids undefined")
@@ -8018,6 +8023,7 @@ immediately.  The incomplete current integration pass is lost.
           call handle_vamp_exception (exc, verbose)
           call terminate_now_if_signal ()
        end if
+       call terminate_now_if_single_event ()
        f = instance%get_value ()
     end select
   end function vamp_sampling_function

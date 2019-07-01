@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,7 +39,7 @@ module phs_wood
   use iso_varying_string, string_t => varying_string
   use io_units
   use constants
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use os_interface
   use md5
@@ -323,7 +323,7 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    integer, intent(inout), optional :: nlo_type
+    integer, intent(in), optional :: nlo_type
     type(string_t) :: filename, filename_vis
     logical :: variable_limits
     logical :: ok, exist, found, check, match, rebuild_phs
@@ -635,7 +635,7 @@ contains
        type is (phs_wood_config_t)
           if (config%extended_phs) then
              if (phs%n_r_born > 0) then
-                phs%r_real = r_in (phs%n_r_born+1:phs%n_r_born+3)
+                phs%r_real = r_in (phs%n_r_born + 1 : phs%n_r_born + 3)
              else
                 call msg_fatal ("n_r_born should be larger than 0!")
              end if

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -225,8 +225,8 @@ contains
     type(quantum_numbers_mask_t), dimension(4) :: mask
     integer, dimension(4) :: hel_lock
     type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
-    type(polarization_t) :: pol1, pol2
-    type(state_iterator_t) :: it_hel1, it_hel2
+    type(polarization_t), target :: pol1, pol2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
     integer :: i
     select type (data)
     type is (beam_events_data_t)
@@ -243,24 +243,24 @@ contains
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i)))
        end do
-       call polarization_init_generic (pol1, data%flv_in(1))
-       call it_hel1%init (pol1%state)
+       call pol1%init_generic (data%flv_in(1))
+       call it_hel1%init (pol1)
        do while (it_hel1%is_valid ())
-          qn_hel(1:1) = it_hel1%get_quantum_numbers ()
-          qn_hel(3:3) = it_hel1%get_quantum_numbers ()
-          call polarization_init_generic (pol2, data%flv_in(2))
-          call it_hel2%init (pol2%state)
+          qn_hel(1) = it_hel1%get_quantum_numbers ()
+          qn_hel(3) = it_hel1%get_quantum_numbers ()
+          call pol2%init_generic (data%flv_in(2))
+          call it_hel2%init (pol2)
           do while (it_hel2%is_valid ())
-             qn_hel(2:2) = it_hel2%get_quantum_numbers ()
-             qn_hel(4:4) = it_hel2%get_quantum_numbers ()
+             qn_hel(2) = it_hel2%get_quantum_numbers ()
+             qn_hel(4) = it_hel2%get_quantum_numbers ()
              qn = qn_hel .merge. qn_fc
              call sf_int%add_state (qn)
              call it_hel2%advance ()
           end do
-          call polarization_final (pol2)
+          ! call pol2%final ()
           call it_hel1%advance ()
        end do
-       call polarization_final (pol2)
+       ! call pol1%final ()
        call sf_int%freeze ()
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])

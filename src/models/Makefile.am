@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -73,6 +73,7 @@ libmodels_la_SOURCES = \
   parameters.SSC_2.f90 \
   parameters.SSC_AltT.f90 \
   parameters.Xdim.f90 \
+  parameters.WZW.f90 \
   parameters.Zprime.f90 \
   parameters.Threeshl.f90 \
   parameters.Threeshl_nohf.f90 \
@@ -120,6 +121,7 @@ nodist_execmod_HEADERS = \
   parameters_ssc_2.$(FC_MODULE_EXT) \
   parameters_ssc_altt.$(FC_MODULE_EXT) \
   parameters_xdim.$(FC_MODULE_EXT) \
+  parameters_wzw.$(FC_MODULE_EXT) \
   parameters_zprime.$(FC_MODULE_EXT) \
   parameters_threeshl.$(FC_MODULE_EXT) \
   parameters_threeshl_nohf.$(FC_MODULE_EXT) \
@@ -299,6 +301,9 @@ parameters_ssc_altt.$(FC_MODULE_EXT): parameters.SSC_AltT.lo
 parameters_xdim.$(FC_MODULE_EXT): parameters.Xdim.lo
 	@:
 
+parameters_wzw.$(FC_MODULE_EXT): parameters.WZW.lo
+	@:
+
 parameters_zprime.$(FC_MODULE_EXT): parameters.Zprime.lo
 	@:
 
@@ -306,7 +311,6 @@ parameters_zprime.$(FC_MODULE_EXT): parameters.Zprime.lo
 ## Dependency on O'Mega modules
 
 basicsdir = $(top_builddir)/src/basics
-testingdir = $(top_builddir)/src/testing
 utilitiesdir = $(top_builddir)/src/utilities
 systemdir = $(top_builddir)/src/system
 physicsdir = $(top_builddir)/src/physics
@@ -337,7 +341,7 @@ $(libmodels_la_OBJECTS) $(external_SM_tt_threshold_la_OBJECTS) $(external_Threes
   threeshl_bundle/threeshl.$(FC_MODULE_EXT) \
   threeshl_bundle/tglue.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I$(basicsdir) -I$(testingdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(combinatoricsdir) -I$(omegadir) -I../threshold -Ithreeshl_bundle
+AM_FCFLAGS = -I$(basicsdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(combinatoricsdir) -I$(omegadir) -I../threshold -Ithreeshl_bundle
 
 ########################################################################
 ## Default Fortran compiler options

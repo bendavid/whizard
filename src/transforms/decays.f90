@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,7 +40,7 @@ module decays
   use io_units
   use format_utils, only: write_indent, write_separator
   use format_defs, only: FMT_15
-  use unit_tests, only: nearly_equal, vanishes
+  use numeric_utils
   use diagnostics
   use flavors
   use helicities
@@ -274,6 +274,7 @@ module decays
      type(decay_root_t) :: decay_root
      type(decay_chain_t) :: decay_chain
    contains
+     procedure :: write_name => evt_decay_write_name
      procedure :: write => evt_decay_write
      procedure :: connect => evt_decay_connect
      procedure :: prepare_new_event => evt_decay_prepare_new_event
@@ -1354,6 +1355,14 @@ contains
     x = real (chain%correlated_trace%get_matrix_element (1))
   end function decay_chain_get_probability
 
+  subroutine evt_decay_write_name (evt, unit)
+    class(evt_decay_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: partonic decays"
+  end subroutine evt_decay_write_name
+
   subroutine evt_decay_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_decay_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -1364,7 +1373,7 @@ contains
     verb = .true.;  if (present (verbose))  verb = verbose
     verb2 = .false.;  if (present (more_verbose))  verb2 = more_verbose
     call write_separator (u, 2)
-    write (u, "(1x,A)")  "Event transform: partonic decays"
+    call evt%write_name (u)
     call write_separator (u, 2)
     call evt%base_write (u, testflag = testflag)
     if (verb) then

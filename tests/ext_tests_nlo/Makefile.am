@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -35,13 +35,16 @@
 WHIZARD_DRIVER = run_whizard.sh
 
 TESTS_EXTENDED = \
+	extra_nlo_decay.run \
 	extra_nlo_tt.run \
 	extra_nlo_tt_powheg.run \
 	extra_nlo_tt_powheg_sudakov.run \
 	extra_nlo_uu.run \
 	extra_nlo_uu_powheg.run \
 	extra_nlo_methods_gosam.run \
-	extra_nlo_methods.run
+	extra_nlo_methods.run \
+	extra_threshold_factorized.run \
+	extra_nlo_threshold.run
 
 XFAIL_TESTS_EXTENDED =
 
@@ -197,7 +200,7 @@ clean-local:
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la *.f90.in
 	rm -f *.makefile
 	rm -rf ref-output
 	rm -f *.sin *.hbc 
@@ -216,6 +219,7 @@ clean-local:
 	rm -rf *olp_modules
 	rm -rf Generated_Loops
 	rm -rf include lib golem.in
+	rm -f SM_tt_threshold.grid
 if FC_SUBMODULES
 	rm -f *.smod
 endif

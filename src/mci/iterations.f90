@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -75,7 +75,7 @@ module iterations
   type :: iteration_multipliers_t
     real(default) :: mult_real = 1._default
     real(default) :: mult_virt = 1._default
-    real(default) :: mult_pdf = 1._default
+    real(default) :: mult_dglap = 1._default
     real(default) :: mult_threshold = 1._default
     integer, dimension(:), allocatable :: n_calls0 
   end type iteration_multipliers_t

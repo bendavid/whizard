@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -31,7 +31,7 @@ noinst_PROGRAMS = stdhep_rd
 stdhep_rd_SOURCES = StdHepRdr.cpp
 stdhep_rd_LDADD = libWOStdHep.la
 
-FC_SOURCE = xdr_stdhep.f90
+FC_SOURCE = xdr_wo_stdhep.f90
 noinst_LTLIBRARIES = libWOStdHep.la
 
 libWOStdHep_la_SOURCES = \
@@ -99,7 +99,7 @@ DISTCLEANFILES += Makefile.depend
 ## Install the modules used by generated matrix element code
 execmoddir = $(pkglibdir)/mod/xdr
 nodist_execmod_HEADERS = \
-  xdr_stdhep.$(FC_MODULE_EXT)
+  xdr_wo_stdhep.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files

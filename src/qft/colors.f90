@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,8 +36,8 @@
 module colors
 
   use kinds, only: default
+  use iso_varying_string, string_t => varying_string
   use io_units
-  use unit_tests
   use diagnostics
   
   implicit none
@@ -803,23 +803,18 @@ contains
     type(color_t), dimension(:), intent(in) :: col
     type(color_t), dimension(size(col)) :: cc
     integer :: i, n, offset
-    ! print *, "Count color loops:"      !!! Debugging
-    ! call color_write (col); print *    !!! Debugging
     cc = col
     n = size (cc)
     offset = n
     call color_add_offset (cc, offset)
-    ! print *, offset                    !!! Debugging
-    ! call color_write (cc); print *     !!! Debugging
     count = 0
     SCAN_LOOPS: do
        do i = 1, n
-          ! print *, i, ':', cc(i)%c1    !!! Debugging 
           if (color_is_nonzero (cc(i))) then
              if (any (cc(i)%c1 > offset)) then
-                ! print *, 'start', i    !!! Debugging
                 count = count + 1
                 call follow_line1 (pick_new_line (cc(i)%c1, count, 1))
+                !!! TODO: (cw 2016-03-03) This can better be done with recursive subroutines
                 cycle SCAN_LOOPS
              end if
           end if
@@ -846,6 +841,7 @@ contains
          call color_mismatch
       end if
     end function pick_new_line
+
     subroutine reset_line (c, line)
       integer, dimension(:), intent(inout) :: c
       integer, intent(in) :: line
@@ -857,44 +853,43 @@ contains
          end if
       end do
     end subroutine reset_line
+
     recursive subroutine follow_line1 (line)
       integer, intent(in) :: line
       integer :: i
-      ! print *, 'follow line 1:', line     !!! Debugging
-      if (line == count) then
-         ! print *, 'loop closed'           !!! Debugging
-         return
-      end if
+      if (line == count) return
       do i = 1, n
          if (any (cc(i)%c1 == -line)) then
             call reset_line (cc(i)%c1, -line)
-            ! print *, 'found', -line, ' resetting c1:'   !!! Debugging
-            ! call color_write (cc); print *              !!! Debugging
             call follow_line2 (pick_new_line (cc(i)%c2, 0, sign (1, -line)))
             return
          end if
       end do
       call color_mismatch ()
     end subroutine follow_line1
+
     recursive subroutine follow_line2 (line)
       integer, intent(in) :: line
       integer :: i
-      ! print *, 'follow line 2:', line     !!! Debugging   
       do i = 1, n
          if (any (cc(i)%c2 == -line)) then
             call reset_line (cc(i)%c2, -line)
-            ! print *, 'found', -line, ' resetting c2:'   !!! Debugging
-            ! call color_write (cc); print *              !!! Debugging
             call follow_line1 (pick_new_line (cc(i)%c1, 0, sign (1, -line)))
             return
          end if
       end do
       call color_mismatch ()
     end subroutine follow_line2
+
     subroutine color_mismatch ()
       call color_write (col)
       print *
-      call msg_bug (" Color flow mismatch (color loops should be closed)")
+      call msg_fatal ("Color flow mismatch: Non-closed color lines appear during ", &
+         [var_str ("the evaluation of color correlations. This can happen if there "), &
+          var_str ("are different color structures in the initial or final state of "), &
+          var_str ("the process definition. If so, please use separate processes for "), &
+          var_str ("the different initial / final states. In a future WHIZARD version "), &
+          var_str ("this will be fixed.")])
     end subroutine color_mismatch
   end function count_color_loops
 

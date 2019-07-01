@@ -1,6 +1,6 @@
-! WHIZARD 2.2.8 Nov 22 2015
+! WHIZARD 2.3.0 July 21 2016
 ! 
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,7 +39,7 @@ module eio_lhef
   use iso_varying_string, string_t => varying_string
   use io_units
   use string_utils
-  use unit_tests
+  use numeric_utils
   use diagnostics
   use os_interface
   use xml
@@ -273,7 +273,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.2.8"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.3.0"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -634,7 +634,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.2.8"), u)
+       call eio%tag_gen_v%write (var_str ("2.3.0"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)

@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2015 by 
+# Copyright (C) 1999-2016 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -31,7 +31,6 @@
 noinst_LTLIBRARIES = libgosam.la
 
 libgosam_la_SOURCES = \
-  loop_archive.f90 \
   prc_gosam.f90
 
 ## Omitting this would exclude it from the distribution

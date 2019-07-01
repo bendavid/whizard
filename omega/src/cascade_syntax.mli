@@ -1,6 +1,6 @@
-(* $Id: cascade_syntax.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: cascade_syntax.mli 7469 2016-03-13 16:44:17Z ohl $
 
-   Copyright (C) 1999-2015 by
+   Copyright (C) 1999-2016 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -22,7 +22,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-type ('flavor, 'p) t =
+type ('flavor, 'p, 'constant) t =
   | True
   | False
   | On_shell of 'flavor list * 'p
@@ -32,22 +32,27 @@ type ('flavor, 'p) t =
   | Gauss of 'flavor list * 'p
   | Gauss_not of 'flavor list * 'p
   | Any_flavor of 'p
-  | Or of ('flavor, 'p) t list
-  | And of ('flavor, 'p) t list
+  | And of ('flavor, 'p, 'constant) t list
+  | X_Flavor of 'flavor list
+  | X_Vertex of 'constant list * 'flavor list list
 
-val mk_true : unit -> ('flavor, 'p) t
-val mk_false : unit -> ('flavor, 'p) t
-val mk_on_shell : 'flavor list -> 'p -> ('flavor, 'p) t
-val mk_on_shell_not : 'flavor list -> 'p -> ('flavor, 'p) t
-val mk_off_shell : 'flavor list -> 'p -> ('flavor, 'p) t
-val mk_off_shell_not : 'flavor list -> 'p -> ('flavor, 'p) t
-val mk_gauss : 'flavor list -> 'p -> ('flavor, 'p) t
-val mk_gauss_not : 'flavor list -> 'p -> ('flavor, 'p) t
-val mk_any_flavor : 'p -> ('flavor, 'p) t
-val mk_or : ('flavor, 'p) t -> ('flavor, 'p) t -> ('flavor, 'p) t
-val mk_and : ('flavor, 'p) t -> ('flavor, 'p) t -> ('flavor, 'p) t
+val mk_true : unit -> ('flavor, 'p, 'constant) t
+val mk_false : unit -> ('flavor, 'p, 'constant) t
+val mk_on_shell : 'flavor list -> 'p -> ('flavor, 'p, 'constant) t
+val mk_on_shell_not : 'flavor list -> 'p -> ('flavor, 'p, 'constant) t
+val mk_off_shell : 'flavor list -> 'p -> ('flavor, 'p, 'constant) t
+val mk_off_shell_not : 'flavor list -> 'p -> ('flavor, 'p, 'constant) t
+val mk_gauss : 'flavor list -> 'p -> ('flavor, 'p, 'constant) t
+val mk_gauss_not : 'flavor list -> 'p -> ('flavor, 'p, 'constant) t
+val mk_any_flavor : 'p -> ('flavor, 'p, 'constant) t
+val mk_and : ('flavor, 'p, 'constant) t ->
+  ('flavor, 'p, 'constant) t -> ('flavor, 'p, 'constant) t
+val mk_x_flavor : 'flavor list -> ('flavor, 'p, 'constant) t
+val mk_x_vertex : 'constant list -> 'flavor list list ->
+  ('flavor, 'p, 'constant) t
 
-val to_string : ('flavor -> string) -> ('p -> string) -> ('flavor, 'p) t -> string
+val to_string : ('flavor -> string) -> ('p -> string) ->
+  ('constant -> string) -> ('flavor, 'p, 'constant) t -> string
 
 exception Syntax_Error of string * int * int
 

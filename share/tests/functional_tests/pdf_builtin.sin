@@ -104,6 +104,14 @@ beams = p, p => pdf_builtin
 $pdf_builtin_set = "CT14NN"
 integrate (pdf_builtin_1_p)
 
+beams = p, p => pdf_builtin
+$pdf_builtin_set = "CJ15LO"
+integrate (pdf_builtin_1_p)
+
+beams = p, p => pdf_builtin
+$pdf_builtin_set = "CJ15NLO"
+integrate (pdf_builtin_1_p)
+
 beams = A, A
 integrate (pdf_builtin_2_p)
 

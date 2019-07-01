@@ -1,6 +1,6 @@
 ! $Id: parameters.Simplest.f90,v 1.1 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -81,8 +81,9 @@ module parameters_simplest_univ
 
 contains
 
-  subroutine import_from_whizard (par_array)
+  subroutine import_from_whizard (par_array, scheme)
     real(default), dimension(48), intent(in) :: par_array
+    integer, intent(in) :: scheme
     !!! This corresponds to 1/alpha = 137.03598949333
     real(default), parameter :: &
          alpha = 1.0_default/137.03598949333_default
