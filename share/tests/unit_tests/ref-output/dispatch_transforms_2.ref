@@ -12,24 +12,30 @@
 ------------------------------------------------------------------------
  Subprocess instances: not allocated
  Selected: [none]
- On-shell limit   =  0.00000E+00
- On-shell turnoff =  0.00000E+00
+ On-shell limit    =  0.00000E+00
+ On-shell turnoff  =  0.00000E+00
+ Background factor =  1.00000E+00
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 
-* ISR photon handler
+* ISR handler
 
 ========================================================================
- Event transform: ISR photon handler
+ Event transform: ISR/EPA handler
 ========================================================================
-   Insertion mode = 1: photon-pair recoil
-   Q_max =  1.000000000000E+02  1.000000000000E+02
-   m     =  5.110000000000E-04  5.110000000000E-04
+ Insertion mode = 1: pair recoil
+   ISR: Q_max =  1.000000000000E+02
+        m     =  5.110000000000E-04
+   EPA: [inactive]
+ Event:
+   mode  =  ---                 ---
+   Q_max =  0.000000000000E+00  0.000000000000E+00
+   m     =  0.000000000000E+00  0.000000000000E+00
+   x     =  0.000000000000E+00  0.000000000000E+00
+   xb    =  0.000000000000E+00  0.000000000000E+00
    sqrts =  0.000000000000E+00
-   x  =   0.000000000000E+00  0.000000000000E+00
-   xb =   0.000000000000E+00  0.000000000000E+00
 ------------------------------------------------------------------------
-Lorentz boost (partons before ISR c.m. -> lab) =
+Lorentz boost (partons before radiation c.m. -> lab) =
  L00 =   1.000000000000E+00
  L0j =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  L10 =   0.000000000000E+00
@@ -59,19 +65,24 @@ Combined transformation (partons -> partons with recoil in lab frame) =
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 
-* EPA beam handler
+* EPA handler
 
 ========================================================================
- Event transform: EPA beam handler
+ Event transform: ISR/EPA handler
 ========================================================================
-   Insertion mode = 1: beam-pair recoil
-   Q_max =  1.000000000000E+02  1.000000000000E+02
-   m     =  5.110000000000E-04  5.110000000000E-04
+ Insertion mode = 1: pair recoil
+   ISR: [inactive]
+   EPA: Q_max =  1.000000000000E+02
+        m     =  5.110000000000E-04
+ Event:
+   mode  =  ---                 ---
+   Q_max =  0.000000000000E+00  0.000000000000E+00
+   m     =  0.000000000000E+00  0.000000000000E+00
+   x     =  0.000000000000E+00  0.000000000000E+00
+   xb    =  0.000000000000E+00  0.000000000000E+00
    sqrts =  0.000000000000E+00
-   x  =   0.000000000000E+00  0.000000000000E+00
-   xb =   0.000000000000E+00  0.000000000000E+00
 ------------------------------------------------------------------------
-Lorentz boost (beams before EPA c.m. -> lab) =
+Lorentz boost (partons before radiation c.m. -> lab) =
  L00 =   1.000000000000E+00
  L0j =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  L10 =   0.000000000000E+00
@@ -80,7 +91,7 @@ Lorentz boost (beams before EPA c.m. -> lab) =
  L2j =   0.000000000000E+00  1.000000000000E+00  0.000000000000E+00
  L30 =   0.000000000000E+00
  L3j =   0.000000000000E+00  0.000000000000E+00  1.000000000000E+00
-Lorentz transformation (collinear photons -> photons with recoil in c.m.) =
+Lorentz transformation (collinear partons -> partons with recoil in c.m.) =
  L00 =   1.000000000000E+00
  L0j =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  L10 =   0.000000000000E+00
@@ -89,7 +100,7 @@ Lorentz transformation (collinear photons -> photons with recoil in c.m.) =
  L2j =   0.000000000000E+00  1.000000000000E+00  0.000000000000E+00
  L30 =   0.000000000000E+00
  L3j =   0.000000000000E+00  0.000000000000E+00  1.000000000000E+00
-Combined transformation (photons -> photons with recoil in lab frame) =
+Combined transformation (partons -> partons with recoil in lab frame) =
  L00 =   1.000000000000E+00
  L0j =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  L10 =   0.000000000000E+00

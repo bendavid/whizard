@@ -839,6 +839,195 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               true 
           | _ -> false 
           end
+      | V4 (Vector4_K_Matrix_cf_t0 (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end          
+      | V4 (Vector4_K_Matrix_cf_t1 (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end          
+      | V4 (Vector4_K_Matrix_cf_t2 (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end
+      | V4 (Vector4_K_Matrix_cf_t_rsi (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end
+      | V4 (Vector4_K_Matrix_cf_m0 (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end
+      | V4 (Vector4_K_Matrix_cf_m1 (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end
+      | V4 (Vector4_K_Matrix_cf_m7 (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F431|F342|F432) 
+          | 1, false, true, false, (F134|F143|F234|F243)
+          | 1, false, false, true, (F314|F413|F324|F423) ->
+              true
+          | 2, true, false, false, (F123|F213|F124|F214)
+          | 2, false, true, false, (F312|F321|F412|F421)
+          | 2, false, false, true, (F132|F231|F142|F241) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true 
+          | _ -> false 
+          end    
       | V4 (DScalar2_Vector2_K_Matrix_ms (disc, _), fusion, _) ->
           let s12, s23, s13 =
             begin match PT.to_list momenta with
@@ -886,6 +1075,147 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               true
           | _ -> false
           end
+      | V4 (DScalar2_Vector2_m_0_K_Matrix_cf (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F432|F123|F214) 
+          | 1, false, true, false, (F134|F243|F312|F421)
+          | 1, false, false, true, (F314|F423|F132|F241) ->
+              true
+          | 2, true, false, false, (F431|F342|F213|F124)
+          | 2, false, true, false, (F143|F234|F321|F412)
+          | 2, false, false, true, (F413|F324|F231|F142) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true
+          | 4, true, false, false, (F142|F413|F231|F324)
+          | 4, false, true, false, (F214|F341|F123|F432)
+          | 4, false, false, true, (F124|F431|F213|F342) ->
+              true
+          | 5, true, false, false, (F143|F412|F321|F234)
+          | 5, false, true, false, (F314|F241|F132|F423)
+          | 5, false, false, true, (F134|F421|F312|F243) ->
+              true
+          | 6, true, false, false, (F134|F132|F314|F312|F241|F243|F421|F423)
+          | 6, false, true, false, (F213|F413|F231|F431|F124|F324|F142|F342)
+          | 6, false, false, true, (F143|F123|F341|F321|F412|F214|F432|F234) ->
+              true
+          | 7, true, false, false, (F134|F312|F421|F243)
+          | 7, false, true, false, (F413|F231|F142|F324)
+          | 7, false, false, true, (F143|F321|F412|F432) ->
+              true
+          | 8, true, false, false, (F132|F314|F241|F423)
+          | 8, false, true, false, (F213|F431|F124|F342)
+          | 8, false, false, true, (F123|F341|F214|F234) ->
+              true
+          | _ -> false
+          end 
+      | V4 (DScalar2_Vector2_m_1_K_Matrix_cf (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F432|F123|F214) 
+          | 1, false, true, false, (F134|F243|F312|F421)
+          | 1, false, false, true, (F314|F423|F132|F241) ->
+              true
+          | 2, true, false, false, (F431|F342|F213|F124)
+          | 2, false, true, false, (F143|F234|F321|F412)
+          | 2, false, false, true, (F413|F324|F231|F142) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true
+          | 4, true, false, false, (F142|F413|F231|F324)
+          | 4, false, true, false, (F214|F341|F123|F432)
+          | 4, false, false, true, (F124|F431|F213|F342) ->
+              true
+          | 5, true, false, false, (F143|F412|F321|F234)
+          | 5, false, true, false, (F314|F241|F132|F423)
+          | 5, false, false, true, (F134|F421|F312|F243) ->
+              true
+          | 6, true, false, false, (F134|F132|F314|F312|F241|F243|F421|F423)
+          | 6, false, true, false, (F213|F413|F231|F431|F124|F324|F142|F342)
+          | 6, false, false, true, (F143|F123|F341|F321|F412|F214|F432|F234) ->
+              true
+          | 7, true, false, false, (F134|F312|F421|F243)
+          | 7, false, true, false, (F413|F231|F142|F324)
+          | 7, false, false, true, (F143|F321|F412|F432) ->
+              true
+          | 8, true, false, false, (F132|F314|F241|F423)
+          | 8, false, true, false, (F213|F431|F124|F342)
+          | 8, false, false, true, (F123|F341|F214|F234) ->
+              true
+          | _ -> false
+          end  
+      | V4 (DScalar2_Vector2_m_7_K_Matrix_cf (disc, _), fusion, _) ->
+          let s12, s23, s13 =
+            begin match PT.to_list momenta with
+            | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
+                               P.Scattering.timelike (P.add q2 q3),
+                               P.Scattering.timelike (P.add q1 q3))
+            | _ -> raise PT.Mismatched_arity
+            end in
+          begin match disc, s12, s23, s13, fusion with
+          | 0, true, false, false, (F341|F431|F342|F432|F123|F213|F124|F214)
+          | 0, false, true, false, (F134|F143|F234|F243|F312|F321|F412|F421)
+          | 0, false, false, true, (F314|F413|F324|F423|F132|F231|F142|F241) ->
+              true
+          | 1, true, false, false, (F341|F432|F123|F214) 
+          | 1, false, true, false, (F134|F243|F312|F421)
+          | 1, false, false, true, (F314|F423|F132|F241) ->
+              true
+          | 2, true, false, false, (F431|F342|F213|F124)
+          | 2, false, true, false, (F143|F234|F321|F412)
+          | 2, false, false, true, (F413|F324|F231|F142) ->
+              true
+          | 3, true, false, false, (F143|F413|F142|F412|F321|F231|F324|F234)
+          | 3, false, true, false, (F314|F341|F214|F241|F132|F123|F432|F423)
+          | 3, false, false, true, (F134|F431|F124|F421|F312|F213|F342|F243) ->
+              true
+          | 4, true, false, false, (F142|F413|F231|F324)
+          | 4, false, true, false, (F214|F341|F123|F432)
+          | 4, false, false, true, (F124|F431|F213|F342) ->
+              true
+          | 5, true, false, false, (F143|F412|F321|F234)
+          | 5, false, true, false, (F314|F241|F132|F423)
+          | 5, false, false, true, (F134|F421|F312|F243) ->
+              true
+          | 6, true, false, false, (F134|F132|F314|F312|F241|F243|F421|F423)
+          | 6, false, true, false, (F213|F413|F231|F431|F124|F324|F142|F342)
+          | 6, false, false, true, (F143|F123|F341|F321|F412|F214|F432|F234) ->
+              true
+          | 7, true, false, false, (F134|F312|F421|F243)
+          | 7, false, true, false, (F413|F231|F142|F324)
+          | 7, false, false, true, (F143|F321|F412|F432) ->
+              true
+          | 8, true, false, false, (F132|F314|F241|F423)
+          | 8, false, true, false, (F213|F431|F124|F342)
+          | 8, false, false, true, (F123|F341|F214|F234) ->
+              true
+          | _ -> false
+          end    
       | V4 (DScalar4_K_Matrix_ms (disc, _), fusion, _) ->
           let s12, s23, s13 =
             begin match PT.to_list momenta with

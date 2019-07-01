@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -927,7 +927,7 @@ contains
             &'wood'.  No resonances can be determined.")
     end select
   end subroutine process_extract_resonance_history_set
-  
+
   subroutine process_setup_beams_beam_structure &
        (process, beam_structure, sqrts, decay_rest_frame)
     class(process_t), intent(inout) :: process
@@ -1857,7 +1857,7 @@ contains
       method = var_list%get_sval (var_str ("$method"))
       born_me_method = var_list%get_sval (var_str ("$born_me_method"))
       if (born_me_method == "")  born_me_method = method
-      real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method")) 
+      real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
       if (real_tree_me_method == "")  real_tree_me_method = method
       loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
       if (loop_me_method == "")  loop_me_method = method
@@ -1874,7 +1874,7 @@ contains
       call msg_debug2 (D_PROCESS_INTEGRATION, &
            "process_init_blha_cores: method = ", correlation_me_method)
       call msg_debug2 (D_PROCESS_INTEGRATION, &
-           "process_init_blha_cores: method = ", dglap_me_method)      
+           "process_init_blha_cores: method = ", dglap_me_method)
       select case (nlo_type)
       case (BORN)
          if (needs_entry (method) .or. needs_entry (born_me_method)) &

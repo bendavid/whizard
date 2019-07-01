@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -94,6 +94,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (61)  ! not supported by reader, actually
     call event%evaluate_expressions ()
     call event%pacify_particle_set ()
 
@@ -106,14 +107,14 @@ contains
     write (u, "(A)")
 
     call write_stdhep_event &
-         (sample // ".hep", var_str ("test_1.hep"), 1)
+         (sample // ".hep", var_str ("eio_stdhep_1.hep.out"), 1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Read in ASCII contents of STDHEP file"
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = "test_1.hep", &
+    open (u_file, file = "eio_stdhep_1.hep.out", &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -199,6 +200,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (62)  ! not supported by reader, actually
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -210,14 +212,14 @@ contains
     write (u, "(A)")
 
     call write_stdhep_event &
-         (sample // ".up.hep", var_str ("test_2.hep"), 2)
+         (sample // ".up.hep", var_str ("eio_stdhep_2.hep.out"), 2)
 
     write (u, "(A)")
     write (u, "(A)")  "* Read in ASCII contents of STDHEP file"
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = "test_2.hep", &
+    open (u_file, file = "eio_stdhep_2.hep.out", &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -303,6 +305,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (63)  ! not supported by reader, actually
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -422,6 +425,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (64)   ! not supported by reader, actually
     call event%evaluate_expressions ()
     call event%pacify_particle_set ()
 

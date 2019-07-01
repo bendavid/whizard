@@ -4917,12 +4917,19 @@ We could get along with a polymorphic QCD type, but a monomorphic wrapper type
 with a polymorphic component is easier to handle and probably safer
 (w.r.t.\ compiler bugs).  However, we keep the object transparent, so we can
 set the type-specific parameters directly (by a [[dispatch]] routine).
+
+TODO: The [[n_f]] parameter is a later addition which is not printed
+nor used in the MD5 sum.  The default $-1$ indicates that it has not
+been set.  We may change this behavior for a more consistent handling of
+the $n_f$ parameter (cf.\ [[alphas_nf]]) within WHIZARD.  This would
+affect various MD5 sums in tests.
 <<SM qcd: public>>=
   public :: qcd_t
 <<SM qcd: types>>=
   type :: qcd_t
      class(alpha_qcd_t), allocatable :: alpha
      character(32) :: md5sum = ""
+     integer :: n_f = -1
    contains
    <<SM qcd: qcd: TBP>>
   end type qcd_t

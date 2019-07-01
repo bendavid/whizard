@@ -115,6 +115,10 @@ extern "C" void dump_lcio_event ( LCEvent* evt) {
   LCTOOLS::dumpEventDetailed ( evt );
 }
 
+extern "C" int lcio_event_get_event_number (LCEvent* evt) {
+  return evt->getEventNumber();
+}
+
 extern "C" int lcio_event_signal_process_id (LCEvent* evt) {
   return evt->getParameters().getIntVal("ProcessID");
 }
@@ -184,7 +188,7 @@ extern "C" std::ostream& printParameters
             }
             out << endl ;
         }
-
+  return out;
     }		
 
 // Write MCParticles as ASCII to stream
@@ -240,6 +244,7 @@ extern "C" std::ostream& printMCParticles
         out << endl 
             << "-------------------------------------------------------------------------------- " 
             << endl ;
+	return out;
     }
 	    
 // Write LCIO event to ASCII file
@@ -366,25 +371,31 @@ extern "C" MCParticleImpl* lcio_set_color_flow
 (MCParticleImpl* mcp, int cflow1, int cflow2) {
   int cflow[2] = { cflow1, cflow2 };
   mcp->setColorFlow ( cflow );
+  return mcp;
 }
 
 extern "C" MCParticleImpl* lcio_particle_set_spin
 (MCParticleImpl* mcp, const double spin1, const double spin2, const double spin3) {
-  float spin[3] = { spin1, spin2, spin3 };
+  float spin1_fl = spin1;
+  float spin2_fl = spin2;
+  float spin3_fl = spin3;
+  float spin[3] = { spin1_fl, spin2_fl, spin3_fl };
   mcp->setSpin( spin );
+  return mcp;
 }
 
 extern "C" MCParticleImpl* lcio_particle_set_time
 (MCParticleImpl* mcp, const double t) {
   mcp->setTime( t );
+  return mcp;
 }
 
 extern "C" MCParticleImpl* lcio_particle_set_vertex
 (MCParticleImpl* mcp, const double vx, const double vy, const double vz) {
   double vtx[3] = { vx, vy, vz };
   mcp->setVertex( vtx );
+  return mcp;
 }
-
 
 extern "C" void lcio_particle_add_parent
 ( MCParticleImpl* daughter , MCParticleImpl* parent) {
@@ -436,19 +447,19 @@ extern "C" int lcio_n_daughters ( MCParticleImpl* mcp) {
 }  
 
 extern "C" double lcio_vtx_x (MCParticleImpl* mcp) {
-  mcp->getVertex()[0];
+  return mcp->getVertex()[0];
 }
 
 extern "C" double lcio_vtx_y (MCParticleImpl* mcp) {
-  mcp->getVertex()[1];
+  return mcp->getVertex()[1];
 }
 
 extern "C" double lcio_vtx_z (MCParticleImpl* mcp) {
-  mcp->getVertex()[2];
+  return mcp->getVertex()[2];
 }
 
 extern "C" double lcio_prt_time (MCParticleImpl* mcp) {
-  mcp->getTime();
+  return mcp->getTime();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -474,6 +485,7 @@ extern "C" LCWriter* open_lcio_writer_append
 extern "C" LCWriter* lcio_write_event
 ( LCWriter* lcWrt, LCEventImpl* evt) {
   lcWrt->writeEvent( evt );
+  return lcWrt;
 }
 
 // destructor

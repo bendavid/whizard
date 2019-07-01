@@ -37,8 +37,7 @@ libtransforms_la_SOURCES = \
    resonance_insertion.f90 \
    hadrons.f90 \
    recoil_kinematics.f90 \
-   isr_photon_handler.f90 \
-   epa_beam_handler.f90 \
+   isr_epa_handler.f90 \
    decays.f90 \
    tau_decays.f90 \
    shower.f90 \
@@ -51,8 +50,7 @@ libtransforms_ut_la_SOURCES = \
    event_transforms_uti.f90 event_transforms_ut.f90 \
    resonance_insertion_uti.f90 resonance_insertion_ut.f90 \
    recoil_kinematics_uti.f90 recoil_kinematics_ut.f90 \
-   isr_photon_handler_uti.f90 isr_photon_handler_ut.f90 \
-   epa_beam_handler_uti.f90 epa_beam_handler_ut.f90 \
+   isr_epa_handler_uti.f90 isr_epa_handler_ut.f90 \
    decays_uti.f90 decays_ut.f90 \
    shower_uti.f90 shower_ut.f90 \
    events_uti.f90 events_ut.f90 \

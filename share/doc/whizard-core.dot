@@ -26,6 +26,7 @@ whizard_c_interface -> simulations
 commands -> user_files
 simulations -> event_streams
 integrations -> dispatch_me_methods
+commands -> restricted_subprocesses
 rt_data -> user_files
 whizard -> commands
 process_configurations -> dispatch_me_methods

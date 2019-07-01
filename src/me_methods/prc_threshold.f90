@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -179,11 +179,13 @@ module prc_threshold
 
 contains
 
-  subroutine threshold_writer_write_makefile_extra (writer, unit, id, os_data, nlo_type)
+  subroutine threshold_writer_write_makefile_extra &
+       (writer, unit, id, os_data, verbose, nlo_type)
     class(threshold_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     integer, intent(in) :: nlo_type
     type(string_t) :: f90in, f90, lo, extra
     call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_extra")
@@ -211,19 +213,24 @@ contains
     write (unit, "(A)") char(lo) // ": " // char (f90) // " " // &
          char(id) // ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+    end if
   end subroutine threshold_writer_write_makefile_extra
 
-  subroutine threshold_writer_write_makefile_code (writer, unit, id, os_data, testflag)
+  subroutine threshold_writer_write_makefile_code &
+       (writer, unit, id, os_data, verbose, testflag)
     class(threshold_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_code")
-    call writer%base_write_makefile_code (unit, id, os_data, testflag)
-    call writer%write_makefile_extra (unit, id, os_data, BORN)
+    call writer%base_write_makefile_code (unit, id, os_data, verbose, testflag)
+    call writer%write_makefile_extra (unit, id, os_data, verbose, BORN)
     if (writer%nlo_type == NLO_VIRTUAL .and. writer%active) &
-         call writer%write_makefile_extra (unit, id, os_data, writer%nlo_type)
+         call writer%write_makefile_extra (unit, id, os_data, verbose, writer%nlo_type)
   end subroutine threshold_writer_write_makefile_code
 
   function threshold_writer_type_name () result (string)

@@ -37,13 +37,11 @@ else
 PDFS = 
 endif
 
-PICTURES_EPS = \
-    figures1.eps fit11.eps fit12.eps \
-    fit21.eps fit22.eps fit13.eps \
-    fit23.eps fit15.eps fit25.eps \
-    dist78.eps 
-
-PICTURES_PDF = $(PICTURES_EPS:.eps=.pdf)
+PICTURES_PDF = \
+    figures1.pdf fit11.pdf fit12.pdf \
+    fit21.pdf fit22.pdf fit13.pdf \
+    fit23.pdf fit15.pdf fit25.pdf \
+    dist78.pdf
 
 LATEX_STYLES = \
     noweb.sty thohacks.sty thopp.sty
@@ -56,7 +54,7 @@ MP4_FILES = \
 
 EXTRA_DIST = \
   tex-comments.sh \
-  $(PICTURES_EPS) \
+  $(PICTURES_PDF) \
   $(LATEX_STYLES) \
   $(MP4_FILES)
 
@@ -271,25 +269,6 @@ endif PDFLATEX_AVAILABLE
 endif SUPP_PDF_AVAILABLE
 endif DISTRIBUTION
 
-if EPSPDF_AVAILABLE
-if EPSPDF_043
-.eps.pdf:
-	@if $(AM_V_P); then :; else echo " EPSPDF    " $@; fi
-	$(AM_V_at)$(EPSPDF) $< $@ 
-else
-if EPSTOPDF_AVAILABLE
-.eps.pdf:
-	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
-	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
-endif
-endif
-else
-if EPSTOPDF_AVAILABLE
-.eps.pdf:
-	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
-	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
-endif
-endif
 
 ########################################################################
 

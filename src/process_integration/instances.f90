@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -58,6 +58,7 @@ module instances
   use prc_core, only: prc_core_t, prc_core_state_t
 
   !!! We should depend less on these modules (move it to pcm_nlo_t e.g.)
+  use dglap_remnant, only: rescale_dglap_t
   use phs_wood, only: phs_wood_t
   use phs_fks
   use blha_olp_interfaces, only: prc_blha_t
@@ -144,6 +145,7 @@ module instances
      procedure :: evaluate_charge_correlations => &
         term_instance_evaluate_charge_correlations
      procedure :: evaluate_spin_correlations => term_instance_evaluate_spin_correlations
+     procedure :: compute_sqme_coll_isr => term_instance_compute_sqme_coll_isr
      procedure :: apply_fks => term_instance_apply_fks
      procedure :: evaluate_sqme_virt => term_instance_evaluate_sqme_virt
      procedure :: evaluate_sqme_mismatch => term_instance_evaluate_sqme_mismatch
@@ -426,6 +428,7 @@ contains
     integer :: i, j
     logical :: me_already_squared, keep_fs_flavors
     logical :: decrease_n_tot
+    logical :: requires_extended_sf
 
     me_already_squared = .false.
     keep_fs_flavors = .false.
@@ -503,15 +506,19 @@ contains
        type is (pcm_nlo_t)
           n_sub = pcm%get_n_sub ()
        end select
+    else if (term%nlo_type == NLO_DGLAP) then
+       n_sub = 1 + n_beam_structure_int
     else
        !!! No integration of real subtraction in interactions yet
        n_sub = 0
     end if
     keep_fs_flavors = keep_fs_flavors .or. me_already_squared
+    requires_extended_sf = term%nlo_type == NLO_DGLAP .or. &
+         (term%is_subtraction () .and. process%pcm_contains_pdfs ())
     call term%connected%setup_connected_trace (term%isolated, &
          undo_helicities = undo_helicities (core, me_already_squared), &
          n_sub = n_sub, keep_fs_flavors = keep_fs_flavors, &
-         is_real_sub = term%is_subtraction () .and. process%pcm_contains_pdfs ())
+         extended_sf = requires_extended_sf)
 
     associate (int_eff => term%isolated%int_eff)
       state_matrix => int_eff%get_state_matrix_ptr ()
@@ -598,15 +605,18 @@ contains
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_term_t) :: term
     integer :: i_component
+    logical :: requires_extended_sf
     term = process%get_term_ptr (i)
     i_component = term%i_component
     if (i_component /= 0) then
        term_instance%pcm_instance => pcm_instance
        term_instance%nlo_type = process%get_nlo_type_component (i_component)
+       requires_extended_sf = term_instance%nlo_type == NLO_DGLAP .or. &
+              (term_instance%nlo_type == NLO_REAL .and. process%get_i_sub (i) == i)
        call term_instance%setup_kinematics (sf_chain, &
             process%get_beam_config_ptr (), &
             process%get_phs_config (i_component), &
-            process%get_i_sub (i) == i)
+            requires_extended_sf)
        call term_instance%init (process, i, &
             real_finite = process%component_is_real_finite (i_component))
        select type (phs => term_instance%k_term%phs)
@@ -621,26 +631,18 @@ contains
   end subroutine term_instance_init_from_process
 
   subroutine term_instance_setup_kinematics (term, sf_chain, &
-     beam_config, phs_config, is_sub)
+     beam_config, phs_config, extended_sf)
     class(term_instance_t), intent(inout) :: term
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_beam_config_t), intent(in), target :: beam_config
     class(phs_config_t), intent(in), target :: phs_config
-    logical, intent(in) :: is_sub
-    integer :: n_sub
-    n_sub = 0
+    logical, intent(in) :: extended_sf
     select type (config => term%pcm_instance%config)
     type is (pcm_nlo_t)
-       if (is_sub) then
-          n_sub = config%get_n_sub () - 1
-       else if (term%nlo_type == NLO_VIRTUAL) then
-          n_sub = config%get_n_sub ()
-       end if
-       call term%k_term%init_sf_chain (sf_chain, beam_config, n_sub, &
-            has_pdfs = config%has_pdfs .and. is_sub)
-
+       call term%k_term%init_sf_chain (sf_chain, beam_config, &
+            has_pdfs = config%has_pdfs .and. extended_sf)
     class default
-       call term%k_term%init_sf_chain (sf_chain, beam_config, n_sub)
+       call term%k_term%init_sf_chain (sf_chain, beam_config)
     end select
     !!! Add one for additional Born matrix element
     call term%k_term%init_phs (phs_config)
@@ -1000,7 +1002,8 @@ contains
      type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
      call connected%setup_connected_matrix (isolated)
      if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL &
-         .and. term%config%i_term_global == term%config%i_sub)) then
+         .and. term%config%i_term_global == term%config%i_sub) &
+         .or. term%nlo_type == NLO_DGLAP) then
         !!! We don't care about the subtraction matrix elements in
         !!! connected%matrix, because all entries there are supposed
         !!! to be squared. To be able to match with flavor quantum numbers,
@@ -1034,8 +1037,7 @@ contains
              case (NLO_REAL)
                 call transfer_me_array_to_bij (config, i_flv_born, &
                      pcm_instance%real_sub%sqme_born (i_flv_born), &
-                     pcm_instance%real_sub%sqme_born_color_c (:, :, i_flv_born), &
-                     pcm_instance%real_sub%sqme_coll_isr (:, :, i_flv_born))
+                     pcm_instance%real_sub%sqme_born_color_c (:, :, i_flv_born))
              case (NLO_MISMATCH)
                 call transfer_me_array_to_bij (config, i_flv_born, &
                      pcm_instance%soft_mismatch%sqme_born (i_flv_born), &
@@ -1095,12 +1097,11 @@ contains
     end function get_trivial_cf_factors_threshold
 
     subroutine transfer_me_array_to_bij (pcm, i_flv, &
-         sqme_born, sqme_color_c, sqme_coll_isr)
+         sqme_born, sqme_color_c)
       type(pcm_nlo_t), intent(in) :: pcm
       integer, intent(in) :: i_flv
       real(default), intent(in) :: sqme_born
       real(default), dimension(:,:), intent(inout) :: sqme_color_c
-      real(default), dimension(:,:), intent(inout), optional :: sqme_coll_isr
       integer :: i_color_c, i_isr, ii_flv, i
       call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
       if (pcm%settings%use_internal_color_correlations) then
@@ -1146,20 +1147,6 @@ contains
                     pcm%region_data%get_flv_states_born (i_flv), &
                     sqme_color_c)
             end if
-            if (pcm%has_pdfs) then
-               if (present (sqme_coll_isr)) then
-                  i_isr = term%config%data%n_flv * pcm%get_n_sub () + ii_flv
-                  sqme_coll_isr (1, 1) = real(me(i_isr))
-                  i_isr = term%config%data%n_flv * pcm%get_n_sub () + ii_flv + term%config%data%n_flv
-                  sqme_coll_isr (2, 1) = real(me(i_isr))
-                  i_isr = term%config%data%n_flv * pcm%get_n_sub () + &
-                       ii_flv + term%config%data%n_flv * 2
-                  sqme_coll_isr (1, 2) = real(me(i_isr))
-                  i_isr = term%config%data%n_flv * pcm%get_n_sub () + &
-                        ii_flv + term%config%data%n_flv * 3
-                  sqme_coll_isr (2, 2) = real(me(i_isr))
-               end if
-            end if
          end associate
       end if
     end subroutine transfer_me_array_to_bij
@@ -1179,8 +1166,7 @@ contains
              case (NLO_REAL)
                 call transfer_me_array_to_bij (config, i_flv_born, &
                      pcm_instance%real_sub%sqme_born (i_flv_born), &
-                     pcm_instance%real_sub%sqme_born_charge_c (:, :, i_flv_born), &
-                     pcm_instance%real_sub%sqme_coll_isr (:, :, i_flv_born))
+                     pcm_instance%real_sub%sqme_born_charge_c (:, :, i_flv_born))
              case (NLO_MISMATCH)
                 call transfer_me_array_to_bij (config, i_flv_born, &
                      pcm_instance%soft_mismatch%sqme_born (i_flv_born), &
@@ -1193,21 +1179,15 @@ contains
        end select
     end select
   contains
-    subroutine transfer_me_array_to_bij (pcm, i_flv, sqme_born, sqme_charge_c, sqme_coll_isr)
+    subroutine transfer_me_array_to_bij (pcm, i_flv, sqme_born, sqme_charge_c)
       type(pcm_nlo_t), intent(in) :: pcm
       integer, intent(in) :: i_flv
       real(default), intent(in) :: sqme_born
       real(default), dimension(:,:), intent(inout) :: sqme_charge_c
-      real(default), dimension(:,:), intent(inout), optional :: sqme_coll_isr
       integer :: n_legs_born, i, j
       integer, dimension(:), allocatable :: sigma
       real(default), dimension(:), allocatable :: Q
-      integer :: ii_flv, i_isr
       n_legs_born = pcm%region_data%n_legs_born
-      select type (pcm_instance => term%pcm_instance)
-      type is (pcm_instance_nlo_t)
-         ii_flv = pcm_instance%interaction_index(term%config%i_term_global)%index(i_flv)
-      end select
       associate (flv_born => pcm%region_data%flv_born(i_flv))
          allocate (sigma (n_legs_born), Q (size (flv_born%charge)))
          Q = flv_born%charge
@@ -1220,16 +1200,6 @@ contains
          end do
       end do
       sqme_charge_c = sqme_charge_c * sqme_born
-      if (pcm%has_pdfs) then
-        if (present (sqme_coll_isr)) then
-           associate (me => term%connected%trace%get_matrix_element ())
-              i_isr = term%config%data%n_flv * pcm%get_n_sub () + ii_flv
-              sqme_coll_isr (1, 1) = real(me(i_isr))
-              i_isr = term%config%data%n_flv * pcm%get_n_sub () + ii_flv + term%config%data%n_flv
-              sqme_coll_isr (2, 1) = real(me(i_isr))
-           end associate
-        end if
-      end if
     end subroutine transfer_me_array_to_bij
   end subroutine term_instance_evaluate_charge_correlations
 
@@ -1272,6 +1242,84 @@ contains
        end if
     end select
   end subroutine term_instance_evaluate_spin_correlations
+
+  subroutine term_instance_compute_sqme_coll_isr (term)
+    class(term_instance_t), intent(in) :: term
+    integer :: i_flv, ii_flv, i_isr, n_sub
+    select type (pcm_instance => term%pcm_instance)
+    type is (pcm_instance_nlo_t)
+       select type (pcm => term%pcm_instance%config)
+       type is (pcm_nlo_t)
+          n_sub = n_beam_structure_int
+          if (term%nlo_type == NLO_REAL) n_sub = pcm%get_n_sub ()
+          associate (me => term%connected%trace%get_matrix_element ())
+             do i_flv = 1, pcm%region_data%n_flv_born
+                ii_flv = pcm_instance%interaction_index(term%config%i_term_global)%index(i_flv)
+                i_isr = compute_base_i_isr (term%nlo_type)
+                call set_sqme_coll_isr (1, 1, i_flv, real(me(i_isr)))
+                i_isr = i_isr + term%config%data%n_flv
+                call set_sqme_coll_isr (2, 1, i_flv, real(me(i_isr)))
+                !!! Gluon-replacing scalings not required in QED case
+                if (pcm%settings%nlo_correction_type == "QCD" .or. &
+                     pcm%settings%nlo_correction_type == "Full") then
+                   i_isr = i_isr + term%config%data%n_flv
+                   call set_sqme_coll_isr (1, 2, i_flv, real(me(i_isr)))
+                   i_isr = i_isr + term%config%data%n_flv
+                   call set_sqme_coll_isr (2, 2, i_flv, real(me(i_isr)))
+                end if
+             end do
+          end associate
+          if (debug2_active (D_BEAMS)) then
+             call msg_debug2 (D_BEAMS, "term_instance_compute_sqme_coll_isr")
+             if (term%nlo_type == NLO_REAL) then
+                print *, "nlo_type: REAL"
+                print *, "n_flv: ", pcm%region_data%n_flv_born
+                print *, "ii_flv: ", pcm_instance%interaction_index(term%config%i_term_global)%index
+                print *, "Beam 1: "
+                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (1, 1, :)
+                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (1, 2, :)
+                print *, "Beam 2: "
+                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (2, 1, :)
+                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (2, 2, :)
+             else if (term%nlo_type == NLO_DGLAP) then
+                print *, "nlo_type: DGLAP"
+                print *, "n_flv: ", pcm%region_data%n_flv_born
+                print *, "ii_flv: ", pcm_instance%interaction_index(term%config%i_term_global)%index
+                print *, "Beam 1: "
+                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (1, 1, :)
+                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (1, 2, :)
+                print *, "Beam 2: "
+                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (2, 1, :)
+                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (2, 2, :)
+             end if
+          end if
+       end select
+    end select
+  contains
+    function compute_base_i_isr (nlo_type) result (i_isr)
+      integer :: i_isr
+      integer, intent(in) :: nlo_type
+      if (nlo_type == NLO_REAL) then
+         i_isr = term%config%data%n_flv * n_sub + ii_flv
+      else if (nlo_type == NLO_DGLAP) then
+         i_isr = term%config%data%n_flv + ii_flv
+      end if
+    end function compute_base_i_isr
+
+    subroutine set_sqme_coll_isr (i_beam, i_type, i_flv, me)
+      integer, intent(in) :: i_beam, i_type, i_flv
+      real(default), intent(in) :: me
+      select type (pcm_instance => term%pcm_instance)
+      type is (pcm_instance_nlo_t)
+         select case (term%nlo_type)
+         case (NLO_REAL)
+            pcm_instance%real_sub%sqme_coll_isr (i_beam, i_type, i_flv) = me
+         case (NLO_DGLAP)
+            pcm_instance%dglap_remnant%sqme_coll_isr (i_beam, i_type, i_flv) = me
+         end select
+      end select
+    end subroutine set_sqme_coll_isr
+  end subroutine term_instance_compute_sqme_coll_isr
 
   subroutine term_instance_apply_fks (term, core, alpha_s_sub, alpha_qed_sub)
     class(term_instance_t), intent(inout) :: term
@@ -1414,19 +1462,26 @@ contains
     integer :: i_flv, int_index
     if (term%nlo_type /= NLO_DGLAP) call msg_fatal &
        ("Trying to evaluate DGLAP remnant with unsuited term_instance.")
+    call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_evaluate_sqme_dglap")
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
+       if (debug2_active (D_PROCESS_INTEGRATION)) then
+          print *, "size(sqme_born) = ", term%connected%trace%get_n_matrix_elements ()
+          call term%connected%trace%write ()
+       end if
        allocate (sqme_born (term%connected%trace%get_n_matrix_elements ()))
        do i_flv = 1, pcm_instance%dglap_remnant%n_flv
           int_index = pcm_instance%interaction_index(term%config%i_term_global)%index(i_flv)
+          if (debug2_active (D_PROCESS_INTEGRATION)) then
+             print *, "i_flv = ", i_flv, ", n_flv = ", pcm_instance%dglap_remnant%n_flv
+             print *, "int_index = ", int_index
+             print *, "sqme_born(i_flv) = ", real (term%connected%trace%get_matrix_element (int_index))
+          end if
           sqme_born(i_flv) = real (term%connected%trace%get_matrix_element (int_index))
        end do
        call pcm_instance%compute_sqme_dglap_remnant (alpha_s, &
-            !real (term%connected%trace%get_matrix_element ()), &
-            sqme_born, &
-            term%connected%has_matrix, sqme_dglap)
+            sqme_born, term%connected%has_matrix, sqme_dglap)
     end select
-    !print *, 'sqme_dglap: ', sqme_dglap
     call term%connected%trace%set_only_matrix_element &
          (1, cmplx (sum (sqme_dglap) * term%weight, 0, default))
     if (term%connected%has_matrix) then
@@ -1621,21 +1676,25 @@ contains
              call core%compute_sqme_color_c_raw (i, term%p_hard, term%ren_scale, &
                   sqme_color_c, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
-             if (term%pcm_instance%config%has_pdfs) then
-                n_pdf_off = 4
-                term%amp(i_born + n_born) = term%amp(i_born)
-                term%amp(i_born + n_born * 2) = term%amp(i_born)
-                term%amp(i_born + n_born * 3) = term%amp(i_born)
-                term%amp(i_born + n_born * 4) = term%amp(i_born)
-             else
-                n_pdf_off = 0
-             end if
-             do i_sub = 1, n_sub - n_pdf_off
-                i_color_c = i_born + (i_sub + n_pdf_off) * n_born
-                term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
-             end do
           end select
-       end if
+        end if
+        if (term%pcm_instance%config%has_pdfs .and. &
+             (term%is_subtraction () .or. term%nlo_type == NLO_DGLAP)) then
+           n_pdf_off = n_beam_structure_int
+           term%amp(i_born + n_born) = term%amp(i_born)
+           term%amp(i_born + n_born * 2) = term%amp(i_born)
+           term%amp(i_born + n_born * 3) = term%amp(i_born)
+           term%amp(i_born + n_born * 4) = term%amp(i_born)
+        else
+           n_pdf_off = 0
+        end if
+        if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
+             term%nlo_type == NLO_MISMATCH) then
+           do i_sub = 1, n_sub - n_pdf_off
+              i_color_c = i_born + (i_sub + n_pdf_off) * n_born
+              term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
+           end do
+        end if
     end do
   end subroutine term_instance_evaluate_interaction_userdef_tree
 
@@ -1760,6 +1819,19 @@ contains
           else
              call term%k_term%sf_chain%evaluate (term%fac_scale)
           end if
+       else if (term%nlo_type == NLO_DGLAP) then
+          allocate (rescale_dglap_t :: func)
+          call func%init_indices ()
+          select type (pcm => term%pcm_instance)
+          type is (pcm_instance_nlo_t)
+             select type (func)
+             type is (rescale_dglap_t)
+                call func%set (pcm%isr_kinematics%z)
+             end select
+          end select
+          call term%k_term%sf_chain%evaluate (term%fac_scale, func, 1)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, func, 2)
+          deallocate (func)
        end if
     end if
   end subroutine term_instance_evaluate_scaled_sf_chains
@@ -2581,7 +2653,7 @@ contains
        end do
     end if
   end subroutine process_instance_reset_core_kinematics
-    
+
   subroutine process_instance_evaluate_trace (instance)
     class(process_instance_t), intent(inout) :: instance
     class(prc_core_t), pointer :: core => null ()
@@ -2607,7 +2679,8 @@ contains
 
                if (term%config%i_component /= i_real_fin) then
                   if ((term%nlo_type == NLO_REAL .and. term%k_term%emitter < 0) &
-                       .or. term%nlo_type == NLO_MISMATCH) &
+                       .or. term%nlo_type == NLO_MISMATCH &
+                       .or. term%nlo_type == NLO_DGLAP) &
                        call term%set_born_sqmes (core)
                   if (term%nlo_type > BORN) then
                      if (.not. (term%nlo_type == NLO_REAL .and. term%k_term%emitter >= 0)) then
@@ -2623,6 +2696,9 @@ contains
                      end if
                      if (term%is_subtraction ()) &
                           call term%evaluate_spin_correlations (term%p_seed, core_sub)
+                     if ((term%is_subtraction () .or. term%nlo_type == NLO_DGLAP) &
+                          .and. term%pcm_instance%config%has_pdfs) &
+                          call term%compute_sqme_coll_isr ()
                   end if
                   alpha_s = core%get_alpha_s (term%core_state)
                   if (associated (instance%process%get_model_ptr ())) then
@@ -2689,6 +2765,8 @@ contains
              pcm_instance%real_sub%sqme_born(i_flv) = sqme
           case (NLO_MISMATCH)
              pcm_instance%soft_mismatch%sqme_born(i_flv) = sqme
+          case (NLO_DGLAP)
+             pcm_instance%dglap_remnant%sqme_born(i_flv) = sqme
           end select
        end do
     end select
@@ -2808,7 +2886,7 @@ contains
           call term%evaluate_trace ()
           pcm%real_sub%sqme_born (1) = &
                real (term%connected%trace%get_matrix_element (1))
-          if (term%nlo_type == NLO_REAL .and. term%k_term%emitter < 0) then
+          if (term%is_subtraction ()) then
              select type (config => term%pcm_instance%config)
              type is (pcm_nlo_t)
                 if (char (config%settings%nlo_correction_type) == "QCD" .or. &
@@ -2819,6 +2897,10 @@ contains
                      call term%evaluate_charge_correlations (term%p_seed, core)
              end select
              call term%evaluate_spin_correlations (term%p_seed, core)
+             if (term%pcm_instance%config%has_pdfs) &
+                  call term%compute_sqme_coll_isr ()
+          else if (term%nlo_type == NLO_DGLAP) then
+             call term%compute_sqme_coll_isr ()
           end if
           i_real_fin = instance%process%get_associated_real_fin (1)
           if (term%config%i_component /= i_real_fin) &
@@ -3396,7 +3478,7 @@ contains
                       n_sub = 0
                    end select
                    call core%set_i_whizard_to_i_olc_trivial (n_flv, &
-                        term%int_hard%get_n_in_helicities (), n_sub)
+                        term%int_hard%get_n_in_helicities ())
                 end if
              end select
              core_checked(i) = .true.

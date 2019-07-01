@@ -73,8 +73,8 @@ $sample = "isr_5"
 n_events = 1
 | Starting simulation for process 'isr_5'
 | Simulate: using integration grids from file 'isr_5_m1.vg'
-| Simulate: activating ISR photon handler
-| Simulate: ISR handler mode: photon-pair recoil
+| Simulate: activating ISR handler
+| Simulate: ISR/EPA handler mode: pair recoil
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization
@@ -96,7 +96,7 @@ n_events = 1
 |=============================================================================|
 Partial contents of isr_5.debug:
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = T
    Normalization      = '1'

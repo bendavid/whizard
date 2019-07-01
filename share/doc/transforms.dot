@@ -4,25 +4,25 @@ concentrate=true
 splines=ortho
 node[shape=record,style=filled,fillcolor=white]
 edge[color=gray50]
-isr_photon_handler -> recoil_kinematics
+isr_epa_handler -> recoil_kinematics
+tau_decays -> event_transforms
 shower -> event_transforms
 dispatch_transforms -> shower
 dispatch_transforms -> evt_nlo
-tau_decays -> event_transforms
+events -> decays
+isr_epa_handler -> event_transforms
 dispatch_transforms -> decays
-dispatch_transforms -> isr_photon_handler
 evt_nlo -> event_transforms
 events -> event_transforms
-dispatch_transforms -> resonance_insertion
-eio_raw -> events
+dispatch_transforms -> isr_epa_handler
 dispatch_transforms -> hadrons
 hadrons -> event_transforms
 resonance_insertion -> event_transforms
-events -> decays
+eio_raw -> events
 decays -> event_transforms
-dispatch_transforms -> eio_raw
+dispatch_transforms -> resonance_insertion
 dispatch_transforms -> event_transforms
 events -> evt_nlo
-isr_photon_handler -> event_transforms
+dispatch_transforms -> eio_raw
  }
 

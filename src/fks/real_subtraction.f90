@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,7 +31,6 @@ module real_subtraction
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
   use io_units
-  use system_dependencies, only: LHAPDF6_AVAILABLE
   use format_defs, only: FMT_15
   use string_utils
   use constants
@@ -41,8 +40,6 @@ module real_subtraction
   use models
   use physics_defs
   use sm_physics
-  use sf_lhapdf
-  use pdf
   use lorentz
   use flavors
   use phs_fks, only: real_kinematics_t, isr_kinematics_t

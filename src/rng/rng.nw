@@ -660,7 +660,8 @@ is only one entry.)
     integer, intent(out) :: n
     real(default) :: x
     select case (size (selector%acc))
-    case (1);  n = 1 + selector%offset
+    case (1)
+       n = selector%map(1)
     case default
        call rng%generate (x)
        n = selector%select (x)

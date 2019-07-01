@@ -2196,23 +2196,12 @@ Set up an array of various phase-space channels and collect them in a list.
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{Single-particle phase space}
+\section{Dummy phase space}
 
-This module implements the phase space for a single particle, i.e., the solid
-angle, in a straightforward parameterization with a single channel.  The
-phase-space implementation may be used either for $1\to 2$ decays or for $2\to
-2$ scattering processes, so the number of incoming particles is the only free
-parameter in the configuration.  In the latter case, we should restrict its
-use to non-resonant s-channel processes, because there is no mapping of the
-scattering angle.
+This module implements a dummy phase space module for cases where the
+program structure demands the existence of a phase-space module, but
+no phase space integration is performed.
 
-(We might extend this later to account for generic $2\to 2$ situations, e.g.,
-account for a Coulomb singularity or detect an s-channel resonance structure
-that requires matching structure-function mappings.)
-
-This is derived from the [[phs_test]] implementation in the
-[[phs_base]] module above, even more simplified, but intended for
-actual use.
 <<[[phs_none.f90]]>>=
 <<File header>>
 
@@ -3492,7 +3481,7 @@ the mapping a dimensionless quantity.
        n = 0
     end if
   end function resonance_info_get_n_contributors
-  
+
   elemental function resonance_info_contains (resonance, c) result (flag)
     class(resonance_info_t), intent(in) :: resonance
     integer, intent(in) :: c
@@ -3503,7 +3492,7 @@ the mapping a dimensionless quantity.
        flag = .false.
     end if
   end function resonance_info_contains
-  
+
 @ %def resonance_info_get_n_contributors
 @ %def resonance_info_contains
 @
@@ -3810,7 +3799,7 @@ distance from the resonance peak in units of the half-width.
     q = sum (p(res_info%contributors%c))
     dist = abs (q**2 - m**2) / (m * w)
   end subroutine resonance_info_evaluate_distance
-    
+
 @ %def resonance_info_evaluate_distance
 @
 Evaluate the array of distances from a resonance history.  We assume that the
@@ -3893,7 +3882,7 @@ width values as given by [[on_shell_limit]].
   end function resonance_info_is_on_shell
 
 @ %def resonance_info_is_on_shell
-@ 
+@
 <<Resonances: resonance history: TBP>>=
   procedure :: is_on_shell => resonance_history_is_on_shell
 <<Resonances: procedures>>=
@@ -3966,7 +3955,7 @@ of contributors, and their decay products added as an extra array.
      integer, dimension(:), allocatable :: r_child
      integer, dimension(:), allocatable :: o_child
   end type resonance_branch_t
-  
+
   type :: resonance_tree_t
      private
      integer :: n = 0
@@ -4025,14 +4014,14 @@ of contributors, and their decay products added as an extra array.
     integer :: n
     n = tree%n
   end function resonance_tree_get_n_resonances
-  
+
   function resonance_tree_get_flv (tree, i) result (flv)
     class(resonance_tree_t), intent(in) :: tree
     integer, intent(in) :: i
     type(flavor_t) :: flv
     flv = tree%branch(i)%flv
   end function resonance_tree_get_flv
-  
+
 @ %def resonance_tree_get_n_resonances
 @ %def resonance_tree_get_flv
 @ Return the shifted indices of the resonance children for branch [[i]].  For
@@ -4055,7 +4044,7 @@ the others, add [[offset_o]].  Combine both in a single array.
       child(nr+1:nr+no) = branch%o_child + offset_o
     end associate
   end function resonance_tree_get_children
-  
+
 @ %def resonance_tree_get_children
 @ Transform a resonance history into a resonance tree.
 Algorithm:
@@ -4170,7 +4159,7 @@ Algorithm:
     end subroutine set_child_outgoing
 
   end subroutine resonance_history_to_tree
-  
+
 @ %def resonance_history_to_tree
 @
 \subsection{Resonance history set}
@@ -4330,7 +4319,7 @@ entered.
     end do
     res_set%complete = .true.
   end subroutine resonance_history_set_freeze
-  
+
 @ %def resonance_history_set_freeze
 @ Determine the histories (in form of their indices in the array) that can be
 considered on-shell, given a set of momenta and a maximum distance.  The
@@ -4365,9 +4354,9 @@ contains this and also is on-shell, only the latter is retained.
        end do
        allocate (index_array (count (i_array /= 0)))
        index_array(:) = pack (i_array, i_array /= 0)
-    end if    
+    end if
   end subroutine resonance_history_set_determine_on_shell_histories
-    
+
 @ %def resonance_history_set_determine_on_shell_histories
 @ For the selected history, compute the Gaussian turnoff factor.
 The turnoff parameter is [[gw]].
@@ -4383,7 +4372,7 @@ The turnoff parameter is [[gw]].
     real(default) :: factor
     factor = res_set%history(i)%evaluate_gaussian (p, gw)
   end function resonance_history_set_evaluate_gaussian
-    
+
 @ %def resonance_history_set_evaluate_gaussian
 @ Return the number of histories.  This is zero if there are none, or
 if [[freeze]] has not been called yet.
@@ -4395,7 +4384,7 @@ if [[freeze]] has not been called yet.
     integer :: n
     if (res_set%complete) then
        n = res_set%last
-    else 
+    else
        n = 0
     end if
   end function resonance_history_set_get_n_history
@@ -4854,11 +4843,11 @@ end module resonances_uti
     write (u, "(A,1x," // FMF_12 // ")")  "wW  =", ww
     write (u, "(A,1x," // FMF_12 // ")")  "mZ  =", mz
     write (u, "(A,1x," // FMF_12 // ")")  "wZ  =", wz
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Gaussian width parameter"
     write (u, "(A)")
-    
+
     gw = 2
     write (u, "(A,1x," // FMF_12 // ")")  "gw  =", gw
 
@@ -4885,7 +4874,7 @@ end module resonances_uti
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate distances from resonances"
     write (u, "(A)")
-    
+
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "m/w (W)      =", mw / ww
@@ -4895,7 +4884,7 @@ end module resonances_uti
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
     write (u, "(A)")
-    
+
     factor = res_history%evaluate_gaussian (p, gw)
     write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
 
@@ -4912,7 +4901,7 @@ end module resonances_uti
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate distances from resonances"
     write (u, "(A)")
-    
+
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (Z) =", dist(2)
@@ -4922,7 +4911,7 @@ end module resonances_uti
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
     write (u, "(A)")
-    
+
     factor = res_history%evaluate_gaussian (p, gw)
     write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
     write (u, "(A,1x," // FMF_12 // ")")  "expected     =", &
@@ -4940,7 +4929,7 @@ end module resonances_uti
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate distances from resonances"
     write (u, "(A)")
-    
+
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (Z) =", dist(2)
@@ -4948,7 +4937,7 @@ end module resonances_uti
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
     write (u, "(A)")
-    
+
     factor = res_history%evaluate_gaussian (p, gw)
     write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
 
@@ -5006,14 +4995,14 @@ end module resonances_uti
     write (u, "(A,1x," // FMF_12 // ")")  "wW  =", ww
     write (u, "(A,1x," // FMF_12 // ")")  "mZ  =", mz
     write (u, "(A,1x," // FMF_12 // ")")  "wZ  =", wz
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* On-shell parameter: distance as multiple of width"
     write (u, "(A)")
-    
+
     on_shell_limit = 3
     write (u, "(A,1x," // FMF_12 // ")")  "on-shell limit =", on_shell_limit
-    
+
 
     write (u, "(A)")
     write (u, "(A)")  "* Setup resonance history set"
@@ -5129,7 +5118,7 @@ end module resonances_uti
     write (u, "(A)")  "* Test output end: resonances_5"
 
   contains
-    
+
     subroutine write_momenta (p)
       type(vector4_t), dimension(:), intent(in) :: p
       integer :: i
@@ -5314,7 +5303,7 @@ end module resonances_uti
 
     call res_set%get_tree (1, res_tree)
     call res_tree%write (u)
-    
+
     write (u, *)
     write (u, "(1x,A,1x,I0)")  "n_resonances =", res_tree%get_n_resonances ()
 
@@ -9062,7 +9051,7 @@ Extract the set of unique resonance histories, in form of an array.
     do g = 1, size (forest%grove)
        associate (grove => forest%grove(g))
           do t = 1, size (grove%tree)
-	     call grove%tree(t)%extract_resonance_history (rh)
+             call grove%tree(t)%extract_resonance_history (rh)
              call res_set%enter (rh, include_trivial)
           end do
        end associate
@@ -10468,7 +10457,7 @@ For t/u channel mappings, we use the absolute value of the PDG code.
     integer, intent(in), optional :: unit
     type(flavor_t) :: flv
     integer :: u, i
-2   format(3x,A,1x,I3,1x,A,1x,I7,1x,'!',1x,A)
+2   format(3x,A,1x,I3,1x,A,1x,I9,1x,'!',1x,A)
     u = given_output_unit (unit);  if (u < 0)  return
     call write_reduced (cascade%tree, u)
     write (u, "(A)")
@@ -13691,7 +13680,11 @@ If successful, read the PHS file.
     logical, intent(out), optional :: match
     type(string_t) :: filename
     integer :: u
-    filename = phs_config%id // ".phs"
+    if (phs_config%run_id /= "") then
+       filename = phs_config%id // "." // phs_config%run_id // ".phs"
+    else
+       filename = phs_config%id // ".phs"
+    end if
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()
@@ -20161,21 +20154,986 @@ end module dispatch_phs_uti
 
 @ %def dispatch_phs_2
 @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{A lexer for O'Mega's phase-space output}
+This module provides three data types. One of them is the type
+[[dag_string_t]] which should contain the information of all Feynman
+diagrams in the factorized form which is provided by O'Mega in its
+phase-space outout. This output is translated into a string of tokens (in
+the form of an a array of the type [[dag_token_t]]) which have a certain
+meaning. The purpose of this module is only to identify these tokens
+correctly and to provide some procedures and interfaces which allow us to
+use these strings in a similar way as variables of the basic character
+type or the type [[iso_varying_string]]. Both [[character]] and
+[[iso_varying_string]] have some disadvantages at least if one wants to
+keep support for some older compiler versions. These can be circumvented
+by the [[dag_string_t]] type. Finally the [[dag_chain_t]] type is used
+to create a larger string in several steps without always recreating the
+string, which is done in the form of a simple linked list. In the end
+one can create a single [[dag_string]] out of this list, which is more
+useful.
+<<[[cascades2_lexer.f90]]>>=
+<<File header>>
+
+module cascades2_lexer
+
+<<Use kinds>>
+  use kinds, only: TC, i8
+
+<<Standard module head>>
+
+<<Cascades2 lexer: public>>
+
+<<Cascades2 lexer: parameters>>
+
+<<Cascades2 lexer: types>>
+
+<<Cascades2 lexer: interfaces>>
+
+contains
+
+<<Cascades2 lexer: procedures>>
+
+end module cascades2_lexer
+
+@ %def cascades2_lexer
+@ This is the token type. By default the variable [[type]] is [[EMPTY_TK]]
+but can obtain other values corresponding to the parameters defined below.
+The type of the token corresponds to a particular sequence of characters.
+When the token corresponds to a node of a tree, i.e. some particle in the
+Feynman diagram, the type is [[NODE_TK]] and the [[particle_name]] variable
+is allocated holding the name of the particle. O'Megas output contains in
+addition to the particle name some numbers which indicate the external
+momenta that are flowing through this line. These numbers are translated
+into a bincare code and saved in the variable [[bincode]]. In this case
+the number 1 corresponds to a bit set at position 0, 2 corresponds to a
+bit set at position 1, etc. Instead of numbers which are composed out of
+several digits, letters are used, i.e. A instead of 10 (bit at position 9),
+B instead of 11 (bit at position 10),etc.\\
+When the DAG is reconstructed from a [[dag_string]] which was built from
+O'Mega's output, the string is modified such that a substring (a set of
+tokens) is replaced by a single token where the type variable is one of
+the three parameters [[DAG_NODE_TK]], [[DAG_OPTIONS_TK]] and
+[[DAG_COMBINATION_TK]]. These parameters correspond to the three types
+[[dag_node_t]], [[dag_options_t]] and [[dag_combination_t]] (see [[cascades2]]
+for more information. In this case, since these objects are organized
+in arrays, the [[index]] variable holds the corresponding position in
+the array.\\
+In any case, we want to be able to reproduce the character string from
+which a token (or a string) has been created. The variable [[char_len]]
+is the length of this string. For tokens with the type [[DAG_NODE_TK]],
+[[DAG_OPTIONS_TK]] and [[DAG_COMBINATION_TK]] we introduce the output
+[[<N23]], [[O23]] or [[C23]] which is useful for debugging the parser.
+Here 23 is the [[index]] and [[N]], [[O]] or [[C]] obviously corresponds
+to the [[type]].
+<<Cascades2 lexer: public>>=
+  public :: dag_token_t
+<<Cascades2 lexer: types>>=
+  type :: dag_token_t
+     integer :: type = EMPTY_TK
+     integer :: char_len = 0
+     integer :: bincode = 0
+     character (len=1), dimension (:), allocatable :: particle_name
+     integer :: index = 0
+   contains
+     <<Cascades2 lexer: dag token: TBP>>
+  end type dag_token_t
+
+@ %def dag_token_t
+@ This is the string type. It also holds the number of characters in the
+corresponding character string. It contains an array of tokens. If the
+[[dag_string]] is constructed using the type [[dag_chain_t]], which creates
+a linked list, we also need the pointer [[next]].
+<<Cascades2 lexer: public>>=
+  public :: dag_string_t
+<<Cascades2 lexer: types>>=
+  type :: dag_string_t
+     integer :: char_len = 0
+     type (dag_token_t), dimension(:), allocatable :: t
+     type (dag_string_t), pointer :: next => null ()
+   contains
+     <<Cascades2 lexer: dag string: TBP>>
+  end type dag_string_t
+
+@ %def dag_string_t
+@ This is the chain of [[dag_strings]]. It allows us to construct a large
+string by appending new strings to the linked list, which can later be
+merged to a single string. This is very useful because the file written
+by O'Mega contains large strings where each string contains all Feynman
+daigrams in a factorized form, but these large strings are cut into
+several pieces and distributed over many lines. As the file can become
+large, rewriting a new [[dag_string]] (or [[iso_varying_string]]) would
+consume more and more time with each additional line. For recreating a
+single [[dag_string]] out of this chain, we need the total character
+length and the sum of all sizes of the [[dag_token]] arrays [[t]].
+<<Cascades2 lexer: public>>=
+  public :: dag_chain_t
+<<Cascades2 lexer: types>>=
+  type :: dag_chain_t
+     integer :: char_len = 0
+     integer :: t_size = 0
+     type (dag_string_t), pointer :: first => null ()
+     type (dag_string_t), pointer :: last => null ()
+   contains
+     <<Cascades2 lexer: dag chain: TBP>>
+  end type dag_chain_t
+
+@ %def dag_chain_t
+@ We define two parameters holding the characters corresponding to a
+backslash and a blanc space.
+<<Cascades2 lexer: parameters>>=
+  character(len=1), parameter, public :: BACKSLASH_CHAR = "\\"
+  character(len=1), parameter :: BLANC_CHAR = " "
+@ %def BACKSLASH_CHAR BLANC_CHAR
+@ These are the parameters which correspond to meainingful types
+of [[token]].
+<<Cascades2 lexer: parameters>>=
+  integer, parameter, public :: NEW_LINE_TK = -2
+  integer, parameter :: BLANC_SPACE_TK = -1
+  integer, parameter :: EMPTY_TK = 0
+  integer, parameter, public :: NODE_TK = 1
+  integer, parameter, public :: DAG_NODE_TK = 2
+  integer, parameter, public :: DAG_OPTIONS_TK = 3
+  integer, parameter, public :: DAG_COMBINATION_TK = 4
+  integer, parameter, public :: COLON_TK = 11
+  integer, parameter, public :: COMMA_TK = 12
+  integer, parameter, public :: VERTICAL_BAR_TK = 13
+  integer, parameter, public :: OPEN_PAR_TK = 21
+  integer, parameter, public :: CLOSED_PAR_TK = 22
+  integer, parameter, public :: OPEN_CURLY_TK = 31
+  integer, parameter, public :: CLOSED_CURLY_TK = 32
+
+@ %def NEW_LINE_TK BLANC_SPACE_TK EMPTY_TK NODE_TK
+@ %def COLON_TK COMMA_TK VERTICAL_LINE_TK OPEN_PAR_TK
+@ %def CLOSED_PAR_TK OPEN_CURLY_TK CLOSED_CURLY_TK
+@ Different sorts of assignment. This contains the conversion
+of a [[character]] variable into a [[dag_token]] or [[dag_string]].
+<<Cascades2 lexer: public>>=
+  public :: assignment (=)
+<<Cascades2 lexer: interfaces>>=
+  interface assignment (=)
+     module procedure dag_token_assign_from_char_string
+     module procedure dag_token_assign_from_dag_token
+     module procedure dag_string_assign_from_dag_token
+     module procedure dag_string_assign_from_char_string
+     module procedure dag_string_assign_from_dag_string
+     module procedure dag_string_assign_from_dag_token_array
+  end interface assignment (=)
+
+@ %def interfaces
+<<Cascades2 lexer: dag token: TBP>>=
+  procedure :: init_dag_object_token => dag_token_init_dag_object_token
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_token_init_dag_object_token (dag_token, type, index)
+    class (dag_token_t), intent (out) :: dag_token
+    integer, intent (in) :: index
+    integer :: type
+    dag_token%type = type
+    dag_token%char_len = integer_n_dec_digits (index) + 3
+    dag_token%index = index
+  contains
+    function integer_n_dec_digits (number) result (n_digits)
+      integer, intent (in) :: number
+      integer :: n_digits
+      integer :: div_number
+      n_digits = 0
+      div_number = number
+      do
+         div_number = div_number / 10
+         n_digits = n_digits + 1
+         if (div_number == 0) exit
+      enddo
+    end function integer_n_dec_digits
+  end subroutine dag_token_init_dag_object_token
+
+@ %def dag_token_init_dag_object_token
+<<Cascades2 lexer: procedures>>=
+  elemental subroutine dag_token_assign_from_char_string (dag_token, char_string)
+    type (dag_token_t), intent (out) :: dag_token
+    character (len=*), intent (in) :: char_string
+    integer :: i, j
+    logical :: set_bincode
+    integer :: bit_pos
+    character (len=10) :: index_char
+    dag_token%char_len = len (char_string)
+    if (dag_token%char_len == 1) then
+       select case (char_string(1:1))
+       case (BACKSLASH_CHAR)
+          dag_token%type = NEW_LINE_TK
+       case (" ")
+          dag_token%type = BLANC_SPACE_TK
+       case (":")
+          dag_token%type = COLON_TK
+       case (",")
+          dag_token%type = COMMA_TK
+       case ("|")
+          dag_token%type = VERTICAL_BAR_TK
+       case ("(")
+          dag_token%type = OPEN_PAR_TK
+       case (")")
+          dag_token%type = CLOSED_PAR_TK
+       case ("{")
+          dag_token%type = OPEN_CURLY_TK
+       case ("}")
+          dag_token%type = CLOSED_CURLY_TK
+       end select
+    else if (char_string(1:1) == "<") then
+       select case (char_string(2:2))
+          case ("N")
+             dag_token%type = DAG_NODE_TK
+          case ("O")
+             dag_token%type = DAG_OPTIONS_TK
+          case ("C")
+             dag_token%type = DAG_COMBINATION_TK
+       end select
+       read(char_string(3:dag_token%char_len-1), fmt="(I10)") dag_token%index
+    else
+       dag_token%bincode = 0
+       set_bincode = .false.
+       do i=1, dag_token%char_len
+          select case (char_string(i:i))
+          case ("[")
+             dag_token%type = NODE_TK
+             if (i > 1) then
+                allocate (dag_token%particle_name(i-1))
+                do j = 1, i - 1
+                   dag_token%particle_name(j) = char_string(j:j)
+                enddo
+             endif
+             set_bincode = .true.
+          case ("]")
+             set_bincode = .false.
+          case default
+             dag_token%type = NODE_TK
+             if (set_bincode) then
+                select case (char_string(i:i))
+                case ("1", "2", "3", "4", "5", "6", "7", "8", "9")
+                   read (char_string(i:i), fmt="(I1)") bit_pos
+                case ("A")
+                   bit_pos = 10
+                case ("B")
+                   bit_pos = 11
+                case ("C")
+                   bit_pos = 12
+                end select
+                dag_token%bincode = ibset(dag_token%bincode, bit_pos - 1)
+             endif
+          end select
+          if (dag_token%type /= NODE_TK) exit
+       enddo
+    endif
+  end subroutine dag_token_assign_from_char_string
+
+@ %def dag_token_assign_from_char_string
+<<Cascades2 lexer: procedures>>=
+  elemental subroutine dag_token_assign_from_dag_token (token_out, token_in)
+    type (dag_token_t), intent (out) :: token_out
+    type (dag_token_t), intent (in) :: token_in
+    token_out%type = token_in%type
+    token_out%char_len = token_in%char_len
+    token_out%bincode = token_in%bincode
+    if (allocated (token_in%particle_name)) then
+       allocate (token_out%particle_name(size(token_in%particle_name)))
+       token_out%particle_name = token_in%particle_name
+    endif
+    token_out%index = token_in%index
+  end subroutine dag_token_assign_from_dag_token
+
+@ %def dag_token_assign_from_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental subroutine dag_string_assign_from_dag_token (dag_string, dag_token)
+    type (dag_string_t), intent (out) :: dag_string
+    type (dag_token_t), intent (in) :: dag_token
+    allocate (dag_string%t(1))
+    dag_string%t(1) = dag_token
+    dag_string%char_len = dag_token%char_len
+  end subroutine dag_string_assign_from_dag_token
+
+@ %def dag_string_assign_from_dag_token
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_string_assign_from_dag_token_array (dag_string, dag_token)
+    type (dag_string_t), intent (out) :: dag_string
+    type (dag_token_t), dimension(:), intent (in) :: dag_token
+    allocate (dag_string%t(size(dag_token)))
+    dag_string%t = dag_token
+    dag_string%char_len = sum(dag_token%char_len)
+  end subroutine dag_string_assign_from_dag_token_array
+
+@ %def dag_string_assign_from_dag_token_array
+<<Cascades2 lexer: procedures>>=
+  elemental subroutine dag_string_assign_from_char_string (dag_string, char_string)
+    type (dag_string_t), intent (out) :: dag_string
+    character (len=*), intent (in) :: char_string
+    type (dag_token_t), dimension(:), allocatable :: token
+    integer :: token_pos
+    integer :: i
+    character (len=len(char_string)) :: node_char
+    integer :: node_char_len
+    node_char = ""
+    dag_string%char_len = len (char_string)
+    if (dag_string%char_len > 0) then
+       allocate (token(dag_string%char_len))
+       token_pos = 0
+       node_char_len = 0
+       do i=1, dag_string%char_len
+          select case (char_string(i:i))
+          case (BACKSLASH_CHAR, " ", ":", ",", "|", "(", ")", "{", "}")
+             if (node_char_len > 0) then
+                token_pos = token_pos + 1
+                token(token_pos) = node_char(:node_char_len)
+                node_char_len = 0
+             endif
+             token_pos = token_pos + 1
+             token(token_pos) = char_string(i:i)
+          case default
+             node_char_len = node_char_len + 1
+             node_char(node_char_len:node_char_len) = char_string(i:i)
+          end select
+       enddo
+       if (node_char_len > 0) then
+          token_pos = token_pos + 1
+          token(token_pos) = node_char(:node_char_len)
+       endif
+       if (token_pos > 0) then
+          allocate (dag_string%t(token_pos))
+          dag_string%t = token(:token_pos)
+          deallocate (token)
+       endif
+    end if
+  end subroutine dag_string_assign_from_char_string
+
+@ %def dag_string_assign_from_char_string
+<<Cascades2 lexer: procedures>>=
+  elemental subroutine dag_string_assign_from_dag_string (string_out, string_in)
+    type (dag_string_t), intent (out) :: string_out
+    type (dag_string_t), intent (in) :: string_in
+    if (allocated (string_in%t)) then
+       allocate (string_out%t (size(string_in%t)))
+       string_out%t = string_in%t
+    endif
+    string_out%char_len = string_in%char_len
+  end subroutine dag_string_assign_from_dag_string
+
+@ %def dag_string_assign_from_dag_string
+@ Concatenate strings/tokens. The result is always a [[dag_string]].
+<<Cascades2 lexer: public>>=
+  public :: operator (//)
+<<Cascades2 lexer: interfaces>>=
+  interface operator (//)
+     module procedure concat_dag_token_dag_token
+     module procedure concat_dag_string_dag_token
+     module procedure concat_dag_token_dag_string
+     module procedure concat_dag_string_dag_string
+  end interface operator (//)
+
+@ %def interfaces
+<<Cascades2 lexer: procedures>>=
+  function concat_dag_token_dag_token (token1, token2) result (res_string)
+    type (dag_token_t), intent (in) :: token1, token2
+    type (dag_string_t) :: res_string
+    if (token1%type == EMPTY_TK) then
+       res_string = token2
+    else if (token2%type == EMPTY_TK) then
+       res_string = token1
+    else
+       allocate (res_string%t(2))
+       res_string%t(1) = token1
+       res_string%t(2) = token2
+       res_string%char_len = token1%char_len + token2%char_len
+    endif
+  end function concat_dag_token_dag_token
+
+@ %def concat_dag_token_dag_token
+<<Cascades2 lexer: procedures>>=
+  function concat_dag_string_dag_token (dag_string, dag_token) result (res_string)
+    type (dag_string_t), intent (in) :: dag_string
+    type (dag_token_t), intent (in) :: dag_token
+    type (dag_string_t) :: res_string
+    integer :: t_size
+    if (dag_string%char_len == 0) then
+       res_string = dag_token
+    else if (dag_token%type == EMPTY_TK) then
+       res_string = dag_string
+    else
+       t_size = size (dag_string%t)
+       allocate (res_string%t(t_size+1))
+       res_string%t(:t_size) = dag_string%t
+       res_string%t(t_size+1) = dag_token
+       res_string%char_len = dag_string%char_len + dag_token%char_len
+    endif
+  end function concat_dag_string_dag_token
+
+@ %def concat_dag_string_dag_token
+<<Cascades2 lexer: procedures>>=
+  function concat_dag_token_dag_string (dag_token, dag_string) result (res_string)
+    type (dag_token_t), intent (in) :: dag_token
+    type (dag_string_t), intent (in) :: dag_string
+    type (dag_string_t) :: res_string
+    integer :: t_size
+    if (dag_token%type == EMPTY_TK) then
+       res_string = dag_string
+    else if (dag_string%char_len == 0) then
+       res_string = dag_token
+    else
+       t_size = size (dag_string%t)
+       allocate (res_string%t(t_size+1))
+       res_string%t(2:t_size+1) = dag_string%t
+       res_string%t(1) = dag_token
+       res_string%char_len = dag_token%char_len + dag_string%char_len
+    endif
+  end function concat_dag_token_dag_string
+
+@ %def concat_dag_token_dag_string
+<<Cascades2 lexer: procedures>>=
+  function concat_dag_string_dag_string (string1, string2) result (res_string)
+    type (dag_string_t), intent (in) :: string1, string2
+    type (dag_string_t) :: res_string
+    integer :: t1_size, t2_size, t_size
+    if (string1%char_len == 0) then
+       res_string = string2
+    else if (string2%char_len == 0) then
+       res_string = string1
+    else
+       t1_size = size (string1%t)
+       t2_size = size (string2%t)
+       t_size = t1_size + t2_size
+       if (t_size > 0) then
+          allocate (res_string%t(t_size))
+          res_string%t(:t1_size) = string1%t
+          res_string%t(t1_size+1:) = string2%t
+          res_string%char_len = string1%char_len + string2%char_len
+       endif
+    endif
+  end function concat_dag_string_dag_string
+
+@ %def concat_dag_string_dag_string
+@ Compare strings/tokens/characters. Each character is relevant, including
+all blanc spaces. An exception is the [[newline]] character which is not
+treated by the types used in this module (not to confuse with the type
+parameter [[NEW_LINE_TK]] which corresponds to the backslash character
+and simply tells us that the string continues on the next line in the file).
+<<Cascades2 lexer: public>>=
+  public :: operator (==)
+<<Cascades2 lexer: interfaces>>=
+  interface operator (==)
+     module procedure dag_token_eq_dag_token
+     module procedure dag_string_eq_dag_string
+     module procedure dag_token_eq_dag_string
+     module procedure dag_string_eq_dag_token
+     module procedure dag_token_eq_char_string
+     module procedure char_string_eq_dag_token
+     module procedure dag_string_eq_char_string
+     module procedure char_string_eq_dag_string
+  end interface operator (==)
+
+@ %def interfaces
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_token_eq_dag_token (token1, token2) result (flag)
+    type (dag_token_t), intent (in) :: token1, token2
+    logical :: flag
+    flag = (token1%type == token2%type) .and. &
+         (token1%char_len == token2%char_len) .and. &
+         (token1%bincode == token2%bincode) .and. &
+         (token1%index == token2%index) .and. &
+         (allocated (token1%particle_name) .eqv. allocated (token2%particle_name))
+    if (flag) then
+       if (allocated (token1%particle_name)) flag = all (token1%particle_name == token2%particle_name)
+    endif
+  end function dag_token_eq_dag_token
+
+@ %def dag_token_eq_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_string_eq_dag_string (string1, string2) result (flag)
+    type (dag_string_t), intent (in) :: string1, string2
+    logical :: flag
+    flag = (string1%char_len == string2%char_len) .and. &
+         (allocated (string1%t) .eqv. allocated (string2%t))
+    if (flag) then
+       if (allocated (string1%t)) flag = all (string1%t == string2%t)
+    endif
+  end function dag_string_eq_dag_string
+
+@ %def dag_string_eq_dag_string
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_token_eq_dag_string (dag_token, dag_string) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    type (dag_string_t), intent (in) :: dag_string
+    logical :: flag
+    flag = size (dag_string%t) == 1 .and. &
+         dag_string%char_len == dag_token%char_len
+    if (flag) flag = (dag_string%t(1) == dag_token)
+  end function dag_token_eq_dag_string
+
+@ %def dag_token_eq_dag_string
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_string_eq_dag_token (dag_string, dag_token) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    type (dag_string_t), intent (in) :: dag_string
+    logical :: flag
+    flag = (dag_token == dag_string)
+  end function dag_string_eq_dag_token
+
+@ %def dag_string_eq_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_token_eq_char_string (dag_token, char_string) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = (char (dag_token) == char_string)
+  end function dag_token_eq_char_string
+
+@ %def dag_token_eq_char_string
+<<Cascades2 lexer: procedures>>=
+  elemental function char_string_eq_dag_token (char_string, dag_token) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = (char (dag_token) == char_string)
+  end function char_string_eq_dag_token
+
+@ %def char_string_eq_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_string_eq_char_string (dag_string, char_string) result (flag)
+    type (dag_string_t), intent (in) :: dag_string
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = (char (dag_string) == char_string)
+  end function dag_string_eq_char_string
+
+@ %def dag_string_eq_char_string
+<<Cascades2 lexer: procedures>>=
+  elemental function char_string_eq_dag_string (char_string, dag_string) result (flag)
+    type (dag_string_t), intent (in) :: dag_string
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = (char (dag_string) == char_string)
+  end function char_string_eq_dag_string
+
+@ %def char_string_eq_dag_string
+<<Cascades2 lexer: public>>=
+  public :: operator (/=)
+<<Cascades2 lexer: interfaces>>=
+  interface operator (/=)
+     module procedure dag_token_ne_dag_token
+     module procedure dag_string_ne_dag_string
+     module procedure dag_token_ne_dag_string
+     module procedure dag_string_ne_dag_token
+     module procedure dag_token_ne_char_string
+     module procedure char_string_ne_dag_token
+     module procedure dag_string_ne_char_string
+     module procedure char_string_ne_dag_string
+  end interface operator (/=)
+
+@ %def interfaces
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_token_ne_dag_token (token1, token2) result (flag)
+    type (dag_token_t), intent (in) :: token1, token2
+    logical :: flag
+    flag = .not. (token1 == token2)
+  end function dag_token_ne_dag_token
+
+@ %def dag_token_ne_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_string_ne_dag_string (string1, string2) result (flag)
+    type (dag_string_t), intent (in) :: string1, string2
+    logical :: flag
+    flag = .not. (string1 == string2)
+  end function dag_string_ne_dag_string
+
+@ %def dag_string_ne_dag_string
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_token_ne_dag_string (dag_token, dag_string) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    type (dag_string_t), intent (in) :: dag_string
+    logical :: flag
+    flag = .not. (dag_token == dag_string)
+  end function dag_token_ne_dag_string
+
+@ %def dag_token_ne_dag_string
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_string_ne_dag_token (dag_string, dag_token) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    type (dag_string_t), intent (in) :: dag_string
+    logical :: flag
+    flag = .not. (dag_string == dag_token)
+  end function dag_string_ne_dag_token
+
+@ %def dag_string_ne_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_token_ne_char_string (dag_token, char_string) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = .not. (dag_token == char_string)
+  end function dag_token_ne_char_string
+
+@ %def dag_token_ne_char_string
+<<Cascades2 lexer: procedures>>=
+  elemental function char_string_ne_dag_token (char_string, dag_token) result (flag)
+    type (dag_token_t), intent (in) :: dag_token
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = .not. (char_string == dag_token)
+  end function char_string_ne_dag_token
+
+@ %def char_string_ne_dag_token
+<<Cascades2 lexer: procedures>>=
+  elemental function dag_string_ne_char_string (dag_string, char_string) result (flag)
+    type (dag_string_t), intent (in) :: dag_string
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = .not. (dag_string == char_string)
+  end function dag_string_ne_char_string
+
+@ %def dag_string_ne_char_string
+<<Cascades2 lexer: procedures>>=
+  elemental function char_string_ne_dag_string (char_string, dag_string) result (flag)
+    type (dag_string_t), intent (in) :: dag_string
+    character (len=*), intent (in) :: char_string
+    logical :: flag
+    flag = .not. (char_string == dag_string)
+  end function char_string_ne_dag_string
+
+@ %def char_string_ne_dag_string
+@ Convert a [[dag_token]] or [[dag_string]] to character.
+<<Cascades2 lexer: public>>=
+  public :: char
+<<Cascades2 lexer: interfaces>>=
+  interface char
+     module procedure char_dag_token
+     module procedure char_dag_string
+  end interface char
+
+@ %def interfaces
+<<Cascades2 lexer: procedures>>=
+  pure function char_dag_token (dag_token) result (char_string)
+    type (dag_token_t), intent (in) :: dag_token
+    character (dag_token%char_len) :: char_string
+    integer :: i
+    integer :: name_len
+    integer :: bc_pos
+    integer :: n_digits
+    character (len=9) :: fmt_spec
+    select case (dag_token%type)
+    case (EMPTY_TK)
+       char_string = ""
+    case (NEW_LINE_TK)
+       char_string = BACKSLASH_CHAR
+    case (BLANC_SPACE_TK)
+       char_string = " "
+    case (COLON_TK)
+       char_string = ":"
+    case (COMMA_TK)
+       char_string = ","
+    case (VERTICAL_BAR_TK)
+       char_string = "|"
+    case (OPEN_PAR_TK)
+       char_string = "("
+    case (CLOSED_PAR_TK)
+       char_string = ")"
+    case (OPEN_CURLY_TK)
+       char_string = "{"
+    case (CLOSED_CURLY_TK)
+       char_string = "}"
+    case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
+       n_digits = dag_token%char_len - 3
+       fmt_spec = ""
+       if (n_digits > 9) then
+          write (fmt_spec, fmt="(A,I2,A)") "(A,I", n_digits, ",A)"
+       else
+          write (fmt_spec, fmt="(A,I1,A)") "(A,I", n_digits, ",A)"
+       endif
+       select case (dag_token%type)
+          case (DAG_NODE_TK)
+             write (char_string, fmt=fmt_spec) "<N", dag_token%index, ">"
+          case (DAG_OPTIONS_TK)
+             write (char_string, fmt=fmt_spec) "<O", dag_token%index, ">"
+          case (DAG_COMBINATION_TK)
+             write (char_string, fmt=fmt_spec) "<C", dag_token%index, ">"
+          end select
+    case (NODE_TK)
+       name_len = size (dag_token%particle_name)
+       do i=1, name_len
+          char_string(i:i) = dag_token%particle_name(i)
+       enddo
+       bc_pos = name_len + 1
+       char_string(bc_pos:bc_pos) = "["
+       do i=0, bit_size (dag_token%bincode) - 1
+          if (btest (dag_token%bincode, i)) then
+             bc_pos = bc_pos + 1
+             select case (i)
+             case (0, 1, 2, 3, 4, 5, 6, 7, 8)
+                write (char_string(bc_pos:bc_pos), fmt="(I1)") i + 1
+             case (9)
+                write (char_string(bc_pos:bc_pos), fmt="(A1)") "A"
+             case (10)
+                write (char_string(bc_pos:bc_pos), fmt="(A1)") "B"
+             case (11)
+                write (char_string(bc_pos:bc_pos), fmt="(A1)") "C"
+             end select
+             bc_pos = bc_pos + 1
+             if (bc_pos == dag_token%char_len) then
+                write (char_string(bc_pos:bc_pos), fmt="(A1)") "]"
+                return
+             else
+                write (char_string(bc_pos:bc_pos), fmt="(A1)") "/"
+             endif
+          endif
+       enddo
+    end select
+  end function char_dag_token
+
+@ %def char_dag_token
+<<Cascades2 lexer: procedures>>=
+  pure function char_dag_string (dag_string) result (char_string)
+    type (dag_string_t), intent (in) :: dag_string
+    character (dag_string%char_len) :: char_string
+    integer :: pos
+    integer :: i
+    char_string = ""
+    pos = 0
+    do i=1, size(dag_string%t)
+       char_string(pos+1:pos+dag_string%t(i)%char_len) = char (dag_string%t(i))
+       pos = pos + dag_string%t(i)%char_len
+    enddo
+  end function char_dag_string
+
+@ %def char_dag_string
+@ Remove all tokens which are irrelevant for parsing. These are of type
+[[NEW_LINE_TK]], [[BLANC_SPACE_TK]] and [[EMTPY_TK]].
+<<Cascades2 lexer: dag string: TBP>>=
+  procedure :: clean => dag_string_clean
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_string_clean (dag_string)
+    class (dag_string_t), intent (inout) :: dag_string
+    type (dag_token_t), dimension(:), allocatable :: tmp_token
+    integer :: n_keep
+    integer :: i
+    n_keep = 0
+    dag_string%char_len = 0
+    allocate (tmp_token (size(dag_string%t)))
+    do i=1, size (dag_string%t)
+       select case (dag_string%t(i)%type)
+       case(NEW_LINE_TK, BLANC_SPACE_TK, EMPTY_TK)
+       case default
+          n_keep = n_keep + 1
+          tmp_token(n_keep) = dag_string%t(i)
+          dag_string%char_len = dag_string%char_len + dag_string%t(i)%char_len
+       end select
+    enddo
+    deallocate (dag_string%t)
+    allocate (dag_string%t(n_keep))
+    dag_string%t = tmp_token(:n_keep)
+  end subroutine dag_string_clean
+
+@ %def dag_string_clean
+@ If we operate explicitly on the [[token]] array [[t]] of a [[dag_string]],
+the variable [[char_len]] is not automatically modified. It can however be
+determined afterwards using the following subroutine.
+<<Cascades2 lexer: dag string: TBP>>=
+  procedure :: update_char_len => dag_string_update_char_len
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_string_update_char_len (dag_string)
+    class (dag_string_t), intent (inout) :: dag_string
+    integer :: char_len
+    integer :: i
+    char_len = 0
+    if (allocated (dag_string%t)) then
+       do i=1, size (dag_string%t)
+          char_len = char_len + dag_string%t(i)%char_len
+       enddo
+    endif
+    dag_string%char_len = char_len
+  end subroutine dag_string_update_char_len
+
+@ %def dag_string_update_char_len
+@ Append a [[dag_string]] to a [[dag_chain]]. The argument [[char_string]]
+is of type [[character]] because the subroutine is used for reading from
+the file produced by O'Mega which is first read line by line to a character
+variable.
+<<Cascades2 lexer: dag chain: TBP>>=
+  procedure :: append => dag_chain_append_string
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_chain_append_string (dag_chain, char_string)
+    class (dag_chain_t), intent (inout) :: dag_chain
+    character (len=*), intent (in) :: char_string
+    if (.not. associated (dag_chain%first)) then
+       allocate (dag_chain%first)
+       dag_chain%last => dag_chain%first
+    else
+       allocate (dag_chain%last%next)
+       dag_chain%last => dag_chain%last%next
+    endif
+    dag_chain%last = char_string
+    dag_chain%char_len = dag_chain%char_len + dag_chain%last%char_len
+    dag_chain%t_size = dag_chain%t_size + size (dag_chain%last%t)
+  end subroutine dag_chain_append_string
+
+@ %def dag_chain_append_string
+@ Produce a single [[dag_string]] object from a given [[dag_chain]].
+<<Cascades2 lexer: dag chain: TBP>>=
+  procedure :: compress => dag_chain_compress
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_chain_compress (dag_chain)
+    class (dag_chain_t), intent (inout) :: dag_chain
+    type (dag_string_t), pointer :: current
+    type (dag_string_t), pointer :: remove
+    integer :: filled_t
+    current => dag_chain%first
+    dag_chain%first => null ()
+    allocate (dag_chain%first)
+    dag_chain%last => dag_chain%first
+    dag_chain%first%char_len = dag_chain%char_len
+    allocate (dag_chain%first%t (dag_chain%t_size))
+    filled_t = 0
+    do while (associated (current))
+       dag_chain%first%t(filled_t+1:filled_t+size(current%t)) = current%t
+       filled_t = filled_t + size (current%t)
+       remove => current
+       current => current%next
+       deallocate (remove)
+    enddo
+  end subroutine dag_chain_compress
+
+@ %def dag_chain_compress
+@ Finalizer for [[dag_string_t]].
+<<Cascades2 lexer: dag string: TBP>>=
+  procedure :: final => dag_string_final
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_string_final (dag_string)
+    class (dag_string_t), intent (inout) :: dag_string
+    deallocate (dag_string%t)
+    dag_string%next => null ()
+  end subroutine dag_string_final
+
+@ %def dag_string_final
+@ Finalizer for [[dag_chain_t]].
+<<Cascades2 lexer: dag chain: TBP>>=
+  procedure :: final => dag_chain_final
+<<Cascades2 lexer: procedures>>=
+  subroutine dag_chain_final (dag_chain)
+    class (dag_chain_t), intent (inout) :: dag_chain
+    type (dag_string_t), pointer :: current
+    current => dag_chain%first
+    do while (associated (current))
+       dag_chain%first => dag_chain%first%next
+       call current%final ()
+       deallocate (current)
+       current => dag_chain%first
+    enddo
+    dag_chain%last => null ()
+  end subroutine dag_chain_final
+
+@ %def dag_chain_final
+<<[[cascades2_lexer_ut.f90]]>>=
+<<File header>>
+
+module cascades2_lexer_ut
+  use unit_tests
+  use cascades2_lexer_uti
+
+<<Standard module head>>
+
+<<Cascades2 lexer: public test>>
+
+contains
+
+<<Cascades2 lexer: test driver>>
+
+end module cascades2_lexer_ut
+@ %def cascades2_lexer_ut
+@
+<<[[cascades2_lexer_uti.f90]]>>=
+<<File header>>
+
+module cascades2_lexer_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use numeric_utils
+
+  use cascades2_lexer
+
+<<Standard module head>>
+
+<<Cascades2 lexer: test declarations>>
+
+contains
+
+<<Cascades2 lexer: tests>>
+
+end module cascades2_lexer_uti
+@ %def cascades2_lexer_uti
+@ API: driver for the unit tests below.
+<<Cascades2 lexer: public test>>=
+  public :: cascades2_lexer_test
+<<Cascades2 lexer: test driver>>=
+  subroutine cascades2_lexer_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Cascades2 lexer: execute tests>>
+  end subroutine cascades2_lexer_test
+
+@ %def cascades2_lexer_test
+@
+<<Cascades2 lexer: execute tests>>=
+  call test (cascades2_lexer_1, "cascades2_lexer_1", &
+       "make phase-space", u, results)
+<<Cascades2 lexer: test declarations>>=
+  public :: cascades2_lexer_1
+<<Cascades2 lexer: tests>>=
+  subroutine cascades2_lexer_1 (u)
+    integer, intent(in) :: u
+    integer :: u_in = 8
+    character (len=300) :: line
+    integer :: stat
+    logical :: fail
+    type (dag_string_t) :: dag_string
+
+    write (u, "(A)")  "* Test output: cascades2_lexer_1"
+    write (u, "(A)")  "*   Purpose: read lines of O'Mega's phase space output, translate"
+    write (u, "(A)")  "*            to dag_string, retranslate to character string and"
+    write (u, "(A)")  "*            compare"
+    write (u, "(A)")
+
+    open (unit=u_in, file="cascades2_lexer_1.fds", status='old', action='read')
+
+    stat = 0
+    fail = .false.
+    read (unit=u_in, fmt="(A)", iostat=stat) line
+    do while (stat == 0 .and. .not. fail)
+       read (unit=u_in, fmt="(A)", iostat=stat) line
+       if (stat /= 0) exit
+       dag_string = line
+       fail = (char(dag_string) /= line)
+    enddo
+    if (fail) then
+       write (u, "(A)")  "* Test result: Test failed!"
+    else
+       write (u, "(A)")  "* Test result: Test passed"
+    endif
+
+    close (u_in)
+    write (u, *)
+    write (u, "(A)")  "* Test output end: cascades2_lexer_1"
+  end subroutine cascades2_lexer_1
+
+@ %def cascades2_lexer_1
+@%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{An alternative cascades module}
 This module might replace the module [[cascades]], which generates
 suitable phase space parametrizations and generates the phase space file.
 The mappings, as well as the criteria to determine these, do not change.
 
-The advantage of this module is that it makes use of the [[OMega]] matrix
+The advantage of this module is that it makes use of the [[O'Mega]] matrix
 element generator which provides the relevant Feynman diagrams (the ones
 which can be constructed only from 3-vertices). In principle, the
 construction of these diagrams is also one of the tasks of the existing
-[[cascades]] module, in which the diagrams would correspond to a set of 
+[[cascades]] module, in which the diagrams would correspond to a set of
 cascades. It starts by creating cascades which correspond to the
 outgoing particles. These are combined to a new cascade using the
-vertices of the model. In this way, since each cascades knows the
+vertices of the model. In this way, since each cascade knows the
 daughter cascades from which it is built, complete Feynman diagrams are
-represented by these cascades, as soon as the existing cascades can be
+represented by sets of cascades, as soon as the existing cascades can be
 recombined with the incoming particle(s).
 
 In this module, the Feynman diagrams are represented by the type
@@ -20185,7 +21143,7 @@ to determine mappings, and hence sensible phase space parametrizations
 is of another type, called [[kingraph_t]], which is built from a
 corresponding [[feyngraph]] object.
 
-There are two types of output which can be produced by [[OMega]] and
+There are two types of output which can be produced by [[O'Mega]] and
 is potentially relevant here. The first type contains all tree
 diagrams for the process under consideration, where each line of the
 output corresponds to one Feynman diagram. This output is easy to read,
@@ -20202,7 +21160,7 @@ leads to a much shorter input file, which speeds up the parsing
 process. Furthermore it makes it possible to reconstruct the
 [[feyngraphs]] in such a way that the calculations concerning
 subdiagrams which reappear in other [[feyngraphs]] have to be
-performed only once. This is already the case in the existing 
+performed only once. This is already the case in the existing
 [[cascades]] module but can be exploited more efficiently here
 because the possible graphs are well known from the input file, whereas
 the [[cascades]] module would create a large number of [[cascades]]
@@ -20214,6 +21172,7 @@ module cascades2
 
 <<Use kinds>>
   use kinds, only: TC, i8
+  use cascades2_lexer
   use sorting
   use flavors
   use model_data
@@ -20249,9 +21208,9 @@ end module cascades2
 @ %def cascades2
 @
 \subsection{Particle properties}
-We define a type holding the properties of theparticles which are needed 
-for parsing and finding the phase space parametrizations as well as the 
-mappings. The properties of all particles which appear in the parsed 
+We define a type holding the properties of theparticles which are needed
+for parsing and finding the phase space parametrizations as well as the
+mappings. The properties of all particles which appear in the parsed
 Feynman diagrams for the given process will be stored in a central place,
 and only pointers to these objects are used.
 <<Cascades2: types>>=
@@ -20270,7 +21229,7 @@ and only pointers to these objects are used.
   end type part_prop_t
 
 @ %def part_prop_t
-@ The [[particle_label]] in [[part_prop_t]] is simply the particle name 
+@ The [[particle_label]] in [[part_prop_t]] is simply the particle name
 (e.g. 'W+'). The corresponding variable in the type [[f_node_t]] contains
 some additional information (see below). The length of the [[character]]
 variable is fixed as:
@@ -20284,7 +21243,7 @@ procedure :: final => part_prop_final
     class(part_prop_t), intent(inout) :: part
     part%anti => null ()
   end subroutine part_prop_final
-  
+
 @ %def part_prop_final
 @
 \subsection{The mapping modes}
@@ -20319,7 +21278,7 @@ stored in the following type:
      integer :: n_t_channel = 0
      integer :: res_hash = 0
   end type grove_prop_t
-  
+
 @ %def grove_prop_t
 @
 \subsection{The tree type}
@@ -20352,7 +21311,7 @@ are a subtree of a [[kingraph]].
   interface assignment (=)
      module procedure tree_assign
   end interface assignment (=)
-  
+
 <<Cascades2: procedures>>=
   subroutine tree_assign (tree1, tree2)
     type (tree_t), intent (inout) :: tree1
@@ -20466,7 +21425,7 @@ details).
 
 @ %def tree_add_entry_from_node
 @ For a well-defined order of the elements of the arrays in [[tree_t]],
-the elements can be sorted. The bincodes (entries of [[bc]]) are 
+the elements can be sorted. The bincodes (entries of [[bc]]) are
 simply ordered by size, the [[pdg]] and [[mapping]] entries go to the
 positions of the corresponding [[bc]] values.
 <<Cascades2: tree: TBP>>=
@@ -20493,7 +21452,7 @@ positions of the corresponding [[bc]] values.
 @ %def tree_sort
 @
 \subsection{Graph types}
-We define an abstract type which will give rise to two different types: 
+We define an abstract type which will give rise to two different types:
 The type [[feyngraph_t]] contains the pure information of the
 corresponding Feynman diagram, but also a set of objects of the
 [[kingraph]] type which contain the kinematically relevant data for the
@@ -20539,7 +21498,7 @@ realize arrays of these pointers.
   type :: feyngraph_ptr_t
      type (feyngraph_t), pointer :: graph => null ()
   end type feyngraph_ptr_t
-  
+
 @ %def feyngraph_ptr_t
 @
 The length of a string describing a Feynman diagram which is produced by
@@ -20597,7 +21556,7 @@ case the value of [[inverse]] is [[.true.]].
   type :: kingraph_ptr_t
      type (kingraph_t), pointer :: graph => null ()
   end type kingraph_ptr_t
-  
+
 @ %def kingraph_ptr_t
 @
 <<Cascades2: kingraph: TBP>>=
@@ -20790,7 +21749,7 @@ to know their mother and sister nodes, which become their daughters within this 
   interface assignment (=)
      module procedure f_node_ptr_assign
   end interface assignment (=)
-  
+
 <<Cascades2: procedures>>=
   subroutine f_node_ptr_assign (ptr1, ptr2)
     type (f_node_ptr_t), intent (inout) :: ptr1
@@ -20842,7 +21801,7 @@ Subroutine for [[k_node]] assignment.
   interface assignment (=)
      module procedure k_node_assign
   end interface assignment (=)
-  
+
 <<Cascades2: procedures>>=
   subroutine k_node_assign (k_node1, k_node2)
     type (k_node_t), intent (inout) :: k_node1
@@ -20941,7 +21900,7 @@ length of this string for fast comparison to find the nodes in the
   interface assignment (=)
      module procedure f_node_entry_assign
   end interface assignment (=)
-  
+
 <<Cascades2: procedures>>=
   subroutine f_node_entry_assign (entry1, entry2)
     type (f_node_entry_t), intent (out) :: entry1
@@ -21152,7 +22111,7 @@ will be explained in the description of [[subtree_select]].
     !$OMP END PARALLEL DO
     deallocate (set)
   end subroutine k_node_list_check_subtree_equivalences
-  
+
 @ %def k_node_list_check_subtree_equivalences
 @ This subroutine is use to obtain all [[k_nodes]] of a [[k_node_list]]
 which can be recycled and are not disabled for any reason. We pass an
@@ -21243,7 +22202,7 @@ arrange the groves. Each [[grove]] contains again a linked list of
   type :: grove_ptr_t
      type (grove_t), pointer :: grove => null ()
   end type grove_ptr_t
-  
+
 @ %def grove_ptr_t
 <<Cascades2: grove: TBP>>=
   procedure :: final => grove_final
@@ -21289,7 +22248,7 @@ pointer of the type [[grove_list_t]], since several [[feyngraph_sets]]
 can share a common [[grove_list]]. In addition it keeps the data which
 unambiguously specifies the process, as well as the model which
 provides information which allows us to choose between equivalent
-subtrees or complete [[kingraphs]]. 
+subtrees or complete [[kingraphs]].
 <<Cascades2: public>>=
   public :: feyngraph_set_t
 <<Cascades2: types>>=
@@ -21362,7 +22321,7 @@ depending on the value of [[use_dag]]. In the DAG output, we have to work
 on a string of one line, where the lenght of this string becomes larger
 the more particles are involved in the process. The other output contains
 one Feynman diagram per line and each line starts with an open
-parenthesis so that we read the file line per line and create a 
+parenthesis so that we read the file line per line and create a
 [[feyngraph]] for every line. Only after this, nodes are created. In both
 cases the all processes will have the form of a decay process, i.e. in a
 scattering process one of the incoming particles appears as an outgoing
@@ -21433,13 +22392,22 @@ particle.
   end subroutine feyngraph_set_build
 
 @ %def feyngraph_set_build
-@ Read the string from the file produced by O'Mega which contains the DAG
-in a factorised form in one line. This line is not the first line, since
-a file can contain more than one of these strings. O'Mega's output for a
-given process consists of a line containing the process, followed by one
-or two strings representing the DAG. Two lines are written for scattering
-processes: one in which the first particle appears as the decaying one
-and the other with the second particle decaying.
+@ Read the string from the file. The output which is produced by O'Mega
+contains the DAG in a factorised form as a long string, distributed over
+several lines (in addition, in the case of a scattering process, it
+contains a similar string for the same process, but with the other
+incoming particle as the root of the tree structure). In general, such a
+file can contain many of these strings, belonging to different process
+components. Therefore we first have to find the correct position of the
+string for the process in question. Therefore we look for a line
+containing a pair of colons, in which case the line contains a process
+string. Then we check if the process string describes the correct
+process, which is done by checking for all the incoming and outgoing
+particle names. If the process is correct, the dag output should start
+in the following line. As long as we do not find the correct process
+string, we continue searching. If we reach the end of the file, we
+rewind the unit once, and repeat searching. If the process is still not
+found, there must be some sort of error.
 <<Cascades2: dag: TBP>>=
   procedure :: read_string => dag_read_string
 <<Cascades2: procedures>>=
@@ -21447,17 +22415,18 @@ and the other with the second particle decaying.
     class (dag_t), intent (inout) :: dag
     integer, intent (in) :: u_in
     type(flavor_t), dimension(:), intent(in) :: flv
-    type (string_t) :: string
+    character (len=BUFFER_LEN) :: process_string
     logical :: process_found
     logical :: rewound
 !!! find process string in file
     process_found = .false.
     rewound = .false.
     do while (.not. process_found)
-       call fds_file_get_line (u_in, string)
-       if (len_trim(string) /= 0) then
-          if (index (string, "::") > 0) then
-             process_found = process_string_match (char (trim (string)), flv)
+       process_string = ""
+       read (unit=u_in, fmt='(A)') process_string
+       if (len_trim(process_string) /= 0) then
+          if (index (process_string, "::") > 0) then
+             process_found = process_string_match (trim (process_string), flv)
           endif
        else if (.not. rewound) then
           rewind (u_in)
@@ -21467,26 +22436,28 @@ and the other with the second particle decaying.
        endif
     enddo
     call fds_file_get_line (u_in, dag%string)
-    if (len_trim(dag%string) == 0) &
+    call dag%string%clean ()
+    if (.not. allocated (dag%string%t) .or. dag%string%char_len == 0) &
          call msg_bug ("Process string not found in O'Mega input file.")
   end subroutine dag_read_string
-  
+
 @ %def dag_read_string
 @ The output of factorized Feynman diagrams which is created by O'Mega
-for a given process is written in a single line. This can lead to
-different problems with different compilers as soon as such lines become
-too long. This is the reason why right after the creation of the
-files which contain the diagrams, these are edited using [[sed]].
-Whenever a line is longer than 1000 characters, a dollar sign is added
-after these 100 characters, followed by a newline character, and the
-same is done for the remaining part of the line. The dollar sign thus
-tells us that the rest of the original line can be found in the next
-line. On the other hand, if there is no dollar sign at the end of a
-line, we now that this is the end of the original line. This works
-under the assumption that the original input file does not contain any
-dollar signs, but dollar signs are rather unusual in particle names.
-The lines therefore have a maximum lenght of 1001 characters (excluding
-newline characters).
+for a given process could in principle be written to a single line in
+the file. This can however lead to different problems with different
+compilers as soon as such lines become too long. This is the reason why
+the line is cut into smaller pieces. This means that a new line starts
+after each vertical bar. For this long string the type [[dag_string_t]]
+has been introduced. In order to read the file quickly into such a
+[[dag_string]] we use another type, [[dag_chain_t]] which is a linked
+list of such [[dag_strings]]. This has the advantage that we do not
+have to recreate a new [[dag_string]] for every line which has been
+read from file. Only in the end of this operation we compress the
+list of strings to a single string, removing useless [[dag_tokens]],
+such as blanc space tokens. This subroutine reads all lines starting
+from the position in the file the unit is connected to, until no
+backslash character is found at the end of a line (so the backslash
+means that the next line to be read belongs to the current string).
 <<Cascades2: parameters>>=
   integer, parameter :: BUFFER_LEN = 1000
   integer, parameter :: STACK_SIZE = 100
@@ -21494,8 +22465,8 @@ newline characters).
 <<Cascades2: procedures>>=
   subroutine fds_file_get_line (u, string)
     integer, intent (in) :: u
-    type (string_t), intent (out) :: string
-    character (len=:), allocatable :: tmp_string
+    type (dag_string_t), intent (out) :: string
+    type (dag_chain_t) :: chain
     integer :: string_size, current_len
     character (len=BUFFER_LEN) :: buffer
     integer :: fragment_len
@@ -21509,14 +22480,19 @@ newline characters).
        fragment_len = len_trim (buffer)
        if (fragment_len == 0) then
           exit
-       else if (buffer (fragment_len:fragment_len) == "\") then
+       else if (buffer (fragment_len:fragment_len) == BACKSLASH_CHAR) then
           fragment_len = fragment_len - 1
        endif
-       string = trim(char(string)) // buffer(:fragment_len)
-       if (buffer(fragment_len+1:fragment_len+1) /= "\") exit
+       call chain%append (buffer(:fragment_len))
+       if (buffer(fragment_len+1:fragment_len+1) /= BACKSLASH_CHAR) exit
     enddo
+    if (associated (chain%first)) then
+       call chain%compress ()
+       string = chain%first
+       call chain%final ()
+    endif
   end subroutine fds_file_get_line
-  
+
 @ %def fds_file_get_line
 @ We check, if the process string which has been read from file
 corresponds to the process for which we want to extract the Feynman
@@ -21542,13 +22518,13 @@ diagrams.
        endif
     enddo
   end function process_string_match
-  
+
 @ %def process_string_match
 @
 \subsection{Particle properties}
 This subroutine initializes a model instance with the Standard Model
 data. It is used only in the unit tests and may disappear if the
-processes chosen for the unit tests are simple enough that they can 
+processes chosen for the unit tests are simple enough that they can
 be tested with the subroutine [[init_sm_test]] of [[model_data]].
 We do not have to care about the model initialization in this module
 because the [[model]] is passed to [[feyngraph_set_generate]] when
@@ -21928,21 +22904,22 @@ have to initialize the first empty array.
           exit
        endif
     enddo
-!!! Since the OMega output uses the anti-particles instead of the particles specified
+!!! Since the O'Mega output uses the anti-particles instead of the particles specified
 !!! in the process definition, we revert this here. An exception is the first particle
 !!! in the parsable DAG output
     node%particle => node%particle%anti
   end subroutine f_node_assign_particle_properties
 
 @ %def f_node_assign_particle_properties
-@ From the output of a Feynman diagramgraph we need to find out how many
-daughter nodes are required to reconstruct it correctly. In particular,
-we want to make sure to keep only those [[feyngraphs]] which are
-constructed solely on the basis of the 3-vertices which are provided by
-the model. The number of daughter particles can easily be determined
-from the syntax of the O'Mega output: The particle which appears before
-the colon ':' is the mother particle. The particles or subtrees (i.e. 
-whole parentheses) follow after the colon and are separated by commas.
+@ From the output of a Feynman diagram (in the non-factorized output)
+we need to find out how many daughter nodes would be required to
+reconstruct it correctly. In particular, we want to make sure to keep
+only those [[feyngraphs]] which are constructed solely on the basis of
+the 3-vertices which are provided by the model. The number of daughter
+particles can easily be determined from the syntax of O'Mega's output:
+The particle which appears before the colon ':' is the mother particle.
+The particles or subtrees (i.e. whole parentheses) follow after the
+colon and are separated by commas.
 <<Cascades2: procedures>>=
   function get_n_daughters (subtree_string, pos_first_colon) &
        result (n_daughters)
@@ -21976,13 +22953,13 @@ whole parentheses) follow after the colon and are separated by commas.
 \subsection{Reconstruction of trees}
 The reconstruction of a tree or subtree with the non-factorized input can
 be done recursively, i.e. we first find the root of the tree in the
-string and create a node. Then we look for daughters, which in the
+string and create an [[f_node]]. Then we look for daughters, which in the
 string apprear either as single particles or subtrees (which are of the
-same form as the tree which we want to reconstruct. Therefore the and
+same form as the tree which we want to reconstruct. Therefore the
 subroutine can simply be called again and again until there are no more
 daughter nodes to create. When we meet a vertex which requires more than
 two daughter particles, we stop the recursion and disable the node using
-the [[keep]] variable. Whenever a daughter node is not kept, we do not
+its [[keep]] variable. Whenever a daughter node is not kept, we do not
 keep the mother node as well.
 <<Cascades2: procedures>>=
   recursive subroutine node_construct_subtree_rec (feyngraph_set, &
@@ -22062,83 +23039,6 @@ keep the mother node as well.
   end subroutine node_construct_subtree_rec
 
 @ %def node_construct_subtree_rec
-@ We provide a slightly modified  version of the above subroutine which
-does not need a [[feyngraph]] to reconstruct trees, because the
-[[feyngraphs]] are allocated only when the trees of [[f_nodes]] already
-exist.
-<<Cascades2: procedures>>=
-  recursive subroutine node_construct_subtree_rec_dag (feyngraph_set, &
-       subtree_string, mother_node)
-    type (feyngraph_set_t), intent (inout) :: feyngraph_set
-    character (len=*), intent (in) :: subtree_string
-    type (f_node_t), pointer, intent (inout) :: mother_node
-    integer :: n_daughters
-    integer :: pos_first_colon
-    integer :: current_daughter
-    integer :: pos_subtree_begin, pos_subtree_end
-    integer :: i
-    integer :: n_open_par
-    if (.not. associated (mother_node)) then
-       call feyngraph_set%f_node_list%add_entry (subtree_string, mother_node, .true.)
-       current_daughter = 1
-       n_open_par = 1
-       pos_first_colon = index (subtree_string, ':')
-       n_daughters = get_n_daughters (subtree_string, pos_first_colon)
-       if (pos_first_colon == 0) then
-          mother_node%particle_label = subtree_string
-       else
-          mother_node%particle_label = subtree_string(2:pos_first_colon-1)
-       end if
-       if (.not. associated (mother_node%particle)) then
-          call mother_node%assign_particle_properties (feyngraph_set)
-       endif
-       if (n_daughters /= 2 .and. n_daughters /= 0) then
-          mother_node%keep = .false.
-          return
-       end if
-       pos_subtree_begin = pos_first_colon + 1
-       do i = pos_first_colon + 1, len(trim(subtree_string))
-          if (current_daughter == 2) then
-             pos_subtree_end = len(trim(subtree_string)) - 1
-             call node_construct_subtree_rec_dag (feyngraph_set, &
-                  subtree_string(pos_subtree_begin:pos_subtree_end), &
-                  mother_node%daughter2)
-             exit
-           else if (subtree_string(i:i) == ',') then
-             if (n_open_par == 1) then
-                pos_subtree_end = i - 1
-                call node_construct_subtree_rec_dag (feyngraph_set, &
-                     subtree_string(pos_subtree_begin:pos_subtree_end), &
-                     mother_node%daughter1)
-                current_daughter = 2
-                pos_subtree_begin = i + 1
-             end if
-          else if (subtree_string(i:i) == '(') then
-             n_open_par = n_open_par + 1
-          else if (subtree_string(i:i) == ')') then
-             n_open_par = n_open_par - 1
-          end if
-       end do
-    endif
-    if (associated (mother_node%daughter1)) then
-       if (.not. mother_node%daughter1%keep) then
-          mother_node%keep = .false.
-       endif
-    endif
-    if (associated (mother_node%daughter2)) then
-       if (.not. mother_node%daughter2%keep) then
-          mother_node%keep = .false.
-       endif
-    endif
-    if (associated (mother_node%daughter1) .and. &
-         associated (mother_node%daughter2)) then
-       mother_node%n_subtree_nodes = &
-            mother_node%daughter1%n_subtree_nodes &
-            + mother_node%daughter2%n_subtree_nodes + 1
-    endif
-  end subroutine node_construct_subtree_rec_dag
-
-@ %def node_construct_subtree_rec_dag
 @ When the non-factorized version of the O'Mega output is used, the
 [[feyngraph]] is reconstructed from the contents of its charater
 variable [[omega_feyngraph_output]]. This can be used for the recursive
@@ -22154,21 +23054,29 @@ reconstruction of the tree of [[k_nodes]] with
   end subroutine feyngraph_construct
 
 @ %def feyngraph_construct
-@ We introduce another node type which could be used for another tree
-type. This type would however only be used to reconstruct all
-[[feyngraphs]]. This is the reason why we do not use pointers to allocate
-daughter nodes, but we rather work on a single array of these nodes. The
-daughter pointers are replaced by integers which are the indices for the
-nodes in the array. This is more sensible because a dag node can have
-many combinations of daughters. A [[dag_node]] can correspond to a large
-number of [[f_nodes]] and can contain many subtrees. It is called a leaf
-if thereis only one possibility to reconstruct the subtree, or if it
-contains an external particle. In this case the [[f_nodes]] are created
-using [[node_construct_subtree_rec_dag]].
+@ We introduce another node type, which is called [[dag_node_t]] and
+is used to reproduce the dag structure which is represented by the input.
+The [[dag_nodes]] can have several combinations of daughters 1 and 2.
+The [[dag]] type contains an array of [[dag_nodes]] and is only used
+for the reconstruction of [[feyngraphs]] which are factorized as well, but
+in the other direction as the original output. This means in particular
+that the outgoing particles in the output file (which there can appear
+many times) exist only once as [[f_nodes]]. To represent combinations of
+daughters and alternatives (options), we further use the types
+[[dag_options_t]] and [[dag_combination_t]]. The [[dag_nodes]],
+[[dag_options]] and [[dag_combinations]] correspond to a substring of
+the string which has been read from file (and transformed into an object
+of type [[dag_string_t]], which is simply another compact representation
+of this string), or a modified version of this substring. The aim is to
+create only one object for a given substring, even if it appears several
+times in the original string and then create trees of [[f_nodes]], which
+build up the [[feyngraph]], such that most [[f_nodes]] can be reused.
+An outgoing particle (always interpreting the input as a decay) is
+called a [[leaf]] in the context of a [[dag]].
 <<Cascades2: types>>=
   type :: dag_node_t
      integer :: string_len
-     type (string_t) :: string
+     type (dag_string_t) :: string
      logical :: leaf = .false.
      type (f_node_ptr_t), dimension (:), allocatable :: f_node
    contains
@@ -22176,304 +23084,244 @@ using [[node_construct_subtree_rec_dag]].
   end type dag_node_t
 
 @ %def dag_node_t
-Whenever there is more than one possibility to put a subtree or node
-or pair of daughter nodes, we use the type [[dag_options_t]]. In the
-syntax of the factorized output, options are listed in curlybrackets.
+Whenever there are more than one possible subtrees (represented by
+a [[dag_node]]) or combinations of subtrees to daughters (represented
+by [[dag_combination_t]]), we use the type [[dag_options_t]]. In the
+syntax of the factorized output, options are listed within curly
+braces, separated by horizontal bars.
 <<Cascades2: types>>=
   type :: dag_options_t
      integer :: string_len
-     type (string_t) :: string
+     type (dag_string_t) :: string
    contains
      <<Cascades2: dag options: TBP>>
   end type dag_options_t
-  
+
 @ %def dag_node_options_t
 A pair of two daughters (which can be [[dag_nodes]] or [[dag_options]])
-is represented by the type [[dag_combination_t]]. A combination appears
-between parentheses.
+is represented by the type [[dag_combination_t]]. In the original string,
+a [[dag_combination]] appears between parentheses, which contain a comma,
+but not a colon. If we find a colon between these parentheses, it is a
+a [[dag_node]] instead.
 <<Cascades2: types>>=
   type :: dag_combination_t
      integer :: string_len
-     type (string_t) :: string
+     type (dag_string_t) :: string
      integer, dimension (2) :: combination
    contains
      <<Cascades2: dag combination: TBP>>
   end type dag_combination_t
-  
+
 @ %def dag_combination_t
-Here is the type representing the DAG.
+Here is the type representing the DAG, i.e. it holds arrays of the
+[[dag_nodes]], [[dag_options]] and [[dag_combinations]]. The root node
+of the [[dag]] is the last filled element of the [[node]] array.
 <<Cascades2: types>>=
   type :: dag_t
-     type (string_t) :: string
+     type (dag_string_t) :: string
      type (dag_node_t), dimension (:), allocatable :: node
      type (dag_options_t), dimension (:), allocatable :: options
      type (dag_combination_t), dimension (:), allocatable :: combination
      integer :: n_nodes = 0
      integer :: n_options = 0
      integer :: n_combinations = 0
-     contains
+   contains
      <<Cascades2: dag: TBP>>
   end type dag_t
-  
+
 @ %def dag_t
-@ We construct the DAG from the given string which is modified several
-times so that in the end the remaining string corresponds to a simple
-[[dag_node]]. This means that we first identify the leaves, i.e. simple
-subtrees. Then we identify [[dag_nodes]], [[dag_combinations]] and
-[[options]] until the number of these objects does not change any more.
-Identifying means that we add the object to the array, which can still
-be identified with the corresponding substring, and the substring in
-the original string by a place holder like '<O23>' which corresponds
-to an option and can be found at the position 23 in the array.
+@ We construct the DAG from the given [[dag_string]] which is modified
+several times so that in the end the remaining string corresponds to a
+simple [[dag_node]], the root of the factorized tree. This means that
+we first identify the leaves, i.e. outgoing particles. Then we identify
+[[dag_nodes]], [[dag_combinations]] and [[options]] until the number of
+these objects does not change any more. Identifying means that we add
+the corresponding object to the array, which can still be identified
+with the corresponding substring, and replace the substring in the
+original [[dag_string]] by a [[dag_token]] of the corresponding type
+(in the char output of this token, this corressponds to a place holder
+like e.g. '<O23>' which in this particular case corresponds to an option
+and can be found at the position 23 in the array). The character output
+of the substrings turns out to be very useful for debugging.
 <<Cascades2: dag: TBP>>=
   procedure :: construct => dag_construct
 <<Cascades2: procedures>>=
   subroutine dag_construct (dag)
     class (dag_t), intent (inout) :: dag
-    character (len=len(dag%string)) :: string
     integer :: n_nodes
     integer :: n_options
     integer :: n_combinations
     logical :: continue_loop
-    string = char (dag%string)
-    call dag%get_nodes_and_combinations (string, .true.)
+    call dag%get_nodes_and_combinations (leaves = .true.)
     continue_loop = .true.
     do while (continue_loop)
        n_nodes = dag%n_nodes
        n_options = dag%n_options
        n_combinations = dag%n_combinations
-       call dag%get_nodes_and_combinations (string, .false.)
-       call dag%get_options (string)
+       call dag%get_nodes_and_combinations (leaves = .false.)
+       call dag%get_options ()
        if (n_nodes == dag%n_nodes .and. n_options == dag%n_options &
             .and. n_combinations == dag%n_combinations) then
           continue_loop = .false.
        endif
     enddo
 !!! add root node to dag
-    call dag%add_node (string, leaf = .false.)
-    dag%string = string
+    call dag%add_node (dag%string%t, leaf = .false.)
     if (debug2_active (D_PHASESPACE)) then
        call dag%write (output_unit)
     endif
   end subroutine dag_construct
-  
+
 @ %def dag_construct
-@ Identify [[dag_nodes]] and [[dag_combinations]].
+@ Identify [[dag_nodes]] and [[dag_combinations]]. Leaves are simply
+nodes (i.e. of type [[NODE_TK]]) where only one bit in the bincode is
+set. The [[dag_nodes]] and [[dag_combinations]] have in common that they
+are surrounded by parentheses. There is however a way to distinguish
+between them because the corresponding substring contains a colon (or
+[[dag_token]] with type [[COLON_TK]]) if it is a [[dag_node]]. Otherwise
+it is a [[dag_combination]]. The string of the [[dag_node]] or
+[[dag_combination]] should not contain curly braces, because these
+correspond to [[dag_options]] and should be identified before.
 <<Cascades2: dag: TBP>>=
   procedure :: get_nodes_and_combinations => dag_get_nodes_and_combinations
 <<Cascades2: procedures>>=
-  subroutine dag_get_nodes_and_combinations (dag, string, leaves)
+  subroutine dag_get_nodes_and_combinations (dag, leaves)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (inout) :: string
     logical, intent (in) :: leaves
-    character (len=len(string)) :: new_string
-    integer :: open_par
-    logical :: keep
+    type (dag_string_t) :: new_string
     integer :: i, j, k
     integer :: i_node
-    integer :: index_start, index_end
-    integer :: new_len
-    character (len=10) :: index_char
-    logical :: slash_found
+    integer :: new_size
+    integer :: first_colon
     logical :: combination
-!!! Create nodes (leaves) for every closed pair of parentheses
-!!! which do not contain any optional branchings (i.e. {})
-    new_string = ' '
-    i = 1
-    new_len = 1
-    do while (i <= len (string))
-       if (string(i:i) == '(') then
-          open_par = 1
-          keep = .true.
-          combination = .true.
-          j = i + 1
-          do while (j <= len (string))
-             if (string(j:j) == '(') then
-                open_par = open_par + 1
-             else if (string(j:j) == ')') then
-                open_par = open_par - 1
-                if (open_par == 0) then
-                   if (combination) then
-                      call dag%add_combination (string(i:j), i_node)
-                   else
-                      call dag%add_node (string(i:j), leaves, i_node)
-                   endif
-                   exit
-                else if (open_par == 1) then
-                   keep = .false.
-                   exit
-                endif
-             else if (string(j:j) == '{') then
-                keep = .false.
-                exit
-             else if (string(j:j) == ':') then
-                combination = .false.
-             endif
-             j = j + 1
-          enddo
-       else
-          keep = .false.
-       endif
-       if (keep) then
-          index_char = ' '
-          write (index_char, fmt='(I10)') i_node
-          do k=1, len(index_char)
-             if (index_char(k:k) /= ' ') then
-                index_start = k
-                exit
-             endif
-          enddo
-          index_end = len_trim (index_char)
-          if (combination) then
-             new_string(new_len:new_len+index_end-index_start+3) = &
-                  '<C' // index_char(index_start:index_end) // '>'             
-          else
-             new_string(new_len:new_len+index_end-index_start+3) = &
-                  '<N' // index_char(index_start:index_end) // '>'
-          endif
-          new_len = new_len + index_end - index_start + 4
-          i = j + 1
-       else
-          new_string(new_len:new_len) = string(i:i)
-          new_len = new_len + 1
-          i = i + 1
-       endif
-    enddo
-    string = trim (new_string)
+!!! Create nodes also for external particles, except for the incoming one which
+!!! appears as the root of the tree. These can easily be identified by their
+!!! bincodes, since they should contain only one bit which is set.
     if (leaves) then
-!!! Create nodes also for those external particles which do not appear between (),
-!!! except for the root particle (first incoming)
-       new_string = ' '
-       new_len = index (string, ':')
-       new_string(:new_len) = string(:new_len)
-       new_len = new_len + 1
-       i = new_len
-       do while (i <= len_trim (string))
-          select case (string(i:i))
-          case ('<')
-             do while (string(i:i) /= '>')
-                new_string(new_len:new_len) = string(i:i)
-                new_len = new_len + 1
-                i = i + 1
-             enddo
-          case ('{', '}', '(', ')', ':', ',', '|', ' ', '>')
-             new_string(new_len:new_len) = string(i:i)
-             new_len = new_len + 1
-             i = i + 1
-          case default
-             do j = i, len_trim(string)
-                if (string(j:j) == '[') then
-                   slash_found = .false.
-                else if (string(j:j) == ']') then
-                   if (.not. slash_found) then
-                      call dag%add_node (string(i:j), .true., i_node)
-                      index_char = ' '
-                      write (index_char, fmt='(I10)') i_node
-                      do k=1, len(index_char)
-                         if (index_char(k:k) /= ' ') then
-                            index_start = k
-                            exit
-                         endif
-                      enddo
-                      index_end = len_trim (index_char)
-                      new_string(new_len:new_len+index_end-index_start+3)= &
-                           '<N' // index_char(index_start:index_end) // '>'
-                      new_len = new_len + index_end - index_start + 4
-                      i = j + 1
-                   else
-!!! particle not external
-                      new_string(new_len:new_len+j-i) = string(i:j)
-                      new_len = new_len + j - i + 1
-                      i = j + 1
-                   endif
-                   exit
-                else if (string(j:j) == '/') then
-                   slash_found = .true.
-                endif
-             enddo
-          end select
+       first_colon = minloc (dag%string%t%type, 1, dag%string%t%type == COLON_TK)
+       do i = first_colon + 1, size (dag%string%t)
+          if (dag%string%t(i)%type == NODE_TK) then
+             if (popcnt(dag%string%t(i)%bincode) == 1) then
+                call dag%add_node (dag%string%t(i:i), .true., i_node)
+                call dag%string%t(i)%init_dag_object_token (DAG_NODE_TK, i_node)
+             endif
+          endif
        enddo
-       string = new_string
+       call dag%string%update_char_len ()
+    else
+!!! Create a node or combination for every closed pair of parentheses
+!!! which do not contain any other parentheses or curly braces.
+!!! A node (not outgoing) contains a colon. This is not the case
+!!! for combinations, which we use as the criteria to distinguish
+!!! between both.
+       allocate (new_string%t (size (dag%string%t)))
+       i = 1
+       new_size = 0
+       do while (i <= size(dag%string%t))
+          if (dag%string%t(i)%type == OPEN_PAR_TK) then
+             combination = .true.
+             do j = i+1, size (dag%string%t)
+                select case (dag%string%t(j)%type)
+                case (CLOSED_PAR_TK)
+                   new_size = new_size + 1
+                   if (combination) then
+                      call dag%add_combination (dag%string%t(i:j), i_node)
+                      call new_string%t(new_size)%init_dag_object_token (DAG_COMBINATION_TK, i_node)
+                   else
+                      call dag%add_node (dag%string%t(i:j), leaves, i_node)
+                      call new_string%t(new_size)%init_dag_object_token (DAG_NODE_TK, i_node)
+                   endif
+                   i = j + 1
+                   exit
+                case (OPEN_PAR_TK, OPEN_CURLY_TK, CLOSED_CURLY_TK)
+                   new_size = new_size + 1
+                   new_string%t(new_size) = dag%string%t(i)
+                   i = i + 1
+                   exit
+                case (COLON_TK)
+                   combination = .false.
+                end select
+             enddo
+          else
+             new_size = new_size + 1
+             new_string%t(new_size) = dag%string%t(i)
+             i = i + 1
+          endif
+       enddo
+       dag%string = new_string%t(:new_size)
+       call dag%string%update_char_len ()
     endif
   end subroutine dag_get_nodes_and_combinations
 
 @ %def dag_get_nodes_and_combinations
-@ Identify [[dag_options]], i.e. lists of rival daughter nodes.
+@ Identify [[dag_options]], i.e. lists of rival nodes or combinations
+of nodes. These are identified by the surrounding curly braces. They
+should not contain any parentheses any more, because these correspond
+either to nodes or to combinations and should be identified before.
 <<Cascades2: dag: TBP>>=
   procedure :: get_options => dag_get_options
 <<Cascades2: procedures>>=
-  subroutine dag_get_options (dag, string)
+  subroutine dag_get_options (dag)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (inout) :: string
-    character (len=len(dag%string)) :: new_string
+    type (dag_string_t) :: new_string
     integer :: i, j, k
-    integer :: new_len
+    integer :: new_size
     integer :: i_options
     character (len=10) :: index_char
     integer :: index_start, index_end
-    new_string = ' '
+!!! Create a node or combination for every closed pair of parentheses
+!!! which do not contain any other parentheses or curly braces.
+!!! A node (not outgoing) contains a colon. This is not the case
+!!! for combinations, which we use as the criteria to distinguish
+!!! between both.
+    allocate (new_string%t (size (dag%string%t)))
     i = 1
-    new_len = 1
-    do while (i <= len (string))
-       if (string(i:i) == '{') then
-          do j = i+1, len (string)
-             if (string(j:j) == '{' .or. string(j:j) == '(') then
-                new_string(new_len:new_len) = string(i:i)
-                new_len = new_len + 1
-                i = i + 1
-                exit
-             else if (string(j:j) == '<') then
-                if (string(j+1:j+1) /= 'N' .and. string(j+1:j+1) /= 'C') then
-                   new_string(new_len:new_len) = string(i:i)
-                   new_len = new_len + 1
-                   i = i + 1
-                   exit
-                endif
-             else if (string(j:j) == '}') then
-                call dag%add_options (string(i:j), i_options)
-                index_char = ' '
-                write (index_char, fmt='(I10)') i_options
-                do k=1, len(index_char)
-                   if (index_char(k:k) /= ' ') then
-                      index_start = k
-                      exit
-                   endif
-                enddo
-                index_end = len_trim (index_char)
-                new_string(new_len:new_len+index_end-index_start+3) = &
-                     '<O' // index_char(index_start:index_end) // '>'
-                new_len = new_len + index_end - index_start + 4
+    new_size = 0
+    do while (i <= size(dag%string%t))
+       if (dag%string%t(i)%type == OPEN_CURLY_TK) then
+          do j = i+1, size (dag%string%t)
+             select case (dag%string%t(j)%type)
+             case (CLOSED_CURLY_TK)
+                new_size = new_size + 1
+                call dag%add_options (dag%string%t(i:j), i_options)
+                call new_string%t(new_size)%init_dag_object_token (DAG_OPTIONS_TK, i_options)
                 i = j + 1
                 exit
-             endif
+             case (OPEN_PAR_TK, CLOSED_PAR_TK, OPEN_CURLY_TK)
+                new_size = new_size + 1
+                new_string%t(new_size) = dag%string%t(i)
+                i = i + 1
+                exit
+             end select
           enddo
        else
-          new_string(new_len:new_len) = string(i:i)
-          new_len = new_len + 1
+          new_size = new_size + 1
+          new_string%t(new_size) = dag%string%t(i)
           i = i + 1
        endif
     enddo
-    string = trim (new_string)    
+    dag%string = new_string%t(:new_size)
+    call dag%string%update_char_len ()
   end subroutine dag_get_options
-  
+
 @ %def dag_get_options
 @ Add a [[dag_node]] to the list. The optional argument returns the index
 of the node. The node might already exist. In this case we only return
 the index.
 <<Cascades2: dag: TBP>>=
-  procedure :: add_node => dag_add_node 
+  procedure :: add_node => dag_add_node
 <<Cascades2: parameters>>=
   integer, parameter :: DAG_STACK_SIZE = 1000
 <<Cascades2: procedures>>=
   subroutine dag_add_node (dag, string, leaf, i_node)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (in) :: string
+    type (dag_token_t), dimension (:), intent (in) :: string
     logical, intent (in) :: leaf
     integer, intent (out), optional :: i_node
     type (dag_node_t), dimension (:), allocatable :: tmp_node
     integer :: string_len
     integer :: i
-    string_len = len(string)
+    string_len = sum (string%char_len)
     if (.not. allocated (dag%node)) then
         allocate (dag%node (DAG_STACK_SIZE))
      else if (dag%n_nodes == size (dag%node)) then
@@ -22486,9 +23334,11 @@ the index.
      endif
      do i = 1, dag%n_nodes
         if (dag%node(i)%string_len == string_len) then
-           if (dag%node(i)%string == string) then
-              if (present (i_node)) i_node = i
-              return
+           if (size (dag%node(i)%string%t) == size (string)) then
+              if (all(dag%node(i)%string%t == string)) then
+                 if (present (i_node)) i_node = i
+                 return
+              endif
            endif
         endif
      enddo
@@ -22506,12 +23356,12 @@ the index.
 <<Cascades2: procedures>>=
   subroutine dag_add_options (dag, string, i_options)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (in) :: string
+    type (dag_token_t), dimension (:), intent (in) :: string
     integer, intent (out), optional :: i_options
     type (dag_options_t), dimension (:), allocatable :: tmp_options
     integer :: string_len
     integer :: i
-    string_len = len(string)
+    string_len = sum (string%char_len)
     if (.not. allocated (dag%options)) then
         allocate (dag%options (DAG_STACK_SIZE))
      else if (dag%n_options == size (dag%options)) then
@@ -22524,9 +23374,11 @@ the index.
      endif
      do i = 1, dag%n_options
         if (dag%options(i)%string_len == string_len) then
-           if (dag%options(i)%string == string) then
-              if (present (i_options)) i_options = i
-              return
+           if (size (dag%options(i)%string%t) == size (string)) then
+              if (all(dag%options(i)%string%t == string)) then
+                 if (present (i_options)) i_options = i
+                 return
+              endif
            endif
         endif
      enddo
@@ -22535,7 +23387,7 @@ the index.
      dag%options(dag%n_options)%string_len = string_len
      if (present (i_options)) i_options = dag%n_options
   end subroutine dag_add_options
-  
+
 @ %def dag_add_options
 @ A similar subroutine for combinations.
 <<Cascades2: dag: TBP>>=
@@ -22543,12 +23395,12 @@ the index.
 <<Cascades2: procedures>>=
   subroutine dag_add_combination (dag, string, i_combination)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (in) :: string
+    type (dag_token_t), dimension (:), intent (in) :: string
     integer, intent (out), optional :: i_combination
     type (dag_combination_t), dimension (:), allocatable :: tmp_combination
     integer :: string_len
     integer :: i
-    string_len = len(string)
+    string_len = sum (string%char_len)
     if (.not. allocated (dag%combination)) then
         allocate (dag%combination (DAG_STACK_SIZE))
      else if (dag%n_combinations == size (dag%combination)) then
@@ -22561,9 +23413,11 @@ the index.
      endif
      do i = 1, dag%n_combinations
         if (dag%combination(i)%string_len == string_len) then
-           if (dag%combination(i)%string == string) then
-              i_combination = i
-              return
+           if (size (dag%combination(i)%string%t) == size (string)) then
+              if (all(dag%combination(i)%string%t == string)) then
+                 i_combination = i
+                 return
+              endif
            endif
         endif
      enddo
@@ -22572,79 +23426,64 @@ the index.
      dag%combination(dag%n_combinations)%string_len = string_len
      if (present (i_combination)) i_combination = dag%n_combinations
   end subroutine dag_add_combination
-  
+
 @ %def dag_add_combination
 @ For a given [[dag_node]] we want to create all [[f_nodes]]. If the node
 is not a leaf, it contains in its string placeholders for optionss or
 combinations. For these objects there are similar subroutines which are
 needed here to obtain the sets of daughter nodes. If the [[dag_node]] is
-a leaf, we can reconstruct the subtree in the same ways as for the
-non-factorized output.
+a leaf, it corresponds to an external particle and the token contains the
+particle name.
 <<Cascades2: dag node: TBP>>=
   procedure :: make_f_nodes => dag_node_make_f_nodes
 <<Cascades2: procedures>>=
-  recursive subroutine dag_node_make_f_nodes (dag_node, string, feyngraph_set, dag)
+  recursive subroutine dag_node_make_f_nodes (dag_node, feyngraph_set, dag)
     class (dag_node_t), intent (inout) :: dag_node
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension (:), allocatable :: daughter1_ptr
     type (f_node_ptr_t), dimension (:), allocatable :: daughter2_ptr
     character (len=LABEL_LEN) :: particle_label
-    integer :: colon_pos
     integer :: i, j
-    character (len=1), dimension (2) :: obj
+    integer, dimension (2) :: obj
     integer, dimension (2) :: i_obj
     integer :: n_obj
     integer :: pos
     integer :: new_size, size1, size2
     if (allocated (dag_node%f_node)) return
-    colon_pos = index(string,':')
-    if (colon_pos /= 0) then
-       if (string(1:1) == '(') then
-          particle_label = string(2:colon_pos-1)
-       else
-          particle_label = string(:colon_pos-1)
-       endif
-    else
-       particle_label = string
-    endif
+    pos = minloc (dag_node%string%t%type, 1,dag_node%string%t%type == NODE_TK)
+    particle_label = char (dag_node%string%t(pos))
     if (dag_node%leaf) then
 !!! construct subtree with procedure similar to the one for the old output
        allocate (dag_node%f_node(1))
-       call node_construct_subtree_rec_dag (feyngraph_set, trim(string), dag_node%f_node(1)%node)
+       call feyngraph_set%f_node_list%add_entry (char(dag_node%string), &
+            dag_node%f_node(1)%node, .false.)
+       dag_node%f_node(1)%node%particle_label = particle_label
+       call dag_node%f_node(1)%node%assign_particle_properties (feyngraph_set)
        if (.not. dag_node%f_node(1)%node%keep) then
           deallocate (dag_node%f_node)
           return
        endif
     else
-       obj = ' '
-       i_obj = 0
        n_obj = 0
-       do i = colon_pos+1, len (string)
-          if (string(i:i) == '<') then
+       do i = 1, size (dag_node%string%t)
+          select case (dag_node%string%t(i)%type)
+          case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
              n_obj = n_obj + 1
              if (n_obj > 2) return
-             do j = i+1, len (string)
-                if (string(j:j) == '>') then
-                   read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                   read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                   exit
-                endif
-             enddo
-          endif
+             obj(n_obj) = dag_node%string%t(i)%type
+             i_obj(n_obj) = dag_node%string%t(i)%index
+          end select
        enddo
        if (n_obj == 1) then
-          if (obj(1) == 'O') then
-             call dag%options(i_obj(1))%make_f_nodes (char (dag%options(i_obj(1))%string), &
-                  feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
-          else if (obj(1) == 'C') then
-             call dag%combination(i_obj(1))%make_f_nodes(char (dag%combination(i_obj(1))%string), &
-                  feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
+          if (obj(1) == DAG_OPTIONS_TK) then
+             call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
+          else if (obj(1) == DAG_COMBINATION_TK) then
+             call dag%combination(i_obj(1))%make_f_nodes(feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
           endif
           allocate (dag_node%f_node(size(daughter1_ptr)))
           do i=1, size(dag_node%f_node)
-             call feyngraph_set%f_node_list%add_entry (string, dag_node%f_node(i)%node, .false.)
+             call feyngraph_set%f_node_list%add_entry (char(dag_node%string), dag_node%f_node(i)%node, .false.)
              call dag_node%f_node(i)%node%set_index ()
              dag_node%f_node(i)%node%particle_label = particle_label
              call dag_node%f_node(i)%node%assign_particle_properties (feyngraph_set)
@@ -22655,23 +23494,19 @@ non-factorized output.
           enddo
 !!! simply set daughter pointers, daughters are already combined correctly
        else if (n_obj == 2) then
-          if (obj(1) == 'N') then
-             call dag%node(i_obj(1))%make_f_nodes (char (dag%node(i_obj(1))%string), &
-                  feyngraph_set, dag)
+          if (obj(1) == DAG_NODE_TK) then
+             call dag%node(i_obj(1))%make_f_nodes (feyngraph_set, dag)
              allocate (daughter1_ptr (size (dag%node(i_obj(1))%f_node)))
              daughter1_ptr = dag%node(i_obj(1))%f_node
-          else if (obj(1) == 'O') then
-             call dag%options(i_obj(1))%make_f_nodes (char (dag%options(i_obj(1))%string), &
-                  feyngraph_set, dag, daughter1_ptr)
+          else if (obj(1) == DAG_OPTIONS_TK) then
+             call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, daughter1_ptr)
           endif
-          if (obj(2) == 'N') then
-             call dag%node(i_obj(2))%make_f_nodes (char (dag%node(i_obj(2))%string), &
-                  feyngraph_set, dag)
+          if (obj(2) == DAG_NODE_TK) then
+             call dag%node(i_obj(2))%make_f_nodes (feyngraph_set, dag)
              allocate (daughter2_ptr (size (dag%node(i_obj(2))%f_node)))
              daughter2_ptr = dag%node(i_obj(2))%f_node
-          else if (obj(2) == 'O') then
-             call dag%options(i_obj(2))%make_f_nodes (char (dag%options(i_obj(2))%string), &
-                  feyngraph_set, dag, daughter2_ptr)
+          else if (obj(2) == DAG_OPTIONS_TK) then
+             call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, daughter2_ptr)
           endif
 !!! make all combinations of daughters
           size1 = size (daughter1_ptr)
@@ -22682,7 +23517,7 @@ non-factorized output.
           do i = 1, size1
              do j = 1, size2
                 pos = pos + 1
-                call feyngraph_set%f_node_list%add_entry(string, dag_node%f_node(pos)%node, .false.)
+                call feyngraph_set%f_node_list%add_entry(char(dag_node%string), dag_node%f_node(pos)%node, .false.)
                 call dag_node%f_node(pos)%node%set_index ()
                 dag_node%f_node(pos)%node%particle_label = particle_label
                 call dag_node%f_node(pos)%node%assign_particle_properties (feyngraph_set)
@@ -22696,7 +23531,7 @@ non-factorized output.
        endif
     endif
   end subroutine dag_node_make_f_nodes
-  
+
 @ %def dag_node_make_f_nodes
 @ Here we obtain all [[f_nodes]] for [[dag_nodes]] which correspond to a
 set of rival subtrees or nodes, which is the first possibility for
@@ -22707,144 +23542,107 @@ which [[dag_options]] can appear.
   generic :: make_f_nodes => make_f_nodes_single, make_f_nodes_pair
 <<Cascades2: procedures>>=
   recursive subroutine dag_options_make_f_nodes_single (dag_options, &
-       string, feyngraph_set, dag, node_ptr)
+       feyngraph_set, dag, node_ptr)
     class (dag_options_t), intent (inout) :: dag_options
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr
     type (f_node_ptr_t), dimension(:), allocatable :: tmp_node_ptr
-    character (len=1), dimension (:), allocatable :: obj, tmp_obj
-    integer, dimension (:), allocatable :: i_obj, tmp_i_obj
+    integer, dimension (:), allocatable :: obj, i_obj
     integer :: n_obj
-    integer :: i, j
+    integer :: i
+    integer :: pos
 !!! read options
-    n_obj = 0
-    do i = 1, len (string)
-       if (string(i:i) == '<') then
-          if (n_obj > 0) then
-             allocate (tmp_obj(n_obj)); allocate (tmp_i_obj(n_obj))
-             tmp_obj = obj; tmp_i_obj = i_obj
-             deallocate (obj, i_obj)
-          endif
-          allocate (obj(n_obj+1)); allocate (i_obj(n_obj+1))
-          if (n_obj > 0) then
-             obj(:n_obj) = tmp_obj; i_obj(:n_obj) = tmp_i_obj
-             deallocate (tmp_obj, tmp_i_obj)
-          endif
-          n_obj = n_obj + 1
-          do j = i+1, len (string)
-             if (string(j:j) == '>') then
-                read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                exit
-             endif
-          enddo
-       endif
+    n_obj = count ((dag_options%string%t%type == DAG_NODE_TK) .or. &
+         (dag_options%string%t%type == DAG_OPTIONS_TK) .or. &
+         (dag_options%string%t%type == DAG_COMBINATION_TK), 1)
+    allocate (obj(n_obj)); allocate (i_obj(n_obj))
+    pos = 0
+    do i = 1, size (dag_options%string%t)
+       select case (dag_options%string%t(i)%type)
+       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
+          pos = pos + 1
+          obj(pos) = dag_options%string%t(i)%type
+          i_obj(pos) = dag_options%string%t(i)%index
+       end select
     enddo
     do i=1, n_obj
-       if (obj(i) == 'N') then
-          if (allocated (node_ptr)) then
-             call dag%node(i_obj(i))%make_f_nodes (char (dag%node(i_obj(i))%string), &
-                  feyngraph_set, dag)
-             if (allocated (dag%node(i_obj(i))%f_node)) then
-                allocate (tmp_node_ptr (size (node_ptr)))
-                tmp_node_ptr = node_ptr
-                deallocate (node_ptr)
-                allocate (node_ptr (size (tmp_node_ptr) + size (dag%node(i_obj(i))%f_node)))
-                node_ptr(:size(tmp_node_ptr)) = tmp_node_ptr
-                node_ptr(size(tmp_node_ptr)+1:) = dag%node(i_obj(i))%f_node
-                deallocate (tmp_node_ptr)
-             endif
-          else
-             call dag%node(i_obj(i))%make_f_nodes (char (dag%node(i_obj(i))%string), &
-                  feyngraph_set, dag)
-             allocate (node_ptr (size (dag%node(i_obj(i))%f_node)))
-             node_ptr = dag%node(i_obj(i))%f_node
+       if (allocated (node_ptr)) then
+          call dag%node(i_obj(i))%make_f_nodes (feyngraph_set, dag)
+          if (allocated (dag%node(i_obj(i))%f_node)) then
+             allocate (tmp_node_ptr (size (node_ptr)))
+             tmp_node_ptr = node_ptr
+             deallocate (node_ptr)
+             allocate (node_ptr (size (tmp_node_ptr) + size (dag%node(i_obj(i))%f_node)))
+             node_ptr(:size(tmp_node_ptr)) = tmp_node_ptr
+             node_ptr(size(tmp_node_ptr)+1:) = dag%node(i_obj(i))%f_node
+             deallocate (tmp_node_ptr)
           endif
        else
-          call msg_bug ('Node (N) expected, but parsed object is ' // obj(i))
+          call dag%node(i_obj(i))%make_f_nodes (feyngraph_set, dag)
+          allocate (node_ptr (size (dag%node(i_obj(i))%f_node)))
+          node_ptr = dag%node(i_obj(i))%f_node
        endif
     enddo
     deallocate (obj, i_obj)
   end subroutine dag_options_make_f_nodes_single
-  
+
 @ %def dag_options_make_f_nodes_single
 @ Here the options are rival sets of ([[daughter1]], [[daughter2]]).
 Therefore we have to pass two allocatable arrays of type [[f_node_ptr_t]]
 to the subroutine.
 <<Cascades2: procedures>>=
   subroutine dag_options_make_f_nodes_pair (dag_options, &
-       string, feyngraph_set, dag, node_ptr1, node_ptr2)
+       feyngraph_set, dag, node_ptr1, node_ptr2)
     class (dag_options_t), intent (inout) :: dag_options
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr1
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr2
     type (f_node_ptr_t), dimension(:), allocatable :: tmp_node_ptr1, tmp_node_ptr2
-    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1, dummy_node_ptr2   
-    character (len=1), dimension (:), allocatable :: obj, tmp_obj
-    integer, dimension (:), allocatable :: i_obj, tmp_i_obj
+    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1, dummy_node_ptr2
+    integer, dimension (:), allocatable :: obj, i_obj
     integer :: n_obj
-    integer :: i, j
+    integer :: pos
+    integer :: i
 !!! read options
-    n_obj = 0
-    do i = 1, len (string)
-       if (string(i:i) == '<') then
-          if (n_obj > 0) then
-             allocate (tmp_obj(n_obj)); allocate (tmp_i_obj(n_obj))
-             tmp_obj = obj; tmp_i_obj = i_obj
-             deallocate (obj, i_obj)
-          endif
-          allocate (obj(n_obj+1)); allocate (i_obj(n_obj+1))
-          if (n_obj > 0) then
-             obj(:n_obj) = tmp_obj; i_obj(:n_obj) = tmp_i_obj
-             deallocate (tmp_obj, tmp_i_obj)
-          endif
-          n_obj = n_obj + 1
-          do j = i+1, len (string)
-             if (string(j:j) == '>') then
-                read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                exit
-             endif
-          enddo
-       endif
+    n_obj = count ((dag_options%string%t%type == DAG_NODE_TK) .or. &
+         (dag_options%string%t%type == DAG_OPTIONS_TK) .or. &
+         (dag_options%string%t%type == DAG_COMBINATION_TK), 1)
+    allocate (obj(n_obj)); allocate (i_obj(n_obj))
+    pos = 0
+    do i = 1, size (dag_options%string%t)
+       select case (dag_options%string%t(i)%type)
+       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
+          pos = pos + 1
+          obj(pos) = dag_options%string%t(i)%type
+          i_obj(pos) = dag_options%string%t(i)%index
+       end select
     enddo
 !!! get f_nodes from each combination
     do i=1, n_obj
-       if (obj(i) == 'C') then
-          if (allocated (node_ptr1) .and. allocated (node_ptr2)) then
-             call dag%combination(i_obj(i))%make_f_nodes (char (dag%combination(i_obj(i))%string), &
-                  feyngraph_set, dag, dummy_node_ptr1, dummy_node_ptr2)
-             if (allocated (dummy_node_ptr1) .and. allocated (dummy_node_ptr2)) then
-                allocate (tmp_node_ptr1 (size (node_ptr1)))
-                allocate (tmp_node_ptr2 (size (node_ptr2)))
-                tmp_node_ptr1 = node_ptr1
-                tmp_node_ptr2 = node_ptr2
-                deallocate (node_ptr1)
-                deallocate (node_ptr2)
-                allocate (node_ptr1 (size (tmp_node_ptr1) + size (dummy_node_ptr1)))
-                allocate (node_ptr2 (size (tmp_node_ptr2) + size (dummy_node_ptr2)))
-                node_ptr1(:size(tmp_node_ptr1)) = tmp_node_ptr1
-                node_ptr2(:size(tmp_node_ptr2)) = tmp_node_ptr2
-                node_ptr1(size(tmp_node_ptr1)+1:) = dummy_node_ptr1
-                node_ptr2(size(tmp_node_ptr2)+1:) = dummy_node_ptr2
-                deallocate (tmp_node_ptr1, dummy_node_ptr1)
-                deallocate (tmp_node_ptr2, dummy_node_ptr2)
-             endif
-          else
-             call dag%combination(i_obj(i))%make_f_nodes (char (dag%combination(i_obj(i))%string), &
-                  feyngraph_set, dag, node_ptr1, node_ptr2)
+       if (allocated (node_ptr1) .and. allocated (node_ptr2)) then
+          call dag%combination(i_obj(i))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr1, dummy_node_ptr2)
+          if (allocated (dummy_node_ptr1) .and. allocated (dummy_node_ptr2)) then
+             allocate (tmp_node_ptr1 (size (node_ptr1)))
+             allocate (tmp_node_ptr2 (size (node_ptr2)))
+             tmp_node_ptr1 = node_ptr1; tmp_node_ptr2 = node_ptr2
+             deallocate (node_ptr1, node_ptr2)
+             allocate (node_ptr1 (size (tmp_node_ptr1) + size (dummy_node_ptr1)))
+             allocate (node_ptr2 (size (tmp_node_ptr2) + size (dummy_node_ptr2)))
+             node_ptr1(:size(tmp_node_ptr1)) = tmp_node_ptr1
+             node_ptr2(:size(tmp_node_ptr2)) = tmp_node_ptr2
+             node_ptr1(size(tmp_node_ptr1)+1:) = dummy_node_ptr1
+             node_ptr2(size(tmp_node_ptr2)+1:) = dummy_node_ptr2
+             deallocate (tmp_node_ptr1, dummy_node_ptr1, tmp_node_ptr2, dummy_node_ptr2)
           endif
        else
-          call msg_bug ('Combination (C) expected, but parsed object is ' // obj(i))
+          call dag%combination(i_obj(i))%make_f_nodes (feyngraph_set, dag, node_ptr1, node_ptr2)
        endif
     enddo
     deallocate (obj, i_obj)
   end subroutine dag_options_make_f_nodes_pair
-  
+
 @ %def dag_options_make_f_nodes_pair
 @ We create all combinations of daughter [[f_nodes]] for a combination.
 In the combination each daughter can be either a single [[dag_nodes]] or
@@ -22856,64 +23654,42 @@ with all [[daughter2]] nodes.
   procedure :: make_f_nodes => dag_combination_make_f_nodes
 <<Cascades2: procedures>>=
   subroutine dag_combination_make_f_nodes (dag_combination, &
-       string, feyngraph_set, dag, node_ptr1, node_ptr2)
+       feyngraph_set, dag, node_ptr1, node_ptr2)
     class (dag_combination_t), intent (inout) :: dag_combination
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr1
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr2
     type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1
     type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr2
-    character (len=1), dimension (2) :: obj
-    integer, dimension (2) :: i_obj
-    integer :: i, j
+    integer, dimension (2) :: obj, i_obj
     integer :: n_obj
     integer :: new_size, size1, size2
-    integer :: pos
-    obj = ' '
-    i_obj = 0
+    integer :: i, j, pos
     n_obj = 0
-    do i = 1, len (string)
-       if (string(i:i) == '<') then
+    do i = 1, size (dag_combination%string%t)
+       select case (dag_combination%string%t(i)%type)
+       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
           n_obj = n_obj + 1
           if (n_obj > 2) return
-          do j = i+1, len (string)
-             if (string(j:j) == '>') then
-                read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                exit
-             endif
-          enddo
-       endif
+          obj(n_obj) = dag_combination%string%t(i)%type
+          i_obj(n_obj) = dag_combination%string%t(i)%index
+       end select
     enddo
-    if (n_obj /= 2) then
-       call msg_bug ('Combination should contain 2 elements, but contains ' &
-            // char(n_obj) // ' elements')
-    else
-       if (obj(1) == 'N') then
-          call dag%node(i_obj(1))%make_f_nodes (char (dag%node(i_obj(1))%string), &
-               feyngraph_set, dag)
-          allocate (dummy_node_ptr1 (size (dag%node(i_obj(1))%f_node)))
-          dummy_node_ptr1 = dag%node(i_obj(1))%f_node
-       else if (obj(1) == 'O') then
-          call dag%options(i_obj(1))%make_f_nodes (char (dag%options(i_obj(1))%string), &
-               feyngraph_set, dag, dummy_node_ptr1)
-       else
-          call msg_bug ('Node (N) or option (O) expected, but parsed object is' // obj(1))
-       endif
-       if (allocated (dummy_node_ptr1)) then
-          if (obj(2) == 'N') then
-             call dag%node(i_obj(2))%make_f_nodes (char (dag%node(i_obj(2))%string), &
-                  feyngraph_set, dag)
-             allocate (dummy_node_ptr2 (size (dag%node(i_obj(2))%f_node)))
-             dummy_node_ptr2 = dag%node(i_obj(2))%f_node
-          else if (obj(2) == 'O') then
-             call dag%options(i_obj(2))%make_f_nodes (char (dag%options(i_obj(2))%string), &
-                  feyngraph_set, dag, dummy_node_ptr2)
-          else
-             call msg_bug ('Node (N) or option (O) expected, but parsed object is' // obj(2))
-          endif
+    if (obj(1) == DAG_NODE_TK) then
+       call dag%node(i_obj(1))%make_f_nodes (feyngraph_set, dag)
+       allocate (dummy_node_ptr1 (size (dag%node(i_obj(1))%f_node)))
+       dummy_node_ptr1 = dag%node(i_obj(1))%f_node
+    else if (obj(1) == DAG_OPTIONS_TK) then
+       call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr1)
+    endif
+    if (allocated (dummy_node_ptr1)) then
+       if (obj(2) == DAG_NODE_TK) then
+          call dag%node(i_obj(2))%make_f_nodes (feyngraph_set, dag)
+          allocate (dummy_node_ptr2 (size (dag%node(i_obj(2))%f_node)))
+          dummy_node_ptr2 = dag%node(i_obj(2))%f_node
+       else if (obj(2) == DAG_OPTIONS_TK) then
+          call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr2)
        endif
     endif
 !!! combine the 2 arrays of f_nodes
@@ -22937,12 +23713,13 @@ with all [[daughter2]] nodes.
 
 @ %def dag_combination_make_f_nodes
 @ Here we create the [[feyngraphs]]. After the construction of the
-[[dag]] the remaining string should contain a single [[dag_nodes]] which
-corresponds to the roots of the [[feyngraphs]]. Therefore we make all
-[[f_nodes]] for this [[dag_node]] and create a [[feyngraph]] for each
-[[f_node]]. Note that only 3-vertices are accepted. All other vertices
-are rejected. The starting point is the last dag node which has been
-added to the list, since this corresponds to the root of the tree.
+[[dag]] the remaining [[dag_string]] should contain a token for a
+single [[dag_nodes]] which corresponds to the roots of the
+[[feyngraphs]]. Therefore we make all [[f_nodes]] for this [[dag_node]]
+and create a [[feyngraph]] for each [[f_node]]. Note that only
+3-vertices are accepted. All other vertices are rejected. The
+starting point is the last dag node which has been added to the list,
+since this corresponds to the root of the tree.
 Is is important to understand that the structure of feyngraphs is not
 the same as the structure of the dag which is read from file, because
 for the calculations which are performed in this module we want to
@@ -22961,8 +23738,7 @@ from the different dag objects.
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     integer :: i
     type (f_node_ptr_t), dimension (:), allocatable :: node_ptr
-    call dag%node(dag%n_nodes)%make_f_nodes (char (dag%node(dag%n_nodes)%string), &
-         feyngraph_set, dag)
+    call dag%node(dag%n_nodes)%make_f_nodes (feyngraph_set, dag)
     allocate (node_ptr (size (dag%node(dag%n_nodes)%f_node)))
     node_ptr = dag%node(dag%n_nodes)%f_node
     if (allocated (node_ptr)) then
@@ -22975,7 +23751,7 @@ from the different dag objects.
              feyngraph_set%last => feyngraph_set%last%next
           endif
           feyngraph_set%last%root => node_ptr(i)%node
-!!! The first particle was correct in the OMega parsable DAG output. It was however
+!!! The first particle was correct in the O'Mega parsable DAG output. It was however
 !!! changed to its anti-particle in f_node_assign_particle_properties, which we revert here.
           feyngraph_set%last%root%particle => feyngraph_set%last%root%particle%anti
           feyngraph_set%last%n_nodes = feyngraph_set%last%root%n_subtree_nodes
@@ -22985,9 +23761,9 @@ from the different dag objects.
        feyngraph_set%f_node_list%max_tree_size = feyngraph_set%first%n_nodes
     endif
   end subroutine dag_make_feyngraphs
-  
+
 @ %def dag_make_feyngraphs
-@ A write of the [[dag]] for debugging.
+@ A write procedure of the [[dag]] for debugging.
 <<Cascades2: dag: TBP>>=
   procedure :: write => dag_write
 <<Cascades2: procedures>>=
@@ -23026,7 +23802,7 @@ nonresonant.
     copy%mapping_assigned = .true.
     copy%is_nonresonant_copy = .true.
   end subroutine k_node_make_nonresonant_copy
-  
+
 @ %def k_node_make_nonresonant_copy
 @ For a given [[feyngraph]] we create all possible [[kingraphs]]. Here
 we use existing [[k_nodes]] which have already been created when the
@@ -23269,7 +24045,7 @@ numbers are separated by a slash).
     end_pos = index (particle_label, ']') - 1
     particle_label = particle_label(start_pos:end_pos)
 !!! n_out_decay is the number of outgoing particles in the
-!!! OMega output, which is always represented as a decay
+!!! O'Mega output, which is always represented as a decay
     if (feyngraph_set%use_dag) then
        n_prt = 1
        do i=1, len(particle_label)
@@ -23942,7 +24718,7 @@ the valid nodes to eliminate equivalences (see below).
        deallocate (compare_list)
     enddo
   end subroutine f_node_list_compute_mappings_s
-  
+
 @ %def f_node_list_compute_mappings_s
 @
 \subsection{Fill the grove list}
@@ -24101,7 +24877,7 @@ groves which are determined by all entries in [[grove_prop_t]].
   interface operator (==)
      module procedure grove_prop_equal
   end interface operator (==)
-  
+
 <<Cascades2: procedures>>=
   function grove_prop_equal (grove_prop1, grove_prop2) result (gp_equal)
     type (grove_prop_t), intent (in) :: grove_prop1
@@ -24274,7 +25050,7 @@ channels is not reduced any more.
     !$ call OMP_destroy_lock (grove_list%lock)
     call tmp_list%final
   end subroutine grove_list_rebuild
-  
+
 @ %def grove_list_rebuild
 @
 \subsection{Write the phase-space file}
@@ -24412,7 +25188,7 @@ format. The information is extracted from the [[tree]].
        end select
     enddo
   end subroutine kingraph_write_file_format
-  
+
 @ %def kingraph_write_file_format
 @ Get the particle name from the [[particle]] array of the
 [[feyngraph_set]]. This is needed for the phs file creation.
@@ -24642,14 +25418,14 @@ parallelized at all.
     !$OMP END PARALLEL DO
     !$ call OMP_destroy_lock (feyngraph_set%grove_list%lock)
   end subroutine feyngraph_set_find_phs_parametrizations
-    
+
 @ %def feyngraph_set_find_phs_parametrizations
 @ Compare objects of type [[tree_t]].
 <<Cascades2: interfaces>>=
   interface operator (==)
      module procedure tree_equal
   end interface operator (==)
-  
+
 <<Cascades2: procedures>>=
   elemental function tree_equal (tree1, tree2) result (flag)
     type (tree_t), intent (in) :: tree1, tree2
@@ -24675,7 +25451,7 @@ to [[kingraph_select]], but we compare only positions with mappings
   interface operator (.eqv.)
      module procedure subtree_eqv
   end interface operator (.eqv.)
-  
+
 <<Cascades2: procedures>>=
   pure function subtree_eqv (subtree1, subtree2) result (eqv)
     type (tree_t), intent (in) :: subtree1, subtree2
@@ -24727,7 +25503,7 @@ to [[kingraph_select]], but we compare only positions with mappings
        if (.not. equal) eqv = .true.
     endif
   end function subtree_eqv
-  
+
 @ %def subtree_eqv
 <<Cascades2: procedures>>=
   subroutine subtree_select (subtree1, subtree2, model)
@@ -24971,7 +25747,7 @@ of [[cascade_set]] as an argument.
     write (u, '(A)') "\end{fmffile}"
     write (u, '(A)') "\end{document}"
   end subroutine feyngraph_set_write_graph_format
-  
+
 @ %def feyngraph_set_write_graph_format
 @ Write the process as a \LaTeX\ expression. This is a slightly modified
 copy of [[cascade_set_write_process_tex_format]] which has only been
@@ -25223,7 +25999,7 @@ file. The function is the pendant to [[cascade_set_is_valid]].
        enddo
     endif
   end function feyngraph_set_is_valid
-  
+
 @ %def feyngraph_set_is_valid
 @
 \subsection{Return the resonance histories for subtraction}
@@ -25398,17 +26174,17 @@ end module cascades2_uti
     type (phs_parameters_t) :: phs_par
     logical :: fatal_beam_decay = .true.
     integer :: u_in = 8
-    
+
     write (u, "(A)")  "* Test output: cascades2_1"
     write (u, "(A)")  "*   Purpose: create a test phs file (decay) with the forest"
     write (u, "(A)")  "*            output of O'Mega"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initializing"
     write (u, "(A)")
-    
+
     call init_sm_full_test (model)
-    
+
     call flv(1,1)%init (6, model)
     call flv(2,1)%init (5, model)
     call flv(3,1)%init (-11, model)
@@ -25416,31 +26192,31 @@ end module cascades2_uti
     call flv(5,1)%init (21, model)
     call flv(6,1)%init (22, model)
     call flv(7,1)%init (21, model)
-    
+
     phs_par%sqrts = 173.1_default
     phs_par%m_threshold_s = 50._default
     phs_par%m_threshold_t = 100._default
     phs_par%keep_nonresonant = .true.
     phs_par%off_shell = 2
-    
-    open (unit=u_in, file="omega_parsable.fds", status='old', action='read')
-    
+
+    open (unit=u_in, file="cascades2_1.fds", status='old', action='read')
+
     write (u, "(A)")
     write (u, "(A)")  "* Generating phase-space parametrizations"
     write (u, "(A)")
-    
+
     call feyngraph_set_generate (feyngraph_set, model, n_in, n_out, &
          flv, phs_par, fatal_beam_decay, u_in, use_dag = .false.)
     call feyngraph_set_write_process_bincode_format (feyngraph_set, u)
     call feyngraph_set_write_file_format (feyngraph_set, u)
-    
+
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     close (u_in)
     call feyngraph_set%final ()
     call model%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Test output end: cascades2_1"
   end subroutine cascades2_1
@@ -25460,17 +26236,17 @@ end module cascades2_uti
     type (phs_parameters_t) :: phs_par
     logical :: fatal_beam_decay = .true.
     integer :: u_in = 8
-    
+
     write (u, "(A)")  "* Test output: cascades2_2"
     write (u, "(A)")  "*   Purpose: create a test phs file (scattering) with the"
     write (u, "(A)")  "*            parsable DAG output of O'Mega"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initializing"
     write (u, "(A)")
-    
+
     call init_sm_full_test (model)
-    
+
     call flv(1,1)%init (-11, model)
     call flv(2,1)%init (11, model)
     call flv(3,1)%init (-11, model)
@@ -25478,33 +26254,33 @@ end module cascades2_uti
     call flv(5,1)%init (1, model)
     call flv(6,1)%init (-2, model)
     call flv(7,1)%init (22, model)
-    
+
     phs_par%sqrts = 500._default
     phs_par%m_threshold_s = 50._default
     phs_par%m_threshold_t = 100._default
     phs_par%keep_nonresonant = .true.
     phs_par%off_shell = 2
     phs_par%t_channel = 6
-    
-    open (unit=u_in, file="omega_parsable_scattering.fds", &
+
+    open (unit=u_in, file="cascades2_2.fds", &
          status='old', action='read')
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generating phase-space parametrizations"
     write (u, "(A)")
-    
+
     call feyngraph_set_generate (feyngraph_set, model, n_in, n_out, &
          flv, phs_par, fatal_beam_decay, u_in, use_dag = .true.)
     call feyngraph_set_write_process_bincode_format (feyngraph_set, u)
     call feyngraph_set_write_file_format (feyngraph_set, u)
-    
+
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     close (u_in)
     call feyngraph_set%final ()
     call model%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Test output end: cascades2_2"
   end subroutine cascades2_2

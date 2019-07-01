@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -109,6 +109,7 @@ contains
     write (u, "(A)")
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -158,6 +159,7 @@ contains
     call event%connect (process_instance, process%get_model_ptr ())
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -196,6 +198,7 @@ contains
     call event%accept_sqme_prc ()
     call event%accept_weight_prc ()
     call event%check ()
+    call event%set_index (1)
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -203,7 +206,8 @@ contains
     write (u, "(A)")  "* Reset contents"
     write (u, "(A)")
 
-    call event%reset ()
+    call event%reset_contents ()
+    call event%reset_index ()
     event%transform_first%particle_set_exists = .false.
     call event%write (u)
 
@@ -256,6 +260,7 @@ contains
     call event%connect (process_instance, process%get_model_ptr ())
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -296,6 +301,7 @@ contains
     call event%set (sqme_ref = sqme, weight_ref = weight)
     call event%accept_sqme_ref ()
     call event%accept_weight_ref ()
+    call event%set_index (1)
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -379,6 +385,7 @@ contains
     write (u, "(A)")
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 

@@ -120,8 +120,8 @@ $sample = "isr_4b"
 n_events = 1
 | Starting simulation for process 'isr_4b'
 | Simulate: using integration grids from file 'isr_4b_m1.vg'
-| Simulate: activating ISR photon handler
-| Simulate: ISR handler mode: photon-pair recoil
+| Simulate: activating ISR handler
+| Simulate: ISR/EPA handler mode: pair recoil
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 1

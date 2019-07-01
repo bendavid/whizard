@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -99,7 +99,7 @@ contains
     write (u, "(1x,A)")  "Dump event stream:"
     if (object%writing) then
        write (u, "(3x,A,L1)") "Screen output     = ", object%screen
-       write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
+       write (u, "(3x,A,A,A)")  "Writing to file   = '", char (object%filename), "'"
        write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify
        write (u, "(3x,A,L1)") "Show weights/sqme = ", object%weights
        write (u, "(3x,A,L1)") "Compressed        = ", object%compressed
@@ -182,9 +182,12 @@ contains
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
     character(len=7) :: fmt
-    integer :: i
     eio%count = eio%count + 1
-    call pac_fmt (fmt, FMT_19, FMT_16, pacify)
+    if (present (pacify)) then
+       call pac_fmt (fmt, FMT_19, FMT_16, pacify)
+    else
+       call pac_fmt (fmt, FMT_19, FMT_16, eio%pacify)
+    end if
     if (eio%writing)  call dump (eio%unit)
     if (eio%screen) then
        call dump (output_unit)
@@ -193,8 +196,22 @@ contains
   contains
     subroutine dump (u)
       integer, intent(in) :: u
+      integer :: i
       call write_separator (u, 2)
-      write (u, "(1x,A,I0)")  "Event #", eio%count
+      write (u, "(1x,A,I0)", advance="no")  "Event"
+      if (event%has_index ()) then
+         write (u, "(1x,'#',I0)")  event%get_index ()
+      else
+         write (u, *)
+      end if
+      call write_separator (u, 2)
+      write (u, "(1x,A,1x,I0)")  "count  =", eio%count
+      if (present (passed)) then
+         write (u, "(1x,A,1x,L1)")  "passed =", passed
+      else
+         write (u, "(1x,A)")  "passed = [N/A]"
+      end if
+      write (u, "(1x,A,1x,I0)")  "prc id =", i_prc
       if (eio%weights) then
          call write_separator (u)
          if (event%sqme_ref_known) then

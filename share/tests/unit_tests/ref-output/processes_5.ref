@@ -69,8 +69,8 @@ colored = PDG(6, -6)
 |  |  |  +  ARGUMENTS   <pargs1>  =  <pexpr>
 |  |  |  |  +  SEQUENCE    <pexpr>  =  <pterm>
 |  |  |  |  |  +  SEQUENCE    <pterm>  =  <pexpr_src>
-|  |  |  |  |  |  +  SEQUENCE    <pexpr_src>  =  <outgoing_prt>
-|  |  |  |  |  |  |  +  SEQUENCE    <outgoing_prt>  =  <cexpr>
+|  |  |  |  |  |  +  SEQUENCE    <pexpr_src>  =  <unspecified_prt>
+|  |  |  |  |  |  |  +  SEQUENCE    <unspecified_prt>  =  <cexpr>
 |  |  |  |  |  |  |  |  +  SEQUENCE    <cexpr>  =  <variable>
 |  |  |  |  |  |  |  |  |  +  IDENTIFIER  <variable>  = s
 ========================================================================

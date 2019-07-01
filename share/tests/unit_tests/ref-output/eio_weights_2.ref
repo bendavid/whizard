@@ -9,7 +9,7 @@
    Writing to file   = eio_weights_2.weights.dat
    Reduced I/O prec. = T
 
-* File contents: (weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)
+* File contents: (weight, sqme(evt), sqme(prc), i_prc)
 
 0  3.05740686E+08  1.00000000E+00  1.00000000E+00 42
 1  6.11481372E+08  2.00000000E+00

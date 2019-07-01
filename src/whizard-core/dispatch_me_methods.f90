@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -79,7 +79,8 @@ contains
     logical :: write_phs_output
     type(string_t) :: extra_options
     integer :: nlo
-    nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
+    integer :: alpha_power
+    integer :: alphas_power
     if (present (method)) then
        meth = method
     else
@@ -110,6 +111,9 @@ contains
          var_str ("?omega_write_phs_output"))
     extra_options = var_list%get_sval (&
          var_str ("$omega_flags"))
+    nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
+    alpha_power = var_list%get_ival (var_str ("alpha_power"))
+    alphas_power = var_list%get_ival (var_str ("alphas_power"))
     call msg_debug2 (D_CORE, "dispatching core method: ", meth)
     select case (char (meth))
     case ("unit_test")
@@ -179,7 +183,7 @@ contains
        type is (recola_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo)
+                prt_out, nlo, alpha_power, alphas_power)
           else
              call msg_fatal ("Dispatch RECOLA def: No id!")
           end if

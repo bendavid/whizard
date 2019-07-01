@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -72,8 +72,7 @@ module simulations
   use dispatch_beams, only: dispatch_qcd
   use dispatch_rng, only: dispatch_rng_factory
   use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
-  use dispatch_transforms, only: dispatch_evt_isr_handler
-  use dispatch_transforms, only: dispatch_evt_epa_handler
+  use dispatch_transforms, only: dispatch_evt_isr_epa_handler
   use dispatch_transforms, only: dispatch_evt_resonance
   use dispatch_transforms, only: dispatch_evt_decay
   use dispatch_transforms, only: dispatch_evt_shower
@@ -236,6 +235,7 @@ module simulations
      type(alt_entry_t), dimension(:,:), allocatable :: alt_entry
      type(selector_t) :: process_selector
      integer :: n_evt_requested = 0
+     integer :: event_index_offset = 0
      integer :: split_n_evt = 0
      integer :: split_n_kbytes = 0
      integer :: split_index = 0
@@ -988,13 +988,9 @@ contains
     logical :: enable_shower
     var_list => local%get_var_list_ptr ()
     enable_isr_handler = local%get_lval (var_str ("?isr_handler"))
-    if (enable_isr_handler) then
-       call dispatch_evt_isr_handler (evt, local%var_list)
-       if (associated (evt))  call entry%import_transform (evt)
-    end if
     enable_epa_handler = local%get_lval (var_str ("?epa_handler"))
-    if (enable_epa_handler) then
-       call dispatch_evt_epa_handler (evt, local%var_list)
+    if (enable_isr_handler .or. enable_epa_handler) then
+       call dispatch_evt_isr_epa_handler (evt, local%var_list)
        if (associated (evt))  call entry%import_transform (evt)
     end if
     if (process%contains_unstable (local%model)) then
@@ -1010,6 +1006,8 @@ contains
                (local%get_rval (var_str ("resonance_on_shell_limit")))
           call entry%resonant_subprocess_set%set_on_shell_turnoff &
                (local%get_rval (var_str ("resonance_on_shell_turnoff")))
+          call entry%resonant_subprocess_set%set_background_factor &
+               (local%get_rval (var_str ("resonance_background_factor")))
           call entry%import_transform (evt)
        end if
     end if
@@ -1377,6 +1375,9 @@ contains
        write (u, "(3x,A,A,A)")  "MD5 sum (config) = '", object%md5sum_cfg, "'"
     end if
     write (u, "(3x,A,I0)")  "Events requested  = ", object%n_evt_requested
+    if (object%event_index_offset /= 0) then
+       write (u, "(3x,A,I0)")  "Event index offset= ", object%event_index_offset
+    end if
     if (object%split_n_evt > 0 .or. object%split_n_kbytes > 0) then
        write (u, "(3x,A,I0)")  "Events per file   = ", object%split_n_evt
        write (u, "(3x,A,I0)")  "KBytes per file   = ", object%split_n_kbytes
@@ -1556,6 +1557,8 @@ contains
          event_normalization_mode (norm_string, simulation%unweighted)
     simulation%pacify = &
          local%get_lval (var_str ("?sample_pacify"))
+    simulation%event_index_offset = &
+         local%get_ival (var_str ("event_index_offset"))
     simulation%n_max_tries = &
          local%get_ival (var_str ("sample_max_tries"))
     simulation%split_n_evt = &
@@ -1920,6 +1923,8 @@ contains
             current_entry => entry%get_first ()
             do k = 1, current_entry%count_nlo_entries ()
                if (k > 1) current_entry => current_entry%get_next ()
+               call current_entry%increment_index &
+                    (simulation%event_index_offset)
                call current_entry%evaluate_expressions ()
             end do
             if (signal_is_pending ()) return
@@ -1991,6 +1996,7 @@ contains
            call alt_entry%update_normalization ()
            call alt_entry%accept_weight_prc ()
            call alt_entry%check ()
+           call alt_entry%increment_index (simulation%event_index_offset)
            call alt_entry%evaluate_expressions ()
            if (signal_is_pending ())  return
            call alt_entry%restore_process ()

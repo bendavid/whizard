@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -187,10 +187,12 @@ contains
     deallocate (evt)
 
     write (u, "(A)")
-    write (u, "(A)")  "* ISR photon handler"
+    write (u, "(A)")  "* ISR handler"
     write (u, "(A)")
 
     call var_list%set_log (var_str ("?isr_handler"), .true., &
+         is_known = .true.)
+    call var_list%set_log (var_str ("?epa_handler"), .false., &
          is_known = .true.)
     call var_list%set_string (var_str ("$isr_handler_mode"), &
          var_str ("recoil"), &
@@ -199,14 +201,14 @@ contains
          is_known = .true.)
     call var_list%set_real (var_str ("isr_mass"), 511.e-6_default, &
          is_known = .true.)
-    call dispatch_evt_isr_handler (evt, var_list)
+    call dispatch_evt_isr_epa_handler (evt, var_list)
     call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()
     deallocate (evt)
 
     write (u, "(A)")
-    write (u, "(A)")  "* EPA beam handler"
+    write (u, "(A)")  "* EPA handler"
     write (u, "(A)")
 
     call var_list%set_log (var_str ("?isr_handler"), .false., &
@@ -220,7 +222,7 @@ contains
          is_known = .true.)
     call var_list%set_real (var_str ("epa_mass"), 511.e-6_default, &
          is_known = .true.)
-    call dispatch_evt_epa_handler (evt, var_list)
+    call dispatch_evt_isr_epa_handler (evt, var_list)
     call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()

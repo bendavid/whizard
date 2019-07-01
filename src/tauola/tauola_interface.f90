@@ -126,8 +126,8 @@ contains
        return
     end if
     do ip = 1, n_pyjets_max
-       pyjets_spin_data(ip)%index_to_hepeup = -100
-       pyjets_spin_data(ip)%helicity = 100
+       pyjets_spin_data(ip)%index_to_hepeup = 0
+       pyjets_spin_data(ip)%helicity = 0
     end do
 
     ip = 1

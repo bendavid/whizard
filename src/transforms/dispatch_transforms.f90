@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -57,8 +57,7 @@ module dispatch_transforms
 
   use event_transforms
   use resonance_insertion
-  use isr_photon_handler
-  use epa_beam_handler
+  use isr_epa_handler
   use decays
   use shower_base
   use shower_core
@@ -76,8 +75,7 @@ module dispatch_transforms
 
   public :: dispatch_evt_nlo
   public :: dispatch_evt_resonance
-  public :: dispatch_evt_isr_handler
-  public :: dispatch_evt_epa_handler
+  public :: dispatch_evt_isr_epa_handler
   public :: dispatch_evt_decay
   public :: dispatch_evt_shower
   public :: dispatch_evt_shower_hook
@@ -120,83 +118,72 @@ contains
     end if
   end subroutine dispatch_evt_resonance
 
-  subroutine dispatch_evt_isr_handler (evt, var_list)
+  subroutine dispatch_evt_isr_epa_handler (evt, var_list)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
     logical :: isr_recoil
+    logical :: epa_recoil
     logical :: isr_handler_active
+    logical :: epa_handler_active
     type(string_t) :: isr_handler_mode
+    type(string_t) :: epa_handler_mode
     real(default) :: sqrts
     real(default) :: isr_q_max
+    real(default) :: epa_q_max
     real(default) :: isr_mass
+    real(default) :: epa_mass
     isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
     if (isr_handler_active) then
-       allocate (evt_isr_t :: evt)
-       call msg_message ("Simulate: activating ISR photon handler")
+       call msg_message ("Simulate: activating ISR handler")
        isr_recoil = var_list%get_lval (var_str ("?isr_recoil"))
+       isr_handler_mode = var_list%get_sval (var_str ("$isr_handler_mode"))
        if (isr_recoil) then
           call msg_fatal ("Simulate: ISR handler is incompatible &
                &with ?isr_recoil=true")
        end if
-       select type (evt)
-       type is (evt_isr_t)
-          isr_handler_mode = var_list%get_sval (var_str ("$isr_handler_mode"))
-          call evt%set_mode_string (isr_handler_mode)
-          sqrts = var_list%get_rval (var_str ("sqrts"))
-          isr_q_max = var_list%get_rval (var_str ("isr_q_max"))
-          isr_mass = var_list%get_rval (var_str ("isr_mass"))
-          call evt%set_data (sqrts, isr_q_max, isr_mass)
-          call msg_message ("Simulate: ISR handler mode: " &
-               // char (evt%get_mode_string ()))
-       end select
-    else
-       evt => null ()
     end if
-  end subroutine dispatch_evt_isr_handler
-
-  subroutine dispatch_evt_epa_handler (evt, var_list)
-    class(evt_t), intent(out), pointer :: evt
-    type(var_list_t), intent(in) :: var_list
-    logical :: epa_recoil
-    logical :: epa_handler_active
-    logical :: isr_handler_active
-    type(string_t) :: epa_handler_mode
-    real(default) :: sqrts
-    real(default) :: epa_q_min
-    real(default) :: epa_e_max
-    real(default) :: epa_mass
     epa_handler_active = var_list%get_lval (var_str ("?epa_handler"))
-    isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
-    if (epa_handler_active .and. isr_handler_active) then
-       call msg_fatal ("ISR and EPA handlers cannot be used together")
-    end if
     if (epa_handler_active) then
-       allocate (evt_epa_t :: evt)
-       call msg_message ("Simulate: activating EPA beam handler")
+       call msg_message ("Simulate: activating EPA handler")
        epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
+       epa_handler_mode = var_list%get_sval (var_str ("$epa_handler_mode"))
        if (epa_recoil) then
           call msg_fatal ("Simulate: EPA handler is incompatible &
                &with ?epa_recoil=true")
        end if
+    end if
+    if (isr_handler_active .and. epa_handler_active) then
+       if (isr_handler_mode /= epa_handler_mode) then
+          call msg_fatal ("Simulate: ISR/EPA handler: modes must coincide")
+       end if
+    end if
+    if (isr_handler_active .or. epa_handler_active) then
+       allocate (evt_isr_epa_t :: evt)
        select type (evt)
-       type is (evt_epa_t)
-          epa_handler_mode = var_list%get_sval (var_str ("$epa_handler_mode"))
-          call evt%set_mode_string (epa_handler_mode)
-          sqrts = var_list%get_rval (var_str ("sqrts"))
-          epa_q_min = var_list%get_rval (var_str ("epa_q_min"))
-          epa_e_max = var_list%get_rval (var_str ("epa_e_max"))
-          epa_mass = var_list%get_rval (var_str ("epa_mass"))
-          if (epa_q_min /= 0) then
-             call msg_error ("EPA beam-recoil handler: epa_q_min is ignored")
+       type is (evt_isr_epa_t)
+          if (isr_handler_active) then
+             call evt%set_mode_string (isr_handler_mode)
+          else
+             call evt%set_mode_string (epa_handler_mode)
           end if
-          call evt%set_data (sqrts, 2 * epa_e_max, epa_mass)
-          call msg_message ("Simulate: EPA handler mode: " &
+          sqrts = var_list%get_rval (var_str ("sqrts"))
+          if (isr_handler_active) then
+             isr_q_max = var_list%get_rval (var_str ("isr_q_max"))
+             isr_mass = var_list%get_rval (var_str ("isr_mass"))
+             call evt%set_data_isr (sqrts, isr_q_max, isr_mass)
+          end if
+          if (epa_handler_active) then
+             epa_q_max = var_list%get_rval (var_str ("epa_q_max"))
+             epa_mass = var_list%get_rval (var_str ("epa_mass"))
+             call evt%set_data_epa (sqrts, epa_q_max, epa_mass)
+          end if
+          call msg_message ("Simulate: ISR/EPA handler mode: " &
                // char (evt%get_mode_string ()))
        end select
     else
        evt => null ()
     end if
-  end subroutine dispatch_evt_epa_handler
+  end subroutine dispatch_evt_isr_epa_handler
 
   subroutine dispatch_evt_decay (evt, var_list)
     class(evt_t), intent(out), pointer :: evt

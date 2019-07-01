@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -59,6 +59,7 @@ module resonance_insertion
      type(string_t), dimension(:), allocatable :: proc_id
      real(default) :: on_shell_limit = 0
      real(default) :: on_shell_turnoff = 0
+     real(default) :: background_factor = 1
      logical :: selector_active = .false.
      type(selector_t) :: selector
      integer :: selected_history = 0
@@ -72,6 +73,7 @@ module resonance_insertion
           => evt_resonance_set_subprocess_instances
      procedure :: set_on_shell_limit => evt_resonance_set_on_shell_limit
      procedure :: set_on_shell_turnoff => evt_resonance_set_on_shell_turnoff
+     procedure :: set_background_factor => evt_resonance_set_background_factor
      procedure :: import_rng => evt_resonance_import_rng
      procedure :: write_selector => evt_resonance_write_selector
      procedure :: init_selector => evt_resonance_init_selector
@@ -139,9 +141,11 @@ contains
        write (u, "(1x,A)")  "Selected: [none]"
     end if
     write (u, "(1x,A,1x," // FMT_12 // ")")  &
-         "On-shell limit   =", evt%on_shell_limit
+         "On-shell limit    =", evt%on_shell_limit
     write (u, "(1x,A,1x," // FMT_12 // ")")  &
-         "On-shell turnoff =", evt%on_shell_turnoff
+         "On-shell turnoff  =", evt%on_shell_turnoff
+    write (u, "(1x,A,1x," // FMT_12 // ")")  &
+         "Background factor =", evt%background_factor
     call write_separator (u)
     if (evt%selector_active) then
        write (u, "(2x)", advance="no")
@@ -192,6 +196,12 @@ contains
     real(default), intent(in) :: on_shell_turnoff
     evt%on_shell_turnoff = on_shell_turnoff
   end subroutine evt_resonance_set_on_shell_turnoff
+  
+  subroutine evt_resonance_set_background_factor (evt, background_factor)
+    class(evt_resonance_t), intent(inout) :: evt
+    real(default), intent(in) :: background_factor
+    evt%background_factor = background_factor
+  end subroutine evt_resonance_set_background_factor
   
   subroutine evt_resonance_import_rng (evt, rng)
     class(evt_resonance_t), intent(inout) :: evt
@@ -349,6 +359,9 @@ contains
     sqme_bg = abs (sqme_master - sqme_sum)
     if (evt%on_shell_turnoff > 0) then
        call evt%apply_turnoff_factor (sqme_res, index_array)
+    end if
+    if (any (sqme_res > 0)) then
+       sqme_bg = sqme_bg * evt%background_factor
     end if
     call evt%init_selector ([sqme_bg, sqme_res], offset = -1)
   end subroutine evt_resonance_compute_probabilities

@@ -35,30 +35,30 @@ noinst_LTLIBRARIES = libwo_mcfio.la
 
 libwo_mcfio_la_SOURCES = \
    mcfio_FPrintDictionary.f \
+   mcfio_Util1.h \
+   mcfio_Util1.c \
+   mcf_ntuBldDbinc.h \
+   mcf_ntuBldDbinc.c \
+   mcf_NTuIOUtils.h \
+   mcf_NTuIOUtils.c \
+   mcf_NTuIOFiles.h \
+   mcf_NTuIOFiles.c \
+   mcfio_UserDictionary.h \
+   mcfio_UserDictionary.c \
    mcf_evt_xdr.c \
    mcfio_FBinding.c \
-   mcfio_Util1.c \
+   mcfio_Direct.h \
    mcfio_Direct.c \
    mcfio_SeqDummy.c \
    mcfio_Block.c \
    mcf_ntubldInit.c \
-   mcf_ntuBldDbinc.c \
-   mcf_NTuIOFiles.c \
-   mcf_NTuIOUtils.c \
-   mcfio_UserDictionary.c \
-   mcf_NTuIOFiles.h \
-   mcf_NTuIOUtils.h \
    mcf_nTupleDescript.h \
    mcf_ntubld_db.h \
-   mcf_ntuBldDbinc.h \
    mcf_xdr.h \
    mcf_xdr_Ntuple.h \
    mcfio_Block.h \
    mcfio_Dict.h \
-   mcfio_Direct.h \
-   mcfio_Sequential.h \
-   mcfio_UserDictionary.h \
-   mcfio_Util1.h 
+   mcfio_Sequential.h
 
 SUFFIXES: .lo .$(FC_MODULE_EXT)
 

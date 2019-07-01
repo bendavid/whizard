@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module cascades2
 
   use kinds, only: default
   use kinds, only: TC, i8
+  use cascades2_lexer
   use sorting
   use flavors
   use model_data
@@ -100,7 +101,7 @@ module cascades2
      integer :: n_t_channel = 0
      integer :: res_hash = 0
   end type grove_prop_t
-  
+
   type :: tree_t
      integer(TC), dimension(:), allocatable :: bc
      integer, dimension(:), allocatable :: pdg
@@ -137,7 +138,7 @@ module cascades2
   type :: feyngraph_ptr_t
      type (feyngraph_t), pointer :: graph => null ()
   end type feyngraph_ptr_t
-  
+
   type, extends (graph_t) :: kingraph_t
      type (k_node_t), pointer :: root => null ()
      type (kingraph_t), pointer :: next => null()
@@ -156,7 +157,7 @@ module cascades2
   type :: kingraph_ptr_t
      type (kingraph_t), pointer :: graph => null ()
   end type kingraph_ptr_t
-  
+
   type, abstract :: node_t
      type (part_prop_t), pointer :: particle => null ()
      logical :: incoming = .false.
@@ -273,7 +274,7 @@ module cascades2
   type :: grove_ptr_t
      type (grove_t), pointer :: grove => null ()
   end type grove_ptr_t
-  
+
   type :: grove_list_t
      type (grove_t), pointer :: first => null ()
      !$ integer (OMP_lock_kind) :: lock
@@ -308,7 +309,7 @@ module cascades2
 
   type :: dag_node_t
      integer :: string_len
-     type (string_t) :: string
+     type (dag_string_t) :: string
      logical :: leaf = .false.
      type (f_node_ptr_t), dimension (:), allocatable :: f_node
    contains
@@ -317,58 +318,58 @@ module cascades2
 
   type :: dag_options_t
      integer :: string_len
-     type (string_t) :: string
+     type (dag_string_t) :: string
    contains
        procedure :: make_f_nodes_single => dag_options_make_f_nodes_single
        procedure :: make_f_nodes_pair => dag_options_make_f_nodes_pair
        generic :: make_f_nodes => make_f_nodes_single, make_f_nodes_pair
   end type dag_options_t
-  
+
   type :: dag_combination_t
      integer :: string_len
-     type (string_t) :: string
+     type (dag_string_t) :: string
      integer, dimension (2) :: combination
    contains
        procedure :: make_f_nodes => dag_combination_make_f_nodes
   end type dag_combination_t
-  
+
   type :: dag_t
-     type (string_t) :: string
+     type (dag_string_t) :: string
      type (dag_node_t), dimension (:), allocatable :: node
      type (dag_options_t), dimension (:), allocatable :: options
      type (dag_combination_t), dimension (:), allocatable :: combination
      integer :: n_nodes = 0
      integer :: n_options = 0
      integer :: n_combinations = 0
-     contains
+   contains
        procedure :: read_string => dag_read_string
        procedure :: construct => dag_construct
        procedure :: get_nodes_and_combinations => dag_get_nodes_and_combinations
        procedure :: get_options => dag_get_options
-       procedure :: add_node => dag_add_node 
+       procedure :: add_node => dag_add_node
        procedure :: add_options => dag_add_options
        procedure :: add_combination => dag_add_combination
        procedure :: make_feyngraphs => dag_make_feyngraphs
        procedure :: write => dag_write
   end type dag_t
-  
+
 
   interface assignment (=)
      module procedure tree_assign
   end interface assignment (=)
-  
+
   interface assignment (=)
      module procedure f_node_ptr_assign
   end interface assignment (=)
-  
+
   interface assignment (=)
      module procedure k_node_assign
   end interface assignment (=)
-  
+
   interface assignment (=)
      module procedure f_node_entry_assign
   end interface assignment (=)
-  
+
   interface assignment (=)
      module procedure k_node_entry_assign
   end interface assignment (=)
@@ -379,15 +380,15 @@ module cascades2
   interface operator (==)
      module procedure grove_prop_equal
   end interface operator (==)
-  
+
   interface operator (==)
      module procedure tree_equal
   end interface operator (==)
-  
+
   interface operator (.eqv.)
      module procedure subtree_eqv
   end interface operator (.eqv.)
-  
+
 
 contains
 
@@ -395,7 +396,7 @@ contains
     class(part_prop_t), intent(inout) :: part
     part%anti => null ()
   end subroutine part_prop_final
-  
+
   subroutine tree_assign (tree1, tree2)
     type (tree_t), intent (inout) :: tree1
     type (tree_t), intent (in) :: tree2
@@ -778,7 +779,7 @@ contains
     !$OMP END PARALLEL DO
     deallocate (set)
   end subroutine k_node_list_check_subtree_equivalences
-  
+
   subroutine k_node_list_get_nodes (list, nodes)
     class (k_node_list_t), intent (inout) :: list
     type (k_node_ptr_t), dimension(:), allocatable, intent (out) :: nodes
@@ -950,17 +951,18 @@ contains
     class (dag_t), intent (inout) :: dag
     integer, intent (in) :: u_in
     type(flavor_t), dimension(:), intent(in) :: flv
-    type (string_t) :: string
+    character (len=BUFFER_LEN) :: process_string
     logical :: process_found
     logical :: rewound
 !!! find process string in file
     process_found = .false.
     rewound = .false.
     do while (.not. process_found)
-       call fds_file_get_line (u_in, string)
-       if (len_trim(string) /= 0) then
-          if (index (string, "::") > 0) then
-             process_found = process_string_match (char (trim (string)), flv)
+       process_string = ""
+       read (unit=u_in, fmt='(A)') process_string
+       if (len_trim(process_string) /= 0) then
+          if (index (process_string, "::") > 0) then
+             process_found = process_string_match (trim (process_string), flv)
           endif
        else if (.not. rewound) then
           rewind (u_in)
@@ -970,14 +972,15 @@ contains
        endif
     enddo
     call fds_file_get_line (u_in, dag%string)
-    if (len_trim(dag%string) == 0) &
+    call dag%string%clean ()
+    if (.not. allocated (dag%string%t) .or. dag%string%char_len == 0) &
          call msg_bug ("Process string not found in O'Mega input file.")
   end subroutine dag_read_string
-  
+
   subroutine fds_file_get_line (u, string)
     integer, intent (in) :: u
-    type (string_t), intent (out) :: string
-    character (len=:), allocatable :: tmp_string
+    type (dag_string_t), intent (out) :: string
+    type (dag_chain_t) :: chain
     integer :: string_size, current_len
     character (len=BUFFER_LEN) :: buffer
     integer :: fragment_len
@@ -991,14 +994,19 @@ contains
        fragment_len = len_trim (buffer)
        if (fragment_len == 0) then
           exit
-       else if (buffer (fragment_len:fragment_len) == "\") then
+       else if (buffer (fragment_len:fragment_len) == BACKSLASH_CHAR) then
           fragment_len = fragment_len - 1
        endif
-       string = trim(char(string)) // buffer(:fragment_len)
-       if (buffer(fragment_len+1:fragment_len+1) /= "\") exit
+       call chain%append (buffer(:fragment_len))
+       if (buffer(fragment_len+1:fragment_len+1) /= BACKSLASH_CHAR) exit
     enddo
+    if (associated (chain%first)) then
+       call chain%compress ()
+       string = chain%first
+       call chain%final ()
+    endif
   end subroutine fds_file_get_line
-  
+
   function process_string_match (string, flv) result (match)
     character (len=*), intent(in) :: string
     type(flavor_t), dimension(:), intent(in) :: flv
@@ -1019,7 +1027,7 @@ contains
        endif
     enddo
   end function process_string_match
-  
+
   subroutine init_sm_full_test (model)
     class(model_data_t), intent(out) :: model
     type(field_data_t), pointer :: field
@@ -1370,7 +1378,7 @@ contains
           exit
        endif
     enddo
-!!! Since the OMega output uses the anti-particles instead of the particles specified
+!!! Since the O'Mega output uses the anti-particles instead of the particles specified
 !!! in the process definition, we revert this here. An exception is the first particle
 !!! in the parsable DAG output
     node%particle => node%particle%anti
@@ -1479,77 +1487,6 @@ contains
     endif
   end subroutine node_construct_subtree_rec
 
-  recursive subroutine node_construct_subtree_rec_dag (feyngraph_set, &
-       subtree_string, mother_node)
-    type (feyngraph_set_t), intent (inout) :: feyngraph_set
-    character (len=*), intent (in) :: subtree_string
-    type (f_node_t), pointer, intent (inout) :: mother_node
-    integer :: n_daughters
-    integer :: pos_first_colon
-    integer :: current_daughter
-    integer :: pos_subtree_begin, pos_subtree_end
-    integer :: i
-    integer :: n_open_par
-    if (.not. associated (mother_node)) then
-       call feyngraph_set%f_node_list%add_entry (subtree_string, mother_node, .true.)
-       current_daughter = 1
-       n_open_par = 1
-       pos_first_colon = index (subtree_string, ':')
-       n_daughters = get_n_daughters (subtree_string, pos_first_colon)
-       if (pos_first_colon == 0) then
-          mother_node%particle_label = subtree_string
-       else
-          mother_node%particle_label = subtree_string(2:pos_first_colon-1)
-       end if
-       if (.not. associated (mother_node%particle)) then
-          call mother_node%assign_particle_properties (feyngraph_set)
-       endif
-       if (n_daughters /= 2 .and. n_daughters /= 0) then
-          mother_node%keep = .false.
-          return
-       end if
-       pos_subtree_begin = pos_first_colon + 1
-       do i = pos_first_colon + 1, len(trim(subtree_string))
-          if (current_daughter == 2) then
-             pos_subtree_end = len(trim(subtree_string)) - 1
-             call node_construct_subtree_rec_dag (feyngraph_set, &
-                  subtree_string(pos_subtree_begin:pos_subtree_end), &
-                  mother_node%daughter2)
-             exit
-           else if (subtree_string(i:i) == ',') then
-             if (n_open_par == 1) then
-                pos_subtree_end = i - 1
-                call node_construct_subtree_rec_dag (feyngraph_set, &
-                     subtree_string(pos_subtree_begin:pos_subtree_end), &
-                     mother_node%daughter1)
-                current_daughter = 2
-                pos_subtree_begin = i + 1
-             end if
-          else if (subtree_string(i:i) == '(') then
-             n_open_par = n_open_par + 1
-          else if (subtree_string(i:i) == ')') then
-             n_open_par = n_open_par - 1
-          end if
-       end do
-    endif
-    if (associated (mother_node%daughter1)) then
-       if (.not. mother_node%daughter1%keep) then
-          mother_node%keep = .false.
-       endif
-    endif
-    if (associated (mother_node%daughter2)) then
-       if (.not. mother_node%daughter2%keep) then
-          mother_node%keep = .false.
-       endif
-    endif
-    if (associated (mother_node%daughter1) .and. &
-         associated (mother_node%daughter2)) then
-       mother_node%n_subtree_nodes = &
-            mother_node%daughter1%n_subtree_nodes &
-            + mother_node%daughter2%n_subtree_nodes + 1
-    endif
-  end subroutine node_construct_subtree_rec_dag
-
   subroutine feyngraph_construct (feyngraph_set, feyngraph)
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (feyngraph_t), pointer, intent (inout) :: feyngraph
@@ -1560,231 +1497,150 @@ contains
 
   subroutine dag_construct (dag)
     class (dag_t), intent (inout) :: dag
-    character (len=len(dag%string)) :: string
     integer :: n_nodes
     integer :: n_options
     integer :: n_combinations
     logical :: continue_loop
-    string = char (dag%string)
-    call dag%get_nodes_and_combinations (string, .true.)
+    call dag%get_nodes_and_combinations (leaves = .true.)
     continue_loop = .true.
     do while (continue_loop)
        n_nodes = dag%n_nodes
        n_options = dag%n_options
        n_combinations = dag%n_combinations
-       call dag%get_nodes_and_combinations (string, .false.)
-       call dag%get_options (string)
+       call dag%get_nodes_and_combinations (leaves = .false.)
+       call dag%get_options ()
        if (n_nodes == dag%n_nodes .and. n_options == dag%n_options &
             .and. n_combinations == dag%n_combinations) then
           continue_loop = .false.
        endif
     enddo
 !!! add root node to dag
-    call dag%add_node (string, leaf = .false.)
-    dag%string = string
+    call dag%add_node (dag%string%t, leaf = .false.)
     if (debug2_active (D_PHASESPACE)) then
        call dag%write (output_unit)
     endif
   end subroutine dag_construct
-  
-  subroutine dag_get_nodes_and_combinations (dag, string, leaves)
+
+  subroutine dag_get_nodes_and_combinations (dag, leaves)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (inout) :: string
     logical, intent (in) :: leaves
-    character (len=len(string)) :: new_string
-    integer :: open_par
-    logical :: keep
+    type (dag_string_t) :: new_string
     integer :: i, j, k
     integer :: i_node
-    integer :: index_start, index_end
-    integer :: new_len
-    character (len=10) :: index_char
-    logical :: slash_found
+    integer :: new_size
+    integer :: first_colon
     logical :: combination
-!!! Create nodes (leaves) for every closed pair of parentheses
-!!! which do not contain any optional branchings (i.e. {})
-    new_string = ' '
-    i = 1
-    new_len = 1
-    do while (i <= len (string))
-       if (string(i:i) == '(') then
-          open_par = 1
-          keep = .true.
-          combination = .true.
-          j = i + 1
-          do while (j <= len (string))
-             if (string(j:j) == '(') then
-                open_par = open_par + 1
-             else if (string(j:j) == ')') then
-                open_par = open_par - 1
-                if (open_par == 0) then
-                   if (combination) then
-                      call dag%add_combination (string(i:j), i_node)
-                   else
-                      call dag%add_node (string(i:j), leaves, i_node)
-                   endif
-                   exit
-                else if (open_par == 1) then
-                   keep = .false.
-                   exit
-                endif
-             else if (string(j:j) == '{') then
-                keep = .false.
-                exit
-             else if (string(j:j) == ':') then
-                combination = .false.
-             endif
-             j = j + 1
-          enddo
-       else
-          keep = .false.
-       endif
-       if (keep) then
-          index_char = ' '
-          write (index_char, fmt='(I10)') i_node
-          do k=1, len(index_char)
-             if (index_char(k:k) /= ' ') then
-                index_start = k
-                exit
-             endif
-          enddo
-          index_end = len_trim (index_char)
-          if (combination) then
-             new_string(new_len:new_len+index_end-index_start+3) = &
-                  '<C' // index_char(index_start:index_end) // '>'             
-          else
-             new_string(new_len:new_len+index_end-index_start+3) = &
-                  '<N' // index_char(index_start:index_end) // '>'
-          endif
-          new_len = new_len + index_end - index_start + 4
-          i = j + 1
-       else
-          new_string(new_len:new_len) = string(i:i)
-          new_len = new_len + 1
-          i = i + 1
-       endif
-    enddo
-    string = trim (new_string)
+!!! Create nodes also for external particles, except for the incoming one which
+!!! appears as the root of the tree. These can easily be identified by their
+!!! bincodes, since they should contain only one bit which is set.
     if (leaves) then
-!!! Create nodes also for those external particles which do not appear between (),
-!!! except for the root particle (first incoming)
-       new_string = ' '
-       new_len = index (string, ':')
-       new_string(:new_len) = string(:new_len)
-       new_len = new_len + 1
-       i = new_len
-       do while (i <= len_trim (string))
-          select case (string(i:i))
-          case ('<')
-             do while (string(i:i) /= '>')
-                new_string(new_len:new_len) = string(i:i)
-                new_len = new_len + 1
-                i = i + 1
-             enddo
-          case ('{', '}', '(', ')', ':', ',', '|', ' ', '>')
-             new_string(new_len:new_len) = string(i:i)
-             new_len = new_len + 1
-             i = i + 1
-          case default
-             do j = i, len_trim(string)
-                if (string(j:j) == '[') then
-                   slash_found = .false.
-                else if (string(j:j) == ']') then
-                   if (.not. slash_found) then
-                      call dag%add_node (string(i:j), .true., i_node)
-                      index_char = ' '
-                      write (index_char, fmt='(I10)') i_node
-                      do k=1, len(index_char)
-                         if (index_char(k:k) /= ' ') then
-                            index_start = k
-                            exit
-                         endif
-                      enddo
-                      index_end = len_trim (index_char)
-                      new_string(new_len:new_len+index_end-index_start+3)= &
-                           '<N' // index_char(index_start:index_end) // '>'
-                      new_len = new_len + index_end - index_start + 4
-                      i = j + 1
-                   else
-!!! particle not external
-                      new_string(new_len:new_len+j-i) = string(i:j)
-                      new_len = new_len + j - i + 1
-                      i = j + 1
-                   endif
-                   exit
-                else if (string(j:j) == '/') then
-                   slash_found = .true.
-                endif
-             enddo
-          end select
+       first_colon = minloc (dag%string%t%type, 1, dag%string%t%type == COLON_TK)
+       do i = first_colon + 1, size (dag%string%t)
+          if (dag%string%t(i)%type == NODE_TK) then
+             if (popcnt(dag%string%t(i)%bincode) == 1) then
+                call dag%add_node (dag%string%t(i:i), .true., i_node)
+                call dag%string%t(i)%init_dag_object_token (DAG_NODE_TK, i_node)
+             endif
+          endif
        enddo
-       string = new_string
+       call dag%string%update_char_len ()
+    else
+!!! Create a node or combination for every closed pair of parentheses
+!!! which do not contain any other parentheses or curly braces.
+!!! A node (not outgoing) contains a colon. This is not the case
+!!! for combinations, which we use as the criteria to distinguish
+!!! between both.
+       allocate (new_string%t (size (dag%string%t)))
+       i = 1
+       new_size = 0
+       do while (i <= size(dag%string%t))
+          if (dag%string%t(i)%type == OPEN_PAR_TK) then
+             combination = .true.
+             do j = i+1, size (dag%string%t)
+                select case (dag%string%t(j)%type)
+                case (CLOSED_PAR_TK)
+                   new_size = new_size + 1
+                   if (combination) then
+                      call dag%add_combination (dag%string%t(i:j), i_node)
+                      call new_string%t(new_size)%init_dag_object_token (DAG_COMBINATION_TK, i_node)
+                   else
+                      call dag%add_node (dag%string%t(i:j), leaves, i_node)
+                      call new_string%t(new_size)%init_dag_object_token (DAG_NODE_TK, i_node)
+                   endif
+                   i = j + 1
+                   exit
+                case (OPEN_PAR_TK, OPEN_CURLY_TK, CLOSED_CURLY_TK)
+                   new_size = new_size + 1
+                   new_string%t(new_size) = dag%string%t(i)
+                   i = i + 1
+                   exit
+                case (COLON_TK)
+                   combination = .false.
+                end select
+             enddo
+          else
+             new_size = new_size + 1
+             new_string%t(new_size) = dag%string%t(i)
+             i = i + 1
+          endif
+       enddo
+       dag%string = new_string%t(:new_size)
+       call dag%string%update_char_len ()
     endif
   end subroutine dag_get_nodes_and_combinations
 
-  subroutine dag_get_options (dag, string)
+  subroutine dag_get_options (dag)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (inout) :: string
-    character (len=len(dag%string)) :: new_string
+    type (dag_string_t) :: new_string
     integer :: i, j, k
-    integer :: new_len
+    integer :: new_size
     integer :: i_options
     character (len=10) :: index_char
     integer :: index_start, index_end
-    new_string = ' '
+!!! Create a node or combination for every closed pair of parentheses
+!!! which do not contain any other parentheses or curly braces.
+!!! A node (not outgoing) contains a colon. This is not the case
+!!! for combinations, which we use as the criteria to distinguish
+!!! between both.
+    allocate (new_string%t (size (dag%string%t)))
     i = 1
-    new_len = 1
-    do while (i <= len (string))
-       if (string(i:i) == '{') then
-          do j = i+1, len (string)
-             if (string(j:j) == '{' .or. string(j:j) == '(') then
-                new_string(new_len:new_len) = string(i:i)
-                new_len = new_len + 1
-                i = i + 1
-                exit
-             else if (string(j:j) == '<') then
-                if (string(j+1:j+1) /= 'N' .and. string(j+1:j+1) /= 'C') then
-                   new_string(new_len:new_len) = string(i:i)
-                   new_len = new_len + 1
-                   i = i + 1
-                   exit
-                endif
-             else if (string(j:j) == '}') then
-                call dag%add_options (string(i:j), i_options)
-                index_char = ' '
-                write (index_char, fmt='(I10)') i_options
-                do k=1, len(index_char)
-                   if (index_char(k:k) /= ' ') then
-                      index_start = k
-                      exit
-                   endif
-                enddo
-                index_end = len_trim (index_char)
-                new_string(new_len:new_len+index_end-index_start+3) = &
-                     '<O' // index_char(index_start:index_end) // '>'
-                new_len = new_len + index_end - index_start + 4
+    new_size = 0
+    do while (i <= size(dag%string%t))
+       if (dag%string%t(i)%type == OPEN_CURLY_TK) then
+          do j = i+1, size (dag%string%t)
+             select case (dag%string%t(j)%type)
+             case (CLOSED_CURLY_TK)
+                new_size = new_size + 1
+                call dag%add_options (dag%string%t(i:j), i_options)
+                call new_string%t(new_size)%init_dag_object_token (DAG_OPTIONS_TK, i_options)
                 i = j + 1
                 exit
-             endif
+             case (OPEN_PAR_TK, CLOSED_PAR_TK, OPEN_CURLY_TK)
+                new_size = new_size + 1
+                new_string%t(new_size) = dag%string%t(i)
+                i = i + 1
+                exit
+             end select
           enddo
        else
-          new_string(new_len:new_len) = string(i:i)
-          new_len = new_len + 1
+          new_size = new_size + 1
+          new_string%t(new_size) = dag%string%t(i)
           i = i + 1
        endif
     enddo
-    string = trim (new_string)    
+    dag%string = new_string%t(:new_size)
+    call dag%string%update_char_len ()
   end subroutine dag_get_options
-  
+
   subroutine dag_add_node (dag, string, leaf, i_node)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (in) :: string
+    type (dag_token_t), dimension (:), intent (in) :: string
     logical, intent (in) :: leaf
     integer, intent (out), optional :: i_node
     type (dag_node_t), dimension (:), allocatable :: tmp_node
     integer :: string_len
     integer :: i
-    string_len = len(string)
+    string_len = sum (string%char_len)
     if (.not. allocated (dag%node)) then
         allocate (dag%node (DAG_STACK_SIZE))
      else if (dag%n_nodes == size (dag%node)) then
@@ -1797,9 +1653,11 @@ contains
      endif
      do i = 1, dag%n_nodes
         if (dag%node(i)%string_len == string_len) then
-           if (dag%node(i)%string == string) then
-              if (present (i_node)) i_node = i
-              return
+           if (size (dag%node(i)%string%t) == size (string)) then
+              if (all(dag%node(i)%string%t == string)) then
+                 if (present (i_node)) i_node = i
+                 return
+              endif
            endif
         endif
      enddo
@@ -1812,12 +1670,12 @@ contains
 
   subroutine dag_add_options (dag, string, i_options)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (in) :: string
+    type (dag_token_t), dimension (:), intent (in) :: string
     integer, intent (out), optional :: i_options
     type (dag_options_t), dimension (:), allocatable :: tmp_options
     integer :: string_len
     integer :: i
-    string_len = len(string)
+    string_len = sum (string%char_len)
     if (.not. allocated (dag%options)) then
         allocate (dag%options (DAG_STACK_SIZE))
      else if (dag%n_options == size (dag%options)) then
@@ -1830,9 +1688,11 @@ contains
      endif
      do i = 1, dag%n_options
         if (dag%options(i)%string_len == string_len) then
-           if (dag%options(i)%string == string) then
-              if (present (i_options)) i_options = i
-              return
+           if (size (dag%options(i)%string%t) == size (string)) then
+              if (all(dag%options(i)%string%t == string)) then
+                 if (present (i_options)) i_options = i
+                 return
+              endif
            endif
         endif
      enddo
@@ -1841,15 +1701,15 @@ contains
      dag%options(dag%n_options)%string_len = string_len
      if (present (i_options)) i_options = dag%n_options
   end subroutine dag_add_options
-  
+
   subroutine dag_add_combination (dag, string, i_combination)
     class (dag_t), intent (inout) :: dag
-    character (len=*), intent (in) :: string
+    type (dag_token_t), dimension (:), intent (in) :: string
     integer, intent (out), optional :: i_combination
     type (dag_combination_t), dimension (:), allocatable :: tmp_combination
     integer :: string_len
     integer :: i
-    string_len = len(string)
+    string_len = sum (string%char_len)
     if (.not. allocated (dag%combination)) then
         allocate (dag%combination (DAG_STACK_SIZE))
      else if (dag%n_combinations == size (dag%combination)) then
@@ -1862,9 +1722,11 @@ contains
      endif
      do i = 1, dag%n_combinations
         if (dag%combination(i)%string_len == string_len) then
-           if (dag%combination(i)%string == string) then
-              i_combination = i
-              return
+           if (size (dag%combination(i)%string%t) == size (string)) then
+              if (all(dag%combination(i)%string%t == string)) then
+                 i_combination = i
+                 return
+              endif
            endif
         endif
      enddo
@@ -1873,69 +1735,54 @@ contains
      dag%combination(dag%n_combinations)%string_len = string_len
      if (present (i_combination)) i_combination = dag%n_combinations
   end subroutine dag_add_combination
-  
-  recursive subroutine dag_node_make_f_nodes (dag_node, string, feyngraph_set, dag)
+
+  recursive subroutine dag_node_make_f_nodes (dag_node, feyngraph_set, dag)
     class (dag_node_t), intent (inout) :: dag_node
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension (:), allocatable :: daughter1_ptr
     type (f_node_ptr_t), dimension (:), allocatable :: daughter2_ptr
     character (len=LABEL_LEN) :: particle_label
-    integer :: colon_pos
     integer :: i, j
-    character (len=1), dimension (2) :: obj
+    integer, dimension (2) :: obj
     integer, dimension (2) :: i_obj
     integer :: n_obj
     integer :: pos
     integer :: new_size, size1, size2
     if (allocated (dag_node%f_node)) return
-    colon_pos = index(string,':')
-    if (colon_pos /= 0) then
-       if (string(1:1) == '(') then
-          particle_label = string(2:colon_pos-1)
-       else
-          particle_label = string(:colon_pos-1)
-       endif
-    else
-       particle_label = string
-    endif
+    pos = minloc (dag_node%string%t%type, 1,dag_node%string%t%type == NODE_TK)
+    particle_label = char (dag_node%string%t(pos))
     if (dag_node%leaf) then
 !!! construct subtree with procedure similar to the one for the old output
        allocate (dag_node%f_node(1))
-       call node_construct_subtree_rec_dag (feyngraph_set, trim(string), dag_node%f_node(1)%node)
+       call feyngraph_set%f_node_list%add_entry (char(dag_node%string), &
+            dag_node%f_node(1)%node, .false.)
+       dag_node%f_node(1)%node%particle_label = particle_label
+       call dag_node%f_node(1)%node%assign_particle_properties (feyngraph_set)
        if (.not. dag_node%f_node(1)%node%keep) then
           deallocate (dag_node%f_node)
           return
        endif
     else
-       obj = ' '
-       i_obj = 0
        n_obj = 0
-       do i = colon_pos+1, len (string)
-          if (string(i:i) == '<') then
+       do i = 1, size (dag_node%string%t)
+          select case (dag_node%string%t(i)%type)
+          case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
              n_obj = n_obj + 1
              if (n_obj > 2) return
-             do j = i+1, len (string)
-                if (string(j:j) == '>') then
-                   read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                   read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                   exit
-                endif
-             enddo
-          endif
+             obj(n_obj) = dag_node%string%t(i)%type
+             i_obj(n_obj) = dag_node%string%t(i)%index
+          end select
        enddo
        if (n_obj == 1) then
-          if (obj(1) == 'O') then
-             call dag%options(i_obj(1))%make_f_nodes (char (dag%options(i_obj(1))%string), &
-                  feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
-          else if (obj(1) == 'C') then
-             call dag%combination(i_obj(1))%make_f_nodes(char (dag%combination(i_obj(1))%string), &
-                  feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
+          if (obj(1) == DAG_OPTIONS_TK) then
+             call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
+          else if (obj(1) == DAG_COMBINATION_TK) then
+             call dag%combination(i_obj(1))%make_f_nodes(feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
           endif
           allocate (dag_node%f_node(size(daughter1_ptr)))
           do i=1, size(dag_node%f_node)
-             call feyngraph_set%f_node_list%add_entry (string, dag_node%f_node(i)%node, .false.)
+             call feyngraph_set%f_node_list%add_entry (char(dag_node%string), dag_node%f_node(i)%node, .false.)
              call dag_node%f_node(i)%node%set_index ()
              dag_node%f_node(i)%node%particle_label = particle_label
              call dag_node%f_node(i)%node%assign_particle_properties (feyngraph_set)
@@ -1946,23 +1793,19 @@ contains
           enddo
 !!! simply set daughter pointers, daughters are already combined correctly
        else if (n_obj == 2) then
-          if (obj(1) == 'N') then
-             call dag%node(i_obj(1))%make_f_nodes (char (dag%node(i_obj(1))%string), &
-                  feyngraph_set, dag)
+          if (obj(1) == DAG_NODE_TK) then
+             call dag%node(i_obj(1))%make_f_nodes (feyngraph_set, dag)
              allocate (daughter1_ptr (size (dag%node(i_obj(1))%f_node)))
              daughter1_ptr = dag%node(i_obj(1))%f_node
-          else if (obj(1) == 'O') then
-             call dag%options(i_obj(1))%make_f_nodes (char (dag%options(i_obj(1))%string), &
-                  feyngraph_set, dag, daughter1_ptr)
+          else if (obj(1) == DAG_OPTIONS_TK) then
+             call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, daughter1_ptr)
           endif
-          if (obj(2) == 'N') then
-             call dag%node(i_obj(2))%make_f_nodes (char (dag%node(i_obj(2))%string), &
-                  feyngraph_set, dag)
+          if (obj(2) == DAG_NODE_TK) then
+             call dag%node(i_obj(2))%make_f_nodes (feyngraph_set, dag)
              allocate (daughter2_ptr (size (dag%node(i_obj(2))%f_node)))
              daughter2_ptr = dag%node(i_obj(2))%f_node
-          else if (obj(2) == 'O') then
-             call dag%options(i_obj(2))%make_f_nodes (char (dag%options(i_obj(2))%string), &
-                  feyngraph_set, dag, daughter2_ptr)
+          else if (obj(2) == DAG_OPTIONS_TK) then
+             call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, daughter2_ptr)
           endif
 !!! make all combinations of daughters
           size1 = size (daughter1_ptr)
@@ -1973,7 +1816,7 @@ contains
           do i = 1, size1
              do j = 1, size2
                 pos = pos + 1
-                call feyngraph_set%f_node_list%add_entry(string, dag_node%f_node(pos)%node, .false.)
+                call feyngraph_set%f_node_list%add_entry(char(dag_node%string), dag_node%f_node(pos)%node, .false.)
                 call dag_node%f_node(pos)%node%set_index ()
                 dag_node%f_node(pos)%node%particle_label = particle_label
                 call dag_node%f_node(pos)%node%assign_particle_properties (feyngraph_set)
@@ -1987,200 +1830,141 @@ contains
        endif
     endif
   end subroutine dag_node_make_f_nodes
-  
+
   recursive subroutine dag_options_make_f_nodes_single (dag_options, &
-       string, feyngraph_set, dag, node_ptr)
+       feyngraph_set, dag, node_ptr)
     class (dag_options_t), intent (inout) :: dag_options
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr
     type (f_node_ptr_t), dimension(:), allocatable :: tmp_node_ptr
-    character (len=1), dimension (:), allocatable :: obj, tmp_obj
-    integer, dimension (:), allocatable :: i_obj, tmp_i_obj
+    integer, dimension (:), allocatable :: obj, i_obj
     integer :: n_obj
-    integer :: i, j
+    integer :: i
+    integer :: pos
 !!! read options
-    n_obj = 0
-    do i = 1, len (string)
-       if (string(i:i) == '<') then
-          if (n_obj > 0) then
-             allocate (tmp_obj(n_obj)); allocate (tmp_i_obj(n_obj))
-             tmp_obj = obj; tmp_i_obj = i_obj
-             deallocate (obj, i_obj)
-          endif
-          allocate (obj(n_obj+1)); allocate (i_obj(n_obj+1))
-          if (n_obj > 0) then
-             obj(:n_obj) = tmp_obj; i_obj(:n_obj) = tmp_i_obj
-             deallocate (tmp_obj, tmp_i_obj)
-          endif
-          n_obj = n_obj + 1
-          do j = i+1, len (string)
-             if (string(j:j) == '>') then
-                read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                exit
-             endif
-          enddo
-       endif
+    n_obj = count ((dag_options%string%t%type == DAG_NODE_TK) .or. &
+         (dag_options%string%t%type == DAG_OPTIONS_TK) .or. &
+         (dag_options%string%t%type == DAG_COMBINATION_TK), 1)
+    allocate (obj(n_obj)); allocate (i_obj(n_obj))
+    pos = 0
+    do i = 1, size (dag_options%string%t)
+       select case (dag_options%string%t(i)%type)
+       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
+          pos = pos + 1
+          obj(pos) = dag_options%string%t(i)%type
+          i_obj(pos) = dag_options%string%t(i)%index
+       end select
     enddo
     do i=1, n_obj
-       if (obj(i) == 'N') then
-          if (allocated (node_ptr)) then
-             call dag%node(i_obj(i))%make_f_nodes (char (dag%node(i_obj(i))%string), &
-                  feyngraph_set, dag)
-             if (allocated (dag%node(i_obj(i))%f_node)) then
-                allocate (tmp_node_ptr (size (node_ptr)))
-                tmp_node_ptr = node_ptr
-                deallocate (node_ptr)
-                allocate (node_ptr (size (tmp_node_ptr) + size (dag%node(i_obj(i))%f_node)))
-                node_ptr(:size(tmp_node_ptr)) = tmp_node_ptr
-                node_ptr(size(tmp_node_ptr)+1:) = dag%node(i_obj(i))%f_node
-                deallocate (tmp_node_ptr)
-             endif
-          else
-             call dag%node(i_obj(i))%make_f_nodes (char (dag%node(i_obj(i))%string), &
-                  feyngraph_set, dag)
-             allocate (node_ptr (size (dag%node(i_obj(i))%f_node)))
-             node_ptr = dag%node(i_obj(i))%f_node
+       if (allocated (node_ptr)) then
+          call dag%node(i_obj(i))%make_f_nodes (feyngraph_set, dag)
+          if (allocated (dag%node(i_obj(i))%f_node)) then
+             allocate (tmp_node_ptr (size (node_ptr)))
+             tmp_node_ptr = node_ptr
+             deallocate (node_ptr)
+             allocate (node_ptr (size (tmp_node_ptr) + size (dag%node(i_obj(i))%f_node)))
+             node_ptr(:size(tmp_node_ptr)) = tmp_node_ptr
+             node_ptr(size(tmp_node_ptr)+1:) = dag%node(i_obj(i))%f_node
+             deallocate (tmp_node_ptr)
           endif
        else
-          call msg_bug ('Node (N) expected, but parsed object is ' // obj(i))
+          call dag%node(i_obj(i))%make_f_nodes (feyngraph_set, dag)
+          allocate (node_ptr (size (dag%node(i_obj(i))%f_node)))
+          node_ptr = dag%node(i_obj(i))%f_node
        endif
     enddo
     deallocate (obj, i_obj)
   end subroutine dag_options_make_f_nodes_single
-  
+
   subroutine dag_options_make_f_nodes_pair (dag_options, &
-       string, feyngraph_set, dag, node_ptr1, node_ptr2)
+       feyngraph_set, dag, node_ptr1, node_ptr2)
     class (dag_options_t), intent (inout) :: dag_options
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr1
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr2
     type (f_node_ptr_t), dimension(:), allocatable :: tmp_node_ptr1, tmp_node_ptr2
-    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1, dummy_node_ptr2   
-    character (len=1), dimension (:), allocatable :: obj, tmp_obj
-    integer, dimension (:), allocatable :: i_obj, tmp_i_obj
+    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1, dummy_node_ptr2
+    integer, dimension (:), allocatable :: obj, i_obj
     integer :: n_obj
-    integer :: i, j
+    integer :: pos
+    integer :: i
 !!! read options
-    n_obj = 0
-    do i = 1, len (string)
-       if (string(i:i) == '<') then
-          if (n_obj > 0) then
-             allocate (tmp_obj(n_obj)); allocate (tmp_i_obj(n_obj))
-             tmp_obj = obj; tmp_i_obj = i_obj
-             deallocate (obj, i_obj)
-          endif
-          allocate (obj(n_obj+1)); allocate (i_obj(n_obj+1))
-          if (n_obj > 0) then
-             obj(:n_obj) = tmp_obj; i_obj(:n_obj) = tmp_i_obj
-             deallocate (tmp_obj, tmp_i_obj)
-          endif
-          n_obj = n_obj + 1
-          do j = i+1, len (string)
-             if (string(j:j) == '>') then
-                read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                exit
-             endif
-          enddo
-       endif
+    n_obj = count ((dag_options%string%t%type == DAG_NODE_TK) .or. &
+         (dag_options%string%t%type == DAG_OPTIONS_TK) .or. &
+         (dag_options%string%t%type == DAG_COMBINATION_TK), 1)
+    allocate (obj(n_obj)); allocate (i_obj(n_obj))
+    pos = 0
+    do i = 1, size (dag_options%string%t)
+       select case (dag_options%string%t(i)%type)
+       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
+          pos = pos + 1
+          obj(pos) = dag_options%string%t(i)%type
+          i_obj(pos) = dag_options%string%t(i)%index
+       end select
     enddo
 !!! get f_nodes from each combination
     do i=1, n_obj
-       if (obj(i) == 'C') then
-          if (allocated (node_ptr1) .and. allocated (node_ptr2)) then
-             call dag%combination(i_obj(i))%make_f_nodes (char (dag%combination(i_obj(i))%string), &
-                  feyngraph_set, dag, dummy_node_ptr1, dummy_node_ptr2)
-             if (allocated (dummy_node_ptr1) .and. allocated (dummy_node_ptr2)) then
-                allocate (tmp_node_ptr1 (size (node_ptr1)))
-                allocate (tmp_node_ptr2 (size (node_ptr2)))
-                tmp_node_ptr1 = node_ptr1
-                tmp_node_ptr2 = node_ptr2
-                deallocate (node_ptr1)
-                deallocate (node_ptr2)
-                allocate (node_ptr1 (size (tmp_node_ptr1) + size (dummy_node_ptr1)))
-                allocate (node_ptr2 (size (tmp_node_ptr2) + size (dummy_node_ptr2)))
-                node_ptr1(:size(tmp_node_ptr1)) = tmp_node_ptr1
-                node_ptr2(:size(tmp_node_ptr2)) = tmp_node_ptr2
-                node_ptr1(size(tmp_node_ptr1)+1:) = dummy_node_ptr1
-                node_ptr2(size(tmp_node_ptr2)+1:) = dummy_node_ptr2
-                deallocate (tmp_node_ptr1, dummy_node_ptr1)
-                deallocate (tmp_node_ptr2, dummy_node_ptr2)
-             endif
-          else
-             call dag%combination(i_obj(i))%make_f_nodes (char (dag%combination(i_obj(i))%string), &
-                  feyngraph_set, dag, node_ptr1, node_ptr2)
+       if (allocated (node_ptr1) .and. allocated (node_ptr2)) then
+          call dag%combination(i_obj(i))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr1, dummy_node_ptr2)
+          if (allocated (dummy_node_ptr1) .and. allocated (dummy_node_ptr2)) then
+             allocate (tmp_node_ptr1 (size (node_ptr1)))
+             allocate (tmp_node_ptr2 (size (node_ptr2)))
+             tmp_node_ptr1 = node_ptr1; tmp_node_ptr2 = node_ptr2
+             deallocate (node_ptr1, node_ptr2)
+             allocate (node_ptr1 (size (tmp_node_ptr1) + size (dummy_node_ptr1)))
+             allocate (node_ptr2 (size (tmp_node_ptr2) + size (dummy_node_ptr2)))
+             node_ptr1(:size(tmp_node_ptr1)) = tmp_node_ptr1
+             node_ptr2(:size(tmp_node_ptr2)) = tmp_node_ptr2
+             node_ptr1(size(tmp_node_ptr1)+1:) = dummy_node_ptr1
+             node_ptr2(size(tmp_node_ptr2)+1:) = dummy_node_ptr2
+             deallocate (tmp_node_ptr1, dummy_node_ptr1, tmp_node_ptr2, dummy_node_ptr2)
           endif
        else
-          call msg_bug ('Combination (C) expected, but parsed object is ' // obj(i))
+          call dag%combination(i_obj(i))%make_f_nodes (feyngraph_set, dag, node_ptr1, node_ptr2)
        endif
     enddo
     deallocate (obj, i_obj)
   end subroutine dag_options_make_f_nodes_pair
-  
+
   subroutine dag_combination_make_f_nodes (dag_combination, &
-       string, feyngraph_set, dag, node_ptr1, node_ptr2)
+       feyngraph_set, dag, node_ptr1, node_ptr2)
     class (dag_combination_t), intent (inout) :: dag_combination
-    character (len=*), intent (in) :: string
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr1
     type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr2
     type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1
     type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr2
-    character (len=1), dimension (2) :: obj
-    integer, dimension (2) :: i_obj
-    integer :: i, j
+    integer, dimension (2) :: obj, i_obj
     integer :: n_obj
     integer :: new_size, size1, size2
-    integer :: pos
-    obj = ' '
-    i_obj = 0
+    integer :: i, j, pos
     n_obj = 0
-    do i = 1, len (string)
-       if (string(i:i) == '<') then
+    do i = 1, size (dag_combination%string%t)
+       select case (dag_combination%string%t(i)%type)
+       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
           n_obj = n_obj + 1
           if (n_obj > 2) return
-          do j = i+1, len (string)
-             if (string(j:j) == '>') then
-                read (string(i+1:i+1), fmt='(A)') obj(n_obj)
-                read (string(i+2:j-1), fmt='(I10)') i_obj(n_obj)
-                exit
-             endif
-          enddo
-       endif
+          obj(n_obj) = dag_combination%string%t(i)%type
+          i_obj(n_obj) = dag_combination%string%t(i)%index
+       end select
     enddo
-    if (n_obj /= 2) then
-       call msg_bug ('Combination should contain 2 elements, but contains ' &
-            // char(n_obj) // ' elements')
-    else
-       if (obj(1) == 'N') then
-          call dag%node(i_obj(1))%make_f_nodes (char (dag%node(i_obj(1))%string), &
-               feyngraph_set, dag)
-          allocate (dummy_node_ptr1 (size (dag%node(i_obj(1))%f_node)))
-          dummy_node_ptr1 = dag%node(i_obj(1))%f_node
-       else if (obj(1) == 'O') then
-          call dag%options(i_obj(1))%make_f_nodes (char (dag%options(i_obj(1))%string), &
-               feyngraph_set, dag, dummy_node_ptr1)
-       else
-          call msg_bug ('Node (N) or option (O) expected, but parsed object is' // obj(1))
-       endif
-       if (allocated (dummy_node_ptr1)) then
-          if (obj(2) == 'N') then
-             call dag%node(i_obj(2))%make_f_nodes (char (dag%node(i_obj(2))%string), &
-                  feyngraph_set, dag)
-             allocate (dummy_node_ptr2 (size (dag%node(i_obj(2))%f_node)))
-             dummy_node_ptr2 = dag%node(i_obj(2))%f_node
-          else if (obj(2) == 'O') then
-             call dag%options(i_obj(2))%make_f_nodes (char (dag%options(i_obj(2))%string), &
-                  feyngraph_set, dag, dummy_node_ptr2)
-          else
-             call msg_bug ('Node (N) or option (O) expected, but parsed object is' // obj(2))
-          endif
+    if (obj(1) == DAG_NODE_TK) then
+       call dag%node(i_obj(1))%make_f_nodes (feyngraph_set, dag)
+       allocate (dummy_node_ptr1 (size (dag%node(i_obj(1))%f_node)))
+       dummy_node_ptr1 = dag%node(i_obj(1))%f_node
+    else if (obj(1) == DAG_OPTIONS_TK) then
+       call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr1)
+    endif
+    if (allocated (dummy_node_ptr1)) then
+       if (obj(2) == DAG_NODE_TK) then
+          call dag%node(i_obj(2))%make_f_nodes (feyngraph_set, dag)
+          allocate (dummy_node_ptr2 (size (dag%node(i_obj(2))%f_node)))
+          dummy_node_ptr2 = dag%node(i_obj(2))%f_node
+       else if (obj(2) == DAG_OPTIONS_TK) then
+          call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr2)
        endif
     endif
 !!! combine the 2 arrays of f_nodes
@@ -2207,8 +1991,7 @@ contains
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     integer :: i
     type (f_node_ptr_t), dimension (:), allocatable :: node_ptr
-    call dag%node(dag%n_nodes)%make_f_nodes (char (dag%node(dag%n_nodes)%string), &
-         feyngraph_set, dag)
+    call dag%node(dag%n_nodes)%make_f_nodes (feyngraph_set, dag)
     allocate (node_ptr (size (dag%node(dag%n_nodes)%f_node)))
     node_ptr = dag%node(dag%n_nodes)%f_node
     if (allocated (node_ptr)) then
@@ -2221,7 +2004,7 @@ contains
              feyngraph_set%last => feyngraph_set%last%next
           endif
           feyngraph_set%last%root => node_ptr(i)%node
-!!! The first particle was correct in the OMega parsable DAG output. It was however
+!!! The first particle was correct in the O'Mega parsable DAG output. It was however
 !!! changed to its anti-particle in f_node_assign_particle_properties, which we revert here.
           feyngraph_set%last%root%particle => feyngraph_set%last%root%particle%anti
           feyngraph_set%last%n_nodes = feyngraph_set%last%root%n_subtree_nodes
@@ -2231,7 +2014,7 @@ contains
        feyngraph_set%f_node_list%max_tree_size = feyngraph_set%first%n_nodes
     endif
   end subroutine dag_make_feyngraphs
-  
+
   subroutine dag_write (dag, u)
     class (dag_t), intent (in) :: dag
     integer, intent(in) :: u
@@ -2263,7 +2046,7 @@ contains
     copy%mapping_assigned = .true.
     copy%is_nonresonant_copy = .true.
   end subroutine k_node_make_nonresonant_copy
-  
+
   subroutine feyngraph_make_kingraphs (feyngraph, feyngraph_set)
     class (feyngraph_t), intent (inout) :: feyngraph
     type (feyngraph_set_t), intent (in) :: feyngraph_set
@@ -2451,7 +2234,7 @@ contains
     end_pos = index (particle_label, ']') - 1
     particle_label = particle_label(start_pos:end_pos)
 !!! n_out_decay is the number of outgoing particles in the
-!!! OMega output, which is always represented as a decay
+!!! O'Mega output, which is always represented as a decay
     if (feyngraph_set%use_dag) then
        n_prt = 1
        do i=1, len(particle_label)
@@ -3042,7 +2825,7 @@ contains
        deallocate (compare_list)
     enddo
   end subroutine f_node_list_compute_mappings_s
-  
+
   subroutine grove_list_get_grove (grove_list, kingraph, return_grove, preliminary)
     class (grove_list_t), intent (inout) :: grove_list
     type (kingraph_t), intent (in), pointer :: kingraph
@@ -3281,7 +3064,7 @@ contains
     !$ call OMP_destroy_lock (grove_list%lock)
     call tmp_list%final
   end subroutine grove_list_rebuild
-  
+
   subroutine feyngraph_set_write_file_format (feyngraph_set, u)
     type (feyngraph_set_t), intent (in) :: feyngraph_set
     integer, intent (in) :: u
@@ -3396,7 +3179,7 @@ contains
        end select
     enddo
   end subroutine kingraph_write_file_format
-  
+
    function get_particle_name (feyngraph_set, pdg) result (particle_name)
      type (feyngraph_set_t), intent (in) :: feyngraph_set
      integer, intent (in) :: pdg
@@ -3563,7 +3346,7 @@ contains
     !$OMP END PARALLEL DO
     !$ call OMP_destroy_lock (feyngraph_set%grove_list%lock)
   end subroutine feyngraph_set_find_phs_parametrizations
-    
+
   elemental function tree_equal (tree1, tree2) result (flag)
     type (tree_t), intent (in) :: tree1, tree2
     logical :: flag
@@ -3630,7 +3413,7 @@ contains
        if (.not. equal) eqv = .true.
     endif
   end function subtree_eqv
-  
+
   subroutine subtree_select (subtree1, subtree2, model)
     type (tree_t), intent (inout) :: subtree1, subtree2
     type (model_data_t), intent (in) :: model
@@ -3854,7 +3637,7 @@ contains
     write (u, '(A)') "\end{fmffile}"
     write (u, '(A)') "\end{document}"
   end subroutine feyngraph_set_write_graph_format
-  
+
   subroutine feyngraph_set_write_process_tex_format (feyngraph_set, unit)
     type(feyngraph_set_t), intent(in), target :: feyngraph_set
     integer, intent(in), optional :: unit
@@ -4082,7 +3865,7 @@ contains
        enddo
     endif
   end function feyngraph_set_is_valid
-  
+
   subroutine kingraph_extract_resonance_history &
        (kingraph, res_hist, model, n_out)
     class(kingraph_t), intent(in), target :: kingraph

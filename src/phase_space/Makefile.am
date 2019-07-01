@@ -42,6 +42,7 @@ libphase_space_la_SOURCES = \
   phs_wood.f90 \
   phs_fks.f90 \
   dispatch_phase_space.f90 \
+  cascades2_lexer.f90 \
   cascades2.f90
 
 libphase_space_ut_la_SOURCES = \
@@ -55,6 +56,7 @@ libphase_space_ut_la_SOURCES = \
   phs_wood_uti.f90 phs_wood_ut.f90 \
   phs_fks_uti.f90 phs_fks_ut.f90 \
   dispatch_phs_uti.f90 dispatch_phs_ut.f90 \
+  cascades2_lexer_uti.f90 cascades2_lexer_ut.f90 \
   cascades2_uti.f90 cascades2_ut.f90
 
 ## Omitting this would exclude it from the distribution

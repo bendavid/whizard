@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -111,7 +111,7 @@ module resonances
      integer, dimension(:), allocatable :: r_child
      integer, dimension(:), allocatable :: o_child
   end type resonance_branch_t
-  
+
   type :: resonance_tree_t
      private
      integer :: n = 0
@@ -266,7 +266,7 @@ contains
        n = 0
     end if
   end function resonance_info_get_n_contributors
-  
+
   elemental function resonance_info_contains (resonance, c) result (flag)
     class(resonance_info_t), intent(in) :: resonance
     integer, intent(in) :: c
@@ -277,7 +277,7 @@ contains
        flag = .false.
     end if
   end function resonance_info_contains
-  
+
   subroutine resonance_history_clear (res_hist)
     class(resonance_history_t), intent(out) :: res_hist
   end subroutine resonance_history_clear
@@ -485,7 +485,7 @@ contains
     q = sum (p(res_info%contributors%c))
     dist = abs (q**2 - m**2) / (m * w)
   end subroutine resonance_info_evaluate_distance
-    
+
   subroutine resonance_history_evaluate_distances (res_hist, p, dist)
     class(resonance_history_t), intent(in) :: res_hist
     type(vector4_t), dimension(:), intent(in) :: p
@@ -613,14 +613,14 @@ contains
     integer :: n
     n = tree%n
   end function resonance_tree_get_n_resonances
-  
+
   function resonance_tree_get_flv (tree, i) result (flv)
     class(resonance_tree_t), intent(in) :: tree
     integer, intent(in) :: i
     type(flavor_t) :: flv
     flv = tree%branch(i)%flv
   end function resonance_tree_get_flv
-  
+
   function resonance_tree_get_children (tree, i, offset_r, offset_o) &
        result (child)
     class(resonance_tree_t), intent(in) :: tree
@@ -635,7 +635,7 @@ contains
       child(nr+1:nr+no) = branch%o_child + offset_o
     end associate
   end function resonance_tree_get_children
-  
+
   subroutine resonance_history_to_tree (res_hist, tree)
     class(resonance_history_t), intent(in) :: res_hist
     type(resonance_tree_t), intent(out) :: tree
@@ -727,7 +727,7 @@ contains
     end subroutine set_child_outgoing
 
   end subroutine resonance_history_to_tree
-  
+
   subroutine resonance_history_set_write (res_set, unit, indent, show_trees)
     class(resonance_history_set_t), intent(in) :: res_set
     integer, intent(in), optional :: unit
@@ -821,7 +821,7 @@ contains
     end do
     res_set%complete = .true.
   end subroutine resonance_history_set_freeze
-  
+
   subroutine resonance_history_set_determine_on_shell_histories &
        (res_set, p, on_shell_limit, index_array)
     class(resonance_history_set_t), intent(in) :: res_set
@@ -843,9 +843,9 @@ contains
        end do
        allocate (index_array (count (i_array /= 0)))
        index_array(:) = pack (i_array, i_array /= 0)
-    end if    
+    end if
   end subroutine resonance_history_set_determine_on_shell_histories
-    
+
   function resonance_history_set_evaluate_gaussian (res_set, p, gw, i) &
        result (factor)
     class(resonance_history_set_t), intent(in) :: res_set
@@ -855,13 +855,13 @@ contains
     real(default) :: factor
     factor = res_set%history(i)%evaluate_gaussian (p, gw)
   end function resonance_history_set_evaluate_gaussian
-    
+
   function resonance_history_set_get_n_history (res_set) result (n)
     class(resonance_history_set_t), intent(in) :: res_set
     integer :: n
     if (res_set%complete) then
        n = res_set%last
-    else 
+    else
        n = 0
     end if
   end function resonance_history_set_get_n_history

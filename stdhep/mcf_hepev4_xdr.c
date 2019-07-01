@@ -104,35 +104,40 @@ bool_t xdr_stdhep_4_(XDR *xdrs, int *blockid,
      }
      idat = stdtmp_.isthept;
      if     ( xdr_array(xdrs, (char **)  &idat,
-         &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+			&nnw, NMXHEP, sizeof(int), 
+			(xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = stdtmp_.idhept;
      if     ( xdr_array(xdrs, (char **)   &idat,
-         &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+			&nnw, NMXHEP, sizeof(int), 
+			(xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) stdtmp_.jmohept;
      if     ( xdr_array(xdrs, (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+			&nnw2, 2*NMXHEP, sizeof(int), 
+			(xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) stdtmp_.jdahept;
      if     ( xdr_array(xdrs,  (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+			&nnw2, 2*NMXHEP, sizeof(int), 
+			(xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  stdtmp_.phept;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nnw5, 5*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+			&nnw5, 5*NMXHEP, sizeof(double), 
+			(xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *) stdtmp_.vhept;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnw4, 4*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnw4, 4*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      /* valid for stdhep 5.01 and later */
      if ( xdr_double(xdrs, &(tmpev4_.eventweightt) ) == FALSE) return FALSE;
      if ( xdr_double(xdrs, &(tmpev4_.alphaqedt) ) == FALSE) return FALSE;
      if ( xdr_double(xdrs, &(tmpev4_.alphaqcdt) ) == FALSE) return FALSE;
      dat = (double *) tmpev4_.scalet;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &n5, 10, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &n5, 10, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      dat = (double *) tmpev4_.spint;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnw3, 3*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnw3, 3*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      idat = (int *) tmpev4_.icolorflowt;
      if     ( xdr_array(xdrs, (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      if ( xdr_int(xdrs, &(tmpev4_.idrupt) ) == FALSE) return FALSE;
      return TRUE;
 }   
@@ -196,70 +201,70 @@ bool_t xdr_stdhep_4_multi_(XDR *xdrs, int *blockid,
      }
      idat = hepevt_.isthep;
      if     ( xdr_array(xdrs, (char **)  &idat,
-            &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepevt_.idhep;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) hepevt_.jmohep;
      if     ( xdr_array(xdrs, (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) hepevt_.jdahep;
      if     ( xdr_array(xdrs,  (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  hepevt_.phep;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nnw5, 5*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &nnw5, 5*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *) hepevt_.vhep;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnw4, 4*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnw4, 4*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      /*
      ** V2.02 Upgrade : adding Multiple interactions. 
      */ 
      if ( xdr_int(xdrs, &(hepev2_.nmulti)) == FALSE) return FALSE;
      idat = hepev2_.jmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-         &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+         &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      /*
      ** V4.04 Upgrade : adding more Multiple interaction information
      */ 
      idat = hepev3_.nevmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepev3_.itrkmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepev3_.mltstr;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      /* valid for stdhep 5.01 and later */
      if ( xdr_double(xdrs, &(hepev4_.eventweightlh) ) == FALSE) return FALSE;
      if ( xdr_double(xdrs, &(hepev4_.alphaqedlh) ) == FALSE) return FALSE;
      if ( xdr_double(xdrs, &(hepev4_.alphaqcdlh) ) == FALSE) return FALSE;
      dat = (double *) hepev4_.scalelh;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &n5, 10, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &n5, 10, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      dat = (double *) hepev4_.spinlh;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnw3, 3*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnw3, 3*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      idat = (int *) hepev4_.icolorflowlh;
      if     ( xdr_array(xdrs, (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      if ( xdr_int(xdrs, &(hepev4_.idruplh) ) == FALSE) return FALSE;
      dat = (double *) hepev5_.eventweightmulti;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnmlt, NMXMLT, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnmlt, NMXMLT, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      dat = (double *) hepev5_.alphaqedmulti;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnmlt, NMXMLT, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnmlt, NMXMLT, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      dat = (double *) hepev5_.alphaqcdmulti;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnmlt, NMXMLT, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnmlt, NMXMLT, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      dat = (double *) hepev5_.scalemulti;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnmlt5, 10*NMXMLT, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnmlt5, 10*NMXMLT, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      idat = hepev5_.idrupmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      return TRUE;
 }   
 

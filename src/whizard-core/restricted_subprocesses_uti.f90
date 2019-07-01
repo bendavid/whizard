@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -74,6 +74,7 @@ module restricted_subprocesses_uti
   public :: restricted_subprocesses_3
   public :: restricted_subprocesses_4
   public :: restricted_subprocesses_5
+  public :: restricted_subprocesses_6
 
 
 
@@ -921,6 +922,210 @@ contains
 
   end subroutine restricted_subprocesses_5
 
+  subroutine restricted_subprocesses_6 (u)
+    integer, intent(in) :: u
+    type(rt_data_t), target :: global
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(string_t) :: libname, libname_res
+    type(string_t) :: procname
+    type(process_component_def_t), pointer :: process_component_def
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    logical :: exist
+    type(process_t), pointer :: process
+    type(process_instance_t), target :: process_instance
+    type(resonance_history_set_t), dimension(1) :: res_history_set
+    type(resonant_subprocess_set_t) :: prc_set
+    type(particle_set_t) :: pset
+    real(default) :: sqrts, mw, pp
+    real(default), dimension(3) :: p3
+    type(vector4_t), dimension(:), allocatable :: p
+    real(default), dimension(:), allocatable :: m
+    integer, dimension(:), allocatable :: pdg
+    real(default) :: on_shell_limit
+    real(default) :: background_factor
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    real(default) :: probability
+    integer :: i
+
+    write (u, "(A)")  "* Test output: restricted_subprocesses_6"
+    write (u, "(A)")  "*   Purpose: employ event transform &
+         &with background switched off"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+
+    call global%select_model (var_str ("SM"))
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    libname = "restricted_subprocesses_6_lib"
+    libname_res = "restricted_subprocesses_6_lib_res"
+    procname = "restricted_subprocesses_6_p"
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    call integrate_process (procname, global, &
+         local_stack = .true., init_only = .true.)
+
+    process => global%process_stack%get_process_ptr (procname)
+
+    call process_instance%init (process)
+    call process_instance%setup_event_data ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonance history set"
+
+    call process%extract_resonance_history_set &
+         (res_history_set(1), include_trivial=.false., i_component=1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build resonant-subprocess library"
+
+    call prc_set%init (1)
+    call prc_set%fill_resonances (res_history_set(1), 1)
+
+    process_component_def => process%get_component_def_ptr (1)
+    call prc_set%create_library (libname_res, global, exist)
+    if (.not. exist) then
+       call prc_set%add_to_library (1, &
+            process_component_def%get_prt_spec_in (), &
+            process_component_def%get_prt_spec_out (), &
+            global)
+    end if
+    call prc_set%freeze_library (global)
+    call prc_set%compile_library (global)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build particle set"
+    write (u, "(A)")
+
+    sqrts = global%get_rval (var_str ("sqrts"))
+    mw = 80._default   ! deliberately slightly different from true mw
+    pp = sqrt (sqrts**2 - 4 * mw**2) / 2
+
+    allocate (pdg (5), p (5), m (5))
+    pdg(1) = -11
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    m(1) = 0
+    pdg(2) = 11
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    m(2) = 0
+    pdg(3) = 1
+    p3(1) = pp/2
+    p3(2) = mw/2
+    p3(3) = 0
+    p(3) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(3) = 0
+    p3(2) = -mw/2
+    pdg(4) = -2
+    p(4) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(4) = 0
+    pdg(5) = 24
+    p(5) = vector4_moving (sqrts/2,-pp, 1)
+    m(5) = mw
+
+    call pset%init_direct (0, 2, 0, 0, 3, pdg, model)
+    call pset%set_momentum (p, m**2)
+
+    write (u, "(A)")  "* Fill process instance"
+    write (u, "(A)")
+
+    ! workflow from event_recalculate
+    call process_instance%choose_mci (1)
+    call process_instance%set_trace (pset, 1)
+    call process_instance%recover &
+         (1, 1, update_sqme=.true., recover_phs=.false.)
+    call process_instance%evaluate_event_data (weight = 1._default)
+
+    write (u, "(A)")  "* Prepare resonant subprocesses"
+    write (u, "(A)")
+
+    call prc_set%prepare_process_objects (global)
+    call prc_set%prepare_process_instances (global)
+
+    write (u, "(A)")  "* Fill trivial event transform (deliberately w/o color)"
+    write (u, "(A)")
+
+    call evt_trivial%connect (process_instance, model)
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize resonance-insertion event transform"
+    write (u, "(A)")
+
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
+    call evt_resonance%connect (process_instance, model)
+    call prc_set%connect_transform (evt_resonance)
+    call evt_resonance%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute probabilities for applicable resonances"
+    write (u, "(A)")  "  and initialize the process selector"
+    write (u, "(A)")
+
+    on_shell_limit = 10._default
+    write (u, "(1x,A,1x," // FMT_10 // ")") &
+         "on_shell_limit    =", on_shell_limit
+    call evt_resonance%set_on_shell_limit (on_shell_limit)
+
+    background_factor = 0
+    write (u, "(1x,A,1x," // FMT_10 // ")") &
+         "background_factor =", background_factor
+    call evt_resonance%set_background_factor (background_factor)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate resonance-insertion event transform"
+    write (u, "(A)")
+
+    call evt_resonance%prepare_new_event (1, 1)
+    call evt_resonance%generate_weighted (probability)
+    call evt_resonance%make_particle_set (1, .false.)
+
+    call evt_resonance%write (u, testflag=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call global%final ()
+    call syntax_phs_forest_final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: restricted_subprocesses_6"
+
+  end subroutine restricted_subprocesses_6
+
 
   subroutine prepare_resonance_test_library &
        (lib, libname, procname, model, global, u)
@@ -961,7 +1166,7 @@ contains
     call lib%append (entry)
 
     call lib%configure (global%os_data)
-    call lib%write_makefile (global%os_data, force = .true.)
+    call lib%write_makefile (global%os_data, force = .true., verbose = .false.)
     call lib%clean (global%os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (global%os_data)

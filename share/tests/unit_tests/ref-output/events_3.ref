@@ -16,7 +16,7 @@ analysis = true
 * Fill event object and evaluate expressions
 
 ========================================================================
- Event
+ Event #42
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -106,7 +106,7 @@ $process_id* => "processes_test"
 process_num_id* => [unknown integer]
 sqme* =>  1.000000000000E+00
 sqme_ref* =>  1.000000000000E+00
-event_index* => 1
+event_index* => 42
 event_weight* =>  2.709767398832E+08
 event_weight_ref* =>  2.709767398832E+08
 event_excess* =>  0.000000000000E+00

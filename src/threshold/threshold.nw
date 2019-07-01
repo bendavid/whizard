@@ -9740,20 +9740,34 @@ where the variables are from.
     real(default) :: shift_from_hard_current
     complex(default) :: v, contrib_from_potential
     FF = one
-    if (.not. threshold%settings%initialized_parameters .or. vec_type == AXIAL) return
+    if (.not. threshold%settings%initialized_parameters) return
     call update_global_sqrts_dependent_variables (ps%sqrts)
     v = sqrts_to_v (ps%sqrts, GAM)
     if (NRQCD_ORDER == 1) then
-       shift_from_hard_current = - two * CF / pi
+       if (vec_type == AXIAL) then
+          shift_from_hard_current = - CF / pi
+       else
+          shift_from_hard_current = - two * CF / pi
+       end if
     else
        shift_from_hard_current = zero
     end if
     if (ps%onshell) then
        contrib_from_potential = CF * ps%mpole * Pi / (4 * ps%p)
     else
-       contrib_from_potential = imago * CF * ps%mpole * &
-            log ((ps%p + ps%mpole * v) / &
-                 (-ps%p + ps%mpole * v) + ieps) / (two * ps%p)
+       if (vec_type == AXIAL) then
+          contrib_from_potential = - CF * ps%mpole / (two * ps%p) * &
+               (imago * ps%mpole * v / ps%p + &
+               (ps%mpole**2 * v**2 + (ps%p)**2 / (4 *Pi * (ps%p)**2) * ( &
+               (log (- ps%mpole * v - ps%p))**2 - &
+               (log (- ps%mpole * v + ps%p))**2 + &
+               (log (ps%mpole * v - ps%p))**2 - &
+               (log (ps%mpole * v + ps%p))**2 )))
+       else
+          contrib_from_potential = imago * CF * ps%mpole * &
+               log ((ps%p + ps%mpole * v) / &
+               (-ps%p + ps%mpole * v) + ieps) / (two * ps%p)
+       end if
     end if
     FF = one + alphas_soft * contrib_from_potential + &
          alphas_hard * shift_from_hard_current

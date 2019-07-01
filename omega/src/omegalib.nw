@@ -4032,6 +4032,530 @@ pure function s_dim8s3 (g, phi2, k2, phi3, k3, phi4, k4) result (phi1)
   phi1 = g * ( (k1 * k2) * (k3 * k4) + (k1 * k3) * (k2 * k4) &
           + (k1 * k4) * (k2 * k3) ) * phi2 * phi3 * phi4
 end function s_dim8s3
+@ \section{Mixed Scalar2-Vector2 Dim-8 Couplings}
+<<Declaration of couplings>>=
+public :: phi_phi2v_m_0, v_phi2v_m_0, phi_phi2v_m_1, v_phi2v_m_1, phi_phi2v_m_7, v_phi2v_m_7
+@
+\begin{equation}
+\phi_2(k_2) = g \left (\left ( V_1 \cdot k_{V_2} \right )  
+                       \left ( V_2 \cdot k_{V_1} \right ) 
+                       \left ( k_1 \cdot k_2 \right )
+                   -  (\left ( V_1 \cdot V_2 \right )  
+                       \left ( k_{V_1} \cdot k_{V_2} \right ) 
+                       \left ( k_1 \cdot k_2 \right ) \right )
+                       \phi_1 (k_1)
+\end{equation} 
+<<Implementation of couplings>>=
+pure function phi_phi2v_m_0 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+  complex(kind=default), intent(in) :: g, phi1
+  type(momentum), intent(in) :: k1, k_v1, k_v2
+  type(momentum) :: k2
+  type(vector), intent(in) :: v1, v2
+  complex(kind=default) :: phi2
+  k2 = - k1 - k_v1 - k_v2
+  phi2 = g * phi1 * &
+            ( (v1 * k_v2) * (v2 * k_v1) * (k1 * k2) &
+            - (v1 * v2) * (k_v1 * k_v2) * (k1 * k2) )
+end function phi_phi2v_m_0 
+@
+\begin{equation}
+  V_2^\mu =g \left ( k_{V_1}^\mu \left ( V_1 \cdot k_{V_2} \right ) 
+                                 \left ( k_1 \cdot k_2 \right )
+                       - V_1^\mu \left ( k_{V_1} \cdot k_{V_2} \right )
+                                 \left ( k_1 \cdot k_2 \right ) 
+                                 \right )
+                     \phi_1 (k_1) \phi_2 (k_2))
+\end{equation} 
+<<Implementation of couplings>>=
+pure function v_phi2v_m_0 (g, phi1, k1, phi2, k2, v1, k_v1) result (v2)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2, k_v1
+  type(vector), intent(in) :: v1
+  type(momentum) :: k_v2
+  type(vector) :: v2
+  k_v2 = - k_v1 - k1 - k2
+  v2 = g * phi1 * phi2 * &
+          ( k_v1 * (v1 *  k_v2) * (k1 * k2) &
+           - v1 * (k_v2 * k_v1) * (k1 * k2) )
+end function v_phi2v_m_0
+@
+\begin{equation}
+\phi_2(k_2) = g \left (\left ( V_1 \cdot V_2 \right )  
+                       \left ( k_1 \cdot k_{V_2} \right ) 
+                       \left ( k_2 \cdot k_{V_1} \right )
+                   +  (\left ( V_1 \cdot V_2 \right )  
+                       \left ( k_1 \cdot k_{V_1} \right ) 
+                       \left ( k_2 \cdot k_{V_2} \right ) \\
+                   +  (\left ( V_1 \cdot k_2 \right )  
+                       \left ( V_2 \cdot k_1 \right ) 
+                       \left ( k_{V_1} \cdot k_{V_2} \right )  
+                   +  (\left ( V_1 \cdot k_1 \right )  
+                       \left ( V_2 \cdot k_2 \right ) 
+                       \left ( k_{V_1} \cdot k_{V_2} \right ) \\
+                   -  (\left ( V_1 \cdot k_{V_2} \right )  
+                       \left ( V_2 \cdot k_2 \right ) 
+                       \left ( k_1 \cdot k_{V_1} \right )                                                                   
+                   -  (\left ( V_1 \cdot k_2 \right )  
+                       \left ( V_2 \cdot k_{V_1} \right ) 
+                       \left ( k_1 \cdot k_{V_2} \right ) \\                                                                                          
+                   -  (\left ( V_1 \cdot k_{V_2} \right )  
+                       \left ( V_2 \cdot k_1 \right ) 
+                       \left ( k_2 \cdot k_{V_1} \right ) 
+                   -  (\left ( V_1 \cdot k_1 \right )  
+                       \left ( V_2 \cdot k_{V_1} \right ) 
+                       \left ( k_2 \cdot k_{V_2} \right )                                                                   
+                       \right )
+                       \phi_1 (k_1)
+\end{equation} 
+<<Implementation of couplings>>=
+pure function phi_phi2v_m_1 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+  complex(kind=default), intent(in) :: g, phi1
+  type(momentum), intent(in) :: k1, k_v1, k_v2
+  type(momentum) :: k2
+  type(vector), intent(in) :: v1, v2
+  complex(kind=default) :: phi2
+  k2 = - k1 - k_v1 - k_v2
+  phi2 = g * phi1 * &
+            ( (v1 * v2) * (k1 * k_v2) * (k2 * k_v1) &
+            + (v1 * v2) * (k1 * k_v1) * (k2 * k_v2) &
+            + (v1 * k2) * (v2 * k1) * (k_v1 * k_v2) &
+            + (v1 * k1) * (v2 * k2) * (k_v1 * k_v2) &
+            - (v1 * k_v2) * (v2 * k2) * (k1 * k_v1) &
+            - (v1 * k2) * (v2 * k_v1) * (k1 * k_v2) &
+            - (v1 * k_v2) * (v2 * k1) * (k2 * k_v1) &
+            - (v1 * k1) * (v2 * k_v1) * (k2 * k_v2) )
+end function phi_phi2v_m_1
+@
+\begin{equation}
+  V_2^\mu =g \left ( k_1^\mu     \left ( V_1 \cdot k_2 \right ) 
+                                 \left ( k_{V_1} \cdot k_{V_2} \right ) \\
+                   + k_2^\mu     \left ( V_1 \cdot k_1 \right )
+                                 \left ( k_{V_1} \cdot k_{V_2} \right ) \\
+                   + V_1^\mu     \left ( k_{V_1} \cdot k_1 \right )  
+                                 \left ( k_{V_2} \cdot k_2 \right ) \\
+                   + V_1^\mu     \left ( k_{V_1} \cdot k_2 \right )  
+                                 \left ( k_{V_2} \cdot k_1 \right ) \\ 
+                   - k_1^\mu     \left ( V_1 \cdot k_{V_2} \right ) 
+                                 \left ( k_{V_1} \cdot k_2 \right ) \\                              
+                   - k_2^\mu     \left ( V_1 \cdot k_{V_2} \right )  
+                                 \left ( k_{V_1} \cdot k_1 \right ) \\                                            
+                   - k_{V_1}^\mu \left ( V_1 \cdot k_1 \right )  
+                                 \left ( k_{V_2} \cdot k_2 \right ) \\                                             
+                   - k_{V_1}^\mu \left ( V_1 \cdot k_2 \right )  
+                                 \left ( k_{V_2} \cdot k_1 \right )                                                            
+                \right ) \\
+                \phi_1 (k_1) \phi_2 (k_2)
+\end{equation} 
+<<Implementation of couplings>>=
+pure function v_phi2v_m_1 (g, phi1, k1, phi2, k2, v1, k_v1) result (v2)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2, k_v1
+  type(vector), intent(in) :: v1
+  type(momentum) :: k_v2
+  type(vector) :: v2
+  k_v2 = - k_v1 - k1 - k2
+  v2 = g * phi1 * phi2 * &
+          ( k1 * (v1 * k2) * (k_v1 * k_v2) &
+          + k2 * (v1 * k1) * (k_v1 * k_v2) &
+          + v1 * (k_v1 * k1) * (k_v2 * k2) &
+          + v1 * (k_v1 * k2) * (k_v2 * k1) &
+          - k1 * (v1 * k_v2) * (k_v1 * k2) &
+          - k2 * (v1 * k_v2) * (k_v1 * k1) &
+          - k_v1 * (v1 * k1) * (k_v2 * k2) &
+          - k_v1 * (v1 * k2) * (k_v2 * k1) )
+end function v_phi2v_m_1
+@
+\begin{equation}
+\phi_2(k_2) = g \left (\left ( V_1 \cdot k_{V_2} \right )  
+                       \left ( k_1 \cdot V_2 \right ) 
+                       \left ( k_2 \cdot k_{V_1} \right )
+                   +  (\left ( V_1 \cdot k_{V_2} \right )  
+                       \left ( k_1 \cdot k_{V_1} \right ) 
+                       \left ( k_2 \cdot k_{V_2} \right ) \\
+                   +  (\left ( V_1 \cdot k_1 \right )  
+                       \left ( V_2 \cdot k_{V_1} \right ) 
+                       \left ( k_2 \cdot k_{V_2} \right )  
+                   +  (\left ( V_1 \cdot k_2 \right )  
+                       \left ( V_2 \cdot k_{V_1} \right ) 
+                       \left ( k_1 \cdot k_{V_2} \right ) \\
+                   -  (\left ( V_1 \cdot V_2 \right )  
+                       \left ( k_1 \cdot k_{V_2} \right ) 
+                       \left ( k_2 \cdot k_{V_1} \right )                                                                   
+                   -  (\left ( V_1 \cdot V_2 \right )  
+                       \left ( k_1 \cdot k_{V_1} \right ) 
+                       \left ( k_2 \cdot k_{V_2} \right ) \\                                                                                          
+                   -  (\left ( V_1 \cdot k_2 \right )  
+                       \left ( V_2 \cdot k_1 \right ) 
+                       \left ( k_{V_1} \cdot k_{V_2} \right ) 
+                   -  (\left ( V_1 \cdot k_1 \right )  
+                       \left ( V_2 \cdot k_2 \right ) 
+                       \left ( k_{V_1} \cdot k_{V_2} \right )                                                                   
+                       \right )
+                       \phi_1 (k_1)
+\end{equation} 
+<<Implementation of couplings>>=
+pure function phi_phi2v_m_7 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+  complex(kind=default), intent(in) :: g, phi1
+  type(momentum), intent(in) :: k1, k_v1, k_v2
+  type(momentum) :: k2
+  type(vector), intent(in) :: v1, v2
+  complex(kind=default) :: phi2
+  k2 = - k1 - k_v1 - k_v2
+  phi2 = g * phi1 * &
+            ( (v1 * k_v2) * (k1 * v2) * (k2 * k_v1) &
+            + (v1 * k_v2) * (k1 * k_v1) * (k2 * v2) &
+            + (v1 * k1) * (v2 * k_v1) * (k2 * k_v2) &
+            + (v1 * k2) * (v2 * k_v1) * (k1 * k_v2) &
+            - (v1 * v2) * (k1 * k_v2) * (k2 * k_v1) &
+            - (v1 * v2) * (k1 * k_v1) * (k2 * k_v2) &
+            - (v1 * k2) * (v2 * k1) * (k_v1 * k_v2) &
+            - (v1 * k1) * (v2 * k2) * (k_v1 * k_v2) )
+end function phi_phi2v_m_7
+@
+\begin{equation}
+  V_2^\mu =g \left ( k_1^\mu     \left ( V_1 \cdot k_{V_2} \right ) 
+                                 \left ( k_2 \cdot k_{V_1} \right ) \\
+                   + k_2^\mu     \left ( V_1 \cdot k_{V_2} \right )
+                                 \left ( k_1 \cdot k_{V_1} \right ) \\
+                   + k_{V_1}^\mu \left ( V_1 \cdot k_1 \right )  
+                                 \left ( k_2 \cdot k_{V_2} \right ) \\
+                   + k_{V_1}^\mu \left ( V_1 \cdot k_2 \right )  
+                                 \left ( k_1 \cdot k_{V_2} \right ) \\ 
+                   - k_1^\mu     \left ( V_1 \cdot k_2 \right ) 
+                                 \left ( k_{V_1} \cdot k_{V_2} \right ) \\                              
+                   - k_2^\mu     \left ( V_1 \cdot k_1 \right )  
+                                 \left ( k_{V_1} \cdot k_{V_2} \right ) \\                                            
+                   - k_{V_1}^\mu \left ( k_1 \cdot k_{V_2} \right )  
+                                 \left ( k_2 \cdot k_{V_1} \right ) \\                                             
+                   - k_{V_1}^\mu \left ( k_1 \cdot k_{V_1} \right )  
+                                 \left ( k_2 \cdot k_{V_2} \right )                                                            
+                \right ) \\
+                \phi_1 (k_1) \phi_2 (k_2)
+\end{equation} 
+<<Implementation of couplings>>=
+pure function v_phi2v_m_7 (g, phi1, k1, phi2, k2, v1, k_v1) result (v2)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2, k_v1
+  type(vector), intent(in) :: v1
+  type(momentum) :: k_v2
+  type(vector) :: v2
+  k_v2 = - k_v1 - k1 - k2
+  v2 = g * phi1 * phi2 * &
+          ( k1 * (v1 * k_v2) * (k2 * k_v1) &
+          + k2 * (v1 * k_v2) * (k1 * k_v1) &
+          + k_v1 * (v1 * k1) * (k2 * k_v2) &
+          + k_v1 * (v1 * k2) * (k1 * k_v2) &
+          - k1 * (v1 * k2) * (k_v1 * k_v2) &
+          - k2 * (v1 * k1) * (k_v1 * k_v2) &
+          - v1 * (k1 * k_v2) * (k2 * k_v1) &
+          - v1 * (k1 * k_v1) * (k2 * k_v2) )
+end function v_phi2v_m_7
+@ \section{Transversal Gauge4 Dim-8 Couplings}
+<<Declaration of couplings>>=
+public :: g_dim8g3_t_0, g_dim8g3_t_1, g_dim8g3_t_2
+@
+\begin{equation}
+V_1^\mu = g \left [ k_2^\mu \left ( k_1 \cdot V_2 \right ) - V_2^\mu 
+        \left ( k_1 \cdot k_2 \right ) \right ] \left [ \left ( 
+        k_3 \cdot V_4 \right) \left ( k_4 \cdot V_3 \right ) -
+        \left (V_3 \cdot V_4 \right ) \left ( k_3 \cdot k_4 \right )
+        \right ]
+\end{equation}
+<<Implementation of couplings>>=
+pure function g_dim8g3_t_0 (g, v2, k2, v3, k3, v4, k4) result (v1)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v2, v3, v4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(vector) :: v1
+  type(momentum) :: k1
+  k1 = - k2 - k3 - k4
+  v1 = g * (k2 * (k1 * v2) - v2 * (k1 * k2)) & 
+         * ((k3 * v4) * (k4 * v3) - (v3 * v4) * (k3 * k4))
+end function g_dim8g3_t_0
+@
+\begin{equation}
+V_1^\mu = g \left [ k_2^\mu \left ( k_1 \cdot V_2 \right ) - V_2^\mu 
+        \left ( k_1 \cdot k_2 \right ) \right ] \left [ \left ( 
+        k_3 \cdot V_4 \right) \left ( k_4 \cdot V_3 \right ) -
+        \left (V_3 \cdot V_4 \right ) \left ( k_3 \cdot k_4 \right )
+        \right ]
+\end{equation}
+<<Implementation of couplings>>=
+pure function g_dim8g3_t_1 (g, v2, k2, v3, k3, v4, k4) result (v1)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v2, v3, v4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(vector) :: v1
+  type(momentum) :: k1
+  k1 = - k2 - k3 - k4
+  v1 = g * (v3 * (v2 * k4) * (k1 * k3) * (k2 * v4) &
+          + v4 * (v2 * k3) * (k1 * k4) * (k2 * v3) &
+          + k3 * (v2 * v4) * (k1 * v3) * (k2 * k4) &
+          + k4 * (v2 * v3) * (k1 * v4) * (k2 * k3) &
+          - v3 * (v2 * v4) * (k1 * k3) * (k2 * k4) &
+          - v4 * (v2 * v3) * (k1 * k4) * (k2 * k3) &
+          - k3 * (v2 * k4) * (k1 * v3) * (k2 * v4) &
+          - k4 * (v2 * k3) * (k1 * v4) * (k2 * v3))
+end function g_dim8g3_t_1
+@
+\begin{equation}
+V_1^\mu = g  \left [ k_2^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_1\right ) \\
+                   + k_3^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_2\right ) \\ 
+                   + k_2^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot k_1\right ) \left (V_4 \cdot k_3\right ) \\
+                   + k_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_2\right ) \left (V_4 \cdot k_3\right ) \\
+                   + k_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_2\right ) \\
+                   + k_3^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_2\right ) \\
+                   - k_3^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_4\right ) \left (k_1 \cdot k_2\right ) \\
+                   - V_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot k_4\right ) \left (k_1 \cdot k_2\right ) \\
+                   - k_4^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_3\right ) \left (k_1 \cdot k_2\right ) \\
+                   - V_3^\mu \left (V_2 \cdot k_4\right ) \left (V_4 \cdot k_3\right ) \left (k_1 \cdot k_2\right ) \\
+                   - k_2^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_3\right ) \\
+                   + k_2^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_4\right ) \left (k_1 \cdot k_3\right ) \\
+                   - V_2^\mu \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_2\right ) \left (k_1 \cdot k_3\right ) \\
+                   - k_2^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_4\right ) \\
+                   + k_2^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_3\right ) \left (k_1 \cdot k_4\right ) \\
+                   - V_2^\mu \left (V_3 \cdot k_2\right ) \left (V_4 \cdot k_3\right ) \left (k_1 \cdot k_4\right ) \\
+                   - k_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot V_4\right ) \left (k_2 \cdot k_3\right ) \\
+                   + V_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_4\right ) \left (k_2 \cdot k_3\right ) \\
+                   - V_2^\mu \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_1\right ) \left (k_2 \cdot k_3\right ) \\
+                   + V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_4\right ) \left (k_2 \cdot k_3\right ) \\
+                   - k_3^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot V_4\right ) \left (k_2 \cdot k_4\right ) \\
+                   + V_3^\mu \left (V_2 \cdot k_1\right ) \left (V_4 \cdot k_3\right ) \left (k_2 \cdot k_4\right ) \\
+                   - V_2^\mu \left (V_3 \cdot k_1\right ) \left (V_4 \cdot k_3\right ) \left (k_2 \cdot k_4\right ) \\
+                   + V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_3\right ) \left (k_2 \cdot k_4\right ) \\
+                   - k_2^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_1\right ) \left (k_3 \cdot k_4\right ) \\
+                   - V_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_2\right ) \left (k_3 \cdot k_4\right ) \\
+                   - k_2^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_1\right ) \left (k_3 \cdot k_4\right ) \\
+                   + V_2^\mu \left (V_3 \cdot k_2\right ) \left (V_4 \cdot k_1\right ) \left (k_3 \cdot k_4\right ) \\
+                   - V_3^\mu \left (V_2 \cdot k_1\right ) \left (V_4 \cdot k_2\right ) \left (k_3 \cdot k_4\right ) \\
+                   + V_2^\mu \left (V_3 \cdot k_1\right ) \left (V_4 \cdot k_2\right ) \left (k_3 \cdot k_4\right ) \\
+                   + V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_1 \cdot k_2\right ) \left (k_3 \cdot k_4\right ) \\
+                   + V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_1 \cdot k_2\right ) \left (k_3 \cdot k_4\right )
+               \right ]
+\end{equation}  
+<<Implementation of couplings>>=
+pure function g_dim8g3_t_2 (g, v2, k2, v3, k3, v4, k4) result (v1)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v2, v3, v4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(vector) :: v1
+  type(momentum) :: k1
+  k1 = - k2 - k3 - k4
+  v1 = g * (k2 * (v2 * k3) * (v3 * k4) * (v4 * k1) &
+          + k3 * (v2 * k1) * (v3 * k4) * (v4 * k2) &
+          + k2 * (v2 * k4) * (v3 * k1) * (v4 * k3) &
+          + k4 * (v2 * k1) * (v3 * k2) * (v4 * k3) &
+          + k4 * (v2 * k3) * (v3 * v4) * (k1 * k2) &
+          + k3 * (v2 * k4) * (v3 * v4) * (k1 * k2) &
+          - k3 * (v2 * v4) * (v3 * k4) * (k1 * k2) & 
+          - v4 * (v2 * k3) * (v3 * k4) * (k1 * k2) &
+          - k4 * (v2 * v3) * (v4 * k3) * (k1 * k2) &
+          - v3 * (v2 * k4) * (v4 * k3) * (k1 * k2) &
+          - k2 * (v2 * k4) * (v3 * v4) * (k1 * k3) &
+          + k2 * (v2 * v4) * (v3 * k4) * (k1 * k3) &
+          - v2 * (v3 * k4) * (v4 * k2) * (k1 * k3) &
+          - k2 * (v2 * k3) * (v3 * v4) * (k1 * k4) &
+          + k2 * (v2 * v3) * (v4 * k3) * (k1 * k4) &
+          - v2 * (v3 * k2) * (v4 * k3) * (k1 * k4) &
+          - k4 * (v2 * k1) * (v3 * v4) * (k2 * k3) &
+          + v4 * (v2 * k1) * (v3 * k4) * (k2 * k3) &
+          - v2 * (v3 * k4) * (v4 * k1) * (k2 * k3) &
+          + v2 * (v3 * v4) * (k1 * k4) * (k2 * k3) &
+          - k3 * (v2 * k1) * (v3 * v4) * (k2 * k4) &
+          + v3 * (v2 * k1) * (v4 * k3) * (k2 * k4) &
+          - v2 * (v3 * k1) * (v4 * k3) * (k2 * k4) &
+          + v2 * (v3 * v4) * (k1 * k3) * (k2 * k4) &
+          - k2 * (v2 * v4) * (v3 * k1) * (k3 * k4) &
+          - v4 * (v2 * k1) * (v3 * k2) * (k3 * k4) &
+          - k2 * (v2 * v3) * (v4 * k1) * (k3 * k4) &
+          + v2 * (v3 * k2) * (v4 * k1) * (k3 * k4) &
+          - v3 * (v2 * k1) * (v4 * k2) * (k3 * k4) &
+          + v2 * (v3 * k1) * (v4 * k2) * (k3 * k4) &
+          + v4 * (v2 * v3) * (k1 * k2) * (k3 * k4) &
+          + v3 * (v2 * v4) * (k1 * k2) * (k3 * k4))
+end function g_dim8g3_t_2
+@ \section{Mixed Gauge4 Dim-8 Couplings}
+<<Declaration of couplings>>=
+public :: g_dim8g3_m_0, g_dim8g3_m_1, g_dim8g3_m_7
+@
+\begin{equation}
+ V_1^\mu = g_1 \left [ V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_2\right ) \\  
+                     - k_2^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot V_4\right ) \\
+               \right ]                                                                  \\
+         + g_2 \left [ V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_3 \cdot k_4\right ) \\ 
+                     - V_2^\mu \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_3\right ) \\
+               \right ] 
+\end{equation}
+<<Implementation of couplings>>=
+pure function g_dim8g3_m_0 (g1, g2, v2, k2, v3, k3, v4, k4) result (v1)
+  complex(kind=default), intent(in) :: g1, g2
+  type(vector), intent(in) :: v2, v3, v4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(vector) :: v1
+  type(momentum) :: k1
+  k1 = - k2 - k3 - k4
+  v1 = g1 * (v2 * (v3 * v4) * (k1 * k2)  &
+           - k2 * (v2 * k1) * (v3 * v4)) &
+     + g2 * (v2 * (v3 * v4) * (k3 * k4)  &
+           - v2 * (v3 * k4) * (v4 * k3))
+end function g_dim8g3_m_0
+@
+\begin{equation}
+ V_1^\mu = g_1 \left [ k_2^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_1\right ) \\  
+                     + V_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_2\right ) \\
+                     + k_2^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_1\right ) \\
+                     + V_3^\mu \left (V_2 \cdot k_1\right ) \left (V_4 \cdot k_2\right ) \\ 
+                     - V_2^\mu \left (V_3 \cdot k_2\right ) \left (V_4 \cdot k_1\right ) \\          
+                     - V_2^\mu \left (V_3 \cdot k_1\right ) \left (V_4 \cdot k_2\right ) \\
+                     - V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_1 \cdot k_2\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_1 \cdot k_2\right ) \\
+               \right ]                                                                  \\ 
+         + g_2 \left [ k_3^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_4\right ) \\    
+                     - k_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot V_4\right ) \\ 
+                     - k_3^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot V_4\right ) \\ 
+                     + V_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot k_4\right ) \\ 
+                     + k_4^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     + V_3^\mu \left (V_2 \cdot k_4\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     - V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_3 \cdot k_4\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_3 \cdot k_4\right ) \\
+                \right ] 
+\end{equation}
+<<Implementation of couplings>>=
+pure function g_dim8g3_m_1 (g1, g2, v2, k2, v3, k3, v4, k4) result (v1)
+  complex(kind=default), intent(in) :: g1, g2
+  type(vector), intent(in) :: v2, v3, v4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(vector) :: v1
+  type(momentum) :: k1
+  k1 = - k2 - k3 - k4
+  v1 = g1 * (k2 * (v2 * v4) * (v3 * k1)  &
+           + v4 * (v2 * k1) * (v3 * k2)  &
+           + k2 * (v2 * v3) * (v4 * k1)  &
+           + v3 * (v2 * k1) * (v4 * k2)  &
+           - v2 * (v3 * k2) * (v4 * k1)  &          
+           - v2 * (v3 * k1) * (v4 * k2)  &
+           - v4 * (v2 * v3) * (k1 * k2)  &
+           - v3 * (v2 * v4) * (k1 * k2)) &
+     + g2 * (k3 * (v2 * v4) * (v3 * k4)  &   
+           - k4 * (v2 * k3) * (v3 * v4)  &
+           - k3 * (v2 * k4) * (v3 * v4)  &
+           + v4 * (v2 * k3) * (v3 * k4)  &
+           + k4 * (v2 * v3) * (v4 * k3)  &
+           + v3 * (v2 * k4) * (v4 * k3)  &
+           - v4 * (v2 * v3) * (k3 * k4)  &
+           - v3 * (v2 * v4) * (k3 * k4))
+end function g_dim8g3_m_1
+@
+\begin{equation}
+ V_1^\mu = g_1 \left [ V_2^\mu \left (V_3 \cdot k_2\right ) \left (V_4 \cdot k_1\right ) \\  
+                     + V_2^\mu \left (V_4 \cdot k_1\right ) \left (V_4 \cdot k_2\right ) \\
+                     + V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_1 \cdot k_2\right ) \\
+                     + V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_1 \cdot k_2\right ) \\ 
+                     - k_2^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_1\right ) \\          
+                     - V_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_2\right ) \\
+                     - k_2^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_1\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot k_1\right ) \left (V_4 \cdot k_2\right ) \\
+               \right ]                                                                  \\
+         + g_2 \left [ k_3^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot V_4\right ) \\    
+                     + k_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot V_4\right ) \\ 
+                     + k_2^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot V_4\right ) \\ 
+                     + k_2^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot V_4\right ) \\ 
+                     + V_4^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot k_1\right ) \\ 
+                     + k_4^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_2\right ) \\ 
+                     + V_3^\mu \left (V_2 \cdot k_3\right ) \left (V_4 \cdot k_1\right ) \\ 
+                     + V_2^\mu \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_1\right ) \\
+                     + V_3^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_2\right ) \\ 
+                     + V_2^\mu \left (V_3 \cdot k_4\right ) \left (V_4 \cdot k_2\right ) \\ 
+                     + V_2^\mu \left (V_3 \cdot k_1\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     + V_2^\mu \left (V_3 \cdot k_2\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     + V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_1 \cdot k_3\right ) \\ 
+                     + V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_1 \cdot k_4\right ) \\ 
+                     + V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_2 \cdot k_3\right ) \\ 
+                     + V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_2 \cdot k_4\right ) \\         
+                     - k_4^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_1\right ) \\  
+                     - V_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot k_1\right ) \\ 
+                     - k_3^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_2\right ) \\
+                     - V_4^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot k_2\right ) \\
+                     - k_2^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_4\right ) \\ 
+                     - V_4^\mu \left (V_2 \cdot k_1\right ) \left (V_3 \cdot k_4\right ) \\ 
+                     - k_3^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_1\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot k_4\right ) \left (V_4 \cdot k_1\right ) \\ 
+                     - k_4^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_2\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot k_3\right ) \left (V_4 \cdot k_2\right ) \\
+                     - k_2^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot k_1\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     - V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_3\right ) \\ 
+                     - V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_1 \cdot k_4\right ) \\ 
+                     - V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_2 \cdot k_3\right ) \\
+                     - V_2^\mu \left (V_3 \cdot V_4\right ) \left (k_2 \cdot k_4\right ) \\ 
+                \right ] 
+         + g_3 \left [ k_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot V_4\right ) \\    
+                     + k_3^\mu \left (V_2 \cdot k_4\right ) \left (V_3 \cdot V_4\right ) \\ 
+                     + V_4^\mu \left (V_2 \cdot V_3\right ) \left (k_3 \cdot k_4\right ) \\ 
+                     + V_3^\mu \left (V_2 \cdot V_4\right ) \left (k_3 \cdot k_4\right ) \\ 
+                     - k_3^\mu \left (V_2 \cdot V_4\right ) \left (V_3 \cdot k_4\right ) \\ 
+                     - V_4^\mu \left (V_2 \cdot k_3\right ) \left (V_3 \cdot k_4\right ) \\ 
+                     - k_4^\mu \left (V_2 \cdot V_3\right ) \left (V_4 \cdot k_3\right ) \\ 
+                     - V_3^\mu \left (V_2 \cdot k_4\right ) \left (V_4 \cdot k_3\right ) \\
+                \right ] 
+\end{equation}
+<<Implementation of couplings>>=
+pure function g_dim8g3_m_7 (g1, g2, g3, v2, k2, v3, k3, v4, k4) result (v1)
+  complex(kind=default), intent(in) :: g1, g2, g3
+  type(vector), intent(in) :: v2, v3, v4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(vector) :: v1
+  type(momentum) :: k1
+  k1 = - k2 - k3 - k4
+  v1 = g1 * (v2 * (v3 * k2) * (v4 * k1)  &
+           + v2 * (v3 * k1) * (v4 * k2)  & 
+           + v4 * (v2 * v3) * (k1 * k2)  &
+           + v3 * (v2 * v4) * (k1 * k2)  &
+           - k2 * (v2 * v4) * (v3 * k1)  &
+           - v4 * (v2 * k1) * (v3 * k2)  &
+           - k2 * (v2 * v3) * (v4 * k1)  &
+           - v3 * (v2 * k1) * (v4 * k2)) &
+     + g2 * (k3 * (v2 * k1) * (v3 * v4)  & 
+           + k4 * (v2 * k1) * (v3 * v4)  &
+           + k2 * (v2 * k3) * (v3 * v4)  &
+           + k2 * (v2 * k4) * (v3 * v4)  &
+           + v4 * (v2 * k4) * (v3 * k1)  &
+           + k4 * (v2 * v4) * (v3 * k2)  &
+           + v3 * (v2 * k3) * (v4 * k1)  &
+           + v2 * (v3 * k4) * (v4 * k1)  &
+           + k3 * (v2 * v3) * (v4 * k2)  &
+           + v2 * (v3 * k4) * (v4 * k2)  &
+           + v2 * (v3 * k1) * (v4 * k3)  &
+           + v2 * (v3 * k2) * (v4 * k3)  &
+           + v4 * (v2 * v3) * (k1 * k3)  &
+           + v3 * (v2 * v4) * (k1 * k4)  &
+           + v3 * (v2 * v4) * (k2 * k3)  &
+           + v4 * (v2 * v3) * (k2 * k4)  &
+           - k4 * (v2 * v4) * (v3 * k1)  &
+           - v4 * (v2 * k3) * (v3 * k1)  &
+           - k3 * (v2 * v4) * (v3 * k2)  &
+           - v4 * (v2 * k4) * (v3 * k2)  &
+           - k2 * (v2 * v4) * (v3 * k4)  &
+           - v4 * (v2 * k1) * (v3 * k4)  &
+           - k3 * (v2 * v3) * (v4 * k1)  &
+           - v3 * (v2 * k4) * (v4 * k1)  &
+           - k4 * (v2 * v3) * (v4 * k2)  &
+           - v3 * (v2 * k3) * (v4 * k2)  &
+           - k2 * (v2 * v3) * (v4 * k3)  &
+           - v3 * (v2 * k1) * (v4 * k3)  &
+           - v2 * (v3 * v4) * (k1 * k3)  &
+           - v2 * (v3 * v4) * (k1 * k4)  &
+           - v2 * (v3 * v4) * (k2 * k3)  &
+           - v2 * (v3 * v4) * (k2 * k4)) &
+     + g3 * (k4 * (v2 * k3) * (v3 * v4)  &
+           + k3 * (v2 * k4) * (v3 * v4)  &
+           + v4 * (v2 * v3) * (k3 * k4)  &
+           + v3 * (v2 * v4) * (k3 * k4)  &
+           - k3 * (v2 * v4) * (v3 * k4)  &
+           - v4 * (v2 * k3) * (v3 * k4)  &
+           - k4 * (v2 * v3) * (v4 * k3)  &
+           - v3 * (v2 * k4) * (v4 * k3)) 
+end function g_dim8g3_m_7
 @ \section{Graviton Couplings}
 <<Declaration of couplings>>=
 public :: s_gravs, v_gravv, grav_ss, grav_vv

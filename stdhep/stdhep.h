@@ -44,3 +44,6 @@ void stdquarks_(int *index, int *quark1, int *quark2, int *quark3,
 #if defined(c_plusplus) || defined(__cplusplus)
 }
 #endif
+
+void StdHepZero();
+int StdHepTempCopy(int idir, int istr);

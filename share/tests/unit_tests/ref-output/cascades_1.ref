@@ -1660,126 +1660,126 @@ Hash array
  grove #1
  ! Channel #1
    tree  3 7
-   map   3 infrared       21 ! gl
+   map   3 infrared         21 ! gl
  ! Channel #2
    tree  5 7
-   map   5 collinear       1 ! d
+   map   5 collinear         1 ! d
  ! Channel #3
    tree  6 7
-   map   6 collinear      -1 ! dbar
+   map   6 collinear        -1 ! dbar
 
  ! Multiplicity = 1, 1 resonance,   1 logs,  0 off-shell,  s-channel graph
  grove #2
  ! Channel #4
    tree  5 7
-   map   5 collinear       1 ! d
-   map   7 s_channel      23 ! Z
+   map   5 collinear         1 ! d
+   map   7 s_channel        23 ! Z
  ! Channel #5
    tree  6 7
-   map   6 collinear      -1 ! dbar
-   map   7 s_channel      23 ! Z
+   map   6 collinear        -1 ! dbar
+   map   7 s_channel        23 ! Z
 
  ! Multiplicity = 3, no resonances,  2 logs,  0 off-shell,  1 t-channel line
  grove #3
  ! Channel #6
    tree  5 10
-   map   5 collinear       1 ! d
-   map  10 t_channel      24 ! W+
+   map   5 collinear         1 ! d
+   map  10 t_channel        24 ! W+
  ! Channel #7
    tree  6 14
-   map   6 collinear      -1 ! dbar
-   map  14 t_channel      24 ! W+
+   map   6 collinear        -1 ! dbar
+   map  14 t_channel        24 ! W+
  ! Channel #8
    tree  6 17
-   map   6 collinear      -1 ! dbar
-   map  17 t_channel      24 ! W+
+   map   6 collinear        -1 ! dbar
+   map  17 t_channel        24 ! W+
  ! Channel #9
    tree  5 21
-   map   5 collinear       1 ! d
-   map  21 t_channel      24 ! W+
+   map   5 collinear         1 ! d
+   map  21 t_channel        24 ! W+
 
  ! Multiplicity = 3, no resonances,  2 logs,  0 off-shell,  1 t-channel line
  grove #4
  ! Channel #10
    tree  3 12
-   map   3 infrared       22 ! A
-   map  12 t_channel       2 ! u
+   map   3 infrared         22 ! A
+   map  12 t_channel         2 ! u
  ! Channel #11
    tree  3 11
-   map   3 infrared       22 ! A
-   map  11 t_channel       2 ! u
+   map   3 infrared         22 ! A
+   map  11 t_channel         2 ! u
  ! Channel #12
    tree  3 20
-   map   3 infrared       22 ! A
-   map  20 t_channel       2 ! u
+   map   3 infrared         22 ! A
+   map  20 t_channel         2 ! u
  ! Channel #13
    tree  3 19
-   map   3 infrared       22 ! A
-   map  19 t_channel       2 ! u
+   map   3 infrared         22 ! A
+   map  19 t_channel         2 ! u
 
  ! Multiplicity = 2, 1 resonance,   1 logs,  0 off-shell,  1 t-channel line
  grove #5
  ! Channel #14
    tree  3 12
-   map   3 s_channel      23 ! Z
-   map  12 t_channel       2 ! u
+   map   3 s_channel        23 ! Z
+   map  12 t_channel         2 ! u
  ! Channel #15
    tree  3 11
-   map   3 s_channel      23 ! Z
-   map  11 t_channel       2 ! u
+   map   3 s_channel        23 ! Z
+   map  11 t_channel         2 ! u
  ! Channel #16
    tree  3 20
-   map   3 s_channel      23 ! Z
-   map  20 t_channel       2 ! u
+   map   3 s_channel        23 ! Z
+   map  20 t_channel         2 ! u
  ! Channel #17
    tree  3 19
-   map   3 s_channel      23 ! Z
-   map  19 t_channel       2 ! u
+   map   3 s_channel        23 ! Z
+   map  19 t_channel         2 ! u
 
  ! Multiplicity = 3, no resonances,  1 logs,  1 off-shell,  1 t-channel line
  grove #6
  ! Channel #18
    tree  3 12
-   map  12 t_channel       2 ! u
+   map  12 t_channel         2 ! u
  ! Channel #19
    tree  3 11
-   map  11 t_channel       2 ! u
+   map  11 t_channel         2 ! u
  ! Channel #20
    tree  3 20
-   map  20 t_channel       2 ! u
+   map  20 t_channel         2 ! u
  ! Channel #21
    tree  3 19
-   map  19 t_channel       2 ! u
+   map  19 t_channel         2 ! u
 
  ! Multiplicity = 3, no resonances,  2 logs,  0 off-shell,  2 t-channel lines
  grove #7
  ! Channel #22
    tree  10 11
-   map  10 u_channel      24 ! W+
-   map  11 t_channel       2 ! u
+   map  10 u_channel        24 ! W+
+   map  11 t_channel         2 ! u
  ! Channel #23
    tree  12 14
-   map  12 u_channel       2 ! u
-   map  14 t_channel      24 ! W+
+   map  12 u_channel         2 ! u
+   map  14 t_channel        24 ! W+
  ! Channel #24
    tree  17 19
-   map  17 u_channel      24 ! W+
-   map  19 t_channel       2 ! u
+   map  17 u_channel        24 ! W+
+   map  19 t_channel         2 ! u
  ! Channel #25
    tree  20 21
-   map  20 u_channel       2 ! u
-   map  21 t_channel      24 ! W+
+   map  20 u_channel         2 ! u
+   map  21 t_channel        24 ! W+
 
  ! Multiplicity = 3, no resonances,  2 logs,  0 off-shell,  2 t-channel lines
  grove #8
  ! Channel #26
    tree  10 14
-   map  10 u_channel      21 ! gl
-   map  14 t_channel      21 ! gl
+   map  10 u_channel        21 ! gl
+   map  14 t_channel        21 ! gl
  ! Channel #27
    tree  17 21
-   map  17 u_channel      21 ! gl
-   map  21 t_channel      21 ! gl
+   map  17 u_channel        21 ! gl
+   map  21 t_channel        21 ! gl
 * Cleanup
 
 

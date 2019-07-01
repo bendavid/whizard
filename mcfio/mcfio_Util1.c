@@ -825,7 +825,7 @@ void mcfioC_InfoBlockChar(int stream, int blkid,
       case MCFIO_VERSION:
        tt = xdr_setpos(str->xdr, pos); 
        tt = xdr_mcfast_generic(str->xdr, &itmp, &nn, &vv, &data);
-       xdr_free(xdr_string, data); 
+       xdr_free((xdrproc_t)xdr_string, data); 
        strcpy(answer, vv);
        break;
       

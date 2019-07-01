@@ -332,17 +332,17 @@ subgraph cluster0 {
 edge[color=green]
 transforms -> basics
 transforms -> process_integration
-transforms -> phase_space
 transforms -> rng
 transforms -> qft
 transforms -> beams
 transforms -> variables
 transforms -> shower
-transforms -> system
+transforms -> phase_space
 transforms -> expr_base
 transforms -> fks
 transforms -> matching
 transforms -> utilities
+transforms -> system
 transforms -> model_features
 transforms -> particles
 transforms -> physics

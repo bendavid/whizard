@@ -97,22 +97,22 @@ bool_t xdr_stdhep_(XDR *xdrs, int *blockid,
      }
      idat = stdtmp_.isthept;
      if     ( xdr_array(xdrs, (char **)  &idat,
-         &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+	 &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = stdtmp_.idhept;
      if     ( xdr_array(xdrs, (char **)   &idat,
-         &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+         &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) stdtmp_.jmohept;
      if     ( xdr_array(xdrs, (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+         &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) stdtmp_.jdahept;
      if     ( xdr_array(xdrs,  (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  stdtmp_.phept;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nnw5, 5*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &nnw5, 5*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *) stdtmp_.vhept;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnw4, 4*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnw4, 4*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      return TRUE;
 }   
 
@@ -167,22 +167,22 @@ bool_t xdr_stdhep_multi_(XDR *xdrs, int *blockid,
      }
      idat = hepevt_.isthep;
      if     ( xdr_array(xdrs, (char **)  &idat,
-            &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepevt_.idhep;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) hepevt_.jmohep;
      if     ( xdr_array(xdrs, (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = (int *) hepevt_.jdahep;
      if     ( xdr_array(xdrs,  (char **)   &idat,
-                &nnw2, 2*NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+                &nnw2, 2*NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  hepevt_.phep;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nnw5, 5*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &nnw5, 5*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *) hepevt_.vhep;
      if     ( xdr_array(xdrs, (char **)    &dat,
-                &nnw4, 4*NMXHEP, sizeof(double), xdr_double) == FALSE) return FALSE;
+                &nnw4, 4*NMXHEP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE;
      /*
      ** V2.02 Upgrade : adding Multiple interactions. 
      */ 
@@ -194,13 +194,13 @@ bool_t xdr_stdhep_multi_(XDR *xdrs, int *blockid,
      if ( xdr_int(xdrs, &(hepev2_.nmulti)) == FALSE) return FALSE;
      idat = hepev2_.jmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-         &nnw, NMXHEP, sizeof(int), xdr_int) == FALSE) return FALSE;
+         &nnw, NMXHEP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      /*
      ** V4.04 Upgrade : adding more Multiple interaction information
      */ 
      if (((strcmp(vers,"2.") > 0) || (strcmp(vers,"3.") > 0)) 
             && (xdrs->x_op == XDR_DECODE)) {
-	   for (i = 0; i <= NMXMLT; i++) {
+	   for (i = 0; i < NMXMLT; i++) {
 	       hepev3_.nevmulti[i] = 0;
 	       hepev3_.itrkmulti[i] = 0;
 	       hepev3_.mltstr[i] = 0;
@@ -210,7 +210,7 @@ bool_t xdr_stdhep_multi_(XDR *xdrs, int *blockid,
      if (((strcmp(vers,"4.00") == 0) || (strcmp(vers,"4.01") == 0) ||
           (strcmp(vers,"4.02") == 0) || (strcmp(vers,"4.03") == 0) )  
             && (xdrs->x_op == XDR_DECODE)) {
-	   for (i = 0; i <= NMXMLT; i++) {
+	   for (i = 0; i < NMXMLT; i++) {
 	       hepev3_.nevmulti[i] = 0;
 	       hepev3_.itrkmulti[i] = 0;
 	       hepev3_.mltstr[i] = 0;
@@ -219,13 +219,13 @@ bool_t xdr_stdhep_multi_(XDR *xdrs, int *blockid,
      }      
      idat = hepev3_.nevmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepev3_.itrkmulti;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepev3_.mltstr;
      if     ( xdr_array(xdrs, (char **)   &idat,
-            &nnmlt, NMXMLT, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nnmlt, NMXMLT, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      return TRUE;
 }   
 

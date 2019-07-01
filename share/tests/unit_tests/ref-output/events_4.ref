@@ -4,7 +4,7 @@
 * Generate test process event and save particle set
 
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -180,7 +180,7 @@ event_excess* =>  0.000000000000E+00
 * Transfer sqme and evaluate expressions
 
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

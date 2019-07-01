@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -170,7 +170,7 @@ contains
       os_data%whizard_libtool = "my-libtool"
     end associate
 
-    call compilation%write_makefile (global%os_data)
+    call compilation%write_makefile (global%os_data, verbose = .true.)
 
     open (u_file, file = char (exename) // ".makefile", &
          status = "old", action = "read")
@@ -227,7 +227,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write Makefile"
 
-    call compilation%write_makefile (global%os_data)
+    call compilation%write_makefile (global%os_data, verbose = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Build libraries"

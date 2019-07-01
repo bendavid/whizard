@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -214,7 +214,7 @@ contains
     integer, intent(in), optional :: unit
     type(flavor_t) :: flv
     integer :: u, i
-2   format(3x,A,1x,I3,1x,A,1x,I7,1x,'!',1x,A)
+2   format(3x,A,1x,I3,1x,A,1x,I9,1x,'!',1x,A)
     u = given_output_unit (unit);  if (u < 0)  return
     call write_reduced (cascade%tree, u)
     write (u, "(A)")

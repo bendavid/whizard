@@ -412,7 +412,16 @@ type 'a vertex4 =
   | DScalar2_Vector2 of (int * contract4) list
   | Dim8_Scalar2_Vector2_1 of int
   | Dim8_Scalar2_Vector2_2 of int
+  | Dim8_Scalar2_Vector2_m_0 of int
+  | Dim8_Scalar2_Vector2_m_1 of int  
+  | Dim8_Scalar2_Vector2_m_7 of int
   | Dim8_Scalar4 of int
+  | Dim8_Vector4_t_0 of (int * contract4) list
+  | Dim8_Vector4_t_1 of (int * contract4) list  
+  | Dim8_Vector4_t_2 of (int * contract4) list
+  | Dim8_Vector4_m_0 of (int * contract4) list  
+  | Dim8_Vector4_m_1 of (int * contract4) list  
+  | Dim8_Vector4_m_7 of (int * contract4) list
   | GBBG of int * fermionbar * boson2 * fermion
 
 (* In some applications, we have to allow for contributions outside of
@@ -464,7 +473,17 @@ type 'a vertex4 =
    \end{equation} *)
   | Vector4_K_Matrix_tho of int * ('a * 'a) list    
   | Vector4_K_Matrix_jr of int * (int * contract4) list
+  | Vector4_K_Matrix_cf_t0 of int * (int * contract4) list 
+  | Vector4_K_Matrix_cf_t1 of int * (int * contract4) list
+  | Vector4_K_Matrix_cf_t2 of int * (int * contract4) list
+  | Vector4_K_Matrix_cf_t_rsi of int * (int * contract4) list
+  | Vector4_K_Matrix_cf_m0 of int * (int * contract4) list  
+  | Vector4_K_Matrix_cf_m1 of int * (int * contract4) list   
+  | Vector4_K_Matrix_cf_m7 of int * (int * contract4) list
   | DScalar2_Vector2_K_Matrix_ms of int * (int * contract4) list
+  | DScalar2_Vector2_m_0_K_Matrix_cf of int * (int * contract4) list
+  | DScalar2_Vector2_m_1_K_Matrix_cf of int * (int * contract4) list
+  | DScalar2_Vector2_m_7_K_Matrix_cf of int * (int * contract4) list
   | DScalar4_K_Matrix_ms of int * (int * contract4) list
   | Dim6_H4_P2 of int
     (* %

@@ -416,16 +416,54 @@ module It (M : Model.T) =
           Vector4_K_Matrix_tho ((x * c),  ic4_list)
       | Vector4_K_Matrix_jr (c, ch2_list) ->
           Vector4_K_Matrix_jr ((x * c),  ch2_list)
+      | Vector4_K_Matrix_cf_t0 (c, ch2_list) ->
+          Vector4_K_Matrix_cf_t0 ((x * c),  ch2_list)              
+      | Vector4_K_Matrix_cf_t1 (c, ch2_list) ->
+          Vector4_K_Matrix_cf_t1 ((x * c),  ch2_list)           
+      | Vector4_K_Matrix_cf_t2 (c, ch2_list) ->
+          Vector4_K_Matrix_cf_t2 ((x * c),  ch2_list)
+      | Vector4_K_Matrix_cf_t_rsi (c, ch2_list) ->
+          Vector4_K_Matrix_cf_t_rsi ((x * c),  ch2_list)          
+      | Vector4_K_Matrix_cf_m0 (c, ch2_list) ->
+          Vector4_K_Matrix_cf_m0 ((x * c),  ch2_list)    
+      | Vector4_K_Matrix_cf_m1 (c, ch2_list) ->
+          Vector4_K_Matrix_cf_m1 ((x * c),  ch2_list)
+      | Vector4_K_Matrix_cf_m7 (c, ch2_list) ->
+          Vector4_K_Matrix_cf_m7 ((x * c),  ch2_list)    
       | DScalar2_Vector2_K_Matrix_ms (c, ch2_list) ->
           DScalar2_Vector2_K_Matrix_ms ((x * c),  ch2_list)
+      | DScalar2_Vector2_m_0_K_Matrix_cf (c, ch2_list) ->
+          DScalar2_Vector2_m_0_K_Matrix_cf ((x * c),  ch2_list)     
+      | DScalar2_Vector2_m_1_K_Matrix_cf (c, ch2_list) ->
+          DScalar2_Vector2_m_1_K_Matrix_cf ((x * c),  ch2_list)
+      | DScalar2_Vector2_m_7_K_Matrix_cf (c, ch2_list) ->
+          DScalar2_Vector2_m_7_K_Matrix_cf ((x * c),  ch2_list)    
       | DScalar4_K_Matrix_ms (c, ch2_list) ->
           DScalar4_K_Matrix_ms ((x * c),  ch2_list)
       | Dim8_Scalar2_Vector2_1 c ->
           Dim8_Scalar2_Vector2_1 (x * c) 
       | Dim8_Scalar2_Vector2_2 c ->
           Dim8_Scalar2_Vector2_1 (x * c)
+      | Dim8_Scalar2_Vector2_m_0 c ->
+          Dim8_Scalar2_Vector2_m_0 (x * c)
+      | Dim8_Scalar2_Vector2_m_1 c ->
+          Dim8_Scalar2_Vector2_m_1 (x * c)  
+      | Dim8_Scalar2_Vector2_m_7 c ->
+          Dim8_Scalar2_Vector2_m_7 (x * c)     
       | Dim8_Scalar4 c ->
           Dim8_Scalar4 (x * c)
+      | Dim8_Vector4_t_0 ic4_list ->
+          Dim8_Vector4_t_0 (List.map (fun (c, icl) -> (x * c, icl)) ic4_list)
+      | Dim8_Vector4_t_1 ic4_list ->
+          Dim8_Vector4_t_1 (List.map (fun (c, icl) -> (x * c, icl)) ic4_list)          
+      | Dim8_Vector4_t_2 ic4_list ->
+          Dim8_Vector4_t_2 (List.map (fun (c, icl) -> (x * c, icl)) ic4_list)  
+      | Dim8_Vector4_m_0 ic4_list ->
+          Dim8_Vector4_m_0 (List.map (fun (c, icl) -> (x * c, icl)) ic4_list)  
+      | Dim8_Vector4_m_1 ic4_list ->
+          Dim8_Vector4_m_1 (List.map (fun (c, icl) -> (x * c, icl)) ic4_list) 
+      | Dim8_Vector4_m_7 ic4_list ->
+          Dim8_Vector4_m_7 (List.map (fun (c, icl) -> (x * c, icl)) ic4_list)    
       | Dim6_H4_P2 c ->
           Dim6_H4_P2 (x * c)
       | Dim6_AHWW_DPB c ->
@@ -526,8 +564,28 @@ module It (M : Model.T) =
           Vector4 (permute_contract4_list perm ic4_list)
       | Vector4_K_Matrix_jr (c, ic4_list) ->
           Vector4_K_Matrix_jr (c, permute_contract4_list perm ic4_list)
+      | Vector4_K_Matrix_cf_t0 (c, ic4_list) ->
+          Vector4_K_Matrix_cf_t0 (c, permute_contract4_list perm ic4_list)              
+      | Vector4_K_Matrix_cf_t1 (c, ic4_list) ->
+          Vector4_K_Matrix_cf_t1 (c, permute_contract4_list perm ic4_list)          
+      | Vector4_K_Matrix_cf_t2 (c, ic4_list) ->
+          Vector4_K_Matrix_cf_t2 (c, permute_contract4_list perm ic4_list)
+      | Vector4_K_Matrix_cf_t_rsi (c, ic4_list) ->
+          Vector4_K_Matrix_cf_t_rsi (c, permute_contract4_list perm ic4_list)          
+      | Vector4_K_Matrix_cf_m0 (c, ic4_list) ->
+          Vector4_K_Matrix_cf_m0 (c, permute_contract4_list perm ic4_list)   
+      | Vector4_K_Matrix_cf_m1 (c, ic4_list) ->
+          Vector4_K_Matrix_cf_m1 (c, permute_contract4_list perm ic4_list) 
+      | Vector4_K_Matrix_cf_m7 (c, ic4_list) ->
+          Vector4_K_Matrix_cf_m7 (c, permute_contract4_list perm ic4_list)    
       | DScalar2_Vector2_K_Matrix_ms (c, ic4_list) ->
           DScalar2_Vector2_K_Matrix_ms (c, permute_contract4_list perm ic4_list)
+      | DScalar2_Vector2_m_0_K_Matrix_cf (c, ic4_list) ->
+          DScalar2_Vector2_m_0_K_Matrix_cf (c, permute_contract4_list perm ic4_list)    
+      | DScalar2_Vector2_m_1_K_Matrix_cf (c, ic4_list) ->
+          DScalar2_Vector2_m_1_K_Matrix_cf (c, permute_contract4_list perm ic4_list)  
+      | DScalar2_Vector2_m_7_K_Matrix_cf (c, ic4_list) ->
+          DScalar2_Vector2_m_7_K_Matrix_cf (c, permute_contract4_list perm ic4_list)    
       | DScalar4_K_Matrix_ms (c, ic4_list) ->
           DScalar4_K_Matrix_ms (c, permute_contract4_list perm ic4_list)
       | Scalar2_Vector2 c ->
@@ -544,8 +602,26 @@ module It (M : Model.T) =
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_1"
       | Dim8_Scalar2_Vector2_2 ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_2"
+      | Dim8_Scalar2_Vector2_m_0 ic4_list ->
+          incomplete "permute_vertex4' Dim8_Scalar2_Vector2_m_0"   
+      | Dim8_Scalar2_Vector2_m_1 ic4_list ->
+          incomplete "permute_vertex4' Dim8_Scalar2_Vector2_m_1" 
+      | Dim8_Scalar2_Vector2_m_7 ic4_list ->
+          incomplete "permute_vertex4' Dim8_Scalar2_Vector2_m_7"    
       | Dim8_Scalar4 ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar4"
+      | Dim8_Vector4_t_0  ic4_list ->
+          incomplete "permute_vertex4' Dim8_Vector4_t_0"
+      | Dim8_Vector4_t_1  ic4_list ->
+          incomplete "permute_vertex4' Dim8_Vector4_t_1"          
+      | Dim8_Vector4_t_2  ic4_list ->
+          incomplete "permute_vertex4' Dim8_Vector4_t_2"     
+      | Dim8_Vector4_m_0  ic4_list ->
+          incomplete "permute_vertex4' Dim8_Vector4_m_0"  
+      | Dim8_Vector4_m_1  ic4_list ->
+          incomplete "permute_vertex4' Dim8_Vector4_m_1" 
+      | Dim8_Vector4_m_7  ic4_list ->
+          incomplete "permute_vertex4' Dim8_Vector4_m_7"    
       | Dim6_H4_P2 ic4_list ->
 	  incomplete "permute_vertex4' Dim6_H4_P2"
       | Dim6_AHWW_DPB ic4_list ->

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -811,65 +811,25 @@ contains
     logical, dimension(:), intent(in) :: mask1
     type(jet_definition_t), intent(in) :: jet_def
     logical, intent(in) :: keep_jets
-    integer, dimension(:), allocatable :: src, src_tmp
-    integer, dimension(:), allocatable :: map, jet_idx
+    integer, dimension(:), allocatable :: map, jet_index
     type(pseudojet_t), dimension(:), allocatable :: jet_in, jet_out
     type(pseudojet_vector_t) :: jv_in, jv_out
     type(cluster_sequence_t) :: cs
-    integer :: i, prt_idx, k, n_src, n_active, this_jet, combined_pdg, pdg, n_quarks
-    n_active = 0
-    allocate (map (pl1%n_active), source = 0)
-    allocate (src (0))
-    do i = 1, pl1%n_active
-       if (mask1(i)) then
-          call combine_index_lists (src_tmp, src, pl1%prt(i)%src)
-          if (allocated (src_tmp)) then
-             call move_alloc (from=src_tmp, to=src)
-             n_active = n_active + 1
-             map(n_active) = i
-          end if
-       end if
-    end do
-    allocate (jet_in (count (map /= 0)))
-    do i = 1, size (jet_in)
+    integer :: i, n_src, n_active
+    call map_prt_index (pl1, mask1, n_src, map)
+    n_active = count (map /= 0)
+    allocate (jet_in (n_active))
+    allocate (jet_index (n_active))
+    do i = 1, n_active
        call jet_in(i)%init (prt_get_momentum (pl1%prt(map(i))))
     end do
     call jv_in%init (jet_in)
     call cs%init (jv_in, jet_def)
     jv_out = cs%inclusive_jets ()
-    allocate (jet_idx (size (jet_in)))
-    call cs%assign_jet_indices (jv_out, jet_idx)
+    call cs%assign_jet_indices (jv_out, jet_index)
     allocate (jet_out (jv_out%size ()))
     jet_out = jv_out
-    call subevt_reset (subevt, size (jet_out))
-    do this_jet = 1, size (jet_out)
-       src = 0
-       n_src = 0
-       combined_pdg = 0
-       n_quarks = 0
-       do prt_idx = 1, size (jet_idx)
-          if (jet_idx(prt_idx) == this_jet) then
-             associate (prt => pl1%prt(map(prt_idx)))
-               do k = 1, size (prt%src)
-                  src(n_src + k) = prt%src(k)
-               end do
-               n_src = n_src + size (prt%src)
-               if (is_quark (prt%pdg)) then
-                  n_quarks = n_quarks + 1
-                  if (combined_pdg == 0) then
-                     combined_pdg = prt%pdg
-                  end if
-               end if
-             end associate
-          end if
-       end do
-       if (keep_jets .and. n_quarks == 1) then
-          pdg = combined_pdg
-       else
-          pdg = 0
-       end if
-       call prt_init_pseudojet (subevt%prt(this_jet), jet_out(this_jet), src(:n_src), pdg)
-    end do
+    call fill_pseudojet (subevt, pl1, jet_out, jet_index, n_src, map)
     do i = 1, size (jet_out)
        call jet_out(i)%final ()
     end do
@@ -879,6 +839,58 @@ contains
     do i = 1, size (jet_in)
        call jet_in(i)%final ()
     end do
+  contains
+    ! Uniquely combine sources and add map those new indices to the old ones
+    subroutine map_prt_index (pl1, mask1, n_src, map)
+      type(subevt_t), intent(in) :: pl1
+      logical, dimension(:), intent(in) :: mask1
+      integer, intent(out) :: n_src
+      integer, dimension(:), allocatable, intent(out) :: map
+      integer, dimension(:), allocatable :: src, src_tmp
+      integer :: i
+      allocate (src(0))
+      allocate (map (pl1%n_active), source = 0)
+      n_active = 0
+      do i = 1, pl1%n_active
+         if (.not. mask1(i)) cycle
+         call combine_index_lists (src_tmp, src, pl1%prt(i)%src)
+         if (.not. allocated (src_tmp)) cycle
+         call move_alloc (from=src_tmp, to=src)
+         n_active = n_active + 1
+         map(n_active) = i
+      end do
+      n_src = size (src)
+    end subroutine map_prt_index
+    ! Retrieve source(s) of a jet and fill corresponding subevent
+    subroutine fill_pseudojet (subevt, pl1, jet_out, jet_index, n_src, map)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl1
+      type(pseudojet_t), dimension(:), intent(in) :: jet_out
+      integer, dimension(:), intent(in) :: jet_index
+      integer, dimension(:), intent(in) :: map
+      integer, intent(in) :: n_src
+      integer, dimension(n_src) :: src_fill
+      integer :: i, jet, k, combined_pdg, pdg, n_quarks, n_src_fill
+      call subevt_reset (subevt, size (jet_out))
+      do jet = 1, size (jet_out)
+         pdg = 0; src_fill = 0; n_src_fill = 0; combined_pdg = 0; n_quarks = 0
+         PARTICLE: do i = 1, size (jet_index)
+            if (jet_index(i) /= jet) cycle PARTICLE
+            associate (prt => pl1%prt(map(i)), n_src_prt => size(pl1%prt(map(i))%src))
+              do k = 1, n_src_prt
+                 src_fill(n_src_fill + k) = prt%src(k)
+              end do
+              n_src_fill = n_src_fill + n_src_prt
+              if (is_quark (prt%pdg)) then
+                 n_quarks = n_quarks + 1
+                 if (combined_pdg == 0) combined_pdg = prt%pdg
+              end if
+            end associate
+         end do PARTICLE
+         if (keep_jets .and. n_quarks == 1) pdg = combined_pdg
+         call prt_init_pseudojet (subevt%prt(jet), jet_out(jet), src_fill(:n_src_fill), pdg)
+      end do
+    end subroutine fill_pseudojet
   end subroutine subevt_cluster
 
   subroutine subevt_select (subevt, pl, mask1)

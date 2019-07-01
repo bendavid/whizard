@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,10 +50,11 @@ contains
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
     class(eio_t), allocatable :: eio
+    integer :: i_prc
     integer :: u_file
 
     write (u, "(A)")  "* Test output: eio_dump_1"
-    write (u, "(A)")  "*   Purpose: generate an event and dump to output"
+    write (u, "(A)")  "*   Purpose: generate events and write essentials to output"
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
@@ -61,21 +62,29 @@ contains
     call eio_prepare_test (event, unweighted = .false.)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")  "* Generate and write three events (two passed)"
     write (u, "(A)")
 
     allocate (eio_dump_t :: eio)
     select type (eio)
     type is (eio_dump_t)
-       eio%unit = u
-       eio%writing = .true.
-       eio%weights = .true.
+       call eio%set_parameters (unit = u, weights = .true., pacify = .true.)
     end select
 
+    i_prc = 42
+    
     call eio%init_out (var_str (""))
-    call event%generate (1, [0._default, 0._default])
 
-    call eio%output (event, i_prc = 42)
+    call event%generate (1, [0._default, 0._default])
+    call eio%output (event, i_prc = i_prc)
+
+    call event%generate (1, [0.1_default, 0._default])
+    call event%set_index (99)
+    call eio%output (event, i_prc = i_prc, passed = .false.)
+
+    call event%generate (1, [0.2_default, 0._default])
+    call event%increment_index ()
+    call eio%output (event, i_prc = i_prc, passed = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of eio_dump object"

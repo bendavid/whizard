@@ -256,7 +256,8 @@ i*)
         for i = 1 to n - 1 do
 
           (* We increment~$k$ until another $\Delta$ (a.\,k.\,a.~[step]) of the
-             integral has been accumulated (cf.~figure~\ref{fig:rebin}). *)
+             integral has been accumulated.  % (cf.~figure~\ref{fig:rebin}). 
+	  *)
           while !delta < step do
             incr k;
             delta := !delta +. m.(!k-1)

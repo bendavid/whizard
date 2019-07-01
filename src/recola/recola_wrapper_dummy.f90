@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,7 +36,10 @@ module recola_wrapper
 
   public :: rclwrap_is_active
   public :: get_recola_particle_string
+  public :: rclwrap_get_new_recola_id
+  public :: rclwrap_get_n_processes
   public :: rclwrap_define_process
+  public :: rclwrap_request_generate_processes
   public :: rclwrap_generate_processes
   public :: rclwrap_compute_process
   public :: rclwrap_get_amplitude
@@ -114,14 +117,27 @@ contains
   elemental function get_recola_particle_string (pdg) result (name)
     type(string_t) :: name
     integer, intent(in) :: pdg
-    name = var_str ("")
+    name = var_str ("?")
   end function get_recola_particle_string
 
+  subroutine rclwrap_get_new_recola_id (id)
+    integer, intent(out) :: id
+    id = 0
+  end subroutine rclwrap_get_new_recola_id
+    
+  function rclwrap_get_n_processes () result (n)
+    integer :: n
+    n = 0
+  end function rclwrap_get_n_processes
+    
   subroutine rclwrap_define_process (id, process_string, order)
     integer, intent(in) :: id
     type(string_t), intent(in) :: process_string
-    character(len=*), intent(in) :: order
+    type(string_t), intent(in) :: order
   end subroutine rclwrap_define_process
+
+  subroutine rclwrap_request_generate_processes ()
+  end subroutine rclwrap_request_generate_processes
 
   subroutine rclwrap_generate_processes ()
   end subroutine rclwrap_generate_processes

@@ -14,7 +14,7 @@
 * File contents:
 
 ========================================================================
- Event
+ Event #42
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -45,7 +45,7 @@ $process_id* => "processes_test"
 process_num_id* => [unknown integer]
 sqme* =>  1.000000000000E+00
 sqme_ref* =>  1.000000000000E+00
-event_index* => 1
+event_index* => 42
 event_weight* =>  3.057406860410E+08
 event_weight_ref* =>  3.057406860410E+08
 event_excess* =>  0.000000000000E+00

@@ -16,8 +16,11 @@ General:
 
 Known bugs:
 
+
 * In version 2.6.0 the top threshold calculations do not work due to a
-  regression. This is fixed in 2.6.1.
+  regression. This is fixed in 2.6.1. In version 2.6.1 all processes
+  with BSM resonances having PDG codes with 7 digits are broken. This is
+  fixed in version 2.6.2.
 
 * In version 2.3.0 there is a regression which produces invalid O'Mega
   matrix element code for SUSY processes with gluino propagators. This
@@ -48,8 +51,8 @@ Compilers and OS specialties:
 
 Manual:
 
-* WHIZARD 2.6, the new features, is still mostly undocumented.  The manual
-  is still quite sparse. We are working on that. Regular updates independent
-  from the subreleases can be found on the Hepforge webpage:
+* For WHIZARD 2.6, the manual is still quite sparse. We are working on
+  that. Regular updates independent from the subreleases can be found
+  on the Hepforge webpage:
   http://projects.hepforge.org/whizard/manual.pdf
 

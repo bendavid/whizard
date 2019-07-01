@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -103,6 +103,8 @@ module restricted_subprocesses
           resonant_subprocess_set_connect_transform
      procedure :: set_on_shell_limit => resonant_subprocess_set_on_shell_limit
      procedure :: set_on_shell_turnoff => resonant_subprocess_set_on_shell_turnoff
+     procedure :: set_background_factor &
+          => resonant_subprocess_set_background_factor
      procedure :: dump_instances => resonant_subprocess_set_dump_instances
      procedure :: fill_momenta => resonant_subprocess_set_fill_momenta
      procedure :: determine_on_shell_histories &
@@ -517,6 +519,13 @@ contains
     real(default), intent(in) :: on_shell_turnoff
     call prc_set%evt%set_on_shell_turnoff (on_shell_turnoff)
   end subroutine resonant_subprocess_set_on_shell_turnoff
+
+  subroutine resonant_subprocess_set_background_factor &
+       (prc_set, background_factor)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    real(default), intent(in) :: background_factor
+    call prc_set%evt%set_background_factor (background_factor)
+  end subroutine resonant_subprocess_set_background_factor
 
   subroutine resonant_subprocess_set_dump_instances (prc_set, unit, testflag)
     class(resonant_subprocess_set_t), intent(inout) :: prc_set

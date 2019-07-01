@@ -97,25 +97,25 @@ bool_t xdr_hepeup_(XDR *xdrs, int *blockid,
      if ( xdr_double(xdrs, &(hepeup_.aqcdup) ) == FALSE) return FALSE;
      idat = hepeup_.idup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-         &nn, MAXNUP, sizeof(int), xdr_int) == FALSE) return FALSE;
+	 &nn, MAXNUP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = hepeup_.istup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-         &nn, MAXNUP, sizeof(int), xdr_int) == FALSE) return FALSE;
-     idat = hepeup_.mothup;
+         &nn, MAXNUP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
+     idat = (int *) hepeup_.mothup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-         &nn2, 2*MAXNUP, sizeof(int), xdr_int) == FALSE) return FALSE;
-     idat = hepeup_.icolup;
+         &nn2, 2*MAXNUP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
+     idat = (int *) hepeup_.icolup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-         &nn2, 2*MAXNUP, sizeof(int), xdr_int) == FALSE) return FALSE;
+         &nn2, 2*MAXNUP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  hepeup_.pup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-         &nn5, 5*MAXNUP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+         &nn5, 5*MAXNUP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *)  hepeup_.vtimup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-         &nn, MAXNUP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+         &nn, MAXNUP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *)  hepeup_.spinup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-         &nn, MAXNUP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+         &nn, MAXNUP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      return TRUE;
 }   
 
@@ -165,28 +165,28 @@ bool_t xdr_heprup_(XDR *xdrs, int *blockid,
      }
      idat = heprup_.idbmup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-            &n2, 2, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &n2, 2, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  heprup_.ebmup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &n2, 2, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &n2, 2, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      idat = heprup_.pdfgup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-            &n2, 2, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &n2, 2, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      idat = heprup_.pdfsup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-            &n2, 2, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &n2, 2, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      dat = (double *)  heprup_.xsecup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nn, MAXPUP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &nn, MAXPUP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *)  heprup_.xerrup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nn, MAXPUP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &nn, MAXPUP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      dat = (double *)  heprup_.xmaxup;
      if     ( xdr_array(xdrs,  (char **)   &dat,
-                &nn, MAXPUP, sizeof(double), xdr_double) == FALSE) return FALSE; 
+                &nn, MAXPUP, sizeof(double), (xdrproc_t)xdr_double) == FALSE) return FALSE; 
      idat = heprup_.lprup;
      if     ( xdr_array(xdrs, (char **)  &idat,
-            &nn, MAXPUP, sizeof(int), xdr_int) == FALSE) return FALSE;
+            &nn, MAXPUP, sizeof(int), (xdrproc_t)xdr_int) == FALSE) return FALSE;
      
      return TRUE;
 }   

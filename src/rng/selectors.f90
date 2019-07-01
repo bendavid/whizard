@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -136,7 +136,8 @@ contains
     integer, intent(out) :: n
     real(default) :: x
     select case (size (selector%acc))
-    case (1);  n = 1 + selector%offset
+    case (1)
+       n = selector%map(1)
     case default
        call rng%generate (x)
        n = selector%select (x)

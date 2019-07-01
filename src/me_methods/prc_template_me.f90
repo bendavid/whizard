@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -84,6 +84,8 @@ module prc_template_me
      procedure :: init => template_me_writer_init
      procedure :: write_makefile_code => template_me_write_makefile_code
      procedure :: write_source_code => template_me_write_source_code
+     procedure :: before_compile => template_me_before_compile
+     procedure :: after_compile => template_me_after_compile
      procedure, nopass :: get_procname => template_me_writer_get_procname
      procedure :: write_interface => template_me_write_interface
      procedure :: write_wrapper => template_me_write_wrapper
@@ -307,21 +309,35 @@ contains
     writer%unity = unity
   end subroutine template_me_writer_init
 
-  subroutine template_me_write_makefile_code (writer, unit, id, os_data, testflag)
+  subroutine template_me_write_makefile_code &
+       (writer, unit, id, os_data, verbose, testflag)
     class(template_me_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "SOURCES += ", char (id), ".f90"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  "clean-", char (id), ":"
-    write (unit, "(5A)")  TAB, "rm -f tpr_", char (id), ".mod"
-    write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
+    if (verbose) then
+       write (unit, "(5A)")  TAB, "rm -f tpr_", char (id), ".mod"
+       write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
+    else
+       write (unit, "(5A)")  TAB // '@echo  "  RM        ', &
+            trim (char (id)), '.mod"'
+       write (unit, "(5A)")  TAB, "@rm -f tpr_", char (id), ".mod"
+       write (unit, "(5A)")  TAB // '@echo  "  RM        ', &
+            trim (char (id)), '.lo"'
+       write (unit, "(5A)")  TAB, "@rm -f ", char (id), ".lo"
+    end if
     write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
     write (unit, "(5A)")  "CLEAN_OBJECTS += tpr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+    end if    
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
   end subroutine template_me_write_makefile_code
 
@@ -335,7 +351,7 @@ contains
     integer, dimension(:,:), allocatable :: sxxx
     integer :: dummy, status
     type(flavor_t), dimension(1:writer%n_out) :: flv_out
-    type(string_t) :: proc_str, comment_str
+    type(string_t) :: proc_str, comment_str, col_str
     integer :: u, i, j
     integer :: hel, hel_in, hel_out, fac, factor, col_fac
     type(string_t) :: filename
@@ -454,7 +470,16 @@ contains
     write (u, "(A)") "    reshape ( [ f0001 ], [ n_prt, n_flv ] )"
     write (u, "(A)") "                                                 "
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt), parameter, private :: &"
-    write (u, "(A)") "    c0001 = reshape ( [ " // char (dummy_colorizer (flv_in)) // " " // &
+    !!! This produces non-matching color flows, better keep it completely colorless
+    ! write (u, "(A)") "    c0001 = reshape ( [ " // char (dummy_colorizer (flv_in)) // &
+    !                          " " // &
+    select case (writer%n_in)
+    case (1)
+       col_str = "0,0,"
+    case (2)
+       col_str = "0,0,0,0,"
+    end select
+    write (u, "(A)") "    c0001 = reshape ( [" // char (col_str) // &
       (repeat ("0,0, ", writer%n_out-1)) // "0,0 ], " // " [ n_cindex, n_prt ] )"
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt, n_cflow), parameter, private :: &"
     write (u, "(A)") "  table_color_flows = reshape ( [ c0001 ], [ n_cindex, n_prt, n_cflow ] )"
@@ -700,6 +725,16 @@ contains
     end function dummy_colorizer
   end subroutine template_me_write_source_code
 
+  subroutine template_me_before_compile (writer, id)
+    class(template_me_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine template_me_before_compile
+  
+  subroutine template_me_after_compile (writer, id)
+    class(template_me_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine template_me_after_compile
+  
   function template_me_writer_get_procname (feature) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: feature

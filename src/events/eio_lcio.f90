@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -239,6 +239,7 @@ contains
              proc_id = eio%proc_num_id (i_prc), &
              event_id = event%get_index ())
        call lcio_event_from_particle_set (eio%lcio_event, pset_ptr)
+       call lcio_event_set_weight (eio%lcio_event, event%weight_prc)
        call lcio_event_set_sqrts (eio%lcio_event, event%get_sqrts ())
        call lcio_event_set_scale (eio%lcio_event, event%get_fac_scale ())
        call lcio_event_set_alpha_qcd (eio%lcio_event, event%get_alpha_s ())
@@ -292,8 +293,9 @@ contains
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
+    call event%set_index (lcio_event_get_event_index (eio%lcio_event))
     call lcio_to_event (event, eio%lcio_event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &

@@ -195,10 +195,14 @@ Syntax table:
  SEQUENCE    <pcombination> = '+' <pvalue>
  ALTERNATIVE <pvalue> = <pexpr_src> | <pvariable> | <grouped_pexpr> | <block_pexpr> | <conditional_pexpr> | <prt_function>
  SEQUENCE    <pexpr_src> = <prefix_cexpr>
- ALTERNATIVE <prefix_cexpr> = <incoming_prt> | <outgoing_prt>
+ ALTERNATIVE <prefix_cexpr> = <beam_prt> | <incoming_prt> | <outgoing_prt> | <unspecified_prt>
+ SEQUENCE    <beam_prt> = beam <cexpr>
+ KEYWORD     beam
  SEQUENCE    <incoming_prt> = incoming <cexpr>
  KEYWORD     incoming
- SEQUENCE    <outgoing_prt> = <cexpr>
+ SEQUENCE    <outgoing_prt> = outgoing <cexpr>
+ KEYWORD     outgoing
+ SEQUENCE    <unspecified_prt> = <cexpr>
  SEQUENCE    <pvariable> = '@' <alt_pvariable>
  KEYWORD     '@'
  ALTERNATIVE <alt_pvariable> = <variable> | <grouped_pexpr>
@@ -278,7 +282,7 @@ Syntax table:
  SEQUENCE    <user_cut_fun> = user_cut <user_arg> <pargs1>
  KEYWORD     user_cut
 Keyword list:
- + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error user_obs , let = int real complex logical ? true false not in if then elsif else endif < > <= >= == <> all [ ] incoming pdg : @ join combine collect cl
+ + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error user_obs , let = int real complex logical ? true false not in if then elsif else endif < > <= >= == <> all [ ] beam pdg : incoming outgoing @ join comb
 
 * Expression:
      let alias quark = pdg(1):pdg(2):pdg(3) in  any E > 3 GeV     [sort by - Pt        [select if Index < 6           [photon:pdg(-11):pdg(3):quark            & incoming particle]]]  and  eval Theta [extract index -1 [photon]] > 45 degree  and  count [inco

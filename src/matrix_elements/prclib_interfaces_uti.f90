@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -62,6 +62,8 @@ module prclib_interfaces_uti
      procedure :: write_int_sub_call => test_writer_1_int_sub
      procedure :: write_col_state_call => test_writer_1_col_state
      procedure :: write_color_factors_call => test_writer_1_col_factors
+     procedure :: before_compile => test_writer_1_before_compile
+     procedure :: after_compile => test_writer_1_after_compile
   end type test_writer_1_t
 
   type, extends (prc_writer_f_module_t) :: test_writer_2_t
@@ -71,6 +73,8 @@ module prclib_interfaces_uti
      procedure :: write_source_code => test_writer_2_src
      procedure :: write_interface => test_writer_2_if
      procedure :: write_wrapper => test_writer_2_wr
+     procedure :: before_compile => test_writer_2_before_compile
+     procedure :: after_compile => test_writer_2_after_compile
   end type test_writer_2_t
 
   type, extends (prc_writer_f_module_t) :: test_writer_4_t
@@ -82,6 +86,8 @@ module prclib_interfaces_uti
      procedure :: write_source_code => test_writer_4_src
      procedure :: write_interface => test_writer_4_if
      procedure :: write_wrapper => test_writer_4_wr
+     procedure :: before_compile => test_writer_4_before_compile
+     procedure :: after_compile => test_writer_4_after_compile
   end type test_writer_4_t
 
   type, extends (prc_writer_c_lib_t) :: test_writer_5_t
@@ -90,6 +96,8 @@ module prclib_interfaces_uti
      procedure :: write_makefile_code => test_writer_5_mk
      procedure :: write_source_code => test_writer_5_src
      procedure :: write_interface => test_writer_5_if
+     procedure :: before_compile => test_writer_5_before_compile
+     procedure :: after_compile => test_writer_5_after_compile
   end type test_writer_5_t
 
   type, extends (test_writer_5_t) :: test_writer_6_t
@@ -229,7 +237,7 @@ contains
     write (u, "(A)")  "* File contents:"
     write (u, "(A)")
 
-    call driver%generate_makefile (u, os_data)
+    call driver%generate_makefile (u, os_data, verbose = .true.)
 
     deallocate (test_writer_1)
     deallocate (test_writer_2)
@@ -290,7 +298,7 @@ contains
     write (u, "(A)")  "* Write Makefile"
     u_file = free_unit ()
     open (u_file, file="prclib4.makefile", status="replace", action="write")
-    call driver%generate_makefile (u_file, os_data)
+    call driver%generate_makefile (u_file, os_data, verbose = .false.)
     close (u_file)
 
     write (u, "(A)")
@@ -440,7 +448,7 @@ contains
     write (u, "(A)")  "* Write makefile"
     u_file = free_unit ()
     open (u_file, file="prclib5.makefile", status="replace", action="write")
-    call driver%generate_makefile (u_file, os_data)
+    call driver%generate_makefile (u_file, os_data, verbose = .false.)
     close (u_file)
 
     write (u, "(A)")  "* Write driver source code"
@@ -563,7 +571,7 @@ contains
     write (u, "(A)")  "* Write makefile"
     u_file = free_unit ()
     open (u_file, file="prclib6.makefile", status="replace", action="write")
-    call driver%generate_makefile (u_file, os_data)
+    call driver%generate_makefile (u_file, os_data, verbose = .false.)
     close (u_file)
 
     write (u, "(A)")  "* Write driver source code"
@@ -665,7 +673,7 @@ contains
     write (u, "(A)")  "* Write makefile"
     u_file = free_unit ()
     open (u_file, file="prclib7.makefile", status="replace", action="write")
-    call driver%generate_makefile (u_file, os_data)
+    call driver%generate_makefile (u_file, os_data, verbose = .false.)
     close (u_file)
 
     write (u, "(A)")  "* Write driver source code"
@@ -738,11 +746,12 @@ contains
     string = "test_1"
   end function test_writer_1_type_name
 
-  subroutine test_writer_1_mk (writer, unit, id, os_data, testflag)
+  subroutine test_writer_1_mk (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_1_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "# Makefile code for process ", char (id), &
          " goes here."
@@ -793,16 +802,27 @@ contains
          char (id), " goes here."
   end subroutine test_writer_1_col_factors
 
+  subroutine test_writer_1_before_compile (writer, id)
+    class(test_writer_1_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_1_before_compile
+  
+  subroutine test_writer_1_after_compile (writer, id)
+    class(test_writer_1_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_1_after_compile
+  
   function test_writer_2_type_name () result (string)
     type(string_t) :: string
     string = "test_2"
   end function test_writer_2_type_name
 
-  subroutine test_writer_2_mk (writer, unit, id, os_data, testflag)
+  subroutine test_writer_2_mk (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_2_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "# Makefile code for process ", char (id), &
          " goes here."
@@ -831,6 +851,16 @@ contains
        char (writer%get_c_procname (id, feature)), " goes here."
   end subroutine test_writer_2_wr
 
+  subroutine test_writer_2_before_compile (writer, id)
+    class(test_writer_2_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_2_before_compile
+  
+  subroutine test_writer_2_after_compile (writer, id)
+    class(test_writer_2_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_2_after_compile
+  
   function test_writer_4_type_name () result (string)
     type(string_t) :: string
     string = "test_4"
@@ -842,11 +872,12 @@ contains
     name = "tpr_" // id
   end function test_writer_4_get_module_name
 
-  subroutine test_writer_4_mk (writer, unit, id, os_data, testflag)
+  subroutine test_writer_4_mk (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_4_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "SOURCES += ", char (id), ".f90"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
@@ -854,6 +885,9 @@ contains
     write (unit, "(5A)")  "CLEAN_OBJECTS += tpr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+    end if
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
   end subroutine test_writer_4_mk
 
@@ -897,6 +931,16 @@ contains
        char (writer%get_c_procname (id, feature))
   end subroutine test_writer_4_wr
 
+  subroutine test_writer_4_before_compile (writer, id)
+    class(test_writer_4_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_4_before_compile
+  
+  subroutine test_writer_4_after_compile (writer, id)
+    class(test_writer_4_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_4_after_compile
+  
   subroutine write_test_module_file (basename, feature, md5sum)
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: feature
@@ -1028,16 +1072,20 @@ contains
     string = "test_5"
   end function test_writer_5_type_name
 
-  subroutine test_writer_5_mk (writer, unit, id, os_data, testflag)
+  subroutine test_writer_5_mk (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_5_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "SOURCES += ", char (id), ".f90"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
-    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+    end if
+    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"    
   end subroutine test_writer_5_mk
 
   subroutine test_writer_5_src (writer, id)
@@ -1067,6 +1115,16 @@ contains
     end select
   end subroutine test_writer_5_if
 
+  subroutine test_writer_5_before_compile (writer, id)
+    class(test_writer_5_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_5_before_compile
+  
+  subroutine test_writer_5_after_compile (writer, id)
+    class(test_writer_5_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine test_writer_5_after_compile
+  
   subroutine write_test_f_lib_file (basename, feature)
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: feature
@@ -1214,15 +1272,19 @@ contains
     string = "test_6"
   end function test_writer_6_type_name
 
-  subroutine test_writer_6_mk (writer, unit, id, os_data, testflag)
+  subroutine test_writer_6_mk (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_6_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "SOURCES += ", char (id), ".c"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".c"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+    end if    
     write (unit, "(5A)")  TAB, "$(LTCCOMPILE) $<"
   end subroutine test_writer_6_mk
 

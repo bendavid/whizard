@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -109,7 +109,7 @@ contains
 
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
 
     write (u, "(A)")  "* Clean any left-over files"
     write (u, "(A)")
@@ -268,7 +268,7 @@ contains
 
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
 
     write (u, "(A)")  "* Clean any left-over files"
     write (u, "(A)")

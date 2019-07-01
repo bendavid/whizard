@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -121,6 +121,7 @@ program main_ut
   use interactions_ut, only: interaction_test
   use slha_interface_ut, only: slha_test
   use cascades_ut, only: cascades_test
+  use cascades2_lexer_ut, only: cascades2_lexer_test
   use cascades2_ut, only: cascades2_test
   use prc_test_ut, only: prc_test_test
   use prc_template_me_ut, only: prc_template_me_test
@@ -133,8 +134,8 @@ program main_ut
   use event_transforms_ut, only: event_transforms_test
   use resonance_insertion_ut, only: resonance_insertion_test
   use recoil_kinematics_ut, only: recoil_kinematics_test
-  use isr_photon_handler_ut, only: isr_photon_handler_test
-  use epa_beam_handler_ut, only: epa_beam_handler_test
+  use isr_epa_handler_ut, only: isr_handler_test
+  use isr_epa_handler_ut, only: epa_handler_test
   use decays_ut, only: decays_test
   use shower_ut, only: shower_test
   use events_ut, only: events_test
@@ -597,6 +598,8 @@ contains
        call slha_test (u, results)
     case ("cascades")
        call cascades_test (u, results)
+    case ("cascades2_lexer")
+       call cascades2_lexer_test (u, results)
     case ("cascades2")
        call cascades2_test (u, results)
     case ("prc_test")
@@ -621,10 +624,10 @@ contains
        call resonance_insertion_test (u, results)
     case ("recoil_kinematics")
        call recoil_kinematics_test (u, results)
-    case ("isr_photon_handler")
-       call isr_photon_handler_test (u, results)
-    case ("epa_beam_handler")
-       call epa_beam_handler_test (u, results)
+    case ("isr_handler")
+       call isr_handler_test (u, results)
+    case ("epa_handler")
+       call epa_handler_test (u, results)
     case ("decays")
        call decays_test (u, results)
     case ("shower")
@@ -769,6 +772,7 @@ contains
        call interaction_test (u, results)
        call slha_test (u, results)
        call cascades_test (u, results)
+       call cascades2_lexer_test (u, results)
        call cascades2_test (u, results)
        call prc_test_test (u, results)
        call prc_template_me_test (u, results)
@@ -781,8 +785,8 @@ contains
        call event_transforms_test (u, results)
        call resonance_insertion_test (u, results)
        call recoil_kinematics_test (u, results)
-       call isr_photon_handler_test (u, results)
-       call epa_beam_handler_test (u, results)
+       call isr_handler_test (u, results)
+       call epa_handler_test (u, results)
        call decays_test (u, results)
        call shower_test (u, results)
        call events_test (u, results)

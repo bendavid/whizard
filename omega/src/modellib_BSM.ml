@@ -6,9 +6,7 @@
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
-       David Gordo Gomez
-       Christian Speckner <cnspeckn@googlemail.com>
-       Marco Sekulla <marco.sekulla@kit.edu>
+       cf. main AUTHORS file
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -8043,6 +8041,7 @@ module type SSC_flags =
     val quartic_anom : bool
     val higgs_anom : bool
     val k_matrix : bool
+    val k_matrix_tm : bool      
     val ckm_present : bool
     val top_anom : bool
     val top_anom_4f : bool
@@ -8059,6 +8058,7 @@ module SSC_kmatrix: SSC_flags =
     let quartic_anom = true
     let higgs_anom = false
     let k_matrix = true
+    let k_matrix_tm = false
     let ckm_present = false
     let top_anom = false
     let top_anom_4f = false
@@ -8074,6 +8074,7 @@ module SSC_kmatrix_2: SSC_flags =
     let quartic_anom = true
     let higgs_anom = false
     let k_matrix = true
+    let k_matrix_tm = true      
     let ckm_present = false
     let top_anom = false
     let top_anom_4f = false
@@ -8388,21 +8389,140 @@ module SSC (Flags : SSC_flags) =
       | I_lambda5_AWW | I_lambda5_ZWW
       | FS0_HHWW | FS0_HHZZ
       | FS1_HHWW | FS1_HHZZ
+      | FM0_HHWW | FM0_HHZZ 
+      | FM1_HHWW | FM1_HHZZ
+      | FM7_HHWW | FM7_HHZZ
       | Alpha_WWWW0 | Alpha_ZZWW1 | Alpha_WWWW2
       | Alpha_ZZWW0 | Alpha_ZZZZ
+      | FT0_WWWW0 | FT0_WWWW2
+      | FT0_ZZWW0 | FT0_ZZWW1
+      | FT0_ZZZZ  | FT0_AAAA
+      | FT0_AAWW0 | FT0_AAWW1
+      | FT0_AAZZ  
+      | FT0_AZWW0 | FT0_AZWW1
+      | FT0_AAAZ  | FT0_AZZZ
+      | FT1_WWWW0 | FT1_WWWW2
+      | FT1_ZZWW0 | FT1_ZZWW1
+      | FT1_ZZZZ  | FT1_AAAA 
+      | FT1_AAWW0 | FT1_AAWW1
+      | FT1_AAZZ  
+      | FT1_AZWW0 | FT1_AZWW1
+      | FT1_AAAZ  | FT1_AZZZ
+      | FT2_WWWW0 | FT2_WWWW2
+      | FT2_ZZWW0 | FT2_ZZWW1
+      | FT2_ZZZZ  | FT2_AAAA
+      | FT2_AAWW0 | FT2_AAWW1
+      | FT2_AAZZ  
+      | FT2_AZWW0 | FT2_AZWW1
+      | FT2_AAAZ  | FT2_AZZZ
+      | FM0_WWWW0 | FM0_WWWW2
+      | FM0_ZZWW0 | FM0_ZZWW1
+      | FM0_ZZZZ  
+      | FM1_WWWW0 | FM1_WWWW2
+      | FM1_ZZWW0 | FM1_ZZWW1
+      | FM1_ZZZZ 
+      | FM7_WWWW0 | FM7_WWWW2
+      | FM7_ZZWW0 | FM7_ZZWW1
+      | FM7_ZZZZ
       | D_Alpha_ZZWW0_S | D_Alpha_ZZWW0_T | D_Alpha_ZZWW1_S
       | D_Alpha_ZZWW1_T | D_Alpha_ZZWW1_U | D_Alpha_WWWW0_S
       | D_Alpha_WWWW0_T | D_Alpha_WWWW0_U | D_Alpha_WWWW2_S
       | D_Alpha_WWWW2_T | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T
+      | D_FT0_ZZWW0_S | D_FT0_ZZWW0_T | D_FT0_ZZWW0_U 
+      | D_FT0_ZZWW1_S | D_FT0_ZZWW1_T | D_FT0_ZZWW1_U 
+      | D_FT0_WWWW0_S | D_FT0_WWWW0_T | D_FT0_WWWW0_U 
+      | D_FT0_WWWW2_S | D_FT0_WWWW2_T | D_FT0_WWWW2_U    
+      | D_FT0_ZZZZ_S  | D_FT0_ZZZZ_T  | D_FT0_ZZZZ_U
+      | D_FT0_AAAA_S  | D_FT0_AAAA_T  | D_FT0_AAAA_U
+      | D_FT0_AAWW0_S | D_FT0_AAWW0_T | D_FT0_AAWW0_U 
+      | D_FT0_AAWW1_S | D_FT0_AAWW1_T | D_FT0_AAWW1_U
+      | D_FT0_AAZZ_S  | D_FT0_AAZZ_T  | D_FT0_AAZZ_U  
+      | D_FT0_AZWW0_S | D_FT0_AZWW0_T | D_FT0_AZWW0_U
+      | D_FT0_AZWW1_S | D_FT0_AZWW1_T | D_FT0_AZWW1_U
+      | D_FT0_AAAZ_S  | D_FT0_AAAZ_T  | D_FT0_AAAZ_U
+      | D_FT0_AZZZ_S  | D_FT0_AZZZ_T  | D_FT0_AZZZ_U     
+      | D_FT1_ZZWW0_S | D_FT1_ZZWW0_T | D_FT1_ZZWW0_U 
+      | D_FT1_ZZWW1_S | D_FT1_ZZWW1_T | D_FT1_ZZWW1_U 
+      | D_FT1_WWWW0_S | D_FT1_WWWW0_T | D_FT1_WWWW0_U 
+      | D_FT1_WWWW2_S | D_FT1_WWWW2_T | D_FT1_WWWW2_U    
+      | D_FT1_ZZZZ_S  | D_FT1_ZZZZ_T  | D_FT1_ZZZZ_U 
+      | D_FT1_AAAA_S  | D_FT1_AAAA_T  | D_FT1_AAAA_U
+      | D_FT1_AAWW0_S | D_FT1_AAWW0_T | D_FT1_AAWW0_U 
+      | D_FT1_AAWW1_S | D_FT1_AAWW1_T | D_FT1_AAWW1_U
+      | D_FT1_AAZZ_S  | D_FT1_AAZZ_T  | D_FT1_AAZZ_U  
+      | D_FT1_AZWW0_S | D_FT1_AZWW0_T | D_FT1_AZWW0_U
+      | D_FT1_AZWW1_S | D_FT1_AZWW1_T | D_FT1_AZWW1_U   
+      | D_FT1_AAAZ_S  | D_FT1_AAAZ_T  | D_FT1_AAAZ_U
+      | D_FT1_AZZZ_S  | D_FT1_AZZZ_T  | D_FT1_AZZZ_U      
+      | D_FT2_ZZWW0_S | D_FT2_ZZWW0_T | D_FT2_ZZWW0_U 
+      | D_FT2_ZZWW1_S | D_FT2_ZZWW1_T | D_FT2_ZZWW1_U 
+      | D_FT2_WWWW0_S | D_FT2_WWWW0_T | D_FT2_WWWW0_U 
+      | D_FT2_WWWW2_S | D_FT2_WWWW2_T | D_FT2_WWWW2_U    
+      | D_FT2_ZZZZ_S  | D_FT2_ZZZZ_T  | D_FT2_ZZZZ_U 
+      | D_FT2_AAAA_S  | D_FT2_AAAA_T  | D_FT2_AAAA_U
+      | D_FT2_AAWW0_S | D_FT2_AAWW0_T | D_FT2_AAWW0_U 
+      | D_FT2_AAWW1_S | D_FT2_AAWW1_T | D_FT2_AAWW1_U
+      | D_FT2_AAZZ_S  | D_FT2_AAZZ_T  | D_FT2_AAZZ_U 
+      | D_FT2_AZWW0_S | D_FT2_AZWW0_T | D_FT2_AZWW0_U
+      | D_FT2_AZWW1_S | D_FT2_AZWW1_T | D_FT2_AZWW1_U 
+      | D_FT2_AAAZ_S  | D_FT2_AAAZ_T  | D_FT2_AAAZ_U
+      | D_FT2_AZZZ_S  | D_FT2_AZZZ_T  | D_FT2_AZZZ_U 
+      | D_FTrsi_ZZWW0_S | D_FTrsi_ZZWW0_T | D_FTrsi_ZZWW0_U 
+      | D_FTrsi_ZZWW1_S | D_FTrsi_ZZWW1_T | D_FTrsi_ZZWW1_U 
+      | D_FTrsi_WWWW0_S | D_FTrsi_WWWW0_T | D_FTrsi_WWWW0_U 
+      | D_FTrsi_WWWW2_S | D_FTrsi_WWWW2_T | D_FTrsi_WWWW2_U    
+      | D_FTrsi_ZZZZ_S  | D_FTrsi_ZZZZ_T  | D_FTrsi_ZZZZ_U 
+      | D_FTrsi_AAAA_S  | D_FTrsi_AAAA_T  | D_FTrsi_AAAA_U
+      | D_FTrsi_AAWW0_S | D_FTrsi_AAWW0_T | D_FTrsi_AAWW0_U 
+      | D_FTrsi_AAWW1_S | D_FTrsi_AAWW1_T | D_FTrsi_AAWW1_U
+      | D_FTrsi_AAZZ_S  | D_FTrsi_AAZZ_T  | D_FTrsi_AAZZ_U 
+      | D_FTrsi_AZWW0_S | D_FTrsi_AZWW0_T | D_FTrsi_AZWW0_U
+      | D_FTrsi_AZWW1_S | D_FTrsi_AZWW1_T | D_FTrsi_AZWW1_U 
+      | D_FTrsi_AAAZ_S  | D_FTrsi_AAAZ_T  | D_FTrsi_AAAZ_U
+      | D_FTrsi_AZZZ_S  | D_FTrsi_AZZZ_T  | D_FTrsi_AZZZ_U       
+      | D_FM0_ZZWW0_S | D_FM0_ZZWW0_T | D_FM0_ZZWW0_U 
+      | D_FM0_ZZWW1_S | D_FM0_ZZWW1_T | D_FM0_ZZWW1_U 
+      | D_FM0_WWWW0_S | D_FM0_WWWW0_T | D_FM0_WWWW0_U 
+      | D_FM0_WWWW2_S | D_FM0_WWWW2_T | D_FM0_WWWW2_U    
+      | D_FM0_ZZZZ_S  | D_FM0_ZZZZ_T  | D_FM0_ZZZZ_U       
+      | D_FM1_ZZWW0_S | D_FM1_ZZWW0_T | D_FM1_ZZWW0_U 
+      | D_FM1_ZZWW1_S | D_FM1_ZZWW1_T | D_FM1_ZZWW1_U 
+      | D_FM1_WWWW0_S | D_FM1_WWWW0_T | D_FM1_WWWW0_U 
+      | D_FM1_WWWW2_S | D_FM1_WWWW2_T | D_FM1_WWWW2_U    
+      | D_FM1_ZZZZ_S  | D_FM1_ZZZZ_T  | D_FM1_ZZZZ_U 
+      | D_FM7_ZZWW0_S | D_FM7_ZZWW0_T | D_FM7_ZZWW0_U 
+      | D_FM7_ZZWW1_S | D_FM7_ZZWW1_T | D_FM7_ZZWW1_U 
+      | D_FM7_WWWW0_S | D_FM7_WWWW0_T | D_FM7_WWWW0_U 
+      | D_FM7_WWWW2_S | D_FM7_WWWW2_T | D_FM7_WWWW2_U    
+      | D_FM7_ZZZZ_S  | D_FM7_ZZZZ_T  | D_FM7_ZZZZ_U
       | D_Alpha_HHHH_S  | D_Alpha_HHHH_T 
       | D_Alpha_HHZZ0_S | D_Alpha_HHWW0_S 
       | D_Alpha_HHZZ0_T | D_Alpha_HHWW0_T
       | D_Alpha_HHZZ1_S | D_Alpha_HHWW1_S 
       | D_Alpha_HHZZ1_T | D_Alpha_HHWW1_T
       | D_Alpha_HHZZ1_U | D_Alpha_HHWW1_U
+      | D_FM0_HHZZ0_S | D_FM0_HHWW0_S 
+      | D_FM0_HHZZ0_T | D_FM0_HHWW0_T
+      | D_FM0_HHZZ0_U | D_FM0_HHWW0_U
+      | D_FM0_HHZZ1_S | D_FM0_HHWW1_S 
+      | D_FM0_HHZZ1_T | D_FM0_HHWW1_T
+      | D_FM0_HHZZ1_U | D_FM0_HHWW1_U 
+      | D_FM1_HHZZ0_S | D_FM1_HHWW0_S 
+      | D_FM1_HHZZ0_T | D_FM1_HHWW0_T
+      | D_FM1_HHZZ0_U | D_FM1_HHWW0_U
+      | D_FM1_HHZZ1_S | D_FM1_HHWW1_S 
+      | D_FM1_HHZZ1_T | D_FM1_HHWW1_T
+      | D_FM1_HHZZ1_U | D_FM1_HHWW1_U 
+      | D_FM7_HHZZ0_S | D_FM7_HHWW0_S 
+      | D_FM7_HHZZ0_T | D_FM7_HHWW0_T
+      | D_FM7_HHZZ0_U | D_FM7_HHWW0_U
+      | D_FM7_HHZZ1_S | D_FM7_HHWW1_S 
+      | D_FM7_HHZZ1_T | D_FM7_HHWW1_T
+      | D_FM7_HHZZ1_U | D_FM7_HHWW1_U
       | G_HWW | G_HHWW | G_HZZ | G_HHZZ
       | G_SWW | G_SWW_T | G_SSWW | G_SZZ 
       | G_SZZ_T | G_SSZZ | G_SHH
+      | G_SAA_T | G_SAZ_T 
       | G_PNWW | G_PNZZ | G_PWZ | G_PWW
       | G_PSNWW | G_PSNZZ | G_PSNHH
       | G_FWW | G_FZZ | G_FWW_CF | G_FZZ_CF 
@@ -8809,12 +8929,233 @@ module SSC (Flags : SSC_flags) =
              Vector4 [(1, C_13_42); (1, C_14_23)], Alpha_WWWW0);
             ((Wm, Wm, Wp, Wp),
              Vector4 [1, C_12_34], Alpha_WWWW2);
+            ((Z, Z, Z, Z),
+             Vector4 [(1, C_12_34); (1, C_13_42); (1, C_14_23)], Alpha_ZZZZ);
             ((Wm, Wp, Z, Z),
              Vector4 [1, C_12_34], Alpha_ZZWW0);
             ((Wm, Wp, Z, Z),
-             Vector4 [(1, C_13_42); (1, C_14_23)], Alpha_ZZWW1);
+             Vector4 [(1, C_13_42); (1, C_14_23)], Alpha_ZZWW1)]
+	    @
+	  (if Flags.k_matrix_tm then
+	      List.map qgc
+	   [((Wm, Wm, Wp, Wp),		  
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_WWWW2); 
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_WWWW2); 
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_WWWW2); 
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_0 [1, C_13_42], FM0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_0 [1, C_14_23], FM0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_0 [1, C_12_34], FM0_WWWW2); 
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_1 [1, C_13_42], FM1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_1 [1, C_14_23], FM1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_1 [1, C_12_34], FM1_WWWW2);  
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_7 [1, C_13_42], FM7_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_7 [1, C_14_23], FM7_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_7 [1, C_12_34], FM7_WWWW2);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_ZZWW1);      
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_ZZWW1);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_0 [1, C_12_34], FM0_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_0 [1, C_13_42], FM0_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_0 [1, C_14_23], FM0_ZZWW1);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_1 [1, C_12_34], FM1_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_1 [1, C_13_42], FM1_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_1 [1, C_14_23], FM1_ZZWW1); 
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_7 [1, C_12_34], FM7_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_7 [1, C_13_42], FM7_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_7 [1, C_14_23], FM7_ZZWW1);
             ((Z, Z, Z, Z),
-             Vector4 [(1, C_12_34); (1, C_13_42); (1, C_14_23)], Alpha_ZZZZ) ]
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_ZZZZ);
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_ZZZZ);             
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_0 [1, C_12_34], FM0_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_0 [1, C_13_42], FM0_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_0 [1, C_14_23], FM0_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_1 [1, C_12_34], FM1_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_1 [1, C_13_42], FM1_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_1 [1, C_14_23], FM1_ZZZZ);
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_7 [1, C_12_34], FM7_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_7 [1, C_13_42], FM7_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_7 [1, C_14_23], FM7_ZZZZ);
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAAA);  
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAAA); 
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAAA);
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAAA);  
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAAA); 
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAAA);
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAAA);  
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAAA); 
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAAA);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAWW0);   
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAWW1);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAWW1); 
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAWW0);   
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAWW1);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAWW1);              
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAWW0);   
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAWW1);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAWW1);
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAZZ);  
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAZZ); 
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAZZ);
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAZZ);  
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAZZ); 
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAZZ);             
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAZZ);  
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAZZ); 
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAZZ);
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AZWW0);  
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AZWW1); 
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AZWW1);
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AZWW0);  
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AZWW1); 
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AZWW1);             
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AZWW0);  
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AZWW1); 
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AZWW1);
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAAZ);  
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAAZ); 
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAAZ);
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAAZ);  
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAAZ); 
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAAZ);             
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAAZ);  
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAAZ); 
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAAZ);
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AZZZ);  
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AZZZ); 
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AZZZ);
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AZZZ);  
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AZZZ); 
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AZZZ);             
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AZZZ);  
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AZZZ); 
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AZZZ)]
+      else
+	[] )
       else
         []
 
@@ -8890,9 +9231,897 @@ module SSC (Flags : SSC_flags) =
                    [(1, C_13_42); (1, C_12_34)]), D_Alpha_ZZZZ_T)]
       else
         []
+        
+    let k_matrix_quartic_gauge_t_0 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_12_34)]), D_FT0_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_13_42)]), D_FT0_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_14_23)]), D_FT0_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_12_34)]), D_FT0_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_13_42)]), D_FT0_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_14_23)]), D_FT0_AAWW1_T);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAZZ_S);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAZZ_T);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAZZ_U);
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAZZ_S); 
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAZZ_T);
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAZZ_U); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AZZZ_U)]        
+      else
+        []
+        
+    let k_matrix_quartic_gauge_t_1 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_12_34)]), D_FT1_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_13_42)]), D_FT1_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_14_23)]), D_FT1_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_12_34)]), D_FT1_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_13_42)]), D_FT1_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_14_23)]), D_FT1_AAWW1_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAZZ_T); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAZZ_U);        
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AZZZ_U)]        
+      else
+        []        
+
+    let k_matrix_quartic_gauge_t_2 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_12_34)]), D_FT2_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_13_42)]), D_FT2_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_14_23)]), D_FT2_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_12_34)]), D_FT2_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_13_42)]), D_FT2_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_14_23)]), D_FT2_AAWW1_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAZZ_T); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAZZ_U);        
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AZZZ_U)]        
+      else
+        []
+        
+    let k_matrix_quartic_gauge_t_rsi =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_12_34)]), D_FTrsi_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_13_42)]), D_FTrsi_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_14_23)]), D_FTrsi_AAWW1_T);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAZZ_S);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAZZ_T);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAZZ_U);
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAZZ_S); 
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAZZ_T);
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAZZ_U); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AZZZ_U)]        
+      else
+        []        
+        
+    let k_matrix_quartic_gauge_m_0 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m0 (1,
+                   [(1, C_12_34)]), D_FM0_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m0 (1,
+                   [(1, C_13_42)]), D_FM0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m0 (1,
+                   [(1, C_14_23)]), D_FM0_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m0 (2,
+                   [(1, C_12_34)]), D_FM0_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m0 (2,
+                   [(1, C_13_42)]), D_FM0_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m0 (2,
+                   [(1, C_14_23)]), D_FM0_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (3,
+                   [(1, C_14_23)]), D_FM0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (3,
+                   [(1, C_13_42)]), D_FM0_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (3,
+                   [(1, C_12_34)]), D_FM0_ZZZZ_U)]        
+      else
+        []
+
+    let k_matrix_quartic_gauge_m_1 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m1 (1,
+                   [(1, C_12_34)]), D_FM1_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m1 (1,
+                   [(1, C_13_42)]), D_FM1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m1 (1,
+                   [(1, C_14_23)]), D_FM1_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m1 (2,
+                   [(1, C_12_34)]), D_FM1_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m1 (2,
+                   [(1, C_13_42)]), D_FM1_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m1 (2,
+                   [(1, C_14_23)]), D_FM1_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (3,
+                   [(1, C_14_23)]), D_FM1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (3,
+                   [(1, C_13_42)]), D_FM1_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (3,
+                   [(1, C_12_34)]), D_FM1_ZZZZ_U)]        
+      else
+        []
+        
+    let k_matrix_quartic_gauge_m_7 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m7 (1,
+                   [(1, C_12_34)]), D_FM7_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m7 (1,
+                   [(1, C_13_42)]), D_FM7_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m7 (1,
+                   [(1, C_14_23)]), D_FM7_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m7 (2,
+                   [(1, C_12_34)]), D_FM7_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m7 (2,
+                   [(1, C_13_42)]), D_FM7_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m7 (2,
+                   [(1, C_14_23)]), D_FM7_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (3,
+                   [(1, C_14_23)]), D_FM7_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (3,
+                   [(1, C_13_42)]), D_FM7_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (3,
+                   [(1, C_12_34)]), D_FM7_ZZZZ_U)]        
+      else
+        []    
 
     let k_matrix_2scalar_2gauge =
-      if Flags.k_matrix then
+      if Flags.k_matrix_tm then
         if Flags.higgs_matrix then
             [ ((O H,O H,G Z,G Z), DScalar2_Vector2_K_Matrix_ms 
                    (0,  [(1, C_12_34)]), D_Alpha_HHZZ0_S);
@@ -8946,6 +10175,174 @@ module SSC (Flags : SSC_flags) =
             []
       else
           []
+          
+    let k_matrix_2scalar_2gauge_m =
+      if Flags.k_matrix_tm then
+        if Flags.higgs_matrix then
+            [ ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM0_HHZZ0_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (0,  [(1, C_13_42)]), D_FM0_HHZZ0_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (0,  [(1, C_14_23)]), D_FM0_HHZZ0_U);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf 
+                   (3,  [(1, C_14_23)]), D_FM0_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (3,  [(1, C_13_42)]), D_FM0_HHZZ1_U);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (3,  [(1, C_12_34)]), D_FM0_HHZZ1_T);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM0_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_12_34)]), D_FM0_HHZZ1_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_14_23)]), D_FM0_HHZZ1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM0_HHWW0_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (2,  [(1, C_13_42)]), D_FM0_HHWW0_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (1,  [(1, C_14_23)]), D_FM0_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (1,  [(1, C_13_42)]), D_FM0_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (2,  [(1, C_14_23)]), D_FM0_HHWW0_T);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (3,  [(1, C_14_23)]), D_FM0_HHWW1_S);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM0_HHWW1_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (4,  [(1, C_13_42)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (5,  [(1, C_12_34)]), D_FM0_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (8,  [(1, C_14_23)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (7,  [(1, C_12_34)]), D_FM0_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (5,  [(1, C_13_42)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (4,  [(1, C_12_34)]), D_FM0_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (7,  [(1, C_14_23)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (8,  [(1, C_12_34)]), D_FM0_HHWW1_T) ]
+        else
+            []
+      else
+          [] 
+          
+    let k_matrix_2scalar_2gauge_m_1 =
+      if Flags.k_matrix_tm then
+        if Flags.higgs_matrix then
+            [ ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM1_HHZZ0_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (0,  [(1, C_13_42)]), D_FM1_HHZZ0_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (0,  [(1, C_14_23)]), D_FM1_HHZZ0_U);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf 
+                   (3,  [(1, C_14_23)]), D_FM1_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (3,  [(1, C_13_42)]), D_FM1_HHZZ1_U);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (3,  [(1, C_12_34)]), D_FM1_HHZZ1_T);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM1_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_12_34)]), D_FM1_HHZZ1_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_14_23)]), D_FM1_HHZZ1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM1_HHWW0_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (2,  [(1, C_13_42)]), D_FM1_HHWW0_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (1,  [(1, C_14_23)]), D_FM1_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (1,  [(1, C_13_42)]), D_FM1_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (2,  [(1, C_14_23)]), D_FM1_HHWW0_T);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (3,  [(1, C_14_23)]), D_FM1_HHWW1_S);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM1_HHWW1_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (4,  [(1, C_13_42)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (5,  [(1, C_12_34)]), D_FM1_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (8,  [(1, C_14_23)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (7,  [(1, C_12_34)]), D_FM1_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (5,  [(1, C_13_42)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (4,  [(1, C_12_34)]), D_FM1_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (7,  [(1, C_14_23)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (8,  [(1, C_12_34)]), D_FM1_HHWW1_T) ]
+        else
+            []
+      else
+          []
+          
+    let k_matrix_2scalar_2gauge_m_7 =
+      if Flags.k_matrix_tm then
+        if Flags.higgs_matrix then
+            [ ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM7_HHZZ0_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (0,  [(1, C_13_42)]), D_FM7_HHZZ0_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (0,  [(1, C_14_23)]), D_FM7_HHZZ0_U);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf 
+                   (3,  [(1, C_14_23)]), D_FM7_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (3,  [(1, C_13_42)]), D_FM7_HHZZ1_U);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (3,  [(1, C_12_34)]), D_FM7_HHZZ1_T);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM7_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_12_34)]), D_FM7_HHZZ1_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_14_23)]), D_FM7_HHZZ1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM7_HHWW0_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (2,  [(1, C_13_42)]), D_FM7_HHWW0_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (1,  [(1, C_14_23)]), D_FM7_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (1,  [(1, C_13_42)]), D_FM7_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (2,  [(1, C_14_23)]), D_FM7_HHWW0_T);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (3,  [(1, C_14_23)]), D_FM7_HHWW1_S);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM7_HHWW1_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (4,  [(1, C_13_42)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (5,  [(1, C_12_34)]), D_FM7_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (8,  [(1, C_14_23)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (7,  [(1, C_12_34)]), D_FM7_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (5,  [(1, C_13_42)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (4,  [(1, C_12_34)]), D_FM7_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (7,  [(1, C_14_23)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (8,  [(1, C_12_34)]), D_FM7_HHWW1_T) ]
+        else
+            []
+      else
+          []      
 
     let k_matrix_4scalar =
       if Flags.k_matrix then
@@ -8994,7 +10391,10 @@ module SSC (Flags : SSC_flags) =
 i*)
 
     let quartic_gauge =
-      standard_quartic_gauge @ anomalous_quartic_gauge @ k_matrix_quartic_gauge
+      standard_quartic_gauge @ anomalous_quartic_gauge @ k_matrix_quartic_gauge 
+      @ k_matrix_quartic_gauge_t_0 @ k_matrix_quartic_gauge_t_1 @ k_matrix_quartic_gauge_t_2
+      @ k_matrix_quartic_gauge_t_rsi
+      @ k_matrix_quartic_gauge_m_0 @ k_matrix_quartic_gauge_m_1 @ k_matrix_quartic_gauge_m_7
 
     let standard_gauge_higgs =
       [ ((O H, G Wp, G Wm), Scalar_Vector_Vector 1, G_HWW);
@@ -9009,6 +10409,14 @@ i*)
         (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_1 1, FS0_HHZZ;
         (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_2 1, FS1_HHWW;
         (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_2 1, FS1_HHZZ ]
+    
+    let dim8_gauge_higgs4_m =
+      [ (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_m_0 1, FM0_HHWW;
+        (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_m_0 1, FM0_HHZZ;
+        (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_m_1 1, FM1_HHWW;
+        (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_m_1 1, FM1_HHZZ;
+        (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_m_7 1, FM7_HHWW;
+        (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_m_7 1, FM7_HHZZ]
        
     let standard_higgs =
       [ (O H, O H, O H), Scalar_Scalar_Scalar 1, G_H3 ]
@@ -9148,7 +10556,8 @@ i*)
         else
           standard_gauge_higgs4 ) @
       ( if Flags.higgs_matrix then
-          (dim8_gauge_higgs4 @ k_matrix_2scalar_2gauge )
+          (dim8_gauge_higgs4 @ dim8_gauge_higgs4_m @ k_matrix_2scalar_2gauge 
+           @ k_matrix_2scalar_2gauge_m @ k_matrix_2scalar_2gauge_m_1 @ k_matrix_2scalar_2gauge_m_7)
 	 else
 	   [] )
 
@@ -9223,7 +10632,9 @@ i*)
 
     let rsigma3t =
       [ ((O Rsigma, G Wp, G Wm), Scalar_Vector_Vector_t 1, G_SWW_T);
-        ((O Rsigma, G Z, G Z), Scalar_Vector_Vector_t 1, G_SZZ_T) ]
+        ((O Rsigma, G Z, G Z), Scalar_Vector_Vector_t 1, G_SZZ_T);
+        ((O Rsigma, G Ga, G Ga), Scalar_Vector_Vector_t 1, G_SAA_T);
+        ((O Rsigma, G Ga, G Z), Scalar_Vector_Vector_t 1, G_SAZ_T) ]
 
     let rsigma4 =
       [ (O Rsigma, O Rsigma, G Wp, G Wm), Scalar2_Vector2 1, G_SSWW;
@@ -9864,9 +11275,42 @@ effective operators:
       | Alpha_WWWW0 -> "alww0" | Alpha_WWWW2 -> "alww2"
       | Alpha_ZZWW0 -> "alzw0" | Alpha_ZZWW1 -> "alzw1"
       | Alpha_ZZZZ  -> "alzz"
+      | FT0_WWWW0 -> "at0ww0" | FT0_WWWW2 -> "at0ww2"
+      | FT0_ZZWW0 -> "at0zw0" | FT0_ZZWW1 -> "at0zw1"
+      | FT0_ZZZZ  -> "at0zz"  | FT0_AAAA  -> "at0aa"
+      | FT0_AAWW0 -> "at0aw0" | FT0_AAWW1 -> "at0aw1"
+      | FT0_AAZZ -> "at0az"   
+      | FT0_AZWW0 -> "at0azw0" | FT0_AZWW1 -> "at0azw1"
+      | FT0_AAAZ  -> "at03az"  | FT0_AZZZ  -> "at0a3z"
+      | FT1_WWWW0 -> "at1ww0" | FT1_WWWW2 -> "at1ww2"
+      | FT1_ZZWW0 -> "at1zw0" | FT1_ZZWW1 -> "at1zw1"
+      | FT1_ZZZZ  -> "at1zz"  | FT1_AAAA  -> "at1aa" 
+      | FT1_AAWW0 -> "at1aw0" | FT1_AAWW1 -> "at1aw1"
+      | FT1_AAZZ -> "at1az"   
+      | FT1_AZWW0 -> "at1azw0" | FT1_AZWW1 -> "at1azw1"
+      | FT1_AAAZ  -> "at13az"  | FT1_AZZZ  -> "at1a3z"
+      | FT2_WWWW0 -> "at2ww0" | FT2_WWWW2 -> "at2ww2"
+      | FT2_ZZWW0 -> "at2zw0" | FT2_ZZWW1 -> "at2zw1"
+      | FT2_ZZZZ  -> "at2zz"  | FT2_AAAA  -> "at2aa"
+      | FT2_AAWW0 -> "at2aw0" | FT2_AAWW1 -> "at2aw1"
+      | FT2_AAZZ -> "at2az"   
+      | FT2_AZWW0 -> "at2azw0" | FT2_AZWW1 -> "at2azw1"
+      | FT2_AAAZ  -> "at23az"  | FT2_AZZZ  -> "at2a3z"
+      | FM0_WWWW0 -> "am0ww0,am0ww0" | FM0_WWWW2 -> "am0ww2,am0ww2"
+      | FM0_ZZWW0 -> "am0zw0/costhw**2,am0zw0*costhw**2" | FM0_ZZWW1 -> "am0zw1/costhw**2,am0zw1*costhw**2"
+      | FM0_ZZZZ  -> "am0zz,am0zz" 
+      | FM1_WWWW0 -> "am1ww0,am1ww0" | FM1_WWWW2 -> "am1ww2,am1ww2"
+      | FM1_ZZWW0 -> "am1zw0/costhw**2,am1zw0*costhw**2" | FM1_ZZWW1 -> "am1zw1/costhw**2,am1zw1*costhw**2"
+      | FM1_ZZZZ  -> "am1zz,am1zz"  
+      | FM7_WWWW0 -> "am7ww0,am7ww0,am7ww0" | FM7_WWWW2 -> "am7ww2,am7ww2,am7ww2"
+      | FM7_ZZWW0 -> "am7zw0/costhw**2,am7zw0,am7zw0*costhw**2" | FM7_ZZWW1 -> "am7zw1/costhw**2,am7zw1,am7zw1*costhw**2"
+      | FM7_ZZZZ  -> "am7zz,am7zz,am7zz"
       | FS0_HHWW -> "fs0hhww" | FS0_HHZZ -> "fs0hhzz"
       | FS1_HHWW -> "fs1hhww" | FS1_HHZZ -> "fs1hhzz"
       | FS_H4 -> "fsh4"
+      | FM0_HHWW -> "fm0hhww" | FM0_HHZZ -> "fm0hhzz" 
+      | FM1_HHWW -> "fm1hhww" | FM1_HHZZ -> "fm1hhzz"  
+      | FM7_HHWW -> "fm7hhww" | FM7_HHZZ -> "fm7hhzz"
       | D_Alpha_ZZWW0_S -> "dalzz0_s(gkm,mkm,"
       | D_Alpha_ZZWW0_T -> "dalzz0_t(gkm,mkm,"
       | D_Alpha_ZZWW1_S -> "dalzz1_s(gkm,mkm,"
@@ -9879,6 +11323,207 @@ effective operators:
       | D_Alpha_WWWW2_T -> "dalww2_t(gkm,mkm,"
       | D_Alpha_ZZZZ_S  -> "dalz4_s(gkm,mkm,"
       | D_Alpha_ZZZZ_T  -> "dalz4_t(gkm,mkm,"
+      | D_FT0_ZZWW0_S -> "datzz0_s_0(gkm,mkm,"
+      | D_FT0_ZZWW0_T -> "datzz0_t_0(gkm,mkm,"
+      | D_FT0_ZZWW0_U -> "datzz0_u_0(gkm,mkm,"
+      | D_FT0_ZZWW1_S -> "datzz1_s_0(gkm,mkm,"
+      | D_FT0_ZZWW1_T -> "datzz1_t_0(gkm,mkm,"
+      | D_FT0_ZZWW1_U -> "datzz1_u_0(gkm,mkm,"
+      | D_FT0_WWWW0_S -> "datww0_s_0(gkm,mkm,"
+      | D_FT0_WWWW0_T -> "datww0_t_0(gkm,mkm,"
+      | D_FT0_WWWW0_U -> "datww0_u_0(gkm,mkm,"
+      | D_FT0_WWWW2_S -> "datww2_s_0(gkm,mkm,"
+      | D_FT0_WWWW2_T -> "datww2_t_0(gkm,mkm,"
+      | D_FT0_WWWW2_U -> "datww2_u_0(gkm,mkm,"
+      | D_FT0_ZZZZ_S  -> "datz4_s_0(gkm,mkm,"
+      | D_FT0_ZZZZ_T  -> "datz4_t_0(gkm,mkm,"
+      | D_FT0_ZZZZ_U  -> "datz4_u_0(gkm,mkm,"
+      | D_FT0_AAAA_S  -> "data4_s_0(gkm,mkm,"
+      | D_FT0_AAAA_T  -> "data4_t_0(gkm,mkm,"
+      | D_FT0_AAAA_U  -> "data4_u_0(gkm,mkm," 
+      | D_FT0_AAWW0_S -> "dataw0_s_0(gkm,mkm,"
+      | D_FT0_AAWW0_T -> "dataw0_t_0(gkm,mkm,"
+      | D_FT0_AAWW0_U -> "dataw0_u_0(gkm,mkm,"
+      | D_FT0_AAWW1_S -> "dataw1_s_0(gkm,mkm,"
+      | D_FT0_AAWW1_T -> "dataw1_t_0(gkm,mkm,"
+      | D_FT0_AAWW1_U -> "dataw1_u_0(gkm,mkm,"
+      | D_FT0_AAZZ_S  -> "dataz_s_0(gkm,mkm,"
+      | D_FT0_AAZZ_T  -> "dataz_t_0(gkm,mkm,"
+      | D_FT0_AAZZ_U  -> "dataz_u_0(gkm,mkm," 
+      | D_FT0_AZWW0_S -> "datazw0_s_0(gkm,mkm,"
+      | D_FT0_AZWW0_T -> "datazw0_t_0(gkm,mkm,"
+      | D_FT0_AZWW0_U -> "datazw0_u_0(gkm,mkm,"
+      | D_FT0_AZWW1_S -> "datazw1_s_0(gkm,mkm,"
+      | D_FT0_AZWW1_T -> "datazw1_t_0(gkm,mkm,"
+      | D_FT0_AZWW1_U -> "datazw1_u_0(gkm,mkm," 
+      | D_FT0_AAAZ_S -> "dat3az_s_0(gkm,mkm,"
+      | D_FT0_AAAZ_T -> "dat3az_t_0(gkm,mkm,"
+      | D_FT0_AAAZ_U -> "dat3az_u_0(gkm,mkm," 
+      | D_FT0_AZZZ_S -> "data3z_s_0(gkm,mkm,"
+      | D_FT0_AZZZ_T -> "data3z_t_0(gkm,mkm,"
+      | D_FT0_AZZZ_U -> "data3z_u_0(gkm,mkm,"            
+      | D_FT1_ZZWW0_S -> "datzz0_s_1(gkm,mkm,"
+      | D_FT1_ZZWW0_T -> "datzz0_t_1(gkm,mkm,"
+      | D_FT1_ZZWW0_U -> "datzz0_u_1(gkm,mkm,"
+      | D_FT1_ZZWW1_S -> "datzz1_s_1(gkm,mkm,"
+      | D_FT1_ZZWW1_T -> "datzz1_t_1(gkm,mkm,"
+      | D_FT1_ZZWW1_U -> "datzz1_u_1(gkm,mkm,"
+      | D_FT1_WWWW0_S -> "datww0_s_1(gkm,mkm,"
+      | D_FT1_WWWW0_T -> "datww0_t_1(gkm,mkm,"
+      | D_FT1_WWWW0_U -> "datww0_u_1(gkm,mkm,"
+      | D_FT1_WWWW2_S -> "datww2_s_1(gkm,mkm,"
+      | D_FT1_WWWW2_T -> "datww2_t_1(gkm,mkm,"
+      | D_FT1_WWWW2_U -> "datww2_u_1(gkm,mkm,"
+      | D_FT1_ZZZZ_S  -> "datz4_s_1(gkm,mkm,"
+      | D_FT1_ZZZZ_T  -> "datz4_t_1(gkm,mkm,"
+      | D_FT1_ZZZZ_U  -> "datz4_u_1(gkm,mkm,"
+      | D_FT1_AAAA_S  -> "data4_s_1(gkm,mkm,"
+      | D_FT1_AAAA_T  -> "data4_t_1(gkm,mkm,"
+      | D_FT1_AAAA_U  -> "data4_u_1(gkm,mkm," 
+      | D_FT1_AAWW0_S -> "dataw0_s_1(gkm,mkm,"
+      | D_FT1_AAWW0_T -> "dataw0_t_1(gkm,mkm,"
+      | D_FT1_AAWW0_U -> "dataw0_u_1(gkm,mkm,"
+      | D_FT1_AAWW1_S -> "dataw1_s_1(gkm,mkm,"
+      | D_FT1_AAWW1_T -> "dataw1_t_1(gkm,mkm,"
+      | D_FT1_AAWW1_U -> "dataw1_u_1(gkm,mkm,"
+      | D_FT1_AAZZ_S  -> "dataz_s_1(gkm,mkm,"
+      | D_FT1_AAZZ_T  -> "dataz_t_1(gkm,mkm,"
+      | D_FT1_AAZZ_U  -> "dataz_u_1(gkm,mkm,"
+      | D_FT1_AZWW0_S -> "datazw0_s_1(gkm,mkm,"
+      | D_FT1_AZWW0_T -> "datazw0_t_1(gkm,mkm,"
+      | D_FT1_AZWW0_U -> "datazw0_u_1(gkm,mkm,"
+      | D_FT1_AZWW1_S -> "datazw1_s_1(gkm,mkm,"
+      | D_FT1_AZWW1_T -> "datazw1_t_1(gkm,mkm,"
+      | D_FT1_AZWW1_U -> "datazw1_u_1(gkm,mkm,"
+      | D_FT1_AAAZ_S -> "dat3az_s_1(gkm,mkm,"
+      | D_FT1_AAAZ_T -> "dat3az_t_1(gkm,mkm,"
+      | D_FT1_AAAZ_U -> "dat3az_u_1(gkm,mkm," 
+      | D_FT1_AZZZ_S -> "data3z_s_1(gkm,mkm,"
+      | D_FT1_AZZZ_T -> "data3z_t_1(gkm,mkm,"
+      | D_FT1_AZZZ_U -> "data3z_u_1(gkm,mkm,"      
+      | D_FT2_ZZWW0_S -> "datzz0_s_2(gkm,mkm,"
+      | D_FT2_ZZWW0_T -> "datzz0_t_2(gkm,mkm,"
+      | D_FT2_ZZWW0_U -> "datzz0_u_2(gkm,mkm,"
+      | D_FT2_ZZWW1_S -> "datzz1_s_2(gkm,mkm,"
+      | D_FT2_ZZWW1_T -> "datzz1_t_2(gkm,mkm,"
+      | D_FT2_ZZWW1_U -> "datzz1_u_2(gkm,mkm,"
+      | D_FT2_WWWW0_S -> "datww0_s_2(gkm,mkm,"
+      | D_FT2_WWWW0_T -> "datww0_t_2(gkm,mkm,"
+      | D_FT2_WWWW0_U -> "datww0_u_2(gkm,mkm,"
+      | D_FT2_WWWW2_S -> "datww2_s_2(gkm,mkm,"
+      | D_FT2_WWWW2_T -> "datww2_t_2(gkm,mkm,"
+      | D_FT2_WWWW2_U -> "datww2_u_2(gkm,mkm,"
+      | D_FT2_ZZZZ_S  -> "datz4_s_2(gkm,mkm,"
+      | D_FT2_ZZZZ_T  -> "datz4_t_2(gkm,mkm,"
+      | D_FT2_ZZZZ_U  -> "datz4_u_2(gkm,mkm,"
+      | D_FT2_AAAA_S  -> "data4_s_2(gkm,mkm,"
+      | D_FT2_AAAA_T  -> "data4_t_2(gkm,mkm,"
+      | D_FT2_AAAA_U  -> "data4_u_2(gkm,mkm," 
+      | D_FT2_AAWW0_S -> "dataw0_s_2(gkm,mkm,"
+      | D_FT2_AAWW0_T -> "dataw0_t_2(gkm,mkm,"
+      | D_FT2_AAWW0_U -> "dataw0_u_2(gkm,mkm,"
+      | D_FT2_AAWW1_S -> "dataw1_s_2(gkm,mkm,"
+      | D_FT2_AAWW1_T -> "dataw1_t_2(gkm,mkm,"
+      | D_FT2_AAWW1_U -> "dataw1_u_2(gkm,mkm,"
+      | D_FT2_AAZZ_S  -> "dataz_s_2(gkm,mkm,"
+      | D_FT2_AAZZ_T  -> "dataz_t_2(gkm,mkm,"
+      | D_FT2_AAZZ_U  -> "dataz_u_2(gkm,mkm,"
+      | D_FT2_AZWW0_S -> "datazw0_s_2(gkm,mkm,"
+      | D_FT2_AZWW0_T -> "datazw0_t_2(gkm,mkm,"
+      | D_FT2_AZWW0_U -> "datazw0_u_2(gkm,mkm,"
+      | D_FT2_AZWW1_S -> "datazw1_s_2(gkm,mkm,"
+      | D_FT2_AZWW1_T -> "datazw1_t_2(gkm,mkm,"
+      | D_FT2_AZWW1_U -> "datazw1_u_2(gkm,mkm,"
+      | D_FT2_AAAZ_S -> "dat3az_s_2(gkm,mkm,"
+      | D_FT2_AAAZ_T -> "dat3az_t_2(gkm,mkm,"
+      | D_FT2_AAAZ_U -> "dat3az_u_2(gkm,mkm," 
+      | D_FT2_AZZZ_S -> "data3z_s_2(gkm,mkm,"
+      | D_FT2_AZZZ_T -> "data3z_t_2(gkm,mkm,"
+      | D_FT2_AZZZ_U -> "data3z_u_2(gkm,mkm,"
+      | D_FTrsi_ZZWW0_S -> "datzz0_s_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW0_T -> "datzz0_t_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW0_U -> "datzz0_u_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW1_S -> "datzz1_s_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW1_T -> "datzz1_t_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW1_U -> "datzz1_u_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW0_S -> "datww0_s_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW0_T -> "datww0_t_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW0_U -> "datww0_u_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW2_S -> "datww2_s_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW2_T -> "datww2_t_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW2_U -> "datww2_u_rsi(gkm,mkm,"
+      | D_FTrsi_ZZZZ_S  -> "datz4_s_rsi(gkm,mkm,"
+      | D_FTrsi_ZZZZ_T  -> "datz4_t_rsi(gkm,mkm,"
+      | D_FTrsi_ZZZZ_U  -> "datz4_u_rsi(gkm,mkm," 
+      | D_FTrsi_AAAA_S  -> "data4_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAAA_T  -> "data4_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAAA_U  -> "data4_u_rsi(gkm,mkm,"  
+      | D_FTrsi_AAWW0_S -> "dataw0_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW0_T -> "dataw0_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW0_U -> "dataw0_u_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW1_S -> "dataw1_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW1_T -> "dataw1_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW1_U -> "dataw1_u_rsi(gkm,mkm,"
+      | D_FTrsi_AAZZ_S  -> "dataz_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAZZ_T  -> "dataz_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAZZ_U  -> "dataz_u_rsi(gkm,mkm,"    
+      | D_FTrsi_AZWW0_S -> "datazw0_s_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW0_T -> "datazw0_t_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW0_U -> "datazw0_u_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW1_S -> "datazw1_s_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW1_T -> "datazw1_t_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW1_U -> "datazw1_u_rsi(gkm,mkm,"
+      | D_FTrsi_AAAZ_S -> "dat3az_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAAZ_T -> "dat3az_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAAZ_U -> "dat3az_u_rsi(gkm,mkm," 
+      | D_FTrsi_AZZZ_S -> "data3z_s_rsi(gkm,mkm,"
+      | D_FTrsi_AZZZ_T -> "data3z_t_rsi(gkm,mkm,"
+      | D_FTrsi_AZZZ_U -> "data3z_u_rsi(gkm,mkm,"       
+      | D_FM0_ZZWW0_S -> "damzz0_s_0(gkm,mkm,"
+      | D_FM0_ZZWW0_T -> "damzz0_t_0(gkm,mkm,"
+      | D_FM0_ZZWW0_U -> "damzz0_u_0(gkm,mkm,"
+      | D_FM0_ZZWW1_S -> "damzz1_s_0(gkm,mkm,"
+      | D_FM0_ZZWW1_T -> "damzz1_t_0(gkm,mkm,"
+      | D_FM0_ZZWW1_U -> "damzz1_u_0(gkm,mkm,"
+      | D_FM0_WWWW0_S -> "damww0_s_0(gkm,mkm,"
+      | D_FM0_WWWW0_T -> "damww0_t_0(gkm,mkm,"
+      | D_FM0_WWWW0_U -> "damww0_u_0(gkm,mkm,"
+      | D_FM0_WWWW2_S -> "damww2_s_0(gkm,mkm,"
+      | D_FM0_WWWW2_T -> "damww2_t_0(gkm,mkm,"
+      | D_FM0_WWWW2_U -> "damww2_u_0(gkm,mkm,"
+      | D_FM0_ZZZZ_S  -> "damz4_s_0(gkm,mkm,"
+      | D_FM0_ZZZZ_T  -> "damz4_t_0(gkm,mkm,"
+      | D_FM0_ZZZZ_U  -> "damz4_u_0(gkm,mkm,"
+      | D_FM1_ZZWW0_S -> "damzz0_s_1(gkm,mkm,"
+      | D_FM1_ZZWW0_T -> "damzz0_t_1(gkm,mkm,"
+      | D_FM1_ZZWW0_U -> "damzz0_u_1(gkm,mkm,"
+      | D_FM1_ZZWW1_S -> "damzz1_s_1(gkm,mkm,"
+      | D_FM1_ZZWW1_T -> "damzz1_t_1(gkm,mkm,"
+      | D_FM1_ZZWW1_U -> "damzz1_u_1(gkm,mkm,"
+      | D_FM1_WWWW0_S -> "damww0_s_1(gkm,mkm,"
+      | D_FM1_WWWW0_T -> "damww0_t_1(gkm,mkm,"
+      | D_FM1_WWWW0_U -> "damww0_u_1(gkm,mkm,"
+      | D_FM1_WWWW2_S -> "damww2_s_1(gkm,mkm,"
+      | D_FM1_WWWW2_T -> "damww2_t_1(gkm,mkm,"
+      | D_FM1_WWWW2_U -> "damww2_u_1(gkm,mkm,"
+      | D_FM1_ZZZZ_S  -> "damz4_s_1(gkm,mkm,"
+      | D_FM1_ZZZZ_T  -> "damz4_t_1(gkm,mkm,"
+      | D_FM1_ZZZZ_U  -> "damz4_u_1(gkm,mkm,"
+      | D_FM7_ZZWW0_S -> "damzz0_s_7(gkm,mkm,"
+      | D_FM7_ZZWW0_T -> "damzz0_t_7(gkm,mkm,"
+      | D_FM7_ZZWW0_U -> "damzz0_u_7(gkm,mkm,"
+      | D_FM7_ZZWW1_S -> "damzz1_s_7(gkm,mkm,"
+      | D_FM7_ZZWW1_T -> "damzz1_t_7(gkm,mkm,"
+      | D_FM7_ZZWW1_U -> "damzz1_u_7(gkm,mkm,"
+      | D_FM7_WWWW0_S -> "damww0_s_7(gkm,mkm,"
+      | D_FM7_WWWW0_T -> "damww0_t_7(gkm,mkm,"
+      | D_FM7_WWWW0_U -> "damww0_u_7(gkm,mkm,"
+      | D_FM7_WWWW2_S -> "damww2_s_7(gkm,mkm,"
+      | D_FM7_WWWW2_T -> "damww2_t_7(gkm,mkm,"
+      | D_FM7_WWWW2_U -> "damww2_u_7(gkm,mkm,"
+      | D_FM7_ZZZZ_S  -> "damz4_s_7(gkm,mkm,"
+      | D_FM7_ZZZZ_T  -> "damz4_t_7(gkm,mkm,"
+      | D_FM7_ZZZZ_U  -> "damz4_u_7(gkm,mkm,"
       | D_Alpha_HHHH_S  -> "dalh4_s(gkm,mkm,"
       | D_Alpha_HHHH_T  -> "dalh4_t(gkm,mkm,"
       | D_Alpha_HHWW0_S -> "dalhw0_s(gkm,mkm,"
@@ -9891,11 +11536,48 @@ effective operators:
       | D_Alpha_HHZZ1_S -> "dalhz1_s(gkm,mkm,"
       | D_Alpha_HHZZ1_T -> "dalhz1_t(gkm,mkm,"
       | D_Alpha_HHZZ1_U -> "dalhz1_u(gkm,mkm,"
+      | D_FM0_HHWW0_S -> "damhw0_s_0(gkm,mkm,"
+      | D_FM0_HHWW0_T -> "damhw0_t_0(gkm,mkm,"
+      | D_FM0_HHWW0_U -> "damhw0_u_0(gkm,mkm,"
+      | D_FM0_HHZZ0_S -> "damhz0_s_0(gkm,mkm,"
+      | D_FM0_HHZZ0_T -> "damhz0_t_0(gkm,mkm,"
+      | D_FM0_HHZZ0_U -> "damhz0_u_0(gkm,mkm,"
+      | D_FM0_HHWW1_S -> "damhw1_s_0(gkm,mkm,"
+      | D_FM0_HHWW1_T -> "damhw1_t_0(gkm,mkm,"
+      | D_FM0_HHWW1_U -> "damhw1_u_0(gkm,mkm,"
+      | D_FM0_HHZZ1_S -> "damhz1_s_0(gkm,mkm,"
+      | D_FM0_HHZZ1_T -> "damhz1_t_0(gkm,mkm,"
+      | D_FM0_HHZZ1_U -> "damhz1_u_0(gkm,mkm,"  
+      | D_FM1_HHWW0_S -> "damhw0_s_1(gkm,mkm,"
+      | D_FM1_HHWW0_T -> "damhw0_t_1(gkm,mkm,"
+      | D_FM1_HHWW0_U -> "damhw0_u_1(gkm,mkm,"
+      | D_FM1_HHZZ0_S -> "damhz0_s_1(gkm,mkm,"
+      | D_FM1_HHZZ0_T -> "damhz0_t_1(gkm,mkm,"
+      | D_FM1_HHZZ0_U -> "damhz0_u_1(gkm,mkm,"
+      | D_FM1_HHWW1_S -> "damhw1_s_1(gkm,mkm,"
+      | D_FM1_HHWW1_T -> "damhw1_t_1(gkm,mkm,"
+      | D_FM1_HHWW1_U -> "damhw1_u_1(gkm,mkm,"
+      | D_FM1_HHZZ1_S -> "damhz1_s_1(gkm,mkm,"
+      | D_FM1_HHZZ1_T -> "damhz1_t_1(gkm,mkm,"
+      | D_FM1_HHZZ1_U -> "damhz1_u_1(gkm,mkm," 
+      | D_FM7_HHWW0_S -> "damhw0_s_7(gkm,mkm,"
+      | D_FM7_HHWW0_T -> "damhw0_t_7(gkm,mkm,"
+      | D_FM7_HHWW0_U -> "damhw0_u_7(gkm,mkm,"
+      | D_FM7_HHZZ0_S -> "damhz0_s_7(gkm,mkm,"
+      | D_FM7_HHZZ0_T -> "damhz0_t_7(gkm,mkm,"
+      | D_FM7_HHZZ0_U -> "damhz0_u_7(gkm,mkm,"
+      | D_FM7_HHWW1_S -> "damhw1_s_7(gkm,mkm,"
+      | D_FM7_HHWW1_T -> "damhw1_t_7(gkm,mkm,"
+      | D_FM7_HHWW1_U -> "damhw1_u_7(gkm,mkm,"
+      | D_FM7_HHZZ1_S -> "damhz1_s_7(gkm,mkm,"
+      | D_FM7_HHZZ1_T -> "damhz1_t_7(gkm,mkm,"
+      | D_FM7_HHZZ1_U -> "damhz1_u_7(gkm,mkm,"
       | G_HWW -> "ghww" | G_HZZ -> "ghzz"
       | G_HHWW -> "ghhww" | G_HHZZ -> "ghhzz"
       | G_SWW -> "gsww" | G_SZZ -> "gszz"
       | G_SHH -> "gshh"
       | G_SWW_T -> "gswwt" | G_SZZ_T -> "gszzt"
+      | G_SAA_T -> "gsaat" | G_SAZ_T -> "gsazt"
       | G_PNWW -> "gpnww" | G_PNZZ -> "gpnzz"
       | G_PSNWW -> "gpsnww" | G_PSNZZ -> "gpsnzz"
       | G_PSNHH -> "gpsnhh"
@@ -10242,21 +11924,140 @@ module SSC_AltT (Flags : SSC_flags) =
       | I_lambda5_AWW | I_lambda5_ZWW
       | FS0_HHWW | FS0_HHZZ
       | FS1_HHWW | FS1_HHZZ
+      | FM0_HHWW | FM0_HHZZ 
+      | FM1_HHWW | FM1_HHZZ   
+      | FM7_HHWW | FM7_HHZZ
       | Alpha_WWWW0 | Alpha_ZZWW1 | Alpha_WWWW2
       | Alpha_ZZWW0 | Alpha_ZZZZ
+      | FT0_WWWW0 | FT0_WWWW2
+      | FT0_ZZWW0 | FT0_ZZWW1
+      | FT0_ZZZZ  | FT0_AAAA
+      | FT0_AAWW0 | FT0_AAWW1
+      | FT0_AAZZ  
+      | FT0_AZWW0 | FT0_AZWW1
+      | FT0_AAAZ  | FT0_AZZZ
+      | FT1_WWWW0 | FT1_WWWW2
+      | FT1_ZZWW0 | FT1_ZZWW1
+      | FT1_ZZZZ  | FT1_AAAA  
+      | FT1_AAWW0 | FT1_AAWW1
+      | FT1_AAZZ  
+      | FT1_AZWW0 | FT1_AZWW1 
+      | FT1_AAAZ  | FT1_AZZZ
+      | FT2_WWWW0 | FT2_WWWW2
+      | FT2_ZZWW0 | FT2_ZZWW1
+      | FT2_ZZZZ  | FT2_AAAA
+      | FT2_AAWW0 | FT2_AAWW1
+      | FT2_AAZZ  
+      | FT2_AZWW0 | FT2_AZWW1 
+      | FT2_AAAZ  | FT2_AZZZ
+      | FM0_WWWW0 | FM0_WWWW2
+      | FM0_ZZWW0 | FM0_ZZWW1
+      | FM0_ZZZZ  
+      | FM1_WWWW0 | FM1_WWWW2
+      | FM1_ZZWW0 | FM1_ZZWW1
+      | FM1_ZZZZ     
+      | FM7_WWWW0 | FM7_WWWW2
+      | FM7_ZZWW0 | FM7_ZZWW1
+      | FM7_ZZZZ
       | D_Alpha_ZZWW0_S | D_Alpha_ZZWW0_T | D_Alpha_ZZWW1_S
       | D_Alpha_ZZWW1_T | D_Alpha_ZZWW1_U | D_Alpha_WWWW0_S
       | D_Alpha_WWWW0_T | D_Alpha_WWWW0_U | D_Alpha_WWWW2_S
       | D_Alpha_WWWW2_T | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T
+      | D_FT0_ZZWW0_S | D_FT0_ZZWW0_T | D_FT0_ZZWW0_U 
+      | D_FT0_ZZWW1_S | D_FT0_ZZWW1_T | D_FT0_ZZWW1_U 
+      | D_FT0_WWWW0_S | D_FT0_WWWW0_T | D_FT0_WWWW0_U 
+      | D_FT0_WWWW2_S | D_FT0_WWWW2_T | D_FT0_WWWW2_U    
+      | D_FT0_ZZZZ_S  | D_FT0_ZZZZ_T  | D_FT0_ZZZZ_U
+      | D_FT0_AAAA_S  | D_FT0_AAAA_T  | D_FT0_AAAA_U  
+      | D_FT0_AAWW0_S | D_FT0_AAWW0_T | D_FT0_AAWW0_U 
+      | D_FT0_AAWW1_S | D_FT0_AAWW1_T | D_FT0_AAWW1_U
+      | D_FT0_AAZZ_S  | D_FT0_AAZZ_T  | D_FT0_AAZZ_U 
+      | D_FT0_AZWW0_S | D_FT0_AZWW0_T | D_FT0_AZWW0_U
+      | D_FT0_AZWW1_S | D_FT0_AZWW1_T | D_FT0_AZWW1_U 
+      | D_FT0_AAAZ_S  | D_FT0_AAAZ_T  | D_FT0_AAAZ_U
+      | D_FT0_AZZZ_S  | D_FT0_AZZZ_T  | D_FT0_AZZZ_U           
+      | D_FT1_ZZWW0_S | D_FT1_ZZWW0_T | D_FT1_ZZWW0_U 
+      | D_FT1_ZZWW1_S | D_FT1_ZZWW1_T | D_FT1_ZZWW1_U 
+      | D_FT1_WWWW0_S | D_FT1_WWWW0_T | D_FT1_WWWW0_U 
+      | D_FT1_WWWW2_S | D_FT1_WWWW2_T | D_FT1_WWWW2_U    
+      | D_FT1_ZZZZ_S  | D_FT1_ZZZZ_T  | D_FT1_ZZZZ_U 
+      | D_FT1_AAAA_S  | D_FT1_AAAA_T  | D_FT1_AAAA_U  
+      | D_FT1_AAWW0_S | D_FT1_AAWW0_T | D_FT1_AAWW0_U 
+      | D_FT1_AAWW1_S | D_FT1_AAWW1_T | D_FT1_AAWW1_U
+      | D_FT1_AAZZ_S  | D_FT1_AAZZ_T  | D_FT1_AAZZ_U  
+      | D_FT1_AZWW0_S | D_FT1_AZWW0_T | D_FT1_AZWW0_U
+      | D_FT1_AZWW1_S | D_FT1_AZWW1_T | D_FT1_AZWW1_U
+      | D_FT1_AAAZ_S  | D_FT1_AAAZ_T  | D_FT1_AAAZ_U
+      | D_FT1_AZZZ_S  | D_FT1_AZZZ_T  | D_FT1_AZZZ_U       
+      | D_FT2_ZZWW0_S | D_FT2_ZZWW0_T | D_FT2_ZZWW0_U 
+      | D_FT2_ZZWW1_S | D_FT2_ZZWW1_T | D_FT2_ZZWW1_U 
+      | D_FT2_WWWW0_S | D_FT2_WWWW0_T | D_FT2_WWWW0_U 
+      | D_FT2_WWWW2_S | D_FT2_WWWW2_T | D_FT2_WWWW2_U    
+      | D_FT2_ZZZZ_S  | D_FT2_ZZZZ_T  | D_FT2_ZZZZ_U 
+      | D_FT2_AAAA_S  | D_FT2_AAAA_T  | D_FT2_AAAA_U  
+      | D_FT2_AAWW0_S | D_FT2_AAWW0_T | D_FT2_AAWW0_U 
+      | D_FT2_AAWW1_S | D_FT2_AAWW1_T | D_FT2_AAWW1_U
+      | D_FT2_AAZZ_S  | D_FT2_AAZZ_T  | D_FT2_AAZZ_U  
+      | D_FT2_AZWW0_S | D_FT2_AZWW0_T | D_FT2_AZWW0_U
+      | D_FT2_AZWW1_S | D_FT2_AZWW1_T | D_FT2_AZWW1_U  
+      | D_FT2_AAAZ_S  | D_FT2_AAAZ_T  | D_FT2_AAAZ_U
+      | D_FT2_AZZZ_S  | D_FT2_AZZZ_T  | D_FT2_AZZZ_U  
+      | D_FTrsi_ZZWW0_S | D_FTrsi_ZZWW0_T | D_FTrsi_ZZWW0_U 
+      | D_FTrsi_ZZWW1_S | D_FTrsi_ZZWW1_T | D_FTrsi_ZZWW1_U 
+      | D_FTrsi_WWWW0_S | D_FTrsi_WWWW0_T | D_FTrsi_WWWW0_U 
+      | D_FTrsi_WWWW2_S | D_FTrsi_WWWW2_T | D_FTrsi_WWWW2_U    
+      | D_FTrsi_ZZZZ_S  | D_FTrsi_ZZZZ_T  | D_FTrsi_ZZZZ_U 
+      | D_FTrsi_AAAA_S  | D_FTrsi_AAAA_T  | D_FTrsi_AAAA_U
+      | D_FTrsi_AAWW0_S | D_FTrsi_AAWW0_T | D_FTrsi_AAWW0_U 
+      | D_FTrsi_AAWW1_S | D_FTrsi_AAWW1_T | D_FTrsi_AAWW1_U
+      | D_FTrsi_AAZZ_S  | D_FTrsi_AAZZ_T  | D_FTrsi_AAZZ_U 
+      | D_FTrsi_AZWW0_S | D_FTrsi_AZWW0_T | D_FTrsi_AZWW0_U
+      | D_FTrsi_AZWW1_S | D_FTrsi_AZWW1_T | D_FTrsi_AZWW1_U 
+      | D_FTrsi_AAAZ_S  | D_FTrsi_AAAZ_T  | D_FTrsi_AAAZ_U
+      | D_FTrsi_AZZZ_S  | D_FTrsi_AZZZ_T  | D_FTrsi_AZZZ_U        
+      | D_FM0_ZZWW0_S | D_FM0_ZZWW0_T | D_FM0_ZZWW0_U 
+      | D_FM0_ZZWW1_S | D_FM0_ZZWW1_T | D_FM0_ZZWW1_U 
+      | D_FM0_WWWW0_S | D_FM0_WWWW0_T | D_FM0_WWWW0_U 
+      | D_FM0_WWWW2_S | D_FM0_WWWW2_T | D_FM0_WWWW2_U    
+      | D_FM0_ZZZZ_S | D_FM0_ZZZZ_T | D_FM0_ZZZZ_U       
+      | D_FM1_ZZWW0_S | D_FM1_ZZWW0_T | D_FM1_ZZWW0_U 
+      | D_FM1_ZZWW1_S | D_FM1_ZZWW1_T | D_FM1_ZZWW1_U 
+      | D_FM1_WWWW0_S | D_FM1_WWWW0_T | D_FM1_WWWW0_U 
+      | D_FM1_WWWW2_S | D_FM1_WWWW2_T | D_FM1_WWWW2_U    
+      | D_FM1_ZZZZ_S | D_FM1_ZZZZ_T | D_FM1_ZZZZ_U 
+      | D_FM7_ZZWW0_S | D_FM7_ZZWW0_T | D_FM7_ZZWW0_U 
+      | D_FM7_ZZWW1_S | D_FM7_ZZWW1_T | D_FM7_ZZWW1_U 
+      | D_FM7_WWWW0_S | D_FM7_WWWW0_T | D_FM7_WWWW0_U 
+      | D_FM7_WWWW2_S | D_FM7_WWWW2_T | D_FM7_WWWW2_U    
+      | D_FM7_ZZZZ_S | D_FM7_ZZZZ_T | D_FM7_ZZZZ_U
       | D_Alpha_HHHH_S  | D_Alpha_HHHH_T 
       | D_Alpha_HHZZ0_S | D_Alpha_HHWW0_S 
       | D_Alpha_HHZZ0_T | D_Alpha_HHWW0_T
       | D_Alpha_HHZZ1_S | D_Alpha_HHWW1_S 
       | D_Alpha_HHZZ1_T | D_Alpha_HHWW1_T
       | D_Alpha_HHZZ1_U | D_Alpha_HHWW1_U
+      | D_FM0_HHZZ0_S | D_FM0_HHWW0_S 
+      | D_FM0_HHZZ0_T | D_FM0_HHWW0_T
+      | D_FM0_HHZZ0_U | D_FM0_HHWW0_U      
+      | D_FM0_HHZZ1_S | D_FM0_HHWW1_S 
+      | D_FM0_HHZZ1_T | D_FM0_HHWW1_T
+      | D_FM0_HHZZ1_U | D_FM0_HHWW1_U   
+      | D_FM1_HHZZ0_S | D_FM1_HHWW0_S 
+      | D_FM1_HHZZ0_T | D_FM1_HHWW0_T
+      | D_FM1_HHZZ0_U | D_FM1_HHWW0_U      
+      | D_FM1_HHZZ1_S | D_FM1_HHWW1_S 
+      | D_FM1_HHZZ1_T | D_FM1_HHWW1_T
+      | D_FM1_HHZZ1_U | D_FM1_HHWW1_U
+      | D_FM7_HHZZ0_S | D_FM7_HHWW0_S 
+      | D_FM7_HHZZ0_T | D_FM7_HHWW0_T
+      | D_FM7_HHZZ0_U | D_FM7_HHWW0_U      
+      | D_FM7_HHZZ1_S | D_FM7_HHWW1_S 
+      | D_FM7_HHZZ1_T | D_FM7_HHWW1_T
+      | D_FM7_HHZZ1_U | D_FM7_HHWW1_U
       | G_HWW | G_HHWW | G_HZZ | G_HHZZ
       | G_SWW | G_SWW_T | G_SSWW | G_SZZ 
       | G_SZZ_T | G_SSZZ | G_SHH
+      | G_SAA_T | G_SAZ_T 
       | G_PNWW | G_PNZZ | G_PWZ | G_PWW
       | G_PSNWW | G_PSNZZ | G_PSNHH
       | G_FWW | G_FZZ | G_FWW_CF | G_FZZ_CF 
@@ -10668,12 +12469,233 @@ module SSC_AltT (Flags : SSC_flags) =
              Vector4 [(1, C_13_42); (1, C_14_23)], Alpha_WWWW0);
             ((Wm, Wm, Wp, Wp),
              Vector4 [1, C_12_34], Alpha_WWWW2);
+            ((Z, Z, Z, Z),
+             Vector4 [(1, C_12_34); (1, C_13_42); (1, C_14_23)], Alpha_ZZZZ);
             ((Wm, Wp, Z, Z),
              Vector4 [1, C_12_34], Alpha_ZZWW0);
             ((Wm, Wp, Z, Z),
-             Vector4 [(1, C_13_42); (1, C_14_23)], Alpha_ZZWW1);
+             Vector4 [(1, C_13_42); (1, C_14_23)], Alpha_ZZWW1)]	    
+	@
+	  (if Flags.k_matrix_tm then
+	      List.map qgc
+           [((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_WWWW2);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_WWWW2);             
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_WWWW2); 
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_0 [1, C_13_42], FM0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_0 [1, C_14_23], FM0_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_0 [1, C_12_34], FM0_WWWW2); 
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_1 [1, C_13_42], FM1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_1 [1, C_14_23], FM1_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_1 [1, C_12_34], FM1_WWWW2);  
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_7 [1, C_13_42], FM7_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_7 [1, C_14_23], FM7_WWWW0);
+            ((Wm, Wm, Wp, Wp),
+             Dim8_Vector4_m_7 [1, C_12_34], FM7_WWWW2);             
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_ZZWW1); 
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_ZZWW1);              
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_ZZWW1);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_0 [1, C_12_34], FM0_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_0 [1, C_13_42], FM0_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_0 [1, C_14_23], FM0_ZZWW1);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_1 [1, C_12_34], FM1_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_1 [1, C_13_42], FM1_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_1 [1, C_14_23], FM1_ZZWW1); 
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_7 [1, C_12_34], FM7_ZZWW0);   
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_7 [1, C_13_42], FM7_ZZWW1);
+            ((Wm, Wp, Z, Z),
+             Dim8_Vector4_m_7 [1, C_14_23], FM7_ZZWW1);              
             ((Z, Z, Z, Z),
-             Vector4 [(1, C_12_34); (1, C_13_42); (1, C_14_23)], Alpha_ZZZZ) ]
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_ZZZZ);
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_ZZZZ);             
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_0 [1, C_12_34], FM0_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_0 [1, C_13_42], FM0_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_0 [1, C_14_23], FM0_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_1 [1, C_12_34], FM1_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_1 [1, C_13_42], FM1_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_1 [1, C_14_23], FM1_ZZZZ);
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_7 [1, C_12_34], FM7_ZZZZ);  
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_7 [1, C_13_42], FM7_ZZZZ); 
+            ((Z, Z, Z, Z),
+             Dim8_Vector4_m_7 [1, C_14_23], FM7_ZZZZ);
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAAA);  
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAAA); 
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAAA);
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAAA);  
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAAA); 
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAAA);             
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAAA);  
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAAA); 
+            ((Ga, Ga, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAAA);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAWW0);   
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAWW1);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAWW1); 
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAWW0);   
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAWW1);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAWW1);              
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAWW0);   
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAWW1);
+            ((Wm, Wp, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAWW1);
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAZZ);  
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAZZ); 
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAZZ);
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAZZ);  
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAZZ); 
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAZZ);             
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAZZ);  
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAZZ); 
+            ((Z, Z, Ga, Ga),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAZZ);
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AZWW0);  
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AZWW1); 
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AZWW1);
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AZWW0);  
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AZWW1); 
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AZWW1);             
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AZWW0);  
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AZWW1); 
+            ((Ga, Z, Wp, Wm),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AZWW1);
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AAAZ);  
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AAAZ); 
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AAAZ);
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AAAZ);  
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AAAZ); 
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AAAZ);             
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AAAZ);  
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AAAZ); 
+            ((Ga, Ga, Ga, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AAAZ);
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_12_34], FT0_AZZZ);  
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_13_42], FT0_AZZZ); 
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_0 [1, C_14_23], FT0_AZZZ);
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_12_34], FT1_AZZZ);  
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_13_42], FT1_AZZZ); 
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_1 [1, C_14_23], FT1_AZZZ);             
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_12_34], FT2_AZZZ);  
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_13_42], FT2_AZZZ); 
+            ((Ga, Z, Z, Z),
+             Dim8_Vector4_t_2 [1, C_14_23], FT2_AZZZ)]
+      else
+        [] )
       else
         []
 
@@ -10749,9 +12771,891 @@ module SSC_AltT (Flags : SSC_flags) =
                    [(1, C_13_42); (1, C_12_34)]), D_Alpha_ZZZZ_T)]
       else
         []
+        
+    let k_matrix_quartic_gauge_t_0 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_12_34)]), D_FT0_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_13_42)]), D_FT0_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_14_23)]), D_FT0_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_12_34)]), D_FT0_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_13_42)]), D_FT0_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t0 (2,
+                   [(1, C_14_23)]), D_FT0_AAWW1_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AAZZ_T); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AAZZ_U);        
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_12_34)]), D_FT0_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_13_42)]), D_FT0_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t0 (0,
+                   [(1, C_14_23)]), D_FT0_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_12_34)]), D_FT0_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_13_42)]), D_FT0_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t0 (1,
+                   [(1, C_14_23)]), D_FT0_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_12_34)]), D_FT0_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_13_42)]), D_FT0_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t0 (3,
+                   [(1, C_14_23)]), D_FT0_AZZZ_U)]        
+      else
+        []
+        
+    let k_matrix_quartic_gauge_t_1 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_12_34)]), D_FT1_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_13_42)]), D_FT1_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_14_23)]), D_FT1_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1(0,
+                   [(1, C_12_34)]), D_FT1_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_12_34)]), D_FT1_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_13_42)]), D_FT1_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t1 (2,
+                   [(1, C_14_23)]), D_FT1_AAWW1_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AAZZ_T); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AAZZ_U);        
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_12_34)]), D_FT1_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_13_42)]), D_FT1_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t1 (0,
+                   [(1, C_14_23)]), D_FT1_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_12_34)]), D_FT1_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_13_42)]), D_FT1_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t1 (1,
+                   [(1, C_14_23)]), D_FT1_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_12_34)]), D_FT1_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_13_42)]), D_FT1_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t1 (3,
+                   [(1, C_14_23)]), D_FT1_AZZZ_U)]        
+      else
+        []        
+        
+    let k_matrix_quartic_gauge_t_2 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_12_34)]), D_FT2_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_13_42)]), D_FT2_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_14_23)]), D_FT2_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_12_34)]), D_FT2_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_13_42)]), D_FT2_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t2 (2,
+                   [(1, C_14_23)]), D_FT2_AAWW1_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AAZZ_T); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AAZZ_U);        
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_12_34)]), D_FT2_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_13_42)]), D_FT2_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t2 (0,
+                   [(1, C_14_23)]), D_FT2_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_12_34)]), D_FT2_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_13_42)]), D_FT2_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t2 (1,
+                   [(1, C_14_23)]), D_FT2_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_12_34)]), D_FT2_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_13_42)]), D_FT2_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t2 (3,
+                   [(1, C_14_23)]), D_FT2_AZZZ_U)]        
+      else
+        []
+        
+    let k_matrix_quartic_gauge_t_rsi =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_12_34)]), D_FTrsi_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_13_42)]), D_FTrsi_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_14_23)]), D_FTrsi_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_ZZZZ_U);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAAA_T); 
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAAA_U);        
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAA_S);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAA_T);
+            ((Ga, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAA_U);                   
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAWW0_S);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAWW0_T);
+            ((Wm, Wp, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAWW0_U);                   
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAWW1_S);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAWW1_T);
+            ((Wm, Ga, Wp, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AAWW1_S);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AAWW1_U);
+            ((Wp, Ga, Ga, Wm), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AAWW1_T); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_12_34)]), D_FTrsi_AAWW1_S); 
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_13_42)]), D_FTrsi_AAWW1_U);
+            ((Ga, Wp, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (2,
+                   [(1, C_14_23)]), D_FTrsi_AAWW1_T);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAZZ_S);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAZZ_T);
+            ((Ga, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAZZ_U);
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAZZ_S); 
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAZZ_T);
+            ((Z, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAZZ_U); 
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AAZZ_S);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AAZZ_T);
+            ((Ga, Ga, Z, Z), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AAZZ_U); 
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_12_34)]), D_FTrsi_AZWW0_S);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_13_42)]), D_FTrsi_AZWW0_T);
+            ((Ga, Z, Wp, Wm), Vector4_K_Matrix_cf_t_rsi (0,
+                   [(1, C_14_23)]), D_FTrsi_AZWW0_U); 
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Wp, Ga, Wm, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Wm, Ga, Wp, Z), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Z, Wm, Ga, Wp), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_12_34)]), D_FTrsi_AZWW1_S);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_13_42)]), D_FTrsi_AZWW1_T);
+            ((Wp, Z, Wm, Ga), Vector4_K_Matrix_cf_t_rsi (1,
+                   [(1, C_14_23)]), D_FTrsi_AZWW1_U); 
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAZ_S);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAZ_T);
+            ((Ga, Ga, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAZ_U); 
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAZ_S);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAZ_T);
+            ((Z, Ga, Ga, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAZ_U); 
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AAAZ_S);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AAAZ_T);
+            ((Ga, Ga, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AAAZ_U); 
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AZZZ_S);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AZZZ_T);
+            ((Z, Z, Z, Ga), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AZZZ_U); 
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AZZZ_S);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AZZZ_T);
+            ((Ga, Z, Z, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AZZZ_U); 
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_12_34)]), D_FTrsi_AZZZ_S);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_13_42)]), D_FTrsi_AZZZ_T);
+            ((Z, Z, Ga, Z), Vector4_K_Matrix_cf_t_rsi (3,
+                   [(1, C_14_23)]), D_FTrsi_AZZZ_U)]        
+      else
+        []        
+        
+    let k_matrix_quartic_gauge_m_0 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m0 (1,
+                   [(1, C_12_34)]), D_FM0_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m0 (1,
+                   [(1, C_13_42)]), D_FM0_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m0 (1,
+                   [(1, C_14_23)]), D_FM0_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m0 (2,
+                   [(1, C_12_34)]), D_FM0_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m0 (2,
+                   [(1, C_13_42)]), D_FM0_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m0 (2,
+                   [(1, C_14_23)]), D_FM0_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_12_34)]), D_FM0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_13_42)]), D_FM0_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (0,
+                   [(1, C_14_23)]), D_FM0_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (3,
+                   [(1, C_14_23)]), D_FM0_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (3,
+                   [(1, C_13_42)]), D_FM0_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m0 (3,
+                   [(1, C_12_34)]), D_FM0_ZZZZ_U)]        
+      else
+        []
+
+    let k_matrix_quartic_gauge_m_1 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m1 (1,
+                   [(1, C_12_34)]), D_FM1_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m1 (1,
+                   [(1, C_13_42)]), D_FM1_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m1 (1,
+                   [(1, C_14_23)]), D_FM1_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m1 (2,
+                   [(1, C_12_34)]), D_FM1_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m1 (2,
+                   [(1, C_13_42)]), D_FM1_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m1 (2,
+                   [(1, C_14_23)]), D_FM1_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_12_34)]), D_FM1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_13_42)]), D_FM1_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (0,
+                   [(1, C_14_23)]), D_FM1_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (3,
+                   [(1, C_14_23)]), D_FM1_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (3,
+                   [(1, C_13_42)]), D_FM1_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m1 (3,
+                   [(1, C_12_34)]), D_FM1_ZZZZ_U)]        
+      else
+        []
+        
+    let k_matrix_quartic_gauge_m_7 =
+      if Flags.k_matrix_tm then
+        List.map qgc
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_WWWW0_S);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_WWWW0_T);
+            ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_WWWW0_U);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_WWWW0_S); 
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_WWWW0_T);
+            ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_WWWW0_U); 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_WWWW2_S);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_WWWW2_T);
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_WWWW2_U);                   
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_ZZWW0_S);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_ZZWW0_T);
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_ZZWW0_U);                   
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_ZZWW1_S);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_ZZWW1_T);
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m7 (1,
+                   [(1, C_12_34)]), D_FM7_ZZWW1_S);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m7 (1,
+                   [(1, C_13_42)]), D_FM7_ZZWW1_U);
+            ((Wp, Z, Z, Wm), Vector4_K_Matrix_cf_m7 (1,
+                   [(1, C_14_23)]), D_FM7_ZZWW1_T); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m7 (2,
+                   [(1, C_12_34)]), D_FM7_ZZWW1_S); 
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m7 (2,
+                   [(1, C_13_42)]), D_FM7_ZZWW1_U);
+            ((Z, Wp, Wm, Z), Vector4_K_Matrix_cf_m7 (2,
+                   [(1, C_14_23)]), D_FM7_ZZWW1_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_12_34)]), D_FM7_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_13_42)]), D_FM7_ZZZZ_T); 
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (0,
+                   [(1, C_14_23)]), D_FM7_ZZZZ_U);        
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (3,
+                   [(1, C_14_23)]), D_FM7_ZZZZ_S);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (3,
+                   [(1, C_13_42)]), D_FM7_ZZZZ_T);
+            ((Z, Z, Z, Z), Vector4_K_Matrix_cf_m7 (3,
+                   [(1, C_12_34)]), D_FM7_ZZZZ_U)]        
+      else
+        []    
 
     let k_matrix_2scalar_2gauge =
-      if Flags.k_matrix then
+      if Flags.k_matrix_tm then
         if Flags.higgs_matrix then
             [ ((O H,O H,G Z,G Z), DScalar2_Vector2_K_Matrix_ms 
                    (0,  [(1, C_12_34)]), D_Alpha_HHZZ0_S);
@@ -10805,6 +13709,174 @@ module SSC_AltT (Flags : SSC_flags) =
             []
       else
           []
+          
+    let k_matrix_2scalar_2gauge_m =
+      if Flags.k_matrix_tm then
+        if Flags.higgs_matrix then
+            [ ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM0_HHZZ0_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (0,  [(1, C_13_42)]), D_FM0_HHZZ0_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (0,  [(1, C_14_23)]), D_FM0_HHZZ0_U);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf 
+                   (3,  [(1, C_14_23)]), D_FM0_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (3,  [(1, C_13_42)]), D_FM0_HHZZ1_U);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (3,  [(1, C_12_34)]), D_FM0_HHZZ1_T);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM0_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_12_34)]), D_FM0_HHZZ1_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_14_23)]), D_FM0_HHZZ1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM0_HHWW0_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (2,  [(1, C_13_42)]), D_FM0_HHWW0_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (1,  [(1, C_14_23)]), D_FM0_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (1,  [(1, C_13_42)]), D_FM0_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (2,  [(1, C_14_23)]), D_FM0_HHWW0_T);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (3,  [(1, C_14_23)]), D_FM0_HHWW1_S);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM0_HHWW1_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (4,  [(1, C_13_42)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (5,  [(1, C_12_34)]), D_FM0_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (8,  [(1, C_14_23)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (7,  [(1, C_12_34)]), D_FM0_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (5,  [(1, C_13_42)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (4,  [(1, C_12_34)]), D_FM0_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (7,  [(1, C_14_23)]), D_FM0_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_0_K_Matrix_cf
+                   (8,  [(1, C_12_34)]), D_FM0_HHWW1_T) ]
+        else
+            []
+      else
+          [] 
+          
+    let k_matrix_2scalar_2gauge_m_1 =
+      if Flags.k_matrix_tm then
+        if Flags.higgs_matrix then
+            [ ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM1_HHZZ0_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (0,  [(1, C_13_42)]), D_FM1_HHZZ0_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (0,  [(1, C_14_23)]), D_FM1_HHZZ0_U);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf 
+                   (3,  [(1, C_14_23)]), D_FM1_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (3,  [(1, C_13_42)]), D_FM1_HHZZ1_U);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (3,  [(1, C_12_34)]), D_FM1_HHZZ1_T);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM1_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_12_34)]), D_FM1_HHZZ1_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_14_23)]), D_FM1_HHZZ1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM1_HHWW0_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (2,  [(1, C_13_42)]), D_FM1_HHWW0_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (1,  [(1, C_14_23)]), D_FM1_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (1,  [(1, C_13_42)]), D_FM1_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (2,  [(1, C_14_23)]), D_FM1_HHWW0_T);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (3,  [(1, C_14_23)]), D_FM1_HHWW1_S);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM1_HHWW1_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (4,  [(1, C_13_42)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (5,  [(1, C_12_34)]), D_FM1_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (8,  [(1, C_14_23)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (7,  [(1, C_12_34)]), D_FM1_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (5,  [(1, C_13_42)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (4,  [(1, C_12_34)]), D_FM1_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (7,  [(1, C_14_23)]), D_FM1_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_1_K_Matrix_cf
+                   (8,  [(1, C_12_34)]), D_FM1_HHWW1_T) ]
+        else
+            []
+      else
+          [] 
+          
+    let k_matrix_2scalar_2gauge_m_7 =
+      if Flags.k_matrix_tm then
+        if Flags.higgs_matrix then
+            [ ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM7_HHZZ0_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (0,  [(1, C_13_42)]), D_FM7_HHZZ0_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (0,  [(1, C_14_23)]), D_FM7_HHZZ0_U);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf 
+                   (3,  [(1, C_14_23)]), D_FM7_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (3,  [(1, C_13_42)]), D_FM7_HHZZ1_U);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (3,  [(1, C_12_34)]), D_FM7_HHZZ1_T);
+	      ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM7_HHZZ1_S);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_12_34)]), D_FM7_HHZZ1_T);
+              ((O H,O H,G Z,G Z), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_14_23)]), D_FM7_HHZZ1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf 
+                   (0,  [(1, C_12_34)]), D_FM7_HHWW0_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (2,  [(1, C_13_42)]), D_FM7_HHWW0_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (1,  [(1, C_14_23)]), D_FM7_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (1,  [(1, C_13_42)]), D_FM7_HHWW0_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (2,  [(1, C_14_23)]), D_FM7_HHWW0_T);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (3,  [(1, C_14_23)]), D_FM7_HHWW1_S);
+	      ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (6,  [(1, C_13_42)]), D_FM7_HHWW1_S);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (4,  [(1, C_13_42)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (5,  [(1, C_12_34)]), D_FM7_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (8,  [(1, C_14_23)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (7,  [(1, C_12_34)]), D_FM7_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (5,  [(1, C_13_42)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (4,  [(1, C_12_34)]), D_FM7_HHWW1_T);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (7,  [(1, C_14_23)]), D_FM7_HHWW1_U);
+              ((O H,O H,G Wp,G Wm), DScalar2_Vector2_m_7_K_Matrix_cf
+                   (8,  [(1, C_12_34)]), D_FM7_HHWW1_T) ]
+        else
+            []
+      else
+          []      
 
     let k_matrix_4scalar =
       if Flags.k_matrix then
@@ -10853,7 +13925,10 @@ module SSC_AltT (Flags : SSC_flags) =
 i*)
 
     let quartic_gauge =
-      standard_quartic_gauge @ anomalous_quartic_gauge @ k_matrix_quartic_gauge
+      standard_quartic_gauge @ anomalous_quartic_gauge @ k_matrix_quartic_gauge 
+      @ k_matrix_quartic_gauge_t_0 @ k_matrix_quartic_gauge_t_1 @ k_matrix_quartic_gauge_t_2
+      @ k_matrix_quartic_gauge_t_rsi
+      @ k_matrix_quartic_gauge_m_0 @ k_matrix_quartic_gauge_m_1 @ k_matrix_quartic_gauge_m_7
 
     let standard_gauge_higgs =
       [ ((O H, G Wp, G Wm), Scalar_Vector_Vector 1, G_HWW);
@@ -10868,6 +13943,14 @@ i*)
         (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_1 1, FS0_HHZZ;
         (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_2 1, FS1_HHWW;
         (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_2 1, FS1_HHZZ ]
+        
+    let dim8_gauge_higgs4_m =
+      [ (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_m_0 1, FM0_HHWW;
+        (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_m_0 1, FM0_HHZZ;
+        (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_m_1 1, FM1_HHWW;
+        (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_m_1 1, FM1_HHZZ;
+        (O H, O H, G Wp, G Wm), Dim8_Scalar2_Vector2_m_7 1, FM7_HHWW;
+        (O H, O H, G Z, G Z), Dim8_Scalar2_Vector2_m_7 1, FM7_HHZZ]    
        
     let standard_higgs =
       [ (O H, O H, O H), Scalar_Scalar_Scalar 1, G_H3 ]
@@ -11007,7 +14090,8 @@ i*)
         else
           standard_gauge_higgs4 ) @
       ( if Flags.higgs_matrix then
-          (dim8_gauge_higgs4 @ k_matrix_2scalar_2gauge )
+          (dim8_gauge_higgs4 @ dim8_gauge_higgs4_m @ k_matrix_2scalar_2gauge 
+           @ k_matrix_2scalar_2gauge_m @ k_matrix_2scalar_2gauge_m_1 @ k_matrix_2scalar_2gauge_m_7)
 	 else
 	   [] )
 
@@ -11082,7 +14166,9 @@ i*)
 
     let rsigma3t =
       [ ((O Rsigma, G Wp, G Wm), Scalar_Vector_Vector_t 1, G_SWW_T);
-        ((O Rsigma, G Z, G Z), Scalar_Vector_Vector_t 1, G_SZZ_T) ]
+        ((O Rsigma, G Z, G Z), Scalar_Vector_Vector_t 1, G_SZZ_T);
+        ((O Rsigma, G Ga, G Ga), Scalar_Vector_Vector_t 1, G_SAA_T);
+        ((O Rsigma, G Ga, G Z), Scalar_Vector_Vector_t 1, G_SAZ_T) ]
 
     let rsigma4 =
       [ (O Rsigma, O Rsigma, G Wp, G Wm), Scalar2_Vector2 1, G_SSWW;
@@ -11762,9 +14848,42 @@ effective operators:
       | Alpha_WWWW0 -> "alww0" | Alpha_WWWW2 -> "alww2"
       | Alpha_ZZWW0 -> "alzw0" | Alpha_ZZWW1 -> "alzw1"
       | Alpha_ZZZZ  -> "alzz"
+      | FT0_WWWW0 -> "at0ww0" | FT0_WWWW2 -> "at0ww2"
+      | FT0_ZZWW0 -> "at0zw0" | FT0_ZZWW1 -> "at0zw1"
+      | FT0_ZZZZ  -> "at0zz"  | FT0_AAAA  -> "at0aa"
+      | FT0_AAWW0 -> "at0aw0" | FT0_AAWW1 -> "at0aw1"
+      | FT0_AAZZ -> "at0az" 
+      | FT0_AZWW0 -> "at0azw0" | FT0_AZWW1 -> "at0azw1"
+      | FT0_AAAZ  -> "at03az"  | FT0_AZZZ  -> "at0a3z"
+      | FT1_WWWW0 -> "at1ww0" | FT1_WWWW2 -> "at1ww2"
+      | FT1_ZZWW0 -> "at1zw0" | FT1_ZZWW1 -> "at1zw1"
+      | FT1_ZZZZ  -> "at1zz"  | FT1_AAAA  -> "at1aa"
+      | FT1_AAWW0 -> "at1aw0" | FT1_AAWW1 -> "at1aw1"
+      | FT1_AAZZ -> "at1az"   
+      | FT1_AZWW0 -> "at1azw0" | FT1_AZWW1 -> "at1azw1"
+      | FT1_AAAZ  -> "at13az"  | FT1_AZZZ  -> "at1a3z"
+      | FT2_WWWW0 -> "at2ww0" | FT2_WWWW2 -> "at2ww2"
+      | FT2_ZZWW0 -> "at2zw0" | FT2_ZZWW1 -> "at2zw1"
+      | FT2_ZZZZ  -> "at2zz"  | FT2_AAAA  -> "at2aa"
+      | FT2_AAWW0 -> "at2aw0" | FT2_AAWW1 -> "at2aw1"
+      | FT2_AAZZ -> "at2az"   
+      | FT2_AZWW0 -> "at2azw0" | FT2_AZWW1 -> "at2azw1"
+      | FT2_AAAZ  -> "at23az"  | FT2_AZZZ  -> "at2a3z"
+      | FM0_WWWW0 -> "am0ww0,am0ww0" | FM0_WWWW2 -> "am0ww2,am0ww2"
+      | FM0_ZZWW0 -> "am0zw0/costhw**2,am0zw0*costhw**2" | FM0_ZZWW1 -> "am0zw1/costhw**2,am0zw1*costhw**2"
+      | FM0_ZZZZ  -> "am0zz,am0zz" 
+      | FM1_WWWW0 -> "am1ww0,am1ww0" | FM1_WWWW2 -> "am1ww2,am1ww2"
+      | FM1_ZZWW0 -> "am1zw0/costhw**2,am1zw0*costhw**2" | FM1_ZZWW1 -> "am1zw1/costhw**2,am1zw1*costhw**2"
+      | FM1_ZZZZ  -> "am1zz,am1zz"  
+      | FM7_WWWW0 -> "am7ww0,am7ww0,am7ww0" | FM7_WWWW2 -> "am7ww2,am7ww2,am7ww2"
+      | FM7_ZZWW0 -> "am7zw0/costhw**2,am7zw0,am7zw0*costhw**2" | FM7_ZZWW1 -> "am7zw1/costhw**2,am7zw1,am7zw1*costhw**2"
+      | FM7_ZZZZ  -> "am7zz,am7zz,am7zz"
       | FS0_HHWW -> "fs0hhww" | FS0_HHZZ -> "fs0hhzz"
       | FS1_HHWW -> "fs1hhww" | FS1_HHZZ -> "fs1hhzz"
       | FS_H4 -> "fsh4"
+      | FM0_HHWW -> "fm0hhww" | FM0_HHZZ -> "fm0hhzz"
+      | FM1_HHWW -> "fm1hhww" | FM1_HHZZ -> "fm1hhzz"   
+      | FM7_HHWW -> "fm7hhww" | FM7_HHZZ -> "fm7hhzz"
       | D_Alpha_ZZWW0_S -> "dalzz0_s(gkm,mkm,"
       | D_Alpha_ZZWW0_T -> "dalzz0_t(gkm,mkm,"
       | D_Alpha_ZZWW1_S -> "dalzz1_s(gkm,mkm,"
@@ -11777,6 +14896,207 @@ effective operators:
       | D_Alpha_WWWW2_T -> "dalww2_t(gkm,mkm,"
       | D_Alpha_ZZZZ_S  -> "dalz4_s(gkm,mkm,"
       | D_Alpha_ZZZZ_T  -> "dalz4_t(gkm,mkm,"
+      | D_FT0_ZZWW0_S -> "datzz0_s_0(gkm,mkm,"
+      | D_FT0_ZZWW0_T -> "datzz0_t_0(gkm,mkm,"
+      | D_FT0_ZZWW0_U -> "datzz0_u_0(gkm,mkm,"
+      | D_FT0_ZZWW1_S -> "datzz1_s_0(gkm,mkm,"
+      | D_FT0_ZZWW1_T -> "datzz1_t_0(gkm,mkm,"
+      | D_FT0_ZZWW1_U -> "datzz1_u_0(gkm,mkm,"
+      | D_FT0_WWWW0_S -> "datww0_s_0(gkm,mkm,"
+      | D_FT0_WWWW0_T -> "datww0_t_0(gkm,mkm,"
+      | D_FT0_WWWW0_U -> "datww0_u_0(gkm,mkm,"
+      | D_FT0_WWWW2_S -> "datww2_s_0(gkm,mkm,"
+      | D_FT0_WWWW2_T -> "datww2_t_0(gkm,mkm,"
+      | D_FT0_WWWW2_U -> "datww2_u_0(gkm,mkm,"
+      | D_FT0_ZZZZ_S  -> "datz4_s_0(gkm,mkm,"
+      | D_FT0_ZZZZ_T  -> "datz4_t_0(gkm,mkm,"
+      | D_FT0_ZZZZ_U  -> "datz4_u_0(gkm,mkm,"
+      | D_FT0_AAAA_S  -> "data4_s_0(gkm,mkm,"
+      | D_FT0_AAAA_T  -> "data4_t_0(gkm,mkm,"
+      | D_FT0_AAAA_U  -> "data4_u_0(gkm,mkm,"  
+      | D_FT0_AAWW0_S -> "dataw0_s_0(gkm,mkm,"
+      | D_FT0_AAWW0_T -> "dataw0_t_0(gkm,mkm,"
+      | D_FT0_AAWW0_U -> "dataw0_u_0(gkm,mkm,"
+      | D_FT0_AAWW1_S -> "dataw1_s_0(gkm,mkm,"
+      | D_FT0_AAWW1_T -> "dataw1_t_0(gkm,mkm,"
+      | D_FT0_AAWW1_U -> "dataw1_u_0(gkm,mkm,"
+      | D_FT0_AAZZ_S  -> "dataz_s_0(gkm,mkm,"
+      | D_FT0_AAZZ_T  -> "dataz_t_0(gkm,mkm,"
+      | D_FT0_AAZZ_U  -> "dataz_u_0(gkm,mkm,"  
+      | D_FT0_AZWW0_S -> "datazw0_s_0(gkm,mkm,"
+      | D_FT0_AZWW0_T -> "datazw0_t_0(gkm,mkm,"
+      | D_FT0_AZWW0_U -> "datazw0_u_0(gkm,mkm,"
+      | D_FT0_AZWW1_S -> "datazw0_s_1(gkm,mkm,"
+      | D_FT0_AZWW1_T -> "datazw0_t_1(gkm,mkm,"
+      | D_FT0_AZWW1_U -> "datazw0_u_1(gkm,mkm," 
+      | D_FT0_AAAZ_S -> "dat3az_s_0(gkm,mkm,"
+      | D_FT0_AAAZ_T -> "dat3az_t_0(gkm,mkm,"
+      | D_FT0_AAAZ_U -> "dat3az_u_0(gkm,mkm," 
+      | D_FT0_AZZZ_S -> "data3z_s_0(gkm,mkm,"
+      | D_FT0_AZZZ_T -> "data3z_t_0(gkm,mkm,"
+      | D_FT0_AZZZ_U -> "data3z_u_0(gkm,mkm,"             
+      | D_FT1_ZZWW0_S -> "datzz0_s_1(gkm,mkm,"
+      | D_FT1_ZZWW0_T -> "datzz0_t_1(gkm,mkm,"
+      | D_FT1_ZZWW0_U -> "datzz0_u_1(gkm,mkm,"
+      | D_FT1_ZZWW1_S -> "datzz1_s_1(gkm,mkm,"
+      | D_FT1_ZZWW1_T -> "datzz1_t_1(gkm,mkm,"
+      | D_FT1_ZZWW1_U -> "datzz1_u_1(gkm,mkm,"
+      | D_FT1_WWWW0_S -> "datww0_s_1(gkm,mkm,"
+      | D_FT1_WWWW0_T -> "datww0_t_1(gkm,mkm,"
+      | D_FT1_WWWW0_U -> "datww0_u_1(gkm,mkm,"
+      | D_FT1_WWWW2_S -> "datww2_s_1(gkm,mkm,"
+      | D_FT1_WWWW2_T -> "datww2_t_1(gkm,mkm,"
+      | D_FT1_WWWW2_U -> "datww2_u_1(gkm,mkm,"
+      | D_FT1_ZZZZ_S  -> "datz4_s_1(gkm,mkm,"
+      | D_FT1_ZZZZ_T  -> "datz4_t_1(gkm,mkm,"
+      | D_FT1_ZZZZ_U  -> "datz4_u_1(gkm,mkm,"
+      | D_FT1_AAAA_S  -> "data4_s_1(gkm,mkm,"
+      | D_FT1_AAAA_T  -> "data4_t_1(gkm,mkm,"
+      | D_FT1_AAAA_U  -> "data4_u_1(gkm,mkm,"  
+      | D_FT1_AAWW0_S -> "dataw0_s_1(gkm,mkm,"
+      | D_FT1_AAWW0_T -> "dataw0_t_1(gkm,mkm,"
+      | D_FT1_AAWW0_U -> "dataw0_u_1(gkm,mkm,"
+      | D_FT1_AAWW1_S -> "dataw1_s_1(gkm,mkm,"
+      | D_FT1_AAWW1_T -> "dataw1_t_1(gkm,mkm,"
+      | D_FT1_AAWW1_U -> "dataw1_u_1(gkm,mkm,"
+      | D_FT1_AAZZ_S  -> "dataz_s_1(gkm,mkm,"
+      | D_FT1_AAZZ_T  -> "dataz_t_1(gkm,mkm,"
+      | D_FT1_AAZZ_U  -> "dataz_u_1(gkm,mkm,"
+      | D_FT1_AZWW0_S -> "datazw0_s_1(gkm,mkm,"
+      | D_FT1_AZWW0_T -> "datazw0_t_1(gkm,mkm,"
+      | D_FT1_AZWW0_U -> "datazw0_u_1(gkm,mkm,"
+      | D_FT1_AZWW1_S -> "datazw1_s_1(gkm,mkm,"
+      | D_FT1_AZWW1_T -> "datazw1_t_1(gkm,mkm,"
+      | D_FT1_AZWW1_U -> "datazw1_u_1(gkm,mkm," 
+      | D_FT1_AAAZ_S -> "dat3az_s_1(gkm,mkm,"
+      | D_FT1_AAAZ_T -> "dat3az_t_1(gkm,mkm,"
+      | D_FT1_AAAZ_U -> "dat3az_u_1(gkm,mkm," 
+      | D_FT1_AZZZ_S -> "data3z_s_1(gkm,mkm,"
+      | D_FT1_AZZZ_T -> "data3z_t_1(gkm,mkm,"
+      | D_FT1_AZZZ_U -> "data3z_u_1(gkm,mkm,"      
+      | D_FT2_ZZWW0_S -> "datzz0_s_2(gkm,mkm,"
+      | D_FT2_ZZWW0_T -> "datzz0_t_2(gkm,mkm,"
+      | D_FT2_ZZWW0_U -> "datzz0_u_2(gkm,mkm,"
+      | D_FT2_ZZWW1_S -> "datzz1_s_2(gkm,mkm,"
+      | D_FT2_ZZWW1_T -> "datzz1_t_2(gkm,mkm,"
+      | D_FT2_ZZWW1_U -> "datzz1_u_2(gkm,mkm,"
+      | D_FT2_WWWW0_S -> "datww0_s_2(gkm,mkm,"
+      | D_FT2_WWWW0_T -> "datww0_t_2(gkm,mkm,"
+      | D_FT2_WWWW0_U -> "datww0_u_2(gkm,mkm,"
+      | D_FT2_WWWW2_S -> "datww2_s_2(gkm,mkm,"
+      | D_FT2_WWWW2_T -> "datww2_t_2(gkm,mkm,"
+      | D_FT2_WWWW2_U -> "datww2_u_2(gkm,mkm,"
+      | D_FT2_ZZZZ_S  -> "datz4_s_2(gkm,mkm,"
+      | D_FT2_ZZZZ_T  -> "datz4_t_2(gkm,mkm,"
+      | D_FT2_ZZZZ_U  -> "datz4_u_2(gkm,mkm," 
+      | D_FT2_AAAA_S  -> "data4_s_2(gkm,mkm,"
+      | D_FT2_AAAA_T  -> "data4_t_2(gkm,mkm,"
+      | D_FT2_AAAA_U  -> "data4_u_2(gkm,mkm,"  
+      | D_FT2_AAWW0_S -> "dataw0_s_2(gkm,mkm,"
+      | D_FT2_AAWW0_T -> "dataw0_t_2(gkm,mkm,"
+      | D_FT2_AAWW0_U -> "dataw0_u_2(gkm,mkm,"
+      | D_FT2_AAWW1_S -> "dataw1_s_2(gkm,mkm,"
+      | D_FT2_AAWW1_T -> "dataw1_t_2(gkm,mkm,"
+      | D_FT2_AAWW1_U -> "dataw1_u_2(gkm,mkm,"
+      | D_FT2_AAZZ_S  -> "dataz_s_2(gkm,mkm,"
+      | D_FT2_AAZZ_T  -> "dataz_t_2(gkm,mkm,"
+      | D_FT2_AAZZ_U  -> "dataz_u_2(gkm,mkm,"    
+      | D_FT2_AZWW0_S -> "datazw0_s_2(gkm,mkm,"
+      | D_FT2_AZWW0_T -> "datazw0_t_2(gkm,mkm,"
+      | D_FT2_AZWW0_U -> "datazw0_u_2(gkm,mkm,"
+      | D_FT2_AZWW1_S -> "datazw1_s_2(gkm,mkm,"
+      | D_FT2_AZWW1_T -> "datazw1_t_2(gkm,mkm,"
+      | D_FT2_AZWW1_U -> "datazw1_u_2(gkm,mkm,"
+      | D_FT2_AAAZ_S -> "dat3az_s_2(gkm,mkm,"
+      | D_FT2_AAAZ_T -> "dat3az_t_2(gkm,mkm,"
+      | D_FT2_AAAZ_U -> "dat3az_u_2(gkm,mkm," 
+      | D_FT2_AZZZ_S -> "data3z_s_2(gkm,mkm,"
+      | D_FT2_AZZZ_T -> "data3z_t_2(gkm,mkm,"
+      | D_FT2_AZZZ_U -> "data3z_u_2(gkm,mkm,"
+      | D_FTrsi_ZZWW0_S -> "datzz0_s_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW0_T -> "datzz0_t_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW0_U -> "datzz0_u_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW1_S -> "datzz1_s_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW1_T -> "datzz1_t_rsi(gkm,mkm,"
+      | D_FTrsi_ZZWW1_U -> "datzz1_u_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW0_S -> "datww0_s_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW0_T -> "datww0_t_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW0_U -> "datww0_u_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW2_S -> "datww2_s_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW2_T -> "datww2_t_rsi(gkm,mkm,"
+      | D_FTrsi_WWWW2_U -> "datww2_u_rsi(gkm,mkm,"
+      | D_FTrsi_ZZZZ_S  -> "datz4_s_rsi(gkm,mkm,"
+      | D_FTrsi_ZZZZ_T  -> "datz4_t_rsi(gkm,mkm,"
+      | D_FTrsi_ZZZZ_U  -> "datz4_u_rsi(gkm,mkm," 
+      | D_FTrsi_AAAA_S  -> "data4_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAAA_T  -> "data4_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAAA_U  -> "data4_u_rsi(gkm,mkm,"  
+      | D_FTrsi_AAWW0_S -> "dataw0_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW0_T -> "dataw0_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW0_U -> "dataw0_u_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW1_S -> "dataw1_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW1_T -> "dataw1_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAWW1_U -> "dataw1_u_rsi(gkm,mkm,"
+      | D_FTrsi_AAZZ_S  -> "dataz_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAZZ_T  -> "dataz_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAZZ_U  -> "dataz_u_rsi(gkm,mkm,"    
+      | D_FTrsi_AZWW0_S -> "datazw0_s_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW0_T -> "datazw0_t_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW0_U -> "datazw0_u_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW1_S -> "datazw1_s_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW1_T -> "datazw1_t_rsi(gkm,mkm,"
+      | D_FTrsi_AZWW1_U -> "datazw1_u_rsi(gkm,mkm,"
+      | D_FTrsi_AAAZ_S -> "dat3az_s_rsi(gkm,mkm,"
+      | D_FTrsi_AAAZ_T -> "dat3az_t_rsi(gkm,mkm,"
+      | D_FTrsi_AAAZ_U -> "dat3az_u_rsi(gkm,mkm," 
+      | D_FTrsi_AZZZ_S -> "data3z_s_rsi(gkm,mkm,"
+      | D_FTrsi_AZZZ_T -> "data3z_t_rsi(gkm,mkm,"
+      | D_FTrsi_AZZZ_U -> "data3z_u_rsi(gkm,mkm,"      
+      | D_FM0_ZZWW0_S -> "damzz0_s_0(gkm,mkm,"
+      | D_FM0_ZZWW0_T -> "damzz0_t_0(gkm,mkm,"
+      | D_FM0_ZZWW0_U -> "damzz0_u_0(gkm,mkm,"
+      | D_FM0_ZZWW1_S -> "damzz1_s_0(gkm,mkm,"
+      | D_FM0_ZZWW1_T -> "damzz1_t_0(gkm,mkm,"
+      | D_FM0_ZZWW1_U -> "damzz1_u_0(gkm,mkm,"
+      | D_FM0_WWWW0_S -> "damww0_s_0(gkm,mkm,"
+      | D_FM0_WWWW0_T -> "damww0_t_0(gkm,mkm,"
+      | D_FM0_WWWW0_U -> "damww0_u_0(gkm,mkm,"
+      | D_FM0_WWWW2_S -> "damww2_s_0(gkm,mkm,"
+      | D_FM0_WWWW2_T -> "damww2_t_0(gkm,mkm,"
+      | D_FM0_WWWW2_U -> "damww2_u_0(gkm,mkm,"
+      | D_FM0_ZZZZ_S  -> "damz4_s_0(gkm,mkm,"
+      | D_FM0_ZZZZ_T  -> "damz4_t_0(gkm,mkm,"
+      | D_FM0_ZZZZ_U  -> "damz4_u_0(gkm,mkm,"
+      | D_FM1_ZZWW0_S -> "damzz0_s_1(gkm,mkm,"
+      | D_FM1_ZZWW0_T -> "damzz0_t_1(gkm,mkm,"
+      | D_FM1_ZZWW0_U -> "damzz0_u_1(gkm,mkm,"
+      | D_FM1_ZZWW1_S -> "damzz1_s_1(gkm,mkm,"
+      | D_FM1_ZZWW1_T -> "damzz1_t_1(gkm,mkm,"
+      | D_FM1_ZZWW1_U -> "damzz1_u_1(gkm,mkm,"
+      | D_FM1_WWWW0_S -> "damww0_s_1(gkm,mkm,"
+      | D_FM1_WWWW0_T -> "damww0_t_1(gkm,mkm,"
+      | D_FM1_WWWW0_U -> "damww0_u_1(gkm,mkm,"
+      | D_FM1_WWWW2_S -> "damww2_s_1(gkm,mkm,"
+      | D_FM1_WWWW2_T -> "damww2_t_1(gkm,mkm,"
+      | D_FM1_WWWW2_U -> "damww2_u_1(gkm,mkm,"
+      | D_FM1_ZZZZ_S  -> "damz4_s_1(gkm,mkm,"
+      | D_FM1_ZZZZ_T  -> "damz4_t_1(gkm,mkm,"
+      | D_FM1_ZZZZ_U  -> "damz4_u_1(gkm,mkm,"
+      | D_FM7_ZZWW0_S -> "damzz0_s_7(gkm,mkm,"
+      | D_FM7_ZZWW0_T -> "damzz0_t_7(gkm,mkm,"
+      | D_FM7_ZZWW0_U -> "damzz0_u_7(gkm,mkm,"
+      | D_FM7_ZZWW1_S -> "damzz1_s_7(gkm,mkm,"
+      | D_FM7_ZZWW1_T -> "damzz1_t_7(gkm,mkm,"
+      | D_FM7_ZZWW1_U -> "damzz1_u_7(gkm,mkm,"
+      | D_FM7_WWWW0_S -> "damww0_s_7(gkm,mkm,"
+      | D_FM7_WWWW0_T -> "damww0_t_7(gkm,mkm,"
+      | D_FM7_WWWW0_U -> "damww0_u_7(gkm,mkm,"
+      | D_FM7_WWWW2_S -> "damww2_s_7(gkm,mkm,"
+      | D_FM7_WWWW2_T -> "damww2_t_7(gkm,mkm,"
+      | D_FM7_WWWW2_U -> "damww2_u_7(gkm,mkm,"
+      | D_FM7_ZZZZ_S  -> "damz4_s_7(gkm,mkm,"
+      | D_FM7_ZZZZ_T  -> "damz4_t_7(gkm,mkm,"
+      | D_FM7_ZZZZ_U  -> "damz4_u_7(gkm,mkm,"
       | D_Alpha_HHHH_S  -> "dalh4_s(gkm,mkm,"
       | D_Alpha_HHHH_T  -> "dalh4_t(gkm,mkm,"
       | D_Alpha_HHWW0_S -> "dalhw0_s(gkm,mkm,"
@@ -11789,11 +15109,48 @@ effective operators:
       | D_Alpha_HHZZ1_S -> "dalhz1_s(gkm,mkm,"
       | D_Alpha_HHZZ1_T -> "dalhz1_t(gkm,mkm,"
       | D_Alpha_HHZZ1_U -> "dalhz1_u(gkm,mkm,"
+      | D_FM0_HHWW0_S -> "damhw0_s_0(gkm,mkm,"
+      | D_FM0_HHWW0_T -> "damhw0_t_0(gkm,mkm,"
+      | D_FM0_HHWW0_U -> "damhw0_u_0(gkm,mkm,"
+      | D_FM0_HHZZ0_S -> "damhz0_s_0(gkm,mkm,"
+      | D_FM0_HHZZ0_T -> "damhz0_t_0(gkm,mkm,"
+      | D_FM0_HHZZ0_U -> "damhz0_u_0(gkm,mkm,"
+      | D_FM0_HHWW1_S -> "damhw1_s_0(gkm,mkm,"
+      | D_FM0_HHWW1_T -> "damhw1_t_0(gkm,mkm,"
+      | D_FM0_HHWW1_U -> "damhw1_u_0(gkm,mkm,"
+      | D_FM0_HHZZ1_S -> "damhz1_s_0(gkm,mkm,"
+      | D_FM0_HHZZ1_T -> "damhz1_t_0(gkm,mkm,"
+      | D_FM0_HHZZ1_U -> "damhz1_u_0(gkm,mkm,"   
+      | D_FM1_HHWW0_S -> "damhw0_s_1(gkm,mkm,"
+      | D_FM1_HHWW0_T -> "damhw0_t_1(gkm,mkm,"
+      | D_FM1_HHWW0_U -> "damhw0_u_1(gkm,mkm,"
+      | D_FM1_HHZZ0_S -> "damhz0_s_1(gkm,mkm,"
+      | D_FM1_HHZZ0_T -> "damhz0_t_1(gkm,mkm,"
+      | D_FM1_HHZZ0_U -> "damhz0_u_1(gkm,mkm,"
+      | D_FM1_HHWW1_S -> "damhw1_s_1(gkm,mkm,"
+      | D_FM1_HHWW1_T -> "damhw1_t_1(gkm,mkm,"
+      | D_FM1_HHWW1_U -> "damhw1_u_1(gkm,mkm,"
+      | D_FM1_HHZZ1_S -> "damhz1_s_1(gkm,mkm,"
+      | D_FM1_HHZZ1_T -> "damhz1_t_1(gkm,mkm,"
+      | D_FM1_HHZZ1_U -> "damhz1_u_1(gkm,mkm," 
+      | D_FM7_HHWW0_S -> "damhw0_s_1(gkm,mkm,"
+      | D_FM7_HHWW0_T -> "damhw0_t_1(gkm,mkm,"
+      | D_FM7_HHWW0_U -> "damhw0_u_1(gkm,mkm,"
+      | D_FM7_HHZZ0_S -> "damhz0_s_1(gkm,mkm,"
+      | D_FM7_HHZZ0_T -> "damhz0_t_1(gkm,mkm,"
+      | D_FM7_HHZZ0_U -> "damhz0_u_1(gkm,mkm,"
+      | D_FM7_HHWW1_S -> "damhw1_s_1(gkm,mkm,"
+      | D_FM7_HHWW1_T -> "damhw1_t_1(gkm,mkm,"
+      | D_FM7_HHWW1_U -> "damhw1_u_1(gkm,mkm,"
+      | D_FM7_HHZZ1_S -> "damhz1_s_1(gkm,mkm,"
+      | D_FM7_HHZZ1_T -> "damhz1_t_1(gkm,mkm,"
+      | D_FM7_HHZZ1_U -> "damhz1_u_1(gkm,mkm,"
       | G_HWW -> "ghww" | G_HZZ -> "ghzz"
       | G_HHWW -> "ghhww" | G_HHZZ -> "ghhzz"
       | G_SWW -> "gsww" | G_SZZ -> "gszz"
       | G_SHH -> "gshh"
       | G_SWW_T -> "gswwt" | G_SZZ_T -> "gszzt"
+      | G_SAA_T -> "gsaat" | G_SAZ_T -> "gsazt"
       | G_PNWW -> "gpnww" | G_PNZZ -> "gpnzz"
       | G_PSNWW -> "gpsnww" | G_PSNZZ -> "gpsnzz"
       | G_PSNHH -> "gpsnhh"

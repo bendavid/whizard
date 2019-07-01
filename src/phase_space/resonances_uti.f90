@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -355,11 +355,11 @@ contains
     write (u, "(A,1x," // FMF_12 // ")")  "wW  =", ww
     write (u, "(A,1x," // FMF_12 // ")")  "mZ  =", mz
     write (u, "(A,1x," // FMF_12 // ")")  "wZ  =", wz
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Gaussian width parameter"
     write (u, "(A)")
-    
+
     gw = 2
     write (u, "(A,1x," // FMF_12 // ")")  "gw  =", gw
 
@@ -386,7 +386,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate distances from resonances"
     write (u, "(A)")
-    
+
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "m/w (W)      =", mw / ww
@@ -396,7 +396,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
     write (u, "(A)")
-    
+
     factor = res_history%evaluate_gaussian (p, gw)
     write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
 
@@ -413,7 +413,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate distances from resonances"
     write (u, "(A)")
-    
+
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (Z) =", dist(2)
@@ -423,7 +423,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
     write (u, "(A)")
-    
+
     factor = res_history%evaluate_gaussian (p, gw)
     write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
     write (u, "(A,1x," // FMF_12 // ")")  "expected     =", &
@@ -441,7 +441,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate distances from resonances"
     write (u, "(A)")
-    
+
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (Z) =", dist(2)
@@ -449,7 +449,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
     write (u, "(A)")
-    
+
     factor = res_history%evaluate_gaussian (p, gw)
     write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
 
@@ -498,14 +498,14 @@ contains
     write (u, "(A,1x," // FMF_12 // ")")  "wW  =", ww
     write (u, "(A,1x," // FMF_12 // ")")  "mZ  =", mz
     write (u, "(A,1x," // FMF_12 // ")")  "wZ  =", wz
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* On-shell parameter: distance as multiple of width"
     write (u, "(A)")
-    
+
     on_shell_limit = 3
     write (u, "(A,1x," // FMF_12 // ")")  "on-shell limit =", on_shell_limit
-    
+
 
     write (u, "(A)")
     write (u, "(A)")  "* Setup resonance history set"
@@ -621,7 +621,7 @@ contains
     write (u, "(A)")  "* Test output end: resonances_5"
 
   contains
-    
+
     subroutine write_momenta (p)
       type(vector4_t), dimension(:), intent(in) :: p
       integer :: i
@@ -788,7 +788,7 @@ contains
 
     call res_set%get_tree (1, res_tree)
     call res_tree%write (u)
-    
+
     write (u, *)
     write (u, "(1x,A,1x,I0)")  "n_resonances =", res_tree%get_n_resonances ()
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1308,15 +1308,13 @@ contains
     end if
   end subroutine sf_chain_exchange_mask
 
-  subroutine sf_chain_instance_init_evaluators (chain, n_sub, has_pdfs)
+  subroutine sf_chain_instance_init_evaluators (chain, has_pdfs)
     class(sf_chain_instance_t), intent(inout), target :: chain
-    integer, intent(in), optional :: n_sub
     logical, intent(in), optional :: has_pdfs
     type(interaction_t), pointer :: int
     type(quantum_numbers_mask_t) :: mask
-    integer :: i, ns
+    integer :: i
     logical :: yorn
-    ns = 0;  if (present (n_sub))  ns = n_sub
     yorn = .false.; if (present (has_pdfs)) yorn = has_pdfs
     if (chain%status >= SF_DONE_MASK) then
        if (allocated (chain%sf)) then

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -586,7 +586,11 @@ contains
     logical, intent(out), optional :: match
     type(string_t) :: filename
     integer :: u
-    filename = phs_config%id // ".phs"
+    if (phs_config%run_id /= "") then
+       filename = phs_config%id // "." // phs_config%run_id // ".phs"
+    else
+       filename = phs_config%id // ".phs"
+    end if
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()

@@ -27,8 +27,9 @@
 ------------------------------------------------------------------------
  Subprocess instances: not allocated
  Selected: no resonance history
- On-shell limit   =  0.00000E+00
- On-shell turnoff =  0.00000E+00
+ On-shell limit    =  0.00000E+00
+ On-shell turnoff  =  0.00000E+00
+ Background factor =  1.00000E+00
 ------------------------------------------------------------------------
    Selector: i, weight, acc. weight
    0  2.500000000000E-01  2.500000000000E-01
@@ -66,8 +67,9 @@ Sum of outgoing momenta: p(0:3) =            0.000        0.000        0.000    
 ------------------------------------------------------------------------
  Subprocess instances: not allocated
  Selected: resonance history #1
- On-shell limit   =  0.00000E+00
- On-shell turnoff =  0.00000E+00
+ On-shell limit    =  0.00000E+00
+ On-shell turnoff  =  0.00000E+00
+ Background factor =  1.00000E+00
 ------------------------------------------------------------------------
    Selector: i, weight, acc. weight
    0  2.500000000000E-01  2.500000000000E-01

@@ -9,6 +9,8 @@
 \usepackage{fancyvrb}
 \usepackage{makeidx}
 \usepackage{units}
+\usepackage{ifpdf}
+%HEVEA\pdftrue
 \makeindex
 \usepackage{url}
 \usepackage[latin1]{inputenc}
@@ -211,6 +213,7 @@
 \newcommand{\fortranNinetyFive}{\ttt{Fortran95}}
 \newcommand{\fortranOThree}{\ttt{Fortran2003}}
 \newcommand{\ocaml}{\ttt{OCaml}}
+\newcommand{\python}{\ttt{Python}}
 
 \newenvironment{commands}{\begin{quote}\tt}{\end{quote}}
 \newcommand{\eemm}{$e^+e^- \to \mu^+\mu^-$}
@@ -275,7 +278,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.6.1}
+\newcommand{\thisversion}{2.6.2}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -668,7 +671,8 @@ of \whizard:
   & & for showers; RECOLA support \\
   2.6.1 & 11/2017 & EPA/ISR transverse distributions, handling of
   shower resonances; \\
-  & & more efficient (alternative) phase space generation
+  & & more efficient (alternative) phase space generation \\
+  2.6.2 & 12/2017 & $Hee$ coupling, improved resonance matching
   \\\hline
 \end{tabular}
 \end{center}
@@ -2269,7 +2273,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 2.6.1
+    |                               WHIZARD 2.6.2
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -2300,7 +2304,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.6.1
+|                               WHIZARD 2.6.2
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2359,7 +2363,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.6.1
+ |                               WHIZARD 2.6.2
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -4634,7 +4638,8 @@ permitting the definition of process using a model other than the globally
 selected model. The process will retain this association during
 integration and event generation.
 
-\subsubsection{Restriction on intermediate states}
+\subsubsection{Restrictions on matrix elements}
+\label{subsec:restrictions}
 
 Another useful option is the setting
 \begin{quote}
@@ -4644,15 +4649,11 @@ Another useful option is the setting
 \end{quote}
 This option allows to select particular classes of Feynman graphs for the
 process when using the \oMega\ matrix element generator.  The
-\verb|$restrictions| string specifies propagators that the graph
+\verb|$restrictions| string specifies e.g. propagators that the graph
 must contain.  Here is an example:
-\begin{quote}
-\begin{footnotesize}
-\begin{verbatim}
+\begin{code}
   process zh_invis = e1, E1 => n1:n2:n3, N1:N2:N3, H { $restrictions = "1+2 ~ Z" }
-\end{verbatim}
-\end{footnotesize}
-\end{quote}
+\end{code}
 The complete process $e^-e^+ \to \nu\bar\nu H$, summed over all neutrino
 generations,  contains both $ZH$ pair production (Higgs-strahlung) and
 $W^+W^-\to H$ fusion.  The restrictions string selects the Higgs-strahlung
@@ -4661,13 +4662,9 @@ in the process are consecutively numbered, starting with the initial
 particles.  An alternative for the same selection would be
 \verb|$restrictions = "3+4 ~ Z"|.  Restrictions can be combined using
 \verb|&&|, for instance
-\begin{quote}
-\begin{footnotesize}
-\begin{verbatim}
+\begin{code}
   $restrictions = "1+2 ~ Z && 3 + 4 ~ Z"
-\end{verbatim}
-\end{footnotesize}
-\end{quote}
+\end{code}
 which is redundant here, however.
 
 The restriction keeps the full energy dependence in the intermediate
@@ -4675,6 +4672,74 @@ propagator, so the Breit-Wigner shape can be observed in distributions.  This
 breaks gauge invariance, in particular if the intermediate state is off shell,
 so you should use the feature only if you know the implications. For
 more details, cf. the Chap.~\ref{chap:hardint} and the \oMega\ manual.
+
+Other restrictions that can be combined with the restrictions above on
+intermediate propagators allow to exclude certain particles from
+intermediate propagators, or to exclude certain vertices from the
+matrix elements. For example,
+\begin{code}
+  process eemm = e1, E1 => e2, E2  { $restrictions = "!A" }
+\end{code}
+would exclude all photon propagators from the matrix element and
+leaves only the $Z$ exchange here. In the same way,
+\verb|$restrictions = "!gl"| would exclude all gluon exchange. This
+exclusion of internal propagators works also for lists of particles,
+like 
+\begin{code}
+  $restrictions = "!Z:H"
+\end{code}
+excludes all $Z$ and $H$ propagators from the matrix elements.
+
+Besides excluding certain particles as internal lines, it is also
+possible to exclude certain vertices using the restriction command
+\begin{code}
+  process eeww = e1, E1 => Wp, Wm  { $restrictions = "^[W+,W-,Z]" }
+\end{code}
+This would generate the matrix element for the production of two $W$
+bosons at LEP without the non-Abelian vertex $W^+W^-Z$. Again, these
+restrictions are able to work on lists, so
+\begin{code}
+  $restrictions = "^[W+,W-,A:Z]"
+\end{code}
+would exclude all triple gauge boson vertices from the above process
+and leave only the $t$-channel neutrino exchange.
+
+It is also possible to exlude vertices by their coupling constants,
+e.g. the photon exchange in the process $e^+ e^- \to \mu^+ \mu^-$ can
+also be removed by the following restriction:
+\begin{code}
+  $restrictions = "^qlep"
+\end{code}
+Here, \ttt{qlep} is the \fortran\ variable for the coupling constant
+of the electron-positron-photon vertex.
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|l|l|}
+      \hline
+      \verb|3+4~Z| & external particles 3 and 4 must come from
+      intermediate $Z$ \\\hline
+      \verb| && |   & logical ``and'', e.g. in
+      \verb| 3+5~t && 4+6~tbar| \\\hline
+      \verb| !A | & exclude all $\gamma$ propagators \\\hline
+      \verb| !e+:nue | & exclude a list of propagators, here $\gamma$,
+      $\nu_e$ \\\hline
+      \verb|^qlep:gnclep| & exclude all vertices with
+      \ttt{qlep},\ttt{gnclep} coupling constants \\\hline
+      \verb|^[A:Z,W+,W-]| & exclude all vertices $W^+W^-Z$,
+      $W^+W^-\gamma$ \\\hline
+      \verb|^c1:c2:c3[H,H,H]| & exclude all triple Higgs couplings
+      with $c_i$ constants
+      \\\hline
+    \end{tabular}
+  \end{center}
+  \caption{List of possible restrictions that can be applied to
+    \oMega\ matrix elements.}
+  \label{tab:restrictions}
+\end{table}
+The Tab.~\ref{tab:restrictions} gives a list of options that can be
+applied to the \oMega\ matrix elements.
+
 
 \subsubsection{Other options}
 
@@ -5958,7 +6023,7 @@ Parameter & Default & Meaning \\\hline\hline
 \\\hline
 \ttt{epa\_q\_min} & \ttt{0.} & minimal $\gamma$ momentum transfer \\\hline
 \ttt{epa\_mass} & \ttt{0}/intrinsic & mass of the radiating fermion (mandatory)  \\\hline
-\ttt{epa\_e\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for EPA \\\hline
+\ttt{epa\_q\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for EPA \\\hline
 \ttt{?epa\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$
 \\\hline
 \ttt{?epa\_keep\_energy} & \ttt{false} & recoil flag to conserve
@@ -5975,8 +6040,9 @@ physics model. The same is true for the mass of the particle that
 radiates the photon of the hard interaction, which can be reset by the
 user with the variable \ttt{epa\_mass}. There are two dimensionful
 scale parameters, the minimal momentum transfer to the photon,
-\ttt{epa\_q\_min}, which must not be zero, and the upper energy cutoff
-for the EPA structure function, \ttt{epa\_e\_max}. The default for the
+\ttt{epa\_q\_min}, which must not be zero, and the upper momentum-transfer
+cutoff 
+for the EPA structure function, \ttt{epa\_q\_max}. The default for the
 latter value is the collider energy, $\sqrt{s}$, or the energy reduced
 by another structure function like e.g. beamstrahlung,
 $\sqrt{\hat{s}}$. Furthermore, there is a soft-photon regulator for
@@ -8808,30 +8874,706 @@ the bin and calculates the respective $g_{i,j}$.
 
 \section{General remarks}
 
+\whizard\ as a default performs an adaptive multi-channel Monte-Carlo
+integration. Besides its default phase space algorithm, \ttt{wood}, to
+be detailed in Sec.~\ref{sec:wood}, \whizard\ contains a phase space
+method \ttt{phs\_none} which is a dummy method that is intended for
+setups of processes where no phase space integration is needed, but
+the program flow needs a (dummy) integrator for internal
+consistency. Then, for testing purposes, there is a single-channel
+phase space integrator, \ttt{phs\_single}. From version 2.6.0 of
+\whizard\ on, there is also a second implementation of the \ttt{wood}
+phase space algorithm, called \ttt{fast\_wood},
+cf. Sec.~\ref{sec:fast_wood}, whose implementation differs technically
+and which therefore solves certain technical flaws of the \ttt{wood}
+implementation. 
+
 \section{The default method: \ttt{wood}}
 \label{sec:wood}
+
+The \ttt{wood} algorithm classifies different phase space channels
+according to their importance for a full scattering or decay process
+following heuristic rules. For that purpose, \whizard\ investigates
+the kinematics of the different channels depending on the total
+center-of-mass energy (or the mass of the decaying particle) and the
+masses of the final-state particles.
+
+The \ttt{wood} phase space inherits its name from the naming schemes
+of structures of increasing complexities, namely trees, forests and
+groves. Simply stated, a phase-space forest is a collection of
+phase-space trees. A phase-space tree is a parameterization for a
+valid channel in the multi-channel adaptive integration, and each
+variable in the a tree corresponds to an integration dimension,
+defined by an appropriate mapping of the $(0,1)$ interval of the unit
+hypercube to the allowed range of the corresponding integration
+variable. The whole set of these phase-space trees, collected in a
+phase-space forest object hence contains all parameterizations of the
+phase space that \whizard\ will use for a single hard process. Note
+that processes might contain flavor sums of particles in the final
+state. As \whizard\ will use the same phase space parameterization for
+all channels for this set of subprocesses, all particles in those
+flavor sums have to have the same mass. E.g. in the definition of a
+"light" jet consisting of the first five quarks and antiquarks,
+\begin{code}
+  alias jet = u:d:s:c:b:U:D:S:C:B
+\end{code}
+all quarks including strange, charm and bottom have to be massless for
+the phase-space integration. \whizard\ can treat processes with
+subprocesses having final-state particles with different masses in an
+"additive" way, where each subprocess will become a distinct component
+of the whole process. Each process component will get its own
+phase-space parameterization, such that they can allow for different
+masses. E.g. in a 4-flavor scheme for massless $u,d,s,c$ quarks one
+can write
+\begin{code}
+  alias jet = u:d:s:c:U:D:S:C
+  process eeqq = e1, E1 => (jet, jet) + (b, B)
+\end{code}
+In that case, the parameterizations will be for massless final state
+quarks for the first subprocess, and for massive $b$ quarks for the
+second subprocess. In general, for high-energy lepton colliders, the
+difference would not matter much, but performing the integration
+e.g. for $\sqrt{s} = 11$ GeV, the difference will be
+tremendous. \whizard\ avoids inconsistent phase-space
+parameterizations in that way.
+
+As a multi-particle process will contain hundred or thousands of
+different channels, the different integration channels (trees) are
+grouped into so called {\em groves}. All channels/trees in the same
+grove share a common weight for the phase-space integration, following
+the assumption that they are related by some approximate symmetry. The
+\vamp\ adaptive multi-channel integrator (cf. Sec.~\ref{sec:vamp})
+allows for equivalences between different integration channels. This
+means that trees/channels that are related by an exact symmetry are
+connected by an array of these equivalences.
+
+The phase-space setup, i.e. the detailed structure of trees and
+forests, are written by \whizard\ into a phase-space file that has the
+same name as the corresponding process (or process component) with the
+suffix \ttt{.phs}. For the \ttt{wood} phase-space method this file is
+written by a \fortran\ module which constructs a similar tree-like
+structure as the directed acyclical graphs (DAGs) in the
+\oMega\ matrix element generator but in a less efficient way. 
+
+In some very rare cases with externally generated models
+(cf. Chapter~\ref{chap:extmodels}) the phase-space generation has been
+reported to fail as \whizard\ could not find a valid phase-space
+channel. Such pathological cases cannot occur for the hard-coded model
+implementations inside \whizard. They can only happen if there are in
+principle two different Feynman diagrams contributing to the same
+phase-space channel and \whizard\ considers the second one as
+extremely subleading (and would hence drop it). If for some reason
+however the first Feynman diagram is then absent, no phase-space
+channel could be found. This problem cannot occur with the
+\ttt{fast\_wood} implementation discussed in the next section,
+cf.~\ref{sec:fast_wood}.
+
+The \ttt{wood} algorithms orders the different groves of phase-space
+channels according to a heuristic importance depending on the
+kinematic properties of the different phase-space channels in the
+groves. A phase-space (\ttt{.phs}) file looks typically like this:
+\begin{code}
+ process sm_i1
+
+! List of subprocesses with particle bincodes:
+!  8  4      1   2
+! e+ e- => mu+ mu-
+!  8  4      1   2
+
+   md5sum_process    = "1B3B7A30C24664A73D3D027382CFB4EF"
+   md5sum_model_par  = "7656C90A0B2C4325AD911301DACF50EB"
+   md5sum_phs_config = "6F72D447E8960F50FDE4AE590AD7044B"
+   sqrts         =  1.000000000000E+02
+   m_threshold_s =  5.000000000000E+01
+   m_threshold_t =  1.000000000000E+02
+   off_shell = 2
+   t_channel = 6
+   keep_nonresonant = T
+
+ ! Multiplicity = 2, no resonances,  0 logs,  0 off-shell,  s-channel graph
+ grove #1
+ ! Channel #1
+   tree  3
+
+ ! Multiplicity = 1, 1 resonance,   0 logs,  0 off-shell,  s-channel graph
+ grove #2
+ ! Channel #2
+   tree  3
+   map   3 s_channel      23 ! Z  
+\end{code}
+The first line contains the process name, followed by a list of
+subprocesses with the external particles and their binary codes. Then
+there are three lines of MD5 check sums, used for consistency
+checks. \whizard\ (unless told otherwise) will check for the existence
+of a phase-space file, and if the check sum matches, it will reuse the
+existing file and not generate it again. Next, there are several
+kinematic parameters, namely the center-of-mass energy of the process,
+\ttt{sqrts}, and two mass thresholds, \ttt{m\_threshold\_s} and
+\ttt{m\_threshold\_t}. The latter two are kinematical thresholds,
+below which \whizard\ will consider $s$-channel and $t$-channel-like
+kinematic configurations as effectively massless, respectively. The
+default values shown in the example have turned out to be optimal
+values for Standard Model particles. The two integers \ttt{off\_shell}
+and \ttt{t\_channel} give the number of off-shell lines and of
+$t$-channel lines that \whizard\ will allow for finding valid
+phase-space channels, respectively. This neglects extremley multi-peripheral
+background-like diagram constellations which are very subdominamnt
+compared to resonant signal processes. The final flags specifies
+whether \whizard\ will keep non-resonant phase-space channels
+(default), or whether it will focus only on resonant situations.
+
+After this header, there is a list of all groves, i.e. collections of
+phase-space channels which are connected by quasi-symmetries, together
+with the corresponding multiplicity of subchannels in that
+grove. In the phase-space file, Behind the multiplicity
+\whizard\ denotes the number of (massive) resonances, logarithmcally
+enhanced kinematics (e.g. collinear regions), and number of off-shell
+lines, respectively. The final entry in the grove header notifies
+whether the diagrams in that grove have $s$-channel topologies, or
+count the number of corresponding $t$-channel lines.
+
+Another example is shown here,
+\begin{code}
+ ! Multiplicity = 3, no resonances,  2 logs,  0 off-shell,  1 t-channel line
+ grove #1
+ ! Channel #1
+   tree  3 12
+   map   3 infrared       22 ! A
+   map  12 t_channel       2 ! u
+ ! Channel #2
+   tree  3 11
+   map   3 infrared       22 ! A
+   map  11 t_channel       2 ! u
+ ! Channel #3
+   tree  3 20
+   map   3 infrared       22 ! A
+   map  20 t_channel       2 ! u
+ ! Channel #4
+   tree  3 19
+   map   3 infrared       22 ! A
+   map  19 t_channel       2 ! u  
+\end{code}
+where \whizard\ notifies in different situations a photon exchange as
+\ttt{infrared}. So it detects a possible infrared singularity where a
+particle can become arbitrarily soft. Such a situation can tell the
+user that there might be a cut necessary in order to get a meaningful
+integration result. 
+
+The phase-space setup that is generated and used by the \ttt{wood}
+phase-space method can be visualized using the \sindarin\ option
+\begin{code}
+  ?vis_channels = true
+\end{code}
+
+The \ttt{wood} phase-space method can be invoked with the
+\sindarin\ command
+\begin{code}
+  $phs_method = "wood"
+\end{code}
+Note that this line is unnecessary, as \ttt{wood} is the default
+phase-space method of \whizard.
+
+%%%%%
+
+\section{A new method: \ttt{fast\_wood}}
+\label{sec:fast_wood}
+
+This method (which is available from version 2.6.0 on) is an
+alternative implementation of the \ttt{wood} phase-space algorithm. It
+uses the recursive structures inside the \oMega\ matrix element
+generator to generate all the structures needed for the different
+phase-space channels. In that way, it can avoid some of the
+bottlenecks of the \ttt{wood} \fortran\ implementation of the
+algorithm. On the other hand, it is only available if the
+\oMega\ matrix element generator has been enabled (which is the
+default for \whizard). The \ttt{fast\_wood} method is then invoked via
+\begin{code}
+  ?omega_write_phs_output = true
+  $phs_method = "fast_wood"
+\end{code}
+The first option is necessary in order to tell \oMega\ to write out
+the output needed for the \ttt{fast\_wood} parser in order to generate
+the phase-space file. This is not enabled by default in order not to
+generate unnecessary files in case the default method \ttt{wood} is
+used.
+
+So the \ttt{fast\_wood} implementation of the \ttt{wood} phase-space
+algorithm parses the tree-like represenation of the recursive set of
+one-particle off-shell wave functions that make up the whole amplitude
+inside \oMega\ in the form of a directed acyclical graph (DAG) in
+order to generate the phase-space (\ttt{.phs}) file
+(cf. Sec.~\ref{sec:wood}). In that way, the algorithm makes sure that
+only phase-space channels are generated for which there are indeed
+(sub)amplitudes in the matrix elements, and this also allows to
+exclude vetoed channels due to restrictions imposed on the matrix
+elements from the phase-space setup (cf. next
+Sec.~\ref{sec:ps_restrictions}.
+
+%%%%%
+
+\section{Phase space respecting restrictions on subdiagrams}
+\label{sec:ps_restrictions}
+
+The \fortran\ implementation of the \ttt{wood} phase-space does not
+know anything about possible restrictions that maybe imposed on the
+\oMega\ matrix elements, cf. Sec.~\ref{sec:process options}.
+Consequently, the \ttt{wood} phase space also generates phase-space
+channels that might be absent when restrictions are imposed. This is
+not a principal problem, as in the adaptation of the phase-space
+channels \whizard's integrator \vamp\ will recognize that there is
+zero weight in that channel and will drop the channel (stop sampling
+in that channel) after some iterations. However, this is a waste of
+ressources as it is in principle known that this channel is
+absent. Using the \ttt{fast\_wood} phase-space algorithm
+(cf. Sec.~\ref{sec:fast_wood} will take restrictions into account, as
+\oMega\ will not generate trees for channels that are removed with the
+restrictions command. So it advisable for the user in the case of very
+complicated processes with restrictions to use the \ttt{fast\_wood}
+phase-space method to make \whizard\ generation and integration of the
+phase space less cumbersome. 
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Methods for Hard Interactions}
 \label{chap:hardint}
 
-\section{Internal unit matrix elements}
-\label{sec:unit_me}
+The hard interaction process is the core of any physics simulation
+within an MC event generator. One tries to describe the dominant
+particle interaction in the physics process of interest at a given
+order in perturbation theory, thereby making use of field-theoretic
+factorization theorems, especially for QCD, in order to separate
+non-perturbative physics like parton distribution functions (PDFs) or
+fragmentation functions from the perturbative part. Still, it is in
+many cases not possible to describe the perturbative part completely
+by means of fixed-order hard matrix elements: in soft and/or collinear
+regions of phase space, multiple emission of gluons and quarks (in
+general QCD jets) and photons necessitates a resummation, as large
+logarithms accompany the perturbative coupling constants and render
+fixed-order perturbation theory unreliable. The resummation of these
+large logarithms can be done analytically or (semi-)numerically,
+however, usually only for very inclusive quantities. At the level of
+exclusive events, these phase space regions are the realm of (QCD and
+also QED) parton showers that approximate multi-leg matrix elements
+from the hard perturbative into to the soft-/collinear regime. 
+
+The hard matrix elements are then the core building blocks of the
+physics description inside the MC event generator. \whizard\ generates
+these hard matrix elements at tree-level (or sometimes for
+loop-induced processes using effective operators as insertions) as
+leading-order processes. This is done by the \oMega\ subpackage that
+is automatically called by \whizard. Besides these physical matrix
+elements, there exist a couple of methods to generate dummy matrix
+elements for testing purposes, or for generating beam profiles and
+using them with externally linked special matrix elements. 
+
+Especially for one-loop processes (next-to-leading order for
+tree-allowed processes or leading-order for loop-induced processes),
+\whizard\ allows to use matrix elements from external providers, so
+called OLP programs (one-loop providers). Of course, all of these
+external packages can also generate tree-level matrix elements, which
+can then be used as well in \whizard. 
+
+We start the discussion with the two different options for test matrix
+elements, internal test matrix elements with no generated compiled code
+in Sec.~\ref{sec:unit_me} and so called template matrix elements with
+actual \fortran\ code that is compiled and linked, and can also be
+modified by the user in Sec.~\ref{sec:template_me}. Then, we move to
+the main matrix element method by the matrix element generator
+\oMega\ in Sec.~\ref{sec:omega_me}. Matrix elements from the external
+matrix element generators are discussed in the order of which
+interfaces for the external tools have been implemented: \gosam\ in
+Sec.~\ref{sec:gosam_me}, \openloops\ in Sec.~\ref{sec:openloops_me},
+and \recola\ in Sec.~\ref{sec:recola_me}.
+
+%%%%%
+
+\section{Internal test matrix elements}
+\label{sec:test_me}
+
+This method is merely for internal consistency checks inside \whizard,
+and is not really intended to be utilized by the user. The method is
+invoked by
+\begin{code}
+  $method = "unit_test"
+\end{code}
+This particular method is only applicable for the internal test model
+\ttt{Test.mdl}, which just contains a Higgs boson and a top
+quark. Technically, it will also works within model specifications
+for the Standard Model, or the Minimal Supersymmetric Standard Model
+(MSSM), or all models which contain particles named as \ttt{H} and
+\ttt{t} with PDG codes 25 and 6, respectively. So, the models
+\ttt{QED} and {QCD} will not work. Irrespective of what is given in
+the \sindarin\ file as a scattering input process, \whizard\ will
+always take the process 
+\begin{code}
+  model = SM
+  process <proc_name>= H, H => H, H
+\end{code}
+or for the test model:
+\begin{code}
+  model = Test
+  process <proc_name>= s, s => s, s
+\end{code}
+as corresponding process. (This is the same process, just with
+differing nomenclature in the different models). No matrix element
+code is generated and compiled, the matrix element is completely
+internal, included in the \whizard\ executable (or library), with a
+unit value for the squared amplitude. The integration will always be
+performed for this particularly process, even if the user provides a
+different process for that method. Hence, the result will always be
+the volume of the relativistic two-particle phase space. The only two
+parameters that influence the result are the collider energy,
+\ttt{sqrts}, and the mass of the Higgs particle with PDG code 25 (this
+mass parameter can be changed in the model \ttt{Test} as \ttt{ms},
+while it would be \ttt{mH} in the Standard Model \ttt{SM}. 
+
+It is also possible to use a test matrix element, again internal, for
+decay processes, where again \whizard\ will take a predefined process:
+\begin{code}
+  model = SM
+  process <proc_name> = H => t, tbar
+\end{code}
+in the \ttt{SM} model or 
+\begin{code}
+  model = Test
+  process <proc_name> = s => f, fbar
+\end{code}
+Again, this is the same process with PDG codes $25 \to 6 \; -6$ in the
+corresponding models. Note that in the model \ttt{SM} the mass of the
+quark is set via the variable \ttt{mtop}, while it is \ttt{mf} in the
+model \ttt{Test}. 
+
+Besides the fact that the user always gets a fixed process and cannot
+modify any matrix element code by hand, one can do all things as for a
+normal process like generating events, different weights, testing
+rebuild flags, using different setups and reweight events
+accordingly. Also factorized processes with production and decay can
+be tested that way. 
+
+In order to avoid confusion, it is highly recommended to use this
+method \ttt{unit\_test} only with the test model setup, model
+\ttt{Test}.
+
+On the technical side, the method \ttt{unit\_test} does not produce a
+process library (at least not an externally linked one), and also not
+a makefile in order to modify any process files (which anyways do not
+exist for that method). Except for the logfiles and the phase space
+file, all files are internal.
 
 %%%%%
 
 \section{Template matrix elements}
 \label{sec:template_me}
 
+Much more versatile for the user than the previous matrix element
+method in~\ref{sec:test_me}, are two different methods with constant
+template matrix elements. These are written out as \fortran\ code by
+the \whizard\ main executable (or library), providing an interface
+that is (almost) identical to the matrix element code produced by the
+\oMega\ generator (cf. the next section,
+Sec.~\ref{sec:omega_me}. There are actually two different methods for
+that purpose, providing matrix elements with different normalizations: 
+\begin{code}
+  $method = "template"
+\end{code}
+generates matrix elements which give after integration over phase
+space exactly one. Of course, for multi-particle final states the
+integration can fluctuate numerically and could then give numbers that
+are only close to one but not exactly one. Furthermore, the
+normalization is not exact if any of the external particles have
+non-zero masses, or there are any cuts involved. But otherwise, the
+integral from \whizard\ should give unity irrespective of the number
+of final state particles. 
+
+In contrast to this, the second method,
+\begin{code}
+  $method = "template_unity"
+\end{code}
+gives a unit matrix elements, or rather a matrix element that contains
+helicity and color averaging factors for the initial state and the
+square root of the factorials of identical final state particles in
+the denominator. Hence, integration over the final state momentum
+configuration gives a cross section that corresponds to the volume of
+the $n$-particle final state phase space, divided by the corresponding
+flux factor, resulting in
+\begin{equation}
+  \sigma(s, 2 \to 2,0) = \frac{3.8937966\cdot 10^{11}}{16\pi} \cdot
+  \frac{1}{s \text{[GeV]}^2} \; \text{fb}
+\end{equation}
+for the massless case and 
+\begin{equation}
+  \sigma(s, 2 \to 2,m_i) = \frac{3.8937966\cdot 10^{11}}{16\pi} \cdot
+  \sqrt{\frac{\lambda (s,m_3^2,m_4^2)}{\lambda (s,m_1^2,m_2^2)}}
+  \cdot \frac{1}{s \text{[GeV]}^2} \; \text{fb} 
+\end{equation}
+for the massive case. Here, $m_1$ and $m_2$ are the masses of the
+incoming, $m_3$ and $m_4$ the masses of the outgoing particles, and
+$\lambda(x,y,z) = x^2 + y^2 + z^2 - 2xy - 2xz - 2yz$. 
+
+For the general massless case with no cuts, the integral should be
+exactly 
+\begin{equation}
+  \sigma(s, 2\to n, 0) = \frac{(2\pi)^4}{2 s}\Phi_n(s)
+  = \frac{1}{16\pi s}\,\frac{\Phi_n(s)}{\Phi_2(s)},
+\end{equation}
+where the volume of the massless $n$-particle phase space is
+given by
+\begin{equation}\label{phi-n}
+  \Phi_n(s) = \frac{1}{4(2\pi)^5} \left(\frac{s}{16\pi^2}\right)^{n-2}
+  \frac{1}{(n-1)!(n-2)!}.
+\end{equation} 
+For $n\neq2$ the phase space volume is dimensionful, so the
+units of the integral are $\fb\times\GeV^{2(n-2)}$. (Note that for
+physical matrix elements this is compensated by momentum factors from
+wave functions, propagators, vertices and possibly dimensionful
+coupling constants, but here the matrix element is just equal to
+unity.) 
+
+Note that the phase-space integration for the \ttt{template} and
+\ttt{template\_unity} matrix element methods is organized in the same
+way as it would be for the real $2\to n$ process.  Since such a phase
+space parameterization is not optimized for the constant matrix
+element that is supplied instead, good convergence is not guaranteed.
+(Setting \ttt{?stratified = true} may be helpful here.)
+
+The possibility to call a dummy matrix element with this method allows
+to histogram spectra or structure functions: Choose a trivial process
+such as $uu\to dd$, select the \ttt{template\_unity} method, switch
+on structure functions for one (or both) beams, and generate events.
+The distribution of the final-state mass squared reflects the $x$
+dependence of the selected structure function.
+
+Furthermore, the constant in the source code of the unit matrix
+elements can be easily modified by the user with their \fortran\ code
+in order to study customized matrix elements. Just rerun
+\whizard\ with the \ttt{--recompile} option after the modification of
+the matrix element code.
+
+Both methods, \ttt{template} and \ttt{template\_unity} will also work
+even if no \ocaml\ compiler is found or used and consequently the
+\oMega\ matrix elemente generator (cf. Sec.~\ref{sec:omega_me} is
+disable. The methods produce a process library for their corresponding
+processes, and a makefile, by  which \whizard\ steers compilation and
+linking of the process source code. 
+
 %%%%%
 
-\section{The O'Mega matrix element generator}
+\section{The O'Mega matrix elements}
 \label{sec:omega_me}
+
+\oMega\ is a subpackage of \whizard, written in \ocaml, which can
+produce matrix elements for a wide class of implemented physics models
+(cf. Sec.~\ref{sec:smandfriends} and \ref{sec:bsmmodels} for a list of
+all implemented physics models), and even almost arbitrary models when
+using external Lagrange level tools, cf. Chap.~\ref{chap:extmodels}.
+There are two different variants for matrix elements from \oMega:
+the first one is invoked as
+\begin{code}
+  $method = "omega"
+\end{code}
+and is the default method for \whizard. It produces matrix element as
+\fortran\ code which is then compiled and linked. An alternative
+method, which for the moment is only available for the Standard Model
+and its variants as well models which are quite similar to the SM,
+e.g. the Two-Higgs doublet model or the Higgs-singlet extension. This
+method is taken when setting
+\begin{code}
+  $method = "ovm"
+\end{code}
+The acronym \ttt{ovm} stands for \oMega\ Virtual Machine (OVM). The
+first (default) method (\ttt{omega}) of \oMega\ matrix elements
+produces \fortran\ code for the matrix elements,that is compiled by
+the same compiler with which \whizard\ has been compiled. The OVM
+method (\ttt{ovm}) generates an \ttt{ASCII} file with so called op
+code for operations. These are just numbers which tell what numerical
+operations are to be performed on momenta, wave functions and vertex
+expression in order to yield a complex number for the amplitude. The
+op codes are interpreted by the OVM in the same as a Java Virtual
+Machine. In both cases, a compiled \fortran\ is generated which for
+the \ttt{omega} method contains the full expression for the matrix
+element as \fortran\ code, while for the \ttt{ovm} method this is the
+driver file of the OVM. Hence, for the \ttt{ovm} method this file
+always has roughly the same size irrespective of the complexity of the
+process. For the \ttt{ovm} method, there will also be the \ttt{ASCII}
+file that contains the op codes, which has a name with an \ttt{.hbc}
+suffix: \ttt{<process\_name>.hbc}.
+
+For both \oMega\ methods, there will be a process library created as
+for the template matrix elements (cf. Sec.~\ref{sec:template_me})
+named \ttt{default\_lib.f90} which can be given a user-defined name
+using the \ttt{library = "<library>"} command. Again, for both methods
+\ttt{omega} and \ttt{ovm}, a makefile named
+\ttt{<library>\_lib.makefile} is generated by which \whizard\ steers
+compilation, linking and clean-up of the process sources. This
+makefile can handily be adapted by the user in case she or he wants to
+modify the source code for the process (in the case of the source code
+method).
+
+Note that \whizard's default ME method via \oMega\ allows the user to
+specify many different options either globally for all processes in
+the \sindarin, or locally for each process separately in curly
+brackets behind the corresponding process definition. Examples are
+\begin{itemize}
+\item
+  Restrictions for the matrix elements like the exclusion of
+  intermediate resonances, the appearance of specific vertices or
+  coupling constants in the matrix elments. For more details on this
+  cf. Sec.~\ref{subsec:restrictions}.
+\item
+  Choice of a specific scheme for the width of massive intermediate
+  resonances, whether to use constant width, widths only in
+  $s$-channel like kinematics (this is the default), a fudged-width
+  scheme or the complex-mass scheme. The latter is actually steered as
+  a specific scheme of the underlying model and not with a specific
+  \oMega\ command.
+\item
+  Choice of the electroweak gauge for the amplitude. The default is
+  the unitary gauge.
+\end{itemize}
+With the exception of the restrictions steered by the
+\ttt{\$restrictions = "<restriction>"} string expression, these options
+have to be set in their specific \oMega\ syntax verbatim via the
+string command \ttt{\$omega\_flags = "<expr>"}. 
+
+
 
 %%%%%
 
 \section{Interface to GoSam}
+\label{sec:gosam_me}
+
+One of the supported methods for automated matrix elements from
+external providers is for the \gosam\ package. This program package
+which is a combination of \python\ scripts and \fortran\ libraries,
+allows both for tree and one-loop matrix elements (which is leading or
+next-to-leading order, depending on whether the corresponding process
+is allowed at the tree level or not). In principle, the advanced
+version of \gosam\ also allows for the evaluation of two-loop virtual
+matrix elements, however, this is currently not supported in
+\whizard. This method is invoked via the command
+\begin{code}
+  $method = "gosam"
+\end{code}
+Of course, this will only work correctly of \gosam\ with all its
+subcomponents has been correctly found during configuration of
+\whizard\ and then subsequently correctly linked.
+
+In order to generate the tables for spin, flavor and color states for 
+the  corresponding process, first \oMega\ is called to provide
+\fortran\ code for the interfaces to all the metadata for the
+process(es) to be evaluated. Next, the \gosam\ \python\ script is
+automatically invoked that first checks for the necessary ingredients
+to produce, compile and link the \gosam\ matrix elements. These are
+the the \ttt{Qgraf} topology generator for the diagrams, \ttt{Form} to
+perform algebra, the \ttt{Samurai}, \ttt{AVHLoop}, \ttt{QCDLoop} and
+\ttt{Ninja} libraries for Passarino-Veltman reduction, one-loop tensor
+integrals etc. As a next step, \gosam\ automatically writes and
+executes a \ttt{configure} script, and then it exchanges the Binoth
+Les Houches accord (BLHA) contract files between \whizard\ and
+itself~\cite{Binoth:2010xt,Alioli:2013nda} to check whether it
+actually generate code for the demanded process at the given
+order. Note that the contract and answer files do not have to be
+written by the user by hand, but are generated automatically within
+the program work flow initiated by the original
+\sindarin\ script. \gosam\ then generates \fortran\ code for the
+different components of the processes, compiles it and links it into a
+library, which is then automatically accessible (as an external
+process library) from inside \whizard. The phase space setup and the
+integration as well as the LO (and NLO) event generation work then in
+exactly the same way as for \oMega\ matrix elements.
+
+As an NLO calculation consists of different components for the Born,
+the real correction, the virtual correction, the subtraction part and
+possible further components depending on the details of the
+calculation, there is the possible to separately choose the matrix
+element method for those components via the keywords
+\ttt{\$loop\_me\_method}, \ttt{\$real\_tree\_me\_method},
+\ttt{\$correlation\_me\_method}  etc. These
+keywords overwrite the master switch of the \ttt{\$method} keyword. 
+
+For more information on the switches and details of the functionality
+of \gosam, cf. \url{http://gosam.hepforge.org}. 
+
+%%%%%
+
+\section{Interface to Openloops}
+\label{sec:openloops_me}
+
+Very similar to the case of \gosam, cf. Sec.~\ref{sec:gosam_me}, is
+the case for \openloops\ matrix elements. Also here, first \oMega\ is
+called in order to provide an interface for the spin, flavor and color
+degrees of freedom for the corresponding process. Information exchange
+between \whizard\ and \openloops\ then works in the same automatic way
+as for \gosam\ via the BLHA interface. This matrix element method is
+invoked via
+\begin{code}  
+  $method = "openloops"
+\end{code}
+This again is the master switch that will tell \whizard\ to use
+\openloops\ for all components, while there are special keywords to
+tailor-make the setup for the different components of an NLO
+calculation (cf. Sec.~\ref{sec:gosam_me}.
+
+The main difference between \openloops\ and \gosam\ is that for
+\openloops\ there is no process code to be generated, compiled and
+linked for a process, but a precompiled library is called and linked,
+e.g. \ttt{ppll} for the Drell-Yan process. Of course, this library has
+to be installed on the system, but if that is not the case, the user
+can execute the \openloops\ script in the source directory of
+\openloops\ to download, compile and link the corresponding dynamic
+library. This limits (for the moment) the usage of \openloops\ to
+processes where pre-existint libraries for that specific processes
+have been generated by the \openloops\ authors. A new improved
+generator for general process libraries for \openloops\ will get rid
+of that restriction.
+
+For more information on the installation, switches and details of the
+functionality of \openloops, cf. \url{http://openloops.hepforge.org}. 
+
+%%%%%
+
+\section{Interface to Recola}
+\label{sec:recola_me}
+
+The third one-loop provider (OLP) for external matrix elements that
+is supported by \whizard, is \recola. In contrast to \gosam,
+cf. Sec.~\ref{sec:gosam_me}, and \openloops,
+cf. Sec.~\ref{sec:openloops_me}, \recola\ does not use a BLHA
+interface to exchange information with \whizard, but its own
+tailor-made C interoperable library interface to communicate to the
+Monte Carlo side. \recola\ matrix elements are called for via
+\begin{code}
+  $method = "recola"
+\end{code}
+\recola\ uses a highly efficient algorithm to generate process code
+for LO and NLO SM amplitudes in a fully recursive manner. At the
+moment, the setup of the interface within \whizard\ does not allow to
+invoke more than one different process in \recola: this would lead to
+a repeated initialization of the main setup of \recola\ and would
+consequently crash it. It is foreseen in the future to have a
+safeguard mechanism inside \whizard\ in order to guarantee
+initialization of \recola\ only once, but this is not yet
+implemented.
+
+Further information on the installation, details and parameters of
+\recola\ can be found at \url{http://recola.hepforge.org}.
+
+%%%%%
+
+\section{Special applications}
+\label{sec:special_me}
+
+There are also special applications with combinations of matrix
+elements from different sources for dedicated purposes like e.g. for
+the matched top--anti-top threshold in $e^+e^-$. For this special
+application which depending on the order of the matching takes only
+\oMega\ matrix elements or at NLO combines amplitudes from \oMega\ and
+\openloops, is invoked by the method:
+\begin{code}
+  $method = "threshold"
+\end{code}
+
 
 \newpage
 
@@ -8881,8 +9623,8 @@ format \UFO, cf. Chap.~\ref{chap:extmodels}.
              Standard Model        & \tt{SM\_CKM} & \tt{SM} \\
              SM with anomalous gauge couplings &  \tt{SM\_ac\_CKM} &
              \tt{SM\_ac} \\
-             SM with $Hgg$, $H\gamma\gamma$, $H\mu\mu$ &  \tt{---} &
-             \tt{SM\_Higgs} \\
+             SM with $Hgg$, $H\gamma\gamma$, $H\mu\mu$, $He^+e^-$ &
+             \tt{SM\_Higgs\_CKM} & \tt{SM\_Higgs} \\
              SM with bosonic dim-6 operators &  \tt{---} &
              \tt{SM\_dim6} \\
              SM with charge 4/3 top &  \tt{---} &
@@ -9271,8 +10013,14 @@ Furthermore, the current implementation does not respect the
 kinematical limit parameter \verb|epa_q_min|, it has to be set to
 zero. In effect, the lower $Q^2$ cutoff is determined by the
 beam-particle mass \verb|epa_mass|, and the upper cutoff is either
-given by $Q_{\text{max}}=2*E_{\text{max}}$ (the parameter
-\verb|epa_e_max|), or by the limit $\sqrt{s}$ if this is not set.
+given by $Q_{\text{max}}$ (the parameter
+\verb|epa_q_max|), or by the limit $\sqrt{s}$ if this is not set.
+
+It is possible to combine the ISR and EPA handlers, for processes
+where ISR is active for one of the beams, EPA for the other beam.  For
+this scenario to work, both handler switches must be on, and both mode
+strings must coincide.  The parameters are set separately for ISR and
+EPA, as described above.
 
 %%%%%
 
@@ -9431,15 +10179,14 @@ However, when subsequently events are generated with this setting, the program
 checks, for each event, the kinematics and determines the set of potentially
 resonant contributions.  The criterion is whether the off-shellness of a
 particular would-be resonance is less than the resonance width multiplied by
-the value of \verb|resonance_on_shell_limit|.  (The value $4$ is also the
-default value for this parameter.)  For the set of resonance histories which
-pass this criterion (which can be empty), their respective squared matrix
-element is related to the full-process matrix element.  The ratio is
-interpreted as a probability.  The random-number generator then selects one or
-none of the resonance histories, and modifies the event record accordingly.
-In effect, for an appropriate fraction of the events, depending on the
-kinematics, the parton-shower module is provided with resonance information,
-so it can adjust the radiation pattern accordingly.
+the value of \verb|resonance_on_shell_limit| (default value $=4$).  For the
+set of resonance histories which pass this criterion (which can be empty),
+their respective squared matrix element is related to the full-process matrix
+element.  The ratio is interpreted as a probability.  The random-number
+generator then selects one or none of the resonance histories, and modifies
+the event record accordingly.  In effect, for an appropriate fraction of the
+events, depending on the kinematics, the parton-shower module is provided with
+resonance information, so it can adjust the radiation pattern accordingly.
 
 It has to be mentioned that generating the matrix-element code for all
 possible resonance histories takes additional computing resources.  In the
@@ -9457,6 +10204,32 @@ If the flag is \verb|false| for a process, no resonance code will be
 generated.  Similarly, the flag has to be globally or locally active
 when \verb|simulate| is called, such that the feature takes effect for
 event generation.
+
+There are two additional parameters that can fine-tune the conditions for
+resonance insertion in the event record.  Firstly, the parameter
+\verb|resonance_on_shell_turnoff|, if nonzero, enables a Gaussian suppression
+of the probability for resonance insertion.  For instance, setting
+\begin{Code}
+  ?resonance_history = true
+  resonance_on_shell_turnoff = 4
+  resonance_on_shell_limit = 8
+\end{Code}
+will reduce the probability for the event to be qualified as resonant by
+$e^{-1}= 37\,\%$ if the kinematics is off-shell by four units of the width,
+and by $e^{-4}=2\,\%$ at eight units of the width.  Beyond this point, the
+setting of the \verb|resonance_on_shell_limit| parameter eliminates resonance
+insertion altogether.  In effect, the resonance-background transition is
+realized in a smooth way.  Secondly, within the resonant-kinematics range the
+probability for qualifying the event as background can be reduced by the
+parameter \verb|resonance_background_factor| (default value $=1$) to a number
+between zero and one.  Setting this to zero means that the event will be
+necessarily qualified as resonant, if it falls within the resonant-kinematics
+range.
+
+Note that if an event, by the above mechanism, is identified as following a
+certain resonance history, the assigned color flow will be chosen to match the
+resonance history, not the complete matrix element.  This may result in a
+reassignment of color flow with respect to the original partonic event.
 
 Finally, we mention the order of execution: any additional
 matrix element code is compiled and linked when \verb|compile| is
@@ -10354,7 +11127,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.6.1</generator_version>
+  <generator_version>2.6.2</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -13934,6 +14707,13 @@ files. (cf. also \ttt{\$sample}, \ttt{\$sample\_normalization},
 \ttt{sample\_format})
 %%%%%
 \item
+\ttt{beam} \newline
+Constructor that specifies a particle (in a subevent) as beam particle. It is
+used in cuts, analyses or selections, e.g. \ttt{cuts = all Theta > 20
+degree [beam lepton, lepton]}. (cf. also \ttt{incoming}, \ttt{outgoing},
+\ttt{cuts}, \ttt{analysis}, \ttt{selection}, \ttt{record})
+%%%%%
+\item
 \ttt{beam\_events} \newline
 Beam structure specifier to read in lepton collider beamstrahlung's
 spectra from external files as pairs of energy fractions: \ttt{beams:
@@ -14257,7 +15037,7 @@ Beam structure specifier for the equivalent-photon approximation
 e.g. \ttt{beams = e1, E1 => epa} (applied to both beams), or
 e.g. \ttt{beams = e1, u => epa, none} (applied to only one
 beam). (cf. also \ttt{beams}, \ttt{epa\_alpha}, \ttt{epa\_x\_min},
-\ttt{epa\_mass}, \ttt{epa\_e\_max}, \ttt{epa\_q\_min},
+\ttt{epa\_mass}, \ttt{epa\_q\_max}, \ttt{epa\_q\_min},
 \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})
 %%%%%
 \item
@@ -14456,8 +15236,8 @@ file \ttt{default\_cuts.sin}.
 \ttt{incoming} \newline
 Constructor that specifies particles (or subevents) as incoming. It is
 used in cuts, analyses or selections, e.g. \ttt{cuts = all Theta > 20
-degree [incoming lepton, lepton]}. (cf. also \ttt{cuts},
-\ttt{analysis}, \ttt{selection}, \ttt{record})
+degree [incoming lepton, lepton]}. (cf. also \ttt{beam}, \ttt{outgoing}, 
+\ttt{cuts}, \ttt{analysis}, \ttt{selection}, \ttt{record})
 %%%%%
 \item
 \ttt{index} \newline
@@ -14764,6 +15544,16 @@ This is the standard two-place logical connective that has the value
 true if one of its operands is true, otherwise a value of false. It
 is applied to logical values, e.g. cut expressions. (cf. also
 \ttt{and}, \ttt{not}).
+%%%%%
+\item
+\ttt{outgoing} \newline
+Constructor that specifies particles (or subevents) as outgoing. It is
+used in cuts, analyses or selections, e.g. \ttt{cuts = all Theta > 20
+degree [incoming lepton, outgoing lepton]}. Note that the \ttt{outgoing}
+keyword is redundant and included only for completeness: \ttt{outgoing lepton}
+has the same meaning as \ttt{lepton}.  (cf. also \ttt{beam},
+\ttt{incoming}, 
+\ttt{cuts}, \ttt{analysis}, \ttt{selection}, \ttt{record})
 %%%%%
 \item
 \ttt{P} \newline
@@ -15639,6 +16429,25 @@ respectively.
   [arXiv:0806.4145 [hep-ph]].
   %%CITATION = ARXIV:0806.4145;%%
 
+%\cite{Binoth:2010xt}
+\bibitem{Binoth:2010xt} 
+  T.~Binoth {\it et al.},
+  %``A Proposal for a standard interface between Monte Carlo tools and one-loop programs,''
+  Comput.\ Phys.\ Commun.\  {\bf 181}, 1612 (2010)
+  doi:10.1016/j.cpc.2010.05.016
+  [arXiv:1001.1307 [hep-ph]].
+  %%CITATION = doi:10.1016/j.cpc.2010.05.016;%%
+  
+%\cite{Alioli:2013nda}
+\bibitem{Alioli:2013nda} 
+  S.~Alioli {\it et al.},
+  %``Update of the Binoth Les Houches Accord for a standard interface
+  %between Monte Carlo tools and one-loop programs,'' 
+  Comput.\ Phys.\ Commun.\  {\bf 185}, 560 (2014)
+  doi:10.1016/j.cpc.2013.10.020
+  [arXiv:1308.3462 [hep-ph]].
+  %%CITATION = doi:10.1016/j.cpc.2013.10.020;%%
+  
 %\cite{Speckner:2010zi}
 \bibitem{Speckner:2010zi}
   C.~Speckner,

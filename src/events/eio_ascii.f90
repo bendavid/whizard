@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -340,7 +340,14 @@ contains
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
     if (present (passed)) then
-       if (.not. passed)  return
+       if (.not. passed) then
+          select type (eio)
+          type is (eio_ascii_debug_t)
+          type is (eio_ascii_ascii_t)
+          class default
+             return
+          end select
+       end if
     end if
     if (eio%writing) then
        select type (eio)
@@ -364,7 +371,6 @@ contains
                verbose = .false., testflag = pacify)
        type is (eio_ascii_athena_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
@@ -378,35 +384,30 @@ contains
                testflag = pacify)
        type is (eio_ascii_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_hepevt (eio%unit)
        type is (eio_ascii_hepevt_verb_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_verbose (eio%unit)
        type is (eio_ascii_long_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_ascii (eio%unit, .true.)
        type is (eio_ascii_mokka_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_mokka (eio%unit)
        type is (eio_ascii_short_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)

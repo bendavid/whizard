@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -81,6 +81,7 @@ module sm_qcd
   type :: qcd_t
      class(alpha_qcd_t), allocatable :: alpha
      character(32) :: md5sum = ""
+     integer :: n_f = -1
    contains
      procedure :: write => qcd_write
      procedure :: compute_alphas_md5sum => qcd_compute_alphas_md5sum

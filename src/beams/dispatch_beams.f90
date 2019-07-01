@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -495,6 +495,7 @@ contains
        call msg_message ("QCD alpha: using a running strong coupling")
     end select
     call init_alpha ()
+    qcd%n_f = var_list%get_ival (var_str ("alphas_nf"))
   contains
     subroutine unpack_variables ()
       fixed = var_list%get_lval (var_str ("?alphas_is_fixed"))

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -755,7 +755,9 @@ contains
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
-       call pcm_instance%dglap_remnant%init (pcm_instance%isr_kinematics, &
+       call pcm_instance%dglap_remnant%init ( &
+            config%region_data%n_flv_born, &
+            pcm_instance%isr_kinematics, &
             config%region_data%get_flv_states_born (), config%get_n_alr ())
     end select
   end subroutine pcm_instance_nlo_init_dglap_remnant

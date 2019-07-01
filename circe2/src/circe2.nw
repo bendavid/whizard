@@ -3,7 +3,7 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation of [[circe2]]}
 <<Version>>=
-'Version 2.6.1'
+'Version 2.6.2'
 @ 
 <<[[implicit none]]>>=
 implicit none
@@ -1935,4 +1935,7 @@ end module circe2_moments_library
 \begin{thebibliography}{10}
 \bibitem{Atkinson/Whittaker:1979:beta_distribution}
   A. Atkinson and J. Whittaker, Appl.\ Stat.\ {\bf 28},  90  (1979).
+\bibitem{Devroye:1986:random_deviates}
+  L. Devroye, {\em Non-uniform Random Variate Generation}, Springer,
+  1986.
 \end{thebibliography}

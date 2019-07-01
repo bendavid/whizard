@@ -26,6 +26,12 @@ parameter xi0    = 0    	# R_xi parameter for Z-boson
 parameter xipm   = 0		# R_xi parameter for W-boson
 parameter fs0    = 0            # Coefficient of LS0 [1/TeV ^ 4]
 parameter fs1    = 0            # Coefficient of LS1 [1/TeV ^ 4]
+parameter ft0    = 0            # Coefficient of LT0 [1/TeV ^ 4]
+parameter ft1    = 0            # Coefficient of LT1 [1/TeV ^ 4]
+parameter ft2    = 0            # Coefficient of LT2 [1/TeV ^ 4]
+parameter fm0    = 0            # Coefficient of LM0 [1/TeV ^ 4]
+parameter fm1    = 0            # Coefficient of LM1 [1/TeV ^ 4]
+parameter fm7    = 0            # Coefficient of LM7 [1/TeV ^ 4]
 parameter a6     = 0            # Coefficient of L6
 parameter a7     = 0            # Coefficient of L7
 parameter a10    = 0            # Coefficient of L10  
@@ -62,7 +68,7 @@ parameter mreg   = 1000         # regulator mass for one-loop correction
 parameter fkm    = 1            # fudge factor to switch K matrix unitarization
 			        # for resonances on or off
 parameter wres   = 1 	        # switch for automatic resonance widths (need wkm_* = 0)
-parameter gkm_st = 0            # Transversal coupling for scalar isoscalar resonance
+parameter gkm_st = 0            # Transversal coupling for scalar isoscalar resonance [1/TeV]
 parameter gkm_pt = 0            # Transversal coupling for scalar isotensor resonance
 parameter gkm_rt = 0            # Transversal Coupling for vector isovector resonance
 parameter gkm_ft = 0            # Transversal coupling for tensor isoscalar resonance
@@ -336,11 +342,18 @@ vertex E2 n2 Wm
 vertex E3 n3 Wm 
 
 # Vector-boson self-interactions
+vertex A A A
+vertex A A Z
 vertex A Wm Wp 
+vertex A Z Z
 vertex Wm Wp Z 
 
+vertex A A A A
+vertez A A A Z
 vertex A A Wm Wp
+vertex A A Z Z
 vertex A Wm Wp Z
+vertex A Z Z Z
 vertex Wm Wm Wp Wp
 vertex Wm Wp Z Z
 vertex Z Z Z Z
@@ -352,6 +365,8 @@ vertex H H Z Z
 vertex H H Wp Wm
 
 # Sigma - vector boson
+vertex Rsigma A A
+vertex Rsigma A Z
 vertex Rsigma Wp Wm
 vertex Rsigma Z Z
 vertex Rsigma Rsigma Z Z

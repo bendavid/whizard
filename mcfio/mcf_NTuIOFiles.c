@@ -7,8 +7,10 @@
 *									       *
 *******************************************************************************/
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <sys/param.h>
 #include <limits.h>
 #include <time.h>
@@ -22,6 +24,8 @@
 #include "mcf_xdr.h"
 #include "mcfio_Dict.h"
 #include "mcfio_Direct.h"
+#include "mcfio_Util1.h"
+#include "mcf_ntuBldDbinc.h"
 #include "mcf_NTuIOFiles.h"
 #include "mcf_NTuIOUtils.h"
 #include "mcf_ntubld_db.h"

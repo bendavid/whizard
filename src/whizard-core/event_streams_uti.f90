@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -110,6 +110,7 @@ contains
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%set_index (42)
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -192,6 +193,7 @@ contains
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     write (u, "(A)") "* Allocate raw eio stream and write event to file"
@@ -226,6 +228,7 @@ contains
     if (iostat < 0) then
        call es_array%switch_inout ()
        call event%generate (1, [0.3_default, 0.3_default])
+       call event%increment_index ()
        call event%evaluate_expressions ()
        call es_array%output (event, 1, 2)
     end if

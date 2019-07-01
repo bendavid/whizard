@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -68,6 +68,8 @@ module prclib_interfaces
      procedure(write_feature_code), deferred :: write_interface
      procedure(write_code_os), deferred :: write_makefile_code
      procedure(write_code_file), deferred :: write_source_code
+     procedure(write_code_file), deferred :: before_compile
+     procedure(write_code_file), deferred :: after_compile
      procedure :: init_test => prc_writer_init_test
      procedure(write_code), deferred :: write_md5sum_call
      procedure(write_feature_code), deferred :: write_int_sub_call
@@ -110,6 +112,8 @@ module prclib_interfaces
      procedure :: write_wrappers => prclib_driver_record_write_wrappers
      procedure :: write_makefile_code => prclib_driver_record_write_makefile_code
      procedure :: write_source_code => prclib_driver_record_write_source_code
+     procedure :: before_compile => prclib_driver_record_before_compile
+     procedure :: after_compile => prclib_driver_record_after_compile
      procedure :: write_md5sum_call => prclib_driver_record_write_md5sum_call
      procedure :: write_int_sub_call => prclib_driver_record_write_int_sub_call
      procedure :: write_col_state_call => prclib_driver_record_write_col_state_call
@@ -231,12 +235,13 @@ module prclib_interfaces
   end interface
 
   abstract interface
-     subroutine write_code_os (writer, unit, id, os_data, testflag)
+     subroutine write_code_os (writer, unit, id, os_data, verbose, testflag)
        import
        class(prc_writer_t), intent(in) :: writer
        integer, intent(in) :: unit
        type(string_t), intent(in) :: id
        type(os_data_t), intent(in) :: os_data
+       logical, intent(in) :: verbose
        logical, intent(in), optional :: testflag
      end subroutine write_code_os
   end interface
@@ -459,18 +464,30 @@ contains
   end subroutine prclib_driver_record_write_wrappers
 
   subroutine prclib_driver_record_write_makefile_code &
-       (record, unit, os_data, testflag)
+       (record, unit, os_data, verbose, testflag)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
-    call record%writer%write_makefile_code (unit, record%id, os_data, testflag)
+    call record%writer%write_makefile_code &
+         (unit, record%id, os_data, verbose, testflag)
   end subroutine prclib_driver_record_write_makefile_code
 
   subroutine prclib_driver_record_write_source_code (record)
     class(prclib_driver_record_t), intent(in) :: record
     call record%writer%write_source_code (record%id)
   end subroutine prclib_driver_record_write_source_code
+
+  subroutine prclib_driver_record_before_compile (record)
+    class(prclib_driver_record_t), intent(in) :: record
+    call record%writer%before_compile (record%id)
+  end subroutine prclib_driver_record_before_compile
+
+  subroutine prclib_driver_record_after_compile (record)
+    class(prclib_driver_record_t), intent(in) :: record
+    call record%writer%after_compile (record%id)
+  end subroutine prclib_driver_record_after_compile
 
   subroutine prclib_driver_write (object, unit, libpath)
     class(prclib_driver_t), intent(in) :: object
@@ -571,10 +588,11 @@ contains
     end do
   end subroutine prclib_driver_write_interfaces
 
-  subroutine prclib_driver_generate_makefile (driver, unit, os_data, testflag)
+  subroutine prclib_driver_generate_makefile (driver, unit, os_data, verbose, testflag)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     integer :: i
     write (unit, "(A)")  "# WHIZARD: Makefile for process library '" &
@@ -615,9 +633,15 @@ contains
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Libtool"
     write (unit, "(A)")  "LIBTOOL = " // char (os_data%whizard_libtool)
-    write (unit, "(A)")  "FCOMPILE = $(LIBTOOL) --tag=FC --mode=compile"
-    write (unit, "(A)")  "CCOMPILE = $(LIBTOOL) --tag=CC --mode=compile"
-    write (unit, "(A)")  "LINK = $(LIBTOOL) --tag=FC --mode=link"
+    if (verbose) then
+       write (unit, "(A)")  "FCOMPILE = $(LIBTOOL) --tag=FC --mode=compile"
+       write (unit, "(A)")  "CCOMPILE = $(LIBTOOL) --tag=CC --mode=compile"
+       write (unit, "(A)")  "LINK = $(LIBTOOL) --tag=FC --mode=link"
+    else
+       write (unit, "(A)")  "FCOMPILE = @$(LIBTOOL) --silent --tag=FC --mode=compile"
+       write (unit, "(A)")  "CCOMPILE = @$(LIBTOOL) --silent --tag=CC --mode=compile"
+       write (unit, "(A)")  "LINK = @$(LIBTOOL) --silent --tag=FC --mode=link"
+    end if
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Compile commands (default)"
     write (unit, "(A)")  "LTFCOMPILE = $(FCOMPILE) $(FC) -c &
@@ -630,15 +654,21 @@ contains
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Matrix-element code files"
     do i = 1, size (driver%record)
-       call driver%record(i)%write_makefile_code (unit, os_data, testflag)
+       call driver%record(i)%write_makefile_code (unit, os_data, verbose, testflag)
     end do
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Library driver"
     write (unit, "(A)")  "$(BASE).lo: $(BASE).f90 $(OBJECTS)"
     write (unit, "(A)")  TAB // "$(LTFCOMPILE) $<"
+    if (.not. verbose) then
+       write (unit, "(A)")  TAB // '@echo  "  FC       " $@'
+    end if
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Library"
     write (unit, "(A)")  "$(BASE).la: $(BASE).lo $(OBJECTS)"
+    if (.not. verbose) then
+       write (unit, "(A)")  TAB // '@echo  "  FCLD     " $@'
+    end if
     write (unit, "(A)")  TAB // "$(LINK) $(FC) -module -rpath /dev/null &
          &$(FCFLAGS) $(LDFLAGS) -o $(BASE).la $^"
     write (unit, "(A)")  ""
@@ -657,16 +687,43 @@ contains
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Generic cleanup targets"
     write (unit, "(A)")  "clean-library:"
-    write (unit, "(A)")  TAB // "rm -f $(BASE).la"
+    if (verbose) then
+       write (unit, "(A)")  TAB // "rm -f $(BASE).la"
+    else
+       write (unit, "(A)")  TAB // '@echo  "  RM        $(BASE).la"'
+       write (unit, "(A)")  TAB // "@rm -f $(BASE).la"
+    end if
     write (unit, "(A)")  "clean-objects:"
-    write (unit, "(A)")  TAB // "rm -f $(BASE).lo $(BASE)_driver.mod &
-         &$(CLEAN_OBJECTS)"
+    if (verbose) then
+       write (unit, "(A)")  TAB // "rm -f $(BASE).lo $(BASE)_driver.mod &
+            &$(CLEAN_OBJECTS)"
+    else
+       write (unit, "(A)")  TAB // '@echo  "  RM        $(BASE).lo &
+            &$(BASE)_driver.mod $(CLEAN_OBJECTS)"'
+       write (unit, "(A)")  TAB // "@rm -f $(BASE).lo $(BASE)_driver.mod &
+            &$(CLEAN_OBJECTS)"
+    end if
     write (unit, "(A)")  "clean-source:"
-    write (unit, "(A)")  TAB // "rm -f $(CLEAN_SOURCES)"
+    if (verbose) then
+       write (unit, "(A)")  TAB // "rm -f $(CLEAN_SOURCES)"
+    else
+       write (unit, "(A)")  TAB // '@echo  "  RM        $(CLEAN_SOURCES)"'
+       write (unit, "(A)")  TAB // "@rm -f $(CLEAN_SOURCES)"
+    end if
     write (unit, "(A)")  "clean-driver:"
-    write (unit, "(A)")  TAB // "rm -f $(BASE).f90"
+    if (verbose) then
+       write (unit, "(A)")  TAB // "rm -f $(BASE).f90"
+    else
+       write (unit, "(A)")  TAB // '@echo  "  RM        $(BASE).f90"'
+       write (unit, "(A)")  TAB // "@rm -f $(BASE).f90"
+    end if
     write (unit, "(A)")  "clean-makefile:"
-    write (unit, "(A)")  TAB // "rm -f $(BASE).makefile"
+    if (verbose) then
+       write (unit, "(A)")  TAB // "rm -f $(BASE).makefile"
+    else
+       write (unit, "(A)")  TAB // '@echo  "  RM        $(BASE).makefile"'
+       write (unit, "(A)")  TAB // "@rm -f $(BASE).makefile"
+    end if
     write (unit, "(A)")  ".PHONY: clean-library clean-objects &
          &clean-source clean-driver clean-makefile"
     write (unit, "(A)")  ""
@@ -1536,13 +1593,21 @@ contains
   subroutine prclib_driver_make_compile (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    integer :: i
+    do i = 1, driver%n_processes
+       call driver%record(i)%before_compile ()
+    end do
     call os_system_call ("make compile " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
+    do i = 1, driver%n_processes
+       call driver%record(i)%after_compile ()
+    end do
   end subroutine prclib_driver_make_compile
 
   subroutine prclib_driver_make_link (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    integer :: i
     call os_system_call ("make link " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_link

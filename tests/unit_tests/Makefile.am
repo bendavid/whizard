@@ -104,12 +104,13 @@ UNIT_TESTS = \
     processes.run \
     process_stacks.run \
     cascades.run \
+    cascades2_lexer.run \
     cascades2.run \
     event_transforms.run \
     resonance_insertion.run \
     recoil_kinematics.run \
-    isr_photon_handler.run \
-    epa_beam_handler.run \
+    isr_handler.run \
+    epa_handler.run \
     decays.run \
     shower.run \
     shower_base.run \
@@ -234,10 +235,13 @@ sf_beam_events.run: test_beam_events.dat
 test_beam_events.dat: $(top_builddir)/share/beam-sim/test_beam_events.dat
 	cp $< $@
 
-cascades2.run: omega_parsable.fds omega_parsable_scattering.fds
-omega_parsable.fds: $(top_srcdir)/share/tests/omega_parsable.fds
+cascades2_lexer.run: cascades2_lexer_1.fds
+cascades2_lexer_1.fds: $(top_srcdir)/share/tests/cascades2_lexer_1.fds
 	cp $< $@
-omega_parsable_scattering.fds: $(top_srcdir)/share/tests/omega_parsable_scattering.fds
+cascades2.run: cascades2_1.fds cascades2_2.fds
+cascades2_1.fds: $(top_srcdir)/share/tests/cascades2_1.fds
+	cp $< $@
+cascades2_2.fds: $(top_srcdir)/share/tests/cascades2_2.fds
 	cp $< $@
 
 
@@ -387,7 +391,7 @@ clean-local: clean-macosx
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.mdl
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
-	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.hep.out *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out

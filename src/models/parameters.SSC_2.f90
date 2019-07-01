@@ -41,6 +41,7 @@ module parameters_ssc_2
        ghgaga, ghgaz, ghgg, ghmm, & 		
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww, &
        gszz, gszzt, gsww, gswwt, gssww, gsszz, &
+       gsaat, gsazt, &
        gpnww, gpnzz, gpwz, gpww, &
        gpsnww, gpsnzz, gpsnhh, &
        gfww, gfzz, gfwwt, gfzzt, &
@@ -49,17 +50,31 @@ module parameters_ssc_2
        gtnwwcf, gtnzzcf, gtwzcf, gtwwcf, &
        gtsnww, gtsnzz, gtsnwwcf, gtsnzzcf, &
        fs0hhww, fs0hhzz, fs1hhww, fs1hhzz, fsh4, &
+       fm0hhww, fm0hhzz, fm1hhww, fm1hhzz, fm7hhww, fm7hhzz,&
        gshh, gfhh, gfhhcf
   real(default), public :: vev
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn
-  real(default), public :: fs0, fs1, a6, a7, a10
+  real(default), public :: fs0, fs1, ft0, ft1, ft2, fm0, fm1, fm7, &
+       a6, a7, a10
   complex(default), public :: ig1a, ig1z, rg5a, rg5z, &
        ig1pkpg4a, ig1pkpg4z, ig1pkmg4a, ig1pkmg4z, &
        ig1mkpg4a, ig1mkpg4z, ig1mkmg4a, ig1mkmg4z, &
        ila, ilz, il5a, il5z, ik5a, ik5z, &
        ialww0, ialww2, ialzw0, ialzw1, ialzz, &
        alww0, alww2, alzw0, alzw1, alzz, &
+       at0ww0, at0ww2, at0zw0, at0zw1, at0zz, &
+       at0aa, at0aw0, at0aw1, at0az, &
+       at0azw0, at0azw1, at03az, at0a3z, &
+       at1ww0, at1ww2, at1zw0, at1zw1, at1zz, & 
+       at1aa, at1aw0, at1aw1, at1az, &
+       at1azw0, at1azw1, at13az, at1a3z, &
+       at2ww0, at2ww2, at2zw0, at2zw1, at2zz, &
+       at2aa, at2aw0, at2aw1, at2az, &
+       at2azw0, at2azw1, at23az, at2a3z, &
+       am0ww0, am0ww2, am0zw0, am0zw1, am0zz, &
+       am1ww0, am1ww2, am1zw0, am1zw1, am1zz, &
+       am7ww0, am7ww2, am7zw0, am7zw1, am7zz, &
        igdh4, gdh2w2, gdh2z2, gdhw2, gdhz2 
   real(default), public :: lam_reg   
   real(default), public :: fudge_higgs, fudge_km, w_res,  &
@@ -75,7 +90,7 @@ module parameters_ssc_2
 
 contains
   subroutine import_from_whizard (par_array, scheme)
-    real(default), dimension(68), intent(in) :: par_array
+    real(default), dimension(74), intent(in) :: par_array
     integer, intent(in) :: scheme
     type :: parameter_set
        real(default) :: gf
@@ -98,6 +113,12 @@ contains
        real(default) :: xipm
        real(default) :: fs0
        real(default) :: fs1
+       real(default) :: ft0
+       real(default) :: ft1
+       real(default) :: ft2
+       real(default) :: fm0
+       real(default) :: fm1 
+       real(default) :: fm7
        real(default) :: a6
        real(default) :: a7
        real(default) :: a10
@@ -172,54 +193,60 @@ contains
     par%xipm   = par_array(18)
     par%fs0    = par_array(19)         
     par%fs1    = par_array(20)
-    par%a6     = par_array(21)
-    par%a7     = par_array(22)
-    par%a10    = par_array(23)
-    par%mkm_s  = par_array(24)
-    par%mkm_p  = par_array(25)
-    par%mkm_r  = par_array(26)
-    par%mkm_f  = par_array(27)
-    par%mkm_t  = par_array(28)
-    par%gkm_s  = par_array(29)
-    par%gkm_p  = par_array(30)
-    par%gkm_r  = par_array(31)
-    par%gkm_f  = par_array(32)
-    par%gkm_t  = par_array(33)
-    par%wkm_s  = par_array(34)
-    par%wkm_p  = par_array(35)
-    par%wkm_r  = par_array(36)
-    par%wkm_f  = par_array(37)
-    par%wkm_t  = par_array(38)
-    par%g1a    = par_array(39)
-    par%g1z    = par_array(40)
-    par%g4a    = par_array(41)
-    par%g4z    = par_array(42)
-    par%g5a    = par_array(43)
-    par%g5z    = par_array(44)
-    par%ka     = par_array(45)
-    par%kz     = par_array(46)
-    par%la     = par_array(47)
-    par%lz     = par_array(48)
-    par%k5a    = par_array(49)
-    par%k5z    = par_array(50)
-    par%l5a    = par_array(51)
-    par%l5z    = par_array(52)
-    par%mreg   = par_array(53)
-    par%fkm    = par_array(54)
-    par%wres   = par_array(55)
-    par%gkm_st = par_array(56)
-    par%gkm_pt = par_array(57)
-    par%gkm_rt = par_array(58)
-    par%gkm_ft = par_array(59)
-    par%gkm_tt = par_array(60)
-    par%fmixed = par_array(61)
-    par%fkappa = par_array(62)
-    par%cf     = par_array(63)
-    par%eft_h  = par_array(64)
-    par%v      = par_array(65)
-    par%cw     = par_array(66)
-    par%sw     = par_array(67)
-    par%ee     = par_array(68)
+    par%ft0    = par_array(21)         
+    par%ft1    = par_array(22)
+    par%ft2    = par_array(23)
+    par%fm0    = par_array(24)
+    par%fm1    = par_array(25)
+    par%fm7    = par_array(26)
+    par%a6     = par_array(27)
+    par%a7     = par_array(28)
+    par%a10    = par_array(29)
+    par%mkm_s  = par_array(30)
+    par%mkm_p  = par_array(31)
+    par%mkm_r  = par_array(32)
+    par%mkm_f  = par_array(33)
+    par%mkm_t  = par_array(34)
+    par%gkm_s  = par_array(35)
+    par%gkm_p  = par_array(36)
+    par%gkm_r  = par_array(37)
+    par%gkm_f  = par_array(38)
+    par%gkm_t  = par_array(39)
+    par%wkm_s  = par_array(40)
+    par%wkm_p  = par_array(41)
+    par%wkm_r  = par_array(42)
+    par%wkm_f  = par_array(43)
+    par%wkm_t  = par_array(44)
+    par%g1a    = par_array(45)
+    par%g1z    = par_array(46)
+    par%g4a    = par_array(47)
+    par%g4z    = par_array(48)
+    par%g5a    = par_array(49)
+    par%g5z    = par_array(50)
+    par%ka     = par_array(51)
+    par%kz     = par_array(52)
+    par%la     = par_array(53)
+    par%lz     = par_array(54)
+    par%k5a    = par_array(55)
+    par%k5z    = par_array(56)
+    par%l5a    = par_array(57)
+    par%l5z    = par_array(58)
+    par%mreg   = par_array(59)
+    par%fkm    = par_array(60)
+    par%wres   = par_array(61)
+    par%gkm_st = par_array(62)
+    par%gkm_pt = par_array(63)
+    par%gkm_rt = par_array(64)
+    par%gkm_ft = par_array(65)
+    par%gkm_tt = par_array(66)
+    par%fmixed = par_array(67)
+    par%fkappa = par_array(68)
+    par%cf     = par_array(69)
+    par%eft_h  = par_array(70)
+    par%v      = par_array(71)
+    par%cw     = par_array(72)
+    par%sw     = par_array(73)
+    par%ee     = par_array(74)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -270,7 +297,7 @@ contains
     gkm(3) = par%gkm_r
     gkm(4) = par%gkm_f / 1000.0_default
     gkm(5) = par%gkm_t / 1000.0_default
-    gkm(6) = par%gkm_st
+    gkm(6) = par%gkm_st / 1000.0_default
     gkm(7) = par%gkm_pt
     gkm(8) = par%gkm_rt
     gkm(9) = par%gkm_ft
@@ -295,11 +322,14 @@ contains
     w_res = par%wres
     vev = par%v
     do i=1,5
-      if (w_res == 1 .and. wkm(i) == 0 .and. gkm(i) /= 0 ) then
+      if (w_res == 1 .and. wkm(i) == 0 .and. (gkm(i) /= 0 .or. (i == 1 .and. gkm(6) /= 0))) then
         select case (i)
           case (1) !!! Scalar isosinglet
-            wkm(1) = (3 + gkm(14))*gkm(1)**2 /32.0_default/Pi * &
-                 & mkm(1)**3 
+            wkm(1) = ((3 + gkm(14))*gkm(1)**2 + 16*gkm(6)**2*g**4*( &
+            (1-2*(mass(24)/mkm(1))**2)**2 + 2*(mass(24)/mkm(1))**4 + &
+            costhw**4/2*(1-2*(mass(23)/mkm(1))**2)**2 + costhw**4*(mass(23)/mkm(1))**4 + &
+            costhw**2*sinthw**2*(1-(mass(23)/mkm(1))**2)**2 + sinthw**4/2)) &
+                 & /128.0_default/Pi * mkm(1)**3  
             width(45) = wkm(1)
             write (*, "(1x,A,ES19.12)")  "Setting width: wkm_s =", wkm(1)
           case (2) !!! Scalar isoquintet
@@ -366,8 +396,10 @@ contains
     gsww = gkm(1) * mass(24) ** 2
     gszz = gkm(1) * mass(23) ** 2
     gshh = - gkm(1) * gkm(14)
-    gswwt = gkm(6) * g**3 / mass(24) / (16.0 * PI) 
-    gszzt = gkm(6) * g**3 / costhw**3 / mass(23) /(16.0 * PI)
+    gswwt = 2 * gkm(6) * g**2
+    gszzt = 2 * gkm(6) * g**2 * costhw**2
+    gsaat = 2 * gkm(6) * g**2 * sinthw**2
+    gsazt = 2 * gkm(6) * g**2 * sinthw * costhw
     gpnww = - gkm(2) * mass(24) ** 2 / sqrt(6.0_default)
     gpnzz = gkm(2) * mass(23) ** 2  * 2.0_default / sqrt(6.0_default)
     gpsnww = gkm(2) * mass(24) ** 2 / sqrt(12.0_default)
@@ -404,6 +436,12 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    
     fs0 = par%fs0  / (1000.0_default ** 4)
     fs1 = par%fs1  / (1000.0_default ** 4)
+    ft0 = par%ft0  / (1000.0_default ** 4)
+    ft1 = par%ft1  / (1000.0_default ** 4) 
+    ft2 = par%ft2  / (1000.0_default ** 4)
+    fm0 = par%fm0  / (1000.0_default ** 4) 
+    fm1 = par%fm1  / (1000.0_default ** 4)    
+    fm7 = par%fm7  / (1000.0_default ** 4)
     a6 = par%a6
     a7 = par%a7
     a10 = par%a10
@@ -434,11 +472,71 @@ contains
     fs0hhzz = - g ** 2 / costhw**2 * vev ** 2 / 4 * fs0 * gkm(14)
     fs1hhzz = - g ** 2 / costhw**2 * vev ** 2 / 2 * fs1 * gkm(14)
     fsh4 = 2.0_default * ( fs0 + fs1) * gkm(14)
+    fm0hhww = 2 * g ** 2 * fm0 * gkm(14)  
+    fm0hhzz = 2 * g ** 2 * fm0 * costhw**2 * gkm(14)
+    fm1hhww = g ** 2 / 2 * fm1 * gkm(14)   
+    fm1hhzz = g ** 2 / 2 * fm1 * costhw**2 * gkm(14) 
+    fm7hhww = g ** 2 / 4 * fm7 * gkm(14)   
+    fm7hhzz = g ** 2 / 4 * fm7 * costhw**2 * gkm(14)
     alww0 = g**4 * vev**4 * (fs0 + 2 * fs1) / 16
     alww2 = g**4 * vev**4 * fs0 / 8
     alzw1 = g**4 / costhw**2 * vev**4 * fs0 / 16
     alzw0 = g**4 / costhw**2 * vev**4 * fs1 / 8
     alzz = g**4 / costhw**4 * vev**4 * (fs0 + fs1) / 8
+    at0ww0 = g**4 * 8 * ft0 
+    at0ww2 = 0
+    at0zw0 = g**4 * costhw**2 * 8 * ft0
+    at0zw1 = 0
+    at0zz = g**4 * costhw**4 * 8 * ft0
+    at0aa = g**4 * sinthw**4 * 8 * ft0
+    at0aw0 = g**4 * sinthw**2 * 8 * ft0
+    at0aw1 = 0
+    at0az = g**4 * sinthw**2 * costhw**2 * 8 * ft0
+    at0azw0 = g**4 * sinthw * costhw * 8 * ft0
+    at0azw1 = 0
+    at03az = g**4 * sinthw**3 * costhw * 8 * ft0
+    at0a3z = g**4 * sinthw * costhw**3 * 8 * ft0
+    at1ww0 = g**4 * 4 *  ft1
+    at1ww2 = 0
+    at1zw0 = g**4 * costhw**2 * 4 * ft1
+    at1zw1 = 0
+    at1zz = g**4 * costhw**4 * 4 * ft1   
+    at1aa = g**4 * sinthw**4 * 4 * ft1
+    at1aw0 = g**4 * sinthw**2 * 4 * ft1
+    at1aw1 = 0
+    at1az = g**4 * sinthw**2 * costhw**2 * 4 * ft1 
+    at1azw0 = g**4 * sinthw * costhw * 4 * ft1 
+    at1azw1 = 0
+    at13az = g**4 * sinthw**3 * costhw * 4 * ft1
+    at1a3z = g**4 * sinthw * costhw**3 * 4 * ft1
+    at2ww0 = g**4 * ft2
+    at2ww2 = 0
+    at2zw0 = g**4 * costhw**2 * ft2
+    at2zw1 = 0
+    at2zz = g**4 * costhw**4 * ft2
+    at2aa = g**4 * sinthw**4 * ft2
+    at2aw0 = g**4 * sinthw**2 * ft2
+    at2aw1 = 0
+    at2az = g**4 * sinthw**2 * costhw**2 * ft2
+    at2azw0 = g**4 * sinthw * costhw * ft2
+    at2azw1 = 0
+    at23az = g**4 * sinthw**3 * costhw  * ft2
+    at2a3z = g**4 * sinthw * costhw**3  * ft2
+    am0ww0 = g**2 * mass(24)**2 * 2 * fm0
+    am0ww2 = 0
+    am0zw0 = g**2 * mass(24)**2 * 2 * fm0
+    am0zw1 = 0
+    am0zz = g**2 * mass(24)**2 * 2 * fm0
+    am1ww0 = g**2 * mass(24)**2 / 2 * fm1
+    am1ww2 = 0
+    am1zw0 = g**2 * mass(24)**2 / 2 * fm1
+    am1zw1 = 0
+    am1zz = g**2 * mass(24)**2 / 2 * fm1
+    am7ww0 = g**2 * mass(24)**2 / 4 * fm7
+    am7ww2 = 0
+    am7zw0 = g**2 * mass(24)**2 / 4 * fm7
+    am7zw1 = 0
+    am7zz = g**2 * mass(24)**2 / 4 * fm7
     ialww0 = g**2 * vev**2 * sqrt (-cmplx( (fs0 + 2 * fs1) / 16, kind=default) )
     ialww2 = g**2 * vev**2 * sqrt (-cmplx(fs0 / 8, kind=default))
     ialzw1 = g**2 * vev **2 / costhw * sqrt (-cmplx(fs0 / 16, kind=default))

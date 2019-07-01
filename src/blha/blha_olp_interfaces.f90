@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1420,9 +1420,9 @@ contains
     end if
   end function blha_loop_positions
 
-  subroutine prc_blha_set_i_whizard_to_i_olc_trivial (object, n_flv, n_hel, n_sub)
+  subroutine prc_blha_set_i_whizard_to_i_olc_trivial (object, n_flv, n_hel)
     class(prc_blha_t), intent(inout) :: object
-    integer, intent(in) :: n_flv, n_sub, n_hel
+    integer, intent(in) :: n_flv, n_hel
     integer :: i_flv
     call msg_debug (D_CORE, "setting up trivial helicity list")
     if (allocated (object%i_whizard_to_i_olc)) &

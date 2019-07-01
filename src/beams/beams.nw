@@ -10167,15 +10167,13 @@ chain.
 <<SF base: sf chain instance: TBP>>=
   procedure :: init_evaluators => sf_chain_instance_init_evaluators
 <<SF base: procedures>>=
-  subroutine sf_chain_instance_init_evaluators (chain, n_sub, has_pdfs)
+  subroutine sf_chain_instance_init_evaluators (chain, has_pdfs)
     class(sf_chain_instance_t), intent(inout), target :: chain
-    integer, intent(in), optional :: n_sub
     logical, intent(in), optional :: has_pdfs
     type(interaction_t), pointer :: int
     type(quantum_numbers_mask_t) :: mask
-    integer :: i, ns
+    integer :: i
     logical :: yorn
-    ns = 0;  if (present (n_sub))  ns = n_sub
     yorn = .false.; if (present (has_pdfs)) yorn = has_pdfs
     if (chain%status >= SF_DONE_MASK) then
        if (allocated (chain%sf)) then
@@ -25103,6 +25101,10 @@ If a fixed $\alpha_s$ is requested, we do not allocate the
 the model parameter as-is, which implies fixed $\alpha_s$.  If the
 object is allocated, the $\alpha_s$ value is computed and updated for
 each matrix-element call.
+
+Also fetch the [[alphas_nf]] variable from the list and store it in
+the QCD record.  This is not used in the $\alpha_s$ calculation, but
+the QCD record thus becomes a messenger for this user parameter.
 <<Dispatch beams: public>>=
   public :: dispatch_qcd
 <<Dispatch beams: procedures>>=
@@ -25145,6 +25147,7 @@ each matrix-element call.
        call msg_message ("QCD alpha: using a running strong coupling")
     end select
     call init_alpha ()
+    qcd%n_f = var_list%get_ival (var_str ("alphas_nf"))
   contains
   <<Dispatch qcd: dispatch qcd: procedures>>
   end subroutine dispatch_qcd

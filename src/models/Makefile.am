@@ -65,6 +65,7 @@ libmodels_la_SOURCES = \
   parameters.SM_top_anom.f90 \
   parameters.SM_tt_threshold.f90 \
   parameters.SM_Higgs.f90 \
+  parameters.SM_Higgs_CKM.f90 \
   parameters.SM_rx.f90 \
   parameters.SM_ul.f90 \
   parameters.Template.f90 \
@@ -113,6 +114,7 @@ nodist_execmod_HEADERS = \
   parameters_sm_top_anom.$(FC_MODULE_EXT) \
   parameters_sm_tt_threshold.$(FC_MODULE_EXT) \
   parameters_sm_higgs.$(FC_MODULE_EXT) \
+  parameters_sm_higgs_ckm.$(FC_MODULE_EXT) \
   parameters_sm_rx.$(FC_MODULE_EXT) \
   parameters_sm_ul.$(FC_MODULE_EXT) \
   parameters_template.$(FC_MODULE_EXT) \
@@ -260,6 +262,9 @@ parameters_sm_tt_threshold.$(FC_MODULE_EXT): parameters.SM_tt_threshold.lo
 	@:
 
 parameters_sm_higgs.$(FC_MODULE_EXT): parameters.SM_Higgs.lo
+	@:
+
+parameters_sm_higgs_ckm.$(FC_MODULE_EXT): parameters.SM_Higgs_CKM.lo
 	@:
 
 parameters_sm_rx.$(FC_MODULE_EXT): parameters.SM_rx.lo

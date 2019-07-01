@@ -73,6 +73,7 @@ module type SSC_flags =
     val quartic_anom : bool
     val higgs_anom : bool
     val k_matrix : bool
+    val k_matrix_tm : bool      
     val ckm_present : bool
     val top_anom : bool
     val top_anom_4f : bool

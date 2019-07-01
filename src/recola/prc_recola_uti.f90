@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -123,10 +123,10 @@ contains
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
     counter  = 1
-    call rclwrap_set_onshell_scheme ()
     write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- at leading order"
-    call rclwrap_define_process (counter, var_str ('e+ e- -> mu+ mu-'), 'LO')
+    call rclwrap_define_process (counter, var_str ('e+ e- -> mu+ mu-'), var_str ('LO'))
     write (u, "(A)") "* RECOLA: generate process"
+    call rclwrap_request_generate_processes ()
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (1, p, 'LO')
     call rclwrap_get_helicity_configurations (1, helicities)
@@ -144,7 +144,7 @@ contains
     select type (def)
     type is (omega_def_t)
        call def%init (var_str ("SM"), prt_in, prt_out, &
-            ufo = .false., ovm = .false.)
+            ufo = .false., ovm = .false., cms_scheme = .true.)
     end select
 
     allocate (entry)
@@ -159,7 +159,7 @@ contains
 
     call os_data_init (os_data)
     call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
@@ -167,7 +167,7 @@ contains
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 1)
+       call driver%init (get_omega_parameter_array (), 3)
        call driver%new_event (real(p, kind =  default))
        do i = 1, 6
           call rclwrap_get_amplitude (1, 0, 'LO', col_recola, helicities (:,i), amp_recola)
@@ -235,10 +235,10 @@ contains
     call write_separator (u)
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
-    call rclwrap_set_onshell_scheme ()
     write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order"
-    call rclwrap_define_process (2, var_str ('e+ e- -> mu+ mu- A'), 'LO')
+    call rclwrap_define_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
     write (u, "(A)") "* RECOLA: generate process"
+    call rclwrap_request_generate_processes ()
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (2, p, 'LO')
     call rclwrap_get_helicity_configurations (2, helicities)
@@ -273,7 +273,7 @@ contains
 
     call os_data_init (os_data)
     call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
@@ -282,7 +282,7 @@ contains
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 1)
+       call driver%init (get_omega_parameter_array (), 3)
        call driver%new_event (real(p, kind = default))
        do i = 1, 32
            call rclwrap_get_amplitude &

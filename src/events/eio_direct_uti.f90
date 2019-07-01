@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -85,6 +85,8 @@ contains
 
     select type (eio)
     class is (eio_direct_t)
+       if (eio%has_event_index ())  write (u, "(A,1x,I0)")  "index =", eio%get_event_index ()
+       if (eio%passed_known ())  write (u, "(A,1x,L1)")  "passed =", eio%has_passed ()
        write (u, "(A,1x,I0)")  "n_in =", eio%get_n_in ()
        write (u, "(A,1x,I0)")  "n_out =", eio%get_n_out ()
     end select
@@ -94,11 +96,12 @@ contains
     write (u, "(A)")
 
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (42)
     model => event%get_model_ptr ()
 
     sample = ""
     call eio%init_out (sample)
-    call eio%output (event, 1)
+    call eio%output (event, 1, passed = .true.)
     call eio%write (u)
 
     write (u, "(A)")
@@ -107,6 +110,8 @@ contains
 
     select type (eio)
     class is (eio_direct_t)
+       if (eio%has_event_index ())  write (u, "(A,1x,I0)")  "index =", eio%get_event_index ()
+       if (eio%passed_known ())  write (u, "(A,1x,L1)")  "passed =", eio%has_passed ()
        write (u, "(A,1x,I0)")  "n_in =", eio%get_n_in ()
        write (u, "(A,1x,I0)")  "n_out =", eio%get_n_out ()
     end select
@@ -128,9 +133,10 @@ contains
 
     select type (eio)
     class is (eio_direct_t)
-       call eio%init_direct &
-            (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 2, &
+       call eio%init_direct ( &
+            n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 2, &
             pdg = [25, 25, 25, 25], model = model)
+       call eio%set_event_index (42)
        call eio%set_selection_indices (1, 1, 1, 1)
        call eio%write (u)
     end select

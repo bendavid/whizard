@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -294,7 +294,7 @@ contains
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
     call hepmc_to_event (event, eio%hepmc_event, &
          eio%fallback_model, &

@@ -58,6 +58,9 @@ module omega_couplings
   public :: tphi_ss, tphi_ss_cf, s_tphis, s_tphis_cf
   public :: phi_phi2v_1, v_phi2v_1, phi_phi2v_2, v_phi2v_2
   public :: s_dim8s3
+  public :: phi_phi2v_m_0, v_phi2v_m_0, phi_phi2v_m_1, v_phi2v_m_1, phi_phi2v_m_7, v_phi2v_m_7
+  public :: g_dim8g3_t_0, g_dim8g3_t_1, g_dim8g3_t_2
+  public :: g_dim8g3_m_0, g_dim8g3_m_1, g_dim8g3_m_7
   public :: s_gravs, v_gravv, grav_ss, grav_vv
   public :: t2_vv, v_t2v, t2_vv_cf, v_t2v_cf, & 
          t2_vv_1, v_t2v_1, t2_vv_t, v_t2v_t, &
@@ -1022,6 +1025,254 @@ contains
     phi1 = g * ( (k1 * k2) * (k3 * k4) + (k1 * k3) * (k2 * k4) &
             + (k1 * k4) * (k2 * k3) ) * phi2 * phi3 * phi4
   end function s_dim8s3
+  pure function phi_phi2v_m_0 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+    complex(kind=default), intent(in) :: g, phi1
+    type(momentum), intent(in) :: k1, k_v1, k_v2
+    type(momentum) :: k2
+    type(vector), intent(in) :: v1, v2
+    complex(kind=default) :: phi2
+    k2 = - k1 - k_v1 - k_v2
+    phi2 = g * phi1 * &
+              ( (v1 * k_v2) * (v2 * k_v1) * (k1 * k2) &
+              - (v1 * v2) * (k_v1 * k_v2) * (k1 * k2) )
+  end function phi_phi2v_m_0 
+  pure function v_phi2v_m_0 (g, phi1, k1, phi2, k2, v1, k_v1) result (v2)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2, k_v1
+    type(vector), intent(in) :: v1
+    type(momentum) :: k_v2
+    type(vector) :: v2
+    k_v2 = - k_v1 - k1 - k2
+    v2 = g * phi1 * phi2 * &
+            ( k_v1 * (v1 *  k_v2) * (k1 * k2) &
+             - v1 * (k_v2 * k_v1) * (k1 * k2) )
+  end function v_phi2v_m_0
+  pure function phi_phi2v_m_1 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+    complex(kind=default), intent(in) :: g, phi1
+    type(momentum), intent(in) :: k1, k_v1, k_v2
+    type(momentum) :: k2
+    type(vector), intent(in) :: v1, v2
+    complex(kind=default) :: phi2
+    k2 = - k1 - k_v1 - k_v2
+    phi2 = g * phi1 * &
+              ( (v1 * v2) * (k1 * k_v2) * (k2 * k_v1) &
+              + (v1 * v2) * (k1 * k_v1) * (k2 * k_v2) &
+              + (v1 * k2) * (v2 * k1) * (k_v1 * k_v2) &
+              + (v1 * k1) * (v2 * k2) * (k_v1 * k_v2) &
+              - (v1 * k_v2) * (v2 * k2) * (k1 * k_v1) &
+              - (v1 * k2) * (v2 * k_v1) * (k1 * k_v2) &
+              - (v1 * k_v2) * (v2 * k1) * (k2 * k_v1) &
+              - (v1 * k1) * (v2 * k_v1) * (k2 * k_v2) )
+  end function phi_phi2v_m_1
+  pure function v_phi2v_m_1 (g, phi1, k1, phi2, k2, v1, k_v1) result (v2)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2, k_v1
+    type(vector), intent(in) :: v1
+    type(momentum) :: k_v2
+    type(vector) :: v2
+    k_v2 = - k_v1 - k1 - k2
+    v2 = g * phi1 * phi2 * &
+            ( k1 * (v1 * k2) * (k_v1 * k_v2) &
+            + k2 * (v1 * k1) * (k_v1 * k_v2) &
+            + v1 * (k_v1 * k1) * (k_v2 * k2) &
+            + v1 * (k_v1 * k2) * (k_v2 * k1) &
+            - k1 * (v1 * k_v2) * (k_v1 * k2) &
+            - k2 * (v1 * k_v2) * (k_v1 * k1) &
+            - k_v1 * (v1 * k1) * (k_v2 * k2) &
+            - k_v1 * (v1 * k2) * (k_v2 * k1) )
+  end function v_phi2v_m_1
+  pure function phi_phi2v_m_7 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+    complex(kind=default), intent(in) :: g, phi1
+    type(momentum), intent(in) :: k1, k_v1, k_v2
+    type(momentum) :: k2
+    type(vector), intent(in) :: v1, v2
+    complex(kind=default) :: phi2
+    k2 = - k1 - k_v1 - k_v2
+    phi2 = g * phi1 * &
+              ( (v1 * k_v2) * (k1 * v2) * (k2 * k_v1) &
+              + (v1 * k_v2) * (k1 * k_v1) * (k2 * v2) &
+              + (v1 * k1) * (v2 * k_v1) * (k2 * k_v2) &
+              + (v1 * k2) * (v2 * k_v1) * (k1 * k_v2) &
+              - (v1 * v2) * (k1 * k_v2) * (k2 * k_v1) &
+              - (v1 * v2) * (k1 * k_v1) * (k2 * k_v2) &
+              - (v1 * k2) * (v2 * k1) * (k_v1 * k_v2) &
+              - (v1 * k1) * (v2 * k2) * (k_v1 * k_v2) )
+  end function phi_phi2v_m_7
+  pure function v_phi2v_m_7 (g, phi1, k1, phi2, k2, v1, k_v1) result (v2)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2, k_v1
+    type(vector), intent(in) :: v1
+    type(momentum) :: k_v2
+    type(vector) :: v2
+    k_v2 = - k_v1 - k1 - k2
+    v2 = g * phi1 * phi2 * &
+            ( k1 * (v1 * k_v2) * (k2 * k_v1) &
+            + k2 * (v1 * k_v2) * (k1 * k_v1) &
+            + k_v1 * (v1 * k1) * (k2 * k_v2) &
+            + k_v1 * (v1 * k2) * (k1 * k_v2) &
+            - k1 * (v1 * k2) * (k_v1 * k_v2) &
+            - k2 * (v1 * k1) * (k_v1 * k_v2) &
+            - v1 * (k1 * k_v2) * (k2 * k_v1) &
+            - v1 * (k1 * k_v1) * (k2 * k_v2) )
+  end function v_phi2v_m_7
+  pure function g_dim8g3_t_0 (g, v2, k2, v3, k3, v4, k4) result (v1)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v2, v3, v4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(vector) :: v1
+    type(momentum) :: k1
+    k1 = - k2 - k3 - k4
+    v1 = g * (k2 * (k1 * v2) - v2 * (k1 * k2)) & 
+           * ((k3 * v4) * (k4 * v3) - (v3 * v4) * (k3 * k4))
+  end function g_dim8g3_t_0
+  pure function g_dim8g3_t_1 (g, v2, k2, v3, k3, v4, k4) result (v1)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v2, v3, v4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(vector) :: v1
+    type(momentum) :: k1
+    k1 = - k2 - k3 - k4
+    v1 = g * (v3 * (v2 * k4) * (k1 * k3) * (k2 * v4) &
+            + v4 * (v2 * k3) * (k1 * k4) * (k2 * v3) &
+            + k3 * (v2 * v4) * (k1 * v3) * (k2 * k4) &
+            + k4 * (v2 * v3) * (k1 * v4) * (k2 * k3) &
+            - v3 * (v2 * v4) * (k1 * k3) * (k2 * k4) &
+            - v4 * (v2 * v3) * (k1 * k4) * (k2 * k3) &
+            - k3 * (v2 * k4) * (k1 * v3) * (k2 * v4) &
+            - k4 * (v2 * k3) * (k1 * v4) * (k2 * v3))
+  end function g_dim8g3_t_1
+  pure function g_dim8g3_t_2 (g, v2, k2, v3, k3, v4, k4) result (v1)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v2, v3, v4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(vector) :: v1
+    type(momentum) :: k1
+    k1 = - k2 - k3 - k4
+    v1 = g * (k2 * (v2 * k3) * (v3 * k4) * (v4 * k1) &
+            + k3 * (v2 * k1) * (v3 * k4) * (v4 * k2) &
+            + k2 * (v2 * k4) * (v3 * k1) * (v4 * k3) &
+            + k4 * (v2 * k1) * (v3 * k2) * (v4 * k3) &
+            + k4 * (v2 * k3) * (v3 * v4) * (k1 * k2) &
+            + k3 * (v2 * k4) * (v3 * v4) * (k1 * k2) &
+            - k3 * (v2 * v4) * (v3 * k4) * (k1 * k2) & 
+            - v4 * (v2 * k3) * (v3 * k4) * (k1 * k2) &
+            - k4 * (v2 * v3) * (v4 * k3) * (k1 * k2) &
+            - v3 * (v2 * k4) * (v4 * k3) * (k1 * k2) &
+            - k2 * (v2 * k4) * (v3 * v4) * (k1 * k3) &
+            + k2 * (v2 * v4) * (v3 * k4) * (k1 * k3) &
+            - v2 * (v3 * k4) * (v4 * k2) * (k1 * k3) &
+            - k2 * (v2 * k3) * (v3 * v4) * (k1 * k4) &
+            + k2 * (v2 * v3) * (v4 * k3) * (k1 * k4) &
+            - v2 * (v3 * k2) * (v4 * k3) * (k1 * k4) &
+            - k4 * (v2 * k1) * (v3 * v4) * (k2 * k3) &
+            + v4 * (v2 * k1) * (v3 * k4) * (k2 * k3) &
+            - v2 * (v3 * k4) * (v4 * k1) * (k2 * k3) &
+            + v2 * (v3 * v4) * (k1 * k4) * (k2 * k3) &
+            - k3 * (v2 * k1) * (v3 * v4) * (k2 * k4) &
+            + v3 * (v2 * k1) * (v4 * k3) * (k2 * k4) &
+            - v2 * (v3 * k1) * (v4 * k3) * (k2 * k4) &
+            + v2 * (v3 * v4) * (k1 * k3) * (k2 * k4) &
+            - k2 * (v2 * v4) * (v3 * k1) * (k3 * k4) &
+            - v4 * (v2 * k1) * (v3 * k2) * (k3 * k4) &
+            - k2 * (v2 * v3) * (v4 * k1) * (k3 * k4) &
+            + v2 * (v3 * k2) * (v4 * k1) * (k3 * k4) &
+            - v3 * (v2 * k1) * (v4 * k2) * (k3 * k4) &
+            + v2 * (v3 * k1) * (v4 * k2) * (k3 * k4) &
+            + v4 * (v2 * v3) * (k1 * k2) * (k3 * k4) &
+            + v3 * (v2 * v4) * (k1 * k2) * (k3 * k4))
+  end function g_dim8g3_t_2
+  pure function g_dim8g3_m_0 (g1, g2, v2, k2, v3, k3, v4, k4) result (v1)
+    complex(kind=default), intent(in) :: g1, g2
+    type(vector), intent(in) :: v2, v3, v4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(vector) :: v1
+    type(momentum) :: k1
+    k1 = - k2 - k3 - k4
+    v1 = g1 * (v2 * (v3 * v4) * (k1 * k2)  &
+             - k2 * (v2 * k1) * (v3 * v4)) &
+       + g2 * (v2 * (v3 * v4) * (k3 * k4)  &
+             - v2 * (v3 * k4) * (v4 * k3))
+  end function g_dim8g3_m_0
+  pure function g_dim8g3_m_1 (g1, g2, v2, k2, v3, k3, v4, k4) result (v1)
+    complex(kind=default), intent(in) :: g1, g2
+    type(vector), intent(in) :: v2, v3, v4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(vector) :: v1
+    type(momentum) :: k1
+    k1 = - k2 - k3 - k4
+    v1 = g1 * (k2 * (v2 * v4) * (v3 * k1)  &
+             + v4 * (v2 * k1) * (v3 * k2)  &
+             + k2 * (v2 * v3) * (v4 * k1)  &
+             + v3 * (v2 * k1) * (v4 * k2)  &
+             - v2 * (v3 * k2) * (v4 * k1)  &          
+             - v2 * (v3 * k1) * (v4 * k2)  &
+             - v4 * (v2 * v3) * (k1 * k2)  &
+             - v3 * (v2 * v4) * (k1 * k2)) &
+       + g2 * (k3 * (v2 * v4) * (v3 * k4)  &   
+             - k4 * (v2 * k3) * (v3 * v4)  &
+             - k3 * (v2 * k4) * (v3 * v4)  &
+             + v4 * (v2 * k3) * (v3 * k4)  &
+             + k4 * (v2 * v3) * (v4 * k3)  &
+             + v3 * (v2 * k4) * (v4 * k3)  &
+             - v4 * (v2 * v3) * (k3 * k4)  &
+             - v3 * (v2 * v4) * (k3 * k4))
+  end function g_dim8g3_m_1
+  pure function g_dim8g3_m_7 (g1, g2, g3, v2, k2, v3, k3, v4, k4) result (v1)
+    complex(kind=default), intent(in) :: g1, g2, g3
+    type(vector), intent(in) :: v2, v3, v4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(vector) :: v1
+    type(momentum) :: k1
+    k1 = - k2 - k3 - k4
+    v1 = g1 * (v2 * (v3 * k2) * (v4 * k1)  &
+             + v2 * (v3 * k1) * (v4 * k2)  & 
+             + v4 * (v2 * v3) * (k1 * k2)  &
+             + v3 * (v2 * v4) * (k1 * k2)  &
+             - k2 * (v2 * v4) * (v3 * k1)  &
+             - v4 * (v2 * k1) * (v3 * k2)  &
+             - k2 * (v2 * v3) * (v4 * k1)  &
+             - v3 * (v2 * k1) * (v4 * k2)) &
+       + g2 * (k3 * (v2 * k1) * (v3 * v4)  & 
+             + k4 * (v2 * k1) * (v3 * v4)  &
+             + k2 * (v2 * k3) * (v3 * v4)  &
+             + k2 * (v2 * k4) * (v3 * v4)  &
+             + v4 * (v2 * k4) * (v3 * k1)  &
+             + k4 * (v2 * v4) * (v3 * k2)  &
+             + v3 * (v2 * k3) * (v4 * k1)  &
+             + v2 * (v3 * k4) * (v4 * k1)  &
+             + k3 * (v2 * v3) * (v4 * k2)  &
+             + v2 * (v3 * k4) * (v4 * k2)  &
+             + v2 * (v3 * k1) * (v4 * k3)  &
+             + v2 * (v3 * k2) * (v4 * k3)  &
+             + v4 * (v2 * v3) * (k1 * k3)  &
+             + v3 * (v2 * v4) * (k1 * k4)  &
+             + v3 * (v2 * v4) * (k2 * k3)  &
+             + v4 * (v2 * v3) * (k2 * k4)  &
+             - k4 * (v2 * v4) * (v3 * k1)  &
+             - v4 * (v2 * k3) * (v3 * k1)  &
+             - k3 * (v2 * v4) * (v3 * k2)  &
+             - v4 * (v2 * k4) * (v3 * k2)  &
+             - k2 * (v2 * v4) * (v3 * k4)  &
+             - v4 * (v2 * k1) * (v3 * k4)  &
+             - k3 * (v2 * v3) * (v4 * k1)  &
+             - v3 * (v2 * k4) * (v4 * k1)  &
+             - k4 * (v2 * v3) * (v4 * k2)  &
+             - v3 * (v2 * k3) * (v4 * k2)  &
+             - k2 * (v2 * v3) * (v4 * k3)  &
+             - v3 * (v2 * k1) * (v4 * k3)  &
+             - v2 * (v3 * v4) * (k1 * k3)  &
+             - v2 * (v3 * v4) * (k1 * k4)  &
+             - v2 * (v3 * v4) * (k2 * k3)  &
+             - v2 * (v3 * v4) * (k2 * k4)) &
+       + g3 * (k4 * (v2 * k3) * (v3 * v4)  &
+             + k3 * (v2 * k4) * (v3 * v4)  &
+             + v4 * (v2 * v3) * (k3 * k4)  &
+             + v3 * (v2 * v4) * (k3 * k4)  &
+             - k3 * (v2 * v4) * (v3 * k4)  &
+             - v4 * (v2 * k3) * (v3 * k4)  &
+             - k4 * (v2 * v3) * (v4 * k3)  &
+             - v3 * (v2 * k4) * (v4 * k3)) 
+  end function g_dim8g3_m_7
   pure function s_gravs (g, m, k1, k2, t, s) result (phi)
     complex(kind=default), intent(in) :: g, s
     real(kind=default), intent(in) :: m

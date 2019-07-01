@@ -540,10 +540,21 @@ therefore this is a deferred method.
   end interface
 
 @ %def generic_event_set_hard_particle_set
-@ Evaluate any expressions associated with the event.  No argument needed.
+@ Event index handlers.
 <<Event base: generic event: TBP>>=
-  procedure (generic_event_handler), deferred :: evaluate_expressions
+  procedure (generic_event_set_index), deferred :: set_index
+  procedure (generic_event_handler), deferred :: reset_index
+  procedure (generic_event_increment_index), deferred :: increment_index
+@ 
 <<Event base: interfaces>>=
+  abstract interface
+     subroutine generic_event_set_index (event, index)
+       import
+       class(generic_event_t), intent(inout) :: event
+       integer, intent(in) :: index
+     end subroutine generic_event_set_index
+  end interface
+
   abstract interface
      subroutine generic_event_handler (event)
        import
@@ -551,7 +562,20 @@ therefore this is a deferred method.
      end subroutine generic_event_handler
   end interface
 
+  abstract interface
+     subroutine generic_event_increment_index (event, offset)
+       import
+       class(generic_event_t), intent(inout) :: event
+       integer, intent(in), optional :: offset
+     end subroutine generic_event_increment_index
+  end interface
+
+@ %def generic_event_set_index
+@ %def generic_event_increment_index
 @ %def generic_event_handler
+@ Evaluate any expressions associated with the event.  No argument needed.
+<<Event base: generic event: TBP>>=
+  procedure (generic_event_handler), deferred :: evaluate_expressions
 @
 Select internal parameters
 <<Event base: generic event: TBP>>=
@@ -581,6 +605,7 @@ Select internal parameters
 @ %def generic_event_get_model_ptr
 @ Return data used by external event formats.
 <<Event base: generic event: TBP>>=
+  procedure (generic_event_has_index), deferred :: has_index
   procedure (generic_event_get_index), deferred :: get_index
   procedure (generic_event_get_fac_scale), deferred :: get_fac_scale
   procedure (generic_event_get_alpha_s), deferred :: get_alpha_s
@@ -590,6 +615,14 @@ Select internal parameters
   procedure (generic_event_get_process_name), deferred :: &
        get_process_name
 <<Event base: interfaces>>=
+  abstract interface
+     function generic_event_has_index (event) result (flag)
+       import
+       class(generic_event_t), intent(in) :: event
+       logical :: flag
+     end function generic_event_has_index
+  end interface
+
   abstract interface
      function generic_event_get_index (event) result (index)
        import
@@ -683,10 +716,10 @@ Select internal parameters
 Applying this, current event contents are marked as incomplete but
 are not deleted.  In particular, the initialization is kept.
 <<Event base: generic event: TBP>>=
-  procedure :: reset => generic_event_reset
-  procedure :: base_reset => generic_event_reset
+  procedure :: reset_contents => generic_event_reset_contents
+  procedure :: base_reset_contents => generic_event_reset_contents
 <<Event base: procedures>>=
-  subroutine generic_event_reset (event)
+  subroutine generic_event_reset_contents (event)
     class(generic_event_t), intent(inout) :: event
     call event%discard_particle_set ()
     event%sqme_ref_known = .false.
@@ -696,9 +729,9 @@ are not deleted.  In particular, the initialization is kept.
     event%weight_prc_known = .false.
     event%weight_alt_known = .false.
     event%excess_prc_known = .false.
-  end subroutine generic_event_reset
+  end subroutine generic_event_reset_contents
 
-@ %def generic_event_reset
+@ %def generic_event_reset_contents
 @ Pacify particle set.
 <<Event base: generic event: TBP>>=
   procedure :: pacify_particle_set => generic_event_pacify_particle_set
@@ -1996,10 +2029,14 @@ end module eio_direct
 <<EIO direct: types>>=
   type, extends (eio_t) :: eio_direct_t
      private
+     logical :: i_evt_set = .false.
+     integer :: i_evt = 0
      integer :: i_prc = 0
      integer :: i_mci = 0
      integer :: i_term = 0
      integer :: channel = 0
+     logical :: passed_set = .false.
+     logical :: passed = .true.
      type(particle_set_t) :: pset
    contains
    <<EIO direct: eio direct: TBP>>
@@ -2018,10 +2055,20 @@ Output.
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event direct access:"
+    if (object%i_evt_set) then
+       write (u, "(3x,A,1x,I0)")  "i_evt =", object%i_evt
+    else
+       write (u, "(3x,A)")  "i_evt = [undefined]"
+    end if
     write (u, "(3x,A,1x,I0)")  "i_prc =", object%i_prc
     write (u, "(3x,A,1x,I0)")  "i_mci =", object%i_prc
     write (u, "(3x,A,1x,I0)")  "i_term =", object%i_prc
     write (u, "(3x,A,1x,I0)")  "channel =", object%i_prc
+    if (object%passed_set) then
+       write (u, "(3x,A,1x,L1)")  "passed =", object%passed
+    else
+       write (u, "(3x,A)")  "passed = [N/A]"
+    end if
     call object%pset%write (u)
   end subroutine eio_direct_write
 
@@ -2088,6 +2135,17 @@ Output.
     logical, intent(in), optional :: reading, passed, pacify
     type(particle_set_t), pointer :: pset_ptr
     call eio%pset%final ()
+    if (event%has_index ()) then
+       call eio%set_event_index (event%get_index ())
+    else
+       call eio%reset_event_index ()
+    end if
+    if (present (passed)) then
+       eio%passed = passed
+       eio%passed_set = .true.
+    else
+       eio%passed_set = .false.
+    end if
     pset_ptr => event%get_particle_set_ptr ()
     if (associated (pset_ptr)) then
        eio%i_prc = i_prc
@@ -2116,6 +2174,11 @@ Output.
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     call event%select (eio%i_mci, eio%i_term, eio%channel)
+    if (eio%has_event_index ()) then
+       call event%set_index (eio%get_event_index ())
+    else
+       call event%reset_index ()
+    end if
     call event%set_hard_particle_set (eio%pset)
   end subroutine eio_direct_input_event
 
@@ -2135,10 +2198,46 @@ Output.
 @
 \subsection{Retrieve individual contents}
 <<EIO direct: eio direct: TBP>>=
+  procedure :: has_event_index => eio_direct_has_event_index
+  procedure :: get_event_index => eio_direct_get_event_index
+  procedure :: passed_known => eio_direct_passed_known
+  procedure :: has_passed => eio_direct_has_passed
   procedure :: get_n_in => eio_direct_get_n_in
   procedure :: get_n_out => eio_direct_get_n_out
   procedure :: get_n_tot => eio_direct_get_n_tot
 <<EIO direct: procedures>>=
+  function eio_direct_has_event_index (eio) result (flag)
+    class(eio_direct_t), intent(in) :: eio
+    logical :: flag
+    flag = eio%i_evt_set
+  end function eio_direct_has_event_index
+
+  function eio_direct_get_event_index (eio) result (index)
+    class(eio_direct_t), intent(in) :: eio
+    integer :: index
+    if (eio%has_event_index ()) then
+       index = eio%i_evt
+    else
+       index = 0
+    end if
+  end function eio_direct_get_event_index
+
+  function eio_direct_passed_known (eio) result (flag)
+    class(eio_direct_t), intent(in) :: eio
+    logical :: flag
+    flag = eio%passed_set
+  end function eio_direct_passed_known
+
+  function eio_direct_has_passed (eio) result (flag)
+    class(eio_direct_t), intent(in) :: eio
+    logical :: flag
+    if (eio%passed_known ()) then
+       flag = eio%passed
+    else
+       flag = .true.
+    end if
+  end function eio_direct_has_passed
+
   function eio_direct_get_n_in (eio) result (n_in)
     class(eio_direct_t), intent(in) :: eio
     integer :: n_in
@@ -2157,6 +2256,10 @@ Output.
     n_tot = eio%pset%get_n_tot ()
   end function eio_direct_get_n_tot
 
+@ %def eio_direct_has_event_index
+@ %def eio_direct_get_event_index
+@ %def eio_direct_passed_known
+@ %def eio_direct_has_passed
 @ %def eio_direct_get_n_in
 @ %def eio_direct_get_n_out
 @ %def eio_direct_get_n_tot
@@ -2194,6 +2297,25 @@ Build the contained particle set from scratch.
   end subroutine eio_direct_init_direct
 
 @ %def eio_direct_init_direct
+@ Set/reset the event index, which is optional.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: set_event_index => eio_direct_set_event_index
+  procedure :: reset_event_index => eio_direct_reset_event_index
+<<EIO direct: procedures>>=
+  subroutine eio_direct_set_event_index (eio, index)
+    class(eio_direct_t), intent(inout) :: eio
+    integer, intent(in) :: index
+    eio%i_evt = index
+    eio%i_evt_set = .true.
+  end subroutine eio_direct_set_event_index
+  
+  subroutine eio_direct_reset_event_index (eio)
+    class(eio_direct_t), intent(inout) :: eio
+    eio%i_evt_set = .false.
+  end subroutine eio_direct_reset_event_index
+  
+@ %def eio_direct_set_event_index
+@ %def eio_direct_reset_event_index
 @ Set the selection indices.  This is supposed to select the [[i_prc]],
 [[i_mci]], [[i_term]], and [[channel]]
 entries of the event where the momentum set has to be stored, respectively.
@@ -2349,6 +2471,8 @@ We test the implementation of all I/O methods.
 
     select type (eio)
     class is (eio_direct_t)
+       if (eio%has_event_index ())  write (u, "(A,1x,I0)")  "index =", eio%get_event_index ()
+       if (eio%passed_known ())  write (u, "(A,1x,L1)")  "passed =", eio%has_passed ()
        write (u, "(A,1x,I0)")  "n_in =", eio%get_n_in ()
        write (u, "(A,1x,I0)")  "n_out =", eio%get_n_out ()
     end select
@@ -2358,11 +2482,12 @@ We test the implementation of all I/O methods.
     write (u, "(A)")
 
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (42)
     model => event%get_model_ptr ()
 
     sample = ""
     call eio%init_out (sample)
-    call eio%output (event, 1)
+    call eio%output (event, 1, passed = .true.)
     call eio%write (u)
 
     write (u, "(A)")
@@ -2371,6 +2496,8 @@ We test the implementation of all I/O methods.
 
     select type (eio)
     class is (eio_direct_t)
+       if (eio%has_event_index ())  write (u, "(A,1x,I0)")  "index =", eio%get_event_index ()
+       if (eio%passed_known ())  write (u, "(A,1x,L1)")  "passed =", eio%has_passed ()
        write (u, "(A,1x,I0)")  "n_in =", eio%get_n_in ()
        write (u, "(A,1x,I0)")  "n_out =", eio%get_n_out ()
     end select
@@ -2392,9 +2519,10 @@ We test the implementation of all I/O methods.
 
     select type (eio)
     class is (eio_direct_t)
-       call eio%init_direct &
-            (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 2, &
+       call eio%init_direct ( &
+            n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 2, &
             pdg = [25, 25, 25, 25], model = model)
+       call eio%set_event_index (42)
        call eio%set_selection_indices (1, 1, 1, 1)
        call eio%write (u)
     end select
@@ -3204,6 +3332,8 @@ from file and the latter is the result of the new calculation.)
 
 For the alternative entries, the [[sqme]] value is always obtained by
 a new calculation, and thus qualifies as [[sqme_prc]].
+
+Don't write the file if the [[passed]] flag is set and false.
 <<EIO weights: eio weights: TBP>>=
   procedure :: output => eio_weights_output
 <<EIO weights: procedures>>=
@@ -3214,29 +3344,34 @@ a new calculation, and thus qualifies as [[sqme_prc]].
     logical, intent(in), optional :: reading, passed, pacify
     integer :: n_alt, i
     real(default) :: weight, sqme_ref, sqme_prc
+    logical :: evt_pacify, evt_passed
+    evt_pacify = eio%pacify;  if (present (pacify))  evt_pacify = pacify
+    evt_passed = .true.;  if (present (passed))  evt_passed = passed
     if (eio%writing) then
-       weight = event%get_weight_prc ()
-       sqme_ref = event%get_sqme_ref ()
-       sqme_prc = event%get_sqme_prc ()
-       n_alt = event%get_n_alt ()
-1      format (I0,3(1x,ES17.10),3(1x,I0))
-2      format (I0,3(1x,ES15.8),3(1x,I0))
-       if (eio%pacify) then
-          write (eio%unit, 2)  0, weight, sqme_prc, sqme_ref, &
-               i_prc
-       else
-          write (eio%unit, 1)  0, weight, sqme_prc, sqme_ref, &
-               i_prc
-       end if
-       do i = 1, n_alt
-          weight = event%get_weight_alt(i)
-          sqme_prc = event%get_sqme_alt(i)
-          if (eio%pacify) then
-             write (eio%unit, 2)  i, weight, sqme_prc
+       if (evt_passed) then
+          weight = event%get_weight_prc ()
+          sqme_ref = event%get_sqme_ref ()
+          sqme_prc = event%get_sqme_prc ()
+          n_alt = event%get_n_alt ()
+1         format (I0,3(1x,ES17.10),3(1x,I0))
+2         format (I0,3(1x,ES15.8),3(1x,I0))
+          if (evt_pacify) then
+             write (eio%unit, 2)  0, weight, sqme_prc, sqme_ref, &
+                  i_prc
           else
-             write (eio%unit, 1)  i, weight, sqme_prc
+             write (eio%unit, 1)  0, weight, sqme_prc, sqme_ref, &
+                  i_prc
           end if
-       end do
+          do i = 1, n_alt
+             weight = event%get_weight_alt(i)
+             sqme_prc = event%get_sqme_alt(i)
+             if (evt_pacify) then
+                write (eio%unit, 2)  i, weight, sqme_prc
+             else
+                write (eio%unit, 1)  i, weight, sqme_prc
+             end if
+          end do
+       end if
     else
        call eio%write ()
        call msg_fatal ("Weight stream file is not open for writing")
@@ -3338,7 +3473,7 @@ end module eio_weights_uti
 
 @ %def eio_weights_test
 @
-\subsubsection{Test I/O methods}
+\subsubsection{Simple event}
 We test the implementation of all I/O methods.
 <<EIO weights: execute tests>>=
   call test (eio_weights_1, "eio_weights_1", &
@@ -3380,7 +3515,7 @@ We test the implementation of all I/O methods.
 
     write (u, "(A)")
     write (u, "(A)")  "* File contents: &
-         &(weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)"
+         &(weight, sqme(evt), sqme(prc), i_prc)"
     write (u, "(A)")
 
     u_file = free_unit ()
@@ -3401,8 +3536,8 @@ We test the implementation of all I/O methods.
 
 @ %def eio_weights_1
 @
-\subsubsection{Test I/O methods}
-We test the implementation of all I/O methods.
+\subsubsection{Multiple weights}
+Event with several weight entries set.
 <<EIO weights: execute tests>>=
   call test (eio_weights_2, "eio_weights_2", &
        "multiple weights", &
@@ -3450,7 +3585,7 @@ We test the implementation of all I/O methods.
 
     write (u, "(A)")
     write (u, "(A)")  "* File contents: &
-         &(weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)"
+         &(weight, sqme(evt), sqme(prc), i_prc)"
     write (u, "(A)")
 
     u_file = free_unit ()
@@ -3473,6 +3608,83 @@ We test the implementation of all I/O methods.
   end subroutine eio_weights_2
 
 @ %def eio_weights_2
+@
+\subsubsection{Multiple events}
+Events with [[passed]] flag switched on/off.
+<<EIO weights: execute tests>>=
+  call test (eio_weights_3, "eio_weights_3", &
+       "check passed-flag", &
+       u, results)
+<<EIO weights: test declarations>>=
+  public :: eio_weights_3
+<<EIO weights: tests>>=
+  subroutine eio_weights_3 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_weights_3"
+    write (u, "(A)")  "*   Purpose: generate three events and write to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+
+    call eio_prepare_test (event, unweighted = .false.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write events"
+    write (u, "(A)")
+
+    sample = "eio_weights_3"
+
+    allocate (eio_weights_t :: eio)
+    select type (eio)
+    type is (eio_weights_t)
+       call eio%set_parameters (pacify = .true.)
+    end select
+
+    call eio%init_out (sample)
+
+    call event%generate (1, [0._default, 0._default])
+    call eio%output (event, i_prc = 1)
+
+    call event%generate (1, [0.1_default, 0._default])
+    call eio%output (event, i_prc = 1, passed = .false.)
+
+    call event%generate (1, [0.2_default, 0._default])
+    call eio%output (event, i_prc = 1, passed = .true.)
+
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents: &
+         &(weight, sqme(evt), sqme(prc), i_prc), should be just two entries"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = "eio_weights_3.weights.dat", &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat=iostat)  buffer
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_weights_3"
+  end subroutine eio_weights_3
+
+@ %def eio_weights_3
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Event Dump Output}
@@ -3572,7 +3784,7 @@ of the current object status.
     write (u, "(1x,A)")  "Dump event stream:"
     if (object%writing) then
        write (u, "(3x,A,L1)") "Screen output     = ", object%screen
-       write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
+       write (u, "(3x,A,A,A)")  "Writing to file   = '", char (object%filename), "'"
        write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify
        write (u, "(3x,A,L1)") "Show weights/sqme = ", object%weights
        write (u, "(3x,A,L1)") "Compressed        = ", object%compressed
@@ -3682,9 +3894,12 @@ and to screen (if requested).
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
     character(len=7) :: fmt
-    integer :: i
     eio%count = eio%count + 1
-    call pac_fmt (fmt, FMT_19, FMT_16, pacify)
+    if (present (pacify)) then
+       call pac_fmt (fmt, FMT_19, FMT_16, pacify)
+    else
+       call pac_fmt (fmt, FMT_19, FMT_16, eio%pacify)
+    end if
     if (eio%writing)  call dump (eio%unit)
     if (eio%screen) then
        call dump (output_unit)
@@ -3693,8 +3908,22 @@ and to screen (if requested).
   contains
     subroutine dump (u)
       integer, intent(in) :: u
+      integer :: i
       call write_separator (u, 2)
-      write (u, "(1x,A,I0)")  "Event #", eio%count
+      write (u, "(1x,A,I0)", advance="no")  "Event"
+      if (event%has_index ()) then
+         write (u, "(1x,'#',I0)")  event%get_index ()
+      else
+         write (u, *)
+      end if
+      call write_separator (u, 2)
+      write (u, "(1x,A,1x,I0)")  "count  =", eio%count
+      if (present (passed)) then
+         write (u, "(1x,A,1x,L1)")  "passed =", passed
+      else
+         write (u, "(1x,A)")  "passed = [N/A]"
+      end if
+      write (u, "(1x,A,1x,I0)")  "prc id =", i_prc
       if (eio%weights) then
          call write_separator (u)
          if (event%sqme_ref_known) then
@@ -3852,7 +4081,7 @@ end module eio_dump_uti
 We test the implementation of all I/O methods.
 <<EIO dump: execute tests>>=
   call test (eio_dump_1, "eio_dump_1", &
-       "read and write event contents", &
+       "write event contents", &
        u, results)
 <<EIO dump: test declarations>>=
   public :: eio_dump_1
@@ -3861,10 +4090,11 @@ We test the implementation of all I/O methods.
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
     class(eio_t), allocatable :: eio
+    integer :: i_prc
     integer :: u_file
 
     write (u, "(A)")  "* Test output: eio_dump_1"
-    write (u, "(A)")  "*   Purpose: generate an event and dump to output"
+    write (u, "(A)")  "*   Purpose: generate events and write essentials to output"
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
@@ -3872,21 +4102,29 @@ We test the implementation of all I/O methods.
     call eio_prepare_test (event, unweighted = .false.)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")  "* Generate and write three events (two passed)"
     write (u, "(A)")
 
     allocate (eio_dump_t :: eio)
     select type (eio)
     type is (eio_dump_t)
-       eio%unit = u
-       eio%writing = .true.
-       eio%weights = .true.
+       call eio%set_parameters (unit = u, weights = .true., pacify = .true.)
     end select
 
+    i_prc = 42
+    
     call eio%init_out (var_str (""))
-    call event%generate (1, [0._default, 0._default])
 
-    call eio%output (event, i_prc = 42)
+    call event%generate (1, [0._default, 0._default])
+    call eio%output (event, i_prc = i_prc)
+
+    call event%generate (1, [0.1_default, 0._default])
+    call event%set_index (99)
+    call eio%output (event, i_prc = i_prc, passed = .false.)
+
+    call event%generate (1, [0.2_default, 0._default])
+    call event%increment_index ()
+    call eio%output (event, i_prc = i_prc, passed = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of eio_dump object"
@@ -4321,6 +4559,11 @@ the common block contents are still intact.)
 @ %def eio_ascii_split_out
 @ Output an event.  Write first the event indices, then weight and
 squared matrix element, then the particle set.
+
+Events that did not pass the selection are skipped.  The exceptions are
+the [[ascii]] and [[debug]] formats.  These are the formats that
+contain the [[passed]] flag in their output, and should be most useful
+for debugging purposes.
 <<EIO ascii: eio ascii: TBP>>=
   procedure :: output => eio_ascii_output
 <<EIO ascii: procedures>>=
@@ -4330,7 +4573,14 @@ squared matrix element, then the particle set.
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
     if (present (passed)) then
-       if (.not. passed)  return
+       if (.not. passed) then
+          select type (eio)
+          type is (eio_ascii_debug_t)
+          type is (eio_ascii_ascii_t)
+          class default
+             return
+          end select
+       end if
     end if
     if (eio%writing) then
        select type (eio)
@@ -4354,7 +4604,6 @@ squared matrix element, then the particle set.
                verbose = .false., testflag = pacify)
        type is (eio_ascii_athena_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
@@ -4368,35 +4617,30 @@ squared matrix element, then the particle set.
                testflag = pacify)
        type is (eio_ascii_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_hepevt (eio%unit)
        type is (eio_ascii_hepevt_verb_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_verbose (eio%unit)
        type is (eio_ascii_long_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_ascii (eio%unit, .true.)
        type is (eio_ascii_mokka_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_mokka (eio%unit)
        type is (eio_ascii_short_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
@@ -4554,6 +4798,7 @@ We test the implementation of all I/O methods, method [[ascii]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (42)
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -4649,6 +4894,7 @@ We test the implementation of all I/O methods, method [[athena]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (42)
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -4744,6 +4990,7 @@ We test the implementation of all I/O methods, method [[debug]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -4839,6 +5086,7 @@ We test the implementation of all I/O methods, method [[hepevt]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -4934,6 +5182,7 @@ We test the implementation of all I/O methods, method [[lha]] (old LHA):
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -5029,6 +5278,7 @@ We test the implementation of all I/O methods, method [[long]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -5124,6 +5374,7 @@ We test the implementation of all I/O methods, method [[mokka]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -5219,6 +5470,7 @@ We test the implementation of all I/O methods, method [[short]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -5315,6 +5567,7 @@ LHA) in verbose version:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -5410,6 +5663,7 @@ We test the implementation of all I/O methods, method [[hepevt_verb]]:
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -6566,6 +6820,7 @@ is 10-dimensional. We choose to only set the first value of the array.
     if (present (alpha_qcd))  alphaqcdlh = alpha_qcd
     if (present (alpha_qed))  alphaqedlh = alpha_qed
     if (present (scale))  scalelh(1) = scale
+    if (present (i_evt))  NEVHEP = i_evt
   end subroutine hepevt_set_event_parameters
 
 @ %def hepevt_init hepevt_set_event_parameters
@@ -6853,13 +7108,12 @@ to be parsed to the MOKKA LC fast simulation software.
     end if
   end subroutine hepevt_write_ascii
 
-  subroutine hepevt_write_athena (unit, i_evt)
-    integer, intent(in), optional :: unit, i_evt
+  subroutine hepevt_write_athena (unit)
+    integer, intent(in), optional :: unit
     integer :: u, i, num_event
     num_event = 0
-    if (present (i_evt)) num_event = i_evt
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(2(1x,I0))") num_event, NHEP
+    write (u, "(2(1x,I0))") NEVHEP, NHEP
     do i = 1, NHEP
        write (u, "(7(1x,I0))") &
             i, ISTHEP(i), IDHEP(i), JMOHEP(:,i), JDAHEP(:,i)
@@ -9556,6 +9810,13 @@ The Fortran version has initializer form.
 @
 <<LCIO interface: interfaces>>=
   interface
+     subroutine lcio_set_weight (evt_obj, weight) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: weight
+     end subroutine lcio_set_weight
+  end interface
+  interface
      subroutine lcio_set_alpha_qcd (evt_obj, alphas) bind(C)
        import
        type(c_ptr), value :: evt_obj
@@ -9611,9 +9872,20 @@ The Fortran version has initializer form.
        character(len=1, kind=c_char), dimension(*), intent(in) :: name
      end subroutine lcio_set_process_name
   end interface
-@ %def lcio_set_alpha_qcd lcio_set_scale lcio_set_sqrts
+@ %def lcio_set_weight lcio_set_alpha_qcd lcio_set_scale lcio_set_sqrts
 @ %def lcio_set_xsec lcio_set_beam lcio_set_pol
 @ %def lcio_set_beam_file lcio_set_process_name
+@
+<<LCIO interface: public>>=
+  public :: lcio_event_set_weight
+<<LCIO interface: procedures>>=
+  subroutine lcio_event_set_weight (evt, weight)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: weight
+    call lcio_set_weight (evt%obj, real (weight, c_double))
+  end subroutine lcio_event_set_weight
+
+@ %def lcio_event_set_weight
 @
 <<LCIO interface: public>>=
   public :: lcio_event_set_alpha_qcd
@@ -10421,6 +10693,26 @@ the file is done by the constructor, closing by the destructor.
   end subroutine lcio_read_event
 
 @ %def lcio_read_event
+@ Get the event index.
+<<LCIO interface: interfaces>>=
+  interface
+     integer(c_int) function lcio_event_get_event_number (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function lcio_event_get_event_number
+  end interface
+
+@ %def lcio_event_get_event_number
+<<LCIO interface: public>>=
+  public :: lcio_event_get_event_index
+<<LCIO interface: procedures>>=
+  function lcio_event_get_event_index (evt) result (i_evt)
+    integer :: i_evt
+    type(lcio_event_t), intent(in) :: evt
+    i_evt = lcio_event_get_event_number (evt%obj)
+  end function lcio_event_get_event_index
+
+@ %def lcio_event_get_event_index
 @ Extract the process ID. This is stored (at the moment abusively) in the
 RUN ID as well as in an additional event parameter.
 <<LCIO interface: interfaces>>=
@@ -10862,6 +11154,8 @@ Note: setting of scale or alpha is not yet supported by the
 
 @ %def hepeup_to_event
 @ Fill the HEPEVT (event) common block.
+
+The [[i_evt]] argument overrides the index stored in the [[event]] object.
 <<HEP events: public>>=
   public :: hepevt_from_event
 <<HEP events: procedures>>=
@@ -10900,6 +11194,10 @@ Note: setting of scale or alpha is not yet supported by the
        end if
        if (present (i_evt)) then
           call hepevt_set_event_parameters (i_evt = i_evt)
+       else if (event%has_index ()) then
+          call hepevt_set_event_parameters (i_evt = event%get_index ())
+       else
+          call hepevt_set_event_parameters (i_evt = 0)
        end if
     else
        call msg_bug ("HEPEVT: event incomplete")
@@ -11201,6 +11499,7 @@ only allow to read in unweighted events.
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
+    call event%set_index (hepmc_event_get_event_index (hepmc_event))
     call hepmc_event_to_particle_set (particle_set, &
          hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -11452,6 +11751,7 @@ information is not available.
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
+
     call lcio_event_to_particle_set (particle_set, &
          lcio_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -12378,6 +12678,9 @@ Since LHEF doesn't give this information, we must assume that the MCI
 group, term, and channel can all be safely set to 1.  This works if
 there is only one MCI group and term.  The channel doesn't matter for
 the matrix element.
+
+The event index is incremented, as if the event was generated.  The
+LHEF format does not support event indices.
 <<EIO LHEF: eio lhef: TBP>>=
   procedure :: input_event => eio_lhef_input_event
 <<EIO LHEF: procedures>>=
@@ -12388,7 +12691,7 @@ the matrix element.
     type(string_t) :: s
     logical :: closing
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
@@ -12401,6 +12704,7 @@ the matrix element.
     case ("2.0");  call eio%read_event_20 (event)
     case ("3.0");  call eio%read_event_30 (event)
     end select
+    call event%increment_index ()
   contains
     subroutine err_evt2
       call msg_error ("LHEF: reading events: syntax error in event record, &
@@ -14017,7 +14321,6 @@ squared matrix element, then the particle set.
           call stdhep_write (STDHEP_HEPEUP)
        type is (eio_stdhep_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
@@ -14025,7 +14328,6 @@ squared matrix element, then the particle set.
        type is (eio_stdhep_hepev4_t)
           call hepevt_from_event (event, &
                process_index = eio%proc_num_id (i_prc), &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order, &
@@ -14041,6 +14343,8 @@ squared matrix element, then the particle set.
 @ %def eio_stdhep_output
 @ Input an event. We do not allow to read in STDHEP files written via
 the HEPEVT common block as there is no control on the process ID.
+This implies that the event index cannot be read; it is simply
+incremented to count the current event sample.
 <<EIO stdhep: eio stdhep: TBP>>=
   procedure :: input_i_prc => eio_stdhep_input_i_prc
   procedure :: input_event => eio_stdhep_input_event
@@ -14094,12 +14398,13 @@ the HEPEVT common block as there is no control on the process ID.
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
+    call event%increment_index ()
   end subroutine eio_stdhep_input_event
 
 @ %def eio_stdhep_input_i_prc
@@ -14281,6 +14586,7 @@ We test the implementation of the STDHEP HEPEVT I/O method:
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (61)  ! not supported by reader, actually
     call event%evaluate_expressions ()
     call event%pacify_particle_set ()
 
@@ -14293,14 +14599,14 @@ We test the implementation of the STDHEP HEPEVT I/O method:
     write (u, "(A)")
 
     call write_stdhep_event &
-         (sample // ".hep", var_str ("test_1.hep"), 1)
+         (sample // ".hep", var_str ("eio_stdhep_1.hep.out"), 1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Read in ASCII contents of STDHEP file"
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = "test_1.hep", &
+    open (u_file, file = "eio_stdhep_1.hep.out", &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -14396,6 +14702,7 @@ We test the implementation of the STDHEP HEPEUP I/O method:
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (62)  ! not supported by reader, actually
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -14407,14 +14714,14 @@ We test the implementation of the STDHEP HEPEUP I/O method:
     write (u, "(A)")
 
     call write_stdhep_event &
-         (sample // ".up.hep", var_str ("test_2.hep"), 2)
+         (sample // ".up.hep", var_str ("eio_stdhep_2.hep.out"), 2)
 
     write (u, "(A)")
     write (u, "(A)")  "* Read in ASCII contents of STDHEP file"
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = "test_2.hep", &
+    open (u_file, file = "eio_stdhep_2.hep.out", &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -14510,6 +14817,7 @@ Check input from a StdHep file, HEPEVT block.
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (63)  ! not supported by reader, actually
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -14639,6 +14947,7 @@ Check input from a StdHep file, HEPEVT block.
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (64)   ! not supported by reader, actually
     call event%evaluate_expressions ()
     call event%pacify_particle_set ()
 
@@ -15057,7 +15366,7 @@ event files.
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
     call hepmc_to_event (event, eio%hepmc_event, &
          eio%fallback_model, &
@@ -15192,6 +15501,7 @@ We test the implementation of all I/O methods.
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (55)
 
     call eio%output (event, i_prc = 1)
     call eio%write (u)
@@ -15294,7 +15604,7 @@ We test the implementation of all I/O methods.
 
     write (u_file, "(A)")  "HepMC::Version 2.06.09"
     write (u_file, "(A)")  "HepMC::IO_GenEvent-START_EVENT_LISTING"
-    write (u_file, "(A)")  "E 0 -1 -1.0000000000000000e+00 &
+    write (u_file, "(A)")  "E 66 -1 -1.0000000000000000e+00 &
          &-1.0000000000000000e+00 &
          &-1.0000000000000000e+00 42 0 1 10001 10002 0 0"
     write (u_file, "(A)")  "U GEV MM"
@@ -15657,6 +15967,7 @@ event files.
              proc_id = eio%proc_num_id (i_prc), &
              event_id = event%get_index ())
        call lcio_event_from_particle_set (eio%lcio_event, pset_ptr)
+       call lcio_event_set_weight (eio%lcio_event, event%weight_prc)
        call lcio_event_set_sqrts (eio%lcio_event, event%get_sqrts ())
        call lcio_event_set_scale (eio%lcio_event, event%get_fac_scale ())
        call lcio_event_set_alpha_qcd (eio%lcio_event, event%get_alpha_s ())
@@ -15716,8 +16027,9 @@ event files.
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
+    call event%set_index (lcio_event_get_event_index (eio%lcio_event))
     call lcio_to_event (event, eio%lcio_event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &
@@ -15855,6 +16167,7 @@ We test the implementation of all I/O methods.
     call eio%init_out (sample, data)
 
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (77)
     call event%pacify_particle_set ()
 
     call eio%output (event, i_prc = 1)
@@ -15970,6 +16283,7 @@ We test the implementation of all I/O methods.
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (88)
     call event%evaluate_expressions ()
     call event%pacify_particle_set ()
 
@@ -15977,6 +16291,9 @@ We test the implementation of all I/O methods.
     call eio%write (u)
     call eio%final ()
     deallocate (eio)
+
+    call event%reset_contents ()
+    call event%reset_index ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize"

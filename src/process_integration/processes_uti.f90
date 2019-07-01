@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1881,7 +1881,7 @@ contains
     call lib%append (entry)
 
     call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
@@ -1920,7 +1920,7 @@ contains
 
     call process%setup_terms ()
 
-  end subroutine prepare_resonance_test_process 
+  end subroutine prepare_resonance_test_process
 
   subroutine process_instance_hook_test_init (hook, var_list, instance)
     class(process_instance_hook_test_t), intent(inout), target :: hook

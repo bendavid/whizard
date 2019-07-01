@@ -1,6 +1,6 @@
 ########################################################################
 # Standard Model with trivial CKM matrix, including the effective
-# Hgg / HAA / HZA / Hmm couplings
+# Hgg / HAA / HZA / Hmm / Hee couplings
 model "SM_Higgs"
 
 # Independent parameters
@@ -220,7 +220,8 @@ vertex E3 n3 Wm
 # vertex S s H 
 vertex C c H 
 vertex B b H 
-vertex T t H 
+vertex T t H
+vertex E1 e1 H
 vertex E2 e2 H 
 vertex E3 e3 H 
 

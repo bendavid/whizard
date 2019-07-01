@@ -161,6 +161,8 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_tt_threshold.ml \
     omega_SM_Higgs.ml \
     omega_SM_Higgs_VM.ml \
+    omega_SM_Higgs_CKM.ml \
+    omega_SM_Higgs_CKM_VM.ml \
     omega_THDM.ml \
     omega_THDM_VM.ml \
     omega_THDM_CKM.ml \

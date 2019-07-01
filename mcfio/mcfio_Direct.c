@@ -45,7 +45,9 @@
 #include "mcfio_Dict.h"
 #include "mcfio_Util1.h"
 #include "mcfio_Direct.h"
+#include "mcf_NTuIOFiles.h"
 #include "mcf_NTuIOUtils.h"
+#include "mcfio_Sequential.h"
 #ifndef FALSE
 #define FALSE 0
 #endif
@@ -139,7 +141,7 @@ static int openReadDirect(char *filename, int mode)
       ** Using memory mapped i/o
       */
       iff = open(filename, O_RDONLY);
-          if (iff < NULL) {
+          if (iff < 0) {
           fprintf(stderr,
   " mcfio_OpenReadMapped: Problem opening file %s, message \n", filename);
           perror ("mcfio_OpenReadMapped"); 

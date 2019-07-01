@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -44,6 +44,7 @@ module eio_weights_uti
 
   public :: eio_weights_1
   public :: eio_weights_2
+  public :: eio_weights_3
 
 contains
 
@@ -80,7 +81,7 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* File contents: &
-         &(weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)"
+         &(weight, sqme(evt), sqme(prc), i_prc)"
     write (u, "(A)")
 
     u_file = free_unit ()
@@ -139,7 +140,7 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* File contents: &
-         &(weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)"
+         &(weight, sqme(evt), sqme(prc), i_prc)"
     write (u, "(A)")
 
     u_file = free_unit ()
@@ -160,6 +161,72 @@ contains
     write (u, "(A)")  "* Test output end: eio_weights_2"
 
   end subroutine eio_weights_2
+
+  subroutine eio_weights_3 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_weights_3"
+    write (u, "(A)")  "*   Purpose: generate three events and write to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+
+    call eio_prepare_test (event, unweighted = .false.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write events"
+    write (u, "(A)")
+
+    sample = "eio_weights_3"
+
+    allocate (eio_weights_t :: eio)
+    select type (eio)
+    type is (eio_weights_t)
+       call eio%set_parameters (pacify = .true.)
+    end select
+
+    call eio%init_out (sample)
+
+    call event%generate (1, [0._default, 0._default])
+    call eio%output (event, i_prc = 1)
+
+    call event%generate (1, [0.1_default, 0._default])
+    call eio%output (event, i_prc = 1, passed = .false.)
+
+    call event%generate (1, [0.2_default, 0._default])
+    call eio%output (event, i_prc = 1, passed = .true.)
+
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents: &
+         &(weight, sqme(evt), sqme(prc), i_prc), should be just two entries"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = "eio_weights_3.weights.dat", &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat=iostat)  buffer
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_weights_3"
+  end subroutine eio_weights_3
 
 
 end module eio_weights_uti

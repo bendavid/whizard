@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -282,6 +282,7 @@ contains
           select type (event)
           type is (event_t)
              write (eio%unit)  i_prc
+             write (eio%unit)  event%get_index ()
              write (eio%unit)  event%get_i_mci ()
              write (eio%unit)  event%get_i_term ()
              write (eio%unit)  event%get_channel ()
@@ -335,7 +336,7 @@ contains
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
-    integer :: i_mci, i_term, channel, i
+    integer :: event_index, i_mci, i_term, channel, i
     real(default) :: weight, excess, sqme
     real(default), dimension(:), allocatable :: weight_alt, sqme_alt
     logical :: has_transform
@@ -344,6 +345,8 @@ contains
     if (eio%reading) then
        select type (event)
        type is (event_t)
+          read (eio%unit, iostat = iostat)  event_index
+          if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  i_mci
           if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  i_term
@@ -356,7 +359,8 @@ contains
           if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  sqme
           if (iostat /= 0)  return
-          call event%reset ()
+          call event%reset_contents ()
+          call event%set_index (event_index)
           call event%select (i_mci, i_term, channel)
           if (eio%norm_mode /= NORM_UNDEFINED) then
              call event_normalization_update (weight, &

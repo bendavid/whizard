@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -87,6 +87,7 @@ contains
 
     call eio%init_out (sample)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
     write (u, "(A)")
@@ -123,13 +124,13 @@ contains
     write (u, "(1x,A,I0)")  "i_prc = ", i_prc
     write (u, "(A)")
     call event%write (u)
-
     write (u, "(A)")
     write (u, "(A)")  "* Generate and append another event"
     write (u, "(A)")
 
     call eio%switch_inout ()
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
     write (u, "(A)")
@@ -241,6 +242,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%set (sqme_alt = [2._default, 3._default])
     call event%set (weight_alt = &

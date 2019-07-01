@@ -74,7 +74,7 @@ AC_CHECK_PROGS(PS2PDF,[ps2pdf14 ps2pdf13 ps2pdf12 ps2pdf],no)
 AM_CONDITIONAL([PS2PDF_AVAILABLE], [test "$PS2PDF" != "no"])
 AC_SUBST(PS2PDF)
 if test "$enable_distribution" = "yes"; then
-if test "$PDFLATEX" = "no" -a "$LATEX" = "no" || test "$PDFLATEX" = "no" -a "$DVIPS" = "no" || test "$PDFLATEX" = "no" -a "$PS2PDF" = "no"; then
+if test "$PDFLATEX" = "no"; then
 AC_MSG_NOTICE([error: **********************************])
 AC_MSG_NOTICE([error: No way to make documentation PDFs.])
 AC_MSG_ERROR([**********************************])

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -89,6 +89,8 @@ module prc_omega
      procedure :: init => omega_writer_init
      procedure :: write_makefile_code => omega_write_makefile_code
      procedure :: write_source_code => omega_write_source_code
+     procedure :: before_compile => omega_before_compile
+     procedure :: after_compile => omega_after_compile
      procedure, nopass :: get_procname => omega_writer_get_procname
      procedure :: write_interface => omega_write_interface
      procedure :: write_wrapper => omega_write_wrapper
@@ -424,11 +426,12 @@ contains
     end associate
   end subroutine omega_writer_init
 
-  subroutine omega_write_makefile_code (writer, unit, id, os_data, testflag)
+  subroutine omega_write_makefile_code (writer, unit, id, os_data, verbose, testflag)
     class(omega_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     type(string_t) :: omega_binary, omega_path
     type(string_t) :: restrictions_string
@@ -458,6 +461,7 @@ contains
        omega_binary = "omega_" // writer%model_name // "_VM.opt"
     end select
     omega_path = os_data%whizard_omega_binpath // "/" // omega_binary
+    if (.not. verbose)  omega_path = "@" // omega_path
     if (writer%restrictions /= "") then
        restrictions_string = " -cascade '" // writer%restrictions // "'"
     else
@@ -524,6 +528,9 @@ contains
     select type (writer)
     type is (omega_omega_writer_t)
        write (unit, "(5A)")  char (id), ".f90:"
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  OMEGA     ', trim (char (id)), '.f90"'
+       end if
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90", &
             " -target:whizard", &
@@ -540,6 +547,9 @@ contains
     type is (omega_ufo_writer_t)
        parameter_module = char (id) // "_par_" // char (writer%model_name)
        write (unit, "(5A)")  char (id), ".f90: ", char (parameter_module), ".lo"
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  OMEGA[UFO]', trim (char (id)), '.f90"'
+       end if
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90", &
             " -model:UFO_dir ", &
@@ -567,6 +577,9 @@ contains
             " -params", &
             " -o $@"
        write (unit, "(5A)")  char (parameter_module), ".lo: ", char (parameter_module), ".f90"
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+       end if
        write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
     type is (omega_ovm_writer_t)
        write (unit, "(5A)")  char (id), ".hbc:"
@@ -578,6 +591,9 @@ contains
             char (restrictions_string), char (diagrams_string), &
             char (writer%extra_options), char (write_phs_output_string)
        write (unit, "(5A)")  char (id), ".f90:"
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  OVM       ', trim (char (id)), '.f90"'
+       end if
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90 -params", &
             " -target:whizard ", &
@@ -591,9 +607,17 @@ contains
     if (writer%diags .or. writer%diags_color) &
        write (unit, "(5A)")  char (id), "_diags.tex: ", char (id), ".f90"
     write (unit, "(5A)")  "clean-", char (id), ":"
-    write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
-    write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
-    write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
+    if (verbose) then
+       write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
+       write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
+       write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
+    else
+       write (unit, "(5A)")  TAB // '@echo  "  RM        ', &
+            trim (char (id)), '.f90,.mod,.lo"'
+       write (unit, "(5A)")  TAB, "@rm -f ", char (id), ".f90"
+       write (unit, "(5A)")  TAB, "@rm -f opr_", char (id), ".mod"
+       write (unit, "(5A)")  TAB, "@rm -f ", char (id), ".lo"
+    end if
     write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
     select type (writer)
     type is (omega_ufo_writer_t)
@@ -638,24 +662,59 @@ contains
              write (unit, "(5A)")  char (id), "_diags.ps: ", char (id), "_diags.tex"
           end if
           if (escape_hyperref) then
-             write (unit, "(5A)")  TAB, "-cat ", char (id), "_diags.tex | \"
+             if (verbose) then
+                write (unit, "(5A)")  TAB, "-cat ", char (id), "_diags.tex | \"
+             else
+                write (unit, "(5A)")  TAB // '@echo  "  HYPERREF  ', &
+                     trim (char (id)) // '_diags.tex"'
+                write (unit, "(5A)")  TAB, "@cat ", char (id), "_diags.tex | \"
+             end if
              write (unit, "(5A)")  TAB, "   sed -e" // &
-                "'s/\\usepackage\[colorlinks\]{hyperref}.*/%\\usepackage" // &
-                "\[colorlinks\]{hyperref}/' > \"
+                  "'s/\\usepackage\[colorlinks\]{hyperref}.*/%\\usepackage" // &
+                  "\[colorlinks\]{hyperref}/' > \"
              write (unit, "(5A)")  TAB, "   ", char (id), "_diags.tex.tmp"
-             write (unit, "(5A)")  TAB, "mv -f ", char (id), "_diags.tex.tmp \"
+             if (verbose) then
+                write (unit, "(5A)")  TAB, "mv -f ", char (id), "_diags.tex.tmp \"
+             else
+                write (unit, "(5A)")  TAB, "@mv -f ", char (id), "_diags.tex.tmp \"
+             end if
              write (unit, "(5A)")  TAB, "   ", char (id), "_diags.tex"
           end if
-          write (unit, "(5A)")  TAB, "-TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
-               char (id) // "_diags.tex"
-          write (unit, "(5A)")  TAB, "MPINPUTS=$(MP_FLAGS) $(MPOST) " // &
-               char (id) // "_diags-fmf.mp"
-          write (unit, "(5A)")  TAB, "TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
-               char (id) // "_diags.tex"
-          write (unit, "(5A)")  TAB, "$(DVIPS) -o " // char (id) // "_diags.ps " // &
-               char (id) // "_diags.dvi"
+          if (verbose) then
+             write (unit, "(5A)")  TAB, "-TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+                  char (id) // "_diags.tex"
+             write (unit, "(5A)")  TAB, "MPINPUTS=$(MP_FLAGS) $(MPOST) " // &
+                  char (id) // "_diags-fmf.mp"
+             write (unit, "(5A)")  TAB, "TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+                  char (id) // "_diags.tex"
+             write (unit, "(5A)")  TAB, "$(DVIPS) -o " // char (id) // "_diags.ps " // &
+                  char (id) // "_diags.dvi"
+          else
+             write (unit, "(5A)")  TAB // '@echo  "  LATEX     ', &
+                  trim (char (id)) // '_diags.tex"'
+             write (unit, "(5A)")  TAB, "@TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+                  char (id) // "_diags.tex > /dev/null"
+             write (unit, "(5A)")  TAB // '@echo  "  METAPOST  ', &
+                  trim (char (id)) // '_diags-fmf.mp"'
+             write (unit, "(5A)")  TAB, "@MPINPUTS=$(MP_FLAGS) $(MPOST) " // &
+                  char (id) // "_diags-fmf.mp  > /dev/null"
+             write (unit, "(5A)")  TAB // '@echo  "  LATEX     ', &
+                  trim (char (id)) // '_diags.tex"'
+             write (unit, "(5A)")  TAB, "@TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+                  char (id) // "_diags.tex > /dev/null"
+             write (unit, "(5A)")  TAB // '@echo  "  DVIPS     ', &
+                  trim (char (id)) // '_diags.dvi"'
+             write (unit, "(5A)")  TAB, "@$(DVIPS) -q -o " // char (id) &
+                  // "_diags.ps " // char (id) // "_diags.dvi"
+          end if
           if (os_data%event_analysis_pdf) then
-             write (unit, "(5A)")  TAB, "$(PS2PDF) " // char (id) // "_diags.ps"
+             if (verbose) then
+                write (unit, "(5A)")  TAB, "$(PS2PDF) " // char (id) // "_diags.ps"
+             else
+                write (unit, "(5A)")  TAB // '@echo  "  PS2PDF    ', &
+                     trim (char (id)) // '_diags.ps"'
+                write (unit, "(5A)")  TAB, "@$(PS2PDF) " // char (id) // "_diags.ps"
+             end if
           end if
        end if
     end if
@@ -666,6 +725,16 @@ contains
     type(string_t), intent(in) :: id
   end subroutine omega_write_source_code
 
+  subroutine omega_before_compile (writer, id)
+    class(omega_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine omega_before_compile
+  
+  subroutine omega_after_compile (writer, id)
+    class(omega_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+  end subroutine omega_after_compile
+  
   function omega_writer_get_procname (feature) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: feature

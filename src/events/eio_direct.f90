@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -47,10 +47,14 @@ module eio_direct
 
   type, extends (eio_t) :: eio_direct_t
      private
+     logical :: i_evt_set = .false.
+     integer :: i_evt = 0
      integer :: i_prc = 0
      integer :: i_mci = 0
      integer :: i_term = 0
      integer :: channel = 0
+     logical :: passed_set = .false.
+     logical :: passed = .true.
      type(particle_set_t) :: pset
    contains
      procedure :: write => eio_direct_write
@@ -62,11 +66,17 @@ module eio_direct
      procedure :: input_i_prc => eio_direct_input_i_prc
      procedure :: input_event => eio_direct_input_event
      procedure :: skip => eio_direct_skip
+     procedure :: has_event_index => eio_direct_has_event_index
+     procedure :: get_event_index => eio_direct_get_event_index
+     procedure :: passed_known => eio_direct_passed_known
+     procedure :: has_passed => eio_direct_has_passed
      procedure :: get_n_in => eio_direct_get_n_in
      procedure :: get_n_out => eio_direct_get_n_out
      procedure :: get_n_tot => eio_direct_get_n_tot
      procedure :: get_momentum_array => eio_direct_get_momentum_array
      procedure :: init_direct => eio_direct_init_direct
+     procedure :: set_event_index => eio_direct_set_event_index
+     procedure :: reset_event_index => eio_direct_reset_event_index
      procedure :: set_selection_indices => eio_direct_set_selection_indices
      generic :: set_momentum => set_momentum_single
      generic :: set_momentum => set_momentum_all
@@ -83,10 +93,20 @@ contains
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event direct access:"
+    if (object%i_evt_set) then
+       write (u, "(3x,A,1x,I0)")  "i_evt =", object%i_evt
+    else
+       write (u, "(3x,A)")  "i_evt = [undefined]"
+    end if
     write (u, "(3x,A,1x,I0)")  "i_prc =", object%i_prc
     write (u, "(3x,A,1x,I0)")  "i_mci =", object%i_prc
     write (u, "(3x,A,1x,I0)")  "i_term =", object%i_prc
     write (u, "(3x,A,1x,I0)")  "channel =", object%i_prc
+    if (object%passed_set) then
+       write (u, "(3x,A,1x,L1)")  "passed =", object%passed
+    else
+       write (u, "(3x,A)")  "passed = [N/A]"
+    end if
     call object%pset%write (u)
   end subroutine eio_direct_write
 
@@ -126,6 +146,17 @@ contains
     logical, intent(in), optional :: reading, passed, pacify
     type(particle_set_t), pointer :: pset_ptr
     call eio%pset%final ()
+    if (event%has_index ()) then
+       call eio%set_event_index (event%get_index ())
+    else
+       call eio%reset_event_index ()
+    end if
+    if (present (passed)) then
+       eio%passed = passed
+       eio%passed_set = .true.
+    else
+       eio%passed_set = .false.
+    end if
     pset_ptr => event%get_particle_set_ptr ()
     if (associated (pset_ptr)) then
        eio%i_prc = i_prc
@@ -146,6 +177,11 @@ contains
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     call event%select (eio%i_mci, eio%i_term, eio%channel)
+    if (eio%has_event_index ()) then
+       call event%set_index (eio%get_event_index ())
+    else
+       call event%reset_index ()
+    end if
     call event%set_hard_particle_set (eio%pset)
   end subroutine eio_direct_input_event
 
@@ -154,6 +190,38 @@ contains
     integer, intent(out) :: iostat
     iostat = 0
   end subroutine eio_direct_skip
+
+  function eio_direct_has_event_index (eio) result (flag)
+    class(eio_direct_t), intent(in) :: eio
+    logical :: flag
+    flag = eio%i_evt_set
+  end function eio_direct_has_event_index
+
+  function eio_direct_get_event_index (eio) result (index)
+    class(eio_direct_t), intent(in) :: eio
+    integer :: index
+    if (eio%has_event_index ()) then
+       index = eio%i_evt
+    else
+       index = 0
+    end if
+  end function eio_direct_get_event_index
+
+  function eio_direct_passed_known (eio) result (flag)
+    class(eio_direct_t), intent(in) :: eio
+    logical :: flag
+    flag = eio%passed_set
+  end function eio_direct_passed_known
+
+  function eio_direct_has_passed (eio) result (flag)
+    class(eio_direct_t), intent(in) :: eio
+    logical :: flag
+    if (eio%passed_known ()) then
+       flag = eio%passed
+    else
+       flag = .true.
+    end if
+  end function eio_direct_has_passed
 
   function eio_direct_get_n_in (eio) result (n_in)
     class(eio_direct_t), intent(in) :: eio
@@ -195,6 +263,18 @@ contains
     call eio%pset%init_direct (n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
   end subroutine eio_direct_init_direct
 
+  subroutine eio_direct_set_event_index (eio, index)
+    class(eio_direct_t), intent(inout) :: eio
+    integer, intent(in) :: index
+    eio%i_evt = index
+    eio%i_evt_set = .true.
+  end subroutine eio_direct_set_event_index
+  
+  subroutine eio_direct_reset_event_index (eio)
+    class(eio_direct_t), intent(inout) :: eio
+    eio%i_evt_set = .false.
+  end subroutine eio_direct_reset_event_index
+  
   subroutine eio_direct_set_selection_indices &
        (eio, i_prc, i_mci, i_term, channel)
     class(eio_direct_t), intent(inout) :: eio

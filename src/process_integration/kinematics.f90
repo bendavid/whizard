@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -145,11 +145,10 @@ contains
     if (nlo_type == NLO_VIRTUAL)  k%only_cm_frame = .true.
   end subroutine kinematics_set_nlo_info
 
-  subroutine kinematics_init_sf_chain (k, sf_chain, config, n_sub, has_pdfs)
+  subroutine kinematics_init_sf_chain (k, sf_chain, config, has_pdfs)
     class(kinematics_t), intent(inout) :: k
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_beam_config_t), intent(in) :: config
-    integer, intent(in), optional :: n_sub
     logical, intent(in), optional :: has_pdfs
     integer :: n_strfun, n_channel
     integer :: c
@@ -166,7 +165,7 @@ contains
     end if
     call k%sf_chain%link_interactions ()
     call k%sf_chain%exchange_mask ()
-    call k%sf_chain%init_evaluators (n_sub, has_pdfs)
+    call k%sf_chain%init_evaluators (has_pdfs)
   end subroutine kinematics_init_sf_chain
 
   subroutine kinematics_init_phs (k, config)

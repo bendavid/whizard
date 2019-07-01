@@ -35,25 +35,23 @@ include $(top_srcdir)/omega/src/Makefile.sources
 
 VPATH = $(srcdir):$(top_builddir)/omega/src:$(srcdir):$(top_srcdir)/omega/src
 
-PICTURES_EPS = \
-    modules.eps \
-    omega-paper-1-pics-1.eps \
-    omega-paper-1-pics-2.eps \
-    omega-paper-1-pics-3.eps \
-    omega-paper-1-pics-4.eps \
-    omega-paper-1-pics-5.eps \
-    omega-paper-1-pics-6.eps \
-    omega-paper-1-pics-7.eps \
-    omega-paper-1-pics-8.eps \
-    omega-paper-1-pics-9.eps \
-    omega-paper-1-pics-10.eps \
-    bhabha.eps bhabha0.eps \
-    epemudbardubar.eps epemudbardubar0.eps \
-    epemudbarmunumubar.eps epemudbarmunumubar0.eps \
-    sign_ex.eps fusion_rules.eps mom_choice.eps \
-    mom_flow.eps
-
-PICTURES_PDF = $(PICTURES_EPS:.eps=.pdf)
+PICTURES_PDF = \
+    modules.pdf \
+    omega-paper-1-pics-1.pdf \
+    omega-paper-1-pics-2.pdf \
+    omega-paper-1-pics-3.pdf \
+    omega-paper-1-pics-4.pdf \
+    omega-paper-1-pics-5.pdf \
+    omega-paper-1-pics-6.pdf \
+    omega-paper-1-pics-7.pdf \
+    omega-paper-1-pics-8.pdf \
+    omega-paper-1-pics-9.pdf \
+    omega-paper-1-pics-10.pdf \
+    bhabha.pdf bhabha0.pdf \
+    epemudbardubar.pdf epemudbardubar0.pdf \
+    epemudbarmunumubar.pdf epemudbarmunumubar0.pdf \
+    sign_ex.pdf fusion_rules.pdf mom_choice.pdf \
+    mom_flow.pdf
 
 LATEX_STYLES = \
     flex.cls thophys.sty thohacks.sty \
@@ -77,7 +75,7 @@ else
 dist_doc_DATA = 
 endif
 
-EXTRA_DIST = $(PICTURES_EPS) $(LATEX_STYLES)
+EXTRA_DIST = $(PICTURES_PDF) $(LATEX_STYLES)
 
 if NOWEB_AVAILABLE
 pdf-local: $(PDFS)
@@ -85,7 +83,7 @@ else
 pdf-local:
 endif
 
-SUFFIXES = .mly .mll .ml .implementation .mli .interface .nw .tex .dvi .eps .pdf .ps
+SUFFIXES = .mly .mll .ml .implementation .mli .interface .nw .tex .pdf
 
 MPOST_LATEX = TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST)
 
@@ -117,42 +115,7 @@ endif MPOST_AVAILABLE
 	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; \
 	   fi; \
 	fi
-else  !PDFLATEX_AVAILABLE
-if LATEX_AVAILABLE
-if DVIPS_AVAILABLE
-if PS2PDF_AVAILABLE
-	-TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
-if MPOST_AVAILABLE
-	@if test -r $*pics.mp; then \
-	if $(AM_V_P); then MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics; else \
-	   echo " METAPOST  " $*pics.mp; MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics > /dev/null; fi; \
-	fi
-	@if test -r $*.mp; then \
-	if $(AM_V_P); then $(MPOST_LATEX) $*; else \
-	   echo " METAPOST  " $*.mp; $(MPOST_LATEX) $* >/dev/null; fi; \
-	fi
-endif MPOST_AVAILABLE
-	$(AM_V_at)echo " PDFLATEX   skipping -bibtex $*"
-	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; else \
-	   echo " LATEX     " $<; TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; fi
-	TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
-	@if $(AM_V_P); then \
-	   if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	      TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
-	   fi; else \
-	   if grep -s 'Rerun to get cross-references right.' $*.log >/dev/null; then \
-	      echo " LATEX     " $< "(for cross-references)"; \
-	      TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; \
-	   fi; \
-	fi
-	@if $(AM_V_P); then :; else echo " DVIPS     " $<; fi
-	$(AM_V_at)$(DVIPS) -o $*.ps $*
-	@if $(AM_V_P); then :; else echo " PS2PDF    " $*; fi
-	$(AM_V_at)$(PS2PDF) $*
-endif PS2PDF_AVAILABLE
-endif DVIPS_AVAILABLE
-endif LATEX_AVAILABLE
-endif !PDFLATEX_AVAILABLE
+endif PDFLATEX_AVAILABLE
 endif SUPP_PDF_AVAILABLE
 endif DISTRIBUTION
 
@@ -208,7 +171,7 @@ else NOWEB_AVAILABLE
 
 omega.pdf: \
     $(OMEGA_INTERFACES) $(OMEGA_IMPLEMENTATIONS) omegalib.tex index.tex \
-    $(PICTURES_PDF) $(PICTURES_EPS)
+    $(PICTURES_PDF)
 
 .nw.tex:
 	@if $(AM_V_P); then :; else echo " NOWEAVE   " $@; fi
@@ -242,26 +205,6 @@ endif OCAMLWEB_AVAILABLE
 endif DISTRIBUTION
 
 endif NOWEB_AVAILABLE
-
-if EPSPDF_AVAILABLE
-if EPSPDF_043
-.eps.pdf:
-	@if $(AM_V_P); then :; else echo " EPSPDF    " $@; fi
-	$(AM_V_at)$(EPSPDF) $< $@ 
-else
-if EPSTOPDF_AVAILABLE
-.eps.pdf:
-	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
-	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
-endif
-endif
-else
-if EPSTOPDF_AVAILABLE
-.eps.pdf:
-	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
-	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
-endif
-endif
 
 ########################################################################
 

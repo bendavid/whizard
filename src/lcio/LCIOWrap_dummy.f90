@@ -51,6 +51,18 @@ type(c_ptr) function new_lcio_event (proc_id, event_id, run_id) bind(C)
   stop              
 end function new_lcio_event
 
+! extern "C" void lcio_set_weight( LCEventImpl* evt, double wgt )
+subroutine lcio_set_weight (evt_obj, weight) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  real(c_double), value :: weight
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop
+end subroutine lcio_set_weight
+
+
 ! extern "C" void lcio_set_alpha_qcd ( LCEventImpl* evt, double alphas )
 subroutine lcio_set_alpha_qcd (evt_obj, alphas) bind(C)
   use iso_c_binding
@@ -169,6 +181,18 @@ subroutine dump_lcio_event (evt_obj) bind(C)
   write (0, "(A)")  "***********************************************************"
   stop                     
 end subroutine dump_lcio_event
+
+! extern "C" int lcio_get_event_number (LCEvent* evt)
+integer(c_int) function lcio_event_get_event_number (evt_obj) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  lcio_event_get_event_number = 0
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end function lcio_event_get_event_number
+
 
 ! extern "C" int lcio_event_signal_process_id (LCEvent* evt)
 integer(c_int) function lcio_event_signal_process_id (evt_obj) bind(C)

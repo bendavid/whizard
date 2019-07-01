@@ -14,10 +14,11 @@ $method = "recola"
 !!! Tests should be run single-threaded
 openmp_num_threads = 1
 
-process recola_1_p1 = E1, e1 => E2, e2 
+process recola_1_p1 = E1, e1 => E2, e2
 
 seed = 1
 
 sqrts = 100 GeV
 iterations = 1:100
+
 integrate (recola_1_p1)

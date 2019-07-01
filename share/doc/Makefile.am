@@ -39,18 +39,13 @@ dist_noinst_DATA = manual.tex $(PACKAGE).tex \
 	$(MANUAL_PICS) dep2dot.py
 
 MANUAL_PICS = \
-   proc_4f-history.eps proc_4f-history.pdf \
-   whizstruct.eps whizstruct.pdf cc10_1.eps cc10_1.pdf \
-   cc10_2.eps cc10_2.pdf Z-lineshape_1.eps \
-   Z-lineshape_1.pdf Z-lineshape_2.eps Z-lineshape_2.pdf \
-   flow4.eps flow4.pdf lep_higgs_1.eps lep_higgs_1.pdf \
-   lep_higgs_2.eps lep_higgs_2.pdf lep_higgs_3.eps \
-   lep_higgs_3.pdf circe2-smoothing.eps circe2-smoothing.pdf \
-   resonance_e_gam.eps resonance_e_gam.pdf resonance_n_charged.eps \
-   resonance_n_charged.pdf resonance_n_hadron.eps \
-   resonance_n_hadron.pdf resonance_n_particles.eps \
-   resonance_n_particles.pdf resonance_n_photons.eps \
-   resonance_n_photons.pdf resonance_n_visible.eps resonance_n_visible.pdf
+   proc_4f-history.pdf whizstruct.pdf cc10_1.pdf \
+   cc10_2.pdf Z-lineshape_1.pdf Z-lineshape_2.pdf \
+   flow4.pdf lep_higgs_1.pdf \
+   lep_higgs_2.pdf lep_higgs_3.pdf circe2-smoothing.pdf \
+   resonance_e_gam.pdf resonance_n_charged.pdf \
+   resonance_n_hadron.pdf resonance_n_particles.pdf  \
+   resonance_n_photons.pdf resonance_n_visible.pdf
 
 if NOWEB_AVAILABLE
 dist_pdf_DATA = manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
@@ -61,7 +56,6 @@ else
 dist_pdf_DATA =
 endif
 
-ps-local: manual.ps $(PACKAGE).ps gamelan_manual.ps
 pdf-local: manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
 
 if DISTRIBUTION
@@ -80,9 +74,7 @@ TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
 EXTRA_DIST = $(LATEX_STYLES)
 
 ## don't try to run the files in parallel (TeXLive 2009 doesn't like it)
-manual.ps: $(PACKAGE).ps
 manual.pdf: $(PACKAGE).pdf
-$(PACKAGE).ps: gamelan_manual.ps
 $(PACKAGE).pdf: gamelan_manual.pdf $(WHIZARD_DEPENDENCY_GRAPHS_PDF) overview.pdf
 
 manual.pdf: variables.tex
@@ -92,24 +84,7 @@ variables.tex: ../../src/whizard
 
 gamelan_manual.pdf: gamelan.sty
 
-## Rules for creating PS
-.tex.dvi:
-	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; else \
-	   echo " LATEX     " $<; TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; fi
-	-TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
-	while grep 'Rerun to get cross-references right\.' $*.log; \
-	do TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
-	done
-	@if test -r $*.mp; then \
-	   if $(AM_V_P); then $(GML) $*; else echo " GML       " $*; $(GML) $* >/dev/null; fi; \
-	fi
-	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; else \
-	   echo " LATEX     " $<; TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; fi
-.dvi.ps:
-	@if $(AM_V_P); then $(DVIPS) -o $@ $<; else \
-	   echo " DVIPS     " $<; $(DVIPS) -o $@ $< >/dev/null; fi
-
-SUFFIXES: .dot .tex .dvi .ps .pdf
+SUFFIXES: .dot .tex .pdf
 
 .dot.pdf:
 	@if $(AM_V_P); then :; else echo " DOT       " $@; fi
@@ -199,14 +174,7 @@ if PDFLATEX_AVAILABLE
 	fi
 	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
 	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
-else
-if PS2PDF_AVAILABLE
-.ps.pdf:
-	$(PS2PDF) $<.ps
-else
-	@echo "Neither pdflatex nor ps2pdf available. The PDF manual cannot be made"
-endif !PS2PDF_AVAILABLE
-endif !PDFLATEX_AVAILABLE
+endif PDFLATEX_AVAILABLE
 endif DISTRIBUTION
 
 ## Rules for creating HTML
@@ -224,8 +192,8 @@ manual.html: variables.tex manual.tex $(MANUAL_PICS)
 	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex; else \
 	   echo " HEVEA     " $@; \
 	   TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -s -fix $(HEVEAOPTS) manual.tex >/dev/null 2>&1; fi
-	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) manual; else \
-	   echo " IMAGEN     manual"; TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) manual >/dev/null 2>&1; fi
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) -pdf manual; else \
+	   echo " IMAGEN     manual"; TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) -pdf manual >/dev/null 2>&1; fi
 ### There are no Feynman diagrams at the moment inside the manual.
 #	$(MPOST) manualpics.mp
 	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex; else \
@@ -277,16 +245,16 @@ endif NOWEB_AVAILABLE
 mostlyclean-latex:
 	-rm -f *.aux *.log *.dvi *.toc *.idx *.out *.ltp *.mp *.mpx *.glo \
 	gamelan_manual.[1-9] gamelan_manual.[1-9][0-9] \
-	manual.ps manual.pdf gamelan_manual.ps gamelan_manual.pdf \
+	manual.pdf gamelan_manual.pdf \
 	$(WHIZARD_DEPENDENCY_GRAPHS_DOT) $(WHIZARD_DEPENDENCY_GRAPHS_PDF) \
 	overview.dot overview.pdf variables.tex
 	-test "$(srcdir)" != "." && rm -f $(PACKAGE).pdf
 clean-latex:
 maintainer-clean-latex:
-	-rm manual.ps manual.pdf gamelan_manual.ps gamelan_manual.pdf
+	-rm manual.pdf gamelan_manual.pdf
 if NOWEB_AVAILABLE
 mostlyclean-whizard:
-	-rm -f $(PACKAGE).tex $(PACKAGE).ps $(PACKAGE).pdf gamelan.sty
+	-rm -f $(PACKAGE).tex $(PACKAGE).pdf gamelan.sty
 maintainer-clean-whizard:
 else
 mostlyclean-whizard:

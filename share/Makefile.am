@@ -75,6 +75,7 @@ dist_models_DATA = \
   models/SM_tt_threshold.mdl \
   models/SM.mdl \
   models/SM_Higgs.mdl \
+  models/SM_Higgs_CKM.mdl \
   models/SM_hadrons.mdl \
   models/SSC.mdl \
   models/SSC_2.mdl \

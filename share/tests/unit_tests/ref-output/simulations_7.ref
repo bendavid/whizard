@@ -13,7 +13,7 @@
 * Re-read the event from file and generate another one
 
 ========================================================================
- Event
+ Event #2
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -952,7 +952,7 @@ event_excess* =>  0.000000000000E+00
 * Re-read both events from file
 
 ========================================================================
- Event
+ Event #2
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

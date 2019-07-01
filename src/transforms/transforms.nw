@@ -1482,6 +1482,7 @@ the scope of this module.
      type(string_t), dimension(:), allocatable :: proc_id
      real(default) :: on_shell_limit = 0
      real(default) :: on_shell_turnoff = 0
+     real(default) :: background_factor = 1
      logical :: selector_active = .false.
      type(selector_t) :: selector
      integer :: selected_history = 0
@@ -1544,9 +1545,11 @@ the scope of this module.
        write (u, "(1x,A)")  "Selected: [none]"
     end if
     write (u, "(1x,A,1x," // FMT_12 // ")")  &
-         "On-shell limit   =", evt%on_shell_limit
+         "On-shell limit    =", evt%on_shell_limit
     write (u, "(1x,A,1x," // FMT_12 // ")")  &
-         "On-shell turnoff =", evt%on_shell_turnoff
+         "On-shell turnoff  =", evt%on_shell_turnoff
+    write (u, "(1x,A,1x," // FMT_12 // ")")  &
+         "Background factor =", evt%background_factor
     call write_separator (u)
     if (evt%selector_active) then
        write (u, "(2x)", advance="no")
@@ -1640,6 +1643,20 @@ is less than the [[on_shell_limit]] above.  For details, see the
   end subroutine evt_resonance_set_on_shell_turnoff
   
 @ %def evt_resonance_set_on_shell_turnoff
+@ Reweight (suppress) the background contribution if there is a resonance
+history that applies.  The event will be registered as background if there is
+no applicable resonance history, or if the background configuration has been
+selected based on (reweighted) squared matrix elements.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: set_background_factor => evt_resonance_set_background_factor
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_set_background_factor (evt, background_factor)
+    class(evt_resonance_t), intent(inout) :: evt
+    real(default), intent(in) :: background_factor
+    evt%background_factor = background_factor
+  end subroutine evt_resonance_set_background_factor
+  
+@ %def evt_resonance_set_background_factor
 @
 \subsection{Selector}
 Manually import a random-number generator object.  This should be
@@ -1888,6 +1905,13 @@ belong to process components are collected in one flat array.
 After determining matrix elements and background, we may reduce the
 weight of the matrix elements in the selector by applying a turnoff
 factor.
+
+The factor [[background_factor]] indicates whether to include the background
+contribution at all, as long as there is a nonvanishing resonance
+contribution.  Note that instead of setting background to zero, we just
+multiply it by a very small number.  This ensures that indices are assigned
+correctly, and that background will eventually be selected if smooth turnoff
+is chosen.
 <<Resonance insertion: evt resonance: TBP>>=
   procedure :: compute_probabilities => evt_resonance_compute_probabilities
 <<Resonance insertion: procedures>>=
@@ -1921,6 +1945,9 @@ factor.
     sqme_bg = abs (sqme_master - sqme_sum)
     if (evt%on_shell_turnoff > 0) then
        call evt%apply_turnoff_factor (sqme_res, index_array)
+    end if
+    if (any (sqme_res > 0)) then
+       sqme_bg = sqme_bg * evt%background_factor
     end if
     call evt%init_selector ([sqme_bg, sqme_res], offset = -1)
   end subroutine evt_resonance_compute_probabilities
@@ -4036,11 +4063,33 @@ into the lab frame.
 @ %def recoil_kinematics_5
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Transverse momentum for ISR photons}
-<<[[isr_photon_handler.f90]]>>=
+\section{Transverse momentum for the ISR and EPA approximations}
+
+The ISR and EPA handler takes an event with a single radiated collinear
+particle (photon for ISR, beam particle for EPA) for each beam, respectively,
+and inserts transverse momentum for both.  The four-particle kinematics allows
+us to generate $Q^2$ and azimuthal angles independently, without violating
+energy-momentum conservation.  The $Q^2$ distribution is logarithmic, as
+required by the effective particle approximation, and reflected in the
+inclusive ISR/EPA structure functions.  We also conserve the invariant mass of
+the partonic systm after radiation.  The total transverse-momentum kick is
+applied in form of a Lorentz transformation to the elementary process, both
+in- and out-particles.  In fact, the incoming partons (beam particle for ISR,
+photon for EPA) which would be virtual space-like in the exact kinematics
+configuration, are replaced by on-shell incoming partons, such that energy,
+momentum, and invariant mass $\sqrt{\hat s}$ are conserved.
+
+Regarding kinematics, we treat all particles as massless.  The beam-particle
+mass only appears as the parameter [[isr_mass]] or [[epa_mass]], respectively,
+and cuts off the logarithmic distribution.  The upper cutoff is [[isr_q_max]]
+([[epa_q_max]]), which defaults to the available energy $\sqrt{s}$.
+
+The only differences between ISR and EPA, in this context, are the particle
+types, and an extra $\bar x$ factor in the lower cutoff for EPA, see below.
+<<[[isr_epa_handler.f90]]>>=
 <<File header>>
 
-module isr_photon_handler
+module isr_epa_handler
 
 <<Use kinds>>
 <<Use strings>>
@@ -4070,26 +4119,24 @@ module isr_photon_handler
 
 <<Standard module head>>
 
-<<ISR photon handler: public>>
+<<ISR/EPA handler: public>>
 
-<<ISR photon handler: parameters>>
+<<ISR/EPA handler: parameters>>
 
-<<ISR photon handler: types>>
+<<ISR/EPA handler: types>>
 
 contains
 
-<<ISR photon handler: procedures>>
+<<ISR/EPA handler: procedures>>
 
-end module isr_photon_handler
-@ %def isr_photon_handler
+end module isr_epa_handler
+@ %def isr_epa_handler
 @
 \subsection{Event transform type}
-This is the type for the event transform generating transverse
-momentum for the QED ISR photons.
-
 Convention: [[beam]] are the incoming partons before ISR -- not
-necessarily the actual beams, need not be in c.m.\ frame.  [[photon]]
-are the radiated photons, and [[parton]] are the remainders which
+necessarily the actual beams, need not be in c.m.\ frame.  [[radiated]]
+are the radiated particles (photon for ISR), and [[parton]] are the
+remainders which 
 initiate the elementary process.  These particles are copied verbatim
 from the event record, and must be collinear.
 
@@ -4110,13 +4157,20 @@ Momenta: [[pi]] are the beams transformed to their common c.m.\ frame.
 momenta in the [[pi]] c.m.\ frame.  [[km]] and [[qm]] are the
 photon/parton momenta with the $Q$ distribution applied, and finally
 [[qo]] are the partons [[qm]] projected on-shell.
-<<ISR photon handler: public>>=
-  public :: evt_isr_t
-<<ISR photon handler: types>>=
-  type, extends (evt_t) :: evt_isr_t
+<<ISR/EPA handler: public>>=
+  public :: evt_isr_epa_t
+<<ISR/EPA handler: types>>=
+  type, extends (evt_t) :: evt_isr_epa_t
      private
      integer :: mode = ISR_TRIVIAL_COLLINEAR
+     logical :: isr_active = .false.
+     logical :: epa_active = .false.
+     real(default) :: isr_q_max = 0
+     real(default) :: epa_q_max = 0
+     real(default) :: isr_mass = 0
+     real(default) :: epa_mass = 0
      real(default) :: sqrts = 0
+     integer, dimension(2) :: rad_mode = BEAM_RAD_NONE
      real(default), dimension(2) :: q_max = 0
      real(default), dimension(2) :: m = 0
      real(default), dimension(2) :: xc = 0
@@ -4127,8 +4181,8 @@ photon/parton momenta with the $Q$ distribution applied, and finally
      integer, dimension(2) :: i_beam = 0
      type(particle_t), dimension(2) :: beam
      type(vector4_t), dimension(2) :: pi
-     integer, dimension(2) :: i_photon = 0
-     type(particle_t), dimension(2) :: photon
+     integer, dimension(2) :: i_radiated = 0
+     type(particle_t), dimension(2) :: radiated
      type(vector4_t), dimension(2) :: ki
      type(vector4_t), dimension(2) :: km
      integer, dimension(2) :: i_parton = 0
@@ -4137,41 +4191,64 @@ photon/parton momenta with the $Q$ distribution applied, and finally
      type(vector4_t), dimension(2) :: qm
      type(vector4_t), dimension(2) :: qo
    contains
-   <<ISR photon handler: evt isr: TBP>>
-  end type evt_isr_t
+   <<ISR/EPA handler: evt isr: TBP>>
+  end type evt_isr_epa_t
 
-@ %def evt_isr_t
+@ %def evt_isr_epa_t
+@
+\subsection{ISR/EPA distinction}
+<<ISR/EPA handler: parameters>>=
+  integer, parameter, public :: BEAM_RAD_NONE = 0
+  integer, parameter, public :: BEAM_RAD_ISR = 1
+  integer, parameter, public :: BEAM_RAD_EPA = 2
+  
+@ %def BEAM_RAD_NONE
+@ %def BEAM_RAD_ISR
+@ %def BEAM_RAD_EPA
+<<ISR/EPA handler: procedures>>=
+  function rad_mode_string (mode) result (string)
+    type(string_t) :: string
+    integer, intent(in) :: mode
+    select case (mode)
+    case (BEAM_RAD_NONE);  string = "---"
+    case (BEAM_RAD_ISR);   string = "ISR"
+    case (BEAM_RAD_EPA);   string = "EPA"
+    case default;  string = "???"
+    end select
+  end function rad_mode_string
+  
+@ %def rad_mode_string
 @
 \subsection{Photon insertion modes}
-<<ISR photon handler: parameters>>=
+<<ISR/EPA handler: parameters>>=
   integer, parameter, public :: ISR_TRIVIAL_COLLINEAR = 0
   integer, parameter, public :: ISR_PAIR_RECOIL = 1
   
-@ %def ISR_TRIVIAL_COLLINEAR
+@ %def ISR_TRIVIAL_COLLINEAR ISR_PAIR_RECOIL
 @
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: get_mode_string => evt_isr_get_mode_string
-<<ISR photon handler: procedures>>=
-  function evt_isr_get_mode_string (evt) result (string)
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: get_mode_string => evt_isr_epa_get_mode_string
+<<ISR/EPA handler: procedures>>=
+  function evt_isr_epa_get_mode_string (evt) result (string)
     type(string_t) :: string
-    class(evt_isr_t), intent(in) :: evt
+    class(evt_isr_epa_t), intent(in) :: evt
     select case (evt%mode)
     case (ISR_TRIVIAL_COLLINEAR)
        string = "trivial, collinear"
     case (ISR_PAIR_RECOIL)
-       string = "photon-pair recoil"
+       string = "pair recoil"
     case default
        string = "[undefined]"
     end select
-  end function evt_isr_get_mode_string
+  end function evt_isr_epa_get_mode_string
 
-@ %def evt_isr_get_mode_string
+@ %def evt_isr_epa_get_mode_string
 @ Set the numerical mode ID from a user-level string representation.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: set_mode_string => evt_isr_set_mode_string
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_set_mode_string (evt, string)
-    class(evt_isr_t), intent(inout) :: evt
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: set_mode_string => evt_isr_epa_set_mode_string
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_set_mode_string (evt, string)
+    class(evt_isr_epa_t), intent(inout) :: evt
     type(string_t), intent(in) :: string
     select case (char (string))
     case ("trivial")
@@ -4182,58 +4259,95 @@ photon/parton momenta with the $Q$ distribution applied, and finally
        call msg_fatal ("ISR handler: mode '" // char (string) &
             // "' is undefined")
     end select
-  end subroutine evt_isr_set_mode_string
+  end subroutine evt_isr_epa_set_mode_string
 
-@ %def evt_isr_set_mode_string
+@ %def evt_isr_epa_set_mode_string
 @ 
 \subsection{Output}
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: write_name => evt_isr_write_name
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_write_name (evt, unit)
-    class(evt_isr_t), intent(in) :: evt
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: write_name => evt_isr_epa_write_name
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_write_name (evt, unit)
+    class(evt_isr_epa_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
-    write (u, "(1x,A)")  "Event transform: ISR photon handler"
-  end subroutine evt_isr_write_name
+    write (u, "(1x,A)")  "Event transform: ISR/EPA handler"
+  end subroutine evt_isr_epa_write_name
 
-@ %def evt_isr_write_name
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: write_mode => evt_isr_write_mode
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_write_mode (evt, unit)
-    class(evt_isr_t), intent(in) :: evt
+@ %def evt_isr_epa_write_name
+@ The overall recoil-handling mode.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: write_mode => evt_isr_epa_write_mode
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_write_mode (evt, unit)
+    class(evt_isr_epa_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
-    write (u, "(3x,A,1x,I0,':',1x,A)")  "Insertion mode =", evt%mode, &
+    write (u, "(1x,A,1x,I0,':',1x,A)")  "Insertion mode =", evt%mode, &
          char (evt%get_mode_string ())
-  end subroutine evt_isr_write_mode
+  end subroutine evt_isr_epa_write_mode
   
-@ %def evt_isr_write_mode
-@ The trivial mode does not depend on any data, since it does nothing
-to the event.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: write_data => evt_isr_write_data
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_write_data (evt, unit, testflag)
-    class(evt_isr_t), intent(in) :: evt
+@ %def evt_isr_epa_write_mode
+@ The input data for ISR and EPA, respectively.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: write_input => evt_isr_epa_write_input
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_write_input (evt, unit, testflag)
+    class(evt_isr_epa_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     character(len=7) :: fmt
     integer :: u
     u = given_output_unit (unit)
     call pac_fmt (fmt, FMT_19, FMT_12, testflag)
+    if (evt%isr_active) then
+       write (u, "(3x,A,1x," // fmt // ")") "ISR: Q_max =", evt%isr_q_max
+       write (u, "(3x,A,1x," // fmt // ")") "     m     =", evt%isr_mass
+    else
+       write (u, "(3x,A)") "ISR: [inactive]"
+    end if
+    if (evt%epa_active) then
+       write (u, "(3x,A,1x," // fmt // ")") "EPA: Q_max =", evt%epa_q_max
+       write (u, "(3x,A,1x," // fmt // ")") "     m     =", evt%epa_mass
+    else
+       write (u, "(3x,A)") "EPA: [inactive]"
+    end if
+  end subroutine evt_isr_epa_write_input
+
+@ %def evt_isr_epa_write_input
+@ The trivial mode does not depend on any data, since it does nothing
+to the event.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: write_data => evt_isr_epa_write_data
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_write_data (evt, unit, testflag)
+    class(evt_isr_epa_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    character(len=7), parameter :: FMTL_19 = "A3,16x"
+    character(len=7), parameter :: FMTL_12 = "A3,9x"
+    character(len=7) :: fmt, fmtl
+    integer :: u
+    u = given_output_unit (unit)
+    call pac_fmt (fmt, FMT_19, FMT_12, testflag)
+    call pac_fmt (fmtl, FMTL_19, FMTL_12, testflag)
     select case (evt%mode)
     case (ISR_PAIR_RECOIL)
+       write (u, "(1x,A)")  "Event:"
+       write (u, "(3x,A,2(1x," // fmtl // "))") &
+            "mode  = ", &
+            char (rad_mode_string (evt%rad_mode(1))), &
+            char (rad_mode_string (evt%rad_mode(2)))
        write (u, "(3x,A,2(1x," // fmt // "))") "Q_max =", evt%q_max
        write (u, "(3x,A,2(1x," // fmt // "))") "m     =", evt%m
-       write (u, "(3x,A,1x," // fmt // ")") "sqrts =", evt%sqrts
-       write (u, "(3x,A,2(1x," // fmt // "))")  "x  = ", evt%xc
-       write (u, "(3x,A,2(1x," // fmt // "))")  "xb = ", evt%xcb
+       write (u, "(3x,A,2(1x," // fmt // "))") "x     =", evt%xc
+       write (u, "(3x,A,2(1x," // fmt // "))") "xb    =", evt%xcb
+       write (u, "(3x,A,1x," // fmt // ")")    "sqrts =", evt%sqrts
        call write_separator (u)
-       write (u, "(A)")  "Lorentz boost (partons before ISR c.m. -> lab) ="
+       write (u, "(A)")  "Lorentz boost (partons before radiation &
+            &c.m. -> lab) ="
        call evt%lti%write (u, testflag)
        write (u, "(A)")  "Lorentz transformation (collinear partons &
             &-> partons with recoil in c.m.) ="
@@ -4242,15 +4356,15 @@ to the event.
             &-> partons with recoil in lab frame) ="
        call evt%lt%write (u, testflag)
     end select
-  end subroutine evt_isr_write_data
+  end subroutine evt_isr_epa_write_data
 
-@ %def evt_isr_write_data
+@ %def evt_isr_epa_write_data
 @ Output method.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: write => evt_isr_write
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_write (evt, unit, verbose, more_verbose, testflag)
-    class(evt_isr_t), intent(in) :: evt
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: write => evt_isr_epa_write
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_isr_epa_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, more_verbose, testflag
     logical :: show_mass
@@ -4265,12 +4379,13 @@ to the event.
     call evt%write_name (u)
     call write_separator (u, 2)
     call evt%write_mode (u)
+    call evt%write_input (u, testflag=testflag)
     call evt%write_data (u, testflag=testflag)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
     if (all (evt%i_beam > 0)) then
        call write_separator (u)
-       write (u, "(A,2(1x,I0))")  "Partons before ISR:", evt%i_beam
+       write (u, "(A,2(1x,I0))")  "Partons before radiation:", evt%i_beam
        do i = 1, 2
           call evt%beam(i)%write (u, testflag=testflag)
        end do
@@ -4280,12 +4395,12 @@ to the event.
           call evt%pi(i)%write (u, show_mass=show_mass, testflag=testflag)
        end do
     end if
-    if (all (evt%i_photon > 0)) then
+    if (all (evt%i_radiated > 0)) then
        call write_separator (u)
-       write (u, "(A,2(1x,I0))")  "Radiated photons, collinear:", &
-            evt%i_photon
+       write (u, "(A,2(1x,I0))")  "Radiated particles, collinear:", &
+            evt%i_radiated
        do i = 1, 2
-          call evt%photon(i)%write (u, testflag=testflag)
+          call evt%radiated(i)%write (u, testflag=testflag)
        end do
        call write_separator (u)
        write (u, "(A)")  "... boosted to c.m.:"
@@ -4300,7 +4415,7 @@ to the event.
     end if
     if (all (evt%i_parton > 0)) then
        call write_separator (u)
-       write (u, "(A,2(1x,I0))")  "Partons after ISR, collinear:", &
+       write (u, "(A,2(1x,I0))")  "Partons after radiation, collinear:", &
             evt%i_parton
        do i = 1, 2
           call evt%parton(i)%write (u, testflag=testflag)
@@ -4326,35 +4441,34 @@ to the event.
          call evt%particle_set%write &
          (u, summary = .true., compressed = .true., testflag = testflag)
     call write_separator (u)
-  end subroutine evt_isr_write
+  end subroutine evt_isr_epa_write
 
-@ %def evt_isr_write
+@ %def evt_isr_epa_write
 @
 \subsection{Initialization}
 Manually import a random-number generator object.  This should be
 done only for testing purposes.  The standard procedure is to
 [[connect]] a process to an event transform; this will create an
 appropriate [[rng]] from the RNG factory in the process object.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: import_rng => evt_isr_import_rng
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_import_rng (evt, rng)
-    class(evt_isr_t), intent(inout) :: evt
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: import_rng => evt_isr_epa_import_rng
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_import_rng (evt, rng)
+    class(evt_isr_epa_t), intent(inout) :: evt
     class(rng_t), allocatable, intent(inout) :: rng
     call move_alloc (from = rng, to = evt%rng)
-  end subroutine evt_isr_import_rng
+  end subroutine evt_isr_epa_import_rng
 
-@ %def evt_isr_import_rng
-@ Set constant kinematics limits.  This version assumes that both
-beams are identical, so the values are shared.  Note that [[sqrts]] is
-used only as the fallback value for [[q_max]].  The actual [[sqrts]]
-value for the transform object is inferred from the incoming
-particles, event by event.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure :: set_data => evt_isr_set_data
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_set_data (evt, sqrts, q_max, m)
-    class(evt_isr_t), intent(inout) :: evt
+@ %def evt_isr_epa_import_rng
+@ Set constant kinematics limits and initialize for ISR.  Note that [[sqrts]]
+is used only as the fallback value for [[q_max]].  The actual [[sqrts]] value
+for the transform object is inferred from the incoming particles, event by
+event.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: set_data_isr => evt_isr_epa_set_data_isr
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_set_data_isr (evt, sqrts, q_max, m)
+    class(evt_isr_epa_t), intent(inout) :: evt
     real(default), intent(in) :: sqrts
     real(default), intent(in) :: q_max
     real(default), intent(in) :: m
@@ -4362,72 +4476,94 @@ particles, event by event.
        call msg_fatal ("ISR handler: sqrts value must be positive")
     end if
     if (q_max <= 0 .or. q_max > sqrts) then
-       evt%q_max = sqrts
+       evt%isr_q_max = sqrts
     else
-       evt%q_max = q_max
+       evt%isr_q_max = q_max
     end if
     if (m > 0) then
-       evt%m = m
+       evt%isr_mass = m
     else
        call msg_fatal ("ISR handler: ISR_mass value must be positive")
     end if
-  end subroutine evt_isr_set_data
+    evt%isr_active = .true.
+  end subroutine evt_isr_epa_set_data_isr
     
-@ %def evt_isr_set_data
+@ %def evt_isr_epa_set_data_isr
+@ Set constant kinematics limits and initialize for EPA.  Note that [[sqrts]] is
+used only as the fallback value for [[q_max]].  The actual [[sqrts]]
+value for the transform object is inferred from the incoming
+particles, event by event.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: set_data_epa => evt_isr_epa_set_data_epa
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_set_data_epa (evt, sqrts, q_max, m)
+    class(evt_isr_epa_t), intent(inout) :: evt
+    real(default), intent(in) :: sqrts
+    real(default), intent(in) :: q_max
+    real(default), intent(in) :: m
+    if (sqrts <= 0) then
+       call msg_fatal ("EPA handler: sqrts value must be positive")
+    end if
+    if (q_max <= 0 .or. q_max > sqrts) then
+       evt%epa_q_max = sqrts
+    else
+       evt%epa_q_max = q_max
+    end if
+    if (m > 0) then
+       evt%epa_mass = m
+    else
+       call msg_fatal ("EPA handler: EPA_mass value must be positive")
+    end if
+    evt%epa_active = .true.
+  end subroutine evt_isr_epa_set_data_epa
+    
+@ %def evt_isr_epa_set_data_epa
 @
 \subsection{Fetch event data}
-Identify the ISR radiation photons and the recoil momenta in the
+Identify the radiated particles and the recoil momenta in the
 particle set.  Without much sophistication, start from the end and
 find particles with the ``remnant'' status.  Their parents should point to
 the recoiling parton.  If successful, set the particle indices in the
 [[evt]] object, for further processing.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure, private :: identify_photons
-<<ISR photon handler: procedures>>=
-  subroutine identify_photons (evt)
-    class(evt_isr_t), intent(inout) :: evt
-    type(flavor_t) :: flv
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure, private :: identify_radiated
+<<ISR/EPA handler: procedures>>=
+  subroutine identify_radiated (evt)
+    class(evt_isr_epa_t), intent(inout) :: evt
     integer :: i, k
     k = 2
     FIND_LAST_RADIATED: do i = evt%particle_set%get_n_tot (), 1, -1
        associate (prt => evt%particle_set%prt(i))
          if (prt%is_beam_remnant ()) then
-            evt%i_photon(k) = i
-            evt%photon(k) = prt
+            evt%i_radiated(k) = i
+            evt%radiated(k) = prt
             k = k - 1
             if (k == 0)  exit FIND_LAST_RADIATED
          end if
        end associate
     end do FIND_LAST_RADIATED
     if (k /= 0)  call err_count
-    do i = 1, 2
-       flv = evt%photon(i)%get_flv ()
-       if (flv%get_pdg () /= PHOTON)  call err_photon
-    end do
   contains
     subroutine err_count
       call evt%particle_set%write ()
-      call msg_fatal ("ISR photon handler: event does not contain two radiated particles")
+      call msg_fatal ("ISR/EPA handler: &
+           &event does not contain two radiated particles")
     end subroutine err_count
-    subroutine err_photon
-      call evt%particle_set%write ()
-      call msg_fatal ("ISR photon handler: event does not contain two radiated photons")
-    end subroutine err_photon
-  end subroutine identify_photons
+  end subroutine identify_radiated
   
-@ %def identify_photons
-@ When the photons are known, we can fetch their parent particles and
-ask for the other child, the incoming parton.
-<<ISR photon handler: evt isr: TBP>>=
+@ %def identify_radiated
+@ When the radiated particles are known, we can fetch their parent
+particles and ask for the other child, the incoming parton.
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure, private :: identify_partons
-<<ISR photon handler: procedures>>=
+<<ISR/EPA handler: procedures>>=
   subroutine identify_partons (evt)
-    class(evt_isr_t), intent(inout) :: evt
+    class(evt_isr_epa_t), intent(inout) :: evt
     integer, dimension(:), allocatable :: parent, child
     integer :: i, j
-    if (all (evt%i_photon > 0)) then
+    if (all (evt%i_radiated > 0)) then
        do i = 1, 2
-          parent = evt%photon(i)%get_parents ()
+          parent = evt%radiated(i)%get_parents ()
           if (size (parent) /= 1)  call err_mismatch
           evt%i_beam(i) = parent(1)
           evt%beam(i) = evt%particle_set%prt(parent(1))
@@ -4435,7 +4571,7 @@ ask for the other child, the incoming parton.
             child = prt%get_children ()
             if (size (child) /= 2)  call err_mismatch
             do j = 1, 2
-               if (child(j) /= evt%i_photon(i)) then
+               if (child(j) /= evt%i_radiated(i)) then
                   evt%i_parton(i) = child(j)
                   evt%parton(i) = evt%particle_set%prt(child(j))
                end if
@@ -4446,25 +4582,96 @@ ask for the other child, the incoming parton.
   contains
     subroutine err_mismatch
       call evt%particle_set%write ()
-      call msg_bug ("ISR photon handler: mismatch in parent-child relations")
+      call msg_bug ("ISR/EPA handler: mismatch in parent-child relations")
     end subroutine err_mismatch
   end subroutine identify_partons
   
 @ %def identify_partons
+@ Check whether the radiated particle is a photon, or the incoming
+parton is a photon.  Then set the ISR/EPA switch appropriately, for
+each beam.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: check_radiation => evt_isr_epa_check_radiation
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_check_radiation (evt)
+    class(evt_isr_epa_t), intent(inout) :: evt
+    type(flavor_t) :: flv
+    integer :: i
+    do i = 1, 2
+       flv = evt%radiated(i)%get_flv ()
+       if (flv%get_pdg () == PHOTON) then
+          if (evt%isr_active) then
+             evt%rad_mode(i) = BEAM_RAD_ISR
+          else
+             call err_isr_init
+          end if
+       else
+          flv = evt%parton(i)%get_flv ()
+          if (flv%get_pdg () == PHOTON) then
+             if (evt%epa_active) then
+                evt%rad_mode(i) = BEAM_RAD_EPA
+             else
+                call err_epa_init
+             end if
+          else
+             call err_no_photon
+          end if
+       end if
+    end do
+  contains
+    subroutine err_isr_init
+      call evt%particle_set%write ()
+      call msg_fatal ("ISR/EPA handler: &
+           &event contains radiated photon, but ISR is not initialized")
+    end subroutine err_isr_init
+    subroutine err_epa_init
+      call evt%particle_set%write ()
+      call msg_fatal ("ISR/EPA handler: &
+           &event contains incoming photon, but EPA is not initialized")
+    end subroutine err_epa_init
+    subroutine err_no_photon
+      call evt%particle_set%write ()
+      call msg_fatal ("ISR/EPA handler: &
+           &event does not appear to be ISR or EPA - missing photon")
+    end subroutine err_no_photon
+  end subroutine evt_isr_epa_check_radiation
+  
+@ %def evt_isr_epa_check_radiation
+@ Internally set the appropriate parameters (ISR/EPA) for the two
+beams in the recoil mode.
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure :: set_recoil_parameters => evt_isr_epa_set_recoil_parameters
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_set_recoil_parameters (evt)
+    class(evt_isr_epa_t), intent(inout) :: evt
+    integer :: i
+    do i = 1, 2
+       select case (evt%rad_mode(i))
+       case (BEAM_RAD_ISR)
+          evt%q_max(i) = evt%isr_q_max
+          evt%m(i) = evt%isr_mass
+       case (BEAM_RAD_EPA)
+          evt%q_max(i) = evt%epa_q_max
+          evt%m(i) = evt%epa_mass
+       end select
+    end do
+  end subroutine evt_isr_epa_set_recoil_parameters
+
+@ %def evt_isr_epa_set_recoil_parameters
 @ Boost the particles that participate in ISR to their proper
 c.m.\ frame, copying the momenta to [[pi]], [[ki]], [[qi]].  Also
 assign [[sqrts]] properly.
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure, private :: boost_to_cm
-<<ISR photon handler: procedures>>=
+<<ISR/EPA handler: procedures>>=
   subroutine boost_to_cm (evt)
-    class(evt_isr_t), intent(inout) :: evt
+    class(evt_isr_epa_t), intent(inout) :: evt
     type(vector4_t), dimension(2) :: p
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(2) :: q
     logical :: ok
     p = evt%beam%get_momentum ()
-    k = evt%photon%get_momentum ()
+    k = evt%radiated%get_momentum ()
     q = evt%parton%get_momentum ()
     call initial_transformation (p, evt%sqrts, evt%lti, ok)
     if (.not. ok)  call err_non_collinear
@@ -4474,31 +4681,32 @@ assign [[sqrts]] properly.
   contains
     subroutine err_non_collinear
       call evt%particle_set%write ()
-      call msg_fatal ("ISR photon handler: &
-           &partons before ISR are not collinear")
+      call msg_fatal ("ISR/EPA handler: &
+           &partons before radiation are not collinear")
     end subroutine err_non_collinear
   end subroutine boost_to_cm
 
 @ %def boost_to_cm    
 @ We can infer the $x$ and $\bar x$ values of the event by looking at
-the energy fractions of the photons and partons, relative to their
+the energy fractions of the radiated particles and incoming partons,
+respectively, relative to their 
 parents.  Of course, we must assume that they are all collinear, and
 that energy is conserved.
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure, private :: infer_x
-<<ISR photon handler: procedures>>=
+<<ISR/EPA handler: procedures>>=
   subroutine infer_x (evt)
-    class(evt_isr_t), intent(inout) :: evt
-    real(default) :: E_parent, E_photon, E_parton
+    class(evt_isr_epa_t), intent(inout) :: evt
+    real(default) :: E_parent, E_radiated, E_parton
     integer :: i
-    if (all (evt%i_photon > 0)) then
+    if (all (evt%i_radiated > 0)) then
        do i = 1, 2
           E_parent = energy (evt%pi(i))
-          E_photon = energy (evt%ki(i))
+          E_radiated = energy (evt%ki(i))
           E_parton = energy (evt%qi(i))
           if (E_parent > 0) then
              evt%xc(i) = E_parton / E_parent
-             evt%xcb(i)= E_photon / E_parent
+             evt%xcb(i)= E_radiated / E_parent
           else
              call err_energy
           end if
@@ -4507,55 +4715,69 @@ that energy is conserved.
   contains
     subroutine err_energy
       call evt%particle_set%write ()
-      call msg_bug ("ISR photon handler: non-positive energy in ISR splitting")
+      call msg_bug ("ISR/EPA handler: non-positive energy in splitting")
     end subroutine err_energy
   end subroutine infer_x
   
 @ %def infer_x
 @
-\subsection{Two-photon recoil}
+\subsection{Two-parton recoil}
 For transforming partons into recoil momenta, we make use of the
 routines in the [[recoil_kinematics]] module.  In addition to the
 collinear momenta, we use the $x$ energy fractions, and four numbers
 from the RNG.
 
+There is one subtle difference w.r.t.\ ISR case: the EPA mass
+parameter is multiplied by the energy fraction $x$, separately for
+each beam.  This is the effective lower $Q$ cutoff.
+
 For certain kinematics, close to the $Q_\text{max}$ endpoint, this may
 fail, and [[ok]] is set to false.  In that case, we should generate
 new recoil momenta for the same event.  This is handled by the generic
 unweighting procedure.
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure, private :: generate_recoil => evt_generate_recoil
-<<ISR photon handler: procedures>>=
+<<ISR/EPA handler: procedures>>=
   subroutine evt_generate_recoil (evt, ok)
-    class(evt_isr_t), intent(inout) :: evt
+    class(evt_isr_epa_t), intent(inout) :: evt
     logical, intent(out) :: ok
     real(default), dimension(4) :: r
+    real(default), dimension(2) :: m
+    integer :: i
     call evt%rng%generate (r)
-    call generate_recoil (evt%sqrts, evt%q_max, evt%m, evt%xc, evt%xcb, r, &
+    do i = 1, 2
+       select case (evt%rad_mode(i))
+       case (BEAM_RAD_ISR);  m(i) = evt%m(i)
+       case (BEAM_RAD_EPA);  m(i) = evt%xc(i) * evt%m(i)
+       case default;         m(i) = 0
+       end select
+    end do
+    call generate_recoil (evt%sqrts, evt%q_max, m, evt%xc, evt%xcb, r, &
          evt%km, evt%qm, evt%qo, ok)
   end subroutine evt_generate_recoil
 
 @ %def evt_generate_recoil
-@ Replace the collinear photon (parton) momenta by the momenta that we
+@ Replace the collinear radiated (incoming) parton momenta by the
+momenta that we 
 have generated, respectively.  Recall that the recoil has been applied
 in the c.m.\ system of the partons before ISR, so we apply the stored
 Lorentz transformation to boost them to the lab frame.
-<<ISR photon handler: evt isr: TBP>>=
-  procedure, private :: replace_photons
+<<ISR/EPA handler: evt isr: TBP>>=
+  procedure, private :: replace_radiated
   procedure, private :: replace_partons
-<<ISR photon handler: procedures>>=
-  subroutine replace_photons (evt)
-    class(evt_isr_t), intent(inout) :: evt
+<<ISR/EPA handler: procedures>>=
+  subroutine replace_radiated (evt)
+    class(evt_isr_epa_t), intent(inout) :: evt
     integer :: i
     do i = 1, 2
-       associate (prt => evt%particle_set%prt(evt%i_photon(i)))
+       associate (prt => evt%particle_set%prt(evt%i_radiated(i)))
          call prt%set_momentum (evt%lti * evt%km(i))
        end associate
     end do
-  end subroutine replace_photons
+  end subroutine replace_radiated
 
   subroutine replace_partons (evt)
-    class(evt_isr_t), intent(inout) :: evt
+    class(evt_isr_epa_t), intent(inout) :: evt
     integer :: i
     do i = 1, 2
        associate (prt => evt%particle_set%prt(evt%i_parton(i)))
@@ -4564,7 +4786,7 @@ Lorentz transformation to boost them to the lab frame.
     end do
   end subroutine replace_partons
 
-@ %def replace_photons
+@ %def replace_radiated
 @ %def replace_partons
 @
 \subsection{Transform the event}
@@ -4582,11 +4804,11 @@ apply the recoil transformation, then boost back to the lab frame.
 
 The [[mask]] keep track of particles that we transform, just in case
 the parent-child tree is multiply connected.
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure :: transform_outgoing => evt_transform_outgoing
-<<ISR photon handler: procedures>>=
+<<ISR/EPA handler: procedures>>=
   subroutine evt_transform_outgoing (evt)
-    class(evt_isr_t), intent(inout) :: evt
+    class(evt_isr_epa_t), intent(inout) :: evt
     logical, dimension(:), allocatable :: mask
     call recoil_transformation (evt%sqrts, evt%xc, evt%qo, evt%lto)
     evt%lt = evt%lti * evt%lto * inverse (evt%lti)
@@ -4615,18 +4837,19 @@ the parent-child tree is multiply connected.
 @
 \subsection{Implemented methods}
 Here we take the particle set from the previous event transform and
-copy it, then generate the transverse momentum for the photons and for
+copy it, then generate the transverse momentum for the radiated
+particles and for 
 the incoming partons.  If this fails (rarely, for large $p_T$),
 return zero for the probability, to trigger another try.
 
 NOTE: The boost for the initial partonic system, if not in the
 c.m.\ frame, has not been implemented yet.
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure :: generate_weighted => &
-       evt_isr_generate_weighted
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_generate_weighted (evt, probability)
-    class(evt_isr_t), intent(inout) :: evt
+       evt_isr_epa_generate_weighted
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_generate_weighted (evt, probability)
+    class(evt_isr_epa_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid
     call evt%particle_set%final ()
@@ -4637,8 +4860,10 @@ c.m.\ frame, has not been implemented yet.
        probability = 1
        valid = .true.
     case (ISR_PAIR_RECOIL)
-       call evt%identify_photons ()
+       call evt%identify_radiated ()
        call evt%identify_partons ()
+       call evt%check_radiation ()
+       call evt%set_recoil_parameters ()
        call evt%boost_to_cm ()
        call evt%infer_x ()
        call evt%generate_recoil (valid)
@@ -4648,77 +4873,79 @@ c.m.\ frame, has not been implemented yet.
           probability = 0
        end if
     case default
-       call msg_bug ("ISR photon handler: generate weighted: unsupported mode")
+       call msg_bug ("ISR/EPA handler: generate weighted: unsupported mode")
     end select
     evt%particle_set_exists = .false.
-  end subroutine evt_isr_generate_weighted
+  end subroutine evt_isr_epa_generate_weighted
 
-@ %def evt_isr_generate_weighted
-@ 
-Insert the generated photons and partons with $p_T$ in their
-respective places.
+@ %def evt_isr_epa_generate_weighted
+@ Insert the generated radiated particles and incoming partons with
+$p_T$ in their respective places.
 
 The factorization parameters are irrelevant.
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure :: make_particle_set => &
-       evt_isr_make_particle_set
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_make_particle_set &
+       evt_isr_epa_make_particle_set
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_make_particle_set &
        (evt, factorization_mode, keep_correlations, r)
-    class(evt_isr_t), intent(inout) :: evt
+    class(evt_isr_epa_t), intent(inout) :: evt
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
     select case (evt%mode)
     case (ISR_TRIVIAL_COLLINEAR)
     case (ISR_PAIR_RECOIL)
-       call evt%replace_photons ()
+       call evt%replace_radiated ()
        call evt%replace_partons ()
        call evt%transform_outgoing ()
     case default
-       call msg_bug ("ISR photon handler: make particle set: unsupported mode")
+       call msg_bug ("ISR/EPA handler: make particle set: unsupported mode")
     end select
     evt%particle_set_exists = .true.
-  end subroutine evt_isr_make_particle_set
+  end subroutine evt_isr_epa_make_particle_set
 
-@ %def event_isr_photon_handler_make_particle_set
+@ %def event_isr_epa_handler_make_particle_set
 @
-<<ISR photon handler: evt isr: TBP>>=
+<<ISR/EPA handler: evt isr: TBP>>=
   procedure :: prepare_new_event => &
-       evt_isr_prepare_new_event
-<<ISR photon handler: procedures>>=
-  subroutine evt_isr_prepare_new_event (evt, i_mci, i_term)
-    class(evt_isr_t), intent(inout) :: evt
+       evt_isr_epa_prepare_new_event
+<<ISR/EPA handler: procedures>>=
+  subroutine evt_isr_epa_prepare_new_event (evt, i_mci, i_term)
+    class(evt_isr_epa_t), intent(inout) :: evt
     integer, intent(in) :: i_mci, i_term
     call evt%reset ()
-  end subroutine evt_isr_prepare_new_event
+  end subroutine evt_isr_epa_prepare_new_event
 
-@ %def evt_isr_prepare_new_event
+@ %def evt_isr_epa_prepare_new_event
 @
-\subsection{Unit tests}
+\subsection{Unit tests: ISR}
 Test module, followed by the corresponding implementation module.
-<<[[isr_photon_handler_ut.f90]]>>=
+
+This test module differs from most of the other test modules, since it
+contains two test subroutines: one for ISR and one for EPA below.
+<<[[isr_epa_handler_ut.f90]]>>=
 <<File header>>
 
-module isr_photon_handler_ut
+module isr_epa_handler_ut
   use unit_tests
-  use isr_photon_handler_uti
+  use isr_epa_handler_uti
 
 <<Standard module head>>
 
-<<ISR photon handler: public test>>
+<<ISR/EPA handler: public test>>
 
 contains
 
-<<ISR photon handler: test driver>>
+<<ISR/EPA handler: test driver>>
 
-end module isr_photon_handler_ut
-@ %def isr_photon_handler_ut
+end module isr_epa_handler_ut
+@ %def isr_epa_handler_ut
 @
-<<[[isr_photon_handler_uti.f90]]>>=
+<<[[isr_epa_handler_uti.f90]]>>=
 <<File header>>
 
-module isr_photon_handler_uti
+module isr_epa_handler_uti
 
 <<Use kinds>>
 <<Use strings>>
@@ -4731,57 +4958,57 @@ module isr_photon_handler_uti
   use particles, only: particle_set_t
 
   use event_transforms
-  use isr_photon_handler, only: evt_isr_t
+  use isr_epa_handler, only: evt_isr_epa_t
 
   use rng_base_ut, only: rng_test_t
 
 <<Standard module head>>
 
-<<ISR photon handler: test declarations>>
+<<ISR/EPA handler: test declarations>>
 
 contains
 
-<<ISR photon handler: tests>>
+<<ISR/EPA handler: tests>>
 
-end module isr_photon_handler_uti
+end module isr_epa_handler_uti
 
-@ %def isr_photon_handler_uti
+@ %def isr_epa_handler_uti
 @ API: driver for the unit tests below.
-<<ISR photon handler: public test>>=
-  public :: isr_photon_handler_test
-<<ISR photon handler: test driver>>=
-  subroutine isr_photon_handler_test (u, results)
+<<ISR/EPA handler: public test>>=
+  public :: isr_handler_test
+<<ISR/EPA handler: test driver>>=
+  subroutine isr_handler_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<ISR photon handler: execute tests>>
-  end subroutine isr_photon_handler_test
+  <<ISR photon handler: execute ISR tests>>
+  end subroutine isr_handler_test
 
-@ %def isr_photon_handler_test
+@ %def isr_handler_test
 @
 \subsubsection{Trivial case}
 Handle photons resulting from ISR radiation.  This test is for the
 trivial case where the event is kept collinear.
-<<ISR photon handler: execute tests>>=
-  call test (isr_photon_handler_1, "isr_photon_handler_1", &
+<<ISR/EPA handler: execute ISR tests>>=
+  call test (isr_handler_1, "isr_handler_1", &
        "collinear case, no modification", &
        u, results)
-<<ISR photon handler: test declarations>>=
-  public :: isr_photon_handler_1
-<<ISR photon handler: tests>>=
-  subroutine isr_photon_handler_1 (u)
+<<ISR/EPA handler: test declarations>>=
+  public :: isr_handler_1
+<<ISR/EPA handler: tests>>=
+  subroutine isr_handler_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
-    type(evt_isr_t), target :: evt_isr
+    type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
     real(default) :: sqrts
     real(default), dimension(2) :: x, xb
     real(default) :: probability
 
-    write (u, "(A)")  "* Test output: isr_photon_handler_1"
+    write (u, "(A)")  "* Test output: isr_handler_1"
     write (u, "(A)")  "*   Purpose: apply photon handler trivially (no-op)"
     write (u, "(A)")
 
@@ -4821,23 +5048,23 @@ trivial case where the event is kept collinear.
     call write_separator (u, 2)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize ISR photon handler transform"
+    write (u, "(A)")  "* Initialize ISR handler transform"
     write (u, "(A)")
     
-    evt_trivial%next => evt_isr
-    evt_isr%previous => evt_trivial
+    evt_trivial%next => evt_isr_epa
+    evt_isr_epa%previous => evt_trivial
     
-    call evt_isr%write (u)
+    call evt_isr_epa%write (u)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Fill ISR photon handler transform"
+    write (u, "(A)")  "* Fill ISR handler transform"
     write (u, "(A)")
     
-    call evt_isr%prepare_new_event (1, 1)
-    call evt_isr%generate_weighted (probability)
-    call evt_isr%make_particle_set (0, .false.)
+    call evt_isr_epa%prepare_new_event (1, 1)
+    call evt_isr_epa%generate_weighted (probability)
+    call evt_isr_epa%make_particle_set (0, .false.)
     
-    call evt_isr%write (u)
+    call evt_isr_epa%write (u)
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
@@ -4845,16 +5072,16 @@ trivial case where the event is kept collinear.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call evt_isr%final ()
+    call evt_isr_epa%final ()
     call evt_trivial%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: isr_photon_handler_1"
+    write (u, "(A)")  "* Test output end: isr_handler_1"
 
-  end subroutine isr_photon_handler_1
+  end subroutine isr_handler_1
 
-@ %def isr_photon_handler_1
+@ %def isr_handler_1
 @
 \subsubsection{Photon pair with recoil}
 Handle photons resulting from ISR radiation.  This test invokes the
@@ -4862,28 +5089,28 @@ two-photon recoil mechanism.  Both photons acquire transverse
 momentum, the parton momenta recoil, such that total energy-momentum
 is conserved, and all outgoing photons and partons are on-shell
 (massless).
-<<ISR photon handler: execute tests>>=
-  call test (isr_photon_handler_2, "isr_photon_handler_2", &
+<<ISR/EPA handler: execute ISR tests>>=
+  call test (isr_handler_2, "isr_handler_2", &
        "two-photon recoil", &
        u, results)
-<<ISR photon handler: test declarations>>=
-  public :: isr_photon_handler_2
-<<ISR photon handler: tests>>=
-  subroutine isr_photon_handler_2 (u)
+<<ISR/EPA handler: test declarations>>=
+  public :: isr_handler_2
+<<ISR/EPA handler: tests>>=
+  subroutine isr_handler_2 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
-    type(evt_isr_t), target :: evt_isr
+    type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
     real(default) :: sqrts
     real(default), dimension(2) :: x, xb
     class(rng_t), allocatable :: rng
     real(default) :: probability
 
-    write (u, "(A)")  "* Test output: isr_photon_handler_2"
+    write (u, "(A)")  "* Test output: isr_handler_2"
     write (u, "(A)")  "*   Purpose: apply photon handler with two-photon recoil"
     write (u, "(A)")
 
@@ -4923,14 +5150,14 @@ is conserved, and all outgoing photons and partons are on-shell
     call write_separator (u, 2)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize ISR photon handler transform"
+    write (u, "(A)")  "* Initialize ISR handler transform"
     write (u, "(A)")
     
-    evt_trivial%next => evt_isr
-    evt_isr%previous => evt_trivial
+    evt_trivial%next => evt_isr_epa
+    evt_isr_epa%previous => evt_trivial
     
-    call evt_isr%set_mode_string (var_str ("recoil"))
-    call evt_isr%set_data ( &
+    call evt_isr_epa%set_mode_string (var_str ("recoil"))
+    call evt_isr_epa%set_data_isr ( &
          sqrts = sqrts, &
          q_max = sqrts, &
          m = 511.e-3_default &
@@ -4938,19 +5165,19 @@ is conserved, and all outgoing photons and partons are on-shell
 
     allocate (rng_test_t :: rng)
     call rng%init (3)  ! default would produce pi for azimuthal angle
-    call evt_isr%import_rng (rng)
+    call evt_isr_epa%import_rng (rng)
 
-    call evt_isr%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Fill ISR photon handler transform"
+    write (u, "(A)")  "* Fill ISR handler transform"
     write (u, "(A)")
     
-    call evt_isr%prepare_new_event (1, 1)
-    call evt_isr%generate_weighted (probability)
-    call evt_isr%make_particle_set (0, .false.)
+    call evt_isr_epa%prepare_new_event (1, 1)
+    call evt_isr_epa%generate_weighted (probability)
+    call evt_isr_epa%make_particle_set (0, .false.)
     
-    call evt_isr%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
@@ -4958,36 +5185,36 @@ is conserved, and all outgoing photons and partons are on-shell
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call evt_isr%final ()
+    call evt_isr_epa%final ()
     call evt_trivial%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: isr_photon_handler_2"
+    write (u, "(A)")  "* Test output end: isr_handler_2"
 
-  end subroutine isr_photon_handler_2
+  end subroutine isr_handler_2
 
-@ %def isr_photon_handler_2
+@ %def isr_handler_2
 @
 \subsubsection{Boosted beams}
 Handle photons resulting from ISR radiation.  This test invokes the
 two-photon recoil mechanism, in the case that the partons before ISR
 are not in their c.m.\ frame (but collinear).
-<<ISR photon handler: execute tests>>=
-  call test (isr_photon_handler_3, "isr_photon_handler_3", &
+<<ISR/EPA handler: execute ISR tests>>=
+  call test (isr_handler_3, "isr_handler_3", &
        "two-photon recoil with boost", &
        u, results)
-<<ISR photon handler: test declarations>>=
-  public :: isr_photon_handler_3
-<<ISR photon handler: tests>>=
-  subroutine isr_photon_handler_3 (u)
+<<ISR/EPA handler: test declarations>>=
+  public :: isr_handler_3
+<<ISR/EPA handler: tests>>=
+  subroutine isr_handler_3 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
-    type(evt_isr_t), target :: evt_isr
+    type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
     real(default) :: sqrts
     real(default), dimension(2) :: x0
@@ -4995,7 +5222,7 @@ are not in their c.m.\ frame (but collinear).
     class(rng_t), allocatable :: rng
     real(default) :: probability
 
-    write (u, "(A)")  "* Test output: isr_photon_handler_3"
+    write (u, "(A)")  "* Test output: isr_handler_3"
     write (u, "(A)")  "*   Purpose: apply photon handler for boosted beams &
          &and two-photon recoil"
     write (u, "(A)")
@@ -5052,14 +5279,14 @@ are not in their c.m.\ frame (but collinear).
     call write_separator (u, 2)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize ISR photon handler transform"
+    write (u, "(A)")  "* Initialize ISR handler transform"
     write (u, "(A)")
     
-    evt_trivial%next => evt_isr
-    evt_isr%previous => evt_trivial
+    evt_trivial%next => evt_isr_epa
+    evt_isr_epa%previous => evt_trivial
     
-    call evt_isr%set_mode_string (var_str ("recoil"))
-    call evt_isr%set_data ( &
+    call evt_isr_epa%set_mode_string (var_str ("recoil"))
+    call evt_isr_epa%set_data_isr ( &
          sqrts = sqrts, &
          q_max = sqrts, &
          m = 511.e-3_default &
@@ -5067,19 +5294,19 @@ are not in their c.m.\ frame (but collinear).
 
     allocate (rng_test_t :: rng)
     call rng%init (3)  ! default would produce pi for azimuthal angle
-    call evt_isr%import_rng (rng)
+    call evt_isr_epa%import_rng (rng)
 
-    call evt_isr%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Fill ISR photon handler transform"
+    write (u, "(A)")  "* Fill ISR handler transform"
     write (u, "(A)")
     
-    call evt_isr%prepare_new_event (1, 1)
-    call evt_isr%generate_weighted (probability)
-    call evt_isr%make_particle_set (0, .false.)
+    call evt_isr_epa%prepare_new_event (1, 1)
+    call evt_isr_epa%generate_weighted (probability)
+    call evt_isr_epa%make_particle_set (0, .false.)
     
-    call evt_isr%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
@@ -5087,769 +5314,54 @@ are not in their c.m.\ frame (but collinear).
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call evt_isr%final ()
+    call evt_isr_epa%final ()
     call evt_trivial%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: isr_photon_handler_3"
+    write (u, "(A)")  "* Test output end: isr_handler_3"
 
-  end subroutine isr_photon_handler_3
+  end subroutine isr_handler_3
 
-@ %def isr_photon_handler_3
+@ %def isr_handler_3
 @
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Transverse beam momentum for EPA events}
-<<[[epa_beam_handler.f90]]>>=
-<<File header>>
-
-module epa_beam_handler
-
-<<Use kinds>>
-<<Use strings>>
-  use diagnostics, only: msg_fatal
-  use diagnostics, only: msg_bug
-  use io_units
-  use format_defs, only: FMT_12, FMT_19
-  use format_utils, only: write_separator
-  use format_utils, only: pac_fmt
-  use physics_defs, only: PHOTON
-  use lorentz, only: vector4_t
-  use lorentz, only: energy
-  use lorentz, only: lorentz_transformation_t
-  use lorentz, only: identity
-  use lorentz, only: inverse
-  use lorentz, only: operator(*)
-  use sm_qcd
-  use flavors, only: flavor_t
-  use particles, only: particle_t
-  use model_data
-  use models
-  use rng_base, only: rng_t
-  use event_transforms
-  use recoil_kinematics, only: initial_transformation
-  use recoil_kinematics, only: generate_recoil
-  use recoil_kinematics, only: recoil_transformation
-
-<<Standard module head>>
-
-<<EPA beam handler: public>>
-
-<<EPA beam handler: parameters>>
-
-<<EPA beam handler: types>>
-
-contains
-
-<<EPA beam handler: procedures>>
-
-end module epa_beam_handler
-@ %def epa_beam_handler
-@
-\subsection{Event transform type}
-This is the type for the event transform generating transverse
-momentum for the QED EPA beams.
-
-Convention: [[beam]] are the incoming partons before EPA -- not
-necessarily the actual beams, need not be in c.m.\ frame.  [[photon]]
-are the radiated photons, and [[parton]] are the remainders which
-initiate the elementary process.  These particles are copied verbatim
-from the event record, and must be collinear.
-
-The kinematical parameters are [[sqrts]] = invariant mass of the
-[[beam]] particles, [[q_max]] and [[m]] determining the $Q^2$
-distribution, and [[xc]]/[[xcb]] as the energy fraction (complement)
-of the partons, relative to the beams.
-
-Transformations: [[lti]] is the Lorentz transformation that would
-boosts [[pi]] (c.m. frame) back to the original [[beam]] momenta (lab
-frame).  [[lto]] is the recoil transformation, transforming the partons
-after EPA from the collinear frame to the recoiling frame.  [[lt]] is
-the combination of both, which is to be applied to all particles after
-the hard interaction.
-
-Momenta: [[pi]] are the beams transformed to their common c.m.\ frame.
-[[ki]] and [[qi]] are the photon/parton
-momenta in the [[pi]] c.m.\ frame.  [[km]] and [[qm]] are the
-photon/parton momenta with the $Q$ distribution applied, and finally
-[[qo]] are the partons [[qm]] projected on-shell.
-<<EPA beam handler: public>>=
-  public :: evt_epa_t
-<<EPA beam handler: types>>=
-  type, extends (evt_t) :: evt_epa_t
-     private
-     integer :: mode = EPA_TRIVIAL_COLLINEAR
-     real(default) :: sqrts = 0
-     real(default), dimension(2) :: q_max = 0
-     real(default), dimension(2) :: m = 0
-     real(default), dimension(2) :: xc = 0
-     real(default), dimension(2) :: xcb = 0
-     type(lorentz_transformation_t) :: lti = identity
-     type(lorentz_transformation_t) :: lto = identity
-     type(lorentz_transformation_t) :: lt  = identity
-     integer, dimension(2) :: i_beam = 0
-     type(particle_t), dimension(2) :: beam
-     type(vector4_t), dimension(2) :: pi
-     integer, dimension(2) :: i_radiated = 0
-     type(particle_t), dimension(2) :: radiated
-     type(vector4_t), dimension(2) :: ki
-     type(vector4_t), dimension(2) :: km
-     integer, dimension(2) :: i_parton = 0
-     type(particle_t), dimension(2) :: parton
-     type(vector4_t), dimension(2) :: qi
-     type(vector4_t), dimension(2) :: qm
-     type(vector4_t), dimension(2) :: qo
-   contains
-   <<EPA beam handler: evt isr: TBP>>
-  end type evt_epa_t
-
-@ %def evt_epa_t
-@
-\subsection{Photon insertion modes}
-<<EPA beam handler: parameters>>=
-  integer, parameter, public :: EPA_TRIVIAL_COLLINEAR = 0
-  integer, parameter, public :: EPA_PAIR_RECOIL = 1
-  
-@ %def EPA_TRIVIAL_COLLINEAR
-@
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: get_mode_string => evt_epa_get_mode_string
-<<EPA beam handler: procedures>>=
-  function evt_epa_get_mode_string (evt) result (string)
-    type(string_t) :: string
-    class(evt_epa_t), intent(in) :: evt
-    select case (evt%mode)
-    case (EPA_TRIVIAL_COLLINEAR)
-       string = "trivial, collinear"
-    case (EPA_PAIR_RECOIL)
-       string = "beam-pair recoil"
-    case default
-       string = "[undefined]"
-    end select
-  end function evt_epa_get_mode_string
-
-@ %def evt_epa_get_mode_string
-@ Set the numerical mode ID from a user-level string representation.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: set_mode_string => evt_epa_set_mode_string
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_set_mode_string (evt, string)
-    class(evt_epa_t), intent(inout) :: evt
-    type(string_t), intent(in) :: string
-    select case (char (string))
-    case ("trivial")
-       evt%mode = EPA_TRIVIAL_COLLINEAR
-    case ("recoil")
-       evt%mode = EPA_PAIR_RECOIL
-    case default
-       call msg_fatal ("EPA handler: mode '" // char (string) &
-            // "' is undefined")
-    end select
-  end subroutine evt_epa_set_mode_string
-
-@ %def evt_epa_set_mode_string
-@ 
-\subsection{Output}
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: write_name => evt_epa_write_name
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_write_name (evt, unit)
-    class(evt_epa_t), intent(in) :: evt
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = given_output_unit (unit)
-    write (u, "(1x,A)")  "Event transform: EPA beam handler"
-  end subroutine evt_epa_write_name
-
-@ %def evt_epa_write_name
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: write_mode => evt_epa_write_mode
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_write_mode (evt, unit)
-    class(evt_epa_t), intent(in) :: evt
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = given_output_unit (unit)
-    write (u, "(3x,A,1x,I0,':',1x,A)")  "Insertion mode =", evt%mode, &
-         char (evt%get_mode_string ())
-  end subroutine evt_epa_write_mode
-  
-@ %def evt_epa_write_mode
-@ The trivial mode does not depend on any data, since it does nothing
-to the event.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: write_data => evt_epa_write_data
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_write_data (evt, unit, testflag)
-    class(evt_epa_t), intent(in) :: evt
-    integer, intent(in), optional :: unit
-    logical, intent(in), optional :: testflag
-    character(len=7) :: fmt
-    integer :: u
-    u = given_output_unit (unit)
-    call pac_fmt (fmt, FMT_19, FMT_12, testflag)
-    select case (evt%mode)
-    case (EPA_PAIR_RECOIL)
-       write (u, "(3x,A,2(1x," // fmt // "))") "Q_max =", evt%q_max
-       write (u, "(3x,A,2(1x," // fmt // "))") "m     =", evt%m
-       write (u, "(3x,A,1x," // fmt // ")") "sqrts =", evt%sqrts
-       write (u, "(3x,A,2(1x," // fmt // "))")  "x  = ", evt%xc
-       write (u, "(3x,A,2(1x," // fmt // "))")  "xb = ", evt%xcb
-       call write_separator (u)
-       write (u, "(A)")  "Lorentz boost (beams before EPA c.m. -> lab) ="
-       call evt%lti%write (u, testflag)
-       write (u, "(A)")  "Lorentz transformation (collinear photons &
-            &-> photons with recoil in c.m.) ="
-       call evt%lto%write (u, testflag)
-       write (u, "(A)")  "Combined transformation (photons &
-            &-> photons with recoil in lab frame) ="
-       call evt%lt%write (u, testflag)
-    end select
-  end subroutine evt_epa_write_data
-
-@ %def evt_epa_write_data
-@ Output method.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: write => evt_epa_write
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_write (evt, unit, verbose, more_verbose, testflag)
-    class(evt_epa_t), intent(in) :: evt
-    integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose, more_verbose, testflag
-    logical :: show_mass
-    integer :: u, i
-    u = given_output_unit (unit)
-    if (present (testflag)) then
-       show_mass = .not. testflag
-    else
-       show_mass = .true.
-    end if
-    call write_separator (u, 2)
-    call evt%write_name (u)
-    call write_separator (u, 2)
-    call evt%write_mode (u)
-    call evt%write_data (u, testflag=testflag)
-    call write_separator (u)
-    call evt%base_write (u, testflag = testflag, show_set = .false.)
-    if (all (evt%i_beam > 0)) then
-       call write_separator (u)
-       write (u, "(A,2(1x,I0))")  "Beams before EPA:", evt%i_beam
-       do i = 1, 2
-          call evt%beam(i)%write (u, testflag=testflag)
-       end do
-       call write_separator (u)
-       write (u, "(A)")  "... boosted to c.m.:"
-       do i = 1, 2
-          call evt%pi(i)%write (u, show_mass=show_mass, testflag=testflag)
-       end do
-    end if
-    if (all (evt%i_radiated > 0)) then
-       call write_separator (u)
-       write (u, "(A,2(1x,I0))")  "Radiated beam remnants, collinear:", &
-            evt%i_radiated
-       do i = 1, 2
-          call evt%radiated(i)%write (u, testflag=testflag)
-       end do
-       call write_separator (u)
-       write (u, "(A)")  "... boosted to c.m.:"
-       do i = 1, 2
-          call evt%ki(i)%write (u, show_mass=show_mass, testflag=testflag)
-       end do
-       call write_separator (u)
-       write (u, "(A)")  "... with kT:"
-       do i = 1, 2
-          call evt%km(i)%write (u, show_mass=show_mass, testflag=testflag)
-       end do
-    end if
-    if (all (evt%i_parton > 0)) then
-       call write_separator (u)
-       write (u, "(A,2(1x,I0))")  "Photons after EPA, collinear:", &
-            evt%i_parton
-       do i = 1, 2
-          call evt%parton(i)%write (u, testflag=testflag)
-       end do
-       call write_separator (u)
-       write (u, "(A)")  "... boosted to c.m.:"
-       do i = 1, 2
-          call evt%qi(i)%write (u, show_mass=show_mass, testflag=testflag)
-       end do
-       call write_separator (u)
-       write (u, "(A)")  "... with qT, off-shell:"
-       do i = 1, 2
-          call evt%qm(i)%write (u, show_mass=show_mass, testflag=testflag)
-       end do
-       call write_separator (u)
-       write (u, "(A)")  "... projected on-shell:"
-       do i = 1, 2
-          call evt%qo(i)%write (u, show_mass=show_mass, testflag=testflag)
-       end do
-       call write_separator (u)
-    end if
-    if (evt%particle_set_exists)  &
-         call evt%particle_set%write &
-         (u, summary = .true., compressed = .true., testflag = testflag)
-    call write_separator (u)
-  end subroutine evt_epa_write
-
-@ %def evt_epa_write
-@
-\subsection{Initialization}
-Manually import a random-number generator object.  This should be
-done only for testing purposes.  The standard procedure is to
-[[connect]] a process to an event transform; this will create an
-appropriate [[rng]] from the RNG factory in the process object.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: import_rng => evt_epa_import_rng
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_import_rng (evt, rng)
-    class(evt_epa_t), intent(inout) :: evt
-    class(rng_t), allocatable, intent(inout) :: rng
-    call move_alloc (from = rng, to = evt%rng)
-  end subroutine evt_epa_import_rng
-
-@ %def evt_epa_import_rng
-@ Set constant kinematics limits.  This version assumes that both
-beams are identical, so the values are shared.  Note that [[sqrts]] is
-used only as the fallback value for [[q_max]].  The actual [[sqrts]]
-value for the transform object is inferred from the incoming
-particles, event by event.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: set_data => evt_epa_set_data
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_set_data (evt, sqrts, q_max, m)
-    class(evt_epa_t), intent(inout) :: evt
-    real(default), intent(in) :: sqrts
-    real(default), intent(in) :: q_max
-    real(default), intent(in) :: m
-    if (sqrts <= 0) then
-       call msg_fatal ("EPA handler: sqrts value must be positive")
-    end if
-    if (q_max <= 0 .or. q_max > sqrts) then
-       evt%q_max = sqrts
-    else
-       evt%q_max = q_max
-    end if
-    if (m > 0) then
-       evt%m = m
-    else
-       call msg_fatal ("EPA handler: EPA_mass value must be positive")
-    end if
-  end subroutine evt_epa_set_data
-    
-@ %def evt_epa_set_data
-@
-\subsection{Fetch event data}
-Identify the EPA radiated beam remnants and the recoil momenta in the
-particle set.  Without much sophistication, start from the end and
-find particles with the ``remnant'' status.  Their parents should point to
-the recoiling parton.  If successful, set the particle indices in the
-[[evt]] object, for further processing.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure, private :: identify_radiated
-<<EPA beam handler: procedures>>=
-  subroutine identify_radiated (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    integer :: i, k
-    k = 2
-    FIND_LAST_RADIATED: do i = evt%particle_set%get_n_tot (), 1, -1
-       associate (prt => evt%particle_set%prt(i))
-         if (prt%is_beam_remnant ()) then
-            evt%i_radiated(k) = i
-            evt%radiated(k) = prt
-            k = k - 1
-            if (k == 0)  exit FIND_LAST_RADIATED
-         end if
-       end associate
-    end do FIND_LAST_RADIATED
-    if (k /= 0)  call err_count
-  contains
-    subroutine err_count
-      call evt%particle_set%write ()
-      call msg_fatal ("EPA beam handler: event does not contain two radiated &
-           &beam remnants")
-    end subroutine err_count
-  end subroutine identify_radiated
-  
-@ %def identify_radiated
-@ When the radiated are known, we can fetch their parent particles and
-ask for the other child, the incoming parton.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure, private :: identify_partons
-<<EPA beam handler: procedures>>=
-  subroutine identify_partons (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    integer, dimension(:), allocatable :: parent, child
-    type(flavor_t) :: flv
-    integer :: i, j
-    if (all (evt%i_radiated > 0)) then
-       do i = 1, 2
-          parent = evt%radiated(i)%get_parents ()
-          if (size (parent) /= 1)  call err_mismatch
-          evt%i_beam(i) = parent(1)
-          evt%beam(i) = evt%particle_set%prt(parent(1))
-          associate (prt => evt%beam(i))
-            child = prt%get_children ()
-            if (size (child) /= 2)  call err_mismatch
-            do j = 1, 2
-               if (child(j) /= evt%i_radiated(i)) then
-                  evt%i_parton(i) = child(j)
-                  evt%parton(i) = evt%particle_set%prt(child(j))
-               end if
-            end do
-          end associate
-       end do
-       do i = 1, 2
-          flv = evt%parton(i)%get_flv ()
-          if (flv%get_pdg () /= PHOTON)  call err_radiated
-       end do
-    end if
-  contains
-    subroutine err_mismatch
-      call evt%particle_set%write ()
-      call msg_bug ("EPA beam handler: mismatch in parent-child relations")
-    end subroutine err_mismatch
-    subroutine err_radiated
-      call evt%particle_set%write ()
-      call msg_fatal ("EPA beam handler: partons must be photons")
-    end subroutine err_radiated
-  end subroutine identify_partons
-  
-@ %def identify_partons
-@ Boost the particles that participate in EPA to their proper
-c.m.\ frame, copying the momenta to [[pi]], [[ki]], [[qi]].  Also
-assign [[sqrts]] properly.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure, private :: boost_to_cm
-<<EPA beam handler: procedures>>=
-  subroutine boost_to_cm (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    type(vector4_t), dimension(2) :: p
-    type(vector4_t), dimension(2) :: k
-    type(vector4_t), dimension(2) :: q
-    logical :: ok
-    p = evt%beam%get_momentum ()
-    k = evt%radiated%get_momentum ()
-    q = evt%parton%get_momentum ()
-    call initial_transformation (p, evt%sqrts, evt%lti, ok)
-    if (.not. ok)  call err_non_collinear
-    evt%pi = inverse (evt%lti) * p
-    evt%ki = inverse (evt%lti) * k
-    evt%qi = inverse (evt%lti) * q
-  contains
-    subroutine err_non_collinear
-      call evt%particle_set%write ()
-      call msg_fatal ("EPA beam handler: &
-           &partons before EPA are not collinear")
-    end subroutine err_non_collinear
-  end subroutine boost_to_cm
-
-@ %def boost_to_cm    
-@ We can infer the $x$ and $\bar x$ values of the event by looking at
-the energy fractions of the radiated particles and partons, relative to their
-common parents.  Of course, we must assume that they are all collinear, and
-that energy is conserved.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure, private :: infer_x
-<<EPA beam handler: procedures>>=
-  subroutine infer_x (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    real(default) :: E_parent, E_radiated, E_parton
-    integer :: i
-    if (all (evt%i_radiated > 0)) then
-       do i = 1, 2
-          E_parent = energy (evt%pi(i))
-          E_radiated = energy (evt%ki(i))
-          E_parton = energy (evt%qi(i))
-          if (E_parent > 0) then
-             evt%xc(i) = E_parton / E_parent
-             evt%xcb(i)= E_radiated / E_parent
-          else
-             call err_energy
-          end if
-       end do
-    end if
-  contains
-    subroutine err_energy
-      call evt%particle_set%write ()
-      call msg_bug ("EPA beam handler: non-positive energy in EPA splitting")
-    end subroutine err_energy
-  end subroutine infer_x
-  
-@ %def infer_x
-@
-\subsection{Two-beam recoil}
-For transforming partons into recoil momenta, we make use of the
-routines in the [[recoil_kinematics]] module.  In addition to the
-collinear momenta, we use the $x$ energy fractions, and four numbers
-from the RNG.
-
-There is one subtle difference w.r.t.\ ISR case: the EPA mass
-parameter is multiplied by the energy fraction $x$, separately for
-each beam.  This is the effective lower $Q$ cutoff.
-
-For certain kinematics, close to the $Q_\text{max}$ endpoint, this may
-fail, and [[ok]] is set to false.  In that case, we should generate
-new recoil momenta for the same event.  This is handled by the generic
-unweighting procedure.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure, private :: generate_recoil => evt_generate_recoil
-<<EPA beam handler: procedures>>=
-  subroutine evt_generate_recoil (evt, ok)
-    class(evt_epa_t), intent(inout) :: evt
-    logical, intent(out) :: ok
-    real(default), dimension(4) :: r
-    call evt%rng%generate (r)
-    call generate_recoil (evt%sqrts, evt%q_max, evt%xc * evt%m, evt%xc, evt%xcb, r, &
-         evt%km, evt%qm, evt%qo, ok)
-  end subroutine evt_generate_recoil
-
-@ %def evt_generate_recoil
-@ Replace the collinear radiation (parton) momenta by the momenta that we
-have generated, respectively.  Recall that the recoil has been applied
-in the c.m.\ system of the partons before EPA, so we apply the stored
-Lorentz transformation to boost them to the lab frame.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure, private :: replace_radiated
-  procedure, private :: replace_partons
-<<EPA beam handler: procedures>>=
-  subroutine replace_radiated (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    integer :: i
-    do i = 1, 2
-       associate (prt => evt%particle_set%prt(evt%i_radiated(i)))
-         call prt%set_momentum (evt%lti * evt%km(i))
-       end associate
-    end do
-  end subroutine replace_radiated
-
-  subroutine replace_partons (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    integer :: i
-    do i = 1, 2
-       associate (prt => evt%particle_set%prt(evt%i_parton(i)))
-         call prt%set_momentum (evt%lti * evt%qo(i))
-       end associate
-    end do
-  end subroutine replace_partons
-
-@ %def replace_radiated
-@ %def replace_partons
-@
-\subsection{Transform the event}
-Knowing the new incoming partons for the elementary process, we can
-make use of another procedure in [[recoil_kinematics]] to determine
-the Lorentz transformation that transforms the collinear frame into
-the frame with transverse momentum.  We apply this transformation,
-recursively, to all particles that originate from those incoming
-partons in the original particle set.
-
-We have to allow for the pre-EPA partons being not in their common
-c.m.\ frame.  Taking into account non-commutativity, we actually have
-to first transform the outgoing particles to that c.m.\ frame, then
-apply the recoil transformation, then boost back to the lab frame.
-
-The [[mask]] keep track of particles that we transform, just in case
-the parent-child tree is multiply connected.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: transform_outgoing => evt_transform_outgoing
-<<EPA beam handler: procedures>>=
-  subroutine evt_transform_outgoing (evt)
-    class(evt_epa_t), intent(inout) :: evt
-    logical, dimension(:), allocatable :: mask
-    call recoil_transformation (evt%sqrts, evt%xc, evt%qo, evt%lto)
-    evt%lt = evt%lti * evt%lto * inverse (evt%lti)
-    allocate (mask (evt%particle_set%get_n_tot ()), source=.false.)
-    call transform_children (evt%i_parton(1))
-  contains
-    recursive subroutine transform_children (i)
-      integer, intent(in) :: i
-      integer :: j, n_child, c
-      integer, dimension(:), allocatable :: child
-      child = evt%particle_set%prt(i)%get_children ()
-      do j = 1, size (child)
-         c = child(j)
-         if (.not. mask(c)) then
-            associate (prt => evt%particle_set%prt(c))
-              call prt%set_momentum (evt%lt * prt%get_momentum ())
-              mask(c) = .true.
-              call transform_children (c)
-            end associate
-         end if
-      end do
-    end subroutine transform_children
-  end subroutine evt_transform_outgoing
-  
-@ %def evt_transform_outgoing
-@
-\subsection{Implemented methods}
-Here we take the particle set from the previous event transform and
-copy it, then generate the transverse momentum for the photons and for
-the incoming partons.  If this fails (rarely, for large $p_T$),
-return zero for the probability, to trigger another try.
-
-NOTE: The boost for the initial partonic system, if not in the
-c.m.\ frame, has not been implemented yet.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: generate_weighted => &
-       evt_epa_generate_weighted
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_generate_weighted (evt, probability)
-    class(evt_epa_t), intent(inout) :: evt
-    real(default), intent(inout) :: probability
-    logical :: valid
-    call evt%particle_set%final ()
-    evt%particle_set = evt%previous%particle_set
-    evt%particle_set_exists = .true.
-    select case (evt%mode)
-    case (EPA_TRIVIAL_COLLINEAR)
-       probability = 1
-       valid = .true.
-    case (EPA_PAIR_RECOIL)
-       call evt%identify_radiated ()
-       call evt%identify_partons ()
-       call evt%boost_to_cm ()
-       call evt%infer_x ()
-       call evt%generate_recoil (valid)
-       if (valid) then
-          probability = 1
-       else
-          probability = 0
-       end if
-    case default
-       call msg_bug ("EPA beam handler: generate weighted: unsupported mode")
-    end select
-    evt%particle_set_exists = .false.
-  end subroutine evt_epa_generate_weighted
-
-@ %def evt_epa_generate_weighted
-@ 
-Insert the generated photons and partons with $p_T$ in their
-respective places.
-
-The factorization parameters are irrelevant.
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: make_particle_set => &
-       evt_epa_make_particle_set
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_make_particle_set &
-       (evt, factorization_mode, keep_correlations, r)
-    class(evt_epa_t), intent(inout) :: evt
-    integer, intent(in) :: factorization_mode
-    logical, intent(in) :: keep_correlations
-    real(default), dimension(:), intent(in), optional :: r
-    select case (evt%mode)
-    case (EPA_TRIVIAL_COLLINEAR)
-    case (EPA_PAIR_RECOIL)
-       call evt%replace_radiated ()
-       call evt%replace_partons ()
-       call evt%transform_outgoing ()
-    case default
-       call msg_bug ("EPA beam handler: make particle set: unsupported mode")
-    end select
-    evt%particle_set_exists = .true.
-  end subroutine evt_epa_make_particle_set
-
-@ %def event_epa_beam_handler_make_particle_set
-@
-<<EPA beam handler: evt isr: TBP>>=
-  procedure :: prepare_new_event => &
-       evt_epa_prepare_new_event
-<<EPA beam handler: procedures>>=
-  subroutine evt_epa_prepare_new_event (evt, i_mci, i_term)
-    class(evt_epa_t), intent(inout) :: evt
-    integer, intent(in) :: i_mci, i_term
-    call evt%reset ()
-  end subroutine evt_epa_prepare_new_event
-
-@ %def evt_epa_prepare_new_event
-@
-\subsection{Unit tests}
-Test module, followed by the corresponding implementation module.
-<<[[epa_beam_handler_ut.f90]]>>=
-<<File header>>
-
-module epa_beam_handler_ut
-  use unit_tests
-  use epa_beam_handler_uti
-
-<<Standard module head>>
-
-<<EPA beam handler: public test>>
-
-contains
-
-<<EPA beam handler: test driver>>
-
-end module epa_beam_handler_ut
-@ %def epa_beam_handler_ut
-@
-<<[[epa_beam_handler_uti.f90]]>>=
-<<File header>>
-
-module epa_beam_handler_uti
-
-<<Use kinds>>
-<<Use strings>>
-  use format_utils, only: write_separator
-  use os_interface
-  use lorentz, only: vector4_t, vector4_moving, operator(*)
-  use rng_base, only: rng_t
-  use models, only: syntax_model_file_init, syntax_model_file_final
-  use models, only: model_list_t, model_t
-  use particles, only: particle_set_t
-
-  use event_transforms
-  use epa_beam_handler, only: evt_epa_t
-
-  use rng_base_ut, only: rng_test_t
-
-<<Standard module head>>
-
-<<EPA beam handler: test declarations>>
-
-contains
-
-<<EPA beam handler: tests>>
-
-end module epa_beam_handler_uti
-
-@ %def epa_beam_handler_uti
-@ API: driver for the unit tests below.
-<<EPA beam handler: public test>>=
-  public :: epa_beam_handler_test
-<<EPA beam handler: test driver>>=
-  subroutine epa_beam_handler_test (u, results)
+\subsection{Unit tests: EPA}
+API: Extra driver for the unit tests below.
+<<ISR/EPA handler: public test>>=
+  public :: epa_handler_test
+<<ISR/EPA handler: test driver>>=
+  subroutine epa_handler_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<EPA beam handler: execute tests>>
-  end subroutine epa_beam_handler_test
+  <<ISR/EPA handler: execute EPA tests>>
+  end subroutine epa_handler_test
 
-@ %def epa_beam_handler_test
+@ %def epa_handler_test
 @
 \subsubsection{Trivial case}
 Handle events resulting from the EPA approximation.  This test is for the
 trivial case where the event is kept collinear.
-<<EPA beam handler: execute tests>>=
-  call test (epa_beam_handler_1, "epa_beam_handler_1", &
+<<ISR/EPA handler: execute EPA tests>>=
+  call test (epa_handler_1, "epa_handler_1", &
        "collinear case, no modification", &
        u, results)
-<<EPA beam handler: test declarations>>=
-  public :: epa_beam_handler_1
-<<EPA beam handler: tests>>=
-  subroutine epa_beam_handler_1 (u)
+<<ISR/EPA handler: test declarations>>=
+  public :: epa_handler_1
+<<ISR/EPA handler: tests>>=
+  subroutine epa_handler_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
-    type(evt_epa_t), target :: evt_epa
+    type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
     real(default) :: sqrts
     real(default), dimension(2) :: x, xb
     real(default) :: probability
 
-    write (u, "(A)")  "* Test output: epa_beam_handler_1"
+    write (u, "(A)")  "* Test output: epa_handler_1"
     write (u, "(A)")  "*   Purpose: apply beam handler trivially (no-op)"
     write (u, "(A)")
 
@@ -5891,23 +5403,23 @@ trivial case where the event is kept collinear.
     call write_separator (u, 2)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize EPA beam handler transform"
+    write (u, "(A)")  "* Initialize EPA handler transform"
     write (u, "(A)")
     
-    evt_trivial%next => evt_epa
-    evt_epa%previous => evt_trivial
+    evt_trivial%next => evt_isr_epa
+    evt_isr_epa%previous => evt_trivial
     
-    call evt_epa%write (u)
+    call evt_isr_epa%write (u)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Fill EPA beam handler transform"
+    write (u, "(A)")  "* Fill EPA handler transform"
     write (u, "(A)")
     
-    call evt_epa%prepare_new_event (1, 1)
-    call evt_epa%generate_weighted (probability)
-    call evt_epa%make_particle_set (0, .false.)
+    call evt_isr_epa%prepare_new_event (1, 1)
+    call evt_isr_epa%generate_weighted (probability)
+    call evt_isr_epa%make_particle_set (0, .false.)
     
-    call evt_epa%write (u)
+    call evt_isr_epa%write (u)
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
@@ -5915,16 +5427,16 @@ trivial case where the event is kept collinear.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call evt_epa%final ()
+    call evt_isr_epa%final ()
     call evt_trivial%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: epa_beam_handler_1"
+    write (u, "(A)")  "* Test output end: epa_handler_1"
 
-  end subroutine epa_beam_handler_1
+  end subroutine epa_handler_1
 
-@ %def epa_beam_handler_1
+@ %def epa_handler_1
 @
 \subsubsection{Beam pair with recoil}
 Handle beams resulting from the EPA approximation.  This test invokes the
@@ -5932,28 +5444,28 @@ two-beam recoil mechanism.  Both beam remnants acquire transverse
 momentum, the photon momenta recoil, such that total energy-momentum
 is conserved, and all outgoing beam remnants and photons are on-shell
 (massless).
-<<EPA beam handler: execute tests>>=
-  call test (epa_beam_handler_2, "epa_beam_handler_2", &
+<<ISR/EPA handler: execute EPA tests>>=
+  call test (epa_handler_2, "epa_handler_2", &
        "two-beam recoil", &
        u, results)
-<<EPA beam handler: test declarations>>=
-  public :: epa_beam_handler_2
-<<EPA beam handler: tests>>=
-  subroutine epa_beam_handler_2 (u)
+<<ISR/EPA handler: test declarations>>=
+  public :: epa_handler_2
+<<ISR/EPA handler: tests>>=
+  subroutine epa_handler_2 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
-    type(evt_epa_t), target :: evt_epa
+    type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
     real(default) :: sqrts
     real(default), dimension(2) :: x, xb
     class(rng_t), allocatable :: rng
     real(default) :: probability
 
-    write (u, "(A)")  "* Test output: epa_beam_handler_2"
+    write (u, "(A)")  "* Test output: epa_handler_2"
     write (u, "(A)")  "*   Purpose: apply beam handler with two-beam recoil"
     write (u, "(A)")
 
@@ -5993,14 +5505,14 @@ is conserved, and all outgoing beam remnants and photons are on-shell
     call write_separator (u, 2)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize EPA beam handler transform"
+    write (u, "(A)")  "* Initialize EPA handler transform"
     write (u, "(A)")
     
-    evt_trivial%next => evt_epa
-    evt_epa%previous => evt_trivial
+    evt_trivial%next => evt_isr_epa
+    evt_isr_epa%previous => evt_trivial
     
-    call evt_epa%set_mode_string (var_str ("recoil"))
-    call evt_epa%set_data ( &
+    call evt_isr_epa%set_mode_string (var_str ("recoil"))
+    call evt_isr_epa%set_data_epa ( &
          sqrts = sqrts, &
          q_max = sqrts, &
          m = 511.e-3_default &
@@ -6008,19 +5520,19 @@ is conserved, and all outgoing beam remnants and photons are on-shell
 
     allocate (rng_test_t :: rng)
     call rng%init (3)  ! default would produce pi for azimuthal angle
-    call evt_epa%import_rng (rng)
+    call evt_isr_epa%import_rng (rng)
 
-    call evt_epa%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Fill EPA beam handler transform"
+    write (u, "(A)")  "* Fill EPA handler transform"
     write (u, "(A)")
     
-    call evt_epa%prepare_new_event (1, 1)
-    call evt_epa%generate_weighted (probability)
-    call evt_epa%make_particle_set (0, .false.)
+    call evt_isr_epa%prepare_new_event (1, 1)
+    call evt_isr_epa%generate_weighted (probability)
+    call evt_isr_epa%make_particle_set (0, .false.)
     
-    call evt_epa%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
@@ -6028,36 +5540,36 @@ is conserved, and all outgoing beam remnants and photons are on-shell
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call evt_epa%final ()
+    call evt_isr_epa%final ()
     call evt_trivial%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: epa_beam_handler_2"
+    write (u, "(A)")  "* Test output end: epa_handler_2"
 
-  end subroutine epa_beam_handler_2
+  end subroutine epa_handler_2
 
-@ %def epa_beam_handler_2
+@ %def epa_handler_2
 @
 \subsubsection{Boosted beams}
 Handle radiated beam remnants resulting from EPA radiation.  This test
 invokes the two-beam recoil mechanism, in the case that the partons
 before EPA are not in their c.m.\ frame (but collinear).
-<<EPA beam handler: execute tests>>=
-  call test (epa_beam_handler_3, "epa_beam_handler_3", &
+<<ISR/EPA handler: execute EPA tests>>=
+  call test (epa_handler_3, "epa_handler_3", &
        "two-beam recoil with boost", &
        u, results)
-<<EPA beam handler: test declarations>>=
-  public :: epa_beam_handler_3
-<<EPA beam handler: tests>>=
-  subroutine epa_beam_handler_3 (u)
+<<ISR/EPA handler: test declarations>>=
+  public :: epa_handler_3
+<<ISR/EPA handler: tests>>=
+  subroutine epa_handler_3 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
-    type(evt_epa_t), target :: evt_epa
+    type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
     real(default) :: sqrts
     real(default), dimension(2) :: x0
@@ -6065,7 +5577,7 @@ before EPA are not in their c.m.\ frame (but collinear).
     class(rng_t), allocatable :: rng
     real(default) :: probability
 
-    write (u, "(A)")  "* Test output: epa_beam_handler_3"
+    write (u, "(A)")  "* Test output: epa_handler_3"
     write (u, "(A)")  "*   Purpose: apply beam handler for boosted beams &
          &and two-beam recoil"
     write (u, "(A)")
@@ -6122,14 +5634,14 @@ before EPA are not in their c.m.\ frame (but collinear).
     call write_separator (u, 2)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize EPA beam handler transform"
+    write (u, "(A)")  "* Initialize EPA handler transform"
     write (u, "(A)")
     
-    evt_trivial%next => evt_epa
-    evt_epa%previous => evt_trivial
+    evt_trivial%next => evt_isr_epa
+    evt_isr_epa%previous => evt_trivial
     
-    call evt_epa%set_mode_string (var_str ("recoil"))
-    call evt_epa%set_data ( &
+    call evt_isr_epa%set_mode_string (var_str ("recoil"))
+    call evt_isr_epa%set_data_epa ( &
          sqrts = sqrts, &
          q_max = sqrts, &
          m = 511.e-3_default &
@@ -6137,19 +5649,19 @@ before EPA are not in their c.m.\ frame (but collinear).
 
     allocate (rng_test_t :: rng)
     call rng%init (3)  ! default would produce pi for azimuthal angle
-    call evt_epa%import_rng (rng)
+    call evt_isr_epa%import_rng (rng)
 
-    call evt_epa%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Fill EPA beam handler transform"
+    write (u, "(A)")  "* Fill EPA handler transform"
     write (u, "(A)")
     
-    call evt_epa%prepare_new_event (1, 1)
-    call evt_epa%generate_weighted (probability)
-    call evt_epa%make_particle_set (0, .false.)
+    call evt_isr_epa%prepare_new_event (1, 1)
+    call evt_isr_epa%generate_weighted (probability)
+    call evt_isr_epa%make_particle_set (0, .false.)
     
-    call evt_epa%write (u, testflag=.true.)
+    call evt_isr_epa%write (u, testflag=.true.)
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
@@ -6157,16 +5669,16 @@ before EPA are not in their c.m.\ frame (but collinear).
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call evt_epa%final ()
+    call evt_isr_epa%final ()
     call evt_trivial%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: epa_beam_handler_3"
+    write (u, "(A)")  "* Test output end: epa_handler_3"
 
-  end subroutine epa_beam_handler_3
+  end subroutine epa_handler_3
 
-@ %def epa_beam_handler_3
+@ %def epa_handler_3
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Decays}
@@ -9661,7 +9173,7 @@ This sequence sets up a two-jet process, ready for generating events.
     call lib%append (entry)
 
     call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
@@ -10915,6 +10427,9 @@ and should be written to file, including copies of [[sqme]] and [[weight]].
 @ %def event_final
 @ Output.
 
+The event index is written in the header, it should coincide with the
+[[event_index]] variable that can be used in selection and analysis.
+
 Particle set: this is a pointer to one of the event transforms, so it
 should suffice to print the latter.
 <<Events: event: TBP>>=
@@ -10938,10 +10453,14 @@ should suffice to print the latter.
     dec = .true.;  if (present (show_decay))  dec = show_decay
     verb = .false.;  if (present (verbose))  verb = verbose
     call write_separator (u, 2)
+    write (u, "(1x,A)", advance="no")  "Event"
+    if (object%has_index ()) then
+       write (u, "(1x,'#',I0)", advance="no")  object%get_index ()
+    end if
     if (object%is_complete) then
-       write (u, "(1x,A)")  "Event"
+       write (u, *)
     else
-       write (u, "(1x,A)")  "Event [incomplete]"
+       write (u, "(1x,A)")  "[incomplete]"
     end if
     call write_separator (u)
     call object%config%write (u)
@@ -11328,6 +10847,28 @@ For testing purpose, we allow for providing them explicitly, as an option.
   end subroutine event_evaluate_transforms
 
 @ %def event_evaluate_transforms
+@ Set / increment the event index for the current event.  There is no
+condition for this to happen.  The event index is actually stored in
+the subevent expression, because this allows us to access it in
+subevent expressions as a variable.
+<<Events: event: TBP>>=
+  procedure :: set_index => event_set_index
+  procedure :: increment_index => event_increment_index
+<<Events: procedures>>=
+  subroutine event_set_index (event, index)
+    class(event_t), intent(inout) :: event
+    integer, intent(in) :: index
+    call event%expr%set_event_index (index)
+  end subroutine event_set_index
+  
+  subroutine event_increment_index (event, offset)
+    class(event_t), intent(inout) :: event
+    integer, intent(in), optional :: offset
+    call event%expr%increment_event_index (offset)
+  end subroutine event_increment_index
+  
+@ %def event_set_index
+@ %def event_increment_index
 @
 Evaluate the event-related expressions, given a valid
 [[particle_set]].  If [[update_sqme]] is set, we use the process
@@ -11420,19 +10961,21 @@ values.
 @
 \subsection{Reset to empty state}
 Applying this, current event contents are marked as incomplete but
-are not deleted.  In particular, the initialization is kept.
+are not deleted.  In particular, the initialization is kept.  The
+event index is also kept, this can be reset separately.
 <<Events: event: TBP>>=
-  procedure :: reset => event_reset
+  procedure :: reset_contents => event_reset_contents
+  procedure :: reset_index => event_reset_index
 <<Events: procedures>>=
-  subroutine event_reset (event)
+  subroutine event_reset_contents (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt
-    call event%base_reset ()
+    call event%base_reset_contents ()
     event%selected_i_mci = 0
     event%selected_i_term = 0
     event%selected_channel = 0
     event%is_complete = .false.
-    call event%expr%reset ()
+    call event%expr%reset_contents ()
     event%selection_evaluated = .false.
     event%passed = .false.
     event%analysis_flag = .false.
@@ -11446,9 +10989,15 @@ are not deleted.  In particular, the initialization is kept.
        call evt%reset ()
        evt => evt%next
     end do
-  end subroutine event_reset
+  end subroutine event_reset_contents
 
-@ %def event_reset
+  subroutine event_reset_index (event)
+    class(event_t), intent(inout) :: event
+    call event%expr%reset_event_index ()
+  end subroutine event_reset_index
+
+@ %def event_reset_contents
+@ %def event_reset_index
 @
 \subsection{Squared Matrix Element and Weight}
 Transfer the result of the process instance calculation to the
@@ -11590,7 +11139,7 @@ for deterministic testing.
     integer, intent(in), optional :: i_nlo
     logical :: generate_new = .true.
     if (present (i_nlo)) generate_new = (i_nlo == 1)
-    if (generate_new) call event%reset ()
+    if (generate_new) call event%reset_contents ()
     event%selected_i_mci = i_mci
     if (event%config%unweighted) then
        call event%instance%generate_unweighted_event (i_mci)
@@ -11910,7 +11459,8 @@ and squared matrix element.
 @ %def event_get_kinematical_weight
 @ Return data used by external event formats.
 <<Events: event: TBP>>=
-  procedure :: get_index => event_get_index
+  procedure :: has_index => event_has_index 
+  procedure :: get_index => event_get_index 
   procedure :: get_fac_scale => event_get_fac_scale
   procedure :: get_alpha_s => event_get_alpha_s
   procedure :: get_sqrts => event_get_sqrts
@@ -11918,10 +11468,16 @@ and squared matrix element.
   procedure :: get_beam_file => event_get_beam_file
   procedure :: get_process_name => event_get_process_name
 <<Events: procedures>>=
+  function event_has_index (event) result (flag)
+    class(event_t), intent(in) :: event
+    logical :: flag
+    flag = event%expr%has_event_index ()
+  end function event_has_index
+
   function event_get_index (event) result (index)
     class(event_t), intent(in) :: event
     integer :: index
-    index = event%expr%index
+    index = event%expr%get_event_index ()
   end function event_get_index
 
   function event_get_fac_scale (event) result (fac_scale)
@@ -12143,6 +11699,7 @@ end module events_uti
     write (u, "(A)")
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -12207,6 +11764,7 @@ memory corruption in gfortran 4.7.
     call event%connect (process_instance, process%get_model_ptr ())
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -12245,6 +11803,7 @@ memory corruption in gfortran 4.7.
     call event%accept_sqme_prc ()
     call event%accept_weight_prc ()
     call event%check ()
+    call event%set_index (1)
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -12252,7 +11811,8 @@ memory corruption in gfortran 4.7.
     write (u, "(A)")  "* Reset contents"
     write (u, "(A)")
 
-    call event%reset ()
+    call event%reset_contents ()
+    call event%reset_index ()
     event%transform_first%particle_set_exists = .false.
     call event%write (u)
 
@@ -12318,6 +11878,7 @@ without recomputing the squared matrix element.
     call event%connect (process_instance, process%get_model_ptr ())
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -12358,6 +11919,7 @@ without recomputing the squared matrix element.
     call event%set (sqme_ref = sqme, weight_ref = weight)
     call event%accept_sqme_ref ()
     call event%accept_weight_ref ()
+    call event%set_index (1)
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -12452,6 +12014,7 @@ Generate an event with subsequent decays.
     write (u, "(A)")
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
 
@@ -12916,6 +12479,7 @@ selection criteria upon rereading.
           select type (event)
           type is (event_t)
              write (eio%unit)  i_prc
+             write (eio%unit)  event%get_index ()
              write (eio%unit)  event%get_i_mci ()
              write (eio%unit)  event%get_i_term ()
              write (eio%unit)  event%get_channel ()
@@ -12979,7 +12543,7 @@ a different version of [[event%set_hard_particle_set]].
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
-    integer :: i_mci, i_term, channel, i
+    integer :: event_index, i_mci, i_term, channel, i
     real(default) :: weight, excess, sqme
     real(default), dimension(:), allocatable :: weight_alt, sqme_alt
     logical :: has_transform
@@ -12988,6 +12552,8 @@ a different version of [[event%set_hard_particle_set]].
     if (eio%reading) then
        select type (event)
        type is (event_t)
+          read (eio%unit, iostat = iostat)  event_index
+          if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  i_mci
           if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  i_term
@@ -13000,7 +12566,8 @@ a different version of [[event%set_hard_particle_set]].
           if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  sqme
           if (iostat /= 0)  return
-          call event%reset ()
+          call event%reset_contents ()
+          call event%set_index (event_index)
           call event%select (i_mci, i_term, channel)
           if (eio%norm_mode /= NORM_UNDEFINED) then
              call event_normalization_update (weight, &
@@ -13180,6 +12747,7 @@ We test the implementation of all I/O methods.
 
     call eio%init_out (sample)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
     write (u, "(A)")
@@ -13216,13 +12784,13 @@ We test the implementation of all I/O methods.
     write (u, "(1x,A,I0)")  "i_prc = ", i_prc
     write (u, "(A)")
     call event%write (u)
-
     write (u, "(A)")
     write (u, "(A)")  "* Generate and append another event"
     write (u, "(A)")
 
     call eio%switch_inout ()
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%write (u)
     write (u, "(A)")
@@ -13345,6 +12913,7 @@ We test the implementation of all I/O methods.
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
     call event%set (sqme_alt = [2._default, 3._default])
     call event%set (weight_alt = &
@@ -13449,8 +13018,7 @@ module dispatch_transforms
 
   use event_transforms
   use resonance_insertion
-  use isr_photon_handler
-  use epa_beam_handler
+  use isr_epa_handler
   use decays
   use shower_base
   use shower_core
@@ -13516,94 +13084,82 @@ end module dispatch_transforms
   end subroutine dispatch_evt_resonance
 
 @ %def dispatch_evt_resonance
-@
+@ Initialize the ISR/EPA handler, depending on active settings.
+
+The activation is independent for both handlers, since only one may be
+needed at a time.  However, if both handlers are active, the current
+implementation requires the handler modes of ISR and EPA to coincide.
 <<Dispatch transforms: public>>=
-  public :: dispatch_evt_isr_handler
+  public :: dispatch_evt_isr_epa_handler
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_isr_handler (evt, var_list)
+  subroutine dispatch_evt_isr_epa_handler (evt, var_list)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
     logical :: isr_recoil
+    logical :: epa_recoil
     logical :: isr_handler_active
+    logical :: epa_handler_active
     type(string_t) :: isr_handler_mode
+    type(string_t) :: epa_handler_mode
     real(default) :: sqrts
     real(default) :: isr_q_max
+    real(default) :: epa_q_max
     real(default) :: isr_mass
+    real(default) :: epa_mass
     isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
     if (isr_handler_active) then
-       allocate (evt_isr_t :: evt)
-       call msg_message ("Simulate: activating ISR photon handler")
+       call msg_message ("Simulate: activating ISR handler")
        isr_recoil = var_list%get_lval (var_str ("?isr_recoil"))
+       isr_handler_mode = var_list%get_sval (var_str ("$isr_handler_mode"))
        if (isr_recoil) then
           call msg_fatal ("Simulate: ISR handler is incompatible &
                &with ?isr_recoil=true")
        end if
-       select type (evt)
-       type is (evt_isr_t)
-          isr_handler_mode = var_list%get_sval (var_str ("$isr_handler_mode"))
-          call evt%set_mode_string (isr_handler_mode)
-          sqrts = var_list%get_rval (var_str ("sqrts"))
-          isr_q_max = var_list%get_rval (var_str ("isr_q_max"))
-          isr_mass = var_list%get_rval (var_str ("isr_mass"))
-          call evt%set_data (sqrts, isr_q_max, isr_mass)
-          call msg_message ("Simulate: ISR handler mode: " &
-               // char (evt%get_mode_string ()))
-       end select
-    else
-       evt => null ()
     end if
-  end subroutine dispatch_evt_isr_handler
-
-@ %def dispatch_evt_isr_handler
-@
-<<Dispatch transforms: public>>=
-  public :: dispatch_evt_epa_handler
-<<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_epa_handler (evt, var_list)
-    class(evt_t), intent(out), pointer :: evt
-    type(var_list_t), intent(in) :: var_list
-    logical :: epa_recoil
-    logical :: epa_handler_active
-    logical :: isr_handler_active
-    type(string_t) :: epa_handler_mode
-    real(default) :: sqrts
-    real(default) :: epa_q_min
-    real(default) :: epa_e_max
-    real(default) :: epa_mass
     epa_handler_active = var_list%get_lval (var_str ("?epa_handler"))
-    isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
-    if (epa_handler_active .and. isr_handler_active) then
-       call msg_fatal ("ISR and EPA handlers cannot be used together")
-    end if
     if (epa_handler_active) then
-       allocate (evt_epa_t :: evt)
-       call msg_message ("Simulate: activating EPA beam handler")
+       call msg_message ("Simulate: activating EPA handler")
        epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
+       epa_handler_mode = var_list%get_sval (var_str ("$epa_handler_mode"))
        if (epa_recoil) then
           call msg_fatal ("Simulate: EPA handler is incompatible &
                &with ?epa_recoil=true")
        end if
+    end if
+    if (isr_handler_active .and. epa_handler_active) then
+       if (isr_handler_mode /= epa_handler_mode) then
+          call msg_fatal ("Simulate: ISR/EPA handler: modes must coincide")
+       end if
+    end if
+    if (isr_handler_active .or. epa_handler_active) then
+       allocate (evt_isr_epa_t :: evt)
        select type (evt)
-       type is (evt_epa_t)
-          epa_handler_mode = var_list%get_sval (var_str ("$epa_handler_mode"))
-          call evt%set_mode_string (epa_handler_mode)
-          sqrts = var_list%get_rval (var_str ("sqrts"))
-          epa_q_min = var_list%get_rval (var_str ("epa_q_min"))
-          epa_e_max = var_list%get_rval (var_str ("epa_e_max"))
-          epa_mass = var_list%get_rval (var_str ("epa_mass"))
-          if (epa_q_min /= 0) then
-             call msg_error ("EPA beam-recoil handler: epa_q_min is ignored")
+       type is (evt_isr_epa_t)
+          if (isr_handler_active) then
+             call evt%set_mode_string (isr_handler_mode)
+          else
+             call evt%set_mode_string (epa_handler_mode)
           end if
-          call evt%set_data (sqrts, 2 * epa_e_max, epa_mass)
-          call msg_message ("Simulate: EPA handler mode: " &
+          sqrts = var_list%get_rval (var_str ("sqrts"))
+          if (isr_handler_active) then
+             isr_q_max = var_list%get_rval (var_str ("isr_q_max"))
+             isr_mass = var_list%get_rval (var_str ("isr_mass"))
+             call evt%set_data_isr (sqrts, isr_q_max, isr_mass)
+          end if
+          if (epa_handler_active) then
+             epa_q_max = var_list%get_rval (var_str ("epa_q_max"))
+             epa_mass = var_list%get_rval (var_str ("epa_mass"))
+             call evt%set_data_epa (sqrts, epa_q_max, epa_mass)
+          end if
+          call msg_message ("Simulate: ISR/EPA handler mode: " &
                // char (evt%get_mode_string ()))
        end select
     else
        evt => null ()
     end if
-  end subroutine dispatch_evt_epa_handler
+  end subroutine dispatch_evt_isr_epa_handler
 
-@ %def dispatch_evt_epa_handler
+@ %def dispatch_evt_isr_epa_handler
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_decay
@@ -14283,10 +13839,12 @@ This test dispatches [[evt]] (event transform) objects.
     deallocate (evt)
 
     write (u, "(A)")
-    write (u, "(A)")  "* ISR photon handler"
+    write (u, "(A)")  "* ISR handler"
     write (u, "(A)")
 
     call var_list%set_log (var_str ("?isr_handler"), .true., &
+         is_known = .true.)
+    call var_list%set_log (var_str ("?epa_handler"), .false., &
          is_known = .true.)
     call var_list%set_string (var_str ("$isr_handler_mode"), &
          var_str ("recoil"), &
@@ -14295,14 +13853,14 @@ This test dispatches [[evt]] (event transform) objects.
          is_known = .true.)
     call var_list%set_real (var_str ("isr_mass"), 511.e-6_default, &
          is_known = .true.)
-    call dispatch_evt_isr_handler (evt, var_list)
+    call dispatch_evt_isr_epa_handler (evt, var_list)
     call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()
     deallocate (evt)
 
     write (u, "(A)")
-    write (u, "(A)")  "* EPA beam handler"
+    write (u, "(A)")  "* EPA handler"
     write (u, "(A)")
 
     call var_list%set_log (var_str ("?isr_handler"), .false., &
@@ -14316,7 +13874,7 @@ This test dispatches [[evt]] (event transform) objects.
          is_known = .true.)
     call var_list%set_real (var_str ("epa_mass"), 511.e-6_default, &
          is_known = .true.)
-    call dispatch_evt_epa_handler (evt, var_list)
+    call dispatch_evt_isr_epa_handler (evt, var_list)
     call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()

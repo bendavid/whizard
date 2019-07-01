@@ -126,7 +126,7 @@ weight = 2
 * Write the event record for the last event
 
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -229,7 +229,7 @@ event_excess* =>  0.000000000000E+00
 * Write the event record for the alternative setup
 
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

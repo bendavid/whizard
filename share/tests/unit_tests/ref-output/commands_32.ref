@@ -37,8 +37,8 @@ Parse tree:
 |  |  |  |  |  |  +  <pargs1>  =  <pexpr>
 |  |  |  |  |  |  |  +  <pexpr>  =  <pterm>
 |  |  |  |  |  |  |  |  +  <pterm>  =  <pexpr_src>
-|  |  |  |  |  |  |  |  |  +  <pexpr_src>  =  <outgoing_prt>
-|  |  |  |  |  |  |  |  |  |  +  <outgoing_prt>  =  <cexpr>
+|  |  |  |  |  |  |  |  |  +  <pexpr_src>  =  <unspecified_prt>
+|  |  |  |  |  |  |  |  |  |  +  <unspecified_prt>  =  <cexpr>
 |  |  |  |  |  |  |  |  |  |  |  +  <cexpr>  =  <variable>
 |  |  |  |  |  |  |  |  |  |  |  |  +  <variable>  = particle
 
@@ -84,8 +84,8 @@ Parse tree:
 |  |  |  +  ARGUMENTS   <pargs1>  =  <pexpr>
 |  |  |  |  +  SEQUENCE    <pexpr>  =  <pterm>
 |  |  |  |  |  +  SEQUENCE    <pterm>  =  <pexpr_src>
-|  |  |  |  |  |  +  SEQUENCE    <pexpr_src>  =  <outgoing_prt>
-|  |  |  |  |  |  |  +  SEQUENCE    <outgoing_prt>  =  <cexpr>
+|  |  |  |  |  |  +  SEQUENCE    <pexpr_src>  =  <unspecified_prt>
+|  |  |  |  |  |  |  +  SEQUENCE    <unspecified_prt>  =  <cexpr>
 |  |  |  |  |  |  |  |  +  SEQUENCE    <cexpr>  =  <variable>
 |  |  |  |  |  |  |  |  |  +  IDENTIFIER  <variable>  = particle
 ------------------------------------------------------------------------

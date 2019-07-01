@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -53,6 +53,7 @@ module compilations
      type(string_t) :: static_external_tag
      type(process_library_t), pointer :: lib => null ()
      logical :: recompile_library = .false.
+     logical :: verbose = .false.
    contains
      procedure :: init => compilation_item_init
      procedure :: compile => compilation_item_compile
@@ -90,6 +91,7 @@ contains
     end if
     comp%recompile_library = &
          var_list%get_lval (var_str ("?recompile_library"))
+    comp%verbose = var_list%get_lval (var_str ("?me_verbose"))
   end subroutine compilation_item_init
 
   subroutine compilation_item_compile (comp, model, os_data, force, recompile)
@@ -103,7 +105,7 @@ contains
        call comp%lib%configure (os_data)
        if (signal_is_pending ())  return
        call comp%lib%compute_md5sum (model)
-       call comp%lib%write_makefile (os_data, force)
+       call comp%lib%write_makefile (os_data, force, comp%verbose)
        if (signal_is_pending ())  return
        if (force) then
           call comp%lib%clean (os_data, distclean = .false.)
@@ -239,11 +241,12 @@ contains
     close (u)
   end subroutine compilation_write_dispatcher
 
-  subroutine compilation_write_makefile (compilation, os_data, ext_libtag)
+  subroutine compilation_write_makefile (compilation, os_data, ext_libtag, verbose)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: ext_libtag
     type(string_t) :: file, ext_tag
+    logical, intent(in) :: verbose
     integer :: u, i
     if (present (ext_libtag)) then
        ext_tag = ext_libtag
@@ -280,8 +283,13 @@ contains
     write (u, "(A)") ""
     write (u, "(A)") "# Libtool"
     write (u, "(A)") "LIBTOOL = " // char (os_data%whizard_libtool)
-    write (u, "(A)") "FCOMPILE = $(LIBTOOL) --tag=FC --mode=compile"
-    write (u, "(A)") "LINK = $(LIBTOOL) --tag=FC --mode=link"
+    if (verbose) then
+       write (u, "(A)") "FCOMPILE = $(LIBTOOL) --tag=FC --mode=compile"
+       write (u, "(A)") "LINK = $(LIBTOOL) --tag=FC --mode=link"
+    else
+       write (u, "(A)") "FCOMPILE = @$(LIBTOOL) --silent --tag=FC --mode=compile"
+       write (u, "(A)") "LINK = @$(LIBTOOL) --silent --tag=FC --mode=link"
+    end if
     write (u, "(A)") ""
     write (u, "(A)") "# Compile commands (default)"
     write (u, "(A)") "LTFCOMPILE = $(FCOMPILE) $(FC) -c $(FCINCL) $(FCFLAGS)"
@@ -301,10 +309,16 @@ contains
     write (u, "(A)") "# Library dispatcher"
     write (u, "(A)") "DISP = $(EXE)_prclib_dispatcher"
     write (u, "(A)") "$(DISP).lo: $(DISP).f90 $(LIBRARIES)"
+    if (.not. verbose) then
+       write (u, "(A)")  TAB // '@echo  "  FC       " $@'
+    end if
     write (u, "(A)") TAB // "$(LTFCOMPILE) $<"
     write (u, "(A)") ""
     write (u, "(A)") "# Executable"
     write (u, "(A)") "$(EXE): $(DISP).lo $(LIBRARIES)"
+    if (.not. verbose) then
+       write (u, "(A)")  TAB // '@echo  "  FCLD     " $@'
+    end if
     write (u, "(A)") TAB // "$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \"
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \"
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
@@ -360,13 +374,15 @@ contains
     type(compilation_t) :: compilation
     type(compilation_item_t) :: item
     type(string_t) :: ext_libtag
-    logical :: force, recompile
+    logical :: force, recompile, verbose
     integer :: i
     ext_libtag = ""
     force = &
          global%var_list%get_lval (var_str ("?rebuild_library"))
     recompile = &
          global%var_list%get_lval (var_str ("?recompile_library"))
+    verbose = &
+         global%var_list%get_lval (var_str ("?me_verbose"))
     call compilation%init (exename, [libname])
     if (signal_is_pending ())  return
     call compilation%write_dispatcher ()
@@ -379,7 +395,7 @@ contains
        if (signal_is_pending ())  return
        call item%success ()
     end do
-    call compilation%write_makefile (global%os_data, ext_libtag)
+    call compilation%write_makefile (global%os_data, ext_libtag, verbose)
     if (signal_is_pending ())  return
     call compilation%make_compile (global%os_data)
     if (signal_is_pending ())  return

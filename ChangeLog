@@ -2,7 +2,39 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.6.1
+	Version 2.6.2
+
+2017-12-13
+	RELEASE: version 2.6.2
+
+2017-12-07
+	User can set offset in event numbers
+
+2017-11-29
+	Possibility to have more than one RECOLA process in one file
+
+2017-11-23
+	Transversal/mixed (and unitarized) dim-8 operators
+
+2017-11-16
+	epa_q_max replaces epa_e_max (trivial factor 2)
+
+2017-11-15
+	O'Mega matrix element compilation silent now
+
+2017-11-14
+	Complete expanded P-wave form factor for top threshold
+
+2017-11-10
+	Incoming particles can be accessed in SINDARIN
+
+2017-11-08
+	Improved handling of resonance insertion, additional parameters
+
+2017-11-04
+	Added Higgs-electron coupling (SM_Higgs)
+
+##################################################################
 
 2017-11-03
 	RELEASE: version 2.6.1

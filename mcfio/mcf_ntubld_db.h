@@ -55,3 +55,5 @@ static int *n_obj_variable = &(variable_c_.n_obj_variable);
 static variable_s *variable = &variable_c_.variable[0];
 
 #endif
+
+void mcf_ntubldInit();

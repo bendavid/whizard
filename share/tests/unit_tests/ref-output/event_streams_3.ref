@@ -28,7 +28,7 @@
    Writing to file   = event_streams_3.evx
 
 ========================================================================
- Event
+ Event #2
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -141,7 +141,7 @@ event_excess* =>  0.000000000000E+00
 * Reread two events and display 2nd event
 
 ========================================================================
- Event [incomplete]
+ Event #2 [incomplete]
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

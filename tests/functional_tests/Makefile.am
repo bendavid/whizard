@@ -53,6 +53,8 @@ TESTS_DEFAULT = \
     testproc_9.run \
     testproc_10.run \
     testproc_11.run \
+    template_me_1.run \
+    template_me_2.run \
     model_scheme_1.run \
     rebuild_1.run \
     rebuild_4.run \
@@ -99,6 +101,7 @@ TESTS_REQ_OCAML = \
     qcdtest_5.run \
     qcdtest_6.run \
     observables_1.run \
+    observables_2.run \
     event_weights_1.run \
     event_weights_2.run \
     event_eff_1.run \
@@ -163,8 +166,10 @@ TESTS_REQ_OCAML = \
     resonances_8.run \
     resonances_9.run \
     resonances_10.run \
+    resonances_11.run \
     mssmtest_1.run \
     mssmtest_2.run \
+    mssmtest_3.run \
     sm_cms_1.run \
     ufo_1.run \
     ufo_2.run \
@@ -189,10 +194,12 @@ TESTS_REQ_OCAML = \
     openloops_7.run \
     openloops_8.run \
     openloops_9.run \
+    openloops_10.run \
     recola_1.run \
     recola_2.run \
     recola_3.run \
     recola_4.run \
+    recola_5.run \
     powheg_1.run \
     spincor_1.run \
     show_1.run \
@@ -243,6 +250,8 @@ TESTS_REQ_OCAML = \
     isr_4.run \
     isr_5.run \
     epa_1.run \
+    epa_2.run \
+    isr_epa_1.run \
     ilc.run \
     gaussian_1.run \
     gaussian_2.run \
@@ -490,6 +499,19 @@ resonances_9.run: resonances_9_count
 noinst_PROGRAMS += resonances_10_count
 resonances_10_count_SOURCES = resonances_10_count.f90
 resonances_10.run: resonances_10_count
+
+noinst_PROGRAMS += resonances_11_count
+resonances_11_count_SOURCES = resonances_11_count.f90
+resonances_11.run: resonances_11_count
+
+noinst_PROGRAMS += epa_2_count
+epa_2_count_SOURCES = epa_2_count.f90
+epa_2.run: epa_2_count
+
+noinst_PROGRAMS += isr_epa_1_count
+isr_epa_1_count_SOURCES = isr_epa_1_count.f90
+isr_epa_1.run: isr_epa_1_count
+
 endif
 
 if HEPMC_AVAILABLE

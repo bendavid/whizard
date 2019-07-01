@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -46,7 +46,6 @@ module nlo_data
 
   public :: fks_template_t
   public :: real_scales_t
-  public :: pdf_container_t
   public :: get_threshold_momenta
   public :: nlo_settings_t
 
@@ -82,10 +81,6 @@ module nlo_data
      real(default) :: fac_scale_born
      real(default) :: ren_scale_born
   end type real_scales_t
-
-  type :: pdf_container_t
-     real(default), dimension(-6:6) :: f
-  end type pdf_container_t
 
   type :: nlo_settings_t
      logical :: use_internal_color_correlations = .true.

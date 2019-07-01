@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -45,6 +45,9 @@ contains
          u, results)
     call test (eio_weights_2, "eio_weights_2", &
          "multiple weights", &
+         u, results)
+    call test (eio_weights_3, "eio_weights_3", &
+         "check passed-flag", &
          u, results)
   end subroutine eio_weights_test
 

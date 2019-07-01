@@ -129,7 +129,9 @@ namespace WOUTIL{
 	  float charge = threeCharge( pdgid ) / 3.  ;
 	  
 	  //  Momentum vector
-	  float p0[3] = {_reader->Px(IHEP),_reader->Py(IHEP),_reader->Pz(IHEP)};
+	  float p0[3] = {static_cast<float>(_reader->Px(IHEP)),
+			 static_cast<float>(_reader->Py(IHEP)),
+			 static_cast<float>(_reader->Pz(IHEP))};
 	  
 	  //  Mass
 	  float mass = _reader->M(IHEP);
@@ -204,7 +206,9 @@ namespace WOUTIL{
 	  float charge = threeCharge( pdgid ) / 3.  ;
 
 	  //  Momentum vector
-	  float p0[3] = {_reader->eup_Px(IHEP),_reader->eup_Py(IHEP),_reader->eup_Pz(IHEP)};
+	  float p0[3] = {static_cast<float>(_reader->eup_Px(IHEP)),
+			 static_cast<float>(_reader->eup_Py(IHEP)),
+			 static_cast<float>(_reader->eup_Pz(IHEP))};
 	  
 	  //  Mass
 	  float mass = _reader->eup_M(IHEP);
@@ -215,8 +219,9 @@ namespace WOUTIL{
 	  // add spin and color flow information  
 	  float spin = _reader->eup_spin( IHEP );
 	  float vtimeup = _reader->eup_vtime( IHEP );
-	  int colorFlow[2] = {  _reader->eup_colflow( IHEP , 0 ), 
-				_reader->eup_colflow( IHEP , 1 )} ;	  
+	  int colorFlow[2] = {
+	    static_cast<int>(_reader->eup_colflow( IHEP , 0 )), 
+	    static_cast<int>(_reader->eup_colflow( IHEP , 1 ))};
 	  // 
 	  int fm = _reader->eup_mothup1(IHEP) - 1;
 	  int lm = _reader->eup_mothup2(IHEP) - 1;
@@ -239,6 +244,7 @@ namespace WOUTIL{
 	  }    
 	}
     }
+    return 0;
   }
 
 

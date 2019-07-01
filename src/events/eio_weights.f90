@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -139,29 +139,34 @@ contains
     logical, intent(in), optional :: reading, passed, pacify
     integer :: n_alt, i
     real(default) :: weight, sqme_ref, sqme_prc
+    logical :: evt_pacify, evt_passed
+    evt_pacify = eio%pacify;  if (present (pacify))  evt_pacify = pacify
+    evt_passed = .true.;  if (present (passed))  evt_passed = passed
     if (eio%writing) then
-       weight = event%get_weight_prc ()
-       sqme_ref = event%get_sqme_ref ()
-       sqme_prc = event%get_sqme_prc ()
-       n_alt = event%get_n_alt ()
-1      format (I0,3(1x,ES17.10),3(1x,I0))
-2      format (I0,3(1x,ES15.8),3(1x,I0))
-       if (eio%pacify) then
-          write (eio%unit, 2)  0, weight, sqme_prc, sqme_ref, &
-               i_prc
-       else
-          write (eio%unit, 1)  0, weight, sqme_prc, sqme_ref, &
-               i_prc
-       end if
-       do i = 1, n_alt
-          weight = event%get_weight_alt(i)
-          sqme_prc = event%get_sqme_alt(i)
-          if (eio%pacify) then
-             write (eio%unit, 2)  i, weight, sqme_prc
+       if (evt_passed) then
+          weight = event%get_weight_prc ()
+          sqme_ref = event%get_sqme_ref ()
+          sqme_prc = event%get_sqme_prc ()
+          n_alt = event%get_n_alt ()
+1         format (I0,3(1x,ES17.10),3(1x,I0))
+2         format (I0,3(1x,ES15.8),3(1x,I0))
+          if (evt_pacify) then
+             write (eio%unit, 2)  0, weight, sqme_prc, sqme_ref, &
+                  i_prc
           else
-             write (eio%unit, 1)  i, weight, sqme_prc
+             write (eio%unit, 1)  0, weight, sqme_prc, sqme_ref, &
+                  i_prc
           end if
-       end do
+          do i = 1, n_alt
+             weight = event%get_weight_alt(i)
+             sqme_prc = event%get_sqme_alt(i)
+             if (evt_pacify) then
+                write (eio%unit, 2)  i, weight, sqme_prc
+             else
+                write (eio%unit, 1)  i, weight, sqme_prc
+             end if
+          end do
+       end if
     else
        call eio%write ()
        call msg_fatal ("Weight stream file is not open for writing")

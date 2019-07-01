@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -97,6 +97,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (42)
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -182,6 +183,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (42)
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -267,6 +269,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -352,6 +355,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -437,6 +441,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -522,6 +527,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -607,6 +613,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -692,6 +699,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -777,6 +785,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)
@@ -862,6 +871,7 @@ contains
     end select
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%increment_index ()
     call event%evaluate_expressions ()
 
     call eio%output (event, i_prc = 1)

@@ -95,8 +95,9 @@
 ------------------------------------------------------------------------
  Subprocess instances: allocated
  Selected: [none]
- On-shell limit   =  0.00000E+00
- On-shell turnoff =  0.00000E+00
+ On-shell limit    =  0.00000E+00
+ On-shell turnoff  =  0.00000E+00
+ Background factor =  1.00000E+00
 ------------------------------------------------------------------------
    Associated process: 'restricted_subprocesses_5_p'
    TAO random-number generator:
@@ -128,8 +129,9 @@
 ------------------------------------------------------------------------
  Subprocess instances: allocated
  Selected: resonance history #1
- On-shell limit   =  1.00000E+01
- On-shell turnoff =  1.00000E+00
+ On-shell limit    =  1.00000E+01
+ On-shell turnoff  =  1.00000E+00
+ Background factor =  1.00000E+00
 ------------------------------------------------------------------------
    Selector: i, weight, acc. weight
    0  9.8837794E-03  9.8837794E-03

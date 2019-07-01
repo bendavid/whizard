@@ -55,8 +55,6 @@ libwo_stdhep_la_SOURCES = \
    hepev4.h \
    hepeup.h \
    heprup.h \
-   mcfio_Dict.h \
-   mcf_xdr.h \
    stdcm1.h \
    stdcnt.h \
    stdhd.h \
@@ -80,7 +78,7 @@ libwo_stdhep_la_SOURCES = \
 ## The include files are not automatically found (by certain Fortran compilers)
 AM_FCFLAGS = -I$(top_srcdir)/stdhep
 AM_FFLAGS = -I$(top_srcdir)/stdhep
-
+AM_CFLAGS = -I$(top_srcdir)/mcfio
 
 ########################################################################
 ## Default Fortran compiler options

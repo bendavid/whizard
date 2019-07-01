@@ -49,6 +49,7 @@ module SM_k_matrix : SM_flags
 module SM_no_anomalous_ckm : SM_flags
 module SM_anomalous_ckm : SM_flags
 module SM_Higgs : SM_flags
+module SM_Higgs_CKM : SM_flags
 module SM_anomalous_top : SM_flags
 module SM_tt_threshold : SM_flags
 module SM_dim6 : SM_flags

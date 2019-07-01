@@ -1305,13 +1305,38 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
 
           | Vector4_K_Matrix_tho _
           | Vector4_K_Matrix_jr _
+          | Vector4_K_Matrix_cf_t0 _          
+          | Vector4_K_Matrix_cf_t1 _
+          | Vector4_K_Matrix_cf_t2 _
+          | Vector4_K_Matrix_cf_t_rsi _
+          | Vector4_K_Matrix_cf_m0 _
+          | Vector4_K_Matrix_cf_m1 _
+          | Vector4_K_Matrix_cf_m7 _          
           | DScalar2_Vector2_K_Matrix_ms _
+          | DScalar2_Vector2_m_0_K_Matrix_cf _
+          | DScalar2_Vector2_m_1_K_Matrix_cf _
+          | DScalar2_Vector2_m_7_K_Matrix_cf _
           | DScalar4_K_Matrix_ms _ ->
               failwith "print_current: V4: K_Matrix not implemented"
           | Dim8_Scalar2_Vector2_1 _ 
-          | Dim8_Scalar2_Vector2_2 _ 
+          | Dim8_Scalar2_Vector2_2 _
+          | Dim8_Scalar2_Vector2_m_0 _
+          | Dim8_Scalar2_Vector2_m_1 _
+          | Dim8_Scalar2_Vector2_m_7 _
           | Dim8_Scalar4 _ ->
               failwith "print_current: V4: not implemented"
+          | Dim8_Vector4_t_0 _ ->
+              failwith "print_current: V4: not implemented"
+          | Dim8_Vector4_t_1 _ ->
+              failwith "print_current: V4: not implemented"              
+          | Dim8_Vector4_t_2 _ ->
+              failwith "print_current: V4: not implemented"
+          | Dim8_Vector4_m_0 _ ->
+              failwith "print_current: V4: not implemented"
+          | Dim8_Vector4_m_1 _ ->
+              failwith "print_current: V4: not implemented"
+          | Dim8_Vector4_m_7 _ ->
+              failwith "print_current: V4: not implemented"    
           | GBBG _ ->
               failwith "print_current: V4: GBBG not implemented"
           | DScalar4 _
@@ -2778,6 +2803,96 @@ i*)
       | C_13_42, (F214|F412|F234|F432|F123|F321|F143|F341)
       | C_14_23, (F213|F312|F243|F342|F124|F421|F134|F431) ->
           printf "((%s%s)*(%s*%s))*%s" (format_coeff coeff) c wf1 wf3 wf2
+          
+    let print_vector4_t_0 c wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "g_dim8g3_t_0(%s,%s,%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "g_dim8g3_t_0(%s,%s,%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "g_dim8g3_t_0(%s,%s,%s,%s,%s,%s,%s)" c wf3 p3 wf1 p1 wf2 p2
+
+    let print_vector4_t_1 c wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "g_dim8g3_t_1(%s,%s,%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "g_dim8g3_t_1(%s,%s,%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "g_dim8g3_t_1(%s,%s,%s,%s,%s,%s,%s)" c wf3 p3 wf1 p1 wf2 p2          
+
+    let print_vector4_t_2 c wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "g_dim8g3_t_2(%s,%s,%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "g_dim8g3_t_2(%s,%s,%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "g_dim8g3_t_2(%s,%s,%s,%s,%s,%s,%s)" c wf3 p3 wf1 p1 wf2 p2
+
+    let print_vector4_m_0 c wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "g_dim8g3_m_0(%s,%s,%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "g_dim8g3_m_0(%s,%s,%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "g_dim8g3_m_0(%s,%s,%s,%s,%s,%s,%s)" c wf3 p3 wf1 p1 wf2 p2
+
+    let print_vector4_m_1 c wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "g_dim8g3_m_1(%s,%s,%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "g_dim8g3_m_1(%s,%s,%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "g_dim8g3_m_1(%s,%s,%s,%s,%s,%s,%s)" c wf3 p3 wf1 p1 wf2 p2
+          
+     let print_vector4_m_7 c wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "g_dim8g3_m_7(%s,%s,%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "g_dim8g3_m_7(%s,%s,%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "g_dim8g3_m_7(%s,%s,%s,%s,%s,%s,%s)" c wf3 p3 wf1 p1 wf2 p2      
 
     let print_add_vector4 c wf1 wf2 wf3 fusion (coeff, contraction) =
       printf "@ + ";
@@ -2800,6 +2915,168 @@ i*)
       | C_14_23, (F213|F312|F243|F342|F124|F421|F134|F431) ->
           printf "((%s%s%s+%s))*(%s*%s))*%s"
             (format_coeff coeff) c pa pb wf1 wf3 wf2
+            
+    let print_vector4_km_t_0 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2 
+
+    let print_vector4_km_t_1 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+            
+    let print_vector4_km_t_2 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_2(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_2(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_2(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+            
+    let print_vector4_km_t_rsi c pa pb pc wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))*((%s+%s)*(%s+%s)/((%s+%s)*(%s+%s)))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3 pa pb pa pb pb pc pb pc
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          printf "@[(%s%s%s+%s)*g_dim8g3_t_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))*((%s+%s)*(%s+%s)/((%s+%s)*(%s+%s)))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2 pa pb pa pb pa pc pa pc            
+
+    let print_vector4_km_m_0 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_0(cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+          else
+             printf "@[((%s%s%s+%s))*g_dim8g3_m_0(cmplx(costhw**(-2),kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_0(cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb  wf2 p2 wf1 p1 wf3 p3
+          else
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_0(cmplx(costhw**(-2),kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_0(cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+          else
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_0(cmplx(costhw**(-2),kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+
+    let print_vector4_km_m_1 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_1(cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+          else
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_1(cmplx(costhw**(-2),kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_1(cmplx(1,kind=default),cmplx(1,kind=default),@  %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+          else
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_1(cmplx(costhw**(-2),kind=default),cmplx(costhw**2,kind=default),@  %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_1(cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+          else
+             printf "@[(%s%s%s+%s)*g_dim8g3_m_1(cmplx(costhw**(-2),kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+                
+    let print_vector4_km_m_7 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F234|F243|F134|F143|F421|F321|F412|F312)
+      | C_13_42, (F324|F342|F124|F142|F431|F231|F413|F213)
+      | C_14_23, (F423|F432|F123|F132|F341|F241|F314|F214) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*@ g_dim8g3_m_7(cmplx(1,kind=default),cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+          else
+             printf "@[(%s%s%s+%s)*@ g_dim8g3_m_7(cmplx(costhw**(-2),kind=default),cmplx(1,kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F324|F314|F423|F413|F142|F132|F241|F231)
+      | C_13_42, (F234|F214|F432|F412|F143|F123|F341|F321)
+      | C_14_23, (F243|F213|F342|F312|F134|F124|F431|F421) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*@ g_dim8g3_m_7(cmplx(1,kind=default),cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+          else
+             printf "@[(%s%s%s+%s)*@ g_dim8g3_m_7(cmplx(costhw**(-2),kind=default),cmplx(1,kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F342|F341|F432|F431|F124|F123|F214|F213)
+      | C_13_42, (F243|F241|F423|F421|F134|F132|F314|F312)
+      | C_14_23, (F234|F231|F324|F321|F143|F142|F413|F412) ->
+          if (String.contains c 'w' || String.contains c '4') then
+             printf "@[(%s%s%s+%s)*@ g_dim8g3_m_7(cmplx(1,kind=default),cmplx(1,kind=default),cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2
+          else
+             printf "@[(%s%s%s+%s)*@ g_dim8g3_m_7(cmplx(costhw**(-2),kind=default),cmplx(1,kind=default),cmplx(costhw**2,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+                (format_coeff coeff) c pa pb wf3 p3 wf1 p1 wf2 p2        
 
     let print_add_vector4_km c pa pb wf1 wf2 wf3 fusion (coeff, contraction) =
       printf "@ + ";
@@ -2976,6 +3253,225 @@ i*)
     let print_add_dscalar2_vector2_km c pa pb wf1 wf2 wf3 p1 p2 p3 p123 fusion (coeff, contraction) =
       printf "@ + ";
       print_dscalar2_vector2_km c pa pb wf1 wf2 wf3 p1 p2 p3 p123 fusion (coeff, contraction)
+      
+    let print_dscalar2_vector2_m_0_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F123|F213|F124|F214) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F134|F143|F234|F243) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F132|F231|F142|F241) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf3 p3 wf2 p2
+      | C_12_34, (F312|F321|F412|F421) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p2 wf1 p1
+      | C_12_34, (F314|F413|F324|F423) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F341|F431|F342|F432) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p2 wf1 p1
+      | C_13_42, (F123|F214)
+      | C_14_23, (F124|F213) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p3 wf3 p2
+      | C_13_42, (F124|F213)
+      | C_14_23, (F123|F214) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p3 wf3 p1
+      | C_13_42, (F132|F241)
+      | C_14_23, (F142|F231) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf3 p2 wf2 p3
+      | C_13_42, (F142|F231)
+      | C_14_23, (F132|F241) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p2 wf2 p1
+      | C_13_42, (F312|F421)
+      | C_14_23, (F412|F321) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf3 p1 wf1 p3
+      | C_13_42, (F321|F412)
+      | C_14_23, (F421|F312) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p1 wf1 p2
+      | C_13_42, (F134|F243)
+      | C_14_23, (F143|F234) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p3 wf3 p1 wf2 p2
+      | C_13_42, (F143|F234)
+      | C_14_23, (F134|F243) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p2 wf2 p1 wf3 p3
+      | C_13_42, (F314|F423)
+      | C_14_23, (F413|F324) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p3 wf3 p2 wf1 p1
+      | C_13_42, (F324|F413)
+      | C_14_23, (F423|F314) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p1 wf1 p2 wf3 p3
+      | C_13_42, (F341|F432)
+      | C_14_23, (F431|F342) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p2 wf2 p3 wf1 p1
+      | C_13_42, (F342|F431)
+      | C_14_23, (F432|F341) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_0(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p1 wf1 p3 wf2 p2
+
+    let print_add_dscalar2_vector2_m_0_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction) =
+      printf "@ + ";
+      print_dscalar2_vector2_m_0_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction)
+
+   let print_dscalar2_vector2_m_1_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F123|F213|F124|F214) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F134|F143|F234|F243) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F132|F231|F142|F241) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf3 p3 wf2 p2
+      | C_12_34, (F312|F321|F412|F421) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p2 wf1 p1
+      | C_12_34, (F314|F413|F324|F423) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F341|F431|F342|F432) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p2 wf1 p1
+      | C_13_42, (F123|F214)
+      | C_14_23, (F124|F213) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p3 wf3 p2
+      | C_13_42, (F124|F213)
+      | C_14_23, (F123|F214) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p3 wf3 p1
+      | C_13_42, (F132|F241)
+      | C_14_23, (F142|F231) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf3 p2 wf2 p3
+      | C_13_42, (F142|F231)
+      | C_14_23, (F132|F241) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p2 wf2 p1
+      | C_13_42, (F312|F421)
+      | C_14_23, (F412|F321) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf3 p1 wf1 p3
+      | C_13_42, (F321|F412)
+      | C_14_23, (F421|F312) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p1 wf1 p2
+      | C_13_42, (F134|F243)
+      | C_14_23, (F143|F234) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p3 wf3 p1 wf2 p2
+      | C_13_42, (F143|F234)
+      | C_14_23, (F134|F243) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p2 wf2 p1 wf3 p3
+      | C_13_42, (F314|F423)
+      | C_14_23, (F413|F324) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p3 wf3 p2 wf1 p1
+      | C_13_42, (F324|F413)
+      | C_14_23, (F423|F314) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p1 wf1 p2 wf3 p3
+      | C_13_42, (F341|F432)
+      | C_14_23, (F431|F342) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p2 wf2 p3 wf1 p1
+      | C_13_42, (F342|F431)
+      | C_14_23, (F432|F341) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_1(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p1 wf1 p3 wf2 p2
+
+    let print_add_dscalar2_vector2_m_1_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction) =
+      printf "@ + ";
+      print_dscalar2_vector2_m_1_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction)
+      
+   let print_dscalar2_vector2_m_7_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction) =
+      match contraction, fusion with
+      | C_12_34, (F123|F213|F124|F214) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F134|F143|F234|F243) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p2 wf3 p3
+      | C_12_34, (F132|F231|F142|F241) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf3 p3 wf2 p2
+      | C_12_34, (F312|F321|F412|F421) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p2 wf1 p1
+      | C_12_34, (F314|F413|F324|F423) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p1 wf3 p3
+      | C_12_34, (F341|F431|F342|F432) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p2 wf1 p1
+      | C_13_42, (F123|F214)
+      | C_14_23, (F124|F213) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf2 p3 wf3 p2
+      | C_13_42, (F124|F213)
+      | C_14_23, (F123|F214) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf1 p3 wf3 p1
+      | C_13_42, (F132|F241)
+      | C_14_23, (F142|F231) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p1 wf3 p2 wf2 p3
+      | C_13_42, (F142|F231)
+      | C_14_23, (F132|F241) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf1 p2 wf2 p1
+      | C_13_42, (F312|F421)
+      | C_14_23, (F412|F321) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p2 wf3 p1 wf1 p3
+      | C_13_42, (F321|F412)
+      | C_14_23, (F421|F312) ->
+          printf "@[((%s%s%s+%s))*v_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p3 wf2 p1 wf1 p2
+      | C_13_42, (F134|F243)
+      | C_14_23, (F143|F234) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p3 wf3 p1 wf2 p2
+      | C_13_42, (F143|F234)
+      | C_14_23, (F134|F243) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf1 p2 wf2 p1 wf3 p3
+      | C_13_42, (F314|F423)
+      | C_14_23, (F413|F324) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p3 wf3 p2 wf1 p1
+      | C_13_42, (F324|F413)
+      | C_14_23, (F423|F314) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf2 p1 wf1 p2 wf3 p3
+      | C_13_42, (F341|F432)
+      | C_14_23, (F431|F342) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p2 wf2 p3 wf1 p1
+      | C_13_42, (F342|F431)
+      | C_14_23, (F432|F341) ->
+          printf "@[((%s%s%s+%s))*phi_phi2v_m_7(cmplx(1,kind=default),@ %s,%s,%s,%s,%s,%s))@]"
+            (format_coeff coeff) c pa pb wf3 p1 wf1 p3 wf2 p2
+
+    let print_add_dscalar2_vector2_m_7_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction) =
+      printf "@ + ";
+      print_dscalar2_vector2_m_7_km c pa pb wf1 wf2 wf3 p1 p2 p3 fusion (coeff, contraction)  
 
     let print_dscalar4_km c pa pb wf1 wf2 wf3 p1 p2 p3 p123 fusion (coeff, contraction) =
       match contraction, fusion with
@@ -3650,6 +4146,48 @@ i*)
                   List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
                   printf ")"
               end
+          | Dim8_Vector4_t_0 contractions ->
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4 []"
+              | head :: tail ->
+                  print_vector4_t_0 c wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
+              end
+          | Dim8_Vector4_t_1 contractions ->
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4 []"
+              | head :: tail ->
+                  print_vector4_t_1 c wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
+              end              
+          | Dim8_Vector4_t_2 contractions ->
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4 []"
+              | head :: tail ->
+                  print_vector4_t_2 c wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
+              end
+          | Dim8_Vector4_m_0 contractions ->
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4 []"
+              | head :: tail ->
+                  print_vector4_m_0 c wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
+              end
+          | Dim8_Vector4_m_1 contractions ->
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4 []"
+              | head :: tail ->
+                  print_vector4_m_1 c wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
+              end
+          | Dim8_Vector4_m_7 contractions ->
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4 []"
+              | head :: tail ->
+                  print_vector4_m_7 c wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4 c wf1 wf2 wf3 fusion) tail;
+              end    
           | Vector4_K_Matrix_tho (_, poles) ->
               let pa, pb =
                 begin match fusion with
@@ -3684,6 +4222,139 @@ i*)
                     tail;
                   printf ")"
               end
+          | Vector4_K_Matrix_cf_t0 (disc, contractions) ->
+              let pa, pb, pc =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2, p3)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3, p1)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3, p2)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2, p3)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3, p1)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3, p2)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_t0 []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_t_0 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end              
+          | Vector4_K_Matrix_cf_t1 (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_t1 []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_t_1 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end              
+          | Vector4_K_Matrix_cf_t2 (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_t2 []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_t_2 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end
+          | Vector4_K_Matrix_cf_t_rsi (disc, contractions) ->
+              let pa, pb, pc =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2, p3)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3, p1)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3, p2)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2, p3)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3, p1)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3, p2)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_t_rsi []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_t_rsi c pa pb pc wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end              
+          | Vector4_K_Matrix_cf_m0 (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_m0 []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_m_0 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end
+          | Vector4_K_Matrix_cf_m1 (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_m1 []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_m_1 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end
+          | Vector4_K_Matrix_cf_m7 (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: Vector4_K_Matrix_cf_m7 []"
+              | head :: tail ->
+                  printf "(";
+                  print_vector4_km_m_7 c pa pb wf1 p1 wf2 p2 wf3 p3 fusion head;
+                  List.iter (print_add_vector4_km c pa pb wf1 wf2 wf3 fusion)
+                    tail;
+                  printf ")"
+              end    
           | DScalar2_Vector2_K_Matrix_ms (disc, contractions) ->
               let p123 = Printf.sprintf "(-%s-%s-%s)" p1 p2 p3 in
               let pa, pb =
@@ -3721,6 +4392,114 @@ i*)
                     tail;
                   printf ")"
               end
+          | DScalar2_Vector2_m_0_K_Matrix_cf (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 4, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 4, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 4, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 5, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 5, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 5, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 6, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 6, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 6, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | 7, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 7, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 7, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | 8, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 8, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 8, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: DScalar2_Vector4_K_Matrix_cf_m0 []"
+              | head :: tail ->
+                  printf "(";
+                  print_dscalar2_vector2_m_0_km
+                    c pa pb wf1 wf2 wf3 p1 p2 p3 fusion head;
+                  List.iter (print_add_dscalar2_vector2_m_0_km
+                                  c pa pb wf1 wf2 wf3 p1 p2 p3 fusion)
+                    tail;
+                  printf ")"
+              end
+          | DScalar2_Vector2_m_1_K_Matrix_cf (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 4, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 4, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 4, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 5, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 5, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 5, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 6, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 6, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 6, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | 7, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 7, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 7, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | 8, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 8, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 8, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: DScalar2_Vector4_K_Matrix_cf_m1 []"
+              | head :: tail ->
+                  printf "(";
+                  print_dscalar2_vector2_m_1_km
+                    c pa pb wf1 wf2 wf3 p1 p2 p3 fusion head;
+                  List.iter (print_add_dscalar2_vector2_m_1_km
+                                  c pa pb wf1 wf2 wf3 p1 p2 p3 fusion)
+                    tail;
+                  printf ")"
+              end
+          | DScalar2_Vector2_m_7_K_Matrix_cf (disc, contractions) ->
+              let pa, pb =
+                begin match disc, fusion with
+                | 3, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 3, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 3, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 4, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 4, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 4, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 5, (F143|F413|F142|F412|F321|F231|F324|F234) -> (p1, p2)
+                | 5, (F314|F341|F214|F241|F132|F123|F432|F423) -> (p2, p3)
+                | 5, (F134|F431|F124|F421|F312|F213|F342|F243) -> (p1, p3)
+                | 6, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 6, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 6, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | 7, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 7, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 7, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | 8, (F134|F132|F314|F312|F241|F243|F421|F423) -> (p1, p2)
+                | 8, (F213|F413|F231|F431|F124|F324|F142|F342) -> (p2, p3)
+                | 8, (F143|F123|F341|F321|F412|F214|F432|F234) -> (p1, p3)
+                | _, (F341|F431|F342|F432|F123|F213|F124|F214) -> (p1, p2)
+                | _, (F134|F143|F234|F243|F312|F321|F412|F421) -> (p2, p3)
+                | _, (F314|F413|F324|F423|F132|F231|F142|F241) -> (p1, p3)
+                end in
+              begin match contractions with
+              | [] -> invalid_arg "Targets.print_current: DScalar2_Vector4_K_Matrix_cf_m7 []"
+              | head :: tail ->
+                  printf "(";
+                  print_dscalar2_vector2_m_7_km
+                    c pa pb wf1 wf2 wf3 p1 p2 p3 fusion head;
+                  List.iter (print_add_dscalar2_vector2_m_7_km
+                                  c pa pb wf1 wf2 wf3 p1 p2 p3 fusion)
+                    tail;
+                  printf ")"
+              end    
           | DScalar4_K_Matrix_ms (disc, contractions) ->
               let p123 = Printf.sprintf "(-%s-%s-%s)" p1 p2 p3 in
               let pa, pb =
@@ -3787,6 +4566,72 @@ i*)
 	              printf "v_phi2v_2(%s,%s,%s,%s,%s,%s)" 
                           c wf1 p1 wf2 p2 wf3
                   end
+          | Dim8_Scalar2_Vector2_m_0 coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F134 | F143 | F234 | F243 ->
+                      printf "phi_phi2v_m_0(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F314 | F413 | F324 | F423 ->
+                      printf "phi_phi2v_m_0(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F341 | F431 | F342 | F432 ->
+                      printf "phi_phi2v_m_0(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F312 | F321 | F412 | F421 ->
+                      printf "v_phi2v_m_0(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F231 | F132 | F241 | F142 ->
+                      printf "v_phi2v_m_0(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F123 | F213 | F124 | F214 ->
+                      printf "v_phi2v_m_0(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  end
+          | Dim8_Scalar2_Vector2_m_1 coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F134 | F143 | F234 | F243 ->
+                      printf "phi_phi2v_m_1(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F314 | F413 | F324 | F423 ->
+                      printf "phi_phi2v_m_1(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F341 | F431 | F342 | F432 ->
+                      printf "phi_phi2v_m_1(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F312 | F321 | F412 | F421 ->
+                      printf "v_phi2v_m_1(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F231 | F132 | F241 | F142 ->
+                      printf "v_phi2v_m_1(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F123 | F213 | F124 | F214 ->
+                      printf "v_phi2v_m_1(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  end
+          | Dim8_Scalar2_Vector2_m_7 coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F134 | F143 | F234 | F243 ->
+                      printf "phi_phi2v_m_7(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F314 | F413 | F324 | F423 ->
+                      printf "phi_phi2v_m_7(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F341 | F431 | F342 | F432 ->
+                      printf "phi_phi2v_m_7(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F312 | F321 | F412 | F421 ->
+                      printf "v_phi2v_m_7(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F231 | F132 | F241 | F142 ->
+                      printf "v_phi2v_m_7(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F123 | F213 | F124 | F214 ->
+                      printf "v_phi2v_m_7(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  end        
           | Dim8_Scalar4 coeff ->
               let c = format_coupling coeff c in
                   begin match fusion with

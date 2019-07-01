@@ -35,6 +35,9 @@
 #include "mcf_xdr.h"
 #include "mcfio_Dict.h"
 #include "mcfio_Util1.h"
+#include "mcfio_UserDictionary.h"
+#include "mcf_NTuIOUtils.h"
+#include "mcf_NTuIOFiles.h"
 #include "mcfio_Direct.h"
 #include "mcfio_Sequential.h"
 #include "mcfio_Block.h"
@@ -152,7 +155,9 @@ void mcfio_defineuserblock_(int *blkId, char *name,
     char *aString;
     
     aString = mallocNCopyMcfio(name, length);
-    mcfioC_DefineUserBlock(*blkId, aString, xdr_filter, current_size);
+    mcfioC_DefineUserBlock(*blkId, aString);
+    /* Original version which does not match mcfio_UserDictionary.c */
+    /* mcfioC_DefineUserBlock(*blkId, aString, xdr_filter, current_size); */
     free(aString);
 }
 

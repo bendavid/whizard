@@ -54,7 +54,7 @@
 
 Found process #1 with ID = 42
 ========================================================================
- Event [incomplete]
+ Event #1 [incomplete]
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

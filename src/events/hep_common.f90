@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -396,7 +396,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")
-    call tag_gen_v%write (var_str ("2.6.1"), unit)
+    call tag_gen_v%write (var_str ("2.6.2"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -747,6 +747,7 @@ contains
     if (present (alpha_qcd))  alphaqcdlh = alpha_qcd
     if (present (alpha_qed))  alphaqedlh = alpha_qed
     if (present (scale))  scalelh(1) = scale
+    if (present (i_evt))  NEVHEP = i_evt
   end subroutine hepevt_set_event_parameters
 
   subroutine hepevt_set_particle &
@@ -984,13 +985,12 @@ contains
     end if
   end subroutine hepevt_write_ascii
 
-  subroutine hepevt_write_athena (unit, i_evt)
-    integer, intent(in), optional :: unit, i_evt
+  subroutine hepevt_write_athena (unit)
+    integer, intent(in), optional :: unit
     integer :: u, i, num_event
     num_event = 0
-    if (present (i_evt)) num_event = i_evt
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(2(1x,I0))") num_event, NHEP
+    write (u, "(2(1x,I0))") NEVHEP, NHEP
     do i = 1, NHEP
        write (u, "(7(1x,I0))") &
             i, ISTHEP(i), IDHEP(i), JMOHEP(:,i), JDAHEP(:,i)

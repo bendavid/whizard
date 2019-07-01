@@ -6,7 +6,7 @@
 * Generate and write an event
 
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -121,7 +121,7 @@ event_excess* =>  0.000000000000E+00
  i_prc = 42
 
 ========================================================================
- Event [incomplete]
+ Event #1 [incomplete]
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -175,7 +175,7 @@ event_excess* =>  0.000000000000E+00
 * Generate and append another event
 
 ========================================================================
- Event
+ Event #2
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -265,7 +265,7 @@ $process_id* => "processes_test"
 process_num_id* => [unknown integer]
 sqme* =>  1.000000000000E+00
 sqme_ref* =>  1.000000000000E+00
-event_index* => 1
+event_index* => 2
 event_weight* =>  2.709767398832E+08
 event_weight_ref* =>  2.709767398832E+08
 event_excess* =>  0.000000000000E+00
@@ -290,7 +290,7 @@ event_excess* =>  0.000000000000E+00
  i_prc = 5
 
 ========================================================================
- Event [incomplete]
+ Event #2 [incomplete]
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

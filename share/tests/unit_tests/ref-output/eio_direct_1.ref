@@ -6,10 +6,12 @@
 * Initial state
 
  Event direct access:
+   i_evt = [undefined]
    i_prc = 0
    i_mci = 0
    i_term = 0
    channel = 0
+   passed = [N/A]
  Particle set:
 ------------------------------------------------------------------------
    [empty]
@@ -17,10 +19,12 @@
 * Extract an empty event
 
  Event direct access:
+   i_evt = [undefined]
    i_prc = 0
    i_mci = 0
    i_term = 0
    channel = 0
+   passed = [N/A]
  Particle set:
 ------------------------------------------------------------------------
    [empty]
@@ -33,10 +37,12 @@ n_out = 0
 * Generate and extract an event
 
  Event direct access:
+   i_evt = 42
    i_prc = 1
    i_mci = 1
    i_term = 1
    channel = 1
+   passed = T
  Particle set:
 ------------------------------------------------------------------------
  Particle 1 [i] f(25)
@@ -62,6 +68,8 @@ n_out = 0
 
 * Retrieve contents
 
+index = 42
+passed = T
 n_in = 2
 n_out = 2
 p[3] =
@@ -71,10 +79,12 @@ p[3] =
 * Re-create an eio event record: initialization
 
  Event direct access:
+   i_evt = 42
    i_prc = 1
    i_mci = 1
    i_term = 1
    channel = 1
+   passed = [N/A]
  Particle set:
 ------------------------------------------------------------------------
  Particle 1 [i] f(25)
@@ -101,10 +111,12 @@ p[3] =
 * Re-create an eio event record: set momenta, interchanged
 
  Event direct access:
+   i_evt = 42
    i_prc = 1
    i_mci = 1
    i_term = 1
    channel = 1
+   passed = [N/A]
  Particle set:
 ------------------------------------------------------------------------
  Particle 1 [i] f(25)
@@ -138,7 +150,7 @@ p[3] =
  iostat = 0
 
 ========================================================================
- Event
+ Event #42
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

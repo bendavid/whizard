@@ -145,10 +145,12 @@ simulations_14_p:
 * Initialize object for direct access
 
  Event direct access:
+   i_evt = [undefined]
    i_prc = 1
    i_mci = 1
    i_term = 1
    channel = 1
+   passed = [N/A]
  Particle set:
 ------------------------------------------------------------------------
  Particle 1 [i] f(-11)
@@ -212,7 +214,11 @@ simulations_14_p:
 * Show event with sqme
 
 ========================================================================
- Event #1
+ Event
+========================================================================
+ count  = 1
+ passed = [N/A]
+ prc id = 1
 ------------------------------------------------------------------------
  sqme (ref)    = [undefined]
  sqme (prc)   =  2.356220544080E-03

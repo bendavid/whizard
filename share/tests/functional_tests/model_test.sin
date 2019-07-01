@@ -118,6 +118,10 @@ model = "SM_Higgs"
 mH = 125 GeV
 process models_ccww_sm_higgs      = c, C => Wp, Wm
 
+model = "SM_Higgs_CKM"
+mH = 125 GeV
+process models_ccww_sm_higgs_ckm  = c, C => Wp, Wm
+
 model = "SM_tt_threshold"
 mH = 125 GeV
 test = 42
@@ -210,19 +214,20 @@ integrate (models_wwww_noh_rx)       { seed = 23 }
 integrate (models_ccww_sm_top)       { seed = 24 }
 integrate (models_ccww_sm_top_anom)  { seed = 25 }
 integrate (models_ccww_sm_higgs)     { seed = 26 }
-integrate (models_ccww_sm_tt_thresh) { seed = 27 }
-integrate (models_ccww_simplest)     { seed = 28 }
-integrate (models_ccww_simplest_univ){ seed = 29 }
-integrate (models_ccww_template)     { seed = 30 }
-integrate (models_ccww_threeshl)     { seed = 31 }
-integrate (models_ccww_threeshl_nohf){ seed = 32 }
-integrate (models_ccww_ued)          { seed = 33 }
-integrate (models_wwww_ssc)          { seed = 34 }
-integrate (models_wwww_ssc_2)        { seed = 35 }
-integrate (models_wwww_ssc_altt)     { seed = 36 }
-integrate (models_wwww_alth)         { seed = 37 }
-integrate (models_ccww_xdim)         { seed = 38 }
-integrate (models_ccww_wzw)          { seed = 39 }
-integrate (models_ccww_zprime)       { seed = 40 }
+integrate (models_ccww_sm_higgs_ckm) { seed = 27 }
+integrate (models_ccww_sm_tt_thresh) { seed = 28 }
+integrate (models_ccww_simplest)     { seed = 29 }
+integrate (models_ccww_simplest_univ){ seed = 30 }
+integrate (models_ccww_template)     { seed = 31 }
+integrate (models_ccww_threeshl)     { seed = 32 }
+integrate (models_ccww_threeshl_nohf){ seed = 33 }
+integrate (models_ccww_ued)          { seed = 34 }
+integrate (models_wwww_ssc)          { seed = 35 }
+integrate (models_wwww_ssc_2)        { seed = 36 }
+integrate (models_wwww_ssc_altt)     { seed = 37 }
+integrate (models_wwww_alth)         { seed = 38 }
+integrate (models_ccww_xdim)         { seed = 39 }
+integrate (models_ccww_wzw)          { seed = 40 }
+integrate (models_ccww_zprime)       { seed = 41 }
 
 show (results)

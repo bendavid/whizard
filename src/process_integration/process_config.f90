@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1069,7 +1069,8 @@ contains
       !!! Add one for additional Born matrix element
       if (nlo_t == NLO_VIRTUAL)  n_sub = n_sub + 1
       if (associated (term%pcm)) then
-         if (term%pcm%has_pdfs .and. nlo_t == NLO_REAL .and. can_have_sub)  n_sub = n_sub + 4
+         if (term%pcm%has_pdfs .and. ((nlo_t == NLO_REAL .and. can_have_sub) &
+              .or. nlo_t == NLO_DGLAP)) n_sub = n_sub + n_beam_structure_int
       end if
     end subroutine compute_n_sub
 
@@ -1080,7 +1081,7 @@ contains
       class is (prc_user_defined_base_t)
          can_have_sub = nlo_t == NLO_VIRTUAL .or. &
               (nlo_t == NLO_REAL .and. term%i_term_global == term%i_sub) .or. &
-              nlo_t == NLO_MISMATCH
+              nlo_t == NLO_MISMATCH .or. nlo_t == NLO_DGLAP
          if (can_have_sub) then
             nn = (n_sub + 1) * n
          else

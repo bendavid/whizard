@@ -42,7 +42,7 @@ module parameters_sm_higgs
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
-       ghgaga, ghgaz, ghgg, ghmm, & 
+       ghgaga, ghgaz, ghgg, ghmm, ghee, &
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   real(default), public :: vev
   complex(default), dimension(2), public :: &
@@ -183,6 +183,7 @@ contains
     ghcc = - mass(4) / vev
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
+    ghee = - mass(11) / vev
     gh3 = - 3 * mass(25)**2 / vev
     gh4 = - 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)

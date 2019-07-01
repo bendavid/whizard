@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -113,9 +113,13 @@ module event_base
      procedure (generic_event_generate), deferred :: generate
      procedure (generic_event_set_hard_particle_set), deferred :: &
           set_hard_particle_set
+     procedure (generic_event_set_index), deferred :: set_index
+     procedure (generic_event_handler), deferred :: reset_index
+     procedure (generic_event_increment_index), deferred :: increment_index
      procedure (generic_event_handler), deferred :: evaluate_expressions
      procedure (generic_event_select), deferred :: select
      procedure (generic_event_get_model_ptr), deferred :: get_model_ptr
+     procedure (generic_event_has_index), deferred :: has_index
      procedure (generic_event_get_index), deferred :: get_index
      procedure (generic_event_get_fac_scale), deferred :: get_fac_scale
      procedure (generic_event_get_alpha_s), deferred :: get_alpha_s
@@ -128,8 +132,8 @@ module event_base
           set_alpha_qcd_forced
      procedure (generic_event_set_scale_forced), deferred :: &
           set_scale_forced
-     procedure :: reset => generic_event_reset
-     procedure :: base_reset => generic_event_reset
+     procedure :: reset_contents => generic_event_reset_contents
+     procedure :: base_reset_contents => generic_event_reset_contents
      procedure :: pacify_particle_set => generic_event_pacify_particle_set
   end type generic_event_t
 
@@ -182,10 +186,26 @@ module event_base
   end interface
 
   abstract interface
+     subroutine generic_event_set_index (event, index)
+       import
+       class(generic_event_t), intent(inout) :: event
+       integer, intent(in) :: index
+     end subroutine generic_event_set_index
+  end interface
+
+  abstract interface
      subroutine generic_event_handler (event)
        import
        class(generic_event_t), intent(inout) :: event
      end subroutine generic_event_handler
+  end interface
+
+  abstract interface
+     subroutine generic_event_increment_index (event, offset)
+       import
+       class(generic_event_t), intent(inout) :: event
+       integer, intent(in), optional :: offset
+     end subroutine generic_event_increment_index
   end interface
 
   abstract interface
@@ -202,6 +222,14 @@ module event_base
        class(generic_event_t), intent(in) :: event
        class(model_data_t), pointer :: model
      end function generic_event_get_model_ptr
+  end interface
+
+  abstract interface
+     function generic_event_has_index (event) result (flag)
+       import
+       class(generic_event_t), intent(in) :: event
+       logical :: flag
+     end function generic_event_has_index
   end interface
 
   abstract interface
@@ -546,7 +574,7 @@ contains
     end if
   end subroutine generic_event_set
 
-  subroutine generic_event_reset (event)
+  subroutine generic_event_reset_contents (event)
     class(generic_event_t), intent(inout) :: event
     call event%discard_particle_set ()
     event%sqme_ref_known = .false.
@@ -556,7 +584,7 @@ contains
     event%weight_prc_known = .false.
     event%weight_alt_known = .false.
     event%excess_prc_known = .false.
-  end subroutine generic_event_reset
+  end subroutine generic_event_reset_contents
 
   subroutine generic_event_pacify_particle_set (event)
     class(generic_event_t), intent(inout) :: event

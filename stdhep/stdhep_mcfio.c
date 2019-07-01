@@ -35,7 +35,11 @@
 /* 
 *   mcfio/StdHep definitions and include files
 */
+#include "mcf_xdr.h"
 #include "mcfio_Dict.h"
+#include "mcfio_Direct.h"
+#include "mcfio_Util1.h"
+#include "mcfio_Block.h"
 #include "stdhep.h"
 #include "hepev4.h"
 #include "hepeup.h"

@@ -6490,7 +6490,6 @@ module real_subtraction
 <<Use kinds with double>>
 <<Use strings>>
   use io_units
-  use system_dependencies, only: LHAPDF6_AVAILABLE
   use format_defs, only: FMT_15
   use string_utils
   use constants
@@ -6500,8 +6499,6 @@ module real_subtraction
   use models
   use physics_defs
   use sm_physics
-  use sf_lhapdf
-  use pdf
   use lorentz
   use flavors
   use phs_fks, only: real_kinematics_t, isr_kinematics_t
@@ -8739,15 +8736,6 @@ end module nlo_data
 @ %def real_scales_t
 @
 <<nlo data: public>>=
-  public :: pdf_container_t
-<<nlo data: types>>=
-  type :: pdf_container_t
-     real(default), dimension(-6:6) :: f
-  end type pdf_container_t
-
-@ %def pdf_container_t
-@
-<<nlo data: public>>=
   public :: get_threshold_momenta
 <<nlo data: procedures>>=
   function get_threshold_momenta (p) result (p_thr)
@@ -9016,13 +9004,11 @@ module dglap_remnant
 <<Use kinds with double>>
 <<Use strings>>
   use numeric_utils
-  use system_dependencies, only: LHAPDF6_AVAILABLE
   use diagnostics
   use constants
   use physics_defs
   use pdg_arrays
-  use sf_lhapdf
-  use pdf
+  use sf_base, only: rescaling_function_t
   use phs_fks, only: isr_kinematics_t
 
   use nlo_data
@@ -9042,17 +9028,86 @@ end module dglap_remnant
 @ %def module dglap_remnant
 @
 <<dglap remnant: public>>=
+  public :: rescale_dglap_t
+<<dglap remnant: types>>=
+  type, extends(rescaling_function_t) :: rescale_dglap_t
+     real(default), dimension(:), allocatable :: z
+   contains
+   <<dglap remnant: rescale dglap: TBP>>
+  end type rescale_dglap_t
+
+@ %def rescale_dglap_t
+@ Allocate [[sf_indices]] for 6 Quarks (and 6 Antiquarks) and a gluon,
+respectively for each emitter. Additionally, add gluon indices.
+
+We add terms in four steps for each quark (and gluon), for two emitters, and two gluon
+contributions.
+<<dglap remnant: rescale dglap: TBP>>=
+  procedure :: init_indices => rescale_dglap_init_indices
+<<dglap remnant: procedures>>=
+  subroutine rescale_dglap_init_indices (func)
+    class(rescale_dglap_t), intent(inout) :: func
+    integer :: i
+    call msg_debug2 (D_BEAMS, "recale_dglap_init_indices")
+    allocate (func%sf_indices(3, 13))
+    allocate (func%sf_indices_gluon(2, 13))
+    func%sf_indices(1,:) = [(i, i = 1, 13)]
+    func%sf_indices(2,:) = [(13 + 4 * i - 3, i = 1, 13)]
+    func%sf_indices(3,:) = [(13 + 4 * i - 2, i = 1, 13)]
+    func%sf_indices_gluon(1,:) = [(13 + 4 * i - 1, i = 1 ,13)]
+    func%sf_indices_gluon(2,:) = [(13 + 4 * i, i = 1 ,13)]
+    if (debug2_active (D_BEAMS)) then
+       print *, "Beam 1:"
+       print *, " quark indices: ", func%sf_indices(2, :)
+       print *, " gluon indices: ", func%sf_indices_gluon(1, :)
+       print *, "Beam 2:"
+       print *, " quark indices: ", func%sf_indices(3, :)
+       print *, " gluon indices: ", func%sf_indices_gluon(2, :)
+    end if
+  end subroutine rescale_dglap_init_indices
+
+@ %def rescale_dglap_init_indices
+@
+<<dglap remnant: rescale dglap: TBP>>=
+  procedure :: apply => rescale_dglap_apply
+<<dglap remnant: procedures>>=
+  subroutine rescale_dglap_apply (func, x)
+    class(rescale_dglap_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    if (debug2_active (D_BEAMS))  then
+       print *, "Rescaling function - DGLAP:"
+       print *, "Input: ", x
+       print *, "Beam index: ", func%i_beam
+       print *, "z: ", func%z
+    end if
+    x = x / func%z(func%i_beam)
+    if (debug2_active (D_BEAMS)) print *, "scaled x: ", x
+  end subroutine rescale_dglap_apply
+
+@ %def rescale_dglap_apply
+@
+<<dglap remnant: rescale dglap: TBP>>=
+  procedure :: set => rescale_dglap_set
+<<dglap remnant: procedures>>=
+  subroutine rescale_dglap_set (func, z)
+    class(rescale_dglap_t), intent(inout) :: func
+    real(default), dimension(:), intent(in) :: z
+    ! allocate-on-assginment
+    func%z = z
+  end subroutine rescale_dglap_set
+
+@  %def rescale_dglap_set
+@
+<<dglap remnant: public>>=
   public :: dglap_remnant_t
 <<dglap remnant: types>>=
   type :: dglap_remnant_t
-    type(pdf_data_t) :: pdf_data
     type(isr_kinematics_t), pointer :: isr_kinematics => null ()
-    integer, dimension(:), allocatable :: i_light_quarks
+    integer, dimension(:), allocatable :: light_quark_flv
     integer, dimension(:,:), allocatable :: flv_in
+    real(default), dimension(:), allocatable :: sqme_born
+    real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
     integer :: n_flv
-    type(pdf_container_t), dimension(2) :: pdf_scaled
-    type(pdf_container_t), dimension(2) :: pdf_born
-    real(default), dimension(:), pointer :: sqme_born => null ()
   contains
   <<dglap remnant: dglap remnant: TBP>>
   end type dglap_remnant_t
@@ -9062,13 +9117,19 @@ end module dglap_remnant
 <<dglap remnant: dglap remnant: TBP>>=
   procedure :: init => dglap_remnant_init
 <<dglap remnant: procedures>>=
-  subroutine dglap_remnant_init (dglap, isr_kinematics, flv, n_alr)
+  subroutine dglap_remnant_init (dglap, n_flv_born, isr_kinematics, flv, n_alr)
     class(dglap_remnant_t), intent(inout) :: dglap
+    integer, intent(in) :: n_flv_born
     type(isr_kinematics_t), intent(in), target :: isr_kinematics
     integer, dimension(:,:), intent(in) :: flv
     integer, intent(in) :: n_alr
     integer :: i, j, n_quarks
     logical, dimension(-6:6) :: quark_checked = .false.
+
+    allocate (dglap%sqme_born(n_flv_born))
+    dglap%sqme_born = zero
+    allocate (dglap%sqme_coll_isr(2, 2, n_flv_born))
+    dglap%sqme_coll_isr = zero
 
     dglap%isr_kinematics => isr_kinematics
     dglap%n_flv = size (flv, dim=2)
@@ -9081,119 +9142,34 @@ end module dglap_remnant
           quark_checked(flv(i, 1)) = .true.
        end if
     end do
-    allocate (dglap%i_light_quarks (n_quarks))
+    allocate (dglap%light_quark_flv (n_quarks))
     j = 1
     do i = -6, 6
        if (quark_checked(i)) then
-          dglap%i_light_quarks(j) = i
+          dglap%light_quark_flv(j) = i
           j = j + 1
        end if
     end do
-
-
-    call dglap%init_pdfs ()
   end subroutine dglap_remnant_init
 
 @ %def dglap_remnant_init
 @
 <<dglap remnant: dglap remnant: TBP>>=
-  procedure :: init_pdfs => dglap_remnant_init_pdfs
+  procedure :: get_summed_quark_sqmes => dglap_remnant_get_summed_quark_sqmes
 <<dglap remnant: procedures>>=
-  subroutine dglap_remnant_init_pdfs (dglap)
-    class(dglap_remnant_t), intent(inout) :: dglap
-    type(string_t) :: lhapdf_dir, lhapdf_file
-    integer :: lhapdf_member
-    lhapdf_dir = ""
-    lhapdf_file = ""
-    lhapdf_member = 0
-    if (LHAPDF6_AVAILABLE) then
-       call lhapdf_initialize &
-            (1, lhapdf_dir, lhapdf_file, lhapdf_member, dglap%pdf_data%pdf)
-       associate (pdf_data => dglap%pdf_data)
-          pdf_data%type = STRF_LHAPDF6
-          pdf_data%xmin = pdf_data%pdf%getxmin ()
-          pdf_data%xmax = pdf_data%pdf%getxmax ()
-          pdf_data%qmin = sqrt(pdf_data%pdf%getq2min ())
-          pdf_data%qmax = sqrt(pdf_data%pdf%getq2max ())
-       end associate
-    else
-       call msg_fatal ("PDF subtraction: PDFs could not be initialized")
-    end if
-  end subroutine dglap_remnant_init_pdfs
-
-@ %def dglap_remnant_init_pdfs
-@
-<<dglap remnant: dglap remnant: TBP>>=
-  procedure :: compute_pdfs => dglap_remnant_compute_pdfs
-<<dglap remnant: procedures>>=
-  subroutine dglap_remnant_compute_pdfs (dglap)
-    class(dglap_remnant_t), intent(inout) :: dglap
-    integer :: i
-    real(default) :: z, x, Q
-    real(double), dimension(-6:6) :: f_dble = 0._double
-    Q = dglap%isr_kinematics%fac_scale
-    do i = 1, 2
-       x = dglap%isr_kinematics%x(i)
-       z = dglap%isr_kinematics%z(i)
-       call dglap%pdf_data%evolve (dble(x), dble(Q), f_dble)
-       dglap%pdf_born(i)%f = f_dble / dble(x)
-       call dglap%pdf_data%evolve (dble(x / z), dble(Q), f_dble)
-       dglap%pdf_scaled(i)%f = f_dble / dble(x / z)
+  function dglap_remnant_get_summed_quark_sqmes (dglap, emitter) result (sum_sqme)
+    real(default) :: sum_sqme
+    class(dglap_remnant_t), intent(in) :: dglap
+    integer, intent(in) :: emitter
+    integer :: i_flv
+    sum_sqme = zero
+    do i_flv = 1, size (dglap%sqme_coll_isr, dim=3)
+       if (any (dglap%flv_in(emitter, i_flv) == dglap%light_quark_flv)) &
+            sum_sqme = sum_sqme + dglap%sqme_coll_isr (emitter, 1, i_flv)
     end do
-  end subroutine dglap_remnant_compute_pdfs
+  end function dglap_remnant_get_summed_quark_sqmes
 
-@ %def dglap_remnant_compute_pdfs
-@
-<<dglap remnant: dglap remnant: TBP>>=
-  procedure :: get_gluon_pdf => dglap_remnant_get_gluon_pdf
-<<dglap remnant: procedures>>=
-  function dglap_remnant_get_gluon_pdf (dglap, em, scaled) result (pdf)
-    class(dglap_remnant_t), intent(in) :: dglap
-    integer, intent(in) :: em
-    logical, intent(in) :: scaled
-    real(default) :: pdf
-    if (scaled) then
-       pdf = dglap%pdf_scaled(em)%f(0)
-    else
-       pdf = dglap%pdf_born(em)%f(0)
-    end if
-  end function dglap_remnant_get_gluon_pdf
-
-@ %def dglap_remnant_get_gluon_pdf
-@
-<<dglap remnant: dglap remnant: TBP>>=
-  procedure :: get_quark_pdf => dglap_remnant_get_quark_pdf
-<<dglap remnant: procedures>>=
-  function dglap_remnant_get_quark_pdf (dglap, em, i, scaled) result (pdf)
-    class(dglap_remnant_t), intent(in) :: dglap
-    integer, intent(in) :: em, i
-    logical, intent(in) :: scaled
-    real(default) :: pdf
-    if (scaled) then
-       pdf = dglap%pdf_scaled(em)%f(i)
-    else
-       pdf = dglap%pdf_born(em)%f(i)
-    end if
-  end function dglap_remnant_get_quark_pdf
-
-@ %def dglap_remnant_get_quark_pdf
-@
-<<dglap remnant: dglap remnant: TBP>>=
-  procedure :: get_summed_quark_pdf => dglap_remnant_get_summed_quark_pdf
-<<dglap remnant: procedures>>=
-  function dglap_remnant_get_summed_quark_pdf (dglap, em) result (pdf)
-    class(dglap_remnant_t), intent(in) :: dglap
-    integer, intent(in) :: em
-    real(default) :: pdf
-    integer :: i_quark
-    pdf = 0._default
-    do i_quark = -6, 6
-       if (any(i_quark == dglap%i_light_quarks)) &
-          pdf = pdf + dglap%get_quark_pdf(em, i_quark, scaled = .true.)
-    end do
-  end function dglap_remnant_get_summed_quark_pdf
-
-@ %def dglap_remnant_get_summed_quark_pdf
+@ %def dglap_remnant_get_summed_quark_sqmes
 @ Evaluates formula (...). Note that, as also is the case for the real subtraction,
 we have to take into account an additional term, occuring because the integral the
 plus distribution is evaluated over is not constrained on the interval $[0,1]$.
@@ -9218,16 +9194,14 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
     logical, intent(in) :: separate_alrs
     real(default), intent(inout), dimension(:) :: sqme_dglap
     real(default) :: factor, factor_soft, plus_dist_remnant
-    real(default) :: pdfs, pdfb
     integer :: i_flv, ii_flv, emitter
     real(default), dimension(2) :: tmp
     real(default) :: sb, xb, onemz
     real(default) :: fac_scale2, jac
+    real(default) :: sqme_scaled
 
     sb = dglap%isr_kinematics%sqrts_born**2
     fac_scale2 = dglap%isr_kinematics%fac_scale**2
-
-    call dglap%compute_pdfs ()
 
     do i_flv = 1, dglap%n_flv
        if (separate_alrs) then
@@ -9248,32 +9222,29 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
              plus_dist_remnant = log(one - xb) * log(sb / fac_scale2) + log(one - xb)**2
 
              if (is_gluon(dglap%flv_in(emitter, i_flv))) then
-                pdfs = dglap%get_gluon_pdf (emitter, scaled = .true.)
-                pdfb = dglap%get_gluon_pdf (emitter, scaled = .false.)
-                tmp(emitter) = p_hat_gg(z) * factor / z * pdfs / pdfb * jac &
-                     - p_hat_gg(one) * factor_soft * jac &
-                     + p_hat_gg(one) * plus_dist_remnant
-                pdfs = dglap%get_summed_quark_pdf (emitter)
+                sqme_scaled = dglap%sqme_coll_isr(emitter, 2, i_flv)
+                tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &
+                     - p_hat_gg(one) * factor_soft * sqme_born(i_flv) * jac &
+                     + p_hat_gg(one) * plus_dist_remnant * sqme_born(i_flv)
+
                 tmp(emitter) = tmp(emitter) + &
-                     (p_hat_qg(z) * factor - p_derived_qg(z)) / z * pdfs / pdfb * jac
+                     (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
+                     dglap%get_summed_quark_sqmes (emitter)
              else if (is_quark(dglap%flv_in(emitter, i_flv))) then
-                pdfs = dglap%get_quark_pdf (emitter, dglap%flv_in(emitter, i_flv), scaled = .true.)
-                pdfb = dglap%get_quark_pdf (emitter, dglap%flv_in(emitter, i_flv), scaled = .false.)
-                if (vanishes (pdfb)) then
-                   sqme_dglap = zero
-                   return
-                end if
-                tmp(emitter) = p_hat_qq(z) * factor / z * pdfs / pdfb * jac &
-                     - p_derived_qq(z) / z * pdfs / pdfb * jac &
-                     - p_hat_qq(one) * factor_soft * jac &
-                     + p_hat_qq(one) * plus_dist_remnant
-                pdfs = dglap%get_gluon_pdf (emitter, scaled = .true.)
+                sqme_scaled = dglap%sqme_coll_isr(emitter, 1, i_flv)
+                tmp(emitter) = p_hat_qq(z) * factor / z * sqme_scaled * jac &
+                     - p_derived_qq(z) / z * sqme_scaled * jac &
+                     - p_hat_qq(one) * factor_soft * sqme_born(i_flv) * jac &
+                     + p_hat_qq(one) * plus_dist_remnant * sqme_born(i_flv)
+
+                sqme_scaled = dglap%sqme_coll_isr(emitter, 2, i_flv)
                 tmp(emitter) = tmp(emitter) + &
-                     (p_hat_gq(z) * factor - p_derived_gq(z)) / z * pdfs / pdfb * jac
+                     (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
+
              end if
           end associate
        end do
-       sqme_dglap(ii_flv) = sqme_dglap(ii_flv) + alpha_s / twopi * (tmp(1) + tmp(2)) * sqme_born(i_flv)
+       sqme_dglap(ii_flv) = sqme_dglap(ii_flv) + alpha_s / twopi * (tmp(1) + tmp(2))
     end do
   end subroutine dglap_remnant_evaluate
 
@@ -9388,8 +9359,9 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
   subroutine dglap_remnant_final (dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
     if (associated (dglap%isr_kinematics)) nullify (dglap%isr_kinematics)
-    if (allocated (dglap%i_light_quarks)) deallocate (dglap%i_light_quarks)
-    if (associated (dglap%sqme_born)) deallocate (dglap%sqme_born)
+    if (allocated (dglap%light_quark_flv)) deallocate (dglap%light_quark_flv)
+    if (allocated (dglap%sqme_born)) deallocate (dglap%sqme_born)
+    if (allocated (dglap%sqme_coll_isr)) deallocate (dglap%sqme_coll_isr)
   end subroutine dglap_remnant_final
 
 @ %def dglap_remnant_final

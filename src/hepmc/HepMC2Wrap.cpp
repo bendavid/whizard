@@ -101,7 +101,7 @@ extern "C" GenVertex* gen_event_get_signal_process_vertex
 
 extern "C" bool gen_event_set_beam_particles
 ( GenEvent* evt, GenParticle* prt1, GenParticle* prt2) {
-  evt->set_beam_particles( prt1, prt2 );
+  return evt->set_beam_particles( prt1, prt2 );
 }
 
 extern "C" void gen_event_set_cross_section

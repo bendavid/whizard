@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -2773,9 +2773,9 @@ contains
           '(EPA), this real parameters sets the minimal value for the ' // &
           'transferred momentum. Either this parameter or the mass of ' // &
           'the beam particle has to be non-zero.  (cf. also \ttt{epa}, ' // &
-          '\ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha}, \ttt{epa\_e\_max}, ' // &
+          '\ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha}, \ttt{epa\_q\_max}, ' // &
           '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})'))
-    call var_list%append_real (var_str ("epa_e_max"), 0._default, &
+    call var_list%append_real (var_str ("epa_q_max"), 0._default, &
           intrinsic=.true., &
           description=var_str ('This real parameter allows to set the ' // &
           'upper energy cutoff for the equivalent-photon approximation ' // &
@@ -3054,10 +3054,14 @@ contains
          '\ttt{\$born\_me\_method}, \ttt{\$real\_tree\_me\_method}, ' // &
          '\ttt{\$loop\_me\_method} and \ttt{\$correlation\_me\_method}.'))
     call var_list%append_log (var_str ("?report_progress"), .true., &
-          intrinsic=.true., &
-          description=var_str ('Flag for the \oMega\ matrix element generator ' // &
-          'whether to print out status messages about progress during ' // &
-          'matrix element generation. (cf. also \ttt{\$method}, \ttt{\$omega\_flags})'))
+         intrinsic=.true., &
+         description=var_str ('Flag for the \oMega\ matrix element generator ' // &
+         'whether to print out status messages about progress during ' // &
+         'matrix element generation. (cf. also \ttt{\$method}, \ttt{\$omega\_flags})'))
+    call var_list%append_log (var_str ("?me_verbose"), .false., &
+         description=var_str ("Flag determining whether " // &
+         "the makefile command for generating and compiling the \oMega\ matrix " // &
+         "element code is silent or verbose. Default is silent."))
     call var_list%append_string (var_str ("$restrictions"), var_str (""), &
          intrinsic=.true., &
          description=var_str ('This is an optional argument for process ' // &
@@ -3273,12 +3277,27 @@ contains
           'As this depends on the cross section under consideration, it ' // &
           'might be different for different processes in the process list.  ' // &
           '(cf. \ttt{luminosity}, \ttt{\$sample}, \ttt{sample\_format}, ' // &
-          '\ttt{?unweighted})'))
+          '\ttt{?unweighted}, \ttt{event\_index\_offset})'))
+    call var_list%append_int (var_str ("event_index_offset"), 0, &
+          intrinsic=.true., &
+          description=var_str ('The value ' // &
+          '\ttt{event\_index\_offset = {\em <num>}} ' // &
+          'initializes the event counter for a subsequent ' // &
+          'event sample.  By default (value 0), the first event ' // &
+          'gets index value 1, incrementing by one for each generated event ' // &
+          'within a sample.  The event counter is initialized again ' // &
+          'for each new sample (i.e., \ttt{integrate} command). ' // &
+          'If events are read from file, and the ' // &
+          'event file format supports event numbering, the event numbers ' // &
+          'will be taken from file instead, and the value of ' // &
+          '\ttt{event\_index\_offset} has no effect. ' // &
+          '(cf. \ttt{luminosity}, \ttt{\$sample}, \ttt{sample\_format}, ' // &
+          '\ttt{?unweighted}, \ttt{n\_events})'))
     call var_list%append_log (var_str ("?unweighted"), .true., &
           intrinsic=.true., &
           description=var_str ('Flag that distinguishes between unweighted ' // &
           'and weighted event generation. (cf. also \ttt{simulate}, \ttt{n\_events}, ' // &
-          '\ttt{luminosity})'))
+          '\ttt{luminosity}, \ttt{event\_index\_offset})'))
     call var_list%append_real (var_str ("safety_factor"), 1._default, &
           intrinsic=.true., &
           description=var_str ('This real variable \ttt{safety\_factor ' // &
@@ -3320,6 +3339,18 @@ contains
           'when the off-shellness is greater than ' // &
           '\texttt{resonance\_on\_shell\_limit}.  All of this applies ' // &
           'only if \texttt{?resonance\_history = true}.'))
+    call var_list%append_real (var_str ("resonance_background_factor"), &
+          1._default, &
+          intrinsic=.true., &
+          description=var_str ( &
+          'The real variable \texttt{resonance\_background\_factor} ' // &
+          'controls resonance insertion if a resonance ' // &
+          'history applies to a particular event.  In determining '// &
+          'whether event kinematics qualifies as resonant or non-resonant, ' //&
+          'the non-resonant probability is multiplied by this factor ' // &
+          'Setting the factor to zero removes the background ' // &
+          'configuration as long as the kinematics qualifies as on-shell ' // &
+          'as qualified by \texttt{resonance\_on\_shell\_limit}.'))
      call var_list%append_log (var_str ("?keep_beams"), .false., &
           intrinsic=.true., &
           description=var_str ('The logical variable \ttt{?keep\_beams ' // &

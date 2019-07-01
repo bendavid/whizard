@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -107,11 +107,14 @@ module events
      procedure :: set_analysis => event_set_analysis
      procedure :: setup_expressions => event_setup_expressions
      procedure :: evaluate_transforms => event_evaluate_transforms
+     procedure :: set_index => event_set_index
+     procedure :: increment_index => event_increment_index
      procedure :: evaluate_expressions => event_evaluate_expressions
      procedure :: passed_selection => event_passed_selection
      procedure :: store_alt_values => event_store_alt_values
      procedure :: is_nlo => event_is_nlo
-     procedure :: reset => event_reset
+     procedure :: reset_contents => event_reset_contents
+     procedure :: reset_index => event_reset_index
      procedure :: import_instance_results => event_import_instance_results
      procedure :: accept_sqme_ref => event_accept_sqme_ref
      procedure :: accept_sqme_prc => event_accept_sqme_prc
@@ -135,7 +138,8 @@ module events
      procedure :: has_transform => event_has_transform
      procedure :: get_norm_mode => event_get_norm_mode
      procedure :: get_kinematical_weight => event_get_kinematical_weight
-     procedure :: get_index => event_get_index
+     procedure :: has_index => event_has_index 
+     procedure :: get_index => event_get_index 
      procedure :: get_fac_scale => event_get_fac_scale
      procedure :: get_alpha_s => event_get_alpha_s
      procedure :: get_sqrts => event_get_sqrts
@@ -260,10 +264,14 @@ contains
     dec = .true.;  if (present (show_decay))  dec = show_decay
     verb = .false.;  if (present (verbose))  verb = verbose
     call write_separator (u, 2)
+    write (u, "(1x,A)", advance="no")  "Event"
+    if (object%has_index ()) then
+       write (u, "(1x,'#',I0)", advance="no")  object%get_index ()
+    end if
     if (object%is_complete) then
-       write (u, "(1x,A)")  "Event"
+       write (u, *)
     else
-       write (u, "(1x,A)")  "Event [incomplete]"
+       write (u, "(1x,A)")  "[incomplete]"
     end if
     call write_separator (u)
     call object%config%write (u)
@@ -551,6 +559,18 @@ contains
     end subroutine print_transform_name_if_debug
   end subroutine event_evaluate_transforms
 
+  subroutine event_set_index (event, index)
+    class(event_t), intent(inout) :: event
+    integer, intent(in) :: index
+    call event%expr%set_event_index (index)
+  end subroutine event_set_index
+  
+  subroutine event_increment_index (event, offset)
+    class(event_t), intent(inout) :: event
+    integer, intent(in), optional :: offset
+    call event%expr%increment_event_index (offset)
+  end subroutine event_increment_index
+  
   subroutine event_evaluate_expressions (event)
     class(event_t), intent(inout) :: event
     type(particle_set_t), pointer :: particle_set
@@ -611,15 +631,15 @@ contains
     end if
   end function event_is_nlo
 
-  subroutine event_reset (event)
+  subroutine event_reset_contents (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt
-    call event%base_reset ()
+    call event%base_reset_contents ()
     event%selected_i_mci = 0
     event%selected_i_term = 0
     event%selected_channel = 0
     event%is_complete = .false.
-    call event%expr%reset ()
+    call event%expr%reset_contents ()
     event%selection_evaluated = .false.
     event%passed = .false.
     event%analysis_flag = .false.
@@ -633,7 +653,12 @@ contains
        call evt%reset ()
        evt => evt%next
     end do
-  end subroutine event_reset
+  end subroutine event_reset_contents
+
+  subroutine event_reset_index (event)
+    class(event_t), intent(inout) :: event
+    call event%expr%reset_event_index ()
+  end subroutine event_reset_index
 
   subroutine event_import_instance_results (event)
     class(event_t), intent(inout) :: event
@@ -723,7 +748,7 @@ contains
     integer, intent(in), optional :: i_nlo
     logical :: generate_new = .true.
     if (present (i_nlo)) generate_new = (i_nlo == 1)
-    if (generate_new) call event%reset ()
+    if (generate_new) call event%reset_contents ()
     event%selected_i_mci = i_mci
     if (event%config%unweighted) then
        call event%instance%generate_unweighted_event (i_mci)
@@ -924,10 +949,16 @@ contains
     end if
   end function event_get_kinematical_weight
 
+  function event_has_index (event) result (flag)
+    class(event_t), intent(in) :: event
+    logical :: flag
+    flag = event%expr%has_event_index ()
+  end function event_has_index
+
   function event_get_index (event) result (index)
     class(event_t), intent(in) :: event
     integer :: index
-    index = event%expr%index
+    index = event%expr%get_event_index ()
   end function event_get_index
 
   function event_get_fac_scale (event) result (fac_scale)

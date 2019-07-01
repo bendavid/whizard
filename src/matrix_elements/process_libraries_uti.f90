@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -300,7 +300,7 @@ contains
 
     write (u, "(A)")  "* Write makefile (no-op)"
     write (u, "(A)")
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .true.)
 
     write (u, "(A)")  "* Write driver source code (no-op)"
     write (u, "(A)")
@@ -373,7 +373,7 @@ contains
 
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
 
     write (u, "(A)")  "* Write driver source code"
     write (u, "(A)")
@@ -445,7 +445,7 @@ contains
 
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
 
     write (u, "(A)")  "* Write driver source code"
     write (u, "(A)")
@@ -663,7 +663,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
-    call lib%write_makefile (os_data, force = .true.)
+    call lib%write_makefile (os_data, force = .true., verbose = .false.)
 
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
@@ -719,7 +719,7 @@ contains
     call lib%configure (os_data)
     call lib%compute_md5sum ()
     call lib%test_transfer_md5sum (2, 2, 1)
-    call lib%write_makefile (os_data, force = .false.)
+    call lib%write_makefile (os_data, force = .false., verbose = .false.)
     call lib%write_driver (force = .false.)
 
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()

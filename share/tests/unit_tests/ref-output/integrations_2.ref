@@ -86,8 +86,8 @@ model "Test"
 |  |  |  +  ARGUMENTS   <pargs1>  =  <pexpr>
 |  |  |  |  +  SEQUENCE    <pexpr>  =  <pterm>
 |  |  |  |  |  +  SEQUENCE    <pterm>  =  <pexpr_src>
-|  |  |  |  |  |  +  SEQUENCE    <pexpr_src>  =  <outgoing_prt>
-|  |  |  |  |  |  |  +  SEQUENCE    <outgoing_prt>  =  <cexpr>
+|  |  |  |  |  |  +  SEQUENCE    <pexpr_src>  =  <unspecified_prt>
+|  |  |  |  |  |  |  +  SEQUENCE    <unspecified_prt>  =  <cexpr>
 |  |  |  |  |  |  |  |  +  SEQUENCE    <cexpr>  =  <variable>
 |  |  |  |  |  |  |  |  |  +  IDENTIFIER  <variable>  = s
 ------------------------------------------------------------------------
@@ -131,7 +131,7 @@ model "Test"
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
 ------------------------------------------------------------------------
-   MD5 sum (config)  = 'ED5FBF8422D19075B547B7194625CA64'
+   MD5 sum (config)  = 'BAA66CFEDCF8D0EDED7D3530F20F9277'
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------
@@ -218,7 +218,7 @@ model "Test"
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = '4280DB0A986FBE7C05740D1A109C718C'
+   MD5 sum (components)  = 'F2E4B934054B2944FFA409ACB9A8576C'
  Single-channel midpoint rule integrator:
    Integral             =  7.5760400351E+03
    Efficiency           =  9.4694442815E-01

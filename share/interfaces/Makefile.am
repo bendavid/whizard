@@ -29,7 +29,7 @@
 
 noinst_PROGRAMS = c_example cpp_example
 
-c_example_SOURCES = c_test.c
+c_example_SOURCES = c_test.c c_test.h
 c_example_LDADD  = $(top_builddir)/src/libwhizard.la
 c_example_LDADD += $(top_builddir)/src/prebuilt/libwhizard_prebuilt.la
 c_example_LDADD += $(CXXLIBS)

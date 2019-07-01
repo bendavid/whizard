@@ -11,7 +11,7 @@
 * Generate an event
 
 ========================================================================
- Event
+ Event #1
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -950,7 +950,7 @@ event_excess* =>  0.00000E+00
 * Re-read the event from file
 
 ========================================================================
- Event [incomplete]
+ Event #1 [incomplete]
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'
@@ -1028,7 +1028,7 @@ event_excess* =>  0.00000E+00
 * Recalculate process instance
 
 ========================================================================
- Event [incomplete]
+ Event #1 [incomplete]
 ------------------------------------------------------------------------
    Unweighted         = F
    Normalization      = 'sigma'

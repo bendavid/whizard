@@ -122,8 +122,8 @@ $sample = "epa_1b"
 n_events = 1
 | Starting simulation for process 'epa_1b'
 | Simulate: using integration grids from file 'epa_1b_m1.vg'
-| Simulate: activating EPA beam handler
-| Simulate: EPA handler mode: beam-pair recoil
+| Simulate: activating EPA handler
+| Simulate: ISR/EPA handler mode: pair recoil
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 1

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -53,6 +53,7 @@ module lcio_interface
   public :: show_lcio_event
   public :: write_lcio_event
   public :: lcio_event_final
+  public :: lcio_event_set_weight
   public :: lcio_event_set_alpha_qcd
   public :: lcio_event_set_scale
   public :: lcio_event_set_sqrts
@@ -91,6 +92,7 @@ module lcio_interface
   public :: lcio_open_file
   public :: lcio_reader_close
   public :: lcio_read_event
+  public :: lcio_event_get_event_index
   public :: lcio_event_get_process_id
   public :: lcio_event_get_n_tot
   public :: lcio_event_get_alphas
@@ -184,6 +186,13 @@ module lcio_interface
        type(c_ptr), value :: evt_obj
        character(c_char), dimension(*), intent(in) :: filename
      end subroutine lcio_event_to_file
+  end interface
+  interface
+     subroutine lcio_set_weight (evt_obj, weight) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: weight
+     end subroutine lcio_set_weight
   end interface
   interface
      subroutine lcio_set_alpha_qcd (evt_obj, alphas) bind(C)
@@ -458,6 +467,13 @@ module lcio_interface
      end function read_lcio_event
   end interface
   interface
+     integer(c_int) function lcio_event_get_event_number (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function lcio_event_get_event_number
+  end interface
+
+  interface
      integer(c_int) function lcio_event_signal_process_id (evt_obj) bind(C)
        import
        type(c_ptr), value :: evt_obj
@@ -505,7 +521,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.6.1")
+         "WHIZARD version:" // "2.6.2")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -544,6 +560,12 @@ contains
     type(lcio_event_t), intent(inout) :: evt
     call lcio_event_delete (evt%obj)
   end subroutine lcio_event_final
+
+  subroutine lcio_event_set_weight (evt, weight)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: weight
+    call lcio_set_weight (evt%obj, real (weight, c_double))
+  end subroutine lcio_event_set_weight
 
   subroutine lcio_event_set_alpha_qcd (evt, alphas)
     type(lcio_event_t), intent(inout) :: evt
@@ -844,6 +866,12 @@ contains
     evt%obj = read_lcio_event (lcrdr%obj)
     ok = c_associated (evt%obj)
   end subroutine lcio_read_event
+
+  function lcio_event_get_event_index (evt) result (i_evt)
+    integer :: i_evt
+    type(lcio_event_t), intent(in) :: evt
+    i_evt = lcio_event_get_event_number (evt%obj)
+  end function lcio_event_get_event_index
 
   function lcio_event_get_process_id (evt) result (i_proc)
     integer :: i_proc

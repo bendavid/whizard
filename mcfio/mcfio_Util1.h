@@ -22,4 +22,6 @@ void mcfioC_Free_EventTable(mcfxdrEventTable **p);
 void mcfioC_FreeStream(mcfStream **stream);
 void mcfioC_InfoBlockChar(int stream, int blk, int key,
                             char *answer, int *lret);
+unsigned int mcfioC_InfoNumStream(int *istreams,  unsigned int nmax);
 void mcfioC_GetBlockName(int blkId, char *answer);
+void mcfioC_Rewind(int istream);

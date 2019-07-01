@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -66,8 +66,8 @@ module subevt_expr
      procedure :: setup_var_self => subevt_expr_setup_var_self
      procedure :: link_var_list => subevt_expr_link_var_list
      procedure :: setup_selection => subevt_expr_setup_selection
-     procedure :: reset => subevt_expr_reset
-     procedure :: base_reset => subevt_expr_reset
+     procedure :: reset_contents => subevt_expr_reset_contents
+     procedure :: base_reset_contents => subevt_expr_reset_contents
      procedure :: base_evaluate => subevt_expr_evaluate
   end type subevt_expr_t
 
@@ -133,8 +133,13 @@ module subevt_expr
      procedure :: setup_reweight => event_expr_setup_reweight
      procedure :: set_process_id => event_expr_set_process_id
      procedure :: set_process_num_id => event_expr_set_process_num_id
-     procedure :: reset => event_expr_reset
+     procedure :: reset_contents => event_expr_reset_contents
      procedure :: set => event_expr_set
+     procedure :: has_event_index => event_expr_has_event_index
+     procedure :: get_event_index => event_expr_get_event_index
+     procedure :: set_event_index => event_expr_set_event_index
+     procedure :: reset_event_index => event_expr_reset_event_index
+     procedure :: increment_event_index => event_expr_increment_event_index
      procedure :: fill_subevt => event_expr_fill_subevt
      procedure :: evaluate => event_expr_evaluate
   end type event_expr_t
@@ -233,10 +238,10 @@ contains
     end if
   end subroutine subevt_expr_setup_selection
 
-  subroutine subevt_expr_reset (expr)
+  subroutine subevt_expr_reset_contents (expr)
     class(subevt_expr_t), intent(inout) :: expr
     expr%subevt_filled = .false.
-  end subroutine subevt_expr_reset
+  end subroutine subevt_expr_reset_contents
 
   subroutine subevt_expr_evaluate (expr, passed)
     class(subevt_expr_t), intent(inout) :: expr
@@ -653,9 +658,9 @@ contains
     expr%has_num_id = .true.
   end subroutine event_expr_set_process_num_id
 
-  subroutine event_expr_reset (expr)
+  subroutine event_expr_reset_contents (expr)
     class(event_expr_t), intent(inout) :: expr
-    call expr%base_reset ()
+    call expr%base_reset_contents ()
     expr%has_sqme_ref = .false.
     expr%has_sqme_prc = .false.
     expr%has_sqme_alt = .false.
@@ -663,7 +668,7 @@ contains
     expr%has_weight_prc = .false.
     expr%has_weight_alt = .false.
     expr%has_excess_prc = .false.
-  end subroutine event_expr_reset
+  end subroutine event_expr_reset_contents
 
   subroutine event_expr_set (expr, &
        weight_ref, weight_prc, weight_alt, &
@@ -704,6 +709,46 @@ contains
     end if
   end subroutine event_expr_set
 
+  function event_expr_has_event_index (expr) result (flag)
+    class(event_expr_t), intent(in) :: expr
+    logical :: flag
+    flag = expr%has_index
+  end function event_expr_has_event_index
+
+  function event_expr_get_event_index (expr) result (index)
+    class(event_expr_t), intent(in) :: expr
+    integer :: index
+    if (expr%has_index) then
+       index = expr%index
+    else
+       index = 0
+    end if
+  end function event_expr_get_event_index
+  
+  subroutine event_expr_set_event_index (expr, index)
+    class(event_expr_t), intent(inout) :: expr
+    integer, intent(in) :: index
+    expr%index = index
+    expr%has_index = .true.
+  end subroutine event_expr_set_event_index
+
+  subroutine event_expr_reset_event_index (expr)
+    class(event_expr_t), intent(inout) :: expr
+    expr%has_index = .false.
+  end subroutine event_expr_reset_event_index
+
+  subroutine event_expr_increment_event_index (expr, offset)
+    class(event_expr_t), intent(inout) :: expr
+    integer, intent(in), optional :: offset
+    if (expr%has_index) then
+       expr%index = expr%index + 1
+    else if (present (offset)) then
+       call expr%set_event_index (offset + 1)
+    else
+       call expr%set_event_index (1)
+    end if
+  end subroutine event_expr_increment_event_index
+
   subroutine event_expr_fill_subevt (expr, particle_set)
     class(event_expr_t), intent(inout) :: expr
     type(particle_set_t), intent(in) :: particle_set
@@ -713,12 +758,6 @@ contains
     expr%n_out = subevt_get_n_out (expr%subevt_t)
     expr%n_tot = expr%n_in + expr%n_out
     expr%subevt_filled = .true.
-    if (expr%has_index) then
-       expr%index = expr%index + 1
-    else
-       expr%index = 1
-       expr%has_index = .true.
-    end if
   end subroutine event_expr_fill_subevt
 
   subroutine event_expr_evaluate (expr, passed, reweight, analysis_flag)

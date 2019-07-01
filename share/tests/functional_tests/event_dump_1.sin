@@ -39,4 +39,5 @@ simulate (event_dump_1_p) { $sample = "event_dump_1b"  ?dump_compressed = true }
 simulate (event_dump_1_p) { $sample = "event_dump_1c"  ?dump_summary = true }
 
 n_events = 2
+event_index_offset = 500
 simulate (event_dump_1_p) { ?dump_screen = true }

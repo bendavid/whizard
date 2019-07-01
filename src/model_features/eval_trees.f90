@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -4928,10 +4928,16 @@ contains
           pn_prefix_cexpr => parse_node_get_sub_ptr (pn)
           key = parse_node_get_rule_key (pn_prefix_cexpr)
           select case (char (key))
+          case ("beam_prt")
+             call eval_node_init_int (en0, PRT_BEAM)
+             en%arg0 => en0
           case ("incoming_prt")
              call eval_node_init_int (en0, PRT_INCOMING)
              en%arg0 => en0
           case ("outgoing_prt")
+             call eval_node_init_int (en0, PRT_OUTGOING)
+             en%arg0 => en0
+          case ("unspecified_prt")
              call eval_node_init_int (en0, PRT_OUTGOING)
              en%arg0 => en0
           end select
@@ -5239,15 +5245,21 @@ contains
     pn_avalue => parse_node_get_sub_ptr (pn)
     key = parse_node_get_rule_key (pn_avalue)
     select case (char (key))
+    case ("beam_prt")
+       pn_prt => parse_node_get_sub_ptr (pn_avalue, 2)
+       call eval_node_compile_cexpr (en, pn_prt, var_list)
     case ("incoming_prt")
        pn_prt => parse_node_get_sub_ptr (pn_avalue, 2)
        call eval_node_compile_cexpr (en, pn_prt, var_list)
     case ("outgoing_prt")
+       pn_prt => parse_node_get_sub_ptr (pn_avalue, 2)
+       call eval_node_compile_cexpr (en, pn_prt, var_list)
+    case ("unspecified_prt")
        pn_prt => parse_node_get_sub_ptr (pn_avalue, 1)
        call eval_node_compile_cexpr (en, pn_prt, var_list)
     case default
        call parse_node_mismatch &
-            ("incoming_prt|outgoing_prt", &
+            ("beam_prt|incoming_prt|outgoing_prt|unspecified_prt", &
              pn_avalue)
     end select
     if (debug_active (D_MODEL_F)) then
@@ -6326,10 +6338,14 @@ contains
          "prt_function")
     call ifile_append (ifile, "SEQ pexpr_src = prefix_cexpr")
     call ifile_append (ifile, "ALT prefix_cexpr = " // &
-         "incoming_prt | outgoing_prt")
+         "beam_prt | incoming_prt | outgoing_prt | unspecified_prt")
+    call ifile_append (ifile, "SEQ beam_prt = beam cexpr")
+    call ifile_append (ifile, "KEY beam")
     call ifile_append (ifile, "SEQ incoming_prt = incoming cexpr")
     call ifile_append (ifile, "KEY incoming")
-    call ifile_append (ifile, "SEQ outgoing_prt = cexpr")
+    call ifile_append (ifile, "SEQ outgoing_prt = outgoing cexpr")
+    call ifile_append (ifile, "KEY outgoing")
+    call ifile_append (ifile, "SEQ unspecified_prt = cexpr")
     call ifile_append (ifile, "SEQ pvariable = '@' alt_pvariable")
     call ifile_append (ifile, "KEY '@'")
     call ifile_append (ifile, "ALT alt_pvariable = variable | grouped_pexpr")

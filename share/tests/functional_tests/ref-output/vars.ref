@@ -111,6 +111,7 @@ seed = 2
 ?energy_scan_normalize = false
 ?logging => true
 ?report_progress = true
+[user variable] ?me_verbose = false
 ?omega_write_phs_output = false
 ?read_color_factors = true
 ?slha_read_input = true

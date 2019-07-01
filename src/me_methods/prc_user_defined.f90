@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -145,6 +145,8 @@ module prc_user_defined
     type(string_t) :: process_mode
     type(string_t) :: process_string
     type(string_t) :: restrictions
+    integer :: n_in = 0
+    integer :: n_out = 0
     logical :: active = .true.
   contains
     procedure :: init => user_defined_writer_init
@@ -153,6 +155,8 @@ module prc_user_defined
     procedure :: write_wrapper => prc_user_defined_writer_write_wrapper
     procedure :: write_interface => prc_user_defined_writer_write_interface
     procedure :: write_source_code => prc_user_defined_writer_write_source_code
+    procedure :: before_compile => prc_user_defined_writer_before_compile
+    procedure :: after_compile => prc_user_defined_writer_after_compile
     procedure :: write_makefile_code => prc_user_defined_writer_write_makefile_code
     procedure :: base_write_makefile_code => prc_user_defined_writer_write_makefile_code
     procedure, nopass:: get_procname => prc_user_defined_writer_writer_get_procname
@@ -582,6 +586,8 @@ contains
     else
        writer%restrictions = ""
     end if
+    writer%n_in = size (prt_in)
+    writer%n_out = size (prt_out)
     select case (size (prt_in))
        case(1); writer%process_mode = " -decay"
        case(2); writer%process_mode = " -scatter"
@@ -747,19 +753,40 @@ contains
   subroutine prc_user_defined_writer_write_source_code (writer, id)
     class(prc_user_defined_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
+    call msg_debug (D_ME_METHODS, &
+         "prc_user_defined_writer_write_source_code (no-op)")
     !!! This is a dummy
   end subroutine prc_user_defined_writer_write_source_code
 
-  subroutine prc_user_defined_writer_write_makefile_code (writer, unit, id, os_data, testflag)
+  subroutine prc_user_defined_writer_before_compile (writer, id)
+    class(prc_user_defined_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+    call msg_debug (D_ME_METHODS, &
+         "prc_user_defined_writer_before_compile (no-op)")
+    !!! This is a dummy
+  end subroutine prc_user_defined_writer_before_compile
+  
+  subroutine prc_user_defined_writer_after_compile (writer, id)
+    class(prc_user_defined_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+    call msg_debug (D_ME_METHODS, &
+         "prc_user_defined_writer_after_compile (no-op)")
+    !!! This is a dummy
+  end subroutine prc_user_defined_writer_after_compile
+  
+  subroutine prc_user_defined_writer_write_makefile_code &
+       (writer, unit, id, os_data, verbose, testflag)
     class(prc_user_defined_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     type(string_t) :: omega_binary, omega_path
     type(string_t) :: restrictions_string
     omega_binary = "omega_" // writer%model_name // ".opt"
     omega_path = os_data%whizard_omega_binpath // "/" // omega_binary
+    if (.not. verbose)  omega_path = "@" // omega_path
     if (writer%restrictions /= "") then
        restrictions_string = " -cascade '" // writer%restrictions // "'"
     else
@@ -767,6 +794,9 @@ contains
     end if
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".f90:"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  OMEGA     ', trim (char (id)), '.f90"'
+    end if
     write (unit, "(99A)")  TAB, char (omega_path), &
          " -o ", char (id), ".f90", &
          " -target:whizard", &
@@ -783,6 +813,9 @@ contains
     write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
+    if (.not. verbose) then
+       write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+    end if    
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
 
   end subroutine prc_user_defined_writer_write_makefile_code

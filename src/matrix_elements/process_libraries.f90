@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1552,10 +1552,10 @@ contains
     call lib%driver%set_md5sum (lib%md5sum)
   end subroutine process_library_compute_md5sum
 
-  subroutine process_library_write_makefile (lib, os_data, force, testflag)
+  subroutine process_library_write_makefile (lib, os_data, force, verbose, testflag)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
-    logical, intent(in) :: force
+    logical, intent(in) :: force, verbose
     logical, intent(in), optional :: testflag
     character(32) :: md5sum_file
     logical :: generate
@@ -1576,7 +1576,7 @@ contains
           unit = free_unit ()
           open (unit, file = char (lib%driver%basename // ".makefile"), &
                status="replace", action="write")
-          call lib%driver%generate_makefile (unit, os_data, testflag)
+          call lib%driver%generate_makefile (unit, os_data, verbose, testflag)
           close (unit)
        end if
        lib%makefile_exists = .true.

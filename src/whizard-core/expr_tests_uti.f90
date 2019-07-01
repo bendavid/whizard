@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -189,7 +189,7 @@ contains
     p(5) = vector4_moving (Ex, sqrt (Ex**2 - m**2), 1)
     p(6) = vector4_moving (Ex, -sqrt (Ex**2 - m**2), 1)
 
-    call expr%reset ()
+    call expr%reset_contents ()
     do i = 1, 2
        call subevt_set_beam (expr%subevt_t, i, pdg, p(i), m**2)
     end do
@@ -330,7 +330,7 @@ contains
     p(5) = vector4_moving (Ex, sqrt (Ex**2 - m**2), 1)
     p(6) = vector4_moving (Ex, -sqrt (Ex**2 - m**2), 1)
 
-    call expr%reset ()
+    call expr%reset_contents ()
     do i = 1, 2
        call subevt_set_beam (expr%subevt_t, i, pdg, p(i), m**2)
     end do
@@ -785,6 +785,7 @@ contains
     write (u, "(A)")
 
     call event%generate (1, [0.4_default, 0.4_default])
+    call event%set_index (42)
     call event%evaluate_expressions ()
     call event%write (u)
 

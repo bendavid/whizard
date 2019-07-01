@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -357,7 +357,7 @@ contains
 
   subroutine connected_state_setup_connected_trace &
        (state, isolated, int, resonant, undo_helicities, n_sub, &
-        keep_fs_flavors, is_real_sub)
+        keep_fs_flavors, extended_sf)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
@@ -365,7 +365,7 @@ contains
     logical, intent(in), optional :: undo_helicities
     integer, intent(in), optional :: n_sub
     logical, intent(in), optional :: keep_fs_flavors
-    logical, intent(in), optional :: is_real_sub
+    logical, intent(in), optional :: extended_sf
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int, beam_int
     logical :: reduce, fs_flv_flag
@@ -389,7 +389,7 @@ contains
          qn_mask_conn = mask, &
          qn_mask_rest = mask, &
          connections_are_resonant = resonant, &
-         ignore_sub = is_real_sub)
+         ignore_sub = extended_sf)
 
     if (reduce) then
        beam_int => isolated%sf_chain_eff%get_beam_int_ptr ()
@@ -535,7 +535,7 @@ contains
 
   subroutine connected_state_reset_expressions (state)
     class(connected_state_t), intent(inout) :: state
-    if (state%has_expr)  call state%expr%reset ()
+    if (state%has_expr)  call state%expr%reset_contents ()
   end subroutine connected_state_reset_expressions
 
   subroutine parton_state_receive_kinematics (state)

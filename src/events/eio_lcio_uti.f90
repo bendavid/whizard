@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -96,6 +96,7 @@ contains
     call eio%init_out (sample, data)
 
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (77)
     call event%pacify_particle_set ()
 
     call eio%output (event, i_prc = 1)
@@ -202,6 +203,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (88)
     call event%evaluate_expressions ()
     call event%pacify_particle_set ()
 
@@ -209,6 +211,9 @@ contains
     call eio%write (u)
     call eio%final ()
     deallocate (eio)
+
+    call event%reset_contents ()
+    call event%reset_index ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize"

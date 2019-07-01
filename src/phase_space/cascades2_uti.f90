@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -55,17 +55,17 @@ contains
     type (phs_parameters_t) :: phs_par
     logical :: fatal_beam_decay = .true.
     integer :: u_in = 8
-    
+
     write (u, "(A)")  "* Test output: cascades2_1"
     write (u, "(A)")  "*   Purpose: create a test phs file (decay) with the forest"
     write (u, "(A)")  "*            output of O'Mega"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initializing"
     write (u, "(A)")
-    
+
     call init_sm_full_test (model)
-    
+
     call flv(1,1)%init (6, model)
     call flv(2,1)%init (5, model)
     call flv(3,1)%init (-11, model)
@@ -73,31 +73,31 @@ contains
     call flv(5,1)%init (21, model)
     call flv(6,1)%init (22, model)
     call flv(7,1)%init (21, model)
-    
+
     phs_par%sqrts = 173.1_default
     phs_par%m_threshold_s = 50._default
     phs_par%m_threshold_t = 100._default
     phs_par%keep_nonresonant = .true.
     phs_par%off_shell = 2
-    
-    open (unit=u_in, file="omega_parsable.fds", status='old', action='read')
-    
+
+    open (unit=u_in, file="cascades2_1.fds", status='old', action='read')
+
     write (u, "(A)")
     write (u, "(A)")  "* Generating phase-space parametrizations"
     write (u, "(A)")
-    
+
     call feyngraph_set_generate (feyngraph_set, model, n_in, n_out, &
          flv, phs_par, fatal_beam_decay, u_in, use_dag = .false.)
     call feyngraph_set_write_process_bincode_format (feyngraph_set, u)
     call feyngraph_set_write_file_format (feyngraph_set, u)
-    
+
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     close (u_in)
     call feyngraph_set%final ()
     call model%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Test output end: cascades2_1"
   end subroutine cascades2_1
@@ -112,17 +112,17 @@ contains
     type (phs_parameters_t) :: phs_par
     logical :: fatal_beam_decay = .true.
     integer :: u_in = 8
-    
+
     write (u, "(A)")  "* Test output: cascades2_2"
     write (u, "(A)")  "*   Purpose: create a test phs file (scattering) with the"
     write (u, "(A)")  "*            parsable DAG output of O'Mega"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initializing"
     write (u, "(A)")
-    
+
     call init_sm_full_test (model)
-    
+
     call flv(1,1)%init (-11, model)
     call flv(2,1)%init (11, model)
     call flv(3,1)%init (-11, model)
@@ -130,33 +130,33 @@ contains
     call flv(5,1)%init (1, model)
     call flv(6,1)%init (-2, model)
     call flv(7,1)%init (22, model)
-    
+
     phs_par%sqrts = 500._default
     phs_par%m_threshold_s = 50._default
     phs_par%m_threshold_t = 100._default
     phs_par%keep_nonresonant = .true.
     phs_par%off_shell = 2
     phs_par%t_channel = 6
-    
-    open (unit=u_in, file="omega_parsable_scattering.fds", &
+
+    open (unit=u_in, file="cascades2_2.fds", &
          status='old', action='read')
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generating phase-space parametrizations"
     write (u, "(A)")
-    
+
     call feyngraph_set_generate (feyngraph_set, model, n_in, n_out, &
          flv, phs_par, fatal_beam_decay, u_in, use_dag = .true.)
     call feyngraph_set_write_process_bincode_format (feyngraph_set, u)
     call feyngraph_set_write_file_format (feyngraph_set, u)
-    
+
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     close (u_in)
     call feyngraph_set%final ()
     call model%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Test output end: cascades2_2"
   end subroutine cascades2_2

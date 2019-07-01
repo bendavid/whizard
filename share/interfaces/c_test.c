@@ -1,3 +1,5 @@
+#include "c_test.h"
+
 int main()
 { void *w_instance;
   int sqrt = 360;

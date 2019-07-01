@@ -83,6 +83,7 @@ Output from running lcio_1_rd:
  parameter Energy [float]: 1000, 
  parameter Pol0 [float]: 0, 
  parameter Pol1 [float]: 0, 
+ parameter _weight [float]: 1, 
  parameter alphaQCD [float]: 0.1178, 
  parameter crossSection [float]: 84.6204, 
  parameter crossSectionError [float]: 1.8082, 

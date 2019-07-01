@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -162,6 +162,10 @@ contains
        end if
        if (present (i_evt)) then
           call hepevt_set_event_parameters (i_evt = i_evt)
+       else if (event%has_index ()) then
+          call hepevt_set_event_parameters (i_evt = event%get_index ())
+       else
+          call hepevt_set_event_parameters (i_evt = 0)
        end if
     else
        call msg_bug ("HEPEVT: event incomplete")
@@ -407,6 +411,7 @@ contains
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
+    call event%set_index (hepmc_event_get_event_index (hepmc_event))
     call hepmc_event_to_particle_set (particle_set, &
          hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -607,6 +612,7 @@ contains
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
+
     call lcio_event_to_particle_set (particle_set, &
          lcio_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)

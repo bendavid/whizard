@@ -43,7 +43,8 @@ module parameters_sm_ul
   real(default), public :: vev
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn
-  real(default), public :: a4, a5, a6, a7, a10, fs0, fs1
+  real(default), public :: a4, a5, a6, a7, a10, &
+       fs0, fs1, ft0, ft1, ft2, fm0, fm1, fm7
   complex(default), public :: ig1a, ig1z, rg5a, rg5z, &
        ig1pkpg4a, ig1pkpg4z, ig1pkmg4a, ig1pkmg4z, &
        ig1mkpg4a, ig1mkpg4z, ig1mkmg4a, ig1mkmg4z, &
@@ -65,7 +66,7 @@ module parameters_sm_ul
 
 contains
   subroutine import_from_whizard (par_array, scheme)
-    real(default), dimension(73), intent(in) :: par_array
+    real(default), dimension(81), intent(in) :: par_array
     integer, intent(in) :: scheme
     type :: parameter_set
        real(default) :: gf
@@ -86,6 +87,14 @@ contains
        real(default) :: wH
        real(default) :: xi0
        real(default) :: xipm
+       real(default) :: fs0
+       real(default) :: fs1
+       real(default) :: ft0
+       real(default) :: ft1
+       real(default) :: ft2
+       real(default) :: fm0
+       real(default) :: fm1 
+       real(default) :: fm7       
        real(default) :: a4
        real(default) :: a5
        real(default) :: a6
@@ -165,61 +174,69 @@ contains
     par%wH     = par_array(16)
     par%xi0    = par_array(17)
     par%xipm   = par_array(18)
-    par%a4     = par_array(19)         
-    par%a5     = par_array(20)
-    par%a6     = par_array(21)
-    par%a7     = par_array(22)
-    par%a10    = par_array(23)
-    par%mkm_s  = par_array(24)
-    par%mkm_p  = par_array(25)
-    par%mkm_r  = par_array(26)
-    par%mkm_f  = par_array(27)
-    par%mkm_t  = par_array(28)
-    par%gkm_s  = par_array(29)
-    par%gkm_p  = par_array(30)
-    par%gkm_r  = par_array(31)
-    par%gkm_f  = par_array(32)
-    par%gkm_t  = par_array(33)
-    par%wkm_s  = par_array(34)
-    par%wkm_p  = par_array(35)
-    par%wkm_r  = par_array(36)
-    par%wkm_f  = par_array(37)
-    par%wkm_t  = par_array(38)
-    par%g1a    = par_array(39)
-    par%g1z    = par_array(40)
-    par%g4a    = par_array(41)
-    par%g4z    = par_array(42)
-    par%g5a    = par_array(43)
-    par%g5z    = par_array(44)
-    par%ka     = par_array(45)
-    par%kz     = par_array(46)
-    par%la     = par_array(47)
-    par%lz     = par_array(48)
-    par%k5a    = par_array(49)
-    par%k5z    = par_array(50)
-    par%l5a    = par_array(51)
-    par%l5z    = par_array(52)
-    par%mreg   = par_array(53)
-    par%fkm    = par_array(54)
-    par%wres   = par_array(55)
-    par%gkm_st = par_array(56)
-    par%gkm_pt = par_array(57)
-    par%gkm_rt = par_array(58)
-    par%gkm_ft = par_array(59)
-    par%gkm_tt = par_array(60)
-    par%fmixed = par_array(61)
-    par%fkappa = par_array(62)
-    par%cf     = par_array(63)
-    par%eft_h  = par_array(64)
-    par%isa_00 = par_array(65)
-    par%isa_02 = par_array(66)
-    par%isa_11 = par_array(67)
-    par%isa_20 = par_array(68)
-    par%isa_22 = par_array(69)
-    par%v      = par_array(70)
-    par%cw     = par_array(71)
-    par%sw     = par_array(72)
-    par%ee     = par_array(73)
+    par%fs0    = par_array(19)         
+    par%fs1    = par_array(20)
+    par%ft0    = par_array(21)         
+    par%ft1    = par_array(22)
+    par%ft2    = par_array(23)
+    par%fm0    = par_array(24)
+    par%fm1    = par_array(25)
+    par%fm7    = par_array(26)    
+    par%a4     = par_array(27)         
+    par%a5     = par_array(28)
+    par%a6     = par_array(29)
+    par%a7     = par_array(30)
+    par%a10    = par_array(31)
+    par%mkm_s  = par_array(32)
+    par%mkm_p  = par_array(33)
+    par%mkm_r  = par_array(34)
+    par%mkm_f  = par_array(35)
+    par%mkm_t  = par_array(36)
+    par%gkm_s  = par_array(37)
+    par%gkm_p  = par_array(38)
+    par%gkm_r  = par_array(39)
+    par%gkm_f  = par_array(40)
+    par%gkm_t  = par_array(41)
+    par%wkm_s  = par_array(42)
+    par%wkm_p  = par_array(43)
+    par%wkm_r  = par_array(44)
+    par%wkm_f  = par_array(45)
+    par%wkm_t  = par_array(46)
+    par%g1a    = par_array(47)
+    par%g1z    = par_array(48)
+    par%g4a    = par_array(49)
+    par%g4z    = par_array(50)
+    par%g5a    = par_array(51)
+    par%g5z    = par_array(52)
+    par%ka     = par_array(53)
+    par%kz     = par_array(54)
+    par%la     = par_array(55)
+    par%lz     = par_array(56)
+    par%k5a    = par_array(57)
+    par%k5z    = par_array(58)
+    par%l5a    = par_array(59)
+    par%l5z    = par_array(60)
+    par%mreg   = par_array(61)
+    par%fkm    = par_array(62)
+    par%wres   = par_array(63)
+    par%gkm_st = par_array(64)
+    par%gkm_pt = par_array(65)
+    par%gkm_rt = par_array(66)
+    par%gkm_ft = par_array(67)
+    par%gkm_tt = par_array(68)
+    par%fmixed = par_array(69)
+    par%fkappa = par_array(70)
+    par%cf     = par_array(71)
+    par%eft_h  = par_array(72)
+    par%isa_00 = par_array(73)
+    par%isa_02 = par_array(74)
+    par%isa_11 = par_array(75)
+    par%isa_20 = par_array(76)
+    par%isa_22 = par_array(77)
+    par%v      = par_array(78)
+    par%cw     = par_array(79)
+    par%sw     = par_array(80)
+    par%ee     = par_array(81)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -324,6 +341,12 @@ contains
     a10 = par%a10
     fs0 = a4 * (vev / 1000)**4 / 16
     fs1 = a5 * (vev / 1000)**4 / 16
+    ft0 = par%ft0  / (1000.0_default ** 4)
+    ft1 = par%ft1  / (1000.0_default ** 4) 
+    ft2 = par%ft2  / (1000.0_default ** 4)
+    fm0 = par%fm0  / (1000.0_default ** 4) 
+    fm1 = par%fm1  / (1000.0_default ** 4)    
+    fm7 = par%fm7  / (1000.0_default ** 4)    
     lam_reg = par%mreg
     fudge_higgs = 0
     ghvva = 0

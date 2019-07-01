@@ -42,7 +42,7 @@ module parameters_sm_ckm
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   complex(default), public :: &
        gccq11 = 0, gccq12 = 0, gccq13 = 0, gccq21 = 0, &
-       gccq22 = 0, gccq23 = 0, gccq31 = 0, gccq32 = 0, gccq33 = 0     
+       gccq22 = 0, gccq23 = 0, gccq31 = 0, gccq32 = 0, gccq33 = 0
   real(default), public :: vev
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn

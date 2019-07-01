@@ -37,6 +37,7 @@ cuts = all M > 20 GeV [e1, E1]
 ### The OpenLoops version installed might not be new enough to support Collier
 ?openloops_use_collier = false
 $real_tree_me_method = "openloops"
+$correlation_me_method = "openloops"
 
 !!! Tests should be run single-threaded
 openmp_num_threads = 1

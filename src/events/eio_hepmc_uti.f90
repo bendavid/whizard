@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -91,6 +91,7 @@ contains
 
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
+    call event%set_index (55)
 
     call eio%output (event, i_prc = 1)
     call eio%write (u)
@@ -184,7 +185,7 @@ contains
 
     write (u_file, "(A)")  "HepMC::Version 2.06.09"
     write (u_file, "(A)")  "HepMC::IO_GenEvent-START_EVENT_LISTING"
-    write (u_file, "(A)")  "E 0 -1 -1.0000000000000000e+00 &
+    write (u_file, "(A)")  "E 66 -1 -1.0000000000000000e+00 &
          &-1.0000000000000000e+00 &
          &-1.0000000000000000e+00 42 0 1 10001 10002 0 0"
     write (u_file, "(A)")  "U GEV MM"

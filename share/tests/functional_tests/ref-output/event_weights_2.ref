@@ -63,7 +63,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 ?unweighted = false
 n_events = 2
-?pacify = true
+?sample_pacify = true
 $sample_normalization = "auto"
 $sample = "event_weights_2a"
 seed = 0

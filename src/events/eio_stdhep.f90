@@ -1,4 +1,4 @@
-! WHIZARD 2.6.1 Nov 03 2017
+! WHIZARD 2.6.2 Dec 13 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -205,16 +205,16 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.6.1", eio%n_events_expected)
+               "WHIZARD 2.6.2", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.6.1", eio%n_events_expected)
+               "WHIZARD 2.6.2", eio%n_events_expected)
           call stdhep_write (100)
        type is (eio_stdhep_hepev4_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.6.1", eio%n_events_expected)
+               "WHIZARD 2.6.2", eio%n_events_expected)
           call stdhep_write (100)
        end select
     end if
@@ -251,16 +251,16 @@ contains
                error = data%error(i))
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.6.1", eio%n_events_expected)
+            "WHIZARD 2.6.2", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.6.1", eio%n_events_expected)
+            "WHIZARD 2.6.2", eio%n_events_expected)
        call stdhep_write (100)
     type is (eio_stdhep_hepev4_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.6.1", eio%n_events_expected)
+            "WHIZARD 2.6.2", eio%n_events_expected)
        call stdhep_write (100)
     end select
     if (present (success))  success = .true.
@@ -321,7 +321,6 @@ contains
           call stdhep_write (STDHEP_HEPEUP)
        type is (eio_stdhep_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
@@ -329,7 +328,6 @@ contains
        type is (eio_stdhep_hepev4_t)
           call hepevt_from_event (event, &
                process_index = eio%proc_num_id (i_prc), &
-               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order, &
@@ -391,12 +389,13 @@ contains
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     iostat = 0
-    call event%reset ()
+    call event%reset_contents ()
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
+    call event%increment_index ()
   end subroutine eio_stdhep_input_event
 
   subroutine eio_stdhep_skip (eio, iostat)

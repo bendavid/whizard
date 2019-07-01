@@ -90,7 +90,7 @@ $loop_me_method        = "threshold"
 $correlation_me_method = "threshold"
 $real_tree_me_method   = "threshold"
 !!! Full can be separated into Born, Real and Virtual
-process matched_nlodecay = e1, E1 => Wp, Wm, b, B { nlo_calculation = full }
+process matched_nlodecay = E1, e1 => Wp, Wm, b, B { nlo_calculation = full }
 integrate (matched_nlodecay)
 
 $method                = "openloops"
@@ -98,7 +98,7 @@ $born_me_method        = "openloops"
 $loop_me_method        = "openloops"
 $correlation_me_method = "openloops"
 $real_tree_me_method   = "openloops"
-process nlofull = e1, E1 => Wp, Wm, b, B { nlo_calculation = full }
+process nlofull = E1, e1 => Wp, Wm, b, B { nlo_calculation = full }
 
 !!! h * m1S * sqrt(nustar)
 scale = sh * m1S * sqrt(abs(sqrt((sqrts - 2 * m1S + I * wtop1S) / m1S)) + 0.05)
