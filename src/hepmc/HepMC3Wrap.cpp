@@ -2,17 +2,21 @@
 // Interface for building HEPMC events
 //////////////////////////////////////////////////////////////////////////
 
-#include "HepMC/GenEvent.h"
-#include "HepMC/IO_GenEvent.h" //  is now deprecated but can be used
-#include "HepMC/Print.h"
-#include "HepMC/IO_GenEvent.h"
+#include "HepMC3/GenEvent.h"
+#include "HepMC3/GenParticle.h"
+#include "HepMC3/GenCrossSection.h"
+#include "HepMC3/Print.h"
+#include "HepMC3/Units.h"
+#include "HepMC3/ReaderAscii.h"
+#include "HepMC3/WriterAscii.h"
 #include "HepMC3_WHIZARD_Polarization.h"
 
-using namespace HepMC;
+using namespace HepMC3;
 
 // Tell the caller that this is the true HepMC library
+// For the moment this is no working HepMC, so returning false
 extern "C" bool hepmc_available() {
-  return true;
+  return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -143,8 +147,8 @@ extern "C" GenVertex* gen_event_get_signal_process_vertex
   // return evt->signal_process_vertex();
 }
 
-extern "C" bool gen_event_set_beam_particles
-( GenEvent* evt, GenParticle* prt1, GenParticle* prt2) {
+extern "C" void gen_event_set_beam_particles
+( GenEvent* evt, GenParticlePtr prt1, GenParticlePtr prt2) {
   evt->set_beam_particles( prt1, prt2 );
 }
 
@@ -152,43 +156,40 @@ extern "C" void gen_event_set_cross_section
 ( GenEvent* evt, double xs, double xs_err) {
   GenCrossSectionPtr xsec;
   xsec->set_cross_section (xs, xs_err);
-  evt->set_cross_section( xsec );
+  // evt->set_cross_section( xsec );
 }
 
 //////////////////////////////////////////////////////////////////////////
 // GenEvent particle iterator functions
 
-extern "C" GenEvent::particle_const_iterator* 
+extern "C" GenEvent* 
 new_event_particle_const_iterator( GenEvent* evt ) {
-  GenEvent::particle_const_iterator* it = 
-    new GenEvent::particle_const_iterator();
-  (*it) = evt->particles_begin();
-  return it;
+  new GenEvent();
 }
 
 extern "C" void event_particle_const_iterator_delete
-( GenEvent::particle_const_iterator* it ) {
+( GenEvent* it ) {
   delete it;
 }
 
 extern "C" void event_particle_const_iterator_advance
-( GenEvent::particle_const_iterator* it ) {
-  ++(*it);
+( GenEvent* it ) {
+  delete it;
 }
 
 extern "C" void event_particle_const_iterator_reset
-( GenEvent::particle_const_iterator* it, GenEvent* evt ) {
-  (*it) = evt->particles_begin();
+( GenEvent* it, GenEvent* evt ) {
+  delete it;
 }
 
 extern "C" bool event_particle_const_iterator_is_valid
-( GenEvent::particle_const_iterator* it, GenEvent* evt ) {
-  return ((*it) != evt->particles_end());
+( GenEvent* it, GenEvent* evt ) {
+  return it != 0;
 }
 
 extern "C" GenParticlePtr event_particle_const_iterator_get
-( GenEvent::particle_const_iterator* it ) {
-  return *(*it);
+( GenEvent* it ) {
+  new GenParticlePtr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -244,74 +245,72 @@ extern "C" double gen_vertex_time( GenVertex* v ) {
 
 //////////////////////////////////////////////////////////////////////////
 // GenVertex iterator over in-particles
+//  iterators do not exist anymore in HepMCv3
+// the following are all dummy routines
 
-extern "C" GenVertex::particles_in_const_iterator* 
+extern "C" GenVertex* 
 new_vertex_particles_in_const_iterator( GenVertex* v ) {
-  GenVertex::particles_in_const_iterator* it = 
-    new GenVertex::particles_in_const_iterator();
-  (*it) = v->particles_in_const_begin();
-  return it;
+  new GenVertex();  
 }
 
 extern "C" void vertex_particles_in_const_iterator_delete
-( GenVertex::particles_in_const_iterator* it ) {
+( GenVertex* it ) {
   delete it;
 }
 
 extern "C" void vertex_particles_in_const_iterator_advance
-( GenVertex::particles_in_const_iterator* it ) {
-  ++(*it);
+( GenVertex* it ) {
+  delete it;
 }
 
 extern "C" void vertex_particles_in_const_iterator_reset
-( GenVertex::particles_in_const_iterator* it, GenVertex* v ) {
-  (*it) = v->particles_in_const_begin();
+( GenVertex* it, GenVertex* v ) {
+  delete it;
 }
 
 extern "C" bool vertex_particles_in_const_iterator_is_valid
-( GenVertex::particles_in_const_iterator* it, GenVertex* v ) {
-  return ((*it) != v->particles_in_const_end());
+( GenVertex* it, GenVertex* v ) {
+  return it != 0;
 }
 
 extern "C" GenParticlePtr vertex_particles_in_const_iterator_get
-( GenVertex::particles_in_const_iterator* it ) {
-  return *(*it);
+( GenVertex* it ) {
+  new GenParticlePtr();
 }
 
 //////////////////////////////////////////////////////////////////////////
 // GenVertex iterator over out-particles
+//  iterators do not exist anymore in HepMCv3
+// the following are all dummy routines
 
-extern "C" GenVertex::particles_out_const_iterator* 
+extern "C" GenVertex* 
 new_vertex_particles_out_const_iterator( GenVertex* v ) {
-  GenVertex::particles_out_const_iterator* it = 
-    new GenVertex::particles_out_const_iterator();
-  (*it) = v->particles_out_const_begin();
-  return it;
+  new GenVertex();
 }
 
 extern "C" void vertex_particles_out_const_iterator_delete
-( GenVertex::particles_out_const_iterator* it ) {
+( GenVertex* it ) {
   delete it;
 }
 
 extern "C" void vertex_particles_out_const_iterator_advance
-( GenVertex::particles_out_const_iterator* it ) {
-  ++(*it);
+( GenVertex* it ) {
+  delete it;
 }
 
 extern "C" void vertex_particles_out_const_iterator_reset
-( GenVertex::particles_out_const_iterator* it, GenVertex* v ) {
-  (*it) = v->particles_out_const_begin();
+( GenVertex* it, GenVertex* v ) {
+  delete it;
 }
 
 extern "C" bool vertex_particles_out_const_iterator_is_valid
-( GenVertex::particles_out_const_iterator* it, GenVertex* v ) {
-  return ((*it) != v->particles_out_const_end());
+( GenVertex* it, GenVertex* v ) {
+  return it != 0;
 }
 
 extern "C" GenParticlePtr vertex_particles_out_const_iterator_get
-( GenVertex::particles_out_const_iterator* it ) {
-  return *(*it);
+( GenVertex* it ) {
+  new GenParticlePtr();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -370,11 +369,11 @@ extern "C" bool gen_particle_is_beam( GenParticle* prt ) {
   return false;
 }
 
-extern "C" GenVertex* gen_particle_production_vertex( GenParticle* prt ) {
+extern "C" GenVertexPtr gen_particle_production_vertex( GenParticle* prt ) {
   return prt->production_vertex();
 }
 
-extern "C" GenVertex* gen_particle_end_vertex( GenParticle* prt ) {
+extern "C" GenVertexPtr gen_particle_end_vertex( GenParticle* prt ) {
   return prt->end_vertex();
 }
 
@@ -395,7 +394,7 @@ extern "C" FourVector* new_four_vector_xyzt
 ( double x, double y, double z, double t) {
   return new FourVector( x, y, z, t);
 }
-
+ 
 extern "C" FourVector* new_four_vector_xyz( double x, double y, double z) {
   return new FourVector( x, y, z, 0);
 }
@@ -439,30 +438,29 @@ extern "C" double polarization_theta( Polarization* pol ) {
 extern "C" double polarization_phi( Polarization* pol ) {
   return pol->phi();
 }
-
 //////////////////////////////////////////////////////////////////////////
-// IO_GenEvent functions
+/// // IO_GenEvent functions
 
-extern "C" IO_GenEvent* new_io_gen_event_in( char* filename ) {
-  return new IO_GenEvent( filename, std::ios::in );
+extern "C" WriterAscii* new_io_gen_event_in( char* filename ) {
+  return new WriterAscii( filename );
 }
 
-extern "C" IO_GenEvent* new_io_gen_event_out( char* filename ) {
-  return new IO_GenEvent( filename, std::ios::out );
+extern "C" ReaderAscii* new_io_gen_event_out( char* filename ) {
+  return new ReaderAscii( filename);
 }
 
-extern "C" void io_gen_event_delete( IO_GenEvent* iostream ) {
+extern "C" void io_gen_event_delete( ReaderAscii* iostream ) {
   delete iostream;
 }
 
 extern "C" void io_gen_event_write_event
-( IO_GenEvent* iostream, const GenEvent* evt) {
-  iostream->write_event( evt);
+( WriterAscii* iostream, const GenEvent* evt) {
+  // iostream->write_event( evt);
 }
 
 extern "C" bool io_gen_event_read_event
-( IO_GenEvent* iostream, GenEvent* evt) {
-  return iostream->fill_next_event( evt);
+( ReaderAscii* iostream, GenEvent* evt) {
+  // return iostream::read_event( evt);
 }
 
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -27,7 +27,9 @@
 ! to the source 'whizard.nw'
 
 module pythia8
+
   use kinds, only: default
+  use debug_master, only: debug_on
 
   use, intrinsic :: iso_c_binding
   use constants, only: tiny_10, tiny_07
@@ -359,7 +361,7 @@ contains
     class(pythia8_t), intent(in) :: pythia
     type(string_t), intent(in) :: config
     type(string_t) :: stream, line, token
-    call msg_debug (D_SHOWER, "whizard_pythia8_parse_and_set_config")
+    if (debug_on) call msg_debug (D_SHOWER, "whizard_pythia8_parse_and_set_config")
     if (len (config) == 0) return
     stream = config
     do while (len (stream) > 0)
@@ -456,7 +458,7 @@ contains
     logical, dimension(:), allocatable :: mask
     integer, parameter :: PYTHIA8_HARD_PROCESS_OUTGOING = 23
     integer :: i, j, n_particles, id, status
-    call msg_debug (D_TRANSFORMS, "whizard_pythia8_get_final_colored_ME_momenta")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "whizard_pythia8_get_final_colored_ME_momenta")
     n_particles = pythia%get_event_size ()
     allocate (mask(n_particles), source=.false.)
     do i = 1, n_particles
@@ -537,7 +539,7 @@ contains
     type(particle_t), dimension(:), allocatable :: particle
     integer :: helicity_opt
     logical :: recover_beams_opt
-    call msg_debug (D_SHOWER, "whizard_pythia8_get_particle_set")
+    if (debug_on) call msg_debug (D_SHOWER, "whizard_pythia8_get_particle_set")
     recover_beams_opt = .false.; if (present (recover_beams)) &
          recover_beams_opt = recover_beams
     helicity_opt = PRT_UNPOLARIZED; if (present (helicity)) &
@@ -561,7 +563,7 @@ contains
     type(particle_t), dimension(:), allocatable :: particle
     integer, dimension(:), allocatable :: pythia_idx, whizard_idx
     integer :: helicity_opt
-    call msg_debug (D_TRANSFORMS, "whizard_pythia8_get_particle_set")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "whizard_pythia8_get_particle_set")
     helicity_opt = PRT_UNPOLARIZED; if (present (helicity)) &
          helicity_opt = helicity
     call pythia%get_hadron_mask (particle_set, mask)
@@ -582,7 +584,7 @@ contains
     integer, intent(in) :: helicity
     logical, intent(in) :: recover_beams
     integer, dimension(:), allocatable :: pythia_idx, whizard_idx
-    call msg_debug (D_SHOWER, "whizard_pythia8_get_particles")
+    if (debug_on) call msg_debug (D_SHOWER, "whizard_pythia8_get_particles")
     call pythia%import_pythia_particles (&
          model, model_fallback, mask, particle, particle_set, &
          pythia_idx, whizard_idx, helicity, recover_beams)
@@ -754,7 +756,7 @@ subroutine pythia8_import_pythia_particles (&
     integer(c_int) :: c_n_parents, c_n_children, c_i_pythia
     integer, dimension(:), allocatable :: parent, child
     integer :: i_pythia, i, skip_beams
-    call msg_debug (D_SHOWER, "pythia8_get_parent_child_relation")
+    if (debug_on) call msg_debug (D_SHOWER, "pythia8_get_parent_child_relation")
     skip_beams = 0; if (recover_beams) skip_beams = 2
     do i_pythia = 1 + skip_beams, size(whizard_idx)
        if (whizard_idx(i_pythia) == 0) cycle

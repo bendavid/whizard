@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module ckkw_matching
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use constants
   use format_utils, only: write_separator
@@ -164,7 +165,7 @@ contains
     class(ckkw_matching_t), intent(out) :: matching
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: process_name
-    call msg_debug (D_MATCHING, "matching_init")
+    if (debug_on) call msg_debug (D_MATCHING, "matching_init")
     call matching%settings%init (var_list)
     matching%process_name = process_name
   end subroutine ckkw_matching_init

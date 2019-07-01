@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module mlm_matching
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use constants
   use format_utils, only: write_separator
@@ -150,7 +151,7 @@ contains
     class(mlm_matching_t), intent(out) :: matching
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: process_name
-    call msg_debug (D_MATCHING, "matching_init")
+    if (debug_on) call msg_debug (D_MATCHING, "matching_init")
     call matching%settings%init (var_list)
     matching%process_name = process_name
   end subroutine mlm_matching_init
@@ -223,7 +224,7 @@ contains
     class(mlm_matching_t), intent(inout) :: matching
     type(particle_set_t), intent(inout) :: particle_set
     logical, intent(out) :: vetoed
-    call msg_debug (D_MATCHING, "mlm_matching_after_shower")
+    if (debug_on) call msg_debug (D_MATCHING, "mlm_matching_after_shower")
     call matching%shower%get_final_colored_ME_momenta (matching%P_ME)
     call matching%fill_P_PS (particle_set)
     !!! MLM stage 3 -> reconstruct and possibly reject
@@ -274,7 +275,7 @@ contains
     end do
 
     allocate (matching%P_PS(1:n_jets_PS))
-    call msg_debug (D_MATCHING, "n_jets_ps", n_jets_ps)
+    if (debug_on) call msg_debug (D_MATCHING, "n_jets_ps", n_jets_ps)
 
     j = 1
     do i = 1, particle_set%get_n_tot ()

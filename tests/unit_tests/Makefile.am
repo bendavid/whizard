@@ -169,10 +169,10 @@ UNIT_TESTS_REQ_OCAML = \
     prc_omega.run \
     compilations.run \
     compilations_static.run
-    
+
 UNIT_TESTS_REQ_RECOLA = \
    prc_recola.run
-    
+
 UNIT_TESTS_REQ_LHAPDF5 = \
     sf_lhapdf5.run 
 UNIT_TESTS_REQ_LHAPDF6 = \
@@ -307,7 +307,9 @@ endif
 
 HEPMC_FLAG:
 if HEPMC_AVAILABLE
+if !HEPMC_IS_VERSION3
 	touch $@
+endif
 endif
 
 LCIO_FLAG:

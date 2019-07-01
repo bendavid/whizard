@@ -7,8 +7,9 @@ edge[color=gray50]
 os_interface -> diagnostics
 formats -> diagnostics
 cputime -> diagnostics
-os_interface -> system_defs
+diagnostics -> debug_master
 diagnostics -> system_defs
+os_interface -> system_defs
 diagnostics -> system_dependencies
 os_interface -> system_dependencies
  }

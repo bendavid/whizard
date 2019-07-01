@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module real_subtraction
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use format_defs, only: FMT_15
   use string_utils
@@ -364,7 +365,7 @@ contains
     case (FACTORIZATION_THRESHOLD)
        kb = sub_soft%evaluate_factorization_threshold (thr_leg(emitter), p_born, born_ij)
     end select
-    call msg_debug2 (D_SUBTRACTION, 'KB', kb)
+    if (debug_on) call msg_debug2 (D_SUBTRACTION, 'KB', kb)
     sqme = four * pi * alpha_coupling * s_alpha_soft * kb
     if (sub_soft%xi2_expanded) then
        xi2_factor = four / q2
@@ -567,7 +568,7 @@ contains
                 soft_mismatch%sqme_born(i_born), sqme_soft, &
                 alpha_s, s)
 
-           call msg_debug (D_MISMATCH, 'sqme_alr: ', sqme_alr)
+           if (debug_on) call msg_debug (D_MISMATCH, 'sqme_alr: ', sqme_alr)
            sqme_mismatch = sqme_mismatch + sqme_alr
 
        end do
@@ -602,7 +603,7 @@ contains
     !!! Divide by 1 - y to factor out the corresponding
     !!! factor in the soft matrix element
     sm1 = sqme_soft / (one - y) * ( exp(expo) - exp(- xi) )
-    call msg_debug2 (D_MISMATCH, 'sqme_soft in mismatch ', sqme_soft)
+    if (debug_on) call msg_debug2 (D_MISMATCH, 'sqme_soft in mismatch ', sqme_soft)
 
     sm2 = zero
     if (soft_mismatch%reg_data%regions(alr)%has_collinear_divergence ()) then
@@ -738,11 +739,11 @@ contains
     type(region_data_t), intent(in), target :: reg_data
     type(nlo_settings_t), intent(in), target :: settings
     integer :: alr
-    call msg_debug (D_SUBTRACTION, "real_subtraction_init")
-    call msg_debug (D_SUBTRACTION, "n_in", reg_data%n_in)
-    call msg_debug (D_SUBTRACTION, "nlegs_born", reg_data%n_legs_born)
-    call msg_debug (D_SUBTRACTION, "nlegs_real", reg_data%n_legs_real)
-    call msg_debug (D_SUBTRACTION, "reg_data%n_regions", reg_data%n_regions)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "real_subtraction_init")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "n_in", reg_data%n_in)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "nlegs_born", reg_data%n_legs_born)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "nlegs_real", reg_data%n_legs_real)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "reg_data%n_regions", reg_data%n_regions)
     if (debug2_active (D_SUBTRACTION))  call reg_data%write ()
     rsub%reg_data => reg_data
     allocate (rsub%sqme_born (reg_data%n_flv_born))
@@ -845,7 +846,7 @@ contains
     subroutine check_s_alpha_consistency ()
       real(default) :: sum_s_alpha, sum_s_alpha_soft
       integer :: i_reg, i1, i2
-      call msg_debug2 (D_SUBTRACTION, "Check consistency of s_alpha: ")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "Check consistency of s_alpha: ")
       do i_reg = 1, rsub%reg_data%n_regions
          sum_s_alpha = zero; sum_s_alpha_soft = zero
          do alr = 1, rsub%reg_data%regions(i_reg)%nregions
@@ -959,7 +960,7 @@ contains
     function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde) result (sqme_remn)
       real(default) :: sqme_remn
       real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
-      call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
+      if (debug_on) call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
       sqme_remn = zero
       sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
     end function compute_sqme_remnant_fsr
@@ -971,7 +972,6 @@ contains
       real(default), parameter :: coll_threshold = 0.01_default
       real(default) :: this_sqme_rad, s_alpha, E_gluon
       logical, dimension(:), allocatable, save :: count_alr
-      !!! TODO (cw-2017-02-18): Need to be able to set this (?)
       logical :: write_histo = .true.
       if (.not. allocated (sqme_rad_store)) then
          allocate (sqme_rad_store (rsub%reg_data%n_regions))
@@ -1039,7 +1039,7 @@ contains
       logical, intent(in), optional :: full
       yorn = .true.
       if (present (full)) yorn = full
-      call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_region_fsr")
+      if (debug_on) call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_region_fsr")
       u = given_output_unit (); if (u < 0) return
       i_born = rsub%reg_data%regions(alr)%uborn_index
       xi = rsub%real_kinematics%xi_max (i_phs) * rsub%real_kinematics%xi_tilde
@@ -1206,21 +1206,21 @@ contains
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft, sqme_coll, sqme_cs
-    call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_subtraction_terms_fsr")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_subtraction_terms_fsr")
     sqme_soft = zero; sqme_coll = zero; sqme_cs = zero
     associate (xi_tilde => rsub%real_kinematics%xi_tilde, &
          y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
       if (template%xi_cut > xi_tilde) &
            sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
-      if (y - 1 + template%delta_zero > 0) &
+      if (y - 1 + template%delta_o > 0) &
            sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
-      if (template%xi_cut > xi_tilde .and. y - 1 + template%delta_zero > 0) &
+      if (template%xi_cut > xi_tilde .and. y - 1 + template%delta_o > 0) &
            sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, i_phs, alpha_coupling)
       if (debug2_active (D_SUBTRACTION)) then
          print *, "FSR Cutoff:"
          print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
-         print *, "sub_coll: ", (y - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (y - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll: ", (y - 1 + template%delta_o) > 0, "(ME: ", sqme_coll, ")"
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (y - 1 + template%delta_o) > 0, &
               "(ME: ", sqme_cs, ")"
       end if
     end associate
@@ -1347,8 +1347,8 @@ contains
       if (debug2_active (D_SUBTRACTION)) then
          print *, "ISR Cutoff:"
          print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
-         print *, "sub_coll: ", (abs (y) - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (abs (y) - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll: ", (abs (y) - 1 + template%delta_i) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (abs (y) - 1 + template%delta_i) > 0, &
               "(ME: ", sqme_cs_plus, sqme_cs_minus, ")"
       end if
     end associate
@@ -1422,7 +1422,7 @@ contains
   contains
     subroutine check_soft_vector ()
       type(vector4_t) :: p_gluon
-      call msg_debug2 (D_SUBTRACTION, "Compare soft vector: ")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "Compare soft vector: ")
       print *, 'p_soft: ', rsub%sub_soft%p_soft%p
       print *, 'Normalized gluon momentum: '
       if (rsub%reg_data%has_pseudo_isr ()) then
@@ -1469,7 +1469,7 @@ contains
   contains
     subroutine check_me_consistency ()
       real(default) ::  sqme_sum
-      call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
       sqme_sum = rsub%sqme_born_spin_c(0,0,emitter,i_born) &
                - rsub%sqme_born_spin_c(1,1,emitter,i_born) &
                - rsub%sqme_born_spin_c(2,2,emitter,i_born) &
@@ -1542,8 +1542,7 @@ contains
             end select
             xi = rsub%real_kinematics%xi_tilde * xi_max
             ! TODO sbrass introduce overall PDF/PDF_SINGLET parameter
-            ! TODO sbrass use is_gluon instead of magic number
-            if (rsub%reg_data%regions(alr)%flst_real%flst(em) == 21) then
+            if (rsub%reg_data%regions(alr)%flst_real%flst(em) == GLUON) then
                pdf_type = 2
             else
                pdf_type = 1

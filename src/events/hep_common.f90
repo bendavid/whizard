@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,6 +32,7 @@ module hep_common
   use kinds, only: double
   use constants
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use diagnostics
   use numeric_utils
@@ -380,7 +381,7 @@ contains
     integer, intent(in) :: unit
     type(xml_tag_t), allocatable :: tag_lhef, tag_head, tag_init, &
          tag_event, tag_gen_n, tag_gen_v
-    call msg_debug (D_EVENTS, "w2p_write_lhef_event")
+    if (debug_on) call msg_debug (D_EVENTS, "w2p_write_lhef_event")
     allocate (tag_lhef, tag_head, tag_init, tag_event, &
          tag_gen_n, tag_gen_v)
     call tag_lhef%init (var_str ("LesHouchesEvents"), &
@@ -396,7 +397,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")
-    call tag_gen_v%write (var_str ("2.7.0"), unit)
+    call tag_gen_v%write (var_str ("2.7.1"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -915,8 +916,8 @@ contains
     integer, intent(in), optional :: unit
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
-    call msg_debug (D_EVENTS, "hepeup_write_lhef")
-    call msg_debug2 (D_EVENTS, "ID IST MOTH ICOL P VTIM SPIN")
+    if (debug_on) call msg_debug (D_EVENTS, "hepeup_write_lhef")
+    if (debug_on) call msg_debug2 (D_EVENTS, "ID IST MOTH ICOL P VTIM SPIN")
     write (u, "(2(1x,I0),4(1x,ES17.10))") &
          NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
     do i = 1, NUP

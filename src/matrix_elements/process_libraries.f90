@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -852,7 +852,6 @@ contains
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              !  TODO: (bcn 2016-09-16) better output for subtraction
               if ((def%nlo_process .and. .not. comp%active) .or. &
                    comp%nlo_type == NLO_SUBTRACTION) then
                  d = d // " [inactive]"

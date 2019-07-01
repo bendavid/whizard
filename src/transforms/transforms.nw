@@ -708,7 +708,7 @@ module hadrons
 
 <<Use kinds with double>>
 <<Use strings>>
-
+<<Use debug>>
   use constants
   use diagnostics
   use event_transforms
@@ -977,7 +977,7 @@ routine.
     integer, dimension(:), allocatable :: cols, acols, octs
     integer :: n
     if (signal_is_pending ()) return
-    call msg_debug (D_TRANSFORMS, "hadrons_hadrons_hadronize")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_hadrons_hadronize")
     call particle_set%write (6, compressed=.true.)
     n = particle_set%get_n_tot ()
     allocate (cols (n), acols (n), octs (n))
@@ -1175,7 +1175,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
     save /PYJETS/
     if (signal_is_pending ()) return
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia6_hadronize")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia6_hadronize")
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
@@ -1257,8 +1257,8 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
   subroutine hadrons_pythia8_transfer_settings (hadrons)
     class(hadrons_pythia8_t), intent(inout), target :: hadrons
     real(default) :: r
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_transfer_settings")
-    call msg_debug2 (D_TRANSFORMS, "pythia_initialized", hadrons%pythia_initialized)
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_transfer_settings")
+    if (debug_on) call msg_debug2 (D_TRANSFORMS, "pythia_initialized", hadrons%pythia_initialized)
     if (hadrons%pythia_initialized) return
     call hadrons%pythia%import_rng (hadrons%rng)
     call hadrons%pythia%parse_and_set_config (hadrons%shower_settings%pythia8_config)
@@ -1285,7 +1285,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     integer, dimension(2) :: beam_pdg
     real(default), dimension(2) :: beam_energy
     integer, parameter :: process_id = 0, n_processes = 0
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_set_user_process")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_set_user_process")
     beam_pdg = [pset%prt(1)%get_pdg (), pset%prt(2)%get_pdg ()]
     beam_energy = [energy(pset%prt(1)%p), energy(pset%prt(2)%p)]
     call hadrons%lhaup%set_init (beam_pdg, beam_energy, &
@@ -1304,7 +1304,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t) :: pset_reduced
     integer, parameter :: PROCESS_ID = 1
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")
     if (.not. hadrons%user_process_set) then
        call hadrons%set_user_process (particle_set)
        hadrons%user_process_set = .true.
@@ -1350,7 +1350,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     class(model_data_t), intent(in), target :: model
     logical, intent(out) :: valid
     type(particle_t), dimension(:), allocatable :: beam
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_make_particle_set")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_make_particle_set")
     if (signal_is_pending ()) return
     associate (settings => hadrons%shower_settings)
       if (debug_active (D_TRANSFORMS)) then
@@ -1448,7 +1448,7 @@ shower.
 <<Hadrons: procedures>>=
   subroutine evt_hadrons_first_event (evt)
     class(evt_hadrons_t), intent(inout) :: evt
-    call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
     associate (settings => evt%hadrons%shower_settings)
        settings%hadron_collision = .false.
        !!! !!! !!! Workaround for PGF90 16.1
@@ -1463,7 +1463,7 @@ shower.
        else
           call msg_fatal ("evt_hadrons didn't recognize beams setup")
        end if
-       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
        if (.not. (settings%isr_active .or. settings%fsr_active)) then
           call msg_fatal ("Hadronization without shower is not supported")
        end if
@@ -8800,6 +8800,7 @@ module shower
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use format_utils, only: write_separator
   use system_defs, only: LF
@@ -8976,7 +8977,7 @@ transformation chain is evaluated.
   subroutine evt_shower_first_event (evt)
     class(evt_shower_t), intent(inout) :: evt
     double precision :: pdftest
-    call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
     associate (settings => evt%shower%settings)
        settings%hadron_collision = .false.
        !!! !!! !!! Workaround for PGF90 v16.1
@@ -8991,7 +8992,7 @@ transformation chain is evaluated.
        else
           call msg_fatal ("evt_shower didn't recognize beams setup")
        end if
-       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
        if (allocated (evt%matching)) then
           evt%matching%is_hadron_collision = settings%hadron_collision
           call evt%matching%first_event ()
@@ -9035,7 +9036,7 @@ we mark the particle set as invalid. This procedure directly takes the
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid, vetoed
-    call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
@@ -9044,7 +9045,7 @@ we mark the particle set as invalid. This procedure directly takes the
     if (allocated (evt%matching)) then
        call evt%matching%before_shower (evt%particle_set, vetoed)
        if (msg_level(D_TRANSFORMS) >= DEBUG) then
-          call msg_debug (D_TRANSFORMS, "Matching before generate emissions")
+          if (debug_on) call msg_debug (D_TRANSFORMS, "Matching before generate emissions")
           call evt%matching%write ()
        end if
     end if
@@ -9601,6 +9602,7 @@ module evt_nlo
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units, only: given_output_unit
   use constants
   use lorentz
@@ -9610,7 +9612,6 @@ module evt_nlo
   use model_data
   use particles
   use instances, only: process_instance_t
-  ! TODO (cw-2016-09-16): Ideally, only pcm_base
   use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
   use process_stacks
   use event_transforms
@@ -9720,7 +9721,7 @@ object in the [[pcm_instance]].
     type(process_instance_t), intent(in), target :: process_instance
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
-    call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
     call evt%base_connect (process_instance, model, process_stack)
     select type (pcm => process_instance%pcm)
     class is (pcm_instance_nlo_t)
@@ -9736,7 +9737,7 @@ object in the [[pcm_instance]].
     call evt%setup_general_event_kinematics (process_instance)
     if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) &
          call evt%setup_real_event_kinematics (process_instance)
-    call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
+    if (debug_on) call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
   end subroutine evt_nlo_connect
 
 @ %def evt_nlo_connect
@@ -9912,10 +9913,10 @@ is distributed over the real and Born subevents.
           call evt%compute_real ()
           probability = evt%sqme_rad
        end if
-       call msg_debug2 (D_TRANSFORMS, "event weight multiplier:", evt%weight_multiplier)
+       if (debug_on) call msg_debug2 (D_TRANSFORMS, "event weight multiplier:", evt%weight_multiplier)
        probability = probability * evt%weight_multiplier
     end if
-    call msg_debug (D_TRANSFORMS, "probability (after)", probability)
+    if (debug_on) call msg_debug (D_TRANSFORMS, "probability (after)", probability)
     evt%particle_set_exists = .true.
   contains
     function status_code_to_string (mode) result (smode)
@@ -9934,10 +9935,10 @@ is distributed over the real and Born subevents.
     end function status_code_to_string
 
     subroutine print_debug_info ()
-       call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
-       call msg_debug (D_TRANSFORMS, char ("mode: " // status_code_to_string (evt%mode)))
-       call msg_debug (D_TRANSFORMS, "probability (before)", probability)
-       call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
+       if (debug_on) call msg_debug (D_TRANSFORMS, char ("mode: " // status_code_to_string (evt%mode)))
+       if (debug_on) call msg_debug (D_TRANSFORMS, "probability (before)", probability)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
        if (debug2_active (D_TRANSFORMS)) then
           if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) then
              if (evt%i_evaluation == 0) then
@@ -10090,7 +10091,7 @@ subtraction terms.
     class(evt_nlo_t), intent(inout) :: evt
     real(default) :: weight
     integer :: i_phs, i_term
-    call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
     weight = zero
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
@@ -10111,7 +10112,7 @@ emission matrix elements.
   subroutine evt_nlo_compute_real (evt)
     class(evt_nlo_t), intent(inout) :: evt
     integer :: i_phs, i_term
-    call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
     i_phs = evt%get_i_phs ()
     i_term = evt%i_evaluation_to_i_term (evt%i_evaluation)
     select type (pcm => evt%process_instance%pcm)
@@ -10326,6 +10327,7 @@ module events
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use constants, only: one
   use io_units
   use format_utils, only: pac_fmt, write_separator
@@ -10923,7 +10925,7 @@ For testing purpose, we allow for providing them explicitly, as an option.
     integer :: i_term
     logical :: failed_but_keep
     failed_but_keep = .false.
-    call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
@@ -10936,9 +10938,9 @@ For testing purpose, we allow for providing them explicitly, as an option.
           evt => evt%next
        end do
        evt => event%transform_first
-       call msg_debug (D_TRANSFORMS, "Before event transformations")
-       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
-       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "Before event transformations")
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        do while (associated (evt))
           call print_transform_name_if_debug ()
           if (evt%only_weighted_events) then
@@ -10983,10 +10985,10 @@ For testing purpose, we allow for providing them explicitly, as an option.
              call event%link_particle_set (evt%particle_set)
           end if
        end if
-       call msg_debug (D_TRANSFORMS, "After event transformations")
-       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
-       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
-       call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "After event transformations")
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
     end if
   contains
     subroutine print_transform_name_if_debug ()

@@ -2,7 +2,25 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.7.0
+	Version 2.7.1
+
+2019-03-27
+	RELEASE: version 2.7.1
+
+2019-02-19
+	Further infrastructure for HepMC3 interface (v3.01.00)
+
+2019-02-07
+	Explicit configure option for using debugging options
+	Bug fix for performance by removing unnecessary debug operations
+
+2019-01-29
+	Bug fix for DGLAP remnants with cut-off parameter delta_i
+
+2019-01-24
+	Radiative decay neu2 -> neu1 A added to MSSM_Hgg model
+
+##################################################################
 
 2019-01-21
 	RELEASE: version 2.7.0

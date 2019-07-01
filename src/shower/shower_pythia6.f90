@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module shower_pythia6
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants
   use numeric_utils, only: vanishes
   use io_units
@@ -84,7 +85,7 @@ contains
     type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
     type(os_data_t), intent(in) :: os_data
-    call msg_debug (D_SHOWER, "shower_pythia6_init")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_pythia6_init")
     shower%settings = settings
     shower%taudec_settings = taudec_settings
     shower%os_data = os_data
@@ -99,7 +100,7 @@ contains
     class(shower_pythia6_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t) :: pset_reduced
-    call msg_debug (D_SHOWER, "shower_pythia6_import_particle_set")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_pythia6_import_particle_set")
     if (debug_active (D_SHOWER)) then
        print *, 'IDBMUP(1:2) =    ', IDBMUP(1:2)
        print *, 'EBMUP, PDFGUP =    ', EBMUP, PDFGUP
@@ -150,7 +151,7 @@ contains
        print *, ' Before pyevnt, before boosting :'
        call pylist(2)
     end if
-    call msg_debug (D_SHOWER, "calling pyevnt")
+    if (debug_on) call msg_debug (D_SHOWER, "calling pyevnt")
     ! TODO: (bcn 2015-04-24) doesnt change anything I think
     ! P(1,1:5) = pset_reduced%prt(1)%momentum_to_pythia6 ()
     ! P(2,1:5) = pset_reduced%prt(2)%momentum_to_pythia6 ()
@@ -203,14 +204,14 @@ contains
     character(len=10) :: buffer
     real(default) :: rand
     logical, save :: tauola_initialized = .false.
-    call msg_debug (D_SHOWER, "shower_pythia6_transfer_settings")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_pythia6_transfer_settings")
     !!! We repeat these as they are overwritten by the hadronization
     call pygive ("MSTP(111)=1")     !!! Allow hadronization and decays
     call pygive ("MSTJ(1)=0")       !!! No jet fragmentation
     call pygive ("MSTJ(21)=1")      !!! Allow decays but no jet fragmentation
 
     if (shower%initialized_for_NPRUP >= NPRUP) then
-      call msg_debug (D_SHOWER, "calling upinit")
+      if (debug_on) call msg_debug (D_SHOWER, "calling upinit")
       call upinit ()
     else
        if (shower%settings%isr_active) then
@@ -266,7 +267,7 @@ contains
           call pygive ("MSTP(67)=0")
        end if
        call pythia6_set_config (shower%settings%pythia6_pygive)
-       call msg_debug (D_SHOWER, "calling pyinit")
+       if (debug_on) call msg_debug (D_SHOWER, "calling pyinit")
        call PYINIT ("USER", "", "", 0D0)
        call shower%rng%generate (rand)
        write (buffer, "(I10)") floor (rand*900000000)
@@ -592,7 +593,7 @@ contains
       save /HEPEVT/
       integer :: parent2, parent1, npar
       integer :: jsearch
-      call msg_debug (D_SHOWER, &
+      if (debug_on) call msg_debug (D_SHOWER, &
            "set_parent_child_relations_from_hepevt")
       if (debug_active (D_SHOWER)) then
          print *, 'NHEP, n, py_entries:' , NHEP, n, py_entries
@@ -686,8 +687,8 @@ contains
     subroutine set_parent_child_relations_of_color_strings_to_hadrons ()
       integer :: begin_string, end_string, old_start, next_start, real_child
       integer, allocatable, dimension(:) :: parents
-      call msg_debug (D_SHOWER, "set_parent_child_relations_of_color_strings_to_hadrons")
-      call msg_debug (D_SHOWER, "hadro_start", hadro_start)
+      if (debug_on) call msg_debug (D_SHOWER, "set_parent_child_relations_of_color_strings_to_hadrons")
+      if (debug_on) call msg_debug (D_SHOWER, "hadro_start", hadro_start)
       if (hadro_start > 0) then
          old_start = hadro_start
          do

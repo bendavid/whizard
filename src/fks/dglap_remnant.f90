@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -136,12 +136,13 @@ contains
           associate (z => dglap%isr_kinematics%z(emitter), template => dglap%settings%fks_template)
             jac = dglap%isr_kinematics%jacobian(emitter)
             onemz = one - z
-            factor = log (sb * template%delta_i / z / fac_scale2) / onemz + two * log (onemz) / onemz
-            factor_soft = log (sb * template%delta_i / fac_scale2) / onemz + two * log (onemz) / onemz
+            factor = log (sb * template%delta_i / two / z / fac_scale2) / &
+                   onemz + two * log (onemz) / onemz
+            factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
+                   onemz + two * log (onemz) / onemz
             xb = dglap%isr_kinematics%x(emitter)
-            ! TODO sbrass rescale xi_cut to [0, xi_max]
-            plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / fac_scale2) &
-                 + (log (one - xb)**2 - log (template%xi_cut)**2)
+            plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
+                   two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
             if (is_gluon(dglap%flv_in(emitter, i_flv))) then
                sqme_scaled = dglap%sqme_coll_isr(emitter, PDF, i_flv)
                tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &

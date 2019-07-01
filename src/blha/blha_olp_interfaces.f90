@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,6 +33,7 @@ module blha_olp_interfaces
 
   use kinds
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants
   use numeric_utils, only: vanishes
   use numeric_utils, only: extend_integer_array, crop_integer_array
@@ -1227,9 +1228,9 @@ contains
     real(default) :: alpha_s
     if (object%i_virt(i_flv, i_hel) >= 0) then
        allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
-       call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
-       call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
-       call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv, i_hel)", object%i_virt(i_flv, i_hel))
+       if (debug_on) call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
+       if (debug_on) call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
+       if (debug_on) call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv, i_hel)", object%i_virt(i_flv, i_hel))
        if (debug2_active (D_VIRTUAL)) then
            call msg_debug2 (D_VIRTUAL, "use momenta: ")
            call vector4_write_set (p, show_mass = .true., &

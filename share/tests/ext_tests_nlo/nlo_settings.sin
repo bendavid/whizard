@@ -29,10 +29,7 @@ alphas_order = 2
 
 alias jet = u:U:d:D:s:S:c:C:b:B:gl
 
-$born_me_method = "openloops"
-$real_tree_me_method = "openloops"
-$correlation_me_method = "openloops"
-$loop_me_method = "openloops"
+$method = "openloops"
 
 seed = 8131
 sqrts = 1 TeV
@@ -41,5 +38,6 @@ scale = sqrts
 jet_algorithm = antikt_algorithm
 jet_r = 0.5
 
+?use_vamp_equivalences = false
 ?nlo_use_born_scale = false
 ?nlo_cut_all_sqmes = false

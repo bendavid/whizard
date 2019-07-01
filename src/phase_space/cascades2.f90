@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module cascades2
 
   use kinds, only: default
   use kinds, only: TC, i8
+  use debug_master, only: debug_on
   use cascades2_lexer
   use sorting
   use flavors
@@ -1054,14 +1055,14 @@ contains
        deallocate (set%particle)
     end if
     if (associated (set%grove_list)) then
-       call msg_debug (D_PHASESPACE, "grove_list: final")
+       if (debug_on) call msg_debug (D_PHASESPACE, "grove_list: final")
        call set%grove_list%final ()
        deallocate (set%grove_list)
     end if
-    call msg_debug (D_PHASESPACE, "f_node_list: final")
+    if (debug_on) call msg_debug (D_PHASESPACE, "f_node_list: final")
     call set%f_node_list%final ()
     if (associated (set%dag)) then
-       call msg_debug (D_PHASESPACE, "dag: final")
+       if (debug_on) call msg_debug (D_PHASESPACE, "dag: final")
        if (associated (set%dag)) then
           call set%dag%final ()
           deallocate (set%dag)
@@ -3758,9 +3759,9 @@ contains
     feyngraph_set%process_type = n_in
     feyngraph_set%phs_par = phs_par
     feyngraph_set%model => model
-    call msg_debug (D_PHASESPACE, "Construct relevant Feynman diagrams from Omega output")
+    if (debug_on) call msg_debug (D_PHASESPACE, "Construct relevant Feynman diagrams from Omega output")
     call feyngraph_set%build (u_in)
-    call msg_debug (D_PHASESPACE, "Find phase-space parametrizations")
+    if (debug_on) call msg_debug (D_PHASESPACE, "Find phase-space parametrizations")
     call feyngraph_set_find_phs_parametrizations(feyngraph_set)
   end subroutine feyngraph_set_generate_single
 
@@ -4340,11 +4341,11 @@ contains
     integer, intent(in) :: n_out
     type(resonance_info_t) :: resonance
     integer :: i, mom_id, pdg
-    call msg_debug2 (D_PHASESPACE, "kingraph_extract_resonance_history")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "kingraph_extract_resonance_history")
     if (kingraph%grove_prop%n_resonances > 0) then
        if (associated (kingraph%root%daughter1) .or. &
             associated (kingraph%root%daughter2)) then
-          call msg_debug2 (D_PHASESPACE, "kingraph has resonances, root has children")
+          if (debug_on) call msg_debug2 (D_PHASESPACE, "kingraph has resonances, root has children")
           do i = 1, kingraph%tree%n_entries
              if (kingraph%tree%mapping(i) == S_CHANNEL) then
                 mom_id = kingraph%tree%bc (i)
@@ -4366,7 +4367,7 @@ contains
     integer :: n
     type(kingraph_t), pointer :: kingraph
     type(grove_t), pointer :: grove
-    call msg_debug (D_PHASESPACE, "grove_list_get_n_trees")
+    if (debug_on) call msg_debug (D_PHASESPACE, "grove_list_get_n_trees")
     n = 0
     grove => grove_list%first
     do while (associated (grove))
@@ -4377,7 +4378,7 @@ contains
        enddo
        grove => grove%next
     enddo
-    call msg_debug (D_PHASESPACE, "n", n)
+    if (debug_on) call msg_debug (D_PHASESPACE, "n", n)
   end function grove_list_get_n_trees
 
   subroutine feyngraph_set_get_resonance_histories (feyngraph_set, n_filter, res_hists)
@@ -4389,7 +4390,7 @@ contains
     type(resonance_history_t) :: res_hist
     type(resonance_history_set_t) :: res_hist_set
     integer :: i_grove
-    call msg_debug (D_PHASESPACE, "grove_list_get_resonance_histories")
+    if (debug_on) call msg_debug (D_PHASESPACE, "grove_list_get_resonance_histories")
     call res_hist_set%init (n_filter = n_filter)
     grove => feyngraph_set%grove_list%first
     i_grove = 0
@@ -4398,7 +4399,7 @@ contains
        kingraph => grove%first
        do while (associated (kingraph))
           if (kingraph%keep) then
-             call msg_debug2 (D_PHASESPACE, "grove", i_grove)
+             if (debug_on) call msg_debug2 (D_PHASESPACE, "grove", i_grove)
              call kingraph%extract_resonance_history &
                   (res_hist, feyngraph_set%model, feyngraph_set%n_out)
              call res_hist_set%enter (res_hist)

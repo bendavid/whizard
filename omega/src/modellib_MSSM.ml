@@ -422,7 +422,7 @@ module MSSM (Flags : MSSM_flags) =
       | G_strong | G_SS | I_G_S | G_S_Sqrt 
       | Gs
       | M of flavor | W of flavor    
-      | G_NZN of neu*neu | G_CZC of char*char 
+      | G_NZN of neu*neu | G_CZC of char*char | G_NNA
       | G_YUK of int*int
       | G_YUK_1 of int*int | G_YUK_2 of int*int | G_YUK_3 of int*int 
       | G_YUK_4 of int*int | G_NHC of neu*char | G_CHN of char*neu
@@ -727,7 +727,17 @@ generalization to complex parameters is obvious. *)
 (*** REVISED: Compatible with CD+. ***)
     let neutral_Z_2 n =
       [ ((Neutralino n, Z, Neutralino n), FBF (1, Chibar, Coupling.A, Chi), 
-              (G_NZN (n,n)) )]
+         (G_NZN (n,n)) )]
+
+(* For very compressed spectra, radiative decays of the next-to-lightest neutralino 
+   become important. The formula can be found Haber/Wyler, 1989. In abuse, we 
+   include this loop-induced coupling together in the same model variant with the
+   triangle Higgs couplings. *)
+    let neutral_A =
+      if Flags.higgs_triangle then
+        [ ((Neutralino N2, Ga, Neutralino N1), FBF (1, Chibar, TVAM, Chi), G_NNA) ]
+      else
+	[]
 
 (*** REVISED: Compatible with CD+. ***)
     let charged_Z c1 c2 =
@@ -1785,7 +1795,7 @@ generalization to complex parameters is obvious. *)
                          [C1;C2]) @ triple_gauge @ 
          ThoList.flatmap neutral_Z_1 [(N1,N2);(N1,N3);(N1,N4);(N2,N3);(N2,N4);
                                     (N3,N4)] @
-         ThoList.flatmap neutral_Z_2 [N1;N2;N3;N4] @
+         ThoList.flatmap neutral_Z_2 [N1;N2;N3;N4] @ neutral_A @
          Product.list2 charged_Z [C1;C2] [C1;C2] @ 
          gauge_higgs @ higgs @ yukawa_higgs_2 @ 
          List.flatten (Product.list2 higgs_charg_neutr [N1;N2;N3;N4] [C1;C2]) @ 
@@ -1817,7 +1827,7 @@ generalization to complex parameters is obvious. *)
                          [C1;C2]) @ triple_gauge @ 
          ThoList.flatmap neutral_Z_1 [(N1,N2);(N1,N3);(N1,N4);(N2,N3);(N2,N4);
                                     (N3,N4)] @
-         ThoList.flatmap neutral_Z_2 [N1;N2;N3;N4] @
+         ThoList.flatmap neutral_Z_2 [N1;N2;N3;N4] @ neutral_A @
          Product.list2 charged_Z [C1;C2] [C1;C2] @ 
          gauge_higgs @ higgs @ yukawa_higgs_2 @ 
          List.flatten (Product.list2 higgs_charg_neutr [N1;N2;N3;N4] [C1;C2]) @ 
@@ -2361,7 +2371,8 @@ generalization to complex parameters is obvious. *)
       | G_CAC (c1,c2) -> "gcac_" ^ string_of_char c1 ^ "_" ^ string_of_char c2
       | G_CGC (c1,c2) -> "gcgc_" ^ string_of_char c1 ^ "_" ^ string_of_char c2
       | G_YUK (i,g) -> "g_yuk" ^ string_of_int i ^ "_" ^ string_of_int g
-      | G_NZN (n1,n2) -> "gnzn_" ^ string_of_neu n1 ^ "_" ^ string_of_neu n2 
+      | G_NZN (n1,n2) -> "gnzn_" ^ string_of_neu n1 ^ "_" ^ string_of_neu n2
+      | G_NNA -> "gnna"
       | G_CZC (c1,c2) -> "gczc_" ^ string_of_char c1 ^ "_" ^ string_of_char 
           c2 
       | G_YUK_1 (n,m) -> "g_yuk1_" ^ string_of_int n ^ "_" ^ string_of_int m 

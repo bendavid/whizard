@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module process_configurations
 
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use diagnostics
   use io_units
   use physics_defs, only: BORN, NLO_VIRTUAL, NLO_REAL, NLO_DGLAP, &
@@ -92,7 +93,7 @@ contains
     logical, intent(in), optional :: nlo_process
     logical :: nlo_proc
     logical :: requires_resonances
-    call msg_debug (D_CORE, "process_configuration_init")
+    if (debug_on) call msg_debug (D_CORE, "process_configuration_init")
     config%id = prc_name
     if (present (nlo_process)) then
        nlo_proc = nlo_process
@@ -101,7 +102,7 @@ contains
     end if
     requires_resonances = var_list%get_lval (var_str ("?resonance_history"))
 
-    call msg_debug (D_CORE, "nlo_process", nlo_proc)
+    if (debug_on) call msg_debug (D_CORE, "nlo_process", nlo_proc)
     allocate (config%entry)
     if (var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
@@ -140,7 +141,7 @@ contains
     type(string_t) :: correlation_me_method
     type(string_t) :: dglap_me_method
     integer :: i
-    call msg_debug2 (D_CORE, "process_configuration_setup_component")
+    if (debug_on) call msg_debug2 (D_CORE, "process_configuration_setup_component")
     allocate (prt_str_in  (size (prt_in)))
     allocate (prt_str_out (size (prt_out)))
     forall (i = 1:size (prt_in))  prt_str_in(i)  = prt_in(i)% get_name ()
@@ -191,7 +192,7 @@ contains
        end if
     end select
 
-    call msg_debug2 (D_CORE, "import_component with method ", method)
+    if (debug_on) call msg_debug2 (D_CORE, "import_component with method ", method)
     call config%entry%import_component (i_component, &
          n_out = size (prt_out), &
          prt_in = prt_in, &

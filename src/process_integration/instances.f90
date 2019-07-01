@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module instances
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use format_utils, only: write_separator
   use constants
@@ -770,7 +771,7 @@ contains
              else
                 pcm_instance%isr_kinematics%isr_mode = SQRTS_FIXED
              end if
-             call msg_debug (D_PHASESPACE, "isr_mode: ", pcm_instance%isr_kinematics%isr_mode)
+             if (debug_on) call msg_debug (D_PHASESPACE, "isr_mode: ", pcm_instance%isr_kinematics%isr_mode)
           end select
        end select
     class default
@@ -964,22 +965,22 @@ contains
        do i_amp = 1, n_amps
           sqme = real (term%connected%trace%get_matrix_element ( &
                term%connected_qn_index%get_index (i_amp, i_sub = 0)))
-          call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
+          if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
           select type (pcm => term%pcm_instance%config)
           type is (pcm_nlo_t)
              select case (process%get_component_type (i_component))
              case (COMP_REAL_FIN, COMP_REAL_SING)
                 select case (process%get_component_type (i_component))
                 case (COMP_REAL_FIN)
-                   call msg_debug2 (D_PROCESS_INTEGRATION, "Real finite")
+                   if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "Real finite")
                    sqme = sqme * (one - f)
                 case (COMP_REAL_SING)
-                   call msg_debug2 (D_PROCESS_INTEGRATION, "Real singular")
+                   if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "Real singular")
                    sqme = sqme * f
                 end select
              end select
           end select
-          call msg_debug2 (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
+          if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
           call term%connected%trace%set_matrix_element (i_amp, cmplx (sqme, zero, default))
        end do
     end if
@@ -1102,11 +1103,11 @@ contains
     type is (pcm_instance_nlo_t)
        select type (config => pcm_instance%config)
        type is (pcm_nlo_t)
-          call msg_debug2 (D_SUBTRACTION, &
+          if (debug_on) call msg_debug2 (D_SUBTRACTION, &
                "term_instance_evaluate_color_correlations: " // &
                "use_internal_color_correlations:", &
                config%settings%use_internal_color_correlations)
-          call msg_debug2 (D_SUBTRACTION, "fac_scale", term%fac_scale)
+          if (debug_on) call msg_debug2 (D_SUBTRACTION, "fac_scale", term%fac_scale)
 
           do i_flv_born = 1, config%region_data%n_flv_born
              select case (term%nlo_type)
@@ -1180,7 +1181,7 @@ contains
       real(default), dimension(:,:), intent(inout) :: sqme_color_c
       integer :: i_color_c, i_sub, n_pdf_off, virt_off, n_offset
       real(default), dimension(:), allocatable :: sqme
-      call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
+      if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
       if (pcm%settings%use_internal_color_correlations) then
          !!! A negative value for sqme_born indicates that the Born matrix
          !!! element is multiplied at a different place, e.g. in the case
@@ -1274,7 +1275,7 @@ contains
     real(default), dimension(0:3, 0:3) :: sqme_spin_c
     real(default), dimension(:), allocatable :: sqme_spin_c_all
     real(default), dimension(:), allocatable :: sqme_spin_c_arr
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_spin_correlations")
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
@@ -1532,7 +1533,7 @@ contains
     integer :: i_flv
     if (term%nlo_type /= NLO_DGLAP) call msg_fatal &
        ("Trying to evaluate DGLAP remnant with unsuited term_instance.")
-    call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_evaluate_sqme_dglap")
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_evaluate_sqme_dglap")
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
        if (debug2_active (D_PROCESS_INTEGRATION)) then
@@ -1606,7 +1607,7 @@ contains
   subroutine term_instance_evaluate_interaction (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in), pointer :: core
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction")
     term%p_hard = term%int_hard%get_momenta ()
     select type (core)
@@ -1637,7 +1638,7 @@ contains
   subroutine term_instance_evaluate_interaction_userdef (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef")
     select type (core_state => term%core_state)
     type is (openloops_state_t)
@@ -1716,7 +1717,7 @@ contains
     integer :: i_flv, i_hel, i_sub, i_color_c, i_spin_c, i_emitter
     integer :: emitter
     logical :: bad_point, bp
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_tree")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
@@ -1808,7 +1809,7 @@ contains
     real(default), dimension(4) :: sqme_virt
     real(default), dimension(:), allocatable :: sqme_color_c
     logical :: bad_point
-    call msg_debug (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_loop")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
@@ -1898,9 +1899,6 @@ contains
                 call func%set (pcm%real_kinematics%xi_tilde * &
                      pcm%real_kinematics%xi_max (term%k_term%i_phs), &
                      pcm%real_kinematics%y (term%k_term%i_phs))
-                ! TODO sbrass Obviously, it is completely irrelevant,
-                ! TODO sbrass which beam is treated for hadronic beams. It becomes
-                ! TODO sbrass problematic when handling "e, p"-beams.
                 call func%restrict_to_beam (term%k_term%emitter)
              end select
           end select
@@ -2105,7 +2103,7 @@ contains
     type(process_term_t) :: term
     type(var_list_t), pointer :: var_list
     integer :: i_born, i_real, i_real_fin
-    call msg_debug (D_PROCESS_INTEGRATION, "process_instance_init")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_instance_init")
     instance%process => process
     call instance%process%check_library_sanity ()
     call instance%setup_sf_chain (process%get_beam_config_ptr ())
@@ -2735,7 +2733,7 @@ contains
     real(default) :: alpha_s, alpha_qed
     class(prc_core_t), pointer :: core_sub => null ()
     class(model_data_t), pointer :: model => null ()
-    call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_evaluate_trace")
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_evaluate_trace")
     instance%sqme = zero
     call instance%reset_matrix_elements ()
     if (instance%evaluation_status >= STAT_PASSED_CUTS) then
@@ -2780,12 +2778,16 @@ contains
                           call term%compute_sqme_coll_isr ()
                   end if
                   alpha_s = core%get_alpha_s (term%core_state)
-                  if (associated (instance%process%get_model_ptr ())) then
-                     model => instance%process%get_model_ptr ()
-                     if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) &
-                          alpha_qed = one / model%get_real (var_str ('alpha_em_i'))
-                     model => null ()
-                  end if
+!!!! TODO (wk 2019-02-07): this method for resetting alpha_em is not used (yet),
+!!!!       and it slows down the program significantly by using string handling.
+!!!        Should be removed or replaced by an efficient method.
+                  alpha_qed = 0
+!!!                   if (associated (instance%process%get_model_ptr ())) then
+!!!                      model => instance%process%get_model_ptr ()
+!!!                      if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) &
+!!!                           alpha_qed = one / model%get_real (var_str ('alpha_em_i'))
+!!!                      model => null ()
+!!!                   end if
                   select case (term%nlo_type)
                   case (NLO_REAL)
                      call term%apply_fks (alpha_s, alpha_qed)
@@ -2932,7 +2934,7 @@ contains
     real(default), intent(in), optional :: alpha_s_external
     class(prc_core_t), pointer :: core
     integer :: i_real_fin
-    call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_rad")
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_rad")
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
        associate (term => instance%term(i_term))

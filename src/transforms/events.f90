@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module events
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants, only: one
   use io_units
   use format_utils, only: pac_fmt, write_separator
@@ -493,7 +494,7 @@ contains
     integer :: i_term
     logical :: failed_but_keep
     failed_but_keep = .false.
-    call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
@@ -506,9 +507,9 @@ contains
           evt => evt%next
        end do
        evt => event%transform_first
-       call msg_debug (D_TRANSFORMS, "Before event transformations")
-       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
-       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "Before event transformations")
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        do while (associated (evt))
           call print_transform_name_if_debug ()
           if (evt%only_weighted_events) then
@@ -553,10 +554,10 @@ contains
              call event%link_particle_set (evt%particle_set)
           end if
        end if
-       call msg_debug (D_TRANSFORMS, "After event transformations")
-       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
-       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
-       call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "After event transformations")
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
     end if
   contains
     subroutine print_transform_name_if_debug ()

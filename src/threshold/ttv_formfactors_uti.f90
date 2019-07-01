@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module ttv_formfactors_uti
 
   use kinds, only: default
+  use debug_master, only: debug_on
   use constants
   use ttv_formfactors
   use diagnostics
@@ -270,11 +271,11 @@ contains
 
     write (u, "(A)") "test boost of decay momenta"
     call threshold%settings%setup_flags (9, 512, -1)
-    call msg_debug (D_THRESHOLD, &
+    if (debug_on) call msg_debug (D_THRESHOLD, &
          "threshold%settings%onshell_projection%boost_decay", &
          threshold%settings%onshell_projection%boost_decay)
     call threshold%settings%setup_flags (9, 0, -1)
-    call msg_debug (D_THRESHOLD, &
+    if (debug_on) call msg_debug (D_THRESHOLD, &
          ".not. threshold%settings%onshell_projection%boost_decay", &
          .not. threshold%settings%onshell_projection%boost_decay)
 

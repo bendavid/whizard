@@ -28,6 +28,7 @@ module parameters_sm_tt_threshold
   use sm_physics !NODEP!
   use omega_vectors
   use ttv_formfactors
+  use debug_master, only: debug_on
   use diagnostics
   use numeric_utils
   implicit none
@@ -116,7 +117,7 @@ contains
     end type parameter_set
     type(parameter_set) :: par
     logical :: no_pwave, mpole_fixed
-    call msg_debug (D_THRESHOLD, "import_from_whizard")
+    if (debug_on) call msg_debug (D_THRESHOLD, "import_from_whizard")
     par%mZ     = par_array(1)
     par%mW     = par_array(2)
     par%mH     = par_array(3)

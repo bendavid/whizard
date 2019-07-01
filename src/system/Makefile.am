@@ -50,6 +50,7 @@ EXTRA_DIST = \
 
 nodist_libsystem_la_SOURCES = \
   system_dependencies.f90 \
+  debug_master.f90 \
   os_interface.f90 \
   $(COMMON_F90)
 
@@ -134,6 +135,7 @@ DISTCLEANFILES += Makefile.depend
 execmoddir = $(pkglibdir)/mod/system
 nodist_execmod_HEADERS = \
   system_dependencies.$(FC_MODULE_EXT) \
+  debug_master.$(FC_MODULE_EXT) \
   system_defs.$(FC_MODULE_EXT) \
   diagnostics.$(FC_MODULE_EXT) \
   os_interface.$(FC_MODULE_EXT)

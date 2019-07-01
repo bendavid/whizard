@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module ttv_formfactors
 
   use kinds
+  use debug_master, only: debug_on
   use constants
   use numeric_utils
   use physics_defs, only: CF, CA, TR
@@ -214,13 +215,13 @@ contains
 
   subroutine onshell_projection_debug_write (onshell_projection)
     class(onshell_projection_t), intent(in) :: onshell_projection
-    call msg_debug (D_THRESHOLD, "onshell_projection%production", &
+    if (debug_on) call msg_debug (D_THRESHOLD, "onshell_projection%production", &
          onshell_projection%production)
-    call msg_debug (D_THRESHOLD, "onshell_projection%decay", &
+    if (debug_on) call msg_debug (D_THRESHOLD, "onshell_projection%decay", &
          onshell_projection%decay)
-    call msg_debug (D_THRESHOLD, "onshell_projection%width", &
+    if (debug_on) call msg_debug (D_THRESHOLD, "onshell_projection%width", &
          onshell_projection%width)
-    call msg_debug (D_THRESHOLD, "onshell_projection%boost_decay", &
+    if (debug_on) call msg_debug (D_THRESHOLD, "onshell_projection%boost_decay", &
          onshell_projection%boost_decay)
   end subroutine onshell_projection_debug_write
 
@@ -289,8 +290,8 @@ contains
        settings%interference = .true.
        settings%onshell_projection%boost_decay = .true.
     end if
-    call msg_debug (D_THRESHOLD, "SWITCHOFF_RESUMMED", SWITCHOFF_RESUMMED)
-    call msg_debug (D_THRESHOLD, "TOPPIK_RESUMMED", TOPPIK_RESUMMED)
+    if (debug_on) call msg_debug (D_THRESHOLD, "SWITCHOFF_RESUMMED", SWITCHOFF_RESUMMED)
+    if (debug_on) call msg_debug (D_THRESHOLD, "TOPPIK_RESUMMED", TOPPIK_RESUMMED)
     if (debug_active (D_THRESHOLD)) &
          call settings%write ()
   end subroutine settings_setup_flags
@@ -598,28 +599,28 @@ contains
     threshold%settings%initialized_parameters = .true.
   contains
       subroutine show_input()
-        call msg_debug (D_THRESHOLD, "init_parameters")
-        call msg_debug (D_THRESHOLD, "m1s_in", m1s_in)
-        call msg_debug (D_THRESHOLD, "Vtb", Vtb)
-        call msg_debug (D_THRESHOLD, "gam_inv", gam_inv)
-        call msg_debug (D_THRESHOLD, "aemi", aemi)
-        call msg_debug (D_THRESHOLD, "sw", sw)
-        call msg_debug (D_THRESHOLD, "az", az)
-        call msg_debug (D_THRESHOLD, "mz", mz)
-        call msg_debug (D_THRESHOLD, "mw", mw)
-        call msg_debug (D_THRESHOLD, "mb", mb)
-        call msg_debug (D_THRESHOLD, "h_in", h_in)
-        call msg_debug (D_THRESHOLD, "f_in", f_in)
-        call msg_debug (D_THRESHOLD, "nrqcd_order_in", nrqcd_order_in)
-        call msg_debug (D_THRESHOLD, "ff_in", ff_in)
-        call msg_debug (D_THRESHOLD, "offshell_strategy_in", offshell_strategy_in)
-        call msg_debug (D_THRESHOLD, "top_helicity_selection", top_helicity_selection)
-        call msg_debug (D_THRESHOLD, "v1_in", v1_in)
-        call msg_debug (D_THRESHOLD, "v2_in", v2_in)
-        call msg_debug (D_THRESHOLD, "scan_sqrts_min", scan_sqrts_min)
-        call msg_debug (D_THRESHOLD, "scan_sqrts_max", scan_sqrts_max)
-        call msg_debug (D_THRESHOLD, "scan_sqrts_stepsize", scan_sqrts_stepsize)
-        call msg_debug (D_THRESHOLD, "AS_HARD", AS_HARD)
+        if (debug_on) call msg_debug (D_THRESHOLD, "init_parameters")
+        if (debug_on) call msg_debug (D_THRESHOLD, "m1s_in", m1s_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "Vtb", Vtb)
+        if (debug_on) call msg_debug (D_THRESHOLD, "gam_inv", gam_inv)
+        if (debug_on) call msg_debug (D_THRESHOLD, "aemi", aemi)
+        if (debug_on) call msg_debug (D_THRESHOLD, "sw", sw)
+        if (debug_on) call msg_debug (D_THRESHOLD, "az", az)
+        if (debug_on) call msg_debug (D_THRESHOLD, "mz", mz)
+        if (debug_on) call msg_debug (D_THRESHOLD, "mw", mw)
+        if (debug_on) call msg_debug (D_THRESHOLD, "mb", mb)
+        if (debug_on) call msg_debug (D_THRESHOLD, "h_in", h_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "f_in", f_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "nrqcd_order_in", nrqcd_order_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "ff_in", ff_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "offshell_strategy_in", offshell_strategy_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "top_helicity_selection", top_helicity_selection)
+        if (debug_on) call msg_debug (D_THRESHOLD, "v1_in", v1_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "v2_in", v2_in)
+        if (debug_on) call msg_debug (D_THRESHOLD, "scan_sqrts_min", scan_sqrts_min)
+        if (debug_on) call msg_debug (D_THRESHOLD, "scan_sqrts_max", scan_sqrts_max)
+        if (debug_on) call msg_debug (D_THRESHOLD, "scan_sqrts_stepsize", scan_sqrts_stepsize)
+        if (debug_on) call msg_debug (D_THRESHOLD, "AS_HARD", AS_HARD)
       end subroutine show_input
 
   end subroutine init_parameters
@@ -725,7 +726,7 @@ contains
 
   subroutine init_formfactor_grid ()
     type(string_t) :: ff_file
-    call msg_debug (D_THRESHOLD, "init_formfactor_grid")
+    if (debug_on) call msg_debug (D_THRESHOLD, "init_formfactor_grid")
     threshold%settings%initialized_ff = .false.
     ff_file = "SM_tt_threshold.grid"
     call msg_message ()
@@ -756,7 +757,7 @@ contains
     integer :: u, st
     logical :: ex
     integer, dimension(4) :: ff_shape
-    call msg_debug (D_THRESHOLD, "read_formfactor_grid")
+    if (debug_on) call msg_debug (D_THRESHOLD, "read_formfactor_grid")
     inquire (file=char(ff_file), exist=ex)
     if (.not. ex) return
     u = free_unit ()
@@ -828,14 +829,14 @@ contains
     real(default) :: nu_soft, f
     logical :: only_once_for_fixed_nu, already_done
     real(default), save :: last_sqrts = - one
-    call msg_debug (D_THRESHOLD, "update_global_sqrts_dependent_variables")
-    call msg_debug (D_THRESHOLD, "sqrts", sqrts)
-    call msg_debug (D_THRESHOLD, "last_sqrts", last_sqrts)
+    if (debug_on) call msg_debug (D_THRESHOLD, "update_global_sqrts_dependent_variables")
+    if (debug_on) call msg_debug (D_THRESHOLD, "sqrts", sqrts)
+    if (debug_on) call msg_debug (D_THRESHOLD, "last_sqrts", last_sqrts)
     already_done = threshold%settings%initialized_parameters .and. &
          nearly_equal (sqrts, last_sqrts, rel_smallness=1E-6_default)
-    call msg_debug (D_THRESHOLD, "already_done", already_done)
+    if (debug_on) call msg_debug (D_THRESHOLD, "already_done", already_done)
     only_once_for_fixed_nu = .not. NUSTAR_DYNAMIC .and. MTPOLE > zero
-    call msg_debug (D_THRESHOLD, "only_once_for_fixed_nu", only_once_for_fixed_nu)
+    if (debug_on) call msg_debug (D_THRESHOLD, "only_once_for_fixed_nu", only_once_for_fixed_nu)
     if (only_once_for_fixed_nu .or. already_done) return
     last_sqrts = sqrts
     nu_soft = RESCALE_F * nustar (sqrts)
@@ -852,12 +853,12 @@ contains
     end if
     MTPOLE = m1s_to_mpole (sqrts)
     GAM = threshold%width%compute (MTPOLE, sqrts)
-    call msg_debug (D_THRESHOLD, "GAM", GAM)
-    call msg_debug (D_THRESHOLD, "nu_soft", nu_soft)
-    call msg_debug (D_THRESHOLD, "MTPOLE", MTPOLE)
-    call msg_debug (D_THRESHOLD, "AS_SOFT", AS_SOFT)
-    call msg_debug (D_THRESHOLD, "AS_LL_SOFT", AS_LL_SOFT)
-    call msg_debug (D_THRESHOLD, "AS_USOFT", AS_USOFT)
+    if (debug_on) call msg_debug (D_THRESHOLD, "GAM", GAM)
+    if (debug_on) call msg_debug (D_THRESHOLD, "nu_soft", nu_soft)
+    if (debug_on) call msg_debug (D_THRESHOLD, "MTPOLE", MTPOLE)
+    if (debug_on) call msg_debug (D_THRESHOLD, "AS_SOFT", AS_SOFT)
+    if (debug_on) call msg_debug (D_THRESHOLD, "AS_LL_SOFT", AS_LL_SOFT)
+    if (debug_on) call msg_debug (D_THRESHOLD, "AS_USOFT", AS_USOFT)
   end subroutine update_global_sqrts_dependent_variables
 
   !!! Coulomb potential coefficients needed by TOPPIK
@@ -887,7 +888,7 @@ contains
     real(default) :: coeff
     real(default) :: matching_c, c1
     real(default) :: z, w
-    call msg_debug (D_THRESHOLD, "current_coeff")
+    if (debug_on) call msg_debug (D_THRESHOLD, "current_coeff")
     coeff = one
     if (NRQCD_ORDER == 0) return
     z = a_soft / a_hard
@@ -1126,9 +1127,9 @@ contains
     real*8 :: xdsdp(nmax), xpp(nmax), xww(nmax)
     complex*16 :: zff(nmax)
     integer :: np, jknflg, jgcflg, jvflg
-    call msg_debug (D_THRESHOLD, "scan_formfactor_over_p_TOPPIK")
+    if (debug_on) call msg_debug (D_THRESHOLD, "scan_formfactor_over_p_TOPPIK")
     if (POINTS_P > nmax-40) call msg_fatal ("TOPPIK: POINTS_P must be <=" // char(nmax-40))
-    call msg_debug (D_THRESHOLD, "POINTS_P", POINTS_P)
+    if (debug_on) call msg_debug (D_THRESHOLD, "POINTS_P", POINTS_P)
     if (present (ff_toppik))  ff_toppik = zero
     mpole = MTPOLE;  if (present (mpole_in)) mpole = mpole_in
     xenergy = sqrts_to_en (sqrts, MTPOLE)
@@ -1154,13 +1155,13 @@ contains
     jvflg   = 0
     select case (vec_type)
       case (VECTOR)
-         call msg_debug (D_THRESHOLD, "calling tttoppik")
+         if (debug_on) call msg_debug (D_THRESHOLD, "calling tttoppik")
          call tttoppik &
                 (xenergy,xtm,xtg,xalphas,xscale,xcutn,xcutv,xc0,xc1,xc2, &
                  xcdeltc,xcdeltl,xcfullc,xcfulll,xcrm2,xkincm,xkinca,jknflg, &
                  jgcflg, xkincv,jvflg,xim,xdi,np,xpp,xww,xdsdp,zff)
       case (AXIAL)
-         call msg_debug (D_THRESHOLD, "calling tttoppikaxial")
+         if (debug_on) call msg_debug (D_THRESHOLD, "calling tttoppikaxial")
          call tttoppikaxial &
                 (xenergy,xtm,xtg,xalphas,xscale,xcutn,xcutv,xc0,xc1,xc2, &
                  xcdeltc,xcdeltl,xcfullc,xcfulll,xcrm2,xkincm,xkinca,jknflg, &
@@ -1197,7 +1198,7 @@ contains
        alphas_hard = AS_HARD
     end if
     ff_toppik = ff_toppik * current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type)
-    call msg_debug (D_THRESHOLD, &
+    if (debug_on) call msg_debug (D_THRESHOLD, &
          "current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type)", &
          current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type))
   end subroutine scan_formfactor_over_p_TOPPIK
@@ -1206,7 +1207,7 @@ contains
     real(default), intent(in) :: sqrts
     integer, intent(in) :: vec_type
     complex(default), dimension(POINTS_P) :: ff
-    call msg_debug (D_THRESHOLD, "scan_formfactor_over_p")
+    if (debug_on) call msg_debug (D_THRESHOLD, "scan_formfactor_over_p")
     select case (NRQCD_ORDER)
       case (0)
        ! ff = scan_formfactor_over_p_LL_analytic (AS_SOFT, sqrts, vec_type)
@@ -1222,7 +1223,7 @@ contains
     integer :: i_sq, vec_type, unstable_loop
     logical, dimension(:,:), allocatable :: ff_unstable
     real(default) :: t1, t2, t3, t_toppik, t_p0_dep
-    call msg_debug (D_THRESHOLD, "scan_formfactor_over_phase_space_grid")
+    if (debug_on) call msg_debug (D_THRESHOLD, "scan_formfactor_over_phase_space_grid")
     allocate (ff_grid(POINTS_SQ,POINTS_P,POINTS_P0,2))
     allocate (ff_unstable(POINTS_SQ,2))
     t_toppik = zero
@@ -1268,16 +1269,16 @@ contains
 
   subroutine init_threshold_phase_space_grid ()
     integer :: i_sq
-    call msg_debug (D_THRESHOLD, "init_threshold_phase_space_grid")
+    if (debug_on) call msg_debug (D_THRESHOLD, "init_threshold_phase_space_grid")
     if (sqrts_it > tiny_07) then
        POINTS_SQ = int ((sqrts_max - sqrts_min) / sqrts_it + tiny_07) + 3
     else
        POINTS_SQ = 1
     end if
-    call msg_debug (D_THRESHOLD, "Number of sqrts grid points: POINTS_SQ", POINTS_SQ)
-    call msg_debug (D_THRESHOLD, "sqrts_max", sqrts_max)
-    call msg_debug (D_THRESHOLD, "sqrts_min", sqrts_min)
-    call msg_debug (D_THRESHOLD, "sqrts_it", sqrts_it)
+    if (debug_on) call msg_debug (D_THRESHOLD, "Number of sqrts grid points: POINTS_SQ", POINTS_SQ)
+    if (debug_on) call msg_debug (D_THRESHOLD, "sqrts_max", sqrts_max)
+    if (debug_on) call msg_debug (D_THRESHOLD, "sqrts_min", sqrts_min)
+    if (debug_on) call msg_debug (D_THRESHOLD, "sqrts_it", sqrts_it)
     allocate (sq_grid(POINTS_SQ))
     sq_grid = [(sqrts_iter (i_sq), i_sq=1, POINTS_SQ)]
     POINTS_P = 600
@@ -1290,9 +1291,9 @@ contains
   subroutine init_p0_grid (p_in, n)
     real(default), dimension(:), allocatable, intent(in) :: p_in
     integer, intent(in) :: n
-    call msg_debug (D_THRESHOLD, "init_p0_grid")
-    call msg_debug (D_THRESHOLD, "n", n)
-    call msg_debug (D_THRESHOLD, "size(p_in)", size(p_in))
+    if (debug_on) call msg_debug (D_THRESHOLD, "init_p0_grid")
+    if (debug_on) call msg_debug (D_THRESHOLD, "n", n)
+    if (debug_on) call msg_debug (D_THRESHOLD, "size(p_in)", size(p_in))
     if (.not. allocated (p_in))  call msg_fatal ("init_p0_grid: p_in not allocated!")
     if (allocated (p0_grid))  deallocate (p0_grid)
     allocate (p0_grid(n))
@@ -1583,7 +1584,7 @@ contains
     real(default), intent(in), optional :: mpole_in
     real(default), dimension(POINTS_P) :: p_toppik
     real(default) :: mpole
-    call msg_debug (D_THRESHOLD, "p_grid_from_TOPPIK")
+    if (debug_on) call msg_debug (D_THRESHOLD, "p_grid_from_TOPPIK")
     mpole = MTPOLE;  if (present (mpole_in))  mpole = mpole_in
     call scan_formfactor_over_p_TOPPIK &
                  (alphas_soft(2. * M1S), 2. * M1S, 1, p_toppik, mpole)

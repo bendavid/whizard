@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module shower_partons
 
   use kinds, only: default, double
+  use debug_master, only: debug_on
   use io_units
   use constants
   use system_defs, only: TAB
@@ -568,7 +569,7 @@ contains
     if (debug2_active (D_SHOWER)) then
        print *, "D: parton_apply_costheta for parton " , prt%nr
        print *, 'prt%momentum%p =    ', prt%momentum%p
-       call msg_debug2 (D_SHOWER, "prt%type", prt%type)
+       if (debug_on) call msg_debug2 (D_SHOWER, "prt%type", prt%type)
     end if
     prt%z = 0.5_default * (one + prt%get_beta () * prt%costheta)
     if (associated (prt%child1) .and. associated (prt%child2)) then
@@ -706,7 +707,7 @@ contains
        pabs = space_part_norm (prt%momentum)
        if ((prt%child1%momentum%p(0)**2 - prt%child1%t < 0) .or. &
            (prt%child2%momentum%p(0)**2 - prt%child2%t < 0)) then
-          call msg_debug(D_SHOWER, "generate_ps error at E^2 < t")
+          if (debug_on) call msg_debug(D_SHOWER, "generate_ps error at E^2 < t")
           return
        end if
        p1abs = sqrt (prt%child1%momentum%p(0)**2 - prt%child1%t)
@@ -832,7 +833,7 @@ contains
     integer :: gtoqq
     real(default) :: integral, random
     if (signal_is_pending ()) return
-    call msg_debug (D_SHOWER, "next_t_ana")
+    if (debug_on) call msg_debug (D_SHOWER, "next_t_ana")
     ! check if branchings are possible at all
     if (min (prt%t, prt%momentum%p(0)**2) < &
          prt%mass_squared () + prt%settings%min_virtuality) then
@@ -867,7 +868,7 @@ contains
        radicand = max(zero, one - &
             t / (prt%get_beta () * prt%momentum%p(0))**2 * &
             (one + cost) / (one - cost))
-       call msg_debug2 (D_SHOWER, "cmax: sqrt (radicand)", sqrt (radicand))
+       if (debug_on) call msg_debug2 (D_SHOWER, "cmax: sqrt (radicand)", sqrt (radicand))
        cmaxx = min (0.99999_default, sqrt (radicand))
     else
        cmaxx = 0.99999_default
@@ -900,7 +901,7 @@ contains
     real(default), parameter :: cstepmin = 0.03_default
 
     if (signal_is_pending ()) return
-    call msg_debug (D_SHOWER, "parton_simulate_stept")
+    if (debug_on) call msg_debug (D_SHOWER, "parton_simulate_stept")
     gtoqq = 111 ! illegal value
     call prt%set_simulated (.false.)
 

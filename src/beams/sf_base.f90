@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1665,7 +1665,6 @@ contains
                 associate (sf => chain%sf(i_beam))
                   n_sub = 0 ! default: no looping over rescaled beams
                   if (present (sf_rescale)) then
-                     ! TODO sbrass cache n_sub as it is computed from the state matrix
                      n_sub = sf%int%get_n_sub ()
                      call sf_rescale%set_i_beam (i_beam)
                   end if

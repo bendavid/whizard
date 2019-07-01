@@ -27,7 +27,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcommand{\email}[2]{\thanks{\ahref{#1@{}#2}{#1@{}#2}}}
 \newcommand{\hepforgepage}{\url{https://whizard.hepforge.org}}
-\newcommand{\whizardwiki}{\url{https://projects.hepforge.org/whizard/trac/wiki}}
+\newcommand{\whizardwiki}{\url{https://whizard.hepforge.org/trac/wiki}}
 \tocnumber
 %BEGIN LATEX
 \DeclareMathOperator{\diag}{diag}
@@ -278,7 +278,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.7.0}
+\newcommand{\thisversion}{2.7.1}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -400,7 +400,7 @@ The \whizard\ distribution is available at
 %%% \end{center}
 %%% or at
 \begin{center}
-  \url{https://projects.hepforge.org/whizard}
+  \url{https://whizard.hepforge.org}
 \end{center}
 where also the \ttt{svn} repository is located.
 }
@@ -675,7 +675,7 @@ of \whizard:
   2.6.2 & 12/2017 & $Hee$ coupling, improved resonance matching \\
   2.6.3 & 02/2018 & Partial NLO refactoring for quantum numbers,
   unified RECOLA 1/2 interface. \\
-  2.6.4. & 08/2018 & Gridpack functionality; Bug fixes: color flows,
+  2.6.4 & 08/2018 & Gridpack functionality; Bug fixes: color flows,
   HSExt model, MPI setup
   \\\hline
   2.7.0 & 01/2019 & PYTHIA8 interface, process setup refactoring,
@@ -840,9 +840,10 @@ with the final version v5.06.01, and it used to be notoriously difficult to
 compile and link \stdhep\ into \whizard, it was decided to include \stdhep\
 into \whizard. This is the case from version v2.2.8 of \whizard\ on. Linking
 against an external version of \stdhep\ is precluded from there
-on. Nevertheless, we list some explanations in Sec.~\ref{sec:stdhep}.
-Once these prerequisites are met, you may unpack the package in a
-directory of your choice
+on. Nevertheless, we list some explanations in Sec.~\ref{sec:stdhep},
+particularly on the need to install the \ttt{libtirpc} headers for the
+legacy support of this event format. Once these prerequisites are met,
+you may unpack the package in a directory of your choice
 \begin{quote}\small\tt
   some-directory> tar xzf whizard-\thisversion.tgz
 \end{quote}
@@ -875,7 +876,7 @@ need:
   SVN repositories.
 \item
   The \ttt{autoconf} package, part of the \ttt{autotools} development
-  system.
+  system. \ttt{automake} is needed with version \ttt{1.12.2} or newer.
 \item
   The \ttt{noweb} package, a light-weight tool for literate programming.  This
   package is nowadays often part of Linux distributions\footnote{In
@@ -906,7 +907,14 @@ within that directory.
 
 After checking out the sources, you first have to create
 \ttt{configure.ac} by executing the shell script
-\ttt{build\_master.sh}. Afterwards, run\footnote{At least, version
+\ttt{build\_master.sh}. In order to build the \ttt{configure}
+script, the \ttt{autotools} package \ttt{autoreconf} has to be run. On
+some \ttt{Unix} systems the \ttt{RPC} headers needed for the legacy
+support of the \stdhep\ event format are provided by the \ttt{TIRPC}
+library (cf. Sec.~\ref{sec:stdhep}). To easily check for them,
+\ttt{configure.ac} processed by \ttt{autoreconf} makes use of the
+\ttt{pkg-config} tool which needs to be installed for the developer
+version. So now, run\footnote{At least, version
   2.65 of the \ttt{autoconf} package is required.}
 \begin{interaction}
   your-src-directory> autoreconf
@@ -1284,7 +1292,12 @@ etc.  have been abandoned. Note that \stdhep\ has largely been
 replaced in the hadron collider community by the \hepmc\ format, and
 in the lepton collider community by \lcio. \whizard\ might serve as a
 conversion tools for all these formats, but other tools also exist, of
-course.
+course. Note that the \ttt{mcfio} framework makes use of the \ttt{RPC}
+headers. These come -- provided by \ttt{SunOS/Oracle America, Inc.} -- 
+together with the system headers, but on some \ttt{Unix} systems
+(e.g. \ttt{ArchLinux}, \ttt{Fedora}) have been replaced by the
+\ttt{libtirpc} headers . The \ttt{configure} script searches for these
+headers so these have to be installed mandatorily. 
 
 If the \stdhep\ library is linked with the installation, \whizard\ is
 able to write files in the \stdhep\ format, the  corresponding
@@ -1560,7 +1573,7 @@ fast enough to cope with this.
 
 For specific problems that might have been encountered in rare
 circumstances for some FORTRAN compilers confer the webpage
-\url{https://projects.hepforge.org/whizard/compilers.html}.
+\url{https://whizard.hepforge.org/compilers.html}.
 
 Note that the \pythia\  bundle for showering and hadronization (and
 some other external legacy code pieces) do still contain good old
@@ -1731,7 +1744,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 2.7.0
+    |                               WHIZARD 2.7.1
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -1762,7 +1775,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.7.0
+|                               WHIZARD 2.7.1
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -1821,7 +1834,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.7.0
+ |                               WHIZARD 2.7.1
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -2082,13 +2095,13 @@ The parallelization of \whizard\ requires that all instances of the
 parallel run be able to write and read all files by produced
 \whizard\ in a network file system as the current implementation does
 not handle parallel I/O. Usually, high-performance clusters have
-support for at least one network filesystem. 
+support for at least one network filesystem.
 
 Furthermore, not all functions of \whizard\ are currently supported or
 are only supported in a limited way in parallel mode. Currently the
 \verb|?rebuild_<flags>| for the phase space and the matrix element
-library are not yet available, as well as the calculation of matrix 
-elements with resonance history. 
+library are not yet available, as well as the calculation of matrix
+elements with resonance history.
 
 Some features that have been missing in the very first implementation
 of the parallelized integration have now been made available, like
@@ -2098,14 +2111,14 @@ A final remark on the stability of the numerical results in terms of
 the number of workers involved. Under certain circumstances, results
 between different numbers of workers but using otherwise an identical
 \sindarin\ file can lead to slightly numerically different (but
-statistically compatible) results for integration or event generation 
+statistically compatible) results for integration or event generation
 This is related to the execution of the computational operations in
 MPI, which we use to reduce results from all workers. If the order of
 the numbers in the arithmetical operations changes, for example, by
 different setups of the workers, then the numerical results change
 slightly, which in turn is amplified under the influence of the
 adaptation. Nevertheless, the results are all statistically
-consistent. 
+consistent.
 
 \subsection{Stopping and Resuming WHIZARD Jobs}
 
@@ -4499,7 +4512,10 @@ There are also integer-valued observables:
 \item \ttt{PDG}
   \begin{itemize}
   \item One argument: PDG code of the particle.  For a composite particle, the
-    code is undefined (value 0).
+    code is undefined (value 0).  For flavor sums in the \ttt{cuts} statement,
+    this observable always returns the same flavor, i.e. the first one from the
+    flavor list.  It is thus only sensible to use it in an \ttt{analysis} or
+    \ttt{selection} statement when simulating events.
   \end{itemize}
 \item \ttt{Ncol}
   \begin{itemize}
@@ -9310,14 +9326,14 @@ and \ttt{t\_channel} give the number of off-shell lines and of
 $t$-channel lines that \whizard\ will allow for finding valid
 phase-space channels, respectively. This neglects extremley multi-peripheral
 background-like diagram constellations which are very subdominamnt
-compared to resonant signal processes. The final flags specifies
+compared to resonant signal processes. The final flag specifies
 whether \whizard\ will keep non-resonant phase-space channels
 (default), or whether it will focus only on resonant situations.
 
 After this header, there is a list of all groves, i.e. collections of
 phase-space channels which are connected by quasi-symmetries, together
 with the corresponding multiplicity of subchannels in that
-grove. In the phase-space file, Behind the multiplicity
+grove. In the phase-space file behind the multiplicity,
 \whizard\ denotes the number of (massive) resonances, logarithmcally
 enhanced kinematics (e.g. collinear regions), and number of off-shell
 lines, respectively. The final entry in the grove header notifies
@@ -11447,7 +11463,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.7.0</generator_version>
+  <generator_version>2.7.1</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -13578,7 +13594,7 @@ chapter, we describe the interfaces to two such external models,
 
 The \FeynRules\ interface had been started already for the legacy
 version \whizard\ttt{1} (where it had to be downloaded from
-\url{https://projects.hepforge.org/whizard} as a separate package), but
+\url{https://whizard.hepforge.org} as a separate package), but
 for the \whizard\ttt{two} release series it has been included in the
 \FeynRules\ package (from their version v1.6.0 on). Note that there
 was a regression for the usage of external models (from either \sarah\
@@ -13755,7 +13771,7 @@ under the name SUSY Toolbox but \sarah\ is with version 4 no longer
 restricted to SUSY models}~\cite{Staub:2011dp}. These scripts are
 available at
 \begin{center}
- \url{https://projects.hepforge.org/sarah/Toolbox.html}
+ \url{https://sarah.hepforge.org/Toolbox.html}
 \end{center}
 The \ttt{Toolbox} provides two scripts. First, the \verb"configure" script is
 used via
@@ -15275,13 +15291,12 @@ syntax is: \ttt{cuts = {\em <log\_class>} {\em <log\_expr>} [{\em <unary or bina
 with a logical classifier \ttt{log\_class} like \ttt{all}, \ttt{any},
 \ttt{no}. The logical expression \ttt{log\_expr} contains the cut to
 be evaluated. Note that this need not only be a kinematical cut
-expression like \ttt{E > 10  GeV} or \ttt{5 degree < Theta < 175
-  degree}, but can also be some sort of trigger expression or event
-selection, e.g. \ttt{PDG == 15} would select a tau lepton.  Whether the
-expression is evaluated on particles or pairs of particles depends on
-whether the discriminating variable is unary or binary, \ttt{Dist}
-being obviously binary, \ttt{Pt} being unary. Note that some variables
-are both unary and binary, e.g. the invariant mass $M$. Cut
+expression like \ttt{E > 10  GeV} or \ttt{5 degree < Theta < 175 degree},
+but can also be some sort of trigger expression or event selection.
+Whether the expression is evaluated on particles or pairs
+of particles depends on whether the discriminating variable is unary or
+binary, \ttt{Dist} being obviously binary, \ttt{Pt} being unary. Note that
+some variables are both unary and binary, e.g. the invariant mass $M$. Cut
 expressions can be connected by the logical  connectives \ttt{and} and
 \ttt{or}. The \ttt{cuts} statement acts on all subsequent process
 integrations and analyses until a new \ttt{cuts} statement appears.
@@ -17247,7 +17262,7 @@ respectively.
 
  %\cite{Platzer:2013esa}
 \bibitem{Platzer:2013esa}
-  S.~Plätzer,
+  S.~Pl\"atzer,
   {\em RAMBO on diet},
   [arXiv:1308.2922 [hep-ph]].
   %% CITATION = ARXIV:1308.2922;%%

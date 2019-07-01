@@ -154,6 +154,11 @@ parameter mv_22  = 1            # chargino mixing matrix
 parameter hgg_fac= 1		# Hgg K factor
 parameter hgg_sq = 1		# Squark contribution to Hgg
 parameter haa_fac= 1		# HAA K factor
+# Loop-induced neu2->neu1 A decay
+parameter neu_v_fac = 1		# fudge factor for width, vector 
+parameter neu_a_fac = 0		# explicit vector coupling
+parameter neu_v	    = 0		# fudge factor for width, axial
+parameter neu_a	    = 0		# explicit axial coupling
 
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)
@@ -798,6 +803,9 @@ vertex neu2 neu4 Z
 vertex neu3 neu3 Z
 vertex neu3 neu4 Z
 vertex neu4 neu4 Z
+
+! Radiative decay
+vertex neu1 neu2 A
 
 ! Charginos + neutralinos
 vertex "ch1+" neu1 Wm

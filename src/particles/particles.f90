@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module particles
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use format_utils, only: write_compressed_integer_array, write_separator
   use format_utils, only: pac_fmt
@@ -1996,9 +1997,9 @@ contains
                        rel_smallness = 1E4_default * smallness))) then
                      if (child_i == 0 .or. j == child_i) then
                         to_remove(j) = i
-                        call msg_debug2 (D_PARTICLES, &
+                        if (debug_on) call msg_debug2 (D_PARTICLES, &
                              "Particles: Will remove duplicate of i", i)
-                        call msg_debug2 (D_PARTICLES, &
+                        if (debug_on) call msg_debug2 (D_PARTICLES, &
                              "Particles: j", j)
                      end if
                      cycle OUTER
@@ -2024,8 +2025,8 @@ contains
       integer :: kept, removed, i, j
       integer, dimension(:), allocatable :: old_children
       logical, dimension(:), allocatable :: parent_set
-      call msg_debug (D_PARTICLES, "Particles: Removing duplicates")
-      call msg_debug (D_PARTICLES, "Particles: n_removals", n_removals)
+      if (debug_on) call msg_debug (D_PARTICLES, "Particles: Removing duplicates")
+      if (debug_on) call msg_debug (D_PARTICLES, "Particles: n_removals", n_removals)
       if (debug2_active (D_PARTICLES)) then
          call msg_debug2 (D_PARTICLES, "Particles: Given set before removing:")
          call particle_set%write (summary=.true., compressed=.true.)
@@ -2164,7 +2165,7 @@ contains
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     rp = .false.; if (present (real_parents)) rp = real_parents
     kv = .true.; if (present (keep_virtuals)) kv = keep_virtuals
-    call msg_debug (D_PARTICLES, "filter_particles")
+    if (debug_on) call msg_debug (D_PARTICLES, "filter_particles")
     if (debug2_active (D_PARTICLES)) then
        print *, 'keep_beams =    ', kb
        print *, 'real_parents =    ', rp

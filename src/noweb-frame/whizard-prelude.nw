@@ -48,12 +48,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.7.0}
-\def\WhizardDate{Jan 21 2019}
+\def\WhizardVersion{2.7.1}
+\def\WhizardDate{Mar 27 2019}
 <<Version>>=
-2.7.0
+2.7.1
 <<Date>>=
-Jan 21 2019
+Mar 27 2019
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -161,6 +161,10 @@ We are strict with our names:
 <<Use strings>>=
   use iso_varying_string, string_t => varying_string
 @ %def string_t
+@ Access to the [[debug_on]] master switch
+<<Use debug>>=
+  use debug_master, only: debug_on
+@ %def debug_on
 @ And we need the Fortran 2008 MPI module, if compiled with [[MPI]].
 <<Use mpi f08>>=
 @

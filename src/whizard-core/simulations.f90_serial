@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module simulations
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_15, FMT_19
@@ -494,16 +495,16 @@ contains
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     type(rt_data_t), pointer :: current
-    call msg_debug (D_CORE, "prepare_process")
-    call msg_debug (D_CORE, "global present", present (global))
+    if (debug_on) call msg_debug (D_CORE, "prepare_process")
+    if (debug_on) call msg_debug (D_CORE, "global present", present (global))
     if (present (global)) then
        current => global
     else
        current => local
     end if
     process => current%process_stack%get_process_ptr (process_id)
-    call msg_debug (D_CORE, "use_process", use_process)
-    call msg_debug (D_CORE, "associated process", associated (process))
+    if (debug_on) call msg_debug (D_CORE, "use_process", use_process)
+    if (debug_on) call msg_debug (D_CORE, "associated process", associated (process))
     if (use_process .and. .not. associated (process)) then
        if (integrate) then
           call msg_message ("Simulate: process '" &
@@ -652,8 +653,8 @@ contains
     logical :: combined_integration
     integer :: selected_mci
     selected_mci = 0
-    call msg_debug (D_CORE, "entry_init")
-    call msg_debug (D_CORE, "process_id", process_id)
+    if (debug_on) call msg_debug (D_CORE, "entry_init")
+    if (debug_on) call msg_debug (D_CORE, "process_id", process_id)
     call prepare_process &
          (master_process, process_id, use_process, integrate, local, global)
     if (signal_is_pending ())  return
@@ -779,15 +780,15 @@ contains
     select type (pcm => entry%instance%pcm)
     class is (pcm_instance_nlo_t)
        i_active_real = entry%instance%get_real_of_mci ()
-       call msg_debug2 (D_CORE, "i_active_real", i_active_real)
+       if (debug_on) call msg_debug2 (D_CORE, "i_active_real", i_active_real)
        if (associated (entry%evt_powheg)) then
           select type (evt => entry%evt_powheg)
           type is (evt_shower_t)
              if (entry%process%get_component_type(i_active_real) == COMP_REAL_FIN) then
-                call msg_debug (D_CORE, "Disabling Powheg matching for ", i_active_real)
+                if (debug_on) call msg_debug (D_CORE, "Disabling Powheg matching for ", i_active_real)
                 call evt%disable_powheg_matching ()
              else
-                call msg_debug (D_CORE, "Enabling Powheg matching for ", i_active_real)
+                if (debug_on) call msg_debug (D_CORE, "Enabling Powheg matching for ", i_active_real)
                 call evt%enable_powheg_matching ()
              end if
           class default
@@ -1071,7 +1072,7 @@ contains
     logical, intent(in), optional :: negative_weights
     type(entry_t), pointer :: current_entry
     integer :: i, j, k
-    call msg_debug (D_CORE, "entry_init_mci_selector")
+    if (debug_on) call msg_debug (D_CORE, "entry_init_mci_selector")
     if (entry%has_integral) then
        select type (entry)
        type is (entry_t)
@@ -1079,7 +1080,7 @@ contains
           do j = 1, current_entry%count_nlo_entries ()
              if (j > 1) current_entry => current_entry%get_next ()
              do k = 1, size(current_entry%mci_sets%integral)
-                call msg_debug (D_CORE, "current_entry%mci_sets(k)%integral", &
+                if (debug_on) call msg_debug (D_CORE, "current_entry%mci_sets(k)%integral", &
                      current_entry%mci_sets(k)%integral)
              end do
              call current_entry%mci_selector%init &
@@ -1096,10 +1097,10 @@ contains
   function entry_select_mci (entry) result (i_mci)
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
-    call msg_debug2 (D_CORE, "entry_select_mci")
+    if (debug_on) call msg_debug2 (D_CORE, "entry_select_mci")
     i_mci = entry%process%extract_active_component_mci ()
     if (i_mci == 0) call entry%mci_selector%generate (entry%rng, i_mci)
-    call msg_debug2 (D_CORE, "i_mci", i_mci)
+    if (debug_on) call msg_debug2 (D_CORE, "i_mci", i_mci)
   end function entry_select_mci
 
   subroutine entry_record (entry, i_mci, from_file)
@@ -2359,8 +2360,8 @@ contains
     logical :: decay_rest_frame
     type(string_t) :: process_id
     enable_alt = .true.;  if (present (alt))  enable_alt = alt
-    call msg_debug (D_CORE, "simulation_get_data")
-    call msg_debug (D_CORE, "alternative setup", enable_alt)
+    if (debug_on) call msg_debug (D_CORE, "simulation_get_data")
+    if (debug_on) call msg_debug (D_CORE, "alternative setup", enable_alt)
     if (enable_alt) then
        call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt

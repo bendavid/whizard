@@ -34,9 +34,7 @@ openmp_num_threads = 1
 cuts = all Pt > 100 GeV [lepton]
 integrate (cuts_cc) { iterations = 1: ncalls }
 
-cuts = any PDG == 13 [lepton]
-integrate (cuts_cc) { iterations = 1: ncalls }
-
+seed = 2
 cuts = any M > 100 GeV [combine if cos (Theta) > 0.5
                           [lepton, neutrino]]
 integrate (cuts_cc) { iterations = 1: ncalls }

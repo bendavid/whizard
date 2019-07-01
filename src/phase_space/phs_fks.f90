@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module phs_fks
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants
   use diagnostics
   use io_units, only: given_output_unit, free_unit
@@ -50,6 +51,7 @@ module phs_fks
   use process_constants
   use process_libraries
   use ttv_formfactors, only: generate_on_shell_decay_threshold, m1s_to_mpole
+  use format_defs, only: FMT_17
 
   implicit none
   private
@@ -371,7 +373,7 @@ contains
     end if
     if (present (contributors)) then
        p_sum = vector4_null
-       call msg_debug (D_SUBTRACTION, "Invariant masses for real emission: ")
+       if (debug_on) call msg_debug (D_SUBTRACTION, "Invariant masses for real emission: ")
        associate (p => phs_point_set%phs_point(i_phs)%p)
           do i = 1, size (contributors)
              p_sum = p_sum + p(contributors(i))
@@ -532,14 +534,14 @@ contains
     integer :: u, i
     u = given_output_unit (unit); if (u < 0) return
     write (u,"(A)") "Real kinematics: "
-    write (u,"(A,F5.3)") "xi_tilde: ", r%xi_tilde
-    write (u,"(A,F5.3)") "phi: ", r%phi
+    write (u,"(A," // FMT_17 // ",1X)") "xi_tilde: ", r%xi_tilde
+    write (u,"(A," // FMT_17 // ",1X)") "phi: ", r%phi
     do i = 1, size (r%xi_max)
        write (u,"(A,I1,1X)") "i_phs: ", i
-       write (u,"(A,100F5.3,1X)") "xi_max: ", r%xi_max(i)
-       write (u,"(A,100F5.3,1X)") "y: ", r%y(i)
-       write (u,"(A,100F5.3,1X)") "jac_rand: ", r%jac_rand(i)
-       write (u,"(A,100F5.3,1X)") "y_soft: ", r%y_soft(i)
+       write (u,"(A," // FMT_17 // ",1X)") "xi_max: ", r%xi_max(i)
+       write (u,"(A," // FMT_17 // ",1X)") "y: ", r%y(i)
+       write (u,"(A," // FMT_17 // ",1X)") "jac_rand: ", r%jac_rand(i)
+       write (u,"(A," // FMT_17 // ",1X)") "y_soft: ", r%y_soft(i)
     end do
     write (u, "(A)") "Born Momenta: "
     write (u, "(A)") "CMS: "
@@ -841,7 +843,7 @@ contains
   subroutine phs_fks_config_set_born_config (phs_config, phs_cfg_born)
     class(phs_fks_config_t), intent(inout) :: phs_config
     type(phs_wood_config_t), intent(in), target :: phs_cfg_born
-    call msg_debug (D_PHASESPACE, "phs_fks_config_set_born_config")
+    if (debug_on) call msg_debug (D_PHASESPACE, "phs_fks_config_set_born_config")
     phs_config%forest = phs_cfg_born%forest
     phs_config%n_channel = phs_cfg_born%n_channel
     allocate (phs_config%channel (phs_config%n_channel))
@@ -880,7 +882,7 @@ contains
        call feyngraph_set_get_resonance_histories &
             (phs_config%feyngraph_set, n_filter = 2, res_hists = resonance_histories)
     else
-       call msg_debug (D_PHASESPACE, "Have to rebuild phase space for resonance histories")
+       if (debug_on) call msg_debug (D_PHASESPACE, "Have to rebuild phase space for resonance histories")
        call phs_config%generate_phase_space_extra ()
        if (phs_config%use_cascades2) then
           call feyngraph_set_get_resonance_histories &
@@ -1383,7 +1385,7 @@ contains
     integer :: i_emitter
     type(lorentz_transformation_t) :: boost_to_resonance
     integer :: n_resonant_particles
-    call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
     nlegborn = size (p_born); nlegreal = nlegborn + 1
     allocate (resonance_list (size (generator%resonance_contributors(i_con)%c)))
     resonance_list = generator%resonance_contributors(i_con)%c
@@ -1478,7 +1480,7 @@ contains
     type(lorentz_transformation_t) :: boost_to_top
     integer :: leg, other_leg
     real(default) :: sqrts, mtop
-    call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
     nlegborn = size (p_born); nlegreal = nlegborn + 1
 
     leg = thr_leg(emitter); other_leg = 3 - leg
@@ -1582,7 +1584,7 @@ contains
        k0_n = uk_n
     end if
 
-    call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_out")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_out")
     call debug_input_values ()
 
     vec = uk_n / uk_n_born * k_n_born
@@ -2591,9 +2593,9 @@ contains
             "kinematics associated with this generator"
     end if
     call write_separator (u)
-    write (u, "(A,F5.3)") "sqrts: ", generator%sqrts
-    write (u, "(A,F5.3)") "E_gluon: ", generator%E_gluon
-    write (u, "(A,F5.3)") "mrec2: ", generator%mrec2
+    write (u, "(A," // FMT_17 // ",1X)") "sqrts: ", generator%sqrts
+    write (u, "(A," // FMT_17 // ",1X)") "E_gluon: ", generator%E_gluon
+    write (u, "(A," // FMT_17 // ",1X)") "mrec2: ", generator%mrec2
   end subroutine phs_fks_generator_write
 
   subroutine phs_fks_compute_isr_kinematics (phs, r)
@@ -2648,7 +2650,7 @@ contains
     integer :: i_hist
     type(resonance_history_t), dimension(:), allocatable :: res_hist_colored, res_hist_contracted
 
-    call msg_debug (D_SUBTRACTION, "resonance_mapping_init")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "resonance_mapping_init")
     if (debug_active (D_SUBTRACTION)) then
        call msg_debug (D_SUBTRACTION, "Original resonances:")
        do i_hist = 1, size(res_hist)

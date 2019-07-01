@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -66,7 +66,7 @@ contains
          xi_min = var_list%get_rval (var_str ("fks_xi_min")), &
          y_max = var_list%get_rval (var_str ("fks_y_max")), &
          xi_cut = var_list%get_rval (var_str ("fks_xi_cut")), &
-         delta_zero = var_list%get_rval (var_str ("fks_delta_zero")), &
+         delta_o = var_list%get_rval (var_str ("fks_delta_o")), &
          delta_i = var_list%get_rval (var_str ("fks_delta_i")))
     select case (char (fks_mapping_type))
     case ("default")

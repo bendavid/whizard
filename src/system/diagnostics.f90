@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,6 +33,7 @@ module diagnostics
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use string_utils, only: str
   use io_units
 
@@ -349,6 +350,8 @@ contains
   subroutine set_debug_levels (area_str)
     type(string_t), intent(in) :: area_str
     integer :: area
+    if (.not. debug_on)  call msg_fatal ("Debugging options &
+         &can be used only if configured with --enable-fc-debug")
     area = d_area (area_str)
     if (area == D_ALL) then
        msg_level = DEBUG
@@ -360,6 +363,8 @@ contains
   subroutine set_debug2_levels (area_str)
     type(string_t), intent(in) :: area_str
     integer :: area
+    if (.not. debug_on)  call msg_fatal ("Debugging options &
+         &can be used only if configured with --enable-fc-debug")
     area = d_area (area_str)
     if (area == D_ALL) then
        msg_level = DEBUG2
@@ -747,9 +752,13 @@ contains
     character(len=*), intent(in), optional :: string
     type(terminal_color_t), intent(in), optional :: color
     integer :: cl
-    cl = COL_BLUE; if (present (color)) cl = color%color
-    call message_print (DEBUG, string, unit = output_unit, &
-         area = area, logfile = .false., color = cl)
+    if (debug_active (area)) then
+       cl = COL_BLUE; if (present (color)) cl = color%color
+       call message_print (DEBUG, string, unit = output_unit, &
+            area = area, logfile = .false., color = cl)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+    end if
   end subroutine msg_debug_none
 
   subroutine msg_debug_logical (area, string, value, color)
@@ -757,8 +766,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug_none (area, char (string // " = " // str (value)), &
-         color = color)
+    character(len=64) :: buffer
+    if (debug_active (area)) then
+       write (buffer, *)  value
+       call msg_debug_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+    end if
   end subroutine msg_debug_logical
 
   subroutine msg_debug_integer (area, string, value, color)
@@ -766,8 +781,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug_none (area, char (string // " = " // str (value)), &
-         color = color)
+    character(len=64) :: buffer
+    if (debug_active (area)) then
+       write (buffer, *)  value
+       call msg_debug_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+    end if
   end subroutine msg_debug_integer
 
   subroutine msg_debug_real (area, string, value, color)
@@ -775,8 +796,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug_none (area, char (string // " = " // str (value)), &
-         color = color)
+    character(len=64) :: buffer
+    if (debug_active (area)) then
+       write (buffer, *)  value
+       call msg_debug_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+    end if
   end subroutine msg_debug_real
 
   subroutine msg_debug_complex (area, string, value, color)
@@ -784,8 +811,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug_none (area, char (string // " = " // str (value)), &
-         color = color)
+    character(len=64) :: buffer
+    if (debug_active (area)) then
+       write (buffer, *)  value
+       call msg_debug_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+    end if
   end subroutine msg_debug_complex
 
   subroutine msg_debug_string (area, string, value, color)
@@ -793,8 +826,12 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug_none (area, char (string // " = " // value), &
-         color = color)
+    if (debug_active (area)) then
+       call msg_debug_none (area, string // " = " // char (value), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+    end if
   end subroutine msg_debug_string
 
   subroutine msg_print_color_none (string, color)
@@ -833,9 +870,13 @@ contains
     character(len=*), intent(in), optional :: string
     type(terminal_color_t), intent(in), optional :: color
     integer :: cl
-    cl = COL_BLUE; if (present (color)) cl = color%color
-    call message_print (DEBUG2, string, unit = output_unit, &
-         area = area, logfile = .false., color = cl)
+    if (debug2_active (area)) then
+       cl = COL_BLUE; if (present (color)) cl = color%color
+       call message_print (DEBUG2, string, unit = output_unit, &
+            area = area, logfile = .false., color = cl)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
+    end if
   end subroutine msg_debug2_none
 
   subroutine msg_debug2_logical (area, string, value, color)
@@ -843,8 +884,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug2_none (area, char (string // " = " // str (value)), &
-       color = color)
+    character(len=64) :: buffer
+    if (debug2_active (area)) then
+       write (buffer, *)  value
+       call msg_debug2_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
+    end if
   end subroutine msg_debug2_logical
 
   subroutine msg_debug2_integer (area, string, value, color)
@@ -852,8 +899,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug2_none (area, char (string // " = " // str (value)), &
-       color = color)
+    character(len=64) :: buffer
+    if (debug2_active (area)) then
+       write (buffer, *)  value
+       call msg_debug2_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
+    end if
   end subroutine msg_debug2_integer
 
   subroutine msg_debug2_real (area, string, value, color)
@@ -861,8 +914,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug2_none (area, char (string // " = " // str (value)), &
-       color = color)
+    character(len=64) :: buffer
+    if (debug2_active (area)) then
+       write (buffer, *)  value
+       call msg_debug2_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
+    end if
   end subroutine msg_debug2_real
 
   subroutine msg_debug2_complex (area, string, value, color)
@@ -870,8 +929,14 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug2_none (area, char (string // " = " // str (value)), &
-       color = color)
+    character(len=64) :: buffer
+    if (debug2_active (area)) then
+       write (buffer, *)  value
+       call msg_debug2_none (area, string // " = " // trim (buffer), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
+    end if
   end subroutine msg_debug2_complex
 
   subroutine msg_debug2_string (area, string, value, color)
@@ -879,20 +944,24 @@ contains
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug2_none (area, char (string // " = " // value), &
-       color = color)
+    if (debug2_active (area)) then
+       call msg_debug2_none (area, string // " = " // char (value), &
+            color = color)
+    else
+       if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
+    end if
   end subroutine msg_debug2_string
 
   elemental function debug_active (area) result (active)
     logical :: active
     integer, intent(in) :: area
-    active = msg_level(area) >= DEBUG
+    active = debug_on .and. msg_level(area) >= DEBUG
   end function debug_active
 
   elemental function debug2_active (area) result (active)
     logical :: active
     integer, intent(in) :: area
-    active = msg_level(area) >= DEBUG2
+    active = debug_on .and. msg_level(area) >= DEBUG2
   end function debug2_active
 
   subroutine msg_show_progress (i_call, n_calls)

@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -28,6 +28,7 @@
 module parton_states
 
   use kinds, only: default
+  use debug_master, only: debug_on
   use io_units
   use format_utils, only: write_separator
   use diagnostics
@@ -368,7 +369,7 @@ contains
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int, beam_int
     logical :: reduce, fs_flv_flag
-    call msg_debug (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
          "connected_state_setup_connected_trace")
     reduce = .false.; fs_flv_flag = .true.
     if (present (undo_helicities)) reduce = undo_helicities

@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module integrations
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use diagnostics
   use os_interface
@@ -119,7 +120,7 @@ contains
     type(rt_data_t), intent(inout), optional, target :: global
     type(string_t), intent(in) :: process_id
     type(process_entry_t), pointer :: process_entry
-    call msg_debug (D_CORE, "integration_create_process")
+    if (debug_on) call msg_debug (D_CORE, "integration_create_process")
     intg%process_id = process_id
     if (present (global)) then
        allocate (process_entry)
@@ -137,7 +138,7 @@ contains
     type(model_t), pointer :: model
     class(model_data_t), pointer :: model_instance
     type(var_list_t), pointer :: var_list
-    call msg_debug (D_CORE, "integration_init_process")
+    if (debug_on) call msg_debug (D_CORE, "integration_init_process")
     if (.not. local%prclib%contains (intg%process_id)) then
        call msg_fatal ("Process '" // char (intg%process_id) // "' not found" &
             // " in library '" // char (local%prclib%get_name ()) // "'")
@@ -673,15 +674,15 @@ contains
     type(var_list_t), pointer :: var_list
     logical :: mpi_logging, process_init
     integer :: rank, n_size
-    call msg_debug (D_MPI, "integrate_process")
+    if (debug_on) call msg_debug (D_MPI, "integrate_process")
     var_list => local%get_var_list_ptr ()
     process_init = .false.
     call mpi_get_comm_id (n_size, rank)
     mpi_logging = (("vamp2" == char (var_list%get_sval (var_str ("$integration_method"))) .and. &
          & (n_size > 1)) .or. var_list%get_lval (var_str ("?mpi_logging")))
-    call msg_debug (D_MPI, "n_size", rank)
-    call msg_debug (D_MPI, "rank", rank)
-    call msg_debug (D_MPI, "mpi_logging", mpi_logging)
+    if (debug_on) call msg_debug (D_MPI, "n_size", rank)
+    if (debug_on) call msg_debug (D_MPI, "rank", rank)
+    if (debug_on) call msg_debug (D_MPI, "mpi_logging", mpi_logging)
     if (rank /= 0) then
        if (mpi_logging) then
           call msg_message ("MPI: wait for master to finish process initialization ...")

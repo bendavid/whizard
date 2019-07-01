@@ -774,6 +774,28 @@ AC_SUBST([FC_SUPPORTS_OPENMP])
 ])
 ### end WO_FC_CHECK_OPENMP
 
+### Turn on/off master switch for debugging features
+AC_DEFUN([WO_FC_SET_DEBUG],
+[dnl
+AC_ARG_ENABLE([fc_debug],
+  [AS_HELP_STRING([--enable-fc-debug],
+    [enable debugging features for the Fortran code [[no]]])])
+AC_CACHE_CHECK([whether debugging facilities are enabled], [wo_cv_fc_debug_on],
+[dnl
+if test "$enable_fc_debug" = "yes"; then
+  wo_cv_fc_debug_on=yes
+else
+  wo_cv_fc_debug_on=no
+fi
+])
+if test "$wo_cv_fc_debug_on" = "yes"; then
+  FC_DEBUG_ON=.true.
+else
+  FC_DEBUG_ON=.false.
+fi
+AC_SUBST([FC_DEBUG_ON])
+])
+
 ### Enable/disable OpenMP support
 AC_DEFUN([WO_FC_SET_OPENMP],
 [dnl

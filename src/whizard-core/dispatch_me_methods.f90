@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module dispatch_me_methods
 
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use physics_defs, only: BORN
   use diagnostics
   use sm_qcd
@@ -86,7 +87,7 @@ contains
     else
        meth = var_list%get_sval (var_str ("$method"))
     end if
-    call msg_debug2 (D_CORE, "dispatch_core_def")
+    if (debug_on) call msg_debug2 (D_CORE, "dispatch_core_def")
     if (associated (model)) then
        model_name = model%get_name ()
        cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
@@ -115,7 +116,7 @@ contains
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
     correction_type = var_list%get_sval (var_str ("$nlo_correction_type"))
-    call msg_debug2 (D_CORE, "dispatching core method: ", meth)
+    if (debug_on) call msg_debug2 (D_CORE, "dispatching core method: ", meth)
     select case (char (meth))
     case ("unit_test")
        allocate (prc_test_def_t :: core_def)

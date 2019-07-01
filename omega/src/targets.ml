@@ -3515,11 +3515,7 @@ i*)
 
           | FBF (coeff, fb, b, f) ->
               begin match coeff, fb, b, f with
-              | _, Psibar, VLRM, Psi | _, Psibar, SPM, Psi
-              | _, Psibar, VAM, Psi | _, Psibar, VA3M, Psi
-              | _, Psibar, TVA, Psi | _, Psibar, TVAM, Psi
-              | _, Psibar, TLR, Psi | _, Psibar, TLRM, Psi
-              | _, Psibar, TRL, Psi | _, Psibar, TRLM, Psi ->
+              | _, _, (VLRM|SPM|VAM|VA3M|TVA|TVAM|TLR|TLRM|TRL|TRLM), _ ->
                   let p12 = Printf.sprintf "(-%s-%s)" p1 p2 in
                   Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2
                       p12 fusion
@@ -7555,6 +7551,54 @@ module Fortran_Majorana_Fermions : Fermions =
       | F23 | F21 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf1 wf2
       | F32 | F12 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf2 wf1
 
+    let print_fermion_current_mom_v1 coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s)" f c1 c2 wf1 wf2
+      | F31 -> printf "%s_ff(-(%s),%s,%s,%s)" f c1 c2 wf1 wf2
+      | F23 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf1 wf2
+      | F32 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf2 wf1
+      | F12 -> printf "f_f%s(-(%s),%s,%s,%s)" f c1 c2 wf2 wf1
+      | F21 -> printf "f_f%s(-(%s),%s,%s,%s)" f c1 c2 wf1 wf2
+
+    let print_fermion_current_mom_v1_chiral coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s)" f c1 c2 wf1 wf2
+      | F31 -> printf "%s_ff(-(%s),-(%s),%s,%s)" f c2 c1 wf1 wf2
+      | F23 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf1 wf2
+      | F32 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf2 wf1
+      | F12 -> printf "f_f%s(-(%s),-(%s),%s,%s)" f c2 c1 wf2 wf1
+      | F21 -> printf "f_f%s(-(%s),-(%s),%s,%s)" f c2 c1 wf2 wf1
+
+    let print_fermion_current_mom_v2 coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p12
+      | F31 -> printf "%s_ff(-(%s),%s,%s,%s,%s)" f c1 c2 wf1 wf2 p12
+      | F23 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p1
+      | F32 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf2 wf1 p2
+      | F12 -> printf "f_f%s(-(%s),%s,%s,%s,%s)" f c1 c2 wf2 wf1 p2
+      | F21 -> printf "f_f%s(-(%s),%s,%s,%s,%s)" f c1 c2 wf1 wf2 p1
+
+    let print_fermion_current_mom_v2_chiral coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p12
+      | F31 -> printf "%s_ff(-(%s),-(%s),%s,%s,%s)" f c2 c1 wf2 wf1 p12
+      | F23 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p1
+      | F32 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf2 wf1 p2
+      | F12 -> printf "f_f%s(-(%s),-(%s),%s,%s,%s)" f c2 c1 wf1 wf2 p2
+      | F21 -> printf "f_f%s(-(%s),-(%s),%s,%s,%s)" f c2 c1 wf2 wf1 p1
+
     let print_fermion_current_vector coeff f c wf1 wf2 fusion =
       let c = format_coupling coeff c in
       match fusion with
@@ -7823,6 +7867,10 @@ module Fortran_Majorana_Fermions : Fermions =
           "Targets.Fortran_Majorana_Fermions: not used in the models"
 
     let print_current_mom = function
+      | coeff, _, TVA, _ -> print_fermion_current_mom_v1 coeff "tva"
+      | coeff, _, TVAM, _ -> print_fermion_current_mom_v2 coeff "tvam"
+      | coeff, _, TLR, _ -> print_fermion_current_mom_v1_chiral coeff "tlr"
+      | coeff, _, TLRM, _ -> print_fermion_current_mom_v2_chiral coeff "tlrm"
       | _, _, _, _ -> invalid_arg
             "Targets.Fortran_Majorana_Fermions: Not needed in the models"
 

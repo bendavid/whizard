@@ -20,7 +20,7 @@ hepmcok="no"
 if test "$enable_hepmc" = "yes"; then
    ACX_CHECK_HEPMC3()
    if test "${hepmcok}" = "no"; then
-     AC_MSG_NOTICE([HepMC3 not found, incompatible, or HepMC-config not found])   
+     AC_MSG_NOTICE([HepMC3 not found, incompatible, or HepMC3-config not found])
      AC_MSG_NOTICE([looking for HepMC2 instead ... ])
      if test -n "$HEPMC_DIR"; then
        wo_hepmc_includes="-I$HEPMC_DIR/include"
@@ -75,7 +75,7 @@ if test "$enable_hepmc" = "yes"; then
      fi
    else
       hepmc_is_v3="yes"
-      AC_MSG_CHECKING([the HepMC version])
+      AC_MSG_CHECKING([the HepMC3 version])
       save_CXXFLAGS="$CXXFLAGS"
       save_LIBS="$LIBS"
       CXXFLAGS="${CXXFLAGS} --std=c++11 `${hepmcconfig} --cxxflags`"
@@ -85,9 +85,9 @@ if test "$enable_hepmc" = "yes"; then
         AC_LANG_PROGRAM([[
 #include <stdio.h>
 #include <iostream>
-#include "HepMC/Version.h"
+#include "HepMC3/Version.h"
 ]],
-          [[using namespace HepMC; std::cout << HepMC::version();]])],
+          [[using namespace HepMC3; std::cout << HepMC3::version();]])],
         [dnl
         wk_hepmc_version=`./conftest`
         AC_MSG_RESULT([$wk_hepmc_version])],
@@ -130,11 +130,11 @@ AC_ARG_WITH(HepMC,
             [AC_HELP_STRING([--with-hepmc=dir], 
                             [assume the given directory for HepMC])])
 
-dnl search for the hepmc-config script
+dnl search for the Hepmc3-config script
 if test "$with_hepmc" = ""; then
-   AC_PATH_PROG(hepmcconfig, HepMC-config, no)
+   AC_PATH_PROG(hepmcconfig, HepMC3-config, no)
 else
-   AC_PATH_PROG(hepmcconfig, HepMC-config, no, ${with_hepmc}/bin)
+   AC_PATH_PROG(hepmcconfig, HepMC3-config, no, ${with_hepmc}/bin)
 fi
 
 if test "${hepmcconfig}" = "no"; then

@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,6 +33,7 @@ module prc_external
   use constants
   use io_units
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use system_defs, only: TAB
   use physics_defs, only: CF
   use diagnostics
@@ -342,7 +343,7 @@ contains
     real(default), intent(in) :: ren_scale
     logical, intent(out) :: bad_point
     real(default), dimension(4), intent(out) :: sqme
-    call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_virt")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_virt")
     sqme(1) = 0.001_default
     sqme(2) = 0.001_default
     sqme(3) = 0.001_default
@@ -359,7 +360,7 @@ contains
     real(default), intent(inout), dimension(:,:) :: born_color_c
     logical, intent(out) :: bad_point
     real(default), intent(out), optional :: born_out
-    call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_color_c")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_color_c")
     if (size (p) == 4) then
        if (present (born_out)) then
           born_out = 0.0015_default
@@ -733,7 +734,7 @@ contains
   subroutine prc_external_writer_write_source_code (writer, id)
     class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
-    call msg_debug (D_ME_METHODS, &
+    if (debug_on) call msg_debug (D_ME_METHODS, &
          "prc_external_writer_write_source_code (no-op)")
     !!! This is a dummy
   end subroutine prc_external_writer_write_source_code
@@ -741,7 +742,7 @@ contains
   subroutine prc_external_writer_before_compile (writer, id)
     class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
-    call msg_debug (D_ME_METHODS, &
+    if (debug_on) call msg_debug (D_ME_METHODS, &
          "prc_external_writer_before_compile (no-op)")
     !!! This is a dummy
   end subroutine prc_external_writer_before_compile
@@ -749,7 +750,7 @@ contains
   subroutine prc_external_writer_after_compile (writer, id)
     class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
-    call msg_debug (D_ME_METHODS, &
+    if (debug_on) call msg_debug (D_ME_METHODS, &
          "prc_external_writer_after_compile (no-op)")
     !!! This is a dummy
   end subroutine prc_external_writer_after_compile

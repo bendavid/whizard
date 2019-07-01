@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module pcm
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants, only: zero, two
   use diagnostics
   use lorentz
@@ -1030,7 +1031,7 @@ contains
     integer, intent(in) :: i_real_fin
     class(model_data_t), intent(in) :: model
     integer :: i_component
-    call msg_debug (D_PROCESS_INTEGRATION, "pcm_instance_nlo_init_config")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "pcm_instance_nlo_init_config")
     call pcm_instance%init_real_and_isr_kinematics (sqrts)
     select type (pcm => pcm_instance%config)
     type is (pcm_nlo_t)

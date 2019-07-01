@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -63,7 +63,7 @@ module nlo_data
     real(default) :: fks_dij_exp2
     real(default) :: xi_min
     real(default) :: y_max
-    real(default) :: xi_cut, delta_zero, delta_i
+    real(default) :: xi_cut, delta_o, delta_i
     type(string_t), dimension(:), allocatable :: excluded_resonances
     integer :: n_f
   contains
@@ -129,24 +129,24 @@ contains
        template%fks_dij_exp1, template%fks_dij_exp2
     write (u, '(1x,A,ES4.3,ES4.3)') 'xi_cut: ', &
        template%xi_cut
-    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_zero: ', &
-       template%delta_zero
+    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_o: ', &
+       template%delta_o
     write (u, '(1x,A,ES4.3,ES4.3)') 'delta_i: ', &
          template%delta_i
   end subroutine fks_template_write
 
   subroutine fks_template_set_parameters (template, exp1, exp2, xi_min, &
-    y_max, xi_cut, delta_zero, delta_i)
+    y_max, xi_cut, delta_o, delta_i)
     class(fks_template_t), intent(inout) :: template
     real(default), intent(in) :: exp1, exp2
     real(default), intent(in) :: xi_min, y_max, &
-         xi_cut, delta_zero, delta_i
+         xi_cut, delta_o, delta_i
     template%fks_dij_exp1 = exp1
     template%fks_dij_exp2 = exp2
     template%xi_min = xi_min
     template%y_max = y_max
     template%xi_cut = xi_cut
-    template%delta_zero = delta_zero
+    template%delta_o = delta_o
     template%delta_i = delta_i
   end subroutine fks_template_set_parameters
 

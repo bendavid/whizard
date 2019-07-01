@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module process_mci
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use diagnostics
   use physics_defs
@@ -212,11 +213,11 @@ contains
     integer, dimension(:), allocatable :: i_list
     integer :: n
     integer, save :: i_rfin_offset = 0
-    call msg_debug (D_PROCESS_INTEGRATION, "process_mci_entry_create_component_list")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_mci_entry_create_component_list")
     if (mci_entry%combined_integration) then
        n = get_n_components (mci_entry%real_partition_type)
        allocate (i_list (n))
-       call msg_debug (D_PROCESS_INTEGRATION, &
+       if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
             "mci_entry%real_partition_type", mci_entry%real_partition_type)
        select case (mci_entry%real_partition_type)
        case (REAL_FULL)
@@ -248,7 +249,7 @@ contains
          n_components = size (component_config%get_association_list &
             (ASSOCIATED_REAL_FIN))
       end select
-      call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
+      if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
     end function get_n_components
   end subroutine process_mci_entry_create_component_list
 

@@ -286,6 +286,7 @@ module diagnostics
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use string_utils, only: str
   use io_units
 
@@ -476,6 +477,8 @@ Diagnostics areas:
   subroutine set_debug_levels (area_str)
     type(string_t), intent(in) :: area_str
     integer :: area
+    if (.not. debug_on)  call msg_fatal ("Debugging options &
+         &can be used only if configured with --enable-fc-debug")
     area = d_area (area_str)
     if (area == D_ALL) then
        msg_level = DEBUG
@@ -492,6 +495,8 @@ Diagnostics areas:
   subroutine set_debug2_levels (area_str)
     type(string_t), intent(in) :: area_str
     integer :: area
+    if (.not. debug_on)  call msg_fatal ("Debugging options &
+         &can be used only if configured with --enable-fc-debug")
     area = d_area (area_str)
     if (area == D_ALL) then
        msg_level = DEBUG2
@@ -1031,7 +1036,19 @@ but this may change.
   end subroutine msg_result
 
 @ %def msg_warning msg_message msg_result
-@
+@ Debugging aids.  Print messages or values of various kinds.  All
+versions ultimately call [[msg_debug_none]], which in turn uses
+[[message_print]].
+
+Safeguard: force crash if a routine (i.e., a debugging routine below)
+is called while the master switch [[debug_on]] is unset.  Such calls
+should always be hidden behind [[if (debug_on)]], since they can
+significantly slow down the program.
+<<debug guard>>=
+if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
+@ 
+The [[debug_on]] flag is provided by the [[debug_master]] module, and
+we can assume that it is a compile-time parameter.
 <<Diagnostics: public>>=
   public :: msg_debug
 <<Diagnostics: interfaces>>=
@@ -1049,9 +1066,13 @@ but this may change.
     character(len=*), intent(in), optional :: string
     type(terminal_color_t), intent(in), optional :: color
     integer :: cl
-    cl = COL_BLUE; if (present (color)) cl = color%color
-    call message_print (DEBUG, string, unit = output_unit, &
-         area = area, logfile = .false., color = cl)
+    if (debug_active (area)) then
+       cl = COL_BLUE; if (present (color)) cl = color%color
+       call message_print (DEBUG, string, unit = output_unit, &
+            area = area, logfile = .false., color = cl)
+    else
+       <<debug guard>>
+    end if
   end subroutine msg_debug_none
 
   subroutine msg_debug_logical (area, string, value, color)
@@ -1079,8 +1100,12 @@ but this may change.
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug_none (area, char (string // " = " // value), &
-         color = color)
+    if (debug_active (area)) then
+       call msg_debug_none (area, string // " = " // char (value), &
+            color = color)
+    else
+       <<debug guard>>
+    end if
   end subroutine msg_debug_string
 
 @ %def msg_debug
@@ -1088,8 +1113,14 @@ but this may change.
   integer, intent(in) :: area
   character(len=*), intent(in) :: string
   type(terminal_color_t), intent(in), optional :: color
-  call msg_debug_none (area, char (string // " = " // str (value)), &
-       color = color)
+  character(len=64) :: buffer
+  if (debug_active (area)) then
+     write (buffer, *)  value
+     call msg_debug_none (area, string // " = " // trim (buffer), &
+          color = color)
+  else
+     <<debug guard>>
+  end if
 @
 <<Diagnostics: public>>=
   public :: msg_print_color
@@ -1134,7 +1165,11 @@ but this may change.
 
 @ %def msg_print_color_none, msg_print_color_logical
 @ %def msg_print_color_integer, msg_print_color_real
-@
+@ Secondary debugging aids which implement more fine-grained debugging.
+Again, there is a safeguard against calling anything while
+[[debug_on=.false.]].
+<<debug2 guard>>=
+if (.not. debug_on)  call msg_bug ("msg_debug2 called with debug_on=.false.")
 <<Diagnostics: public>>=
   public :: msg_debug2
 <<Diagnostics: interfaces>>=
@@ -1152,9 +1187,13 @@ but this may change.
     character(len=*), intent(in), optional :: string
     type(terminal_color_t), intent(in), optional :: color
     integer :: cl
-    cl = COL_BLUE; if (present (color)) cl = color%color
-    call message_print (DEBUG2, string, unit = output_unit, &
-         area = area, logfile = .false., color = cl)
+    if (debug2_active (area)) then
+       cl = COL_BLUE; if (present (color)) cl = color%color
+       call message_print (DEBUG2, string, unit = output_unit, &
+            area = area, logfile = .false., color = cl)
+    else
+       <<debug2 guard>>
+    end if
   end subroutine msg_debug2_none
 
   subroutine msg_debug2_logical (area, string, value, color)
@@ -1182,8 +1221,12 @@ but this may change.
     integer, intent(in) :: area
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
-    call msg_debug2_none (area, char (string // " = " // value), &
-       color = color)
+    if (debug2_active (area)) then
+       call msg_debug2_none (area, string // " = " // char (value), &
+            color = color)
+    else
+       <<debug2 guard>>
+    end if
   end subroutine msg_debug2_string
 
 @ %def msg_debug2
@@ -1191,8 +1234,14 @@ but this may change.
   integer, intent(in) :: area
   character(len=*), intent(in) :: string
   type(terminal_color_t), intent(in), optional :: color
-  call msg_debug2_none (area, char (string // " = " // str (value)), &
-     color = color)
+  character(len=64) :: buffer
+  if (debug2_active (area)) then
+     write (buffer, *)  value
+     call msg_debug2_none (area, string // " = " // trim (buffer), &
+          color = color)
+  else
+     <<debug2 guard>>
+  end if
 @
 <<Diagnostics: public>>=
   public :: debug_active
@@ -1200,7 +1249,7 @@ but this may change.
   elemental function debug_active (area) result (active)
     logical :: active
     integer, intent(in) :: area
-    active = msg_level(area) >= DEBUG
+    active = debug_on .and. msg_level(area) >= DEBUG
   end function debug_active
 
 @ %def debug_active
@@ -1211,7 +1260,7 @@ but this may change.
   elemental function debug2_active (area) result (active)
     logical :: active
     integer, intent(in) :: area
-    active = msg_level(area) >= DEBUG2
+    active = debug_on .and. msg_level(area) >= DEBUG2
   end function debug2_active
 
 @ %def debug2_active

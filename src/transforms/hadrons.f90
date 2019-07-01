@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,7 +30,7 @@ module hadrons
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
-
+  use debug_master, only: debug_on
   use constants
   use diagnostics
   use event_transforms
@@ -321,7 +321,7 @@ contains
     integer, dimension(:), allocatable :: cols, acols, octs
     integer :: n
     if (signal_is_pending ()) return
-    call msg_debug (D_TRANSFORMS, "hadrons_hadrons_hadronize")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_hadrons_hadronize")
     call particle_set%write (6, compressed=.true.)
     n = particle_set%get_n_tot ()
     allocate (cols (n), acols (n), octs (n))
@@ -422,7 +422,7 @@ contains
     common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
     save /PYJETS/
     if (signal_is_pending ()) return
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia6_hadronize")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia6_hadronize")
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
@@ -472,8 +472,8 @@ contains
   subroutine hadrons_pythia8_transfer_settings (hadrons)
     class(hadrons_pythia8_t), intent(inout), target :: hadrons
     real(default) :: r
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_transfer_settings")
-    call msg_debug2 (D_TRANSFORMS, "pythia_initialized", hadrons%pythia_initialized)
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_transfer_settings")
+    if (debug_on) call msg_debug2 (D_TRANSFORMS, "pythia_initialized", hadrons%pythia_initialized)
     if (hadrons%pythia_initialized) return
     call hadrons%pythia%import_rng (hadrons%rng)
     call hadrons%pythia%parse_and_set_config (hadrons%shower_settings%pythia8_config)
@@ -495,7 +495,7 @@ contains
     integer, dimension(2) :: beam_pdg
     real(default), dimension(2) :: beam_energy
     integer, parameter :: process_id = 0, n_processes = 0
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_set_user_process")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_set_user_process")
     beam_pdg = [pset%prt(1)%get_pdg (), pset%prt(2)%get_pdg ()]
     beam_energy = [energy(pset%prt(1)%p), energy(pset%prt(2)%p)]
     call hadrons%lhaup%set_init (beam_pdg, beam_energy, &
@@ -509,7 +509,7 @@ contains
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t) :: pset_reduced
     integer, parameter :: PROCESS_ID = 1
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")
     if (.not. hadrons%user_process_set) then
        call hadrons%set_user_process (particle_set)
        hadrons%user_process_set = .true.
@@ -545,7 +545,7 @@ contains
     class(model_data_t), intent(in), target :: model
     logical, intent(out) :: valid
     type(particle_t), dimension(:), allocatable :: beam
-    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_make_particle_set")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "hadrons_pythia8_make_particle_set")
     if (signal_is_pending ()) return
     associate (settings => hadrons%shower_settings)
       if (debug_active (D_TRANSFORMS)) then
@@ -603,7 +603,7 @@ contains
 
   subroutine evt_hadrons_first_event (evt)
     class(evt_hadrons_t), intent(inout) :: evt
-    call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
     associate (settings => evt%hadrons%shower_settings)
        settings%hadron_collision = .false.
        !!! !!! !!! Workaround for PGF90 16.1
@@ -618,7 +618,7 @@ contains
        else
           call msg_fatal ("evt_hadrons didn't recognize beams setup")
        end if
-       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
        if (.not. (settings%isr_active .or. settings%fsr_active)) then
           call msg_fatal ("Hadronization without shower is not supported")
        end if

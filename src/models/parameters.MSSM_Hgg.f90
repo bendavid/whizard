@@ -413,11 +413,13 @@ module parameters_mssm_hgg
     g_yuk1_1_3
   complex(kind=default), public, save :: gglglh, gglglhh, gglgla, gpph, &
        gpphh, gppa
+  complex(kind=default), dimension(2), public, save :: gnna
+  real(kind=default) :: neu2_dec
 
 contains
 
   subroutine import_from_whizard (par_array, scheme)
-    real(default), dimension(138), intent(in) :: par_array
+    real(default), dimension(142), intent(in) :: par_array
     integer, intent(in) :: scheme
     type :: parameter_set 
        !!! DON'T EVEN THINK OF CHANGING THE ORDER
@@ -555,6 +557,10 @@ contains
        real(default) :: hgg_fac
        real(default) :: hgg_sq
        real(default) :: haa_fac
+       real(default) :: nna_v_fac
+       real(default) :: nna_a_fac
+       real(default) :: nna_v
+       real(default) :: nna_a
        real(default) :: v
        real(default) :: cw
        real(default) :: sw
@@ -696,10 +702,14 @@ contains
     par%hgg_fac= par_array(132)
     par%hgg_sq = par_array(133)
     par%haa_fac= par_array(134)
-    par%v      = par_array(135)
-    par%cw     = par_array(136)
-    par%sw     = par_array(137)
-    par%ee     = par_array(138)
+    par%nna_v_fac = par_array(135)
+    par%nna_a_fac = par_array(136)
+    par%nna_v  = par_array(137)
+    par%nna_a  = par_array(138)
+    par%v      = par_array(139)
+    par%cw     = par_array(140)
+    par%sw     = par_array(141)
+    par%ee     = par_array(142)
     mass(1:70) = 0
     width(1:70) = 0
     mass(3) = par%ms
@@ -3924,6 +3934,15 @@ subroutine setup_parameters13 ()
               !!! Chargino loop
             + (vev / mass(69)) * gcac_1_1 * loop_factor(mass(69), mass(36), 'ferA0') & 
             + (vev / mass(70)) * gcac_2_2 * loop_factor(mass(70), mass(36), 'ferA0')) 
+!!! Couplings for loop-induced neutralino2 decay
+    if (mass(66) > mass(65)) then
+       neu2_dec = sqrt (8.0_default * PI * width(66) * mass(66)**5 / &
+            (mass(66)**2 - mass(65)**2)**3)
+    else
+       neu2_dec = 0.0_default
+    end if
+    gnna(1) = (par%nna_v_fac * neu2_dec + par%nna_v) / mass(66)
+    gnna(2) = (par%nna_a_fac * neu2_dec + par%nna_a) / mass(66)
   end subroutine setup_parameters17
   end subroutine import_from_whizard
 

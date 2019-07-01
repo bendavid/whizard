@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1181,7 +1181,7 @@ contains
                         integral       = mci%current_pass%integral(it), &
                         error          = mci%current_pass%error(it), &
                         efficiency     = mci%current_pass%efficiency(it), &
-                        ! TODO pos. and neg. Efficiency
+                        ! TODO Insert pos. and neg. Efficiency from VAMP.
                         efficiency_pos = 0._default, &
                         efficiency_neg = 0._default, &
                         chain_weights  = mci%chain_weights, &
@@ -1193,7 +1193,7 @@ contains
                         integral       = mci%current_pass%integral(it), &
                         error          = mci%current_pass%error(it), &
                         efficiency     = mci%current_pass%efficiency(it), &
-                        ! TODO pos. and neg. Efficiency
+                        ! TODO Insert pos. and neg. Efficiency from VAMP.
                         efficiency_pos = 0._default, &
                         efficiency_neg = 0._default, &
                         suppress = pacify)

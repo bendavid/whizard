@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,6 +35,7 @@ module prc_threshold
   use string_utils, only: lower_case
   use io_units
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use physics_defs
   use system_defs, only: TAB
   use diagnostics
@@ -189,7 +190,7 @@ contains
     logical, intent(in) :: verbose
     integer, intent(in) :: nlo_type
     type(string_t) :: f90in, f90, lo, extra
-    call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_extra")
+    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_extra")
     if (nlo_type /= BORN) then
        extra = "_" // component_status (nlo_type)
     else
@@ -227,7 +228,7 @@ contains
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
-    call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_code")
+    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_code")
     call writer%base_write_makefile_code (unit, id, os_data, verbose, testflag)
     call writer%write_makefile_extra (unit, id, os_data, verbose, BORN)
     if (writer%nlo_type == NLO_VIRTUAL .and. writer%active) &
@@ -249,7 +250,7 @@ contains
     type(dlaccess_t), intent(inout) :: dlaccess
     type(c_funptr) :: c_fptr
     type(string_t) :: lower_case_id
-    call msg_debug (D_ME_METHODS, "threshold_driver_load")
+    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_driver_load")
     lower_case_id = lower_case (threshold_driver%id)
     c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_set_process_mode")
     call c_f_procpointer (c_fptr, threshold_driver%set_process_mode)
@@ -287,7 +288,7 @@ contains
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
     type(string_t), intent(in), optional :: restrictions
-    call msg_debug (D_ME_METHODS, "threshold_def_init")
+    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_def_init")
     object%basename = basename
     object%nlo_type = nlo_type
     allocate (threshold_writer_t :: object%writer)
@@ -317,7 +318,7 @@ contains
     class(threshold_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
-    call msg_debug (D_ME_METHODS, "threshold_def_allocate_driver")
+    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_def_allocate_driver")
     if (.not. allocated (driver)) allocate (threshold_driver_t :: driver)
     select type (driver)
     type is (threshold_driver_t)
@@ -333,7 +334,7 @@ contains
     class(prc_core_driver_t), intent(inout) :: proc_driver
     type(dlaccess_t) :: dlaccess
     logical :: skip
-    call msg_debug (D_ME_METHODS, "threshold_def_connect")
+    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_def_connect")
     call def%omega_connect (lib_driver, i, proc_driver)
     select type (lib_driver)
     class is (prclib_driver_dynamic_t)
@@ -443,7 +444,7 @@ contains
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
     integer :: n_tot
-    call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme")
     n_tot = size (p)
     select type (driver => object%driver)
     class is (threshold_driver_t)
@@ -472,7 +473,7 @@ contains
     real(c_default_float), dimension(4) :: sqme_c
     real(c_default_float) :: mu_c, acc_c, alpha_s_c
     integer(c_int) :: i_flv_c
-    call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme_virt")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme_virt")
     n_tot = size (p)
     if (allocated (parray)) then
        if (size(parray) /= n_tot) deallocate (parray)
@@ -527,7 +528,7 @@ contains
 
   subroutine prc_threshold_activate_parameters (object)
     class (prc_threshold_t), intent(inout) :: object
-    call msg_debug (D_ME_METHODS, "prc_threshold_activate_parameters")
+    if (debug_on) call msg_debug (D_ME_METHODS, "prc_threshold_activate_parameters")
     if (allocated (object%driver)) then
        if (allocated (object%par)) then
           select type (driver => object%driver)
@@ -554,7 +555,7 @@ contains
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
     logical, intent(in) :: is_nlo
-    call msg_debug (D_ME_METHODS, &
+    if (debug_on) call msg_debug (D_ME_METHODS, &
          "prc_threshold_prepare_external_code")
     if (allocated (core%driver)) then
        select type (driver => core%driver)

@@ -6549,7 +6549,8 @@ and
 \end{align}
 \end{subequations}
 <<Declaration of bispinor currents>>=
-public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, va2_ff
+public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, va2_ff, tva_ff, tvam_ff, &
+          tlr_ff, tlrm_ff
 @
 <<Implementation of bispinor currents>>=
 pure function va_ff (gv, ga, psil, psir) result (j)
@@ -6682,6 +6683,59 @@ pure function vlr_ff (gl, gr, psibar, psi) result (j)
   j = va_ff (gl+gr, gl-gr, psibar, psi)
 end function vlr_ff
 @
+<<Implementation of bispinor currents>>=
+pure function tva_ff (gv, ga, psibar, psi) result (t)
+  type(tensor2odd) :: t
+  complex(kind=default), intent(in) :: gv, ga
+  type(bispinor), intent(in) :: psibar
+  type(bispinor), intent(in) :: psi
+  complex(kind=default) :: gl, gr
+  complex(kind=default) :: g11, g22, g33, g44, g1p2, g3p4
+  gr     = gv + ga
+  gl     = gv - ga
+  g11    = psibar%a(1)*psi%a(1)
+  g22    = psibar%a(2)*psi%a(2)
+  g1p2   = psibar%a(1)*psi%a(2) + psibar%a(2)*psi%a(1)
+  g3p4   = psibar%a(3)*psi%a(4) + psibar%a(4)*psi%a(3)
+  g33    = psibar%a(3)*psi%a(3)
+  g44    = psibar%a(4)*psi%a(4)
+  t%e(1) = (gl * ( - g11 + g22) + gr * ( - g33 + g44)) * (0, 1)
+  t%e(2) =  gl * (   g11 + g22) + gr * (   g33 + g44)  
+  t%e(3) = (gl * (   g1p2     ) + gr * (   g3p4     )) * (0, 1)  
+  t%b(1) =  gl * (   g11 - g22) + gr * ( - g33 + g44)  
+  t%b(2) = (gl * (   g11 + g22) + gr * ( - g33 - g44)) * (0, 1)
+  t%b(3) =  gl * ( - g1p2     ) + gr * (   g3p4     )
+end function tva_ff
+@
+<<Implementation of bispinor currents>>=
+pure function tlr_ff (gl, gr, psibar, psi) result (t)
+  type(tensor2odd) :: t
+  complex(kind=default), intent(in) :: gl, gr
+  type(bispinor), intent(in) :: psibar
+  type(bispinor), intent(in) :: psi
+  t = tva_ff (gr+gl, gr-gl, psibar, psi)
+end function tlr_ff
+@
+<<Implementation of bispinor currents>>=
+pure function tvam_ff (gv, ga, psibar, psi, p) result (j)
+  type(vector) :: j
+  complex(kind=default), intent(in) :: gv, ga
+  type(bispinor), intent(in) :: psibar
+  type(bispinor), intent(in) :: psi
+  type(momentum), intent(in) :: p
+  j = (tva_ff(gv, ga, psibar, psi) * p) * (0,1)
+end function tvam_ff
+@
+<<Implementation of bispinor currents>>=
+pure function tlrm_ff (gl, gr, psibar, psi, p) result (j)
+  type(vector) :: j
+  complex(kind=default), intent(in) :: gl, gr
+  type(bispinor), intent(in) :: psibar
+  type(bispinor), intent(in) :: psi
+  type(momentum), intent(in) :: p
+  j = tvam_ff (gr+gl, gr-gl, psibar, psi, p)
+end function tlrm_ff
+@
 and
 \begin{equation}
   \fmslash{v} - \fmslash{a}\gamma_5 =
@@ -6697,7 +6751,8 @@ $v^*=v_1-\ii v_2$, $a=a_1+\ii a_2$, and $a^*=a_1-\ii a_2$.  But note
 that~$\cdot^*$ is \emph{not} complex conjugation for complex~$v_\mu$
 or~$a_\mu$.
 <<Declaration of bispinor currents>>=
-public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f
+public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f, &
+          f_tvaf, f_tlrf, f_tvamf, f_tlrmf
 @
 <<Implementation of bispinor currents>>=
 pure function f_vaf (gv, ga, v, psi) result (vpsi)
@@ -6819,6 +6874,59 @@ pure function f_vlrf (gl, gr, v, psi) result (vpsi)
   type(bispinor), intent(in) :: psi
   vpsi = f_vaf (gl+gr, gl-gr, v, psi)
 end function f_vlrf
+@
+<<Implementation of bispinor currents>>=
+pure function f_tvaf (gv, ga, t, psi) result (tpsi)
+  type(bispinor) :: tpsi
+  complex(kind=default), intent(in) :: gv, ga
+  type(tensor2odd), intent(in) :: t
+  type(bispinor), intent(in) :: psi
+  complex(kind=default) :: gl, gr
+  complex(kind=default) :: e21, e21s, b12, b12s, be3, be3s
+  gr   = gv + ga
+  gl   = gv - ga
+  e21  = t%e(2) + t%e(1)*(0,1)
+  e21s = t%e(2) - t%e(1)*(0,1)
+  b12  = t%b(1) + t%b(2)*(0,1)
+  b12s = t%b(1) - t%b(2)*(0,1)
+  be3  = t%b(3) + t%e(3)*(0,1)
+  be3s = t%b(3) - t%e(3)*(0,1)
+  tpsi%a(1) =   2*gl * (   psi%a(1) * be3  + psi%a(2) * ( e21 +b12s))
+  tpsi%a(2) =   2*gl * ( - psi%a(2) * be3  + psi%a(1) * (-e21s+b12 ))
+  tpsi%a(3) =   2*gr * (   psi%a(3) * be3s + psi%a(4) * (-e21 +b12s))
+  tpsi%a(4) =   2*gr * ( - psi%a(4) * be3s + psi%a(3) * ( e21s+b12 ))
+end function f_tvaf
+@
+<<Implementation of bispinor currents>>=
+pure function f_tlrf (gl, gr, t, psi) result (tpsi)
+  type(bispinor) :: tpsi
+  complex(kind=default), intent(in) :: gl, gr
+  type(tensor2odd), intent(in) :: t
+  type(bispinor), intent(in) :: psi
+  tpsi = f_tvaf (gr+gl, gr-gl, t, psi)
+end function f_tlrf
+@
+<<Implementation of bispinor currents>>=
+pure function f_tvamf (gv, ga, v, psi, k) result (vpsi)
+  type(bispinor) :: vpsi
+  complex(kind=default), intent(in) :: gv, ga
+  type(vector), intent(in) :: v
+  type(bispinor), intent(in) :: psi
+  type(momentum), intent(in) :: k
+  type(tensor2odd) :: t
+  t = (v.wedge.k) * (0, 0.5)
+  vpsi = f_tvaf(gv, ga, t, psi)
+end function f_tvamf
+@
+<<Implementation of bispinor currents>>=
+pure function f_tlrmf (gl, gr, v, psi, k) result (vpsi)
+  type(bispinor) :: vpsi
+  complex(kind=default), intent(in) :: gl, gr
+  type(vector), intent(in) :: v
+  type(bispinor), intent(in) :: psi
+  type(momentum), intent(in) :: k
+  vpsi = f_tvamf (gr+gl, gr-gl, v, psi, k)
+end function f_tlrmf
 @ \subsection{Fermionic Scalar and Pseudo Scalar Couplings}
 <<Declaration of bispinor currents>>=
 public :: sp_ff, s_ff, p_ff, sl_ff, sr_ff, slr_ff
@@ -11380,15 +11488,16 @@ program test_omega95_bispinors
   integer :: i, j
   real(kind=default) :: m, pabs, qabs, tabs, zabs, w
   real(kind=default), dimension(4) :: r
-  complex(kind=default) :: c_one, c_two
+  complex(kind=default) :: c_nil, c_one, c_two
   type(momentum) :: p, q, t, z, p_0
   type(vector) :: vp, vq, vt, vz
   type(vectorspinor) :: testv
   type(bispinor) :: vv
   logical :: passed
   call random_seed ()
-  c_one = 1
-  c_two = 2
+  c_nil = 0.0_default
+  c_one = 1.0_default
+  c_two = 2.0_default
   w = 1.4142
   m = 13
   pabs = 42
@@ -11495,6 +11604,41 @@ if (m == 0) then
    call expect ((vp-vq)*a_ff(c_one,u(m,p,+1),v(m,q,+1)), 0, "d(vbar(+).A.v(+))=0", passed)
    call expect ((vp-vq)*a_ff(c_one,u(m,p,-1),v(m,q,-1)), 0, "d(vbar(-).A.v(-))=0", passed)
 end if
+<<Test [[omega95_bispinors]]>>=
+print *, "*** Checking implementation of the sigma vertex funktions ***:"
+call expect ((vp*tvam_ff(c_one,c_nil,v(m,p,+1),u(m,q,+1),q) - (p*q-m**2)*(v(m,p,+1)*u(m,q,+1))), 0, &
+             "p*[ubar(p,+).(Isigma*q).u(q,+)] - (p*q-m^2)*ubar(p,+).u(q,+) = 0", passed)
+call expect ((vp*tvam_ff(c_one,c_nil,v(m,p,-1),u(m,q,-1),q) - (p*q-m**2)*(v(m,p,-1)*u(m,q,-1))), 0, &
+             "p*[ubar(p,-).(Isigma*q).u(q,-)] - (p*q-m^2)*ubar(p,-).u(q,-) = 0", passed)
+call expect ((vp*tvam_ff(c_one,c_nil,u(m,p,+1),v(m,q,+1),q) - (p*q-m**2)*(u(m,p,+1)*v(m,q,+1))), 0, &
+             "p*[vbar(p,+).(Isigma*q).v(q,+)] - (p*q-m^2)*vbar(p,+).v(q,+) = 0", passed)
+call expect ((vp*tvam_ff(c_one,c_nil,u(m,p,-1),v(m,q,-1),q) - (p*q-m**2)*(u(m,p,-1)*v(m,q,-1))), 0, &
+             "p*[vbar(p,-).(Isigma*q).v(q,-)] - (p*q-m^2)*vbar(p,-).v(q,-) = 0", passed)
+call expect ((v(m,p,+1)*f_tvamf(c_one,c_nil,vp,u(m,q,+1),q) - (p*q-m**2)*(v(m,p,+1)*u(m,q,+1))), 0, &
+             "ubar(p,+).[p*(Isigma*q).u(q,+)] - (p*q-m^2)*ubar(p,+).u(q,+) = 0", passed)
+call expect ((v(m,p,-1)*f_tvamf(c_one,c_nil,vp,u(m,q,-1),q) - (p*q-m**2)*(v(m,p,-1)*u(m,q,-1))), 0, &
+             "ubar(p,-).[p*(Isigma*q).u(q,-)] - (p*q-m^2)*ubar(p,-).u(q,-) = 0", passed)
+call expect ((u(m,p,+1)*f_tvamf(c_one,c_nil,vp,v(m,q,+1),q) - (p*q-m**2)*(u(m,p,+1)*v(m,q,+1))), 0, &
+             "vbar(p,+).[p*(Isigma*q).v(q,+)] - (p*q-m^2)*vbar(p,+).v(q,+) = 0", passed)
+call expect ((u(m,p,-1)*f_tvamf(c_one,c_nil,vp,v(m,q,-1),q) - (p*q-m**2)*(u(m,p,-1)*v(m,q,-1))), 0, &
+             "vbar(p,-).[p*(Isigma*q).v(q,-)] - (p*q-m^2)*vbar(p,-).v(q,-) = 0", passed)
+
+call expect ((vp*tvam_ff(c_nil,c_one,v(m,p,+1),u(m,q,+1),q) - (p*q+m**2)*p_ff(c_one,v(m,p,+1),u(m,q,+1))), 0, &
+             "p*[ubar(p,+).(Isigma*q).g5.u(q,+)] - (p*q+m^2)*ubar(p,+).g5.u(q,+) = 0", passed)
+call expect ((vp*tvam_ff(c_nil,c_one,v(m,p,-1),u(m,q,-1),q) - (p*q+m**2)*p_ff(c_one,v(m,p,-1),u(m,q,-1))), 0, &
+             "p*[ubar(p,-).(Isigma*q).g5.u(q,-)] - (p*q+m^2)*ubar(p,-).g5.u(q,-) = 0", passed)
+call expect ((vp*tvam_ff(c_nil,c_one,u(m,p,+1),v(m,q,+1),q) - (p*q+m**2)*p_ff(c_one,u(m,p,+1),v(m,q,+1))), 0, &
+             "p*[vbar(p,+).(Isigma*q).g5.v(q,+)] - (p*q+m^2)*vbar(p,+).g5.v(q,+) = 0", passed)
+call expect ((vp*tvam_ff(c_nil,c_one,u(m,p,-1),v(m,q,-1),q) - (p*q+m**2)*p_ff(c_one,u(m,p,-1),v(m,q,-1))), 0, &
+             "p*[vbar(p,-).(Isigma*q).g5.v(q,-)] - (p*q+m^2)*vbar(p,-).g5.v(q,-) = 0", passed)
+call expect ((v(m,p,+1)*f_tvamf(c_nil,c_one,vp,u(m,q,+1),q) - (p*q+m**2)*p_ff(c_one,v(m,p,+1),u(m,q,+1))), 0, &
+             "p*[ubar(p,+).(Isigma*q).g5.u(q,+)] - (p*q+m^2)*ubar(p,+).g5.u(q,+) = 0", passed)
+call expect ((v(m,p,-1)*f_tvamf(c_nil,c_one,vp,u(m,q,-1),q) - (p*q+m**2)*p_ff(c_one,v(m,p,-1),u(m,q,-1))), 0, &
+             "p*[ubar(p,-).(Isigma*q).g5.u(q,-)] - (p*q+m^2)*ubar(p,-).g5.u(q,-) = 0", passed)
+call expect ((u(m,p,+1)*f_tvamf(c_nil,c_one,vp,v(m,q,+1),q) - (p*q+m**2)*p_ff(c_one,u(m,p,+1),v(m,q,+1))), 0, &
+             "p*[vbar(p,+).(Isigma*q).g5.v(q,+)] - (p*q+m^2)*vbar(p,+).g5.v(q,+) = 0", passed)
+call expect ((u(m,p,-1)*f_tvamf(c_nil,c_one,vp,v(m,q,-1),q) - (p*q+m**2)*p_ff(c_one,u(m,p,-1),v(m,q,-1))), 0, &
+             "p*[vbar(p,-).(Isigma*q).g5.v(q,-)] - (p*q+m^2)*vbar(p,-).g5.v(q,-) = 0", passed)
 @
 <<Test [[omega95_bispinors]]>>=
 print *, "*** Checking polarization vectors: ***"

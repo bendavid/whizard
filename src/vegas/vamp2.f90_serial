@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -883,14 +883,10 @@ contains
     end do nchannel
     ch = min (ch, self%config%n_channel)
     call func%set_channel (ch)
-    call msg_debug (D_VAMP2, "vamp2_generate_weighted_event")
-    call msg_debug (D_VAMP2, "Selected channel", ch)
-    call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
     call self%integrator(ch)%generate_weighted (func, rng, x)
     ! Norm weight by f_max, hidden in event_weight(ch), else by 1
     self%result%evt_weight = self%integrator(ch)%get_evt_weight () &
          * self%weight(ch) / self%event_weight(ch)
-    call msg_debug2 (D_VAMP2, "Event weight", self%result%evt_weight)
   contains
     subroutine prepare_event ()
       integer :: i
@@ -934,15 +930,8 @@ contains
        end do nchannel
        ch = min (ch, self%config%n_channel)
        call func%set_channel (ch)
-       if (debug_active (D_VAMP2)) then
-          call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
-          call msg_debug (D_VAMP2, "Selected channel", ch)
-          call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
-       end if
        call self%integrator(ch)%generate_weighted (func, rng, x)
        self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
-       if (debug_active (D_VAMP2)) &
-          call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
        max_abs_f = merge ( &
             self%integrator(ch)%get_max_abs_f_pos (), &
             self%integrator(ch)%get_max_abs_f_neg (), &
@@ -953,26 +942,9 @@ contains
           exit generate
        end if
        call rng%generate (r)
-       if (debug2_active (D_VAMP2)) then
-          print *, "max_abs_f    = ", max_abs_f
-          print *, "rescale      = ", event_rescale
-          print *, "r            = ", r
-          print *, "accept       = ", event_rescale * max_abs_f * r
-          print *, "x            = ", x
-          print *, "Event Excess = ", self%result%evt_weight_excess
-       end if
        ! Do not use division, because max_abs_f could be zero.
        if (event_rescale * max_abs_f * r <= abs(self%result%evt_weight)) then
-          call msg_debug (D_VAMP2, "accept event")
           exit generate
-       else
-          if (debug2_active (D_VAMP2)) then
-             print *, "diff           = ", abs(self%result%evt_weight) - (event_rescale * max_abs_f * r)
-             print *, "max_abs_f_pos  = ", self%integrator(ch)%get_max_abs_f_pos ()
-             print *, "max_abs_f_neg  = ", self%integrator(ch)%get_max_abs_f_neg ()
-             print *, "sign           = ", (self%result%evt_weight > 0.)
-          end if
-          call msg_debug (D_VAMP2, "do not accept event")
        end if
     end do generate
   contains

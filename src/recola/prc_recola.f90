@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,6 +33,7 @@ module prc_recola
   use kinds
   use constants, only: pi, zero
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use string_utils, only: str
   use system_defs, only: TAB
   use diagnostics
@@ -165,7 +166,7 @@ contains
     integer, intent(in) :: alpha_power
     integer, intent(in) :: alphas_power
     type(string_t), intent(in) :: correction_type
-    call msg_debug (D_ME_METHODS, "recola_def_init: " &
+    if (debug_on) call msg_debug (D_ME_METHODS, "recola_def_init: " &
          // char (basename) // ", nlo_type", nlo_type)
     object%basename = basename
     object%alpha_power = alpha_power
@@ -218,14 +219,14 @@ contains
   subroutine recola_writer_set_id (writer, id)
     class(recola_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: id
-    call msg_debug2 (D_ME_METHODS, "Recola writer: id = " // char (id))
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "Recola writer: id = " // char (id))
     writer%id = id
   end subroutine recola_writer_set_id
   
   subroutine recola_writer_set_order (writer, order)
     class(recola_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: order
-    call msg_debug2 (D_ME_METHODS, "Recola writer: order = " // char (order))
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "Recola writer: order = " // char (order))
     writer%order = order
   end subroutine recola_writer_set_order
   
@@ -233,8 +234,8 @@ contains
     class(recola_writer_t), intent(inout) :: writer
     integer, intent(in) :: alpha_power
     integer, intent(in) :: alphas_power
-    call msg_debug2 (D_ME_METHODS, "Recola writer: alphas_power", alphas_power)
-    call msg_debug2 (D_ME_METHODS, "Recola writer: alpha_power", alpha_power)
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "Recola writer: alphas_power", alphas_power)
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "Recola writer: alpha_power", alpha_power)
     writer%alpha_power = alpha_power
     writer%alphas_power = alphas_power
   end subroutine recola_writer_set_coupling_powers
@@ -320,7 +321,7 @@ contains
        call rclwrap_define_processes ()
     end do SCAN_FLV_LIST
     call close_flv_list (unit)
-    call msg_debug (D_ME_METHODS, "RECOLA: processes for '" &
+    if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: processes for '" &
          // char (writer%id) // "' registered")
   end subroutine prc_recola_register_processes
 
@@ -356,7 +357,7 @@ contains
     class(recola_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
-    call msg_debug2 (D_ME_METHODS, "recola_def_allocate_driver")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "recola_def_allocate_driver")
     allocate (recola_driver_t :: driver)
   end subroutine recola_def_allocate_driver
 
@@ -442,7 +443,7 @@ contains
      type(model_data_t), intent(in), target :: model
      integer, intent(in) :: i_core
      logical, intent(in) :: is_nlo
-     call msg_debug (D_ME_METHODS, "prc_recola_prepare_external_code (no-op)")
+     if (debug_on) call msg_debug (D_ME_METHODS, "prc_recola_prepare_external_code (no-op)")
   end subroutine prc_recola_prepare_external_code
 
   subroutine prc_recola_set_parameters (object, qcd, model)
@@ -450,7 +451,7 @@ contains
     type(qcd_t), intent(in) :: qcd
     class(model_data_t), intent(in), target, optional :: model
 
-    call msg_debug (D_ME_METHODS, "RECOLA: set_parameters")
+    if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: set_parameters")
     object%qcd = qcd
     call rclwrap_set_dynamic_settings ()
     call rclwrap_set_pole_mass &
@@ -488,7 +489,7 @@ contains
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
     integer :: n_flv
-    call msg_debug (D_ME_METHODS, "RECOLA: init process object")
+    if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: init process object")
     call object%base_init (def, lib, id, i_component)
     n_flv = object%get_n_flvs (1)
     allocate (object%recola_ids(n_flv))
@@ -501,11 +502,10 @@ contains
   end subroutine prc_recola_init
   
   subroutine prc_recola_replace_helicity_and_color_arrays (object)
-    ! TODO: Adjust routine for multiple recola ids
     class(prc_recola_t), intent(inout) :: object
     integer, dimension(:,:), allocatable :: col_recola
     integer :: i
-    call msg_debug (D_ME_METHODS, "RECOLA: replace_helicity_and_color_arrays")
+    if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: replace_helicity_and_color_arrays")
     deallocate (object%data%hel_state)
     call rclwrap_get_helicity_configurations &
          (object%recola_ids(1), object%data%hel_state)
@@ -535,7 +535,7 @@ contains
     logical :: new_event
     complex(double) :: amp_dble
 
-    call msg_debug2 (D_ME_METHODS, "prc_recola_compute_amplitude")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_amplitude")
     if (present (core_state)) then
        if (allocated (core_state)) then
           select type (core_state)
@@ -571,13 +571,13 @@ contains
      integer :: i
      integer :: alphas_power
      ! TODO sbrass: Helicity for RECOLA
-     call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
+     if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
      do i = 1, object%data%n_in + object%data%n_out
         p_recola(:, i) = dble(p(i)%p)
      end do
      alpha_s = object%qcd%alpha%get (ren_scale)
-     call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
-     call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
+     if (debug_on) call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
+     if (debug_on) call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
      call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
      call rclwrap_set_mu_ir (dble (ren_scale))
      call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'LO')
@@ -602,7 +602,7 @@ contains
     real(default) :: alpha_s
     integer :: i
     ! TODO sbrass Helicity for RECOLA
-    call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt")
     sqme = zero
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)

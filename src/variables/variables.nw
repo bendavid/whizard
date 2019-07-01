@@ -3971,25 +3971,25 @@ procedure with type [[V_NONE]].
     call var_list%append_int (var_str ("real_range"), &
          range (real_specimen), intrinsic = .true., locked = .true., &
          description=var_str ('This integer gives the decimal exponent ' // &
-         'range of the numeric model for the real float type in use. It cannot ' // & 
+         'range of the numeric model for the real float type in use. It cannot ' // &
          'be set by the user. (cf. also \ttt{real\_precision}, ' // &
          '\ttt{real\_epsilon}, \ttt{real\_tiny}).'))
     call var_list%append_int (var_str ("real_precision"), &
          precision (real_specimen), intrinsic = .true., locked = .true., &
          description=var_str ('This integer gives the precision of ' // &
-         'the numeric model for the real float type in use. It cannot ' // & 
+         'the numeric model for the real float type in use. It cannot ' // &
          'be set by the user. (cf. also \ttt{real\_range}, ' // &
          '\ttt{real\_epsilon}, \ttt{real\_tiny}).'))
     call var_list%append_real (var_str ("real_epsilon"), &
          epsilon (real_specimen), intrinsic = .true., locked = .true., &
          description=var_str ('This gives the smallest number $E$ ' // &
-         'of the same kind as the float type for which $1 + E > 1$. ' // & 
+         'of the same kind as the float type for which $1 + E > 1$. ' // &
          'It cannot be set by the user. (cf. also \ttt{real\_range}, ' // &
          '\ttt{real\_tiny}, \ttt{real\_precision}).'))
     call var_list%append_real (var_str ("real_tiny"), &
          tiny (real_specimen), intrinsic = .true., locked = .true., &
          description=var_str ('This gives the smallest positive (non-zero) ' // &
-         'number in the numeric model for the real float type in use. ' // & 
+         'number in the numeric model for the real float type in use. ' // &
          'It cannot be set by the user. (cf. also \ttt{real\_range}, ' // &
          '\ttt{real\_epsilon}, \ttt{real\_precision}).'))
   end subroutine var_list_set_core_defaults
@@ -4846,7 +4846,7 @@ procedure with type [[V_NONE]].
          var_str ("undefined_jet_algorithm"), &
          undefined_jet_algorithm, &
          intrinsic = .true., locked = .true., &
-         description=var_str ('This is just a place holder for any kind of jet ' // & 
+         description=var_str ('This is just a place holder for any kind of jet ' // &
          'jet algorithm that is not further specified.  (cf. also \ttt{kt\_algorithm}, ' // &
          '\ttt{cambridge\_for\_passive\_algorithm}, \newline ' // &
          '\ttt{genkt\_[for\_passive\_]algorithm}, \ttt{ee\_[gen]kt\_algorithm}, ' // &
@@ -5306,7 +5306,7 @@ procedure with type [[V_NONE]].
          '...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active})'))
     call var_list%append_string (var_str ("$ps_PYTHIA8_config_file"), var_str (""), &
          intrinsic=.true., &
-         description=var_str ('String variable that allows to pass a filename to a ' // & 
+         description=var_str ('String variable that allows to pass a filename to a ' // &
          '\pythia\ttt{8} configuration file.'))
     call var_list%append_real (&
          var_str ("ps_mass_cutoff"), 1._default, intrinsic = .true., &
@@ -5744,7 +5744,7 @@ procedure with type [[V_NONE]].
          description=var_str ('This string variable specifies ' // &
          'the method for the matrix elements to be used in the evaluation ' // &
          'of the color (and helicity) correlated part of the NLO computation. ' // &
-         "The default is the same as the \ttt{\$method}, i.e. the intrinsic " // & 
+         "The default is the same as the \ttt{\$method}, i.e. the intrinsic " // &
          "\oMega\ matrix element generator " // &
          '(\ttt{"omega"}), other options are: \ttt{"ovm"}, \ttt{"unit\_test"}, ' // &
          '\ttt{"template"}, \ttt{"template\_unity"}, \ttt{"threshold"}, ' // &
@@ -5826,7 +5826,7 @@ procedure with type [[V_NONE]].
          '\ttt{alpha\_thompson} for different schemes with $\alpha$ as input.'))
     call var_list%append_int (var_str ("openloops_verbosity"), 1, &
          intrinsic = .true., &
-         description=var_str ('Decides how much \openloops output is printed. ' // &
+         description=var_str ('Decides how much \openloops\ output is printed. ' // &
          'Can have values 0, 1 and 2, where 2 is the highest verbosity level.'))
     call var_list%append_log (var_str ("?openloops_use_cms"), &
          .true., intrinsic = .true., &
@@ -5913,20 +5913,20 @@ procedure with type [[V_NONE]].
         1.0_default, intrinsic = .true., &
         description = var_str ('Real paramter for the FKS ' // &
         'phase space that applies a cut to $\xi$ variable with $0 < \xi_{\text{cut}}' // &
-        '\leq \xi_{\text{max}}$. The dependence on the parameter vanishs between ' // &
+        '\leq \xi_{\text{max}}$. The dependence on the parameter vanishes between ' // &
         'real subtraction and integrated subtraction term.'))
-   call var_list%append_real (var_str ("fks_delta_zero"), &
+   call var_list%append_real (var_str ("fks_delta_o"), &
         2._default, intrinsic = .true., &
         description = var_str ('Real paramter for the FKS ' // &
-        'phase space that applies a cut to the $y$ variable with $0 < \delta_0 \leq 2$. ' // &
-        'The dependence on the parameter vanishs between real subtraction and integrated' // &
+        'phase space that applies a cut to the $y$ variable with $0 < \delta_o \leq 2$. ' // &
+        'The dependence on the parameter vanishes between real subtraction and integrated ' // &
         'subtraction term.'))
    call var_list%append_real (var_str ("fks_delta_i"), &
         2._default, intrinsic = .true., &
         description = var_str ('Real paramter for the FKS ' // &
         'phase space that applies a cut to the $y$ variable with $0 < \delta_{\mathrm{I}} \leq 2$ '// &
         'for initial state singularities only. ' // &
-        'The dependence on the parameter vanishs between real subtraction and integrated' // &
+        'The dependence on the parameter vanishes between real subtraction and integrated ' // &
         'subtraction term.'))
    call var_list%append_string (var_str ("$fks_mapping_type"), &
          var_str ("default"), intrinsic = .true., &

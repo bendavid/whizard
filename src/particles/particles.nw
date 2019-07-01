@@ -2208,8 +2208,6 @@ transforming from/to polarization defined by a three-vector.  For
 antiparticles, the two-component flips sign in that case.  When
 transforming from/to a state matrix or [[pmatrix]] representation, we
 do not apply this sign flip.
-
-TODO: Check these conventions for consistency.
 <<Polarizations: public>>=
   public :: polarization_t
 <<Polarizations: types>>=
@@ -2443,7 +2441,6 @@ matrix, then set the Bloch vector with this input.
 For a naturally chiral particle (i.e., neutrino), we do not set the
 polarization vector, it is implied.
 
-TODO: The state matrix does not support an antiparticle flag.
 Therefore, we cannot account for any sign flip and transform as-is.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_state_matrix => polarization_init_state_matrix
@@ -3104,7 +3101,7 @@ spin-density matrix.  After the matrix has been filled, we can fix spin type
 and multiplicity for a particle, check the matrix for consistency, and
 normalize it if necessary.
 
-TODO: This implementation does not have an antiparticle flag, just
+This implementation does not have an antiparticle flag, just
 like the state matrix object.  We therefore cannot account for sign
 flips when using this object.
 
@@ -3351,7 +3348,7 @@ Cartan generators.  The [[set]] method therefore should not erase
 those initial contents.  This is a constraint for the implementation
 of [[set]], as applied to the Bloch vector.
 
-TODO: As mentioned above, [[pmatrix_t]] does not support an
+As mentioned above, [[pmatrix_t]] does not support an
 antiparticle flag.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_pmatrix => polarization_init_pmatrix
@@ -3885,6 +3882,7 @@ module particles
 
 <<Use kinds with double>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use format_utils, only: write_compressed_integer_array, write_separator
   use format_utils, only: pac_fmt
@@ -4817,9 +4815,6 @@ particles.  The individual particle entries carry momentum, quantum
 numbers, polarization, and optionally connections.  There is (also
 optionally) a correlated state-density matrix that maintains spin
 correlations that are lost in the individual particle entries.
-
-TODO: consider making this opaque (PRIVATE), might require some additional
-access methods.
 <<Particles: public>>=
   public :: particle_set_t
 <<Particles: types>>=
@@ -5138,8 +5133,6 @@ We assume that the [[pdg]] array has the correct size.
 determine the new positions of particles.  The new set contains [[n_new]]
 additional entries.  Count the new, undefined particles as
 virtual.
-
-TODO: implement mapping for the state matrix.
 <<Particles: particle set: TBP>>=
   procedure :: transfer => particle_set_transfer
 <<Particles: procedures>>=
@@ -6339,9 +6332,9 @@ $i \to \text{something and} j$.
                      rel_smallness = 1E4_default * smallness))) then
                    if (child_i == 0 .or. j == child_i) then
                       to_remove(j) = i
-                      call msg_debug2 (D_PARTICLES, &
+                      if (debug_on) call msg_debug2 (D_PARTICLES, &
                            "Particles: Will remove duplicate of i", i)
-                      call msg_debug2 (D_PARTICLES, &
+                      if (debug_on) call msg_debug2 (D_PARTICLES, &
                            "Particles: j", j)
                    end if
                    cycle OUTER
@@ -6371,8 +6364,8 @@ $i \to \text{something and} j$.
     integer :: kept, removed, i, j
     integer, dimension(:), allocatable :: old_children
     logical, dimension(:), allocatable :: parent_set
-    call msg_debug (D_PARTICLES, "Particles: Removing duplicates")
-    call msg_debug (D_PARTICLES, "Particles: n_removals", n_removals)
+    if (debug_on) call msg_debug (D_PARTICLES, "Particles: Removing duplicates")
+    if (debug_on) call msg_debug (D_PARTICLES, "Particles: n_removals", n_removals)
     if (debug2_active (D_PARTICLES)) then
        call msg_debug2 (D_PARTICLES, "Particles: Given set before removing:")
        call particle_set%write (summary=.true., compressed=.true.)
@@ -6531,7 +6524,7 @@ The correlated state matrix, if any, is also ignored.
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     rp = .false.; if (present (real_parents)) rp = real_parents
     kv = .true.; if (present (keep_virtuals)) kv = keep_virtuals
-    call msg_debug (D_PARTICLES, "filter_particles")
+    if (debug_on) call msg_debug (D_PARTICLES, "filter_particles")
     if (debug2_active (D_PARTICLES)) then
        print *, 'keep_beams =    ', kb
        print *, 'real_parents =    ', rp

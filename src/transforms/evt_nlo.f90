@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module evt_nlo
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units, only: given_output_unit
   use constants
   use lorentz
@@ -39,7 +40,6 @@ module evt_nlo
   use model_data
   use particles
   use instances, only: process_instance_t
-  ! TODO (cw-2016-09-16): Ideally, only pcm_base
   use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
   use process_stacks
   use event_transforms
@@ -133,7 +133,7 @@ contains
     type(process_instance_t), intent(in), target :: process_instance
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
-    call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
     call evt%base_connect (process_instance, model, process_stack)
     select type (pcm => process_instance%pcm)
     class is (pcm_instance_nlo_t)
@@ -149,7 +149,7 @@ contains
     call evt%setup_general_event_kinematics (process_instance)
     if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) &
          call evt%setup_real_event_kinematics (process_instance)
-    call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
+    if (debug_on) call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
   end subroutine evt_nlo_connect
 
   subroutine evt_nlo_set_i_evaluation_mappings (evt, reg_data, alr_to_i_phs)
@@ -285,10 +285,10 @@ contains
           call evt%compute_real ()
           probability = evt%sqme_rad
        end if
-       call msg_debug2 (D_TRANSFORMS, "event weight multiplier:", evt%weight_multiplier)
+       if (debug_on) call msg_debug2 (D_TRANSFORMS, "event weight multiplier:", evt%weight_multiplier)
        probability = probability * evt%weight_multiplier
     end if
-    call msg_debug (D_TRANSFORMS, "probability (after)", probability)
+    if (debug_on) call msg_debug (D_TRANSFORMS, "probability (after)", probability)
     evt%particle_set_exists = .true.
   contains
     function status_code_to_string (mode) result (smode)
@@ -307,10 +307,10 @@ contains
     end function status_code_to_string
 
     subroutine print_debug_info ()
-       call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
-       call msg_debug (D_TRANSFORMS, char ("mode: " // status_code_to_string (evt%mode)))
-       call msg_debug (D_TRANSFORMS, "probability (before)", probability)
-       call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
+       if (debug_on) call msg_debug (D_TRANSFORMS, char ("mode: " // status_code_to_string (evt%mode)))
+       if (debug_on) call msg_debug (D_TRANSFORMS, "probability (before)", probability)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
        if (debug2_active (D_TRANSFORMS)) then
           if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) then
              if (evt%i_evaluation == 0) then
@@ -436,7 +436,7 @@ contains
     class(evt_nlo_t), intent(inout) :: evt
     real(default) :: weight
     integer :: i_phs, i_term
-    call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
     weight = zero
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
@@ -451,7 +451,7 @@ contains
   subroutine evt_nlo_compute_real (evt)
     class(evt_nlo_t), intent(inout) :: evt
     integer :: i_phs, i_term
-    call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
     i_phs = evt%get_i_phs ()
     i_term = evt%i_evaluation_to_i_term (evt%i_evaluation)
     select type (pcm => evt%process_instance%pcm)

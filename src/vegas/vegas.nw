@@ -274,7 +274,6 @@ Anytime else, we refine the grid accordingly to [[w]].
     integer :: i, j, k
     real(default) :: pts_per_bin
     real(default) :: d_width
-    call msg_debug (D_VAMP2, "vegas_grid_resize")
     do j = 1, self%n_dim
        if (self%n_bins /= n_bins) then
           pts_per_bin = real(self%n_bins, default) / real(n_bins, default)
@@ -293,10 +292,6 @@ Anytime else, we refine the grid accordingly to [[w]].
              d_width = d_width + w(k, j)
           end do
           d_width = d_width - pts_per_bin
-          if (debug_active (D_VAMP2)) then
-             print *, "  pts_per_bin = ", pts_per_bin, ", d_width = ", d_width
-             print *, "  j = ", j, ",  k = ", k, ", i = ", i
-          end if
           associate (x_upper => self%xi(k + 1, j), x_lower => self%xi(k, j))
             xi_new(i) = x_upper - (x_upper - x_lower) * d_width / w(k, j)
           end associate
@@ -1261,10 +1256,6 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
           loop_over_perp_boxes: do while (box_success)
              fval_box = 0._default
              fval_sq_box = 0._default
-             if (debug2_active (D_VAMP2)) then
-                print *, "box:"
-                print *, self%box
-             end if
              do k = 1, self%config%calls_per_box
                 call self%random_point (rng, x, bin_volume)
                 ! Call the function, yeah, call it...
@@ -1281,16 +1272,6 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
                 end if
                 if (self%config%mode /= VEGAS_MODE_STRATIFIED) then
                    call self%accumulate_distribution (fval_sq)
-                end if
-                if (debug2_active (D_VAMP2)) then
-                   print *, "fval          = ", fval
-                   print *, "fval_sq       = ", fval_sq
-                   print *, "fval_box      = ", fval_box
-                   print *, "fval_box_sq   = ", fval_sq_box
-                   print *, "sum_abs_f_pos = ", sum_abs_f_pos
-                   print *, "sum_abs_f_neg = ", sum_abs_f_neg
-                   print *, "max_abs_f_pos = ", max_abs_f_pos
-                   print *, "max_abs_f_neg = ", max_abs_f_neg
                 end if
              end do
              fval_sq_box = sqrt (fval_sq_box * self%config%calls_per_box)
@@ -1371,10 +1352,6 @@ Also, during event generation.
   subroutine calculate_efficiency ()
     self%result%max_abs_f_pos = self%config%n_calls * max_abs_f_pos
     self%result%max_abs_f_neg = self%config%n_calls * max_abs_f_neg
-    call msg_debug (D_VAMP2, "max_abs_f_pos", self%result%max_abs_f_pos)
-    call msg_debug (D_VAMP2, "max_abs_f_neg", self%result%max_abs_f_neg)
-    call msg_debug (D_VAMP2, "sum_abs_f_pos", sum_abs_f_pos)
-    call msg_debug (D_VAMP2, "sum_abs_f_neg", sum_abs_f_neg)
     self%result%max_abs_f = &
          & max (self%result%max_abs_f_pos, self%result%max_abs_f_neg)
     self%result%efficiency_pos = 0.
@@ -1572,7 +1549,6 @@ parallelization is useless.
     real(default) :: r, y, z, bin_width
     bin_volume = 1.
     ndim: do j = 1, self%config%n_dim
-       call msg_debug2 (D_VAMP2, "j", j)
        call rng%generate (r)
        z = ((self%box(j) - 1 + r) / self%config%n_boxes) * self%config%n_bins + 1
        self%bin(j) = max (min (int (z), self%config%n_bins), 1)
@@ -1585,15 +1561,7 @@ parallelization is useless.
        end if
        x(j) = self%grid%x_lower(j) + y * self%grid%delta_x(j)
        bin_volume = bin_volume * bin_width
-       if (debug2_active (D_VAMP2)) then
-          print *, "r      =", r
-          print *, "z      =", z
-          print *, "bin(j) =", self%bin(j)
-          print *, "y      =", y
-          print *, "x(j)   =", x(j)
-       end if
     end do ndim
-    call msg_debug2 (D_VAMP2, "bin_volume", bin_volume)
   end subroutine vegas_random_point
 
 @ %def vegas_random_point
@@ -1613,7 +1581,6 @@ only for event generation.
     real(default) :: r, y, z, bin_width
     bin_volume = 1.
     ndim: do j = 1, self%config%n_dim
-       call msg_debug2 (D_VAMP2, "j", j)
        call rng%generate (r)
        z = r * self%config%n_bins + 1
        k = max (min (int (z), self%config%n_bins), 1)
@@ -1626,15 +1593,7 @@ only for event generation.
        end if
        x(j) = self%grid%x_lower(j) + y * self%grid%delta_x(j)
        bin_volume = bin_volume * bin_width
-       if (debug2_active (D_VAMP2)) then
-          print *, "r      =", r
-          print *, "z      =", z
-          print *, "bin(j) =", self%bin(j)
-          print *, "y      =", y
-          print *, "x(j)   =", x(j)
-       end if
     end do ndim
-    call msg_debug2 (D_VAMP2, "bin_volume", bin_volume)
   end subroutine vegas_simple_random_point
 
 @ %def vegas_simple_random_point
@@ -1675,7 +1634,6 @@ We have to factor out $N_{\text{calls}}$ to retrieve the correct weight.
     ! Cancel n_calls from jacobian with n_calls
     self%result%evt_weight = self%config%n_calls * self%jacobian * bin_volume &
          & * func%evaluate (x)
-    call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
   end subroutine vegas_generate_weighted_event
 
 @ %def vegas_generate_weighted_event
@@ -1709,11 +1667,6 @@ the maximum weight, we update the maximum, accordingly.
             exit generate
          end if
          call rng%generate (r)
-         if (debug2_active (D_VAMP2)) then
-            print *, "max_abs_f    = ", max_abs_f
-            print *, "accept       = ", max_abs_f * r
-            print *, "x            = ", x
-         end if
          ! Do not use division, because max_abs_f could be zero.
          if (max_abs_f * r <= abs(result%evt_weight)) then
           exit generate
@@ -3797,14 +3750,10 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
     end do nchannel
     ch = min (ch, self%config%n_channel)
     call func%set_channel (ch)
-    call msg_debug (D_VAMP2, "vamp2_generate_weighted_event")
-    call msg_debug (D_VAMP2, "Selected channel", ch)
-    call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
     call self%integrator(ch)%generate_weighted (func, rng, x)
     ! Norm weight by f_max, hidden in event_weight(ch), else by 1
     self%result%evt_weight = self%integrator(ch)%get_evt_weight () &
          * self%weight(ch) / self%event_weight(ch)
-    call msg_debug2 (D_VAMP2, "Event weight", self%result%evt_weight)
   contains
   <<vamp2: vamp2 generate event: procedures>>
   end subroutine vamp2_generate_weighted_event
@@ -3845,15 +3794,8 @@ If the event is rejected, we also reject the selected channel.
        end do nchannel
        ch = min (ch, self%config%n_channel)
        call func%set_channel (ch)
-       if (debug_active (D_VAMP2)) then
-          call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
-          call msg_debug (D_VAMP2, "Selected channel", ch)
-          call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
-       end if
        call self%integrator(ch)%generate_weighted (func, rng, x)
        self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
-       if (debug_active (D_VAMP2)) &
-          call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
        max_abs_f = merge ( &
             self%integrator(ch)%get_max_abs_f_pos (), &
             self%integrator(ch)%get_max_abs_f_neg (), &
@@ -3864,26 +3806,9 @@ If the event is rejected, we also reject the selected channel.
           exit generate
        end if
        call rng%generate (r)
-       if (debug2_active (D_VAMP2)) then
-          print *, "max_abs_f    = ", max_abs_f
-          print *, "rescale      = ", event_rescale
-          print *, "r            = ", r
-          print *, "accept       = ", event_rescale * max_abs_f * r
-          print *, "x            = ", x
-          print *, "Event Excess = ", self%result%evt_weight_excess
-       end if
        ! Do not use division, because max_abs_f could be zero.
        if (event_rescale * max_abs_f * r <= abs(self%result%evt_weight)) then
-          call msg_debug (D_VAMP2, "accept event")
           exit generate
-       else
-          if (debug2_active (D_VAMP2)) then
-             print *, "diff           = ", abs(self%result%evt_weight) - (event_rescale * max_abs_f * r)
-             print *, "max_abs_f_pos  = ", self%integrator(ch)%get_max_abs_f_pos ()
-             print *, "max_abs_f_neg  = ", self%integrator(ch)%get_max_abs_f_neg ()
-             print *, "sign           = ", (self%result%evt_weight > 0.)
-          end if
-          call msg_debug (D_VAMP2, "do not accept event")
        end if
     end do generate
   contains

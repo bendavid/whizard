@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,6 +31,7 @@ module cascades
   use kinds, only: default
   use kinds, only: TC, i8, i32
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use constants, only: one
   use format_defs, only: FMT_12, FMT_19
@@ -2066,10 +2067,10 @@ contains
     integer, intent(in) :: n_out
     type(resonance_info_t) :: resonance
     integer :: i, mom_id, pdg
-    call msg_debug2 (D_PHASESPACE, "cascade_extract_resonance_history")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "cascade_extract_resonance_history")
     if (cascade%n_resonances > 0) then
        if (cascade%has_children) then
-          call msg_debug2 (D_PHASESPACE, "cascade has resonances and children")
+          if (debug_on) call msg_debug2 (D_PHASESPACE, "cascade has resonances and children")
           do i = 1, size(cascade%tree_resonant)
              if (cascade%tree_resonant (i)) then
                 mom_id = cascade%tree (i)
@@ -2091,7 +2092,7 @@ contains
     integer :: n
     type(cascade_t), pointer :: cascade
     integer :: grove
-    call msg_debug (D_PHASESPACE, "cascade_set_get_n_trees")
+    if (debug_on) call msg_debug (D_PHASESPACE, "cascade_set_get_n_trees")
     n = 0
     do grove = 1, cascade_set%n_groves
        cascade => cascade_set%first_k
@@ -2104,7 +2105,7 @@ contains
           cascade => cascade%next
        end do
     end do
-    call msg_debug (D_PHASESPACE, "n", n)
+    if (debug_on) call msg_debug (D_PHASESPACE, "n", n)
   end function cascade_set_get_n_trees
 
   subroutine cascade_set_get_resonance_histories (cascade_set, n_filter, res_hists)
@@ -2117,14 +2118,14 @@ contains
     type(resonance_history_set_t) :: res_hist_set
     integer :: grove, i, n_hists
     logical :: included, add_to_list
-    call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")
+    if (debug_on) call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")
     call res_hist_set%init (n_filter = n_filter)
     do grove = 1, cascade_set%n_groves
        cascade => cascade_set%first_k
        do while (associated (cascade))
           if (cascade%active .and. cascade%complete) then
              if (cascade%grove == grove) then
-                call msg_debug2 (D_PHASESPACE, "grove", grove)
+                if (debug_on) call msg_debug2 (D_PHASESPACE, "grove", grove)
                 call cascade%extract_resonance_history &
                      (res_hist, cascade_set%model, cascade_set%n_out)
                 call res_hist_set%enter (res_hist)

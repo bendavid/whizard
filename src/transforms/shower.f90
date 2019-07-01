@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module shower
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use format_utils, only: write_separator
   use system_defs, only: LF
@@ -160,7 +161,7 @@ contains
   subroutine evt_shower_first_event (evt)
     class(evt_shower_t), intent(inout) :: evt
     double precision :: pdftest
-    call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
     associate (settings => evt%shower%settings)
        settings%hadron_collision = .false.
        !!! !!! !!! Workaround for PGF90 v16.1
@@ -175,7 +176,7 @@ contains
        else
           call msg_fatal ("evt_shower didn't recognize beams setup")
        end if
-       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (debug_on) call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
        if (allocated (evt%matching)) then
           evt%matching%is_hadron_collision = settings%hadron_collision
           call evt%matching%first_event ()
@@ -206,7 +207,7 @@ contains
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid, vetoed
-    call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
+    if (debug_on) call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
@@ -215,7 +216,7 @@ contains
     if (allocated (evt%matching)) then
        call evt%matching%before_shower (evt%particle_set, vetoed)
        if (msg_level(D_TRANSFORMS) >= DEBUG) then
-          call msg_debug (D_TRANSFORMS, "Matching before generate emissions")
+          if (debug_on) call msg_debug (D_TRANSFORMS, "Matching before generate emissions")
           call evt%matching%write ()
        end if
     end if

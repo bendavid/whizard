@@ -231,6 +231,9 @@ Optional Features:
                           purposes only. The default never has any effect.
                           [[no]]
   --enable-fc-openmp      use OpenMP for the Fortran code [[no]]
+  --enable-fc-debug       enable debugging features for the Fortran code
+                          [[no]]
+  --disable-openmp        do not use OpenMP
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure	  compile Omega libraries impure [[no]]
   --enable-fc-mpi         use OpenMPI/MPICH for the Fortran code [[no]]
@@ -275,6 +278,7 @@ Optional Packages:
                           double are guaranteed to be provided by all
                           Fortran compilers.
   --with-mpi-lib=mpich|openmpi   request an external MPI library.
+  --with-hepmc=dir        assume the given directory for HepMC
   --with-pythia8=dir      assume the given directory for PYTHIA8
   --with-fastjet=dir      assume the given directory for FastJet
   --with-gosam=dir        assume the given directory for GoSam
@@ -306,7 +310,7 @@ Some influential environment variables:
   CXXCPP      C++ preprocessor
  
 #-------------------------------------------------------------
-# building from svn (developper version)
+# building from svn (developer version)
 #-------------------------------------------------------------
 
 You will need current versions of automake and autoconf. On some machines,
@@ -315,7 +319,12 @@ you need to have noweb to be installed for the developer version from the
 svn repository. To build the documentations, LaTeX, MetaPost and OcamlWeb 
 are also necessary tools. Although the first two are quite standard, you 
 can get them from http://www.tug.org/texlive/. Follow the instructions there.
-OcamlWeb is available from http://www.lri.fr/~filliatr/ocamlweb/.
+OcamlWeb is available from http://www.lri.fr/~filliatr/ocamlweb/. For building
+the HTML version of the manual, you also need HeVeA, which is available from
+http://hevea.inria.fr. On some Unix systems the RPC headers needed for the
+legacy StdHEP event format support are now provided via the TIRPC library. To
+test for this library, autoreconf from autotools makes use of pkg-config
+which needs to be installed for the developer version. 
 
 The check out can be done in that way:
 
@@ -331,7 +340,7 @@ Now continue with directions as if you unpacked a source code tarball.
 # building autotools
 #-------------------------------------------------------------
 
-If you do not have at least autoconf 2.65 and automake 1.10, you will 
+If you do not have at least autoconf 2.65 and automake 1.12,2 you will 
 need to build autoconf and automake.  On some platforms,  you may also
 need to build m4 and texinfo.
 

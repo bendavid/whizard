@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module matching_base
 
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use diagnostics
   use sm_qcd
   use model_data
@@ -134,7 +135,7 @@ contains
     type(process_instance_t), intent(in), target :: process_instance
     class(model_data_t), intent(in), target, optional :: model
     class(shower_base_t), intent(in), target, optional :: shower
-    call msg_debug (D_MATCHING, "matching_connect")
+    if (debug_on) call msg_debug (D_MATCHING, "matching_connect")
     matching%process_instance => process_instance
     if (present (model))  matching%model => model
     if (present (shower))  matching%shower => shower

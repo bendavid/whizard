@@ -6091,7 +6091,6 @@ allocation is moved, so the original allocated object is returned empty.
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              !  TODO: (bcn 2016-09-16) better output for subtraction
               if ((def%nlo_process .and. .not. comp%active) .or. &
                    comp%nlo_type == NLO_SUBTRACTION) then
                  d = d // " [inactive]"

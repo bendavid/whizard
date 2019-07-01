@@ -545,6 +545,7 @@ analyze_6.run: analyze_6_check
 endif
 
 if HEPMC_AVAILABLE
+if !HEPMC_IS_VERSION3
 TESTS_SRC += $(hepmc_6_rd_SOURCES)
 noinst_PROGRAMS += hepmc_6_rd
 if HEPMC_IS_VERSION3
@@ -555,6 +556,7 @@ endif
 hepmc_6_rd_CXXFLAGS = $(HEPMC_INCLUDES) $(AM_CXXFLAGS)
 hepmc_6_rd_LDADD = $(LDFLAGS_HEPMC)
 hepmc_6.run: hepmc_6_rd
+endif
 endif
 
 if LCIO_AVAILABLE
@@ -614,7 +616,9 @@ endif
 
 HEPMC_FLAG:
 if HEPMC_AVAILABLE
+if !HEPMC_IS_VERSION3
 	touch $@
+endif
 endif
 
 LCIO_FLAG:

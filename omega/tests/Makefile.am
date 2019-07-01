@@ -365,8 +365,8 @@ EXTRA_DIST += compare_driver_UFO.sh
 EXTRA_DIST += comparisons_UFO.list
 
 compare_amplitude_UFO_SOURCES = \
-	parameters_SM_from_UFO.f90 \
-	compare_lib.f90 omega_testtools.f90 tao_random_numbers.f90
+	parameters_SM_from_UFO.f90 compare_lib.f90 \
+	omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90
 
 compare_amplitude_UFO.f90: comparisons_UFO.list compare_driver_UFO.sh $(OMEGA_UFO)
 	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER_UFO"; fi

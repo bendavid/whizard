@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module process
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use format_utils, only: write_separator
   use constants
@@ -592,7 +593,7 @@ contains
     type(var_list_t), intent(inout), target, optional :: var_list
     type(beam_structure_t), intent(in), optional :: beam_structure
     integer :: next_rng_seed
-    call msg_debug (D_PROCESS_INTEGRATION, "process_init")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_init")
     associate &
          (meta => process%meta, env => process%env, config => process%config)
       call env%init &
@@ -801,7 +802,7 @@ contains
     if (process%is_nlo_calculation ()) then
        i_sub = process%component(1)%config%get_associated_subtraction ()
        subtraction_method = process%component(i_sub)%config%get_me_method ()
-       call msg_debug2 (D_PROCESS_INTEGRATION, "process_setup_terms: ", &
+       if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_setup_terms: ", &
             subtraction_method)
     end if
 
@@ -1263,7 +1264,7 @@ contains
     procedure(dispatch_mci_proc) :: dispatch_mci
     class(mci_t), allocatable :: mci_template
     integer :: i, i_mci
-    call msg_debug (D_PROCESS_INTEGRATION, "process_setup_mci")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_setup_mci")
     associate (pcm => process%pcm)
       call pcm%call_dispatch_mci (dispatch_mci, &
            process%get_var_list_ptr (), process%meta%id, mci_template)
@@ -2670,7 +2671,7 @@ contains
   subroutine process_prepare_any_external_code (process)
     class(process_t), intent(inout), target :: process
     integer :: i
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "process_prepare_external_code")
     associate (pcm => process%pcm)
       do i = 1, pcm%n_cores

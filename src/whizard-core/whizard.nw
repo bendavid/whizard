@@ -3043,6 +3043,7 @@ it.
 module dispatch_me_methods
 
 <<Use strings>>
+<<Use debug>>
   use physics_defs, only: BORN
   use diagnostics
   use sm_qcd
@@ -3110,7 +3111,7 @@ intent(out).
     else
        meth = var_list%get_sval (var_str ("$method"))
     end if
-    call msg_debug2 (D_CORE, "dispatch_core_def")
+    if (debug_on) call msg_debug2 (D_CORE, "dispatch_core_def")
     if (associated (model)) then
        model_name = model%get_name ()
        cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
@@ -3139,7 +3140,7 @@ intent(out).
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
     correction_type = var_list%get_sval (var_str ("$nlo_correction_type"))
-    call msg_debug2 (D_CORE, "dispatching core method: ", meth)
+    if (debug_on) call msg_debug2 (D_CORE, "dispatching core method: ", meth)
     select case (char (meth))
     case ("unit_test")
        allocate (prc_test_def_t :: core_def)
@@ -4022,6 +4023,7 @@ configure the entry in the process library accordingly.
 module process_configurations
 
 <<Use strings>>
+<<Use debug>>
   use diagnostics
   use io_units
   use physics_defs, only: BORN, NLO_VIRTUAL, NLO_REAL, NLO_DGLAP, &
@@ -4098,7 +4100,7 @@ particles, and the number of components.
     logical, intent(in), optional :: nlo_process
     logical :: nlo_proc
     logical :: requires_resonances
-    call msg_debug (D_CORE, "process_configuration_init")
+    if (debug_on) call msg_debug (D_CORE, "process_configuration_init")
     config%id = prc_name
     if (present (nlo_process)) then
        nlo_proc = nlo_process
@@ -4107,7 +4109,7 @@ particles, and the number of components.
     end if
     requires_resonances = var_list%get_lval (var_str ("?resonance_history"))
 
-    call msg_debug (D_CORE, "nlo_process", nlo_proc)
+    if (debug_on) call msg_debug (D_CORE, "nlo_process", nlo_proc)
     allocate (config%entry)
     if (var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
@@ -4158,7 +4160,7 @@ polarization flag and names of decay processes, where applicable.
     type(string_t) :: correlation_me_method
     type(string_t) :: dglap_me_method
     integer :: i
-    call msg_debug2 (D_CORE, "process_configuration_setup_component")
+    if (debug_on) call msg_debug2 (D_CORE, "process_configuration_setup_component")
     allocate (prt_str_in  (size (prt_in)))
     allocate (prt_str_out (size (prt_out)))
     forall (i = 1:size (prt_in))  prt_str_in(i)  = prt_in(i)% get_name ()
@@ -4209,7 +4211,7 @@ polarization flag and names of decay processes, where applicable.
        end if
     end select
 
-    call msg_debug2 (D_CORE, "import_component with method ", method)
+    if (debug_on) call msg_debug2 (D_CORE, "import_component with method ", method)
     call config%entry%import_component (i_component, &
          n_out = size (prt_out), &
          prt_in = prt_in, &
@@ -5569,6 +5571,7 @@ module integrations
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use diagnostics
   use os_interface
@@ -5667,7 +5670,7 @@ Push it on the stack if the [[global]] environment is supplied.
     type(rt_data_t), intent(inout), optional, target :: global
     type(string_t), intent(in) :: process_id
     type(process_entry_t), pointer :: process_entry
-    call msg_debug (D_CORE, "integration_create_process")
+    if (debug_on) call msg_debug (D_CORE, "integration_create_process")
     intg%process_id = process_id
     if (present (global)) then
        allocate (process_entry)
@@ -5705,7 +5708,7 @@ local changes to currently inactive models.
     type(model_t), pointer :: model
     class(model_data_t), pointer :: model_instance
     type(var_list_t), pointer :: var_list
-    call msg_debug (D_CORE, "integration_init_process")
+    if (debug_on) call msg_debug (D_CORE, "integration_init_process")
     if (.not. local%prclib%contains (intg%process_id)) then
        call msg_fatal ("Process '" // char (intg%process_id) // "' not found" &
             // " in library '" // char (local%prclib%get_name ()) // "'")
@@ -6384,15 +6387,15 @@ The slave worker will wait with a blocking [[MPI_BCAST]] until they receive a lo
   logical :: mpi_logging, process_init
   integer :: rank, n_size
 <<MPI: Integrations: integrate process: init>>=
-  call msg_debug (D_MPI, "integrate_process")
+  if (debug_on) call msg_debug (D_MPI, "integrate_process")
   var_list => local%get_var_list_ptr ()
   process_init = .false.
   call mpi_get_comm_id (n_size, rank)
   mpi_logging = (("vamp2" == char (var_list%get_sval (var_str ("$integration_method"))) .and. &
        & (n_size > 1)) .or. var_list%get_lval (var_str ("?mpi_logging")))
-  call msg_debug (D_MPI, "n_size", rank)
-  call msg_debug (D_MPI, "rank", rank)
-  call msg_debug (D_MPI, "mpi_logging", mpi_logging)
+  if (debug_on) call msg_debug (D_MPI, "n_size", rank)
+  if (debug_on) call msg_debug (D_MPI, "rank", rank)
+  if (debug_on) call msg_debug (D_MPI, "mpi_logging", mpi_logging)
   if (rank /= 0) then
      if (mpi_logging) then
         call msg_message ("MPI: wait for master to finish process initialization ...")
@@ -10293,6 +10296,7 @@ module simulations
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_15, FMT_19
@@ -10671,16 +10675,16 @@ the global stack, if it is separate from the local one.
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     type(rt_data_t), pointer :: current
-    call msg_debug (D_CORE, "prepare_process")
-    call msg_debug (D_CORE, "global present", present (global))
+    if (debug_on) call msg_debug (D_CORE, "prepare_process")
+    if (debug_on) call msg_debug (D_CORE, "global present", present (global))
     if (present (global)) then
        current => global
     else
        current => local
     end if
     process => current%process_stack%get_process_ptr (process_id)
-    call msg_debug (D_CORE, "use_process", use_process)
-    call msg_debug (D_CORE, "associated process", associated (process))
+    if (debug_on) call msg_debug (D_CORE, "use_process", use_process)
+    if (debug_on) call msg_debug (D_CORE, "associated process", associated (process))
     if (use_process .and. .not. associated (process)) then
        if (integrate) then
           call msg_message ("Simulate: process '" &
@@ -10940,8 +10944,8 @@ var list by the global var list.
     logical :: combined_integration
     integer :: selected_mci
     selected_mci = 0
-    call msg_debug (D_CORE, "entry_init")
-    call msg_debug (D_CORE, "process_id", process_id)
+    if (debug_on) call msg_debug (D_CORE, "entry_init")
+    if (debug_on) call msg_debug (D_CORE, "process_id", process_id)
     call prepare_process &
          (master_process, process_id, use_process, integrate, local, global)
     if (signal_is_pending ())  return
@@ -11072,15 +11076,15 @@ var list by the global var list.
     select type (pcm => entry%instance%pcm)
     class is (pcm_instance_nlo_t)
        i_active_real = entry%instance%get_real_of_mci ()
-       call msg_debug2 (D_CORE, "i_active_real", i_active_real)
+       if (debug_on) call msg_debug2 (D_CORE, "i_active_real", i_active_real)
        if (associated (entry%evt_powheg)) then
           select type (evt => entry%evt_powheg)
           type is (evt_shower_t)
              if (entry%process%get_component_type(i_active_real) == COMP_REAL_FIN) then
-                call msg_debug (D_CORE, "Disabling Powheg matching for ", i_active_real)
+                if (debug_on) call msg_debug (D_CORE, "Disabling Powheg matching for ", i_active_real)
                 call evt%disable_powheg_matching ()
              else
-                call msg_debug (D_CORE, "Enabling Powheg matching for ", i_active_real)
+                if (debug_on) call msg_debug (D_CORE, "Enabling Powheg matching for ", i_active_real)
                 call evt%enable_powheg_matching ()
              end if
           class default
@@ -11455,7 +11459,7 @@ the normalization procedure for the process components.
     logical, intent(in), optional :: negative_weights
     type(entry_t), pointer :: current_entry
     integer :: i, j, k
-    call msg_debug (D_CORE, "entry_init_mci_selector")
+    if (debug_on) call msg_debug (D_CORE, "entry_init_mci_selector")
     if (entry%has_integral) then
        select type (entry)
        type is (entry_t)
@@ -11463,7 +11467,7 @@ the normalization procedure for the process components.
           do j = 1, current_entry%count_nlo_entries ()
              if (j > 1) current_entry => current_entry%get_next ()
              do k = 1, size(current_entry%mci_sets%integral)
-                call msg_debug (D_CORE, "current_entry%mci_sets(k)%integral", &
+                if (debug_on) call msg_debug (D_CORE, "current_entry%mci_sets(k)%integral", &
                      current_entry%mci_sets(k)%integral)
              end do
              call current_entry%mci_selector%init &
@@ -11485,10 +11489,10 @@ the normalization procedure for the process components.
   function entry_select_mci (entry) result (i_mci)
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
-    call msg_debug2 (D_CORE, "entry_select_mci")
+    if (debug_on) call msg_debug2 (D_CORE, "entry_select_mci")
     i_mci = entry%process%extract_active_component_mci ()
     if (i_mci == 0) call entry%mci_selector%generate (entry%rng, i_mci)
-    call msg_debug2 (D_CORE, "i_mci", i_mci)
+    if (debug_on) call msg_debug2 (D_CORE, "i_mci", i_mci)
   end function entry_select_mci
 
 @ %def entry_select_mci
@@ -13262,8 +13266,8 @@ necessary data from the process definition and environment.
     logical :: decay_rest_frame
     type(string_t) :: process_id
     enable_alt = .true.;  if (present (alt))  enable_alt = alt
-    call msg_debug (D_CORE, "simulation_get_data")
-    call msg_debug (D_CORE, "alternative setup", enable_alt)
+    if (debug_on) call msg_debug (D_CORE, "simulation_get_data")
+    if (debug_on) call msg_debug (D_CORE, "alternative setup", enable_alt)
     if (enable_alt) then
        call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt
@@ -16561,6 +16565,7 @@ module commands
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use string_utils, only: lower_case, split_string, str
   use format_utils, only: write_indent
@@ -17267,7 +17272,7 @@ determines [[n_components]].
     integer :: n_components_init
     integer :: alpha_power, alphas_power
     logical :: requires_soft_mismatch, requires_dglap_remnants
-    call msg_debug (D_CORE, "cmd_process_execute")
+    if (debug_on) call msg_debug (D_CORE, "cmd_process_execute")
     var_list => cmd%local%get_var_list_ptr ()
 
     n_in = size (cmd%pn_pdg_in)
@@ -17535,12 +17540,12 @@ determines [[n_components]].
     integer :: k, i_comp, add_index
     i_comp = 0
     add_index = 0
-    call msg_debug (D_CORE, "setup_components")
+    if (debug_on) call msg_debug (D_CORE, "setup_components")
     do i = 1, n_components
        call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
        if (nlo_fixed_order) then
           associate (selected_nlo_parts => cmd%local%selected_nlo_parts)
-             call msg_debug (D_CORE, "Setting up this NLO component:", &
+             if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                   i_comp + 1)
              call prc_config%setup_component (i_comp + 1, &
                   prt_spec_in, prt_spec_out, &
@@ -17548,19 +17553,19 @@ determines [[n_components]].
                   can_be_integrated = selected_nlo_parts (BORN))
              call radiation_generator%generate_real_particle_strings &
                   (prt_in_nlo, prt_out_nlo)
-             call msg_debug (D_CORE, "Setting up this NLO component:", &
+             if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                   i_comp + 2)
              call prc_config%setup_component (i_comp + 2, &
                   new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
                   cmd%local%model, var_list, NLO_REAL, &
                   can_be_integrated = selected_nlo_parts (NLO_REAL))
-             call msg_debug (D_CORE, "Setting up this NLO component:", &
+             if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                   i_comp + 3)
              call prc_config%setup_component (i_comp + 3, &
                   prt_spec_in, prt_spec_out, &
                   cmd%local%model, var_list, NLO_VIRTUAL, &
                   can_be_integrated = selected_nlo_parts (NLO_VIRTUAL))
-             call msg_debug (D_CORE, "Setting up this NLO component:", &
+             if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                   i_comp + 4)
              call prc_config%setup_component (i_comp + 4, &
                   prt_spec_in, prt_spec_out, &
@@ -17570,7 +17575,7 @@ determines [[n_components]].
                 i_list(k) = i_comp + k
              end do
              if (requires_dglap_remnants) then
-                call msg_debug (D_CORE, "Setting up this NLO component:", &
+                if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                      i_comp + 5)
                 call prc_config%setup_component (i_comp + 5, &
                      prt_spec_in, prt_spec_out, &
@@ -17580,7 +17585,7 @@ determines [[n_components]].
                 add_index = add_index + 1
              end if
              if (use_real_finite) then
-                call msg_debug (D_CORE, "Setting up this NLO component:", &
+                if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                      i_comp + 5 + add_index)
                 call prc_config%setup_component (i_comp + 5 + add_index, &
                      new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
@@ -17590,7 +17595,7 @@ determines [[n_components]].
                 add_index = add_index + 1
              end if
              if (requires_soft_mismatch) then
-                call msg_debug (D_CORE, "Setting up this NLO component:", &
+                if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                      i_comp + 5 + add_index)
                 call prc_config%setup_component (i_comp + 5 + add_index, &
                    prt_spec_in, prt_spec_out, &
@@ -17843,7 +17848,7 @@ particle-specifier expression which we can process further.
     type(string_t) :: string
     integer :: n, i, j
     logical, dimension(0:5) :: selected_nlo_parts
-    call msg_debug (D_CORE, "cmd_nlo_execute")
+    if (debug_on) call msg_debug (D_CORE, "cmd_nlo_execute")
     selected_nlo_parts = .false.
     if (allocated (cmd%nlo_component)) then
        n = size (cmd%nlo_component)
@@ -18029,13 +18034,13 @@ The slave worker will wait with a blocking [[MPI_BCAST]] until they receive a lo
   logical :: compile_init
   integer :: rank, n_size
 <<MPI: Commands: cmd compile execute: init>>=
-  call msg_debug (D_MPI, "cmd_compile_execute")
+  if (debug_on) call msg_debug (D_MPI, "cmd_compile_execute")
   compile_init = .false.
   call mpi_get_comm_id (n_size, rank)
-  call msg_debug (D_MPI, "n_size", rank)
-  call msg_debug (D_MPI, "rank", rank)
+  if (debug_on) call msg_debug (D_MPI, "n_size", rank)
+  if (debug_on) call msg_debug (D_MPI, "rank", rank)
   if (rank /= 0) then
-     call msg_debug (D_MPI, "wait for master")
+     if (debug_on) call msg_debug (D_MPI, "wait for master")
      call MPI_bcast (compile_init, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
   else
      compile_init = .true.
@@ -18044,7 +18049,7 @@ The slave worker will wait with a blocking [[MPI_BCAST]] until they receive a lo
   if (compile_init) then
 <<MPI: Commands: cmd compile execute: end init>>=
   if (rank == 0) then
-     call msg_debug (D_MPI, "load slaves")
+     if (debug_on) call msg_debug (D_MPI, "load slaves")
      call MPI_bcast (compile_init, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
   end if
 end if
@@ -20248,9 +20253,9 @@ later changes of the variable list do not affect the stored process.
     class(cmd_integrate_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     integer :: i
-    call msg_debug (D_CORE, "cmd_integrate_execute")
+    if (debug_on) call msg_debug (D_CORE, "cmd_integrate_execute")
     do i = 1, cmd%n_proc
-       call msg_debug (D_CORE, "cmd%process_id(i) ", cmd%process_id(i))
+       if (debug_on) call msg_debug (D_CORE, "cmd%process_id(i) ", cmd%process_id(i))
        call integrate_process (cmd%process_id(i), cmd%local, global)
        call global%process_stack%fill_result_vars (cmd%process_id(i))
        call global%process_stack%update_result_vars &
@@ -23337,7 +23342,7 @@ rhs by the stored rhs pointers (the list elements), one by one, then
     type(string_t) :: key
     integer :: var_type
     integer :: i
-    call msg_debug (D_CORE, "cmd_scan_compile")
+    if (debug_on) call msg_debug (D_CORE, "cmd_scan_compile")
     if (debug_active (D_CORE))  call parse_node_write_rec (cmd%pn)
     pn_var => parse_node_get_sub_ptr (cmd%pn, 2)
     pn_body => parse_node_get_next_ptr (pn_var)

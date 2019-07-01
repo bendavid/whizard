@@ -10,6 +10,7 @@
 module matching_base
 
 <<Use strings>>
+<<Use debug>>
   use diagnostics
   use sm_qcd
   use model_data
@@ -75,7 +76,7 @@ necessary but then we introduce [[select type]] statements all over the place.
 <<default matching init>>=
   type(var_list_t), intent(in) :: var_list
   type(string_t), intent(in) :: process_name
-  call msg_debug (D_MATCHING, "matching_init")
+  if (debug_on) call msg_debug (D_MATCHING, "matching_init")
   call matching%settings%init (var_list)
   matching%process_name = process_name
 @
@@ -112,7 +113,7 @@ necessary but then we introduce [[select type]] statements all over the place.
     type(process_instance_t), intent(in), target :: process_instance
     class(model_data_t), intent(in), target, optional :: model
     class(shower_base_t), intent(in), target, optional :: shower
-    call msg_debug (D_MATCHING, "matching_connect")
+    if (debug_on) call msg_debug (D_MATCHING, "matching_connect")
     matching%process_instance => process_instance
     if (present (model))  matching%model => model
     if (present (shower))  matching%shower => shower
@@ -246,6 +247,7 @@ module mlm_matching
 
 <<Use kinds with double>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use constants
   use format_utils, only: write_separator
@@ -476,7 +478,7 @@ jet momenta.
     class(mlm_matching_t), intent(inout) :: matching
     type(particle_set_t), intent(inout) :: particle_set
     logical, intent(out) :: vetoed
-    call msg_debug (D_MATCHING, "mlm_matching_after_shower")
+    if (debug_on) call msg_debug (D_MATCHING, "mlm_matching_after_shower")
     call matching%shower%get_final_colored_ME_momenta (matching%P_ME)
     call matching%fill_P_PS (particle_set)
     !!! MLM stage 3 -> reconstruct and possibly reject
@@ -532,7 +534,7 @@ jet momenta.
     end do
 
     allocate (matching%P_PS(1:n_jets_PS))
-    call msg_debug (D_MATCHING, "n_jets_ps", n_jets_ps)
+    if (debug_on) call msg_debug (D_MATCHING, "n_jets_ps", n_jets_ps)
 
     j = 1
     do i = 1, particle_set%get_n_tot ()
@@ -808,6 +810,7 @@ module ckkw_matching
 
 <<Use kinds with double>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use constants
   use format_utils, only: write_separator
@@ -1350,6 +1353,7 @@ module powheg_matching
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use diagnostics
   use constants, only: ZERO, ONE, TWO, FIVE, TINY_07, PI, TWOPI
   use numeric_utils
@@ -2052,17 +2056,17 @@ using the second random number $r_2$.
     call sudakov%generate_xi_and_y_and_phi (r)
     !sudakov%last_log = sudakov%norm_max * &
          !sudakov%log_integrated_ubf (sudakov%current_pt2_max)
-    call msg_debug2 (D_MATCHING, "sudakov_generate_emission")
-    call msg_debug2 (D_MATCHING, "sqrt (sudakov%current_pt2_max)", &
+    if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_generate_emission")
+    if (debug_on) call msg_debug2 (D_MATCHING, "sqrt (sudakov%current_pt2_max)", &
          sqrt (sudakov%current_pt2_max))
-    call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
+    if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
     LOOP_UNTIL_ACCEPTED: do
        if (signal_is_pending ())  return
        r%valid = .false.
        r%pt2 = sudakov%generate_pt2 ()
-       call msg_debug2 (D_MATCHING, "sudakov_generate_emission: after generate_pt2")
-       call msg_debug2 (D_MATCHING, "sqrt (r%pt2)", sqrt (r%pt2))
-       call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
+       if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_generate_emission: after generate_pt2")
+       if (debug_on) call msg_debug2 (D_MATCHING, "sqrt (r%pt2)", sqrt (r%pt2))
+       if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
        if (r%pt2 <= sudakov%powheg_settings%pt2_min) then
           exit
        end if
@@ -2716,7 +2720,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     class(powheg_matching_t), intent(inout) :: matching
     type(particle_set_t), intent(inout) :: particle_set
     logical, intent(out) :: vetoed
-    call msg_debug2 (D_MATCHING, "powheg_matching_before_shower")
+    if (debug_on) call msg_debug2 (D_MATCHING, "powheg_matching_before_shower")
     if (signal_is_pending ())  return
     if (.not. matching%active)  return
     call matching%update (particle_set)
@@ -3006,7 +3010,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     real(default) :: sqme_real_x_jacobian, sqme_born
     real(default) :: norm, ubf, ubound, random, weight
     real(default) :: alpha_s
-    call msg_debug (D_MATCHING, "reweight_matrix_elements")
+    if (debug_on) call msg_debug (D_MATCHING, "reweight_matrix_elements")
     select type (pcm => powheg%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        call powheg%rng%generate (random)
@@ -3108,10 +3112,10 @@ The following is valid for one underlying Born.
     integer :: alr
     integer :: n, n_points
     real(default) :: alpha_s
-    call msg_debug (D_MATCHING, "powheg_fill_grids")
+    if (debug_on) call msg_debug (D_MATCHING, "powheg_fill_grids")
     call powheg%display_grid_startup_message()
     n_points = powheg%settings%n_init
-    call msg_debug (D_MATCHING, "n_points", n_points)
+    if (debug_on) call msg_debug (D_MATCHING, "n_points", n_points)
     EVALUATE_GRID_POINTS: do n = 1, n_points
        if (signal_is_pending ())  return
        call powheg%prepare_momenta_for_fill_grids (radiation_variables)
@@ -3136,25 +3140,25 @@ The following is valid for one underlying Born.
 
     subroutine show_vars ()
       if (norm > 1E5_default) then
-         call msg_debug2 (D_MATCHING, "alr", alr)
-         call msg_debug2 (D_MATCHING, "f_alr", f_alr)
-         call msg_debug2 (D_MATCHING, "radiation_variables(1)", &
+         if (debug_on) call msg_debug2 (D_MATCHING, "alr", alr)
+         if (debug_on) call msg_debug2 (D_MATCHING, "f_alr", f_alr)
+         if (debug_on) call msg_debug2 (D_MATCHING, "radiation_variables(1)", &
               radiation_variables(1))
-         call msg_debug2 (D_MATCHING, "radiation_variables(2)", &
+         if (debug_on) call msg_debug2 (D_MATCHING, "radiation_variables(2)", &
               radiation_variables(2))
-         call msg_debug2 (D_MATCHING, "radiation_variables(3)", &
+         if (debug_on) call msg_debug2 (D_MATCHING, "radiation_variables(3)", &
               radiation_variables(3))
-         call msg_debug2 (D_MATCHING, "xi", xi)
-         call msg_debug2 (D_MATCHING, "y", y)
-         call msg_debug2 (D_MATCHING, "powheg%sudakov(alr)%s%kt2(xi,y)", &
+         if (debug_on) call msg_debug2 (D_MATCHING, "xi", xi)
+         if (debug_on) call msg_debug2 (D_MATCHING, "y", y)
+         if (debug_on) call msg_debug2 (D_MATCHING, "powheg%sudakov(alr)%s%kt2(xi,y)", &
               powheg%sudakov(alr)%s%kt2(xi,y))
-         call msg_debug2 (D_MATCHING, "powheg%event_deps%sqme_born", &
+         if (debug_on) call msg_debug2 (D_MATCHING, "powheg%event_deps%sqme_born", &
               powheg%event_deps%sqme_born)
-         call msg_debug2 (D_MATCHING, "alpha_s", alpha_s)
-         call msg_debug2 (D_MATCHING, "real_me", real_me)
-         call msg_debug2 (D_MATCHING, "ubf", ubf)
-         call msg_debug2 (D_MATCHING, "norm", norm)
-         call msg_debug2 (D_MATCHING, "")
+         if (debug_on) call msg_debug2 (D_MATCHING, "alpha_s", alpha_s)
+         if (debug_on) call msg_debug2 (D_MATCHING, "real_me", real_me)
+         if (debug_on) call msg_debug2 (D_MATCHING, "ubf", ubf)
+         if (debug_on) call msg_debug2 (D_MATCHING, "norm", norm)
+         if (debug_on) call msg_debug2 (D_MATCHING, "")
       end if
     end subroutine show_vars
 
@@ -3358,7 +3362,7 @@ values $(f_B)$
     if (signal_is_pending ())  return
     r_max%pt2 = zero
     r_max%alr = 0
-    call msg_debug (D_MATCHING, "powheg_matching_generate_emission")
+    if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_generate_emission")
     select type (pcm => powheg%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        select type (config => pcm%config)
@@ -3377,7 +3381,7 @@ values $(f_B)$
             r%alr = alr
             r%pt2 = sudakov%kt2_max (powheg%event_deps%s_hat)
             sudakov%last_log = 0
-            call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
+            if (debug_on) call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
             PT_EVOLUTION: do
                if (signal_is_pending ())  return
                call sudakov%generate_emission (r)
@@ -3454,7 +3458,7 @@ values $(f_B)$
     class(powheg_matching_t), intent(inout) :: powheg
     type(radiation_t), intent(in) :: r
     real(default) :: random, norm_max, norm_true
-    call msg_debug2 (D_MATCHING, "reweight_norm")
+    if (debug_on) call msg_debug2 (D_MATCHING, "reweight_norm")
     call powheg%rng%generate (random)
     associate (s => powheg%sudakov(r%alr)%s)
        norm_true = powheg%norm_from_xi_and_y (r)
@@ -3523,7 +3527,7 @@ $p_{T,\text{min}}^2$.
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_prepare_for_events (matching)
     class(powheg_matching_t), intent(inout), target :: matching
-    call msg_debug (D_MATCHING, "powheg_matching_prepare_for_events")
+    if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_prepare_for_events")
     call matching%setup_nlo_environment ()
     call matching%grid%init ([matching%settings%size_grid_xi, &
        matching%settings%size_grid_y, matching%process_deps%n_alr])
@@ -3555,7 +3559,7 @@ $p_{T,\text{min}}^2$.
     integer :: n_tot_born, n_tot_real
     integer :: i, i_real, i_term
     integer :: n_phs, nlo_type
-    call msg_debug (D_MATCHING, "powheg_matching_setup_nlo_environment")
+    if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_setup_nlo_environment")
     select type (pcm => matching%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        matching%process_deps%sqrts = matching%process_instance%get_sqrts ()
@@ -3691,7 +3695,7 @@ reweighted to the more precise $\alpha_s$.
     real(default), intent(in) :: pt2
     real(default) :: alpha_s_true, alpha_s_rad
     logical :: alpha_s_equal
-    call msg_debug2 (D_MATCHING, "reweight_alpha_s")
+    if (debug_on) call msg_debug2 (D_MATCHING, "reweight_alpha_s")
     alpha_s_true = get_alpha (sudakov%qcd, pt2)
     alpha_s_rad = sudakov%alpha_s_rad (pt2)
     call sudakov%rng%generate (sudakov%random)
@@ -3742,7 +3746,7 @@ in [[xi]] and [[y]].
      class(powheg_matching_hook_t), intent(inout), target :: hook
      type(var_list_t), intent(in) :: var_list
      class(process_instance_t), intent(in), target :: instance
-     call msg_debug (D_MATCHING, "powheg_matching_hook_init")
+     if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_hook_init")
      hook%process_name = instance%get_process_name ()
      call hook%powheg%init (var_list, hook%process_name)
      hook%powheg%qcd = instance%get_qcd ()
@@ -3761,7 +3765,7 @@ The hook object will be deallocated, when the instance gets deallocated.
   subroutine powheg_matching_hook_final (hook)
      class(powheg_matching_hook_t), intent(inout) :: hook
      type(string_t) :: filename
-     call msg_debug (D_MATCHING, "powheg_matching_hook_final")
+     if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_hook_final")
    <<POWHEG matching: powheg matching hook final: reduce>>
      call hook%powheg%save_grids ()
   end subroutine powheg_matching_hook_final

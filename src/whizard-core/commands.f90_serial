@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module commands
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use string_utils, only: lower_case, split_string, str
   use format_utils, only: write_indent
@@ -1143,7 +1144,7 @@ contains
     integer :: n_components_init
     integer :: alpha_power, alphas_power
     logical :: requires_soft_mismatch, requires_dglap_remnants
-    call msg_debug (D_CORE, "cmd_process_execute")
+    if (debug_on) call msg_debug (D_CORE, "cmd_process_execute")
     var_list => cmd%local%get_var_list_ptr ()
 
     n_in = size (cmd%pn_pdg_in)
@@ -1385,12 +1386,12 @@ contains
       integer :: k, i_comp, add_index
       i_comp = 0
       add_index = 0
-      call msg_debug (D_CORE, "setup_components")
+      if (debug_on) call msg_debug (D_CORE, "setup_components")
       do i = 1, n_components
          call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
          if (nlo_fixed_order) then
             associate (selected_nlo_parts => cmd%local%selected_nlo_parts)
-               call msg_debug (D_CORE, "Setting up this NLO component:", &
+               if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                     i_comp + 1)
                call prc_config%setup_component (i_comp + 1, &
                     prt_spec_in, prt_spec_out, &
@@ -1398,19 +1399,19 @@ contains
                     can_be_integrated = selected_nlo_parts (BORN))
                call radiation_generator%generate_real_particle_strings &
                     (prt_in_nlo, prt_out_nlo)
-               call msg_debug (D_CORE, "Setting up this NLO component:", &
+               if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                     i_comp + 2)
                call prc_config%setup_component (i_comp + 2, &
                     new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
                     cmd%local%model, var_list, NLO_REAL, &
                     can_be_integrated = selected_nlo_parts (NLO_REAL))
-               call msg_debug (D_CORE, "Setting up this NLO component:", &
+               if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                     i_comp + 3)
                call prc_config%setup_component (i_comp + 3, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, NLO_VIRTUAL, &
                     can_be_integrated = selected_nlo_parts (NLO_VIRTUAL))
-               call msg_debug (D_CORE, "Setting up this NLO component:", &
+               if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                     i_comp + 4)
                call prc_config%setup_component (i_comp + 4, &
                     prt_spec_in, prt_spec_out, &
@@ -1420,7 +1421,7 @@ contains
                   i_list(k) = i_comp + k
                end do
                if (requires_dglap_remnants) then
-                  call msg_debug (D_CORE, "Setting up this NLO component:", &
+                  if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                        i_comp + 5)
                   call prc_config%setup_component (i_comp + 5, &
                        prt_spec_in, prt_spec_out, &
@@ -1430,7 +1431,7 @@ contains
                   add_index = add_index + 1
                end if
                if (use_real_finite) then
-                  call msg_debug (D_CORE, "Setting up this NLO component:", &
+                  if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                        i_comp + 5 + add_index)
                   call prc_config%setup_component (i_comp + 5 + add_index, &
                        new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
@@ -1440,7 +1441,7 @@ contains
                   add_index = add_index + 1
                end if
                if (requires_soft_mismatch) then
-                  call msg_debug (D_CORE, "Setting up this NLO component:", &
+                  if (debug_on) call msg_debug (D_CORE, "Setting up this NLO component:", &
                        i_comp + 5 + add_index)
                   call prc_config%setup_component (i_comp + 5 + add_index, &
                      prt_spec_in, prt_spec_out, &
@@ -1647,7 +1648,7 @@ contains
     type(string_t) :: string
     integer :: n, i, j
     logical, dimension(0:5) :: selected_nlo_parts
-    call msg_debug (D_CORE, "cmd_nlo_execute")
+    if (debug_on) call msg_debug (D_CORE, "cmd_nlo_execute")
     selected_nlo_parts = .false.
     if (allocated (cmd%nlo_component)) then
        n = size (cmd%nlo_component)
@@ -3204,9 +3205,9 @@ contains
     class(cmd_integrate_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     integer :: i
-    call msg_debug (D_CORE, "cmd_integrate_execute")
+    if (debug_on) call msg_debug (D_CORE, "cmd_integrate_execute")
     do i = 1, cmd%n_proc
-       call msg_debug (D_CORE, "cmd%process_id(i) ", cmd%process_id(i))
+       if (debug_on) call msg_debug (D_CORE, "cmd%process_id(i) ", cmd%process_id(i))
        call integrate_process (cmd%process_id(i), cmd%local, global)
        call global%process_stack%fill_result_vars (cmd%process_id(i))
        call global%process_stack%update_result_vars &
@@ -5411,7 +5412,7 @@ contains
     type(string_t) :: key
     integer :: var_type
     integer :: i
-    call msg_debug (D_CORE, "cmd_scan_compile")
+    if (debug_on) call msg_debug (D_CORE, "cmd_scan_compile")
     if (debug_active (D_CORE))  call parse_node_write_rec (cmd%pn)
     pn_var => parse_node_get_sub_ptr (cmd%pn, 2)
     pn_body => parse_node_get_next_ptr (pn_var)

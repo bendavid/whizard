@@ -7985,7 +7985,7 @@ Note: recording the efficiency is not supported yet.
                         integral       = mci%current_pass%integral(it), &
                         error          = mci%current_pass%error(it), &
                         efficiency     = mci%current_pass%efficiency(it), &
-                        ! TODO pos. and neg. Efficiency
+                        ! TODO Insert pos. and neg. Efficiency from VAMP.
                         efficiency_pos = 0._default, &
                         efficiency_neg = 0._default, &
                         chain_weights  = mci%chain_weights, &
@@ -7997,7 +7997,7 @@ Note: recording the efficiency is not supported yet.
                         integral       = mci%current_pass%integral(it), &
                         error          = mci%current_pass%error(it), &
                         efficiency     = mci%current_pass%efficiency(it), &
-                        ! TODO pos. and neg. Efficiency
+                        ! TODO Insert pos. and neg. Efficiency from VAMP.
                         efficiency_pos = 0._default, &
                         efficiency_neg = 0._default, &
                         suppress = pacify)
@@ -11402,7 +11402,7 @@ end module mci_vamp2
     real(default), dimension(:), intent(in) :: x
     f = self%integrand
     if (signal_is_pending ()) then
-       call msg_message ("MCI VAMP2: function evalutae func: signal received")
+       call msg_message ("MCI VAMP2: function evaluate_func: signal received")
        call terminate_now_if_signal ()
     end if
     call terminate_now_if_single_event ()
@@ -12117,7 +12117,7 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
   end subroutine mci_vamp2_prepend_integrator_path
 
 @ %def mci_vamp2_prepend_integrator_path
-@ TODO: Not implemented.
+@ Not implemented.
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure, public :: declare_flat_dimensions => mci_vamp2_declare_flat_dimensions
 <<MCI vamp2: procedures>>=
@@ -12127,7 +12127,7 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
   end subroutine mci_vamp2_declare_flat_dimensions
 
 @ %def mci_vamp2_declare_flat_dimensions
-@ TODO: Not implemented.
+@
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure, public :: declare_equivalences => mci_vamp2_declare_equivalences
 <<MCI vamp2: procedures>>=

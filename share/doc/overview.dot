@@ -150,14 +150,14 @@ subgraph cluster0 {
  style=filled 
  color=gray95 
 edge[color=crimson]
-me_methods -> types
+me_methods -> variables
 me_methods -> matrix_elements
 me_methods -> beams
 me_methods -> basics
 me_methods -> physics
 me_methods -> qft
 me_methods -> system
-me_methods -> variables
+me_methods -> types
 }
 subgraph cluster0 {
  style=filled 
@@ -220,7 +220,7 @@ subgraph cluster0 {
  style=filled 
  color=gray95 
 edge[color=aquamarine2]
-phase_space -> model_features
+phase_space -> system
 phase_space -> utilities
 phase_space -> types
 phase_space -> parsing
@@ -230,7 +230,7 @@ phase_space -> threshold
 phase_space -> matrix_elements
 phase_space -> beams
 phase_space -> qft
-phase_space -> system
+phase_space -> model_features
 phase_space -> combinatorics
 phase_space -> physics
 }
@@ -257,7 +257,7 @@ subgraph cluster0 {
 edge[color=chartreuse2]
 process_integration -> beams
 process_integration -> model_features
-process_integration -> blha
+process_integration -> fks
 process_integration -> recola
 process_integration -> threshold
 process_integration -> expr_base
@@ -268,13 +268,13 @@ process_integration -> mci
 process_integration -> variables
 process_integration -> phase_space
 process_integration -> types
-process_integration -> fks
 process_integration -> particles
 process_integration -> openloops
 process_integration -> matrix_elements
 process_integration -> basics
 process_integration -> qft
 process_integration -> rng
+process_integration -> blha
 process_integration -> combinatorics
 }
 subgraph cluster0 {

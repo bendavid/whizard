@@ -106,7 +106,7 @@ d\xi\left[\frac{2^{-\varepsilon}}{\varepsilon}\left(\frac{1}{\xi}\right)_+
                               \mathcal{O}(\varepsilon).\\
 \end{align*}
 The summand in the second line is of order $\mathcal{O}(1)$ and is the
-only one to reproduce $\mathcal{R}{\xi,y}$. It thus constitutes the
+only one to reproduce $\mathcal{R}(\xi,y)$. It thus constitutes the
 sum of the real matrix element and the corresponding counterterms.
 The first summand consequently consists of the subtraction terms to
 the virtual matrix elements. Above formula thus allows to calculate
@@ -201,6 +201,7 @@ module fks_regions
   use io_units
   use os_interface
 <<Use strings>>
+<<Use debug>>
   use constants
   use permutations
   use diagnostics
@@ -1501,7 +1502,7 @@ also be supplied by a symmetry factor, explained below.
             any (sregion%flst_uborn%flst == PHOTON)
   contains
     subroutine debug_input_values()
-      call msg_debug2 (D_SUBTRACTION, "singular_region_init")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "singular_region_init")
       if (debug2_active (D_SUBTRACTION)) then
          print *, 'alr =    ', alr
          print *, 'mult =    ', mult
@@ -1781,7 +1782,7 @@ there is only a soft singularity if the radiated parton becomes soft.
      integer :: alr, i_res
      integer :: alr_new, n_alr_res
      integer :: k
-     call msg_debug (D_SUBTRACTION, "resonance_mapping_set_alr_to_i_res")
+     if (debug_on) call msg_debug (D_SUBTRACTION, "resonance_mapping_set_alr_to_i_res")
      n_alr_res = 0
      do alr = 1, size (regions)
         do i_res = 1, size (res_map%res_histories)
@@ -2149,7 +2150,7 @@ must be compatible with the resonance.
     integer, dimension(:), allocatable :: alr_new_to_old
     integer :: n_alr_new
     type(singular_region_t), dimension(:), allocatable :: save_regions
-    call msg_debug (D_SUBTRACTION, "region_data_enlarge_singular_regions_with_resonances")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "region_data_enlarge_singular_regions_with_resonances")
     call debug_input_values ()
     select type (fks_mapping => reg_data%fks_mapping)
     type is (fks_mapping_default_t)
@@ -5531,6 +5532,7 @@ module virtual
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use numeric_utils
   use constants
   use diagnostics
@@ -5931,9 +5933,9 @@ particles involved in the radiation process are massive or massless.
       real(default), intent(in) :: sqme_born
       real(default), intent(inout) :: QB
       integer :: i
-      call msg_debug2 (D_VIRTUAL, "compute_massive_self_eikonals")
-      call msg_debug2 (D_VIRTUAL, "s_o_Q2", s_o_Q2)
-      call msg_debug2 (D_VIRTUAL, "log (s_o_Q2)", log (s_o_Q2))
+      if (debug_on) call msg_debug2 (D_VIRTUAL, "compute_massive_self_eikonals")
+      if (debug_on) call msg_debug2 (D_VIRTUAL, "s_o_Q2", s_o_Q2)
+      if (debug_on) call msg_debug2 (D_VIRTUAL, "log (s_o_Q2)", log (s_o_Q2))
       do i = 1, 4
          QB = QB - (cf * (log (s_o_Q2) - 0.5_default * I_m_eps (p_thr(i)))) &
               * sqme_born
@@ -6038,7 +6040,7 @@ $\mathcal{Q}$ is given by
   \label{eqn:virt_Q_fsr_old}
   \begin{split}
    \mathcal{Q} = \sum_{k=n_{in}}^{n_L^{(B)}} \left[\gamma'(\mathcal{I}_k)
-        - \log\frac{s\delta_{0}}{2Q^2}\left(\gamma(\mathcal{I}_k)
+        - \log\frac{s\delta_o}{2Q^2}\left(\gamma(\mathcal{I}_k)
         - 2C(\mathcal{I}_k) \log\frac{2E_k}{\xi_{\text{cut}}\sqrt{s}}\right) \right.\\
         + \left. 2C(\mathcal{I}_k) \left( \log^2\frac{2E_k}{\sqrt{s}} - \log^2 \xi_{\text{cut}} \right)
         - 2\gamma(\mathcal{I}_k)\log\frac{2E_k}{\sqrt{s}}\right].
@@ -6098,10 +6100,7 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
           xi_max = two * E_em / sqrts
           log_xi_max = log (xi_max)
        end if
-       ! TODO sbrass evaluate xi-cut formalism for resonance-aware FKS
-       ! also: check rescaling with xi_max!
-       !associate (xi_cut => xi_max * virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
-       associate (xi_cut => virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
+       associate (xi_cut => virt%settings%fks_template%xi_cut, delta_o => virt%settings%fks_template%delta_o)
          if (virt%settings%virtual_resonance_aware_collinear) then
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using resonance-aware collinear subtraction")
@@ -6117,8 +6116,8 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
             s1 = virt%gamma_p(em, i_flv)
-            s2 = log (delta_zero * sqrts**2 / (two * virt%es_scale2)) * virt%gamma_0(em,i_flv)
-            s3 = log (delta_zero * sqrts**2 / (two * virt%es_scale2)) * two * virt%c_flv(em,i_flv) * &
+            s2 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * virt%gamma_0(em,i_flv)
+            s3 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * two * virt%c_flv(em,i_flv) * &
                  log (two * E_em / (xi_cut * sqrts))
             ! s4 = two * virt%c_flv(em,i_flv) * (log (two * E_em / sqrts)**2 - log (xi_cut)**2)
             s4 = two * virt%c_flv(em,i_flv) * & ! a**2 - b**2 = (a - b) * (a + b), for better numerical performance
@@ -6402,6 +6401,7 @@ module real_subtraction
 
 <<Use kinds with double>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use format_defs, only: FMT_15
   use string_utils
@@ -6684,7 +6684,7 @@ distinguished by the flag [[xi2_expanded]].
     case (FACTORIZATION_THRESHOLD)
        kb = sub_soft%evaluate_factorization_threshold (thr_leg(emitter), p_born, born_ij)
     end select
-    call msg_debug2 (D_SUBTRACTION, 'KB', kb)
+    if (debug_on) call msg_debug2 (D_SUBTRACTION, 'KB', kb)
     sqme = four * pi * alpha_coupling * s_alpha_soft * kb
     if (sub_soft%xi2_expanded) then
        xi2_factor = four / q2
@@ -6950,7 +6950,7 @@ These inputs are then used to get the numerical value of the soft mismatch.
                 soft_mismatch%sqme_born(i_born), sqme_soft, &
                 alpha_s, s)
 
-           call msg_debug (D_MISMATCH, 'sqme_alr: ', sqme_alr)
+           if (debug_on) call msg_debug (D_MISMATCH, 'sqme_alr: ', sqme_alr)
            sqme_mismatch = sqme_mismatch + sqme_alr
 
        end do
@@ -6998,7 +6998,7 @@ These inputs are then used to get the numerical value of the soft mismatch.
     !!! Divide by 1 - y to factor out the corresponding
     !!! factor in the soft matrix element
     sm1 = sqme_soft / (one - y) * ( exp(expo) - exp(- xi) )
-    call msg_debug2 (D_MISMATCH, 'sqme_soft in mismatch ', sqme_soft)
+    if (debug_on) call msg_debug2 (D_MISMATCH, 'sqme_soft in mismatch ', sqme_soft)
 
     sm2 = zero
     if (soft_mismatch%reg_data%regions(alr)%has_collinear_divergence ()) then
@@ -7314,11 +7314,11 @@ We store a pointer to the a [[nlo_settings_t]] object which holds tuning paramet
     type(region_data_t), intent(in), target :: reg_data
     type(nlo_settings_t), intent(in), target :: settings
     integer :: alr
-    call msg_debug (D_SUBTRACTION, "real_subtraction_init")
-    call msg_debug (D_SUBTRACTION, "n_in", reg_data%n_in)
-    call msg_debug (D_SUBTRACTION, "nlegs_born", reg_data%n_legs_born)
-    call msg_debug (D_SUBTRACTION, "nlegs_real", reg_data%n_legs_real)
-    call msg_debug (D_SUBTRACTION, "reg_data%n_regions", reg_data%n_regions)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "real_subtraction_init")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "n_in", reg_data%n_in)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "nlegs_born", reg_data%n_legs_born)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "nlegs_real", reg_data%n_legs_real)
+    if (debug_on) call msg_debug (D_SUBTRACTION, "reg_data%n_regions", reg_data%n_regions)
     if (debug2_active (D_SUBTRACTION))  call reg_data%write ()
     rsub%reg_data => reg_data
     allocate (rsub%sqme_born (reg_data%n_flv_born))
@@ -7468,7 +7468,7 @@ This formula is implemented in \texttt{compute\_sqme\_real\_fin}
     subroutine check_s_alpha_consistency ()
       real(default) :: sum_s_alpha, sum_s_alpha_soft
       integer :: i_reg, i1, i2
-      call msg_debug2 (D_SUBTRACTION, "Check consistency of s_alpha: ")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "Check consistency of s_alpha: ")
       do i_reg = 1, rsub%reg_data%n_regions
          sum_s_alpha = zero; sum_s_alpha_soft = zero
          do alr = 1, rsub%reg_data%regions(i_reg)%nregions
@@ -7611,7 +7611,6 @@ the corresponding jacobians.
       real(default), parameter :: coll_threshold = 0.01_default
       real(default) :: this_sqme_rad, s_alpha, E_gluon
       logical, dimension(:), allocatable, save :: count_alr
-      !!! TODO (cw-2017-02-18): Need to be able to set this (?)
       logical :: write_histo = .true.
       if (.not. allocated (sqme_rad_store)) then
          allocate (sqme_rad_store (rsub%reg_data%n_regions))
@@ -7679,7 +7678,7 @@ the corresponding jacobians.
       logical, intent(in), optional :: full
       yorn = .true.
       if (present (full)) yorn = full
-      call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_region_fsr")
+      if (debug_on) call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_region_fsr")
       u = given_output_unit (); if (u < 0) return
       i_born = rsub%reg_data%regions(alr)%uborn_index
       xi = rsub%real_kinematics%xi_max (i_phs) * rsub%real_kinematics%xi_tilde
@@ -7735,7 +7734,7 @@ $\tilde{\xi}$ which we have to compensate.
   function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde) result (sqme_remn)
     real(default) :: sqme_remn
     real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
-    call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
     sqme_remn = zero
     sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
   end function compute_sqme_remnant_fsr
@@ -7878,21 +7877,21 @@ $\tilde{\xi}$ which we have to compensate.
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft, sqme_coll, sqme_cs
-    call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_subtraction_terms_fsr")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_subtraction_terms_fsr")
     sqme_soft = zero; sqme_coll = zero; sqme_cs = zero
     associate (xi_tilde => rsub%real_kinematics%xi_tilde, &
          y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
       if (template%xi_cut > xi_tilde) &
            sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
-      if (y - 1 + template%delta_zero > 0) &
+      if (y - 1 + template%delta_o > 0) &
            sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
-      if (template%xi_cut > xi_tilde .and. y - 1 + template%delta_zero > 0) &
+      if (template%xi_cut > xi_tilde .and. y - 1 + template%delta_o > 0) &
            sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, i_phs, alpha_coupling)
       if (debug2_active (D_SUBTRACTION)) then
          print *, "FSR Cutoff:"
          print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
-         print *, "sub_coll: ", (y - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (y - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll: ", (y - 1 + template%delta_o) > 0, "(ME: ", sqme_coll, ")"
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (y - 1 + template%delta_o) > 0, &
               "(ME: ", sqme_cs, ")"
       end if
     end associate
@@ -8037,8 +8036,8 @@ $\tilde{\xi}$ which we have to compensate.
       if (debug2_active (D_SUBTRACTION)) then
          print *, "ISR Cutoff:"
          print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
-         print *, "sub_coll: ", (abs (y) - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (abs (y) - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll: ", (abs (y) - 1 + template%delta_i) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (abs (y) - 1 + template%delta_i) > 0, &
               "(ME: ", sqme_cs_plus, sqme_cs_minus, ")"
       end if
     end associate
@@ -8132,7 +8131,7 @@ to be more consistent with the evaluation of the Born phase space.
   contains
     subroutine check_soft_vector ()
       type(vector4_t) :: p_gluon
-      call msg_debug2 (D_SUBTRACTION, "Compare soft vector: ")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "Compare soft vector: ")
       print *, 'p_soft: ', rsub%sub_soft%p_soft%p
       print *, 'Normalized gluon momentum: '
       if (rsub%reg_data%has_pseudo_isr ()) then
@@ -8184,7 +8183,7 @@ to be more consistent with the evaluation of the Born phase space.
   contains
     subroutine check_me_consistency ()
       real(default) ::  sqme_sum
-      call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
       sqme_sum = rsub%sqme_born_spin_c(0,0,emitter,i_born) &
                - rsub%sqme_born_spin_c(1,1,emitter,i_born) &
                - rsub%sqme_born_spin_c(2,2,emitter,i_born) &
@@ -8269,8 +8268,7 @@ an arbitrary angle [[phi]].
             end select
             xi = rsub%real_kinematics%xi_tilde * xi_max
             ! TODO sbrass introduce overall PDF/PDF_SINGLET parameter
-            ! TODO sbrass use is_gluon instead of magic number
-            if (rsub%reg_data%regions(alr)%flst_real%flst(em) == 21) then
+            if (rsub%reg_data%regions(alr)%flst_real%flst(em) == GLUON) then
                pdf_type = 2
             else
                pdf_type = 1
@@ -8764,7 +8762,7 @@ end module nlo_data
     real(default) :: fks_dij_exp2
     real(default) :: xi_min
     real(default) :: y_max
-    real(default) :: xi_cut, delta_zero, delta_i
+    real(default) :: xi_cut, delta_o, delta_i
     type(string_t), dimension(:), allocatable :: excluded_resonances
     integer :: n_f
   contains
@@ -8795,29 +8793,29 @@ end module nlo_data
        template%fks_dij_exp1, template%fks_dij_exp2
     write (u, '(1x,A,ES4.3,ES4.3)') 'xi_cut: ', &
        template%xi_cut
-    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_zero: ', &
-       template%delta_zero
+    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_o: ', &
+       template%delta_o
     write (u, '(1x,A,ES4.3,ES4.3)') 'delta_i: ', &
          template%delta_i
   end subroutine fks_template_write
 
 @ %def fks_template_write
-@ Set FKS parameters. $\xi_{\text{cut}}, \delta_0$ and $\delta_{\mathrm{I}}$ steer the ratio of the integrated and real subtraction.
+@ Set FKS parameters. $\xi_{\text{cut}}, \delta_o$ and $\delta_{\mathrm{I}}$ steer the ratio of the integrated and real subtraction.
 <<nlo data: fks template: TBP>>=
   procedure :: set_parameters => fks_template_set_parameters
 <<nlo data: procedures>>=
   subroutine fks_template_set_parameters (template, exp1, exp2, xi_min, &
-    y_max, xi_cut, delta_zero, delta_i)
+    y_max, xi_cut, delta_o, delta_i)
     class(fks_template_t), intent(inout) :: template
     real(default), intent(in) :: exp1, exp2
     real(default), intent(in) :: xi_min, y_max, &
-         xi_cut, delta_zero, delta_i
+         xi_cut, delta_o, delta_i
     template%fks_dij_exp1 = exp1
     template%fks_dij_exp2 = exp2
     template%xi_min = xi_min
     template%y_max = y_max
     template%xi_cut = xi_cut
-    template%delta_zero = delta_zero
+    template%delta_o = delta_o
     template%delta_i = delta_i
   end subroutine fks_template_set_parameters
 
@@ -9022,6 +9020,7 @@ procedure :: init => nlo_settings_init
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Contribution of divergencies due to PDF Evolution}
 
+References:
 \begin{itemize}
 \item arXiv:hep-ph/9512328, (2.1)-(2.5), (4.29)-(4.53)
 \item arXiv:0709.2092, (2.102)-(2.106)
@@ -9038,7 +9037,7 @@ where $\Gamma$ are the DGLAP evolution kernels for an $a \to d$ splitting,
   \label{eqn:dglap}
   \Gamma_a^{(d)} = \delta_{ad}\delta(1-x) - \frac{\alpha_s}{2\pi} \left(\frac{1}{\epsilon} P_{ad}(x,0) - K_{ad}(x)\right) + \mathcal{O}(\alpha_s).
 \end{equation}
-$K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\bar{MS}$.
+$K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\overline{\text{MS}}$.
 Let the leading-order hadronic cross section be given by
 \begin{equation}
   \label{eqn:xsec_hadro_lo}
@@ -9103,7 +9102,7 @@ In order to make a connection to $d\tilde{\sigma}^{(cnt,\pm)}$, we relate $P_{ab
   P_{ab}(z,0) = (1-z)P_{ab}^<(z,0)\left(\frac{1}{1-z}\right)_+ + \gamma(a)\delta_{ab}\delta(1-z),
 \end{equation*}
 which yields
-\begin{equation}
+\begin{equation} \label{eqn:sigma-cnt}
   d\tilde{\sigma}^{(cnt,+)} = \frac{\alpha_s}{2\pi} \sum_d \left\lbrace -K_{da}(1-\xi) + \frac{1}{\epsilon} \left[\left(\frac{1}{\xi}\right)_+ \xi P_{da}^<(1-\xi,0)
                            + \delta_{da}\delta(\xi)\gamma(d)\right]\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha.
 \end{equation}
@@ -9111,7 +9110,7 @@ This term has the same pole structure as eqn. \ref{eqn:sigma-pm}. This makes cle
 \begin{equation}
   d\hat{\sigma}^{(in,+)} = d\tilde{\sigma}^{(in,+)} + \frac{1}{4} d\tilde{\sigma}^{(cnt,+)}
 \end{equation}
-has no collinear poles. Therefore, our task is to add up eqns. \ref{eqn:sigma-pm} and \ref{???} in order to compute the finite remainder. This is the integrand which is evaluated in the [[dglap_remnant]] component.\\
+has no collinear poles. Therefore, our task is to add up eqns. \ref{eqn:sigma-pm} and \ref{eqn:sigma-cnt} in order to compute the finite remainder. This is the integrand which is evaluated in the [[dglap_remnant]] component.\\
 So, we have to perform an expansion of $d\hat{\sigma}^{(in,+)}$ in $\epsilon$. Hereby, we must not neglect the implicit $\epsilon$-dependence of $P^<$, which leads to additional terms involving the
 first derivative,
 \begin{equation*}
@@ -9119,8 +9118,8 @@ first derivative,
 \end{equation*}
 This finally gives us the equation for the collinear remnant. Note that there is still one soft $1/\epsilon$-pole, which cancels out with the corresponding expression in the soft-virtual terms.
 \begin{align}
-  d\hat{\sigma}^{(in,+)} &= \frac{\alpha_s}{2\pi} \frac{1}{\epsilon} \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \\
-                         &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z) P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_{c} \log\frac{s\delta_{\mathrm{I}}}{\mu^2} + 2 \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right .\\
+  d\hat{\sigma}^{(in,+)} &= \frac{\alpha_s}{2\pi} \frac{1}{\epsilon} \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \nonumber\\
+                         &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z) P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_{c} \log\frac{s\delta_{\mathrm{I}}}{2\mu^2} + 2 \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right. \nonumber\\
                          &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial \epsilon} \left(\frac{1}{1-z}\right)_{c} - K_{da}(z)\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha
 \end{align}
 
@@ -9236,7 +9235,7 @@ plus distribution is evaluated over is not constrained on the interval $[0,1]$.
 Explicitly, this means (see JHEP 06(2010)043, (4.11)-(4.12))
 \begin{align}
   \int_{\bar{x}_\oplus}^1 dz \left( \frac{1}{1-z} \right)_{\xi_{\text{cut}}} & = \log \frac{1-\bar{x}_\oplus}{\xi_{\text{cut}}} f(1) + \int_{\bar{x}_\oplus}^1 \frac{f(z) - f(1)}{1-z}, \\
-  \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & = \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - log^2 (\xi_{\text{cut}}) \right)f(1) + \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
+  \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & = \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - \log^2 (\xi_{\text{cut}}) \right)f(1) + \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
 \end{align}
 and the same of course for $\bar{x}_\ominus$. These two terms are stored in the [[plus_dist_remnant]] variable below.
 <<dglap remnant: dglap remnant: TBP>>=
@@ -9267,12 +9266,13 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
           associate (z => dglap%isr_kinematics%z(emitter), template => dglap%settings%fks_template)
             jac = dglap%isr_kinematics%jacobian(emitter)
             onemz = one - z
-            factor = log (sb * template%delta_i / z / fac_scale2) / onemz + two * log (onemz) / onemz
-            factor_soft = log (sb * template%delta_i / fac_scale2) / onemz + two * log (onemz) / onemz
+            factor = log (sb * template%delta_i / two / z / fac_scale2) / &
+                   onemz + two * log (onemz) / onemz
+            factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
+                   onemz + two * log (onemz) / onemz
             xb = dglap%isr_kinematics%x(emitter)
-            ! TODO sbrass rescale xi_cut to [0, xi_max]
-            plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / fac_scale2) &
-                 + (log (one - xb)**2 - log (template%xi_cut)**2)
+            plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
+                   two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
             if (is_gluon(dglap%flv_in(emitter, i_flv))) then
                sqme_scaled = dglap%sqme_coll_isr(emitter, PDF, i_flv)
                tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &
@@ -9605,7 +9605,7 @@ end module dispatch_fks
          xi_min = var_list%get_rval (var_str ("fks_xi_min")), &
          y_max = var_list%get_rval (var_str ("fks_y_max")), &
          xi_cut = var_list%get_rval (var_str ("fks_xi_cut")), &
-         delta_zero = var_list%get_rval (var_str ("fks_delta_zero")), &
+         delta_o = var_list%get_rval (var_str ("fks_delta_o")), &
          delta_i = var_list%get_rval (var_str ("fks_delta_i")))
     select case (char (fks_mapping_type))
     case ("default")

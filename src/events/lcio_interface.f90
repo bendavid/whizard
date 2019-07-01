@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -522,7 +522,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.7.0")
+         "WHIZARD version:" // "2.7.1")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)

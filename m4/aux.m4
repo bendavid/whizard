@@ -216,6 +216,11 @@ echo "Fortran compiler: --- $FC_VENDOR ---"
 echo "         Version: --- $FC_VERSION ---"
 echo "           Flags: --- $FCFLAGS ---"
 echo " float precision: --- $FC_PRECISION ---"
+if test "$FC_DEBUG_ON" = ".true."; then
+   echo "  debug features: --- on ---"
+else
+   echo "  debug features: --- off ---"
+fi
 if test "$FC_OPENMP_OFF" = "!" ; then
    echo "          OpenMP: --- on with max. $FC_OPENMP_DEFAULT_MAX_THREADS threads"
 elif test "$FC_OPENMP_ON" = "!" ; then

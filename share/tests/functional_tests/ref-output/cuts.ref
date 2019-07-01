@@ -54,42 +54,7 @@ openmp_num_threads = 1
 |-----------------------------------------------------------------------------|
    1        494  1.3101118E+01  4.21E+00   32.11    7.14    3.98
 |=============================================================================|
-| RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 1
-| Initializing integration for process cuts_cc:
-| Beam structure: e-, e+
-| Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
-|   e+  (mass = 0.0000000E+00 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc.i1.phs'
-| ------------------------------------------------------------------------
-| Process [scattering]: 'cuts_cc'
-|   Library name  = 'cuts_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
-| ------------------------------------------------------------------------
-| Phase space: 13 channels, 8 dimensions
-| Phase space: found 13 channels, collected in 6 groves.
-| Phase space: Using 13 equivalences between channels.
-| Phase space: wood
-| Applying user-defined cuts.
-| Starting integration for process 'cuts_cc'
-| Integrate: iterations = 1:500
-| Integrator: 6 chains, 13 channels, 8 dimensions
-| Integrator: Using VAMP channel equivalences
-| Integrator: 500 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
-|=============================================================================|
-| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
-|=============================================================================|
-   1        494  7.3895139E+01  1.57E+01   21.21    4.71*   7.00
-|-----------------------------------------------------------------------------|
-   1        494  7.3895139E+01  1.57E+01   21.21    4.71    7.00
-|=============================================================================|
+seed = 2
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process cuts_cc:

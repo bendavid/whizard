@@ -25,6 +25,7 @@
 subroutine init_external_parameters (par) bind (C)
   use iso_c_binding
   use kinds
+  use debug_master, only: debug_on
   use diagnostics
   use ttv_formfactors
   implicit none
@@ -35,7 +36,7 @@ subroutine init_external_parameters (par) bind (C)
                    aemi, sw, mW, mb, wtop, sqrts_min, sqrts_max, sqrts_it, &
                    top_helicity_selection
   logical :: mpole_fixed
-  call msg_debug (D_THRESHOLD, "init_external_parameters")
+  if (debug_on) call msg_debug (D_THRESHOLD, "init_external_parameters")
   mZ     = par(1)
   mW     = par(2)
   alphas = par(4)

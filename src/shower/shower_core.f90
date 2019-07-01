@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module shower_core
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use io_units
   use constants
   use format_utils, only: write_separator
@@ -138,7 +139,7 @@ contains
     type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
     type(os_data_t), intent(in) :: os_data
-    call msg_debug (D_SHOWER, "shower_init")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_init")
     shower%settings = settings
     shower%taudec_settings = taudec_settings
     shower%os_data = os_data
@@ -198,7 +199,7 @@ contains
          parton_pointers
     integer :: n_beam, n_in, n_out, n_tot
     integer :: i, j, nr, max_color_nr
-    call msg_debug (D_SHOWER, 'shower_import_particle_set')
+    if (debug_on) call msg_debug (D_SHOWER, 'shower_import_particle_set')
     call count_and_allocate ()
     call setup_hadrons_from_particle_set ()
     call setup_partons_from_particle_set ()
@@ -207,7 +208,7 @@ contains
     if (shower%settings%muli_active) then
        call shower%activate_multiple_interactions ()
     end if
-    call msg_debug2 (D_SHOWER, 'shower%write() after shower_import_particle_set')
+    if (debug_on) call msg_debug2 (D_SHOWER, 'shower%write() after shower_import_particle_set')
     if (debug2_active (D_SHOWER)) then
        call shower%write ()
     end if
@@ -229,7 +230,7 @@ contains
       !!! if (n_beam > 0 .and. all (particle_set%prt(1:2)%flv%get_pdg_abs () > TAU)) then
       if (n_beam > 0 .and. particle_set%prt(1)%flv%get_pdg_abs () > TAU .and. &
            particle_set%prt(2)%flv%get_pdg_abs () > TAU) then
-         call msg_debug (D_SHOWER, 'Copy hadrons from particle_set to hadrons')
+         if (debug_on) call msg_debug (D_SHOWER, 'Copy hadrons from particle_set to hadrons')
          if (.not. allocated (hadrons))  allocate (hadrons (1:2))
          do i = 1, n_tot
             if (particle_set%prt(i)%status == PRT_BEAM) then
@@ -247,7 +248,7 @@ contains
     subroutine setup_partons_from_particle_set ()
       integer, dimension(1) :: parent
       j = 0
-      call msg_debug (D_SHOWER, "Copy partons from particle_set to partons")
+      if (debug_on) call msg_debug (D_SHOWER, "Copy partons from particle_set to partons")
       do i = 1, n_tot
          if (particle_set%prt(i)%get_status () == PRT_INCOMING .or. &
              particle_set%prt(i)%get_status () == PRT_OUTGOING) then
@@ -286,9 +287,9 @@ contains
     integer :: i, j, k
     integer :: n_int, max_color_nr
     integer, dimension(2,4) :: color_corr
-    call msg_debug (D_SHOWER, "shower_generate_emissions")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_generate_emissions")
     if (shower%settings%isr_active) then
-       call msg_debug (D_SHOWER, "Generate ISR with FSR")
+       if (debug_on) call msg_debug (D_SHOWER, "Generate ISR with FSR")
        i = 0
        BRANCHINGS: do
           i = i + 1
@@ -404,7 +405,7 @@ contains
        call shower%generate_fsr_for_isr_partons ()
     else
        if (signal_is_pending ()) return
-       call msg_debug (D_SHOWER, "Generate FSR without ISR")
+       if (debug_on) call msg_debug (D_SHOWER, "Generate FSR without ISR")
        call shower%simulate_no_isr_shower ()
     end if
 
@@ -422,7 +423,7 @@ contains
     else
        call shower%simulate_no_fsr_shower ()
     end if
-    call msg_debug (D_SHOWER, "Shower finished:")
+    if (debug_on) call msg_debug (D_SHOWER, "Shower finished:")
     if (debug_active (D_SHOWER))  call shower%write ()
 
     valid = shower%valid
@@ -463,7 +464,7 @@ contains
     type(lorentz_transformation_t) :: L
 
     if (signal_is_pending ()) return
-    call msg_debug (D_SHOWER, "Add interaction2toN")
+    if (debug_on) call msg_debug (D_SHOWER, "Add interaction2toN")
     n_partons = size (partons)
     n_out = n_partons - 2
     if (n_out < 2) then
@@ -474,7 +475,7 @@ contains
     isr_is_possible_and_allowed = (associated (partons(1)%p%initial) &
          .and. associated (partons(2)%p%initial)) .and. &
          shower%settings%isr_active
-    call msg_debug (D_SHOWER, "isr_is_possible_and_allowed", &
+    if (debug_on) call msg_debug (D_SHOWER, "isr_is_possible_and_allowed", &
          isr_is_possible_and_allowed)
 
     if (associated (partons(1)%p%initial) .and. &
@@ -730,7 +731,7 @@ contains
     class(shower_t), intent(inout) :: shower
     integer :: i, j
     type(parton_t), pointer :: prt
-    call msg_debug (D_SHOWER, "shower_simulate_no_isr_shower")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_simulate_no_isr_shower")
     do i = 1, size (shower%interactions)
        do j = 1, 2
           prt => shower%interactions(i)%i%partons(j)%p
@@ -823,7 +824,7 @@ contains
     class(shower_t), intent(inout) :: shower
     integer :: i, j, maxsort, size_partons
     logical :: changed
-    call msg_debug2 (D_SHOWER, "shower_sort_partons")
+    if (debug_on) call msg_debug2 (D_SHOWER, "shower_sort_partons")
     if (.not. allocated (shower%partons)) return
     size_partons = size (shower%partons)
     maxsort = 0
@@ -956,7 +957,7 @@ contains
     integer, intent(in), optional :: custom_length
     integer :: i, length, oldlength
     type(parton_pointer_t), dimension(:), allocatable :: tmp_partons
-    call msg_debug (D_SHOWER, "shower_enlarge_partons_array")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_enlarge_partons_array")
     if (present(custom_length)) then
        length = custom_length
     else
@@ -1030,7 +1031,7 @@ contains
     type(parton_t), intent(inout), target :: prt
     integer :: i, lastfree
     type(parton_pointer_t) :: newprt
-    call msg_debug2 (D_SHOWER, "shower_add_parent: for parton nr", prt%nr)
+    if (debug_on) call msg_debug2 (D_SHOWER, "shower_add_parent: for parton nr", prt%nr)
     allocate (newprt%p)
     newprt%p%nr = shower%get_next_free_nr ()
     !!! add new parton as parent
@@ -1774,8 +1775,8 @@ contains
     integer :: n_shower_partons, n_remnants, i, j
     integer :: n_in, n_out, n_beam, n_tot_old
     if (signal_is_pending ()) return
-    call msg_debug (D_SHOWER, "shower_combine_with_particle_set")
-    call msg_debug (D_SHOWER, "Particle set before replacing")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_combine_with_particle_set")
+    if (debug_on) call msg_debug (D_SHOWER, "Particle set before replacing")
     if (debug_active (D_SHOWER))  &
          call particle_set%write (summary=.true., compressed=.true.)
 
@@ -1794,7 +1795,7 @@ contains
        call particle_set%replace (particles)
     end if
 
-    call msg_debug (D_SHOWER, 'Particle set after replacing')
+    if (debug_on) call msg_debug (D_SHOWER, 'Particle set after replacing')
     if (debug_active (D_SHOWER))  &
          call particle_set%write (summary=.true., compressed=.true.)
 
@@ -2792,7 +2793,7 @@ contains
       real(default) :: random
       real(default) :: z, zstep, zmin, integral
       real(default) :: zmax = 0.99_default !! ??
-      call msg_debug (D_SHOWER, "generate_trial_z_and_typ")
+      if (debug_on) call msg_debug (D_SHOWER, "generate_trial_z_and_typ")
       call shower%rng%generate (random)
       integral = zero
       !!! decide which branching a->bc occurs
@@ -3091,7 +3092,7 @@ contains
     real(default) :: temprand
     real(default), parameter :: zstepfactor = 0.1_default
     real(default), parameter :: zstepmin = 0.0001_default
-    call msg_debug2 (D_SHOWER, "integral_over_z_part_isr")
+    if (debug_on) call msg_debug2 (D_SHOWER, "integral_over_z_part_isr")
     if (signal_is_pending ()) return
     pdf_divisor = shower%get_pdf &
          (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
@@ -3241,7 +3242,7 @@ contains
     integer :: n_int, i
     type(parton_t), pointer :: prt
     if (shower%settings%isr_only_onshell_emitted_partons) return
-    call msg_debug (D_SHOWER, "shower_generate_fsr_for_partons_emitted_in_ISR")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_generate_fsr_for_partons_emitted_in_ISR")
     INTERACTIONS_LOOP: do n_int = 1, size (shower%interactions)
        INCOMING_PARTONS_LOOP: do i = 1, 2
           if (signal_is_pending ()) return
@@ -3275,7 +3276,7 @@ contains
     type(parton_t), pointer :: prta, prtb, prtc, prtr
     real(default) :: mbr
     real(default) :: phirand
-    call msg_debug (D_SHOWER, "shower_execute_next_isr_branching")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_execute_next_isr_branching")
     if (.not. associated (prtp%p)) then
        call msg_fatal ("Shower: prtp not associated")
     end if
@@ -3532,7 +3533,7 @@ contains
     real(default) :: scale
     type(parton_t), pointer :: prt
     integer :: i,j
-    call msg_debug (D_SHOWER, "shower_set_max_isr_scale: newscale", &
+    if (debug_on) call msg_debug (D_SHOWER, "shower_set_max_isr_scale: newscale", &
          newscale)
     if (shower%settings%isr_pt_ordered) then
        scale = newscale
@@ -3599,7 +3600,7 @@ contains
     type(parton_t), intent(inout), target :: prt
     type(parton_pointer_t), dimension(:), allocatable :: partons
     logical :: single_emission = .false.
-    call msg_debug (D_SHOWER, "shower_parton_generate_fsr")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_parton_generate_fsr")
     if (signal_is_pending ()) return
     if (debug_active (D_SHOWER)) then
        if (.not. prt%is_branched ()) then
@@ -3627,7 +3628,7 @@ contains
       type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: &
            partons
       type(parton_pointer_t), dimension(:), allocatable :: partons_new
-      call msg_debug (D_SHOWER, "shower_parton_pointer_array_generate_fsr_recursive")
+      if (debug_on) call msg_debug (D_SHOWER, "shower_parton_pointer_array_generate_fsr_recursive")
       if (signal_is_pending ()) return
       if (size (partons) == 0) return
       call shower%parton_pointer_array_generate_fsr (partons, partons_new)
@@ -3641,7 +3642,7 @@ contains
     type(parton_pointer_t), dimension(:), allocatable, intent(out) :: &
          partons_new
     integer :: i, size_partons, size_partons_new
-    call msg_debug (D_SHOWER, "shower_parton_pointer_array_generate_fsr")
+    if (debug_on) call msg_debug (D_SHOWER, "shower_parton_pointer_array_generate_fsr")
     !!! Simulate highest/first parton
     call shower_simulate_children_ana (shower, partons(1)%p)
     !!! check for new daughters to be included in new_partons
@@ -3755,12 +3756,12 @@ contains
     pdf = zero
     if (debug_active (D_SHOWER)) then
        if (abs (mother) /= PROTON) then
-          call msg_debug (D_SHOWER, "mother", mother)
+          if (debug_on) call msg_debug (D_SHOWER, "mother", mother)
           call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
        end if
        if (.not. (abs (daughter) >= 1 .and. abs (daughter) <= 6 .or. &
                   daughter == GLUON)) then
-          call msg_debug (D_SHOWER, "daughter", daughter)
+          if (debug_on) call msg_debug (D_SHOWER, "daughter", daughter)
           call msg_fatal ("Shower: error in pdf, unknown daughter")
        end if
     end if
@@ -3792,12 +3793,12 @@ contains
     pdf = zero
     if (debug_active (D_SHOWER)) then
        if (abs (mother) /= PROTON) then
-          call msg_debug (D_SHOWER, "mother", mother)
+          if (debug_on) call msg_debug (D_SHOWER, "mother", mother)
           call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
        end if
        if (.not. (abs (daughter) >= 1 .and. abs (daughter) <= 6 .or. &
                   daughter == GLUON)) then
-          call msg_debug (D_SHOWER, "daughter", daughter)
+          if (debug_on) call msg_debug (D_SHOWER, "daughter", daughter)
           call msg_fatal ("Shower: error in pdf, unknown daughter")
        end if
     end if

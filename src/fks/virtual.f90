@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module virtual
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use numeric_utils
   use constants
   use diagnostics
@@ -369,9 +370,9 @@ contains
       real(default), intent(in) :: sqme_born
       real(default), intent(inout) :: QB
       integer :: i
-      call msg_debug2 (D_VIRTUAL, "compute_massive_self_eikonals")
-      call msg_debug2 (D_VIRTUAL, "s_o_Q2", s_o_Q2)
-      call msg_debug2 (D_VIRTUAL, "log (s_o_Q2)", log (s_o_Q2))
+      if (debug_on) call msg_debug2 (D_VIRTUAL, "compute_massive_self_eikonals")
+      if (debug_on) call msg_debug2 (D_VIRTUAL, "s_o_Q2", s_o_Q2)
+      if (debug_on) call msg_debug2 (D_VIRTUAL, "log (s_o_Q2)", log (s_o_Q2))
       do i = 1, 4
          QB = QB - (cf * (log (s_o_Q2) - 0.5_default * I_m_eps (p_thr(i)))) &
               * sqme_born
@@ -462,10 +463,7 @@ contains
           xi_max = two * E_em / sqrts
           log_xi_max = log (xi_max)
        end if
-       ! TODO sbrass evaluate xi-cut formalism for resonance-aware FKS
-       ! also: check rescaling with xi_max!
-       !associate (xi_cut => xi_max * virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
-       associate (xi_cut => virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
+       associate (xi_cut => virt%settings%fks_template%xi_cut, delta_o => virt%settings%fks_template%delta_o)
          if (virt%settings%virtual_resonance_aware_collinear) then
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using resonance-aware collinear subtraction")
@@ -481,8 +479,8 @@ contains
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
             s1 = virt%gamma_p(em, i_flv)
-            s2 = log (delta_zero * sqrts**2 / (two * virt%es_scale2)) * virt%gamma_0(em,i_flv)
-            s3 = log (delta_zero * sqrts**2 / (two * virt%es_scale2)) * two * virt%c_flv(em,i_flv) * &
+            s2 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * virt%gamma_0(em,i_flv)
+            s3 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * two * virt%c_flv(em,i_flv) * &
                  log (two * E_em / (xi_cut * sqrts))
             ! s4 = two * virt%c_flv(em,i_flv) * (log (two * E_em / sqrts)**2 - log (xi_cut)**2)
             s4 = two * virt%c_flv(em,i_flv) * & ! a**2 - b**2 = (a - b) * (a + b), for better numerical performance

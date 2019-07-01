@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module resonances
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use string_utils, only: str
   use format_utils, only: write_indent
   use io_units
@@ -216,7 +217,7 @@ contains
     integer, intent(in) :: pdg, n_out
     class(model_data_t), intent(in), target :: model
     type(flavor_t) :: flv
-    call msg_debug (D_PHASESPACE, "resonance_info_init_pdg")
+    if (debug_on) call msg_debug (D_PHASESPACE, "resonance_info_init_pdg")
     call flv%init (pdg, model)
     call resonance%init (mom_id, flv, n_out)
   end subroutine resonance_info_init_pdg
@@ -229,7 +230,7 @@ contains
     integer :: i
     logical, dimension(n_out) :: contrib
     integer, dimension(n_out) :: tmp
-    call msg_debug (D_PHASESPACE, "resonance_info_init_flv")
+    if (debug_on) call msg_debug (D_PHASESPACE, "resonance_info_init_flv")
     resonance%flavor = flv
     do i = 1, n_out
        tmp(i) = i
@@ -355,7 +356,7 @@ contains
     type(resonance_info_t), intent(in) :: resonance
     type(resonance_info_t), dimension(:), allocatable :: tmp
     integer :: n, i
-    call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
+    if (debug_on) call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
     if (.not. allocated (res_hist%resonances)) then
        n = 0
        allocate (res_hist%resonances (1))
@@ -374,7 +375,7 @@ contains
     end if
     call resonance%copy (res_hist%resonances(n+1))
     res_hist%n_resonances = n + 1
-    call msg_debug &
+    if (debug_on) call msg_debug &
          (D_PHASESPACE, "res_hist%n_resonances", res_hist%n_resonances)
   end subroutine resonance_history_add_resonance
 

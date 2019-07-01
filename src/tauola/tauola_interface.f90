@@ -13,6 +13,7 @@ module tauola_interface
   use constants
   use iso_varying_string, string_t => varying_string
   use format_utils, only: write_separator
+  use debug_master, only: debug_on
   use diagnostics
   use hep_common
   use hepev4_aux
@@ -502,7 +503,7 @@ contains
              write (*, "(A,4(1x,ES19.12))") "Antiparticle decay, p1 = ", p1
              write (*, "(A,4(1x,ES19.12))") "Antiparticle decay, p2 = ", p2
           end if
-          call msg_debug2 (D_TAUOLA, "TAUOLA is called here")
+          if (debug_on) call msg_debug2 (D_TAUOLA, "TAUOLA is called here")
           call dexay (1,pol)
           if (IFPHOT == 1)  call photos (np1)
 !!! ********************************************************
@@ -527,7 +528,7 @@ contains
              write (*, "(A,4(1x,ES19.12))") "Antiparticle decay, p1 = ", p1
              write (*, "(A,4(1x,ES19.12))") "Antiparticle decay, p2 = ", p2
           end if
-          call msg_debug2 (D_TAUOLA, "TAUOLA is called here")
+          if (debug_on) call msg_debug2 (D_TAUOLA, "TAUOLA is called here")
           call dexay (2,pol)
           if (IFPHOT == 1)  call photos (np2)
           is_swapped = .true.

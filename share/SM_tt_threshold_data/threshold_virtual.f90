@@ -49,6 +49,7 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
        sel_hel_beam, sqme_c, acc_c) bind(C)
   use @ID@_threshold
   use @ID@_virtual
+  use debug_master, only: debug_on
   use physics_defs, only: ass_boson, ass_quark
   use physics_defs, only: THR_POS_WP, THR_POS_WM
   use physics_defs, only: THR_POS_B, THR_POS_BBAR
@@ -75,7 +76,7 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
   real(default) :: prod2, born_decay_me2
   logical :: eval_this_beam_helicities
   integer, dimension(2) :: sel_hel
-  call msg_debug (D_ME_METHODS, "@ID@_olp_eval2")
+  if (debug_on) call msg_debug (D_ME_METHODS, "@ID@_olp_eval2")
   if (i_flv /= 1)  call msg_fatal ("i_flv /= 1, threshold interface was not built for this")
   if (any (id <= 0))  call msg_fatal ("Could not register process in OpenLoops")
   if (.not. threshold%settings%factorized_computation)  &

@@ -4118,6 +4118,7 @@ module resonances
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use string_utils, only: str
   use format_utils, only: write_indent
   use io_units
@@ -4264,7 +4265,7 @@ have to require a model data object that provides mass and width information.
     integer, intent(in) :: pdg, n_out
     class(model_data_t), intent(in), target :: model
     type(flavor_t) :: flv
-    call msg_debug (D_PHASESPACE, "resonance_info_init_pdg")
+    if (debug_on) call msg_debug (D_PHASESPACE, "resonance_info_init_pdg")
     call flv%init (pdg, model)
     call resonance%init (mom_id, flv, n_out)
   end subroutine resonance_info_init_pdg
@@ -4277,7 +4278,7 @@ have to require a model data object that provides mass and width information.
     integer :: i
     logical, dimension(n_out) :: contrib
     integer, dimension(n_out) :: tmp
-    call msg_debug (D_PHASESPACE, "resonance_info_init_flv")
+    if (debug_on) call msg_debug (D_PHASESPACE, "resonance_info_init_flv")
     resonance%flavor = flv
     do i = 1, n_out
        tmp(i) = i
@@ -4493,7 +4494,7 @@ the first one.
     type(resonance_info_t), intent(in) :: resonance
     type(resonance_info_t), dimension(:), allocatable :: tmp
     integer :: n, i
-    call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
+    if (debug_on) call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
     if (.not. allocated (res_hist%resonances)) then
        n = 0
        allocate (res_hist%resonances (1))
@@ -4512,7 +4513,7 @@ the first one.
     end if
     call resonance%copy (res_hist%resonances(n+1))
     res_hist%n_resonances = n + 1
-    call msg_debug &
+    if (debug_on) call msg_debug &
          (D_PHASESPACE, "res_hist%n_resonances", res_hist%n_resonances)
   end subroutine resonance_history_add_resonance
 
@@ -11139,6 +11140,7 @@ module cascades
 <<Use kinds>>
   use kinds, only: TC, i8, i32
 <<Use strings>>
+<<Use debug>>
   use io_units
   use constants, only: one
   use format_defs, only: FMT_12, FMT_19
@@ -13616,10 +13618,10 @@ Extract the resonance set from a complete cascade.
     integer, intent(in) :: n_out
     type(resonance_info_t) :: resonance
     integer :: i, mom_id, pdg
-    call msg_debug2 (D_PHASESPACE, "cascade_extract_resonance_history")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "cascade_extract_resonance_history")
     if (cascade%n_resonances > 0) then
        if (cascade%has_children) then
-          call msg_debug2 (D_PHASESPACE, "cascade has resonances and children")
+          if (debug_on) call msg_debug2 (D_PHASESPACE, "cascade has resonances and children")
           do i = 1, size(cascade%tree_resonant)
              if (cascade%tree_resonant (i)) then
                 mom_id = cascade%tree (i)
@@ -13646,7 +13648,7 @@ Extract the resonance set from a complete cascade.
     integer :: n
     type(cascade_t), pointer :: cascade
     integer :: grove
-    call msg_debug (D_PHASESPACE, "cascade_set_get_n_trees")
+    if (debug_on) call msg_debug (D_PHASESPACE, "cascade_set_get_n_trees")
     n = 0
     do grove = 1, cascade_set%n_groves
        cascade => cascade_set%first_k
@@ -13659,7 +13661,7 @@ Extract the resonance set from a complete cascade.
           cascade => cascade%next
        end do
     end do
-    call msg_debug (D_PHASESPACE, "n", n)
+    if (debug_on) call msg_debug (D_PHASESPACE, "n", n)
   end function cascade_set_get_n_trees
 
 @ %def cascade_set_get_n_trees
@@ -13678,14 +13680,14 @@ result is an array which contains each valid history exactly once.
     type(resonance_history_set_t) :: res_hist_set
     integer :: grove, i, n_hists
     logical :: included, add_to_list
-    call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")
+    if (debug_on) call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")
     call res_hist_set%init (n_filter = n_filter)
     do grove = 1, cascade_set%n_groves
        cascade => cascade_set%first_k
        do while (associated (cascade))
           if (cascade%active .and. cascade%complete) then
              if (cascade%grove == grove) then
-                call msg_debug2 (D_PHASESPACE, "grove", grove)
+                if (debug_on) call msg_debug2 (D_PHASESPACE, "grove", grove)
                 call cascade%extract_resonance_history &
                      (res_hist, cascade_set%model, cascade_set%n_out)
                 call res_hist_set%enter (res_hist)
@@ -15809,6 +15811,7 @@ module phs_fks
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use constants
   use diagnostics
   use io_units, only: given_output_unit, free_unit
@@ -15829,6 +15832,7 @@ module phs_fks
   use process_constants
   use process_libraries
   use ttv_formfactors, only: generate_on_shell_decay_threshold, m1s_to_mpole
+  use format_defs, only: FMT_17
 
 <<Standard module head>>
 
@@ -15924,7 +15928,7 @@ phase spaces.
     end if
     if (present (contributors)) then
        p_sum = vector4_null
-       call msg_debug (D_SUBTRACTION, "Invariant masses for real emission: ")
+       if (debug_on) call msg_debug (D_SUBTRACTION, "Invariant masses for real emission: ")
        associate (p => phs_point_set%phs_point(i_phs)%p)
           do i = 1, size (contributors)
              p_sum = p_sum + p(contributors(i))
@@ -16199,14 +16203,14 @@ phase spaces.
     integer :: u, i
     u = given_output_unit (unit); if (u < 0) return
     write (u,"(A)") "Real kinematics: "
-    write (u,"(A,F5.3)") "xi_tilde: ", r%xi_tilde
-    write (u,"(A,F5.3)") "phi: ", r%phi
+    write (u,"(A," // FMT_17 // ",1X)") "xi_tilde: ", r%xi_tilde
+    write (u,"(A," // FMT_17 // ",1X)") "phi: ", r%phi
     do i = 1, size (r%xi_max)
        write (u,"(A,I1,1X)") "i_phs: ", i
-       write (u,"(A,100F5.3,1X)") "xi_max: ", r%xi_max(i)
-       write (u,"(A,100F5.3,1X)") "y: ", r%y(i)
-       write (u,"(A,100F5.3,1X)") "jac_rand: ", r%jac_rand(i)
-       write (u,"(A,100F5.3,1X)") "y_soft: ", r%y_soft(i)
+       write (u,"(A," // FMT_17 // ",1X)") "xi_max: ", r%xi_max(i)
+       write (u,"(A," // FMT_17 // ",1X)") "y: ", r%y(i)
+       write (u,"(A," // FMT_17 // ",1X)") "jac_rand: ", r%jac_rand(i)
+       write (u,"(A," // FMT_17 // ",1X)") "y_soft: ", r%y_soft(i)
     end do
     write (u, "(A)") "Born Momenta: "
     write (u, "(A)") "CMS: "
@@ -16621,7 +16625,7 @@ be assured that Born flavors are used for this.
   subroutine phs_fks_config_set_born_config (phs_config, phs_cfg_born)
     class(phs_fks_config_t), intent(inout) :: phs_config
     type(phs_wood_config_t), intent(in), target :: phs_cfg_born
-    call msg_debug (D_PHASESPACE, "phs_fks_config_set_born_config")
+    if (debug_on) call msg_debug (D_PHASESPACE, "phs_fks_config_set_born_config")
     phs_config%forest = phs_cfg_born%forest
     phs_config%n_channel = phs_cfg_born%n_channel
     allocate (phs_config%channel (phs_config%n_channel))
@@ -16665,7 +16669,7 @@ be assured that Born flavors are used for this.
        call feyngraph_set_get_resonance_histories &
             (phs_config%feyngraph_set, n_filter = 2, res_hists = resonance_histories)
     else
-       call msg_debug (D_PHASESPACE, "Have to rebuild phase space for resonance histories")
+       if (debug_on) call msg_debug (D_PHASESPACE, "Have to rebuild phase space for resonance histories")
        call phs_config%generate_phase_space_extra ()
        if (phs_config%use_cascades2) then
           call feyngraph_set_get_resonance_histories &
@@ -17507,7 +17511,7 @@ recoiling momenta.
     integer :: i_emitter
     type(lorentz_transformation_t) :: boost_to_resonance
     integer :: n_resonant_particles
-    call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
     nlegborn = size (p_born); nlegreal = nlegborn + 1
     allocate (resonance_list (size (generator%resonance_contributors(i_con)%c)))
     resonance_list = generator%resonance_contributors(i_con)%c
@@ -17607,7 +17611,7 @@ recoiling momenta.
     type(lorentz_transformation_t) :: boost_to_top
     integer :: leg, other_leg
     real(default) :: sqrts, mtop
-    call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
     nlegborn = size (p_born); nlegreal = nlegborn + 1
 
     leg = thr_leg(emitter); other_leg = 3 - leg
@@ -17721,7 +17725,7 @@ recoiling momenta.
        k0_n = uk_n
     end if
 
-    call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_out")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_out")
     call debug_input_values ()
 
     vec = uk_n / uk_n_born * k_n_born
@@ -19053,9 +19057,9 @@ has already been taken into account during its generation.
             "kinematics associated with this generator"
     end if
     call write_separator (u)
-    write (u, "(A,F5.3)") "sqrts: ", generator%sqrts
-    write (u, "(A,F5.3)") "E_gluon: ", generator%E_gluon
-    write (u, "(A,F5.3)") "mrec2: ", generator%mrec2
+    write (u, "(A," // FMT_17 // ",1X)") "sqrts: ", generator%sqrts
+    write (u, "(A," // FMT_17 // ",1X)") "E_gluon: ", generator%E_gluon
+    write (u, "(A," // FMT_17 // ",1X)") "mrec2: ", generator%mrec2
   end subroutine phs_fks_generator_write
 
 @ %def phs_fks_generator_write
@@ -19128,7 +19132,7 @@ has already been taken into account during its generation.
     integer :: i_hist
     type(resonance_history_t), dimension(:), allocatable :: res_hist_colored, res_hist_contracted
 
-    call msg_debug (D_SUBTRACTION, "resonance_mapping_init")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "resonance_mapping_init")
     if (debug_active (D_SUBTRACTION)) then
        call msg_debug (D_SUBTRACTION, "Original resonances:")
        do i_hist = 1, size(res_hist)
@@ -21969,6 +21973,7 @@ module cascades2
 
 <<Use kinds>>
   use kinds, only: TC, i8
+<<Use debug>>
   use cascades2_lexer
   use sorting
   use flavors
@@ -23319,14 +23324,14 @@ procedures.
        deallocate (set%particle)
     end if
     if (associated (set%grove_list)) then
-       call msg_debug (D_PHASESPACE, "grove_list: final")
+       if (debug_on) call msg_debug (D_PHASESPACE, "grove_list: final")
        call set%grove_list%final ()
        deallocate (set%grove_list)
     end if
-    call msg_debug (D_PHASESPACE, "f_node_list: final")
+    if (debug_on) call msg_debug (D_PHASESPACE, "f_node_list: final")
     call set%f_node_list%final ()
     if (associated (set%dag)) then
-       call msg_debug (D_PHASESPACE, "dag: final")
+       if (debug_on) call msg_debug (D_PHASESPACE, "dag: final")
        if (associated (set%dag)) then
           call set%dag%final ()
           deallocate (set%dag)
@@ -26683,9 +26688,9 @@ about the resonance hash values.
     feyngraph_set%process_type = n_in
     feyngraph_set%phs_par = phs_par
     feyngraph_set%model => model
-    call msg_debug (D_PHASESPACE, "Construct relevant Feynman diagrams from Omega output")
+    if (debug_on) call msg_debug (D_PHASESPACE, "Construct relevant Feynman diagrams from Omega output")
     call feyngraph_set%build (u_in)
-    call msg_debug (D_PHASESPACE, "Find phase-space parametrizations")
+    if (debug_on) call msg_debug (D_PHASESPACE, "Find phase-space parametrizations")
     call feyngraph_set_find_phs_parametrizations(feyngraph_set)
   end subroutine feyngraph_set_generate_single
 
@@ -27344,11 +27349,11 @@ final grove list.
     integer, intent(in) :: n_out
     type(resonance_info_t) :: resonance
     integer :: i, mom_id, pdg
-    call msg_debug2 (D_PHASESPACE, "kingraph_extract_resonance_history")
+    if (debug_on) call msg_debug2 (D_PHASESPACE, "kingraph_extract_resonance_history")
     if (kingraph%grove_prop%n_resonances > 0) then
        if (associated (kingraph%root%daughter1) .or. &
             associated (kingraph%root%daughter2)) then
-          call msg_debug2 (D_PHASESPACE, "kingraph has resonances, root has children")
+          if (debug_on) call msg_debug2 (D_PHASESPACE, "kingraph has resonances, root has children")
           do i = 1, kingraph%tree%n_entries
              if (kingraph%tree%mapping(i) == S_CHANNEL) then
                 mom_id = kingraph%tree%bc (i)
@@ -27375,7 +27380,7 @@ final grove list.
     integer :: n
     type(kingraph_t), pointer :: kingraph
     type(grove_t), pointer :: grove
-    call msg_debug (D_PHASESPACE, "grove_list_get_n_trees")
+    if (debug_on) call msg_debug (D_PHASESPACE, "grove_list_get_n_trees")
     n = 0
     grove => grove_list%first
     do while (associated (grove))
@@ -27386,7 +27391,7 @@ final grove list.
        enddo
        grove => grove%next
     enddo
-    call msg_debug (D_PHASESPACE, "n", n)
+    if (debug_on) call msg_debug (D_PHASESPACE, "n", n)
   end function grove_list_get_n_trees
 
 @ %def grove_list_get_n_trees
@@ -27404,7 +27409,7 @@ analogy to [[cascade_set_get_resonance_histories]]
     type(resonance_history_t) :: res_hist
     type(resonance_history_set_t) :: res_hist_set
     integer :: i_grove
-    call msg_debug (D_PHASESPACE, "grove_list_get_resonance_histories")
+    if (debug_on) call msg_debug (D_PHASESPACE, "grove_list_get_resonance_histories")
     call res_hist_set%init (n_filter = n_filter)
     grove => feyngraph_set%grove_list%first
     i_grove = 0
@@ -27413,7 +27418,7 @@ analogy to [[cascade_set_get_resonance_histories]]
        kingraph => grove%first
        do while (associated (kingraph))
           if (kingraph%keep) then
-             call msg_debug2 (D_PHASESPACE, "grove", i_grove)
+             if (debug_on) call msg_debug2 (D_PHASESPACE, "grove", i_grove)
              call kingraph%extract_resonance_history &
                   (res_hist, feyngraph_set%model, feyngraph_set%n_out)
              call res_hist_set%enter (res_hist)

@@ -1152,6 +1152,7 @@ This module contains no unit tests.  The tests are covered by the
 module parton_states
 
 <<Use kinds>>
+<<Use debug>>
   use io_units
   use format_utils, only: write_separator
   use diagnostics
@@ -1580,7 +1581,7 @@ event output.
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int, beam_int
     logical :: reduce, fs_flv_flag
-    call msg_debug (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
          "connected_state_setup_connected_trace")
     reduce = .false.; fs_flv_flag = .true.
     if (present (undo_helicities)) reduce = undo_helicities
@@ -2862,6 +2863,7 @@ module process
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use format_utils, only: write_separator
   use constants
@@ -3100,7 +3102,7 @@ other options activate when the particular parameter value is found in
 
 NOTE: The DTIO [[generic]] binding is supported by gfortran since 7.0.
 
-TODO: The default could be to show everything, and we should have separate
+TODO wk 2018: The default could be to show everything, and we should have separate
 switches for all major parts.  Currently, there are only a few.
 <<Process: process: TBP>>=
   ! generic :: write (formatted) => write_formatted
@@ -3318,7 +3320,7 @@ the short version just the results.
 @ Finalizer.  Explicitly iterate over all subobjects that may contain
 allocated pointers.
 
-TODO (workaround): The finalizer for the [[config_data]] component is not
+TODO wk 2018 (workaround): The finalizer for the [[config_data]] component is not
 called.  The reason is that this deletes model data local to the process,
 but these could be referenced by pointers (flavor objects) from some
 persistent event record.  Obviously, such side effects should be avoided, but
@@ -3382,7 +3384,7 @@ the chosen algorithm for process integration.  The first task of the manager
 is to allocate the component array and to determine the component categories
 (e.g., Born/Virtual etc.).
 
-TODO: The [[pcm]] dispatcher should be provided by the caller, if we
+TODO wk 2018: The [[pcm]] dispatcher should be provided by the caller, if we
 eventually want to eliminate dependencies on concrete [[pcm_t]] extensions.
 <<Process: process: TBP>>=
   procedure :: init => process_init
@@ -3397,7 +3399,7 @@ eventually want to eliminate dependencies on concrete [[pcm_t]] extensions.
     type(var_list_t), intent(inout), target, optional :: var_list
     type(beam_structure_t), intent(in), optional :: beam_structure
     integer :: next_rng_seed
-    call msg_debug (D_PROCESS_INTEGRATION, "process_init")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_init")
     associate &
          (meta => process%meta, env => process%env, config => process%config)
       call env%init &
@@ -3430,7 +3432,7 @@ The first version of this supports just two implementations: leading-order
 (tree-level) integration and event generation, and NLO (QCD/FKS subtraction).
 We thus can start with a single logical for steering the dispatcher.
 
-TODO: Eventually, we may eliminate all references to the extensions of
+TODO wk 2018: Eventually, we may eliminate all references to the extensions of
 [[pcm_t]] from this module and therefore move this outside the module as well.
 <<Process: procedures>>=
   subroutine dispatch_pcm (pcm, is_nlo)
@@ -3705,7 +3707,7 @@ recorded in the [[meta]] block.  Delegate to the [[pcm]].
     if (process%is_nlo_calculation ()) then
        i_sub = process%component(1)%config%get_associated_subtraction ()
        subtraction_method = process%component(i_sub)%config%get_me_method ()
-       call msg_debug2 (D_PROCESS_INTEGRATION, "process_setup_terms: ", &
+       if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_setup_terms: ", &
             subtraction_method)
     end if
 
@@ -4312,7 +4314,7 @@ make a random-number generator instance for each MCI group.
     procedure(dispatch_mci_proc) :: dispatch_mci
     class(mci_t), allocatable :: mci_template
     integer :: i, i_mci
-    call msg_debug (D_PROCESS_INTEGRATION, "process_setup_mci")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_setup_mci")
     associate (pcm => process%pcm)
       call pcm%call_dispatch_mci (dispatch_mci, &
            process%get_var_list_ptr (), process%meta%id, mci_template)
@@ -5661,7 +5663,7 @@ Construct an MD5 sum for the constant data, including the NLO type.
 For the NLO type [[NLO_MISMATCH]], we pretend that this was
 [[NLO_SUBTRACTION]] instead.
 
-TODO: should not depend explicitly on NLO data.
+TODO wk 2018: should not depend explicitly on NLO data.
 <<Process: process: TBP>>=
   procedure :: get_md5sum_constants => process_get_md5sum_constants
 <<Process: procedures>>=
@@ -6183,7 +6185,7 @@ These subroutines (and the NLO specific properties they work on) could
 potentially be moved to [[pcm_nlo_t]] and used more generically in
 [[process_t]] with an appropriate interface in [[pcm_t]]
 
-TODO: This is used only by event initialization, which deals with an incomplete
+TODO wk 2018: This is used only by event initialization, which deals with an incomplete
 process object.
 <<Process: process: TBP>>=
   procedure :: init_nlo_settings => process_init_nlo_settings
@@ -6384,7 +6386,7 @@ one has to bring NLO information there.
   subroutine process_prepare_any_external_code (process)
     class(process_t), intent(inout), target :: process
     integer :: i
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "process_prepare_external_code")
     associate (pcm => process%pcm)
       do i = 1, pcm%n_cores
@@ -8579,6 +8581,7 @@ module process_mci
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use diagnostics
   use physics_defs
@@ -8777,11 +8780,11 @@ MCI entry.
     integer, dimension(:), allocatable :: i_list
     integer :: n
     integer, save :: i_rfin_offset = 0
-    call msg_debug (D_PROCESS_INTEGRATION, "process_mci_entry_create_component_list")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_mci_entry_create_component_list")
     if (mci_entry%combined_integration) then
        n = get_n_components (mci_entry%real_partition_type)
        allocate (i_list (n))
-       call msg_debug (D_PROCESS_INTEGRATION, &
+       if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
             "mci_entry%real_partition_type", mci_entry%real_partition_type)
        select case (mci_entry%real_partition_type)
        case (REAL_FULL)
@@ -8813,7 +8816,7 @@ MCI entry.
          n_components = size (component_config%get_association_list &
             (ASSOCIATED_REAL_FIN))
       end select
-      call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
+      if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
     end function get_n_components
   end subroutine process_mci_entry_create_component_list
 
@@ -9324,6 +9327,7 @@ module pcm
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use constants, only: zero, two
   use diagnostics
   use lorentz
@@ -9789,7 +9793,7 @@ Each component is assigned its own core.  Exceptions: the finite-real
 component gets the same core as the singular-real component.  The mismatch
 component gets the same core as the subtraction component.
 
-TODO: this convention for real components can be improved.  Check whether
+TODO wk 2018: this convention for real components can be improved.  Check whether
 all component types should be assigned, not just for combined
 integration. 
 <<Pcm: pcm nlo: TBP>>=
@@ -9859,7 +9863,7 @@ Setup for the NLO/PHS processes: two phase-space configurations, (1)
 Born/wood, (2) real correction/FKS.  All components use either one of these
 two configurations.
 
-TODO: The [[first_real_component]] identifier is really ugly.  Nothing should
+TODO wk 2018: The [[first_real_component]] identifier is really ugly.  Nothing should
 rely on the ordering.
 <<Pcm: pcm nlo: TBP>>=
   procedure :: init_phs_config => pcm_nlo_init_phs_config
@@ -10226,7 +10230,7 @@ configuration object.
 In passing, we may create a table of resonance histories that are relevant for
 the singular-region configuration.
 
-TODO: check whether [[phs_entry]] needs to be intent(inout).
+TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
 <<Pcm: pcm nlo: TBP>>=
   procedure :: setup_region_data => pcm_nlo_setup_region_data
 <<Pcm: procedures>>=
@@ -10308,7 +10312,7 @@ For a subtraction component, the [[active]] flag is overridden.
 
 In the nlo mode, the component types have been determined before.
 
-TODO: the component type need not be stored in the component; we may remove
+TODO wk 2018: the component type need not be stored in the component; we may remove
 this when everything is controlled by [[pcm]].
 <<Pcm: pcm nlo: TBP>>=
   procedure :: init_component => pcm_nlo_init_component
@@ -10664,7 +10668,7 @@ object and the squared matrix-element collector.
     integer, intent(in) :: i_real_fin
     class(model_data_t), intent(in) :: model
     integer :: i_component
-    call msg_debug (D_PROCESS_INTEGRATION, "pcm_instance_nlo_init_config")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "pcm_instance_nlo_init_config")
     call pcm_instance%init_real_and_isr_kinematics (sqrts)
     select type (pcm => pcm_instance%config)
     type is (pcm_nlo_t)
@@ -11750,6 +11754,7 @@ module instances
 
 <<Use kinds>>
 <<Use strings>>
+<<Use debug>>
   use io_units
   use format_utils, only: write_separator
   use constants
@@ -12355,7 +12360,7 @@ allocated explicitly.
              else
                 pcm_instance%isr_kinematics%isr_mode = SQRTS_FIXED
              end if
-             call msg_debug (D_PHASESPACE, "isr_mode: ", pcm_instance%isr_kinematics%isr_mode)
+             if (debug_on) call msg_debug (D_PHASESPACE, "isr_mode: ", pcm_instance%isr_kinematics%isr_mode)
           end select
        end select
     class default
@@ -12642,22 +12647,22 @@ stored in the kinematics subobject to their source.  This is a side effect.
        do i_amp = 1, n_amps
           sqme = real (term%connected%trace%get_matrix_element ( &
                term%connected_qn_index%get_index (i_amp, i_sub = 0)))
-          call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
+          if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
           select type (pcm => term%pcm_instance%config)
           type is (pcm_nlo_t)
              select case (process%get_component_type (i_component))
              case (COMP_REAL_FIN, COMP_REAL_SING)
                 select case (process%get_component_type (i_component))
                 case (COMP_REAL_FIN)
-                   call msg_debug2 (D_PROCESS_INTEGRATION, "Real finite")
+                   if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "Real finite")
                    sqme = sqme * (one - f)
                 case (COMP_REAL_SING)
-                   call msg_debug2 (D_PROCESS_INTEGRATION, "Real singular")
+                   if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "Real singular")
                    sqme = sqme * f
                 end select
              end select
           end select
-          call msg_debug2 (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
+          if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
           call term%connected%trace%set_matrix_element (i_amp, cmplx (sqme, zero, default))
        end do
     end if
@@ -12834,11 +12839,11 @@ the threshold computation where the process is well-defined and fixed.
     type is (pcm_instance_nlo_t)
        select type (config => pcm_instance%config)
        type is (pcm_nlo_t)
-          call msg_debug2 (D_SUBTRACTION, &
+          if (debug_on) call msg_debug2 (D_SUBTRACTION, &
                "term_instance_evaluate_color_correlations: " // &
                "use_internal_color_correlations:", &
                config%settings%use_internal_color_correlations)
-          call msg_debug2 (D_SUBTRACTION, "fac_scale", term%fac_scale)
+          if (debug_on) call msg_debug2 (D_SUBTRACTION, "fac_scale", term%fac_scale)
 
           do i_flv_born = 1, config%region_data%n_flv_born
              select case (term%nlo_type)
@@ -12912,7 +12917,7 @@ the threshold computation where the process is well-defined and fixed.
       real(default), dimension(:,:), intent(inout) :: sqme_color_c
       integer :: i_color_c, i_sub, n_pdf_off, virt_off, n_offset
       real(default), dimension(:), allocatable :: sqme
-      call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
+      if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
       if (pcm%settings%use_internal_color_correlations) then
          !!! A negative value for sqme_born indicates that the Born matrix
          !!! element is multiplied at a different place, e.g. in the case
@@ -13018,7 +13023,7 @@ it is only available after the [[fks_regions]] have been created.
     real(default), dimension(0:3, 0:3) :: sqme_spin_c
     real(default), dimension(:), allocatable :: sqme_spin_c_all
     real(default), dimension(:), allocatable :: sqme_spin_c_arr
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_spin_correlations")
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
@@ -13302,7 +13307,7 @@ handled accordingly.
     integer :: i_flv
     if (term%nlo_type /= NLO_DGLAP) call msg_fatal &
        ("Trying to evaluate DGLAP remnant with unsuited term_instance.")
-    call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_evaluate_sqme_dglap")
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_evaluate_sqme_dglap")
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
        if (debug2_active (D_PROCESS_INTEGRATION)) then
@@ -13442,7 +13447,7 @@ method may modify the [[core_state]] workspace object.
   subroutine term_instance_evaluate_interaction (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in), pointer :: core
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction")
     term%p_hard = term%int_hard%get_momenta ()
     select type (core)
@@ -13485,7 +13490,7 @@ method may modify the [[core_state]] workspace object.
   subroutine term_instance_evaluate_interaction_userdef (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef")
     select type (core_state => term%core_state)
     type is (openloops_state_t)
@@ -13584,7 +13589,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     integer :: i_flv, i_hel, i_sub, i_color_c, i_spin_c, i_emitter
     integer :: emitter
     logical :: bad_point, bp
-    call msg_debug2 (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_tree")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
@@ -13682,7 +13687,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     real(default), dimension(4) :: sqme_virt
     real(default), dimension(:), allocatable :: sqme_color_c
     logical :: bad_point
-    call msg_debug (D_PROCESS_INTEGRATION, &
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_loop")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
@@ -13761,6 +13766,8 @@ counter terms [[sf_rescale_dglap_t]] and for the case, we have an emitter in the
 rescale the kinematics for it using [[sf_rescale_real_t]].
 
 References: arXiv:0709.2092, (2.35)-(2.42).
+Obviously, it is completely irrelevant, which beam is treated.
+It becomes problematic when handling [[e, p]]-beams.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_scaled_sf_chains => term_instance_evaluate_scaled_sf_chains
 <<Instances: procedures>>=
@@ -13791,9 +13798,6 @@ References: arXiv:0709.2092, (2.35)-(2.42).
                 call func%set (pcm%real_kinematics%xi_tilde * &
                      pcm%real_kinematics%xi_max (term%k_term%i_phs), &
                      pcm%real_kinematics%y (term%k_term%i_phs))
-                ! TODO sbrass Obviously, it is completely irrelevant,
-                ! TODO sbrass which beam is treated for hadronic beams. It becomes
-                ! TODO sbrass problematic when handling "e, p"-beams.
                 call func%restrict_to_beam (term%k_term%emitter)
              end select
           end select
@@ -14074,7 +14078,7 @@ Wrapper type for storing pointers to process instance objects in arrays.
   end type process_instance_ptr_t
 
 @ %def process_instance_ptr_t
-@ The process hooks are first-in-last-out list of objects which are evalutaed
+@ The process hooks are first-in-last-out list of objects which are evaluated
 after the phase space and matrixelement are evaluated. It is possible to
 retrieve the sampler object and read the sampler information.
 
@@ -14236,7 +14240,7 @@ to subobject of [[instance]].
     type(process_term_t) :: term
     type(var_list_t), pointer :: var_list
     integer :: i_born, i_real, i_real_fin
-    call msg_debug (D_PROCESS_INTEGRATION, "process_instance_init")
+    if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_instance_init")
     instance%process => process
     call instance%process%check_library_sanity ()
     call instance%setup_sf_chain (process%get_beam_config_ptr ())
@@ -15134,7 +15138,7 @@ terms, iterating over all active process components.
     real(default) :: alpha_s, alpha_qed
     class(prc_core_t), pointer :: core_sub => null ()
     class(model_data_t), pointer :: model => null ()
-    call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_evaluate_trace")
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_evaluate_trace")
     instance%sqme = zero
     call instance%reset_matrix_elements ()
     if (instance%evaluation_status >= STAT_PASSED_CUTS) then
@@ -15179,12 +15183,16 @@ terms, iterating over all active process components.
                           call term%compute_sqme_coll_isr ()
                   end if
                   alpha_s = core%get_alpha_s (term%core_state)
-                  if (associated (instance%process%get_model_ptr ())) then
-                     model => instance%process%get_model_ptr ()
-                     if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) &
-                          alpha_qed = one / model%get_real (var_str ('alpha_em_i'))
-                     model => null ()
-                  end if
+!!!! TODO (wk 2019-02-07): this method for resetting alpha_em is not used (yet),
+!!!!       and it slows down the program significantly by using string handling.
+!!!        Should be removed or replaced by an efficient method.
+                  alpha_qed = 0
+!!!                   if (associated (instance%process%get_model_ptr ())) then
+!!!                      model => instance%process%get_model_ptr ()
+!!!                      if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) &
+!!!                           alpha_qed = one / model%get_real (var_str ('alpha_em_i'))
+!!!                      model => null ()
+!!!                   end if
                   select case (term%nlo_type)
                   case (NLO_REAL)
                      call term%apply_fks (alpha_s, alpha_qed)
@@ -15362,7 +15370,7 @@ e.g. for Powheg, there is the possibility to supply an external $\alpha_s$
     real(default), intent(in), optional :: alpha_s_external
     class(prc_core_t), pointer :: core
     integer :: i_real_fin
-    call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_rad")
+    if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_rad")
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
        associate (term => instance%term(i_term))

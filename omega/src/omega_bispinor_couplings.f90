@@ -35,8 +35,10 @@ module omega_bispinor_couplings
   private
   public :: u, v, ghost
   public :: brs_u, brs_v
-  public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, va2_ff
-  public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f
+  public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, va2_ff, tva_ff, tvam_ff, &
+            tlr_ff, tlrm_ff
+  public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f, &
+            f_tvaf, f_tlrf, f_tvamf, f_tlrmf
   public :: sp_ff, s_ff, p_ff, sl_ff, sr_ff, slr_ff
   public :: f_spf, f_sf, f_pf, f_slf, f_srf, f_slrf
   private :: vv_ff, f_vvf
@@ -310,6 +312,51 @@ contains
     type(bispinor), intent(in) :: psi
     j = va_ff (gl+gr, gl-gr, psibar, psi)
   end function vlr_ff
+  pure function tva_ff (gv, ga, psibar, psi) result (t)
+    type(tensor2odd) :: t
+    complex(kind=default), intent(in) :: gv, ga
+    type(bispinor), intent(in) :: psibar
+    type(bispinor), intent(in) :: psi
+    complex(kind=default) :: gl, gr
+    complex(kind=default) :: g11, g22, g33, g44, g1p2, g3p4
+    gr     = gv + ga
+    gl     = gv - ga
+    g11    = psibar%a(1)*psi%a(1)
+    g22    = psibar%a(2)*psi%a(2)
+    g1p2   = psibar%a(1)*psi%a(2) + psibar%a(2)*psi%a(1)
+    g3p4   = psibar%a(3)*psi%a(4) + psibar%a(4)*psi%a(3)
+    g33    = psibar%a(3)*psi%a(3)
+    g44    = psibar%a(4)*psi%a(4)
+    t%e(1) = (gl * ( - g11 + g22) + gr * ( - g33 + g44)) * (0, 1)
+    t%e(2) =  gl * (   g11 + g22) + gr * (   g33 + g44)  
+    t%e(3) = (gl * (   g1p2     ) + gr * (   g3p4     )) * (0, 1)  
+    t%b(1) =  gl * (   g11 - g22) + gr * ( - g33 + g44)  
+    t%b(2) = (gl * (   g11 + g22) + gr * ( - g33 - g44)) * (0, 1)
+    t%b(3) =  gl * ( - g1p2     ) + gr * (   g3p4     )
+  end function tva_ff
+  pure function tlr_ff (gl, gr, psibar, psi) result (t)
+    type(tensor2odd) :: t
+    complex(kind=default), intent(in) :: gl, gr
+    type(bispinor), intent(in) :: psibar
+    type(bispinor), intent(in) :: psi
+    t = tva_ff (gr+gl, gr-gl, psibar, psi)
+  end function tlr_ff
+  pure function tvam_ff (gv, ga, psibar, psi, p) result (j)
+    type(vector) :: j
+    complex(kind=default), intent(in) :: gv, ga
+    type(bispinor), intent(in) :: psibar
+    type(bispinor), intent(in) :: psi
+    type(momentum), intent(in) :: p
+    j = (tva_ff(gv, ga, psibar, psi) * p) * (0,1)
+  end function tvam_ff
+  pure function tlrm_ff (gl, gr, psibar, psi, p) result (j)
+    type(vector) :: j
+    complex(kind=default), intent(in) :: gl, gr
+    type(bispinor), intent(in) :: psibar
+    type(bispinor), intent(in) :: psi
+    type(momentum), intent(in) :: p
+    j = tvam_ff (gr+gl, gr-gl, psibar, psi, p)
+  end function tlrm_ff
   pure function f_vaf (gv, ga, v, psi) result (vpsi)
     type(bispinor) :: vpsi
     complex(kind=default), intent(in) :: gv, ga
@@ -417,6 +464,51 @@ contains
     type(bispinor), intent(in) :: psi
     vpsi = f_vaf (gl+gr, gl-gr, v, psi)
   end function f_vlrf
+  pure function f_tvaf (gv, ga, t, psi) result (tpsi)
+    type(bispinor) :: tpsi
+    complex(kind=default), intent(in) :: gv, ga
+    type(tensor2odd), intent(in) :: t
+    type(bispinor), intent(in) :: psi
+    complex(kind=default) :: gl, gr
+    complex(kind=default) :: e21, e21s, b12, b12s, be3, be3s
+    gr   = gv + ga
+    gl   = gv - ga
+    e21  = t%e(2) + t%e(1)*(0,1)
+    e21s = t%e(2) - t%e(1)*(0,1)
+    b12  = t%b(1) + t%b(2)*(0,1)
+    b12s = t%b(1) - t%b(2)*(0,1)
+    be3  = t%b(3) + t%e(3)*(0,1)
+    be3s = t%b(3) - t%e(3)*(0,1)
+    tpsi%a(1) =   2*gl * (   psi%a(1) * be3  + psi%a(2) * ( e21 +b12s))
+    tpsi%a(2) =   2*gl * ( - psi%a(2) * be3  + psi%a(1) * (-e21s+b12 ))
+    tpsi%a(3) =   2*gr * (   psi%a(3) * be3s + psi%a(4) * (-e21 +b12s))
+    tpsi%a(4) =   2*gr * ( - psi%a(4) * be3s + psi%a(3) * ( e21s+b12 ))
+  end function f_tvaf
+  pure function f_tlrf (gl, gr, t, psi) result (tpsi)
+    type(bispinor) :: tpsi
+    complex(kind=default), intent(in) :: gl, gr
+    type(tensor2odd), intent(in) :: t
+    type(bispinor), intent(in) :: psi
+    tpsi = f_tvaf (gr+gl, gr-gl, t, psi)
+  end function f_tlrf
+  pure function f_tvamf (gv, ga, v, psi, k) result (vpsi)
+    type(bispinor) :: vpsi
+    complex(kind=default), intent(in) :: gv, ga
+    type(vector), intent(in) :: v
+    type(bispinor), intent(in) :: psi
+    type(momentum), intent(in) :: k
+    type(tensor2odd) :: t
+    t = (v.wedge.k) * (0, 0.5)
+    vpsi = f_tvaf(gv, ga, t, psi)
+  end function f_tvamf
+  pure function f_tlrmf (gl, gr, v, psi, k) result (vpsi)
+    type(bispinor) :: vpsi
+    complex(kind=default), intent(in) :: gl, gr
+    type(vector), intent(in) :: v
+    type(bispinor), intent(in) :: psi
+    type(momentum), intent(in) :: k
+    vpsi = f_tvamf (gr+gl, gr-gl, v, psi, k)
+  end function f_tlrmf
   pure function sp_ff (gs, gp, psil, psir) result (j)
     complex(kind=default) :: j
     complex(kind=default), intent(in) :: gs, gp

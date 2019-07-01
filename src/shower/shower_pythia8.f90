@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -28,8 +28,9 @@
 
 module shower_pythia8
 
-    use kinds, only: default, double
-    use iso_varying_string, string_t => varying_string
+  use kinds, only: default, double
+  use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants
   use numeric_utils, only: vanishes
   use io_units
@@ -78,7 +79,7 @@ contains
       type(taudec_settings_t), intent(in) :: taudec_settings
       type(pdf_data_t), intent(in) :: pdf_data
       type(os_data_t), intent(in) :: os_data
-      call msg_debug (D_SHOWER, "shower_pythia8_init")
+      if (debug_on) call msg_debug (D_SHOWER, "shower_pythia8_init")
       shower%settings = settings
       shower%taudec_settings = taudec_settings
       shower%os_data = os_data
@@ -95,7 +96,7 @@ contains
       integer, dimension(2) :: beam_pdg
       real(default), dimension(2) :: beam_energy
       integer, parameter :: process_id = 1, n_processes = 1
-      call msg_debug (D_SHOWER, "shower_pythia8_set_user_process")
+      if (debug_on) call msg_debug (D_SHOWER, "shower_pythia8_set_user_process")
       ! TODO sbrass find correct beam entries, fallback would be first two entries
       beam_pdg = [pset%prt(1)%get_pdg (), pset%prt(2)%get_pdg ()]
       beam_energy = [energy(pset%prt(1)%p), energy(pset%prt(2)%p)]
@@ -111,7 +112,7 @@ contains
       type(particle_set_t) :: pset_reduced
       integer, parameter :: PROCESS_ID = 1
       logical :: keep_beams
-      call msg_debug (D_SHOWER, "shower_pythia8_import_particle_set")
+      if (debug_on) call msg_debug (D_SHOWER, "shower_pythia8_import_particle_set")
       if (.not. shower%user_process_set) then
          call shower%set_user_process (particle_set)
          shower%user_process_set = .true.
@@ -147,7 +148,7 @@ contains
       class(model_data_t), intent(in), target :: model_hadrons
       type(particle_t), dimension(:), allocatable :: beam
       integer :: n_whizard, n_tot_pythia
-      call msg_debug (D_SHOWER, "shower_pythia8_make_particle_set")
+      if (debug_on) call msg_debug (D_SHOWER, "shower_pythia8_make_particle_set")
       if (signal_is_pending ()) return
       associate (settings => shower%settings)
         if (debug_active (D_SHOWER)) then
@@ -171,8 +172,8 @@ contains
 
     subroutine shower_pythia8_transfer_settings (shower)
       class(shower_pythia8_t), intent(inout), target :: shower
-      call msg_debug (D_SHOWER, "shower_pythia8_transfer_settings")
-      call msg_debug2 (D_SHOWER, "pythia_initialized", shower%pythia_initialized)
+      if (debug_on) call msg_debug (D_SHOWER, "shower_pythia8_transfer_settings")
+      if (debug_on) call msg_debug2 (D_SHOWER, "pythia_initialized", shower%pythia_initialized)
       if (shower%pythia_initialized) return
       associate (pythia => shower%pythia)
         call pythia%set_lhaup_ptr (shower%lhaup)
@@ -205,7 +206,7 @@ contains
            (shower, momenta)
       class(shower_pythia8_t), intent(in) :: shower
       type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
-      call msg_debug (D_MATCHING, "shower_pythia8_get_final_colored_ME_momenta")
+      if (debug_on) call msg_debug (D_MATCHING, "shower_pythia8_get_final_colored_ME_momenta")
       call shower%pythia%get_final_colored_ME_momenta (momenta)
     end subroutine shower_pythia8_get_final_colored_ME_momenta
 

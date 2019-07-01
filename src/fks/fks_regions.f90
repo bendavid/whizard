@@ -1,4 +1,4 @@
-! WHIZARD 2.7.0 Jan 21 2019
+! WHIZARD 2.7.1 Mar 27 2019
 !
 ! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,6 +36,7 @@ module fks_regions
   use io_units
   use os_interface
   use iso_varying_string, string_t => varying_string
+  use debug_master, only: debug_on
   use constants
   use permutations
   use diagnostics
@@ -1336,7 +1337,7 @@ contains
             any (sregion%flst_uborn%flst == PHOTON)
   contains
     subroutine debug_input_values()
-      call msg_debug2 (D_SUBTRACTION, "singular_region_init")
+      if (debug_on) call msg_debug2 (D_SUBTRACTION, "singular_region_init")
       if (debug2_active (D_SUBTRACTION)) then
          print *, 'alr =    ', alr
          print *, 'mult =    ', mult
@@ -1545,7 +1546,7 @@ contains
      integer :: alr, i_res
      integer :: alr_new, n_alr_res
      integer :: k
-     call msg_debug (D_SUBTRACTION, "resonance_mapping_set_alr_to_i_res")
+     if (debug_on) call msg_debug (D_SUBTRACTION, "resonance_mapping_set_alr_to_i_res")
      n_alr_res = 0
      do alr = 1, size (regions)
         do i_res = 1, size (res_map%res_histories)
@@ -1755,7 +1756,7 @@ contains
     integer, dimension(:), allocatable :: alr_new_to_old
     integer :: n_alr_new
     type(singular_region_t), dimension(:), allocatable :: save_regions
-    call msg_debug (D_SUBTRACTION, "region_data_enlarge_singular_regions_with_resonances")
+    if (debug_on) call msg_debug (D_SUBTRACTION, "region_data_enlarge_singular_regions_with_resonances")
     call debug_input_values ()
     select type (fks_mapping => reg_data%fks_mapping)
     type is (fks_mapping_default_t)
