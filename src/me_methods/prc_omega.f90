@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -81,6 +81,7 @@ module prc_omega
      logical :: diags = .false.
      logical :: diags_color = .false.
      logical :: complex_mass_scheme = .false.
+     logical :: write_phs_output = .false.
      type(string_t) :: extra_options
    contains
      procedure, nopass :: get_module_name => omega_writer_get_module_name
@@ -213,7 +214,7 @@ contains
        model_name, prt_in, prt_out, &
        ovm, ufo, ufo_path, &
        restrictions, cms_scheme, &
-       openmp_support, report_progress, extra_options, diags, diags_color)
+       openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
     class(omega_def_t), intent(out) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -225,6 +226,7 @@ contains
     logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
+    logical, intent(in), optional :: write_phs_output
     type(string_t), intent(in), optional :: extra_options
     logical, intent(in), optional :: diags, diags_color
     object%ufo = ufo
@@ -246,7 +248,7 @@ contains
     class is (omega_writer_t)
        call writer%init (model_name, prt_in, prt_out, &
             ufo_path, restrictions, cms_scheme, &
-            openmp_support, report_progress, extra_options, diags, diags_color)
+            openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
     end select
   end subroutine omega_def_init
 
@@ -354,6 +356,7 @@ contains
          '"' // char (object%restrictions) // '"'
     write (unit, "(5x,A,L1)")  "OpenMP support    = ", object%openmp_support
     write (unit, "(5x,A,L1)")  "Report progress   = ", object%report_progress
+    ! write (unit, "(5x,A,L1)")  "Write phs output  = ", object%write_phs_output
     write (unit, "(5x,A,A)")  "Extra options     = ", &
          '"' // char (object%extra_options) // '"'
     write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags
@@ -364,7 +367,7 @@ contains
 
   subroutine omega_writer_init (writer, model_name, prt_in, prt_out, &
        ufo_path, restrictions, cms_scheme, &
-       openmp_support, report_progress, extra_options, diags, diags_color)
+       openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
     class(omega_writer_t), intent(out) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -374,6 +377,7 @@ contains
     logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
+    logical, intent(in), optional :: write_phs_output
     type(string_t), intent(in), optional :: extra_options
     logical, intent(in), optional :: diags, diags_color
     integer :: i
@@ -394,6 +398,7 @@ contains
     if (present (cms_scheme))  writer%complex_mass_scheme = cms_scheme
     if (present (openmp_support))  writer%openmp_support = openmp_support
     if (present (report_progress))  writer%report_progress = report_progress
+    if (present (write_phs_output)) writer%write_phs_output = write_phs_output
     if (present (extra_options)) then
        writer%extra_options = " " // extra_options
     else
@@ -432,6 +437,7 @@ contains
     type(string_t) :: progress_string
     type(string_t) :: diagrams_string
     type(string_t) :: cms_string
+    type(string_t) :: write_phs_output_string
     type(string_t) :: parameter_module
     logical :: escape_hyperref
     escape_hyperref = .false.
@@ -488,6 +494,11 @@ contains
     else
        cms_string = ""
     end if
+    if (writer%write_phs_output) then
+       write_phs_output_string = " -phase_space " // char (id) // ".fds"
+    else
+       write_phs_output_string = ""
+    endif
     select case (char (writer%model_name))
     case ("SM_rx", "SSC", "NoH_rx", "AltH")
        kmatrix_string = " -target:kmatrix_2_write"
@@ -525,7 +536,7 @@ contains
             char (kmatrix_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
-            char (writer%extra_options)
+            char (writer%extra_options), char (write_phs_output_string)
     type is (omega_ufo_writer_t)
        parameter_module = char (id) // "_par_" // char (writer%model_name)
        write (unit, "(5A)")  char (id), ".f90: ", char (parameter_module), ".lo"
@@ -544,7 +555,7 @@ contains
             char (kmatrix_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
-            char (writer%extra_options)
+            char (writer%extra_options), char (write_phs_output_string)
        write (unit, "(5A)") "SOURCES += ", char (parameter_module), ".f90"
        write (unit, "(5A)") "OBJECTS += ", char (parameter_module), ".lo"
        write (unit, "(5A)")  char (parameter_module), ".f90:"
@@ -565,7 +576,7 @@ contains
             char (cms_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
-            char (writer%extra_options)
+            char (writer%extra_options), char (write_phs_output_string)
        write (unit, "(5A)")  char (id), ".f90:"
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90 -params", &
@@ -819,7 +830,7 @@ contains
   subroutine omega_make_process_component (entry, component_index, &
          model_name, prt_in, prt_out, &
          ufo, ufo_path, restrictions, cms_scheme, &
-         openmp_support, report_progress, extra_options, diags, diags_color)
+         openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
     class(process_def_entry_t), intent(inout) :: entry
     integer, intent(in) :: component_index
     type(string_t), intent(in) :: model_name
@@ -831,6 +842,7 @@ contains
     logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
+    logical, intent(in), optional :: write_omega_output
     type(string_t), intent(in), optional :: extra_options
     logical, intent(in), optional :: diags, diags_color
     logical :: ufo_model
@@ -842,7 +854,7 @@ contains
        call def%init (model_name, prt_in, prt_out, &
             .false., ufo_model, ufo_path, &
             restrictions, cms_scheme, &
-            openmp_support, report_progress, extra_options, diags, diags_color)
+            openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
     end select
     call entry%process_def_t%import_component (component_index, &
          n_out = size (prt_out), &

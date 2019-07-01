@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -140,8 +140,8 @@ contains
     complex(double), intent(out) :: amp
   end subroutine rclwrap_get_amplitude
 
-  subroutine rclwrap_get_squared_amplitude (id, alpha_power, order, sqme)
-    integer, intent(in) :: id, alpha_power
+  subroutine rclwrap_get_squared_amplitude (id, alphas_power, order, sqme)
+    integer, intent(in) :: id, alphas_power
     character(len=*), intent(in) :: order
     real(double), intent(out) :: sqme
   end subroutine rclwrap_get_squared_amplitude

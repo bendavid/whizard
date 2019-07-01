@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -213,12 +213,12 @@ contains
     call get_amplitude_rcl (id, g_power, order, col, hel, amp)
   end subroutine rclwrap_get_amplitude
 
-  subroutine rclwrap_get_squared_amplitude (id, alpha_power, order, sqme)
-    integer, intent(in) :: id, alpha_power
+  subroutine rclwrap_get_squared_amplitude (id, alphas_power, order, sqme)
+    integer, intent(in) :: id, alphas_power
     character(len=*), intent(in) :: order
     real(double), intent(out) :: sqme
     call msg_debug2 (D_ME_METHODS, "get_squared_amplitude_rcl")
-    call get_squared_amplitude_rcl (id, alpha_power, order, sqme)
+    call get_squared_amplitude_rcl (id, alphas_power, order, sqme)
   end subroutine rclwrap_get_squared_amplitude
 
   subroutine rclwrap_set_pole_mass (pdg_id, mass, width)

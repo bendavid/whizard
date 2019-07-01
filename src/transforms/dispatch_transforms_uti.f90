@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -28,6 +28,7 @@
 
 module dispatch_transforms_uti
 
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use format_utils, only: write_separator
   use variables
@@ -154,11 +155,11 @@ contains
 
   subroutine dispatch_transforms_2 (u)
     integer, intent(in) :: u
-    type(var_list_t) :: var_list
+    type(var_list_t), target :: var_list
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(os_data_t) :: os_data
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(beam_structure_t) :: beam_structure
     class(evt_t), pointer :: evt
 
@@ -180,6 +181,46 @@ contains
     call dispatch_evt_resonance (evt, var_list, &
          res_history_set, &
          var_str ("foo_R"))
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* ISR photon handler"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?isr_handler"), .true., &
+         is_known = .true.)
+    call var_list%set_string (var_str ("$isr_handler_mode"), &
+         var_str ("recoil"), &
+         is_known = .true.)
+    call var_list%set_real (var_str ("sqrts"), 100._default, &
+         is_known = .true.)
+    call var_list%set_real (var_str ("isr_mass"), 511.e-6_default, &
+         is_known = .true.)
+    call dispatch_evt_isr_handler (evt, var_list)
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* EPA beam handler"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?isr_handler"), .false., &
+         is_known = .true.)
+    call var_list%set_log (var_str ("?epa_handler"), .true., &
+         is_known = .true.)
+    call var_list%set_string (var_str ("$epa_handler_mode"), &
+         var_str ("recoil"), &
+         is_known = .true.)
+    call var_list%set_real (var_str ("sqrts"), 100._default, &
+         is_known = .true.)
+    call var_list%set_real (var_str ("epa_mass"), 511.e-6_default, &
+         is_known = .true.)
+    call dispatch_evt_epa_handler (evt, var_list)
     call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()

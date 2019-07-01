@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -72,6 +72,8 @@ module simulations
   use dispatch_beams, only: dispatch_qcd
   use dispatch_rng, only: dispatch_rng_factory
   use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
+  use dispatch_transforms, only: dispatch_evt_isr_handler
+  use dispatch_transforms, only: dispatch_evt_epa_handler
   use dispatch_transforms, only: dispatch_evt_resonance
   use dispatch_transforms, only: dispatch_evt_decay
   use dispatch_transforms, only: dispatch_evt_shower
@@ -81,6 +83,7 @@ module simulations
   use integrations
   use event_streams
   use restricted_subprocesses, only: resonant_subprocess_set_t
+  use restricted_subprocesses, only: get_libname_res
 
   use evt_nlo
 
@@ -149,6 +152,7 @@ module simulations
      integer :: n_mci = 0
      type(mci_set_t), dimension(:), allocatable :: mci_sets
      type(selector_t) :: mci_selector
+     logical :: has_resonant_subprocess_set = .false.
      type(resonant_subprocess_set_t) :: resonant_subprocess_set
      type(core_safe_t), dimension(:), allocatable :: core_safe
      class(model_data_t), pointer :: model => null ()
@@ -696,9 +700,15 @@ contains
     if (support_resonance_history) then
        prclib_saved => local%prclib
        call entry%setup_resonant_subprocesses (local, process)
-       call entry%compile_resonant_subprocesses (local)
-       call entry%prepare_resonant_subprocesses (local, global)
-       call entry%prepare_resonant_subprocess_instances (local)
+       if (entry%has_resonant_subprocess_set) then
+          if (signal_is_pending ())  return
+          call entry%compile_resonant_subprocesses (local)
+          if (signal_is_pending ())  return
+          call entry%prepare_resonant_subprocesses (local, global)
+          if (signal_is_pending ())  return
+          call entry%prepare_resonant_subprocess_instances (local)
+       end if
+       if (signal_is_pending ())  return
        if (associated (prclib_saved))  call local%update_prclib (prclib_saved)
     end if
 
@@ -972,8 +982,21 @@ contains
     type(rt_data_t), intent(in), target :: local
     class(evt_t), pointer :: evt
     type(var_list_t), pointer :: var_list
-    logical :: enable_fixed_order, enable_shower
+    logical :: enable_isr_handler
+    logical :: enable_epa_handler
+    logical :: enable_fixed_order
+    logical :: enable_shower
     var_list => local%get_var_list_ptr ()
+    enable_isr_handler = local%get_lval (var_str ("?isr_handler"))
+    if (enable_isr_handler) then
+       call dispatch_evt_isr_handler (evt, local%var_list)
+       if (associated (evt))  call entry%import_transform (evt)
+    end if
+    enable_epa_handler = local%get_lval (var_str ("?epa_handler"))
+    if (enable_epa_handler) then
+       call dispatch_evt_epa_handler (evt, local%var_list)
+       if (associated (evt))  call entry%import_transform (evt)
+    end if
     if (process%contains_unstable (local%model)) then
        call dispatch_evt_decay (evt, local%var_list)
        if (associated (evt))  call entry%import_transform (evt)
@@ -985,6 +1008,8 @@ contains
           call entry%resonant_subprocess_set%connect_transform (evt)
           call entry%resonant_subprocess_set%set_on_shell_limit &
                (local%get_rval (var_str ("resonance_on_shell_limit")))
+          call entry%resonant_subprocess_set%set_on_shell_turnoff &
+               (local%get_rval (var_str ("resonance_on_shell_turnoff")))
           call entry%import_transform (evt)
        end if
     end if
@@ -1138,20 +1163,36 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(process_t), intent(in), target :: process
     type(string_t) :: libname
-    integer :: i_component
     type(resonance_history_set_t) :: res_history_set
+    type(process_library_t), pointer :: lib
     type(process_component_def_t), pointer :: process_component_def
-    libname = process%get_id () // "_R"
-    i_component = 1
-    call process%extract_resonance_history_set (res_history_set, &
-         i_component=i_component)
-    call entry%resonant_subprocess_set%init (res_history_set)
-    process_component_def => process%get_component_def_ptr (i_component)
-    call entry%resonant_subprocess_set%create_library &
-         (libname, &
-         process_component_def%get_prt_spec_in (), &
-         process_component_def%get_prt_spec_out (), &
-         global)
+    logical :: req_resonant, library_exist
+    integer :: i_component
+    libname = process%get_library_name ()
+    lib => global%prclib_stack%get_library_ptr (libname)
+    entry%has_resonant_subprocess_set = lib%req_resonant (process%get_id ())
+    if (entry%has_resonant_subprocess_set) then
+       libname = get_libname_res (process%get_id ())
+       call entry%resonant_subprocess_set%init (process%get_n_components ())
+       call entry%resonant_subprocess_set%create_library &
+            (libname, global, library_exist)
+       do i_component = 1, process%get_n_components ()
+          call process%extract_resonance_history_set &
+               (res_history_set, i_component = i_component)
+          call entry%resonant_subprocess_set%fill_resonances &
+               (res_history_set, i_component)
+          if (.not. library_exist) then
+             process_component_def &
+                  => process%get_component_def_ptr (i_component)
+             call entry%resonant_subprocess_set%add_to_library &
+                  (i_component, &
+                  process_component_def%get_prt_spec_in (), &
+                  process_component_def%get_prt_spec_out (), &
+                  global)
+          end if
+       end do
+       call entry%resonant_subprocess_set%freeze_library (global)
+    end if
   end subroutine entry_setup_resonant_subprocesses
 
   subroutine entry_compile_resonant_subprocesses (entry, global)

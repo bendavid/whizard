@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -65,6 +65,7 @@ module cascades
   public :: cascade_set_write_graph_format
   public :: cascade_set_write
   public :: cascade_set_generate
+  public :: phase_space_vanishes
   public :: assignment(=)
   public :: cascade_set_get_n_trees
   public :: cascade_set_get_resonance_histories

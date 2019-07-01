@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -67,6 +67,8 @@ module commands
   use process_configurations
   use compilations, only: compile_library, compile_executable
   use integrations, only: integrate_process
+  use restricted_subprocesses, only: get_libname_res
+  use restricted_subprocesses, only: spawn_resonant_subprocess_libraries
   use event_streams
   use simulations
 
@@ -1112,22 +1114,21 @@ contains
     type(var_list_t), pointer :: var_list
     integer, dimension(:), allocatable :: pdg
     integer, dimension(:), allocatable :: i_term
+    integer, dimension(:), allocatable :: nlo_comp
     integer :: i, j, n_in, n_out, n_terms, n_components
     logical :: nlo_fixed_order
     logical :: qcd_corr, qed_corr
     type(string_t), dimension(:), allocatable :: prt_in_nlo, prt_out_nlo
     type(radiation_generator_t) :: radiation_generator
     type(pdg_list_t) :: pl_in, pl_out, pl_excluded_gauge_splittings
-    type(string_t) :: method, born_me_method, loop_me_method, correlation_me_method, &
-         real_tree_me_method, dglap_me_method
+    type(string_t) :: method, born_me_method, loop_me_method, &
+         correlation_me_method, real_tree_me_method, dglap_me_method
     integer, dimension(:), allocatable :: i_list
     logical :: use_real_finite
     logical :: gks_active
     logical :: initial_state_colored
-    integer :: n_components_extra
+    integer :: comp_mult
     integer :: gks_multiplicity
-    integer :: n_emitters
-    integer, dimension(:), allocatable :: emitters
     integer :: n_components_init
     integer :: alpha_power, alphas_power
     logical :: requires_soft_mismatch, requires_dglap_remnants
@@ -1146,7 +1147,8 @@ contains
          (prt_expr_out, cmd%pn_out, var_list, cmd%local%model)
     call prt_expr_out%expand ()
     call scan_components ()
-
+    allocate (nlo_comp (n_components))
+    
     nlo_fixed_order = cmd%local%nlo_fixed_order
     gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
     gks_active = gks_multiplicity > 2
@@ -1211,7 +1213,8 @@ contains
       type(string_t) :: nlo_correction_type
       type(pdg_array_t), dimension(:), allocatable :: pdg
       if (nlo_fixed_order .or. gks_active) then
-         nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
+         nlo_correction_type = &
+              var_list%get_sval (var_str ('$nlo_correction_type'))
          select case (char(nlo_correction_type))
          case ("QCD")
             qcd_corr = .true.; qed_corr = .false.
@@ -1220,7 +1223,8 @@ contains
          case ("Full")
             qcd_corr =.true.; qed_corr = .true.
          case default
-            call msg_fatal ("Invalid NLO correction type! Valid inputs are: QCD, QED, Full (default: QCD)")
+            call msg_fatal ("Invalid NLO correction type! " // &
+                 "Valid inputs are: QCD, QED, Full (default: QCD)")
          end select
          call check_for_excluded_gauge_boson_splitting_partners ()
          call setup_radiation_generator ()
@@ -1239,8 +1243,9 @@ contains
 
          nlo_fixed_order = radiation_generator%contains_emissions ()
          if (.not. nlo_fixed_order) call msg_warning &
-              (arr = [var_str ("No NLO corrections found for process ") // cmd%id // var_str("."), &
-              var_str ("Proceed with usual leading-order integration and simulation")])
+              (arr = [var_str ("No NLO corrections found for process ") // &
+              cmd%id // var_str("."), var_str ("Proceed with usual " // &
+              "leading-order integration and simulation")])
       end if
     end subroutine check_for_nlo_corrections
 
@@ -1275,39 +1280,20 @@ contains
 
     subroutine determine_needed_components ()
       type(string_t) :: fks_method
-      logical :: has_active_real
-
-      if (allocated (cmd%local%nlo_component)) then
-         has_active_real = any (cmd%local%nlo_component == NLO_REAL)
-      else
-         has_active_real = .false.
-      end if
-      if (has_active_real .and. use_real_finite) then
-         call radiation_generator%get_emitter_indices (emitters)
-         n_emitters = size (emitters)
-      end if
-
+      comp_mult = 1
       if (nlo_fixed_order) then
          fks_method = var_list%get_sval (var_str ('$fks_mapping_type'))
          call check_threshold_consistency ()
          requires_soft_mismatch = fks_method == var_str ('resonances')
-         n_components_extra = needed_extra_components (initial_state_colored, &
-              requires_soft_mismatch, use_real_finite, n_in)
-         allocate (i_list (n_components_extra))
+         comp_mult = needed_extra_components (requires_dglap_remnants, &
+              use_real_finite, requires_soft_mismatch)
+         allocate (i_list (comp_mult))
       else if (gks_active) then
-         call radiation_generator%generate_multiple (gks_multiplicity, cmd%local%model)
-         n_components_extra = radiation_generator%get_n_gks_states ()
+         call radiation_generator%generate_multiple &
+              (gks_multiplicity, cmd%local%model)
+         comp_mult = radiation_generator%get_n_gks_states () + 1
       end if
-
-      if (nlo_fixed_order .and. .not. use_real_finite) then
-         n_components_init = n_components * n_components_extra
-      else if (nlo_fixed_order .and. use_real_finite) then
-         n_components_init = n_components * n_components_extra
-      else if (gks_active) then
-         n_components_init = n_components * (n_components_extra + 1)
-      else
-         n_components_init = n_components
-      end if
+      n_components_init = n_components * comp_mult
     end subroutine determine_needed_components
 
     subroutine setup_radiation_generator ()
@@ -1385,83 +1371,84 @@ contains
     end subroutine split_prt
 
     subroutine setup_components()
-      integer :: i_comp
+      integer :: k, i_comp, add_index
+      i_comp = 0
+      add_index = 0
       call msg_debug (D_CORE, "setup_components")
       do i = 1, n_components
          call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
          if (nlo_fixed_order) then
             associate (selected_nlo_parts => cmd%local%selected_nlo_parts)
-               call set_component_list (i_list, i, n_components, &
-                    requires_dglap_remnants, requires_soft_mismatch, &
-                    use_real_finite, n_emitters)
-
-               i_comp = i
-               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-               call prc_config%setup_component (i_comp, &
+               call msg_debug (D_CORE, "Setting up this NLO component:", &
+                    i_comp + 1)
+               call prc_config%setup_component (i_comp + 1, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, BORN, &
                     can_be_integrated = selected_nlo_parts (BORN))
-
                call radiation_generator%generate_real_particle_strings &
                     (prt_in_nlo, prt_out_nlo)
-               i_comp = n_components + i
-               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-               call prc_config%setup_component (i_comp, &
+               call msg_debug (D_CORE, "Setting up this NLO component:", &
+                    i_comp + 2)
+               call prc_config%setup_component (i_comp + 2, &
                     new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
                     cmd%local%model, var_list, NLO_REAL, &
                     can_be_integrated = selected_nlo_parts (NLO_REAL))
-
-               i_comp = n_components * 2 + i
-               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-               call prc_config%setup_component (i_comp, &
+               call msg_debug (D_CORE, "Setting up this NLO component:", &
+                    i_comp + 3)
+               call prc_config%setup_component (i_comp + 3, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, NLO_VIRTUAL, &
                     can_be_integrated = selected_nlo_parts (NLO_VIRTUAL))
-
-               i_comp = n_components * 3 + i
-               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-               call prc_config%setup_component (i_comp, &
+               call msg_debug (D_CORE, "Setting up this NLO component:", &
+                    i_comp + 4)
+               call prc_config%setup_component (i_comp + 4, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, NLO_SUBTRACTION, &
                     can_be_integrated = selected_nlo_parts (NLO_SUBTRACTION))
-
-               if (use_real_finite) then
-                  i_comp = n_components * 4 + i
-                  call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-                  call prc_config%setup_component (i_comp, &
-                       new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
-                       cmd%local%model, var_list, NLO_REAL, &
-                       can_be_integrated = selected_nlo_parts (NLO_REAL))
-               end if
-
+               do k = 1, 4
+                  i_list(k) = i_comp + k
+               end do
                if (requires_dglap_remnants) then
-                  i_comp = n_components * 4 + i
-                  call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-                  call prc_config%setup_component (i_comp, &
+                  call msg_debug (D_CORE, "Setting up this NLO component:", &
+                       i_comp + 5)
+                  call prc_config%setup_component (i_comp + 5, &
                        prt_spec_in, prt_spec_out, &
                        cmd%local%model, var_list, NLO_DGLAP, &
                        can_be_integrated = selected_nlo_parts (NLO_DGLAP))
+                  i_list(5) = i_comp + 5
+                  add_index = add_index + 1
                end if
-
+               if (use_real_finite) then
+                  call msg_debug (D_CORE, "Setting up this NLO component:", &
+                       i_comp + 5 + add_index)
+                  call prc_config%setup_component (i_comp + 5 + add_index, &
+                       new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                       cmd%local%model, var_list, NLO_REAL, &
+                       can_be_integrated = selected_nlo_parts (NLO_REAL))
+                  i_list(5 + add_index) = i_comp + 5 + add_index
+                  add_index = add_index + 1
+               end if
                if (requires_soft_mismatch) then
-                  i_comp = n_components * 4 + i
-                  call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
-                  call prc_config%setup_component (i_comp, &
+                  call msg_debug (D_CORE, "Setting up this NLO component:", &
+                       i_comp + 5 + add_index)
+                  call prc_config%setup_component (i_comp + 5 + add_index, &
                      prt_spec_in, prt_spec_out, &
                      cmd%local%model, var_list, NLO_MISMATCH, &
                      can_be_integrated = selected_nlo_parts (NLO_MISMATCH))
+                  i_list(5 + add_index) = i_comp + 5 + add_index
                end if
-
                call prc_config%set_component_associations (i_list, &
-                    requires_dglap_remnants, use_real_finite, requires_soft_mismatch)
+                    requires_dglap_remnants, use_real_finite, &
+                    requires_soft_mismatch)
             end associate
          else if (gks_active) then
-            call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-                 cmd%local%model, var_list, BORN, can_be_integrated = .true.)
+            call prc_config%setup_component (i_comp + 1, prt_spec_in, &
+                 prt_spec_out, cmd%local%model, var_list, BORN, &
+                 can_be_integrated = .true.)
             call radiation_generator%reset_queue ()
-            do j = 1, n_components_extra
+            do j = 1, comp_mult
                prt_out_nlo =  radiation_generator%get_next_state ()
-               call prc_config%setup_component (i + j, &
+               call prc_config%setup_component (i_comp + 1 + j, &
                   new_prt_spec (prt_in), new_prt_spec (prt_out_nlo), &
                   cmd%local%model, var_list, GKS, can_be_integrated = .false.)
             end do
@@ -1470,6 +1457,7 @@ contains
                  prt_spec_in, prt_spec_out, &
                  cmd%local%model, var_list, can_be_integrated = .true.)
          end if
+         i_comp = i_comp + comp_mult
       end do
     end subroutine setup_components
 
@@ -1516,41 +1504,15 @@ contains
                var_str ("   for NLO calculations.")])
   end subroutine check_nlo_options
 
-  pure subroutine set_component_list (i_list, i, n_components, &
-         requires_dglap_remnants, requires_soft_mismatch, &
-         use_real_finite, n_emitters)
-    integer, dimension(:), intent(out) :: i_list
-    integer, intent(in) :: i, n_components, n_emitters
-    logical, intent(in) :: requires_dglap_remnants
-    logical, intent(in) :: use_real_finite, requires_soft_mismatch
-    i_list(1) = i
-    i_list(2) = i + n_components
-    i_list(3) = i + 2 * n_components
-    i_list(4) = i + 3 * n_components
-    if (requires_dglap_remnants .or. requires_soft_mismatch .or. use_real_finite) then
-       i_list(5) = i + 4 * n_components
-    end if
-  end subroutine set_component_list
-
-  pure function needed_extra_components (initial_state_colored, &
-         requires_soft_mismatch, use_real_finite, n_in) result (n)
+  pure function needed_extra_components (requires_dglap_remnant, &
+         use_real_finite, requires_soft_mismatch) result (n)
     integer :: n
-    logical, intent(in) :: initial_state_colored, &
+    logical, intent(in) :: requires_dglap_remnant, &
          use_real_finite, requires_soft_mismatch
-    integer, intent(in) :: n_in
-    if (initial_state_colored) then
-       if (n_in == 2) then
-          n = 5
-       else
-          n = 4
-       end if
-    else if (use_real_finite) then
-       n = 5
-    else if (requires_soft_mismatch) then
-       n = 5
-    else
-       n = 4
-    end if
+    n = 4
+    if (requires_dglap_remnant)  n = n + 1
+    if (use_real_finite)  n = n + 1
+    if (requires_soft_mismatch)  n = n + 1
   end function needed_extra_components
 
   function make_flavor_string (aval, model) result (prt)
@@ -1760,7 +1722,7 @@ contains
     class(cmd_compile_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     type(string_t), dimension(:), allocatable :: libname, libname_static
-    integer :: i
+    integer :: i, n_lib
     
     
     if (allocated (cmd%libname)) then
@@ -1769,9 +1731,10 @@ contains
     else
        call cmd%local%prclib_stack%get_names (libname)
     end if
+    n_lib = size (libname)
     if (cmd%make_executable) then
        call get_prclib_static (libname_static)
-       do i = 1, size (libname)
+       do i = 1, n_lib
           if (any (libname_static == libname(i))) then
              call msg_fatal ("Compile: can't include static library '" &
                   // char (libname(i)) // "'")
@@ -1779,12 +1742,39 @@ contains
        end do
        call compile_executable (cmd%exec_name, libname, cmd%local)
     else
-       do i = 1, size (libname)
-          call compile_library (libname(i), cmd%local)
-       end do
+       call compile_libraries (libname)
+       call global%update_prclib &
+            (global%prclib_stack%get_library_ptr (libname(n_lib)))
     end if
     
+  contains
+    recursive subroutine compile_libraries (libname)
+      type(string_t), dimension(:), intent(in) :: libname
+      integer :: i
+      type(string_t), dimension(:), allocatable :: libname_extra
+      type(process_library_t), pointer :: lib_saved
+      do i = 1, size (libname)
+         call compile_library (libname(i), cmd%local)
+         lib_saved => global%prclib
+         call spawn_extra_libraries &
+              (libname(i), cmd%local, global, libname_extra)
+         call compile_libraries (libname_extra)
+         call global%update_prclib (lib_saved)
+      end do
+    end subroutine compile_libraries
   end subroutine cmd_compile_execute
+
+  subroutine spawn_extra_libraries (libname, local, global, libname_extra)
+    type(string_t), intent(in) :: libname
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t), dimension(:), allocatable, intent(out) :: libname_extra
+    type(string_t), dimension(:), allocatable :: libname_res
+    allocate (libname_extra (0))
+    call spawn_resonant_subprocess_libraries &
+         (libname, local, global, libname_res)
+    if (allocated (libname_res))  libname_extra = [libname_extra, libname_res]
+  end subroutine spawn_extra_libraries
 
   subroutine cmd_exec_write (cmd, unit, indent)
     class(cmd_exec_t), intent(in) :: cmd
@@ -3197,6 +3187,8 @@ contains
        call msg_debug (D_CORE, "cmd%process_id(i) ", cmd%process_id(i))
        call integrate_process (cmd%process_id(i), cmd%local, global)
        call global%process_stack%fill_result_vars (cmd%process_id(i))
+       call global%process_stack%update_result_vars &
+            (cmd%process_id(i), global%var_list)
        if (signal_is_pending ())  return
     end do
   end subroutine cmd_integrate_execute
@@ -4179,7 +4171,7 @@ contains
        do j = 2, size (prt_out)
           prt_out_str(i) = prt_out_str(i) // ", " // prt_out(j)
        end do
-       br(i) = process%get_integral ()
+       br(i) = global%get_rval ("integral(" // decay(i) // ")")
     end do
     if (all (br >= 0)) then
        if (any (br > 0)) then

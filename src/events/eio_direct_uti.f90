@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -129,7 +129,7 @@ contains
     select type (eio)
     class is (eio_direct_t)
        call eio%init_direct &
-            (n_beam = 0, n_in = 2, n_vir = 0, n_out = 2, &
+            (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 2, &
             pdg = [25, 25, 25, 25], model = model)
        call eio%set_selection_indices (1, 1, 1, 1)
        call eio%write (u)

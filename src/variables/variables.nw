@@ -3160,6 +3160,17 @@ procedure with type [[V_NONE]].
           'to true, otherwise violating energy conservation.  (cf. also ' // &
           '\ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_mass}, \ttt{isr\_order}, ' // &
           '\ttt{?isr\_recoil}, \ttt{?isr\_alpha})'))
+    call var_list%append_log (var_str ("?isr_handler"), .false., &
+          intrinsic=.true., &
+          description=var_str ('Activate ISR ' // &
+          'handler for event generation (no effect on integration). ' // &
+          'Requires \ttt{isr\_recoil = false}'))
+    call var_list%append_string (var_str ("$isr_handler_mode"), &
+          var_str ("trivial"), &
+          intrinsic=.true., &
+          description=var_str ('Operation mode for the ISR ' // &
+          'event handler.  Allowed values: \ttt{trivial} (no effect), ' // &
+          '\ttt{recoil} (recoil kinematics with two photons)'))
     call var_list%append_real (var_str ("epa_alpha"), 0._default, &
           intrinsic=.true., &
           description=var_str ('For the equivalent photon approximation ' // &
@@ -3213,6 +3224,17 @@ procedure with type [[V_NONE]].
           'to true, otherwise violating energy conservation. (cf. also ' // &
           '\ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha}, ' // &
           '\ttt{epa\_q\_min}, \ttt{?epa\_recoil})'))
+    call var_list%append_log (var_str ("?epa_handler"), .false., &
+          intrinsic=.true., &
+          description=var_str ('Activate EPA ' // &
+          'handler for event generation (no effect on integration). ' // &
+          'Requires \ttt{epa\_recoil = false}'))
+    call var_list%append_string (var_str ("$epa_handler_mode"), &
+          var_str ("trivial"), &
+          intrinsic=.true., &
+          description=var_str ('Operation mode for the EPA ' // &
+          'event handler.  Allowed values: \ttt{trivial} (no effect), ' // &
+          '\ttt{recoil} (recoil kinematics with two beams)'))
     call var_list%append_real (var_str ("ewa_x_min"), 0._default, &
           intrinsic=.true., &
           description=var_str ('Real parameter that sets the lower cutoff ' // &
@@ -3480,6 +3502,15 @@ procedure with type [[V_NONE]].
          'to be generated for the process $e^- e^+ \to \mu^- \mu^+$ to ' // &
          'the $s$-channel $Z$-boson exchange. For more details see Sec.~\ref{sec:omega_me} ' // &
          '(cf. also \ttt{process})'))
+    call var_list%append_log (var_str ("?omega_write_phs_output"), .false., &
+         intrinsic=.true., &
+         description=var_str ('This flag decides whether a the phase-space ' // &
+         'output is produced by the \oMega\ matrix element generator. This ' // &
+         'output is written to file(s) and contains the Feynman diagrams ' // &
+         'which belong to the process(es) under consideration. The file is ' // &
+         'mandatory whenever the variable \ttt{\$phs\_method} has the value ' // &
+         '\ttt{fast\_wood}, i.e. if the phase-space file is provided by ' // &
+         'cascades2.'))
     call var_list%append_string (var_str ("$omega_flags"), var_str (""), &
          intrinsic=.true., &
          description=var_str ('String variable that allows to pass flags ' // &
@@ -3692,14 +3723,28 @@ procedure with type [[V_NONE]].
           'the event generator should try to reconstruct intermediate ' // &
           'resonances.  If activated, appropriate resonant subprocess ' // &
           'matrix element code will be automatically generated. '))
-    call var_list%append_real (var_str ("resonance_on_shell_limit"), 4._default, &
+    call var_list%append_real (var_str ("resonance_on_shell_limit"), &
+          4._default, &
           intrinsic=.true., &
           description=var_str ( &
           'The real variable \texttt{resonance\_on\_shell\_limit ' // &
-          '= {\em <num>}} specifies the relative distance from a ' // &
+          '= {\em <num>}} specifies the maximum relative distance from a ' // &
           'resonance peak, such that the kinematical configuration ' // &
-          'can be considered on-shell.  This is relevant only if ' // &
+          'can still be considered on-shell.  This is relevant only if ' // &
           '\texttt{?resonance\_history = true}.'))
+    call var_list%append_real (var_str ("resonance_on_shell_turnoff"), &
+          0._default, &
+          intrinsic=.true., &
+          description=var_str ( &
+          'The real variable \texttt{resonance\_on\_shell\_turnoff ' // &
+          '= {\em <num>}}, if positive, ' // &
+          'controls the smooth transition from resonance-like ' // &
+          'to background-like events.  The relative strength of a ' // &
+          'resonance is reduced by a Gaussian with width given by this ' // &
+          'variable.  In any case, events are treated as background-like ' // &
+          'when the off-shellness is greater than ' // &
+          '\texttt{resonance\_on\_shell\_limit}.  All of this applies ' // &
+          'only if \texttt{?resonance\_history = true}.'))
      call var_list%append_log (var_str ("?keep_beams"), .false., &
           intrinsic=.true., &
           description=var_str ('The logical variable \ttt{?keep\_beams ' // &
@@ -3719,7 +3764,7 @@ procedure with type [[V_NONE]].
           'considered as beam remnants.'))
     call var_list%append_log (var_str ("?recover_beams"), .true., &
           intrinsic=.true., &
-          description=var_str ('Flag that decides whehter the beam particles ' // &
+          description=var_str ('Flag that decides whether the beam particles ' // &
           'should be reconstructed when reading event/rescanning files ' // &
           'into \whizard. (cf. \ttt{rescan}, \ttt{?update\_event}, \ttt{?update\_sqme}, ' // &
           '\newline \ttt{?update\_weight})'))

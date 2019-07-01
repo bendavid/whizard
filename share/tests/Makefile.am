@@ -31,6 +31,8 @@ EXTRA_DIST = \
     $(TESTSUITE_MACROS) $(TESTSUITES_M4) $(TESTSUITES_SIN) \
     $(TESTSUITE_TOOLS) \
     $(REF_OUTPUT_FILES) \
+    omega_parsable.fds \
+    omega_parsable_scattering.fds \
     functional_tests/structure_2_inc.sin functional_tests/testproc_3.phs \
     functional_tests/user_cuts.f90 \
     functional_tests/susyhit.in nmssm.slha
@@ -377,13 +379,26 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/process_stacks_4.ref \
     unit_tests/ref-output/cascades_1.ref \
     unit_tests/ref-output/cascades_2.ref \
+    unit_tests/ref-output/cascades2_1.ref \
+    unit_tests/ref-output/cascades2_2.ref \
     unit_tests/ref-output/event_transforms_1.ref \
+    unit_tests/ref-output/recoil_kinematics_1.ref \
+    unit_tests/ref-output/recoil_kinematics_2.ref \
+    unit_tests/ref-output/recoil_kinematics_3.ref \
+    unit_tests/ref-output/recoil_kinematics_4.ref \
+    unit_tests/ref-output/recoil_kinematics_5.ref \
     unit_tests/ref-output/resonance_insertion_1.ref \
     unit_tests/ref-output/resonance_insertion_2.ref \
     unit_tests/ref-output/resonance_insertion_3.ref \
     unit_tests/ref-output/resonance_insertion_4.ref \
     unit_tests/ref-output/resonance_insertion_5.ref \
     unit_tests/ref-output/resonance_insertion_6.ref \
+    unit_tests/ref-output/isr_photon_handler_1.ref \
+    unit_tests/ref-output/isr_photon_handler_2.ref \
+    unit_tests/ref-output/isr_photon_handler_3.ref \
+    unit_tests/ref-output/epa_beam_handler_1.ref \
+    unit_tests/ref-output/epa_beam_handler_2.ref \
+    unit_tests/ref-output/epa_beam_handler_3.ref \
     unit_tests/ref-output/decays_1.ref \
     unit_tests/ref-output/decays_2.ref \
     unit_tests/ref-output/decays_3.ref \
@@ -484,6 +499,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/restricted_subprocesses_2.ref \
     unit_tests/ref-output/restricted_subprocesses_3.ref \
     unit_tests/ref-output/restricted_subprocesses_4.ref \
+    unit_tests/ref-output/restricted_subprocesses_5.ref \
     unit_tests/ref-output/simulations_1.ref \
     unit_tests/ref-output/simulations_2.ref \
     unit_tests/ref-output/simulations_3.ref \
@@ -536,9 +552,9 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/jets_1.ref \
     unit_tests/ref-output/hepmc_interface_1.ref \
     unit_tests/ref-output/lcio_interface_1.ref \
-    unit_tests/ref-output/blha_1.ref \
     unit_tests/ref-output/ttv_formfactors_1.ref \
     unit_tests/ref-output/ttv_formfactors_2.ref \
+    unit_tests/ref-output/blha_1.ref \
     unit_tests/ref-output/blha_2.ref \
     unit_tests/ref-output/blha_3.ref \
     functional_tests/ref-output/structure_1.ref \
@@ -672,11 +688,16 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/smtest_15.ref \
     functional_tests/ref-output/sm_cms_1.ref \
     functional_tests/ref-output/resonances_5.ref \
+    functional_tests/ref-output/resonances_6.ref \
+    functional_tests/ref-output/resonances_7.ref \
+    functional_tests/ref-output/resonances_8.ref \
+    functional_tests/ref-output/resonances_9.ref \
     functional_tests/ref-output/ufo_1.ref \
     functional_tests/ref-output/ufo_2.ref \
     functional_tests/ref-output/ufo_3.ref \
     functional_tests/ref-output/nlo_1.ref \
     functional_tests/ref-output/nlo_2.ref \
+    functional_tests/ref-output/nlo_6.ref \
     functional_tests/ref-output/real_partition_1.ref \
     functional_tests/ref-output/fks_res_2.ref \
     functional_tests/ref-output/openloops_1.ref \
@@ -688,6 +709,9 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/openloops_8.ref \
     functional_tests/ref-output/openloops_9.ref \
     functional_tests/ref-output/recola_1.ref \
+    functional_tests/ref-output/recola_2.ref \
+    functional_tests/ref-output/recola_3.ref \
+    functional_tests/ref-output/recola_4.ref \
     functional_tests/ref-output/nlo_decay_1.ref \
     functional_tests/ref-output/mssmtest_1.ref \
     functional_tests/ref-output/mssmtest_2.ref \
@@ -699,6 +723,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/method_ovm_1.ref \
     functional_tests/ref-output/multi_comp_4.ref \
     functional_tests/ref-output/flvsum_1.ref \
+    functional_tests/ref-output/br_redef_1.ref \
     functional_tests/ref-output/decay_err_1.ref \
     functional_tests/ref-output/decay_err_2.ref \
     functional_tests/ref-output/decay_err_3.ref \
@@ -713,13 +738,15 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/circe2_2.ref \
     functional_tests/ref-output/circe2_3.ref \
     functional_tests/ref-output/isr_1.ref \
+    functional_tests/ref-output/epa_1.ref \
     functional_tests/ref-output/ep_3.ref \
     functional_tests/ref-output/ewa_4.ref \
     functional_tests/ref-output/gaussian_1.ref \
     functional_tests/ref-output/gaussian_2.ref \
     functional_tests/ref-output/beam_events_1.ref \
     functional_tests/ref-output/beam_events_4.ref \
-    functional_tests/ref-output/energy_scan_1.ref
+    functional_tests/ref-output/energy_scan_1.ref \
+    functional_tests/ref-output/cascades2_phs_1.ref
 
 # Reference files that depend on the numerical precision
 REF_OUTPUT_FILES_DOUBLE = \
@@ -734,6 +761,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/resonances_2.ref \
     functional_tests/ref-output-double/resonances_3.ref \
     functional_tests/ref-output-double/resonances_4.ref \
+    functional_tests/ref-output-double/resonances_10.ref \
     functional_tests/ref-output-double/beam_setup_5.ref \
     functional_tests/ref-output-double/nlo_3.ref \
     functional_tests/ref-output-double/nlo_4.ref \
@@ -766,6 +794,10 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/circe1_photons_3.ref \
     functional_tests/ref-output-double/circe1_photons_4.ref \
     functional_tests/ref-output-double/circe1_photons_5.ref \
+    functional_tests/ref-output-double/isr_2.ref \
+    functional_tests/ref-output-double/isr_3.ref \
+    functional_tests/ref-output-double/isr_4.ref \
+    functional_tests/ref-output-double/isr_5.ref \
     functional_tests/ref-output-double/pythia6_3.ref \
     functional_tests/ref-output-double/pythia6_4.ref \
     functional_tests/ref-output-double/tauola_1.ref \
@@ -818,10 +850,15 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/resonances_2.ref \
     functional_tests/ref-output-ext/resonances_3.ref \
     functional_tests/ref-output-ext/resonances_4.ref \
+    functional_tests/ref-output-ext/resonances_10.ref \
     functional_tests/ref-output-ext/circe1_4.ref \
     functional_tests/ref-output-ext/circe1_5.ref \
     functional_tests/ref-output-ext/circe1_7.ref \
     functional_tests/ref-output-ext/circe1_8.ref \
+    functional_tests/ref-output-ext/isr_2.ref \
+    functional_tests/ref-output-ext/isr_3.ref \
+    functional_tests/ref-output-ext/isr_4.ref \
+    functional_tests/ref-output-ext/isr_5.ref \
     functional_tests/ref-output-ext/nlo_5.ref \
     functional_tests/ref-output-ext/powheg_1.ref \
     functional_tests/ref-output-ext/pythia6_3.ref \
@@ -841,10 +878,15 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/resonances_2.ref \
     functional_tests/ref-output-quad/resonances_3.ref \
     functional_tests/ref-output-quad/resonances_4.ref \
+    functional_tests/ref-output-quad/resonances_10.ref \
     functional_tests/ref-output-quad/circe1_4.ref \
     functional_tests/ref-output-quad/circe1_5.ref \
     functional_tests/ref-output-quad/circe1_7.ref \
     functional_tests/ref-output-quad/circe1_8.ref \
+    functional_tests/ref-output-quad/isr_2.ref \
+    functional_tests/ref-output-quad/isr_3.ref \
+    functional_tests/ref-output-quad/isr_4.ref \
+    functional_tests/ref-output-quad/isr_5.ref \
     functional_tests/ref-output-quad/nlo_5.ref \
     functional_tests/ref-output-quad/powheg_1.ref \
     functional_tests/ref-output-quad/pythia6_3.ref \
@@ -1023,6 +1065,11 @@ MISC_TESTS_SIN = \
     functional_tests/resonances_3.sin \
     functional_tests/resonances_4.sin \
     functional_tests/resonances_5.sin \
+    functional_tests/resonances_6.sin \
+    functional_tests/resonances_7.sin \
+    functional_tests/resonances_8.sin \
+    functional_tests/resonances_9.sin \
+    functional_tests/resonances_10.sin \
     functional_tests/sm_cms_1.sin \
     functional_tests/ufo_1.sin \
     functional_tests/ufo_2.sin \
@@ -1032,6 +1079,7 @@ MISC_TESTS_SIN = \
     functional_tests/nlo_3.sin \
     functional_tests/nlo_4.sin \
     functional_tests/nlo_5.sin \
+    functional_tests/nlo_6.sin \
     functional_tests/nlo_decay_1.sin \
     functional_tests/real_partition_1.sin \
     functional_tests/fks_res_1.sin \
@@ -1047,6 +1095,9 @@ MISC_TESTS_SIN = \
     functional_tests/openloops_8.sin \
     functional_tests/openloops_9.sin \
     functional_tests/recola_1.sin \
+    functional_tests/recola_2.sin \
+    functional_tests/recola_3.sin \
+    functional_tests/recola_4.sin \
     functional_tests/powheg_1.sin \
     functional_tests/mssmtest_1.sin \
     functional_tests/mssmtest_2.sin \
@@ -1061,6 +1112,7 @@ MISC_TESTS_SIN = \
     functional_tests/multi_comp_3.sin \
     functional_tests/multi_comp_4.sin \
     functional_tests/flvsum_1.sin \
+    functional_tests/br_redef_1.sin \
     functional_tests/decay_err_1.sin \
     functional_tests/decay_err_2.sin \
     functional_tests/decay_err_3.sin \
@@ -1091,6 +1143,11 @@ MISC_TESTS_SIN = \
     functional_tests/circe2_2.sin \
     functional_tests/circe2_3.sin \
     functional_tests/isr_1.sin \
+    functional_tests/isr_2.sin \
+    functional_tests/isr_3.sin \
+    functional_tests/isr_4.sin \
+    functional_tests/isr_5.sin \
+    functional_tests/epa_1.sin \
     functional_tests/ewa_1.sin \
     functional_tests/ewa_2.sin \
     functional_tests/ewa_3.sin \
@@ -1113,6 +1170,7 @@ MISC_TESTS_SIN = \
     functional_tests/static_2.exe.sin \
     functional_tests/user_cuts.sin \
     functional_tests/user_prc_threshold_1.sin \
+    functional_tests/cascades2_phs_1.sin \
     functional_tests/user_prc_threshold_2.sin \
     ilc_ext.sin
 

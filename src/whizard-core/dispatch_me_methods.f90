@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -76,6 +76,7 @@ contains
     logical :: openmp_support
     logical :: report_progress
     logical :: diags, diags_color
+    logical :: write_phs_output
     type(string_t) :: extra_options
     integer :: nlo
     nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
@@ -105,6 +106,8 @@ contains
          var_str ("?omega_openmp"))
     report_progress = var_list%get_lval (&
          var_str ("?report_progress"))
+    write_phs_output = var_list%get_lval (&
+         var_str ("?omega_write_phs_output"))
     extra_options = var_list%get_sval (&
          var_str ("$omega_flags"))
     call msg_debug2 (D_CORE, "dispatching core method: ", meth)
@@ -134,7 +137,8 @@ contains
           call core_def%init (model_name, prt_in, prt_out, &
                .false., ufo, ufo_path, &
                restrictions, cms_scheme, &
-               openmp_support, report_progress, extra_options, diags, diags_color)
+               openmp_support, report_progress, write_phs_output, &
+               extra_options, diags, diags_color)
        end select
     case ("ovm")
        allocate (omega_def_t :: core_def)
@@ -143,7 +147,8 @@ contains
           call core_def%init (model_name, prt_in, prt_out, &
                .true., .false., var_str (""), &
                restrictions, cms_scheme, &
-               openmp_support, report_progress, extra_options, diags, diags_color)
+               openmp_support, report_progress, write_phs_output, &
+               extra_options, diags, diags_color)
        end select
     case ("gosam")
       allocate (gosam_def_t :: core_def)

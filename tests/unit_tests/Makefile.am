@@ -104,8 +104,12 @@ UNIT_TESTS = \
     processes.run \
     process_stacks.run \
     cascades.run \
+    cascades2.run \
     event_transforms.run \
     resonance_insertion.run \
+    recoil_kinematics.run \
+    isr_photon_handler.run \
+    epa_beam_handler.run \
     decays.run \
     shower.run \
     shower_base.run \
@@ -229,6 +233,14 @@ SUFFIXES = .sh .run
 sf_beam_events.run: test_beam_events.dat
 test_beam_events.dat: $(top_builddir)/share/beam-sim/test_beam_events.dat
 	cp $< $@
+
+cascades2.run: omega_parsable.fds omega_parsable_scattering.fds
+omega_parsable.fds: $(top_srcdir)/share/tests/omega_parsable.fds
+	cp $< $@
+omega_parsable_scattering.fds: $(top_srcdir)/share/tests/omega_parsable_scattering.fds
+	cp $< $@
+
+
 
 commands.run: sps1ap_decays.slha
 sps1ap_decays.slha: $(top_builddir)/share/susy/sps1ap_decays.slha
@@ -379,6 +391,7 @@ clean-local: clean-macosx
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f *.fds
 	rm -f *.vg2 *.vegas *.grids grids_2_test
 	rm -rf output_cll
 	rm -rf *.dSYM

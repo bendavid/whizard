@@ -166,9 +166,9 @@ Process library: resonances_5_lib
   driver exists   = T
   code status     = active
   Processes:
-    resonances_5_a [SM]
+    resonances_5_a [SM] [+ resonant subprocesses]
       resonances_5_a_i1: e-, e+ => u, dbar, W-  [omega]
-    resonances_5_b [SM]
+    resonances_5_b [SM] [+ resonant subprocesses]
       resonances_5_b_i1: e-, e+ => c, sbar, W-  [omega]
 | Starting simulation for process 'resonances_5_b'
 | Simulate: using integration grids from file 'resonances_5_b_m1.vg'
@@ -240,9 +240,9 @@ Process library: resonances_5_lib
   driver exists   = T
   code status     = active
   Processes:
-    resonances_5_a [SM]
+    resonances_5_a [SM] [+ resonant subprocesses]
       resonances_5_a_i1: e-, e+ => u, dbar, W-  [omega]
-    resonances_5_b [SM]
+    resonances_5_b [SM] [+ resonant subprocesses]
       resonances_5_b_i1: e-, e+ => c, sbar, W-  [omega]
 | There were no errors and    6 warning(s).
 | WHIZARD run finished.

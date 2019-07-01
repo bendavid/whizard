@@ -17,34 +17,34 @@
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  T =   0.000000000000E+00
- Children: 3 4 5 6
+ Children: 3 5
  Particle 2 [b] f(-11)
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  T =   0.000000000000E+00
- Children: 3 4 5 6
+ Children: 4 6
  Particle 3 [i] f(11)
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  T =   0.000000000000E+00
- Parents:  1 2
+ Parents:  1
  Children: 7 8
  Particle 4 [i] f(-11)
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  T =   0.000000000000E+00
- Parents:  1 2
+ Parents:  2
  Children: 7 8
- Particle 5 [v] f(22)
+ Particle 5 [x] f(22*)
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  T =   0.000000000000E+00
- Parents:  1 2
- Particle 6 [v] f(22)
+ Parents:  1
+ Particle 6 [x] f(22*)
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
  T =   0.000000000000E+00
- Parents:  1 2
+ Parents:  2
  Particle 7 [o] f(13)
  E =   0.000000000000E+00
  P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
@@ -65,13 +65,16 @@
  Event transform: resonance insertion
 ========================================================================
  Process library = ''
+ Component #1: *
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(23)
       contained in ()
-   Subprocess instances: not allocated
-   Selected: [none]
-   On-shell limit =  0.00000E+00
+------------------------------------------------------------------------
+ Subprocess instances: not allocated
+ Selected: [none]
+ On-shell limit   =  0.00000E+00
+ On-shell turnoff =  0.00000E+00
 ------------------------------------------------------------------------
    Random-number generator: test (state = 1)
    Number of tries = 0
@@ -83,13 +86,16 @@
  Event transform: resonance insertion
 ========================================================================
  Process library = ''
+ Component #1: *
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(23)
       contained in ()
-   Subprocess instances: not allocated
-   Selected: resonance history #1
-   On-shell limit =  0.00000E+00
+------------------------------------------------------------------------
+ Subprocess instances: not allocated
+ Selected: resonance history #1
+ On-shell limit   =  0.00000E+00
+ On-shell turnoff =  0.00000E+00
 ------------------------------------------------------------------------
    Selector: i, weight, acc. weight
    1  1.000000000000E+00  1.000000000000E+00
@@ -100,12 +106,12 @@
  Particle set:
 ------------------------------------------------------------------------
   Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
-   1    [b]      e-    0    0               [none]                  3-6        0.000        0.000        0.000        0.000        0.000
-   2    [b]      e+    0    0               [none]                  3-6        0.000        0.000        0.000        0.000        0.000
-   3    [i]      e-    0    0                  1-2                    7        0.000        0.000        0.000        0.000        0.000
-   4    [i]      e+    0    0                  1-2                    7        0.000        0.000        0.000        0.000        0.000
-   5    [v]       A    0    0                  1-2               [none]        0.000        0.000        0.000        0.000        0.000
-   6    [v]       A    0    0                  1-2               [none]        0.000        0.000        0.000        0.000        0.000
+   1    [b]      e-    0    0               [none]                  3,5        0.000        0.000        0.000        0.000        0.000
+   2    [b]      e+    0    0               [none]                  4,6        0.000        0.000        0.000        0.000        0.000
+   3    [i]      e-    0    0                    1                    7        0.000        0.000        0.000        0.000        0.000
+   4    [i]      e+    0    0                    2                    7        0.000        0.000        0.000        0.000        0.000
+   5    [x]       A    0    0                    1               [none]        0.000        0.000        0.000        0.000        0.000
+   6    [x]       A    0    0                    2               [none]        0.000        0.000        0.000        0.000        0.000
    7    [r]       Z    0    0                  3-4                  8-9        0.000        0.000        0.000        0.000        0.000
    8    [o]     mu-    0    0                    7               [none]        0.000        0.000        0.000        0.000        0.011
    9    [o]     mu+    0    0                    7               [none]        0.000        0.000        0.000        0.000        0.011

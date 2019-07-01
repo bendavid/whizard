@@ -10,6 +10,7 @@
  Model = SM
  Initially defined component(s) = 1
  Extra generated component(s)   = 0
+ Resonant subprocesses required
  MD5 sum   = '                                '
  Component #1
    Component ID        = simulations_15_p_i1
@@ -33,6 +34,7 @@
 * Initialize simulation object with resonant subprocesses
 
  Resonant subprocess set:
+ Component #1
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)

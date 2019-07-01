@@ -30,7 +30,7 @@ model = SM
 alias lep = e1:E1:e2:E2
 alias prt = lep:A
 
-process born = e1, E1 => e2, E2
+process bornproc = e1, E1 => e2, E2
 process rc = e1, E1 => e2, E2, A
 compile
 
@@ -55,8 +55,8 @@ scan sqrts = ((88.0 GeV => 90.0 GeV /+ 0.5 GeV),
               (90.1 GeV => 91.9 GeV /+ 0.1 GeV),
               (92.0 GeV => 95.0 GeV /+ 0.5 GeV)) {
   beams = e1, E1
-  integrate (born) { iterations = 2:1000:"gw", 1:2000 }
-  record lineshape_born (sqrts, integral (born) / 1000)
+  integrate (bornproc) { iterations = 2:1000:"gw", 1:2000 }
+  record lineshape_born (sqrts, integral (bornproc) / 1000)
   integrate (rc)   { iterations = 5:3000:"gw", 2:5000 }
   record lineshape_rc (sqrts, integral (rc) / 1000)
 }

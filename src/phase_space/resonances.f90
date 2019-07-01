@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,7 +29,6 @@
 module resonances
 
   use kinds, only: default
-!   use kinds, only: TC
   use iso_varying_string, string_t => varying_string
   use string_utils, only: str
   use format_utils, only: write_indent
@@ -76,6 +75,7 @@ module resonances
      procedure, private :: get_n_contributors => resonance_info_get_n_contributors
      procedure, private :: contains => resonance_info_contains
      procedure :: evaluate_distance => resonance_info_evaluate_distance
+     procedure :: evaluate_gaussian => resonance_info_evaluate_gaussian
      procedure :: is_on_shell => resonance_info_is_on_shell
      procedure :: as_omega_string => resonance_info_as_omega_string
   end type resonance_info_t
@@ -99,6 +99,7 @@ module resonances
      procedure :: only_has_n_contributors => resonance_history_only_has_n_contributors
      procedure :: has_flavor => resonance_history_has_flavor
      procedure :: evaluate_distances => resonance_history_evaluate_distances
+     procedure :: evaluate_gaussian => resonance_history_evaluate_gaussian
      procedure :: is_on_shell => resonance_history_is_on_shell
      procedure :: as_omega_string => resonance_history_as_omega_string
      procedure :: to_tree => resonance_history_to_tree
@@ -142,6 +143,7 @@ module resonances
      procedure :: freeze => resonance_history_set_freeze
      procedure :: determine_on_shell_histories &
           => resonance_history_set_determine_on_shell_histories
+     procedure :: evaluate_gaussian => resonance_history_set_evaluate_gaussian
      procedure :: get_n_history => resonance_history_set_get_n_history
      procedure :: get_history => resonance_history_set_get_history
      procedure :: to_array => resonance_history_set_to_array
@@ -379,7 +381,7 @@ contains
        if (i_res < n) allocate (tmp_2(i_res+1:n))
        if (allocated (tmp_1)) then
           do i = 1, i_res - 1
-             call res_hist%resonances(i)%copy (tmp_1(i)) 
+             call res_hist%resonances(i)%copy (tmp_1(i))
           end do
        end if
        if (allocated (tmp_2)) then
@@ -493,6 +495,34 @@ contains
        call res_hist%resonances(i)%evaluate_distance (p, dist(i))
     end do
   end subroutine resonance_history_evaluate_distances
+
+  function resonance_info_evaluate_gaussian (res_info, p, gw) result (factor)
+    class(resonance_info_t), intent(in) :: res_info
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: gw
+    real(default) :: factor
+    real(default) :: dist, w
+    if (gw > 0) then
+       w = res_info%flavor%get_width ()
+       call res_info%evaluate_distance (p, dist)
+       factor = exp (- (dist / (gw * w)) **2)
+    else
+       factor = 1
+    end if
+  end function resonance_info_evaluate_gaussian
+
+  function resonance_history_evaluate_gaussian (res_hist, p, gw) result (factor)
+    class(resonance_history_t), intent(in) :: res_hist
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: gw
+    real(default), dimension(:), allocatable :: dist
+    real(default) :: factor
+    integer :: i
+    factor = 1
+    do i = 1, res_hist%n_resonances
+       factor = factor * res_hist%resonances(i)%evaluate_gaussian (p, gw)
+    end do
+  end function resonance_history_evaluate_gaussian
 
   function resonance_info_is_on_shell (res_info, p, on_shell_limit) &
        result (flag)
@@ -762,7 +792,7 @@ contains
     end if
     do i = 1, res_set%last
        if (res_set%history(i) == res_history)  return
-    end do 
+    end do
     new = res_set%last + 1
     if (new > size (res_set%history))  call res_set%expand ()
     res_set%history(new) = res_history
@@ -815,6 +845,16 @@ contains
        index_array(:) = pack (i_array, i_array /= 0)
     end if    
   end subroutine resonance_history_set_determine_on_shell_histories
+    
+  function resonance_history_set_evaluate_gaussian (res_set, p, gw, i) &
+       result (factor)
+    class(resonance_history_set_t), intent(in) :: res_set
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: gw
+    integer, intent(in) :: i
+    real(default) :: factor
+    factor = res_set%history(i)%evaluate_gaussian (p, gw)
+  end function resonance_history_set_evaluate_gaussian
     
   function resonance_history_set_get_n_history (res_set) result (n)
     class(resonance_history_set_t), intent(in) :: res_set

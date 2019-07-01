@@ -53,6 +53,40 @@ and children_to_string n2s e2s (e, n, children) =
     (String.concat "," (List.map (to_string n2s e2s) children)) ^ ")"
 
   
+let rec to_channel ch n2s e2s = function
+  | Leaf n -> Printf.fprintf ch "%s" (n2s n)
+  | Node [] -> Printf.fprintf ch "{ }";
+  | Node [children] -> children_to_channel ch n2s e2s children
+  | Node (children::children2) ->
+     Printf.fprintf ch "{ ";
+     children_to_channel ch n2s e2s children;
+     List.iter
+       (fun children ->
+         Printf.fprintf ch " \\\n   | ";
+         children_to_channel ch n2s e2s children)
+       children2;
+     Printf.fprintf ch " }"
+
+and children_to_channel ch n2s e2s (e, n, children) =
+  Printf.fprintf ch "(";
+  begin match e2s e with
+  | "" -> ()
+  | s -> Printf.fprintf ch "%s>" s
+  end;
+  Printf.fprintf ch "%s:" (n2s n);
+  begin match children with
+  | [] -> ()
+  | [child] -> to_channel ch n2s e2s child
+  | child::children ->
+     to_channel ch n2s e2s child;
+     List.iter
+       (fun child ->
+         Printf.fprintf ch ",";
+         to_channel ch n2s e2s child)
+       children
+  end;
+  Printf.fprintf ch ")"
+
 (*i
  *  Local Variables:
  *  mode:caml

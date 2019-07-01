@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -69,7 +69,7 @@ contains
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(flavor_t) :: fw
@@ -100,7 +100,7 @@ contains
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 3, &
          pdg = [1, -1, 1, -2, 24], model = model)
 
     call fw%init (24, model)
@@ -144,14 +144,14 @@ contains
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 2)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -163,6 +163,7 @@ contains
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -212,7 +213,7 @@ contains
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -238,7 +239,7 @@ contains
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 3, &
          pdg = [1, -1, 1, -2, 24], model = model)
 
     call col%init_col_acl (1,0)
@@ -268,14 +269,14 @@ contains
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 2)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -287,6 +288,7 @@ contains
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -336,7 +338,7 @@ contains
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -362,7 +364,7 @@ contains
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 6, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 6, &
          pdg = [2, -2, 24, 5, 5, -5, -24, -5], model = model)
 
     call col%init_col_acl (1,0)
@@ -401,7 +403,7 @@ contains
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, 6, model, 6)
     call res_history%add_resonance (res_info)
@@ -409,10 +411,10 @@ contains
     call res_history%add_resonance (res_info)
     call res_info%init (60, -6, model, 6)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -424,6 +426,7 @@ contains
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -470,7 +473,7 @@ contains
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -494,7 +497,7 @@ contains
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 4, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 4, &
          pdg = [1, -1, 1, -2, -3, 4], model = model)
 
     write (u, "(A)")  "* Fill trivial event transform"
@@ -509,26 +512,26 @@ contains
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
     call res_info%init (12, 24, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
     call res_info%init (12, 24, model, 4)
     call res_history%add_resonance (res_info)
     call res_info%init (15, 25, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -540,6 +543,7 @@ contains
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -579,7 +583,7 @@ contains
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -603,7 +607,7 @@ contains
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 4, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 4, &
          pdg = [1, -1, 1, -2, -3, 4], model = model)
 
     write (u, "(A)")  "* Fill trivial event transform"
@@ -615,14 +619,14 @@ contains
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -634,6 +638,7 @@ contains
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     
     write (u, "(A)")  "* Fill resonance insertion transform"
     write (u, "(A)")
@@ -671,18 +676,11 @@ contains
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
-!!!    type(flavor_t) :: fw
-!!!    type(color_t) :: col
-!!!    real(default) :: mw, ew, pw
-!!!    type(vector4_t), dimension(5) :: p
     class(rng_t), allocatable :: rng
     real(default) :: probability
-!!!    integer, dimension(:), allocatable :: i_invalid
-!!!    type(particle_t), dimension(:), allocatable :: prt_invalid
-!!!    integer :: i
 
     write (u, "(A)")  "* Test output: resonance_insertion_6"
     write (u, "(A)")  "*   Purpose: resonance insertion with structured beams"
@@ -700,38 +698,9 @@ contains
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 2, n_in = 2, n_vir = 2, n_out = 2, &
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
          pdg = [11, -11, 11, -11, 22, 22, 13, -13], model = model)
 
-!!!    call fw%init (24, model)
-!!!
-!!!    mw = fw%get_mass ()
-!!!    ew = 200._default
-!!!    pw = sqrt (ew**2 - mw**2)
-!!!
-!!!    p(1) = vector4_moving (ew, ew, 3)
-!!!    p(2) = vector4_moving (ew,-ew, 3)
-!!!    p(3) = vector4_moving (ew/2, vector3_moving ([pw/2, mw/2, 0._default]))
-!!!    p(4) = vector4_moving (ew/2, vector3_moving ([pw/2,-mw/2, 0._default]))
-!!!    p(5) = vector4_moving (ew, vector3_moving ([-pw, 0._default, 0._default]))
-!!!
-!!!    call pset%set_momentum (p, on_shell = .true.)
-!!!    
-!!!    call col%init_col_acl (1,0)
-!!!    call pset%set_color (1, col)
-!!!    
-!!!    call col%init_col_acl (0,1)
-!!!    call pset%set_color (2, col)
-!!!
-!!!    call col%init_col_acl (2,0)
-!!!    call pset%set_color (3, col)
-!!!    
-!!!    call col%init_col_acl (0,2)
-!!!    call pset%set_color (4, col)
-!!!
-!!!    call col%init_col_acl (0,0)
-!!!    call pset%set_color (5, col)
-!!!
     write (u, "(A)")  "* Fill trivial event transform"
     write (u, "(A)")
 
@@ -744,14 +713,14 @@ contains
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, 23, model, 2)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -763,6 +732,7 @@ contains
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -778,19 +748,6 @@ contains
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
-!!!
-!!!    write (u, "(A)")
-!!!    call evt_resonance%find_prt_invalid_color (i_invalid, prt_invalid)
-!!!    write (u, "(A)")  "Particles with invalid color:"
-!!!    select case (size (prt_invalid))
-!!!    case (0)
-!!!       write (u, "(2x,A)")  "[none]"
-!!!    case default
-!!!       do i = 1, size (prt_invalid)
-!!!          write (u, "(1x,A,1x,I0)", advance="no")  "Particle", i_invalid(i)
-!!!          call prt_invalid(i)%write (u)
-!!!       end do
-!!!    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"

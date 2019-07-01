@@ -158,6 +158,11 @@ TESTS_REQ_OCAML = \
     resonances_3.run \
     resonances_4.run \
     resonances_5.run \
+    resonances_6.run \
+    resonances_7.run \
+    resonances_8.run \
+    resonances_9.run \
+    resonances_10.run \
     mssmtest_1.run \
     mssmtest_2.run \
     sm_cms_1.run \
@@ -169,6 +174,7 @@ TESTS_REQ_OCAML = \
     nlo_3.run \
     nlo_4.run \
     nlo_5.run \
+    nlo_6.run \
     nlo_decay_1.run \
     real_partition_1.run \
     fks_res_1.run \
@@ -184,6 +190,9 @@ TESTS_REQ_OCAML = \
     openloops_8.run \
     openloops_9.run \
     recola_1.run \
+    recola_2.run \
+    recola_3.run \
+    recola_4.run \
     powheg_1.run \
     spincor_1.run \
     show_1.run \
@@ -196,6 +205,7 @@ TESTS_REQ_OCAML = \
     multi_comp_3.run \
     multi_comp_4.run \
     flvsum_1.run \
+    br_redef_1.run \
     decay_err_1.run \
     decay_err_2.run \
     decay_err_3.run \
@@ -228,6 +238,11 @@ TESTS_REQ_OCAML = \
     ewa_3.run \
     ewa_4.run \
     isr_1.run \
+    isr_2.run \
+    isr_3.run \
+    isr_4.run \
+    isr_5.run \
+    epa_1.run \
     ilc.run \
     gaussian_1.run \
     gaussian_2.run \
@@ -245,6 +260,7 @@ TESTS_REQ_OCAML = \
     mlm_matching_fsr.run \
     user_cuts.run \
     user_prc_threshold_1.run \
+    cascades2_phs_1.run \
     user_prc_threshold_2.run
 
 XFAIL_TESTS_REQ_OCAML = \
@@ -292,6 +308,7 @@ TESTS_REQ_PYTHIA6 = \
     pythia6_4.run \
     tauola_1.run \
     tauola_2.run \
+    isr_5.run \
     mlm_pythia6_isr.run \
     mlm_matching_isr.run
 XFAIL_TESTS_REQ_PYTHIA6 =
@@ -465,6 +482,14 @@ resonances_3.run: resonances_3_count
 noinst_PROGRAMS += resonances_4_count
 resonances_4_count_SOURCES = resonances_4_count.f90
 resonances_4.run: resonances_4_count
+
+noinst_PROGRAMS += resonances_9_count
+resonances_9_count_SOURCES = resonances_9_count.f90
+resonances_9.run: resonances_9_count
+
+noinst_PROGRAMS += resonances_10_count
+resonances_10_count_SOURCES = resonances_10_count.f90
+resonances_10.run: resonances_10_count
 endif
 
 if HEPMC_AVAILABLE
@@ -646,7 +671,7 @@ clean-local: clean-macosx
 	rm -rf ref-output
 	rm -f *.sin *.hbc *_fks_regions.out
 	rm -f *.olc *.olp *.olp_parameters output.rcl
-	rm -f *.phs *.vg *.vg2 *.pg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
+	rm -f *.phs *.vg *.vg2 *.pg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.fds
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 

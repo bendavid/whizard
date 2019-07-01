@@ -2,7 +2,38 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.6.0
+	Version 2.6.1
+
+2017-11-03
+	RELEASE: version 2.6.1
+
+2017-10-20
+	More than 5 NLO components possible at same time
+
+2017-10-19
+	Gaussian cutoff for shower resonance matching
+
+2017-10-12
+	Alternative (more efficient) method to generate
+	   phase space file
+
+2017-10-11
+	Bug fix for shower resonance histories for processes
+	   with multiple components
+
+2017-09-25
+	Bugfix for process libraries in shower resonance histories
+
+2017-09-21
+	Correctly generate pT distribution for EPA remnants
+
+2017-09-20
+	Set branching ratios for unstable particles also by hand
+
+2017-09-14
+	Correctly generate pT distribution for ISR photons
+
+##################################################################
 
 2017-09-08
 	RELEASE: version 2.6.0

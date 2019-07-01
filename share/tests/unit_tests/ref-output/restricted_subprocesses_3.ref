@@ -8,6 +8,7 @@
  Model = SM
  Initially defined component(s) = 1
  Extra generated component(s)   = 0
+ Resonant subprocesses required
  MD5 sum   = '                                '
  Component #1
    Component ID        = restricted_subprocesses_3_p_i1
@@ -43,6 +44,7 @@ Resonance history set:
 * Build resonant-subprocess library
 
  Resonant subprocess set:
+ Component #1
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
@@ -126,6 +128,7 @@ Resonance history set:
  on_shell_limit =  0.000E+00
  resonant =  0.00000E+00  0.00000E+00  1.00000E+00  0.00000E+00
  Resonant subprocess set:
+ Component #1
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
@@ -144,6 +147,7 @@ Resonance history set:
  on_shell_limit =  1.000E+01
  resonant =  9.50337E-03  9.90497E-01  0.00000E+00  0.00000E+00
  Resonant subprocess set:
+ Component #1
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
@@ -164,6 +168,7 @@ Resonance history set:
  resonant =  4.99874E-01  2.48785E-04  0.00000E+00  4.99877E-01
 
  Resonant subprocess set:
+ Component #1
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)

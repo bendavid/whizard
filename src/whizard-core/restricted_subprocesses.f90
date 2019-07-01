@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -41,7 +41,9 @@ module restricted_subprocesses
   use resonances, only: resonance_history_t, resonance_history_set_t
   use variables, only: var_list_t
   use models, only: model_t
+  use process_libraries, only: process_component_def_t
   use process_libraries, only: process_library_t
+  use process_libraries, only: STAT_ACTIVE
   use prclib_stacks, only: prclib_entry_t
   use event_transforms, only: evt_t
   use resonance_insertion, only: evt_resonance_t
@@ -59,6 +61,8 @@ module restricted_subprocesses
 
   public :: restricted_process_configuration_t
   public :: resonant_subprocess_set_t
+  public :: get_libname_res
+  public :: spawn_resonant_subprocess_libraries
 
   type, extends (process_configuration_t) :: restricted_process_configuration_t
      private
@@ -68,8 +72,8 @@ module restricted_subprocesses
 
   type :: resonant_subprocess_set_t
      private
-     integer :: n_history = 0
-     type(resonance_history_set_t) :: res_history_set
+     integer, dimension(:), allocatable :: n_history
+     type(resonance_history_set_t), dimension(:), allocatable :: res_history_set
      logical :: lib_active = .false.
      type(string_t) :: libname
      type(string_t), dimension(:), allocatable :: proc_id
@@ -80,9 +84,12 @@ module restricted_subprocesses
    contains
      procedure :: write => resonant_subprocess_set_write
      procedure :: init => resonant_subprocess_set_init
+     procedure :: fill_resonances => resonant_subprocess_set_fill_resonances
      procedure :: get_resonance_history_set &
           => resonant_subprocess_set_get_resonance_history_set
      procedure :: create_library => resonant_subprocess_set_create_library
+     procedure :: add_to_library => resonant_subprocess_set_add_to_library
+     procedure :: freeze_library => resonant_subprocess_set_freeze_library
      procedure :: compile_library => resonant_subprocess_set_compile_library
      procedure :: is_active => resonant_subprocess_set_is_active
      procedure :: get_n_process => resonant_subprocess_set_get_n_process
@@ -95,6 +102,7 @@ module restricted_subprocesses
      procedure :: connect_transform => &
           resonant_subprocess_set_connect_transform
      procedure :: set_on_shell_limit => resonant_subprocess_set_on_shell_limit
+     procedure :: set_on_shell_turnoff => resonant_subprocess_set_on_shell_turnoff
      procedure :: dump_instances => resonant_subprocess_set_dump_instances
      procedure :: fill_momenta => resonant_subprocess_set_fill_momenta
      procedure :: determine_on_shell_histories &
@@ -137,6 +145,9 @@ contains
     call local_var_list%append_string (var_str ("$restrictions"), &
          sval = res_history%as_omega_string (size (prt_in)), &
          intrinsic = .true.)
+    call local_var_list%append_log (var_str ("?resonance_history"), &
+         lval = .false., &
+         intrinsic = .true.)
     call prc_config%init (prc_name, size (prt_in), 1, &
          local_model, local_var_list)
     call prc_config%setup_component (1, &
@@ -149,100 +160,233 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     logical :: truncate
-    integer :: u
+    integer :: u, i
     u = given_output_unit (unit)
     truncate = .false.;  if (present (testflag))  truncate = testflag
     write (u, "(1x,A)")  "Resonant subprocess set:"
-    if (prc_set%n_history > 0) then
-       call prc_set%res_history_set%write (u, indent=1)
-       if (prc_set%lib_active) then
-          write (u, "(3x,A,A,A)")  "Process library = '", &
-               char (prc_set%libname), "'"
-       else
-          write (u, "(3x,A)")  "Process library: [inactive]"
-       end if
-       if (associated (prc_set%evt)) then
-          if (truncate) then
-             write (u, "(3x,A,1x," // FMT_14 // ")") &
-                  "Process sqme =", prc_set%get_master_sqme ()
+    if (allocated (prc_set%n_history)) then
+       if (any (prc_set%n_history > 0)) then
+          do i = 1, size (prc_set%n_history)
+             if (prc_set%n_history(i) > 0) then
+                write (u, "(1x,A,I0)")  "Component #", i
+                call prc_set%res_history_set(i)%write (u, indent=1)
+             end if
+          end do
+          if (prc_set%lib_active) then
+             write (u, "(3x,A,A,A)")  "Process library = '", &
+                  char (prc_set%libname), "'"
           else
-             write (u, "(3x,A,1x," // FMT_19 // ")") &
-                  "Process sqme =", prc_set%get_master_sqme ()
+             write (u, "(3x,A)")  "Process library: [inactive]"
           end if
-       end if
-       if (associated (prc_set%evt)) then
-          write (u, "(3x,A)")  "Event transform: associated"
-          write (u, "(2x)", advance="no")
-          call prc_set%evt%write_selector (u, testflag)
+          if (associated (prc_set%evt)) then
+             if (truncate) then
+                write (u, "(3x,A,1x," // FMT_14 // ")") &
+                     "Process sqme =", prc_set%get_master_sqme ()
+             else
+                write (u, "(3x,A,1x," // FMT_19 // ")") &
+                     "Process sqme =", prc_set%get_master_sqme ()
+             end if
+          end if
+          if (associated (prc_set%evt)) then
+             write (u, "(3x,A)")  "Event transform: associated"
+             write (u, "(2x)", advance="no")
+             call prc_set%evt%write_selector (u, testflag)
+          else
+             write (u, "(3x,A)")  "Event transform: not associated"
+          end if
        else
-          write (u, "(3x,A)")  "Event transform: not associated"
+          write (u, "(2x,A)")  "[empty]"
        end if
     else
-       write (u, "(2x,A)")  "[empty]"
+       write (u, "(3x,A)")  "[not allocated]"
     end if
   end subroutine resonant_subprocess_set_write
 
-  subroutine resonant_subprocess_set_init (prc_set, res_history_set)
+  subroutine resonant_subprocess_set_init (prc_set, n_component)
     class(resonant_subprocess_set_t), intent(out) :: prc_set
-    type(resonance_history_set_t), intent(in) :: res_history_set
-    prc_set%n_history = res_history_set%get_n_history ()
-    if (prc_set%n_history > 0) then
-       prc_set%res_history_set = res_history_set
-    end if
+    integer, intent(in) :: n_component
+    allocate (prc_set%res_history_set (n_component))
+    allocate (prc_set%n_history (n_component), source = 0)
   end subroutine resonant_subprocess_set_init
+
+  subroutine resonant_subprocess_set_fill_resonances (prc_set, &
+       res_history_set, i_component)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    type(resonance_history_set_t), intent(in) :: res_history_set
+    integer, intent(in) :: i_component
+    prc_set%n_history(i_component) = res_history_set%get_n_history ()
+    if (prc_set%n_history(i_component) > 0) then
+       prc_set%res_history_set(i_component) = res_history_set
+    end if
+  end subroutine resonant_subprocess_set_fill_resonances
 
   function resonant_subprocess_set_get_resonance_history_set (prc_set) &
        result (res_history_set)
     class(resonant_subprocess_set_t), intent(in) :: prc_set
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(:), allocatable :: res_history_set
     res_history_set = prc_set%res_history_set
   end function resonant_subprocess_set_get_resonance_history_set
 
+  elemental function get_libname_res (proc_id) result (libname)
+    type(string_t), intent(in) :: proc_id
+    type(string_t) :: libname
+    libname = proc_id // "_R"
+  end function get_libname_res
+
+  subroutine spawn_resonant_subprocess_libraries &
+       (libname, local, global, libname_res)
+    type(string_t), intent(in) :: libname
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t), dimension(:), allocatable, intent(inout) :: libname_res
+    type(process_library_t), pointer :: lib
+    type(string_t), dimension(:), allocatable :: process_id_res
+    type(process_t), pointer :: process
+    type(resonance_history_set_t) :: res_history_set
+    type(process_component_def_t), pointer :: process_component_def
+    logical :: phs_only_saved, exist
+    integer :: i_proc, i_component
+    lib => global%prclib_stack%get_library_ptr (libname)
+    call lib%get_process_id_req_resonant (process_id_res)
+    if (size (process_id_res) > 0) then
+       call msg_message ("Creating resonant-subprocess libraries &
+            &for library '" // char (libname) // "'")
+       libname_res = get_libname_res (process_id_res)
+       phs_only_saved = local%var_list%get_lval (var_str ("?phs_only"))
+       call local%var_list%set_log &
+            (var_str ("?phs_only"), .true., is_known=.true.)
+       do i_proc = 1, size (process_id_res)
+          associate (proc_id => process_id_res (i_proc))
+            call msg_message ("Process '" // char (proc_id) // "': &
+                 &constructing phase space for resonance structure")
+            call integrate_process (proc_id, local, global)
+            process => global%process_stack%get_process_ptr (proc_id)
+            call create_library (libname_res(i_proc), global, exist)
+            if (.not. exist) then
+               do i_component = 1, process%get_n_components ()
+                  call process%extract_resonance_history_set &
+                       (res_history_set, i_component = i_component)
+                  process_component_def &
+                       => process%get_component_def_ptr (i_component)
+                  call add_to_library (libname_res(i_proc), &
+                       res_history_set, &
+                       process_component_def%get_prt_spec_in (), &
+                       process_component_def%get_prt_spec_out (), &
+                       global)
+               end do
+               call msg_message ("Process library '" &
+                    // char (libname_res(i_proc)) &
+                    // "': created")
+            end if
+            call global%update_prclib (lib)
+          end associate
+       end do
+       call local%var_list%set_log &
+            (var_str ("?phs_only"), phs_only_saved, is_known=.true.)
+    end if
+  end subroutine spawn_resonant_subprocess_libraries
+    
   subroutine resonant_subprocess_set_create_library (prc_set, &
-       libname, prt_in, prt_out, global)
+       libname, global, exist)
     class(resonant_subprocess_set_t), intent(inout) :: prc_set
     type(string_t), intent(in) :: libname
+    type(rt_data_t), intent(inout), target :: global
+    logical, intent(out) :: exist
+    prc_set%libname = libname
+    call create_library (prc_set%libname, global, exist)
+  end subroutine resonant_subprocess_set_create_library
+
+  subroutine resonant_subprocess_set_add_to_library (prc_set, &
+       i_component, prt_in, prt_out, global)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    integer, intent(in) :: i_component
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
     type(prt_spec_t), dimension(:), intent(in) :: prt_out
     type(rt_data_t), intent(inout), target :: global
+    call add_to_library (prc_set%libname, &
+         prc_set%res_history_set(i_component), &
+         prt_in, prt_out, global)
+  end subroutine resonant_subprocess_set_add_to_library
+
+  subroutine resonant_subprocess_set_freeze_library (prc_set, global)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    type(rt_data_t), intent(inout), target :: global
     type(prclib_entry_t), pointer :: lib_entry
     type(process_library_t), pointer :: lib
-    type(restricted_process_configuration_t) :: prc_config
-    type(resonance_history_t) :: res_history
-    integer :: i
-    call msg_message ("Creating library for resonant subprocesses '" &
-         // char (libname) // "'")
-    prc_set%libname = libname
     lib => global%prclib_stack%get_library_ptr (prc_set%libname)
-    if (.not. (associated (lib))) then
+    call lib%get_process_id_list (prc_set%proc_id)
+    prc_set%lib_active = .true.
+  end subroutine resonant_subprocess_set_freeze_library
+
+  subroutine create_library (libname, global, exist)
+    type(string_t), intent(in) :: libname
+    type(rt_data_t), intent(inout), target :: global
+    logical, intent(out) :: exist
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    type(resonance_history_t) :: res_history
+    type(string_t), dimension(:), allocatable :: proc_id
+    type(restricted_process_configuration_t) :: prc_config
+    integer :: i
+    lib => global%prclib_stack%get_library_ptr (libname)
+    exist = associated (lib)
+    if (.not. exist) then
+       call msg_message ("Creating library for resonant subprocesses '" &
+            // char (libname) // "'")
        allocate (lib_entry)
        call lib_entry%init (libname)
        lib => lib_entry%process_library_t
        call global%add_prclib (lib_entry)
     else
+       call msg_message ("Using library for resonant subprocesses '" &
+            // char (libname) // "'")
        call global%update_prclib (lib)
     end if
-    allocate (prc_set%proc_id (prc_set%n_history))
-    do i = 1, prc_set%n_history
-       prc_set%proc_id(i) = libname // str (i)
-       res_history = prc_set%res_history_set%get_history(i)
-       call prc_config%init_resonant_process (prc_set%proc_id(i), &
-            prt_in, prt_out, &
-            res_history, &
-            global%model, global%var_list)
-       call msg_message ("Resonant subprocess #" &
-            // char (str(i)) // ": " &
-            // char (res_history%as_omega_string (size (prt_in))))
-       call prc_config%record (global)
-       if (signal_is_pending ())  return
-    end do
-    prc_set%lib_active = .true.
-  end subroutine resonant_subprocess_set_create_library
-
+  end subroutine create_library
+  
+  subroutine add_to_library (libname, res_history_set, prt_in, prt_out, global)
+    type(string_t), intent(in) :: libname
+    type(resonance_history_set_t), intent(in) :: res_history_set
+    type(prt_spec_t), dimension(:), intent(in) :: prt_in
+    type(prt_spec_t), dimension(:), intent(in) :: prt_out
+    type(rt_data_t), intent(inout), target :: global
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    type(resonance_history_t) :: res_history
+    type(string_t), dimension(:), allocatable :: proc_id
+    type(restricted_process_configuration_t) :: prc_config
+    integer :: n0, i
+    lib => global%prclib_stack%get_library_ptr (libname)
+    if (associated (lib)) then
+       n0 = lib%get_n_processes ()
+       allocate (proc_id (res_history_set%get_n_history ()))
+       do i = 1, size (proc_id)
+          proc_id(i) = libname // str (n0 + i)
+          res_history = res_history_set%get_history(i)
+          call prc_config%init_resonant_process (proc_id(i), &
+               prt_in, prt_out, &
+               res_history, &
+               global%model, global%var_list)
+          call msg_message ("Resonant subprocess #" &
+               // char (str(n0+i)) // ": " &
+               // char (res_history%as_omega_string (size (prt_in))))
+          call prc_config%record (global)
+          if (signal_is_pending ())  return
+       end do
+    else
+       call msg_bug ("Adding subprocesses: library '" &
+            // char (libname) // "' not found")
+    end if
+  end subroutine add_to_library
+  
   subroutine resonant_subprocess_set_compile_library (prc_set, global)
     class(resonant_subprocess_set_t), intent(in) :: prc_set
     type(rt_data_t), intent(inout), target :: global
-    call compile_library (prc_set%libname, global)
+    type(process_library_t), pointer :: lib
+    lib => global%prclib_stack%get_library_ptr (prc_set%libname)
+    if (lib%get_status () < STAT_ACTIVE) then
+       call compile_library (prc_set%libname, global)
+    end if
   end subroutine resonant_subprocess_set_compile_library
 
   function resonant_subprocess_set_is_active (prc_set) result (flag)
@@ -355,7 +499,6 @@ contains
     select type (evt)
     type is (evt_resonance_t)
        prc_set%evt => evt
-       call prc_set%evt%set_resonance_data (prc_set%res_history_set)
        call prc_set%evt%set_subprocess_instances (prc_set%instance)
     class default
        call msg_bug ("Resonant subprocess set: event transform has wrong type")
@@ -367,6 +510,13 @@ contains
     real(default), intent(in) :: on_shell_limit
     call prc_set%evt%set_on_shell_limit (on_shell_limit)
   end subroutine resonant_subprocess_set_on_shell_limit
+
+  subroutine resonant_subprocess_set_on_shell_turnoff &
+       (prc_set, on_shell_turnoff)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    real(default), intent(in) :: on_shell_turnoff
+    call prc_set%evt%set_on_shell_turnoff (on_shell_turnoff)
+  end subroutine resonant_subprocess_set_on_shell_turnoff
 
   subroutine resonant_subprocess_set_dump_instances (prc_set, unit, testflag)
     class(resonant_subprocess_set_t), intent(inout) :: prc_set
@@ -393,8 +543,9 @@ contains
   end subroutine resonant_subprocess_set_fill_momenta
 
   subroutine resonant_subprocess_set_determine_on_shell_histories &
-       (prc_set, index_array)
+       (prc_set, i_component, index_array)
     class(resonant_subprocess_set_t), intent(in) :: prc_set
+    integer, intent(in) :: i_component
     integer, dimension(:), allocatable, intent(out) :: index_array
     call prc_set%evt%determine_on_shell_histories (index_array)
   end subroutine resonant_subprocess_set_determine_on_shell_histories

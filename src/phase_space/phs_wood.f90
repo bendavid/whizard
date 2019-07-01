@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -48,6 +48,7 @@ module phs_wood
   use resonances, only: resonance_history_set_t
   use phs_forests
   use cascades
+  use cascades2
 
   implicit none
   private
@@ -70,6 +71,8 @@ module phs_wood
      type(phs_parameters_t) :: par
      type(string_t) :: run_id
      type(cascade_set_t), allocatable :: cascade_set
+     logical :: use_cascades2 = .false.
+     type(feyngraph_set_t), allocatable :: feyngraph_set
      type(phs_forest_t) :: forest
      type(os_data_t) :: os_data
      integer :: extension_mode = EXTENSION_NONE
@@ -195,23 +198,58 @@ contains
   subroutine phs_wood_config_generate_phase_space (phs_config)
     class(phs_wood_config_t), intent(inout) :: phs_config
     integer :: off_shell, extra_off_shell
+    logical :: valid
+    integer :: unit_fds
+    type(string_t) :: file_name
+    logical :: file_exists
     call msg_message ("Phase space: generating configuration ...")
     off_shell = phs_config%par%off_shell
-    allocate (phs_config%cascade_set)
-    do extra_off_shell = 0, max (phs_config%n_tot - 3, 0)
-       phs_config%par%off_shell = off_shell + extra_off_shell
-       call cascade_set_generate (phs_config%cascade_set, &
-            phs_config%model, phs_config%n_in, phs_config%n_out, &
-            phs_config%flv, &
-            phs_config%par, phs_config%fatal_beam_decay)
-       if (cascade_set_is_valid (phs_config%cascade_set)) then
-          exit
-       else
-          call msg_message ("Phase space: ... failed.  &
-               &Increasing phs_off_shell ...")
-       end if
-    end do
-    if (cascade_set_is_valid (phs_config%cascade_set)) then
+    if (phs_config%use_cascades2) then
+       file_name = char (phs_config%id) // ".fds"
+       inquire (file=char (file_name), exist=file_exists)
+       if (.not. file_exists) call msg_fatal &
+            ("The O'Mega input file " // char (file_name) // &
+            " does not exist. " // "Please make sure that the " // &
+            "variable ?omega_write_phs_output has been set correctly.")
+       unit_fds = free_unit ()
+       open (unit=unit_fds, file=char(file_name), status='old', action='read')
+       allocate (phs_config%feyngraph_set)
+       do extra_off_shell = 0, max (phs_config%n_tot - 3, 0)
+          phs_config%par%off_shell = off_shell + extra_off_shell
+          call feyngraph_set_generate (phs_config%feyngraph_set, &
+               phs_config%model, phs_config%n_in, phs_config%n_out, &
+               phs_config%flv, &
+               phs_config%par, phs_config%fatal_beam_decay, unit_fds)
+          if (feyngraph_set_is_valid (phs_config%feyngraph_set)) then
+             exit
+          else
+             call msg_message ("Phase space: ... failed.  &
+                  &Increasing phs_off_shell ...")
+          end if
+       end do
+       close (unit_fds)
+    else
+       allocate (phs_config%cascade_set)
+       do extra_off_shell = 0, max (phs_config%n_tot - 3, 0)
+          phs_config%par%off_shell = off_shell + extra_off_shell
+          call cascade_set_generate (phs_config%cascade_set, &
+               phs_config%model, phs_config%n_in, phs_config%n_out, &
+               phs_config%flv, &
+               phs_config%par, phs_config%fatal_beam_decay)
+          if (cascade_set_is_valid (phs_config%cascade_set)) then
+             exit
+          else
+             call msg_message ("Phase space: ... failed.  &
+                  &Increasing phs_off_shell ...")
+          end if
+       end do
+    endif
+    if (phs_config%use_cascades2) then
+       valid = feyngraph_set_is_valid (phs_config%feyngraph_set)
+    else
+       valid = cascade_set_is_valid (phs_config%cascade_set)
+    endif
+    if (valid) then
        call msg_message ("Phase space: ... success.")
     else
        call msg_fatal ("Phase-space: generation failed")
@@ -225,7 +263,7 @@ contains
     type(string_t), intent(in), optional :: filename_vis
     type(string_t) :: setenv_tex, setenv_mp, pipe, pipe_dvi
     integer :: u, unit_tex, unit_dev, status
-    if (allocated (phs_config%cascade_set)) then
+    if (allocated (phs_config%cascade_set) .or. allocated (phs_config%feyngraph_set)) then
        if (present (unit)) then
           u = unit
        else
@@ -233,7 +271,11 @@ contains
        end if
        write (u, "(1x,A,A)") "process ", char (phs_config%id)
        write (u, "(A)")
-       call cascade_set_write_process_bincode_format (phs_config%cascade_set, u)
+       if (phs_config%use_cascades2) then
+          call feyngraph_set_write_process_bincode_format (phs_config%feyngraph_set, u)
+       else
+          call cascade_set_write_process_bincode_format (phs_config%cascade_set, u)
+       endif
        write (u, "(A)")
        write (u, "(3x,A,A,A32,A)") "md5sum_process    = ", &
             '"', phs_config%md5sum_process, '"'
@@ -242,13 +284,22 @@ contains
        write (u, "(3x,A,A,A32,A)") "md5sum_phs_config = ", &
             '"', phs_config%md5sum_phs_config, '"'
        call phs_parameters_write (phs_config%par, u)
-       call cascade_set_write_file_format (phs_config%cascade_set, u)
+       if (phs_config%use_cascades2) then
+          call feyngraph_set_write_file_format (phs_config%feyngraph_set, u)
+       else
+          call cascade_set_write_file_format (phs_config%cascade_set, u)
+       endif
        if (phs_config%vis_channels) then
           unit_tex = free_unit ()
           open (unit=unit_tex, file=char(filename_vis // ".tex"), &
                action="write", status="replace")
-          call cascade_set_write_graph_format (phs_config%cascade_set, &
-               filename_vis // "-graphs", phs_config%id, unit_tex)
+          if (phs_config%use_cascades2) then
+             call feyngraph_set_write_graph_format (phs_config%feyngraph_set, &
+                  filename_vis // "-graphs", phs_config%id, unit_tex)
+          else
+             call cascade_set_write_graph_format (phs_config%cascade_set, &
+                  filename_vis // "-graphs", phs_config%id, unit_tex)
+          endif
           close (unit_tex)
           call msg_message ("Phase space: visualizing channels in file " &
                // char(trim(filename_vis)) // "...")
@@ -318,6 +369,10 @@ contains
        call cascade_set_final (phs_config%cascade_set)
        deallocate (phs_config%cascade_set)
     end if
+    if (allocated (phs_config%feyngraph_set)) then
+       call phs_config%feyngraph_set%final ()
+       deallocate (phs_config%feyngraph_set)
+    endif
   end subroutine phs_wood_config_clear_phase_space
 
   subroutine phs_wood_config_extract_resonance_history_set &

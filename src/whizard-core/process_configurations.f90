@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -91,6 +91,7 @@ contains
     type(var_list_t), intent(in) :: var_list
     logical, intent(in), optional :: nlo_process
     logical :: nlo_proc
+    logical :: requires_resonances
     call msg_debug (D_CORE, "process_configuration_init")
     config%id = prc_name
     if (present (nlo_process)) then
@@ -98,6 +99,8 @@ contains
     else
        nlo_proc = .false.
     end if
+    requires_resonances = var_list%get_lval (var_str ("?resonance_history"))
+
     call msg_debug (D_CORE, "nlo_process", nlo_proc)
     allocate (config%entry)
     if (var_list%is_known (var_str ("process_num_id"))) then
@@ -105,11 +108,14 @@ contains
             var_list%get_ival (var_str ("process_num_id"))
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            num_id = config%num_id, nlo_process = nlo_proc)
+            num_id = config%num_id, &
+            nlo_process = nlo_proc, &
+            requires_resonances = requires_resonances)
     else
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            nlo_process = nlo_proc)
+            nlo_process = nlo_proc, &
+            requires_resonances = requires_resonances)
     end if
   end subroutine process_configuration_init
 
@@ -209,26 +215,15 @@ contains
   end subroutine process_configuration_set_coupling_powers
 
   subroutine process_configuration_set_component_associations &
-         (config, i_list, pdf, use_real_finite, mismatch)
+         (config, i_list, remnant, use_real_finite, mismatch)
     class(process_configuration_t), intent(inout) :: config
-    integer, intent(in), dimension(:) :: i_list
-    logical, intent(in) :: pdf, use_real_finite, mismatch
+    integer, dimension(:), intent(in) :: i_list
+    logical, intent(in) :: remnant, use_real_finite, mismatch
     integer :: i_component
     do i_component = 1, config%entry%get_n_components ()
        if (any (i_list == i_component)) then
-          if (pdf) then
-             call config%entry%set_associated_components (i_component, &
-                    i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(5))
-          else if (mismatch) then
-             call config%entry%set_associated_components (i_component, &
-                    i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(5))
-          else if (use_real_finite) then
-             call config%entry%set_associated_components (i_component, &
-                    i_list(1), i_list(2), i_list(3), i_list(4), i_rfin = i_list(5))
-          else
-             call config%entry%set_associated_components (i_component, &
-                    i_list(1), i_list(2), i_list(3), i_list(4))
-          end if
+          call config%entry%set_associated_components (i_component, &
+               i_list, remnant, use_real_finite, mismatch)
        end if
     end do
   end subroutine process_configuration_set_component_associations

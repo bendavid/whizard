@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -183,15 +183,16 @@ contains
   end subroutine eio_direct_get_momentum_array
 
   subroutine eio_direct_init_direct &
-       (eio, n_beam, n_in, n_vir, n_out, pdg, model)
+       (eio, n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
     class(eio_direct_t), intent(out) :: eio
     integer, intent(in) :: n_beam
     integer, intent(in) :: n_in
+    integer, intent(in) :: n_rem
     integer, intent(in) :: n_vir
     integer, intent(in) :: n_out
     integer, dimension(:), intent(in) :: pdg
     class(model_data_t), intent(in), target :: model
-    call eio%pset%init_direct (n_beam, n_in, n_vir, n_out, pdg, model)
+    call eio%pset%init_direct (n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
   end subroutine eio_direct_init_direct
 
   subroutine eio_direct_set_selection_indices &

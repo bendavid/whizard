@@ -8,15 +8,10 @@ WHIZARD Core
   - Mathematica interface
   - Parton shower matching (MLM done, CKKW pending)
   - GUI extension (partially done)
-  - parallelization (OpenMP done, MPI in progress)
   - Dark Matter
-  - Use omega restrictions on diagrams for phase space
 
 * 3.0
   - Tau decay module
-
-Technical stuff
-  - include STAT and ERRMSG in allocate and deallocate statements (?)
 
 O'Mega
 * 2.6

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -65,7 +65,7 @@ module prc_recola
      integer :: n_f = 0
      logical :: nlo_computation = .false.
   contains
-    procedure :: prc_recola_set_coupling_powers
+    procedure :: set_coupling_powers => prc_recola_set_coupling_powers
     procedure :: compute_alpha_s => prc_recola_compute_alpha_s
     procedure :: allocate_workspace => prc_recola_allocate_workspace
     procedure :: includes_polarization => prc_recola_includes_polarization
@@ -137,15 +137,18 @@ contains
   subroutine prc_recola_set_coupling_powers (object, alpha_power, alphas_power)
     class(prc_recola_t), intent(inout) :: object
     integer, intent(in) :: alpha_power, alphas_power
+    call msg_debug2 (D_ME_METHODS, "prc_recola_set_coupling_powers")
+    call msg_debug2 (D_ME_METHODS, "alphas_power", alphas_power)
+    call msg_debug2 (D_ME_METHODS, "alpha_power", alpha_power)
     object%alphas_power = alphas_power
     object%alpha_power = alpha_power
   end subroutine prc_recola_set_coupling_powers
 
-  subroutine prc_recola_compute_alpha_s (object, core_state, fac_scale)
+  subroutine prc_recola_compute_alpha_s (object, core_state, ren_scale)
     class(prc_recola_t), intent(in) :: object
     class(user_defined_state_t), intent(inout) :: core_state
-    real(default), intent(in) :: fac_scale
-    core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+    real(default), intent(in) :: ren_scale
+    core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
   end subroutine prc_recola_compute_alpha_s
 
   subroutine prc_recola_allocate_workspace (object, core_state)
@@ -178,9 +181,12 @@ contains
      type(model_data_t), intent(in), target :: model
      integer, intent(in) :: i_core
      logical, intent(in) :: is_nlo
-     integer :: i_recola = 0
+     integer :: i_recola = 0, alpha_power, alphas_power
      core%nlo_computation = is_nlo
      core%n_f = var_list%get_ival (var_str ("alphas_nf"))
+     alpha_power = var_list%get_ival (var_str ("alpha_power"))
+     alphas_power = var_list%get_ival (var_str ("alphas_power"))
+     call core%set_coupling_powers (alpha_power, alphas_power)
      call core%enable_dynamic_settings ()
      call core%register_processes (i_recola)
      call core%replace_helicity_and_color_arrays ()
@@ -303,11 +309,14 @@ contains
      real(default) :: alpha_s
      integer :: i
      logical, intent(out) :: bad_point
+     call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
      do i = 1, object%data%n_in + object%data%n_out
         p_recola(:, i) = dble(p(i)%p)
      end do
      call rclwrap_set_mu_ir (dble (ren_scale))
      alpha_s = object%qcd%alpha%get (ren_scale)
+     call msg_debug2 (D_ME_METHODS, "alpha_s = ", alpha_s)
+     call msg_debug2 (D_ME_METHODS, "ren_scale = ", ren_scale)
      call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%n_f)
      call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
      call rclwrap_get_squared_amplitude &

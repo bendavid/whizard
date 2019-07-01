@@ -13,13 +13,14 @@ Resonance history with 1 resonances:
 active = F
 
  Resonant subprocess set:
-  [empty]
+   [not allocated]
 
 * Fill restricted subprocess set
 
 active = T
 
  Resonant subprocess set:
+ Component #1
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)

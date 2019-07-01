@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -974,45 +974,59 @@ contains
   end subroutine particle_set_basic_init
 
   subroutine particle_set_init_direct (particle_set, &
-       n_beam, n_in, n_vir, n_out, pdg, model)
+       n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
     class(particle_set_t), intent(out) :: particle_set
     integer, intent(in) :: n_beam
     integer, intent(in) :: n_in
+    integer, intent(in) :: n_rem
     integer, intent(in) :: n_vir
     integer, intent(in) :: n_out
     integer, dimension(:), intent(in) :: pdg
     class(model_data_t), intent(in), target :: model
     type(flavor_t), dimension(:), allocatable :: flv
     integer :: i, k, n
-    call particle_set%basic_init (n_beam, n_in, n_vir, n_out)
+    call particle_set%basic_init (n_beam, n_in, n_rem+n_vir, n_out)
     n = 0
     call particle_set%prt(n+1:n+n_beam)%reset_status (PRT_BEAM)
     do i = n+1, n+n_beam
        call particle_set%prt(i)%set_children &
-            ([(k, k=n+n_beam+1, n+n_beam+n_in+n_vir)])
+            ([(k, k=i+n_beam, n+n_beam+n_in+n_rem, 2)])
     end do
     n = n + n_beam
     call particle_set%prt(n+1:n+n_in)%reset_status (PRT_INCOMING)
     do i = n+1, n+n_in
-       call particle_set%prt(i)%set_parents &
-            ([(k, k=n-n_beam+1, n)])
+       if (n_beam > 0) then
+          call particle_set%prt(i)%set_parents &
+               ([i-n_beam])
+       end if
        call particle_set%prt(i)%set_children &
-            ([(k, k=n+n_in+n_vir+1, n+n_in+n_vir+n_out)])
+            ([(k, k=n+n_in+n_rem+1, n+n_in+n_rem+n_vir+n_out)])
     end do
     n = n + n_in
+    call particle_set%prt(n+1:n+n_rem)%reset_status (PRT_BEAM_REMNANT)
+    do i = n+1, n+n_rem
+       if (n_beam > 0) then
+          call particle_set%prt(i)%set_parents &
+               ([i-n_in-n_beam])
+       end if
+    end do
+    n = n + n_rem
     call particle_set%prt(n+1:n+n_vir)%reset_status (PRT_VIRTUAL)
     do i = n+1, n+n_vir
        call particle_set%prt(i)%set_parents &
-            ([(k, k=n-n_in-n_beam+1, n-n_in)])
+            ([(k, k=n-n_rem-n_in+1, n-n_rem)])
     end do
     n = n + n_vir
     call particle_set%prt(n+1:n+n_out)%reset_status (PRT_OUTGOING)
     do i = n+1, n+n_out
        call particle_set%prt(i)%set_parents &
-            ([(k, k=n-n_vir-n_in+1, n-n_vir)])
+            ([(k, k=n-n_vir-n_rem-n_in+1, n-n_vir-n_rem)])
     end do
     allocate (flv (particle_set%n_tot))
     call flv%init (pdg, model)
+    do k = n_beam+n_in+1, n_beam+n_in+n_rem
+       call flv(k)%tag_radiated ()
+    end do
     do i = 1, particle_set%n_tot
        call particle_set%prt(i)%set_flavor (flv(i))
     end do

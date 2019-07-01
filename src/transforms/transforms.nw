@@ -14,6 +14,20 @@ We have the following modules:
   Abstract base type for transforming a physical process with process
   instance and included evaluators, etc., into a new
   object.  The following modules extend this base type.
+\item[resonance\_insertion]
+  Insert a resonance history into an event record, based on
+  kinematical and matrix-element information.
+\item[recoil\_kinematics]
+  Common kinematics routines for the ISR and EPA handlers.
+\item[isr\_photon\_handler]
+  Transform collinear kinematics, as it results from applying ISR
+  radiation, to non-collinear kinematics with a reasonable
+  transverse-momentum distribution of the radiated photons, and also
+  of the recoiling partonic event.
+\item[epa\_beam\_handler]
+  For photon-initiated processes where the effective photon
+  approximation is used in integration, to add in beam-particle
+  recoil.  Analogous to the ISR handler.
 \item[decays]
   Combine the elementary process with elementary decay processes and
   thus transform the elementary event into a decayed event, still at
@@ -29,11 +43,8 @@ We have the following modules:
 \item[tau\_decays]
   (not implemented yet) Let $\tau$ leptons decay taking full spin
   correlations into account.
-\item[isr\_qed\_transverse]
-  (not implemented yet) Generate transverse momentum $p_T$ of the ISR
-  photons (and potentially multiple ISR photons) after the event
-  has been fully showered and hadronized. The rest of the event
-  needs to get the recoil boost of the ISR photons.
+\item[evt\_nlo]
+  Handler for fixed-order NLO events.
 \item[events]
   Combine all pieces to generate full events.
 \item[eio\_raw]
@@ -1464,10 +1475,13 @@ the scope of this module.
   public :: evt_resonance_t
 <<Resonance insertion: types>>=
   type, extends (evt_t) :: evt_resonance_t
-     type(resonance_history_set_t) :: res_history_set
+     type(resonance_history_set_t), dimension(:), allocatable :: res_history_set
+     integer, dimension(:), allocatable :: index_offset
+     integer :: selected_component = 0
      type(string_t) :: libname
      type(string_t), dimension(:), allocatable :: proc_id
      real(default) :: on_shell_limit = 0
+     real(default) :: on_shell_turnoff = 0
      logical :: selector_active = .false.
      type(selector_t) :: selector
      integer :: selected_history = 0
@@ -1497,30 +1511,42 @@ the scope of this module.
     class(evt_resonance_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, more_verbose, testflag
-    integer :: u
+    integer :: u, i
     u = given_output_unit (unit)
     call write_separator (u, 2)
     call evt%write_name (u)
     call write_separator (u, 2)
     write (u, "(1x,A,A,A)")  "Process library = '", char (evt%libname), "'"
-    call evt%res_history_set%write (u, indent=1)
+    if (allocated (evt%res_history_set)) then
+       do i = 1, size (evt%res_history_set)
+          if (i == evt%selected_component) then
+             write (u, "(1x,A,I0,A)")  "Component #", i, ": *"
+          else
+             write (u, "(1x,A,I0,A)")  "Component #", i, ":"
+          end if
+          call evt%res_history_set(i)%write (u, indent=1)
+       end do
+    end if
+    call write_separator (u)
     if (allocated (evt%instance)) then
-       write (u, "(3x,A)")  "Subprocess instances: allocated"
+       write (u, "(1x,A)")  "Subprocess instances: allocated"
     else
-       write (u, "(3x,A)")  "Subprocess instances: not allocated"
+       write (u, "(1x,A)")  "Subprocess instances: not allocated"
     end if
     if (evt%particle_set_exists) then
        if (evt%selected_history > 0) then
-          write (u, "(3x,A,I0)")  "Selected: resonance history #", &
+          write (u, "(1x,A,I0)")  "Selected: resonance history #", &
                evt%selected_history
        else
-          write (u, "(3x,A)")  "Selected: no resonance history"
+          write (u, "(1x,A)")  "Selected: no resonance history"
        end if
     else
-       write (u, "(3x,A)")  "Selected: [none]"
+       write (u, "(1x,A)")  "Selected: [none]"
     end if
-    write (u, "(3x,A,1x," // FMT_12 // ")")  &
-         "On-shell limit =", evt%on_shell_limit
+    write (u, "(1x,A,1x," // FMT_12 // ")")  &
+         "On-shell limit   =", evt%on_shell_limit
+    write (u, "(1x,A,1x," // FMT_12 // ")")  &
+         "On-shell turnoff =", evt%on_shell_turnoff
     call write_separator (u)
     if (evt%selector_active) then
        write (u, "(2x)", advance="no")
@@ -1540,14 +1566,21 @@ the scope of this module.
 @
 \subsection{Set contained data}
 Insert the resonance data, in form of a pre-generated resonance
-history set.
+history set.  Accumulate the number of histories for each set, to
+initialize an array of index offsets for lookup.
 <<Resonance insertion: evt resonance: TBP>>=
   procedure :: set_resonance_data => evt_resonance_set_resonance_data
 <<Resonance insertion: procedures>>=
   subroutine evt_resonance_set_resonance_data (evt, res_history_set)
     class(evt_resonance_t), intent(inout) :: evt
-    type(resonance_history_set_t), intent(in) :: res_history_set
+    type(resonance_history_set_t), dimension(:), intent(in) :: res_history_set
+    integer :: i
     evt%res_history_set = res_history_set
+    allocate (evt%index_offset (size (evt%res_history_set)), source = 0)
+    do i = 2, size (evt%res_history_set)
+       evt%index_offset(i) = &
+            evt%index_offset(i-1) + evt%res_history_set(i-1)%get_n_history ()
+    end do
   end subroutine evt_resonance_set_resonance_data
   
 @ %def evt_resonance_set_resonance_data  
@@ -1577,8 +1610,9 @@ valid quantum-number assignments, ready for resonance insertion.
   
 @ %def evt_resonance_set_subprocess_instances
 @ Set the on-shell limit, the relative distance from a resonance that
-is still considered to be on-shell.  For details, see the
-[[resonances]] module.
+is still considered to be on-shell.  The probability for being
+considered on-shell can be reduced by the turnoff parameter below.
+For details, see the [[resonances]] module.
 <<Resonance insertion: evt resonance: TBP>>=
   procedure :: set_on_shell_limit => evt_resonance_set_on_shell_limit
 <<Resonance insertion: procedures>>=
@@ -1589,6 +1623,23 @@ is still considered to be on-shell.  For details, see the
   end subroutine evt_resonance_set_on_shell_limit
   
 @ %def evt_resonance_set_on_shell_limit
+@ Set the Gaussian on-shell turnoff parameter, the width of the
+weighting factor for the resonance squared matrix element.  If the
+resonance is off shell, this factor reduces the weight of the matrix
+element in the selector, such that the probability for considered
+resonant is reduced.  The factor is applied only if the offshellness
+is less than the [[on_shell_limit]] above.  For details, see the
+[[resonances]] module.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: set_on_shell_turnoff => evt_resonance_set_on_shell_turnoff
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_set_on_shell_turnoff (evt, on_shell_turnoff)
+    class(evt_resonance_t), intent(inout) :: evt
+    real(default), intent(in) :: on_shell_turnoff
+    evt%on_shell_turnoff = on_shell_turnoff
+  end subroutine evt_resonance_set_on_shell_turnoff
+  
+@ %def evt_resonance_set_on_shell_turnoff
 @
 \subsection{Selector}
 Manually import a random-number generator object.  This should be
@@ -1698,23 +1749,33 @@ previous particle set.
 Return the indices of those subprocesses which can be considered
 on-shell.  The result depends on the stored particle set (outgoing
 momenta) and on the on-shell limit value.
+
+The index [[evt%selected_component]] identifies the particular history set that
+corresponds to the given process component.  Recall that process
+components may have different external particles, so they have
+distinct history sets.
 <<Resonance insertion: evt resonance: TBP>>=
   procedure :: determine_on_shell_histories &
        => evt_resonance_determine_on_shell_histories
 <<Resonance insertion: procedures>>=
-  subroutine evt_resonance_determine_on_shell_histories (evt, index_array)
+  subroutine evt_resonance_determine_on_shell_histories &
+       (evt, index_array)
     class(evt_resonance_t), intent(in) :: evt
     integer, dimension(:), allocatable, intent(out) :: index_array
-    call evt%res_history_set%determine_on_shell_histories &
+    integer :: i
+    i = evt%selected_component
+    call evt%res_history_set(i)%determine_on_shell_histories &
          (evt%particle_set%get_outgoing_momenta (), &
-         evt%on_shell_limit, index_array)
+         evt%on_shell_limit, &
+         index_array)
   end subroutine evt_resonance_determine_on_shell_histories
     
 @ %def evt_resonance_determine_on_shell_histories
 @ Evaluate selected subprocesses.  (In actual operation, the ones that
 have been tagged as on-shell.)
 
-We assume that the MCI, term, and channel indices can all be set to 1.
+We assume that the MCI, term, and channel indices for the subprocesses
+can all be set to 1.
 <<Resonance insertion: evt resonance: TBP>>=
   procedure :: evaluate_subprocess => evt_resonance_evaluate_subprocess
 <<Resonance insertion: procedures>>=
@@ -1774,12 +1835,42 @@ process, and of the selected resonant subprocesses, respectively.
   
 @ %def evt_resonance_get_master_sqme
 @ %def evt_resonance_get_subprocess_sqme
+@ Apply a turnoff factor for off-shell kinematics to the [[sqme]]
+values.  The [[sqme]] array indices are offset from the resonance
+history set entries.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: apply_turnoff_factor => evt_resonance_apply_turnoff_factor
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_apply_turnoff_factor (evt, sqme, index_array)
+    class(evt_resonance_t), intent(in) :: evt
+    real(default), dimension(:), intent(inout) :: sqme
+    integer, dimension(:), intent(in) :: index_array
+    integer :: k, i_res, i_prc
+    do k = 1, size (index_array)
+       i_res = evt%selected_component
+       i_prc = index_array(k) + evt%index_offset(i_res)
+       sqme(i_prc) = sqme(i_prc) &
+            * evt%res_history_set(i_res)%evaluate_gaussian &
+            &   (evt%particle_set%get_outgoing_momenta (), &
+            &    evt%on_shell_turnoff, index_array(k))
+    end do
+  end subroutine evt_resonance_apply_turnoff_factor
+  
+@ %def evt_resonance_apply_turnoff_factor
 @ We use the calculations of resonant matrix elements to determine
-probabilities for all resonance configurations.  This method combines
-the steps implemented above.  First, we query the kinematics and
-determine the applicable resonance histories.  We collect squared matrix elements for
-those resonance histories and compare them to the master-process
-squared matrix element.
+probabilities for all applicable resonance configurations.  This method combines
+the steps implemented above.  
+
+First, we determine the selected process component.
+
+TODO: the version below selects the first component which is found
+active.  This make sense only for standard LO process components,
+where exactly one component corresponds to a MCI set.
+
+For the selected process component, we query the kinematics and
+determine the applicable resonance histories.  We collect squared
+matrix elements for those resonance histories and compare them to the
+master-process squared matrix element.
 
 The result is the probability for each resonance history
 together with the probability for non-resonant background (zeroth
@@ -1788,6 +1879,15 @@ process result and the sum of the resonances, ignoring the possibility
 for interference.  If the complete process result is actually
 undershooting the sum of resonances, we nevertheless count the
 background with positive probability.
+
+When looking up the subprocess sqme, we must add the [[index_offset]]
+to the resulting array, since the indices returned by the individual
+history set all count from one, while the subprocess instances that
+belong to process components are collected in one flat array.
+
+After determining matrix elements and background, we may reduce the
+weight of the matrix elements in the selector by applying a turnoff
+factor.
 <<Resonance insertion: evt resonance: TBP>>=
   procedure :: compute_probabilities => evt_resonance_compute_probabilities
 <<Resonance insertion: procedures>>=
@@ -1796,20 +1896,47 @@ background with positive probability.
     integer, dimension(:), allocatable :: index_array
     real(default) :: sqme_master, sqme_sum, sqme_bg
     real(default), dimension(:), allocatable :: sqme_res
-    integer :: n, i
+    integer :: n, ic
     if (.not. associated (evt%process_instance))  return
     n = size (evt%instance)
-    call evt%determine_on_shell_histories (index_array)
-    call evt%evaluate_subprocess (index_array)
+    call evt%select_component (0)
+    FIND_ACTIVE_COMPONENT: do ic = 1, evt%process%get_n_components ()
+       if (evt%process%component_is_selected (ic)) then
+          call evt%select_component (ic)
+          exit FIND_ACTIVE_COMPONENT
+       end if
+    end do FIND_ACTIVE_COMPONENT
+    if (evt%selected_component > 0) then
+       call evt%determine_on_shell_histories (index_array)
+    else
+       allocate (index_array (0))
+    end if
+    call evt%evaluate_subprocess &
+         (index_array + evt%index_offset(evt%selected_component))
     allocate (sqme_res (n), source = 0._default)
-    call evt%get_subprocess_sqme (sqme_res, index_array)
+    call evt%get_subprocess_sqme &
+         (sqme_res, index_array + evt%index_offset(evt%selected_component))
     sqme_master = evt%get_master_sqme ()
     sqme_sum = sum (sqme_res)
     sqme_bg = abs (sqme_master - sqme_sum)
+    if (evt%on_shell_turnoff > 0) then
+       call evt%apply_turnoff_factor (sqme_res, index_array)
+    end if
     call evt%init_selector ([sqme_bg, sqme_res], offset = -1)
   end subroutine evt_resonance_compute_probabilities
     
 @ %def evt_resonance_compute_probabilities
+@ Set the selected component (unit tests).
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: select_component => evt_resonance_select_component
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_select_component (evt, i_component)
+    class(evt_resonance_t), intent(inout) :: evt
+    integer, intent(in) :: i_component
+    evt%selected_component = i_component
+  end subroutine evt_resonance_select_component
+  
+@ %def evt_resonance_select_component
 @ 
 \subsection{Sanity check}
 Check the color assignment, which may be wrong for the inserted resonances.
@@ -1880,6 +2007,13 @@ assignments are valid for the selected resonance history.  Note that
 the transform may thus choose a quantum-number combination that is
 different from the one chosen by the master process.
 
+The [[i_term]] value for the selected subprocess instance is always
+1.  We support only LO process.  For those, the master process may
+have several terms (= components) that correspond to different
+external states.  The subprocesses are distinct, each one corresponds
+to a definite master component, and by itself it consists of a single
+component/term.
+
 However, if the selector chooses resonance history \#0, i.e., no
 resonance, we just copy the particle set from the previous (i.e.,
 trivial) event transform and ignore all subprocess data.
@@ -1894,7 +2028,7 @@ trivial) event transform and ignore all subprocess data.
     real(default), dimension(:), intent(in), optional :: r
     type(particle_set_t), target :: prt_set
     type(particle_t), dimension(:), allocatable :: prt
-    integer :: n_beam, n_in, n_vir, n_res, n_out, i, i_res, i_term
+    integer :: n_beam, n_in, n_vir, n_res, n_out, i, i_res, i_term, i_tree
     type(interaction_t), pointer :: int_matrix, int_flows
     integer, dimension(:), allocatable :: map
     type(resonance_tree_t) :: res_tree
@@ -1904,7 +2038,7 @@ trivial) event transform and ignore all subprocess data.
              if (allocated (evt%instance)) then
                 associate (instance => evt%instance(evt%selected_history)%p)
                   call instance%evaluate_event_data (weight = 1._default)
-                  i_term = evt%process_instance%select_i_term ()
+                  i_term = 1
                   int_matrix => instance%get_matrix_int_ptr (i_term)
                   int_flows  => instance%get_flows_int_ptr (i_term)
                   call evt%factorize_interactions (int_matrix, int_flows, &
@@ -1914,7 +2048,10 @@ trivial) event transform and ignore all subprocess data.
              else  ! this branch only for unit test
                 evt%particle_set = evt%previous%particle_set
              end if
-             call evt%res_history_set%get_tree (evt%selected_history, res_tree)
+             i_tree = evt%selected_history &
+                  - evt%index_offset(evt%selected_component)
+             call evt%res_history_set(evt%selected_component)%get_tree &
+                  (i_tree, res_tree)
              n_beam = evt%particle_set%get_n_beam ()
              n_in = evt%particle_set%get_n_in ()
              n_vir = evt%particle_set%get_n_vir ()
@@ -2049,7 +2186,7 @@ Insert a resonance (W boson) into an event with momentum assignment.
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(flavor_t) :: fw
@@ -2080,7 +2217,7 @@ Insert a resonance (W boson) into an event with momentum assignment.
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 3, &
          pdg = [1, -1, 1, -2, 24], model = model)
 
     call fw%init (24, model)
@@ -2124,14 +2261,14 @@ Insert a resonance (W boson) into an event with momentum assignment.
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 2)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -2143,6 +2280,7 @@ Insert a resonance (W boson) into an event with momentum assignment.
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -2204,7 +2342,7 @@ because of color mismatch: W boson is color-neutral.
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -2230,7 +2368,7 @@ because of color mismatch: W boson is color-neutral.
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 3, &
          pdg = [1, -1, 1, -2, 24], model = model)
 
     call col%init_col_acl (1,0)
@@ -2260,14 +2398,14 @@ because of color mismatch: W boson is color-neutral.
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 2)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -2279,6 +2417,7 @@ because of color mismatch: W boson is color-neutral.
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -2340,7 +2479,7 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -2366,7 +2505,7 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 6, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 6, &
          pdg = [2, -2, 24, 5, 5, -5, -24, -5], model = model)
 
     call col%init_col_acl (1,0)
@@ -2405,7 +2544,7 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, 6, model, 6)
     call res_history%add_resonance (res_info)
@@ -2413,10 +2552,10 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     call res_history%add_resonance (res_info)
     call res_info%init (60, -6, model, 6)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -2428,6 +2567,7 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -2486,7 +2626,7 @@ using the selector component.
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -2510,7 +2650,7 @@ using the selector component.
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 4, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 4, &
          pdg = [1, -1, 1, -2, -3, 4], model = model)
 
     write (u, "(A)")  "* Fill trivial event transform"
@@ -2525,26 +2665,26 @@ using the selector component.
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
     call res_info%init (12, 24, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
     call res_info%init (12, 24, model, 4)
     call res_history%add_resonance (res_info)
     call res_info%init (15, 25, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -2556,6 +2696,7 @@ using the selector component.
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -2607,7 +2748,7 @@ resonance.
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
     type(color_t) :: col
@@ -2631,7 +2772,7 @@ resonance.
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 4, &
+    call pset%init_direct (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 4, &
          pdg = [1, -1, 1, -2, -3, 4], model = model)
 
     write (u, "(A)")  "* Fill trivial event transform"
@@ -2643,14 +2784,14 @@ resonance.
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, -24, model, 4)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -2662,6 +2803,7 @@ resonance.
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     
     write (u, "(A)")  "* Fill resonance insertion transform"
     write (u, "(A)")
@@ -2711,18 +2853,11 @@ particles.
     type(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(evt_trivial_t), target :: evt_trivial
     type(evt_resonance_t), target :: evt_resonance
-!!!    type(flavor_t) :: fw
-!!!    type(color_t) :: col
-!!!    real(default) :: mw, ew, pw
-!!!    type(vector4_t), dimension(5) :: p
     class(rng_t), allocatable :: rng
     real(default) :: probability
-!!!    integer, dimension(:), allocatable :: i_invalid
-!!!    type(particle_t), dimension(:), allocatable :: prt_invalid
-!!!    integer :: i
 
     write (u, "(A)")  "* Test output: resonance_insertion_6"
     write (u, "(A)")  "*   Purpose: resonance insertion with structured beams"
@@ -2740,38 +2875,9 @@ particles.
     write (u, "(A)")  "* Initialize particle set"
     write (u, "(A)")
     
-    call pset%init_direct (n_beam = 2, n_in = 2, n_vir = 2, n_out = 2, &
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
          pdg = [11, -11, 11, -11, 22, 22, 13, -13], model = model)
 
-!!!    call fw%init (24, model)
-!!!
-!!!    mw = fw%get_mass ()
-!!!    ew = 200._default
-!!!    pw = sqrt (ew**2 - mw**2)
-!!!
-!!!    p(1) = vector4_moving (ew, ew, 3)
-!!!    p(2) = vector4_moving (ew,-ew, 3)
-!!!    p(3) = vector4_moving (ew/2, vector3_moving ([pw/2, mw/2, 0._default]))
-!!!    p(4) = vector4_moving (ew/2, vector3_moving ([pw/2,-mw/2, 0._default]))
-!!!    p(5) = vector4_moving (ew, vector3_moving ([-pw, 0._default, 0._default]))
-!!!
-!!!    call pset%set_momentum (p, on_shell = .true.)
-!!!    
-!!!    call col%init_col_acl (1,0)
-!!!    call pset%set_color (1, col)
-!!!    
-!!!    call col%init_col_acl (0,1)
-!!!    call pset%set_color (2, col)
-!!!
-!!!    call col%init_col_acl (2,0)
-!!!    call pset%set_color (3, col)
-!!!    
-!!!    call col%init_col_acl (0,2)
-!!!    call pset%set_color (4, col)
-!!!
-!!!    call col%init_col_acl (0,0)
-!!!    call pset%set_color (5, col)
-!!!
     write (u, "(A)")  "* Fill trivial event transform"
     write (u, "(A)")
 
@@ -2784,14 +2890,14 @@ particles.
     write (u, "(A)")  "* Prepare resonance history set"
     write (u, "(A)")
     
-    call res_history_set%init ()
+    call res_history_set(1)%init ()
 
     call res_info%init (3, 23, model, 2)
     call res_history%add_resonance (res_info)
-    call res_history_set%enter (res_history)
+    call res_history_set(1)%enter (res_history)
     call res_history%clear ()
 
-    call res_history_set%freeze ()
+    call res_history_set(1)%freeze ()
 
     write (u, "(A)")  "* Initialize resonance insertion transform"
     write (u, "(A)")
@@ -2803,6 +2909,7 @@ particles.
     call evt_resonance%import_rng (rng)
 
     call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%select_component (1)
     call evt_resonance%write (u)
     
     write (u, "(A)")
@@ -2818,19 +2925,6 @@ particles.
     
     write (u, "(A)")
     write (u, "(A,1x,F8.5)")  "Event probability =", probability
-!!!
-!!!    write (u, "(A)")
-!!!    call evt_resonance%find_prt_invalid_color (i_invalid, prt_invalid)
-!!!    write (u, "(A)")  "Particles with invalid color:"
-!!!    select case (size (prt_invalid))
-!!!    case (0)
-!!!       write (u, "(2x,A)")  "[none]"
-!!!    case default
-!!!       do i = 1, size (prt_invalid)
-!!!          write (u, "(1x,A,1x,I0)", advance="no")  "Particle", i_invalid(i)
-!!!          call prt_invalid(i)%write (u)
-!!!       end do
-!!!    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -2847,249 +2941,3232 @@ particles.
 @ %def resonance_insertion_6
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Tau decays}
-<<[[tau_decays.f90]]>>=
+\section{Recoil kinematics}
+<<[[recoil_kinematics.f90]]>>=
 <<File header>>
 
-module tau_decays
+module recoil_kinematics
 
 <<Use kinds>>
-  use io_units
-  use format_utils, only: write_separator
-  use sm_qcd
-  use model_data
-  use models
-  use event_transforms
+  use constants, only: twopi
+  use lorentz, only: vector4_t
+  use lorentz, only: vector4_moving
+  use lorentz, only: vector3_moving
+  use lorentz, only: transverse_part
+  use lorentz, only: lorentz_transformation_t
+  use lorentz, only: inverse
+  use lorentz, only: boost
+  use lorentz, only: transformation
+  use lorentz, only: operator(+)
+  use lorentz, only: operator(-)
+  use lorentz, only: operator(*)
+  use lorentz, only: operator(**)
 
 <<Standard module head>>
 
-<<Tau decays: public>>
+<<Recoil kinematics: public>>
 
-<<Tau decays: types>>
+<<Recoil kinematics: parameters>>
+
+<<Recoil kinematics: types>>
 
 contains
 
-<<Tau decays: procedures>>
+<<Recoil kinematics: procedures>>
 
-end module tau_decays
-@ %def tau_decays
-\subsection{Tau Decays Event Transform}
-This is the type for the tau decay event transform.
-<<Tau decays: public>>=
-  public :: evt_tau_decays_t
-<<Tau decays: types>>=
-  type, extends (evt_t) :: evt_tau_decays_t
-     type(model_t), pointer :: model_hadrons => null()
-     type(qcd_t), pointer :: qcd_t => null()
-   contains
-   <<Tau decays: evt tau decays: TBP>>
-  end type evt_tau_decays_t
+end module recoil_kinematics
+@ %def recoil_kinematics
+@ 
+\subsection{$\phi$ sampler}
+This is trivial.  Generate an azimuthal angle, given a $(0,1)$ RNG parameter.
+<<Recoil kinematics: procedures>>=
+  elemental subroutine generate_phi_recoil (r, phi)
+    real(default), intent(in) :: r
+    real(default), intent(out) :: phi
 
-@ %def evt_tau_decays_t
-<<Tau decays: evt tau decays: TBP>>=
-  procedure :: write_name => evt_tau_decays_write_name
-<<Tau decays: procedures>>=
-  subroutine evt_tau_decays_write_name (evt, unit)
-    class(evt_tau_decays_t), intent(in) :: evt
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = given_output_unit (unit)
-    write (u, "(1x,A)")  "Event transform: tau decays"
-  end subroutine evt_tau_decays_write_name
+    phi = r * twopi
 
-@ %def evt_tau_decays_write_name
-@ Output.
-<<Tau decays: evt tau decays: TBP>>=
-  procedure :: write => evt_tau_decays_write
-<<Tau decays: procedures>>=
-  subroutine evt_tau_decays_write (evt, unit, verbose, more_verbose, testflag)
-    class(evt_tau_decays_t), intent(in) :: evt
-    integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose, more_verbose, testflag
-    integer :: u
-    u = given_output_unit (unit)
-    call write_separator (u, 2)
-    call evt%write_name (u)
-    call write_separator (u)
-    call evt%base_write (u, testflag = testflag, show_set = .false.)
-    if (evt%particle_set_exists)  &
-         call evt%particle_set%write &
-         (u, summary = .true., compressed = .true., testflag = testflag)
-    call write_separator (u)
-  end subroutine evt_tau_decays_write
-
-@ %def evt_tau_decays_write
-@ Here we take the particle set from the previous event transform and
-apply the tau decays. What probability should be given back, the
-product of branching ratios of the corresponding tau decays?
-<<Tau decays: evt tau decays: TBP>>=
-  procedure :: generate_weighted => evt_tau_decays_generate_weighted
-<<Tau decays: procedures>>=
-  subroutine evt_tau_decays_generate_weighted (evt, probability)
-    class(evt_tau_decays_t), intent(inout) :: evt
-    real(default), intent(inout) :: probability
-    logical :: valid
-    evt%particle_set = evt%previous%particle_set
-    !!! To be checked or expanded
-    probability = 1
-    valid = .true.
-    evt%particle_set_exists = valid
-  end subroutine evt_tau_decays_generate_weighted
-
-@ %def evt_tau_decays_generate_weighted
-@ The factorization parameters are irrelevant.
-<<Tau decays: evt tau decays: TBP>>=
-  procedure :: make_particle_set => evt_tau_decays_make_particle_set
-<<Tau decays: procedures>>=
-  subroutine evt_tau_decays_make_particle_set &
-       (evt, factorization_mode, keep_correlations, r)
-    class(evt_tau_decays_t), intent(inout) :: evt
-    integer, intent(in) :: factorization_mode
-    logical, intent(in) :: keep_correlations
-    real(default), dimension(:), intent(in), optional :: r
-    logical :: valid
-    !!! to be checked and expanded
-    valid = .true.
-    evt%particle_set_exists = evt%particle_set_exists .and. valid
-  end subroutine evt_tau_decays_make_particle_set
-
-@ %def event_tau_decays_make_particle_set
+  end subroutine generate_phi_recoil
+  
+@ %def generate_phi_recoil
 @
-<<Tau decays: evt tau decays: TBP>>=
-  procedure :: prepare_new_event => evt_tau_decays_prepare_new_event
-<<Tau decays: procedures>>=
-  subroutine evt_tau_decays_prepare_new_event (evt, i_mci, i_term)
-    class(evt_tau_decays_t), intent(inout) :: evt
-    integer, intent(in) :: i_mci, i_term
-    call evt%reset ()
-  end subroutine evt_tau_decays_prepare_new_event
+\subsection{$Q^2$ sampler}
+The dynamics of factorization suggests to generate a flat $Q^2$
+distribution from a (random) number, event by event.   
 
-@ %def evt_tau_decays_prepare_new_event
+At the lowest momentum transfer values, the particle (electron) mass
+sets a smooth cutoff.  The formula can produce $Q$ values below the
+electron mass, down to zero, but with a power distribution that
+eventually evolves into the expected logarithmic distribution for $Q^2 >
+m^2$.
+
+We are talking about the absolute value here, so all $Q^2$
+values are positive.  For the actual momentum transfer, $q^2=-Q^2$.
+<<Recoil kinematics: public>>=
+  public :: generate_q2_recoil
+<<Recoil kinematics: procedures>>=
+  elemental subroutine generate_q2_recoil (s, x_bar, q2_max, m2, r, q2)
+    real(default), intent(in) :: s
+    real(default), intent(in) :: q2_max
+    real(default), intent(in) :: x_bar
+    real(default), intent(in) :: m2
+    real(default), intent(in) :: r
+    real(default), intent(out) :: q2
+
+    real(default) :: q2_max_evt
+
+    q2_max_evt = q2_max_event (s, x_bar, q2_max)
+    
+    q2 = m2 * (exp (r * log (1 + (q2_max_evt / m2))) - 1)
+
+  end subroutine generate_q2_recoil
+  
+@ %def generate_q_recoil
+@ 
+The $Q$ distribution is cut off from above by the kinematic limit,
+which depends on the energy that is available for the radiated photon,
+or by a user-defined cutoff -- whichever is less.  The kinematic limit
+fits the formulas for recoil momenta (see below), and it also
+implicitly enters the ISR collinear structure function, so the
+normalization of the distribution should be correct.
+<<Recoil kinematics: procedures>>=
+  elemental function q2_max_event (s, x_bar, q2_max) result (q2)
+    real(default), intent(in) :: s
+    real(default), intent(in) :: x_bar
+    real(default), intent(in) :: q2_max
+    real(default) :: q2
+    
+    q2 = min (x_bar * s, q2_max)
+    
+  end function q2_max_event
+    
+@ %def q2_max_event
+@
+\subsection{Kinematics functions}
+Given values for energies, $Q_{1,2}^2$, azimuthal angle, compute the
+matching polar angle of the radiating particle.  The subroutine
+returns $\sin\theta$ and $\cos\theta$.
+<<Recoil kinematics: procedures>>=
+  subroutine polar_angles (s, xb, rho, ee, q2, sin_th, cos_th, ok)
+    real(default), intent(in) :: s
+    real(default), intent(in) :: xb
+    real(default), intent(in) :: rho
+    real(default), dimension(2), intent(in) :: ee
+    real(default), dimension(2), intent(in) :: q2
+    real(default), dimension(2), intent(out) :: sin_th
+    real(default), dimension(2), intent(out) :: cos_th
+    logical, intent(out) :: ok
+
+    real(default), dimension(2) :: sin2_th_2
+
+    sin2_th_2 = q2 / (ee * rho * xb * s)
+    
+    if (all (sin2_th_2 <= 1)) then
+       sin_th = 2 * sqrt (sin2_th_2 * (1 - sin2_th_2))
+       cos_th = 1 - 2 * sin2_th_2
+       ok = .true.
+    else
+       sin_th = 0
+       cos_th = 1
+       ok = .false.
+    end if
+
+  end subroutine polar_angles
+
+@ %def polar_angles
+@
+Compute the acollinearity parameter $\lambda$ from azimuthal and polar
+angles.  The result is a number between $0$ and $1$.
+<<Recoil kinematics: procedures>>=
+  function lambda_factor (sin_th, cos_th, cphi) result (lambda)
+    real(default), dimension(2), intent(in) :: sin_th
+    real(default), dimension(2), intent(in) :: cos_th
+    real(default), intent(in) :: cphi
+    real(default) :: lambda
+
+    lambda = (1 - cos_th(1) * cos_th(2) - cphi * sin_th(1) * sin_th(2)) / 2
+
+  end function lambda_factor
+
+@ %def lambda_factor
+@
+Compute the factor that rescales photon energies, such that the
+radiation angles match the kinematics parameters.
+
+For small values of $\bar x/\cosh\eta$, we have to use the Taylor
+expansion if we do not want to lose precision.  The optional argument
+allows for a unit test that compares exact and approximate.
+<<Recoil kinematics: procedures>>=
+  function scale_factor (che, lambda, xb0, approximate) result (rho)
+    real(default), intent(in) :: che
+    real(default), intent(in) :: lambda
+    real(default), intent(in) :: xb0
+    logical, intent(in), optional :: approximate
+    real(default) :: rho
+
+    real(default), parameter :: &
+         e0 = (100 * epsilon (1._default)) ** (0.3_default)
+    logical :: approx
+
+    if (present (approximate)) then
+       approx = approximate
+    else
+       approx = (xb0/che) < e0
+    end if
+
+    if (approx) then
+       rho = 1 - lambda * (xb0/(2*che)) * (1 + (1-lambda) * (xb0/che))
+    else
+       rho =  (che / ((1-lambda)*xb0)) &
+         * (1 - sqrt (1 - 2 * (1-lambda) * (xb0/che) &
+         &    + (1-lambda) * (xb0 / che)**2))
+    end if
+
+  end function scale_factor
+
+@ %def scale_factor
+@ The code snippet below is not used anywhere, but may be manually
+inserted in a unit test to numerically verify the approximation above.
+<<Recoil kinematics: extra test code>>=
+    write (u, "(A)")
+    write (u, "(A)") "*** Table: scale factor calculation"
+    write (u, "(A)")
+
+    lambda = 0.25_default
+    write (u, FMT1)  "lambda =", lambda
+    
+    che = 4._default
+    write (u, FMT1)  "che    =", che
+    
+    write (u, "(A)")  "   x0    rho(exact)   rho(approx)   rho(chosen)"
+    xb0 = 1._default
+    do i = 1, 30
+       xb0 = xb0 / 10
+       write (u, FMT4)   xb0, &
+            scale_factor (che, lambda, xb0, approximate=.false.), &
+            scale_factor (che, lambda, xb0, approximate=.true.), &
+            scale_factor (che, lambda, xb0)
+    end do
+@ 
+Compute the current values for the $x_{1,2}$ parameters, given the
+updated scale factor $\rho$ and the collinear parameters.
+<<Recoil kinematics: procedures>>=
+  subroutine scaled_x (rho, ee, xb0, x, xb)
+    real(default), intent(in) :: rho
+    real(default), dimension(2), intent(in) :: ee
+    real(default), intent(in) :: xb0
+    real(default), dimension(2), intent(out) :: x
+    real(default), dimension(2), intent(out) :: xb
+    
+    xb = rho * ee * xb0
+    x = 1 - xb
+
+  end subroutine scaled_x
+
+@ %def scaled_x
+@
+\subsection{Iterative solution of kinematics constraints}
+Find a solution of the kinematics constraints.  We know the parameters
+appropriate for collinear kinematics $\sqrt{s}$, $x^c_{1,2}$.  We
+have picked values vor the momentum transfer $Q_{1,2}$ and the
+azimuthal angles $\phi_{1,2}$.  The solution consists of modified energy
+fractions $x_{1,2}$ and polar angles $\theta_{1,2}$.
+
+If the computation fails, which can happen for large momentum
+transfer, the flag [[ok]] will indicate this.
+<<Recoil kinematics: public>>=
+  public :: solve_recoil
+<<Recoil kinematics: procedures>>=
+  subroutine solve_recoil (sqrts, xc, xcb, phi, q2, x, xb, cos_th, sin_th, ok)
+    real(default), intent(in) :: sqrts
+    real(default), dimension(2), intent(in) :: xc
+    real(default), dimension(2), intent(in) :: xcb
+    real(default), dimension(2), intent(in) :: phi
+    real(default), dimension(2), intent(in) :: q2
+    real(default), dimension(2), intent(out) :: x
+    real(default), dimension(2), intent(out) :: xb
+    real(default), dimension(2), intent(out) :: cos_th
+    real(default), dimension(2), intent(out) :: sin_th
+    logical, intent(out) :: ok
+
+    real(default) :: s
+    real(default), dimension(2) :: ee
+    real(default), dimension(2) :: th
+    real(default) :: xb0, cphi
+    real(default) :: che, lambda
+    real(default) :: rho_new, rho, rho_old
+    real(default) :: dr_old, dr_new
+    real(default), parameter :: dr_limit = 100 * epsilon (1._default)
+    integer, parameter :: n_it_max = 20
+    integer :: i
+
+    ok = .true.
+
+    s = sqrts**2
+    ee = sqrt ([xcb(1)/xcb(2), xcb(2)/xcb(1)])
+    che = sum (ee) / 2
+    xb0 = sqrt (xcb(1) * xcb(2))
+    cphi = cos (phi(1) - phi(2))
+
+    rho_old = 10
+    rho = 1
+    th = 0
+    sin_th = sin (th)
+    cos_th = cos (th)
+    lambda = lambda_factor (sin_th, cos_th, cphi)
+    call scaled_x (rho, ee, xb0, x, xb)
+    
+    iterate_loop: do i = 1, n_it_max
+
+       call polar_angles (s, xb0, rho, ee, q2, sin_th, cos_th, ok)
+       if (.not. ok)  return
+       th = atan2 (sin_th, cos_th)
+
+       lambda = lambda_factor (sin_th, cos_th, cphi)
+       rho_new = scale_factor (che, lambda, xb0)
+       call scaled_x (rho_new, ee, xb0, x, xb)
+
+       dr_old = abs (rho - rho_old)
+       dr_new = abs (rho_new - rho)
+
+       rho_old = rho
+       rho = rho_new
+       
+       if (dr_new < dr_limit .or. dr_new >= dr_old)  exit iterate_loop
+
+    end do iterate_loop
+
+  end subroutine solve_recoil
+
+@ %def solve_recoil
+@
+With all kinematics parameters known, construct actual four-vectors
+for the recoil momenta, the off-shell (spacelike) parton momenta, and
+on-shell projected parton momenta.
+<<Recoil kinematics: public>>=
+  public :: recoil_momenta
+<<Recoil kinematics: procedures>>=
+  subroutine recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    real(default), intent(in) :: sqrts
+    real(default), dimension(2), intent(in) :: xc
+    real(default), dimension(2), intent(in) :: xb
+    real(default), dimension(2), intent(in) :: cos_th
+    real(default), dimension(2), intent(in) :: sin_th
+    real(default), dimension(2), intent(in) :: phi
+    type(vector4_t), dimension(2), intent(out) :: km
+    type(vector4_t), dimension(2), intent(out) :: qm
+    type(vector4_t), dimension(2), intent(out) :: qo
+
+    type(vector4_t), dimension(2) :: pm
+    type(lorentz_transformation_t) :: lt
+    real(default) :: sqsh
+
+    pm(1) = &
+         vector4_moving (sqrts/2, &
+         vector3_moving ([0._default, 0._default, sqrts/2]))
+    pm(2) = &
+         vector4_moving (sqrts/2, &
+         vector3_moving ([0._default, 0._default,-sqrts/2]))
+
+    km(1) = xb(1) * (sqrts/2) * vector4_moving ( &
+         1._default, &
+         vector3_moving ([ &
+         &     sin_th(1) * cos (phi(1)), &
+         &     sin_th(1) * sin (phi(1)), &
+         &     cos_th(1)]) &
+         )
+    km(2) = xb(2) * (sqrts/2) * vector4_moving ( &
+         1._default, &
+         vector3_moving ([ &
+         &    -sin_th(2) * cos (phi(2)), &
+         &    -sin_th(2) * sin (phi(2)), &
+         &    -cos_th(2)]) &
+         )
+
+    qm(1) = pm(1) - km(1)
+    qm(2) = pm(2) - km(2)
+
+    sqsh = sqrt (xc(1)*xc(2)) * sqrts
+    lt = transformation (3, qm(1), qm(2), sqsh)
+
+    qo(1) = lt * vector4_moving (sqsh/2, sqsh/2, 3)
+    qo(2) = lt * vector4_moving (sqsh/2,-sqsh/2, 3)
+
+  end subroutine recoil_momenta
+
+@ %def recoil_momenta
+@ 
+Compute the Lorentz transformation that we can use to transform any
+outgoing momenta into the new c.m.\ system of the incoming partons.
+Not relying on the previous calculations, we determine the
+transformation that transforms the original collinear partons into
+their c.m.\ system, and then transform this to the new c.m.\ system.
+<<Recoil kinematics: public>>=
+  public :: recoil_transformation
+<<Recoil kinematics: procedures>>=
+  subroutine recoil_transformation (sqrts, xc, qo, lt)
+    real(default), intent(in) :: sqrts
+    real(default), dimension(2), intent(in) :: xc
+    type(vector4_t), dimension(2), intent(in) :: qo
+    type(lorentz_transformation_t), intent(out) :: lt
+
+    real(default) :: sqsh
+    type(vector4_t), dimension(2) :: qc
+    type(lorentz_transformation_t) :: ltc, lto
+    
+    qc(1) = xc(1) * vector4_moving (sqrts/2, sqrts/2, 3)
+    qc(2) = xc(2) * vector4_moving (sqrts/2,-sqrts/2, 3)
+    
+    sqsh = sqrt (xc(1) * xc(2)) * sqrts
+    ltc = transformation (3, qc(1), qc(2), sqsh)
+    lto = transformation (3, qo(1), qo(2), sqsh)
+    lt = lto * inverse (ltc)
+
+  end subroutine recoil_transformation
+  
+@ %def recoil_transformation
+@
+Compute the Lorentz boost that transforms the c.m.\ frame of the
+momenta into the lab frame where they are given.  Also return their
+common invariant mass, $\sqrt{s}$.
+
+If the initial momenta are not collinear, [[ok]] is set false.
+<<Recoil kinematics: public>>=
+  public :: initial_transformation
+<<Recoil kinematics: procedures>>=
+  subroutine initial_transformation (p, sqrts, lt, ok)
+    type(vector4_t), dimension(2), intent(in) :: p
+    real(default), intent(out) :: sqrts
+    type(lorentz_transformation_t), intent(out) :: lt
+    logical, intent(out) :: ok
+    
+    ok = all (transverse_part (p) == 0)
+
+    sqrts = (p(1) + p(2)) ** 1
+    lt = boost (p(1) + p(2), sqrts)
+
+  end subroutine initial_transformation
+  
+@ %def initial_transformation
+@
+\subsection{Generate recoil event}
+Combine the above kinematics calculations.  First generate azimuthal
+angles and momentum transfer, solve kinematics and compute momenta for
+the radiated photons and the on-shell projected, recoiling partons.
+
+If [[ok]] is false, the data point has failed and we should repeat the
+procedure for a new set of RNG parameters [[r]].
+<<Recoil kinematics: public>>=
+  public :: generate_recoil
+<<Recoil kinematics: procedures>>=
+  subroutine generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    real(default), intent(in) :: sqrts
+    real(default), intent(in), dimension(2) :: q_max
+    real(default), intent(in), dimension(2) :: m
+    real(default), intent(in), dimension(2) :: xc
+    real(default), intent(in), dimension(2) :: xcb
+    real(default), intent(in), dimension(4) :: r
+    type(vector4_t), dimension(2), intent(out) :: km
+    type(vector4_t), dimension(2), intent(out) :: qm
+    type(vector4_t), dimension(2), intent(out) :: qo
+    logical, intent(out) :: ok
+
+    real(default), dimension(2) :: q2
+    real(default), dimension(2) :: phi
+    real(default), dimension(2) :: x
+    real(default), dimension(2) :: xb
+    real(default), dimension(2) :: cos_th
+    real(default), dimension(2) :: sin_th
+
+    call generate_q2_recoil (sqrts**2, xcb, q_max**2, m**2, r(1:2), q2)
+    call generate_phi_recoil (r(3:4), phi)
+    
+    call solve_recoil (sqrts, xc, xcb, phi, q2, x, xb, cos_th, sin_th, ok)
+    if (ok) then
+       call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    end if
+
+  end subroutine generate_recoil
+  
+@ %def generate_recoil
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[recoil_kinematics_ut.f90]]>>=
+<<File header>>
+
+module recoil_kinematics_ut
+  use unit_tests
+  use recoil_kinematics_uti
+
+<<Standard module head>>
+
+<<Recoil kinematics: public test>>
+
+contains
+
+<<Recoil kinematics: test driver>>
+
+end module recoil_kinematics_ut
+@ %def recoil_kinematics_ut
+@
+<<[[recoil_kinematics_uti.f90]]>>=
+<<File header>>
+
+module recoil_kinematics_uti
+
+<<Use kinds>>
+  use constants, only: twopi
+  use constants, only: degree
+  use lorentz, only: vector4_t
+  use lorentz, only: vector4_moving
+  use lorentz, only: lorentz_transformation_t
+  use lorentz, only: inverse
+  use lorentz, only: operator(+)
+  use lorentz, only: operator(*)
+  use lorentz, only: operator(**)
+  use lorentz, only: pacify
+
+  use recoil_kinematics, only: solve_recoil
+  use recoil_kinematics, only: recoil_momenta
+  use recoil_kinematics, only: recoil_transformation
+  use recoil_kinematics, only: initial_transformation
+  use recoil_kinematics, only: generate_q2_recoil
+  use recoil_kinematics, only: generate_recoil
+
+<<Standard module head>>
+
+<<Recoil kinematics: test declarations>>
+
+contains
+
+<<Recoil kinematics: tests>>
+
+end module recoil_kinematics_uti
+
+@ %def recoil_kinematics_uti
+@ API: driver for the unit tests below.
+<<Recoil kinematics: public test>>=
+  public :: recoil_kinematics_test
+<<Recoil kinematics: test driver>>=
+  subroutine recoil_kinematics_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Recoil kinematics: execute tests>>
+  end subroutine recoil_kinematics_test
+
+@ %def recoil_kinematics_test
+@
+\subsubsection{Recoil kinematics}
+For a set of input data, solve the kinematics constraints and generate
+momenta accordingly.
+<<Recoil kinematics: execute tests>>=
+  call test (recoil_kinematics_1, "recoil_kinematics_1", &
+       "iterative solution of non-collinear kinematics", &
+       u, results)
+<<Recoil kinematics: test declarations>>=
+  public :: recoil_kinematics_1
+<<Recoil kinematics: tests>>=
+  subroutine recoil_kinematics_1 (u)
+    integer, intent(in) :: u
+
+    real(default) :: sqrts
+    real(default), dimension(2) :: xc, xcb
+    real(default), dimension(2) :: q
+    real(default), dimension(2) :: phi
+    real(default), dimension(2) :: cos_th, sin_th
+    real(default), dimension(2) :: x
+    real(default), dimension(2) :: xb
+    type(vector4_t), dimension(2) :: km
+    type(vector4_t), dimension(2) :: qm
+    type(vector4_t), dimension(2) :: qo
+    integer :: i
+    logical :: ok
+    
+    character(*), parameter :: FMT1 = "(1x,A,9(1x,F15.10))"
+    character(*), parameter :: FMT2 = "(1x,A,9(1x,F10.5))"
+    character(*), parameter :: FMT4 = "(3x,ES8.1,9(1x,ES19.12))"
+
+    write (u, "(A)")  "* Test output: recoil_kinematics_1"
+    write (u, "(A)")  "*   Purpose: compute kinematics for various input data"
+    write (u, "(A)")
+
+    sqrts = 100
+    write (u, FMT1)  "sqrts =", sqrts
+    
+    write (u, "(A)")
+    write (u, "(A)") "*** collinear data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.2_default] * twopi
+    q = 0
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call show_results
+
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** moderate data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.2_default] * twopi
+    q = [0.2_default, 0.05_default] * sqrts
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call show_results
+    
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** semi-soft data set"
+    write (u, "(A)")
+
+    xcb= [0.1_default, 0.0001_default]
+    xc = 1 - xcb
+    phi = [0.1_default, 0.2_default] * twopi
+    q = [0.2_default, 0.00001_default] * sqrts
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call show_results
+
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** hard-soft data set"
+    write (u, "(A)")
+
+    xcb= [0.1_default, 1.e-30_default]
+    xc = 1 - xcb
+    phi = [0.1_default, 0.2_default] * twopi
+    q = [0.2_default, 1.e-35_default] * sqrts
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call show_results
+
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** hard data set"
+    write (u, "(A)")
+
+    xc = [0.2_default, 0.4_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.8_default] * twopi
+    q = [0.74_default, 0.3_default] * sqrts
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call show_results
+
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** failing data set"
+    write (u, "(A)")
+
+    xc = [0.2_default, 0.4_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.8_default] * twopi
+    q = [0.9_default, 0.3_default] * sqrts
+    
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    if (.not. ok) then
+       write (u, "(A)")
+       write (u, "(A)") "Failed as expected."
+    end if
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: recoil_kinematics_1"
+
+  contains
+
+    subroutine show_data
+      write (u, FMT1) "sqs_h =", sqrt (xc(1) * xc(2)) * sqrts
+      write (u, FMT1) "xc    =", xc
+      write (u, FMT1) "xcb   =", xcb
+      write (u, FMT1) "Q     =", Q
+      write (u, FMT1) "phi/D =", phi / degree
+    end subroutine show_data
+
+    subroutine show_results
+      write (u, "(A)")
+      write (u, "(A)") "Result:"
+      write (u, FMT1) "th/D  =", atan2 (sin_th, cos_th) / degree
+      write (u, FMT1) "x     =", x
+      write (u, "(A)")
+    end subroutine show_results
+    
+    subroutine show_momenta
+      type(vector4_t) :: qm0, qo0
+      real(default), parameter :: tol = 1.e-7_default
+      call pacify (km, tol)
+      call pacify (qm, tol)
+      call pacify (qo, tol)
+      write (u, "(A)") "Momenta: k"
+      call km(1)%write (u, testflag=.true.)
+      call km(2)%write (u, testflag=.true.)
+      write (u, FMT1) "k^2 =", abs (km(1)**2), abs (km(2)**2)
+      write (u, "(A)")
+      write (u, "(A)") "Momenta: q"
+      call qm(1)%write (u, testflag=.true.)
+      call qm(2)%write (u, testflag=.true.)
+      write (u, "(A)")
+      write (u, "(A)") "Momenta: q(os)"
+      call qo(1)%write (u, testflag=.true.)
+      call qo(2)%write (u, testflag=.true.)
+      write (u, "(A)")
+      write (u, "(A)") "Check: parton momentum sum: q vs q(os)"
+      qm0 = qm(1) + qm(2)
+      call qm0%write (u, testflag=.true.)
+      qo0 = qo(1) + qo(2)
+      call qo0%write (u, testflag=.true.)
+      write (u, "(A)")
+      write (u, "(A)") "* Check: momentum transfer (off-shell/on-shell)"
+      write (u, FMT2) "|q| =", abs (qm(1)**1), abs (qm(2)**1)
+      write (u, FMT2) "Q   =", q
+      write (u, FMT2) "|qo|=", abs (qo(1)**1), abs (qo(2)**1)
+      write (u, "(A)")
+      write (u, "(A)") "* Check: sqrts, sqrts_hat"
+      write (u, FMT1) "|p| =", (km(1)+km(2)+qm(1)+qm(2))**1, (qm(1)+qm(2))**1
+      write (u, FMT1) "sqs =", sqrts, sqrt (product (xc)) * sqrts
+      write (u, FMT1) "|po|=", abs ((km(1)+km(2)+qo(1)+qo(2))**1), abs ((qo(1)+qo(2))**1)
+    end subroutine show_momenta
+
+  end subroutine recoil_kinematics_1
+
+@ %def recoil_kinematics_1
+@
+\subsubsection{Recoil $Q$ distribution}
+Sample the $Q$ distribution for equidistant bins in the input variable.
+<<Recoil kinematics: execute tests>>=
+  call test (recoil_kinematics_2, "recoil_kinematics_2", &
+       "Q distribution", &
+       u, results)
+<<Recoil kinematics: test declarations>>=
+  public :: recoil_kinematics_2
+<<Recoil kinematics: tests>>=
+  subroutine recoil_kinematics_2 (u)
+    integer, intent(in) :: u
+
+    real(default) :: sqrts
+    real(default) :: q_max
+    real(default) :: m
+    real(default) :: x_bar
+    real(default) :: r
+    real(default) :: q2, q2_old
+    integer :: i
+    integer :: n_bin
+    
+    character(*), parameter :: FMT1 = "(1x,A,9(1x,F15.10))"
+    character(*), parameter :: FMT3 = "(2x,9(1x,F10.5))"
+
+    write (u, "(A)")  "* Test output: recoil_kinematics_2"
+    write (u, "(A)")  "*   Purpose: compute Q distribution"
+    write (u, "(A)")
+
+    n_bin = 20
+
+    write (u, "(A)") "* No Q cutoff, xbar = 1"
+    write (u, "(A)")
+
+    sqrts = 100
+    q_max = sqrts
+    m = 0.511e-3_default
+    x_bar = 1._default
+    call show_table
+
+    write (u, "(A)")
+    write (u, "(A)") "* With Q cutoff, xbar = 1"
+    write (u, "(A)")
+
+    q_max = 10
+    call show_table
+
+    write (u, "(A)")
+    write (u, "(A)") "* No Q cutoff, xbar = 0.01"
+    write (u, "(A)")
+
+    q_max = sqrts
+    x_bar = 0.01_default
+    call show_table
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: recoil_kinematics_2"
+
+  contains
+    
+    subroutine show_table
+      write (u, FMT1)  "sqrts =", sqrts
+      write (u, FMT1)  "q_max =", q_max
+      write (u, FMT1)  "m     =", m
+      write (u, FMT1)  "x_bar =", x_bar
+      write (u, "(A)")
+      write (u, "(1x,A)")  "Table:  r         |Q|    |Q_i/Q_(i-1)|"
+      q2_old = 0
+      do i = 0, n_bin
+         r = real (i, default) / n_bin
+         call generate_q2_recoil (sqrts**2, x_bar, q_max**2, m**2, r, q2)
+         if (q2_old > 0) then
+            write (u, FMT3)  r, sqrt (q2), sqrt (q2 / q2_old)
+         else
+            write (u, FMT3)  r, sqrt (q2)
+         end if
+         q2_old = q2
+      end do
+    end subroutine show_table
+    
+  end subroutine recoil_kinematics_2
+
+@ %def recoil_kinematics_2
+@
+\subsubsection{Generate recoil event}
+Combine $Q^2$ sampling with momentum generation.
+<<Recoil kinematics: execute tests>>=
+  call test (recoil_kinematics_3, "recoil_kinematics_3", &
+       "generate recoil event", &
+       u, results)
+<<Recoil kinematics: test declarations>>=
+  public :: recoil_kinematics_3
+<<Recoil kinematics: tests>>=
+  subroutine recoil_kinematics_3 (u)
+    integer, intent(in) :: u
+
+    real(default) :: sqrts
+    real(default), dimension(2) :: q_max
+    real(default), dimension(2) :: m
+    real(default), dimension(2) :: xc, xcb
+    real(default), dimension(4) :: r
+    type(vector4_t), dimension(2) :: km
+    type(vector4_t), dimension(2) :: qm
+    type(vector4_t), dimension(2) :: qo
+    logical :: ok
+    
+    character(*), parameter :: FMT1 = "(1x,A,9(1x,F15.10))"
+    character(*), parameter :: FMT2 = "(1x,A,9(1x,F10.5))"
+
+    write (u, "(A)")  "* Test output: recoil_kinematics_3"
+    write (u, "(A)")  "*   Purpose: generate momenta from RNG parameters"
+    write (u, "(A)")
+
+    write (u, "(A)") "*** collinear data set"
+    write (u, "(A)")
+
+    sqrts = 100
+    q_max = sqrts
+    m     = 0.511e-3_default
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+
+    r = [0._default, 0._default, 0._default, 0._default]
+
+    call show_data
+    call generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** moderate data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+
+    r = [0.8_default, 0.2_default, 0.1_default, 0.2_default]
+
+    call show_data
+    call generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** failing data set"
+    write (u, "(A)")
+
+    xc = [0.2_default, 0.4_default]
+    xcb = 1 - xc
+    
+    r = [0.9999_default, 0.3_default, 0.1_default, 0.8_default]
+
+    call show_data
+    call generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    if (.not. ok) then
+       write (u, "(A)")
+       write (u, "(A)") "Failed as expected."
+    else
+       call show_momenta
+    end if
+    
+  contains
+    
+    subroutine show_data
+      write (u, FMT1)  "sqrts =", sqrts
+      write (u, FMT1)  "q_max =", q_max
+      write (u, FMT1)  "m     =", m
+      write (u, FMT1)  "xc    =", xc
+      write (u, FMT1)  "xcb   =", xcb
+      write (u, FMT1)  "r     =", r
+    end subroutine show_data
+    
+    subroutine show_momenta
+      real(default), parameter :: tol = 1.e-7_default
+      call pacify (km, tol)
+      call pacify (qo, tol)
+      write (u, "(A)")
+      write (u, "(A)") "* Momenta: k"
+      call km(1)%write (u, testflag=.true.)
+      call km(2)%write (u, testflag=.true.)
+      write (u, FMT1) "k^2 =", abs (km(1)**2), abs (km(2)**2)
+      write (u, "(A)")
+      write (u, "(A)") "* Momenta: q(os)"
+      call qo(1)%write (u, testflag=.true.)
+      call qo(2)%write (u, testflag=.true.)
+      write (u, FMT1) "q^2 =", abs (qo(1)**2), abs (qo(2)**2)
+      write (u, "(A)")
+      write (u, "(A)") "* Check: momentum transfer (off-shell/on-shell)"
+      write (u, FMT2) "Q   =", q_check (1), q_check (2)
+      write (u, FMT2) "|q| =", abs (qm(1)**1), abs (qm(2)**1)
+      write (u, "(A)")
+      write (u, "(A)") "* Check: sqrts, sqrts_hat"
+      write (u, FMT1) "sqs =", sqrts, sqrt (product (xc)) * sqrts
+      write (u, FMT1) "|po|=", abs ((km(1)+km(2)+qo(1)+qo(2))**1), abs ((qo(1)+qo(2))**1)
+    end subroutine show_momenta
+    
+    function q_check (i) result (q)
+      integer, intent(in) :: i
+      real(default) :: q
+      real(default) :: q2
+      call generate_q2_recoil (sqrts**2, xcb(i), q_max(i)**2, m(i)**2, r(i), q2)
+      q = sqrt (q2)
+    end function q_check
+
+  end subroutine recoil_kinematics_3
+
+@ %def recoil_kinematics_3
+@
+\subsubsection{Transformation after recoil}
+Given a solution to recoil kinematics, compute the Lorentz
+transformation that transforms the old collinear parton momenta into
+the new parton momenta.
+<<Recoil kinematics: execute tests>>=
+  call test (recoil_kinematics_4, "recoil_kinematics_4", &
+       "reference frame", &
+       u, results)
+<<Recoil kinematics: test declarations>>=
+  public :: recoil_kinematics_4
+<<Recoil kinematics: tests>>=
+  subroutine recoil_kinematics_4 (u)
+    integer, intent(in) :: u
+
+    real(default) :: sqrts
+    real(default), dimension(2) :: xc, xcb
+    real(default), dimension(2) :: q
+    real(default), dimension(2) :: phi
+    real(default), dimension(2) :: cos_th, sin_th
+    real(default), dimension(2) :: x
+    real(default), dimension(2) :: xb
+    type(vector4_t), dimension(2) :: km
+    type(vector4_t), dimension(2) :: qm
+    type(vector4_t), dimension(2) :: qo
+    type(lorentz_transformation_t) :: lt
+    logical :: ok
+    
+    character(*), parameter :: FMT1 = "(1x,A,9(1x,F15.10))"
+    character(*), parameter :: FMT2 = "(1x,A,9(1x,F10.5))"
+
+    write (u, "(A)")  "* Test output: recoil_kinematics_4"
+    write (u, "(A)")  "*   Purpose: check Lorentz transformation for recoil"
+    write (u, "(A)")
+
+    sqrts = 100
+    write (u, FMT1)  "sqrts =", sqrts
+    
+
+    write (u, "(A)")
+    write (u, "(A)") "*** collinear data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.2_default] * twopi
+    q = 0
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_transformation (sqrts, xc, qo, lt)
+    call show_transformation
+
+    write (u, "(A)")
+    write (u, "(A)") "*** moderate data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.2_default] * twopi
+    q = [0.2_default, 0.05_default] * sqrts
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_transformation (sqrts, xc, qo, lt)
+    call show_transformation
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: recoil_kinematics_4"
+
+  contains
+
+    subroutine show_data
+      write (u, FMT1) "sqs_h =", sqrt (xc(1) * xc(2)) * sqrts
+      write (u, FMT1) "xc    =", xc
+      write (u, FMT1) "xcb   =", xcb
+      write (u, FMT1) "Q     =", Q
+      write (u, FMT1) "phi/D =", phi / degree
+    end subroutine show_data
+
+    subroutine show_transformation
+      type(vector4_t), dimension(2) :: qc
+      type(vector4_t), dimension(2) :: qct
+      real(default), parameter :: tol = 1.e-7_default
+      qc(1) = xc(1) * vector4_moving (sqrts/2, sqrts/2, 3)
+      qc(2) = xc(2) * vector4_moving (sqrts/2,-sqrts/2, 3)
+      qct = lt * qc
+      call pacify (qct, tol)
+      write (u, "(A)")
+      write (u, "(A)") "Momenta: q(os)"
+      call qo(1)%write (u, testflag=.true.)
+      call qo(2)%write (u, testflag=.true.)
+      write (u, "(A)")
+      write (u, "(A)") "Momenta: LT * qc"
+      call qct(1)%write (u, testflag=.true.)
+      call qct(2)%write (u, testflag=.true.)
+    end subroutine show_transformation
+
+  end subroutine recoil_kinematics_4
+
+@ %def recoil_kinematics_4
+@
+\subsubsection{Transformation before recoil}
+Given a pair of incoming `beam' partons (i.e., before ISR splitting),
+compute the transformation that transforms their common c.m.\ frame
+into the lab frame.
+<<Recoil kinematics: execute tests>>=
+  call test (recoil_kinematics_5, "recoil_kinematics_5", &
+       "initial reference frame", &
+       u, results)
+<<Recoil kinematics: test declarations>>=
+  public :: recoil_kinematics_5
+<<Recoil kinematics: tests>>=
+  subroutine recoil_kinematics_5 (u)
+    integer, intent(in) :: u
+
+    real(default) :: sqrts
+    real(default) :: sqrtsi
+    real(default), dimension(2) :: x
+    type(vector4_t), dimension(2) :: p
+    type(vector4_t), dimension(2) :: pi
+    type(vector4_t), dimension(2) :: p0
+    type(lorentz_transformation_t) :: lt
+    logical :: ok
+    
+    character(*), parameter :: FMT1 = "(1x,A,9(1x,F15.10))"
+    character(*), parameter :: FMT2 = "(1x,A,9(1x,F10.5))"
+
+    write (u, "(A)")  "* Test output: recoil_kinematics_5"
+    write (u, "(A)")  "*   Purpose: determine initial Lorentz transformation"
+    write (u, "(A)")
+
+    sqrts = 100
+    write (u, FMT1)  "sqrts =", sqrts
+    
+    x = [0.6_default, 0.9_default]
+
+    p(1) = x(1) * vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = x(2) * vector4_moving (sqrts/2,-sqrts/2, 3)
+
+    call show_data
+    call initial_transformation (p, sqrtsi, lt, ok)
+    
+    pi(1) = vector4_moving (sqrtsi/2, sqrtsi/2, 3)
+    pi(2) = vector4_moving (sqrtsi/2,-sqrtsi/2, 3)
+
+    p0 = inverse (lt) * p
+    
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: recoil_kinematics_5"
+
+  contains
+
+    subroutine show_data
+      write (u, FMT1) "sqrts =", sqrts
+      write (u, FMT1) "x     =", x
+    end subroutine show_data
+
+    
+    subroutine show_momenta
+      real(default), parameter :: tol = 1.e-7_default
+      write (u, "(A)")
+      write (u, "(A)") "* Momenta: p_in(c.m.)"
+      call pi(1)%write (u, testflag=.true.)
+      call pi(2)%write (u, testflag=.true.)
+      write (u, "(A)")
+      write (u, "(A)") "* Momenta: inv(LT) * p_in(lab)"
+      call p0(1)%write (u, testflag=.true.)
+      call p0(2)%write (u, testflag=.true.)
+    end subroutine show_momenta
+
+  end subroutine recoil_kinematics_5
+
+@ %def recoil_kinematics_5
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Transverse momentum for ISR photons}
-<<[[isr_qed_transverse.f90]]>>=
+<<[[isr_photon_handler.f90]]>>=
 <<File header>>
 
-module isr_qed_transverse
+module isr_photon_handler
 
 <<Use kinds>>
+<<Use strings>>
+  use diagnostics, only: msg_fatal
+  use diagnostics, only: msg_bug
   use io_units
+  use format_defs, only: FMT_12, FMT_19
   use format_utils, only: write_separator
+  use format_utils, only: pac_fmt
+  use physics_defs, only: PHOTON
+  use lorentz, only: vector4_t
+  use lorentz, only: energy
+  use lorentz, only: lorentz_transformation_t
+  use lorentz, only: identity
+  use lorentz, only: inverse
+  use lorentz, only: operator(*)
   use sm_qcd
+  use flavors, only: flavor_t
+  use particles, only: particle_t
   use model_data
   use models
+  use rng_base, only: rng_t
   use event_transforms
+  use recoil_kinematics, only: initial_transformation
+  use recoil_kinematics, only: generate_recoil
+  use recoil_kinematics, only: recoil_transformation
 
 <<Standard module head>>
 
-<<ISR QED transverse: public>>
+<<ISR photon handler: public>>
 
-<<ISR QED transverse: types>>
+<<ISR photon handler: parameters>>
+
+<<ISR photon handler: types>>
 
 contains
 
-<<ISR QED transverse: procedures>>
+<<ISR photon handler: procedures>>
 
-end module isr_qed_transverse
-@ %def isr_qed_transverse
-\subsection{ISR QED Transverse Momentum Event Transform}
+end module isr_photon_handler
+@ %def isr_photon_handler
+@
+\subsection{Event transform type}
 This is the type for the event transform generating transverse
 momentum for the QED ISR photons.
-<<ISR QED transverse: public>>=
-  public :: evt_isr_qed_transverse_t
-<<ISR QED transverse: types>>=
-  type, extends (evt_t) :: evt_isr_qed_transverse_t
-     type(model_t), pointer :: model_hadrons => null()
-     type(qcd_t), pointer :: qcd_t => null()
-   contains
-   <<ISR QED transverse: evt isr qed transverse: TBP>>
-  end type evt_isr_qed_transverse_t
 
-@ %def evt_isr_qed_transverse_t
-<<ISR QED transverse: evt isr qed transverse: TBP>>=
-  procedure :: write_name => evt_isr_qed_transverse_write_name
-<<ISR QED transverse: procedures>>=
-  subroutine evt_isr_qed_transverse_write_name (evt, unit)
-    class(evt_isr_qed_transverse_t), intent(in) :: evt
+Convention: [[beam]] are the incoming partons before ISR -- not
+necessarily the actual beams, need not be in c.m.\ frame.  [[photon]]
+are the radiated photons, and [[parton]] are the remainders which
+initiate the elementary process.  These particles are copied verbatim
+from the event record, and must be collinear.
+
+The kinematical parameters are [[sqrts]] = invariant mass of the
+[[beam]] particles, [[q_max]] and [[m]] determining the $Q^2$
+distribution, and [[xc]]/[[xcb]] as the energy fraction (complement)
+of the partons, relative to the beams.
+
+Transformations: [[lti]] is the Lorentz transformation that would
+boosts [[pi]] (c.m. frame) back to the original [[beam]] momenta (lab
+frame).  [[lto]] is the recoil transformation, transforming the partons
+after ISR from the collinear frame to the recoiling frame.  [[lt]] is
+the combination of both, which is to be applied to all particles after
+the hard interaction.
+
+Momenta: [[pi]] are the beams transformed to their common c.m.\ frame.
+[[ki]] and [[qi]] are the photon/parton
+momenta in the [[pi]] c.m.\ frame.  [[km]] and [[qm]] are the
+photon/parton momenta with the $Q$ distribution applied, and finally
+[[qo]] are the partons [[qm]] projected on-shell.
+<<ISR photon handler: public>>=
+  public :: evt_isr_t
+<<ISR photon handler: types>>=
+  type, extends (evt_t) :: evt_isr_t
+     private
+     integer :: mode = ISR_TRIVIAL_COLLINEAR
+     real(default) :: sqrts = 0
+     real(default), dimension(2) :: q_max = 0
+     real(default), dimension(2) :: m = 0
+     real(default), dimension(2) :: xc = 0
+     real(default), dimension(2) :: xcb = 0
+     type(lorentz_transformation_t) :: lti = identity
+     type(lorentz_transformation_t) :: lto = identity
+     type(lorentz_transformation_t) :: lt  = identity
+     integer, dimension(2) :: i_beam = 0
+     type(particle_t), dimension(2) :: beam
+     type(vector4_t), dimension(2) :: pi
+     integer, dimension(2) :: i_photon = 0
+     type(particle_t), dimension(2) :: photon
+     type(vector4_t), dimension(2) :: ki
+     type(vector4_t), dimension(2) :: km
+     integer, dimension(2) :: i_parton = 0
+     type(particle_t), dimension(2) :: parton
+     type(vector4_t), dimension(2) :: qi
+     type(vector4_t), dimension(2) :: qm
+     type(vector4_t), dimension(2) :: qo
+   contains
+   <<ISR photon handler: evt isr: TBP>>
+  end type evt_isr_t
+
+@ %def evt_isr_t
+@
+\subsection{Photon insertion modes}
+<<ISR photon handler: parameters>>=
+  integer, parameter, public :: ISR_TRIVIAL_COLLINEAR = 0
+  integer, parameter, public :: ISR_PAIR_RECOIL = 1
+  
+@ %def ISR_TRIVIAL_COLLINEAR
+@
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: get_mode_string => evt_isr_get_mode_string
+<<ISR photon handler: procedures>>=
+  function evt_isr_get_mode_string (evt) result (string)
+    type(string_t) :: string
+    class(evt_isr_t), intent(in) :: evt
+    select case (evt%mode)
+    case (ISR_TRIVIAL_COLLINEAR)
+       string = "trivial, collinear"
+    case (ISR_PAIR_RECOIL)
+       string = "photon-pair recoil"
+    case default
+       string = "[undefined]"
+    end select
+  end function evt_isr_get_mode_string
+
+@ %def evt_isr_get_mode_string
+@ Set the numerical mode ID from a user-level string representation.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: set_mode_string => evt_isr_set_mode_string
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_set_mode_string (evt, string)
+    class(evt_isr_t), intent(inout) :: evt
+    type(string_t), intent(in) :: string
+    select case (char (string))
+    case ("trivial")
+       evt%mode = ISR_TRIVIAL_COLLINEAR
+    case ("recoil")
+       evt%mode = ISR_PAIR_RECOIL
+    case default
+       call msg_fatal ("ISR handler: mode '" // char (string) &
+            // "' is undefined")
+    end select
+  end subroutine evt_isr_set_mode_string
+
+@ %def evt_isr_set_mode_string
+@ 
+\subsection{Output}
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: write_name => evt_isr_write_name
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_write_name (evt, unit)
+    class(evt_isr_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
-    write (u, "(1x,A)")  "Event transform: ISR QED transverse"
-  end subroutine evt_isr_qed_transverse_write_name
+    write (u, "(1x,A)")  "Event transform: ISR photon handler"
+  end subroutine evt_isr_write_name
 
-@ %def evt_isr_qed_transverse_write_name
-@ Output.
-<<ISR QED transverse: evt isr qed transverse: TBP>>=
-  procedure :: write => evt_isr_qed_transverse_write
-<<ISR QED transverse: procedures>>=
-  subroutine evt_isr_qed_transverse_write &
-       (evt, unit, verbose, more_verbose, testflag)
-    class(evt_isr_qed_transverse_t), intent(in) :: evt
+@ %def evt_isr_write_name
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: write_mode => evt_isr_write_mode
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_write_mode (evt, unit)
+    class(evt_isr_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A,1x,I0,':',1x,A)")  "Insertion mode =", evt%mode, &
+         char (evt%get_mode_string ())
+  end subroutine evt_isr_write_mode
+  
+@ %def evt_isr_write_mode
+@ The trivial mode does not depend on any data, since it does nothing
+to the event.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: write_data => evt_isr_write_data
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_write_data (evt, unit, testflag)
+    class(evt_isr_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    character(len=7) :: fmt
+    integer :: u
+    u = given_output_unit (unit)
+    call pac_fmt (fmt, FMT_19, FMT_12, testflag)
+    select case (evt%mode)
+    case (ISR_PAIR_RECOIL)
+       write (u, "(3x,A,2(1x," // fmt // "))") "Q_max =", evt%q_max
+       write (u, "(3x,A,2(1x," // fmt // "))") "m     =", evt%m
+       write (u, "(3x,A,1x," // fmt // ")") "sqrts =", evt%sqrts
+       write (u, "(3x,A,2(1x," // fmt // "))")  "x  = ", evt%xc
+       write (u, "(3x,A,2(1x," // fmt // "))")  "xb = ", evt%xcb
+       call write_separator (u)
+       write (u, "(A)")  "Lorentz boost (partons before ISR c.m. -> lab) ="
+       call evt%lti%write (u, testflag)
+       write (u, "(A)")  "Lorentz transformation (collinear partons &
+            &-> partons with recoil in c.m.) ="
+       call evt%lto%write (u, testflag)
+       write (u, "(A)")  "Combined transformation (partons &
+            &-> partons with recoil in lab frame) ="
+       call evt%lt%write (u, testflag)
+    end select
+  end subroutine evt_isr_write_data
+
+@ %def evt_isr_write_data
+@ Output method.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: write => evt_isr_write
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_isr_t), intent(in) :: evt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, more_verbose, testflag
-    integer :: u
+    logical :: show_mass
+    integer :: u, i
     u = given_output_unit (unit)
+    if (present (testflag)) then
+       show_mass = .not. testflag
+    else
+       show_mass = .true.
+    end if
     call write_separator (u, 2)
     call evt%write_name (u)
+    call write_separator (u, 2)
+    call evt%write_mode (u)
+    call evt%write_data (u, testflag=testflag)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag, show_set = .false.)
+    if (all (evt%i_beam > 0)) then
+       call write_separator (u)
+       write (u, "(A,2(1x,I0))")  "Partons before ISR:", evt%i_beam
+       do i = 1, 2
+          call evt%beam(i)%write (u, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... boosted to c.m.:"
+       do i = 1, 2
+          call evt%pi(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+    end if
+    if (all (evt%i_photon > 0)) then
+       call write_separator (u)
+       write (u, "(A,2(1x,I0))")  "Radiated photons, collinear:", &
+            evt%i_photon
+       do i = 1, 2
+          call evt%photon(i)%write (u, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... boosted to c.m.:"
+       do i = 1, 2
+          call evt%ki(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... with kT:"
+       do i = 1, 2
+          call evt%km(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+    end if
+    if (all (evt%i_parton > 0)) then
+       call write_separator (u)
+       write (u, "(A,2(1x,I0))")  "Partons after ISR, collinear:", &
+            evt%i_parton
+       do i = 1, 2
+          call evt%parton(i)%write (u, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... boosted to c.m.:"
+       do i = 1, 2
+          call evt%qi(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... with qT, off-shell:"
+       do i = 1, 2
+          call evt%qm(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... projected on-shell:"
+       do i = 1, 2
+          call evt%qo(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+    end if
     if (evt%particle_set_exists)  &
          call evt%particle_set%write &
          (u, summary = .true., compressed = .true., testflag = testflag)
     call write_separator (u)
-  end subroutine evt_isr_qed_transverse_write
+  end subroutine evt_isr_write
 
-@ %def evt_isr_qed_transverse_write
-@ Here we take the particle set from the previous event transform and
-generate the transverse momentum for the photons. With that a boost to 
-the rest of the event has to be applied.
-<<ISR QED transverse: evt isr qed transverse: TBP>>=
+@ %def evt_isr_write
+@
+\subsection{Initialization}
+Manually import a random-number generator object.  This should be
+done only for testing purposes.  The standard procedure is to
+[[connect]] a process to an event transform; this will create an
+appropriate [[rng]] from the RNG factory in the process object.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: import_rng => evt_isr_import_rng
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_import_rng (evt, rng)
+    class(evt_isr_t), intent(inout) :: evt
+    class(rng_t), allocatable, intent(inout) :: rng
+    call move_alloc (from = rng, to = evt%rng)
+  end subroutine evt_isr_import_rng
+
+@ %def evt_isr_import_rng
+@ Set constant kinematics limits.  This version assumes that both
+beams are identical, so the values are shared.  Note that [[sqrts]] is
+used only as the fallback value for [[q_max]].  The actual [[sqrts]]
+value for the transform object is inferred from the incoming
+particles, event by event.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: set_data => evt_isr_set_data
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_set_data (evt, sqrts, q_max, m)
+    class(evt_isr_t), intent(inout) :: evt
+    real(default), intent(in) :: sqrts
+    real(default), intent(in) :: q_max
+    real(default), intent(in) :: m
+    if (sqrts <= 0) then
+       call msg_fatal ("ISR handler: sqrts value must be positive")
+    end if
+    if (q_max <= 0 .or. q_max > sqrts) then
+       evt%q_max = sqrts
+    else
+       evt%q_max = q_max
+    end if
+    if (m > 0) then
+       evt%m = m
+    else
+       call msg_fatal ("ISR handler: ISR_mass value must be positive")
+    end if
+  end subroutine evt_isr_set_data
+    
+@ %def evt_isr_set_data
+@
+\subsection{Fetch event data}
+Identify the ISR radiation photons and the recoil momenta in the
+particle set.  Without much sophistication, start from the end and
+find particles with the ``remnant'' status.  Their parents should point to
+the recoiling parton.  If successful, set the particle indices in the
+[[evt]] object, for further processing.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure, private :: identify_photons
+<<ISR photon handler: procedures>>=
+  subroutine identify_photons (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    type(flavor_t) :: flv
+    integer :: i, k
+    k = 2
+    FIND_LAST_RADIATED: do i = evt%particle_set%get_n_tot (), 1, -1
+       associate (prt => evt%particle_set%prt(i))
+         if (prt%is_beam_remnant ()) then
+            evt%i_photon(k) = i
+            evt%photon(k) = prt
+            k = k - 1
+            if (k == 0)  exit FIND_LAST_RADIATED
+         end if
+       end associate
+    end do FIND_LAST_RADIATED
+    if (k /= 0)  call err_count
+    do i = 1, 2
+       flv = evt%photon(i)%get_flv ()
+       if (flv%get_pdg () /= PHOTON)  call err_photon
+    end do
+  contains
+    subroutine err_count
+      call evt%particle_set%write ()
+      call msg_fatal ("ISR photon handler: event does not contain two radiated particles")
+    end subroutine err_count
+    subroutine err_photon
+      call evt%particle_set%write ()
+      call msg_fatal ("ISR photon handler: event does not contain two radiated photons")
+    end subroutine err_photon
+  end subroutine identify_photons
+  
+@ %def identify_photons
+@ When the photons are known, we can fetch their parent particles and
+ask for the other child, the incoming parton.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure, private :: identify_partons
+<<ISR photon handler: procedures>>=
+  subroutine identify_partons (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    integer, dimension(:), allocatable :: parent, child
+    integer :: i, j
+    if (all (evt%i_photon > 0)) then
+       do i = 1, 2
+          parent = evt%photon(i)%get_parents ()
+          if (size (parent) /= 1)  call err_mismatch
+          evt%i_beam(i) = parent(1)
+          evt%beam(i) = evt%particle_set%prt(parent(1))
+          associate (prt => evt%beam(i))
+            child = prt%get_children ()
+            if (size (child) /= 2)  call err_mismatch
+            do j = 1, 2
+               if (child(j) /= evt%i_photon(i)) then
+                  evt%i_parton(i) = child(j)
+                  evt%parton(i) = evt%particle_set%prt(child(j))
+               end if
+            end do
+          end associate
+       end do
+    end if
+  contains
+    subroutine err_mismatch
+      call evt%particle_set%write ()
+      call msg_bug ("ISR photon handler: mismatch in parent-child relations")
+    end subroutine err_mismatch
+  end subroutine identify_partons
+  
+@ %def identify_partons
+@ Boost the particles that participate in ISR to their proper
+c.m.\ frame, copying the momenta to [[pi]], [[ki]], [[qi]].  Also
+assign [[sqrts]] properly.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure, private :: boost_to_cm
+<<ISR photon handler: procedures>>=
+  subroutine boost_to_cm (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    type(vector4_t), dimension(2) :: p
+    type(vector4_t), dimension(2) :: k
+    type(vector4_t), dimension(2) :: q
+    logical :: ok
+    p = evt%beam%get_momentum ()
+    k = evt%photon%get_momentum ()
+    q = evt%parton%get_momentum ()
+    call initial_transformation (p, evt%sqrts, evt%lti, ok)
+    if (.not. ok)  call err_non_collinear
+    evt%pi = inverse (evt%lti) * p
+    evt%ki = inverse (evt%lti) * k
+    evt%qi = inverse (evt%lti) * q
+  contains
+    subroutine err_non_collinear
+      call evt%particle_set%write ()
+      call msg_fatal ("ISR photon handler: &
+           &partons before ISR are not collinear")
+    end subroutine err_non_collinear
+  end subroutine boost_to_cm
+
+@ %def boost_to_cm    
+@ We can infer the $x$ and $\bar x$ values of the event by looking at
+the energy fractions of the photons and partons, relative to their
+parents.  Of course, we must assume that they are all collinear, and
+that energy is conserved.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure, private :: infer_x
+<<ISR photon handler: procedures>>=
+  subroutine infer_x (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    real(default) :: E_parent, E_photon, E_parton
+    integer :: i
+    if (all (evt%i_photon > 0)) then
+       do i = 1, 2
+          E_parent = energy (evt%pi(i))
+          E_photon = energy (evt%ki(i))
+          E_parton = energy (evt%qi(i))
+          if (E_parent > 0) then
+             evt%xc(i) = E_parton / E_parent
+             evt%xcb(i)= E_photon / E_parent
+          else
+             call err_energy
+          end if
+       end do
+    end if
+  contains
+    subroutine err_energy
+      call evt%particle_set%write ()
+      call msg_bug ("ISR photon handler: non-positive energy in ISR splitting")
+    end subroutine err_energy
+  end subroutine infer_x
+  
+@ %def infer_x
+@
+\subsection{Two-photon recoil}
+For transforming partons into recoil momenta, we make use of the
+routines in the [[recoil_kinematics]] module.  In addition to the
+collinear momenta, we use the $x$ energy fractions, and four numbers
+from the RNG.
+
+For certain kinematics, close to the $Q_\text{max}$ endpoint, this may
+fail, and [[ok]] is set to false.  In that case, we should generate
+new recoil momenta for the same event.  This is handled by the generic
+unweighting procedure.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure, private :: generate_recoil => evt_generate_recoil
+<<ISR photon handler: procedures>>=
+  subroutine evt_generate_recoil (evt, ok)
+    class(evt_isr_t), intent(inout) :: evt
+    logical, intent(out) :: ok
+    real(default), dimension(4) :: r
+    call evt%rng%generate (r)
+    call generate_recoil (evt%sqrts, evt%q_max, evt%m, evt%xc, evt%xcb, r, &
+         evt%km, evt%qm, evt%qo, ok)
+  end subroutine evt_generate_recoil
+
+@ %def evt_generate_recoil
+@ Replace the collinear photon (parton) momenta by the momenta that we
+have generated, respectively.  Recall that the recoil has been applied
+in the c.m.\ system of the partons before ISR, so we apply the stored
+Lorentz transformation to boost them to the lab frame.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure, private :: replace_photons
+  procedure, private :: replace_partons
+<<ISR photon handler: procedures>>=
+  subroutine replace_photons (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    integer :: i
+    do i = 1, 2
+       associate (prt => evt%particle_set%prt(evt%i_photon(i)))
+         call prt%set_momentum (evt%lti * evt%km(i))
+       end associate
+    end do
+  end subroutine replace_photons
+
+  subroutine replace_partons (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    integer :: i
+    do i = 1, 2
+       associate (prt => evt%particle_set%prt(evt%i_parton(i)))
+         call prt%set_momentum (evt%lti * evt%qo(i))
+       end associate
+    end do
+  end subroutine replace_partons
+
+@ %def replace_photons
+@ %def replace_partons
+@
+\subsection{Transform the event}
+Knowing the new incoming partons for the elementary process, we can
+make use of another procedure in [[recoil_kinematics]] to determine
+the Lorentz transformation that transforms the collinear frame into
+the frame with transverse momentum.  We apply this transformation,
+recursively, to all particles that originate from those incoming
+partons in the original particle set.
+
+We have to allow for the pre-ISR partons being not in their common
+c.m.\ frame.  Taking into account non-commutativity, we actually have
+to first transform the outgoing particles to that c.m.\ frame, then
+apply the recoil transformation, then boost back to the lab frame.
+
+The [[mask]] keep track of particles that we transform, just in case
+the parent-child tree is multiply connected.
+<<ISR photon handler: evt isr: TBP>>=
+  procedure :: transform_outgoing => evt_transform_outgoing
+<<ISR photon handler: procedures>>=
+  subroutine evt_transform_outgoing (evt)
+    class(evt_isr_t), intent(inout) :: evt
+    logical, dimension(:), allocatable :: mask
+    call recoil_transformation (evt%sqrts, evt%xc, evt%qo, evt%lto)
+    evt%lt = evt%lti * evt%lto * inverse (evt%lti)
+    allocate (mask (evt%particle_set%get_n_tot ()), source=.false.)
+    call transform_children (evt%i_parton(1))
+  contains
+    recursive subroutine transform_children (i)
+      integer, intent(in) :: i
+      integer :: j, n_child, c
+      integer, dimension(:), allocatable :: child
+      child = evt%particle_set%prt(i)%get_children ()
+      do j = 1, size (child)
+         c = child(j)
+         if (.not. mask(c)) then
+            associate (prt => evt%particle_set%prt(c))
+              call prt%set_momentum (evt%lt * prt%get_momentum ())
+              mask(c) = .true.
+              call transform_children (c)
+            end associate
+         end if
+      end do
+    end subroutine transform_children
+  end subroutine evt_transform_outgoing
+  
+@ %def evt_transform_outgoing
+@
+\subsection{Implemented methods}
+Here we take the particle set from the previous event transform and
+copy it, then generate the transverse momentum for the photons and for
+the incoming partons.  If this fails (rarely, for large $p_T$),
+return zero for the probability, to trigger another try.
+
+NOTE: The boost for the initial partonic system, if not in the
+c.m.\ frame, has not been implemented yet.
+<<ISR photon handler: evt isr: TBP>>=
   procedure :: generate_weighted => &
-       evt_isr_qed_transverse_generate_weighted
-<<ISR QED transverse: procedures>>=
-  subroutine evt_isr_qed_transverse_generate_weighted (evt, probability)
-    class(evt_isr_qed_transverse_t), intent(inout) :: evt
+       evt_isr_generate_weighted
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_generate_weighted (evt, probability)
+    class(evt_isr_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid
+    call evt%particle_set%final ()
     evt%particle_set = evt%previous%particle_set
-    !!! To be checked or expanded
-    probability = 1
-    valid = .true.
-    evt%particle_set_exists = valid
-  end subroutine evt_isr_qed_transverse_generate_weighted
+    evt%particle_set_exists = .true.
+    select case (evt%mode)
+    case (ISR_TRIVIAL_COLLINEAR)
+       probability = 1
+       valid = .true.
+    case (ISR_PAIR_RECOIL)
+       call evt%identify_photons ()
+       call evt%identify_partons ()
+       call evt%boost_to_cm ()
+       call evt%infer_x ()
+       call evt%generate_recoil (valid)
+       if (valid) then
+          probability = 1
+       else
+          probability = 0
+       end if
+    case default
+       call msg_bug ("ISR photon handler: generate weighted: unsupported mode")
+    end select
+    evt%particle_set_exists = .false.
+  end subroutine evt_isr_generate_weighted
 
-@ %def evt_isr_qed_transverse_generate_weighted
-@ The factorization parameters are irrelevant.
-<<ISR QED transverse: evt isr qed transverse: TBP>>=
+@ %def evt_isr_generate_weighted
+@ 
+Insert the generated photons and partons with $p_T$ in their
+respective places.
+
+The factorization parameters are irrelevant.
+<<ISR photon handler: evt isr: TBP>>=
   procedure :: make_particle_set => &
-       evt_isr_qed_transverse_make_particle_set
-<<ISR QED transverse: procedures>>=
-  subroutine evt_isr_qed_transverse_make_particle_set &
+       evt_isr_make_particle_set
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_make_particle_set &
        (evt, factorization_mode, keep_correlations, r)
-    class(evt_isr_qed_transverse_t), intent(inout) :: evt
+    class(evt_isr_t), intent(inout) :: evt
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
-    logical :: valid
-    !!! to be checked and expanded
-    valid = .true.
-    evt%particle_set_exists = evt%particle_set_exists .and. valid
-  end subroutine evt_isr_qed_transverse_make_particle_set
+    select case (evt%mode)
+    case (ISR_TRIVIAL_COLLINEAR)
+    case (ISR_PAIR_RECOIL)
+       call evt%replace_photons ()
+       call evt%replace_partons ()
+       call evt%transform_outgoing ()
+    case default
+       call msg_bug ("ISR photon handler: make particle set: unsupported mode")
+    end select
+    evt%particle_set_exists = .true.
+  end subroutine evt_isr_make_particle_set
 
-@ %def event_isr_qed_transverse_make_particle_set
+@ %def event_isr_photon_handler_make_particle_set
 @
-<<ISR QED transverse: evt isr qed transverse: TBP>>=
+<<ISR photon handler: evt isr: TBP>>=
   procedure :: prepare_new_event => &
-       evt_isr_qed_transverse_prepare_new_event
-<<ISR QED transverse: procedures>>=
-  subroutine evt_isr_qed_transverse_prepare_new_event (evt, i_mci, i_term)
-    class(evt_isr_qed_transverse_t), intent(inout) :: evt
+       evt_isr_prepare_new_event
+<<ISR photon handler: procedures>>=
+  subroutine evt_isr_prepare_new_event (evt, i_mci, i_term)
+    class(evt_isr_t), intent(inout) :: evt
     integer, intent(in) :: i_mci, i_term
     call evt%reset ()
-  end subroutine evt_isr_qed_transverse_prepare_new_event
+  end subroutine evt_isr_prepare_new_event
 
-@ %def evt_isr_qed_transverse_prepare_new_event
+@ %def evt_isr_prepare_new_event
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[isr_photon_handler_ut.f90]]>>=
+<<File header>>
+
+module isr_photon_handler_ut
+  use unit_tests
+  use isr_photon_handler_uti
+
+<<Standard module head>>
+
+<<ISR photon handler: public test>>
+
+contains
+
+<<ISR photon handler: test driver>>
+
+end module isr_photon_handler_ut
+@ %def isr_photon_handler_ut
+@
+<<[[isr_photon_handler_uti.f90]]>>=
+<<File header>>
+
+module isr_photon_handler_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_utils, only: write_separator
+  use os_interface
+  use lorentz, only: vector4_t, vector4_moving, operator(*)
+  use rng_base, only: rng_t
+  use models, only: syntax_model_file_init, syntax_model_file_final
+  use models, only: model_list_t, model_t
+  use particles, only: particle_set_t
+
+  use event_transforms
+  use isr_photon_handler, only: evt_isr_t
+
+  use rng_base_ut, only: rng_test_t
+
+<<Standard module head>>
+
+<<ISR photon handler: test declarations>>
+
+contains
+
+<<ISR photon handler: tests>>
+
+end module isr_photon_handler_uti
+
+@ %def isr_photon_handler_uti
+@ API: driver for the unit tests below.
+<<ISR photon handler: public test>>=
+  public :: isr_photon_handler_test
+<<ISR photon handler: test driver>>=
+  subroutine isr_photon_handler_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<ISR photon handler: execute tests>>
+  end subroutine isr_photon_handler_test
+
+@ %def isr_photon_handler_test
+@
+\subsubsection{Trivial case}
+Handle photons resulting from ISR radiation.  This test is for the
+trivial case where the event is kept collinear.
+<<ISR photon handler: execute tests>>=
+  call test (isr_photon_handler_1, "isr_photon_handler_1", &
+       "collinear case, no modification", &
+       u, results)
+<<ISR photon handler: test declarations>>=
+  public :: isr_photon_handler_1
+<<ISR photon handler: tests>>=
+  subroutine isr_photon_handler_1 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_isr_t), target :: evt_isr
+    type(vector4_t), dimension(8) :: p
+    real(default) :: sqrts
+    real(default), dimension(2) :: x, xb
+    real(default) :: probability
+
+    write (u, "(A)")  "* Test output: isr_photon_handler_1"
+    write (u, "(A)")  "*   Purpose: apply photon handler trivially (no-op)"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
+         pdg = [11, -11, 11, -11, 22, 22, 13, -13], model = model)
+
+    sqrts = 100._default
+    x = [0.6_default, 0.9_default]
+    xb= 1 - x
+
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    p(3:4) = x * p(1:2)
+    p(5:6) = xb  * p(1:2)
+    p(7:8) = p(3:4)
+
+    call pset%set_momentum (p, on_shell = .false.)
+    
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize ISR photon handler transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_isr
+    evt_isr%previous => evt_trivial
+    
+    call evt_isr%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill ISR photon handler transform"
+    write (u, "(A)")
+    
+    call evt_isr%prepare_new_event (1, 1)
+    call evt_isr%generate_weighted (probability)
+    call evt_isr%make_particle_set (0, .false.)
+    
+    call evt_isr%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_isr%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: isr_photon_handler_1"
+
+  end subroutine isr_photon_handler_1
+
+@ %def isr_photon_handler_1
+@
+\subsubsection{Photon pair with recoil}
+Handle photons resulting from ISR radiation.  This test invokes the
+two-photon recoil mechanism.  Both photons acquire transverse
+momentum, the parton momenta recoil, such that total energy-momentum
+is conserved, and all outgoing photons and partons are on-shell
+(massless).
+<<ISR photon handler: execute tests>>=
+  call test (isr_photon_handler_2, "isr_photon_handler_2", &
+       "two-photon recoil", &
+       u, results)
+<<ISR photon handler: test declarations>>=
+  public :: isr_photon_handler_2
+<<ISR photon handler: tests>>=
+  subroutine isr_photon_handler_2 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_isr_t), target :: evt_isr
+    type(vector4_t), dimension(8) :: p
+    real(default) :: sqrts
+    real(default), dimension(2) :: x, xb
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+
+    write (u, "(A)")  "* Test output: isr_photon_handler_2"
+    write (u, "(A)")  "*   Purpose: apply photon handler with two-photon recoil"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
+         pdg = [11, -11, 11, -11, 22, 22, 13, -13], model = model)
+
+    sqrts = 100._default
+    x = [0.6_default, 0.9_default]
+    xb= 1 - x
+
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    p(3:4) = x * p(1:2)
+    p(5:6) = xb  * p(1:2)
+    p(7:8) = p(3:4)
+
+    call pset%set_momentum (p, on_shell = .false.)
+    
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize ISR photon handler transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_isr
+    evt_isr%previous => evt_trivial
+    
+    call evt_isr%set_mode_string (var_str ("recoil"))
+    call evt_isr%set_data ( &
+         sqrts = sqrts, &
+         q_max = sqrts, &
+         m = 511.e-3_default &
+         )
+
+    allocate (rng_test_t :: rng)
+    call rng%init (3)  ! default would produce pi for azimuthal angle
+    call evt_isr%import_rng (rng)
+
+    call evt_isr%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill ISR photon handler transform"
+    write (u, "(A)")
+    
+    call evt_isr%prepare_new_event (1, 1)
+    call evt_isr%generate_weighted (probability)
+    call evt_isr%make_particle_set (0, .false.)
+    
+    call evt_isr%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_isr%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: isr_photon_handler_2"
+
+  end subroutine isr_photon_handler_2
+
+@ %def isr_photon_handler_2
+@
+\subsubsection{Boosted beams}
+Handle photons resulting from ISR radiation.  This test invokes the
+two-photon recoil mechanism, in the case that the partons before ISR
+are not in their c.m.\ frame (but collinear).
+<<ISR photon handler: execute tests>>=
+  call test (isr_photon_handler_3, "isr_photon_handler_3", &
+       "two-photon recoil with boost", &
+       u, results)
+<<ISR photon handler: test declarations>>=
+  public :: isr_photon_handler_3
+<<ISR photon handler: tests>>=
+  subroutine isr_photon_handler_3 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_isr_t), target :: evt_isr
+    type(vector4_t), dimension(8) :: p
+    real(default) :: sqrts
+    real(default), dimension(2) :: x0
+    real(default), dimension(2) :: x, xb
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+
+    write (u, "(A)")  "* Test output: isr_photon_handler_3"
+    write (u, "(A)")  "*   Purpose: apply photon handler for boosted beams &
+         &and two-photon recoil"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
+         pdg = [11, -11, 11, -11, 22, 22, 13, -13], model = model)
+
+    write (u, "(A)")  "* Event data"
+    write (u, "(A)")
+
+    sqrts = 100._default
+    write (u, "(A,2(1x,F12.7))")  "sqrts   =", sqrts
+
+    x0 = [0.9_default, 0.4_default]
+    write (u, "(A,2(1x,F12.7))")  "x0      =", x0
+
+    write (u, "(A)")
+    write (u, "(A,2(1x,F12.7))")  "sqs_hat =", sqrts * sqrt (product (x0))
+
+    x = [0.6_default, 0.9_default]
+    xb= 1 - x
+    write (u, "(A,2(1x,F12.7))")  "x       =", x
+
+    write (u, "(A)")
+    write (u, "(A,2(1x,F12.7))")  "x0 * x  =", x0 * x
+
+    p(1) = x0(1) * vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = x0(2) * vector4_moving (sqrts/2,-sqrts/2, 3)
+    p(3:4) = x * p(1:2)
+    p(5:6) = xb  * p(1:2)
+    p(7:8) = p(3:4)
+
+    call pset%set_momentum (p, on_shell = .false.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize ISR photon handler transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_isr
+    evt_isr%previous => evt_trivial
+    
+    call evt_isr%set_mode_string (var_str ("recoil"))
+    call evt_isr%set_data ( &
+         sqrts = sqrts, &
+         q_max = sqrts, &
+         m = 511.e-3_default &
+         )
+
+    allocate (rng_test_t :: rng)
+    call rng%init (3)  ! default would produce pi for azimuthal angle
+    call evt_isr%import_rng (rng)
+
+    call evt_isr%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill ISR photon handler transform"
+    write (u, "(A)")
+    
+    call evt_isr%prepare_new_event (1, 1)
+    call evt_isr%generate_weighted (probability)
+    call evt_isr%make_particle_set (0, .false.)
+    
+    call evt_isr%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_isr%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: isr_photon_handler_3"
+
+  end subroutine isr_photon_handler_3
+
+@ %def isr_photon_handler_3
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Transverse beam momentum for EPA events}
+<<[[epa_beam_handler.f90]]>>=
+<<File header>>
+
+module epa_beam_handler
+
+<<Use kinds>>
+<<Use strings>>
+  use diagnostics, only: msg_fatal
+  use diagnostics, only: msg_bug
+  use io_units
+  use format_defs, only: FMT_12, FMT_19
+  use format_utils, only: write_separator
+  use format_utils, only: pac_fmt
+  use physics_defs, only: PHOTON
+  use lorentz, only: vector4_t
+  use lorentz, only: energy
+  use lorentz, only: lorentz_transformation_t
+  use lorentz, only: identity
+  use lorentz, only: inverse
+  use lorentz, only: operator(*)
+  use sm_qcd
+  use flavors, only: flavor_t
+  use particles, only: particle_t
+  use model_data
+  use models
+  use rng_base, only: rng_t
+  use event_transforms
+  use recoil_kinematics, only: initial_transformation
+  use recoil_kinematics, only: generate_recoil
+  use recoil_kinematics, only: recoil_transformation
+
+<<Standard module head>>
+
+<<EPA beam handler: public>>
+
+<<EPA beam handler: parameters>>
+
+<<EPA beam handler: types>>
+
+contains
+
+<<EPA beam handler: procedures>>
+
+end module epa_beam_handler
+@ %def epa_beam_handler
+@
+\subsection{Event transform type}
+This is the type for the event transform generating transverse
+momentum for the QED EPA beams.
+
+Convention: [[beam]] are the incoming partons before EPA -- not
+necessarily the actual beams, need not be in c.m.\ frame.  [[photon]]
+are the radiated photons, and [[parton]] are the remainders which
+initiate the elementary process.  These particles are copied verbatim
+from the event record, and must be collinear.
+
+The kinematical parameters are [[sqrts]] = invariant mass of the
+[[beam]] particles, [[q_max]] and [[m]] determining the $Q^2$
+distribution, and [[xc]]/[[xcb]] as the energy fraction (complement)
+of the partons, relative to the beams.
+
+Transformations: [[lti]] is the Lorentz transformation that would
+boosts [[pi]] (c.m. frame) back to the original [[beam]] momenta (lab
+frame).  [[lto]] is the recoil transformation, transforming the partons
+after EPA from the collinear frame to the recoiling frame.  [[lt]] is
+the combination of both, which is to be applied to all particles after
+the hard interaction.
+
+Momenta: [[pi]] are the beams transformed to their common c.m.\ frame.
+[[ki]] and [[qi]] are the photon/parton
+momenta in the [[pi]] c.m.\ frame.  [[km]] and [[qm]] are the
+photon/parton momenta with the $Q$ distribution applied, and finally
+[[qo]] are the partons [[qm]] projected on-shell.
+<<EPA beam handler: public>>=
+  public :: evt_epa_t
+<<EPA beam handler: types>>=
+  type, extends (evt_t) :: evt_epa_t
+     private
+     integer :: mode = EPA_TRIVIAL_COLLINEAR
+     real(default) :: sqrts = 0
+     real(default), dimension(2) :: q_max = 0
+     real(default), dimension(2) :: m = 0
+     real(default), dimension(2) :: xc = 0
+     real(default), dimension(2) :: xcb = 0
+     type(lorentz_transformation_t) :: lti = identity
+     type(lorentz_transformation_t) :: lto = identity
+     type(lorentz_transformation_t) :: lt  = identity
+     integer, dimension(2) :: i_beam = 0
+     type(particle_t), dimension(2) :: beam
+     type(vector4_t), dimension(2) :: pi
+     integer, dimension(2) :: i_radiated = 0
+     type(particle_t), dimension(2) :: radiated
+     type(vector4_t), dimension(2) :: ki
+     type(vector4_t), dimension(2) :: km
+     integer, dimension(2) :: i_parton = 0
+     type(particle_t), dimension(2) :: parton
+     type(vector4_t), dimension(2) :: qi
+     type(vector4_t), dimension(2) :: qm
+     type(vector4_t), dimension(2) :: qo
+   contains
+   <<EPA beam handler: evt isr: TBP>>
+  end type evt_epa_t
+
+@ %def evt_epa_t
+@
+\subsection{Photon insertion modes}
+<<EPA beam handler: parameters>>=
+  integer, parameter, public :: EPA_TRIVIAL_COLLINEAR = 0
+  integer, parameter, public :: EPA_PAIR_RECOIL = 1
+  
+@ %def EPA_TRIVIAL_COLLINEAR
+@
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: get_mode_string => evt_epa_get_mode_string
+<<EPA beam handler: procedures>>=
+  function evt_epa_get_mode_string (evt) result (string)
+    type(string_t) :: string
+    class(evt_epa_t), intent(in) :: evt
+    select case (evt%mode)
+    case (EPA_TRIVIAL_COLLINEAR)
+       string = "trivial, collinear"
+    case (EPA_PAIR_RECOIL)
+       string = "beam-pair recoil"
+    case default
+       string = "[undefined]"
+    end select
+  end function evt_epa_get_mode_string
+
+@ %def evt_epa_get_mode_string
+@ Set the numerical mode ID from a user-level string representation.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: set_mode_string => evt_epa_set_mode_string
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_set_mode_string (evt, string)
+    class(evt_epa_t), intent(inout) :: evt
+    type(string_t), intent(in) :: string
+    select case (char (string))
+    case ("trivial")
+       evt%mode = EPA_TRIVIAL_COLLINEAR
+    case ("recoil")
+       evt%mode = EPA_PAIR_RECOIL
+    case default
+       call msg_fatal ("EPA handler: mode '" // char (string) &
+            // "' is undefined")
+    end select
+  end subroutine evt_epa_set_mode_string
+
+@ %def evt_epa_set_mode_string
+@ 
+\subsection{Output}
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: write_name => evt_epa_write_name
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_write_name (evt, unit)
+    class(evt_epa_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: EPA beam handler"
+  end subroutine evt_epa_write_name
+
+@ %def evt_epa_write_name
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: write_mode => evt_epa_write_mode
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_write_mode (evt, unit)
+    class(evt_epa_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A,1x,I0,':',1x,A)")  "Insertion mode =", evt%mode, &
+         char (evt%get_mode_string ())
+  end subroutine evt_epa_write_mode
+  
+@ %def evt_epa_write_mode
+@ The trivial mode does not depend on any data, since it does nothing
+to the event.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: write_data => evt_epa_write_data
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_write_data (evt, unit, testflag)
+    class(evt_epa_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    character(len=7) :: fmt
+    integer :: u
+    u = given_output_unit (unit)
+    call pac_fmt (fmt, FMT_19, FMT_12, testflag)
+    select case (evt%mode)
+    case (EPA_PAIR_RECOIL)
+       write (u, "(3x,A,2(1x," // fmt // "))") "Q_max =", evt%q_max
+       write (u, "(3x,A,2(1x," // fmt // "))") "m     =", evt%m
+       write (u, "(3x,A,1x," // fmt // ")") "sqrts =", evt%sqrts
+       write (u, "(3x,A,2(1x," // fmt // "))")  "x  = ", evt%xc
+       write (u, "(3x,A,2(1x," // fmt // "))")  "xb = ", evt%xcb
+       call write_separator (u)
+       write (u, "(A)")  "Lorentz boost (beams before EPA c.m. -> lab) ="
+       call evt%lti%write (u, testflag)
+       write (u, "(A)")  "Lorentz transformation (collinear photons &
+            &-> photons with recoil in c.m.) ="
+       call evt%lto%write (u, testflag)
+       write (u, "(A)")  "Combined transformation (photons &
+            &-> photons with recoil in lab frame) ="
+       call evt%lt%write (u, testflag)
+    end select
+  end subroutine evt_epa_write_data
+
+@ %def evt_epa_write_data
+@ Output method.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: write => evt_epa_write
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_epa_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, more_verbose, testflag
+    logical :: show_mass
+    integer :: u, i
+    u = given_output_unit (unit)
+    if (present (testflag)) then
+       show_mass = .not. testflag
+    else
+       show_mass = .true.
+    end if
+    call write_separator (u, 2)
+    call evt%write_name (u)
+    call write_separator (u, 2)
+    call evt%write_mode (u)
+    call evt%write_data (u, testflag=testflag)
+    call write_separator (u)
+    call evt%base_write (u, testflag = testflag, show_set = .false.)
+    if (all (evt%i_beam > 0)) then
+       call write_separator (u)
+       write (u, "(A,2(1x,I0))")  "Beams before EPA:", evt%i_beam
+       do i = 1, 2
+          call evt%beam(i)%write (u, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... boosted to c.m.:"
+       do i = 1, 2
+          call evt%pi(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+    end if
+    if (all (evt%i_radiated > 0)) then
+       call write_separator (u)
+       write (u, "(A,2(1x,I0))")  "Radiated beam remnants, collinear:", &
+            evt%i_radiated
+       do i = 1, 2
+          call evt%radiated(i)%write (u, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... boosted to c.m.:"
+       do i = 1, 2
+          call evt%ki(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... with kT:"
+       do i = 1, 2
+          call evt%km(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+    end if
+    if (all (evt%i_parton > 0)) then
+       call write_separator (u)
+       write (u, "(A,2(1x,I0))")  "Photons after EPA, collinear:", &
+            evt%i_parton
+       do i = 1, 2
+          call evt%parton(i)%write (u, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... boosted to c.m.:"
+       do i = 1, 2
+          call evt%qi(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... with qT, off-shell:"
+       do i = 1, 2
+          call evt%qm(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+       write (u, "(A)")  "... projected on-shell:"
+       do i = 1, 2
+          call evt%qo(i)%write (u, show_mass=show_mass, testflag=testflag)
+       end do
+       call write_separator (u)
+    end if
+    if (evt%particle_set_exists)  &
+         call evt%particle_set%write &
+         (u, summary = .true., compressed = .true., testflag = testflag)
+    call write_separator (u)
+  end subroutine evt_epa_write
+
+@ %def evt_epa_write
+@
+\subsection{Initialization}
+Manually import a random-number generator object.  This should be
+done only for testing purposes.  The standard procedure is to
+[[connect]] a process to an event transform; this will create an
+appropriate [[rng]] from the RNG factory in the process object.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: import_rng => evt_epa_import_rng
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_import_rng (evt, rng)
+    class(evt_epa_t), intent(inout) :: evt
+    class(rng_t), allocatable, intent(inout) :: rng
+    call move_alloc (from = rng, to = evt%rng)
+  end subroutine evt_epa_import_rng
+
+@ %def evt_epa_import_rng
+@ Set constant kinematics limits.  This version assumes that both
+beams are identical, so the values are shared.  Note that [[sqrts]] is
+used only as the fallback value for [[q_max]].  The actual [[sqrts]]
+value for the transform object is inferred from the incoming
+particles, event by event.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: set_data => evt_epa_set_data
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_set_data (evt, sqrts, q_max, m)
+    class(evt_epa_t), intent(inout) :: evt
+    real(default), intent(in) :: sqrts
+    real(default), intent(in) :: q_max
+    real(default), intent(in) :: m
+    if (sqrts <= 0) then
+       call msg_fatal ("EPA handler: sqrts value must be positive")
+    end if
+    if (q_max <= 0 .or. q_max > sqrts) then
+       evt%q_max = sqrts
+    else
+       evt%q_max = q_max
+    end if
+    if (m > 0) then
+       evt%m = m
+    else
+       call msg_fatal ("EPA handler: EPA_mass value must be positive")
+    end if
+  end subroutine evt_epa_set_data
+    
+@ %def evt_epa_set_data
+@
+\subsection{Fetch event data}
+Identify the EPA radiated beam remnants and the recoil momenta in the
+particle set.  Without much sophistication, start from the end and
+find particles with the ``remnant'' status.  Their parents should point to
+the recoiling parton.  If successful, set the particle indices in the
+[[evt]] object, for further processing.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure, private :: identify_radiated
+<<EPA beam handler: procedures>>=
+  subroutine identify_radiated (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    integer :: i, k
+    k = 2
+    FIND_LAST_RADIATED: do i = evt%particle_set%get_n_tot (), 1, -1
+       associate (prt => evt%particle_set%prt(i))
+         if (prt%is_beam_remnant ()) then
+            evt%i_radiated(k) = i
+            evt%radiated(k) = prt
+            k = k - 1
+            if (k == 0)  exit FIND_LAST_RADIATED
+         end if
+       end associate
+    end do FIND_LAST_RADIATED
+    if (k /= 0)  call err_count
+  contains
+    subroutine err_count
+      call evt%particle_set%write ()
+      call msg_fatal ("EPA beam handler: event does not contain two radiated &
+           &beam remnants")
+    end subroutine err_count
+  end subroutine identify_radiated
+  
+@ %def identify_radiated
+@ When the radiated are known, we can fetch their parent particles and
+ask for the other child, the incoming parton.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure, private :: identify_partons
+<<EPA beam handler: procedures>>=
+  subroutine identify_partons (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    integer, dimension(:), allocatable :: parent, child
+    type(flavor_t) :: flv
+    integer :: i, j
+    if (all (evt%i_radiated > 0)) then
+       do i = 1, 2
+          parent = evt%radiated(i)%get_parents ()
+          if (size (parent) /= 1)  call err_mismatch
+          evt%i_beam(i) = parent(1)
+          evt%beam(i) = evt%particle_set%prt(parent(1))
+          associate (prt => evt%beam(i))
+            child = prt%get_children ()
+            if (size (child) /= 2)  call err_mismatch
+            do j = 1, 2
+               if (child(j) /= evt%i_radiated(i)) then
+                  evt%i_parton(i) = child(j)
+                  evt%parton(i) = evt%particle_set%prt(child(j))
+               end if
+            end do
+          end associate
+       end do
+       do i = 1, 2
+          flv = evt%parton(i)%get_flv ()
+          if (flv%get_pdg () /= PHOTON)  call err_radiated
+       end do
+    end if
+  contains
+    subroutine err_mismatch
+      call evt%particle_set%write ()
+      call msg_bug ("EPA beam handler: mismatch in parent-child relations")
+    end subroutine err_mismatch
+    subroutine err_radiated
+      call evt%particle_set%write ()
+      call msg_fatal ("EPA beam handler: partons must be photons")
+    end subroutine err_radiated
+  end subroutine identify_partons
+  
+@ %def identify_partons
+@ Boost the particles that participate in EPA to their proper
+c.m.\ frame, copying the momenta to [[pi]], [[ki]], [[qi]].  Also
+assign [[sqrts]] properly.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure, private :: boost_to_cm
+<<EPA beam handler: procedures>>=
+  subroutine boost_to_cm (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    type(vector4_t), dimension(2) :: p
+    type(vector4_t), dimension(2) :: k
+    type(vector4_t), dimension(2) :: q
+    logical :: ok
+    p = evt%beam%get_momentum ()
+    k = evt%radiated%get_momentum ()
+    q = evt%parton%get_momentum ()
+    call initial_transformation (p, evt%sqrts, evt%lti, ok)
+    if (.not. ok)  call err_non_collinear
+    evt%pi = inverse (evt%lti) * p
+    evt%ki = inverse (evt%lti) * k
+    evt%qi = inverse (evt%lti) * q
+  contains
+    subroutine err_non_collinear
+      call evt%particle_set%write ()
+      call msg_fatal ("EPA beam handler: &
+           &partons before EPA are not collinear")
+    end subroutine err_non_collinear
+  end subroutine boost_to_cm
+
+@ %def boost_to_cm    
+@ We can infer the $x$ and $\bar x$ values of the event by looking at
+the energy fractions of the radiated particles and partons, relative to their
+common parents.  Of course, we must assume that they are all collinear, and
+that energy is conserved.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure, private :: infer_x
+<<EPA beam handler: procedures>>=
+  subroutine infer_x (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    real(default) :: E_parent, E_radiated, E_parton
+    integer :: i
+    if (all (evt%i_radiated > 0)) then
+       do i = 1, 2
+          E_parent = energy (evt%pi(i))
+          E_radiated = energy (evt%ki(i))
+          E_parton = energy (evt%qi(i))
+          if (E_parent > 0) then
+             evt%xc(i) = E_parton / E_parent
+             evt%xcb(i)= E_radiated / E_parent
+          else
+             call err_energy
+          end if
+       end do
+    end if
+  contains
+    subroutine err_energy
+      call evt%particle_set%write ()
+      call msg_bug ("EPA beam handler: non-positive energy in EPA splitting")
+    end subroutine err_energy
+  end subroutine infer_x
+  
+@ %def infer_x
+@
+\subsection{Two-beam recoil}
+For transforming partons into recoil momenta, we make use of the
+routines in the [[recoil_kinematics]] module.  In addition to the
+collinear momenta, we use the $x$ energy fractions, and four numbers
+from the RNG.
+
+There is one subtle difference w.r.t.\ ISR case: the EPA mass
+parameter is multiplied by the energy fraction $x$, separately for
+each beam.  This is the effective lower $Q$ cutoff.
+
+For certain kinematics, close to the $Q_\text{max}$ endpoint, this may
+fail, and [[ok]] is set to false.  In that case, we should generate
+new recoil momenta for the same event.  This is handled by the generic
+unweighting procedure.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure, private :: generate_recoil => evt_generate_recoil
+<<EPA beam handler: procedures>>=
+  subroutine evt_generate_recoil (evt, ok)
+    class(evt_epa_t), intent(inout) :: evt
+    logical, intent(out) :: ok
+    real(default), dimension(4) :: r
+    call evt%rng%generate (r)
+    call generate_recoil (evt%sqrts, evt%q_max, evt%xc * evt%m, evt%xc, evt%xcb, r, &
+         evt%km, evt%qm, evt%qo, ok)
+  end subroutine evt_generate_recoil
+
+@ %def evt_generate_recoil
+@ Replace the collinear radiation (parton) momenta by the momenta that we
+have generated, respectively.  Recall that the recoil has been applied
+in the c.m.\ system of the partons before EPA, so we apply the stored
+Lorentz transformation to boost them to the lab frame.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure, private :: replace_radiated
+  procedure, private :: replace_partons
+<<EPA beam handler: procedures>>=
+  subroutine replace_radiated (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    integer :: i
+    do i = 1, 2
+       associate (prt => evt%particle_set%prt(evt%i_radiated(i)))
+         call prt%set_momentum (evt%lti * evt%km(i))
+       end associate
+    end do
+  end subroutine replace_radiated
+
+  subroutine replace_partons (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    integer :: i
+    do i = 1, 2
+       associate (prt => evt%particle_set%prt(evt%i_parton(i)))
+         call prt%set_momentum (evt%lti * evt%qo(i))
+       end associate
+    end do
+  end subroutine replace_partons
+
+@ %def replace_radiated
+@ %def replace_partons
+@
+\subsection{Transform the event}
+Knowing the new incoming partons for the elementary process, we can
+make use of another procedure in [[recoil_kinematics]] to determine
+the Lorentz transformation that transforms the collinear frame into
+the frame with transverse momentum.  We apply this transformation,
+recursively, to all particles that originate from those incoming
+partons in the original particle set.
+
+We have to allow for the pre-EPA partons being not in their common
+c.m.\ frame.  Taking into account non-commutativity, we actually have
+to first transform the outgoing particles to that c.m.\ frame, then
+apply the recoil transformation, then boost back to the lab frame.
+
+The [[mask]] keep track of particles that we transform, just in case
+the parent-child tree is multiply connected.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: transform_outgoing => evt_transform_outgoing
+<<EPA beam handler: procedures>>=
+  subroutine evt_transform_outgoing (evt)
+    class(evt_epa_t), intent(inout) :: evt
+    logical, dimension(:), allocatable :: mask
+    call recoil_transformation (evt%sqrts, evt%xc, evt%qo, evt%lto)
+    evt%lt = evt%lti * evt%lto * inverse (evt%lti)
+    allocate (mask (evt%particle_set%get_n_tot ()), source=.false.)
+    call transform_children (evt%i_parton(1))
+  contains
+    recursive subroutine transform_children (i)
+      integer, intent(in) :: i
+      integer :: j, n_child, c
+      integer, dimension(:), allocatable :: child
+      child = evt%particle_set%prt(i)%get_children ()
+      do j = 1, size (child)
+         c = child(j)
+         if (.not. mask(c)) then
+            associate (prt => evt%particle_set%prt(c))
+              call prt%set_momentum (evt%lt * prt%get_momentum ())
+              mask(c) = .true.
+              call transform_children (c)
+            end associate
+         end if
+      end do
+    end subroutine transform_children
+  end subroutine evt_transform_outgoing
+  
+@ %def evt_transform_outgoing
+@
+\subsection{Implemented methods}
+Here we take the particle set from the previous event transform and
+copy it, then generate the transverse momentum for the photons and for
+the incoming partons.  If this fails (rarely, for large $p_T$),
+return zero for the probability, to trigger another try.
+
+NOTE: The boost for the initial partonic system, if not in the
+c.m.\ frame, has not been implemented yet.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: generate_weighted => &
+       evt_epa_generate_weighted
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_generate_weighted (evt, probability)
+    class(evt_epa_t), intent(inout) :: evt
+    real(default), intent(inout) :: probability
+    logical :: valid
+    call evt%particle_set%final ()
+    evt%particle_set = evt%previous%particle_set
+    evt%particle_set_exists = .true.
+    select case (evt%mode)
+    case (EPA_TRIVIAL_COLLINEAR)
+       probability = 1
+       valid = .true.
+    case (EPA_PAIR_RECOIL)
+       call evt%identify_radiated ()
+       call evt%identify_partons ()
+       call evt%boost_to_cm ()
+       call evt%infer_x ()
+       call evt%generate_recoil (valid)
+       if (valid) then
+          probability = 1
+       else
+          probability = 0
+       end if
+    case default
+       call msg_bug ("EPA beam handler: generate weighted: unsupported mode")
+    end select
+    evt%particle_set_exists = .false.
+  end subroutine evt_epa_generate_weighted
+
+@ %def evt_epa_generate_weighted
+@ 
+Insert the generated photons and partons with $p_T$ in their
+respective places.
+
+The factorization parameters are irrelevant.
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: make_particle_set => &
+       evt_epa_make_particle_set
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_make_particle_set &
+       (evt, factorization_mode, keep_correlations, r)
+    class(evt_epa_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+    select case (evt%mode)
+    case (EPA_TRIVIAL_COLLINEAR)
+    case (EPA_PAIR_RECOIL)
+       call evt%replace_radiated ()
+       call evt%replace_partons ()
+       call evt%transform_outgoing ()
+    case default
+       call msg_bug ("EPA beam handler: make particle set: unsupported mode")
+    end select
+    evt%particle_set_exists = .true.
+  end subroutine evt_epa_make_particle_set
+
+@ %def event_epa_beam_handler_make_particle_set
+@
+<<EPA beam handler: evt isr: TBP>>=
+  procedure :: prepare_new_event => &
+       evt_epa_prepare_new_event
+<<EPA beam handler: procedures>>=
+  subroutine evt_epa_prepare_new_event (evt, i_mci, i_term)
+    class(evt_epa_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+    call evt%reset ()
+  end subroutine evt_epa_prepare_new_event
+
+@ %def evt_epa_prepare_new_event
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[epa_beam_handler_ut.f90]]>>=
+<<File header>>
+
+module epa_beam_handler_ut
+  use unit_tests
+  use epa_beam_handler_uti
+
+<<Standard module head>>
+
+<<EPA beam handler: public test>>
+
+contains
+
+<<EPA beam handler: test driver>>
+
+end module epa_beam_handler_ut
+@ %def epa_beam_handler_ut
+@
+<<[[epa_beam_handler_uti.f90]]>>=
+<<File header>>
+
+module epa_beam_handler_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_utils, only: write_separator
+  use os_interface
+  use lorentz, only: vector4_t, vector4_moving, operator(*)
+  use rng_base, only: rng_t
+  use models, only: syntax_model_file_init, syntax_model_file_final
+  use models, only: model_list_t, model_t
+  use particles, only: particle_set_t
+
+  use event_transforms
+  use epa_beam_handler, only: evt_epa_t
+
+  use rng_base_ut, only: rng_test_t
+
+<<Standard module head>>
+
+<<EPA beam handler: test declarations>>
+
+contains
+
+<<EPA beam handler: tests>>
+
+end module epa_beam_handler_uti
+
+@ %def epa_beam_handler_uti
+@ API: driver for the unit tests below.
+<<EPA beam handler: public test>>=
+  public :: epa_beam_handler_test
+<<EPA beam handler: test driver>>=
+  subroutine epa_beam_handler_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<EPA beam handler: execute tests>>
+  end subroutine epa_beam_handler_test
+
+@ %def epa_beam_handler_test
+@
+\subsubsection{Trivial case}
+Handle events resulting from the EPA approximation.  This test is for the
+trivial case where the event is kept collinear.
+<<EPA beam handler: execute tests>>=
+  call test (epa_beam_handler_1, "epa_beam_handler_1", &
+       "collinear case, no modification", &
+       u, results)
+<<EPA beam handler: test declarations>>=
+  public :: epa_beam_handler_1
+<<EPA beam handler: tests>>=
+  subroutine epa_beam_handler_1 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_epa_t), target :: evt_epa
+    type(vector4_t), dimension(8) :: p
+    real(default) :: sqrts
+    real(default), dimension(2) :: x, xb
+    real(default) :: probability
+
+    write (u, "(A)")  "* Test output: epa_beam_handler_1"
+    write (u, "(A)")  "*   Purpose: apply beam handler trivially (no-op)"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct &
+         (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
+         pdg = [11, -11, 22, 22, 11, -11, 13, -13], &
+         model = model)
+
+    sqrts = 100._default
+    x = [0.6_default, 0.9_default]
+    xb= 1 - x
+
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    p(3:4) = x * p(1:2)
+    p(5:6) = xb  * p(1:2)
+    p(7:8) = p(3:4)
+
+    call pset%set_momentum (p, on_shell = .false.)
+    
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize EPA beam handler transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_epa
+    evt_epa%previous => evt_trivial
+    
+    call evt_epa%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill EPA beam handler transform"
+    write (u, "(A)")
+    
+    call evt_epa%prepare_new_event (1, 1)
+    call evt_epa%generate_weighted (probability)
+    call evt_epa%make_particle_set (0, .false.)
+    
+    call evt_epa%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_epa%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: epa_beam_handler_1"
+
+  end subroutine epa_beam_handler_1
+
+@ %def epa_beam_handler_1
+@
+\subsubsection{Beam pair with recoil}
+Handle beams resulting from the EPA approximation.  This test invokes the
+two-beam recoil mechanism.  Both beam remnants acquire transverse
+momentum, the photon momenta recoil, such that total energy-momentum
+is conserved, and all outgoing beam remnants and photons are on-shell
+(massless).
+<<EPA beam handler: execute tests>>=
+  call test (epa_beam_handler_2, "epa_beam_handler_2", &
+       "two-beam recoil", &
+       u, results)
+<<EPA beam handler: test declarations>>=
+  public :: epa_beam_handler_2
+<<EPA beam handler: tests>>=
+  subroutine epa_beam_handler_2 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_epa_t), target :: evt_epa
+    type(vector4_t), dimension(8) :: p
+    real(default) :: sqrts
+    real(default), dimension(2) :: x, xb
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+
+    write (u, "(A)")  "* Test output: epa_beam_handler_2"
+    write (u, "(A)")  "*   Purpose: apply beam handler with two-beam recoil"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
+         pdg = [11, -11, 22, 22, 11, -11, 13, -13], model = model)
+
+    sqrts = 100._default
+    x = [0.6_default, 0.9_default]
+    xb= 1 - x
+
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    p(3:4) = x * p(1:2)
+    p(5:6) = xb  * p(1:2)
+    p(7:8) = p(3:4)
+
+    call pset%set_momentum (p, on_shell = .false.)
+    
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize EPA beam handler transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_epa
+    evt_epa%previous => evt_trivial
+    
+    call evt_epa%set_mode_string (var_str ("recoil"))
+    call evt_epa%set_data ( &
+         sqrts = sqrts, &
+         q_max = sqrts, &
+         m = 511.e-3_default &
+         )
+
+    allocate (rng_test_t :: rng)
+    call rng%init (3)  ! default would produce pi for azimuthal angle
+    call evt_epa%import_rng (rng)
+
+    call evt_epa%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill EPA beam handler transform"
+    write (u, "(A)")
+    
+    call evt_epa%prepare_new_event (1, 1)
+    call evt_epa%generate_weighted (probability)
+    call evt_epa%make_particle_set (0, .false.)
+    
+    call evt_epa%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_epa%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: epa_beam_handler_2"
+
+  end subroutine epa_beam_handler_2
+
+@ %def epa_beam_handler_2
+@
+\subsubsection{Boosted beams}
+Handle radiated beam remnants resulting from EPA radiation.  This test
+invokes the two-beam recoil mechanism, in the case that the partons
+before EPA are not in their c.m.\ frame (but collinear).
+<<EPA beam handler: execute tests>>=
+  call test (epa_beam_handler_3, "epa_beam_handler_3", &
+       "two-beam recoil with boost", &
+       u, results)
+<<EPA beam handler: test declarations>>=
+  public :: epa_beam_handler_3
+<<EPA beam handler: tests>>=
+  subroutine epa_beam_handler_3 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_epa_t), target :: evt_epa
+    type(vector4_t), dimension(8) :: p
+    real(default) :: sqrts
+    real(default), dimension(2) :: x0
+    real(default), dimension(2) :: x, xb
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+
+    write (u, "(A)")  "* Test output: epa_beam_handler_3"
+    write (u, "(A)")  "*   Purpose: apply beam handler for boosted beams &
+         &and two-beam recoil"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 2, n_in = 2, n_rem = 2, n_vir = 0, n_out = 2, &
+         pdg = [11, -11, 22, 22, 11, -11, 13, -13], model = model)
+
+    write (u, "(A)")  "* Event data"
+    write (u, "(A)")
+
+    sqrts = 100._default
+    write (u, "(A,2(1x,F12.7))")  "sqrts   =", sqrts
+
+    x0 = [0.9_default, 0.4_default]
+    write (u, "(A,2(1x,F12.7))")  "x0      =", x0
+
+    write (u, "(A)")
+    write (u, "(A,2(1x,F12.7))")  "sqs_hat =", sqrts * sqrt (product (x0))
+
+    x = [0.6_default, 0.9_default]
+    xb= 1 - x
+    write (u, "(A,2(1x,F12.7))")  "x       =", x
+
+    write (u, "(A)")
+    write (u, "(A,2(1x,F12.7))")  "x0 * x  =", x0 * x
+
+    p(1) = x0(1) * vector4_moving (sqrts/2, sqrts/2, 3)
+    p(2) = x0(2) * vector4_moving (sqrts/2,-sqrts/2, 3)
+    p(3:4) = x * p(1:2)
+    p(5:6) = xb  * p(1:2)
+    p(7:8) = p(3:4)
+
+    call pset%set_momentum (p, on_shell = .false.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize EPA beam handler transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_epa
+    evt_epa%previous => evt_trivial
+    
+    call evt_epa%set_mode_string (var_str ("recoil"))
+    call evt_epa%set_data ( &
+         sqrts = sqrts, &
+         q_max = sqrts, &
+         m = 511.e-3_default &
+         )
+
+    allocate (rng_test_t :: rng)
+    call rng%init (3)  ! default would produce pi for azimuthal angle
+    call evt_epa%import_rng (rng)
+
+    call evt_epa%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill EPA beam handler transform"
+    write (u, "(A)")
+    
+    call evt_epa%prepare_new_event (1, 1)
+    call evt_epa%generate_weighted (probability)
+    call evt_epa%make_particle_set (0, .false.)
+    
+    call evt_epa%write (u, testflag=.true.)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_epa%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: epa_beam_handler_3"
+
+  end subroutine epa_beam_handler_3
+
+@ %def epa_beam_handler_3
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Decays}
@@ -3110,6 +6187,7 @@ module decays
   use quantum_numbers
   use interactions
   use evaluators
+  use variables, only: var_list_t
   use model_data
   use rng_base
   use selectors
@@ -3308,12 +6386,13 @@ decay product is itself stable.
   procedure :: init => decay_term_config_init
 <<Decays: procedures>>=
   recursive subroutine decay_term_config_init &
-       (term, flv, stable, model, process_stack)
+       (term, flv, stable, model, process_stack, var_list)
     class(decay_term_config_t), intent(out) :: term
     type(flavor_t), dimension(:,:), intent(in) :: flv
     logical, dimension(:), intent(in) :: stable
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
+    type(var_list_t), intent(in), optional :: var_list
     type(string_t), dimension(:), allocatable :: decay
     integer :: i
     allocate (term%prt (size (flv, 1)))
@@ -3331,7 +6410,8 @@ decay product is itself stable.
             if (all (flv(i,:) == flv(i,1))) then
                call prt_config%init (flv(i,1))
                call flv(i,1)%get_decays (decay)
-               call prt_config%init_decays (decay, model, process_stack)
+               call prt_config%init_decays &
+                    (decay, model, process_stack, var_list)
             else
                call prt_config%write ()
                call msg_fatal ("Decay configuration: &
@@ -3636,14 +6716,15 @@ number of terms.
   procedure :: init_term => decay_root_config_init_term
 <<Decays: procedures>>=
   recursive subroutine decay_root_config_init_term &
-       (decay, i, flv, stable, model, process_stack)
+       (decay, i, flv, stable, model, process_stack, var_list)
     class(decay_root_config_t), intent(inout) :: decay
     integer, intent(in) :: i
     type(flavor_t), dimension(:,:), intent(in) :: flv
     logical, dimension(:), intent(in) :: stable
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
-    call decay%term_config(i)%init (flv, stable, model, process_stack)
+    type(var_list_t), intent(in), optional, target :: var_list
+    call decay%term_config(i)%init (flv, stable, model, process_stack, var_list)
   end subroutine decay_root_config_init_term
 
 @ %def decay_root_config_init_term
@@ -3671,16 +6752,20 @@ recursively, available from the process stack (if present).
 For the unstable particles, we have to check whether their masses
 match between the production and the decay.  Fortunately, both
 versions are available for comparison.
+
+The optional [[var_list]] argument may override integral/error
+values for decay processes.
 <<Decays: decay root config: TBP>>=
   procedure :: connect => decay_root_config_connect
 <<Decays: procedures>>=
   recursive subroutine decay_root_config_connect &
-       (decay, process, model, process_stack, process_instance)
+       (decay, process, model, process_stack, process_instance, var_list)
     class(decay_root_config_t), intent(out) :: decay
     type(process_t), intent(in), target :: process
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(process_instance_t), intent(in), optional, target :: process_instance
+    type(var_list_t), intent(in), optional, target :: var_list
     type(connected_state_t), pointer :: connected_state
     type(interaction_t), pointer :: int
     type(flavor_t), dimension(:,:), allocatable :: flv
@@ -3704,7 +6789,7 @@ versions are available for comparison.
        allocate (stable (size (flv, 1)))
        stable = flv(:,1)%is_stable ()
        call check_masses ()
-       call decay%init_term (i, flv, stable, model, process_stack)
+       call decay%init_term (i, flv, stable, model, process_stack, var_list)
        deallocate (flv, stable, m_prod, m_dec)
     end do
     decay%process => process
@@ -4065,24 +7150,35 @@ that are specific for this decay.
 Infer stability from the particle properties, using the first row in the set
 of flavor states.  Once we can deal with predetermined decay chains, they
 should be used instead.
+
+If there is an optional [[var_list]], check if the stored values for
+the decay partial width and error have been overridden there.
 <<Decays: decay config: TBP>>=
   procedure :: connect => decay_config_connect
 <<Decays: procedures>>=
   recursive subroutine decay_config_connect &
-       (decay, process, model, process_stack, process_instance)
+       (decay, process, model, process_stack, process_instance, var_list)
     class(decay_config_t), intent(out) :: decay
     type(process_t), intent(in), target :: process
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(process_instance_t), intent(in), optional, target :: process_instance
+    type(var_list_t), intent(in), optional, target :: var_list
     real(default), dimension(:), allocatable :: integral_mci
+    type(string_t) :: process_id
     integer :: i, n_mci
-    call decay%decay_root_config_t%connect (process, model, process_stack)
+    call decay%decay_root_config_t%connect &
+         (process, model, process_stack, var_list=var_list)
+    process_id = process%get_id ()
+    if (process%cm_frame ()) then
+       call msg_fatal ("Decay process " // char (process_id) &
+            // ": unusable because rest frame is fixed.")
+    end if
     decay%integral = process%get_integral ()
     decay%abs_error = process%get_error ()
-    if (process%cm_frame ()) then
-       call msg_fatal ("Decay process " // char (process%get_id ()) &
-            // ": unusable because rest frame is fixed.")
+    if (present (var_list)) then
+       call update (decay%integral, "integral(" // process_id // ")")
+       call update (decay%abs_error, "error(" // process_id // ")")
     end if
     n_mci = process%get_n_mci ()
     allocate (integral_mci (n_mci))
@@ -4090,6 +7186,14 @@ should be used instead.
        integral_mci(i) = process%get_integral_mci (i)
     end do
     call decay%mci_selector%init (integral_mci)
+  contains
+    subroutine update (var, var_name)
+      real(default), intent(inout) :: var
+      type(string_t), intent(in) :: var_name
+      if (var_list%contains (var_name)) then
+         var = var_list%get_rval (var_name)
+      end if
+    end subroutine update
   end subroutine decay_config_connect
 
 @ %def decay_config_connect
@@ -4489,18 +7593,19 @@ process names.
   procedure :: init_decays => unstable_config_init_decays
 <<Decays: procedures>>=
   recursive subroutine unstable_config_init_decays &
-       (unstable, decay_id, model, process_stack)
+       (unstable, decay_id, model, process_stack, var_list)
     class(unstable_config_t), intent(inout) :: unstable
     type(string_t), dimension(:), intent(in) :: decay_id
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
+    type(var_list_t), intent(in), optional :: var_list
     integer :: i
     allocate (unstable%decay_config (size (decay_id)))
     do i = 1, size (decay_id)
        associate (decay => unstable%decay_config(i))
          if (present (process_stack)) then
             call decay%connect (process_stack%get_process_ptr (decay_id(i)), &
-                 model, process_stack)
+                 model, process_stack, var_list=var_list)
          else
             call decay%init (model, decay_id(i))
          end if
@@ -4966,6 +8071,9 @@ matrix element, and this must be real.
 The [[evt_decay]] object combines decay configuration, decay tree, and
 chain in a single object, as an implementation of the [[evt]] (event
 transform) abstract type.
+
+The [[var_list]] may be a pointer to the user variable list, which
+could contain overridden parameters for the decay processes.
 <<Decays: public>>=
   public :: evt_decay_t
 <<Decays: types>>=
@@ -4974,6 +8082,7 @@ transform) abstract type.
      type(decay_root_config_t) :: decay_root_config
      type(decay_root_t) :: decay_root
      type(decay_chain_t) :: decay_chain
+     type(var_list_t), pointer :: var_list => null ()
    contains
    <<Decays: evt decay: TBP>>
   end type evt_decay_t
@@ -5010,6 +8119,11 @@ includes configuration data, and the decay chain, i.e., the evaluators.
     call evt%write_name (u)
     call write_separator (u, 2)
     call evt%base_write (u, testflag = testflag)
+    if (associated (evt%var_list)) then
+       call write_separator (u)
+       write (u, "(1x,A)")  "Variable list for simulation: &
+            &[associated, not shown]"
+    end if
     if (verb) then
        call write_separator (u)
        call evt%decay_root%write (u)
@@ -5023,6 +8137,17 @@ includes configuration data, and the decay chain, i.e., the evaluators.
   end subroutine evt_decay_write
 
 @ %def evt_decay_write
+@ Set the pointer to a user variable list.
+<<Decays: evt decay: TBP>>=
+  procedure :: set_var_list => evt_decay_set_var_list
+<<Decays: procedures>>=
+  subroutine evt_decay_set_var_list (evt, var_list)
+    class(evt_decay_t), intent(inout) :: evt
+    type(var_list_t), intent(in), target :: var_list
+    evt%var_list => var_list
+  end subroutine evt_decay_set_var_list
+  
+@ %def evt_decay_set_var_list
 @ Connect with a process instance and process.  This initializes the
 decay configuration.  The process stack is used to look for process
 objects that implement daughter decays.
@@ -5039,8 +8164,13 @@ the decay tree.  This is done once for all events.
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     call evt%base_connect (process_instance, model)
-    call evt%decay_root_config%connect (process_instance%process, &
-         model, process_stack, process_instance)
+    if (associated (evt%var_list)) then
+       call evt%decay_root_config%connect (process_instance%process, &
+            model, process_stack, process_instance, evt%var_list)
+    else
+       call evt%decay_root_config%connect (process_instance%process, &
+            model, process_stack, process_instance)
+    end if
     call evt%decay_root_config%compute ()
     call evt%decay_root%init (evt%decay_root_config, evt%process_instance)
   end subroutine evt_decay_connect
@@ -5901,6 +9031,127 @@ $s\to f\bar f$.
   end subroutine decays_6
 
 @ %def decays_6
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Tau decays}
+<<[[tau_decays.f90]]>>=
+<<File header>>
+
+module tau_decays
+
+<<Use kinds>>
+  use io_units
+  use format_utils, only: write_separator
+  use sm_qcd
+  use model_data
+  use models
+  use event_transforms
+
+<<Standard module head>>
+
+<<Tau decays: public>>
+
+<<Tau decays: types>>
+
+contains
+
+<<Tau decays: procedures>>
+
+end module tau_decays
+@ %def tau_decays
+\subsection{Tau Decays Event Transform}
+This is the type for the tau decay event transform.
+<<Tau decays: public>>=
+  public :: evt_tau_decays_t
+<<Tau decays: types>>=
+  type, extends (evt_t) :: evt_tau_decays_t
+     type(model_t), pointer :: model_hadrons => null()
+     type(qcd_t), pointer :: qcd_t => null()
+   contains
+   <<Tau decays: evt tau decays: TBP>>
+  end type evt_tau_decays_t
+
+@ %def evt_tau_decays_t
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: write_name => evt_tau_decays_write_name
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_write_name (evt, unit)
+    class(evt_tau_decays_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: tau decays"
+  end subroutine evt_tau_decays_write_name
+
+@ %def evt_tau_decays_write_name
+@ Output.
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: write => evt_tau_decays_write
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_tau_decays_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, more_verbose, testflag
+    integer :: u
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
+    call evt%write_name (u)
+    call write_separator (u)
+    call evt%base_write (u, testflag = testflag, show_set = .false.)
+    if (evt%particle_set_exists)  &
+         call evt%particle_set%write &
+         (u, summary = .true., compressed = .true., testflag = testflag)
+    call write_separator (u)
+  end subroutine evt_tau_decays_write
+
+@ %def evt_tau_decays_write
+@ Here we take the particle set from the previous event transform and
+apply the tau decays. What probability should be given back, the
+product of branching ratios of the corresponding tau decays?
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: generate_weighted => evt_tau_decays_generate_weighted
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_generate_weighted (evt, probability)
+    class(evt_tau_decays_t), intent(inout) :: evt
+    real(default), intent(inout) :: probability
+    logical :: valid
+    evt%particle_set = evt%previous%particle_set
+    !!! To be checked or expanded
+    probability = 1
+    valid = .true.
+    evt%particle_set_exists = valid
+  end subroutine evt_tau_decays_generate_weighted
+
+@ %def evt_tau_decays_generate_weighted
+@ The factorization parameters are irrelevant.
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: make_particle_set => evt_tau_decays_make_particle_set
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_make_particle_set &
+       (evt, factorization_mode, keep_correlations, r)
+    class(evt_tau_decays_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+    logical :: valid
+    !!! to be checked and expanded
+    valid = .true.
+    evt%particle_set_exists = evt%particle_set_exists .and. valid
+  end subroutine evt_tau_decays_make_particle_set
+
+@ %def event_tau_decays_make_particle_set
+@
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: prepare_new_event => evt_tau_decays_prepare_new_event
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_prepare_new_event (evt, i_mci, i_term)
+    class(evt_tau_decays_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+    call evt%reset ()
+  end subroutine evt_tau_decays_prepare_new_event
+
+@ %def evt_tau_decays_prepare_new_event
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Shower}
 We might use matrix elements of LO and NLO to increase the accuracy of
@@ -10169,6 +13420,7 @@ concatenated, we provide individual dispatchers for each of them.
 
 module dispatch_transforms
 
+<<Use kinds>>
 <<Use strings>>
   use process
   use variables
@@ -10197,6 +13449,8 @@ module dispatch_transforms
 
   use event_transforms
   use resonance_insertion
+  use isr_photon_handler
+  use epa_beam_handler
   use decays
   use shower_base
   use shower_core
@@ -10244,7 +13498,7 @@ end module dispatch_transforms
   subroutine dispatch_evt_resonance (evt, var_list, res_history_set, libname)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
-    type(resonance_history_set_t), intent(in) :: res_history_set
+    type(resonance_history_set_t), dimension(:), intent(in) :: res_history_set
     type(string_t), intent(in) :: libname
     logical :: resonance_history
     resonance_history = var_list%get_lval (var_str ("?resonance_history"))
@@ -10261,19 +13515,111 @@ end module dispatch_transforms
     end if
   end subroutine dispatch_evt_resonance
 
-@ %def dispatch_evt_decay
+@ %def dispatch_evt_resonance
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_isr_handler
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_isr_handler (evt, var_list)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    logical :: isr_recoil
+    logical :: isr_handler_active
+    type(string_t) :: isr_handler_mode
+    real(default) :: sqrts
+    real(default) :: isr_q_max
+    real(default) :: isr_mass
+    isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
+    if (isr_handler_active) then
+       allocate (evt_isr_t :: evt)
+       call msg_message ("Simulate: activating ISR photon handler")
+       isr_recoil = var_list%get_lval (var_str ("?isr_recoil"))
+       if (isr_recoil) then
+          call msg_fatal ("Simulate: ISR handler is incompatible &
+               &with ?isr_recoil=true")
+       end if
+       select type (evt)
+       type is (evt_isr_t)
+          isr_handler_mode = var_list%get_sval (var_str ("$isr_handler_mode"))
+          call evt%set_mode_string (isr_handler_mode)
+          sqrts = var_list%get_rval (var_str ("sqrts"))
+          isr_q_max = var_list%get_rval (var_str ("isr_q_max"))
+          isr_mass = var_list%get_rval (var_str ("isr_mass"))
+          call evt%set_data (sqrts, isr_q_max, isr_mass)
+          call msg_message ("Simulate: ISR handler mode: " &
+               // char (evt%get_mode_string ()))
+       end select
+    else
+       evt => null ()
+    end if
+  end subroutine dispatch_evt_isr_handler
+
+@ %def dispatch_evt_isr_handler
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_epa_handler
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_epa_handler (evt, var_list)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    logical :: epa_recoil
+    logical :: epa_handler_active
+    logical :: isr_handler_active
+    type(string_t) :: epa_handler_mode
+    real(default) :: sqrts
+    real(default) :: epa_q_min
+    real(default) :: epa_e_max
+    real(default) :: epa_mass
+    epa_handler_active = var_list%get_lval (var_str ("?epa_handler"))
+    isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
+    if (epa_handler_active .and. isr_handler_active) then
+       call msg_fatal ("ISR and EPA handlers cannot be used together")
+    end if
+    if (epa_handler_active) then
+       allocate (evt_epa_t :: evt)
+       call msg_message ("Simulate: activating EPA beam handler")
+       epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
+       if (epa_recoil) then
+          call msg_fatal ("Simulate: EPA handler is incompatible &
+               &with ?epa_recoil=true")
+       end if
+       select type (evt)
+       type is (evt_epa_t)
+          epa_handler_mode = var_list%get_sval (var_str ("$epa_handler_mode"))
+          call evt%set_mode_string (epa_handler_mode)
+          sqrts = var_list%get_rval (var_str ("sqrts"))
+          epa_q_min = var_list%get_rval (var_str ("epa_q_min"))
+          epa_e_max = var_list%get_rval (var_str ("epa_e_max"))
+          epa_mass = var_list%get_rval (var_str ("epa_mass"))
+          if (epa_q_min /= 0) then
+             call msg_error ("EPA beam-recoil handler: epa_q_min is ignored")
+          end if
+          call evt%set_data (sqrts, 2 * epa_e_max, epa_mass)
+          call msg_message ("Simulate: EPA handler mode: " &
+               // char (evt%get_mode_string ()))
+       end select
+    else
+       evt => null ()
+    end if
+  end subroutine dispatch_evt_epa_handler
+
+@ %def dispatch_evt_epa_handler
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_decay
 <<Dispatch transforms: procedures>>=
   subroutine dispatch_evt_decay (evt, var_list)
     class(evt_t), intent(out), pointer :: evt
-    type(var_list_t), intent(in) :: var_list
+    type(var_list_t), intent(in), target :: var_list
     logical :: allow_decays
     allow_decays = var_list%get_lval (var_str ("?allow_decays"))
     if (allow_decays) then
        allocate (evt_decay_t :: evt)
        call msg_message ("Simulate: activating decays")
+       select type (evt)
+       type is (evt_decay_t)
+          call evt%set_var_list (var_list)
+       end select
     else
        evt => null ()
     end if
@@ -10745,6 +14091,7 @@ end module dispatch_transforms_ut
 
 module dispatch_transforms_uti
 
+<<Use kinds>>
 <<Use strings>>
   use format_utils, only: write_separator
   use variables
@@ -10767,7 +14114,7 @@ contains
 <<Dispatch transforms: tests>>
 
 end module dispatch_transforms_uti
-@ %def dispatch_transforms_ut
+@ %def dispatch_transforms_uti
 @ API: driver for the unit tests below.
 <<Dispatch transforms: public test>>=
   public ::dispatch_transforms_test
@@ -10904,11 +14251,11 @@ This test dispatches [[evt]] (event transform) objects.
 <<Dispatch transforms: tests>>=
   subroutine dispatch_transforms_2 (u)
     integer, intent(in) :: u
-    type(var_list_t) :: var_list
+    type(var_list_t), target :: var_list
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(os_data_t) :: os_data
-    type(resonance_history_set_t) :: res_history_set
+    type(resonance_history_set_t), dimension(1) :: res_history_set
     type(beam_structure_t) :: beam_structure
     class(evt_t), pointer :: evt
 
@@ -10930,6 +14277,46 @@ This test dispatches [[evt]] (event transform) objects.
     call dispatch_evt_resonance (evt, var_list, &
          res_history_set, &
          var_str ("foo_R"))
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* ISR photon handler"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?isr_handler"), .true., &
+         is_known = .true.)
+    call var_list%set_string (var_str ("$isr_handler_mode"), &
+         var_str ("recoil"), &
+         is_known = .true.)
+    call var_list%set_real (var_str ("sqrts"), 100._default, &
+         is_known = .true.)
+    call var_list%set_real (var_str ("isr_mass"), 511.e-6_default, &
+         is_known = .true.)
+    call dispatch_evt_isr_handler (evt, var_list)
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* EPA beam handler"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?isr_handler"), .false., &
+         is_known = .true.)
+    call var_list%set_log (var_str ("?epa_handler"), .true., &
+         is_known = .true.)
+    call var_list%set_string (var_str ("$epa_handler_mode"), &
+         var_str ("recoil"), &
+         is_known = .true.)
+    call var_list%set_real (var_str ("sqrts"), 100._default, &
+         is_known = .true.)
+    call var_list%set_real (var_str ("epa_mass"), 511.e-6_default, &
+         is_known = .true.)
+    call dispatch_evt_epa_handler (evt, var_list)
     call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()

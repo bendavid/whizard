@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -385,11 +385,12 @@ contains
     end if
   end subroutine prc_user_defined_base_compute_sqme_color_c
 
-  subroutine prc_user_defined_base_compute_alpha_s (object, core_state, fac_scale)
+  subroutine prc_user_defined_base_compute_alpha_s &
+       (object, core_state, ren_scale)
     class(prc_user_defined_base_t), intent(in) :: object
     class(user_defined_state_t), intent(inout) :: core_state
-    real(default), intent(in) :: fac_scale
-    core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+    real(default), intent(in) :: ren_scale
+    core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
   end subroutine prc_user_defined_base_compute_alpha_s
 
   function prc_user_defined_base_get_alpha_s (object, core_state) result (alpha)

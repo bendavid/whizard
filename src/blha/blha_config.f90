@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1052,7 +1052,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
        else
-          write (u, "(A)") "# BLHA order written by WHIZARD 2.6.0"
+          write (u, "(A)") "# BLHA order written by WHIZARD 2.6.1"
        end if
        write (u, "(A)")
     end if

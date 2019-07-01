@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -28,6 +28,7 @@
 
 module process_stacks
 
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
@@ -68,6 +69,7 @@ module process_stacks
      procedure :: push => process_stack_push
      procedure :: init_result_vars => process_stack_init_result_vars
      procedure :: fill_result_vars => process_stack_fill_result_vars
+     procedure :: update_result_vars => process_stack_update_result_vars
      procedure :: exists => process_stack_exists
      procedure :: get_process_ptr => process_stack_get_process_ptr
   end type process_stack_t
@@ -202,6 +204,23 @@ contains
     end if
   end subroutine process_stack_fill_result_vars
 
+  subroutine process_stack_update_result_vars (stack, id, var_list_local)
+    class(process_stack_t), intent(inout) :: stack
+    type(string_t), intent(in) :: id
+    type(var_list_t), intent(inout) :: var_list_local
+    call update ("integral(" // id // ")")
+    call update ("error(" // id // ")")
+  contains
+    subroutine update (var_name)
+      type(string_t), intent(in) :: var_name
+      real(default) :: value
+      if (var_list_local%contains (var_name, follow_link = .false.)) then
+         value = stack%var_list%get_rval (var_name)
+         call var_list_local%set_real (var_name, value, is_known = .true.)
+      end if
+    end subroutine update
+  end subroutine process_stack_update_result_vars
+    
   function process_stack_exists (stack, id) result (flag)
     class(process_stack_t), intent(in) :: stack
     type(string_t), intent(in) :: id

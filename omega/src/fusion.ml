@@ -1826,30 +1826,53 @@ i*)
       M.flavor_to_string wf.A.flavor ^
         "[" ^ String.concat "/" (List.map p2s (P.to_ints wf.A.momentum)) ^ "]"
 
-    let below_to_string transform dag wf =
+    let below_to_channel transform ch dag wf =
       let n2s wf = variable (transform wf)
       and e2s c = "" in
-      Tree2.to_string n2s e2s (A.D.dependencies dag wf)
+      Tree2.to_channel ch n2s e2s (A.D.dependencies dag wf)
 
-    let bra_to_string transform dag wf =
+    let bra_to_channel transform ch dag wf =
       let tree = A.D.dependencies dag wf in
       if Tree2.is_singleton tree then
         let n2s wf = variable (transform wf)
         and e2s c = "" in
-        Tree2.to_string n2s e2s tree
+        Tree2.to_channel ch n2s e2s tree
       else
         failwith "Fusion.phase_space_channels: wrong topology!"
 
-    let ket_to_string transform ch dag ket =
-      "(" ^
-        (String.concat ","
-           (List.map (below_to_string transform dag) (A.children ket))) ^ ")"
+    let ket_to_channel transform ch dag ket =
+      Printf.fprintf ch "(";
+      begin match A.children ket with
+      | [] -> ()
+      | [child] -> below_to_channel transform ch dag child
+      | child :: children ->
+         below_to_channel transform ch dag child;
+         List.iter
+           (fun child ->
+             Printf.fprintf ch ",";
+             below_to_channel transform ch dag child)
+           children
+      end;
+      Printf.fprintf ch ")"
 
     let phase_space_braket transform ch (bra, ket) dag =
-      Printf.fprintf
-        ch "%s: { %s }\n"
-        (bra_to_string transform dag bra)
-        (String.concat " | " (List.map (ket_to_string transform ch dag) ket))
+      bra_to_channel transform ch dag bra;
+      Printf.fprintf ch ": {";
+      begin match ket with
+      | [] -> ()
+      | [ket1] ->
+         Printf.fprintf ch " ";
+         ket_to_channel transform ch dag ket1
+      | ket1 :: kets ->
+         Printf.fprintf ch " ";
+         ket_to_channel transform ch dag ket1;
+         List.iter
+           (fun k ->
+             Printf.fprintf ch " \\\n   | ";
+             ket_to_channel transform ch dag k)
+           kets
+      end;
+      Printf.fprintf ch " }\n"
 
 (*i Food for thought:
 

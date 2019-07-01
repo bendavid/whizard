@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -329,6 +329,7 @@ contains
     real(default) :: mw, mz, ww, wz
     type(vector4_t), dimension(3) :: p
     real(default), dimension(2) :: dist
+    real(default) :: gw, factor
     integer :: i
 
     write (u, "(A)")  "* Test output: resonances_4"
@@ -355,6 +356,13 @@ contains
     write (u, "(A,1x," // FMF_12 // ")")  "mZ  =", mz
     write (u, "(A,1x," // FMF_12 // ")")  "wZ  =", wz
     
+    write (u, "(A)")
+    write (u, "(A)")  "* Gaussian width parameter"
+    write (u, "(A)")
+    
+    gw = 2
+    write (u, "(A,1x," // FMF_12 // ")")  "gw  =", gw
+
     write (u, "(A)")
     write (u, "(A)")  "* Setup resonance histories"
     write (u, "(A)")
@@ -386,6 +394,13 @@ contains
     write (u, "(A,1x," // FMF_12 // ")")  "m/w (Z)      =", mz / wz
 
     write (u, "(A)")
+    write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
+    write (u, "(A)")
+    
+    factor = res_history%evaluate_gaussian (p, gw)
+    write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
+
+    write (u, "(A)")
     write (u, "(A)")  "* Set momenta on W peak"
     write (u, "(A)")
 
@@ -406,6 +421,15 @@ contains
          abs (mz**2 - mw**2) / (mz*wz)
 
     write (u, "(A)")
+    write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
+    write (u, "(A)")
+    
+    factor = res_history%evaluate_gaussian (p, gw)
+    write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
+    write (u, "(A,1x," // FMF_12 // ")")  "expected     =", &
+         exp (- (abs (mz**2 - mw**2) / (mz*wz))**2 / (gw * wz)**2)
+
+    write (u, "(A)")
     write (u, "(A)")  "* Set momenta on both peaks"
     write (u, "(A)")
 
@@ -421,6 +445,13 @@ contains
     call res_history%evaluate_distances (p, dist)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (W) =", dist(1)
     write (u, "(A,1x," // FMF_12 // ")")  "distance (Z) =", dist(2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate Gaussian turnoff factor"
+    write (u, "(A)")
+    
+    factor = res_history%evaluate_gaussian (p, gw)
+    write (u, "(A,1x," // FMF_12 // ")")  "gaussian fac =", factor
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"

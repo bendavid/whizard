@@ -1,7 +1,7 @@
 General:
 
 * WHIZARD 2.4+ currently runs only with the NAGFOR 6.0 (or newer) and 
-  gfortran 4.8.5 (or newer) Fortran compilers as well as Intel ifort
+  gfortran 4.8.4 (or newer) Fortran compilers as well as Intel ifort
   17.0.4 (or newer).
 
   [See the file EXTENSIONS for the list of Fortran 2003/2008/2015 
@@ -16,9 +16,14 @@ General:
 
 Known bugs:
 
+* In version 2.6.0 the top threshold calculations do not work due to a
+  regression. This is fixed in 2.6.1.
+
 * In version 2.3.0 there is a regression which produces invalid O'Mega
   matrix element code for SUSY processes with gluino propagators. This
   is fixed in 2.3.1+.
+
+Compilers and OS specialties:
 
 * With gfortran 4.9.1, the auto_components feature (incl. the smtest_5
   self test) does not work in v2.2.2 due to a regression in that compiler.

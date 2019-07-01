@@ -176,5 +176,5 @@ dist_muli_DATA = \
 thresholddir = $(pkgdatadir)/SM_tt_threshold_data
 dist_threshold_DATA = \
   SM_tt_threshold_data/download_data.sh \
-  SM_tt_threshold_data/threshold_Virtual.f90 \
+  SM_tt_threshold_data/threshold_virtual.f90 \
   SM_tt_threshold_data/threshold.f90

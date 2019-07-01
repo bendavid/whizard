@@ -31,7 +31,7 @@ process dec_su_q	= su1 => u, neu2
 process dec_neu_sl2 	= neu2 => SE12, e1
 
 process susybg = u,U => SU1, su1
-process full = u, U => SU1, u, e1, SE12
+process fullproc = u, U => SU1, u, e1, SE12
 
 compile
 
@@ -46,7 +46,7 @@ beams = p, p => lhapdf
 cuts = all Pt > 10 GeV [u]
 
 integrate (susybg) { iterations = 5:10000, 2:10000 }
-integrate (full)
+integrate (fullproc)
 
 n_events = 10000
 
@@ -68,7 +68,7 @@ histogram inv_mass1_dia (0, 600, 20)
 $title = "Factorized process with isotropic decay"
 histogram inv_mass1_iso (0, 600, 20)
 
-simulate (full) {
+simulate (fullproc) {
   $sample = "casc_dec_full"
   safety_factor = 5
   analysis = 

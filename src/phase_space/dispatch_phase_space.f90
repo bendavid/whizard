@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -95,7 +95,7 @@ contains
        end if
     case ("fks")
       allocate (phs_fks_config_t :: phs)
-    case ("wood", "default")
+    case ("wood", "default", "fast_wood")
        call dispatch_wood ()
     case default
        call msg_fatal ("Phase space: parameterization method '" &
@@ -126,6 +126,7 @@ contains
               call phs%enable_equivalences ()
          if (present (mapping_defaults)) &
               call phs%set_mapping_defaults (mapping_defaults)
+         if (phs_method == "fast_wood") phs%use_cascades2 = .true.
          phs%vis_channels = vis_channels
          phs%fatal_beam_decay = fatal_beam_decay
          phs%os_data = os_data

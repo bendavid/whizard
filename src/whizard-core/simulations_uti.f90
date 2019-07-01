@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1783,7 +1783,7 @@ contains
     write (u, "(A)")
 
     call eio_in%init_direct &
-         (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+         (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 3, &
          pdg = [-11, 11, 1, -2, 24], model=global%model)
     call eio_in%set_selection_indices (1, 1, 1, 1)
 

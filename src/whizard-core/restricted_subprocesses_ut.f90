@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -51,6 +51,9 @@ contains
          u, results)
     call test (restricted_subprocesses_4, "restricted_subprocesses_4", &
          "event transform", &
+         u, results)
+    call test (restricted_subprocesses_5, "restricted_subprocesses_5", &
+         "event transform with gaussian turnoff", &
          u, results)
   end subroutine restricted_subprocesses_test
 

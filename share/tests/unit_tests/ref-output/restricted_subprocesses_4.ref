@@ -8,6 +8,7 @@
  Model = SM
  Initially defined component(s) = 1
  Extra generated component(s)   = 0
+ Resonant subprocesses required
  MD5 sum   = '                                '
  Component #1
    Component ID        = restricted_subprocesses_4_p_i1
@@ -83,6 +84,7 @@
  Event transform: resonance insertion
 ========================================================================
  Process library = ''
+ Component #1: *
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
@@ -90,9 +92,11 @@
  2    Resonance history with 1 resonances:
       1 2 3 f(23)
       contained in ()
-   Subprocess instances: allocated
-   Selected: [none]
-   On-shell limit =  0.00000E+00
+------------------------------------------------------------------------
+ Subprocess instances: allocated
+ Selected: [none]
+ On-shell limit   =  0.00000E+00
+ On-shell turnoff =  0.00000E+00
 ------------------------------------------------------------------------
    Associated process: 'restricted_subprocesses_4_p'
    TAO random-number generator:
@@ -112,6 +116,7 @@
  Event transform: resonance insertion
 ========================================================================
  Process library = ''
+ Component #1: *
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
@@ -119,9 +124,11 @@
  2    Resonance history with 1 resonances:
       1 2 3 f(23)
       contained in ()
-   Subprocess instances: allocated
-   Selected: resonance history #1
-   On-shell limit =  1.00000E+01
+------------------------------------------------------------------------
+ Subprocess instances: allocated
+ Selected: resonance history #1
+ On-shell limit   =  1.00000E+01
+ On-shell turnoff =  0.00000E+00
 ------------------------------------------------------------------------
    Selector: i, weight, acc. weight
    0  9.5033686E-03  9.5033686E-03

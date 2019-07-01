@@ -275,7 +275,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.6.0}
+\newcommand{\thisversion}{2.6.1}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -665,7 +665,10 @@ of \whizard:
   \\\hline
   2.6.0 & 09/2017 & MPI parallel integration and event generation;
   resonance histories \\
-  & & for showers; RECOLA support
+  & & for showers; RECOLA support \\
+  2.6.1 & 11/2017 & EPA/ISR transverse distributions, handling of
+  shower resonances; \\
+  & & more efficient (alternative) phase space generation
   \\\hline
 \end{tabular}
 \end{center}
@@ -2266,7 +2269,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 2.6.0
+    |                               WHIZARD 2.6.1
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -2297,7 +2300,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.6.0
+|                               WHIZARD 2.6.1
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2356,7 +2359,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.6.0
+ |                               WHIZARD 2.6.1
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -5603,9 +5606,11 @@ Parameter & Default & Meaning \\\hline\hline
 emission \\\hline
 \ttt{isr\_mass} & \ttt{0}/intrinsic & mass of the radiating lepton  \\\hline
 \ttt{isr\_q\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for ISR \\\hline
-\ttt{?isr\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$ \\\hline
-\ttt{?isr\_keep\_energy} & \ttt{false} & recoil flag to conserve
-energy in splitting
+\hline
+\ttt{?isr\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$
+(\emph{deprecated})\\\hline
+\ttt{?isr\_keep\_energy} & \ttt{false} & recoil flag: conserve
+energy in splitting (\emph{deprecated})
 \\\hline
 \end{tabular}}\mbox{}
 
@@ -5622,15 +5627,39 @@ function which acts roughly as an upper hardness cutoff for the emitted
 photons, can be set through \ttt{isr\_q\_max}; if not set, the
 collider energy (possibly after beamstrahlung,
 cf. Sec.~\ref{sec:beamstrahlung}) $\sqrt{s}$ (or $\sqrt{\widehat{s}}$)
-is taken. Finally, with the flag \ttt{?isr\_recoil}, the $p_T$ recoil
-of the emitting lepton against the photon radiation can be switched
-on; per default it is off. Note that \whizard\ accounts for the
+is taken.  Note that \whizard\ accounts for the
 exclusive effects of ISR radiation at the moment by a single (hard,
 resolved) photon in the event; a more realistic treatment of exclusive
 ISR photons in simulation is foreseen for a future version.
 
-For more information on the underlying physics, see
-Chap.~\ref{chap:hardint}.
+While the ISR structure function is evaluated in the collinear limit,
+it is possible to generate transverse momentum for both the radiated
+photons and the recoiling partonic system.  We recommend to stick to
+the collinear approximation for the integration step.  Integration
+cuts should be set up such that they do not significantly depend on
+photon transverse momentum.  In a subsequent simulation step, it is
+possible to transform the events with collinear ISR radiation into
+more realistic events with non-collinear radiation.  To this end,
+\whizard\ provides a separate ISR photon handler which can be
+activated in the simulation step.  The algorithm operates on the
+partonic event: it takes the radiated photons and the partons entering
+the hard process, and applies a $p_T$ distribution to those particles
+and their interaction products, i.e., all outgoing particles.  Cuts
+that depend on photon $p_T$ may be applied to the modified events.
+For details on the ISR photon handler,
+cf.\ Sec.~\ref{sec:isr-photon-handler}.
+
+{\footnotesize The flag \ttt{?isr\_recoil} switches on $p_T$ recoil of
+  the emitting lepton against photon radiation during integration; per
+  default it is off.  The flag \ttt{?isr\_keep\_energy} controls the
+  mode of on-shell projection for the splitting process with $p_T$.
+  Note that this feature is kept for backwards compatibility, but
+  should not be used for new simulations.  The reason is as follows:
+  For a fraction of events, $p_T$ will become significant, and (i)
+  energy/momentum non-conservation, applied to both beams separately,
+  can lead to unexpected and unphysical effects, and (ii) the modified
+  momenta enter the hard process, so the collinear approximation used
+  in the ISR structure function computation does not hold.  }
 
 %%%%%%%%%%%%%%%
 
@@ -7655,6 +7684,33 @@ stable <particle-tag>
 \end{code}
 constructor for the particle \ttt{<particle-tag>}.
 
+
+\subsubsection{Resetting branching fractions}
+\label{sec:br-reset}
+
+As described above, decay processes that appear in a simulation must
+first be integrated by the program, either explicitly via the
+\verb|integrate| command, or implicitly by \verb|unstable|.  In either
+case, \whizard\ will use the computed partial widths in order to
+determine branching fractions.  In the spirit of a purely leading-order
+calculation, this is consistent.
+
+However, it may be desired to rather use different branching-fraction
+values for the decays of a particle, for instance, NLO-corrected
+values.  In fact, after \whizard\ has integrated any process, the
+integration result becomes available as an ordinary
+\sindarin\ variable.  For instance, if a decay process has the ID
+\verb|h_bb|, the integral of this process -- the partial width, in
+this case -- becomes the variable \verb|integral(h_bb)|.  This
+variable may be reset just like any other variable:
+\begin{code}
+  integral(h_bb) = 2.40e-3 GeV
+\end{code}
+The new value will be used for all subsequent Higgs branching-ratio
+calculations and decays, if an unstable Higgs appears in a process for
+simulation.
+
+
 \subsubsection{Spin correlations in decays}
 \label{sec:spin-correlations}
 
@@ -9154,6 +9210,72 @@ subpackage.
 
 %%%%%
 
+\section{Transverse momentum for ISR photons}
+\label{sec:isr-photon-handler}
+
+The structure functions that describe the splitting of a beam particle
+into a particle pair, of which one enters the hard interaction and the
+other one is radiated, are defined and evaluated in the strict
+collinear approximation.  In particular, this holds for the ISR
+structure function which describes the radiation of photons off a
+charged particle in the initial state.
+
+The ISR structure function that is used by \whizard\ is understood to
+be inclusive, i.e., it implicitly contains an integration over
+transverse momentum.  This approach is to be used for computing a
+total cross section via \ttt{integrate}.  In \whizard, it is possible
+to unfold this integration, as a transformation that is applied by
+\ttt{simulate} step, event by event.  The resulting modified events
+will show a proper logarithmic momentum-transfer ($Q^2$) distribution
+for the radiated photons.  The recoil is applied to the
+hard-interaction system, such that four-momentum and $\sqrt{\hat s}$
+are conserved.  The distribution is cut off by $Q_{\text{max}}^2$
+(cf. \ttt{isr\_q\_max}) for large momentum transfer, and smoothly by
+the parton mass (cf.\ \ttt{isr\_mass}) for small momentum transfer.
+
+To activate this modification, set
+\begin{Code}
+  ?isr_handler = true
+  $isr_handler_mode = "recoil"
+\end{Code}
+before, or as an option to, the \ttt{simulate} command.
+
+Limitations: the current implementation of the $p_T$ modification
+works only for the symmetric double-ISR case, i.e., both beams have to
+be charged particles with identical mass (e.g., $e^+e^-$).  The mode
+\ttt{recoil} generates exactly one photon per beam, i.e., it modifies
+the momentum of the single collinear photon that the ISR structure
+function implementation produces, for each beam.  (It is foreseen that
+further modes or options will allow to generate multiple photons.
+Alternatively, the \pythia\ shower can be used to simulate multiple
+photons radiated from the initial state.)
+
+%%%%%
+
+\section{Transverse momentum for the EPA approximation}
+\label{sec:epa-beam-handler}
+
+For the equivalent-photon approximation (EPA), which is also defined
+in the collinear limit, recoil momentum can be inserted into generated
+events in an entirely analogous way.  The appropriate settings are
+\begin{Code}
+  ?epa_handler = true
+  $epa_handler_mode = "recoil"
+\end{Code}
+
+Limitations: as for ISR, the current implementation of the $p_T$
+modification works only for the symmetric double-EPA case.  Both
+incoming particles of the hard process must be photons, while both
+beams must be charged particles with identical mass (e.g., $e^+e^-$).
+Furthermore, the current implementation does not respect the
+kinematical limit parameter \verb|epa_q_min|, it has to be set to
+zero. In effect, the lower $Q^2$ cutoff is determined by the
+beam-particle mass \verb|epa_mass|, and the upper cutoff is either
+given by $Q_{\text{max}}=2*E_{\text{max}}$ (the parameter
+\verb|epa_e_max|), or by the limit $\sqrt{s}$ if this is not set.
+
+%%%%%
+
 \section{Resonances and continuum}
 
 \subsection{Complete matrix elements}
@@ -9323,6 +9445,23 @@ It has to be mentioned that generating the matrix-element code for all
 possible resonance histories takes additional computing resources.  In the
 current default setup, this feature is switched off.  It has to be explicitly
 activated via the \verb|?resonance_history| flag.
+
+Also, the feature can be activated or deactivated individually for
+each process, such as in
+\begin{Code}
+  ?resonance_history = true
+  process q4_with_res = e1, E1 => u, U, d, D  { ?resonance_history = true }
+  process q4_wo_res   = e1, E1 => u, U, d, D  { ?resonance_history = false }
+\end{Code}
+If the flag is \verb|false| for a process, no resonance code will be
+generated.  Similarly, the flag has to be globally or locally active
+when \verb|simulate| is called, such that the feature takes effect for
+event generation.
+
+Finally, we mention the order of execution: any additional
+matrix element code is compiled and linked when \verb|compile| is
+executed for the processes in question.  If this command is omitted,
+the \verb|simulate| command will trigger compilation.
 
 
 \section{Parton showers and Hadronization}
@@ -10215,7 +10354,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.6.0</generator_version>
+  <generator_version>2.6.1</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -11707,7 +11846,7 @@ alias prt = lep:A
 Next, the two processes are defined, \eemm, and the same with an
 explicit QED photon: $e^+e^- \to \mu^+\mu^-\gamma$,
 \begin{code}
-process born = e1, E1 => e2, E2
+process bornproc = e1, E1 => e2, E2
 process rc = e1, E1 => e2, E2, A
 compile
 \end{code}
@@ -11746,8 +11885,8 @@ scan sqrts = ((88.0 GeV => 90.0 GeV /+ 0.5 GeV),
               (90.1 GeV => 91.9 GeV /+ 0.1 GeV),
               (92.0 GeV => 95.0 GeV /+ 0.5 GeV)) {
   beams = e1, E1
-  integrate (born) { iterations = 2:1000:"gw", 1:2000 }
-  record lineshape_born (sqrts, integral (born) / 1000)
+  integrate (bornproc) { iterations = 2:1000:"gw", 1:2000 }
+  record lineshape_born (sqrts, integral (bornproc) / 1000)
   integrate (rc)   { iterations = 5:3000:"gw", 2:5000 }
   record lineshape_rc (sqrts, integral (rc) / 1000)
 }
@@ -11780,13 +11919,13 @@ If you run the \sindarin\ script, you will find an output like:
            sqrts =  8.800000000000E+01
            | RNG: Initializing TAO random-number generator
            | RNG: Setting seed for random-number generator to 10713
-           | Initializing integration for process born:
+           | Initializing integration for process bornproc:
            | ------------------------------------------------------------------------
-           | Process [scattering]: 'born'
+           | Process [scattering]: 'bornproc'
            |   Library name  = 'default_lib'
            |   Process index = 1
            |   Process components:
-           |     1: 'born_i1':   e-, e+ => mu-, mu+ [omega]
+           |     1: 'bornproc_i1':   e-, e+ => mu-, mu+ [omega]
            | ------------------------------------------------------------------------
            | Beam structure: e-, e+
            | Beam data (collision):
@@ -11795,14 +11934,14 @@ If you run the \sindarin\ script, you will find an output like:
            |   sqrts = 8.800000000000E+01 GeV
            | Phase space: generating configuration ...
            | Phase space: ... success.
-           | Phase space: writing configuration file 'born_i1.phs'
+           | Phase space: writing configuration file 'bornproc_i1.phs'
            | Phase space: 1 channels, 2 dimensions
            | Phase space: found 1 channel, collected in 1 grove.
            | Phase space: Using 1 equivalence between channels.
            | Phase space: wood
            | Applying user-defined cuts.
            | OpenMP: Using 8 threads
-           | Starting integration for process 'born'
+           | Starting integration for process 'bornproc'
            | Integrate: iterations = 2:1000:"gw", 1:2000
            | Integrator: 1 chains, 1 channels, 2 dimensions
            | Integrator: Using VAMP channel equivalences

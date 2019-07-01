@@ -203,6 +203,8 @@
  T =   2.500000000000E+03
  Parents:  4
 ------------------------------------------------------------------------
+ Variable list for simulation: [associated, not shown]
+------------------------------------------------------------------------
   Final-state decay tree:
     process ID      = simulation_11_p *
    Selected MCI    = 1

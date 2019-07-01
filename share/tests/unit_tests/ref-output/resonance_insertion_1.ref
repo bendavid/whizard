@@ -48,13 +48,16 @@
  Event transform: resonance insertion
 ========================================================================
  Process library = ''
+ Component #1: *
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
       contained in ()
-   Subprocess instances: not allocated
-   Selected: [none]
-   On-shell limit =  0.00000E+00
+------------------------------------------------------------------------
+ Subprocess instances: not allocated
+ Selected: [none]
+ On-shell limit   =  0.00000E+00
+ On-shell turnoff =  0.00000E+00
 ------------------------------------------------------------------------
    Random-number generator: test (state = 1)
    Number of tries = 0
@@ -66,13 +69,16 @@
  Event transform: resonance insertion
 ========================================================================
  Process library = ''
+ Component #1: *
    Resonance history set:
  1    Resonance history with 1 resonances:
       1 2 f(-24)
       contained in ()
-   Subprocess instances: not allocated
-   Selected: resonance history #1
-   On-shell limit =  0.00000E+00
+------------------------------------------------------------------------
+ Subprocess instances: not allocated
+ Selected: resonance history #1
+ On-shell limit   =  0.00000E+00
+ On-shell turnoff =  0.00000E+00
 ------------------------------------------------------------------------
    Selector: i, weight, acc. weight
    1  1.000000000000E+00  1.000000000000E+00

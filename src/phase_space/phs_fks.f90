@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,7 +32,7 @@ module phs_fks
   use iso_varying_string, string_t => varying_string
   use constants
   use diagnostics
-  use io_units, only: given_output_unit
+  use io_units, only: given_output_unit, free_unit
   use format_utils, only: write_separator
   use lorentz
   use physics_defs
@@ -46,6 +46,7 @@ module phs_fks
   use phs_forests, only: phs_forest_final
   use phs_wood
   use cascades
+  use cascades2
   use process_constants
   use process_libraries
   use ttv_formfactors, only: generate_on_shell_decay_threshold, m1s_to_mpole
@@ -868,7 +869,15 @@ contains
     type(flavor_t), dimension(:,:), allocatable :: flv_born
     integer :: i, j
     integer :: n_state, n_flv_born
-    allocate (phs_config%cascade_set)
+    integer :: unit_fds
+    logical :: valid
+    type(string_t) :: file_name
+    logical :: file_exists
+    if (phs_config%use_cascades2) then
+       allocate (phs_config%feyngraph_set)
+    else
+       allocate (phs_config%cascade_set)
+    endif
     n_flv_born = size (phs_config%flv, 1) - 1
     n_state = size (phs_config%flv, 2)
     allocate (flv_born (n_flv_born, n_state))
@@ -877,15 +886,38 @@ contains
           flv_born(i, j) = phs_config%flv(i, j)
        end do
     end do
+    if (phs_config%use_cascades2) then
+       file_name = char (phs_config%id) // ".fds"
+       inquire (file=char (file_name), exist=file_exists)
+       if (.not. file_exists) call msg_fatal &
+            ("The O'Mega input file " // char (file_name) // &
+            " does not exist. " // "Please make sure that the " // &
+            "variable ?omega_write_phs_output has been set correctly.")
+       unit_fds = free_unit ()
+       open (unit=unit_fds, file=char(file_name), status='old', action='read')
+    endif
     off_shell = phs_config%par%off_shell
     do extra_off_shell = 0, max (n_flv_born - 2, 0)
        phs_config%par%off_shell = off_shell + extra_off_shell
-       call cascade_set_generate (phs_config%cascade_set, &
-          phs_config%model, phs_config%n_in, phs_config%n_out - 1, &
-          flv_born, phs_config%par, phs_config%fatal_beam_decay)
-       if (cascade_set_is_valid (phs_config%cascade_set)) exit
+       if (phs_config%use_cascades2) then
+          call feyngraph_set_generate (phs_config%feyngraph_set, &
+               phs_config%model, phs_config%n_in, phs_config%n_out - 1, &
+               flv_born, phs_config%par, phs_config%fatal_beam_decay, unit_fds)
+          if (feyngraph_set_is_valid (phs_config%feyngraph_set)) exit
+       else
+          call cascade_set_generate (phs_config%cascade_set, &
+               phs_config%model, phs_config%n_in, phs_config%n_out - 1, &
+               flv_born, phs_config%par, phs_config%fatal_beam_decay)
+          if (cascade_set_is_valid (phs_config%cascade_set)) exit
+       endif
     end do
-    if (.not. cascade_set_is_valid (phs_config%cascade_set)) &
+    if (phs_config%use_cascades2) then
+       close (unit_fds)
+       valid = feyngraph_set_is_valid (phs_config%feyngraph_set)
+    else
+       valid = cascade_set_is_valid (phs_config%cascade_set)
+    endif
+    if (.not. valid) &
        call msg_fatal ("Resonance extraction: Phase space generation failed")
   end subroutine phs_fks_config_generate_phase_space_extra
 
@@ -909,10 +941,15 @@ contains
     allocate (phs_config%chain (size (phs_cfg_born%chain)))
     phs_config%chain = phs_cfg_born%chain
     phs_config%model => phs_cfg_born%model
+    phs_config%use_cascades2 = phs_cfg_born%use_cascades2
     if (allocated (phs_cfg_born%cascade_set)) then
        allocate (phs_config%cascade_set)
        phs_config%cascade_set = phs_cfg_born%cascade_set
     end if
+    if (allocated (phs_cfg_born%feyngraph_set)) then
+       allocate (phs_config%feyngraph_set)
+       phs_config%feyngraph_set = phs_cfg_born%feyngraph_set
+    endif
     phs_config%md5sum_born_config = phs_cfg_born%md5sum_phs_config
   end subroutine phs_fks_config_set_born_config
 
@@ -922,11 +959,19 @@ contains
     if (allocated (phs_config%cascade_set)) then
        call cascade_set_get_resonance_histories &
           (phs_config%cascade_set, n_filter = 2, res_hists = resonance_histories)
+    else if (allocated (phs_config%feyngraph_set)) then
+       call feyngraph_set_get_resonance_histories &
+            (phs_config%feyngraph_set, n_filter = 2, res_hists = resonance_histories)
     else
        call msg_debug (D_PHASESPACE, "Have to rebuild phase space for resonance histories")
        call phs_config%generate_phase_space_extra ()
-       call cascade_set_get_resonance_histories &
-          (phs_config%cascade_set, n_filter = 2, res_hists = resonance_histories)
+       if (phs_config%use_cascades2) then
+          call feyngraph_set_get_resonance_histories &
+               (phs_config%feyngraph_set, n_filter = 2, res_hists = resonance_histories)
+       else
+          call cascade_set_get_resonance_histories &
+               (phs_config%cascade_set, n_filter = 2, res_hists = resonance_histories)
+       endif
     end if
   end function phs_fks_config_get_resonance_histories
 

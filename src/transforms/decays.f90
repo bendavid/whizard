@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,6 +40,7 @@ module decays
   use quantum_numbers
   use interactions
   use evaluators
+  use variables, only: var_list_t
   use model_data
   use rng_base
   use selectors
@@ -267,9 +268,11 @@ module decays
      type(decay_root_config_t) :: decay_root_config
      type(decay_root_t) :: decay_root
      type(decay_chain_t) :: decay_chain
+     type(var_list_t), pointer :: var_list => null ()
    contains
      procedure :: write_name => evt_decay_write_name
      procedure :: write => evt_decay_write
+     procedure :: set_var_list => evt_decay_set_var_list
      procedure :: connect => evt_decay_connect
      procedure :: prepare_new_event => evt_decay_prepare_new_event
      procedure :: generate_weighted => evt_decay_generate_weighted
@@ -361,12 +364,13 @@ contains
   end subroutine decay_term_config_write
 
   recursive subroutine decay_term_config_init &
-       (term, flv, stable, model, process_stack)
+       (term, flv, stable, model, process_stack, var_list)
     class(decay_term_config_t), intent(out) :: term
     type(flavor_t), dimension(:,:), intent(in) :: flv
     logical, dimension(:), intent(in) :: stable
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
+    type(var_list_t), intent(in), optional :: var_list
     type(string_t), dimension(:), allocatable :: decay
     integer :: i
     allocate (term%prt (size (flv, 1)))
@@ -384,7 +388,8 @@ contains
             if (all (flv(i,:) == flv(i,1))) then
                call prt_config%init (flv(i,1))
                call flv(i,1)%get_decays (decay)
-               call prt_config%init_decays (decay, model, process_stack)
+               call prt_config%init_decays &
+                    (decay, model, process_stack, var_list)
             else
                call prt_config%write ()
                call msg_fatal ("Decay configuration: &
@@ -581,23 +586,25 @@ contains
   end subroutine decay_root_config_init
 
   recursive subroutine decay_root_config_init_term &
-       (decay, i, flv, stable, model, process_stack)
+       (decay, i, flv, stable, model, process_stack, var_list)
     class(decay_root_config_t), intent(inout) :: decay
     integer, intent(in) :: i
     type(flavor_t), dimension(:,:), intent(in) :: flv
     logical, dimension(:), intent(in) :: stable
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
-    call decay%term_config(i)%init (flv, stable, model, process_stack)
+    type(var_list_t), intent(in), optional, target :: var_list
+    call decay%term_config(i)%init (flv, stable, model, process_stack, var_list)
   end subroutine decay_root_config_init_term
 
   recursive subroutine decay_root_config_connect &
-       (decay, process, model, process_stack, process_instance)
+       (decay, process, model, process_stack, process_instance, var_list)
     class(decay_root_config_t), intent(out) :: decay
     type(process_t), intent(in), target :: process
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(process_instance_t), intent(in), optional, target :: process_instance
+    type(var_list_t), intent(in), optional, target :: var_list
     type(connected_state_t), pointer :: connected_state
     type(interaction_t), pointer :: int
     type(flavor_t), dimension(:,:), allocatable :: flv
@@ -621,7 +628,7 @@ contains
        allocate (stable (size (flv, 1)))
        stable = flv(:,1)%is_stable ()
        call check_masses ()
-       call decay%init_term (i, flv, stable, model, process_stack)
+       call decay%init_term (i, flv, stable, model, process_stack, var_list)
        deallocate (flv, stable, m_prod, m_dec)
     end do
     decay%process => process
@@ -826,20 +833,28 @@ contains
   end subroutine decay_config_write
 
   recursive subroutine decay_config_connect &
-       (decay, process, model, process_stack, process_instance)
+       (decay, process, model, process_stack, process_instance, var_list)
     class(decay_config_t), intent(out) :: decay
     type(process_t), intent(in), target :: process
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(process_instance_t), intent(in), optional, target :: process_instance
+    type(var_list_t), intent(in), optional, target :: var_list
     real(default), dimension(:), allocatable :: integral_mci
+    type(string_t) :: process_id
     integer :: i, n_mci
-    call decay%decay_root_config_t%connect (process, model, process_stack)
+    call decay%decay_root_config_t%connect &
+         (process, model, process_stack, var_list=var_list)
+    process_id = process%get_id ()
+    if (process%cm_frame ()) then
+       call msg_fatal ("Decay process " // char (process_id) &
+            // ": unusable because rest frame is fixed.")
+    end if
     decay%integral = process%get_integral ()
     decay%abs_error = process%get_error ()
-    if (process%cm_frame ()) then
-       call msg_fatal ("Decay process " // char (process%get_id ()) &
-            // ": unusable because rest frame is fixed.")
+    if (present (var_list)) then
+       call update (decay%integral, "integral(" // process_id // ")")
+       call update (decay%abs_error, "error(" // process_id // ")")
     end if
     n_mci = process%get_n_mci ()
     allocate (integral_mci (n_mci))
@@ -847,6 +862,14 @@ contains
        integral_mci(i) = process%get_integral_mci (i)
     end do
     call decay%mci_selector%init (integral_mci)
+  contains
+    subroutine update (var, var_name)
+      real(default), intent(inout) :: var
+      type(string_t), intent(in) :: var_name
+      if (var_list%contains (var_name)) then
+         var = var_list%get_rval (var_name)
+      end if
+    end subroutine update
   end subroutine decay_config_connect
 
   subroutine decay_config_set_flv (decay, flv)
@@ -1063,18 +1086,19 @@ contains
   end subroutine unstable_config_init
 
   recursive subroutine unstable_config_init_decays &
-       (unstable, decay_id, model, process_stack)
+       (unstable, decay_id, model, process_stack, var_list)
     class(unstable_config_t), intent(inout) :: unstable
     type(string_t), dimension(:), intent(in) :: decay_id
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
+    type(var_list_t), intent(in), optional :: var_list
     integer :: i
     allocate (unstable%decay_config (size (decay_id)))
     do i = 1, size (decay_id)
        associate (decay => unstable%decay_config(i))
          if (present (process_stack)) then
             call decay%connect (process_stack%get_process_ptr (decay_id(i)), &
-                 model, process_stack)
+                 model, process_stack, var_list=var_list)
          else
             call decay%init (model, decay_id(i))
          end if
@@ -1356,6 +1380,11 @@ contains
     call evt%write_name (u)
     call write_separator (u, 2)
     call evt%base_write (u, testflag = testflag)
+    if (associated (evt%var_list)) then
+       call write_separator (u)
+       write (u, "(1x,A)")  "Variable list for simulation: &
+            &[associated, not shown]"
+    end if
     if (verb) then
        call write_separator (u)
        call evt%decay_root%write (u)
@@ -1368,14 +1397,25 @@ contains
     end if
   end subroutine evt_decay_write
 
+  subroutine evt_decay_set_var_list (evt, var_list)
+    class(evt_decay_t), intent(inout) :: evt
+    type(var_list_t), intent(in), target :: var_list
+    evt%var_list => var_list
+  end subroutine evt_decay_set_var_list
+  
   subroutine evt_decay_connect (evt, process_instance, model, process_stack)
     class(evt_decay_t), intent(inout), target :: evt
     type(process_instance_t), intent(in), target :: process_instance
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     call evt%base_connect (process_instance, model)
-    call evt%decay_root_config%connect (process_instance%process, &
-         model, process_stack, process_instance)
+    if (associated (evt%var_list)) then
+       call evt%decay_root_config%connect (process_instance%process, &
+            model, process_stack, process_instance, evt%var_list)
+    else
+       call evt%decay_root_config%connect (process_instance%process, &
+            model, process_stack, process_instance)
+    end if
     call evt%decay_root_config%compute ()
     call evt%decay_root%init (evt%decay_root_config, evt%process_instance)
   end subroutine evt_decay_connect

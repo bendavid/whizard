@@ -1,4 +1,4 @@
-! WHIZARD 2.6.0 Sep 08 2017
+! WHIZARD 2.6.1 Nov 03 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -145,6 +145,7 @@ module process_libraries
      type(process_component_def_t), dimension(:), allocatable :: extra
      character(32) :: md5sum = ""
      logical :: nlo_process = .false.
+     logical :: requires_resonances = .false.
    contains
      procedure :: write => process_def_write
      procedure :: read => process_def_read
@@ -182,6 +183,8 @@ module process_libraries
      procedure :: append => process_def_list_append
      procedure :: get_n_processes => process_def_list_get_n_processes
      procedure :: get_process_id_list => process_def_list_get_process_id_list
+     procedure :: get_process_id_req_resonant => &
+          process_def_list_get_process_id_req_resonant
      procedure :: contains => process_def_list_contains
      procedure :: get_entry_index => process_def_list_get_entry_index
      procedure :: get_num_id => process_def_list_get_num_id
@@ -193,6 +196,7 @@ module process_libraries
      procedure :: get_component_list => process_def_list_get_component_list
      procedure :: get_component_description_list => &
           process_def_list_get_component_description_list
+     procedure :: req_resonant => process_def_list_req_resonant
      procedure :: get_nlo_process => process_def_list_get_nlo_process
   end type process_def_list_t
 
@@ -630,6 +634,10 @@ contains
          object%n_initial
     write (unit, "(1x,A,I0)")  "Extra generated component(s)   = ", &
          object%n_extra
+    if (object%requires_resonances) then
+       ! This line has to matched with the reader below!
+       write (unit, "(1x,A,I0)")  "Resonant subprocesses required"
+    end if
     write (unit, "(1x,A,A,A)") "MD5 sum   = '", object%md5sum, "'"
     if (allocated (object%initial)) then
        do i = 1, size (object%initial)
@@ -683,6 +691,13 @@ contains
     read (buffer, *)  object%n_extra
 
     read (unit, "(A)")  buffer
+    if (buffer(1:9) == " Resonant") then
+       object%requires_resonances = .true.
+       read (unit, "(A)")  buffer
+    else
+       object%requires_resonances = .false.
+    end if
+
     call strip_equation_lhs (buffer)
     read (buffer(3:34), "(A32)")  object%md5sum
 
@@ -706,7 +721,11 @@ contains
     if (object%num_id /= 0) &
          write (unit, "(1x,'(',I0,')')", advance="no")  object%num_id
     if (object%model_name /= "") &
-         write (unit, "(1x,'[',A,']')")  char (object%model_name)
+         write (unit, "(1x,'[',A,']')", advance="no")  char (object%model_name)
+    if (object%requires_resonances) then
+       write (unit, "(1x,A)", advance="no")  "[+ resonant subprocesses]"
+    end if
+    write (unit, *)
     if (allocated (object%initial)) then
        do i = 1, size (object%initial)
           call object%initial(i)%show (unit)
@@ -720,7 +739,8 @@ contains
   end subroutine process_def_show
 
   subroutine process_def_init (def, id, &
-       model, model_name, n_in, n_components, num_id, nlo_process)
+       model, model_name, n_in, n_components, num_id, &
+       nlo_process, requires_resonances)
     class(process_def_t), intent(out) :: def
     type(string_t), intent(in), optional :: id
     class(model_data_t), intent(in), optional, target :: model
@@ -729,6 +749,7 @@ contains
     integer, intent(in), optional :: n_components
     integer, intent(in), optional :: num_id
     logical, intent(in), optional :: nlo_process
+    logical, intent(in), optional :: requires_resonances
     character(16) :: suffix
     integer :: i
     if (present (id)) then
@@ -755,7 +776,12 @@ contains
        def%n_initial = n_components
        allocate (def%initial (n_components))
     end if
-    if (present (nlo_process)) def%nlo_process = nlo_process
+    if (present (nlo_process)) then
+       def%nlo_process = nlo_process
+    end if
+    if (present (requires_resonances)) then
+       def%requires_resonances = requires_resonances
+    end if
     def%initial%initial = .true.
     def%initial%method     = ""
     do i = 1, def%n_initial
@@ -862,21 +888,29 @@ contains
   end subroutine process_def_set_coupling_powers
 
   subroutine process_def_set_associated_components (def, i, &
-         i_born, i_real, i_virt, i_sub, i_pdf, i_rfin)
+       i_list, remnant, real_finite, mismatch)
     class(process_def_t), intent(inout) :: def
+    logical, intent(in) :: remnant, real_finite, mismatch
     integer, intent(in) :: i
-    integer, intent(in) :: i_born, i_real
-    integer, intent(in) :: i_virt, i_sub
-    integer, intent(in), optional :: i_pdf, i_rfin
+    integer, dimension(:), intent(in) :: i_list
+    integer :: add_index
+    add_index = 0
     associate (comp => def%initial(i)%associated_components)
-       comp(ASSOCIATED_BORN) = i_born
-       comp(ASSOCIATED_REAL) = i_real
-       comp(ASSOCIATED_VIRT) = i_virt
-       comp(ASSOCIATED_SUB) = i_sub
-       if (present (i_pdf)) &
-          comp(ASSOCIATED_PDF) = i_pdf
-       if (present (i_rfin)) &
-          comp(ASSOCIATED_REAL_FIN) = i_rfin
+       comp(ASSOCIATED_BORN) = i_list(1)
+       comp(ASSOCIATED_REAL) = i_list(2)
+       comp(ASSOCIATED_VIRT) = i_list(3)
+       comp(ASSOCIATED_SUB) = i_list(4)
+       if (remnant) then
+          comp(ASSOCIATED_PDF) = i_list(5)
+          add_index = add_index + 1
+       end if
+       if (real_finite) then
+          comp(ASSOCIATED_REAL_FIN) = i_list(5+add_index)
+          add_index = add_index + 1
+       end if
+       if (mismatch) then
+          !!! incomplete
+       end if
     end associate
   end subroutine process_def_set_associated_components
 
@@ -1052,6 +1086,24 @@ contains
        current => current%next
     end do
   end subroutine process_def_list_get_process_id_list
+
+  subroutine process_def_list_get_process_id_req_resonant (list, id)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), dimension(:), allocatable, intent(out) :: id
+    type(process_def_entry_t), pointer :: current
+    integer :: i
+    allocate (id (list%get_n_processes ()))
+    i = 0
+    current => list%first
+    do while (associated (current))
+       if (current%requires_resonances) then
+          i = i + 1
+          id(i) = current%id
+       end if
+       current => current%next
+    end do
+    id = id(1:i)
+  end subroutine process_def_list_get_process_id_req_resonant
 
   function process_def_list_contains (list, id) result (flag)
     logical :: flag
@@ -1229,6 +1281,21 @@ contains
        current => current%next
     end do
   end subroutine process_def_list_get_component_description_list
+
+  function process_def_list_req_resonant (list, id) result (nlo)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    logical :: nlo
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+      if (id == current%id) then
+        nlo = current%requires_resonances
+        return
+      end if
+      current => current%next
+    end do
+  end function process_def_list_req_resonant
 
   function process_def_list_get_nlo_process (list, id) result (nlo)
     class(process_def_list_t), intent(in) :: list

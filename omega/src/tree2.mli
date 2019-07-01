@@ -31,6 +31,8 @@ val leaf : 'n -> ('n, 'e) t
 
 val is_singleton : ('n, 'e) t -> bool
 val to_string : ('n -> string) -> ('e -> string) -> ('n, 'e) t -> string
+val to_channel :
+  out_channel -> ('n -> string) -> ('e -> string) -> ('n, 'e) t -> unit
 
 (*i
  *  Local Variables:

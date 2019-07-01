@@ -2181,15 +2181,16 @@ Build the contained particle set from scratch.
   procedure :: init_direct => eio_direct_init_direct
 <<EIO direct: procedures>>=
   subroutine eio_direct_init_direct &
-       (eio, n_beam, n_in, n_vir, n_out, pdg, model)
+       (eio, n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
     class(eio_direct_t), intent(out) :: eio
     integer, intent(in) :: n_beam
     integer, intent(in) :: n_in
+    integer, intent(in) :: n_rem
     integer, intent(in) :: n_vir
     integer, intent(in) :: n_out
     integer, dimension(:), intent(in) :: pdg
     class(model_data_t), intent(in), target :: model
-    call eio%pset%init_direct (n_beam, n_in, n_vir, n_out, pdg, model)
+    call eio%pset%init_direct (n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
   end subroutine eio_direct_init_direct
 
 @ %def eio_direct_init_direct
@@ -2392,7 +2393,7 @@ We test the implementation of all I/O methods.
     select type (eio)
     class is (eio_direct_t)
        call eio%init_direct &
-            (n_beam = 0, n_in = 2, n_vir = 0, n_out = 2, &
+            (n_beam = 0, n_in = 2, n_rem = 0, n_vir = 0, n_out = 2, &
             pdg = [25, 25, 25, 25], model = model)
        call eio%set_selection_indices (1, 1, 1, 1)
        call eio%write (u)

@@ -2292,7 +2292,7 @@ Also set any data for this process that the writer needs.
        model_name, prt_in, prt_out, &
        ovm, ufo, ufo_path, &
        restrictions, cms_scheme, &
-       openmp_support, report_progress, extra_options, diags, diags_color)
+       openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
     class(omega_def_t), intent(out) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -2304,6 +2304,7 @@ Also set any data for this process that the writer needs.
     logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
+    logical, intent(in), optional :: write_phs_output
     type(string_t), intent(in), optional :: extra_options
     logical, intent(in), optional :: diags, diags_color
     object%ufo = ufo
@@ -2325,7 +2326,7 @@ Also set any data for this process that the writer needs.
     class is (omega_writer_t)
        call writer%init (model_name, prt_in, prt_out, &
             ufo_path, restrictions, cms_scheme, &
-            openmp_support, report_progress, extra_options, diags, diags_color)
+            openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
     end select
   end subroutine omega_def_init
 
@@ -2496,6 +2497,7 @@ wrappers.
      logical :: diags = .false.
      logical :: diags_color = .false.
      logical :: complex_mass_scheme = .false.
+     logical :: write_phs_output = .false.
      type(string_t) :: extra_options
    contains
    <<Omega interface: omega writer: TBP>>
@@ -2586,6 +2588,7 @@ wrappers.
          '"' // char (object%restrictions) // '"'
     write (unit, "(5x,A,L1)")  "OpenMP support    = ", object%openmp_support
     write (unit, "(5x,A,L1)")  "Report progress   = ", object%report_progress
+    ! write (unit, "(5x,A,L1)")  "Write phs output  = ", object%write_phs_output
     write (unit, "(5x,A,A)")  "Extra options     = ", &
          '"' // char (object%extra_options) // '"'
     write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags
@@ -2601,7 +2604,7 @@ wrappers.
 <<Omega interface: procedures>>=
   subroutine omega_writer_init (writer, model_name, prt_in, prt_out, &
        ufo_path, restrictions, cms_scheme, &
-       openmp_support, report_progress, extra_options, diags, diags_color)
+       openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
     class(omega_writer_t), intent(out) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -2611,6 +2614,7 @@ wrappers.
     logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
+    logical, intent(in), optional :: write_phs_output
     type(string_t), intent(in), optional :: extra_options
     logical, intent(in), optional :: diags, diags_color
     integer :: i
@@ -2631,6 +2635,7 @@ wrappers.
     if (present (cms_scheme))  writer%complex_mass_scheme = cms_scheme
     if (present (openmp_support))  writer%openmp_support = openmp_support
     if (present (report_progress))  writer%report_progress = report_progress
+    if (present (write_phs_output)) writer%write_phs_output = write_phs_output
     if (present (extra_options)) then
        writer%extra_options = " " // extra_options
     else
@@ -2676,6 +2681,7 @@ diagrams, at least in the testsuite.
     type(string_t) :: progress_string
     type(string_t) :: diagrams_string
     type(string_t) :: cms_string
+    type(string_t) :: write_phs_output_string
     type(string_t) :: parameter_module
     logical :: escape_hyperref
     escape_hyperref = .false.
@@ -2732,6 +2738,11 @@ diagrams, at least in the testsuite.
     else
        cms_string = ""
     end if
+    if (writer%write_phs_output) then
+       write_phs_output_string = " -phase_space " // char (id) // ".fds"
+    else
+       write_phs_output_string = ""
+    endif
     select case (char (writer%model_name))
     case ("SM_rx", "SSC", "NoH_rx", "AltH")
        kmatrix_string = " -target:kmatrix_2_write"
@@ -2769,7 +2780,7 @@ diagrams, at least in the testsuite.
             char (kmatrix_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
-            char (writer%extra_options)
+            char (writer%extra_options), char (write_phs_output_string)
     type is (omega_ufo_writer_t)
        parameter_module = char (id) // "_par_" // char (writer%model_name)
        write (unit, "(5A)")  char (id), ".f90: ", char (parameter_module), ".lo"
@@ -2788,7 +2799,7 @@ diagrams, at least in the testsuite.
             char (kmatrix_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
-            char (writer%extra_options)
+            char (writer%extra_options), char (write_phs_output_string)
        write (unit, "(5A)") "SOURCES += ", char (parameter_module), ".f90"
        write (unit, "(5A)") "OBJECTS += ", char (parameter_module), ".lo"
        write (unit, "(5A)")  char (parameter_module), ".f90:"
@@ -2809,7 +2820,7 @@ diagrams, at least in the testsuite.
             char (cms_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
-            char (writer%extra_options)
+            char (writer%extra_options), char (write_phs_output_string)
        write (unit, "(5A)")  char (id), ".f90:"
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90 -params", &
@@ -3132,7 +3143,7 @@ cause a segfault.
   subroutine omega_make_process_component (entry, component_index, &
          model_name, prt_in, prt_out, &
          ufo, ufo_path, restrictions, cms_scheme, &
-         openmp_support, report_progress, extra_options, diags, diags_color)
+         openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
     class(process_def_entry_t), intent(inout) :: entry
     integer, intent(in) :: component_index
     type(string_t), intent(in) :: model_name
@@ -3144,6 +3155,7 @@ cause a segfault.
     logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
+    logical, intent(in), optional :: write_omega_output
     type(string_t), intent(in), optional :: extra_options
     logical, intent(in), optional :: diags, diags_color
     logical :: ufo_model
@@ -3155,7 +3167,7 @@ cause a segfault.
        call def%init (model_name, prt_in, prt_out, &
             .false., ufo_model, ufo_path, &
             restrictions, cms_scheme, &
-            openmp_support, report_progress, extra_options, diags, diags_color)
+            openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
     end select
     call entry%process_def_t%import_component (component_index, &
          n_out = size (prt_out), &
@@ -5098,11 +5110,12 @@ Used for testing.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_alpha_s => prc_user_defined_base_compute_alpha_s
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_alpha_s (object, core_state, fac_scale)
+  subroutine prc_user_defined_base_compute_alpha_s &
+       (object, core_state, ren_scale)
     class(prc_user_defined_base_t), intent(in) :: object
     class(user_defined_state_t), intent(inout) :: core_state
-    real(default), intent(in) :: fac_scale
-    core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+    real(default), intent(in) :: ren_scale
+    core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
   end subroutine prc_user_defined_base_compute_alpha_s
 
 @ %def prc_user_defined_base_compute_alpha_s

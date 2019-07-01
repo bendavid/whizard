@@ -21,8 +21,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let version = "2.6.0"
-let date = "Sep 08 2017"
+let version = "2.6.1"
+let date = "Nov 03 2017"
 let status = "release"
 
 let default_UFO_dir = "/Users/reuter/local/omega/share/UFO"
