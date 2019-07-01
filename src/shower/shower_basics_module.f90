@@ -28,6 +28,16 @@ module shower_basics_module
 
   implicit none
 
+  public :: shower_pdf
+
+  interface 
+     subroutine shower_pdf (set, x, q, ff)
+       integer, intent(in) :: set
+       double precision, intent(in) :: x, q
+       double precision, dimension(-6:6), intent(out) :: ff
+     end subroutine shower_pdf
+  end interface
+
   ! technical constants
   logical, parameter :: D_print=.false.	   ! decides whether to print out additional information
 
@@ -64,6 +74,10 @@ module shower_basics_module
   ! auxiliary and temporaily paramters
   real(default) :: scalefactor1 = 0.02_default      ! temporary for Pt-ordered shower
   real(default) :: scalefactor2 = 0.02_default      ! temporary for Pt-ordered shower
+
+  ! variable pdf functions
+  procedure(shower_pdf), pointer :: shower_pdf_func
+  integer :: shower_pdf_set = 0
 
 contains
 
@@ -357,5 +371,14 @@ contains
     logical :: input
     isr_only_onshell_emitted_partons = input
   end subroutine shower_set_isr_only_onshell_emitted_partons
+
+  subroutine shower_set_pdf_func(func)
+    procedure(shower_pdf), pointer, intent(in) :: func
+    shower_pdf_func => func
+  end subroutine shower_set_pdf_func
   
+  subroutine shower_set_pdf_set(set)
+    integer, intent(in) :: set
+    shower_pdf_set = set
+  end subroutine shower_set_pdf_set
 end module shower_basics_module

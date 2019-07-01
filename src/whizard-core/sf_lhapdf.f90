@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -56,6 +56,7 @@ module sf_lhapdf
   public :: lhapdf_data_init
   public :: lhapdf_data_set_mask
   public :: lhapdf_data_get_public_info
+  public :: lhapdf_data_get_set
   public :: lhapdf_data_write
   public :: interaction_init_lhapdf
   public :: interaction_set_kinematics_lhapdf
@@ -312,6 +313,12 @@ contains
     lhapdf_file = data%file
     lhapdf_member = data%member
   end subroutine lhapdf_data_get_public_info
+
+  function lhapdf_data_get_set(data) result(set)
+    type(lhapdf_data_t), intent(in) :: data
+    integer :: set
+    set = data%set
+  end function lhapdf_data_get_set
 
   subroutine lhapdf_data_write (data, unit, md5, beam_fmt)
     type(lhapdf_data_t), intent(in) :: data

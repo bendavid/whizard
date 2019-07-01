@@ -33,12 +33,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.0.7}
-\def\WhizardDate{Mar 19 2012}
+\def\WhizardVersion{2.1.0}
+\def\WhizardDate{June 15 2012}
 <<Version>>=
-2.0.7
+2.1.0
 <<Date>>=
-Mar 19 2012
+June 15 2012
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -50525,7 +50525,18 @@ applying the PDF will generate the corresponding flavor on output.
     lhapdf_member = data%member
   end subroutine lhapdf_data_get_public_info
 
-@ %def lhapdf_data-get_public_info
+@ %def lhapdf_data_get_public_info
+@ Return the number of the member of the data set.
+<<LHAPDF: public>>=
+  public :: lhapdf_data_get_set
+<<LHAPDF: procedures>>=
+  function lhapdf_data_get_set(data) result(set)
+    type(lhapdf_data_t), intent(in) :: data
+    integer :: set
+    set = data%set
+  end function lhapdf_data_get_set
+
+@ %def lhapdf_data_get_set
 @ Output
 <<LHAPDF: public>>=
   public :: lhapdf_data_write
@@ -50903,6 +50914,17 @@ invalidating the ID.
   end function pdf_builtin_get_name
 
 @ %def pdf_builtin_get_name
+@ Retrieve the id of the PDF set used.
+<<pdf builtin: public>>=
+  public :: pdf_builtin_get_id
+<<pdf builtin: procedures>>=
+  function pdf_builtin_get_id (data) result (id)
+    type(pdf_builtin_data_t), intent(in) :: data
+    integer :: id
+    id = data%id
+  end function pdf_builtin_get_id
+
+@ %def pdf_builtin_get_id
 @ Enable/disable partons explicitly.  If a mask entry is true,
 applying the PDF will generate the corresponding flavor on output.
 <<pdf builtin: public>>=
@@ -51829,21 +51851,17 @@ their indices.  The individual mapping types are identified by a
 [[type]] parameter.  A mapping may depend on a set on real parameters.
 <<Strfun: parameters>>=
   integer, parameter, public :: SFM_NONE = 0
-  integer, parameter, public :: SFM_PDFPAIR = 1
-  integer, parameter, public :: SFM_ISRPAIR = 2
-  integer, parameter, public :: SFM_EPAPAIR = 3
-  integer, parameter, public :: SFM_EWAPAIR = 4  
-  integer, parameter, public :: SFM_CIRCE1PAIR = 5
-  integer, parameter, public :: SFM_CIRCE2PAIR = 6
-  integer, parameter, public :: SFM_USER = 99
-@ %def SFM_NONE SFM_PDFPAIR SFM_ISRPAIR SFM_EPAPAIR
-@ %def SFM_EWAPAIR SFM_CIRCE1PAIR SFM_CIRCE2PAIR
+  integer, parameter, public :: SFM_PAIR = 1
+  integer, parameter, public :: SFM_PAIR_RESONANCE = 2
+@ %def SFM_NONE SFM_PAIR
 <<Strfun: types>>=
   type :: strfun_mapping_t
      private
      integer, dimension(:), allocatable :: index
      integer :: type = SFM_NONE
-     real(default), dimension(:), allocatable :: par
+     real(default) :: p = 0
+     real(default) :: m2 = 0, mg = 0, s = 0
+     real(default) :: a1 = 0, a2 = 0, a3 = 0
   end type strfun_mapping_t
 
 @ %def strfun_mapping_t
@@ -51854,14 +51872,27 @@ their indices.  The individual mapping types are identified by a
     integer, dimension(:), intent(in) :: index
     integer, intent(in) :: type
     real(default), dimension(:), intent(in) :: par
+    real(default) :: s, m2, mg
     allocate (sf_mapping%index (size (index)))
     sf_mapping%index = index
     sf_mapping%type = type
-    allocate (sf_mapping%par (size (par)))
-    sf_mapping%par = par
+    select case (type)
+    case (SFM_PAIR)
+       sf_mapping%p = par(1)
+    case (SFM_PAIR_RESONANCE)
+       s = par(1)**2
+       m2 = par(2)**2
+       mg = par(2) * par(3)
+       sf_mapping%s = s
+       sf_mapping%m2 = m2
+       sf_mapping%mg = mg
+       sf_mapping%a1 = atan (- m2 / mg)
+       sf_mapping%a2 = atan ((s - m2) / mg)
+       sf_mapping%a3 = (sf_mapping%a2 - sf_mapping%a1) * mg / s
+    end select
   end subroutine strfun_mapping_init
 
-@ %def strfun_mapping_init_pdfpair
+@ %def strfun_mapping_init
 @ Output
 <<Strfun: procedures>>=
   subroutine strfun_mapping_write (sf_mapping, unit)
@@ -51873,7 +51904,14 @@ their indices.  The individual mapping types are identified by a
     write (u, "(10(1x,I0))")  sf_mapping%index
     write (u, "(1x,A,1x,I0)")  "mapping type =", sf_mapping%type
     write (u, "(1x,A)", advance="no")  "mapping pars ="
-    write (u, *)  sf_mapping%par
+    select case (sf_mapping%type)
+    case (SFM_NONE)
+       write (u, *) "[none]"
+    case (SFM_PAIR)
+       write (u, *) sf_mapping%p
+    case (SFM_PAIR_RESONANCE)
+       write (u, *)  sf_mapping%s, sf_mapping%m2, sf_mapping%mg
+    end select
   end subroutine strfun_mapping_write
 
 @ %def strfun_mapping_write
@@ -51883,17 +51921,53 @@ their indices.  The individual mapping types are identified by a
   subroutine strfun_mapping_apply (sf_mapping, x, factor)
     type(strfun_mapping_t), intent(in) :: sf_mapping
     real(default), dimension(:), intent(inout) :: x
-    real(default), intent(inout) :: factor
+    real(default), intent(out) :: factor
+    real(default) :: f1, f2
     real(default), dimension(2) :: x2
     select case (sf_mapping%type)
-    case (SFM_EPAPAIR, SFM_EWAPAIR, SFM_PDFPAIR, SFM_USER)
+    case (SFM_PAIR)
        x2 = x(sf_mapping%index)
-       call map_unit_square (x2, factor, sf_mapping%par(1))
+       call map_unit_square (x2, factor, sf_mapping%p)
        x(sf_mapping%index) = x2
+    case (SFM_PAIR_RESONANCE)
+       x2 = x(sf_mapping%index)
+       call map_resonance (x2(1), f2, &
+            sf_mapping%s, sf_mapping%m2, sf_mapping%mg, &
+            sf_mapping%a1, sf_mapping%a2, sf_mapping%a3)
+       call map_unit_square (x2, f1)
+       x(sf_mapping%index) = x2
+       factor = f1 * f2
+    case default
+       factor = 1
     end select
   end subroutine strfun_mapping_apply
 
+  subroutine strfun_mapping_apply_inverse (sf_mapping, x, factor)
+    type(strfun_mapping_t), intent(in) :: sf_mapping
+    real(default), dimension(:), intent(inout) :: x
+    real(default), intent(out) :: factor
+    real(default) :: f1, f2
+    real(default), dimension(2) :: x2
+    select case (sf_mapping%type)
+    case (SFM_PAIR)
+       x2 = x(sf_mapping%index)
+       call map_unit_square_inverse (x2, factor, sf_mapping%p)
+       x(sf_mapping%index) = x2
+    case (SFM_PAIR_RESONANCE)
+       x2 = x(sf_mapping%index)
+       call map_unit_square_inverse (x2, f1)
+       call map_resonance_inverse (x2(1), f2, &
+            sf_mapping%s, sf_mapping%m2, sf_mapping%mg, &
+            sf_mapping%a1, sf_mapping%a2, sf_mapping%a3)
+       x(sf_mapping%index) = x2
+       factor = f1 * f2
+    case default
+       factor = 1
+    end select
+  end subroutine strfun_mapping_apply_inverse
+
 @ %def strfun_mapping_apply
+@ %def strfun_mapping_apply_inverse
 @ This mapping of the unit square is appropriate in particular for
 structure functions which are concentrated at the lower end.  Instead
 of a rectangular grid, one set of grid lines corresponds to constant
@@ -51905,9 +51979,10 @@ concentrated at the lower end.
 <<Strfun: procedures>>=
   subroutine map_unit_square (x, factor, power)
     real(kind=default), dimension(2), intent(inout) :: x
-    real(kind=default), intent(inout) :: factor
+    real(kind=default), intent(out) :: factor
     real(kind=default), intent(in), optional :: power
     real(kind=default) :: xx, yy
+    factor = 1
     xx = x(1)
     yy = x(2)
     if (present(power)) then
@@ -51926,6 +52001,60 @@ concentrated at the lower end.
   end subroutine map_unit_square
 
 @  %def map_unit_square
+@ This is the inverse mapping.
+<<Strfun: procedures>>=
+  subroutine map_unit_square_inverse (x, factor, power)
+    real(kind=default), dimension(2), intent(inout) :: x
+    real(kind=default), intent(out) :: factor
+    real(kind=default), intent(in), optional :: power
+    real(kind=default) :: lg, xx, yy
+    factor = 1
+    xx = x(1) * x(2)
+    if (xx /= 0) then
+       lg = log (xx)
+       yy = log (x(1)) / lg
+       x(2) = yy
+       factor = factor * abs (lg)
+       if (present(power)) then
+          x(1) = xx**(1._default/power)
+          factor = factor * power * xx / x(1)
+       else
+          x(1) = xx
+       end if
+    else
+       x = 0
+    end if
+  end subroutine map_unit_square_inverse
+
+@  %def map_unit_square_inverse
+@ This is the usual mapping of a Lorentz peak.  Since the $x$ range
+maps the energy range $0\ldots \sqrt{s}$ to $0\ldots 1$, the position
+of the peak is $m^2/s$, the width is given by $m\Gamma/s$.
+<<Strfun: procedures>>=
+  subroutine map_resonance (x, factor, s, m2, mg, a1, a2, a3)
+    real(default), intent(inout) :: x
+    real(default), intent(out) :: factor
+    real(default), intent(in) :: s, m2, mg, a1, a2, a3
+    real(default) :: t, z
+    z = (1 - x) * a1 + x * a2
+    t = tan (z)
+    x = (m2 + t * mg) / s
+    factor = a3 * (1 + t**2)
+  end subroutine map_resonance
+
+@ %def map_resonance
+<<Strfun: procedures>>=
+  subroutine map_resonance_inverse (x, factor, s, m2, mg, a1, a2, a3)
+    real(default), intent(inout) :: x
+    real(default), intent(out) :: factor
+    real(default), intent(in) :: s, m2, mg, a1, a2, a3
+    real(default) :: t
+    t = (x * s - m2) / mg
+    x = (atan (t) - a1) / (a2 - a1)
+    factor = a3 * (1 + t**2)
+  end subroutine map_resonance_inverse
+
+@ %def map_resonance_inverse
 @ 
 \subsection{Structure function chains}
 \subsubsection{Definition}
@@ -51951,10 +52080,11 @@ structure functions besides the ``beam'' object.
      private
      type(beam_t) :: beam
      integer :: n_strfun = 0
+     logical :: multichannel = .false.
      integer :: n_mapping = 0
      type(strfun_t), dimension(:), allocatable :: strfun
-     type(strfun_mapping_t), dimension(:), allocatable :: sf_mapping
-     real(default) :: mapping_factor = 1
+     type(strfun_mapping_t), dimension(:,:), allocatable :: sf_mapping
+     real(default) :: mapping_factor = 0
      integer :: n_parameters_tot = 0
      integer, dimension(:), allocatable :: n_parameters
      type(evaluator_t), dimension(:), allocatable :: eval
@@ -51967,14 +52097,13 @@ structure functions besides the ``beam'' object.
 <<Strfun: public>>=
   public :: strfun_chain_init
 <<Strfun: procedures>>=
-  subroutine strfun_chain_init (sfchain, beam_data, n_strfun, n_mapping)
+  subroutine strfun_chain_init (sfchain, beam_data, n_strfun)
     type(strfun_chain_t), intent(out) :: sfchain
     type(beam_data_t), intent(in), target :: beam_data
-    integer, intent(in) :: n_strfun, n_mapping
+    integer, intent(in) :: n_strfun
     integer :: i
     sfchain%n_strfun = n_strfun
     allocate (sfchain%strfun (n_strfun))
-    allocate (sfchain%sf_mapping (n_mapping))
     allocate (sfchain%n_parameters (n_strfun))
     sfchain%n_parameters = 0
     allocate (sfchain%eval (n_strfun))
@@ -51990,6 +52119,22 @@ structure functions besides the ``beam'' object.
   end subroutine strfun_chain_init
 
 @ %def strfun_chain_init
+@ This is a separate initialization routine for the structure-function
+mappings.
+<<Strfun: public>>=
+  public :: strfun_chain_allocate_mappings
+<<Strfun: procedures>>=
+  subroutine strfun_chain_allocate_mappings &
+       (sfchain, multichannel, n_mapping, n_channel)
+    type(strfun_chain_t), intent(inout) :: sfchain
+    logical, intent(in) :: multichannel
+    integer, intent(in) :: n_mapping, n_channel
+    sfchain%multichannel = multichannel
+    sfchain%n_mapping = n_mapping
+    allocate (sfchain%sf_mapping (n_mapping, n_channel))
+  end subroutine strfun_chain_allocate_mappings
+
+@ %def strfun_chain_allocate_mappings
 @ Set beam momenta directly without changing anything else.
 <<Strfun: public>>=
   public :: strfun_chain_set_beam_momenta
@@ -52022,7 +52167,7 @@ structure functions besides the ``beam'' object.
     type(strfun_chain_t), intent(in) :: sfchain
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
-    integer :: u, i
+    integer :: u, i, ch
     logical :: verb
     verb = .false.;  if (present (verbose))  verb = verbose
     u = output_unit (unit);  if (u < 0)  return
@@ -52038,10 +52183,20 @@ structure functions besides the ``beam'' object.
        end do
     end if
     if (allocated (sfchain%sf_mapping)) then
-       do i = 1, size (sfchain%sf_mapping)
-          write (u, *)
-          call strfun_mapping_write (sfchain%sf_mapping(i), unit)
-       end do
+       if (sfchain%multichannel) then
+          do ch = 1, size (sfchain%sf_mapping, 2)
+             write (u, *)
+             write (u, *) "Mappings for channel #", ch
+             do i = 1, size (sfchain%sf_mapping, 1)
+                call strfun_mapping_write (sfchain%sf_mapping(i, ch), unit)
+             end do
+          end do
+       else
+          do i = 1, size (sfchain%sf_mapping, 1)
+             write (u, *)
+             call strfun_mapping_write (sfchain%sf_mapping(i,1), unit)
+          end do
+       end if
     end if
     if (allocated (sfchain%eval)) then
        write (u, *)
@@ -52091,13 +52246,15 @@ Deep copy of all components.
     type(strfun_chain_t), intent(in) :: sfchain_in
     sfchain_out%beam = sfchain_in%beam
     sfchain_out%n_strfun = sfchain_in%n_strfun
+    sfchain_out%multichannel = sfchain_in%multichannel
     sfchain_out%n_mapping = sfchain_in%n_mapping
     if (allocated (sfchain_in%strfun)) then
        allocate (sfchain_out%strfun (size (sfchain_in%strfun)))
        sfchain_out%strfun = sfchain_in%strfun
     end if
     if (allocated (sfchain_in%sf_mapping)) then
-       allocate (sfchain_out%sf_mapping (size (sfchain_in%sf_mapping)))
+       allocate (sfchain_out%sf_mapping &
+            (size (sfchain_in%sf_mapping, 1), size (sfchain_in%sf_mapping, 2)))
        sfchain_out%sf_mapping = sfchain_in%sf_mapping
     end if
     sfchain_out%mapping_factor = sfchain_in%mapping_factor
@@ -52127,6 +52284,46 @@ Deep copy of all components.
 @ %def strfun_chain_assign
 @ 
 \subsubsection{Accessing contents}
+Return the type of PDF used. So far, we only return a type if there
+are exactly two structure functions and they are both the same.
+<<Strfun: public>>=
+  public :: strfun_chain_get_strfun_type
+<<Strfun: procedures>>=
+  function strfun_chain_get_strfun_type(sfchain) result(type)
+    type(strfun_chain_t), intent(in) :: sfchain
+    integer :: type
+
+    if(size(sfchain%strfun).eq.2) then
+       if(sfchain%strfun(1)%type .eq. sfchain%strfun(2)%type) then
+          type = sfchain%strfun(1)%type
+       else
+          type = STRF_NONE
+       end if
+    else
+       type = STRF_NONE
+    end if
+  end function strfun_chain_get_strfun_type
+@ %def strfun_chain_get_strfun_type
+Return the number of the member of the PDF used
+<<Strfun: public>>=
+  public :: strfun_chain_get_strfun_set
+<<Strfun: procedures>>=
+  function strfun_chain_get_strfun_set(sfchain) result(set)
+    type(strfun_chain_t), intent(in) :: sfchain
+    integer :: set
+
+    set = 0
+    if(size(sfchain%strfun).eq.2) then
+       if(sfchain%strfun(1)%type .eq. sfchain%strfun(2)%type) then
+          if(sfchain%strfun(1)%type .eq. STRF_LHAPDF) then
+             set = lhapdf_data_get_set(sfchain%strfun(1)%lhapdf_data(1))
+          else if(sfchain%strfun(1)%type .eq. STRF_PDF_BUILTIN) then
+             set = pdf_builtin_get_id(sfchain%strfun(1)%pdf_builtin_data(1))
+         end if
+      end if
+    end if
+  end function strfun_chain_get_strfun_set
+@ %def strfun_chain_get_strfun_set
 The number of active structure functions.
 <<Strfun: public>>=
   public :: strfun_chain_get_n_strfun
@@ -52167,6 +52364,18 @@ not appear as outgoing.
   end function strfun_chain_get_n_vir
 
 @ %def strfun_chain_get_n_vir
+@ Tell if the structure-function mappings should be applied to
+individual phase-space channels, or globally.
+<<Strfun: public>>=
+  public :: strfun_chain_multichannel_enabled
+<<Strfun: procedures>>=
+  function strfun_chain_multichannel_enabled (sfchain) result (flag)
+    logical :: flag
+    type(strfun_chain_t), intent(in) :: sfchain
+    flag = sfchain%multichannel
+  end function strfun_chain_multichannel_enabled
+
+@ %def strfun_chain_multichannel_enabled
 @ Return any extra factor resulting from explicit mappings of the $x$
 parameters.
 <<Strfun: public>>=
@@ -52452,13 +52661,13 @@ Set a particular mapping with a known type.
 <<Strfun: public>>=
   public :: strfun_chain_set_mapping
 <<Strfun: procedures>>=
-  subroutine strfun_chain_set_mapping (sfchain, i, index, type, par)
+  subroutine strfun_chain_set_mapping (sfchain, i, ch, index, type, par)
     type(strfun_chain_t), intent(inout) :: sfchain
-    integer, intent(in) :: i
+    integer, intent(in) :: i, ch
     integer, dimension(:), intent(in) :: index
     integer, intent(in) :: type
     real(default), dimension(:), intent(in) :: par
-    call strfun_mapping_init (sfchain%sf_mapping(i), index, type, par)
+    call strfun_mapping_init (sfchain%sf_mapping(i, ch), index, type, par)
   end subroutine strfun_chain_set_mapping
 
 @ %def strfun_chain_set_mapping
@@ -52542,78 +52751,74 @@ Set a particular mapping with a known type.
 @ %def strfun_chain_make_evaluators
 @ Setup kinematics: use the given array of random numbers [[r]] to
 generate a chain of momenta, up to the incoming partons.  
-
-The flag [[global_mapping]] indicates that an $s$-channel resonance is
-produced in this integration channel.  This modifies the treatment of
-the last structure function in the list.  If $x_n$ is the last $x$
-parameter, we apply the identity
-\begin{equation}
-  1 = \int_0^1 dy_n\,\delta(y_n - x_1\cdots x_{n-1} x_n)
-  = \int_0^1 {dy_n}\,{x_1\cdots x_{n-1}}\,
-    \delta\left(x_n - \frac{y_n}{x_1\cdots x_{n-1}}\right)
-\end{equation}
-to the structure-function integral
-\begin{equation}
-  \int dx_1\cdots dx_{n-1}\,dx_n\,f(x_1,\ldots,x_{n-1},x_n)
-\end{equation}
-to transform this into
-\begin{equation}
-  \int dx_1\cdots dx_{n-1}\,dy_n\,{x_1\cdots x_{n-1}}\,
-  f(x_1,\ldots,x_{n-1},\tfrac{y_n}{x_1\cdots x_{n-1}})\,
-  \theta(x_1\cdots x_{n-1} - y_n)
-\end{equation}
-For the last structure function (pair), this is transparent only if
-any inherent mapping is switched off.  This applies also to any
-generator mode.  We should probe this structure function \emph{as-is},
-such that $x$ values have their original meaning.
-
-The global s-channel mapping must be ignored for the beam-event
-(pseudo) structure function, since this structure function overwrites
-the input $x$ values.
 <<Strfun: public>>=
   public :: strfun_chain_set_kinematics
 <<Strfun: procedures>>=
-  subroutine strfun_chain_set_kinematics (sfchain, r, global_mapping, ok)
+  subroutine strfun_chain_set_kinematics (sfchain, r, &
+       channel, offset, r_all, sf_factor, ok)
     type(strfun_chain_t), intent(inout) :: sfchain
     real(default), dimension(:), intent(in) :: r
-    logical, intent(in), optional :: global_mapping
+    integer, intent(in), optional :: channel, offset
+    real(default), dimension(:,:), intent(inout), optional :: r_all
+    real(default), dimension(:), intent(out), optional :: sf_factor
     logical, intent(out), optional :: ok
     real(default), dimension(size(r)) :: x
-    integer :: i, n, n1, n_sf
-    real(default) :: xprod
-    logical :: map_s
-    map_s = .false.;  if (present (global_mapping))  map_s = global_mapping
+    integer :: n_mapping
+    integer :: i, i1, i2, ch, n, n1, n_sf
+    real(default) :: xprod, factor
+    real(default), dimension(:), allocatable :: factor_channel
+    integer, dimension(:), allocatable :: mapping_type
     n_sf = size (sfchain%strfun)
+    sfchain%mapping_factor = 1
     if (size (r) == sfchain%n_parameters_tot) then
        x = r
-       sfchain%mapping_factor = 1
-       if (.not. map_s) then
-          do i = 1, size (sfchain%sf_mapping)
-             call strfun_mapping_apply &
-                  (sfchain%sf_mapping(i), x, sfchain%mapping_factor)
-          end do
+       if (allocated (sfchain%sf_mapping)) then
+          n_mapping = size (sfchain%sf_mapping, 1)
+          if (present (channel)) then
+             allocate (factor_channel (n_mapping))
+             allocate (mapping_type (n_mapping))
+             do i = 1, n_mapping
+                mapping_type(i) = sfchain%sf_mapping(i,channel)%type
+                call strfun_mapping_apply &
+                     (sfchain%sf_mapping(i, channel), x, factor_channel(i))
+             end do
+             sf_factor(channel) = product (factor_channel)
+          else
+             do i = 1, n_mapping
+                call strfun_mapping_apply &
+                     (sfchain%sf_mapping(i, 1), x, factor)
+                sfchain%mapping_factor = sfchain%mapping_factor * factor
+             end do
+          end if
        end if
        n = 0
        do i = 1, size (sfchain%strfun)
           call interaction_receive_momenta (sfchain%strfun(i)%int)
           n1 = sfchain%n_parameters(i)
-          if (i == size (sfchain%strfun) .and. map_s) then
-             if (strfun_get_type (sfchain%strfun(i)) == STRF_BEVT) &
-                  map_s = .false.
-             if (map_s) then
-                xprod = product (x(1:n))
-                if (x(n+1) < xprod) then
-                   x(n+1) = x(n+1) / xprod
-                   sfchain%mapping_factor = sfchain%mapping_factor / xprod
-                else
-                   if (present (ok))  ok = .false.
-                   return
-                end if
-             end if
-          end if
-          call strfun_set_kinematics (sfchain%strfun(i), x(n+1:n+n1), map_s)
+          call strfun_set_kinematics (sfchain%strfun(i), x(n+1:n+n1), .false.)
           n = n + n1
        end do
+       if (present (channel)) then
+          i1 = offset
+          i2 = offset + size (r)
+          do ch = 1, size (r_all, 2)
+             if (ch /= channel) then
+                sf_factor(ch) = 1
+                do i = 1, n_mapping
+                   if (sfchain%sf_mapping(i,ch)%type == mapping_type(i)) then
+                      r_all(i1+1:i2,ch) = r
+                      sf_factor(ch) = sf_factor(ch) * factor_channel(i)
+                   else
+                      r_all(i1+1:i2,ch) = x
+                      call strfun_mapping_apply_inverse &
+                           (sfchain%sf_mapping(1,ch), r_all(i1+1:i2,ch), &
+                           factor)
+                      sf_factor(ch) = sf_factor(ch) * factor
+                   end if
+                end do
+             end if
+          end do
+       end if
        do i = 1, size (sfchain%strfun)
           call evaluator_receive_momenta (sfchain%eval(i))
        end do
@@ -52684,7 +52889,7 @@ the input $x$ values.
        call isr_data_init (isr_data(i), &
             model, flv(i), 0.06_default, 500._default, 0.511e-3_default)
     end do
-    call strfun_chain_init (sfchain, beam_data, 2, 0)
+    call strfun_chain_init (sfchain, beam_data, 2)
     call strfun_chain_set_strfun (sfchain, 1, 1, isr_data(1), 1)
     call strfun_chain_set_strfun (sfchain, 2, 2, isr_data(2), 3)
     call strfun_chain_make_evaluators (sfchain)
@@ -52711,7 +52916,7 @@ the input $x$ values.
     call polarization_init_circular (pol(1), flv(1), 0.3_default)
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 1000._default, flv, pol)
-    call strfun_chain_init (sfchain, beam_data, 2, 0)
+    call strfun_chain_init (sfchain, beam_data, 2)
     ! Initialize EPA for both
     call epa_data_init (epa_data1, model, &
          flv(1), 0.06_default, 1.e-6_default, 0._default, 500._default, &
@@ -52748,7 +52953,7 @@ the input $x$ values.
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 2000._default, flv, pol)
-    call strfun_chain_init (sfchain, beam_data, 2, 0)
+    call strfun_chain_init (sfchain, beam_data, 2)
     call lhapdf_data_init (data(1), lhapdf_status, model, flv(1), member=1)
     !!! Use the same photon PDF that is demanded by the LHAPDF tests.
     call lhapdf_data_init (data(2), lhapdf_status, model, flv(2), &
@@ -52873,9 +53078,10 @@ in cases where no mass parameter is available.  The contents are public.
      real(default) :: momentum_transfer_scale = 10
      logical :: step_mapping = .true.
      logical :: step_mapping_exp = .true.
+     logical :: enable_s_mapping = .false.
   end type mapping_defaults_t
 
-@ %def mapping_defaults
+@ %def mapping_defaults_t
 <<Mappings: public>>=
   public :: mapping_defaults_md5sum
 <<Mappings: procedures>>=
@@ -52890,6 +53096,7 @@ in cases where no mass parameter is available.  The contents are public.
     write (u, *)  mapping_defaults%momentum_transfer_scale
     write (u, *)  mapping_defaults%step_mapping
     write (u, *)  mapping_defaults%step_mapping_exp
+    write (u, *)  mapping_defaults%enable_s_mapping
     rewind (u)
     md5sum_map = md5sum (u)
     close (u)
@@ -54516,15 +54723,15 @@ parameter set.  Also set the mass sum array.
 @ Return the mapping for the sum of all outgoing particles.  This
 should either be no mapping or a global s-channel mapping.
 <<PHS trees: public>>=
-  public :: phs_tree_assign_global_mapping
+  public :: phs_tree_assign_s_mapping
 <<PHS trees: procedures>>=
-  subroutine phs_tree_assign_global_mapping (tree, mapping)
+  subroutine phs_tree_assign_s_mapping (tree, mapping)
     type(phs_tree_t), intent(in) :: tree
     type(mapping_t), intent(out) :: mapping
     mapping = tree%mapping(tree%mask_out)
-  end subroutine phs_tree_assign_global_mapping
+  end subroutine phs_tree_assign_s_mapping
 
-@ %def phs_tree_assign_global_mapping
+@ %def phs_tree_assign_s_mapping
 @ 
 \subsubsection{Kinematics}
 Fill the mass sum array, starting from the external particles and
@@ -55669,20 +55876,20 @@ the offset has to be added to all tree indices.
 @ Get the global (s-channel) mappings.  Implemented as a subroutine
 which returns an array (slice).
 <<PHS forests: procedures>>=
-  subroutine phs_grove_assign_global_mappings (grove, mapping)
+  subroutine phs_grove_assign_s_mappings (grove, mapping)
     type(phs_grove_t), intent(in) :: grove
     type(mapping_t), dimension(:), intent(out) :: mapping
     integer :: i
     if (size (mapping) == size (grove%tree)) then
        do i = 1, size (mapping)
-          call phs_tree_assign_global_mapping (grove%tree(i), mapping(i))
+          call phs_tree_assign_s_mapping (grove%tree(i), mapping(i))
        end do
     else
-       call msg_bug ("phs_grove_assign_global_mappings: array size mismatch")
+       call msg_bug ("phs_grove_assign_s_mappings: array size mismatch")
     end if
-  end subroutine phs_grove_assign_global_mappings
+  end subroutine phs_grove_assign_s_mappings
 
-@ %def phs_grove_assign_global_mappings
+@ %def phs_grove_assign_s_mappings
 @
 \subsection{The forest type}
 This is a collection of trees and associated particles.  In a given
@@ -55717,7 +55924,7 @@ momentum combinations that the phase-space trees need to know.
      type(phs_prt_t), dimension(:), allocatable :: prt_out
      type(phs_prt_t), dimension(:), allocatable :: prt
      integer(TC), dimension(:,:), allocatable :: prt_combination
-     type(mapping_t), dimension(:), allocatable :: global_mapping
+     type(mapping_t), dimension(:), allocatable :: s_mapping
   end type phs_forest_t
 
 @ %def phs_forest_t
@@ -55764,25 +55971,25 @@ branches each tree has, but not filled.
     k_root = 2**forest%n_tot - 1
     allocate (forest%prt (k_root))
     allocate (forest%prt_combination (2, k_root))
-    allocate (forest%global_mapping (forest%n_trees))
+    allocate (forest%s_mapping (forest%n_trees))
   end subroutine phs_forest_init
 
 @ %def phs_forest_init
 @ Assign the global (s-channel) mappings.
 <<PHS forests: public>>=
-  public :: phs_forest_set_global_mappings
+  public :: phs_forest_set_s_mappings
 <<PHS forests: procedures>>=
-  subroutine phs_forest_set_global_mappings (forest)
+  subroutine phs_forest_set_s_mappings (forest)
     type(phs_forest_t), intent(inout) :: forest
     integer :: g, i0, i1, n
     do g = 1, size (forest%grove)
        call phs_forest_get_grove_bounds (forest, g, i0, i1, n)
-       call phs_grove_assign_global_mappings &
-            (forest%grove(g), forest%global_mapping(i0:i1))
+       call phs_grove_assign_s_mappings &
+            (forest%grove(g), forest%s_mapping(i0:i1))
     end do
-  end subroutine phs_forest_set_global_mappings
+  end subroutine phs_forest_set_s_mappings
 
-@ %def phs_forest_set_global_mappings
+@ %def phs_forest_set_s_mappings
 @ The grove finalizer is called because it contains the equivalence list:
 <<PHS forests: public>>=
   public :: phs_forest_final
@@ -55795,7 +56002,7 @@ branches each tree has, but not filled.
     end if
     if (allocated (forest%grove_lookup))  deallocate (forest%grove_lookup)
     if (allocated (forest%prt))  deallocate (forest%prt)
-    if (allocated (forest%global_mapping))  deallocate (forest%global_mapping)
+    if (allocated (forest%s_mapping))  deallocate (forest%s_mapping)
   end subroutine phs_forest_final
 
 @ %def phs_forest_final
@@ -55853,11 +56060,11 @@ them:
     write (u, *) "Total number of equivalences: ", forest%n_equivalences
     write (u, *)
     write (u, *) "Global s-channel mappings:"
-    if (allocated (forest%global_mapping)) then
-       do i = 1, size (forest%global_mapping)
-          if (mapping_is_s_channel (forest%global_mapping(i))) then
+    if (allocated (forest%s_mapping)) then
+       do i = 1, size (forest%s_mapping)
+          if (mapping_is_s_channel (forest%s_mapping(i))) then
              write (u, "(1x,I0,':',1x)", advance="no")  i
-             call mapping_write (forest%global_mapping(i), unit)
+             call mapping_write (forest%s_mapping(i), unit)
           end if
        end do
     else
@@ -55972,9 +56179,9 @@ them:
        allocate (forest_out%prt (size (forest_in%prt)))
        forest_out%prt = forest_in%prt
     end if
-    if (allocated (forest_in%global_mapping)) then
-       allocate (forest_out%global_mapping (size (forest_in%global_mapping)))
-       forest_out%global_mapping = forest_in%global_mapping
+    if (allocated (forest_in%s_mapping)) then
+       allocate (forest_out%s_mapping (size (forest_in%s_mapping)))
+       forest_out%s_mapping = forest_in%s_mapping
     end if
     if (allocated (forest_in%prt_combination)) then
        allocate (forest_out%prt_combination &
@@ -56044,18 +56251,27 @@ Get the number of integration parameters
   end function phs_forest_get_n_equivalences
 
 @ %def phs_forest_get_n_equivalences
-@ Return true if a particular channel has a global (s-channel) mapping
+@ Return true if a particular channel has a global (s-channel)
+mapping; also return the resonance mass and width for this mapping.
 <<PHS forests: public>>=
-  public :: phs_forest_tree_has_global_mapping
+  public :: phs_forest_get_s_mapping
 <<PHS forests: procedures>>=
-  function phs_forest_tree_has_global_mapping (forest, channel) result (flag)
-    logical :: flag
+  subroutine phs_forest_get_s_mapping (forest, channel, flag, mass, width)
     type(phs_forest_t), intent(in) :: forest
     integer, intent(in) :: channel
-    flag = mapping_is_s_channel (forest%global_mapping(channel))
-  end function phs_forest_tree_has_global_mapping
+    logical, intent(out) :: flag
+    real(default), intent(out) :: mass, width
+    flag = mapping_is_s_channel (forest%s_mapping(channel))
+    if (flag) then
+       mass = mapping_get_mass (forest%s_mapping(channel))
+       width = mapping_get_width (forest%s_mapping(channel))
+    else
+       mass = 0
+       width = 0
+    end if
+  end subroutine phs_forest_get_s_mapping
 
-@ %def phs_forest_tree_has_global_mapping
+@ %def phs_forest_get_s_mapping
 @ 
 \subsection{Read the phase space setup from file}
 The phase space setup is stored in a file.  The file may be generated
@@ -56662,13 +56878,13 @@ the dependence of the matrix element is (usually) trivial.
   public :: phs_forest_evaluate_phase_space
 <<PHS forests: procedures>>=
   subroutine phs_forest_evaluate_phase_space &
-       (forest, channel, active, sqrts, x, factor, volume, ok)
+       (forest, channel, active, sqrts, x, phs_factor, volume, ok)
     type(phs_forest_t), intent(inout) :: forest
     integer, intent(in) :: channel
     logical, dimension(:), intent(in) :: active
     real(default), intent(in) :: sqrts
     real(default), dimension(:,:), intent(inout) :: x
-    real(default), dimension(:), intent(inout) :: factor
+    real(default), dimension(:), intent(out) :: phs_factor
     real(default), intent(out) :: volume
     logical, intent(out) :: ok
     integer :: g, t, ch, s
@@ -56699,16 +56915,9 @@ the dependence of the matrix element is (usually) trivial.
             (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
     end select
     call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
-         forest%prt, factor(channel), volume, sqrts, x(:,channel), ok)
+         forest%prt, phs_factor(channel), volume, sqrts, x(:,channel), ok)
     if (ok) then
        !$OMP PARALLEL PRIVATE (g,t,ch,s) SHARED(forest,sqrts,x,channel)
-!       !$OMP DO REDUCTION(+:w)
-!       do g = 1, size (forest%grove)
-!          do t = 1, size (forest%grove(g)%tree)
-!             w = w+1
-!          end do
-!       end do
-!       !$OMP END DO
 
        !$OMP DO SCHEDULE(STATIC)
        do ch = 1, forest%n_trees
@@ -56726,7 +56935,7 @@ the dependence of the matrix element is (usually) trivial.
                   (forest%grove(g)%tree(t), forest%prt)
              call phs_tree_compute_x_from_momenta &
                   (forest%grove(g)%tree(t), &
-                  forest%prt, factor(ch), sqrts, x(:,ch))
+                  forest%prt, phs_factor(ch), sqrts, x(:,ch))
           end if
        end do
        !$OMP END DO
@@ -56742,17 +56951,19 @@ the dependence of the matrix element is (usually) trivial.
 
 @ %def phs_forest_evaluate_phase_space
 @ The first part of the previous routine, without recovering the [[x]] values.
+Here the PHS factor is [[intent(inout)]] because only one of the
+channels is defined. 
 <<PHS forests: public>>=
   public :: phs_forest_evaluate_momenta
 <<PHS forests: procedures>>=
   subroutine phs_forest_evaluate_momenta &
-       (forest, channel, active, sqrts, x, factor, volume, ok)
+       (forest, channel, active, sqrts, x, phs_factor, volume, ok)
     type(phs_forest_t), intent(inout) :: forest
     integer, intent(in) :: channel
     logical, dimension(:), intent(in) :: active
     real(default), intent(in) :: sqrts
     real(default), dimension(:,:), intent(inout) :: x
-    real(default), dimension(:), intent(inout) :: factor
+    real(default), dimension(:), intent(inout) :: phs_factor
     real(default), intent(out) :: volume
     logical, intent(out) :: ok
     integer :: g, t, ch, s
@@ -56778,39 +56989,12 @@ the dependence of the matrix element is (usually) trivial.
             (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
     end select
     call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
-         forest%prt, factor(channel), volume, sqrts, x(:,channel), ok)
+         forest%prt, phs_factor(channel), volume, sqrts, x(:,channel), ok)
     if (ok) then
-
        call phs_forest_combine_particles (forest)
        do k = 1, forest%n_out
           forest%prt_out(k) = forest%prt(ibset(0,k-1))
        end do
-
-!        !$OMP PARALLEL PRIVATE(g,t,ch,s) SHARED(forest,channel)
-! 
-!        !$OMP DO SCHEDULE(STATIC)
-!        do ch = 1, forest%n_trees
-!           if (ch == channel)  cycle
-!           if (active(ch)) then
-!              s = ch
-!              g = 1
-!              do while (s > size (forest%grove(g)%tree))
-!                 s = s - size(forest%grove(g)%tree)
-!                 g = g + 1
-!              end do
-!              t = s
-!              call phs_tree_combine_particles &
-!                   (forest%grove(g)%tree(t), forest%prt)
-!           end if
-!        end do
-!        !$OMP END DO
-! 
-!        !$OMP DO
-!        do k = 1, forest%n_out
-!           forest%prt_out(k) = forest%prt(ibset(0,k-1))
-!        end do
-!        !$OMP END DO
-!        !$OMP END PARALLEL
     end if
   end subroutine phs_forest_evaluate_momenta
 
@@ -56821,77 +57005,47 @@ channel.
   public :: phs_forest_evaluate_other_channels
 <<PHS forests: procedures>>=
   subroutine phs_forest_evaluate_other_channels &
-       (forest, channel, active, sqrts, x, factor)
+       (forest, channel, active, sqrts, x, phs_factor)
     type(phs_forest_t), intent(inout) :: forest
     integer, intent(in) :: channel
     logical, dimension(:), intent(in) :: active
     real(default), intent(in) :: sqrts
     real(default), dimension(:,:), intent(inout) :: x
-    real(default), dimension(:), intent(inout) :: factor
+    real(default), dimension(:), intent(inout) :: phs_factor
     integer :: g, t, ch, w, k, s
     integer :: OMP_GET_NUM_THREADS
-!     integer(TC) :: k, k_root, k_in
-!     g = forest%grove_lookup (channel)
-!     t = channel - forest%grove(g)%tree_count_offset
-!     call phs_prt_set_undefined (forest%prt)
-!     call phs_prt_set_undefined (forest%prt_out)
-!     k_in = forest%n_tot
-!     forall (k = 1:forest%n_in)
-!        forest%prt(ibset(0,k_in-k)) = forest%prt_in(k)
-!     end forall
-!     do k = 1, forest%n_out
-!        call phs_prt_set_msq (forest%prt(ibset(0,k-1)), &
-!             flavor_get_mass (forest%flv(forest%n_in+k)) ** 2)
-!     end do
-!     k_root = 2**forest%n_out - 1
-!     select case (forest%n_in)
-!     case (1)
-!        forest%prt(k_root) = forest%prt_in(1)
-!     case (2)
-!        call phs_prt_combine &
-!             (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
-!     end select
-!     call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
-!          forest%prt, factor(channel), volume, sqrts, x(:,channel), ok)
-!     if (ok) then
-       w = 0
-       !$OMP PARALLEL PRIVATE (g,t,ch,s,k) SHARED(forest,sqrts,x,channel,w)
-       !$OMP DO REDUCTION(+:w)
-       do g = 1, size (forest%grove)
-          do t = 1, size (forest%grove(g)%tree)
-             w = w+1
+
+    w = 0
+    !$OMP PARALLEL PRIVATE (g,t,ch,s,k) SHARED(forest,sqrts,x,channel,w)
+
+    !$OMP DO REDUCTION(+:w)
+    do g = 1, size (forest%grove)
+       do t = 1, size (forest%grove(g)%tree)
+          w = w+1
+       end do
+    end do
+    !$OMP END DO
+    
+    !$OMP DO SCHEDULE(STATIC)
+    do ch = 1, w
+       if (ch == channel)  cycle
+       if (active(ch)) then
+          s = ch
+          g = 1
+          t = 1
+          do while (s > size (forest%grove(g)%tree))
+             s = s - size(forest%grove(g)%tree)
+             g = g+1
           end do
-       end do
-       !$OMP END DO
+          t = s
+          call phs_tree_compute_x_from_momenta &
+               (forest%grove(g)%tree(t), &
+               forest%prt, phs_factor(ch), sqrts, x(:,ch))
+       end if
+    end do
+    !$OMP END DO
+    !$OMP END PARALLEL
 
-       !$OMP DO SCHEDULE(STATIC)
-       do ch = 1, w
-          if (ch == channel)  cycle
-          if (active(ch)) then
-             s = ch
-             g = 1
-             t = 1
-             do while (s > size (forest%grove(g)%tree))
-                s = s - size(forest%grove(g)%tree)
-                g = g+1
-             end do
-             t = s
-
-!             call phs_tree_combine_particles &
-!                  (forest%grove(g)%tree(t), forest%prt)
-             call phs_tree_compute_x_from_momenta &
-                  (forest%grove(g)%tree(t), &
-                  forest%prt, factor(ch), sqrts, x(:,ch))
-          end if
-       end do
-       !$OMP END DO
-       !$OMP END PARALLEL
-
-
-!       forall (k = 1:forest%n_out)
-!          forest%prt_out(k) = forest%prt(ibset(0,k-1))
-!       end forall
-!    end if
   end subroutine phs_forest_evaluate_other_channels
 
 @ %def phs_forest_evaluate_other_channels
@@ -65769,6 +65923,7 @@ original.
      logical :: old_phs_version = .false.
      type(process_status_t) :: status
      real(default), dimension(:,:), allocatable :: x
+     real(default), dimension(:), allocatable :: sf_factor
      real(default), dimension(:), allocatable :: phs_factor
      real(default), dimension(:), allocatable :: mass_in
      real(default) :: flux_factor = 0
@@ -65785,7 +65940,6 @@ original.
      logical :: negative_weights = .false.
      type(qcd_parameters_t) :: qcd
      character(32) :: md5sum_alpha_s
-     logical :: allow_s_channel_mapping = .false.
      type(strfun_chain_t) :: sfchain
      type(hard_interaction_t) :: hi
      type(evaluator_t) :: eval_trace
@@ -65979,6 +66133,26 @@ here as a side-effect, and the status change is recorded.
   end subroutine process_setup_qcd
 
 @ %def process_setup_qcd
+Return the type of PDFs
+<<Processes: public>>=
+  public :: process_get_strfun_type
+<<Processes: procedures>>=
+  function process_get_strfun_type(process) result(type)
+    type(process_t), intent(in) :: process
+    integer :: type
+    type = strfun_chain_get_strfun_type(process%sfchain)
+  end function process_get_strfun_type
+@ %def process_get_strfun_type
+Return the member of the PDF used
+<<Processes: public>>=
+  public :: process_get_strfun_set
+<<Processes: procedures>>=
+  function process_get_strfun_set(process) result(set)
+    type(process_t), intent(in) :: process
+    integer :: set
+    set = strfun_chain_get_strfun_set(process%sfchain)
+  end function process_get_strfun_set
+@ %def process_get_strfun_set
 @ Make a snapshot of the global variable list and link it to the process
 variables.  This can be redone, so make sure a previous snapshot is deleted.
 <<Processes: public>>=
@@ -66112,13 +66286,19 @@ all four-momenta.
     write (u, *)  "  Sample-function value   = ", &
          process%sample_function_value
     write (u, *)  repeat ("-", 72)
-    if (process%use_beams) then
-       write (u, *)  "Structure function parameters ="
-       if (allocated (process%x_strfun)) then
-          write (u, *)  process%x_strfun
-       else
-          write (u, *)  "[empty]"
-       end if
+    write (u, *)  "Structure function parameters ="
+    write (u, *)  "  Use beams              = ", process%use_beams
+    write (u, *)  "  x values = "
+    if (allocated (process%x_strfun)) then
+       write (u, *)  process%x_strfun
+    else
+       write (u, *)  "    [not allocated]"
+    end if
+    write (u, *)  "  Mapping factors (channels) ="
+    if (allocated (process%sf_factor)) then
+       write (u, *)  process%sf_factor
+    else
+       write (u, *) "     [not allocated]"
     end if
     write (u, *)  "  General scale           = ", process%scale
     write (u, *)  "  Factorization scale     = ", process%fac_scale
@@ -66155,9 +66335,6 @@ all four-momenta.
     if (process%use_beams) then
        call strfun_chain_write &
             (process%sfchain, unit, verbose, show_momentum_sum, show_mass)
-       write (u, *)
-       write (u, *) "Allow s-channel mapping = ", &
-            process%allow_s_channel_mapping
        write (u, "(A)")  repeat ("-", 72)
        write (u, "(A)") "Incoming beams with all color contractions"
        call evaluator_write &
@@ -66927,6 +67104,21 @@ evaluators of the hard interaction.
 
 @ %def process_get_hi_int_ptr
 @ %def process_get_hi_eval_sqme_ptr process_get_hi_eval_flows_ptr
+@ Return any s-channel mapping for a particular tree in the decay
+forest.
+<<Processes: public>>=
+  public :: process_get_s_mapping
+<<Processes: procedures>>=
+  subroutine process_get_s_mapping (process, channel, flag, mass, width)
+    type(process_t), intent(in) :: process
+    integer, intent(in) :: channel
+    logical, intent(out) :: flag
+    real(default), intent(out) :: mass, width
+    call phs_forest_get_s_mapping &
+         (process%forest, channel, flag, mass, width)
+  end subroutine process_get_s_mapping
+
+@ %def process_get_s_mapping
 @ 
 \subsection{Setting values directly}
 Mark a process as a cascade decay.  The effect is that the process
@@ -67010,11 +67202,10 @@ argument list (scattering) to set up a local beam record.
 <<Processes: public>>=
   public :: process_setup_beams
 <<Processes: procedures>>=
-  subroutine process_setup_beams &
-       (process, beam_data, n_strfun, n_mapping, sqrts, flv)
+  subroutine process_setup_beams (process, beam_data, n_strfun, sqrts, flv)
     type(process_t), intent(inout), target :: process
     type(beam_data_t), intent(in) :: beam_data
-    integer, intent(in) :: n_strfun, n_mapping
+    integer, intent(in) :: n_strfun
     real(default), intent(in), optional :: sqrts
     type(flavor_t), dimension(:), intent(in), optional :: flv
     if (.not. process_has_matrix_element (process))  return
@@ -67026,7 +67217,7 @@ argument list (scattering) to set up a local beam record.
        process%azimuthal_dependence = &
             .not. all (polarization_is_diagonal (beam_data%pol))
        process%lab_is_cm_frame = beam_data%lab_is_cm_frame .and. n_strfun == 0
-       call strfun_chain_init (process%sfchain, beam_data, n_strfun, n_mapping)
+       call strfun_chain_init (process%sfchain, beam_data, n_strfun)
     else
        select case (process%type)
        case (PRC_DECAY)
@@ -67220,32 +67411,38 @@ indicates the beam(s) for which the structure function applies, either
 @ %def process_set_strfun
 @ Configure structure function mappings.
 <<Processes: public>>=
+  public :: process_allocate_strfun_mappings
   public :: process_set_strfun_mapping
 <<Processes: procedures>>=
-  subroutine process_set_strfun_mapping (process, i, index, type, par)
+  subroutine process_allocate_strfun_mappings &
+       (process, multichannel, n_mapping)
     type(process_t), intent(inout) :: process
-    integer, intent(in) :: i
+    logical, intent(in) :: multichannel
+    integer, intent(in), optional :: n_mapping
+    if (.not. multichannel .and. present (n_mapping)) then
+       call strfun_chain_allocate_mappings &
+            (process%sfchain, multichannel, n_mapping, 1)
+    else if (multichannel .and. .not. present (n_mapping)) then
+       call strfun_chain_allocate_mappings &
+            (process%sfchain, multichannel, 1, process%n_channels)
+       allocate (process%sf_factor (process%n_channels))
+    else
+       print *, "multichannel = ", multichannel
+       call msg_bug ("allocate strfun mappings: inconsistent parameters")
+    end if
+  end subroutine process_allocate_strfun_mappings
+
+  subroutine process_set_strfun_mapping (process, i, ch, index, type, par)
+    type(process_t), intent(inout) :: process
+    integer, intent(in) :: i, ch
     integer, intent(in) :: type
     integer, dimension(:), intent(in) :: index
     real(default), dimension(:), intent(in) :: par
-    if (process%use_beams) then
-       call strfun_chain_set_mapping (process%sfchain, i, index, type, par)
-    end if
+    call strfun_chain_set_mapping (process%sfchain, i, ch, index, type, par)
   end subroutine process_set_strfun_mapping
 
+@ %def process_allocate_strfun_mappings
 @ %def process_set_strfun_mapping
-@ Allow s-channel mappings for specific channels.  If this is active,
-the $x$ values for structure functions are not universal among
-channels.
-<<Processes: public>>=
-  public :: process_allow_global_mapping
-<<Processes: procedures>>=
-  subroutine process_allow_global_mapping (process)
-    type(process_t), intent(inout) :: process
-    process%allow_s_channel_mapping = .true.
-  end subroutine process_allow_global_mapping
-
-@ %def process_allow_global_mapping
 @ Complete structure function initialization.  Make evaluators within
 the structure function chain, and the trace evaluator within the hard
 interaction.  Connect the two, and make another trace evaluator which
@@ -67590,7 +67787,9 @@ structure functions should be done first.
     process%phs_factor = 0
     allocate (process%active_channel (process%n_channels))
     process%active_channel = .true.
-    call phs_forest_set_global_mappings (process%forest)
+    if (mapping_defaults%enable_s_mapping) then
+       call phs_forest_set_s_mappings (process%forest)
+    end if
     write (msg_buffer, "(A,I0,A,I0,A)")  "... found ", process%n_channels, &
          " phase space channels, collected in ", &
          phs_forest_get_n_groves (process%forest), &
@@ -67850,21 +68049,25 @@ $x$ parameters, and the event must be dropped.
     logical, intent(out) :: ok
     type(interaction_t), pointer :: int
     type(evaluator_t), pointer :: eval
-    integer :: i
+    integer :: i, n1, n2
     real(default) :: lda
     process%x_hi = x_in(:process%n_par_hi)
     process%x_strfun = x_in(process%n_par_hi+1:)
-!     process%x_strfun = x_in(:process%n_par_strfun)
-!     process%x_hi = x_in(process%n_par_strfun+1:)
+    process%x(:process%n_par_hi,channel) = process%x_hi
     process%channel = channel
     int => hard_interaction_get_int_ptr (process%hi)
     eval => hard_interaction_get_eval_trace_ptr (process%hi)
     if (process%use_beams) then
-       if (process%allow_s_channel_mapping) then
+       n1 = process%n_par_hi
+       n2 = process%n_par_hi + process%n_par_strfun
+       if (strfun_chain_multichannel_enabled (process%sfchain)) then
+          process%x(n1+1:n2, channel) = process%x_strfun
           call strfun_chain_set_kinematics (process%sfchain, process%x_strfun, &
-               phs_forest_tree_has_global_mapping (process%forest, channel), &
-               ok)
+               channel, n1, process%x, process%sf_factor, &
+               ok=ok)
        else
+          forall (i = 1:size(process%x,2)) &
+               process%x(n1+1:n2,i) = process%x_strfun
           call strfun_chain_set_kinematics (process%sfchain, process%x_strfun, &
                ok=ok)
        end if
@@ -67873,6 +68076,8 @@ $x$ parameters, and the event must be dropped.
        process%beams_are_set = .true.
        process%sqrts_hat = sqrt (max (interaction_get_s (int), 0._default))
     else if (.not. process%beams_are_set) then
+       if (process%n_par_strfun /= 0)  call msg_bug &
+            ("Mismatch in structure function setup: n_parameters /= 0")
        select case (process%type)
        case (PRC_DECAY)
           call interaction_set_momenta (int, &
@@ -67884,6 +68089,9 @@ $x$ parameters, and the event must be dropped.
                outgoing=.false.)
        end select
        process%sqrts_hat = process%sqrts
+    else
+       if (process%n_par_strfun /= 0)  call msg_bug &
+            ("Mismatch in beams/structure function setup: n_parameters /= 0")
     end if
     call process_status_passed_strfun_chain (process%status)
     select case (process%type)
@@ -67908,10 +68116,6 @@ $x$ parameters, and the event must be dropped.
     else
        call phs_forest_set_prt_in (process%forest, int)
     end if
-    process%x(:process%n_par_hi,channel) = process%x_hi
-    forall (i = 1 : process%n_par_strfun)
-       process%x(process%n_par_hi+i,:) = process%x_strfun(i)
-    end forall
     if (process%old_phs_version) then
        call phs_forest_evaluate_phase_space (process%forest, &
             channel, process%active_channel, process%sqrts_hat, &
@@ -68131,7 +68335,12 @@ phase-space factor array for the given integration channel.
     end do
     !$OMP END DO
     !$OMP END PARALLEL
-    dp = dot_product (weights, vamp_prob / process%phs_factor)
+    if (allocated (process%sf_factor)) then
+       dp = dot_product (weights, &
+                         vamp_prob / (process%phs_factor * process%sf_factor))
+    else
+       dp = dot_product (weights, vamp_prob / process%phs_factor)
+    end if
     if (dp /= 0) then
        process%vamp_phs_factor = vamp_prob(process%channel) / dp
     else
@@ -69211,6 +69420,8 @@ The copy is linked to the original by a pointer.  Its initial state is
     copy%n_channels = original%n_channels
     if (allocated (original%x)) &
          allocate (copy%x (size (original%x, 1), size (original%x, 2)))
+    if (allocated (original%sf_factor)) &
+         allocate (copy%sf_factor (size (original%sf_factor)))
     if (allocated (original%phs_factor)) &
          allocate (copy%phs_factor (size (original%phs_factor)))
     if (allocated (original%mass_in)) then
@@ -69703,7 +69914,7 @@ can be done by the caller.  Allocate or expand the array as needed.
 <<Processes: procedures>>=
   subroutine process_store_init_process (process, &
        prc_lib, process_id, model, var_list, &
-       use_beams, allow_global_mapping)
+       use_beams)
     type(process_t), pointer :: process
     type(process_library_t), intent(inout), target :: prc_lib
     type(string_t), intent(in) :: process_id
@@ -69711,7 +69922,6 @@ can be done by the caller.  Allocate or expand the array as needed.
     type(pdf_builtin_status_t) :: pdf_builtin_status
     type(var_list_t), intent(in), target :: var_list
     logical, intent(in) :: use_beams
-    logical, intent(in), optional :: allow_global_mapping
     integer :: process_lib_index, process_store_index
     procedure(prclib_unload_hook), pointer :: unload_hook
     procedure(prclib_reload_hook), pointer :: reload_hook
@@ -69732,9 +69942,6 @@ can be done by the caller.  Allocate or expand the array as needed.
     call process_init &
          (process, prc_lib, process_lib_index, process_store_index, &
           process_id, model, var_list, use_beams)
-    if (present (allow_global_mapping)) then
-       if (allow_global_mapping)  call process_allow_global_mapping (process)
-    end if
   end subroutine process_store_init_process
 
 @ %def process_store_init_process
@@ -69937,7 +70144,7 @@ case is characterized by the absence of the [[grids]] argument.
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -69978,7 +70185,7 @@ case is characterized by the absence of the [[grids]] argument.
     call polarization_init_axis &
          (pol(1), flv(1), (/ 0._default, 0._default, 1._default/))
     call beam_data_init_decay (beam_data, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -70053,7 +70260,7 @@ case is characterized by the absence of the [[grids]] argument.
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -70143,7 +70350,7 @@ case is characterized by the absence of the [[grids]] argument.
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 500._default, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -70237,7 +70444,7 @@ case is characterized by the absence of the [[grids]] argument.
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 14000._default, flv, pol)
     !     call process_setup_beams (process, beam_data, 0, 0)
-    call process_setup_beams (process, beam_data, 2, 0)
+    call process_setup_beams (process, beam_data, 2)
     call pdf_builtin_init (data(1), pdf_builtin_status, model, flv(1), name = &
          var_str("cteq6l"), path = os_data%pdf_builtin_datapath)
     call pdf_builtin_init (data(2), pdf_builtin_status, model, flv(2), name = &
@@ -71433,6 +71640,8 @@ valid.
        call apply_shower_particle_set(event%particle_set, & 
             shower_settings, &
             process_get_model_ptr(event%process), &
+            process_get_strfun_type(event%process), &
+            process_get_strfun_set(event%process), &
             event%is_valid, event%is_vetoed)
     end if
   end subroutine event_generate
@@ -72199,7 +72408,7 @@ We re-export them here from the [[state_matrices]] module:
     call flavor_init (flv, (/ 2, -2 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
-    call process_setup_beams (process, beam_data, 0, 0, sqrts = 1000._default)
+    call process_setup_beams (process, beam_data, 0, sqrts = 1000._default)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -74482,14 +74691,8 @@ type and a set of real parameters whose meaning depends on the type.
     write (u, "(1x,A,I0,10(', #',I0))")  "Mapping for parameters #", &
          sf_mapping%index
     select case (sf_mapping%type)
-    case (SFM_NONE);     write (u, "(3x,A)")  "[none]"
-    case (SFM_PDFPAIR);  write (u, "(3x,A)")  "PDF pair mapping"
-    case (SFM_ISRPAIR);  write (u, "(3x,A)")  "ISR pair mapping"
-    case (SFM_EPAPAIR);  write (u, "(3x,A)")  "EPA pair mapping"
-    case (SFM_EWAPAIR);  write (u, "(3x,A)")  "EWA pair mapping"
-    case (SFM_CIRCE1PAIR);  write (u, "(3x,A)")  "CIRCE1 pair mapping"
-    case (SFM_CIRCE2PAIR);  write (u, "(3x,A)")  "CIRCE2 pair mapping"
-    case (SFM_USER);     write (u, "(3x,A)")  "User-strfun pair mapping"
+    case (SFM_NONE);  write (u, "(3x,A)")  "[none]"
+    case (SFM_PAIR);  write (u, "(3x,A)")  "Pair mapping"
     end select
     if (allocated (sf_mapping%par)) then
        write (u, "(3x,A)", advance="no")  "Parameters = "
@@ -74868,7 +75071,11 @@ A list of structure functions and associated mappings.
   type :: sf_list_t
      private
      integer :: n_strfun = 0
+     logical :: multichannel = .false.
      integer :: n_mapping = 0
+     integer, dimension(2) :: global_mapping_index = 0
+     integer :: global_mapping_type = SFM_NONE
+     real(default) :: global_mapping_par = 1
      type(sf_data_t), pointer :: first => null ()
      type(sf_data_t), pointer :: last => null ()
      character(32) :: md5sum = ""
@@ -74888,6 +75095,13 @@ A list of structure functions and associated mappings.
     type(sf_data_t), pointer :: current
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "Structure function list"
+    if (sf_list%multichannel .and. sf_list%n_mapping /= 0) then
+       write (u, "(2x,A,L1)")  "Global structure function mapping:"
+       write (u, "(4x,A,2I0)")  "Index     = ", sf_list%global_mapping_index
+       write (u, "(4x,A,I0)")   "Type      = ", sf_list%global_mapping_type
+       write (u, "(4x,A)", advance="no")   "Parameter = "
+       write (u, *)  sf_list%global_mapping_par
+    end if
     if (associated (sf_list%first)) then
        current => sf_list%first
        do while (associated (current))
@@ -74918,21 +75132,48 @@ used in parallel.  Allocate only one.
   end subroutine sf_list_append
        
 @ %def sf_list_append
-@ Count mappings.
+@ Count mappings.  If the [[multichannel]] flag is set, the mappings
+that are stored in the individual structure functions are not used
+directly, but transformed into channel-individual mappings.
 <<Strfun config: public>>=
   public :: sf_list_freeze
 <<Strfun config: procedures>>=
-  subroutine sf_list_freeze (sf_list)
+  subroutine sf_list_freeze (sf_list, multichannel)
     type(sf_list_t), intent(inout) :: sf_list
+    logical, intent(in) :: multichannel
     type(sf_data_t), pointer :: sf_data
-    sf_list%n_mapping = 0
-    sf_data => sf_list%first
-    do while (associated (sf_data))
-       if (sf_data%has_mapping) then
-          sf_list%n_mapping = sf_list%n_mapping + 1
-       end if
-       sf_data => sf_data%next
-    end do
+    integer :: i_par
+    sf_list%multichannel = multichannel
+    if (multichannel) then
+       sf_list%n_mapping = 0
+       i_par = 0
+       sf_data => sf_list%first
+       do while (associated (sf_data))
+          if (sf_data%has_mapping) then
+             sf_list%n_mapping = 1
+             sf_list%global_mapping_index = i_par + sf_data%mapping%index
+             sf_list%global_mapping_type = sf_data%mapping%type
+             select case (sf_data%mapping%type)
+             case (SFM_PAIR)
+                if (allocated (sf_data%mapping%par)) then
+                   sf_list%global_mapping_par = &
+                        max (sf_list%global_mapping_par, sf_data%mapping%par(1))
+                end if
+             end select
+          end if
+          i_par = i_par + sf_data%n_parameters
+          sf_data => sf_data%next
+       end do
+    else
+       sf_list%n_mapping = 0
+       sf_data => sf_list%first
+       do while (associated (sf_data))
+          if (sf_data%has_mapping) then
+             sf_list%n_mapping = sf_list%n_mapping + 1
+          end if
+          sf_data => sf_data%next
+       end do
+    end if
   end subroutine sf_list_freeze
 
 @ %def sf_list_freeze
@@ -74964,17 +75205,6 @@ used in parallel.  Allocate only one.
   end function sf_list_get_n_strfun
 
 @ %def sf_list_get_n_strfun
-@ Return number of mappings.
-<<Strfun config: public>>=
-  public :: sf_list_get_n_mapping
-<<Strfun config: procedures>>=
-  function sf_list_get_n_mapping (sf_list) result (n)
-    integer :: n
-    type(sf_list_t), intent(in) :: sf_list
-    n = sf_list%n_mapping
-  end function sf_list_get_n_mapping
-
-@ %def sf_list_get_n_mapping
 @ Return the MD5 checksum.
 <<Strfun config: public>>=
   public :: sf_list_get_md5sum
@@ -75052,18 +75282,10 @@ complete.  Beam initialization has to come before this.
     type(sf_list_t), intent(in) :: sf_list
     type(process_t), intent(inout), target :: process
     type(sf_data_t), pointer :: sf_data
-    integer :: i_sf, i_map, i_par, line
+    integer :: i_sf, line
     i_sf = 0
-    i_map = 0
-    i_par = 0
     sf_data => sf_list%first
     do while (associated (sf_data))
-       if (sf_data%has_mapping) then
-          i_map = i_map + 1
-          call process_set_strfun_mapping &
-               (process, i_map, i_par + sf_data%mapping%index, &
-                sf_data%mapping%type, sf_data%mapping%par)
-       end if
        if (all (sf_data%affects_beam)) then
           line = 0
        else if (sf_data%affects_beam(1)) then
@@ -75104,12 +75326,70 @@ complete.  Beam initialization has to come before this.
           call process_set_strfun &
                (process, i_sf, line, sf_data%user, sf_data%n_parameters)
        end select
-       i_par = i_par + sf_data%n_parameters
        sf_data => sf_data%next
     end do
   end subroutine sf_list_transfer_to_process
        
 @ %def sf_list_transfer_to_process
+@ The structure-function mappings are done separately, after the phase
+space is also set up.
+<<Strfun config: public>>=
+  public :: sf_list_setup_mappings
+<<Strfun config: procedures>>=
+  subroutine sf_list_setup_mappings (sf_list, process)
+    type(sf_list_t), intent(in) :: sf_list
+    type(process_t), intent(inout), target :: process
+    type(sf_data_t), pointer :: sf_data
+    integer :: i_map, i_par, channel
+    logical :: has_s_mapping
+    real(default) :: sqrts, mass, width
+    i_map = 0
+    i_par = 0
+    if (sf_list%multichannel) then
+       call process_allocate_strfun_mappings &
+            (process, sf_list%multichannel)
+       if (sf_list%n_mapping /= 0) then
+          select case (sf_list%global_mapping_type)
+          case (SFM_PAIR)
+             sqrts = process_get_sqrts (process)
+             do channel = 1, process_get_n_channels (process)
+                call process_get_s_mapping &
+                     (process, channel, has_s_mapping, mass, width)
+                if (has_s_mapping) then
+                   call process_set_strfun_mapping &
+                        (process, 1, channel, sf_list%global_mapping_index, &
+                        SFM_PAIR_RESONANCE, &
+                        (/sqrts, mass, width/))
+                else
+                   call process_set_strfun_mapping &
+                        (process, 1, channel, sf_list%global_mapping_index, &
+                        SFM_PAIR, &
+                        (/sf_list%global_mapping_par/))
+                end if
+             end do
+          case default
+             call msg_bug ("Strfun mappings: inconsistent mapping type")
+          end select
+       end if
+    else
+       call process_allocate_strfun_mappings (process, &
+            sf_list%multichannel, &
+            sf_list%n_mapping)
+       sf_data => sf_list%first
+       do while (associated (sf_data))
+          if (sf_data%has_mapping) then
+             i_map = i_map + 1
+             call process_set_strfun_mapping &
+                  (process, i_map, 1, i_par + sf_data%mapping%index, &
+                  sf_data%mapping%type, sf_data%mapping%par)
+          end if
+          i_par = i_par + sf_data%n_parameters
+          sf_data => sf_data%next
+       end do
+    end if
+  end subroutine sf_list_setup_mappings
+
+@ %def sf_list_setup_mappings
 @
 \subsection{The LHAPDF status}
 We re-export this from the [[sf_lhapdf]] module, so this need not be
@@ -75851,7 +76131,10 @@ global.   Local copies will inherit the special variables.
          (global%var_list, var_str ("?phs_step_mapping_exp"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?allow_global_mapping"), .false., &
+         (global%var_list, var_str ("?phs_s_mapping"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?strfun_multichannel"), .false., &
           intrinsic=.true.)
 !    call var_list_append_log &
 !         (global%var_list, var_str ("?old_phs_version"), .false., &
@@ -76142,7 +76425,7 @@ global.   Local copies will inherit the special variables.
     call var_list_append_real (global%var_list, var_str ("ps_fixed_alpha_s"), &
          0._default, intrinsic = .true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?ps_isr_pt_ordered"), .true., &
+         (global%var_list, var_str ("?ps_isr_pt_ordered"), .false., &
             intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?ps_isr_angular_ordered"), .true., &
@@ -76733,7 +77016,6 @@ applies to a single process.  We need not export it.
     type(string_t) :: history_filename
     type(beam_data_t) :: beam_data
     logical :: use_beams = .false.
-    logical :: allow_global_mapping = .false.
     type(sf_list_t), pointer :: sf_list => null ()
     logical :: use_strfun = .false.
     type(iterations_list_t) :: it_list
@@ -76796,8 +77078,8 @@ Basic setup: Process name, flags, parameters.
          var_list_get_lval (var_list, var_str ("?phs_step_mapping"))
     intg%mapping_defaults%step_mapping_exp = &
          var_list_get_lval (var_list, var_str ("?phs_step_mapping_exp"))
-    intg%allow_global_mapping = &
-         var_list_get_lval (var_list, var_str ("?allow_global_mapping"))
+    intg%mapping_defaults%enable_s_mapping = &
+         var_list_get_lval (var_list, var_str ("?phs_s_mapping"))
     intg%rebuild_grids = &
          var_list_get_lval (var_list, var_str ("?rebuild_grids"))
     intg%check_grid_file = &
@@ -76904,8 +77186,7 @@ compiled, insert a compilation.
     logical, intent(out) :: ok
     call process_store_init_process (intg%process, &
          prc_lib, intg%process_id, model, var_list, &
-         use_beams = intg%use_beams, &
-         allow_global_mapping = intg%allow_global_mapping)
+         use_beams = intg%use_beams)
     if (.not. process_is_valid (intg%process)) then
        call msg_fatal ("Process '" &
             // char (intg%process_id) // "': " &
@@ -76935,13 +77216,12 @@ initialized.
           if (associated (sf_list)) then
              intg%sf_list => sf_list
              call process_setup_beams (intg%process, intg%beam_data, &
-                  sf_list_get_n_strfun (intg%sf_list), &
-                  sf_list_get_n_mapping (intg%sf_list))
+                  sf_list_get_n_strfun (intg%sf_list))
              call process_check_beam_setup (intg%process, var_list)
              call sf_list_transfer_to_process (intg%sf_list, intg%process)
              intg%use_strfun = .true.
           else
-             call process_setup_beams (intg%process, intg%beam_data, 0, 0)
+             call process_setup_beams (intg%process, intg%beam_data, 0)
           end if
           ok = .true.
        else
@@ -76956,10 +77236,10 @@ initialized.
        end if
     else if (intg%sqrts_known) then
        call process_setup_beams &
-            (intg%process, intg%beam_data, 0, 0, sqrts = intg%sqrts)
+            (intg%process, intg%beam_data, 0, sqrts = intg%sqrts)
     else
        call process_setup_beams &
-            (intg%process, intg%beam_data, 0, 0)
+            (intg%process, intg%beam_data, 0)
     end if
     if (ok)  call process_connect_strfun (intg%process, ok)
     if (.not. ok) then
@@ -76976,19 +77256,18 @@ list.  As a side-effect, the MD5 checksum for the QCD data is computed
 and stored in the process data.
 <<Integrations: procedures>>=
   subroutine integration_setup_qcd &
-       (intg, lhapdf_status, pdf_builtin_status, sf_list, os_data, var_list)
+       (intg, lhapdf_status, pdf_builtin_status, os_data, var_list)
     type(integration_t), intent(inout) :: intg
     type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
-    type(sf_list_t), intent(in), pointer :: sf_list
     type(os_data_t), intent(in) :: os_data
     type(var_list_t), intent(in) :: var_list
     if (intg%alpha_s > 0)  call process_set_alpha_s (intg%process, intg%alpha_s)
-    if (associated (sf_list)) then
+    if (associated (intg%sf_list)) then
        call process_setup_qcd (intg%process, &
             lhapdf_status, pdf_builtin_status, &
-            sf_list_get_lhapdf_data_ptr (sf_list), &
-            sf_list_get_pdf_builtin_data_ptr (sf_list), &
+            sf_list_get_lhapdf_data_ptr (intg%sf_list), &
+            sf_list_get_pdf_builtin_data_ptr (intg%sf_list), &
             os_data, var_list)
     else
        call process_setup_qcd (intg%process, &
@@ -77039,6 +77318,18 @@ known.
   end subroutine integration_setup_phase_space
 
 @ %def integration_setup_phase_space
+@ The structure function mappings depend on the number of phase-space
+channels, therefore this comes after the phase-space setup.  It
+completes the structure-function setup.
+<<Integrations: procedures>>=
+  subroutine integration_setup_strfun_mappings (intg)
+    type(integration_t), intent(inout) :: intg
+    if (intg%use_strfun) then
+       call sf_list_setup_mappings (intg%sf_list, intg%process)
+    end if
+  end subroutine integration_setup_strfun_mappings
+
+@ %def integration_setup_strfun_mappings
 @ Set up the list of iterations and allocate the VAMP history accordingly.
 <<Integrations: procedures>>=
   subroutine integration_setup_iterations &
@@ -77492,10 +77783,13 @@ space, no iterations.
     if (ok) then
        call integration_setup_qcd &
             (intg, global%lhapdf_status, global%pdf_builtin_status, &
-             global%sf_list, global%os_data, global%var_list)
+             global%os_data, global%var_list)
     end if
     if (integrate .and. ok) then
        call integration_setup_phase_space (intg, global%os_data, ok)
+    end if
+    if (integrate .and. ok) then
+       call integration_setup_strfun_mappings (intg)
     end if
     if (.not. intg%phs_only) then
        if (integrate .and. ok) then
@@ -82319,7 +82613,8 @@ integration command.
        do i = 1, beams%n_strfun
           call strfun_pair_register (beams%strfun_pair(i), global)
        end do
-       call sf_list_freeze (global%sf_list)
+       call sf_list_freeze (global%sf_list, &
+            var_list_get_lval (beams%local%var_list, "?strfun_multichannel"))
 !       call sf_list_write (global%sf_list, beam_fmt = .true.)
        call sf_list_compute_md5sum (global%sf_list)
     end select
@@ -82465,7 +82760,7 @@ pair-mapping.
     end do
     if (all (affects_beam)) then
        call sf_data_setup_mapping &
-            (sf_data, SFM_PDFPAIR, (/ 0, 1 /), 2._default)
+            (sf_data, SFM_PAIR, (/ 0, 1 /), 2._default)
     end if
   end subroutine sf_list_register_lhapdf
 
@@ -82512,7 +82807,7 @@ pair-mapping.
     end do
     if (all (affects_beam)) then
        call sf_data_setup_mapping &
-            (sf_data, SFM_PDFPAIR, (/ 0, 1 /), 2._default)
+            (sf_data, SFM_PAIR, (/ 0, 1 /), 2._default)
     end if
   end subroutine sf_list_register_pdf_builtin
 
@@ -82606,10 +82901,10 @@ pair-mapping.
     if (all (affects_beam)) then
        if (epa_recoil) then
           call sf_data_setup_mapping &
-               (sf_data, SFM_EPAPAIR, (/-2, 1 /), 1._default)
+               (sf_data, SFM_PAIR, (/-2, 1 /), 1._default)
        else
           call sf_data_setup_mapping &
-               (sf_data, SFM_EPAPAIR, (/ 0, 1 /), 1._default)
+               (sf_data, SFM_PAIR, (/ 0, 1 /), 1._default)
        end if
     end if
   end subroutine sf_list_register_epa
@@ -82662,7 +82957,7 @@ pair-mapping.
     end do
     if (all (affects_beam)) then
        call sf_data_setup_mapping &
-            (sf_data, SFM_EWAPAIR, (/ 0, 1 /), 1._default)
+            (sf_data, SFM_PAIR, (/ 0, 1 /), 1._default)
     end if
   end subroutine sf_list_register_ewa
 
@@ -82855,13 +83150,13 @@ pair.
     if (all (affects_beam) .and. user_strfun_mapping) then
        if (all (sf_data_affects_beam (sf_data))) then
           call sf_data_setup_mapping &
-               (sf_data, SFM_USER, &
+               (sf_data, SFM_PAIR, &
                 (/ sf_data_get_n_parameters (sf_data) - 1, &
                    sf_data_get_n_parameters (sf_data) /), &
                 user_strfun_mapping_power)
        else
           call sf_data_setup_mapping &
-               (sf_data, SFM_USER, &
+               (sf_data, SFM_PAIR, &
                 (/ 0, sf_data_get_n_parameters (sf_data) /), &
                user_strfun_mapping_power)
        end if
@@ -88431,6 +88726,8 @@ module shower_interface
   use os_interface
   use diagnostics !NODEP!
   use lorentz !NODEP!
+  use strfun
+  use pdf_builtin !NODEP!
 
 <<Standard module head>>
 
@@ -88584,40 +88881,55 @@ This should be the only subroutine called from WHIZARD.
 <<Shower: public>>=
   public :: apply_shower_particle_set
 <<Shower: procedures>>=
-  subroutine apply_shower_particle_set(particle_set, shower_settings,  model, valid, vetoed)
+  subroutine apply_shower_particle_set(particle_set, shower_settings,  model, &
+       pdf_type, pdf_set, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
     type(model_t), pointer, intent(in) :: model
+    integer, intent(in) :: pdf_type
+    integer, intent(in) :: pdf_set
     logical, intent(inout) :: valid
     logical, intent(inout) :: vetoed
     real(kind=double) :: pdftest
 
     type(mlm_matching_data_t) :: mlm_matching_data
     logical, save :: matching_disabled=.false.
+    procedure(shower_pdf), pointer :: pdf_func => null()
+    external :: evolvePDFM
 
-    ! return if already invalid or vetoed
-    if((.not.valid).or.vetoed) then
-       return
-    end if
-    ! ensure that lhapdf is initialized
-    if(shower_settings%ps_isr_active .and.(abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
-            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000) ) then
-       call GetQ2max(0,pdftest)
-       if(pdftest .eq. 0._double) then
-          call msg_fatal(" ISR enabled, but LHAPDF not initialized," // &
-               char(10) // "     aborting simulation")
-          return
-       end if
-    end if
-
-!    call shower_settings_write(shower_settings)
-    
     if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
          .and.(shower_settings%hadronization_active.eqv..false.).and.(shower_settings%mlm_matching.eqv..false.) ) then
        ! return if nothing to do
        return
     end if
 
+    ! return if already invalid or vetoed
+    if((.not.valid).or.vetoed) then
+       return
+    end if
+    ! ensure that lhapdf is initialized
+    if(pdf_type .eq. STRF_LHAPDF) then
+       if(shower_settings%ps_isr_active .and.(abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
+            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000)) then
+          call GetQ2max(0,pdftest)
+          if(pdftest .eq. 0._double) then
+             call msg_fatal(" ISR enabled, but LHAPDF not initialized," // &
+                  char(10) // "     aborting simulation")
+             return
+          end if
+       end if
+       pdf_func => evolvePDFM
+    else if(pdf_type.eq. STRF_PDF_BUILTIN) then
+       if(shower_settings%ps_use_PYTHIA_shower) then
+          call msg_fatal(" builtin-pdfs can not be used for PYTHIA showers," // &
+               char(10) // "     aborting simulation")
+          return
+       end if
+       pdf_func => pdf_evolve_LHAPDF
+    end if
+
+!    call shower_settings_write(shower_settings)
+    
     if(shower_settings%ps_PYTHIA_verbose.eqv..false.) then
        call PYGIVE('MSTU(12)=12345')
        call PYGIVE('MSTU(13)=0')
@@ -88649,7 +88961,8 @@ This should be the only subroutine called from WHIZARD.
        call apply_PYTHIAshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, valid)
        !       call pylist(2)
     else
-       call apply_WHIZARDshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, valid)
+       call apply_WHIZARDshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, &
+       pdf_func, pdf_set, valid)
     end if
     !call particle_set_write(particle_set)
     !print *, " after SHOWER"
@@ -88842,11 +89155,14 @@ This should be the only subroutine called from WHIZARD.
       close(unit=u_W2P)
       valid = (shower_get_PYTHIA_error().eq.0)
     end subroutine apply_PYTHIAshower_particle_set
-    subroutine apply_WHIZARDshower_particle_set(particle_set, shower_settings, JETS_ME, model_in, valid)
+    subroutine apply_WHIZARDshower_particle_set(particle_set, shower_settings, JETS_ME, model_in, &
+         pdf_func, pdf_set, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
       type(model_t), pointer, intent(in) :: model_in
+      procedure(shower_pdf), pointer, intent(in) :: pdf_func
+      integer, intent(in) :: pdf_set
       logical, intent(inout) :: valid
 
       type(shower_t) :: shower
@@ -88888,6 +89204,8 @@ This should be the only subroutine called from WHIZARD.
       call shower_set_tscalefactor_isr(shower_settings%ps_isr_tscalefactor)
       call shower_set_isr_only_onshell_emitted_partons( &
            shower_settings%ps_isr_only_onshell_emitted_partons)
+      call shower_set_pdf_set(pdf_set)
+      call shower_set_pdf_func(pdf_func)
 
       if(.not.msg_written) then
          call msg_message("Using WHIZARD's internal showering")
@@ -88988,7 +89306,7 @@ This should be the only subroutine called from WHIZARD.
                ! shower_generate_next_isr_branching returns a pointer to the parton with the next ISR-branching, this parton's scale is the scale of the next branching
 !               temppp=shower_generate_next_isr_branching_veto(shower)
                temppp=shower_generate_next_isr_branching(shower)
-               
+
                if(.not. associated(temppp%p)) then
                   exit branchings
                end if
@@ -89183,6 +89501,17 @@ This should be the only subroutine called from WHIZARD.
       ! Assume that the event is still present in the PYTHIA common blocks
 !      call pygive ("MSTP(61)=0")  ! switch off ISR
 !      call pygive ("MSTP(71)=0")  ! switch off FSR
+
+      if((shower_settings%ps_use_PYTHIA_shower.eqv..false.) .and. len(shower_settings%ps_PYTHIA_PYGIVE)>0) then
+         remaining_PYGIVE = shower_settings%ps_PYTHIA_PYGIVE
+         do while(len(remaining_PYGIVE)>0)
+            call split(remaining_PYGIVE, partial_PYGIVE, ";")
+            call PYGIVE(char(partial_PYGIVE))
+         end do
+         if(shower_get_PYTHIA_error().ne.0) then
+            call msg_fatal(" PYTHIA didn't recognize ps_PYTHIA_PYGIVE setting")
+         end if
+      end if
 
       if(.not.(shower_settings%ps_use_PYTHIA_shower.and.(shower_settings%ps_isr_active.or. &
            shower_settings%ps_fsr_active))) then

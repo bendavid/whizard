@@ -2,16 +2,16 @@ Known bugs:
 
 General:
 
-* WHIZARD 2.0 currently runs only with the NAGFOR 5.2 and gfortran 4.5.0 
-  (or newer) Fortran compilers
+* WHIZARD 2.1 currently runs only with the NAGFOR 5.2 (or newer) and 
+  gfortran 4.5.0 (or newer) Fortran compilers
 
   [After compiler bugs are fixed, it should also run with g95, PGF
    and ifort.  See the file EXTENSIONS for the list of Fortran 2003 
    features that the compiler must support.]
 
-* WHIZARD 2.0 is still in a relatively early release stage. However,
-  except for a few technical points, all features from WHIZARD 1 have 
-  been reimplemented in WHIZARD 2.0.
+* WHIZARD 2.1 is still in a relatively early release stage. However,
+  except for a few minor technical points, all features from WHIZARD 1 have  
+  been reimplemented in WHIZARD 2.1.
 
 * Please report bugs and problems or performance issues 
   to one of the authors:
@@ -20,9 +20,16 @@ General:
   Juergen Reuter <juergen.reuter@desy.de>
   Christian Speckner <christian.speckner@physik.uni-freiburg.de>	
 
+Graphics/debug output:
+
+* MetaPost 1.504 (included in TeXLive 2011) has a bug which
+  prevents the graphical integration history to be correctly produced,
+  and also the graphics analysis when using run IDs or analysis
+  file names containing dots in the name.
+
 Manual:
 
-* WHIZARD 2.0, the new features, is still mostly undocumented.  The manual
+* WHIZARD 2.1, the new features, is still mostly undocumented.  The manual
   is still quite sparse. We are working on that. Regular updates independent
   from the subreleases can be found on the Hepforge webpage:
   http://projects.hepforge.org/whizard/manual.pdf

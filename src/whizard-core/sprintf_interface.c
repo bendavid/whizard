@@ -1,5 +1,5 @@
 /*
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>

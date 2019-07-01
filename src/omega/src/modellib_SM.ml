@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 3722 2012-02-29 14:31:53Z fbach $
+(* $Id: modellib_SM.ml 3832 2012-05-04 02:12:59Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 3722 $";
-      RCS.date = "$Date: 2012-02-29 15:31:53 +0100 (Wed, 29 Feb 2012) $";
-      RCS.author = "$Author: fbach $";
+    { RCS.revision = "$Revision: 3832 $";
+      RCS.date = "$Date: 2012-05-04 04:12:59 +0200 (Fri, 04 May 2012) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_SM.ml $" }
 
@@ -905,6 +905,8 @@ module SM (Flags : SM_flags) =
       | G_HWW | G_HHWW | G_HZZ | G_HHZZ
       | G_Htt | G_Hbb | G_Hcc | G_Hmm | G_Htautau | G_H3 | G_H4
       | G_HGaZ | G_HGaGa | G_Hgg
+      | G_HGaZ_anom | G_HGaGa_anom | G_HZZ_anom | G_HWW_anom  
+      | G_HGaZ_u | G_HZZ_u | G_HWW_u
       | Gs | I_Gs | G2
       | Mass of flavor | Width of flavor
       | K_Matrix_Coeff of int | K_Matrix_Pole of int
@@ -1505,7 +1507,15 @@ i*)
    \end{subequations} *)
 
     let anomalous_gauge_higgs =
-      []
+      [ (O H, G Ga, G Ga), Dim5_Scalar_Gauge2 1, G_HGaGa_anom;
+        (O H, G Ga, G Z), Dim5_Scalar_Gauge2 1, G_HGaZ_anom;
+        (O H, G Z, G Z), Dim5_Scalar_Gauge2 1, G_HZZ_anom;
+        (O H, G Wp, G Wm), Dim5_Scalar_Gauge2 1, G_HWW_anom;
+        (O H, G Ga, G Z), Dim5_Scalar_Vector_Vector_U 1, G_HGaZ_u;
+        (O H, G Z, G Z), Dim5_Scalar_Vector_Vector_U 1, G_HZZ_u;
+        (O H, G Wp, G Wm), Dim5_Scalar_Vector_Vector_U 1, G_HWW_u;
+        (O H, G Wm, G Wp), Dim5_Scalar_Vector_Vector_U 1, G_HWW_u
+      ]
 
     let anomalous_gauge_higgs4 =
       []
@@ -2081,6 +2091,10 @@ effective operators:
       | G_Htt -> "ghtt" | G_Hbb -> "ghbb"
       | G_Htautau -> "ghtautau" | G_Hcc -> "ghcc" | G_Hmm -> "ghmm"
       | G_HGaZ -> "ghgaz" | G_HGaGa -> "ghgaga" | G_Hgg -> "ghgg"
+      | G_HGaGa_anom -> "ghgaga_ac" | G_HGaZ_anom -> "ghgaz_ac"
+      | G_HZZ_anom -> "ghzz_ac" | G_HWW_anom -> "ghww_ac"
+      | G_HGaZ_u -> "ghgaz_u" | G_HZZ_u -> "ghzz_u" 
+      | G_HWW_u -> "ghww_u" 
       | G_H3 -> "gh3" | G_H4 -> "gh4"
       | Gs -> "gs" | I_Gs -> "igs" | G2 -> "gs**2"
       | Mass f -> "mass" ^ flavor_symbol f

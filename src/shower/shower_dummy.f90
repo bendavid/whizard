@@ -76,6 +76,17 @@ module shower_basics_module
   public :: shower_set_primordial_kt_cutoff
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
+  public :: shower_set_pdf_func
+  public :: shower_set_pdf_set
+  public :: shower_pdf
+
+  interface 
+     subroutine shower_pdf (set, x, q, ff)
+       integer, intent(in) :: set
+       double precision, intent(in) :: x, q
+       double precision, dimension(-6:6), intent(out) :: ff
+     end subroutine shower_pdf
+  end interface
 contains
   subroutine shower_set_minenergy_timelike (input)
     real(default), intent(in) :: input
@@ -182,6 +193,21 @@ contains
     write (0, "(A)")  "**************************************************************"
     stop      
   end subroutine shower_set_isr_only_onshell_emitted_partons
+  subroutine shower_set_pdf_func(func)
+    procedure(shower_pdf), pointer, intent(in) :: func
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_pdf_func
+  
+  subroutine shower_set_pdf_set(set)
+    integer, intent(in) :: set
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_pdf_set
 end module shower_basics_module
 
 module shower_parton_module

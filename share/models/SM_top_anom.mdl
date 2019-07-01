@@ -48,30 +48,46 @@ parameter tv_ttG    = 0.000     # vector coeff. of ttg tensor cpl.
 parameter ta_ttG    = 0.000     # axial coeff. (*i) of ttg tensor cpl.
 parameter s_ttH     = 0.000     # scalar coeff. of ttH cpl.
 parameter p_ttH     = 0.000     # pseudo scalar coeff. of ttH  cpl.
-parameter Lambda    = 2000      # effective energy scale (GeV)
+parameter Lambda    = 2000      # effective energy scale in [GeV]
 parameter fun       = 0         # ansatz for k^2-dependence of form factors
                    # (0) no dependence: ~  1
-                   # (1) Lorentzian:    ~  Lambda^2 / (Lambda^2 + k^2)
-                   # (2) dipole:        ~ (Lambda^2 / (Lambda^2 + k^2))^2
+                   # (1) Lorentzian:    ~  1 / (1 + k^2/Lambda^2)
+                   # (2) dipole:        ~  1 / (1 + k^2/Lambda^2))^2
                    # (3) exponential:   ~  exp(-k^2/Lambda^2)
+
+
+# choose normalization convention
+
+parameter norm_conv = 1
+
+# Setting this switch to a positive value effects the usual normalization
+# convention widely used in literature, where the ratio of fundamental scales
+# is implicit inside the couplings (cf. e.g. 0811.3842 & 0904.2387).
+# With a negative value, the ratio of scales appears explicitly in the
+# normalization of the interaction terms, making the natural coupling sizes
+# become of the order of the fundamental Wilson coefficients. 
+
 
 # Enforce gauge invariance
 
 parameter gauge_inv = 1
 
-# Setting this switch to a positive value enforces interrelations imposed by gauge
-# invariance among some couplings introduced above and additional bottom
-# couplings, i. e. any inconsistent values stated above (or zeros assumed for the
-# bottom couplings) are OVERRIDEN as follows:
-# vl_ttZ = vl_tbW * 2
-# tv_ttZ = tr_tbW_Re / cw - ee * tw tv_ttA
-# ta_ttZ = tr_tbW_Im / cw - ee * tw ta_ttA
-# tv_bbA = tl_tbW_Re * sw / ee
-# ta_bbA = tl_tbW_Im * sw / ee 
-# tv_bbZ = tl_tbW_Re * cw
-# ta_bbZ = tl_tbW_Im * cw
+# Setting this switch to a positive value enforces interrelations imposed by
+# gauge invariance among some couplings introduced above and additional bottom
+# couplings, i. e. any inconsistent values stated above (or zeros assumed for
+# the bottom couplings) are OVERRIDEN such that the overall numerical factors
+# N_i multiplying the interaction terms (i.e. independent of "norm_conv"!)
+# respect the following constraints:
+# N_vl_ttZ = N_vl_tbW_Re * sqrt(2) / cw  (consequence of requiring vl_bbZ = 0)
+# N_tv_bbA = N_tl_tbW_Re * sw / sqrt(2)
+# N_ta_bbA = N_tl_tbW_Im * sw / sqrt(2)
+# N_tv_bbZ = N_tl_tbW_Re * cw / sqrt(2)
+# N_ta_bbZ = N_tl_tbW_Im * cw / sqrt(2)
+# N_tr_tbW_Re = N_tv_ttZ * sqrt(2) * cw + N_tv_ttA * 2 * sw
+# N_tr_tbW_Im = N_ta_ttZ * sqrt(2) * cw + N_ta_ttA * 2 * sw
 
-# Redundant operator coefficients (turning on 4-fermion contact vertices)
+
+# Partially redundant operator coefficients (turn on 4-fermion contact terms)
 parameter Re_CqG = 0.000        # real part of C_qG
 parameter Re_CuG = 0.000        # real part of C_uG
 parameter Re_CqB = 0.000        # real part of C_qB
@@ -80,6 +96,7 @@ parameter Re_CqW = 0.000        # real part of C_qW
 parameter Re_CDu = 0.000        # real part of C_Du
 parameter Re_CDd = 0.000        # real part of C_Dd
 parameter Im_CDd = 0.000        # imaginary part of C_Dd
+
 
 # Dependent SM parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)

@@ -1,4 +1,4 @@
-(* $Id: colorize.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: colorize.ml 3832 2012-05-04 02:12:59Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 
@@ -22,8 +22,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 3832 $";
+      RCS.date = "$Date: 2012-05-04 04:12:59 +0200 (Fri, 04 May 2012) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/colorize.ml $" }
@@ -329,6 +329,8 @@ module It (M : Model.T) =
           Dim5_Scalar_Gauge2_Skew (x * c)
       | Dim5_Scalar_Vector_Vector_T c ->
           Dim5_Scalar_Vector_Vector_T (x * c)
+      | Dim5_Scalar_Vector_Vector_U c ->
+          Dim5_Scalar_Vector_Vector_U (x * c)
       | Dim6_Vector_Vector_Vector_T c ->
           Dim6_Vector_Vector_Vector_T (x * c)
       | Tensor_2_Vector_Vector c ->

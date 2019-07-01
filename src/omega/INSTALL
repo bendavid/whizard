@@ -214,7 +214,7 @@ are also necessary tools. Although the first two are quite standard, you
 can get them from http://www.tug.org/texlive/. Follow the instructions there.
 OcamlWeb is available from http://www.lri.fr/~filliatr/ocamlweb/.
 
-svn co svn.hepforge.org/hepforge/home/whizard/event-generators/whizard/trunk/src/omega
+svn co http://whizard.hepforge.org/svn/trunk/src/omega
 
 cd omega
 autoreconf

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -53,7 +53,7 @@ module phs_forests
   public :: phs_parameters_read
   public :: phs_forest_t
   public :: phs_forest_init
-  public :: phs_forest_set_global_mappings
+  public :: phs_forest_set_s_mappings
   public :: phs_forest_final
   public :: phs_forest_write
   public :: assignment(=)
@@ -62,7 +62,7 @@ module phs_forests
   public :: phs_forest_get_n_groves
   public :: phs_forest_get_grove_bounds
   public :: phs_forest_get_n_equivalences
-  public :: phs_forest_tree_has_global_mapping
+  public :: phs_forest_get_s_mapping
   public :: syntax_phs_forest_init
   public :: syntax_phs_forest_final
   public :: syntax_phs_forest_write
@@ -124,7 +124,7 @@ module phs_forests
      type(phs_prt_t), dimension(:), allocatable :: prt_out
      type(phs_prt_t), dimension(:), allocatable :: prt
      integer(TC), dimension(:,:), allocatable :: prt_combination
-     type(mapping_t), dimension(:), allocatable :: global_mapping
+     type(mapping_t), dimension(:), allocatable :: s_mapping
   end type phs_forest_t
 
 
@@ -334,18 +334,18 @@ contains
     end do
   end subroutine phs_grove_assign1
 
-  subroutine phs_grove_assign_global_mappings (grove, mapping)
+  subroutine phs_grove_assign_s_mappings (grove, mapping)
     type(phs_grove_t), intent(in) :: grove
     type(mapping_t), dimension(:), intent(out) :: mapping
     integer :: i
     if (size (mapping) == size (grove%tree)) then
        do i = 1, size (mapping)
-          call phs_tree_assign_global_mapping (grove%tree(i), mapping(i))
+          call phs_tree_assign_s_mapping (grove%tree(i), mapping(i))
        end do
     else
-       call msg_bug ("phs_grove_assign_global_mappings: array size mismatch")
+       call msg_bug ("phs_grove_assign_s_mappings: array size mismatch")
     end if
-  end subroutine phs_grove_assign_global_mappings
+  end subroutine phs_grove_assign_s_mappings
 
   subroutine phs_forest_init (forest, n_tree, n_in, n_out)
     type(phs_forest_t), intent(inout) :: forest
@@ -375,18 +375,18 @@ contains
     k_root = 2**forest%n_tot - 1
     allocate (forest%prt (k_root))
     allocate (forest%prt_combination (2, k_root))
-    allocate (forest%global_mapping (forest%n_trees))
+    allocate (forest%s_mapping (forest%n_trees))
   end subroutine phs_forest_init
 
-  subroutine phs_forest_set_global_mappings (forest)
+  subroutine phs_forest_set_s_mappings (forest)
     type(phs_forest_t), intent(inout) :: forest
     integer :: g, i0, i1, n
     do g = 1, size (forest%grove)
        call phs_forest_get_grove_bounds (forest, g, i0, i1, n)
-       call phs_grove_assign_global_mappings &
-            (forest%grove(g), forest%global_mapping(i0:i1))
+       call phs_grove_assign_s_mappings &
+            (forest%grove(g), forest%s_mapping(i0:i1))
     end do
-  end subroutine phs_forest_set_global_mappings
+  end subroutine phs_forest_set_s_mappings
 
   subroutine phs_forest_final (forest)
     type(phs_forest_t), intent(inout) :: forest
@@ -396,7 +396,7 @@ contains
     end if
     if (allocated (forest%grove_lookup))  deallocate (forest%grove_lookup)
     if (allocated (forest%prt))  deallocate (forest%prt)
-    if (allocated (forest%global_mapping))  deallocate (forest%global_mapping)
+    if (allocated (forest%s_mapping))  deallocate (forest%s_mapping)
   end subroutine phs_forest_final
 
   subroutine phs_forest_write (forest, unit)
@@ -446,11 +446,11 @@ contains
     write (u, *) "Total number of equivalences: ", forest%n_equivalences
     write (u, *)
     write (u, *) "Global s-channel mappings:"
-    if (allocated (forest%global_mapping)) then
-       do i = 1, size (forest%global_mapping)
-          if (mapping_is_s_channel (forest%global_mapping(i))) then
+    if (allocated (forest%s_mapping)) then
+       do i = 1, size (forest%s_mapping)
+          if (mapping_is_s_channel (forest%s_mapping(i))) then
              write (u, "(1x,I0,':',1x)", advance="no")  i
-             call mapping_write (forest%global_mapping(i), unit)
+             call mapping_write (forest%s_mapping(i), unit)
           end if
        end do
     else
@@ -555,9 +555,9 @@ contains
        allocate (forest_out%prt (size (forest_in%prt)))
        forest_out%prt = forest_in%prt
     end if
-    if (allocated (forest_in%global_mapping)) then
-       allocate (forest_out%global_mapping (size (forest_in%global_mapping)))
-       forest_out%global_mapping = forest_in%global_mapping
+    if (allocated (forest_in%s_mapping)) then
+       allocate (forest_out%s_mapping (size (forest_in%s_mapping)))
+       forest_out%s_mapping = forest_in%s_mapping
     end if
     if (allocated (forest_in%prt_combination)) then
        allocate (forest_out%prt_combination &
@@ -599,12 +599,20 @@ contains
     n = forest%n_equivalences
   end function phs_forest_get_n_equivalences
 
-  function phs_forest_tree_has_global_mapping (forest, channel) result (flag)
-    logical :: flag
+  subroutine phs_forest_get_s_mapping (forest, channel, flag, mass, width)
     type(phs_forest_t), intent(in) :: forest
     integer, intent(in) :: channel
-    flag = mapping_is_s_channel (forest%global_mapping(channel))
-  end function phs_forest_tree_has_global_mapping
+    logical, intent(out) :: flag
+    real(default), intent(out) :: mass, width
+    flag = mapping_is_s_channel (forest%s_mapping(channel))
+    if (flag) then
+       mass = mapping_get_mass (forest%s_mapping(channel))
+       width = mapping_get_width (forest%s_mapping(channel))
+    else
+       mass = 0
+       width = 0
+    end if
+  end subroutine phs_forest_get_s_mapping
 
   subroutine define_phs_forest_syntax (ifile)
     type(ifile_t) :: ifile
@@ -1060,13 +1068,13 @@ contains
   end subroutine phs_forest_setup_vamp_equivalences
 
   subroutine phs_forest_evaluate_phase_space &
-       (forest, channel, active, sqrts, x, factor, volume, ok)
+       (forest, channel, active, sqrts, x, phs_factor, volume, ok)
     type(phs_forest_t), intent(inout) :: forest
     integer, intent(in) :: channel
     logical, dimension(:), intent(in) :: active
     real(default), intent(in) :: sqrts
     real(default), dimension(:,:), intent(inout) :: x
-    real(default), dimension(:), intent(inout) :: factor
+    real(default), dimension(:), intent(out) :: phs_factor
     real(default), intent(out) :: volume
     logical, intent(out) :: ok
     integer :: g, t, ch, s
@@ -1097,16 +1105,9 @@ contains
             (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
     end select
     call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
-         forest%prt, factor(channel), volume, sqrts, x(:,channel), ok)
+         forest%prt, phs_factor(channel), volume, sqrts, x(:,channel), ok)
     if (ok) then
        !$OMP PARALLEL PRIVATE (g,t,ch,s) SHARED(forest,sqrts,x,channel)
-!       !$OMP DO REDUCTION(+:w)
-!       do g = 1, size (forest%grove)
-!          do t = 1, size (forest%grove(g)%tree)
-!             w = w+1
-!          end do
-!       end do
-!       !$OMP END DO
 
        !$OMP DO SCHEDULE(STATIC)
        do ch = 1, forest%n_trees
@@ -1124,7 +1125,7 @@ contains
                   (forest%grove(g)%tree(t), forest%prt)
              call phs_tree_compute_x_from_momenta &
                   (forest%grove(g)%tree(t), &
-                  forest%prt, factor(ch), sqrts, x(:,ch))
+                  forest%prt, phs_factor(ch), sqrts, x(:,ch))
           end if
        end do
        !$OMP END DO
@@ -1139,13 +1140,13 @@ contains
   end subroutine phs_forest_evaluate_phase_space
 
   subroutine phs_forest_evaluate_momenta &
-       (forest, channel, active, sqrts, x, factor, volume, ok)
+       (forest, channel, active, sqrts, x, phs_factor, volume, ok)
     type(phs_forest_t), intent(inout) :: forest
     integer, intent(in) :: channel
     logical, dimension(:), intent(in) :: active
     real(default), intent(in) :: sqrts
     real(default), dimension(:,:), intent(inout) :: x
-    real(default), dimension(:), intent(inout) :: factor
+    real(default), dimension(:), intent(inout) :: phs_factor
     real(default), intent(out) :: volume
     logical, intent(out) :: ok
     integer :: g, t, ch, s
@@ -1171,114 +1172,57 @@ contains
             (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
     end select
     call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
-         forest%prt, factor(channel), volume, sqrts, x(:,channel), ok)
+         forest%prt, phs_factor(channel), volume, sqrts, x(:,channel), ok)
     if (ok) then
-
        call phs_forest_combine_particles (forest)
        do k = 1, forest%n_out
           forest%prt_out(k) = forest%prt(ibset(0,k-1))
        end do
-
-!        !$OMP PARALLEL PRIVATE(g,t,ch,s) SHARED(forest,channel)
-! 
-!        !$OMP DO SCHEDULE(STATIC)
-!        do ch = 1, forest%n_trees
-!           if (ch == channel)  cycle
-!           if (active(ch)) then
-!              s = ch
-!              g = 1
-!              do while (s > size (forest%grove(g)%tree))
-!                 s = s - size(forest%grove(g)%tree)
-!                 g = g + 1
-!              end do
-!              t = s
-!              call phs_tree_combine_particles &
-!                   (forest%grove(g)%tree(t), forest%prt)
-!           end if
-!        end do
-!        !$OMP END DO
-! 
-!        !$OMP DO
-!        do k = 1, forest%n_out
-!           forest%prt_out(k) = forest%prt(ibset(0,k-1))
-!        end do
-!        !$OMP END DO
-!        !$OMP END PARALLEL
     end if
   end subroutine phs_forest_evaluate_momenta
 
   subroutine phs_forest_evaluate_other_channels &
-       (forest, channel, active, sqrts, x, factor)
+       (forest, channel, active, sqrts, x, phs_factor)
     type(phs_forest_t), intent(inout) :: forest
     integer, intent(in) :: channel
     logical, dimension(:), intent(in) :: active
     real(default), intent(in) :: sqrts
     real(default), dimension(:,:), intent(inout) :: x
-    real(default), dimension(:), intent(inout) :: factor
+    real(default), dimension(:), intent(inout) :: phs_factor
     integer :: g, t, ch, w, k, s
     integer :: OMP_GET_NUM_THREADS
-!     integer(TC) :: k, k_root, k_in
-!     g = forest%grove_lookup (channel)
-!     t = channel - forest%grove(g)%tree_count_offset
-!     call phs_prt_set_undefined (forest%prt)
-!     call phs_prt_set_undefined (forest%prt_out)
-!     k_in = forest%n_tot
-!     forall (k = 1:forest%n_in)
-!        forest%prt(ibset(0,k_in-k)) = forest%prt_in(k)
-!     end forall
-!     do k = 1, forest%n_out
-!        call phs_prt_set_msq (forest%prt(ibset(0,k-1)), &
-!             flavor_get_mass (forest%flv(forest%n_in+k)) ** 2)
-!     end do
-!     k_root = 2**forest%n_out - 1
-!     select case (forest%n_in)
-!     case (1)
-!        forest%prt(k_root) = forest%prt_in(1)
-!     case (2)
-!        call phs_prt_combine &
-!             (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
-!     end select
-!     call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
-!          forest%prt, factor(channel), volume, sqrts, x(:,channel), ok)
-!     if (ok) then
-       w = 0
-       !$OMP PARALLEL PRIVATE (g,t,ch,s,k) SHARED(forest,sqrts,x,channel,w)
-       !$OMP DO REDUCTION(+:w)
-       do g = 1, size (forest%grove)
-          do t = 1, size (forest%grove(g)%tree)
-             w = w+1
+
+    w = 0
+    !$OMP PARALLEL PRIVATE (g,t,ch,s,k) SHARED(forest,sqrts,x,channel,w)
+
+    !$OMP DO REDUCTION(+:w)
+    do g = 1, size (forest%grove)
+       do t = 1, size (forest%grove(g)%tree)
+          w = w+1
+       end do
+    end do
+    !$OMP END DO
+    
+    !$OMP DO SCHEDULE(STATIC)
+    do ch = 1, w
+       if (ch == channel)  cycle
+       if (active(ch)) then
+          s = ch
+          g = 1
+          t = 1
+          do while (s > size (forest%grove(g)%tree))
+             s = s - size(forest%grove(g)%tree)
+             g = g+1
           end do
-       end do
-       !$OMP END DO
+          t = s
+          call phs_tree_compute_x_from_momenta &
+               (forest%grove(g)%tree(t), &
+               forest%prt, phs_factor(ch), sqrts, x(:,ch))
+       end if
+    end do
+    !$OMP END DO
+    !$OMP END PARALLEL
 
-       !$OMP DO SCHEDULE(STATIC)
-       do ch = 1, w
-          if (ch == channel)  cycle
-          if (active(ch)) then
-             s = ch
-             g = 1
-             t = 1
-             do while (s > size (forest%grove(g)%tree))
-                s = s - size(forest%grove(g)%tree)
-                g = g+1
-             end do
-             t = s
-
-!             call phs_tree_combine_particles &
-!                  (forest%grove(g)%tree(t), forest%prt)
-             call phs_tree_compute_x_from_momenta &
-                  (forest%grove(g)%tree(t), &
-                  forest%prt, factor(ch), sqrts, x(:,ch))
-          end if
-       end do
-       !$OMP END DO
-       !$OMP END PARALLEL
-
-
-!       forall (k = 1:forest%n_out)
-!          forest%prt_out(k) = forest%prt(ibset(0,k-1))
-!       end forall
-!    end if
   end subroutine phs_forest_evaluate_other_channels
 
   subroutine phs_forest_test ()

@@ -2,8 +2,24 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.0.7
+	Version 2.1.0
 
+2012-06-15
+	RELEASE: version 2.1.0
+
+2012-06-14
+	Analytical and kT-ordered shower officially 
+	  released
+	PYTHIA interface officially released 
+
+2012-05-09
+	Intrisince PDFs can be used for showering
+
+2012-05-04
+	Anomalous Higgs couplings a la hep-ph/9902321
+	
+##################################################################
+	
 2012-03-19
 	RELEASE: version 2.0.7
 	
@@ -58,8 +74,6 @@ Use svn log to see detailed changes.
 	Option --user-target added
 	
 ##################################################################
-
-        Version 2.0.6
 
 2011-12-07 
 	RELEASE: version 2.0.6
@@ -217,8 +231,6 @@ Use svn log to see detailed changes.
 	  case
 
 ##################################################################
-
-	Version 2.0.3
 
 2010-10-18 
 	RELEASE: version 2.0.3

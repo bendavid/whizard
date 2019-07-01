@@ -6,53 +6,61 @@ model "SM_ac_CKM"
 
 # Independent parameters
 ### DO NOT CHANGE THE ORDER OF THESE PARAMETERS
-parameter GF     = 1.16639E-5   # Fermi constant
-parameter mZ     = 91.1882      # Z-boson mass  
-parameter mW     = 80.419       # W-boson mass  
-parameter mH     = 1.E20        # Higgs mass
-parameter alphas = 0.1178       # Strong coupling constant (Z point) 
-parameter me     = 0.000511     # electron mass                       
-parameter mmu    = 0.1057       # muon mass                         
-parameter mtau   = 1.777        # tau-lepton mass                               
-parameter ms     = 0.12         # s-quark mass                         
-parameter mc     = 1.25         # c-quark mass                         
-parameter mb     = 4.2          # b-quark mass                         
-parameter mtop   = 174          # t-quark mass                         
-parameter wtop   = 1.523        # t-quark width
-parameter wZ     = 2.443        # Z-boson width
-parameter wW     = 2.049        # W-boson width
-parameter wH     = 0            # Higgs width  
-parameter xi0    = 0     	# R_xi parameter for Z-boson
-parameter xipm   = 0		# R_xi parameter for W-boson
+parameter GF       = 1.16639E-5   # Fermi constant
+parameter mZ       = 91.1882      # Z-boson mass  
+parameter mW       = 80.419       # W-boson mass  
+parameter mH       = 1.E20        # Higgs mass
+parameter alphas   = 0.1178       # Strong coupling constant (Z point) 
+parameter me       = 0.000511     # electron mass                       
+parameter mmu      = 0.1057       # muon mass                         
+parameter mtau     = 1.777        # tau-lepton mass                               
+parameter ms       = 0.12         # s-quark mass                         
+parameter mc       = 1.25         # c-quark mass                         
+parameter mb       = 4.2          # b-quark mass                         
+parameter mtop     = 174          # t-quark mass                         
+parameter wtop     = 1.523        # t-quark width
+parameter wZ       = 2.443        # Z-boson width
+parameter wW       = 2.049        # W-boson width
+parameter wH       = 0            # Higgs width  
+parameter xi0      = 0       	  # R_xi parameter for Z-boson
+parameter xipm     = 0		  # R_xi parameter for W-boson
 # Here are the values from PDG 2006
-parameter vckm11 = 0.97383      # Vud
-parameter vckm12 = 0.2272       # Vus
-parameter vckm13 = 0.00396      # Vub
-parameter vckm21 = -0.2271      # Vcd
-parameter vckm22 = 0.97296      # Vcs
-parameter vckm23 = 0.04221      # Vcb
-parameter vckm31 = 0.00814      # Vtd
-parameter vckm32 = -0.04161     # Vts
-parameter vckm33 = 0.99910      # Vtb
-parameter a4     = 0            # Coefficient of L4      
-parameter a5     = 0            # Coefficient of L5
-parameter a6     = 0            # Coefficient of L6      
-parameter a7     = 0            # Coefficient of L7    
-parameter a10    = 0            # Coefficient of L10  
-parameter g1a    = 1            # anomalous TGC        
-parameter g1z    = 1            # anomalous TGC        
-parameter g4a    = 0            # anomalous TGC        
-parameter g4z    = 0            # anomalous TGC        
-parameter g5a    = 0            # anomalous TGC        
-parameter g5z    = 0            # anomalous TGC        
-parameter ka     = 1            # anomalous TGC        
-parameter kz     = 1            # anomalous TGC        
-parameter la     = 0            # anomalous TGC        
-parameter lz     = 0            # anomalous TGC        
-parameter k5a    = 0            # anomalous TGC        
-parameter k5z    = 0            # anomalous TGC        
-parameter l5a    = 0            # anomalous TGC        
-parameter l5z    = 0            # anomalous TGC        
+parameter vckm11   = 0.97383      # Vud
+parameter vckm12   = 0.2272       # Vus
+parameter vckm13   = 0.00396      # Vub
+parameter vckm21   = -0.2271      # Vcd
+parameter vckm22   = 0.97296      # Vcs
+parameter vckm23   = 0.04221      # Vcb
+parameter vckm31   = 0.00814      # Vtd
+parameter vckm32   = -0.04161     # Vts
+parameter vckm33   = 0.99910      # Vtb
+parameter a4       = 0            # Coefficient of L4      
+parameter a5       = 0            # Coefficient of L5
+parameter a6       = 0            # Coefficient of L6      
+parameter a7       = 0            # Coefficient of L7    
+parameter a10      = 0            # Coefficient of L10  
+parameter g1a      = 1            # anomalous TGC        
+parameter g1z      = 1            # anomalous TGC        
+parameter g4a      = 0            # anomalous TGC        
+parameter g4z      = 0            # anomalous TGC        
+parameter g5a      = 0            # anomalous TGC        
+parameter g5z      = 0            # anomalous TGC        
+parameter ka       = 1            # anomalous TGC        
+parameter kz       = 1            # anomalous TGC        
+parameter la       = 0            # anomalous TGC        
+parameter lz       = 0            # anomalous TGC        
+parameter k5a      = 0            # anomalous TGC        
+parameter k5z      = 0            # anomalous TGC        
+parameter l5a      = 0            # anomalous TGC        
+parameter l5z      = 0            # anomalous TGC        
+parameter fac_gh3  = 1		  # gh3 / gh3_SM
+parameter fghgaga  = 1		  # ghgaga / ghgaga_SM
+parameter fghgaz   = 1		  # ghgaz / ghgaz_SM
+parameter lambda_h = 5.e3         # scale for anom. Higgs couplings
+parameter fw       = 0		  # anomlous Higgs coupling
+parameter fww      = 0		  # anomlous Higgs coupling
+parameter fb       = 0		  # anomlous Higgs coupling
+parameter fbb      = 0		  # anomlous Higgs coupling
 	
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)
@@ -250,6 +258,15 @@ vertex E1 n1 Wm
 vertex E2 n2 Wm 
 vertex E3 n3 Wm 
 
+# Yukawa
+### keeping only 3rd generation for the moment
+# vertex S s H 
+# vertex C c H 
+vertex B b H 
+vertex T t H 
+# vertex E2 e2 H 
+vertex E3 e3 H 
+
 # Vector-boson self-interactions
 # These have been generated automatically, therefore unsorted
 vertex A Wm Wp 
@@ -261,6 +278,8 @@ vertex Wm Wp Z Z
 vertex Z Z Z Z
 
 # Higgs - vector boson
+vertex H A A 
+vertex H Z A
 vertex H Wp Wm
 vertex H Z Z
 vertex H H Z Z

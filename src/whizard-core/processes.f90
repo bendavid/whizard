@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -86,6 +86,8 @@ module processes
   public :: md5sum_grids_t
   public :: process_t
   public :: process_setup_qcd
+  public :: process_get_strfun_type
+  public :: process_get_strfun_set
   public :: process_assign_global_var_list
   public :: process_write
   public :: process_write_logfile
@@ -140,6 +142,7 @@ module processes
   public :: process_get_hi_int_ptr
   public :: process_get_hi_eval_sqme_ptr
   public :: process_get_hi_eval_flows_ptr
+  public :: process_get_s_mapping
   public :: process_mark_as_cascade_decay
   public :: process_set_scale
   public :: process_set_fac_scale
@@ -150,8 +153,8 @@ module processes
   public :: process_setup_beams
   public :: process_set_beam_momenta
   public :: process_set_strfun
+  public :: process_allocate_strfun_mappings
   public :: process_set_strfun_mapping
-  public :: process_allow_global_mapping
   public :: process_connect_strfun
   public :: process_check_beam_setup
   public :: process_setup_phase_space
@@ -346,6 +349,7 @@ module processes
      logical :: old_phs_version = .false.
      type(process_status_t) :: status
      real(default), dimension(:,:), allocatable :: x
+     real(default), dimension(:), allocatable :: sf_factor
      real(default), dimension(:), allocatable :: phs_factor
      real(default), dimension(:), allocatable :: mass_in
      real(default) :: flux_factor = 0
@@ -362,7 +366,6 @@ module processes
      logical :: negative_weights = .false.
      type(qcd_parameters_t) :: qcd
      character(32) :: md5sum_alpha_s
-     logical :: allow_s_channel_mapping = .false.
      type(strfun_chain_t) :: sfchain
      type(hard_interaction_t) :: hi
      type(evaluator_t) :: eval_trace
@@ -1919,6 +1922,16 @@ contains
     process%md5sum_alpha_s = qcd_parameters_get_md5sum (process%qcd)
   end subroutine process_setup_qcd
 
+  function process_get_strfun_type(process) result(type)
+    type(process_t), intent(in) :: process
+    integer :: type
+    type = strfun_chain_get_strfun_type(process%sfchain)
+  end function process_get_strfun_type
+  function process_get_strfun_set(process) result(set)
+    type(process_t), intent(in) :: process
+    integer :: set
+    set = strfun_chain_get_strfun_set(process%sfchain)
+  end function process_get_strfun_set
   subroutine process_assign_global_var_list (process, var_list)
     type(process_t), intent(inout) :: process
     type(var_list_t), intent(in), optional, target :: var_list
@@ -2034,13 +2047,19 @@ contains
     write (u, *)  "  Sample-function value   = ", &
          process%sample_function_value
     write (u, *)  repeat ("-", 72)
-    if (process%use_beams) then
-       write (u, *)  "Structure function parameters ="
-       if (allocated (process%x_strfun)) then
-          write (u, *)  process%x_strfun
-       else
-          write (u, *)  "[empty]"
-       end if
+    write (u, *)  "Structure function parameters ="
+    write (u, *)  "  Use beams              = ", process%use_beams
+    write (u, *)  "  x values = "
+    if (allocated (process%x_strfun)) then
+       write (u, *)  process%x_strfun
+    else
+       write (u, *)  "    [not allocated]"
+    end if
+    write (u, *)  "  Mapping factors (channels) ="
+    if (allocated (process%sf_factor)) then
+       write (u, *)  process%sf_factor
+    else
+       write (u, *) "     [not allocated]"
     end if
     write (u, *)  "  General scale           = ", process%scale
     write (u, *)  "  Factorization scale     = ", process%fac_scale
@@ -2077,9 +2096,6 @@ contains
     if (process%use_beams) then
        call strfun_chain_write &
             (process%sfchain, unit, verbose, show_momentum_sum, show_mass)
-       write (u, *)
-       write (u, *) "Allow s-channel mapping = ", &
-            process%allow_s_channel_mapping
        write (u, "(A)")  repeat ("-", 72)
        write (u, "(A)") "Incoming beams with all color contractions"
        call evaluator_write &
@@ -2636,6 +2652,15 @@ contains
     eval => hard_interaction_get_eval_flows_ptr (process%hi)
   end function process_get_hi_eval_flows_ptr
 
+  subroutine process_get_s_mapping (process, channel, flag, mass, width)
+    type(process_t), intent(in) :: process
+    integer, intent(in) :: channel
+    logical, intent(out) :: flag
+    real(default), intent(out) :: mass, width
+    call phs_forest_get_s_mapping &
+         (process%forest, channel, flag, mass, width)
+  end subroutine process_get_s_mapping
+
   subroutine process_mark_as_cascade_decay (process)
     type(process_t), intent(inout) :: process
     process%is_cascade_decay = .true.
@@ -2677,11 +2702,10 @@ contains
     call integration_results_discard (process%results, it)
   end subroutine process_discard_results
 
-  subroutine process_setup_beams &
-       (process, beam_data, n_strfun, n_mapping, sqrts, flv)
+  subroutine process_setup_beams (process, beam_data, n_strfun, sqrts, flv)
     type(process_t), intent(inout), target :: process
     type(beam_data_t), intent(in) :: beam_data
-    integer, intent(in) :: n_strfun, n_mapping
+    integer, intent(in) :: n_strfun
     real(default), intent(in), optional :: sqrts
     type(flavor_t), dimension(:), intent(in), optional :: flv
     if (.not. process_has_matrix_element (process))  return
@@ -2693,7 +2717,7 @@ contains
        process%azimuthal_dependence = &
             .not. all (polarization_is_diagonal (beam_data%pol))
        process%lab_is_cm_frame = beam_data%lab_is_cm_frame .and. n_strfun == 0
-       call strfun_chain_init (process%sfchain, beam_data, n_strfun, n_mapping)
+       call strfun_chain_init (process%sfchain, beam_data, n_strfun)
     else
        select case (process%type)
        case (PRC_DECAY)
@@ -2854,21 +2878,32 @@ contains
     end if
   end subroutine process_set_strfun_user
 
-  subroutine process_set_strfun_mapping (process, i, index, type, par)
+  subroutine process_allocate_strfun_mappings &
+       (process, multichannel, n_mapping)
     type(process_t), intent(inout) :: process
-    integer, intent(in) :: i
+    logical, intent(in) :: multichannel
+    integer, intent(in), optional :: n_mapping
+    if (.not. multichannel .and. present (n_mapping)) then
+       call strfun_chain_allocate_mappings &
+            (process%sfchain, multichannel, n_mapping, 1)
+    else if (multichannel .and. .not. present (n_mapping)) then
+       call strfun_chain_allocate_mappings &
+            (process%sfchain, multichannel, 1, process%n_channels)
+       allocate (process%sf_factor (process%n_channels))
+    else
+       print *, "multichannel = ", multichannel
+       call msg_bug ("allocate strfun mappings: inconsistent parameters")
+    end if
+  end subroutine process_allocate_strfun_mappings
+
+  subroutine process_set_strfun_mapping (process, i, ch, index, type, par)
+    type(process_t), intent(inout) :: process
+    integer, intent(in) :: i, ch
     integer, intent(in) :: type
     integer, dimension(:), intent(in) :: index
     real(default), dimension(:), intent(in) :: par
-    if (process%use_beams) then
-       call strfun_chain_set_mapping (process%sfchain, i, index, type, par)
-    end if
+    call strfun_chain_set_mapping (process%sfchain, i, ch, index, type, par)
   end subroutine process_set_strfun_mapping
-
-  subroutine process_allow_global_mapping (process)
-    type(process_t), intent(inout) :: process
-    process%allow_s_channel_mapping = .true.
-  end subroutine process_allow_global_mapping
 
   subroutine process_connect_strfun (process, ok)
     type(process_t), intent(inout), target :: process
@@ -3186,7 +3221,9 @@ contains
     process%phs_factor = 0
     allocate (process%active_channel (process%n_channels))
     process%active_channel = .true.
-    call phs_forest_set_global_mappings (process%forest)
+    if (mapping_defaults%enable_s_mapping) then
+       call phs_forest_set_s_mappings (process%forest)
+    end if
     write (msg_buffer, "(A,I0,A,I0,A)")  "... found ", process%n_channels, &
          " phase space channels, collected in ", &
          phs_forest_get_n_groves (process%forest), &
@@ -3361,21 +3398,25 @@ contains
     logical, intent(out) :: ok
     type(interaction_t), pointer :: int
     type(evaluator_t), pointer :: eval
-    integer :: i
+    integer :: i, n1, n2
     real(default) :: lda
     process%x_hi = x_in(:process%n_par_hi)
     process%x_strfun = x_in(process%n_par_hi+1:)
-!     process%x_strfun = x_in(:process%n_par_strfun)
-!     process%x_hi = x_in(process%n_par_strfun+1:)
+    process%x(:process%n_par_hi,channel) = process%x_hi
     process%channel = channel
     int => hard_interaction_get_int_ptr (process%hi)
     eval => hard_interaction_get_eval_trace_ptr (process%hi)
     if (process%use_beams) then
-       if (process%allow_s_channel_mapping) then
+       n1 = process%n_par_hi
+       n2 = process%n_par_hi + process%n_par_strfun
+       if (strfun_chain_multichannel_enabled (process%sfchain)) then
+          process%x(n1+1:n2, channel) = process%x_strfun
           call strfun_chain_set_kinematics (process%sfchain, process%x_strfun, &
-               phs_forest_tree_has_global_mapping (process%forest, channel), &
-               ok)
+               channel, n1, process%x, process%sf_factor, &
+               ok=ok)
        else
+          forall (i = 1:size(process%x,2)) &
+               process%x(n1+1:n2,i) = process%x_strfun
           call strfun_chain_set_kinematics (process%sfchain, process%x_strfun, &
                ok=ok)
        end if
@@ -3384,6 +3425,8 @@ contains
        process%beams_are_set = .true.
        process%sqrts_hat = sqrt (max (interaction_get_s (int), 0._default))
     else if (.not. process%beams_are_set) then
+       if (process%n_par_strfun /= 0)  call msg_bug &
+            ("Mismatch in structure function setup: n_parameters /= 0")
        select case (process%type)
        case (PRC_DECAY)
           call interaction_set_momenta (int, &
@@ -3395,6 +3438,9 @@ contains
                outgoing=.false.)
        end select
        process%sqrts_hat = process%sqrts
+    else
+       if (process%n_par_strfun /= 0)  call msg_bug &
+            ("Mismatch in beams/structure function setup: n_parameters /= 0")
     end if
     call process_status_passed_strfun_chain (process%status)
     select case (process%type)
@@ -3419,10 +3465,6 @@ contains
     else
        call phs_forest_set_prt_in (process%forest, int)
     end if
-    process%x(:process%n_par_hi,channel) = process%x_hi
-    forall (i = 1 : process%n_par_strfun)
-       process%x(process%n_par_hi+i,:) = process%x_strfun(i)
-    end forall
     if (process%old_phs_version) then
        call phs_forest_evaluate_phase_space (process%forest, &
             channel, process%active_channel, process%sqrts_hat, &
@@ -3601,7 +3643,12 @@ contains
     end do
     !$OMP END DO
     !$OMP END PARALLEL
-    dp = dot_product (weights, vamp_prob / process%phs_factor)
+    if (allocated (process%sf_factor)) then
+       dp = dot_product (weights, &
+                         vamp_prob / (process%phs_factor * process%sf_factor))
+    else
+       dp = dot_product (weights, vamp_prob / process%phs_factor)
+    end if
     if (dp /= 0) then
        process%vamp_phs_factor = vamp_prob(process%channel) / dp
     else
@@ -4453,6 +4500,8 @@ contains
     copy%n_channels = original%n_channels
     if (allocated (original%x)) &
          allocate (copy%x (size (original%x, 1), size (original%x, 2)))
+    if (allocated (original%sf_factor)) &
+         allocate (copy%sf_factor (size (original%sf_factor)))
     if (allocated (original%phs_factor)) &
          allocate (copy%phs_factor (size (original%phs_factor)))
     if (allocated (original%mass_in)) then
@@ -4819,7 +4868,7 @@ contains
 
   subroutine process_store_init_process (process, &
        prc_lib, process_id, model, var_list, &
-       use_beams, allow_global_mapping)
+       use_beams)
     type(process_t), pointer :: process
     type(process_library_t), intent(inout), target :: prc_lib
     type(string_t), intent(in) :: process_id
@@ -4827,7 +4876,6 @@ contains
     type(pdf_builtin_status_t) :: pdf_builtin_status
     type(var_list_t), intent(in), target :: var_list
     logical, intent(in) :: use_beams
-    logical, intent(in), optional :: allow_global_mapping
     integer :: process_lib_index, process_store_index
     procedure(prclib_unload_hook), pointer :: unload_hook
     procedure(prclib_reload_hook), pointer :: reload_hook
@@ -4848,9 +4896,6 @@ contains
     call process_init &
          (process, prc_lib, process_lib_index, process_store_index, &
           process_id, model, var_list, use_beams)
-    if (present (allow_global_mapping)) then
-       if (allow_global_mapping)  call process_allow_global_mapping (process)
-    end if
   end subroutine process_store_init_process
 
   function sample_function (xi, prc_index, weights, channel, grids) result (f)
@@ -5027,7 +5072,7 @@ contains
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -5068,7 +5113,7 @@ contains
     call polarization_init_axis &
          (pol(1), flv(1), (/ 0._default, 0._default, 1._default/))
     call beam_data_init_decay (beam_data, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -5140,7 +5185,7 @@ contains
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -5227,7 +5272,7 @@ contains
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 500._default, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
@@ -5318,7 +5363,7 @@ contains
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 14000._default, flv, pol)
     !     call process_setup_beams (process, beam_data, 0, 0)
-    call process_setup_beams (process, beam_data, 2, 0)
+    call process_setup_beams (process, beam_data, 2)
     call pdf_builtin_init (data(1), pdf_builtin_status, model, flv(1), name = &
          var_str("cteq6l"), path = os_data%pdf_builtin_datapath)
     call pdf_builtin_init (data(2), pdf_builtin_status, model, flv(2), name = &

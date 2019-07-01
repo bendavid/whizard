@@ -22,7 +22,7 @@ The command
   gzip -cd whizard-2.X.X.tgz | tar xf -
 
 will unpack the sources in a subdirectory whizard-2.X.X,
-where XX is the current version number.
+where X.X is the current version (and sub-version) number.
 
 Prerequisites are:
 
@@ -192,7 +192,7 @@ Optional Features:
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-stdhep	  enable STDHEP for binary event files [[yes]]
-  --enable-shower         enable parton showers [[no]]
+  --enable-shower         enable parton showers [[yes]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file
 			  [[no]]
@@ -241,7 +241,7 @@ OcamlWeb is available from http://www.lri.fr/~filliatr/ocamlweb/.
 
 The check out can be done in that way:
 
-svn co http://svn.hepforge.org/whizard/trunk <checkout_dir>
+svn co http://whizard.hepforge.org/svn/trunk <checkout_dir>
 
 cd <checkout_dir>
 autoreconf

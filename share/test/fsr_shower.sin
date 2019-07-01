@@ -26,7 +26,7 @@ openmp_num_threads = 1
 
 integrate(fsr_shower_eeuu) { iterations = 2:2000 }
 
-n_events = 10
+n_events = 1
 
 ?rebuild_events=true
 $sample = "fsr_shower"
@@ -62,7 +62,7 @@ seed = 1
 
 integrate(fsr_shower_eeuu) { iterations = 2:2000 }
 
-n_events = 10
+n_events = 1
 
 ?rebuild_events=true
 $sample = "fsr_shower2"

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -389,7 +389,10 @@ contains
          (global%var_list, var_str ("?phs_step_mapping_exp"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?allow_global_mapping"), .false., &
+         (global%var_list, var_str ("?phs_s_mapping"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?strfun_multichannel"), .false., &
           intrinsic=.true.)
 !    call var_list_append_log &
 !         (global%var_list, var_str ("?old_phs_version"), .false., &
@@ -680,7 +683,7 @@ contains
     call var_list_append_real (global%var_list, var_str ("ps_fixed_alpha_s"), &
          0._default, intrinsic = .true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?ps_isr_pt_ordered"), .true., &
+         (global%var_list, var_str ("?ps_isr_pt_ordered"), .false., &
             intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?ps_isr_angular_ordered"), .true., &

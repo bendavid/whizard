@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,7 +33,7 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.0.7 (Mar 19 2012)"
+       & VERSION_STRING = "WHIZARD version 2.1.0 (June 15 2012)"
   integer, parameter, public :: MIN_UNIT = 11, MAX_UNIT = 99
   integer, parameter, public :: ENVVAR_LEN = 1000
   integer, parameter, public :: DLERROR_LEN = 160

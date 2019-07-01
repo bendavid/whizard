@@ -1763,7 +1763,7 @@ contains
       type(shower_t), intent(inout) :: shower
       type(parton_t), intent(inout), target :: prt1, prt2
       type(parton_t), pointer :: prt, prta, prtb
-      real(kind=double) ::  pini(0:3), scale, factor
+      real(kind=default) ::  pini(0:3), scale, factor
       integer :: i
 
       !      print *, " shower_prepare_for_simulate_isr_ana"
@@ -1845,7 +1845,8 @@ contains
             prt=>prt2%parent
          end if
          factor= sqrt(vector4_get_component(prt%momentum,0)**2-prt%t)/space_part_norm(prt%momentum)
-         prt%momentum = vector4_moving( vector4_get_component(prt%momentum, 0), factor*space_part(prt%momentum))
+         prt%momentum = vector4_moving (vector4_get_component(prt%momentum, 0), &
+              factor*space_part(prt%momentum)) 
       end do
 
       if(prt1%parent%t<0._double) then
@@ -2133,7 +2134,7 @@ contains
             print *, "BUG: too many loops in simulate_children_ana (?)"
             shower%valid = .false.
             return
-            pause
+            !!! pause
          end if
 
          t(1)=prt%child1%t
@@ -3531,7 +3532,8 @@ contains
     else
        if(x>0._default .and. x<1._default) then
           if(DBLE(Q2) .ne. lastQ2 .or. DBLE(x) .ne. lastx) then
-             call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)
+!             call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
+             call shower_pdf_func(shower_pdf_set, DBLE(x),sqrt(abs(DBLE(Q2))),f)
           end if
           if (abs(daughter)>=1 .and. abs(daughter)<=6) then
              pdf=f(daughter*sign(1,mother))/x
@@ -3565,7 +3567,8 @@ contains
     else
        if(x>0._default .and. x<1._default) then
           if(DBLE(Q2) .ne. lastQ2 .or. DBLE(x) .ne. lastx) then
-             call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)
+!             call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
+             call shower_pdf_func(shower_pdf_set, DBLE(x),sqrt(abs(DBLE(Q2))),f)
           end if
           if (abs(daughter)>=1 .and. abs(daughter)<=6) then
              pdf=f(daughter*sign(1,mother))

@@ -1,4 +1,4 @@
-(* $Id: targets.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: targets.ml 3832 2012-05-04 02:12:59Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 
@@ -23,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 3832 $";
+      RCS.date = "$Date: 2012-05-04 04:12:59 +0200 (Fri, 04 May 2012) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
@@ -1343,6 +1343,23 @@ i*)
               | (F23|F32) -> printf "(%s)*(%s*%s)*(%s*%s)" c p1 wf2 p2 wf1
               | (F12|F13) -> printf "(%s)*%s*(-((%s+%s)*%s))*%s" c wf1 p1 p2 wf2 p2
               | (F21|F31) -> printf "(%s)*%s*(-((%s+%s)*%s))*%s" c wf2 p2 p1 wf1 p1
+              end
+
+          | Dim5_Scalar_Vector_Vector_U coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "(%s)*((%s*%s)*(-(%s+%s)*%s) - (%s*%s)*(-(%s+%s)*%s))" 
+                    c p1 wf2 p1 p2 wf1 wf1 wf2 p1 p2 p1
+              | F32 -> printf "(%s)*((%s*%s)*(-(%s+%s)*%s) - (%s*%s)*(-(%s+%s)*%s))" 
+                    c p2 wf1 p2 p1 wf2 wf2 wf1 p2 p1 p2
+              | F12 -> printf "(%s)*%s*((%s*%s)*%s - (%s*%s)*%s)" 
+                    c wf1 p1 wf2 p2 p1 p2 wf2
+              | F21 -> printf "(%s)*%s*((%s*%s)*%s - (%s*%s)*%s)" 
+                    c wf2 p2 wf1 p1 p2 p1 wf1
+              | F13 -> printf "(%s)*%s*((-((%s+%s)*%s))*%s - (-(%s+%s)*%s)*%s)" 
+                    c wf1 p2 p1 wf2 p1 p1 p2 p1 wf2
+              | F31 -> printf "(%s)*%s*((-((%s+%s)*%s))*%s - (-(%s+%s)*%s)*%s)" 
+                    c wf2 p1 p2 wf1 p2 p2 p1 p2 wf1
               end
 
           | Dim6_Vector_Vector_Vector_T coeff ->

@@ -1,18 +1,18 @@
-dnl pythia.m4 -- checks for pythia library
+dnl qcd.m4 -- checks for qcd setup (shower, PYTHIA)
 dnl
 
 include('aux.m4')
 
 ### Sets LDFLAGS_PYTHIA and the conditional PYTHIA_AVAILABLE if successful
 ### Also: PYTHIA_VERSION 
-AC_DEFUN([WO_PROG_PYTHIA],
+AC_DEFUN([WO_PROG_QCD],
 [dnl
 AC_REQUIRE([AC_PROG_FC])
 
 AC_ARG_ENABLE([shower],
   [AS_HELP_STRING([--enable-shower],
-    [enable parton showers [[no]]])],
-  [], [enable_shower="no"])
+    [enable parton showers [[yes]]])],
+  [], [enable_shower="yes"])
 
 AC_CACHE_CHECK([whether we want to enable showering], 
 [wo_cv_showering],

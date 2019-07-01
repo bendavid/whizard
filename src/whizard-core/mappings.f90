@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -69,6 +69,7 @@ module mappings
      real(default) :: momentum_transfer_scale = 10
      logical :: step_mapping = .true.
      logical :: step_mapping_exp = .true.
+     logical :: enable_s_mapping = .false.
   end type mapping_defaults_t
 
   type :: mapping_t
@@ -107,6 +108,7 @@ contains
     write (u, *)  mapping_defaults%momentum_transfer_scale
     write (u, *)  mapping_defaults%step_mapping
     write (u, *)  mapping_defaults%step_mapping_exp
+    write (u, *)  mapping_defaults%enable_s_mapping
     rewind (u)
     md5sum_map = md5sum (u)
     close (u)

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,6 +52,7 @@ module sf_pdf_builtin
   public :: pdf_builtin_init
   public :: pdf_builtin_final
   public :: pdf_builtin_get_name
+  public :: pdf_builtin_get_id
   public :: pdf_builtin_data_set_mask
   public :: pdf_builtin_data_write
   public :: interaction_init_pdf_builtin
@@ -140,6 +141,12 @@ contains
        name = data%name
     end if
   end function pdf_builtin_get_name
+
+  function pdf_builtin_get_id (data) result (id)
+    type(pdf_builtin_data_t), intent(in) :: data
+    integer :: id
+    id = data%id
+  end function pdf_builtin_get_id
 
   subroutine pdf_builtin_data_set_mask (data, mask)
     type(pdf_builtin_data_t), intent(inout) :: data

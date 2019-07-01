@@ -34,7 +34,7 @@ openmp_num_threads = 1
 
 integrate(isr_shower_qqee) { iterations = 2:2000 }
 
-n_events = 5
+n_events = 1
 
 ?rebuild_events=true
 $sample = "isr_shower"
@@ -70,7 +70,7 @@ cuts = all M > 80 GeV [combine[e1,E1]]
 
 integrate(isr_shower_qqee, isr_shower_qqeeg, isr_shower_qgeeq, isr_shower_gqeeq) { iterations = 2:2000 }
 
-n_events = 5
+n_events = 1
 
 ?rebuild_events=true
 $sample = "isr_shower2"

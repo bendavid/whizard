@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -83,12 +83,12 @@ module strfun_config
   public :: sf_list_freeze
   public :: sf_list_final
   public :: sf_list_get_n_strfun
-  public :: sf_list_get_n_mapping
   public :: sf_list_get_md5sum
   public :: sf_list_compute_md5sum
   public :: sf_list_get_lhapdf_data_ptr
   public :: sf_list_get_pdf_builtin_data_ptr
   public :: sf_list_transfer_to_process
+  public :: sf_list_setup_mappings
   public :: lhapdf_status_t
   public :: lhapdf_status_reset
 
@@ -122,7 +122,11 @@ module strfun_config
   type :: sf_list_t
      private
      integer :: n_strfun = 0
+     logical :: multichannel = .false.
      integer :: n_mapping = 0
+     integer, dimension(2) :: global_mapping_index = 0
+     integer :: global_mapping_type = SFM_NONE
+     real(default) :: global_mapping_par = 1
      type(sf_data_t), pointer :: first => null ()
      type(sf_data_t), pointer :: last => null ()
      character(32) :: md5sum = ""
@@ -139,14 +143,8 @@ contains
     write (u, "(1x,A,I0,10(', #',I0))")  "Mapping for parameters #", &
          sf_mapping%index
     select case (sf_mapping%type)
-    case (SFM_NONE);     write (u, "(3x,A)")  "[none]"
-    case (SFM_PDFPAIR);  write (u, "(3x,A)")  "PDF pair mapping"
-    case (SFM_ISRPAIR);  write (u, "(3x,A)")  "ISR pair mapping"
-    case (SFM_EPAPAIR);  write (u, "(3x,A)")  "EPA pair mapping"
-    case (SFM_EWAPAIR);  write (u, "(3x,A)")  "EWA pair mapping"
-    case (SFM_CIRCE1PAIR);  write (u, "(3x,A)")  "CIRCE1 pair mapping"
-    case (SFM_CIRCE2PAIR);  write (u, "(3x,A)")  "CIRCE2 pair mapping"
-    case (SFM_USER);     write (u, "(3x,A)")  "User-strfun pair mapping"
+    case (SFM_NONE);  write (u, "(3x,A)")  "[none]"
+    case (SFM_PAIR);  write (u, "(3x,A)")  "Pair mapping"
     end select
     if (allocated (sf_mapping%par)) then
        write (u, "(3x,A)", advance="no")  "Parameters = "
@@ -433,6 +431,13 @@ contains
     type(sf_data_t), pointer :: current
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "Structure function list"
+    if (sf_list%multichannel .and. sf_list%n_mapping /= 0) then
+       write (u, "(2x,A,L1)")  "Global structure function mapping:"
+       write (u, "(4x,A,2I0)")  "Index     = ", sf_list%global_mapping_index
+       write (u, "(4x,A,I0)")   "Type      = ", sf_list%global_mapping_type
+       write (u, "(4x,A)", advance="no")   "Parameter = "
+       write (u, *)  sf_list%global_mapping_par
+    end if
     if (associated (sf_list%first)) then
        current => sf_list%first
        do while (associated (current))
@@ -456,17 +461,42 @@ contains
     sf_list%n_strfun = sf_list%n_strfun + 1
   end subroutine sf_list_append
        
-  subroutine sf_list_freeze (sf_list)
+  subroutine sf_list_freeze (sf_list, multichannel)
     type(sf_list_t), intent(inout) :: sf_list
+    logical, intent(in) :: multichannel
     type(sf_data_t), pointer :: sf_data
-    sf_list%n_mapping = 0
-    sf_data => sf_list%first
-    do while (associated (sf_data))
-       if (sf_data%has_mapping) then
-          sf_list%n_mapping = sf_list%n_mapping + 1
-       end if
-       sf_data => sf_data%next
-    end do
+    integer :: i_par
+    sf_list%multichannel = multichannel
+    if (multichannel) then
+       sf_list%n_mapping = 0
+       i_par = 0
+       sf_data => sf_list%first
+       do while (associated (sf_data))
+          if (sf_data%has_mapping) then
+             sf_list%n_mapping = 1
+             sf_list%global_mapping_index = i_par + sf_data%mapping%index
+             sf_list%global_mapping_type = sf_data%mapping%type
+             select case (sf_data%mapping%type)
+             case (SFM_PAIR)
+                if (allocated (sf_data%mapping%par)) then
+                   sf_list%global_mapping_par = &
+                        max (sf_list%global_mapping_par, sf_data%mapping%par(1))
+                end if
+             end select
+          end if
+          i_par = i_par + sf_data%n_parameters
+          sf_data => sf_data%next
+       end do
+    else
+       sf_list%n_mapping = 0
+       sf_data => sf_list%first
+       do while (associated (sf_data))
+          if (sf_data%has_mapping) then
+             sf_list%n_mapping = sf_list%n_mapping + 1
+          end if
+          sf_data => sf_data%next
+       end do
+    end if
   end subroutine sf_list_freeze
 
   subroutine sf_list_final (sf_list)
@@ -486,12 +516,6 @@ contains
     type(sf_list_t), intent(in) :: sf_list
     n = sf_list%n_strfun
   end function sf_list_get_n_strfun
-
-  function sf_list_get_n_mapping (sf_list) result (n)
-    integer :: n
-    type(sf_list_t), intent(in) :: sf_list
-    n = sf_list%n_mapping
-  end function sf_list_get_n_mapping
 
   function sf_list_get_md5sum (sf_list) result (sf_md5sum)
     character(32) :: sf_md5sum
@@ -540,18 +564,10 @@ contains
     type(sf_list_t), intent(in) :: sf_list
     type(process_t), intent(inout), target :: process
     type(sf_data_t), pointer :: sf_data
-    integer :: i_sf, i_map, i_par, line
+    integer :: i_sf, line
     i_sf = 0
-    i_map = 0
-    i_par = 0
     sf_data => sf_list%first
     do while (associated (sf_data))
-       if (sf_data%has_mapping) then
-          i_map = i_map + 1
-          call process_set_strfun_mapping &
-               (process, i_map, i_par + sf_data%mapping%index, &
-                sf_data%mapping%type, sf_data%mapping%par)
-       end if
        if (all (sf_data%affects_beam)) then
           line = 0
        else if (sf_data%affects_beam(1)) then
@@ -592,10 +608,62 @@ contains
           call process_set_strfun &
                (process, i_sf, line, sf_data%user, sf_data%n_parameters)
        end select
-       i_par = i_par + sf_data%n_parameters
        sf_data => sf_data%next
     end do
   end subroutine sf_list_transfer_to_process
        
+  subroutine sf_list_setup_mappings (sf_list, process)
+    type(sf_list_t), intent(in) :: sf_list
+    type(process_t), intent(inout), target :: process
+    type(sf_data_t), pointer :: sf_data
+    integer :: i_map, i_par, channel
+    logical :: has_s_mapping
+    real(default) :: sqrts, mass, width
+    i_map = 0
+    i_par = 0
+    if (sf_list%multichannel) then
+       call process_allocate_strfun_mappings &
+            (process, sf_list%multichannel)
+       if (sf_list%n_mapping /= 0) then
+          select case (sf_list%global_mapping_type)
+          case (SFM_PAIR)
+             sqrts = process_get_sqrts (process)
+             do channel = 1, process_get_n_channels (process)
+                call process_get_s_mapping &
+                     (process, channel, has_s_mapping, mass, width)
+                if (has_s_mapping) then
+                   call process_set_strfun_mapping &
+                        (process, 1, channel, sf_list%global_mapping_index, &
+                        SFM_PAIR_RESONANCE, &
+                        (/sqrts, mass, width/))
+                else
+                   call process_set_strfun_mapping &
+                        (process, 1, channel, sf_list%global_mapping_index, &
+                        SFM_PAIR, &
+                        (/sf_list%global_mapping_par/))
+                end if
+             end do
+          case default
+             call msg_bug ("Strfun mappings: inconsistent mapping type")
+          end select
+       end if
+    else
+       call process_allocate_strfun_mappings (process, &
+            sf_list%multichannel, &
+            sf_list%n_mapping)
+       sf_data => sf_list%first
+       do while (associated (sf_data))
+          if (sf_data%has_mapping) then
+             i_map = i_map + 1
+             call process_set_strfun_mapping &
+                  (process, i_map, 1, i_par + sf_data%mapping%index, &
+                  sf_data%mapping%type, sf_data%mapping%par)
+          end if
+          i_par = i_par + sf_data%n_parameters
+          sf_data => sf_data%next
+       end do
+    end if
+  end subroutine sf_list_setup_mappings
+
 
 end module strfun_config

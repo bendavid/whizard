@@ -1,4 +1,4 @@
-!$Id: pdf_builtin.f90 3762 2012-03-17 13:24:09Z jr_reuter $
+!$Id: pdf_builtin.f90 3850 2012-06-13 03:39:53Z jr_reuter $
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -120,6 +120,7 @@ module pdf_builtin
   public :: pdf_init
   public :: pdf_get_name
   public :: pdf_evolve
+  public :: pdf_evolve_LHAPDF
   public :: pdf_provides_photon
   public :: pdf_get_id
   public :: pdf_alphas
@@ -336,6 +337,23 @@ contains
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
   end subroutine pdf_evolve
+
+! included for compatibility with LHAPDF
+! use a double precision array for the pdfs instead of a
+! default precision
+  subroutine pdf_evolve_LHAPDF (set, x, q, ff)
+    integer, intent(in) :: set
+    double precision, intent(in) :: x, q
+    real(kind=default) :: dx, dq
+    double precision, dimension(-6:6), intent(out) :: ff
+
+    real(kind=default) :: f(-6:6)
+    dx = x
+    dq = q
+
+    call pdf_evolve(set, dx, dq, f)
+    ff = f
+  end subroutine pdf_evolve_LHAPDF
   
 ! PDF-specific running alphas
   function pdf_alphas (pdftype, q) result (alphas)

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -45,6 +45,8 @@ module shower_interface
   use os_interface
   use diagnostics !NODEP!
   use lorentz !NODEP!
+  use strfun
+  use pdf_builtin !NODEP!
 
   implicit none
   private
@@ -176,40 +178,55 @@ contains
     write (u, *) "ps_PYTHIA_PYGIVE            = ", char(shower_settings%ps_PYTHIA_PYGIVE)
   end subroutine shower_settings_write
 
-  subroutine apply_shower_particle_set(particle_set, shower_settings,  model, valid, vetoed)
+  subroutine apply_shower_particle_set(particle_set, shower_settings,  model, &
+       pdf_type, pdf_set, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
     type(model_t), pointer, intent(in) :: model
+    integer, intent(in) :: pdf_type
+    integer, intent(in) :: pdf_set
     logical, intent(inout) :: valid
     logical, intent(inout) :: vetoed
     real(kind=double) :: pdftest
 
     type(mlm_matching_data_t) :: mlm_matching_data
     logical, save :: matching_disabled=.false.
+    procedure(shower_pdf), pointer :: pdf_func => null()
+    external :: evolvePDFM
 
-    ! return if already invalid or vetoed
-    if((.not.valid).or.vetoed) then
-       return
-    end if
-    ! ensure that lhapdf is initialized
-    if(shower_settings%ps_isr_active .and.(abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
-            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000) ) then
-       call GetQ2max(0,pdftest)
-       if(pdftest .eq. 0._double) then
-          call msg_fatal(" ISR enabled, but LHAPDF not initialized," // &
-               char(10) // "     aborting simulation")
-          return
-       end if
-    end if
-
-!    call shower_settings_write(shower_settings)
-    
     if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
          .and.(shower_settings%hadronization_active.eqv..false.).and.(shower_settings%mlm_matching.eqv..false.) ) then
        ! return if nothing to do
        return
     end if
 
+    ! return if already invalid or vetoed
+    if((.not.valid).or.vetoed) then
+       return
+    end if
+    ! ensure that lhapdf is initialized
+    if(pdf_type .eq. STRF_LHAPDF) then
+       if(shower_settings%ps_isr_active .and.(abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
+            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000)) then
+          call GetQ2max(0,pdftest)
+          if(pdftest .eq. 0._double) then
+             call msg_fatal(" ISR enabled, but LHAPDF not initialized," // &
+                  char(10) // "     aborting simulation")
+             return
+          end if
+       end if
+       pdf_func => evolvePDFM
+    else if(pdf_type.eq. STRF_PDF_BUILTIN) then
+       if(shower_settings%ps_use_PYTHIA_shower) then
+          call msg_fatal(" builtin-pdfs can not be used for PYTHIA showers," // &
+               char(10) // "     aborting simulation")
+          return
+       end if
+       pdf_func => pdf_evolve_LHAPDF
+    end if
+
+!    call shower_settings_write(shower_settings)
+    
     if(shower_settings%ps_PYTHIA_verbose.eqv..false.) then
        call PYGIVE('MSTU(12)=12345')
        call PYGIVE('MSTU(13)=0')
@@ -241,7 +258,8 @@ contains
        call apply_PYTHIAshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, valid)
        !       call pylist(2)
     else
-       call apply_WHIZARDshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, valid)
+       call apply_WHIZARDshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, &
+       pdf_func, pdf_set, valid)
     end if
     !call particle_set_write(particle_set)
     !print *, " after SHOWER"
@@ -496,11 +514,14 @@ contains
       close(unit=u_W2P)
       valid = (shower_get_PYTHIA_error().eq.0)
     end subroutine apply_PYTHIAshower_particle_set
-    subroutine apply_WHIZARDshower_particle_set(particle_set, shower_settings, JETS_ME, model_in, valid)
+    subroutine apply_WHIZARDshower_particle_set(particle_set, shower_settings, JETS_ME, model_in, &
+         pdf_func, pdf_set, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
       type(model_t), pointer, intent(in) :: model_in
+      procedure(shower_pdf), pointer, intent(in) :: pdf_func
+      integer, intent(in) :: pdf_set
       logical, intent(inout) :: valid
 
       type(shower_t) :: shower
@@ -542,6 +563,8 @@ contains
       call shower_set_tscalefactor_isr(shower_settings%ps_isr_tscalefactor)
       call shower_set_isr_only_onshell_emitted_partons( &
            shower_settings%ps_isr_only_onshell_emitted_partons)
+      call shower_set_pdf_set(pdf_set)
+      call shower_set_pdf_func(pdf_func)
 
       if(.not.msg_written) then
          call msg_message("Using WHIZARD's internal showering")
@@ -642,7 +665,7 @@ contains
                ! shower_generate_next_isr_branching returns a pointer to the parton with the next ISR-branching, this parton's scale is the scale of the next branching
 !               temppp=shower_generate_next_isr_branching_veto(shower)
                temppp=shower_generate_next_isr_branching(shower)
-               
+
                if(.not. associated(temppp%p)) then
                   exit branchings
                end if
@@ -837,6 +860,17 @@ contains
       ! Assume that the event is still present in the PYTHIA common blocks
 !      call pygive ("MSTP(61)=0")  ! switch off ISR
 !      call pygive ("MSTP(71)=0")  ! switch off FSR
+
+      if((shower_settings%ps_use_PYTHIA_shower.eqv..false.) .and. len(shower_settings%ps_PYTHIA_PYGIVE)>0) then
+         remaining_PYGIVE = shower_settings%ps_PYTHIA_PYGIVE
+         do while(len(remaining_PYGIVE)>0)
+            call split(remaining_PYGIVE, partial_PYGIVE, ";")
+            call PYGIVE(char(partial_PYGIVE))
+         end do
+         if(shower_get_PYTHIA_error().ne.0) then
+            call msg_fatal(" PYTHIA didn't recognize ps_PYTHIA_PYGIVE setting")
+         end if
+      end if
 
       if(.not.(shower_settings%ps_use_PYTHIA_shower.and.(shower_settings%ps_isr_active.or. &
            shower_settings%ps_fsr_active))) then

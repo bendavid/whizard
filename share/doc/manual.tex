@@ -7,6 +7,7 @@
 \usepackage{thophys}
 \usepackage{url}
 \usepackage[latin1]{inputenc}
+%HEVEA\@def@charset{UTF-8}
 %BEGIN LATEX
 \usepackage{supertabular,verbatim}
 \IfFileExists{hevea.sty}{\usepackage{hevea}}
@@ -238,7 +239,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.0.6}
+\newcommand{\thisversion}{2.1.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -246,9 +247,9 @@ Parameter & Value & Default & Description \\
 \preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.0 \\
+%HEVEA WHIZARD 2.1 \\
 %BEGIN LATEX
- \texttt{\huge WHIZARD 2.0} \\[\baselineskip]
+ \texttt{\huge WHIZARD 2.1} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -261,13 +262,14 @@ Parameter & Value & Default & Description \\
  \\[\baselineskip]
 }
 \def\authormail{\texttt{kilian@physik.uni-siegen.de}, 
-  \texttt{ohl@physik.uni-wuerzburg.de}, \texttt{juergen.reuter@desy.de}}
+  \texttt{ohl@physik.uni-wuerzburg.de},
+  \texttt{juergen.reuter@desy.de}, \texttt{christian.speckner@physik.uni-freiburg.de}}
 \author{%
   Wolfgang Kilian,%
     \thanks{e-mail: \texttt{kilian@hep.physik.uni-siegen.de}}
   Thorsten Ohl,%
     \thanks{e-mail: \texttt{ohl@physik.uni-wuerzburg.de}}
-  J\"urgen Reuter%
+  J\"urgen Reuter,%
     \thanks{e-mail: \texttt{juergen.reuter@desy.de}}
   Christian Speckner
     \thanks{e-mail: \texttt{christian.speckner@physik.uni-freiburg.de}}}
@@ -1298,7 +1300,7 @@ and if everything works well, you get the output
 \centerline{[... here a banner is displayed]}
 \begin{verbatim}
 |=============================================================================|
-|                               WHIZARD 2.0.5
+|                               WHIZARD 2.1.0
 |=============================================================================|
 | Initializing process library 'processes'
 | Reading model file '/home/kilian/whizard/install/share/whizard/models/SM.mdl'
@@ -1356,7 +1358,7 @@ This produces a lot of output which looks similar to this:
  \begin{verbatim}
  | Writing log to 'whizard.log'
  |=============================================================================|
- |                               WHIZARD 2.0.0_rc1
+ |                               WHIZARD 2.1.0
  |=============================================================================|
  | Initializing process library 'processes'
  | Reading model file 'SM.mdl'
@@ -3544,7 +3546,7 @@ hyperthreads) available in the system.  This default can be adjusted
 by setting the \ttt{OMP\_NUM\_THREADS} environment variable prior to
 calling WHIZARD.  Alternatively, the available number of threads can
 be reset anytime by the \sindarin\ parameter
-\ttt{?openmp\_num\_threads}.  Note however that the total number of
+\ttt{openmp\_num\_threads}.  Note however that the total number of
 threads that can be sensibly used is limited by the number of
 nonvanishing helicty combinations.
 
@@ -6177,7 +6179,7 @@ This is the modern version of the Les Houches accord event format
  <LesHouchesEvents version="1.0">
  <header>
    <generator_name>WHIZARD</generator_name>
-   <generator_version>2.0.0</generator_version>
+   <generator_version>2.1.0</generator_version>
  </header>
  <init>
           11         -11   250.000000        250.000000               -1          -1          -1          -1           3           1
@@ -6199,14 +6201,21 @@ event format are shown in the appendix.
 
 %%%%%%%%%
 
-\section{Interface to \pythia}
+\section[Interfaces to Parton Showers, Matching and Hadronization]{Interfaces to Parton Showers, Matching\\and Hadronization}
 
-\whizard\ contains an interface to \pythia, which can be used to
-delegate showering, underlying event, beam remnants, hadronization and
-hadronic decays to \pythia. During configuration the
-\texttt{--enable-shower} flag has to be set, which then triggers
-automatic compilation of the \pythia\ version included in the
-\whizard\ package -- at the moment 6.425 -- as well as the interface.  
+This section describes the interfaces to the internal parton shower as well as the parton shower and hadronization routines from \pythia. Moreover, our implementation of the MLM matching making use of the parton showers is described. Sample \sindarin\ files are located in the \ttt{share/examples} directory. 
+All input files come in two versions, one using the internal shower, ending in \ttt{W.sin}, and one using \pythia's shower, ending in \ttt{P.sin}. Thus we state all file names as ending with \ttt{X.sin}, where \ttt{X} has to be replaced by either \ttt{W} or \ttt{P}.
+The input files include \ttt{EENoMatchingX.sin} and \ttt{DrellYanNoMatchingX.sin} for $e^+ e^- \to hadrons$ and $p\bar{p} \to Z$ without matching. The corresponding \sindarin\ files with matching enabled are \ttt{EEMatching2X.sin} to \ttt{EEMatching5X.sin} for $e^+ e^- \to hadrons$ with a different number of partons included in the matrix element and \ttt{DrallYanMatchingX.sin} for Drell-Yan with one matched emission. 
+
+\subsection{Parton Showers and Hadronization}
+
+From version 2.1 onwards, \whizard\ contains a implementation of an analytic parton shower as presented in \cite{Kilian:2011ka}, providing the opportunity to perform the parton shower from whithin \whizard. Moreover, an interface to \pythia is included, which can be used to delegate the parton shower to \pythia. The same interface can be used 
+to hadronize events using the generated events using \pythia's hadronization routines. Note that by \pythia's default, when performing initial-state radiation multiple interactions are included and when performing the hadronization hadronic decays are included. If required, these additional steps have to be switched off using the corresponding arguments for \pythia's \texttt{PYGIVE} routine vie the \ttt{\$ps\_PYTHIA\_PYGIVE} string.
+
+During configuration the \texttt{--enable-shower} flag has to be set (this is the default from
+version 2.1.0 on), which then triggers
+automatic compilation of the shower subpackage and the \pythia\ version included in the
+\whizard\ package -- at the moment 6.426 -- as well as the interface.  
 It can be invoked by the following \sindarin\ keywords:\\[2ex]
 %
 \centerline{\begin{tabular}{|l|l|}
@@ -6214,19 +6223,40 @@ It can be invoked by the following \sindarin\ keywords:\\[2ex]
 \ttt{?ps\_isr\_active = true} & master switch for initial-state parton showers\\\hline
 \ttt{?hadronization\_active = true} & master switch to enable hadronization\\\hline
 \ttt{?ps\_use\_PYTHIA\_shower = true} & switch to use \pythia's parton shower instead of \\ &
- \whizard's own shower, which is presently still in development phase \\\hline
+ \whizard's own shower\\\hline
 \end{tabular}}\mbox{}
 
-If either \ttt{?ps\_fsr\_active}, \ttt{?ps\_isr\_active} or
-\ttt{?hadronization\_active} is \verb|true|, the event will be
-transferred to \pythia, and the chosen simulation steps will be
-performed. The resulting event will be transferred back to \whizard,
+If either \ttt{?ps\_fsr\_active} or \ttt{?ps\_isr\_active} is set to \verb|true|, the 
+event will be transferred to the internal shower routines or the \pythia\ data structures,
+and the chosen shower steps (initial- and final-state radiation) will be
+performed. If hadronization is enabled via the \ttt{?hadronization\_active} switch, \whizard\ will call \pythia's hadronization routine.
+The hadron\-ization can be applied to events showered using the internal shower or showered using \pythia's shower routines, as well as unshowered events.
+Any necessary transfer of event data to \pythia\ is automatically taken care of within \whizard's shower interface.
+The resulting (showered and/or hadronized) event will be transferred back to \whizard,
 the former final particles will be marked as intermediate. The
 analysis can be applied to a showered and/or hadronized event just
 like in the unshowered/unhadronized case. Any event file can be used
 and will contain the showered/hadronized event. 
-More settings are
 
+Settings for the internal analytic parton shower are set via the following \sindarin\ variables:\\[2ex]
+\begin{description} 
+\item[\texttt{ps\_mass\_cutoff}] The cut-off in virtuality, below which, partons are assumed to radiate no more. Used for both ISR and FSR. Given in $\mbox{GeV}$. (Default = 1.0) 
+\item[\texttt{ps\_fsr\_lambda}] The value for $\Lambda$ used in calculating the value of the running coupling constant $\alpha_S$ for Final State Radiation. Given in $\mbox{GeV}$. (Default = 0.29) 
+\item[\texttt{ps\_isr\_lambda}] The value for $\Lambda$ used in calculating the value of the running coupling constant $\alpha_S$ for Initial State Radiation. Given in $\mbox{GeV}$. (Default = 0.29) 
+\item[\texttt{ps\_max\_n\_flavors}] Number of quark flavours taken into account during shower evolution. Meaningful choices are 3 to include $u,d,s$-quarks, 4 to include $u,d,s,c$-quarks and 5 to include $u,d,s,c,b$-quarks. (Default = 5) 
+\item[\texttt{?ps\_isr\_alpha\_s\_running}] Switch to decide between a constant $\alpha_S$, given by \texttt{ps\_fixed\_alpha\_s}, and a running $\alpha_S$, calculated using \texttt{ps\_isr\_lambda} for ISR. (Default = true) 
+\item[\texttt{?ps\_fsr\_alpha\_s\_running}] Switch to decide between a constant $\alpha_S$, given by \texttt{ps\_fixed\_alpha\_s}, and a running $\alpha_S$, calculated using \texttt{ps\_fsr\_lambda} for FSR. (Default = true) 
+\item[\texttt{ps\_fixed\_alpha\_s}] Fixed value of $\alpha_S$ for the parton shower. Used if either \texttt{?ps\_fsr\_alpha\_s\_running} or \texttt{?ps\_isr\_alpha\_s\_running} are set to \verb|false|. (Default = 0.0) 
+\item[\texttt{?ps\_isr\_angular\_ordered}] Switch for angular ordered ISR. (Default = true )\footnote{The FSR is always simulated with angular ordering enabled.}
+\item[\texttt{ps\_isr\_primordial\_kt\_width}] The width in $\mbox{GeV}$ of the Gaussian assumed to describe the transverse momentum of partons inside the proton. Other shapes are not yet implemented. (Default = 0.0)  
+\item[\texttt{ps\_isr\_primordial\_kt\_cutoff}] The maximal transverse momentum in $\mbox{GeV}$ of a parton inside the proton. Used as a cut-off for the Gaussian. (Default = 5.0) 
+\item[\texttt{ps\_isr\_z\_cutoff}] Maximal $z$-value in initial state branchings. (Default = 0.999) 
+\item[\texttt{ps\_isr\_minenergy}] Minimal energy in $\mbox{GeV}$ of an emitted timelike or final parton. Note that the energy is not calculated in the labframe but in the center-of-mas frame of the two most initial partons resolved so far, so deviations may occur. (Default = 1.0)  
+\item[\texttt{ps\_isr\_tscalefactor}] Factor for the starting scale in the initial state shower evolution. ( Default = 1.0 ) 
+\item[\texttt{?ps\_isr\_only\_onshell\_emitted\_partons}] Switch to allow only for on-shell emitted partons, thereby rejecting all possible final state parton showers starting from partons emitted during the ISR. (Default = false) 
+\end{description}
+
+Settings for the \pythia\ are transferred using the following \sindarin\ variables:\\[2ex]
 \centerline{\begin{tabular}{|l|l|}
 \hline\ttt{?ps\_PYTHIA\_verbose} & if set to false, output from
 \pythia\ will be suppressed\\\hline 
@@ -6237,9 +6267,43 @@ there does not apply here, the string is split \\ & appropriately
 before being transferred to \pythia.\\\hline 
 \end{tabular}}\mbox{}
 
-Note that the included \pythia\ uses \lhapdf\ for initial state
+Note that the included version of \pythia\ uses \lhapdf\ for initial state
 radiation whenever this is available, but the PDF set has to be set
 manually in that case using the keyword \ttt{ps\_PYTHIA\_PYGIVE}.
+
+\subsection{Matching}
+
+Along with the inclusion of the parton showers, \whizard\ includes an implementation of the MLM matching procedure. For a detailed description of the implemented steps see \cite{Kilian:2011ka}. The inclusion of MLM matching still demands some manual settings in the \sindarin\ file. For a given base process and a matching of $N$ additional jets, all processes that can be obtained by attaching up to $N$ QCD splittings, either a quark emitting a gluon or a gluon splitting into two quarks ar two gluons, have to be manually specified as additional processes. These additional processes need to be included in the \ttt{simulate} statement along with the original process. The \sindarin\ variable \texttt{mlm\_nmaxMEjets} has to be set to the maximum number of additional jets $N$. Moreover additional cuts have to be specified for the additional processes. 
+\begin{verbatim}
+  alias quark = u:d:s:c
+  alias antiq = U:D:S:C
+  alias j = quark:antiq:g
+
+  ?mlm_matching = true
+  mlm_ptmin = 5 GeV
+  mlm_etamax = 2.5
+  mlm_Rmin = 1
+
+  cuts = all Dist > mlm_Rmin [j, j]
+         and all Pt > mlm_ptmin [j]
+         and all abs(Eta) < mlm_etamax [j]
+\end{verbatim}
+Note that the variables \ttt{mlm\_ptmin}, \ttt{mlm\_etamax} and \ttt{mlm\_Rmin} are used by the matching routine. Thus, replacing the variables in the \ttt{cut} expression and omitting the assignment would destroy the matching procedure. 
+
+The complete list of variables introduced to steer the matching procedure is as follows:
+\begin{description}
+\item[\texttt{?mlm\_matching\_active}] Master switch to enable MLM matching. (Default = false) 
+\item[\texttt{mlm\_ptmin}] Minimal transverse momentum, also used in the definition of a jet 
+\item[\texttt{mlm\_etamax}] Maximal absolute value of pseudorapidity $\eta$, also used in defining a jet 
+\item[\texttt{mlm\_Rmin}] Minimal $\eta-\phi$ distance $R_{min}$  
+\item[\texttt{mlm\_nmaxMEjets}] Maximum number of jets $N$  
+\item[\texttt{mlm\_ETclusfactor}] Factor to vary the jet definition. Should be $\geq 1$ for complete coverage of phase space. (Default = 1) 
+\item[\texttt{mlm\_ETclusminE}] Minimal energy in the variation of the jet definition 
+\item[\texttt{mlm\_etaclusfactor}] Factor in the variation of the jet definition. Should be $\leq 1$ for complete coverage of phase space. (Default = 1) 
+\item[\texttt{mlm\_Rclusfactor}] Factor in the variation of the jet definition. Should be $\ge 1$ for complete coverage of phase space. (Default = 1) 
+\end{description}
+The variation of the jet definition is a tool to asses systematic uncertainties introduced by the matching procedure (See section 3.1 in \cite{Kilian:2011ka}).
+	
 
 %%%%%%%%%
 
@@ -9896,6 +9960,12 @@ arXiv:hep-ph/0511344.
   [arXiv:1007.2241 [hep-ph]].
   %%CITATION = PHRVA,D82,074024;%%
 
-
+%\cite{Kilian:2011ka}
+\bibitem{Kilian:2011ka}
+  W.~Kilian, J.~Reuter, S.~Schmidt and D.~Wiesler,
+  %``An Analytic Initial-State Parton Shower,''
+  JHEP {\bf 1204} (2012) 013
+  [arXiv:1112.1039 [hep-ph]].
+  %%CITATION = ARXIV:1112.1039;%%
 \end{thebibliography}
 \end{document}

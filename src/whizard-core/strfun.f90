@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -53,13 +53,17 @@ module strfun
 
   public :: strfun_chain_t
   public :: strfun_chain_init
+  public :: strfun_chain_allocate_mappings
   public :: strfun_chain_set_beam_momenta
   public :: strfun_chain_final
   public :: strfun_chain_write
   public :: assignment(=)
+  public :: strfun_chain_get_strfun_type
+  public :: strfun_chain_get_strfun_set
   public :: strfun_chain_get_n_strfun
   public :: strfun_chain_get_n_parameters_tot
   public :: strfun_chain_get_n_vir
+  public :: strfun_chain_multichannel_enabled
   public :: strfun_chain_get_mapping_factor
   public :: strfun_chain_dimension_is_rigid
   public :: strfun_chain_get_colliding_particles
@@ -80,13 +84,8 @@ module strfun
   integer, parameter, public :: STRF_USER = 99
   
   integer, parameter, public :: SFM_NONE = 0
-  integer, parameter, public :: SFM_PDFPAIR = 1
-  integer, parameter, public :: SFM_ISRPAIR = 2
-  integer, parameter, public :: SFM_EPAPAIR = 3
-  integer, parameter, public :: SFM_EWAPAIR = 4  
-  integer, parameter, public :: SFM_CIRCE1PAIR = 5
-  integer, parameter, public :: SFM_CIRCE2PAIR = 6
-  integer, parameter, public :: SFM_USER = 99
+  integer, parameter, public :: SFM_PAIR = 1
+  integer, parameter, public :: SFM_PAIR_RESONANCE = 2
 
   type :: strfun_t
      private
@@ -112,17 +111,20 @@ module strfun
      private
      integer, dimension(:), allocatable :: index
      integer :: type = SFM_NONE
-     real(default), dimension(:), allocatable :: par
+     real(default) :: p = 0
+     real(default) :: m2 = 0, mg = 0, s = 0
+     real(default) :: a1 = 0, a2 = 0, a3 = 0
   end type strfun_mapping_t
 
   type :: strfun_chain_t
      private
      type(beam_t) :: beam
      integer :: n_strfun = 0
+     logical :: multichannel = .false.
      integer :: n_mapping = 0
      type(strfun_t), dimension(:), allocatable :: strfun
-     type(strfun_mapping_t), dimension(:), allocatable :: sf_mapping
-     real(default) :: mapping_factor = 1
+     type(strfun_mapping_t), dimension(:,:), allocatable :: sf_mapping
+     real(default) :: mapping_factor = 0
      integer :: n_parameters_tot = 0
      integer, dimension(:), allocatable :: n_parameters
      type(evaluator_t), dimension(:), allocatable :: eval
@@ -434,11 +436,24 @@ contains
     integer, dimension(:), intent(in) :: index
     integer, intent(in) :: type
     real(default), dimension(:), intent(in) :: par
+    real(default) :: s, m2, mg
     allocate (sf_mapping%index (size (index)))
     sf_mapping%index = index
     sf_mapping%type = type
-    allocate (sf_mapping%par (size (par)))
-    sf_mapping%par = par
+    select case (type)
+    case (SFM_PAIR)
+       sf_mapping%p = par(1)
+    case (SFM_PAIR_RESONANCE)
+       s = par(1)**2
+       m2 = par(2)**2
+       mg = par(2) * par(3)
+       sf_mapping%s = s
+       sf_mapping%m2 = m2
+       sf_mapping%mg = mg
+       sf_mapping%a1 = atan (- m2 / mg)
+       sf_mapping%a2 = atan ((s - m2) / mg)
+       sf_mapping%a3 = (sf_mapping%a2 - sf_mapping%a1) * mg / s
+    end select
   end subroutine strfun_mapping_init
 
   subroutine strfun_mapping_write (sf_mapping, unit)
@@ -450,27 +465,70 @@ contains
     write (u, "(10(1x,I0))")  sf_mapping%index
     write (u, "(1x,A,1x,I0)")  "mapping type =", sf_mapping%type
     write (u, "(1x,A)", advance="no")  "mapping pars ="
-    write (u, *)  sf_mapping%par
+    select case (sf_mapping%type)
+    case (SFM_NONE)
+       write (u, *) "[none]"
+    case (SFM_PAIR)
+       write (u, *) sf_mapping%p
+    case (SFM_PAIR_RESONANCE)
+       write (u, *)  sf_mapping%s, sf_mapping%m2, sf_mapping%mg
+    end select
   end subroutine strfun_mapping_write
 
   subroutine strfun_mapping_apply (sf_mapping, x, factor)
     type(strfun_mapping_t), intent(in) :: sf_mapping
     real(default), dimension(:), intent(inout) :: x
-    real(default), intent(inout) :: factor
+    real(default), intent(out) :: factor
+    real(default) :: f1, f2
     real(default), dimension(2) :: x2
     select case (sf_mapping%type)
-    case (SFM_EPAPAIR, SFM_EWAPAIR, SFM_PDFPAIR, SFM_USER)
+    case (SFM_PAIR)
        x2 = x(sf_mapping%index)
-       call map_unit_square (x2, factor, sf_mapping%par(1))
+       call map_unit_square (x2, factor, sf_mapping%p)
        x(sf_mapping%index) = x2
+    case (SFM_PAIR_RESONANCE)
+       x2 = x(sf_mapping%index)
+       call map_resonance (x2(1), f2, &
+            sf_mapping%s, sf_mapping%m2, sf_mapping%mg, &
+            sf_mapping%a1, sf_mapping%a2, sf_mapping%a3)
+       call map_unit_square (x2, f1)
+       x(sf_mapping%index) = x2
+       factor = f1 * f2
+    case default
+       factor = 1
     end select
   end subroutine strfun_mapping_apply
 
+  subroutine strfun_mapping_apply_inverse (sf_mapping, x, factor)
+    type(strfun_mapping_t), intent(in) :: sf_mapping
+    real(default), dimension(:), intent(inout) :: x
+    real(default), intent(out) :: factor
+    real(default) :: f1, f2
+    real(default), dimension(2) :: x2
+    select case (sf_mapping%type)
+    case (SFM_PAIR)
+       x2 = x(sf_mapping%index)
+       call map_unit_square_inverse (x2, factor, sf_mapping%p)
+       x(sf_mapping%index) = x2
+    case (SFM_PAIR_RESONANCE)
+       x2 = x(sf_mapping%index)
+       call map_unit_square_inverse (x2, f1)
+       call map_resonance_inverse (x2(1), f2, &
+            sf_mapping%s, sf_mapping%m2, sf_mapping%mg, &
+            sf_mapping%a1, sf_mapping%a2, sf_mapping%a3)
+       x(sf_mapping%index) = x2
+       factor = f1 * f2
+    case default
+       factor = 1
+    end select
+  end subroutine strfun_mapping_apply_inverse
+
   subroutine map_unit_square (x, factor, power)
     real(kind=default), dimension(2), intent(inout) :: x
-    real(kind=default), intent(inout) :: factor
+    real(kind=default), intent(out) :: factor
     real(kind=default), intent(in), optional :: power
     real(kind=default) :: xx, yy
+    factor = 1
     xx = x(1)
     yy = x(2)
     if (present(power)) then
@@ -488,14 +546,57 @@ contains
     end if
   end subroutine map_unit_square
 
-  subroutine strfun_chain_init (sfchain, beam_data, n_strfun, n_mapping)
+  subroutine map_unit_square_inverse (x, factor, power)
+    real(kind=default), dimension(2), intent(inout) :: x
+    real(kind=default), intent(out) :: factor
+    real(kind=default), intent(in), optional :: power
+    real(kind=default) :: lg, xx, yy
+    factor = 1
+    xx = x(1) * x(2)
+    if (xx /= 0) then
+       lg = log (xx)
+       yy = log (x(1)) / lg
+       x(2) = yy
+       factor = factor * abs (lg)
+       if (present(power)) then
+          x(1) = xx**(1._default/power)
+          factor = factor * power * xx / x(1)
+       else
+          x(1) = xx
+       end if
+    else
+       x = 0
+    end if
+  end subroutine map_unit_square_inverse
+
+  subroutine map_resonance (x, factor, s, m2, mg, a1, a2, a3)
+    real(default), intent(inout) :: x
+    real(default), intent(out) :: factor
+    real(default), intent(in) :: s, m2, mg, a1, a2, a3
+    real(default) :: t, z
+    z = (1 - x) * a1 + x * a2
+    t = tan (z)
+    x = (m2 + t * mg) / s
+    factor = a3 * (1 + t**2)
+  end subroutine map_resonance
+
+  subroutine map_resonance_inverse (x, factor, s, m2, mg, a1, a2, a3)
+    real(default), intent(inout) :: x
+    real(default), intent(out) :: factor
+    real(default), intent(in) :: s, m2, mg, a1, a2, a3
+    real(default) :: t
+    t = (x * s - m2) / mg
+    x = (atan (t) - a1) / (a2 - a1)
+    factor = a3 * (1 + t**2)
+  end subroutine map_resonance_inverse
+
+  subroutine strfun_chain_init (sfchain, beam_data, n_strfun)
     type(strfun_chain_t), intent(out) :: sfchain
     type(beam_data_t), intent(in), target :: beam_data
-    integer, intent(in) :: n_strfun, n_mapping
+    integer, intent(in) :: n_strfun
     integer :: i
     sfchain%n_strfun = n_strfun
     allocate (sfchain%strfun (n_strfun))
-    allocate (sfchain%sf_mapping (n_mapping))
     allocate (sfchain%n_parameters (n_strfun))
     sfchain%n_parameters = 0
     allocate (sfchain%eval (n_strfun))
@@ -509,6 +610,16 @@ contains
        sfchain%coll_index(i) = i
     end do
   end subroutine strfun_chain_init
+
+  subroutine strfun_chain_allocate_mappings &
+       (sfchain, multichannel, n_mapping, n_channel)
+    type(strfun_chain_t), intent(inout) :: sfchain
+    logical, intent(in) :: multichannel
+    integer, intent(in) :: n_mapping, n_channel
+    sfchain%multichannel = multichannel
+    sfchain%n_mapping = n_mapping
+    allocate (sfchain%sf_mapping (n_mapping, n_channel))
+  end subroutine strfun_chain_allocate_mappings
 
   subroutine strfun_chain_set_beam_momenta (sfchain, p)
     type(strfun_chain_t), intent(inout) :: sfchain
@@ -528,7 +639,7 @@ contains
     type(strfun_chain_t), intent(in) :: sfchain
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
-    integer :: u, i
+    integer :: u, i, ch
     logical :: verb
     verb = .false.;  if (present (verbose))  verb = verbose
     u = output_unit (unit);  if (u < 0)  return
@@ -544,10 +655,20 @@ contains
        end do
     end if
     if (allocated (sfchain%sf_mapping)) then
-       do i = 1, size (sfchain%sf_mapping)
-          write (u, *)
-          call strfun_mapping_write (sfchain%sf_mapping(i), unit)
-       end do
+       if (sfchain%multichannel) then
+          do ch = 1, size (sfchain%sf_mapping, 2)
+             write (u, *)
+             write (u, *) "Mappings for channel #", ch
+             do i = 1, size (sfchain%sf_mapping, 1)
+                call strfun_mapping_write (sfchain%sf_mapping(i, ch), unit)
+             end do
+          end do
+       else
+          do i = 1, size (sfchain%sf_mapping, 1)
+             write (u, *)
+             call strfun_mapping_write (sfchain%sf_mapping(i,1), unit)
+          end do
+       end if
     end if
     if (allocated (sfchain%eval)) then
        write (u, *)
@@ -585,13 +706,15 @@ contains
     type(strfun_chain_t), intent(in) :: sfchain_in
     sfchain_out%beam = sfchain_in%beam
     sfchain_out%n_strfun = sfchain_in%n_strfun
+    sfchain_out%multichannel = sfchain_in%multichannel
     sfchain_out%n_mapping = sfchain_in%n_mapping
     if (allocated (sfchain_in%strfun)) then
        allocate (sfchain_out%strfun (size (sfchain_in%strfun)))
        sfchain_out%strfun = sfchain_in%strfun
     end if
     if (allocated (sfchain_in%sf_mapping)) then
-       allocate (sfchain_out%sf_mapping (size (sfchain_in%sf_mapping)))
+       allocate (sfchain_out%sf_mapping &
+            (size (sfchain_in%sf_mapping, 1), size (sfchain_in%sf_mapping, 2)))
        sfchain_out%sf_mapping = sfchain_in%sf_mapping
     end if
     sfchain_out%mapping_factor = sfchain_in%mapping_factor
@@ -618,6 +741,35 @@ contains
     end if
   end subroutine strfun_chain_assign
 
+  function strfun_chain_get_strfun_type(sfchain) result(type)
+    type(strfun_chain_t), intent(in) :: sfchain
+    integer :: type
+
+    if(size(sfchain%strfun).eq.2) then
+       if(sfchain%strfun(1)%type .eq. sfchain%strfun(2)%type) then
+          type = sfchain%strfun(1)%type
+       else
+          type = STRF_NONE
+       end if
+    else
+       type = STRF_NONE
+    end if
+  end function strfun_chain_get_strfun_type
+  function strfun_chain_get_strfun_set(sfchain) result(set)
+    type(strfun_chain_t), intent(in) :: sfchain
+    integer :: set
+
+    set = 0
+    if(size(sfchain%strfun).eq.2) then
+       if(sfchain%strfun(1)%type .eq. sfchain%strfun(2)%type) then
+          if(sfchain%strfun(1)%type .eq. STRF_LHAPDF) then
+             set = lhapdf_data_get_set(sfchain%strfun(1)%lhapdf_data(1))
+          else if(sfchain%strfun(1)%type .eq. STRF_PDF_BUILTIN) then
+             set = pdf_builtin_get_id(sfchain%strfun(1)%pdf_builtin_data(1))
+         end if
+      end if
+    end if
+  end function strfun_chain_get_strfun_set
   function strfun_chain_get_n_strfun (sfchain) result (n)
     integer :: n
     type(strfun_chain_t), intent(in) :: sfchain
@@ -639,6 +791,12 @@ contains
        n = 0
     end if
   end function strfun_chain_get_n_vir
+
+  function strfun_chain_multichannel_enabled (sfchain) result (flag)
+    logical :: flag
+    type(strfun_chain_t), intent(in) :: sfchain
+    flag = sfchain%multichannel
+  end function strfun_chain_multichannel_enabled
 
   function strfun_chain_get_mapping_factor (sfchain) result (f)
     real(default) :: f
@@ -849,13 +1007,13 @@ contains
     end subroutine link_single
   end subroutine strfun_chain_link
 
-  subroutine strfun_chain_set_mapping (sfchain, i, index, type, par)
+  subroutine strfun_chain_set_mapping (sfchain, i, ch, index, type, par)
     type(strfun_chain_t), intent(inout) :: sfchain
-    integer, intent(in) :: i
+    integer, intent(in) :: i, ch
     integer, dimension(:), intent(in) :: index
     integer, intent(in) :: type
     real(default), dimension(:), intent(in) :: par
-    call strfun_mapping_init (sfchain%sf_mapping(i), index, type, par)
+    call strfun_mapping_init (sfchain%sf_mapping(i, ch), index, type, par)
   end subroutine strfun_chain_set_mapping
 
   subroutine strfun_chain_make_evaluators (sfchain, ok)
@@ -930,47 +1088,71 @@ contains
     if (present (ok))  ok = .true.
   end subroutine strfun_chain_make_evaluators
 
-  subroutine strfun_chain_set_kinematics (sfchain, r, global_mapping, ok)
+  subroutine strfun_chain_set_kinematics (sfchain, r, &
+       channel, offset, r_all, sf_factor, ok)
     type(strfun_chain_t), intent(inout) :: sfchain
     real(default), dimension(:), intent(in) :: r
-    logical, intent(in), optional :: global_mapping
+    integer, intent(in), optional :: channel, offset
+    real(default), dimension(:,:), intent(inout), optional :: r_all
+    real(default), dimension(:), intent(out), optional :: sf_factor
     logical, intent(out), optional :: ok
     real(default), dimension(size(r)) :: x
-    integer :: i, n, n1, n_sf
-    real(default) :: xprod
-    logical :: map_s
-    map_s = .false.;  if (present (global_mapping))  map_s = global_mapping
+    integer :: n_mapping
+    integer :: i, i1, i2, ch, n, n1, n_sf
+    real(default) :: xprod, factor
+    real(default), dimension(:), allocatable :: factor_channel
+    integer, dimension(:), allocatable :: mapping_type
     n_sf = size (sfchain%strfun)
+    sfchain%mapping_factor = 1
     if (size (r) == sfchain%n_parameters_tot) then
        x = r
-       sfchain%mapping_factor = 1
-       if (.not. map_s) then
-          do i = 1, size (sfchain%sf_mapping)
-             call strfun_mapping_apply &
-                  (sfchain%sf_mapping(i), x, sfchain%mapping_factor)
-          end do
+       if (allocated (sfchain%sf_mapping)) then
+          n_mapping = size (sfchain%sf_mapping, 1)
+          if (present (channel)) then
+             allocate (factor_channel (n_mapping))
+             allocate (mapping_type (n_mapping))
+             do i = 1, n_mapping
+                mapping_type(i) = sfchain%sf_mapping(i,channel)%type
+                call strfun_mapping_apply &
+                     (sfchain%sf_mapping(i, channel), x, factor_channel(i))
+             end do
+             sf_factor(channel) = product (factor_channel)
+          else
+             do i = 1, n_mapping
+                call strfun_mapping_apply &
+                     (sfchain%sf_mapping(i, 1), x, factor)
+                sfchain%mapping_factor = sfchain%mapping_factor * factor
+             end do
+          end if
        end if
        n = 0
        do i = 1, size (sfchain%strfun)
           call interaction_receive_momenta (sfchain%strfun(i)%int)
           n1 = sfchain%n_parameters(i)
-          if (i == size (sfchain%strfun) .and. map_s) then
-             if (strfun_get_type (sfchain%strfun(i)) == STRF_BEVT) &
-                  map_s = .false.
-             if (map_s) then
-                xprod = product (x(1:n))
-                if (x(n+1) < xprod) then
-                   x(n+1) = x(n+1) / xprod
-                   sfchain%mapping_factor = sfchain%mapping_factor / xprod
-                else
-                   if (present (ok))  ok = .false.
-                   return
-                end if
-             end if
-          end if
-          call strfun_set_kinematics (sfchain%strfun(i), x(n+1:n+n1), map_s)
+          call strfun_set_kinematics (sfchain%strfun(i), x(n+1:n+n1), .false.)
           n = n + n1
        end do
+       if (present (channel)) then
+          i1 = offset
+          i2 = offset + size (r)
+          do ch = 1, size (r_all, 2)
+             if (ch /= channel) then
+                sf_factor(ch) = 1
+                do i = 1, n_mapping
+                   if (sfchain%sf_mapping(i,ch)%type == mapping_type(i)) then
+                      r_all(i1+1:i2,ch) = r
+                      sf_factor(ch) = sf_factor(ch) * factor_channel(i)
+                   else
+                      r_all(i1+1:i2,ch) = x
+                      call strfun_mapping_apply_inverse &
+                           (sfchain%sf_mapping(1,ch), r_all(i1+1:i2,ch), &
+                           factor)
+                      sf_factor(ch) = sf_factor(ch) * factor
+                   end if
+                end do
+             end if
+          end do
+       end if
        do i = 1, size (sfchain%strfun)
           call evaluator_receive_momenta (sfchain%eval(i))
        end do
@@ -1031,7 +1213,7 @@ contains
        call isr_data_init (isr_data(i), &
             model, flv(i), 0.06_default, 500._default, 0.511e-3_default)
     end do
-    call strfun_chain_init (sfchain, beam_data, 2, 0)
+    call strfun_chain_init (sfchain, beam_data, 2)
     call strfun_chain_set_strfun (sfchain, 1, 1, isr_data(1), 1)
     call strfun_chain_set_strfun (sfchain, 2, 2, isr_data(2), 3)
     call strfun_chain_make_evaluators (sfchain)
@@ -1058,7 +1240,7 @@ contains
     call polarization_init_circular (pol(1), flv(1), 0.3_default)
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 1000._default, flv, pol)
-    call strfun_chain_init (sfchain, beam_data, 2, 0)
+    call strfun_chain_init (sfchain, beam_data, 2)
     ! Initialize EPA for both
     call epa_data_init (epa_data1, model, &
          flv(1), 0.06_default, 1.e-6_default, 0._default, 500._default, &
@@ -1095,7 +1277,7 @@ contains
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 2000._default, flv, pol)
-    call strfun_chain_init (sfchain, beam_data, 2, 0)
+    call strfun_chain_init (sfchain, beam_data, 2)
     call lhapdf_data_init (data(1), lhapdf_status, model, flv(1), member=1)
     !!! Use the same photon PDF that is demanded by the LHAPDF tests.
     call lhapdf_data_init (data(2), lhapdf_status, model, flv(2), &

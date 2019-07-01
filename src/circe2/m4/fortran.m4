@@ -122,7 +122,7 @@ AC_SUBST([FC_VERSION])
 
 ### Catch gfortran memory leak in user structure function test
 AM_CONDITIONAL([FC_IS_GFORTRAN_450],
-  [test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3"])
+  [test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.4"])
  
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],

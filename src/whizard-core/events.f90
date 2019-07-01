@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -218,6 +218,8 @@ contains
        call apply_shower_particle_set(event%particle_set, & 
             shower_settings, &
             process_get_model_ptr(event%process), &
+            process_get_strfun_type(event%process), &
+            process_get_strfun_set(event%process), &
             event%is_valid, event%is_vetoed)
     end if
   end subroutine event_generate
@@ -848,7 +850,7 @@ contains
     call flavor_init (flv, (/ 2, -2 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
-    call process_setup_beams (process, beam_data, 0, 0, sqrts = 1000._default)
+    call process_setup_beams (process, beam_data, 0, sqrts = 1000._default)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *

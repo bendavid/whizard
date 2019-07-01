@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -147,7 +147,7 @@ contains
     write (u, '(A)') '<LesHouchesEvents version="1.0">'
     write (u, '(A)') '<header>'
     write (u, '(A)') '  <generator_name>WHIZARD</generator_name>'
-    write (u, '(A)') '  <generator_version>2.0.7</generator_version>'
+    write (u, '(A)') '  <generator_version>2.1.0</generator_version>'
     write (u, '(A)') '</header>'
   end subroutine les_houches_events_write_header
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -91,7 +91,6 @@ module integrations
     type(string_t) :: history_filename
     type(beam_data_t) :: beam_data
     logical :: use_beams = .false.
-    logical :: allow_global_mapping = .false.
     type(sf_list_t), pointer :: sf_list => null ()
     logical :: use_strfun = .false.
     type(iterations_list_t) :: it_list
@@ -178,8 +177,8 @@ contains
          var_list_get_lval (var_list, var_str ("?phs_step_mapping"))
     intg%mapping_defaults%step_mapping_exp = &
          var_list_get_lval (var_list, var_str ("?phs_step_mapping_exp"))
-    intg%allow_global_mapping = &
-         var_list_get_lval (var_list, var_str ("?allow_global_mapping"))
+    intg%mapping_defaults%enable_s_mapping = &
+         var_list_get_lval (var_list, var_str ("?phs_s_mapping"))
     intg%rebuild_grids = &
          var_list_get_lval (var_list, var_str ("?rebuild_grids"))
     intg%check_grid_file = &
@@ -275,8 +274,7 @@ contains
     logical, intent(out) :: ok
     call process_store_init_process (intg%process, &
          prc_lib, intg%process_id, model, var_list, &
-         use_beams = intg%use_beams, &
-         allow_global_mapping = intg%allow_global_mapping)
+         use_beams = intg%use_beams)
     if (.not. process_is_valid (intg%process)) then
        call msg_fatal ("Process '" &
             // char (intg%process_id) // "': " &
@@ -302,13 +300,12 @@ contains
           if (associated (sf_list)) then
              intg%sf_list => sf_list
              call process_setup_beams (intg%process, intg%beam_data, &
-                  sf_list_get_n_strfun (intg%sf_list), &
-                  sf_list_get_n_mapping (intg%sf_list))
+                  sf_list_get_n_strfun (intg%sf_list))
              call process_check_beam_setup (intg%process, var_list)
              call sf_list_transfer_to_process (intg%sf_list, intg%process)
              intg%use_strfun = .true.
           else
-             call process_setup_beams (intg%process, intg%beam_data, 0, 0)
+             call process_setup_beams (intg%process, intg%beam_data, 0)
           end if
           ok = .true.
        else
@@ -323,10 +320,10 @@ contains
        end if
     else if (intg%sqrts_known) then
        call process_setup_beams &
-            (intg%process, intg%beam_data, 0, 0, sqrts = intg%sqrts)
+            (intg%process, intg%beam_data, 0, sqrts = intg%sqrts)
     else
        call process_setup_beams &
-            (intg%process, intg%beam_data, 0, 0)
+            (intg%process, intg%beam_data, 0)
     end if
     if (ok)  call process_connect_strfun (intg%process, ok)
     if (.not. ok) then
@@ -336,19 +333,18 @@ contains
   end subroutine integration_setup_beams
 
   subroutine integration_setup_qcd &
-       (intg, lhapdf_status, pdf_builtin_status, sf_list, os_data, var_list)
+       (intg, lhapdf_status, pdf_builtin_status, os_data, var_list)
     type(integration_t), intent(inout) :: intg
     type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
-    type(sf_list_t), intent(in), pointer :: sf_list
     type(os_data_t), intent(in) :: os_data
     type(var_list_t), intent(in) :: var_list
     if (intg%alpha_s > 0)  call process_set_alpha_s (intg%process, intg%alpha_s)
-    if (associated (sf_list)) then
+    if (associated (intg%sf_list)) then
        call process_setup_qcd (intg%process, &
             lhapdf_status, pdf_builtin_status, &
-            sf_list_get_lhapdf_data_ptr (sf_list), &
-            sf_list_get_pdf_builtin_data_ptr (sf_list), &
+            sf_list_get_lhapdf_data_ptr (intg%sf_list), &
+            sf_list_get_pdf_builtin_data_ptr (intg%sf_list), &
             os_data, var_list)
     else
        call process_setup_qcd (intg%process, &
@@ -393,6 +389,13 @@ contains
             // "': phase space setup failed.")
     end if
   end subroutine integration_setup_phase_space
+
+  subroutine integration_setup_strfun_mappings (intg)
+    type(integration_t), intent(inout) :: intg
+    if (intg%use_strfun) then
+       call sf_list_setup_mappings (intg%sf_list, intg%process)
+    end if
+  end subroutine integration_setup_strfun_mappings
 
   subroutine integration_setup_iterations &
       (intg, it_list, it_list_default, ok, verbose)
@@ -788,10 +791,13 @@ contains
     if (ok) then
        call integration_setup_qcd &
             (intg, global%lhapdf_status, global%pdf_builtin_status, &
-             global%sf_list, global%os_data, global%var_list)
+             global%os_data, global%var_list)
     end if
     if (integrate .and. ok) then
        call integration_setup_phase_space (intg, global%os_data, ok)
+    end if
+    if (integrate .and. ok) then
+       call integration_setup_strfun_mappings (intg)
     end if
     if (.not. intg%phs_only) then
        if (integrate .and. ok) then

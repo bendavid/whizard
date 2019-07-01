@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -63,7 +63,7 @@ module phs_trees
   public :: phs_tree_canonicalize
   public :: phs_tree_init_mapping
   public :: phs_tree_set_mapping_parameters
-  public :: phs_tree_assign_global_mapping
+  public :: phs_tree_assign_s_mapping
   public :: phs_tree_set_mass_sum
   public :: phs_tree_set_effective_masses
   public :: phs_tree_set_step_mappings
@@ -455,11 +455,11 @@ contains
     end do
   end subroutine phs_tree_set_mapping_parameters
 
-  subroutine phs_tree_assign_global_mapping (tree, mapping)
+  subroutine phs_tree_assign_s_mapping (tree, mapping)
     type(phs_tree_t), intent(in) :: tree
     type(mapping_t), intent(out) :: mapping
     mapping = tree%mapping(tree%mask_out)
-  end subroutine phs_tree_assign_global_mapping
+  end subroutine phs_tree_assign_s_mapping
 
   subroutine phs_tree_set_mass_sum (tree, flv)
     type(phs_tree_t), intent(inout) :: tree

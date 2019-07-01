@@ -349,6 +349,16 @@ particle BCSTARP 543
   anti bstarcbarM "Bstarcbar-"
   tex_name "B^{*+}_c"
   tex_anti "\bar{B}^{*-}_c"
+
+# BB MESONS
+particle ETAB1S 551
+  spin 0
+  name etab etab1s
+  tex_name "\eta_b(1S)"
+particle UPSILON1S 553
+  spin 1
+  name upsilon upsilon1s  
+  tex_name "\Upsilon(1S)"
 	
 # Light Baryons 
 particle PROTON 2212

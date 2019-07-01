@@ -1,4 +1,4 @@
-! WHIZARD 2.0.7 Mar 19 2012
+! WHIZARD 2.1.0 June 15 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -2412,7 +2412,8 @@ contains
        do i = 1, beams%n_strfun
           call strfun_pair_register (beams%strfun_pair(i), global)
        end do
-       call sf_list_freeze (global%sf_list)
+       call sf_list_freeze (global%sf_list, &
+            var_list_get_lval (beams%local%var_list, "?strfun_multichannel"))
 !       call sf_list_write (global%sf_list, beam_fmt = .true.)
        call sf_list_compute_md5sum (global%sf_list)
     end select
@@ -2547,7 +2548,7 @@ contains
     end do
     if (all (affects_beam)) then
        call sf_data_setup_mapping &
-            (sf_data, SFM_PDFPAIR, (/ 0, 1 /), 2._default)
+            (sf_data, SFM_PAIR, (/ 0, 1 /), 2._default)
     end if
   end subroutine sf_list_register_lhapdf
 
@@ -2592,7 +2593,7 @@ contains
     end do
     if (all (affects_beam)) then
        call sf_data_setup_mapping &
-            (sf_data, SFM_PDFPAIR, (/ 0, 1 /), 2._default)
+            (sf_data, SFM_PAIR, (/ 0, 1 /), 2._default)
     end if
   end subroutine sf_list_register_pdf_builtin
 
@@ -2682,10 +2683,10 @@ contains
     if (all (affects_beam)) then
        if (epa_recoil) then
           call sf_data_setup_mapping &
-               (sf_data, SFM_EPAPAIR, (/-2, 1 /), 1._default)
+               (sf_data, SFM_PAIR, (/-2, 1 /), 1._default)
        else
           call sf_data_setup_mapping &
-               (sf_data, SFM_EPAPAIR, (/ 0, 1 /), 1._default)
+               (sf_data, SFM_PAIR, (/ 0, 1 /), 1._default)
        end if
     end if
   end subroutine sf_list_register_epa
@@ -2736,7 +2737,7 @@ contains
     end do
     if (all (affects_beam)) then
        call sf_data_setup_mapping &
-            (sf_data, SFM_EWAPAIR, (/ 0, 1 /), 1._default)
+            (sf_data, SFM_PAIR, (/ 0, 1 /), 1._default)
     end if
   end subroutine sf_list_register_ewa
 
@@ -2914,13 +2915,13 @@ contains
     if (all (affects_beam) .and. user_strfun_mapping) then
        if (all (sf_data_affects_beam (sf_data))) then
           call sf_data_setup_mapping &
-               (sf_data, SFM_USER, &
+               (sf_data, SFM_PAIR, &
                 (/ sf_data_get_n_parameters (sf_data) - 1, &
                    sf_data_get_n_parameters (sf_data) /), &
                 user_strfun_mapping_power)
        else
           call sf_data_setup_mapping &
-               (sf_data, SFM_USER, &
+               (sf_data, SFM_PAIR, &
                 (/ 0, sf_data_get_n_parameters (sf_data) /), &
                user_strfun_mapping_power)
        end if

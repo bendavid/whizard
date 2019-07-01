@@ -1,4 +1,4 @@
-(* $Id: coupling.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: coupling.mli 3832 2012-05-04 02:12:59Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 
@@ -237,6 +237,8 @@ type 'a vertex3 =
       \phi (\ii \partial_\mu V_{1,\nu})(\ii \partial_\rho V_{2,\sigma})\epsilon^{\mu\nu\rho\sigma}$ *) 
   | Dim5_Scalar_Vector_Vector_T of int (* %
       $\phi(\ii\partial_\mu V_1^\nu)(\ii\partial_\nu V_2^\mu)$ *)
+  | Dim5_Scalar_Vector_Vector_U of int (* %
+      $(\ii\partial_\nu\phi) (\ii\partial_\mu V_1^\nu) V_2^\mu$ *)
   | Dim6_Vector_Vector_Vector_T of int (* %
       $V_1^\mu ((\ii\partial_\nu V_2^\rho)%
        \ii\overleftrightarrow{\partial_\mu}(\ii\partial_\rho V_3^\nu))$ *)

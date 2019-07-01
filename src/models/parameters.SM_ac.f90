@@ -24,6 +24,7 @@
 module parameters_sm_ac
   use kinds
   use constants 
+  use sm_physics !NODEP!
   implicit none
   private
   
@@ -34,6 +35,8 @@ module parameters_sm_ac
   real(default), public :: e, g, e_em
   real(default), public :: sinthw, costhw, sin2thw, tanthw
   real(default), public :: qelep, qeup, qedwn
+  real(default), public :: ttop, tbot, tch, ttau, tw
+  real(default), public :: ltop, lbot, lc, ltau, lw
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 		
@@ -41,19 +44,24 @@ module parameters_sm_ac
   real(default), public :: vev
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn
-  real(default), public :: a4, a5, a6, a7, a10
+  real(default), public :: a4 = 0, a5 = 0, a6 = 0, a7 = 0, a10 = 0
   real(default), public :: tau4, tau5
   complex(default), public :: ig1a, ig1z, rg5a, rg5z, &
        ig1pkpg4a, ig1pkpg4z, ig1pkmg4a, ig1pkmg4z, &
        ig1mkpg4a, ig1mkpg4z, ig1mkmg4a, ig1mkmg4z, &
        ila, ilz, il5a, il5z, ik5a, ik5z, &
        alww0, alww2, alzw0, alzw1, alzz
+  complex(default), private :: ghgaga_sm, ghgaz_sm
+  complex(default), public :: ghgaga_ac, ghgaz_ac, ghzz_ac, ghww_ac
+  complex(default), public :: ghgaz_u, ghzz_u, ghww_u
+  complex(default), public :: lambda_h, fw, fww, fb, fbb
+  complex(default), private :: h_anom
 
   public :: import_from_whizard, model_update_alpha_s
 
 contains
   subroutine import_from_whizard (par_array)
-    real(default), dimension(44), intent(in) :: par_array
+    real(default), dimension(52), intent(in) :: par_array
     type :: parameter_set
        real(default) :: gf
        real(default) :: mZ
@@ -99,56 +107,72 @@ contains
        real(default) :: az
        real(default) :: awz1
        real(default) :: awz2
+       real(default) :: fac_gh3
+       real(default) :: fghgaga
+       real(default) :: fghgaz
+       real(default) :: lambdah
+       real(default) :: fw
+       real(default) :: fww
+       real(default) :: fb
+       real(default) :: fbb
     end type parameter_set
     type(parameter_set) :: par
     !!! This corresponds to 1/alpha = 137.03598949333
     real(default), parameter :: &
          alpha = 1.0_default/137.03598949333_default
     e_em = sqrt(4.0_default * PI * alpha)
-    par%gf     = par_array(1)
-    par%mZ     = par_array(2)
-    par%mW     = par_array(3)
-    par%mH     = par_array(4)
-    par%alphas = par_array(5)
-    par%me     = par_array(6)
-    par%mmu    = par_array(7)
-    par%mtau   = par_array(8)
-    par%ms     = par_array(9)
-    par%mc     = par_array(10)
-    par%mb     = par_array(11)
-    par%mtop   = par_array(12)
-    par%wtop   = par_array(13)
-    par%wZ     = par_array(14)
-    par%wW     = par_array(15)
-    par%wH     = par_array(16)
-    par%xi0    = par_array(17)
-    par%xipm   = par_array(18)
-    par%a4     = par_array(19)         
-    par%a5     = par_array(20)
-    par%a6     = par_array(21)
-    par%a7     = par_array(22)
-    par%a10    = par_array(23)
-    par%g1a    = par_array(24)
-    par%g1z    = par_array(25)
-    par%g4a    = par_array(26)
-    par%g4z    = par_array(27)
-    par%g5a    = par_array(28)
-    par%g5z    = par_array(29)
-    par%ka     = par_array(30)
-    par%kz     = par_array(31)
-    par%la     = par_array(32)
-    par%lz     = par_array(33)
-    par%k5a    = par_array(34)
-    par%k5z    = par_array(35)
-    par%l5a    = par_array(36)
-    par%l5z    = par_array(37)
-    par%v      = par_array(38)
-    par%cw     = par_array(39)
-    par%sw     = par_array(40)
-    par%ee     = par_array(41)
-    par%aZ     = par_array(42)
-    par%aWZ1   = par_array(43)
-    par%aWZ2   = par_array(44)
+    par%gf      = par_array(1)
+    par%mZ      = par_array(2)
+    par%mW      = par_array(3)
+    par%mH      = par_array(4)
+    par%alphas  = par_array(5)
+    par%me      = par_array(6)
+    par%mmu     = par_array(7)
+    par%mtau    = par_array(8)
+    par%ms      = par_array(9)
+    par%mc      = par_array(10)
+    par%mb      = par_array(11)
+    par%mtop    = par_array(12)
+    par%wtop    = par_array(13)
+    par%wZ      = par_array(14)
+    par%wW      = par_array(15)
+    par%wH      = par_array(16)
+    par%xi0     = par_array(17)
+    par%xipm    = par_array(18)
+    par%a4      = par_array(19)         
+    par%a5      = par_array(20)
+    par%a6      = par_array(21)
+    par%a7      = par_array(22)
+    par%a10     = par_array(23)
+    par%g1a     = par_array(24)
+    par%g1z     = par_array(25)
+    par%g4a     = par_array(26)
+    par%g4z     = par_array(27)
+    par%g5a     = par_array(28)
+    par%g5z     = par_array(29)
+    par%ka      = par_array(30)
+    par%kz      = par_array(31)
+    par%la      = par_array(32)
+    par%lz      = par_array(33)
+    par%k5a     = par_array(34)
+    par%k5z     = par_array(35)
+    par%l5a     = par_array(36)
+    par%l5z     = par_array(37)
+    par%fac_gh3 = par_array(38)
+    par%fghgaga = par_array(39)
+    par%fghgaz  = par_array(40)
+    par%lambdah = par_array(41)
+    par%fw      = par_array(42)
+    par%fww     = par_array(43)
+    par%fb      = par_array(44)
+    par%fbb     = par_array(45)
+    par%v       = par_array(46)
+    par%cw      = par_array(47)
+    par%sw      = par_array(48)
+    par%ee      = par_array(49)
+    par%aZ      = par_array(50)
+    par%aWZ1    = par_array(51)
+    par%aWZ2    = par_array(52)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -169,11 +193,22 @@ contains
     width(26) =  0
     mass(27) =  par%xipm * mass(24)
     width(27) =  0
+    ttop = 4.0_default * mass(6)**2 / mass(25)**2
+    tbot = 4.0_default * mass(5)**2 / mass(25)**2
+    tch  = 4.0_default * mass(4)**2 / mass(25)**2
+    ttau = 4.0_default * mass(15)**2 / mass(25)**2
+    tw   = 4.0_default * mass(24)**2 / mass(25)**2  
+    ltop = 4.0_default * mass(6)**2 / mass(23)**2
+    lbot = 4.0_default * mass(5)**2 / mass(23)**2  
+    lc   = 4.0_default * mass(4)**2 / mass(23)**2
+    ltau = 4.0_default * mass(15)**2 / mass(23)**2
+    lw   = 4.0_default * mass(24)**2 / mass(23)**2
     vev = par%v
     e = par%ee
     sinthw = par%sw
     sin2thw = par%sw**2
     costhw = par%cw
+    tanthw = sinthw/costhw
     qelep = - 1
     qeup = 2.0_default / 3.0_default
     qedwn = - 1.0_default / 3.0_default
@@ -209,7 +244,7 @@ contains
     ghcc = - mass(4) / vev
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
-    gh3 = - 3 * mass(25)**2 / vev
+    gh3 = - par%fac_gh3 * 3 * mass(25)**2 / vev
     gh4 = - 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
@@ -242,6 +277,40 @@ contains
     alzw1 = g**4 / costhw**2 * (a4 + a6)
     alzw0 = g**4 / costhw**2 * 2 * (a5 + a7)
     alzz = g**4 / costhw**4 * 2 * (a4 + a5 + (a6+a7+a10)*2)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!! Higgs anomaly couplings
+    !!! SM LO loop factor (top,bottom,W)
+    ghgaga_sm = (-1._default) * alpha / vev / 2.0_default / PI * &
+         (( 4.0_default * (fonehalf(ttop) + fonehalf(tch)) &
+         + fonehalf(tbot)) / 3.0_default + fonehalf(ttau) + fone(tw))
+    !!! asymptotic limit:
+    !!! ghgaga = (par%ee)**2 / vev / &
+    !!!      9.0_default / pi**2
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!! SM LO loop factor (only top and W)
+    ghgaz_sm = e * e_em / 8.0_default / PI**2 / vev * abs( &
+          ( - 2.0_default + &
+          16.0_default/3.0_default * sin2thw) * &
+          (tri_i1(ttop,ltop) - tri_i2(ttop,ltop)) / costhw & 
+          + ( - 1.0_default + &
+          4.0_default/3.0_default * sin2thw) & 
+          * (tri_i1(tbot,lbot) - tri_i2(tbot,lbot)) / costhw &
+           - costhw * ( 4.0_default * (3.0_default - tanthw**2) * &
+           tri_i2(tw,lw) + ((1 + 2.0_default/tw) * tanthw**2 - ( &
+           5.0_default + 2.0_default/tw)) * tri_i1(tw,lw))) &
+          /sinthw 
+    h_anom = g * mass(25) / par%lambdah**2
+    ghgaga_ac = par%fghgaga * ghgaga_sm - h_anom * &
+         sin2thw * (par%fbb + par%fww) / 2.0_default
+    ghgaz_ac  = par%fghgaz * ghgaz_sm + h_anom * &
+         sinthw * (sinthw**2 * par%fbb - costhw**2 * par%fww) / costhw
+    ghzz_ac = - h_anom * (sinthw**4 * par%fbb + costhw**4 * par%fww) / &
+         2.0_default / costhw**2
+    ghww_ac = - h_anom * par%fww
+    ghgaz_u = h_anom * sinthw * (par%fw - par%fb) / 2.0_default / costhw
+    ghzz_u = h_anom * (costhw**2 * par%fw + sinthw**2 * par%fb) / &
+         2.0_default / costhw**2
+    ghww_u = h_anom * par%fw / 2.0_default
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
