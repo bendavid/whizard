@@ -1,4 +1,4 @@
-(* $Id: modellib_PSSSM.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* $Id: modellib_PSSSM.ml 7667 2016-07-29 17:37:42Z jr_reuter $
 
    Copyright (C) 1999-2016 by
 
@@ -22,8 +22,8 @@
 
 
 let rcs_file = RCS.parse "Modellib_PSSSM" ["Extended SUSY models"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
+    { RCS.revision = "$Revision: 7667 $";
+      RCS.date = "$Date: 2016-07-29 19:37:42 +0200 (Fri, 29 Jul 2016) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_PSSSM.ml $" }
@@ -68,7 +68,9 @@ module ExtMSSM (Flags : extMSSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
 
 (*additional combinatorics *)
@@ -1976,11 +1978,3 @@ generalization to complex parameters is obvious. *)
       | G_NLQC -> "g_nlqc"
       
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

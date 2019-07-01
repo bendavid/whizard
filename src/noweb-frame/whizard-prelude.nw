@@ -38,12 +38,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.3.0}
-\def\WhizardDate{July 21 2016}
+\def\WhizardVersion{2.3.1}
+\def\WhizardDate{Aug 25 2016}
 <<Version>>=
-2.3.0
+2.3.1
 <<Date>>=
-July 21 2016
+Aug 25 2016
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -62,9 +62,9 @@ July 21 2016
  \mbox{}
  with contributions from:
  Fabian Bach, Felix Braam, Hans-Werner Boschmann, 
- Bijan Chokouf\'{e} Nejad, David Gordo Gomez, Sebastian Schmidt,  
- Marco Sekulla, Soyoung Shim, Christian Speckner, Christian Weiss,
- Daniel Wiesler, Zhijie Zhao
+ Bijan Chokouf\'{e} Nejad, Christian Fleper, David Gordo Gomez,
+ Sebastian Schmidt, Marco Sekulla, Soyoung Shim, Christian Speckner,
+ Christian Weiss, Daniel Wiesler, Zhijie Zhao
  \vspace{1cm}
  \begin{center}
  \includegraphics[width=4cm]{Whizard-Logo}

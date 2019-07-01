@@ -645,8 +645,10 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/smtest_13.ref \
     functional_tests/ref-output/smtest_14.ref \
     functional_tests/ref-output/smtest_15.ref \
+    functional_tests/ref-output/sm_cms_1.ref \
     functional_tests/ref-output/nlo_1.ref \
-    functional_tests/ref-output/mssmtest.ref \
+    functional_tests/ref-output/mssmtest_1.ref \
+    functional_tests/ref-output/mssmtest_2.ref \
     functional_tests/ref-output/spincor_1.ref \
     functional_tests/ref-output/show_1.ref \
     functional_tests/ref-output/show_2.ref \
@@ -950,13 +952,15 @@ MISC_TESTS_SIN = \
     functional_tests/smtest_13.sin \
     functional_tests/smtest_14.sin \
     functional_tests/smtest_15.sin \
+    functional_tests/sm_cms_1.sin \
     functional_tests/nlo_1.sin \
     functional_tests/nlo_2.sin \
     functional_tests/nlo_3.sin \
     functional_tests/nlo_4.sin \
     functional_tests/openloops_1.sin \
     functional_tests/powheg_1.sin \
-    functional_tests/mssmtest.sin \
+    functional_tests/mssmtest_1.sin \
+    functional_tests/mssmtest_2.sin \
     functional_tests/spincor_1.sin \
     functional_tests/show_1.sin \
     functional_tests/show_2.sin \

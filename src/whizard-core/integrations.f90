@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -124,6 +124,7 @@ contains
     type(rt_data_t), intent(inout), optional, target :: global
     type(string_t), intent(in) :: process_id
     type(process_entry_t), pointer :: process_entry
+    call msg_debug (D_CORE, "integration_create_process")
     intg%process_id = process_id
     if (present (global)) then
        allocate (process_entry)
@@ -142,6 +143,7 @@ contains
     type(model_t), pointer :: model
     class(model_data_t), pointer :: model_instance
     class(rng_factory_t), allocatable :: rng_factory
+    call msg_debug (D_CORE, "integration_init_process")
     if (.not. local%prclib%contains (intg%process_id)) then
        call msg_fatal ("Process '" // char (intg%process_id) // "' not found" &
             // " in library '" // char (local%prclib%get_name ()) // "'")
@@ -196,9 +198,10 @@ contains
     type(blha_template_t) :: blha_template
     type(string_t) :: me_method
     type(eval_tree_factory_t) :: expr_factory
-    logical :: use_powheg_damping
-    integer :: i = 0
-
+    logical :: powheg_use_damping
+    logical :: first_real
+    first_real = .true.
+    call msg_debug (D_CORE, "integration_setup_process")
     verb = .true.; if (present (verbose))  verb = verbose
     call intg%process%set_var_list (local%get_var_list_ptr ())
     var_list => intg%process%get_var_list_ptr ()
@@ -234,8 +237,7 @@ contains
 
     call dispatch_phs (phs_config_template, local, &
          intg%process_id, mapping_defs, phs_par)
-    
-    
+
     intg%n_calls_test = &
          var_list%get_ival (var_str ("n_calls_test"))
 
@@ -297,7 +299,7 @@ contains
             call intg%process%set_component_type (i_component, COMP_VIRT)
        case (NLO_REAL)
          me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-         use_powheg_damping = var_list%get_lval (var_str ("?powheg_use_damping"))
+         powheg_use_damping = var_list%get_lval (var_str ("?powheg_use_damping"))
          select case (char (me_method))
          case ('gosam', 'openloops')
             call blha_template%set_real_trees ()
@@ -311,10 +313,10 @@ contains
              phs_config_template_other, fks_template = fks_template, &
              blha_template = blha_template)
          if (intg%combined_integration) then
-            if (use_powheg_damping) then
-               if (i == 0) then
+            if (powheg_use_damping) then
+               if (first_real) then
                   call intg%process%set_component_type (i_component, COMP_REAL_SING)
-                  i = i + 1
+                  first_real = .false.
                else
                   call intg%process%set_component_type (i_component, COMP_REAL_FIN)
                end if
@@ -597,20 +599,12 @@ contains
     integer :: nlo_type
     logical :: display_summed
     logical :: nlo_active
-    type(string_t) :: color_method
     type(nlo_settings_t) :: nlo_settings
+    type(string_t) :: component_output
 
     var_list => intg%process%get_var_list_ptr ()
-    color_method = var_list%get_sval (var_str ('$correlation_me_method'))
-    nlo_settings%use_internal_color_correlations = color_method == 'omega' & 
-       .or. color_method == 'threshold'
-    nlo_settings%combined_integration = intg%combined_integration
-    nlo_settings%test_soft_limit = var_list%get_lval (var_str ('?test_soft_limit'))
-    nlo_settings%test_coll_limit = var_list%get_lval (var_str ('?test_coll_limit'))
-    nlo_settings%test_anti_coll_limit = var_list%get_lval (var_str ('?test_anti_coll_limit'))
-    nlo_settings%fixed_alr = var_list%get_ival (var_str ('fixed_alpha_region'))
-    nlo_settings%with_virtual_subtraction = &
-       .not. var_list%get_lval (var_str ('?switch_off_virtual_subtraction'))
+    call nlo_settings%init (var_list, &
+             combined_integration=intg%combined_integration)
 
     allocate (process_instance)
     call process_instance%init (intg%process, nlo_settings)
@@ -647,10 +641,15 @@ contains
           end select
           if (n_mci > 1) then
              if (nlo_active) then
+                if (intg%combined_integration .and. nlo_type == BORN) then
+                   component_output = var_str ("Combined")
+                else
+                   component_output = component_status (nlo_type)
+                end if
                 write (msg_buffer, "(A,A,A,A,A)") &
                      "Starting integration for process '", &
                      char (intg%process%get_id ()), "' part '", &
-                     char (component_status (nlo_type)), "'"
+                     char (component_output), "'"
              else
                 write (msg_buffer, "(A,A,A,I0)") &
                      "Starting integration for process '", &
@@ -673,7 +672,7 @@ contains
              call intg%evaluate (process_instance, i_mci, pass, it_list, pacify)
              if (signal_is_pending ())  return
           end do
-          call intg%process%final_integration (i_mci)       
+          call intg%process%final_integration (i_mci)
           if (intg%vis_history) then
              call intg%process%display_integration_history &
                   (i_mci, intg%history_filename, local%os_data, eff_reset)

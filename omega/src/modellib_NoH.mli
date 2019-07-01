@@ -39,11 +39,3 @@ module NoH_k_matrix : NoH_flags
 
 module NoH : functor (F : NoH_flags) -> Model.Gauge with module Ch = Charges.QQ
 module AltH: functor (F : NoH_flags) -> Model.Gauge with module Ch = Charges.QQ
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

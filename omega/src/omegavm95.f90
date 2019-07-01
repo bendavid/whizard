@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 7649 2016-07-13 14:12:24Z bchokoufe $
+!  $Id: omegalib.nw 7665 2016-07-26 16:37:28Z bchokoufe $
 !
 !  Copyright (C) 1999-2016 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -201,6 +201,7 @@ module omegavm95
      integer :: hel_count = 0, hel_cutoff = 100
      integer, dimension(:), allocatable :: hel_map
      integer :: hel_finite
+     logical :: cms
 
      logical :: openmp
 
@@ -427,6 +428,7 @@ contains
     else
        vm%openmp = .false.
     end if
+    vm%cms = .false.
 
     call basic_init (vm, verbose, out_fh)
   end subroutine vm_init
@@ -1327,9 +1329,14 @@ contains
 
          case (1)
            w = vm%width(i(2))
+           vm%cms = .false.
 
          case (2)
            w = wd_tl(vm%momenta(i(5)), vm%width(i(2)))
+
+         case (3)
+           w = vm%width(i(2))
+           vm%cms = .true.
 
          case default
             print *, 'not implemented'
@@ -1355,33 +1362,33 @@ contains
 
          case (ovm_PROPAGATE_SPINOR)
            vm%spinors(i(4))%v = pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
-                w, .false., vm%spinors(i(4))%v)
+                w, vm%cms, vm%spinors(i(4))%v)
            vm%spinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_CONJSPINOR)
            vm%conjspinors(i(4))%v = pr_psibar(vm%momenta(i(5)), vm%mass(i(2)), &
-                w, .false., vm%conjspinors(i(4))%v)
+                w, vm%cms, vm%conjspinors(i(4))%v)
            vm%conjspinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_MAJORANA)
            vm%bispinors(i(4))%v = bi_pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
-                w, .false., vm%bispinors(i(4))%v)
+                w, vm%cms, vm%bispinors(i(4))%v)
            vm%bispinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_COL_MAJORANA)
            vm%bispinors(i(4))%v = (- one / N_) * &
                 bi_pr_psi(vm%momenta(i(5)), vm%mass(i(2)), &
-                w, .false., vm%bispinors(i(4))%v)
+                w, vm%cms, vm%bispinors(i(4))%v)
            vm%bispinors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_UNITARITY)
            vm%vectors(i(4))%v = pr_unitarity(vm%momenta(i(5)), vm%mass(i(2)), &
-                w, .false., vm%vectors(i(4))%v)
+                w, vm%cms, vm%vectors(i(4))%v)
            vm%vectors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_COL_UNITARITY)
            vm%vectors(i(4))%v = - one / N_ * pr_unitarity(vm%momenta(i(5)), &
-                vm%mass(i(2)), w, .false., vm%vectors(i(4))%v)
+                vm%mass(i(2)), w, vm%cms, vm%vectors(i(4))%v)
            vm%vectors(i(4))%c = .True.
 
          case (ovm_PROPAGATE_FEYNMAN)

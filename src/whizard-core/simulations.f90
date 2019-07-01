@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -140,7 +140,7 @@ module simulations
      type(counter_t) :: counter
      integer :: n_in = 0
      integer :: n_mci = 0
-     type(mci_set_t), dimension(:), allocatable :: mci_set
+     type(mci_set_t), dimension(:), allocatable :: mci_sets
      type(selector_t) :: mci_selector
      type(core_safe_t), dimension(:), allocatable :: core_safe
      class(model_data_t), pointer :: model => null ()
@@ -484,10 +484,10 @@ contains
     end if
     write (u, "(3x,A,I0)")   "MCI sets  = ", object%n_mci
     call object%counter%write (u)
-    do i = 1, size (object%mci_set)
+    do i = 1, size (object%mci_sets)
        write (u, "(A)")
        write (u, "(1x,A,I0,A)")  "MCI set #", i, ":"
-       call object%mci_set(i)%write (u)
+       call object%mci_sets(i)%write (u)
     end do
     if (allocated (object%core_safe)) then
        do i = 1, size (object%core_safe)
@@ -525,9 +525,9 @@ contains
     entry2%counter = entry1%counter
     entry2%n_in = entry1%n_in
     entry2%n_mci = entry1%n_mci
-    if (allocated (entry1%mci_set)) then
-       allocate (entry2%mci_set (size (entry1%mci_set)))
-       entry2%mci_set = entry1%mci_set
+    if (allocated (entry1%mci_sets)) then
+       allocate (entry2%mci_sets (size (entry1%mci_sets)))
+       entry2%mci_sets = entry1%mci_sets
     end if
     entry2%mci_selector = entry1%mci_selector
     if (allocated (entry1%core_safe)) then
@@ -554,7 +554,8 @@ contains
     integer :: i
     logical :: combined_integration
     integer :: fixed_mci = 0
-
+    call msg_debug (D_CORE, "entry_init")
+    call msg_debug (D_CORE, "process_id", process_id)
     call prepare_process &
          (master_process, process_id, use_process, integrate, local, global)
     if (signal_is_pending ())  return
@@ -563,7 +564,7 @@ contains
        if (.not. master_process%has_matrix_element ()) then
           entry%has_integral = .true.
           entry%process_id = process_id
-          entry%valid = .false.          
+          entry%valid = .false.
           return
        end if
     else
@@ -574,7 +575,7 @@ contains
        entry%valid = .true.
        return
     end if
-    
+
     call entry%basic_init (local%var_list, n_alt)
 
     entry%process_id = process_id
@@ -599,9 +600,9 @@ contains
 
     call entry%import_process_characteristics (process)
 
-    allocate (entry%mci_set (entry%n_mci))
-    do i = 1, size (entry%mci_set)
-       call entry%mci_set(i)%init (i, master_process)
+    allocate (entry%mci_sets (entry%n_mci))
+    do i = 1, size (entry%mci_sets)
+       call entry%mci_sets(i)%init (i, master_process)
     end do
     call entry%set_nlo_event (local%get_lval (var_str ("?fixed_order_nlo_events")))
     if (entry%is_nlo_event()) then
@@ -659,9 +660,9 @@ contains
 
     entry%model => process%get_model_ptr ()
     entry%valid = .true.
-    
+
   end subroutine entry_init
-    
+
   subroutine entry_set_active_real_components (entry, i_mci)
     class(entry_t), intent(inout) :: entry
     integer, intent(in) :: i_mci
@@ -719,13 +720,9 @@ contains
     allocate (process_instance)
     if (process%is_nlo_calculation ()) then
        associate (var_list => local%var_list)
-          nlo_settings%combined_integration = &
-             var_list%get_lval (var_str("?combined_nlo_integration"))
-          color_method = var_list%get_sval (var_str ('$correlation_me_method'))
-          nlo_settings%use_internal_color_correlations = color_method == 'omega' &
-             .or. color_method == 'threshold'
+          call nlo_settings%init (var_list)
        end associate
-       call process_instance%init (process, nlo_settings)    
+       call process_instance%init (process, nlo_settings)
        select type (pcm => process_instance%pcm)
        type is (pcm_instance_nlo_t)
           pcm%collect_matrix_elements = .true.
@@ -957,17 +954,22 @@ contains
     class(entry_t), intent(inout), target :: entry
     logical, intent(in), optional :: negative_weights
     type(entry_t), pointer :: current_entry
-    integer :: i, j
+    integer :: i, j, k
+    call msg_debug (D_CORE, "entry_init_mci_selector")
     if (entry%has_integral) then
        select type (entry)
        type is (entry_t)
           current_entry => entry
           do j = 1, current_entry%count_nlo_entries ()
              if (j > 1) current_entry => current_entry%get_next ()
+             do k = 1, size(current_entry%mci_sets%integral)
+                call msg_debug (D_CORE, "current_entry%mci_sets(k)%integral", &
+                     current_entry%mci_sets(k)%integral)
+             end do
              call current_entry%mci_selector%init &
-                  (current_entry%mci_set%integral, negative_weights)
+                  (current_entry%mci_sets%integral, negative_weights)
              do i = 1, current_entry%n_mci
-                current_entry%mci_set(i)%weight_mci = &
+                current_entry%mci_sets(i)%weight_mci = &
                    current_entry%mci_selector%get_weight (i)
              end do
           end do
@@ -978,11 +980,13 @@ contains
   function entry_select_mci (entry) result (i_mci)
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
+    call msg_debug2 (D_CORE, "entry_select_mci")
     if (entry%nlo_info%fixed_mci > 0) then
        i_mci = entry%nlo_info%fixed_mci
     else
        call entry%mci_selector%generate (entry%rng, i_mci)
     end if
+    call msg_debug2 (D_CORE, "i_mci", i_mci)
   end function entry_select_mci
   
   subroutine entry_record (entry, i_mci, from_file)
@@ -994,7 +998,7 @@ contains
     excess = entry%get_excess_prc ()
     call entry%counter%record (weight, excess, from_file)
     if (i_mci > 0) then
-       call entry%mci_set(i_mci)%counter%record (weight, excess)
+       call entry%mci_sets(i_mci)%counter%record (weight, excess)
     end if
   end subroutine entry_record
     
@@ -1095,9 +1099,9 @@ contains
 
     call entry%import_process_characteristics (process)
     
-    allocate (entry%mci_set (entry%n_mci))
-    do i = 1, size (entry%mci_set)
-       call entry%mci_set(i)%init (i, master_process)
+    allocate (entry%mci_sets (entry%n_mci))
+    do i = 1, size (entry%mci_sets)
+       call entry%mci_sets(i)%init (i, master_process)
     end do
 
     call entry%import_process_results (master_process)
@@ -1352,7 +1356,7 @@ contains
        call msg_fatal ("Event file format '" &
             // char (version_string) &
             // "' is not compatible with this version.")
-    end if        
+    end if
     simulation%n_prc = size (process_id)
     allocate (simulation%entry (simulation%n_prc))
     if (present (alt_env)) then
@@ -1390,7 +1394,8 @@ contains
           call simulation%entry(i)%determine_if_powheg_matching ()
           if (signal_is_pending ())  return          
           if (simulation%entry(i)%is_nlo_event()) then
-             if (.not. simulation%local%get_lval (var_str ("?combined_nlo_integration"))) &
+             if (.not. simulation%local%get_lval (&
+                  var_str ("?combined_nlo_integration"))) &
                 call simulation%entry(i)%set_fixed_mci ()
              call simulation%entry(i)%setup_additional_entries ()
           end if
@@ -1523,7 +1528,7 @@ contains
     if (simulation%md5sum_cfg == "") then
        buffer = ""
        do i = 1, simulation%n_prc
-          if (.not. simulation%entry(i)%valid) cycle          
+          if (.not. simulation%entry(i)%valid) cycle
           process => simulation%entry(i)%get_process_ptr ()
           if (associated (process)) then
              n_mci = process%get_n_mci ()
@@ -1750,7 +1755,7 @@ contains
       call entry%store_alt_values ()
     end associate
   end subroutine simulation_calculate_alt_entries
-       
+
   subroutine simulation_rescan (simulation, n, es_array, global)
     class(simulation_t), intent(inout) :: simulation
     integer, intent(in) :: n

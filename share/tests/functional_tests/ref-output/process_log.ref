@@ -436,6 +436,7 @@ mlm_etaclusfactor =  1.000000000000E+00
 mlm_Rclusfactor =  1.000000000000E+00
 mlm_Eclusfactor =  1.000000000000E+00
 ?powheg_matching = false
+powheg_damping_scale =  1.000000000000E+01
 ?powheg_use_singular_jacobian = false
 powheg_grid_size_xi = 5
 powheg_grid_size_y = 5

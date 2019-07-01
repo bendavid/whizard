@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -78,7 +78,7 @@ module processes
 
   use pcm_base, only: pcm_t, pcm_instance_t
   use nlo_data, only: sqme_collector_t
-  use nlo_data, only: fks_template_t, nlo_settings_t
+  use nlo_data, only: fks_template_t, nlo_settings_t, powheg_damping_simple_t
   use nlo_data, only: phs_point_set_t
   use models, only: model_t
   use nlo_controller, only: nlo_controller_t
@@ -1354,6 +1354,7 @@ contains
     integer :: n_mci, i_mci
     integer :: i
     logical :: powheg_damping_active
+    call msg_debug (D_PROCESS_INTEGRATION, "process_setup_mci")
     n_mci = 0
     do i = 1, process%meta%n_components
        associate (component => process%component(i))
@@ -1362,6 +1363,8 @@ contains
             n_mci = n_mci + 1
             component%i_mci = n_mci
          end if
+         call msg_debug (D_PROCESS_INTEGRATION, &
+              "component%component_type", component%component_type)
        end associate
     end do
     process%config%n_mci = n_mci
@@ -1370,7 +1373,9 @@ contains
     allocate (process%mci_entry (n_mci))
     i_mci = 0
     powheg_damping_active = &
-        any (process%component%component_type == COMP_REAL_SING)
+        any (process%component%component_type == COMP_REAL_FIN)
+    call msg_debug (D_PROCESS_INTEGRATION, "powheg_damping_active", &
+         powheg_damping_active)
     do i = 1, process%meta%n_components
        associate (component => process%component(i))
           if (component%needs_mci_entry () .and. &
@@ -2517,9 +2522,12 @@ contains
     integer, dimension(:), allocatable :: i_list
     integer :: n
     integer, save :: i_rfin_offset = 0
+    call msg_debug (D_PROCESS_INTEGRATION, "process_mci_entry_create_component_list")
     if (mci_entry%combined_integration) then
       n = get_n_components (mci_entry%powheg_damping_type)
       allocate (i_list (n))
+      call msg_debug (D_PROCESS_INTEGRATION, &
+           "mci_entry%powheg_damping_type", mci_entry%powheg_damping_type)
       select case (mci_entry%powheg_damping_type)
       case (DAMPING_NONE)
          i_list = component%config%get_association_list ()
@@ -2533,8 +2541,7 @@ contains
       case (DAMPING_FINITE)
          allocate (mci_entry%i_component (1))
          mci_entry%i_component(1) = &
-            component%config%get_associated_real_fin () &
-          + i_rfin_offset 
+              component%config%get_associated_real_fin () + i_rfin_offset
          i_rfin_offset = i_rfin_offset + 1
       end select
     else
@@ -2543,7 +2550,7 @@ contains
     end if
   contains
     function get_n_components (damping_type) result (n_components)
-      integer :: n_components 
+      integer :: n_components
       integer, intent(in) :: damping_type
       select case (damping_type)
       case (DAMPING_NONE)
@@ -2552,6 +2559,7 @@ contains
          n_components = size (component%config%get_association_list &
             (ASSOCIATED_REAL_FIN))
       end select
+      call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
     end function get_n_components
   end subroutine process_mci_entry_create_component_list
 
@@ -4012,19 +4020,28 @@ contains
     real(default), intent(inout) :: sqme
     real(default) :: E_gluon
     integer :: nlegs
+    call msg_debug2 (D_PROCESS_INTEGRATION, "component_instance_apply_damping_factor")
     associate (nlo_controller => component%nlo_controller)
        select case (component%config%component_type)
        case (COMP_REAL_FIN, COMP_REAL_SING)
-          nlegs = nlo_controller%particle_data%n_in + nlo_controller%particle_data%n_out_real
-          E_gluon = energy (nlo_controller%real_kinematics%p_real_lab%phs_point(1)%p(nlegs))
+          nlegs = nlo_controller%particle_data%n_in + &
+               nlo_controller%particle_data%n_out_real
+          E_gluon = energy (&
+               nlo_controller%real_kinematics%p_real_lab%phs_point(1)%p(nlegs))
+          call msg_debug2 (D_PROCESS_INTEGRATION, &
+               "nlo_controller%powheg_damping%get_f (E_gluon)**2", &
+               nlo_controller%powheg_damping%get_f (E_gluon)**2)
           select case (component%config%component_type)
           case (COMP_REAL_FIN)
-             sqme = sqme * (one - nlo_controller%powheg_damping%get_f (E_gluon))
+             call msg_debug2 (D_PROCESS_INTEGRATION, "Real finite")
+             sqme = sqme * (one - nlo_controller%powheg_damping%get_f (E_gluon**2))
           case (COMP_REAL_SING)
-             sqme = sqme * nlo_controller%powheg_damping%get_f (E_gluon)
+             call msg_debug2 (D_PROCESS_INTEGRATION, "Real singular")
+             sqme = sqme * nlo_controller%powheg_damping%get_f (E_gluon**2)
           end select
        end select
     end associate
+    call msg_debug2 (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
   end subroutine component_instance_apply_damping_factor
 
   subroutine component_instance_evaluate_sqme_born (component, term, not_virtual, pure_born)
@@ -4105,7 +4122,7 @@ contains
          if (term(i)%passed) then
             call component%evaluate_sqme_born (term(i), not_virtual, pure_born)
             if (pure_born) &
-               call set_pure_born (component, component%sqme * term(i)%weight, 1) 
+               call set_pure_born (component, component%sqme * term(i)%weight, 1)
             if (not_virtual) &
                call set_subtraction_born (component, component%sqme * term(i)%weight, 1)
             call component%evaluate_sqme_real (term(i), 1)
@@ -4217,8 +4234,6 @@ contains
      logical, intent(out) :: bad_point
      type(vector4_t), dimension(:), allocatable :: p
      real(default) :: ren_scale
-     call msg_debug2 (D_PROCESS_INTEGRATION, &
-          "compute_sqme_virt_single_helicity: term%ren_scale", term%ren_scale)
      allocate (p (size (term%int_hard%get_momenta ())))
      p = term%int_hard%get_momenta ()
      ren_scale = term%ren_scale
@@ -4402,6 +4417,9 @@ contains
   function process_component_needs_mci_entry (component) result (value)
     class(process_component_t), intent(in) :: component
     logical :: value
+    call msg_debug (D_PROCESS_INTEGRATION, "process_component_needs_mci_entry")
+    call msg_debug (D_PROCESS_INTEGRATION, "component%active", component%active)
+    call msg_debug (D_PROCESS_INTEGRATION, "component%component_type", component%component_type)
     value = component%active .and. component%core%needs_mcset () &
             .and. component%component_type <= COMP_MASTER
   end function process_component_needs_mci_entry
@@ -4941,15 +4959,15 @@ contains
           call term%int_hard%set_matrix_element (term%amp)
           if (associated (term%nlo_controller)) &
              call term%nlo_controller%set_fac_scale (term%fac_scale)
-       end associate 
+       end associate
     case (NLO_REAL)
        call term%evaluate_real_phase_space (term%nlo_controller%get_active_emitter ())
        call term%evaluate_interaction_real (component(i_component), i_term)
     case (NLO_MISMATCH)
        call term%evaluate_interaction_sub (component(i_component), 1, 1)
-    end select  
+    end select
   end subroutine term_instance_evaluate_interaction
-  
+
   subroutine term_instance_evaluate_trace (term)
     class(term_instance_t), intent(inout) :: term
     call term%k_term%evaluate_sf_chain (term%fac_scale)
@@ -5468,7 +5486,9 @@ contains
           select case (config%component_type)
           case (COMP_MASTER)
              i_real = config%config%get_associated_real ()
-             if (i_real == 0) i_real = config%config%get_associated_real_sing ()
+             if (i_real == 0)  &
+                  call msg_bug ("process_instance_get_associated_real:" // &
+                  " i_real = 0. this should not happen anymore!")
           case (COMP_REAL_FIN)
              i_real = config%config%get_associated_real_fin ()
           case default
@@ -5554,8 +5574,9 @@ contains
     logical :: use_resonance_mappings
     logical :: test_soft_limit, test_coll_limit, test_anti_coll_limit
     integer :: generator_mode
-    integer :: fixed_alr
-
+    call msg_debug (D_PROCESS_INTEGRATION, "process_instance_init_nlo_configuration")
+    if (debug_active (D_PROCESS_INTEGRATION) .and. present(nlo_settings)) &
+         call nlo_settings%write ()
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
        pcm%controller%sqme_collector => pcm%collector
@@ -5575,38 +5596,15 @@ contains
                        (prc_constants(1))
                   call process%term(i_component)%fetch_constants &
                        (prc_constants(2))
-                  if (present (nlo_settings)) then
-                     use_internal_cc = nlo_settings%use_internal_color_correlations
-                     use_internal_sc = .false.
-                     use_resonance_mappings = nlo_settings%use_resonance_mappings
-                     test_soft_limit = nlo_settings%test_soft_limit
-                     test_coll_limit = nlo_settings%test_coll_limit
-                     test_anti_coll_limit = nlo_settings%test_coll_limit
-                     fixed_alr = nlo_settings%fixed_alr
-                  else
-                     use_internal_cc = .true.
-                     use_internal_sc = .false.
-                     use_resonance_mappings = .false.
-                     test_soft_limit = .false.
-                     test_coll_limit = .false.
-                     test_anti_coll_limit = .false.
-                     fixed_alr = 0
-                  end if
                   component%nlo_type = NLO_REAL
                   associate (nlo_controller => component%nlo_controller)
                     if (nlo_controller%needs_initialization) then
+                       if (present (nlo_settings)) then
+                          nlo_controller%settings = nlo_settings
+                       end if
                        call nlo_controller%set_internal_procedures &
-                          (use_internal_cc, use_internal_sc)
-                       associate (settings => nlo_controller%settings)
-                          settings%use_resonance_mappings = use_resonance_mappings
-                          settings%test_soft_limit = test_soft_limit
-                          settings%test_coll_limit = test_coll_limit
-                          settings%test_anti_coll_limit = test_anti_coll_limit
-                          settings%fixed_alr = fixed_alr
-                          if (present (nlo_settings)) then
-                             settings%combined_integration = nlo_settings%combined_integration
-                          end if
-                       end associate
+                            (nlo_controller%settings%use_internal_color_correlations, &
+                             nlo_controller%settings%use_internal_spin_correlations)
                        process%component(i_component)%fks_template%id = &
                           prc_constants(1)%id
                        call nlo_controller%check_if_threshold_method (component%config%core)
@@ -5628,6 +5626,10 @@ contains
                           (nlo_controller%reg_data%n_flv_real, &
                           component%nlo_controller%reg_data%n_phs))
                        call nlo_controller%init_born_amps (process%get_n_allowed_born (i_born))
+                       !!! Probably not the right place for this. Revisit after refactoring
+                       allocate (powheg_damping_simple_t :: &
+                            nlo_controller%powheg_damping)
+                         call nlo_controller%powheg_damping%init (nlo_controller%settings%powheg_damping_scale)
                        nlo_controller%needs_initialization = .false.
                     end if
                   end associate
@@ -5661,7 +5663,7 @@ contains
                else if (nlo_type == NLO_MISMATCH) then
                   generator_mode = check_generator_mode (GEN_SOFT_MISMATCH)
                   call component%setup_fks_kinematics (process%meta%var_list, &
-                     generator_mode) 
+                     generator_mode)
                end if
              end associate
           end if
@@ -6189,7 +6191,8 @@ contains
                 call msg_debug2 (D_SUBTRACTION, "sqme_born", sqme_born)
                 if (pcm%controller%nlo_cuts%passed_born .and. not_virtual) &
                    call set_subtraction_born (component, sqme_born * term%weight, i_flv_born)
-                call set_pure_born (component, sqme_born * term%weight, i_flv_born)
+                if (pure_born) &
+                  call set_pure_born (component, sqme_born * term%weight, i_flv_born)
              end if
              if (passed_real) &
                 call component%evaluate_sqme_real (term, i_phs)
@@ -6265,18 +6268,18 @@ contains
     integer, intent(in) :: i_phs, i_flv
     real(default), intent(in), optional :: alpha_s_external
     integer :: i_real
-    
+    call msg_debug (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_real_rad")
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
        if (.not. pcm%collect_matrix_elements) &
           call msg_fatal ("Compute radiation matrix elements: " // &
              "sqme_collector must be allocated!")
-       call pcm%controller%disable_subtraction () 
+       call pcm%controller%disable_subtraction ()
        i_real = instance%get_associated_real ()
 
        call instance%component(i_real)%redo_sf_chain &
           (instance%mci_work(instance%i_mci), instance%selected_channel)
-       
+
        associate (term => instance%term(i_real))
          call term%evaluate_interaction_real_rad (instance%component(i_real), &
             i_real, i_phs, i_flv, alpha_s_external)
@@ -6939,7 +6942,9 @@ contains
     type(process_t), intent(inout), target :: process
     integer :: i_sub
     integer :: n_components, i_component
+    call msg_debug (D_PROCESS_INTEGRATION, "setup_nlo_component_cores")
     n_components = process%get_n_components ()
+    call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
 
     do i_component = 1, n_components
        select case (process%get_component_nlo_type (i_component))
@@ -6948,6 +6953,7 @@ contains
           exit
        end select
     end do
+    call msg_debug (D_PROCESS_INTEGRATION, "i_sub", i_sub)
 
     do i_component = 1, n_components
        select case (process%get_component_nlo_type (i_component))

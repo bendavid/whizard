@@ -25,66 +25,10 @@ $loop_me_method = "threshold"
 $correlation_me_method = "threshold"
 $real_tree_me_method = "threshold"
 [user variable] num_diff =  1.0000000E-03
-seed = 0
-| Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_null'
-SM_tt_threshold.FF =>  1.0000000E+01
-SM_tt_threshold.offshell_strategy =>  0.0000000E+00
-| Integrate: current process library needs compilation
-| Process library 'user_prc_threshold_2_lib': compiling ...
-| Process library 'user_prc_threshold_2_lib': writing makefile
-| Process library 'user_prc_threshold_2_lib': removing old files
-| Process library 'user_prc_threshold_2_lib': writing driver
-| Process library 'user_prc_threshold_2_lib': creating source code
-| Process library 'user_prc_threshold_2_lib': compiling sources
-| Process library 'user_prc_threshold_2_lib': linking
-| Process library 'user_prc_threshold_2_lib': loading
-| Loaded extra threshold functions
-| Process library 'user_prc_threshold_2_lib': ... success.
-| Integrate: compilation done
-| RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 0
-| Initializing integration for process user_prc_threshold_2_null:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_2_null'
-|   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'user_prc_threshold_2_null_i1':   e-, e+ => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
-|   e+  (mass = 5.1099700E-04 GeV)
-|   sqrts = 3.600000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_2_null_i1.phs'
-| Phase space: 61 channels, 8 dimensions
-| Phase space: found 61 channels, collected in 22 groves.
-| Phase space: Using 71 equivalences between channels.
-| Phase space: wood
-Warning: No cuts have been defined.
-| Using user-defined general scale.
-| Starting integration for process 'user_prc_threshold_2_null'
-| Integrate: iterations = 1:1000
-| Integrator: 22 chains, 61 channels, 8 dimensions
-| Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
-|=============================================================================|
-| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
-|=============================================================================|
-   1          0     0.000E+00   0.00E+00    0.00    0.00     0.0
-|-----------------------------------------------------------------------------|
-   1          0     0.000E+00   0.00E+00    0.00    0.00     0.0
-|=============================================================================|
-| expect: success
+SM_tt_threshold.FF =>  9.0000000E+00
 seed = 0
 $restrictions = "3+5~t && 4+6~tbar"
-| Process library 'user_prc_threshold_2_lib': unloading
-| Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_sig'
-SM_tt_threshold.FF =>  1.0000000E+01
 SM_tt_threshold.offshell_strategy =>  4.0000000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
@@ -96,7 +40,6 @@ SM_tt_threshold.offshell_strategy =>  4.0000000E+00
 | Process library 'user_prc_threshold_2_lib': linking
 | Process library 'user_prc_threshold_2_lib': loading
 | Loaded extra threshold functions
-| Loaded extra threshold functions
 | Process library 'user_prc_threshold_2_lib': ... success.
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
@@ -105,7 +48,7 @@ SM_tt_threshold.offshell_strategy =>  4.0000000E+00
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_2_sig'
 |   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 2
+|   Process index = 1
 |   Process components:
 |     1: 'user_prc_threshold_2_sig_i1':   e-, e+ => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
@@ -142,7 +85,6 @@ seed = 0
 | Process library 'user_prc_threshold_2_lib': unloading
 | Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_sig_thr'
-SM_tt_threshold.FF =>  9.0000000E+00
 SM_tt_threshold.offshell_strategy =>  0.0000000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
@@ -155,7 +97,6 @@ SM_tt_threshold.offshell_strategy =>  0.0000000E+00
 | Process library 'user_prc_threshold_2_lib': loading
 | Loaded extra threshold functions
 | Loaded extra threshold functions
-| Loaded extra threshold functions
 | Process library 'user_prc_threshold_2_lib': ... success.
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
@@ -164,7 +105,7 @@ SM_tt_threshold.offshell_strategy =>  0.0000000E+00
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_2_sig_thr'
 |   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 3
+|   Process index = 2
 |   Process components:
 |     1: 'user_prc_threshold_2_sig_thr_i1':   e-, e+ => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
@@ -205,7 +146,6 @@ $restrictions = "3+5~t && 4+6~tbar"
 | Process library 'user_prc_threshold_2_lib': unloading
 | Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_native'
-SM_tt_threshold.FF =>  1.0000000E+01
 SM_tt_threshold.offshell_strategy =>  0.0000000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
@@ -218,7 +158,6 @@ SM_tt_threshold.offshell_strategy =>  0.0000000E+00
 | Process library 'user_prc_threshold_2_lib': loading
 | Loaded extra threshold functions
 | Loaded extra threshold functions
-| Loaded extra threshold functions
 | Process library 'user_prc_threshold_2_lib': ... success.
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
@@ -227,7 +166,7 @@ SM_tt_threshold.offshell_strategy =>  0.0000000E+00
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_2_native'
 |   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 4
+|   Process index = 3
 |   Process components:
 |     1: 'user_prc_threshold_2_native_i1':   e-, e+ => W+, W-, b, bbar [omega]
 | ------------------------------------------------------------------------
@@ -267,7 +206,6 @@ seed = 0
 | Process library 'user_prc_threshold_2_lib': unloading
 | Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_factorized'
-SM_tt_threshold.FF =>  9.0000000E+00
 SM_tt_threshold.offshell_strategy =>  2.0000000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
@@ -281,7 +219,6 @@ SM_tt_threshold.offshell_strategy =>  2.0000000E+00
 | Loaded extra threshold functions
 | Loaded extra threshold functions
 | Loaded extra threshold functions
-| Loaded extra threshold functions
 | Process library 'user_prc_threshold_2_lib': ... success.
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
@@ -290,7 +227,7 @@ SM_tt_threshold.offshell_strategy =>  2.0000000E+00
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_2_factorized'
 |   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 5
+|   Process index = 4
 |   Process components:
 |     1: 'user_prc_threshold_2_factorized_i1':   e-, e+ => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
@@ -326,7 +263,7 @@ Warning: No cuts have been defined.
 tolerance =  1.7247130E+01
 | expect: success
 | Summary of value checks:
-|   Failures: 0 / Total: 4
-| There were no errors and    5 warning(s).
+|   Failures: 0 / Total: 3
+| There were no errors and    4 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

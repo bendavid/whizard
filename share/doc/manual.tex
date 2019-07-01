@@ -268,7 +268,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.3.0}
+\newcommand{\thisversion}{2.3.1}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -648,8 +648,9 @@ of \whizard:
   \\\hline
   2.3.0 & 07/2016 & NLO: resonance mappings for FKS subtraction; more
   advanced cascade syntax; GUI ($\alpha$ version); UFO support
-  ($\alpha$ version); ILC v1.9x-v2.x final validation
-  \\\hline   
+  ($\alpha$ version); ILC v1.9x-v2.x final validation \\
+  2.3.1 & 08/2016 & Complex mass scheme
+  \\\hline
 \end{tabular}
 \end{center}
 
@@ -2363,7 +2364,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.3.0
+		|                               WHIZARD 2.3.1
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2394,7 +2395,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.3.0
+|                               WHIZARD 2.3.1
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2453,7 +2454,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.3.0
+ |                               WHIZARD 2.3.1
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -9617,7 +9618,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.3.0</generator_version>
+  <generator_version>2.3.1</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -10053,7 +10054,7 @@ version 2.2.0) disabled, as the huge refactoring of the code between
 versions 2.1.X and 2.2.X has completely changed many of the
 interfaces. We plan to bring the interface for user code for spectra, 
 structure functions and event shapes, cuts and observables back online
-as soon as possible, at latest for version 2.3.0.
+as soon as possible, at latest for version 2.4.0.
 }
 
 \vspace{2cm} 
@@ -13789,7 +13790,7 @@ Real parameter that allows to vary the exponent of the channel weights
 for the \vamp\ integrator. 
 %%%%%
 \item
-\ttt{?check\_events\_file} \qquad (default: \ttt{true}) \\
+\ttt{?check\_event\_file} \qquad (default: \ttt{true}) \\
 Setting this to false turns off all sanity checks when reading a raw
 event file with previously generated events.  Use this at your own
 risk; the program may return wrong results or crash if data do not
@@ -13807,13 +13808,13 @@ because the value displayed must be equal to the integration result.
 Setting this to false turns off all sanity checks when reading a grid
 file with previous integration data.  Use this at your own risk; the
 program may return wrong results or crash if data do not
-match. (cf. also \ttt{?check\_events\_file}, \ttt{?check\_phs\_file})
+match. (cf. also \ttt{?check\_event\_file}, \ttt{?check\_phs\_file})
 \item
 \ttt{?check\_phs\_file}  \qquad (default: \ttt{true}) \\
 Setting this to false turns off all sanity checks when reading a
 previously generated phase-space configuration file.  Use this at your
 own risk; the program may return wrong results or crash if data do not
-match. (cf. also \ttt{?check\_events\_file}, \ttt{?check\_grid\_file})
+match. (cf. also \ttt{?check\_event\_file}, \ttt{?check\_grid\_file})
 %%%%%
 \item
 \ttt{checkpoint} \qquad (default: \ttt{0}/off) \\

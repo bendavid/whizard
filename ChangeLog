@@ -2,19 +2,33 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.3.0
+	Version 2.3.1
+
+2016-08-25
+	RELEASE: version 2.3.1
+
+2016-08-19
+	Bug fix for EW-scheme dependence of gluino propagators
+
+2016-08-01
+	Beta version of complex mass scheme support
+
+2016-07-26
+	Fix bug in POWHEG daming for the matching
+
+##################################################################
 
 2016-07-21
 	RELEASE: version 2.3.0
 
 2016-07-20
 	UFO file support (alpha version) in O'Mega
-	
+
 2016-07-13
 	New (more) stable of WHIZARD GUI
 	Support for EW schemes for OpenLoops
 	Factorized NLO top decays for threshold model
-	
+
 2016-06-15
 	Passing factorization scale to PYTHIA6
 	Adding charge and neutral observables
@@ -22,7 +36,7 @@ Use svn log to see detailed changes.
 2016-06-14
 	Correcting angular distribution/tweaked kinematics in
 	   non-collinear structure functions splittings
-	
+
 2016-05-10
 	Include (Fortran) TAUOLA/PHOTOS for tau decays via PYTHIA6
 	   (backwards validation of LC CDR/TDR samples)

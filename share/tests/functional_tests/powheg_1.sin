@@ -39,8 +39,7 @@ process powheg_1_p1 = E1, e1 => t, T { nlo_calculation = "Full" }
 
 sqrts = 500 GeV
 
-iterations = 5:50000:"gw", 5:50000:""
-integrate (powheg_1_p1) { iterations = 1:30000:"gw" }
+integrate (powheg_1_p1) { iterations = 1:3000:"gw" }
 
 n_events = 1
 sample_format = debug
@@ -53,3 +52,11 @@ sample_format = debug
 simulate (powheg_1_p1)
 n_events = 2
 simulate (powheg_1_p1)
+
+?powheg_use_damping = true
+powheg_damping_scale = 5 GeV
+process powheg_1_p2 = E1, e1 => t, T { nlo_calculation = "Full" }
+integrate (powheg_1_p2) { iterations = 1:3000:"gw" }
+expect (integral(powheg_1_p1) == integral(powheg_1_p2))
+  {tolerance = 3 * sqrt(error(powheg_1_p1)**2 + error(powheg_1_p2)**2)}
+simulate (powheg_1_p2)

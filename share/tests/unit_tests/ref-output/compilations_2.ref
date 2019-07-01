@@ -16,7 +16,7 @@
  External matrix-element code library: compilation_2
    static    = F
    loaded    = T
-   MD5 sum   = '8DB38423A50D054A0A08B3BE855AB759'
+   MD5 sum   = 'CB658E48913842198AC8950304A5507B'
 
  DL access info:
    is open   = T
@@ -32,7 +32,7 @@
  Model = QED
  Initially defined component(s) = 1
  Extra generated component(s)   = 0
- MD5 sum   = '2BDBFDF3DCE3BB71AA49C131B207EB1C'
+ MD5 sum   = 'DF3D5E390C2AD2605645C7316A952D04'
  Component #1
    Component ID        = prc_comp_2_i1
    Initial component   = T
@@ -49,7 +49,8 @@
      Extra options     = " "
      Write diagrams    = F
      Write color diag. = F
-   MD5 sum (def)       = 'C43FBB9A8F4B078B362C4818AC2EFD9A'
+     Complex Mass S.   = F
+   MD5 sum (def)       = '7957BA24395BBA9BDACF57C9F12D56E7'
 ========================================================================
 
 * Test output end: compilations_2

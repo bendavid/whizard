@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* $Id: modellib_SM.ml 7667 2016-07-29 17:37:42Z jr_reuter $
 
    Copyright (C) 1999-2016 by
 
@@ -25,8 +25,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
+    { RCS.revision = "$Revision: 7667 $";
+      RCS.date = "$Date: 2016-07-29 19:37:42 +0200 (Fri, 29 Jul 2016) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_SM.ml $" }
@@ -691,7 +691,9 @@ module SM (Flags : SM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"  ]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW 
 		     | TCGG  (*i top auxiliary field "flavors" i*)

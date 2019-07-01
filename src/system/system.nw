@@ -360,6 +360,8 @@ Diagnostics areas:
        i = D_PROCESS_INTEGRATION
     case ("tauola")
        i = D_TAUOLA
+    case ("core")
+       i = D_CORE
     case default
        print "(A)", "Possible values for --debug are:"
        do i = 1, D_LAST
@@ -401,6 +403,8 @@ Diagnostics areas:
        string = "process_integration"
     case (D_TAUOLA)
        string = "tauola"
+    case (D_CORE)
+       string = "core"
     case default
        string = "undefined"
     end select
@@ -412,20 +416,20 @@ Diagnostics areas:
   public :: D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
        D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD, &
        D_PHASESPACE, D_MISMATCH, D_ME_METHODS, D_PROCESS_INTEGRATION, &
-       D_TAUOLA
+       D_TAUOLA, D_CORE
 <<Diagnostics: parameters>>=
   integer, parameter :: D_ALL=0, D_PARTICLES=1, D_EVENTS=2, &
        D_SHOWER=3, D_MODEL_F=4, &
        D_MATCHING=5, D_TRANSFORMS=6, &
        D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9, D_PHASESPACE=10, &
        D_MISMATCH=11, D_ME_METHODS=12, D_PROCESS_INTEGRATION=13, &
-       D_TAUOLA=14, &
-       D_LAST=14
+       D_TAUOLA=14, D_CORE=15, &
+       D_LAST=15
 @ %def D_ALL D_PARTICLES D_EVENTS
 @ %def D_SHOWER D_MODEL_F D_MATCHING D_TRANSFORMS
 @ %def D_SUBTRACTION D_VIRTUAL D_THRESHOLD D_PHASESPACE
 @ %def D_MISMATCH D_ME_METHODS D_PROCESS_INTEGRATION
-@ %def D_TAUOLA
+@ %def D_TAUOLA D_CORE
 @
 <<Diagnostics: public>>=
   public :: msg_level
@@ -953,6 +957,7 @@ but this may change.
      module procedure msg_debug_integer
      module procedure msg_debug_real
      module procedure msg_debug_complex
+     module procedure msg_debug_string
   end interface
 <<Diagnostics: procedures>>=
   subroutine msg_debug_none (area, string, color)
@@ -984,6 +989,15 @@ but this may change.
     complex(default), intent(in) :: value
   <<msg debug implementation>>
   end subroutine msg_debug_complex
+
+  subroutine msg_debug_string (area, string, value, color)
+    type(string_t), intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug_none (area, char (string // " = " // value), &
+       color = color)
+  end subroutine msg_debug_string
 
 @ %def msg_debug
 <<msg debug implementation>>=
@@ -1046,6 +1060,7 @@ but this may change.
      module procedure msg_debug2_integer
      module procedure msg_debug2_real
      module procedure msg_debug2_complex
+     module procedure msg_debug2_string
   end interface
 <<Diagnostics: procedures>>=
   subroutine msg_debug2_none (area, string, color)
@@ -1077,6 +1092,15 @@ but this may change.
     complex(default), intent(in) :: value
   <<msg debug2 implementation>>
   end subroutine msg_debug2_complex
+
+  subroutine msg_debug2_string (area, string, value, color)
+    type(string_t), intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug2_none (area, char (string // " = " // value), &
+       color = color)
+  end subroutine msg_debug2_string
 
 @ %def msg_debug2
 <<msg debug2 implementation>>=

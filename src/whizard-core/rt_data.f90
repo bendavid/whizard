@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1307,6 +1307,9 @@ contains
       call var_list_append_log &
           (global%var_list, var_str ("?powheg_matching"), &
            .false., intrinsic = .true.)
+      call var_list_append_real &
+           (global%var_list, var_str ("powheg_damping_scale"), &
+            10._default, intrinsic = .true.)
       call var_list_append_log &
           (global%var_list, var_str ("?powheg_use_singular_jacobian"), &
            .false., intrinsic = .true.)

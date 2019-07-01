@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -273,7 +273,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.3.0"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.3.1"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -634,7 +634,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.3.0"), u)
+       call eio%tag_gen_v%write (var_str ("2.3.1"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)

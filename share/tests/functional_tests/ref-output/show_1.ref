@@ -1,7 +1,7 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-| Switching to model 'SM'
+| Switching to model 'SM', scheme 'default'
 | Process library 'show_1_lib': recorded process 'show_1_p1'
 process_num_id = 77
 | Process library 'show_1_lib': recorded process 'show_1_p2' (77)
@@ -144,6 +144,7 @@ $lhapdf_photon_file = "photonfile.lhapdf"
 lhapdf_member = 4
 lhapdf_photon_scheme = 1
 Model: SM
+  Scheme: 'default' (1)
   Particles:
     d               1
     dbar           -1

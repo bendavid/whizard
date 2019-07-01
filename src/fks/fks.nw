@@ -5652,7 +5652,6 @@ This formula is implemented in \texttt{compute\_sqme\_real\_fin}
     real(default) :: sqme_alr, alpha_s
     integer :: alr, i_con
     logical :: same_emitter
-
     sqme = zero
     do alr = 1, rsub%reg_data%n_regions
        if (rsub%fixed_alr > 0 .and. rsub%fixed_alr /= alr) cycle
@@ -6438,6 +6437,8 @@ module nlo_data
   use constants, only: zero, one, two, twopi
   use io_units
   use lorentz
+  use variables, only: var_list_t
+  use format_defs, only: FMT_15
 
 <<Standard module head>>
 
@@ -7092,6 +7093,34 @@ initial-state phase spaces.
 @ %def powheg_damping_t
 @
 <<nlo data: powheg damping: TBP>>=
+  procedure (powheg_damping_init), deferred :: init
+<<nlo data: interfaces>>=
+  abstract interface
+     subroutine powheg_damping_init (damping, scale)
+       import
+       class(powheg_damping_t), intent(out) :: damping
+       real(default), intent(in) :: scale
+     end subroutine powheg_damping_init
+  end interface
+
+@ %def powheg_damping_init
+@
+<<nlo data: powheg damping: TBP>>=
+  procedure (powheg_damping_write), deferred :: write
+<<nlo data: interfaces>>=
+  abstract interface
+     subroutine powheg_damping_write (damping, unit)
+       import
+       class(powheg_damping_t), intent(in) :: damping
+       integer, intent(in), optional :: unit
+     end subroutine powheg_damping_write
+  end interface
+
+@ %def powheg_damping_write
+@ To allow really arbitrary damping functions, [[get_f]] should get the
+full real phase space as argument and not just some [[pt2]] that is
+extracted higher up.
+<<nlo data: powheg damping: TBP>>=
   procedure (powheg_damping_get_f), deferred :: get_f
 <<nlo data: interfaces>>=
   abstract interface
@@ -7127,6 +7156,31 @@ initial-state phase spaces.
   end function powheg_damping_simple_get_f
 
 @ %def powheg_damping_simple_get_f
+@
+<<nlo data: powheg damping simple: TBP>>=
+  procedure :: init => powheg_damping_simple_init
+<<nlo data: procedures>>=
+  subroutine powheg_damping_simple_init (damping, scale)
+    class(powheg_damping_simple_t), intent(out) :: damping
+    real(default), intent(in) :: scale
+    damping%h2 = scale**2
+  end subroutine powheg_damping_simple_init
+
+@ %def powheg_damping_simple_init
+@
+<<nlo data: powheg damping simple: TBP>>=
+  procedure :: write => powheg_damping_simple_write
+<<nlo data: procedures>>=
+  subroutine powheg_damping_simple_write (damping, unit)
+    class(powheg_damping_simple_t), intent(in) :: damping
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(1x,A)") "Powheg damping simple: "
+    write (u, "(1x,A, "// FMT_15 // ")") "scale h2: ", damping%h2
+  end subroutine powheg_damping_simple_write
+
+@ %def powheg_damping_simple_write
 @
 <<[[nlo_controller.f90]]>>=
 <<File header>>
@@ -7485,9 +7539,7 @@ and virtual counterterms.
     type(process_constants_t), intent(in), dimension(2) :: prc_constants
     integer, intent(in) :: factorization_mode
     integer, intent(in), dimension(:) :: included_color_structures
-    integer :: nlegs_real
-    integer :: i, j, k, n_in
-    nlegs_real = reg_data%n_legs_real
+    if (debug_active (D_SUBTRACTION))  call show_input_values ()
     call prc_constants(1)%get_col_state (color_data%col_state_born)
     call prc_constants(2)%get_col_state (color_data%col_state_real)
     call prc_constants(2)%get_cf_index (color_data%cf_index_real)
@@ -7499,6 +7551,17 @@ and virtual counterterms.
     call color_data%init_color (reg_data, included_color_structures)
     call color_data%check_equivalences ()
     call color_data%init_betaij (reg_data, factorization_mode, included_color_structures)
+  contains
+    subroutine show_input_values()
+      integer :: i
+      call msg_debug (D_SUBTRACTION, "color_data_init")
+      call msg_debug (D_SUBTRACTION, "factorization_mode", factorization_mode)
+      do i = 1, size(included_color_structures)
+         call msg_debug (D_SUBTRACTION, "included_color_structures(i)", included_color_structures(i))
+      end do
+      !call color_data%write ()
+      !call region_data%write ()
+    end subroutine show_input_values
   end subroutine color_data_init
 
 @ %def color_data_init
@@ -8181,17 +8244,6 @@ one to determine this.
 @ %def nlo_controller_set_powheg_mode
 @
 <<nlo controller: nlo controller: TBP>>=
-  procedure :: set_real_sqme_born_pointer => nlo_controller_set_real_sqme_born_pointer
-<<nlo controller: procedures>>=
-  subroutine nlo_controller_set_real_sqme_born_pointer (nlo_controller, sqme_born_list)
-    class(nlo_controller_t), intent(inout) :: nlo_controller
-    real(default), intent(in), dimension(:), target :: sqme_born_list
-    nlo_controller%real_terms%sqme_born => sqme_born_list
-  end subroutine nlo_controller_set_real_sqme_born_pointer
-
-@ %def nlo_controller_set_real_sqme_born_pointer
-@
-<<nlo controller: nlo controller: TBP>>=
   procedure :: set_alr_to_i_phs => nlo_controller_set_alr_to_i_phs
 <<nlo controller: procedures>>=
   subroutine nlo_controller_set_alr_to_i_phs (nlo_controller, phs_identifiers)
@@ -8607,13 +8659,79 @@ end module nlo_controller_uti
      logical :: test_soft_limit = .false.
      logical :: test_coll_limit = .false.
      logical :: test_anti_coll_limit = .false.
-     integer :: fixed_alr = -1
+     integer :: fixed_alr = 0
      integer :: factorization_mode = NO_FACTORIZATION
+     !!! Probably not the right place for this. Revisit after refactoring
+     real(default) :: powheg_damping_scale = zero
   contains
   <<nlo data: nlo settings: TBP>>
   end type nlo_settings_t
 
 @ %def nlo_settings_t
+@
+<<nlo data: nlo settings: TBP>>=
+procedure :: init => nlo_settings_init
+<<nlo data: procedures>>=
+  subroutine nlo_settings_init (nlo_settings, var_list, combined_integration)
+    class(nlo_settings_t), intent(out) :: nlo_settings
+    type(var_list_t), intent(in) :: var_list
+    logical, intent(in), optional :: combined_integration
+    type(string_t) :: color_method
+    color_method = var_list%get_sval (var_str ('$correlation_me_method'))
+    nlo_settings%use_internal_color_correlations = color_method == 'omega' & 
+       .or. color_method == 'threshold'
+    if (present (combined_integration)) then
+       nlo_settings%combined_integration = combined_integration
+    else
+       nlo_settings%combined_integration = &
+             var_list%get_lval (var_str("?combined_nlo_integration"))
+    end if
+    nlo_settings%test_soft_limit = var_list%get_lval (var_str ('?test_soft_limit'))
+    nlo_settings%test_coll_limit = var_list%get_lval (var_str ('?test_coll_limit'))
+    nlo_settings%test_anti_coll_limit = var_list%get_lval (var_str ('?test_anti_coll_limit'))
+    nlo_settings%fixed_alr = var_list%get_ival (var_str ('fixed_alpha_region'))
+    nlo_settings%with_virtual_subtraction = &
+       .not. var_list%get_lval (var_str ('?switch_off_virtual_subtraction'))
+    nlo_settings%powheg_damping_scale = &
+         var_list%get_rval (var_str ('powheg_damping_scale'))
+  end subroutine nlo_settings_init
+
+@ %def nlo_settings_init
+@
+<<nlo data: nlo settings: TBP>>=
+  procedure :: write => nlo_settings_write
+<<nlo data: procedures>>=
+  subroutine nlo_settings_write (nlo_settings, unit)
+    class(nlo_settings_t), intent(in) :: nlo_settings
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, '(A)') 'nlo_settings:'
+    write (u, '(3X,A,L1)') 'internal_color_correlations = ', &
+         nlo_settings%use_internal_color_correlations
+    write (u, '(3X,A,L1)') 'internal_spin_correlations = ', &
+         nlo_settings%use_internal_spin_correlations
+    write (u, '(3X,A,L1)') 'use_resonance_mappings = ', &
+         nlo_settings%use_resonance_mappings
+    write (u, '(3X,A,L1)') 'combined_integration = ', &
+         nlo_settings%combined_integration
+    write (u, '(3X,A,L1)') 'with_virtual_subtraction = ', &
+         nlo_settings%with_virtual_subtraction
+    write (u, '(3X,A,L1)') 'test_soft_limit = ', &
+         nlo_settings%test_soft_limit
+    write (u, '(3X,A,L1)') 'test_coll_limit = ', &
+         nlo_settings%test_coll_limit
+    write (u, '(3X,A,L1)') 'test_anti_coll_limit = ', &
+         nlo_settings%test_anti_coll_limit
+    write (u, '(3X,A,I5)') 'fixed_alr = ', &
+         nlo_settings%fixed_alr
+    write (u, '(3X,A,I2)') 'factorization_mode = ', &
+         nlo_settings%factorization_mode
+    write (u, '(3X,A,' // FMT_15 // ')') 'powheg_damping_scale = ', &
+         nlo_settings%powheg_damping_scale
+  end subroutine nlo_settings_write
+
+@ %def nlo_settings_write
 @
 <<nlo data: public>>=
   public :: nlo_particle_data_t
@@ -8722,7 +8840,7 @@ end module nlo_controller_uti
 <<nlo data: procedures>>=
   subroutine sqme_collector_write (collector)
     class(sqme_collector_t), intent(in) :: collector
-    print *, 'Born: ', collector%sqme_born_list 
+    print *, 'Born: ', collector%sqme_born_list
     print *, 'Real: ', collector%sqme_real_sum
     print *, 'Virt: ', collector%sqme_virt_list
     print *, 'Dglap: ', collector%sqme_dglap_list
@@ -8918,7 +9036,6 @@ process.
         call nlo_controller%soft_mismatch%init (n_in, n_tot_born, nlo_controller%reg_data, &
            nlo_controller%sqme_collector, nlo_controller%real_kinematics)
      end associate
-     allocate (powheg_damping_simple_t :: nlo_controller%powheg_damping)
   end subroutine nlo_controller_setup_real_terms
 
 @ %def nlo_controller_setup_real_terms

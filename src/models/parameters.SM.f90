@@ -57,6 +57,13 @@ contains
   subroutine import_from_whizard (par_array, scheme)
     real(default), dimension(25), intent(in) :: par_array
     integer, intent(in) :: scheme
+    integer, parameter :: scheme_default = 1
+    integer, parameter :: scheme_gf_mw_mz = 2
+    integer, parameter :: scheme_cms = 3
+    integer, parameter :: scheme_complex_mass_scheme = 4
+    complex(default), dimension(27) :: cmass2, cmass
+    complex(default) :: csin2thw, csinthw, ccos2thw, ccosthw
+    integer :: i
     type :: parameter_set
        real(default) :: gf
        real(default) :: mZ
@@ -130,49 +137,91 @@ contains
     width(26) =  0
     mass(27) =  par%xipm * mass(24)
     width(27) =  0
+    do i = 1, 27
+       cmass2(i) = cmplx (mass(i)**2, - mass(i)  * width(i))
+       cmass(i) = sqrt (cmass2(i))
+    end do
     vev = par%v
     e = par%ee
     sinthw = par%sw
     sin2thw = par%sw**2
     costhw = par%cw
     tanthw = sinthw/costhw
+    ccos2thw = cmass2(24) / cmass2(23)
+    csin2thw = one - ccos2thw
+    ccosthw = sqrt (ccos2thw)
+    csinthw = sqrt (csin2thw)
     qelep = - 1
     qeup = 2.0_default / 3.0_default
     qedwn = - 1.0_default / 3.0_default
-    g = e / sinthw
-    gcc = - g / 2 / sqrt (2.0_default)
-    gncneu(1) = - g / 2 / costhw * ( + 0.5_default)
-    gnclep(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qelep * sin2thw)
-    gncup(1)  = - g / 2 / costhw * ( + 0.5_default - 2 * qeup  * sin2thw)
-    gncdwn(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qedwn * sin2thw)
-    gncneu(2) = - g / 2 / costhw * ( + 0.5_default)
-    gnclep(2) = - g / 2 / costhw * ( - 0.5_default)
-    gncup(2)  = - g / 2 / costhw * ( + 0.5_default)
-    gncdwn(2) = - g / 2 / costhw * ( - 0.5_default)
+    g  = e / sinthw
+    select case (scheme)
+    case (scheme_default, scheme_gf_mw_mz)
+       gcc = - g / 2 / sqrt (2.0_default)
+       gncneu(1) = - g / 2 / costhw * ( + 0.5_default)
+       gnclep(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qelep * sin2thw)
+       gncup(1)  = - g / 2 / costhw * ( + 0.5_default - 2 * qeup  * sin2thw)
+       gncdwn(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qedwn * sin2thw)
+       gncneu(2) = - g / 2 / costhw * ( + 0.5_default)
+       gnclep(2) = - g / 2 / costhw * ( - 0.5_default)
+       gncup(2)  = - g / 2 / costhw * ( + 0.5_default)
+       gncdwn(2) = - g / 2 / costhw * ( - 0.5_default)
+    case (scheme_cms, scheme_complex_mass_scheme)
+       gcc = - e / 2 / sqrt (2.0_default) / csinthw
+       gncneu(1) = - e / 2 / csinthw / ccosthw * ( + 0.5_default)
+       gnclep(1) = - e / 2 / csinthw / ccosthw * ( - 0.5_default - 2 * qelep * csin2thw)
+       gncup(1)  = - e / 2 / csinthw / ccosthw * ( + 0.5_default - 2 * qeup  * csin2thw)
+       gncdwn(1) = - e / 2 / csinthw / ccosthw * ( - 0.5_default - 2 * qedwn * csin2thw)
+       gncneu(2) = - e / 2 / csinthw / ccosthw * ( + 0.5_default)
+       gnclep(2) = - e / 2 / csinthw / ccosthw * ( - 0.5_default)
+       gncup(2)  = - e / 2 / csinthw / ccosthw * ( + 0.5_default)
+       gncdwn(2) = - e / 2 / csinthw / ccosthw * ( - 0.5_default)
+    end select
     qlep = - e * qelep
     qup = - e * qeup
     qdwn = - e * qedwn
     qw = e
-    iqw = (0,1)*qw
-    gzww = g * costhw
-    igzww = (0,1)*gzww
-    gwww = g
-    igwww = (0,1)*gwww
+    iqw = imago * qw
+    select case (scheme)
+    case (scheme_default, scheme_gf_mw_mz)
+       gzww = g * costhw
+       gwww = g
+       ghww = mass(24) * g
+       ghzz = mass(23) * g / costhw
+       gh3 = - 3 * mass(25)**2 / vev
+       gh4 = - 3 * mass(25)**2 / vev**2
+       ghhww = g**2 / 2.0_default
+       ghhzz = g**2 / 2.0_default / costhw**2
+    case (scheme_cms, scheme_complex_mass_scheme)
+       gzww = e * ccosthw / csinthw
+       gwww = e / csinthw
+       ghww = e * cmass(24) / csinthw
+       ghzz = e * cmass(24) / csinthw / ccos2thw
+       gh3 = - 3 * e * cmass2(25) / 2 / cmass(24) / csinthw
+       gh4 = - 3 * e**2 * cmass2(25) / 4 / cmass2(24) / csin2thw
+       ghhww = e**2 / 2.0_default / csin2thw
+       ghhzz = e**2 / 2.0_default / csin2thw / ccos2thw
+    end select
+    igzww = imago * gzww
+    igwww = imago * gwww
     gw4 = gwww**2
     gzzww = gzww**2
     gazww = gzww * qw
     gaaww = qw**2
-    ghww = mass(24) * g
-    ghhww = g**2 / 2.0_default
-    ghzz = mass(23) * g / costhw
-    ghhzz = g**2 / 2.0_default / costhw**2
-    ghtt = - mass(6) / vev
-    ghbb = - mass(5) / vev
-    ghcc = - mass(4) / vev
-    ghtautau = - mass(15) / vev
-    ghmm = - mass(13) / vev
-    gh3 = - 3 * mass(25)**2 / vev
-    gh4 = - 3 * mass(25)**2 / vev**2
+    select case (scheme)
+    case (scheme_default, scheme_gf_mw_mz)
+       ghtt = - mass(6) / vev
+       ghbb = - mass(5) / vev
+       ghcc = - mass(4) / vev
+       ghtautau = - mass(15) / vev
+       ghmm = - mass(13) / vev
+    case (scheme_cms, scheme_complex_mass_scheme)
+       ghtt = - e * cmass(6) / 2 / cmass(24) / csinthw
+       ghbb = - e * cmass(5) / 2 / cmass(24) / csinthw
+       ghcc = - e * cmass(4) / 2 / cmass(24) / csinthw
+       ghtautau = - e * cmass(15) / 2 / cmass(24) / csinthw
+       ghmm = - e * cmass(13) / 2 / mass(24) / csinthw
+    end select
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    

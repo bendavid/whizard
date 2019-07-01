@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -826,7 +826,6 @@ contains
     end if
     call constraints%check_before_record (table, pl, n_loop, passed)
     if (.not. passed)  then
-       call msg_warning ("Record ps_table entry: Constraints not fulfilled!")
        return
     end if
     current => table%first

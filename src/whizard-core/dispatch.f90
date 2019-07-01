@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -166,6 +166,7 @@ contains
     integer, intent(in), optional :: nlo_type
     type(string_t) :: method
     type(string_t) :: model_name
+    logical :: cms_scheme
     type(string_t) :: restrictions
     logical :: openmp_support
     logical :: report_progress
@@ -176,8 +177,10 @@ contains
     method = var_list%get_sval (var_str ("$method"))
     if (associated (model)) then
        model_name = model%get_name ()
+       cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
     else
        model_name = ""
+       cms_scheme = .false.
     end if
     select case (char (method))
     case ("unit_test")
@@ -215,8 +218,8 @@ contains
        select type (core_def)
        type is (omega_omega_def_t)
           call core_def%init (model_name, prt_in, prt_out, &
-               restrictions, openmp_support, report_progress, &
-               extra_options, diags, diags_color)
+               restrictions, cms_scheme, openmp_support, &
+               report_progress, extra_options, diags, diags_color)
        end select
     case ("ovm")
        diags = var_list%get_lval (&
@@ -235,8 +238,8 @@ contains
        select type (core_def)
        type is (omega_ovm_def_t)
           call core_def%init (model_name, prt_in, prt_out, &
-               restrictions, openmp_support, report_progress, &
-               extra_options, diags, diags_color)
+               restrictions, cms_scheme, openmp_support, &
+               report_progress, extra_options, diags, diags_color)
        end select
     case ("gosam")
       allocate (gosam_def_t :: core_def)
@@ -291,14 +294,12 @@ contains
 
   subroutine dispatch_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors)
-    
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
-
     select type (core_def)
     type is (prc_test_def_t)
        allocate (test_t :: core)
@@ -306,13 +307,13 @@ contains
        allocate (prc_template_me_t :: core)
        select type (core)
        type is (prc_template_me_t)
-          call core%set_parameters (model) 
-       end select       
+          call core%set_parameters (model)
+       end select
     class is (omega_def_t)
        if (.not. allocated (core)) allocate (prc_omega_t :: core)
        select type (core)
        type is (prc_omega_t)
-          call core%set_parameters (model, & 
+          call core%set_parameters (model, &
                helicity_selection, qcd, use_color_factors)
        end select
     type is (gosam_def_t)
@@ -1797,12 +1798,10 @@ contains
   end subroutine dispatch_evt_shower
 
   subroutine dispatch_matching (evt, settings, var_list, process_name)
-    
     class(evt_t), intent(inout) :: evt
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: process_name
     type(shower_settings_t), intent(in) :: settings
-    
     select type (evt)
     type is (evt_shower_t)
        if (settings%mlm_matching .and. settings%ckkw_matching) then

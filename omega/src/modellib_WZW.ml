@@ -60,7 +60,9 @@ module WZW (Flags : SM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width" ]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
 (* We do not introduce the Goldstones for the heavy vectors here. *)
 

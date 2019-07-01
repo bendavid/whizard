@@ -1,7 +1,7 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-| Switching to model 'SM'
+| Switching to model 'SM', scheme 'default'
 | Process library 'show_2_lib': recorded process 'show_2_p1'
 error_threshold =  1.000000000000E-08
 | Integrate: current process library needs compilation

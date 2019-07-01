@@ -1,4 +1,4 @@
-(* $Id: targets.ml 7506 2016-04-05 14:39:23Z jr_reuter $
+(* $Id: targets.ml 7676 2016-08-19 13:40:57Z jr_reuter $
 
    Copyright (C) 1999-2016 by
 
@@ -27,8 +27,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 7506 $";
-      RCS.date = "$Date: 2016-04-05 16:39:23 +0200 (Tue, 05 Apr 2016) $";
+    { RCS.revision = "$Revision: 7676 $";
+      RCS.date = "$Date: 2016-08-19 15:40:57 +0200 (Fri, 19 Aug 2016) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets.ml $" }
@@ -1376,7 +1376,7 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
         | Vanishing | Fudged -> 0
         | Constant -> 1
         | Timelike -> 2
-	| Complex_Mass -> 3
+        | Complex_Mass -> 3
         | Running -> failwith "Targets.VM: running width not available"
         | Custom _ -> failwith "Targets.VM: custom width not available"
         end
@@ -4941,7 +4941,7 @@ i*)
 	| Prop_Majorana ->
           printf "%s(%s,%s,%s,%s," Fermions.chi_propagator p m w cms
 	| Prop_Col_Majorana ->
-          printf "%s * %s(%s,%s,%s,%s" minus_third Fermions.chi_propagator p m w cms
+          printf "%s * %s(%s,%s,%s,%s," minus_third Fermions.chi_propagator p m w cms
 	| Prop_Unitarity ->
           printf "pr_unitarity(%s,%s,%s,%s," p m w cms
 	| Prop_Col_Unitarity ->

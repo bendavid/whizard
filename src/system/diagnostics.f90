@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -54,7 +54,7 @@ module diagnostics
   public :: D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
        D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD, &
        D_PHASESPACE, D_MISMATCH, D_ME_METHODS, D_PROCESS_INTEGRATION, &
-       D_TAUOLA
+       D_TAUOLA, D_CORE
   public :: msg_level
   public :: term_col
   public :: mask_fatal_errors
@@ -107,8 +107,8 @@ module diagnostics
        D_MATCHING=5, D_TRANSFORMS=6, &
        D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9, D_PHASESPACE=10, &
        D_MISMATCH=11, D_ME_METHODS=12, D_PROCESS_INTEGRATION=13, &
-       D_TAUOLA=14, &
-       D_LAST=14
+       D_TAUOLA=14, D_CORE=15, &
+       D_LAST=15
   integer, parameter, public :: COL_UNDEFINED = -1
   integer, parameter, public :: COL_GREY = 90, COL_PEACH = 91, COL_LIGHT_GREEN = 92, &
      COL_LIGHT_YELLOW = 93, COL_LIGHT_BLUE = 94, COL_PINK = 95, &
@@ -167,6 +167,7 @@ module diagnostics
      module procedure msg_debug_integer
      module procedure msg_debug_real
      module procedure msg_debug_complex
+     module procedure msg_debug_string
   end interface
   interface msg_print_color
      module procedure msg_print_color_none
@@ -180,6 +181,7 @@ module diagnostics
      module procedure msg_debug2_integer
      module procedure msg_debug2_real
      module procedure msg_debug2_complex
+     module procedure msg_debug2_string
   end interface
   interface
      subroutine exit (status) bind (C)
@@ -276,6 +278,8 @@ contains
        i = D_PROCESS_INTEGRATION
     case ("tauola")
        i = D_TAUOLA
+    case ("core")
+       i = D_CORE
     case default
        print "(A)", "Possible values for --debug are:"
        do i = 1, D_LAST
@@ -317,6 +321,8 @@ contains
        string = "process_integration"
     case (D_TAUOLA)
        string = "tauola"
+    case (D_CORE)
+       string = "core"
     case default
        string = "undefined"
     end select
@@ -743,6 +749,15 @@ contains
        color = color)
   end subroutine msg_debug_complex
 
+  subroutine msg_debug_string (area, string, value, color)
+    type(string_t), intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug_none (area, char (string // " = " // value), &
+       color = color)
+  end subroutine msg_debug_string
+
   subroutine msg_print_color_none (string, color)
     character(len=*), intent(in) :: string
     !!!type(terminal_color_t), intent(in) :: color
@@ -819,6 +834,15 @@ contains
     call msg_debug2_none (area, char (string // " = " // str (value)), &
        color = color)
   end subroutine msg_debug2_complex
+
+  subroutine msg_debug2_string (area, string, value, color)
+    type(string_t), intent(in) :: value
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    type(terminal_color_t), intent(in), optional :: color
+    call msg_debug2_none (area, char (string // " = " // value), &
+       color = color)
+  end subroutine msg_debug2_string
 
   elemental function debug_active (area) result (active)
     logical :: active

@@ -14,5 +14,6 @@
      Extra options     = " "
      Write diagrams    = F
      Write color diag. = F
+     Complex Mass S.   = F
 
 * Test output end: dispatch_1

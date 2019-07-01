@@ -2,7 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-| Switching to model 'SM'
+| Switching to model 'SM', scheme 'default'
 | Process library 'beam_setup_5_lib': recorded process 'beam_setup_5p'
 sqrts =  5.0000000E+02
 seed = 1

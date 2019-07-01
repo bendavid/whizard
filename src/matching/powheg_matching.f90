@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -357,14 +357,14 @@ contains
   subroutine powheg_settings_init (settings, var_list)
     class(powheg_settings_t), intent(out) :: settings
     type(var_list_t), intent(in) :: var_list
+    settings%pt2_min = &
+         var_list%get_rval (var_str ("powheg_pt_min"))**2
     settings%size_grid_xi = &
          var_list%get_ival (var_str ("powheg_grid_size_xi"))
     settings%size_grid_y = &
          var_list%get_ival (var_str ("powheg_grid_size_y"))
     settings%n_init = &
          var_list%get_ival (var_str ("powheg_grid_sampling_points"))
-    settings%pt2_min = &
-         var_list%get_rval (var_str ("powheg_pt_min"))**2
     settings%lambda = var_list%get_rval (var_str ("powheg_lambda"))
     settings%rebuild_grids = &
          var_list%get_lval (var_str ("?powheg_rebuild_grids"))

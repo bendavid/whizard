@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -96,6 +96,7 @@ module prc_omega
      logical :: report_progress = .false.
      logical :: diags = .false.
      logical :: diags_color = .false.
+     logical :: complex_mass_scheme = .false.
      type(string_t) :: extra_options
    contains
      procedure, nopass :: get_module_name => omega_writer_get_module_name
@@ -226,13 +227,14 @@ contains
   end function omega_ovm_def_type_string
 
   subroutine omega_def_init (object, model_name, prt_in, prt_out, &
-       restrictions, openmp_support, report_progress, extra_options, &
-       diags, diags_color)
+       restrictions, cms_scheme, openmp_support, report_progress, &
+       extra_options, diags, diags_color)
     class(omega_def_t), intent(out) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    type(string_t), intent(in), optional :: restrictions
+    logical, intent(in), optional :: cms_scheme
+    type(string_t), intent(in), optional :: restrictions    
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
     logical, intent(in), optional :: diags, diags_color
@@ -243,16 +245,16 @@ contains
        select type (writer => object%writer)
        type is (omega_omega_writer_t)
           call writer%init (model_name, prt_in, prt_out, &
-               restrictions, openmp_support, report_progress, &
-               extra_options, diags, diags_color)
+               restrictions, cms_scheme, openmp_support, &
+               report_progress, extra_options, diags, diags_color)
        end select
     type is (omega_ovm_def_t)
        allocate (omega_ovm_writer_t :: object%writer)
        select type (writer => object%writer)
        type is (omega_ovm_writer_t)
           call writer%init (model_name, prt_in, prt_out, &
-               restrictions, openmp_support, report_progress, &
-               extra_options, diags, diags_color)
+               restrictions, cms_scheme, openmp_support, &
+               report_progress, extra_options, diags, diags_color)
        end select
     end select
   end subroutine omega_def_init
@@ -362,15 +364,18 @@ contains
          '"' // char (object%extra_options) // '"'
     write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags    
     write (unit, "(5x,A,L1)")  "Write color diag. = ", object%diags_color
+    write (unit, "(5x,A,L1)")  "Complex Mass S.   = ", &
+         object%complex_mass_scheme
   end subroutine omega_writer_write
 
   subroutine omega_writer_init (writer, model_name, prt_in, prt_out, &
-       restrictions, openmp_support, report_progress, extra_options, &
-       diags, diags_color)
+       restrictions, cms_scheme, openmp_support, report_progress, &
+       extra_options, diags, diags_color)
     class(omega_writer_t), intent(out) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
+    logical, intent(in), optional :: cms_scheme
     type(string_t), intent(in), optional :: restrictions
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
@@ -385,6 +390,7 @@ contains
     end if
     if (present (openmp_support))  writer%openmp_support = openmp_support
     if (present (report_progress))  writer%report_progress = report_progress
+    if (present (cms_scheme))  writer%complex_mass_scheme = cms_scheme
     if (present (diags))  writer%diags = diags
     if (present (diags_color))  writer%diags_color = diags_color
     if (present (extra_options)) then
@@ -422,6 +428,7 @@ contains
     type(string_t) :: kmatrix_string
     type(string_t) :: progress_string
     type(string_t) :: diagrams_string
+    type(string_t) :: cms_string
     logical :: escape_hyperref
     escape_hyperref = .false.
     if (present (testflag))  escape_hyperref = testflag
@@ -448,7 +455,7 @@ contains
        openmp_string = " -target:openmp"
     else
        openmp_string = ""
-    end if
+    end if    
     if (writer%report_progress) then
        progress_string = " -fusion:progress"
     else
@@ -469,6 +476,11 @@ contains
        else
           diagrams_string = ""
        end if
+    end if
+    if (writer%complex_mass_scheme) then
+       cms_string = " -model:cms_width"
+    else
+       cms_string = ""
     end if
     select case (char (writer%model_name))
     case ("SM_rx", "SSC", "NoH_rx", "AltH")
@@ -501,6 +513,7 @@ contains
             " -target:parameter_module parameters_", char (writer%model_name), &
             " -target:module opr_", char (id), &
             " -target:md5sum '", writer%md5sum, "'", &
+            char (cms_string), &
             char (openmp_string), &
             char (progress_string), &
             char (kmatrix_string), &
@@ -512,6 +525,7 @@ contains
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".hbc", &
             char (progress_string), &
+            char (cms_string), &
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
             char (writer%extra_options)
@@ -521,7 +535,7 @@ contains
             " -target:whizard ", &
             " -target:bytecode_file ", char (id), ".hbc", &
             " -target:wrapper_module opr_", char (id), &
-            " -target:parameter_module_external parameters_", &           
+            " -target:parameter_module_external parameters_", &
             char (writer%model_name), &
             " -target:md5sum '", writer%md5sum, "'", &
             char (openmp_string)
@@ -762,12 +776,13 @@ contains
 
   subroutine omega_make_process_component (entry, component_index, &
          model_name, prt_in, prt_out, restrictions, openmp_support, &
-         report_progress, extra_options, diags, diags_color)
+         cms_scheme, report_progress, extra_options, diags, diags_color)
     class(process_def_entry_t), intent(inout) :: entry
     integer, intent(in) :: component_index
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
+    logical, intent(in), optional :: cms_scheme
     type(string_t), intent(in), optional :: restrictions
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
@@ -778,8 +793,8 @@ contains
     select type (def)
     type is (omega_omega_def_t)
        call def%init (model_name, prt_in, prt_out, &
-            restrictions, openmp_support, report_progress, &
-            extra_options, diags, diags_color)
+            restrictions, cms_scheme, openmp_support, &
+            report_progress, extra_options, diags, diags_color)
     end select
     call entry%process_def_t%import_component (component_index, &
          n_out = size (prt_out), &

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -41,6 +41,8 @@ module nlo_data
   use constants, only: zero, one, two, twopi
   use io_units
   use lorentz
+  use variables, only: var_list_t
+  use format_defs, only: FMT_15
 
   implicit none
   private
@@ -182,6 +184,8 @@ module nlo_data
 
   type, abstract :: powheg_damping_t
   contains
+    procedure (powheg_damping_init), deferred :: init
+    procedure (powheg_damping_write), deferred :: write
     procedure (powheg_damping_get_f), deferred :: get_f
   end type powheg_damping_t
 
@@ -189,6 +193,8 @@ module nlo_data
      real(default) :: h2 = 5._default
   contains
     procedure :: get_f => powheg_damping_simple_get_f
+    procedure :: init => powheg_damping_simple_init
+    procedure :: write => powheg_damping_simple_write
   end type powheg_damping_simple_t
 
   type :: nlo_settings_t
@@ -200,10 +206,13 @@ module nlo_data
      logical :: test_soft_limit = .false.
      logical :: test_coll_limit = .false.
      logical :: test_anti_coll_limit = .false.
-     integer :: fixed_alr = -1
+     integer :: fixed_alr = 0
      integer :: factorization_mode = NO_FACTORIZATION
+     !!! Probably not the right place for this. Revisit after refactoring
+     real(default) :: powheg_damping_scale = zero
   contains
-  
+  procedure :: init => nlo_settings_init
+    procedure :: write => nlo_settings_write
   end type nlo_settings_t
 
   type :: nlo_particle_data_t
@@ -245,6 +254,22 @@ module nlo_data
     logical, dimension(:), allocatable :: passed_real
   end type nlo_cuts_t
 
+
+  abstract interface
+     subroutine powheg_damping_init (damping, scale)
+       import
+       class(powheg_damping_t), intent(out) :: damping
+       real(default), intent(in) :: scale
+     end subroutine powheg_damping_init
+  end interface
+
+  abstract interface
+     subroutine powheg_damping_write (damping, unit)
+       import
+       class(powheg_damping_t), intent(in) :: damping
+       integer, intent(in), optional :: unit
+     end subroutine powheg_damping_write
+  end interface
 
   abstract interface
     function powheg_damping_get_f (damping, pt2) result (f)
@@ -607,6 +632,75 @@ contains
     f = damping%h2 / (pt2 + damping%h2)
   end function powheg_damping_simple_get_f
 
+  subroutine powheg_damping_simple_init (damping, scale)
+    class(powheg_damping_simple_t), intent(out) :: damping
+    real(default), intent(in) :: scale
+    damping%h2 = scale**2
+  end subroutine powheg_damping_simple_init
+
+  subroutine powheg_damping_simple_write (damping, unit)
+    class(powheg_damping_simple_t), intent(in) :: damping
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(1x,A)") "Powheg damping simple: "
+    write (u, "(1x,A, "// FMT_15 // ")") "scale h2: ", damping%h2
+  end subroutine powheg_damping_simple_write
+
+  subroutine nlo_settings_init (nlo_settings, var_list, combined_integration)
+    class(nlo_settings_t), intent(out) :: nlo_settings
+    type(var_list_t), intent(in) :: var_list
+    logical, intent(in), optional :: combined_integration
+    type(string_t) :: color_method
+    color_method = var_list%get_sval (var_str ('$correlation_me_method'))
+    nlo_settings%use_internal_color_correlations = color_method == 'omega' & 
+       .or. color_method == 'threshold'
+    if (present (combined_integration)) then
+       nlo_settings%combined_integration = combined_integration
+    else
+       nlo_settings%combined_integration = &
+             var_list%get_lval (var_str("?combined_nlo_integration"))
+    end if
+    nlo_settings%test_soft_limit = var_list%get_lval (var_str ('?test_soft_limit'))
+    nlo_settings%test_coll_limit = var_list%get_lval (var_str ('?test_coll_limit'))
+    nlo_settings%test_anti_coll_limit = var_list%get_lval (var_str ('?test_anti_coll_limit'))
+    nlo_settings%fixed_alr = var_list%get_ival (var_str ('fixed_alpha_region'))
+    nlo_settings%with_virtual_subtraction = &
+       .not. var_list%get_lval (var_str ('?switch_off_virtual_subtraction'))
+    nlo_settings%powheg_damping_scale = &
+         var_list%get_rval (var_str ('powheg_damping_scale'))
+  end subroutine nlo_settings_init
+
+  subroutine nlo_settings_write (nlo_settings, unit)
+    class(nlo_settings_t), intent(in) :: nlo_settings
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, '(A)') 'nlo_settings:'
+    write (u, '(3X,A,L1)') 'internal_color_correlations = ', &
+         nlo_settings%use_internal_color_correlations
+    write (u, '(3X,A,L1)') 'internal_spin_correlations = ', &
+         nlo_settings%use_internal_spin_correlations
+    write (u, '(3X,A,L1)') 'use_resonance_mappings = ', &
+         nlo_settings%use_resonance_mappings
+    write (u, '(3X,A,L1)') 'combined_integration = ', &
+         nlo_settings%combined_integration
+    write (u, '(3X,A,L1)') 'with_virtual_subtraction = ', &
+         nlo_settings%with_virtual_subtraction
+    write (u, '(3X,A,L1)') 'test_soft_limit = ', &
+         nlo_settings%test_soft_limit
+    write (u, '(3X,A,L1)') 'test_coll_limit = ', &
+         nlo_settings%test_coll_limit
+    write (u, '(3X,A,L1)') 'test_anti_coll_limit = ', &
+         nlo_settings%test_anti_coll_limit
+    write (u, '(3X,A,I5)') 'fixed_alr = ', &
+         nlo_settings%fixed_alr
+    write (u, '(3X,A,I2)') 'factorization_mode = ', &
+         nlo_settings%factorization_mode
+    write (u, '(3X,A,' // FMT_15 // ')') 'powheg_damping_scale = ', &
+         nlo_settings%powheg_damping_scale
+  end subroutine nlo_settings_write
+
   function sqme_collector_get_sqme_sum (collector) result (sqme)
     class(sqme_collector_t), intent(in) :: collector
     real(default) :: sqme
@@ -640,7 +734,7 @@ contains
 
   subroutine sqme_collector_write (collector)
     class(sqme_collector_t), intent(in) :: collector
-    print *, 'Born: ', collector%sqme_born_list 
+    print *, 'Born: ', collector%sqme_born_list
     print *, 'Real: ', collector%sqme_real_sum
     print *, 'Virt: ', collector%sqme_virt_list
     print *, 'Dglap: ', collector%sqme_dglap_list

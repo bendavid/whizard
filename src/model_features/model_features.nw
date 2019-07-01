@@ -1098,7 +1098,6 @@ available energy.  This restriction is removed by setting
     end if
     call constraints%check_before_record (table, pl, n_loop, passed)
     if (.not. passed)  then
-       call msg_warning ("Record ps_table entry: Constraints not fulfilled!")
        return
     end if
     current => table%first

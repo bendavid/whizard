@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1065,24 +1065,24 @@ contains
     type(string_t) :: loop_me_method
     type(string_t) :: correlation_me_method
     integer, dimension(:), allocatable :: i_list
-    logical :: use_powheg_damping
+    logical :: powheg_use_damping
     logical :: gks_active
     logical :: initial_state_colored
     logical :: has_structure_functions
-    integer :: n_components_extra, component_offset
+    logical :: requires_pdf
+    integer :: n_components_extra
     integer :: gks_multiplicity
-    integer :: i_real, n_real
     integer :: n_emitters
     integer, dimension(:), allocatable :: emitters
     integer :: n_components_init
     integer :: alpha_power, alphas_power
     logical :: requires_soft_mismatch
-
+    call msg_debug (D_CORE, "cmd_process_execute")
     var_list => cmd%local%get_var_list_ptr ()
 
     nlo_fixed_order = cmd%local%nlo_fixed_order
-    use_powheg_damping = &
-       var_list%get_lval (var_str ('?use_powheg_damping'))
+    powheg_use_damping = &
+       var_list%get_lval (var_str ('?powheg_use_damping'))
     gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
     gks_active = gks_multiplicity > 2
     born_me_method = var_list%get_sval (var_str ("$born_me_method"))
@@ -1112,84 +1112,7 @@ contains
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
     call prc_config%set_coupling_powers (alpha_power, alphas_power)
 
-    do i = 1, n_components
-       call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
-       if (nlo_fixed_order) then
-          associate (active_comp => cmd%local%active_nlo_components)
-             call set_component_list (i_list, i, n_components, &
-                  initial_state_colored, has_structure_functions, &
-                  requires_soft_mismatch, use_powheg_damping, n_emitters)
-
-             call override_local_me_method (born_me_method)
-             call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-                  cmd%local%model, var_list, BORN, &
-                  active_in = active_comp (1))
-             call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
-
-             call override_local_me_method (real_tree_me_method)
-             n_real = 1; if (use_powheg_damping) n_real = n_emitters + 1
-             do i_real = 1, n_real
-                call prc_config%setup_component (n_components * i_real + i, &
-                   new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
-                     cmd%local%model, var_list, NLO_REAL, &
-                     active_in = active_comp (NLO_REAL + 1))
-                if (i_real > 1) &
-                   call prc_config%set_fixed_emitter (n_components * i_real + i, &
-                      emitters(i_real - 1))
-             end do
-
-             call override_local_me_method (loop_me_method)
-             i_real = n_real + 1
-             call prc_config%setup_component (n_components * i_real + i, &
-                  prt_spec_in, prt_spec_out, cmd%local%model, var_list, &
-                  NLO_VIRTUAL, active_in = active_comp (NLO_VIRTUAL + 1))
-
-             call override_local_me_method (correlation_me_method)
-             i_real = i_real + 1
-             call prc_config%setup_component (n_components * i_real + i, prt_spec_in, &
-                prt_spec_out, cmd%local%model, var_list, NLO_SUBTRACTION, &
-                active_in = active_comp (NLO_SUBTRACTION + 1))
-             if (initial_state_colored .and. has_structure_functions) then
-                ! TODO: (bcn 2016-01-26) why only omega here?
-                call override_local_me_method (var_str ("omega"))
-                call prc_config%setup_component (n_components * 4 + i, prt_spec_in, &
-                   prt_spec_out, cmd%local%model, var_list, NLO_DGLAP, active_in = active_comp (NLO_DGLAP + 1))
-             end if
-
-             if (requires_soft_mismatch) then
-                ! TODO: (bcn 2016-01-26) why only omega here?
-                call override_local_me_method (var_str ("omega"))
-                call prc_config%setup_component (n_components * 4 + i, &
-                   new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
-                   cmd%local%model, var_list, NLO_MISMATCH, active_in = active_comp (NLO_MISMATCH + 1))
-             end if
-
-             if (use_powheg_damping) then
-                call prc_config%set_component_associations (i_list, 1, 3 + n_emitters, &
-                     4 + n_emitters, 2, 3)
-             else if (initial_state_colored .and. has_structure_functions) then
-                call prc_config%set_component_associations (i_list, 5)
-             else if (requires_soft_mismatch) then
-                call prc_config%set_component_associations (i_list, 5)
-             else
-                call prc_config%set_component_associations (i_list)
-             end if
-          end associate
-       else if (gks_active) then
-          call override_local_me_method (var_str ("omega"))
-          call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-               cmd%local%model, var_list, BORN, active_in = .true.)
-          call radiation_generator%reset_queue ()
-          do j = 1, n_components_extra
-             prt_out_nlo =  radiation_generator%get_next_state ()
-             call prc_config%setup_component (i + j, &
-                new_prt_spec (prt_in), new_prt_spec (prt_out_nlo), &
-                cmd%local%model, var_list, GKS, active_in = .false.)
-          end do
-       else
-          call prc_config%setup_component (i, prt_spec_in, prt_spec_out, cmd%local%model, var_list)
-       end if
-    end do
+    call setup_components ()
     call prc_config%record (cmd%local)
 
   contains
@@ -1204,7 +1127,7 @@ contains
       if (nlo_fixed_order .or. gks_active) &
            call setup_radiation_generator ()
 
-      if (use_powheg_damping) then
+      if (powheg_use_damping) then
          emitters = radiation_generator%get_emitter_indices()
          n_emitters = size (emitters)
       end if
@@ -1214,16 +1137,16 @@ contains
          requires_soft_mismatch = fks_method == var_str ('resonances')
          n_components_extra = needed_extra_components (initial_state_colored, &
               has_structure_functions, requires_soft_mismatch, &
-              use_powheg_damping, n_emitters)
+              powheg_use_damping, n_emitters)
          allocate (i_list (n_components_extra))
       else if (gks_active) then
          call radiation_generator%generate_multiple (gks_multiplicity)
          n_components_extra = radiation_generator%get_n_gks_states ()
       end if
 
-      if (nlo_fixed_order .and. .not. use_powheg_damping) then
+      if (nlo_fixed_order .and. .not. powheg_use_damping) then
          n_components_init = n_components * n_components_extra
-      else if (nlo_fixed_order .and. use_powheg_damping) then
+      else if (nlo_fixed_order .and. powheg_use_damping) then
          n_components_init = n_components * n_components_extra
       else if (gks_active) then
          n_components_init = n_components * (n_components_extra + 1)
@@ -1237,12 +1160,10 @@ contains
       call split_prt (prt_spec_out, n_out, pl_out)
       call radiation_generator%init (pl_in, pl_out, qcd = .true., qed = .false.)
       call radiation_generator%set_n (n_in, n_out, 0)
-
       initial_state_colored = pdg_in%has_colored_particles()
       has_structure_functions = global%beam_structure%get_n_record () > 0
-      if (initial_state_colored .and. has_structure_functions) &
-         call radiation_generator%set_initial_state_emissions ()
-
+      requires_pdf = initial_state_colored .and. has_structure_functions
+      if (requires_pdf)  call radiation_generator%set_initial_state_emissions ()
       call radiation_generator%set_constraints (.false., .false., .true., .true.)
       call radiation_generator%set_radiation_model (cmd%local%radiation_model)
       call radiation_generator%setup_if_table ()
@@ -1305,6 +1226,104 @@ contains
       end do
     end subroutine split_prt
 
+    subroutine setup_components()
+      integer :: i_comp
+      call msg_debug (D_CORE, "setup_components")
+      do i = 1, n_components
+         call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
+         if (nlo_fixed_order) then
+            associate (active_comp => cmd%local%active_nlo_components)
+               call set_component_list (i_list, i, n_components, &
+                    requires_pdf, requires_soft_mismatch, &
+                    powheg_use_damping, n_emitters)
+
+               call override_local_me_method (born_me_method)
+               i_comp = i
+               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+               call prc_config%setup_component (i_comp, &
+                    prt_spec_in, prt_spec_out, &
+                    cmd%local%model, var_list, BORN, &
+                    active_in = active_comp (1))
+
+               call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
+               call override_local_me_method (real_tree_me_method)
+               i_comp = n_components + i
+               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+               call prc_config%setup_component (i_comp, &
+                    new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                    cmd%local%model, var_list, NLO_REAL, &
+                    active_in = active_comp (NLO_REAL + 1))
+
+               call override_local_me_method (loop_me_method)
+               i_comp = n_components * 2 + i
+               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+               call prc_config%setup_component (i_comp, &
+                    prt_spec_in, prt_spec_out, &
+                    cmd%local%model, var_list, NLO_VIRTUAL, &
+                    active_in = active_comp (NLO_VIRTUAL + 1))
+
+               call override_local_me_method (correlation_me_method)
+               i_comp = n_components * 3 + i
+               call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+               call prc_config%setup_component (i_comp, &
+                    prt_spec_in, prt_spec_out, &
+                    cmd%local%model, var_list, NLO_SUBTRACTION, &
+                  active_in = active_comp (NLO_SUBTRACTION + 1))
+
+               if (powheg_use_damping) then
+                  call override_local_me_method (real_tree_me_method)
+                  i_comp = n_components * 4 + i
+                  call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+                  call prc_config%setup_component (i_comp, &
+                       new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                       cmd%local%model, var_list, NLO_REAL, &
+                       active_in = active_comp (NLO_REAL + 1))
+               end if
+
+               if (requires_pdf) then
+                  ! TODO: (bcn 2016-01-26) why only omega here?
+                  call override_local_me_method (var_str ("omega"))
+                  i_comp = n_components * 4 + i
+                  call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+                  call prc_config%setup_component (i_comp, &
+                       prt_spec_in, prt_spec_out, &
+                       cmd%local%model, var_list, NLO_DGLAP, &
+                       active_in = active_comp (NLO_DGLAP + 1))
+               end if
+
+               if (requires_soft_mismatch) then
+                  ! TODO: (bcn 2016-01-26) why only omega here?
+                  call override_local_me_method (var_str ("omega"))
+                  i_comp = n_components * 4 + i
+                  call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
+                  call prc_config%setup_component (i_comp, &
+                     new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                     cmd%local%model, var_list, NLO_MISMATCH, &
+                     active_in = active_comp (NLO_MISMATCH + 1))
+               end if
+
+               call prc_config%set_component_associations (i_list, &
+                    requires_pdf, powheg_use_damping, requires_soft_mismatch)
+            end associate
+         else if (gks_active) then
+            call override_local_me_method (var_str ("omega"))
+            call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
+                 cmd%local%model, var_list, BORN, active_in = .true.)
+            call radiation_generator%reset_queue ()
+            do j = 1, n_components_extra
+               prt_out_nlo =  radiation_generator%get_next_state ()
+               call prc_config%setup_component (i + j, &
+                  new_prt_spec (prt_in), new_prt_spec (prt_out_nlo), &
+                  cmd%local%model, var_list, GKS, active_in = .false.)
+            end do
+         else
+            call prc_config%setup_component (i, &
+                 prt_spec_in, prt_spec_out, &
+                 cmd%local%model, var_list)
+         end if
+      end do
+    end subroutine setup_components
+
 
   end subroutine cmd_process_execute
 
@@ -1316,7 +1335,7 @@ contains
     logical :: case_nlo_powheg_but_not_combined
     logical :: vamp_equivalences_enabled
     combined = var_list%get_lval (var_str ('?combined_nlo_integration'))
-    powheg = var_list%get_lval (var_str ('?powheg_matching')) 
+    powheg = var_list%get_lval (var_str ('?powheg_matching'))
     case_lo_but_any_other = .not. nlo .and. any ([combined, powheg])
     case_nlo_powheg_but_not_combined = &
          nlo .and. powheg .and. .not. combined
@@ -1337,35 +1356,27 @@ contains
   end subroutine check_nlo_options
 
   pure subroutine set_component_list (i_list, i, n_components, &
-                  initial_state_colored, has_structure_functions, &
-                  requires_soft_mismatch, use_powheg_damping, n_emitters)
+                  requires_pdf, requires_soft_mismatch, &
+             powheg_use_damping, n_emitters)
     integer, dimension(:), intent(out) :: i_list
     integer, intent(in) :: i, n_components, n_emitters
-    logical, intent(in) :: initial_state_colored, &
-         has_structure_functions, use_powheg_damping, &
+    logical, intent(in) :: requires_pdf, powheg_use_damping, &
          requires_soft_mismatch
-    integer :: j, component_offset
     i_list(1) = i
     i_list(2) = i + n_components
     i_list(3) = i + 2 * n_components
     i_list(4) = i + 3 * n_components
-    if (initial_state_colored .and. has_structure_functions &
-        .or. requires_soft_mismatch) then
+    if (requires_pdf .or. requires_soft_mismatch .or. powheg_use_damping) then
        i_list(5) = i + 4 * n_components
-    else if (use_powheg_damping) then
-       component_offset = 4
-       do j = component_offset, component_offset + n_emitters - 1
-          i_list(j + 1) = i + 4 * n_components
-       end do
     end if
   end subroutine set_component_list
 
   pure function needed_extra_components (initial_state_colored, &
             has_structure_functions, requires_soft_mismatch, &
-            use_powheg_damping, n_emitters) result (n)
+            powheg_use_damping, n_emitters) result (n)
     integer :: n
     logical, intent(in) :: initial_state_colored, &
-         has_structure_functions, use_powheg_damping, &
+         has_structure_functions, powheg_use_damping, &
          requires_soft_mismatch
     integer, intent(in) :: n_emitters
     if (initial_state_colored) then
@@ -1374,8 +1385,8 @@ contains
        else
           n = 4
        end if
-    else if (use_powheg_damping) then
-       n = 4 + n_emitters
+    else if (powheg_use_damping) then
+       n = 5
     else if (requires_soft_mismatch) then
        n = 5
     else
@@ -3020,7 +3031,9 @@ contains
     class(cmd_integrate_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     integer :: i
+    call msg_debug (D_CORE, "cmd_integrate_execute")
     do i = 1, cmd%n_proc
+       call msg_debug (D_CORE, "cmd%process_id(i) ", cmd%process_id(i))
        call integrate_process (cmd%process_id(i), cmd%local, global)
        call global%process_stack%fill_result_vars (cmd%process_id(i))
        if (signal_is_pending ())  return

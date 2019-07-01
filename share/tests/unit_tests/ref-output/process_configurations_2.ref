@@ -41,6 +41,7 @@ $omega_flags = "-fusion:progress_file omega_prc_config.log"
      Extra options     = " "
      Write diagrams    = F
      Write color diag. = F
+     Complex Mass S.   = F
    MD5 sum (def)       = '                                '
  Component #2
    Component ID        = prc_config_c_i2
@@ -58,6 +59,7 @@ $omega_flags = "-fusion:progress_file omega_prc_config.log"
      Extra options     = " -fusion:progress_file omega_prc_config.log"
      Write diagrams    = F
      Write color diag. = F
+     Complex Mass S.   = F
    MD5 sum (def)       = '                                '
 ========================================================================
 

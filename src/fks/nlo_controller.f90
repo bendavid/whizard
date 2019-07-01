@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -166,7 +166,6 @@ module nlo_controller
     procedure :: get_mass_info => nlo_controller_get_mass_info
     procedure :: set_fixed_order_event_mode => nlo_controller_set_fixed_order_event_mode
     procedure :: set_powheg_mode => nlo_controller_set_powheg_mode
-    procedure :: set_real_sqme_born_pointer => nlo_controller_set_real_sqme_born_pointer
     procedure :: set_alr_to_i_phs => nlo_controller_set_alr_to_i_phs
     procedure :: init_regions_and_resonances &
        => nlo_controller_init_regions_and_resonances
@@ -477,9 +476,7 @@ contains
     type(process_constants_t), intent(in), dimension(2) :: prc_constants
     integer, intent(in) :: factorization_mode
     integer, intent(in), dimension(:) :: included_color_structures
-    integer :: nlegs_real
-    integer :: i, j, k, n_in
-    nlegs_real = reg_data%n_legs_real
+    if (debug_active (D_SUBTRACTION))  call show_input_values ()
     call prc_constants(1)%get_col_state (color_data%col_state_born)
     call prc_constants(2)%get_col_state (color_data%col_state_real)
     call prc_constants(2)%get_cf_index (color_data%cf_index_real)
@@ -491,6 +488,17 @@ contains
     call color_data%init_color (reg_data, included_color_structures)
     call color_data%check_equivalences ()
     call color_data%init_betaij (reg_data, factorization_mode, included_color_structures)
+  contains
+    subroutine show_input_values()
+      integer :: i
+      call msg_debug (D_SUBTRACTION, "color_data_init")
+      call msg_debug (D_SUBTRACTION, "factorization_mode", factorization_mode)
+      do i = 1, size(included_color_structures)
+         call msg_debug (D_SUBTRACTION, "included_color_structures(i)", included_color_structures(i))
+      end do
+      !call color_data%write ()
+      !call region_data%write ()
+    end subroutine show_input_values
   end subroutine color_data_init
 
   subroutine color_data_init_ghost_flags (color_data, ghost_flag_born, ghost_flag_real)
@@ -1082,12 +1090,6 @@ contains
     nlo_controller%real_terms%purpose = POWHEG
   end subroutine nlo_controller_set_powheg_mode
 
-  subroutine nlo_controller_set_real_sqme_born_pointer (nlo_controller, sqme_born_list)
-    class(nlo_controller_t), intent(inout) :: nlo_controller
-    real(default), intent(in), dimension(:), target :: sqme_born_list
-    nlo_controller%real_terms%sqme_born => sqme_born_list
-  end subroutine nlo_controller_set_real_sqme_born_pointer
-
   subroutine nlo_controller_set_alr_to_i_phs (nlo_controller, phs_identifiers)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     type(phs_identifier_t), intent(in), dimension(:) :: phs_identifiers
@@ -1216,7 +1218,6 @@ contains
         call nlo_controller%soft_mismatch%init (n_in, n_tot_born, nlo_controller%reg_data, &
            nlo_controller%sqme_collector, nlo_controller%real_kinematics)
      end associate
-     allocate (powheg_damping_simple_t :: nlo_controller%powheg_damping)
   end subroutine nlo_controller_setup_real_terms
 
   subroutine nlo_controller_check_if_threshold_method (nlo_controller, core)

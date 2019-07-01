@@ -1,4 +1,4 @@
-(* $Id: modellib_MSSM.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* $Id: modellib_MSSM.mli 7667 2016-07-29 17:37:42Z jr_reuter $
 
    Copyright (C) 1999-2016 by
 
@@ -40,11 +40,3 @@ module MSSM_no_4_ckm : MSSM_flags
 module MSSM_Grav : MSSM_flags
 module MSSM_Hgg : MSSM_flags
 module MSSM : functor (F: MSSM_flags) -> Model.T with module Ch = Charges.QQ
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

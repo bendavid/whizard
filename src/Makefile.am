@@ -54,6 +54,7 @@ SUBDIRS = \
   xdr events \
   phase_space \
   mci variables \
+  pythia8 \
   tauola \
   muli shower \
   user \

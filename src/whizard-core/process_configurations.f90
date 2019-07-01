@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -60,16 +60,8 @@ module process_configurations
      procedure :: setup_component => process_configuration_setup_component
      procedure :: set_fixed_emitter => process_configuration_set_fixed_emitter
      procedure :: set_coupling_powers => process_configuration_set_coupling_powers
-     generic :: set_component_associations => &
-                    set_component_associations_default, &
-                    set_component_associations_pdf, &
-                    set_component_associations_powheg_damping 
-     procedure :: set_component_associations_default => &
-                      process_configuration_set_component_associations_default
-     procedure :: set_component_associations_pdf => &
-                      process_configuration_set_component_associations_pdf
-     procedure :: set_component_associations_powheg_damping => &
-                      process_configuration_set_component_associations_powheg_damping
+     procedure :: set_component_associations => &
+          process_configuration_set_component_associations
      procedure :: record => process_configuration_record
   end type process_configuration_t
   
@@ -155,48 +147,32 @@ contains
     call config%entry%set_coupling_powers (alpha_power, alphas_power)
   end subroutine process_configuration_set_coupling_powers
 
-  subroutine process_configuration_set_component_associations_default &
-       (config, i_list)
+  subroutine process_configuration_set_component_associations &
+         (config, i_list, pdf, damping, mismatch)
     class(process_configuration_t), intent(inout) :: config
-    integer, intent(in), dimension(:) :: i_list 
+    integer, intent(in), dimension(:) :: i_list
+    logical, intent(in) :: pdf, damping, mismatch
     integer :: i_component
     do i_component = 1, config%entry%get_n_components ()
        if (any (i_list == i_component)) then
-          call config%entry%set_associated_components (i_component, &
-                 i_list(1), i_list(2), i_list(3), i_list(4))
+          if (pdf) then
+             call config%entry%set_associated_components (i_component, &
+                    i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(5))
+          else if (mismatch) then
+             !!! TODO: (bcn 2016-07-21) this is not a typo. mismatch
+             !!!               seems to need no extra component type
+             call config%entry%set_associated_components (i_component, &
+                    i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(5))
+          else if (damping) then
+             call config%entry%set_associated_components (i_component, &
+                    i_list(1), i_list(2), i_list(3), i_list(4), i_rfin = i_list(5))
+          else
+             call config%entry%set_associated_components (i_component, &
+                    i_list(1), i_list(2), i_list(3), i_list(4))
+          end if
        end if
     end do
-  end subroutine process_configuration_set_component_associations_default
-
-  subroutine process_configuration_set_component_associations_pdf &
-      (config, i_list, i_pdf)
-     class(process_configuration_t), intent(inout) :: config
-     integer, intent(in), dimension(:) :: i_list
-     integer, intent(in) :: i_pdf
-     integer :: i_component
-     do i_component = 1, config%entry%get_n_components ()
-       if (any (i_list == i_component)) then
-          call config%entry%set_associated_components (i_component, &
-                 i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(i_pdf))
-       end if
-    end do
-  end subroutine process_configuration_set_component_associations_pdf
-
-  subroutine process_configuration_set_component_associations_powheg_damping &
-      (config, i_list, i_born, i_virt, i_sub, i_rsing, i_rfin)
-     class(process_configuration_t), intent(inout) :: config
-     integer, intent(in), dimension(:) :: i_list
-     integer, intent(in) :: i_born, i_virt, i_sub
-     integer, intent(in) :: i_rsing, i_rfin
-     integer :: i_component
-     do i_component = 1, config%entry%get_n_components ()
-       if (any (i_list == i_component)) then
-          call config%entry%set_associated_components (i_component, &
-                 i_list(i_born), 0, i_list(i_virt), i_list(i_sub), &
-                 i_rsing = i_list(i_rsing), i_rfin = i_list(i_rfin))
-       end if
-    end do
-  end subroutine process_configuration_set_component_associations_powheg_damping
+  end subroutine process_configuration_set_component_associations
 
   subroutine process_configuration_record (config, global)
     class(process_configuration_t), intent(inout) :: config

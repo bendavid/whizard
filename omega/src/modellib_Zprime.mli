@@ -33,11 +33,3 @@ module type SM_flags =
 module SM_no_anomalous : SM_flags
 
 module Zprime : functor (F : SM_flags) -> Model.Gauge with module Ch = Charges.QQ
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -152,7 +152,6 @@ module ttv_formfactors
     real(default) :: p2 = 0, k2 = 0, q2 = 0
     real(default) :: sqrts = 0, p = 0, p0 = 0
     real(default) :: mpole = 0, en = 0
-    complex(default) :: m2 = 0
     logical :: inside_grid = .false., onshell = .false.
   contains
     procedure :: init => phase_space_point_init_rel
@@ -321,11 +320,7 @@ contains
                f * alphas_soft (ps%sqrts), ps, vec_type, no_p0=.true.)
        case (RESUMMED_ANALYTIC_LL)
           FF = formfactor_LL_analytic_p0 (alphas_soft (ps%sqrts), ps, vec_type)
-       case (EXTRA_TREE)
-          FF = two
        case default
-          !!! disables signal component and thus gives tree level result
-          !!! in modes with tree level interference
           FF = one
        end select
     else
@@ -353,7 +348,6 @@ contains
     ps_point%mpole = m1s_to_mpole (ps_point%sqrts)
     ps_point%en = sqrts_to_en (ps_point%sqrts)
     ps_point%inside_grid = sqrts_within_range (ps_point%sqrts)
-    ps_point%m2 = complex_m2 (ps_point%mpole, GAM)
     if ( present(m) ) ps_point%onshell = ps_point%is_onshell (m)
   end subroutine phase_space_point_init_rel
 
@@ -370,7 +364,6 @@ contains
     ps_point%mpole = m1s_to_mpole (sqrts)
     ps_point%en = sqrts_to_en (sqrts, ps_point%mpole)
     ps_point%inside_grid = sqrts_within_range (sqrts)
-    ps_point%m2 = complex_m2 (ps_point%mpole, GAM)
     if ( present(m) ) ps_point%onshell = ps_point%is_onshell (m)
   end subroutine phase_space_point_init_nonrel
 
@@ -388,18 +381,16 @@ contains
   end subroutine rel_to_nonrel
 
   !!! convert sqrts, p0 = E_top-sqrts/2 and abs. 3-momentum p into squared 4-momenta
-  pure subroutine nonrel_to_rel (sqrts, p, p0, p2, k2, q2, m2)
+  pure subroutine nonrel_to_rel (sqrts, p, p0, p2, k2, q2)
     real(default), intent(in) :: sqrts
     real(default), intent(in) :: p
     real(default), intent(in) :: p0
     real(default), intent(out) :: p2
     real(default), intent(out) :: k2
     real(default), intent(out) :: q2
-    complex(default), intent(out), optional :: m2
     p2 = (sqrts/2.+p0)**2 - p**2
     k2 = (sqrts/2.-p0)**2 - p**2
     q2 = sqrts**2
-    if (present (m2)) m2 = complex_m2 (m1s_to_mpole (sqrts), GAM)
   end subroutine nonrel_to_rel
 
   pure function complex_m2 (m, w) result (m2c)
@@ -430,7 +421,6 @@ contains
     write (u, '(A)') char ("p0 = " // str (psp%p0))
     write (u, '(A)') char ("mpole = " // str (psp%mpole))
     write (u, '(A)') char ("en = " // str (psp%en))
-    write (u, '(A)') char ("m2 = " // str (psp%m2))
     write (u, '(A)') char ("inside_grid = " // str (psp%inside_grid))
     write (u, '(A)') char ("onshell = " // str (psp%onshell))
   end subroutine phase_space_point_write
@@ -621,7 +611,8 @@ contains
             log ((ps%p + ps%mpole * v + p0) / &
                  (-ps%p + ps%mpole * v + p0) + ieps) / (two * ps%p)
     end if
-    FF = one + alphas_soft * contrib_from_potential + alphas_hard * shift_from_hard_current
+    FF = one + alphas_soft * contrib_from_potential + &
+         alphas_hard * shift_from_hard_current
   end function expanded_formfactor
 
   subroutine init_formfactor_grid ()
@@ -720,11 +711,11 @@ contains
 
   pure function parameters_string () result (str)
     character(len(parameters_ref)) :: str
-    str = char(M1S) // " " // char(GAM) // " " // char(NRQCD_ORDER) // " " // char(RESCALE_H) &
+    str = char(M1S) // " " // char(GAM) // " " // char(NRQCD_ORDER) &
+           // " " // char(RESCALE_H) &
            // " " // char(RESCALE_F) // " " // char(P0_DEPENDENT_RESUMMED) &
            //  " " // char(sqrts_min) &
            // " " // char(sqrts_max) // " " // char(sqrts_it)
-           !// " " // char(matching_version) // " " // char(ff_type) &
   end function parameters_string
 
   subroutine update_global_sqrts_dependent_variables (sqrts)
@@ -749,7 +740,7 @@ contains
     AS_LL_SOFT = running_as (MU_SOFT, AS_HARD, MU_HARD, 0, NF)
     AS_USOFT = running_as (MU_USOFT, AS_HARD, MU_HARD, 0, NF) !!! LL here
     if (SWITCHOFF_RESUMMED) then
-       f = f_switch_off (v_matching (sqrts, GAM))
+       f = f_switch_off (v_matching (sqrts, GAM_M1S))
        AS_SOFT = AS_SOFT * f
        AS_LL_SOFT = AS_LL_SOFT * f
        AS_USOFT = AS_USOFT * f
@@ -809,11 +800,8 @@ contains
   pure function v_matching (sqrts, gamma) result (v)
     real(default), intent(in) :: sqrts, gamma
     real(default) :: v
+    !  TODO: (bcn 2016-07-20) we should also switch off for low sqrts
     v = real (sqrts_to_v (sqrts, gamma))
-    !!! Andre's proposal for the switch-off function:
-    !v = max ( sqrt(abs(ps%p2-ps%m2)), sqrt(abs(ps%k2-ps%m2)), &
-              !sqrt(abs(ps%q2/4.-ps%m2)), ps%p ) &
-        !/ ps%mpole
   end function v_matching
 
   !!! smooth transition from f1 to f2 between v1 and v2 (2 combined parabolas)
@@ -927,7 +915,7 @@ contains
       case (1)
         c = formfactor_LL_analytic_p0_swave (CF*a_soft, ps%en, ps%p, ps%p0, ps%mpole, GAM)
       case (2)
-        !!! not implemented yet
+        !!! not implemented
 !        c = formfactor_LL_analytic_p0_pwave (CF*a_soft, en, p, p0, MTPOLE, GAM)
         c = one
       case default
@@ -1583,7 +1571,7 @@ contains
     p2 = ps%p2
     k2 = ps%k2
     q2 = ps%q2
-    m2 = ps%m2
+    m2 =  complex_m2 (ps%mpole, GAM)
     !!! kinematic abbreviations
     kp = 0.5_default * (-q2 + p2 + k2)
     pq = 0.5_default * ( k2 - p2 - q2)

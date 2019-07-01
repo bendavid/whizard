@@ -1,4 +1,4 @@
-(* $Id: modellib_BSM.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* $Id: modellib_BSM.ml 7667 2016-07-29 17:37:42Z jr_reuter $
 
    Copyright (C) 1999-2016 by
 
@@ -25,8 +25,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_BSM" ["BSM Models"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
+    { RCS.revision = "$Revision: 7667 $";
+      RCS.date = "$Date: 2016-07-29 19:37:42 +0200 (Fri, 29 Jul 2016) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_BSM.ml $" }
@@ -74,7 +74,9 @@ module Littlest (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width" ]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme" ]
 
     let gauge_symbol () =
       failwith "Modellib_BSM.Littlest.gauge_symbol: internal error"
@@ -1266,7 +1268,9 @@ module Littlest_Tpar (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width" ]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type flavor = L of int | N of int | U of int | D of int 
         | Topp | Toppb 
@@ -2373,7 +2377,9 @@ module Simplest (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width" ]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
 (* We do not introduce the Goldstones for the heavy vectors here. The heavy
    quarks are simply numerated by their generation, the assignments whether
@@ -3121,7 +3127,9 @@ module Xdim (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -3715,7 +3723,9 @@ module UED (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type matter_field = L of int | N of int | U of int | D of int 
           | L_K1_L of int | L_K1_R of int | N_K1 of int
@@ -4688,7 +4698,9 @@ module GravTest (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type matter_field = L of int | N of int | U of int | D of int | SL of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl | Phino
@@ -5302,7 +5314,9 @@ module Template (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl 
@@ -5836,7 +5850,9 @@ module HSExt (Flags : BSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl 
@@ -7153,7 +7169,9 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width" ]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -8116,7 +8134,9 @@ module SSC (Flags : SSC_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR
@@ -9962,7 +9982,9 @@ module SSC_AltT (Flags : SSC_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
+        "use complex mass scheme"]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR
@@ -11851,13 +11873,3 @@ effective operators:
       | K_Matrix_Pole i -> "kp" ^ string_of_int i
 
   end
-
-
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.3.0"
-  character(*), parameter :: WHIZARD_DATE = "July 21 2016"
+  character(*), parameter :: WHIZARD_VERSION = "2.3.1"
+  character(*), parameter :: WHIZARD_DATE = "Aug 25 2016"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -331,7 +331,7 @@ module system_dependencies
   logical, parameter :: HOPPET_AVAILABLE = .true.
 
   logical, parameter :: PYTHIA6_AVAILABLE = .true.
-  logical, parameter :: PYTHIA8_AVAILABLE = .true.
+  logical, parameter :: PYTHIA8_AVAILABLE = .false.
 
   logical, parameter :: GOSAM_AVAILABLE = .true.
   logical, parameter :: OPENLOOPS_AVAILABLE = .true.

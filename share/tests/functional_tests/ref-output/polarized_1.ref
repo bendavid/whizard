@@ -2,7 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-| Switching to model 'SM'
+| Switching to model 'SM', scheme 'default'
 | Process library 'polarized_1_lib': recorded process 'polarized_1_p1'
 | Process library 'polarized_1_lib': compiling ...
 | Process library 'polarized_1_lib': writing makefile

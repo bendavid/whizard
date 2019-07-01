@@ -414,19 +414,24 @@ contains
     integer, intent(in) :: ffi
     integer, intent(in), optional :: h_t, h_tbar
     complex(default) :: blob_Z_vec, blob_Z_ax, ttv_vec, ttv_ax
-    real(default) :: mtop, top_width
+    real(default) :: mtop, top_width, extra_tree
     type(momentum) :: ptop, ptopbar
     integer :: u
     u = output_unit
+    if (threshold%settings%interference) then
+       extra_tree = zero
+    else
+       extra_tree = one
+    end if
     if (onshell_tops (p3, p4)) then
-       blob_Z_vec = gncup(1) * ttv_formfactor (p3, p4, 1)
-       blob_Z_ax = gncup(2) * ttv_formfactor (p3, p4, 2)
+       blob_Z_vec = gncup(1) * (ttv_formfactor (p3, p4, 1) + extra_tree)
+       blob_Z_ax = gncup(2) * (ttv_formfactor (p3, p4, 2) + extra_tree)
        amp = owf_Z_12 * va_ff (blob_Z_vec, blob_Z_ax, owf_t_3, owf_t_4)
        amp = amp + owf_A_12 * v_ff (qup, owf_t_3, owf_t_4) * &
-            ttv_formfactor (p3, p4, 1)
+            (ttv_formfactor (p3, p4, 1) + extra_tree)
     else
-       ttv_vec = ttv_formfactor (p35, p46, 1, ffi)
-       ttv_ax = ttv_formfactor (p35, p46, 2, ffi)
+       ttv_vec = ttv_formfactor (p35, p46, 1, ffi) + extra_tree
+       ttv_ax = ttv_formfactor (p35, p46, 2, ffi) + extra_tree
        blob_Z_vec = gncup(1) * ttv_vec
        blob_Z_ax = gncup(2) * ttv_ax
        mtop = ttv_mtpole (p12*p12)
@@ -589,8 +594,6 @@ contains
                 do h_t = -1, 1, 2
                    dec1 = dec1 + abs2(born_decay_me(s(ass_quark(1)), s(ass_boson(1)), h_t, 1))
                 end do
-                !print *, 'dec1 =    ', dec1 !!! Debugging
-                !stop
                 dec2 = zero
                 do h_tbar = -1, 1, 2
                    dec2 = dec2 + abs2(born_decay_me(s(ass_quark(2)), s(ass_boson(2)), h_tbar, 2))

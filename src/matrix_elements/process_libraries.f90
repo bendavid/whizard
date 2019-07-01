@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -72,9 +72,8 @@ module process_libraries
   integer, parameter, public :: ASSOCIATED_VIRT = 3
   integer, parameter, public :: ASSOCIATED_SUB = 4
   integer, parameter, public :: ASSOCIATED_PDF = 5
-  integer, parameter, public :: ASSOCIATED_REAL_SING = 6
-  integer, parameter, public :: ASSOCIATED_REAL_FIN = 7
-  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 7
+  integer, parameter, public :: ASSOCIATED_REAL_FIN = 6
+  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 6
 
   character, dimension(0:6), parameter :: STATUS_LETTER = &
        ["?", "o", "f", "s", "c", "l", "a"]
@@ -122,8 +121,6 @@ module process_libraries
                   => process_component_def_get_associated_born
      procedure :: get_associated_real_fin &
                   => process_component_def_get_associated_real_fin
-     procedure :: get_associated_real_sing &
-                  => process_component_def_get_associated_real_sing
      procedure :: get_association_list &
                   => process_component_def_get_association_list
      procedure :: is_active_component &
@@ -519,12 +516,6 @@ contains
     i_rfin = component%associated_components(ASSOCIATED_REAL_FIN)
   end function process_component_def_get_associated_real_fin
 
-  function process_component_def_get_associated_real_sing (component) result (i_rsing)
-    class(process_component_def_t), intent(in) :: component
-    integer :: i_rsing
-    i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
-  end function process_component_def_get_associated_real_sing
-
   elemental function process_component_def_is_active_component (component) result (active)
     class(process_component_def_t), intent(in) :: component
     logical :: active
@@ -538,12 +529,11 @@ contains
     integer :: i, j, n, i_skip
     logical :: valid
     i_skip = 0; if (present (i_skip_in)) i_skip = i_skip_in
-
     n = count (component%associated_components /= 0) - 1
-    if (i_skip > 0) n = n-1
+    if (i_skip > 0) n = n - 1
     allocate (list (n))
     j = 1
-    do i = 1, N_ASSOCIATED_COMPONENTS 
+    do i = 1, size(component%associated_components)
        valid = component%associated_components(i) /= 0 &
                .and. i /= ASSOCIATED_SUB .and. i /= i_skip
        if (valid) then
@@ -827,12 +817,12 @@ contains
 
   subroutine process_def_set_associated_components (def, i, &
                      i_born, i_real, i_virt, i_sub, &
-                     i_pdf, i_rsing, i_rfin)
+                     i_pdf, i_rfin)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i
     integer, intent(in) :: i_born, i_real
     integer, intent(in) :: i_virt, i_sub
-    integer, intent(in), optional :: i_pdf, i_rsing, i_rfin
+    integer, intent(in), optional :: i_pdf, i_rfin
     associate (comp => def%initial(i)%associated_components)
        comp(ASSOCIATED_BORN) = i_born
        comp(ASSOCIATED_REAL) = i_real
@@ -840,8 +830,6 @@ contains
        comp(ASSOCIATED_SUB) = i_sub
        if (present (i_pdf)) &
           comp(ASSOCIATED_PDF) = i_pdf
-       if (present (i_rsing)) &
-          comp(ASSOCIATED_REAL_SING) = i_rsing
        if (present (i_rfin)) &
           comp(ASSOCIATED_REAL_FIN) = i_rfin
     end associate

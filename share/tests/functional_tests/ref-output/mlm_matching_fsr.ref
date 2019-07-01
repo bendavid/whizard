@@ -2,7 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-| Switching to model 'SM'
+| Switching to model 'SM', scheme 'default'
 | Process library 'mlm_matching_fsr_lib': recorded process 'mlm_matching_fsr_eeuu'
 [user variable] j = PDG(2, 1, -2, -1, 21)
 | Process library 'mlm_matching_fsr_lib': compiling ...

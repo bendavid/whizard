@@ -1,4 +1,4 @@
-(* $Id: modellib_BSM.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* $Id: modellib_BSM.mli 7667 2016-07-29 17:37:42Z jr_reuter $
 
    Copyright (C) 1999-2016 by
 
@@ -87,12 +87,3 @@ module SSC_kmatrix_2: SSC_flags
 module SSC: functor (F : SSC_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 module SSC_AltT: functor (F : SSC_flags) -> Model.Gauge with module Ch = Charges.QQ
-
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

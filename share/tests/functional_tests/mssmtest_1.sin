@@ -1,4 +1,4 @@
-# $Id: mssmtest.sin 7076 2015-06-29 00:09:21Z jr_reuter $
+# $Id: mssmtest_1.sin 7677 2016-08-23 02:49:10Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
 
 model = MSSM
@@ -12,7 +12,7 @@ read_slha ("sps1ap_decays.slha")
 
 seed = 0
 
-process mssmtest_se =	e1, E1	=>	se1, SE1
+process mssmtest_se_1 =	e1, E1	=>	se1, SE1
 
 compile
 
@@ -26,4 +26,4 @@ beams = e1, E1
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1
 
-integrate (mssmtest_se) { iterations = 3:5000 }
+integrate (mssmtest_se_1) { iterations = 3:5000 }

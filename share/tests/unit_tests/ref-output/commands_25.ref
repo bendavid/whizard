@@ -50,6 +50,7 @@ process commands_25_p1 = g, g => g, g { model = "QCD" }
      Extra options     = " "
      Write diagrams    = F
      Write color diag. = F
+     Complex Mass S.   = F
    MD5 sum (def)       = '                                '
 ========================================================================
 

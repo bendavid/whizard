@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -793,7 +793,6 @@ contains
     real(default) :: sqme_alr, alpha_s
     integer :: alr, i_con
     logical :: same_emitter
-
     sqme = zero
     do alr = 1, rsub%reg_data%n_regions
        if (rsub%fixed_alr > 0 .and. rsub%fixed_alr /= alr) cycle

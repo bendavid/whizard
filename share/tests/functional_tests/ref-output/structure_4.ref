@@ -82,10 +82,10 @@ Expression: analysis (parse tree):
 |  |  +  KEYWORD     true  = [keyword] true
 | Switching to model 'QCD', scheme 'default'
 $model_name = "QCD"
-| Restoring model 'SM'
+| Restoring model 'SM', scheme 'default'
 | Switching to model 'QED'
 $model_name = "QED"
-| Restoring model 'SM'
+| Restoring model 'SM', scheme 'default'
 | Process library 'structure_4_lib1': initialized
 | WHIZARD run finished.
 |=============================================================================|

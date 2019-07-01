@@ -1,4 +1,4 @@
-! WHIZARD 2.3.0 July 21 2016
+! WHIZARD 2.3.1 Aug 25 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -862,7 +862,7 @@ contains
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
        else
-          write (u, "(A)") "# BLHA order written by WHIZARD 2.3.0"
+          write (u, "(A)") "# BLHA order written by WHIZARD 2.3.1"
        end if
        write (u, "(A)")
     end if
