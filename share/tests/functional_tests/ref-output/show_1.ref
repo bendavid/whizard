@@ -21,6 +21,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process show_1_p1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   H  (mass = 1.2500000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'show_1_p1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_1_p1'
 |   Library name  = 'show_1_lib'
@@ -28,12 +34,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'show_1_p1_i1':   H => b, bbar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   H  (mass = 1.2500000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'show_1_p1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -61,6 +61,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process show_1_p2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'show_1_p2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_1_p2'
 |   ID (num)      = 77
@@ -69,12 +75,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'show_1_p2_i1':   W+ => e+, nue [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'show_1_p2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -97,6 +97,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process show_1_p3:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'show_1_p3_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_1_p3'
 |   Library name  = 'show_1_lib'
@@ -104,12 +110,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'show_1_p3_i1':   W+ => mu+, numu [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'show_1_p3_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

@@ -20,6 +20,7 @@ instances -> process_counter
 pcm -> pcm_base
 process_stacks -> process
 process -> pcm_base
+kinematics -> pcm
 instances -> process
 kinematics -> process_config
 process_mci -> process_counter

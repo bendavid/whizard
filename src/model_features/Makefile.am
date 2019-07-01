@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by
+# Copyright (C) 1999-2017 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -78,7 +78,8 @@ module_lists = \
   ../types/Modules \
   ../particles/Modules \
   ../user/Modules \
-  ../variables/Modules
+  ../variables/Modules \
+  ../threshold/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -125,7 +126,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../user -I../fastjet -I../variables
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../threshold -I../user -I../fastjet -I../variables
 
 
 ########################################################################

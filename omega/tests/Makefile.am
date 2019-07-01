@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by
+# Copyright (C) 1999-2017 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -273,7 +273,7 @@ ward.f90: ward_identities.list
 
 ward_SOURCES = $(WARD_LIB_F90)
 nodist_ward_SOURCES = ward.f90
-ward_LDADD = $(top_builddir)/omega/src/libomega_core.la
+ward_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 ward.o: $(WARD_LIB_O)
 
@@ -291,7 +291,7 @@ ward_long.f90: ward_identities_long.list
 
 ward_long_SOURCES = $(WARD_LIB_F90)
 nodist_ward_long_SOURCES = ward_long.f90
-ward_long_LDADD = $(top_builddir)/omega/src/libomega_core.la
+ward_long_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 # ward_long.o: ward_long.f90
 # 	$(FCCOMPILE) -c -o $@ $(FCFLAGS_f90) -O0 $<
@@ -312,7 +312,7 @@ ward_fail.f90: ward_identities_fail.list
 
 ward_fail_SOURCES = $(WARD_LIB_F90)
 nodist_ward_fail_SOURCES = ward_fail.f90
-ward_fail_LDADD = $(top_builddir)/omega/src/libomega_core.la
+ward_fail_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 ward_fail.o: ward_fail.f90
 	$(FCCOMPILE) -c -o $@ $(FCFLAGS_f90) -O0 $<
@@ -353,11 +353,11 @@ compare_split_function.f90 compare_split_module.f90: \
 
 compare_split_function_SOURCES = $(COMPARE_LIB_F90)
 nodist_compare_split_function_SOURCES = compare_split_function.f90
-compare_split_function_LDADD = $(top_builddir)/omega/src/libomega_core.la
+compare_split_function_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 compare_split_module_SOURCES = $(COMPARE_LIB_F90)
 nodist_compare_split_module_SOURCES = compare_split_module.f90
-compare_split_module_LDADD = $(top_builddir)/omega/src/libomega_core.la
+compare_split_module_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 
@@ -405,7 +405,7 @@ COMPARE_EXTRA_MODELS = parameters_SM_CKM.f90 parameters_SM_Higgs.f90 \
 	parameters_Zprime.f90
 compare_amplitude_VM_SOURCES = $(COMPARE_LIB_F90) $(COMPARE_EXTRA_MODELS)
 nodist_compare_amplitude_VM_SOURCES = compare_amplitude_VM.f90 comparisons_VM.wrappers.f90
-compare_amplitude_VM_LDADD = $(top_builddir)/omega/src/libomega_core.la
+compare_amplitude_VM_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 compare_amplitude_VM.o: $(COMPARE_LIB_O)
 
@@ -421,7 +421,7 @@ TESTOPENMP_SUPPORT_O = $(WARD_SUPPORT_O)
 
 test_openmp_SOURCES = test_openmp.f90 $(TESTOPENMP_SUPPORT_F90)
 nodist_test_openmp_SOURCES = amplitude_openmp.f90
-test_openmp_LDADD = $(top_builddir)/omega/src/libomega_core.la
+test_openmp_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 amplitude_openmp.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:openmp \
@@ -457,7 +457,7 @@ benchmark_VM_vs_Fortran.f90: benchmark_VM_vs_Fortran_driver.sh \
 
 benchmark_VM_vs_Fortran_SOURCES = $(BENCHMARK_LIB_F90)
 nodist_benchmark_VM_vs_Fortran_SOURCES = benchmark_VM_vs_Fortran.f90 benchmark_processes.wrappers.f90
-benchmark_VM_vs_Fortran_LDADD = $(top_builddir)/omega/src/libomega_core.la
+benchmark_VM_vs_Fortran_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 benchmark_VM_vs_Fortran.o: $(BENCHMARK_LIB_O)
 
@@ -479,7 +479,7 @@ benchmark_amp_parallel.f90: benchmark_amp_parallel_driver.sh \
 
 benchmark_amp_parallel_SOURCES = $(BENCHMARK_LIB_F90)
 nodist_benchmark_amp_parallel_SOURCES = benchmark_amp_parallel.f90 benchmark_processes.wrappers.f90
-benchmark_amp_parallel_LDADD = $(top_builddir)/omega/src/libomega_core.la
+benchmark_amp_parallel_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 benchmark_amp_parallel.o: $(BENCHMARK_LIB_O)
 
@@ -499,7 +499,7 @@ benchmark_SOURCES = benchmark.f90 parameters_QCD.f90
 nodist_benchmark_SOURCES = \
 	amplitude_benchmark_v1.f90 amplitude_benchmark_v2.f90 \
 	amplitude_benchmark_v3.f90 # amplitude_benchmark_v4.f90
-benchmark_LDADD = $(top_builddir)/omega/src/libomega_core.la
+benchmark_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 amplitude_benchmark_v1.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_benchmark_v1 \

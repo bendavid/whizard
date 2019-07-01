@@ -53,11 +53,11 @@ end module shower_base
 <<Shower base: public>>=
   public :: PS_WHIZARD, PS_PYTHIA6, PS_PYTHIA8, PS_UNDEFINED
 <<Shower base: parameters>>=
-  integer, parameter :: PS_UNDEFINED = 0  
+  integer, parameter :: PS_UNDEFINED = 0
   integer, parameter :: PS_WHIZARD = 1
   integer, parameter :: PS_PYTHIA6 = 2
   integer, parameter :: PS_PYTHIA8 = 3
-@ %def PS_UNDEFINED PS_WHIZARD PS_PYTHIA6 PS_PYTHIA8 
+@ %def PS_UNDEFINED PS_WHIZARD PS_PYTHIA6 PS_PYTHIA8
 @ A dictionary
 <<Shower base: public>>=
   public :: shower_method_of_string
@@ -164,7 +164,7 @@ hadronization are switched on).
   subroutine shower_settings_init (settings, var_list)
     class(shower_settings_t), intent(out) :: settings
     type(var_list_t), intent(in) :: var_list
-    
+
     settings%fsr_active = &
          var_list%get_lval (var_str ("?ps_fsr_active"))
     settings%isr_active = &
@@ -248,7 +248,7 @@ hadronization are switched on).
     write (u, "(3x,A,1x,L1)") &
          "muli_active                  = ", settings%muli_active
     write (u, "(3x,A,1x,L1)") &
-         "hadronization_active         = ", settings%hadronization_active    
+         "hadronization_active         = ", settings%hadronization_active
     write (u, "(1x,A)")  "General settings:"
     if (settings%isr_active .or. settings%fsr_active) then
        write (u, "(3x,A)") &
@@ -2007,7 +2007,6 @@ module shower_core
   use constants
   use format_utils, only: write_separator
   use numeric_utils
-  use system_defs, only: TAB
   use diagnostics
   use physics_defs
   use os_interface
@@ -4315,7 +4314,7 @@ proper flavor information, by the ISR shower.
     function integral_over_z_simple (prt, final) result (integral)
       type(parton_t), intent(inout) :: prt
       real(default), intent(in) :: final
-      real(default) :: integral
+      real(default), volatile :: integral
 
       real(default), parameter :: zstepfactor = one
       real(default), parameter :: zstepmin = 0.0001_default
@@ -4481,20 +4480,16 @@ proper flavor information, by the ISR shower.
     prt2%parent%c1 = prt2%c1
     prt2%parent%c2 = prt2%c2
 
-    do
-       call shower_get_first_ISR_scale_for_parton (shower, prt1%parent)
-       call shower_get_first_ISR_scale_for_parton (shower, prt2%parent)
+    call shower_get_first_ISR_scale_for_parton (shower, prt1%parent)
+    call shower_get_first_ISR_scale_for_parton (shower, prt2%parent)
 
-       !!! redistribute energy among first partons
-       prta => prt1%parent
-       prtb => prt2%parent
+    !!! redistribute energy among first partons
+    prta => prt1%parent
+    prtb => prt2%parent
 
-       E = energy (prt1%momentum + prt2%momentum)
-       prta%momentum%p(0) = (E**2 - prtb%t + prta%t) / (two * E)
-       prtb%momentum%p(0) = E - prta%momentum%p(0)
-
-       exit
-    end do
+    E = energy (prt1%momentum + prt2%momentum)
+    prta%momentum%p(0) = (E**2 - prtb%t + prta%t) / (two * E)
+    prtb%momentum%p(0) = E - prta%momentum%p(0)
 
     call prt1%parent%set_simulated ()
     call prt2%parent%set_simulated ()
@@ -4581,7 +4576,7 @@ proper flavor information, by the ISR shower.
   subroutine shower_simulate_children_ana (shower,prt)
     type(shower_t), intent(inout), target :: shower
     type(parton_t), intent(inout) :: prt
-    real(default), dimension(1:2) :: t, random, integral
+    real(default), dimension(1:2) :: random, integral
     integer, dimension(1:2) :: gtoqq
     integer :: daughter
     type(parton_t), pointer :: daughterprt
@@ -4646,9 +4641,6 @@ proper flavor information, by the ISR shower.
           shower%valid = .false.
           return
        end if
-
-       t(1) = prt%child1%t
-       t(2) = prt%child2%t
 
        !!! check if a branching in the range t(i) to t(i) - tstep(i) occurs
        if (.not. prt%child1%simulated) then
@@ -4796,7 +4788,8 @@ number and the integral.
     type(parton_t), pointer :: otherprt
 
     real(default) :: scale, scalestep
-    real(default) :: integral, random, factor
+    real(default), volatile :: integral
+    real(default) :: random, factor
     real(default) :: temprand1, temprand2
 
     otherprt => shower%find_recoiler (prt)
@@ -4837,7 +4830,7 @@ number and the integral.
          result (integral)
       type(parton_t), intent(inout) :: prt, otherprt
       real(default), intent(in) :: final
-      real(default) :: integral
+      real(default), volatile :: integral
       real(default) :: mbr, r
       real(default) :: zmin, zmax, z, zstep
       integer :: n_bin
@@ -5312,9 +5305,9 @@ branching, while FSR branchings are ignored.
     type(parton_t), target, intent(inout) :: prt
     type(parton_t), pointer :: otherprt => null()
     real(default) :: t, tstep
-    real(default) :: integral, random
+    real(default), volatile :: integral
+    real(default) :: random
     real(default) :: temprand1, temprand2
-    integer :: d_nf
     otherprt => shower%find_recoiler (prt)
     ! if (.not. otherprt%child1%belongstointeraction) then
     !    otherprt => otherprt%child1
@@ -5323,7 +5316,6 @@ branching, while FSR branchings are ignored.
     if (signal_is_pending ()) return
     t = max(prt%t, prt%child1%t)
     call shower%rng%generate (random)
-    d_nf = shower%settings%max_n_flavors
     ! compare Integral and log(random) instead of random and exp(-Integral)
     random = - twopi * log(random)
     integral = zero
@@ -5337,7 +5329,7 @@ branching, while FSR branchings are ignored.
     else
        prt%t = t + 0.5_default * tstep
        integral = integral + tstep * &
-            integral_over_z_isr (prt, otherprt,(random - integral) / tstep)
+            integral_over_z_isr (shower, prt, otherprt,(random - integral) / tstep)
        if (integral > random) then
           prt%t = t + 0.5_default * tstep
           prt%x = prt%child1%x / prt%z
@@ -5346,170 +5338,173 @@ branching, while FSR branchings are ignored.
           prt%t = t + tstep
        end if
     end if
-
-  contains
-
-    function integral_over_z_isr (prt, otherprt, final) result (integral)
-      type(parton_t), intent(inout) :: prt, otherprt
-      real(default), intent(in) :: final
-      real(default) integral
-      real(default) :: minz, maxz, z, shat,s
-      integer :: quark
-
-      !!! calculate shat -> s of parton-parton system
-      shat = (otherprt%momentum + prt%child1%momentum)**2
-      !!! calculate s -> s of hadron-hadron system
-      s = (otherprt%initial%momentum + prt%initial%momentum)**2
-      integral = zero
-      minz = prt%child1%x
-      maxz = maxzz (shat, s, shower%settings%isr_z_cutoff, shower%settings%isr_minenergy)
-
-      !!! for gluon
-      if (prt%child1%is_gluon ()) then
-         !!! 1: g->gg
-         prt%type = GLUON
-         prt%child2%type = GLUON
-           z = minz
-           prt%child2%t = abs(prt%t)
-           call integral_over_z_part_isr &
-                (prt, otherprt, shat, minz, maxz, integral, final)
-           if (integral > final) then
-              return
-           end if
-           !!! 2: q->gq
-           do quark = -d_nf, d_nf
-              if (quark == 0) cycle
-              prt%type = quark
-              prt%child2%type = quark
-              z = minz
-              prt%child2%t = abs(prt%t)
-              call integral_over_z_part_isr &
-                   (prt, otherprt, shat, minz, maxz, integral, final)
-              if (integral > final) then
-                 return
-              end if
-           end do
-        else if (prt%child1%is_quark ()) then
-           !!! 1: q->qg
-           prt%type = prt%child1%type
-           prt%child2%type = GLUON
-           z = minz
-           prt%child2%t = abs(prt%t)
-           call integral_over_z_part_isr &
-                (prt,otherprt, shat, minz, maxz, integral, final)
-           if (integral > final) then
-              return
-           end if
-           !!! 2: g->qqbar
-           prt%type = GLUON
-           prt%child2%type = -prt%child1%type
-           z = minz
-           prt%child2%t = abs(prt%t)
-           call integral_over_z_part_isr &
-                (prt,otherprt, shat, minz, maxz, integral, final)
-           if (integral > final) then
-              return
-           end if
-        end if
-      end function integral_over_z_isr
-
-      subroutine integral_over_z_part_isr &
-           (prt, otherprt, shat ,minz, maxz, retvalue, final)
-        type(parton_t), intent(inout) :: prt, otherprt
-        real(default), intent(in) :: shat, minz, maxz, final
-        real(default), intent(inout) :: retvalue
-        real(default) :: z, zstep
-        real(default) :: r1,r3,s1,s3
-        real(default) :: pdf_divisor
-        real(default) :: temprand
-        real(default), parameter :: zstepfactor = 0.1_default
-        real(default), parameter :: zstepmin = 0.0001_default
-        call msg_debug2 (D_SHOWER, "integral_over_z_part_isr")
-        if (signal_is_pending ()) return
-        pdf_divisor = shower%get_pdf &
-             (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
-        z = minz
-        s1 = shat + abs(otherprt%t) + abs(prt%child1%t)
-        r1 = sqrt (s1**2 - four * abs(otherprt%t * prt%child1%t))
-        ZLOOP: do
-           if (signal_is_pending ()) return
-           if (z >= maxz) then
-              exit
-           end if
-           call shower%rng%generate (temprand)
-           if (prt%child1%is_gluon ()) then
-              if (prt%is_gluon ()) then
-                 !!! g-> gg -> divergencies at z->0 and z->1
-                 zstep = max(zstepmin, temprand * zstepfactor * z * (one - z))
-              else
-                 !!! q-> gq -> divergencies at z->0
-                 zstep = max(zstepmin, temprand * zstepfactor * (one - z))
-              end if
-           else
-              if (prt%is_gluon ()) then
-                 !!! g-> qqbar -> no divergencies
-                 zstep = max(zstepmin, temprand * zstepfactor)
-              else
-                 !!! q-> qg -> divergencies at z->1
-                 zstep = max(zstepmin, temprand * zstepfactor * (one - z))
-              end if
-           end if
-           zstep = min(zstep, maxz - z)
-           prt%z = z + 0.5_default * zstep
-           s3 = shat / prt%z + abs(otherprt%t) + abs(prt%t)
-           r3 = sqrt (s3**2 - four * abs(otherprt%t * prt%t))
-           !!! TODO: WHY is this if needed?
-           if (abs(otherprt%t) > eps0) then
-              prt%child2%t = min ((s1 * s3 - r1 * r3) / &
-                   (two * abs(otherprt%t)) - abs(prt%child1%t) - &
-                   abs(prt%t), abs(prt%child1%t))
-           else
-              prt%child2%t = abs(prt%child1%t)
-           end if
-           do
-              prt%child2%momentum%p(0) = sqrt (abs(prt%child2%t))
-              if (shower%settings%isr_only_onshell_emitted_partons) then
-                 prt%child2%t = prt%child2%mass_squared ()
-              else
-                 call prt%child2%next_t_ana (shower%rng)
-              end if
-              !!! take limits by recoiler into account
-              prt%momentum%p(0) = (shat / prt%z + &
-                   abs(otherprt%t) - abs(prt%child1%t) - &
-                   prt%child2%t) / (two * sqrt(shat))
-              prt%child2%momentum%p(0) = &
-                   prt%momentum%p(0) - prt%child1%momentum%p(0)
-              !!! check if E and t of prt%child2 are consistent
-              if (prt%child2%momentum%p(0)**2 < prt%child2%t &
-                   .and. prt%child2%t > prt%child2%mass_squared ()) then
-                 !!! E is too small to have p_T^2 = E^2 - t > 0
-                 !!!      -> cycle to find another solution
-                 cycle
-              else
-                 !!! E is big enough -> exit
-                 exit
-              end if
-           end do
-           if (thetabar (prt, otherprt, shower%settings%isr_angular_ordered) &
-                .and. pdf_divisor > zero &
-                .and. prt%child2%momentum%p(0) > zero) then
-              retvalue = retvalue + (zstep / prt%z) * &
-                   (D_alpha_s_isr ((one - prt%z) * prt%t, &
-                   shower%settings) * &
-                   P_prt_to_child1 (prt) * &
-                   shower%get_pdf (prt%initial%type, prt%child1%x / prt%z, &
-                   prt%t, prt%type)) / (abs(prt%t) * pdf_divisor)
-           end if
-           if (retvalue > final) then
-              exit
-           else
-              z = z + zstep
-           end if
-        end do ZLOOP
-      end subroutine integral_over_z_part_isr
-    end subroutine shower_isr_step
+  end subroutine shower_isr_step
 
 @ %def shower_isr_step
+
+<<Shower core: procedures>>=
+  function integral_over_z_isr (shower, prt, otherprt, final) result (integral)
+    type(shower_t), intent(inout) :: shower
+    type(parton_t), intent(inout) :: prt, otherprt
+    real(default), intent(in) :: final
+    !!! !!! !!! volatile argument: gfortran 7 aggressive optimization (#809)
+    real(default), volatile :: integral
+    real(default) :: minz, maxz, shat,s
+    integer :: quark
+
+    !!! calculate shat -> s of parton-parton system
+    shat = (otherprt%momentum + prt%child1%momentum)**2
+    !!! calculate s -> s of hadron-hadron system
+    s = (otherprt%initial%momentum + prt%initial%momentum)**2
+    integral = zero
+    minz = prt%child1%x
+    maxz = maxzz (shat, s, shower%settings%isr_z_cutoff, &
+         shower%settings%isr_minenergy)
+
+    !!! for gluon
+    if (prt%child1%is_gluon ()) then
+       !!! 1: g->gg
+       prt%type = GLUON
+       prt%child2%type = GLUON
+         prt%child2%t = abs(prt%t)
+         call integral_over_z_part_isr &
+              (shower, prt, otherprt, shat, minz, maxz, integral, final)
+         if (integral > final) then
+            return
+         else
+            !!! 2: q->gq
+            do quark = - shower%settings%max_n_flavors, &
+                    shower%settings%max_n_flavors
+               if (quark == 0) cycle
+               prt%type = quark
+               prt%child2%type = quark
+               prt%child2%t = abs(prt%t)
+               call integral_over_z_part_isr &
+                    (shower, prt, otherprt, shat, minz, maxz, integral, final)
+               if (integral > final) then
+                  return
+               end if
+            end do
+         end if
+      else if (prt%child1%is_quark ()) then
+         !!! 1: q->qg
+         prt%type = prt%child1%type
+         prt%child2%type = GLUON
+         prt%child2%t = abs(prt%t)
+         call integral_over_z_part_isr &
+              (shower, prt,otherprt, shat, minz, maxz, integral, final)
+         if (integral > final) then
+            return
+         else
+            !!! 2: g->qqbar
+            prt%type = GLUON
+            prt%child2%type = -prt%child1%type
+            prt%child2%t = abs(prt%t)
+            call integral_over_z_part_isr &
+                 (shower, prt,otherprt, shat, minz, maxz, integral, final)
+         end if
+      end if
+    end function integral_over_z_isr
+
+@ % integral_over_z_isr
+<<Shower core: procedures>>=
+  subroutine integral_over_z_part_isr &
+       (shower, prt, otherprt, shat ,minz, maxz, retvalue, final)
+    type(shower_t), intent(inout) :: shower
+    type(parton_t), intent(inout) :: prt, otherprt
+    real(default), intent(in) :: shat, minz, maxz, final
+    real(default), intent(inout) :: retvalue
+    real(default) :: z, zstep
+    real(default) :: r1,r3,s1,s3
+    real(default) :: pdf_divisor
+    real(default) :: temprand
+    real(default), parameter :: zstepfactor = 0.1_default
+    real(default), parameter :: zstepmin = 0.0001_default
+    call msg_debug2 (D_SHOWER, "integral_over_z_part_isr")
+    if (signal_is_pending ()) return
+    pdf_divisor = shower%get_pdf &
+         (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+    z = minz
+    s1 = shat + abs(otherprt%t) + abs(prt%child1%t)
+    r1 = sqrt (s1**2 - four * abs(otherprt%t * prt%child1%t))
+    ZLOOP: do
+       if (signal_is_pending ()) return
+       if (z >= maxz) then
+          exit
+       end if
+       call shower%rng%generate (temprand)
+       if (prt%child1%is_gluon ()) then
+          if (prt%is_gluon ()) then
+             !!! g-> gg -> divergencies at z->0 and z->1
+             zstep = max(zstepmin, temprand * zstepfactor * z * (one - z))
+          else
+             !!! q-> gq -> divergencies at z->0
+             zstep = max(zstepmin, temprand * zstepfactor * (one - z))
+          end if
+       else
+          if (prt%is_gluon ()) then
+             !!! g-> qqbar -> no divergencies
+             zstep = max(zstepmin, temprand * zstepfactor)
+          else
+             !!! q-> qg -> divergencies at z->1
+             zstep = max(zstepmin, temprand * zstepfactor * (one - z))
+          end if
+       end if
+       zstep = min(zstep, maxz - z)
+       prt%z = z + 0.5_default * zstep
+       s3 = shat / prt%z + abs(otherprt%t) + abs(prt%t)
+       r3 = sqrt (s3**2 - four * abs(otherprt%t * prt%t))
+       !!! TODO: WHY is this if needed?
+       if (abs(otherprt%t) > eps0) then
+          prt%child2%t = min ((s1 * s3 - r1 * r3) / &
+               (two * abs(otherprt%t)) - abs(prt%child1%t) - &
+               abs(prt%t), abs(prt%child1%t))
+       else
+          prt%child2%t = abs(prt%child1%t)
+       end if
+       do
+          prt%child2%momentum%p(0) = sqrt (abs(prt%child2%t))
+          if (shower%settings%isr_only_onshell_emitted_partons) then
+             prt%child2%t = prt%child2%mass_squared ()
+          else
+             call prt%child2%next_t_ana (shower%rng)
+          end if
+          !!! take limits by recoiler into account
+          prt%momentum%p(0) = (shat / prt%z + &
+               abs(otherprt%t) - abs(prt%child1%t) - &
+               prt%child2%t) / (two * sqrt(shat))
+          prt%child2%momentum%p(0) = &
+               prt%momentum%p(0) - prt%child1%momentum%p(0)
+          !!! check if E and t of prt%child2 are consistent
+          if (prt%child2%momentum%p(0)**2 < prt%child2%t &
+               .and. prt%child2%t > prt%child2%mass_squared ()) then
+             !!! E is too small to have p_T^2 = E^2 - t > 0
+             !!!      -> cycle to find another solution
+             cycle
+          else
+             !!! E is big enough -> exit
+             exit
+          end if
+       end do
+       if (thetabar (prt, otherprt, shower%settings%isr_angular_ordered) &
+            .and. pdf_divisor > zero &
+            .and. prt%child2%momentum%p(0) > zero) then
+          retvalue = retvalue + (zstep / prt%z) * &
+               (D_alpha_s_isr ((one - prt%z) * prt%t, &
+               shower%settings) * &
+               P_prt_to_child1 (prt) * &
+               shower%get_pdf (prt%initial%type, prt%child1%x / prt%z, &
+               prt%t, prt%type)) / (abs(prt%t) * pdf_divisor)
+       end if
+       if (retvalue > final) then
+          exit
+       else
+          z = z + zstep
+       end if
+    end do ZLOOP
+  end subroutine integral_over_z_part_isr
+
+@ % integral_over_z_part_isr
 @ This returns a pointer to the parton with the next ISR branching, again
 FSR branchings are ignored.
 <<Shower core: shower: TBP>>=
@@ -5522,14 +5517,12 @@ FSR branchings are ignored.
     type(parton_pointer_t) :: next_brancher
     integer i, index
     type(parton_t),  pointer :: prt
-    real(default) :: maxscale
     next_brancher%p => null()
     do
        if (signal_is_pending ()) return
        if (shower_isr_is_finished (shower)) exit
        !!! find mother with highest |t| or pt to be simulated
        index = 0
-       maxscale = zero
        call shower%sort_partons ()
        do i = 1,size (shower%partons)
           prt => shower%partons(i)%p
@@ -5577,7 +5570,7 @@ FSR branchings are ignored.
     call shower%sort_partons ()
     call shower%boost_to_CMframe ()        !!! really necessary?
     call shower%rotate_to_z ()             !!! really necessary?
-    end function shower_generate_next_isr_branching
+  end function shower_generate_next_isr_branching
 
 @ %def shower_generate_next_isr_branching
 @ This is a loop which searches for all emitted and branched partons.
@@ -5629,7 +5622,7 @@ flavors, momenta, etc.
     type(parton_pointer_t), intent(inout) :: prtp
     type(parton_t), pointer :: prt, otherprt
     type(parton_t), pointer :: prta, prtb, prtc, prtr
-    real(default) :: mar, mbr
+    real(default) :: mbr
     real(default) :: phirand
     call msg_debug (D_SHOWER, "shower_execute_next_isr_branching")
     if (.not. associated (prtp%p)) then
@@ -5667,7 +5660,6 @@ flavors, momenta, etc.
        prtr => otherprt            !!! recoiler
 
        mbr = (prtb%momentum + prtr%momentum)**1
-       mar = mbr / sqrt(prt%z)
 
        !!! 1. assume you are in the restframe
        !!! 2. rotate by random phi
@@ -6398,6 +6390,7 @@ module shower_pythia6
 <<Use kinds with double>>
 <<Use strings>>
   use constants
+  use numeric_utils, only: vanishes
   use io_units
   use physics_defs
   use diagnostics
@@ -6888,9 +6881,9 @@ added back in by Pythia.
                     real (V(i_py,1), kind=default), &
                     real (V(i_py,2), kind=default), &
                     real (V(i_py,3), kind=default)]
-          if (lifetime /= 0) &
+          if (.not. vanishes(lifetime)) &
                call particles(n_tot_old+i_whz)%set_lifetime (lifetime)
-          if (any (V(i_py,1:4) /= 0)) &
+          if (any (.not. vanishes(real(V(i_py,1:4), kind = default)))) &
                call particles(n_tot_old+i_whz)%set_vertex (vertex)
           !!! Set tau helicity set by TAUOLA
           if (abs (pdg) == 15) then

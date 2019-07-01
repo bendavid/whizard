@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -56,9 +56,9 @@ module evaluators_uti
 
 contains
 
-  subroutine evaluator_1 (u) 
+  subroutine evaluator_1 (u)
     integer, intent(in) :: u
-    type(model_data_t), target :: model       
+    type(model_data_t), target :: model
     type(interaction_t), target :: int_qqtt, int_tbw, int1, int2
     type(flavor_t), dimension(:), allocatable :: flv
     type(color_t), dimension(:), allocatable :: col
@@ -72,7 +72,7 @@ contains
     type(evaluator_t), target :: eval, eval2, eval3
 
     call model%init_sm_test ()
-    
+
     write (u, "(A)")   "*** Evaluator for matrix product"
     write (u, "(A)")   "***   Construct interaction for qq -> tt"
     write (u, "(A)")
@@ -203,13 +203,13 @@ contains
      call eval%final ()
      call eval2%final ()
      call eval3%final ()
-     
+
      call model%final ()
   end subroutine evaluator_1
 
   subroutine evaluator_2 (u)
     integer, intent(in) :: u
-    type(model_data_t), target :: model       
+    type(model_data_t), target :: model
     type(interaction_t), target :: int
     integer :: h1, h2, h3, h4
     type(helicity_t), dimension(4) :: hel
@@ -219,12 +219,12 @@ contains
     type(vector4_t), dimension(4) :: p
     type(evaluator_t) :: eval
     integer :: i
-    
+
     call model%init_sm_test ()
-        
+
     write (u, "(A)") "*** Creating interaction for e+ e- -> W+ W-"
-    write (u, "(A)") 
-    
+    write (u, "(A)")
+
     call flv%init ([11, -11, 24, -24], model)
     do i = 1, 4
        call col(i)%init ()
@@ -247,7 +247,7 @@ contains
     call int%freeze ()
     call int%set_matrix_element &
        ([(cmplx (i, kind=default), i = 1, 36)])
-    p(1) = vector4_moving (1000._default, 1000._default, 3)    
+    p(1) = vector4_moving (1000._default, 1000._default, 3)
     p(2) = vector4_moving (1000._default, -1000._default, 3)
     p(3) = vector4_moving (1000._default, &
        sqrt (1E6_default - 80._default**2), 3)
@@ -255,31 +255,31 @@ contains
     call int%set_momenta (p)
     write (u, "(A)") "*** Setting up evaluator"
     write (u, "(A)")
-    
+
     call eval%init_identity (int)
     write (u, "(A)") "*** Transferring momenta and evaluating"
     write (u, "(A)")
-    
+
     call eval%receive_momenta ()
     call eval%evaluate ()
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Interaction dump"
     write (u, "(A)")  "*******************************************************"
     call int%basic_write (unit = u)
-    write (u, "(A)")  
+    write (u, "(A)")
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Evaluator dump"
     write (u, "(A)")  "*******************************************************"
     call eval%write (unit = u)
-    write (u, "(A)")  
+    write (u, "(A)")
     write (u, "(A)")   "*** cleaning up"
     call int%final ()
     call eval%final ()
-    
+
     call model%final ()
   end subroutine evaluator_2
 
-  subroutine evaluator_3 (u)   
+  subroutine evaluator_3 (u)
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(interaction_t), target :: int
@@ -292,9 +292,9 @@ contains
     type(evaluator_t) :: eval1, eval2, eval3
     type(quantum_numbers_mask_t), dimension(4) :: qn_mask
     integer :: i
-    
+
     call model%init_sm_test ()
-            
+
     write (u, "(A)")  "*** Creating interaction for e+/mu+ e-/mu- -> W+ W-"
     call flv1%init ([11, -11, 24, -24], model)
     call flv2%init ([13, -13, 24, -24], model)
@@ -321,7 +321,7 @@ contains
     call int%freeze ()
     call int%set_matrix_element &
        ([(cmplx (1, kind=default), i = 1, 72)])
-    p(1) = vector4_moving (1000._default, 1000._default, 3)    
+    p(1) = vector4_moving (1000._default, 1000._default, 3)
     p(2) = vector4_moving (1000._default, -1000._default, 3)
     p(3) = vector4_moving (1000._default, &
        sqrt (1E6_default - 80._default**2), 3)
@@ -346,7 +346,7 @@ contains
     write (u, "(A)")  "   Interaction dump"
     write (u, "(A)")  "*******************************************************"
     call int%basic_write (unit = u)
-    write (u, "(A)")  
+    write (u, "(A)")
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Evaluator dump --- spin sum"
     write (u, "(A)")  "*******************************************************"
@@ -362,17 +362,17 @@ contains
     write (u, "(A)")  "*******************************************************"
     call eval3%write (unit = u)
     call eval3%basic_write (unit = u)
-    write (u, "(A)")  
+    write (u, "(A)")
     write (u, "(A)")  "*** cleaning up"
     call int%final ()
     call eval1%final ()
     call eval2%final ()
     call eval3%final ()
-    
+
     call model%final ()
   end subroutine evaluator_3
 
-  subroutine evaluator_4 (u)   
+  subroutine evaluator_4 (u)
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(interaction_t), target :: int1, int2
@@ -389,17 +389,17 @@ contains
     type(color_t) :: col_filter
     type(quantum_numbers_t) :: qn_filter
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: evaluator_4"
     write (u, "(A)")  "*   Purpose: test evaluator products &
          &with mask and filter"
     write (u, "(A)")
 
     call model%init_sm_test ()
-            
+
     write (u, "(A)")  "* Creating interaction for e- -> W+/Z"
     write (u, "(A)")
-    
+
     call flv1%init ([11, 24], model)
     call flv2%init ([11, 23], model)
     do i = 1, 3
@@ -489,15 +489,15 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call eval1%final ()
     call eval2%final ()
     call eval3%final ()
     call eval4%final ()
-    
+
     call int1%final ()
     call int2%final ()
-    
+
     call model%final ()
 
     write (u, "(A)")

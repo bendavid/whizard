@@ -28,4 +28,6 @@ seed = 2222
 
 sqrts = 500 GeV
 
+!!! This many iterations are necessary to get the same error
+!!! for all compilers.
 integrate (nlo_2_p1) { iterations = 1:30000:"gw" }

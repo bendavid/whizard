@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -53,7 +53,7 @@ module hadrons
   use shower_base
   use shower_pythia6
   use process
-  
+
   implicit none
   private
 
@@ -68,7 +68,7 @@ module hadrons
   public :: hadrons_pythia8_t
   public :: evt_hadrons_t
 
-  integer, parameter :: HADRONS_UNDEFINED = 0  
+  integer, parameter :: HADRONS_UNDEFINED = 0
   integer, parameter :: HADRONS_WHIZARD = 1
   integer, parameter :: HADRONS_PYTHIA6 = 2
   integer, parameter :: HADRONS_PYTHIA8 = 3
@@ -103,7 +103,7 @@ module hadrons
     end type hadrons_hadrons_t
 
   type had_flav_t
-  end type had_flav_t  
+  end type had_flav_t
 
   type lund_end
      logical :: from_pos
@@ -130,7 +130,7 @@ module hadrons
      real(default) :: x_pos_had
      real(default) :: x_neg_old
      real(default) :: x_neg_new
-     real(default) :: x_neg_had     
+     real(default) :: x_neg_had
      type(had_flav_t) :: old_flav
      type(had_flav_t) :: new_flav
      type(vector4_t) :: p_had
@@ -145,7 +145,7 @@ module hadrons
      real(default) :: sigma_to_had
      class(rng_t), allocatable :: rng
    contains
-     procedure :: init => lund_pt_init  
+     procedure :: init => lund_pt_init
   end type lund_pt_t
 
   type, extends (hadrons_t) :: hadrons_pythia6_t
@@ -281,7 +281,7 @@ contains
     write (u, "(3x,A,1x,ES19.12)") &
          "enhanced_fraction     = ", settings%enhanced_fraction
     write (u, "(3x,A,1x,ES19.12)") &
-         "enhanced_width        = ", settings%enhanced_width    
+         "enhanced_width        = ", settings%enhanced_width
   end subroutine hadron_settings_write
 
   pure subroutine hadrons_import_rng (hadrons, rng)
@@ -319,11 +319,11 @@ contains
     if (size(cols) > 0) then
        print *, "cols  = ", cols
     end if
-    print *, "size(acols) = ", size(acols)    
+    print *, "size(acols) = ", size(acols)
     if (size(acols) > 0) then
        print *, "acols = ", acols
     end if
-    print *, "size(octs)  = ", size(octs)    
+    print *, "size(octs)  = ", size(octs)
     if (size (octs) > 0) then
        print *, "octs  = ", octs
     end if
@@ -370,7 +370,7 @@ contains
             p_set%prt(i)%get_status () == PRT_OUTGOING
     end do
     n_acols = count (mask)
-    allocate (acols (n_acols))    
+    allocate (acols (n_acols))
     acols = p_set%get_indices (mask)
     do i = 1, n
        mask(i) = p_set%prt(i)%col%get_col () /= 0 .and. &
@@ -511,7 +511,7 @@ contains
     call write_separator (u)
     call evt%hadrons%shower_settings%write (u)
     call write_separator (u)
-    call evt%hadrons%hadron_settings%write (u)    
+    call evt%hadrons%hadron_settings%write (u)
   end subroutine evt_hadrons_write
 
   subroutine evt_hadrons_first_event (evt)

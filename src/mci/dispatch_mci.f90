@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -42,6 +42,7 @@ module dispatch_mci
   use mci_base
   use mci_midpoint
   use mci_vamp
+  use mci_vamp2
 
   implicit none
   private
@@ -59,8 +60,10 @@ contains
     type(string_t) :: integration_method
     type(grid_parameters_t) :: grid_par
     type(history_parameters_t) :: history_par
+    type(mci_vamp2_config_t) :: mci_vamp2_config
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
     logical :: dispatch_nlo = .false.
+    type(string_t) :: grid_path
     if (present (is_nlo)) dispatch_nlo = is_nlo
     integration_method = &
          var_list%get_sval (var_str ("$integration_method"))
@@ -68,7 +71,7 @@ contains
     case ("midpoint")
        allocate (mci_midpoint_t :: mci)
     case ("vamp", "default")
-       call unpack_options ()
+       call unpack_options_vamp ()
        allocate (mci_vamp_t :: mci)
        select type (mci)
        type is (mci_vamp_t)
@@ -78,9 +81,27 @@ contains
           else
              call mci%set_grid_filename (process_id)
           end if
+          grid_path = var_list%get_sval (var_str ("$grid_path"))
+          if (grid_path /= "") call mci%prepend_grid_path (grid_path)
           call mci%set_history_parameters (history_par)
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
+          mci%verbose = verbose
+       end select
+    case ("vamp2")
+       call unpack_options_vamp2 ()
+       allocate (mci_vamp2_t :: mci)
+       select type (mci)
+       type is (mci_vamp2_t)
+          call mci%set_config (mci_vamp2_config)
+          if (run_id /= "") then
+             call mci%set_integrator_filename (process_id, run_id)
+          else
+             call mci%set_integrator_filename (process_id)
+          end if
+          grid_path = var_list%get_sval (var_str ("$grid_path"))
+          if (grid_path /= "") call mci%prepend_integrator_path (grid_path)
+          call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%verbose = verbose
        end select
     case default
@@ -88,7 +109,7 @@ contains
             // char (integration_method) // "' not implemented")
     end select
   contains
-      subroutine unpack_options()
+      subroutine unpack_options_vamp ()
         grid_par%threshold_calls = &
              var_list%get_ival (var_str ("threshold_calls"))
         grid_par%min_calls_per_channel = &
@@ -133,9 +154,36 @@ contains
              var_list%get_lval (var_str ("?rebuild_grids"))
         negative_weights = &
              var_list%get_lval (var_str ("?negative_weights")) .or. dispatch_nlo
-      end subroutine unpack_options
+      end subroutine unpack_options_vamp
+
+      subroutine unpack_options_vamp2 ()
+        mci_vamp2_config%n_bins_max = &
+             var_list%get_ival (var_str ("max_bins"))
+        mci_vamp2_config%n_calls_min_per_channel = &
+             var_list%get_ival (var_str ("min_calls_per_channel"))
+        mci_vamp2_config%n_calls_threshold = &
+             var_list%get_ival (var_str ("threshold_calls"))
+        mci_vamp2_config%beta = &
+             var_list%get_rval (var_str ("channel_weights_power"))
+        mci_vamp2_config%stratified = &
+             var_list%get_lval (var_str ("?stratified"))
+        mci_vamp2_config%accuracy_goal = &
+             var_list%get_rval (var_str ("accuracy_goal"))
+        mci_vamp2_config%error_goal = &
+             var_list%get_rval (var_str ("error_goal"))
+        mci_vamp2_config%rel_error_goal = &
+             var_list%get_rval (var_str ("relative_error_goal"))
+        verbose = &
+             var_list%get_lval (var_str ("?vamp_verbose"))
+        check_grid_file = &
+             var_list%get_lval (var_str ("?check_grid_file"))
+        run_id = &
+             var_list%get_sval (var_str ("$run_id"))
+        rebuild_grids = &
+             var_list%get_lval (var_str ("?rebuild_grids"))
+      end subroutine unpack_options_vamp2
 
   end subroutine dispatch_mci_s
-  
+
 
 end module dispatch_mci

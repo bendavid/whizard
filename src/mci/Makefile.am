@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by
+# Copyright (C) 1999-2017 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,6 +38,7 @@ libmci_la_SOURCES = \
   integration_results.f90 \
   mci_midpoint.f90 \
   mci_vamp.f90 \
+  mci_vamp2.f90 \
   dispatch_mci.f90
 
 libmci_ut_la_SOURCES = \
@@ -45,6 +46,7 @@ libmci_ut_la_SOURCES = \
   iterations_uti.f90 iterations_ut.f90 \
   mci_midpoint_uti.f90 mci_midpoint_ut.f90 \
   mci_vamp_uti.f90 mci_vamp_ut.f90 \
+  mci_vamp2_uti.f90 mci_vamp2_ut.f90 \
   dispatch_mci_uti.f90 dispatch_mci_ut.f90
 
 ## Omitting this would exclude it from the distribution
@@ -73,8 +75,8 @@ module_lists = \
   ../combinatorics/Modules \
   ../rng/Modules \
   ../phase_space/Modules \
-  ../variables/Modules
-
+  ../variables/Modules \
+  ../vegas/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -121,7 +123,7 @@ mci_vamp.lo: ../../vamp/src/vamp.$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../phase_space -I../expr_base -I../variables -I../../vamp/src
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../phase_space -I../expr_base -I../variables -I../../vamp/src -I../vegas
 
 
 ########################################################################

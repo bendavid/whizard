@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module muli_aq
-  
+
   use kinds, only: default
   use constants
   use diagnostics
@@ -44,7 +44,7 @@ module muli_aq
   use muli_fibonacci_tree
 
   implicit none
-  private  
+  private
 
   public :: aq_class
 
@@ -81,28 +81,28 @@ module muli_aq
      procedure :: basic_read_from_marker => aq_read_from_marker
      procedure :: read_from_marker => aq_read_from_marker
      procedure :: basic_print_to_unit => aq_print_to_unit
-     procedure :: print_to_unit => aq_print_to_unit  
-     procedure, nopass :: get_type => aq_get_type  
+     procedure :: print_to_unit => aq_print_to_unit
+     procedure, nopass :: get_type => aq_get_type
      procedure :: deserialize_from_marker => aq_deserialize_from_marker
      generic :: initialize => aq_initialize
      procedure :: aq_initialize
      procedure :: print_times => aq_print_times
-     procedure :: write_convergence => aq_write_convergence   
+     procedure :: write_convergence => aq_write_convergence
      procedure :: reset => aq_reset
      procedure :: dealloc_trees => aq_dealloc_trees
-     procedure :: finalize => aq_dealloc_trees  
+     procedure :: finalize => aq_dealloc_trees
      procedure :: init_error_tree => aq_init_error_tree
      procedure :: set_rel_goal => aq_set_rel_goal
      procedure :: set_abs_goal => aq_set_abs_goal
      procedure :: set_goal => aq_set_goal
-     procedure :: check_init => aq_check_init  
+     procedure :: check_init => aq_check_init
      procedure :: main_loop => aq_main_loop
      procedure :: run => aq_run
-     procedure :: integrate => aq_integrate  
+     procedure :: integrate => aq_integrate
      procedure(evaluate_if), deferred :: evaluate
-     ! procedure(evaluate_ratios_if), deferred :: evaluate_ratios    
+     ! procedure(evaluate_ratios_if), deferred :: evaluate_ratios
   end type aq_class
-  
+
 
   interface
      subroutine evaluate_if (this, x, y)
@@ -121,14 +121,14 @@ module muli_aq
      !   class(muli_trapezium_t), intent(inout), pointer :: cont
      ! end subroutine evaluate_ratios_if
   end interface
-  
+
 
 contains
 
   subroutine aq_write_to_marker (this, marker, status)
     class(aq_class), intent(in) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status  
+    integer(dik), intent(out) :: status
     class(ser_class_t), pointer :: ser
     call marker%mark_begin ("aq_class")
     call this%base_write_to_marker (marker, status)
@@ -143,7 +143,7 @@ contains
     call marker%mark ("is_integrated", this%is_integrated)
     call marker%mark ("n_nodes", this%n_nodes)
     call marker%mark ("max_nodes", this%max_nodes)
-    call marker%mark ("dim_integral", this%dim_integral)    
+    call marker%mark ("dim_integral", this%dim_integral)
     call marker%mark ("abs_error_goal", this%abs_error_goal)
     call marker%mark ("rel_error_goal", this%rel_error_goal)
     call marker%mark ("scaled_error_goal", this%scaled_error_goal)
@@ -157,11 +157,11 @@ contains
     call marker%mark_pointer ("int_list", ser)
     call marker%mark_end ("aq_class")
   end subroutine aq_write_to_marker
-  
+
   subroutine aq_read_from_marker (this, marker, status)
     class(aq_class), intent(out) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status  
+    integer(dik), intent(out) :: status
     class(ser_class_t), pointer :: ser
     call marker%pick_begin ("aq_class", status=status)
     call this%base_read_from_marker (marker, status)
@@ -176,7 +176,7 @@ contains
     call marker%pick ("is_integrated", this%is_integrated, status)
     call marker%pick ("n_nodes", this%n_nodes, status)
     call marker%pick ("max_nodes", this%max_nodes, status)
-    call marker%pick ("dim_integral", this%dim_integral, status)    
+    call marker%pick ("dim_integral", this%dim_integral, status)
     call marker%pick ("abs_error_goal", this%abs_error_goal, status)
     call marker%pick ("rel_error_goal", this%rel_error_goal, status)
     call marker%pick ("scaled_error_goal", this%scaled_error_goal, status)
@@ -204,7 +204,7 @@ contains
     end if
     call marker%pick_end ("aq_class", status)
   end subroutine aq_read_from_marker
-  
+
   subroutine aq_print_to_unit (this, unit, parents, components, peers)
     class(aq_class), intent(in) :: this
     integer, intent(in) :: unit
@@ -247,12 +247,12 @@ contains
     call serialize_print_comp_pointer &
          (ser, unit, parents, components, peers, "integral list")
   end subroutine aq_print_to_unit
-  
+
   pure subroutine aq_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="aq_type")
   end subroutine aq_get_type
-    
+
   subroutine aq_deserialize_from_marker (this, name, marker)
     class(aq_class), intent(out) :: this
     character(*), intent(in) :: name
@@ -276,7 +276,7 @@ contains
     call marker%pop_reference (ser)
     deallocate (ser)
   end subroutine aq_deserialize_from_marker
-  
+
   subroutine aq_initialize (this, id, name, goal, max_nodes, dim, init)
     class(aq_class), intent(out) :: this
     integer(dik), intent(in) :: id, max_nodes
@@ -289,7 +289,7 @@ contains
     this%max_nodes = max_nodes
     call this%init_error_tree (dim, init)
   end subroutine aq_initialize
-  
+
   subroutine aq_print_times (this)
     class(aq_class), intent(in) :: this
     write (*, "(A,E20.10)") "Initialization time:  ", this%init_time
@@ -298,7 +298,7 @@ contains
     write (*, "(A,E20.10)") "Overall run time:     ", this%total_time
     write (*, "(A,E20.10)") "Cuba integration time:", this%cuba_time
   end subroutine aq_print_times
-  
+
   subroutine aq_write_convergence (this, unit)
     class(aq_class), intent(in) :: this
     integer, intent(in) :: unit
@@ -311,7 +311,7 @@ contains
        end do
     end if
   end subroutine aq_write_convergence
-  
+
   subroutine aq_reset (this)
     class(aq_class) :: this
     this%is_deferred_initialised = .false.
@@ -337,7 +337,7 @@ contains
     this%init_time = 0
     call this%dealloc_trees ()
   end subroutine aq_reset
-  
+
   subroutine aq_dealloc_trees (this)
     class(aq_class) :: this
     if (associated (this%err_tree)) then
@@ -349,7 +349,7 @@ contains
        deallocate (this%int_list)
     end if
   end subroutine aq_dealloc_trees
-  
+
   subroutine aq_init_error_tree (this, dim_integral, x_array)
     class(aq_class) :: this
     integer, intent(in) :: dim_integral
@@ -441,7 +441,7 @@ contains
     this%cuba_time = this%init_time
     allocate (this%convergence (2, this%n_nodes:this%max_nodes))
   end subroutine aq_init_error_tree
-  
+
   subroutine aq_set_rel_goal (this, goal)
     class(aq_class) :: this
     real(default) :: goal
@@ -455,7 +455,7 @@ contains
     this%abs_error_goal = goal
     call this%set_goal
   end subroutine aq_set_abs_goal
-  
+
   subroutine aq_set_goal (this)
     class(aq_class) :: this
     this%scaled_error_goal = this%rel_error_goal * abs(this%integral)
@@ -481,13 +481,13 @@ contains
        end if
     end if
   end subroutine aq_set_goal
-  
+
   subroutine aq_check_init (this)
     class(aq_class) :: this
     this%is_initialised = this%is_error_tree_initialised .and. &
          this%is_deferred_initialised
   end subroutine aq_check_init
-  
+
   subroutine aq_main_loop (this)
     class(aq_class) :: this
     class(fibonacci_leave_t), pointer :: rightmost
@@ -526,14 +526,14 @@ contains
           end select
           this%n_nodes = this%n_nodes + 1
           if (this%n_nodes > this%max_nodes) then
-             limit = .true.             
+             limit = .true.
              exit LOOP
           end if
        end if
     end do LOOP
     call this%err_tree%push_by_leave (rightmost)
   end subroutine aq_main_loop
-  
+
   subroutine aq_run (this)
     class(aq_class) :: this
     call cpu_time (this%total_time)
@@ -547,7 +547,7 @@ contains
     call cpu_time (this%cpu_time)
     this%total_time = this%cpu_time - this%total_time
   end subroutine aq_run
-  
+
   subroutine aq_integrate (this, int_tree)
     class(aq_class) :: this
     class(muli_trapezium_node_class_t), pointer :: node
@@ -567,7 +567,7 @@ contains
        this%int_time = this%cpu_time - this%int_time
     end if
   end subroutine aq_integrate
-  
+
   recursive subroutine fibonacci_tree_resort_and_convert_to_trapezium_list &
        (fib_tree, lin_list)
     class(fibonacci_node_t), intent(in) :: fib_tree
@@ -593,7 +593,7 @@ contains
           call right_list%get_right (right_node)
        end if
        last_node => lin_list
-       do while (associated (left_node) .and. associated (right_node))          
+       do while (associated (left_node) .and. associated (right_node))
           if (left_node%is_left_of (right_node)) then
              call last_node%append (left_node)
              call last_node%get_right (last_node)
@@ -671,7 +671,7 @@ contains
     ! call lin_list%print_all ()
     ! call lin_list%check ()
   end subroutine fibonacci_tree_resort_and_convert_to_trapezium_list
-    
+
 
 end module muli_aq
 

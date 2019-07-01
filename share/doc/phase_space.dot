@@ -11,7 +11,7 @@ phs_wood -> cascades
 phs_forests -> phs_base
 phs_wood -> phs_base
 phs_wood -> mappings
-dispatch_phase_space -> phs_single
+phs_fks -> phs_forests
 cascades -> phs_forests
 phs_forests -> mappings
 dispatch_phase_space -> phs_forests
@@ -19,5 +19,6 @@ phs_fks -> phs_wood
 dispatch_phase_space -> phs_base
 phs_single -> phs_base
 dispatch_phase_space -> mappings
+dispatch_phase_space -> phs_single
  }
 

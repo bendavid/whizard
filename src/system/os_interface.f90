@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -42,7 +42,7 @@ module os_interface
   use diagnostics
   use system_defs, only: DLERROR_LEN, ENVVAR_LEN
   use system_dependencies
-  
+
   implicit none
   private
 
@@ -51,6 +51,7 @@ module os_interface
   public :: os_data_t
   public :: os_data_init
   public :: os_data_write
+  public :: os_data_build_latex_file
   public :: dlaccess_t
   public :: dlaccess_init
   public :: dlaccess_final
@@ -156,7 +157,7 @@ module os_interface
   end type dlaccess_t
 
 
-  interface 
+  interface
      function dlopen (filename, flag) result (handle) bind(C)
        import
        character(c_char), dimension(*) :: filename
@@ -173,14 +174,14 @@ module os_interface
      end function dlclose
   end interface
 
-  interface 
+  interface
      function dlerror () result (str) bind(C)
        import
        type(c_ptr) :: str
      end function dlerror
   end interface
 
-  interface 
+  interface
      function dlsym (handle, symbol) result (fptr) bind(C)
        import
        type(c_ptr), value :: handle
@@ -251,7 +252,7 @@ contains
     os_data%ldflags_hoppet = DEFAULT_LDFLAGS_HOPPET
     os_data%ldflags_looptools = DEFAULT_LDFLAGS_LOOPTOOLS
     os_data%shrlib_ext     = DEFAULT_SHRLIB_EXT
-    os_data%fc_shrlib_ext  = DEFAULT_FC_SHRLIB_EXT    
+    os_data%fc_shrlib_ext  = DEFAULT_FC_SHRLIB_EXT
     os_data%makeflags      = DEFAULT_MAKEFLAGS
     os_data%prefix      = PREFIX
     os_data%exec_prefix = EXEC_PREFIX
@@ -287,7 +288,7 @@ contains
     else
        if (os_dir_exist (local_includes)) then
           os_data%whizard_includes = "-I" // local_includes // " "// &
-             WHIZARD_INCLUDES 
+             WHIZARD_INCLUDES
        else
           os_data%whizard_includes = WHIZARD_INCLUDES
        end if
@@ -332,7 +333,7 @@ contains
     os_data%ninjapath = NINJA_DIR
     os_data%samuraipath = SAMURAI_DIR
   end subroutine os_data_init
-    
+
   subroutine os_data_expand_paths (os_data)
     type(os_data_t), intent(inout) :: os_data
     integer, parameter :: N_VARIABLES = 6
@@ -363,7 +364,7 @@ contains
     call expand_paths (os_data%whizard_omega_binpath_local)
     call expand_paths (os_data%pdf_builtin_datapath)
     call expand_paths (os_data%latex)
-    call expand_paths (os_data%mpost)    
+    call expand_paths (os_data%mpost)
     call expand_paths (os_data%gml)
     call expand_paths (os_data%dvips)
     call expand_paths (os_data%ps2pdf)
@@ -398,11 +399,11 @@ contains
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
     write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
-    write (u, *) "ldflags_lcio   = ", char (os_data%ldflags_lcio)    
+    write (u, *) "ldflags_lcio   = ", char (os_data%ldflags_lcio)
     write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)
-    write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools) 
+    write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools)
     write (u, *) "shrlib_ext     = ", char (os_data%shrlib_ext)
-    write (u, *) "fc_shrlib_ext  = ", char (os_data%fc_shrlib_ext)    
+    write (u, *) "fc_shrlib_ext  = ", char (os_data%fc_shrlib_ext)
     write (u, *) "makeflags      = ", char (os_data%makeflags)
     write (u, *) "prefix         = ", char (os_data%prefix)
     write (u, *) "exec_prefix    = ", char (os_data%exec_prefix)
@@ -440,7 +441,7 @@ contains
     write (u, *) "event_analysis_ps  = ", os_data%event_analysis_ps
     write (u, *) "event_analysis_pdf = ", os_data%event_analysis_pdf
     write (u, *) "latex  = ", char (os_data%latex)
-    write (u, *) "mpost  = ", char (os_data%mpost)    
+    write (u, *) "mpost  = ", char (os_data%mpost)
     write (u, *) "gml    = ", char (os_data%gml)
     write (u, *) "dvips  = ", char (os_data%dvips)
     write (u, *) "ps2pdf = ", char (os_data%ps2pdf)
@@ -454,6 +455,44 @@ contains
     end if
   end subroutine os_data_write
 
+  subroutine os_data_build_latex_file (os_data, filename, stat_out)
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: filename
+    integer, intent(out), optional :: stat_out
+    type(string_t) :: setenv_tex, pipe, pipe_dvi
+    integer :: unit_dev, status
+    status = -1
+    if (os_data%event_analysis_ps) then
+       !!! Check if our OS has a /dev/null
+       unit_dev = free_unit ()
+       open (file = "/dev/null", unit = unit_dev, &
+            action = "write", iostat = status) 
+       close (unit_dev)
+       if (status /= 0) then
+          pipe = ""
+          pipe_dvi = ""
+       else
+          pipe = " > /dev/null"
+          pipe_dvi = " 2>/dev/null 1>/dev/null"
+       end if
+       if (os_data%whizard_texpath /= "") then
+          setenv_tex = "TEXINPUTS=" // &
+               os_data%whizard_texpath // ":$TEXINPUTS "
+       else
+          setenv_tex = ""
+       end if
+       call os_system_call (setenv_tex // &
+            os_data%latex // " " // filename // ".tex " // pipe, &
+            verbose = .true., status = status)
+       call os_system_call (os_data%dvips // " -o " // filename // &
+            ".ps " // filename // ".dvi" // pipe_dvi, verbose = .true., &
+            status = status)
+       call os_system_call (os_data%ps2pdf // " " // filename // ".ps", &
+            verbose = .true., status = status)
+    end if
+    if (present (stat_out)) stat_out = status
+  end subroutine os_data_build_latex_file
+
   subroutine dlaccess_write (object, unit)
     class(dlaccess_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -465,7 +504,7 @@ contains
        write (unit, "(3x,A)")      "error     = [none]"
     end if
   end subroutine dlaccess_write
-    
+
   subroutine read_dlerror (has_error, error)
     logical, intent(out) :: has_error
     type(string_t), intent(out) :: error
@@ -610,7 +649,7 @@ contains
     end if
     call os_system_call (command_string, status)
   end subroutine os_compile_shared
-   
+
   subroutine os_link_shared (objlist, lib, os_data, status)
     type(string_t), intent(in) :: objlist, lib
     type(os_data_t), intent(in) :: os_data
@@ -634,7 +673,7 @@ contains
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
-            "-o '" // lib // os_data%shrlib_ext // "' " // &
+            "-o '" // lib // "." // os_data%fc_shrlib_ext // "' " // &
             objlist
     end if
     call os_system_call (command_string, status)
@@ -657,7 +696,7 @@ contains
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
-            os_data%ldflags_lcio // " " // &            
+            os_data%ldflags_lcio // " " // &
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     else
@@ -671,7 +710,7 @@ contains
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
-            os_data%ldflags_lcio // " " // &            
+            os_data%ldflags_lcio // " " // &
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     end if
@@ -722,7 +761,7 @@ contains
           dlname = ""
        end if
     else
-       dlname = lib // os_data%shrlib_ext
+       dlname = lib // "." // os_data%fc_shrlib_ext
        inquire (file=char(dlname), exist=exist)
        if (.not. exist) then
           if (required) then
@@ -774,7 +813,7 @@ contains
           if (logging) then
              write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", &
                   n_threads, " threads"
-             call msg_message          
+             call msg_message
           end if
        end if
        if (n_threads > openmp_get_default_max_threads ()) then

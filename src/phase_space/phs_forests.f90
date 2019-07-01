@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -54,6 +54,8 @@ module phs_forests
   use interactions
 
   use phs_base
+  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
   use mappings
   use phs_trees
 
@@ -142,6 +144,7 @@ module phs_forests
      type(mapping_t), dimension(:), allocatable :: s_mapping
    contains
      procedure :: write => phs_forest_write
+     procedure :: extract_resonance_histories => phs_forest_extract_resonance_histories
   end type phs_forest_t
 
 
@@ -655,6 +658,24 @@ contains
     end if
   end subroutine phs_forest_get_on_shell
 
+  subroutine phs_forest_extract_resonance_histories (forest, res_hist)
+    class(phs_forest_t), intent(in) :: forest
+    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hist
+    type(resonance_history_t) :: rh
+    type(resonance_history_set_t) :: res_hist_set
+    integer :: g, t
+    call res_hist_set%init ()
+    do g = 1, size (forest%grove)
+       associate (grove => forest%grove(g))
+          do t = 1, size (grove%tree)
+             call grove%tree(t)%extract_resonance_history (rh)
+             call res_hist_set%enter (rh)
+          end do
+       end associate
+    end do
+    call res_hist_set%to_array (res_hist)
+  end subroutine phs_forest_extract_resonance_histories
+
   subroutine define_phs_forest_syntax (ifile)
     type(ifile_t) :: ifile
     call ifile_append (ifile, "SEQ phase_space_list = process_phase_space*")
@@ -675,6 +696,7 @@ contains
          // "t_channel = integer " &
          // "keep_nonresonant = logical")
     call ifile_append (ifile, "KEY '='")
+    call ifile_append (ifile, "KEY '-'")
     call ifile_append (ifile, "KEY md5sum_process")
     call ifile_append (ifile, "KEY md5sum_model_par")
     call ifile_append (ifile, "KEY md5sum_phs_config")
@@ -695,7 +717,7 @@ contains
     call ifile_append (ifile, "KEY tree")
     call ifile_append (ifile, "SEQ bincodes = bincode*")
     call ifile_append (ifile, "INT bincode")
-    call ifile_append (ifile, "SEQ mapping = map bincode channel pdg")
+    call ifile_append (ifile, "SEQ mapping = map bincode channel signed_pdg")
     call ifile_append (ifile, "KEY map")
     call ifile_append (ifile, "ALT channel = &
          &s_channel | t_channel | u_channel | &
@@ -707,6 +729,9 @@ contains
     call ifile_append (ifile, "KEY infrared")
     call ifile_append (ifile, "KEY radiation")
     call ifile_append (ifile, "KEY on_shell")
+    call ifile_append (ifile, "ALT signed_pdg = &
+         &pdg | negative_pdg")
+    call ifile_append (ifile, "SEQ negative_pdg = '-' pdg")
     call ifile_append (ifile, "INT pdg")
   end subroutine define_phs_forest_syntax
 
@@ -723,7 +748,7 @@ contains
          comment_chars = "#!", &
          quote_chars = '"', &
          quote_match = '"', &
-         single_chars = "", &
+         single_chars = "-", &
          special_class = ["="] , &
          keyword_list = syntax_get_keyword_list_ptr (syntax_phs_forest))
   end subroutine lexer_init_phs_forest
@@ -898,7 +923,7 @@ contains
     type(phs_tree_t), intent(inout) :: tree
     type(parse_node_t), intent(in), target :: node
     class(model_data_t), intent(in), target :: model
-    type(parse_node_t), pointer :: node_bincodes, node_mapping
+    type(parse_node_t), pointer :: node_bincodes, node_mapping, pn_pdg
     integer :: n_bincodes, offset
     integer(TC), dimension(:), allocatable :: bincode
     integer :: b, n_mappings, m
@@ -934,8 +959,13 @@ contains
             (parse_node_get_sub_ptr (node_mapping, 2))
        type = parse_node_get_key &
             (parse_node_get_sub_ptr (node_mapping, 3))
-       pdg = parse_node_get_integer &
-            (parse_node_get_sub_ptr (node_mapping, 4))
+       pn_pdg => parse_node_get_sub_ptr (node_mapping, 4)
+       select case (char (pn_pdg%get_rule_key ()))
+       case ("pdg")
+          pdg = pn_pdg%get_integer ()
+       case ("negative_pdg")
+          pdg = - parse_node_get_integer (pn_pdg%get_sub_ptr (2))
+       end select
        call phs_tree_init_mapping (tree, k, type, pdg, model)
     end do
   end subroutine phs_tree_set

@@ -1,6 +1,6 @@
-%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: common types and objects
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Sindarin Built-In Types}
 \includemodulegraph{types}
 
@@ -70,7 +70,7 @@ This is an abstract type which can hold a single particle or an expression.
    contains
    <<Particle specifiers: prt spec expr: TBP>>
   end type prt_spec_expr_t
-  
+
 @ %def prt_expr_t
 @ Output, as a string.
 <<Particle specifiers: prt spec expr: TBP>>=
@@ -83,7 +83,7 @@ This is an abstract type which can hold a single particle or an expression.
        type(string_t) :: string
      end function prt_spec_expr_to_string
   end interface
-  
+
 @ %def prt_spec_expr_to_string
 @ Call an [[expand]] method for all enclosed subexpressions (before handling
 the current expression).
@@ -110,7 +110,7 @@ make variadic arrays.
    contains
    <<Particle specifiers: prt expr: TBP>>
   end type prt_expr_t
-  
+
 @ %def prt_expr_t
 @ Output as a string: delegate.
 <<Particle specifiers: prt expr: TBP>>=
@@ -125,7 +125,7 @@ make variadic arrays.
        string = ""
     end if
   end function prt_expr_to_string
-  
+
 @ %def prt_expr_to_string
 @ Allocate the expression as a particle specifier and copy the value.
 <<Particle specifiers: prt expr: TBP>>=
@@ -140,7 +140,7 @@ make variadic arrays.
        x = spec
     end select
   end subroutine prt_expr_init_spec
-  
+
 @ %def prt_expr_init_spec
 @ Allocate as a list/sum and allocate for a given length
 <<Particle specifiers: prt expr: TBP>>=
@@ -156,7 +156,7 @@ make variadic arrays.
        allocate (x%expr (n))
     end select
   end subroutine prt_expr_init_list
-  
+
   subroutine prt_expr_init_sum (object, n)
     class(prt_expr_t), intent(out) :: object
     integer, intent(in) :: n
@@ -166,7 +166,7 @@ make variadic arrays.
        allocate (x%expr (n))
     end select
   end subroutine prt_expr_init_sum
-  
+
 @ %def prt_expr_init_list
 @ %def prt_expr_init_sum
 @ Return the number of terms.  This is unity, except if the expression is a
@@ -188,7 +188,7 @@ sum.
        n = 0
     end if
   end function prt_expr_get_n_terms
-  
+
 @ %def prt_expr_get_n_terms
 @ Transform one of the terms, as returned by the previous method, to an array
 of particle specifiers.  The array has more than one entry if the selected
@@ -219,7 +219,7 @@ expanded, so the list contains only atoms.
        call x%expr(i)%term_to_array (array, 1)
     end select
   end subroutine prt_expr_term_to_array
-  
+
 @ %def prt_expr_term_to_array
 @
 \subsection{The atomic type}
@@ -240,9 +240,9 @@ The particle is unstable if the [[decay]] array is allocated.  The
    contains
    <<Particle specifiers: prt spec: TBP>>
   end type prt_spec_t
-  
+
 @ %def prt_spec_t
-@ 
+@
 \subsubsection{I/O}
 Output.  Old-style subroutines.
 <<Particle specifiers: public>>=
@@ -263,7 +263,7 @@ Output.  Old-style subroutines.
     adv = "yes";  if (present (advance))  adv = advance
     write (u, "(A)", advance = adv)  char (object%to_string ())
   end subroutine prt_spec_write1
-       
+
 @ %def prt_spec_write1
 @ Write an array as a list of particle specifiers.
 <<Particle specifiers: procedures>>=
@@ -281,7 +281,7 @@ Output.  Old-style subroutines.
     end do
     write (u, "(A)", advance = adv)
   end subroutine prt_spec_write2
-       
+
 @ %def prt_spec_write2
 @ Read.  Input may be string or array of strings.
 <<Particle specifiers: public>>=
@@ -356,7 +356,7 @@ array is allocated to the correct size.
        buffer = extract (buffer, c+1)
     end do
   end subroutine prt_spec_read2
-  
+
 @ %def prt_spec_read2
 @
 \subsubsection{Constructor}
@@ -405,7 +405,7 @@ Return the particle name without qualifiers
     type(string_t) :: name
     name = prt_spec%name
   end function prt_spec_get_name
-  
+
 @ %def prt_spec_get_name
 @ Return the name with qualifiers
 <<Particle specifiers: prt spec: TBP>>=
@@ -427,7 +427,7 @@ Return the particle name without qualifiers
        string = string // "(*)"
     end if
   end function prt_spec_to_string
-  
+
 @ %def prt_spec_to_string
 @ Return the polarization flag
 <<Particle specifiers: prt spec: TBP>>=
@@ -438,7 +438,7 @@ Return the particle name without qualifiers
     logical :: flag
     flag = prt_spec%polarized
   end function prt_spec_is_polarized
-  
+
 @ %def prt_spec_is_polarized
 @ The particle is unstable if there is a decay array.
 <<Particle specifiers: prt spec: TBP>>=
@@ -449,7 +449,7 @@ Return the particle name without qualifiers
     logical :: flag
     flag = allocated (prt_spec%decay)
   end function prt_spec_is_unstable
-  
+
 @ %def prt_spec_is_unstable
 @ Return the number of decay channels
 <<Particle specifiers: prt spec: TBP>>=
@@ -464,7 +464,7 @@ Return the particle name without qualifiers
        n = 0
     end if
   end function prt_spec_get_n_decays
-  
+
 @ %def prt_spec_get_n_decays
 @ Return the decay channels
 <<Particle specifiers: prt spec: TBP>>=
@@ -480,7 +480,7 @@ Return the particle name without qualifiers
        allocate (decay (0))
     end if
   end subroutine prt_spec_get_decays
-  
+
 @ %def prt_spec_get_decays
 @
 \subsubsection{Miscellaneous}
@@ -505,7 +505,7 @@ process.
    contains
    <<Particle specifiers: prt spec list: TBP>>
   end type prt_spec_list_t
-  
+
 @ %def prt_spec_list_t
 @ Output: Concatenate the components.  Insert brackets if the component is
 also a list.  The components of the [[expr]] array, if any, should all be
@@ -567,7 +567,7 @@ components as direct members of the current list.
     if (allocated (tmp_expr)) &
          call move_alloc (from = tmp_expr, to = object%expr)
   end subroutine prt_spec_list_flatten
-    
+
 @ %def prt_spec_list_flatten
 @ Convert a list of sums into a sum of lists.  (Subexpressions which are not
 sums are left untouched.)
@@ -622,7 +622,7 @@ sums are left untouched.)
     end select
     if (allocated (new_object)) call move_alloc (from = new_object, to = object)
   end subroutine distribute_prt_spec_list
-    
+
 @ %def distribute_prt_spec_list
 @ Apply [[expand]] to all components of the list.
 <<Particle specifiers: prt spec list: TBP>>=
@@ -650,7 +650,7 @@ A sum of particle specifiers, indicating, e.g., a sum of final states.
    contains
    <<Particle specifiers: prt spec sum: TBP>>
   end type prt_spec_sum_t
-  
+
 @ %def prt_spec_sum_t
 @ Output: Concatenate the components.  Insert brackets if the component is
 a list or also a sum.  The components of the [[expr]] array, if any, should
@@ -716,7 +716,7 @@ This is identical to [[prt_spec_list_flatten]] above, except for the type.
     if (allocated (tmp_expr)) &
          call move_alloc (from = tmp_expr, to = object%expr)
   end subroutine prt_spec_sum_flatten
-    
+
 @ %def prt_spec_sum_flatten
 @ Apply [[expand]] to all terms in the sum.
 <<Particle specifiers: prt spec sum: TBP>>=
@@ -775,13 +775,13 @@ Test module, followed by the corresponding implementation module.
 module particle_specifiers_ut
   use unit_tests
   use particle_specifiers_uti
-  
+
 <<Standard module head>>
 
 <<Particle specifiers: public test>>
 
 contains
-  
+
 <<Particle specifiers: test driver>>
 
 end module particle_specifiers_ut
@@ -854,7 +854,7 @@ Define, read and write an array of particle specifiers.
     call prt_spec_read (prt_spec, &
          var_str (" a, b( *), c( dec1), d (dec1 + dec2 ), e()"))
     call prt_spec_write (prt_spec, u)
-    
+
     do i = 1, size (prt_spec)
        write (u, "(A)")
        write (u, "(A,A)")  char (prt_spec(i)%get_name ()), ":"
@@ -872,7 +872,7 @@ Define, read and write an array of particle specifiers.
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particle_specifiers_1"
   end subroutine particle_specifiers_1
-  
+
 @ %def particle_specifiers_1
 @
 \subsubsection{Particle specifier expressions}
@@ -905,7 +905,7 @@ Nested expressions (only basic particles, no decay specs).
     d = new_prt_spec (var_str ("d"))
     e = new_prt_spec (var_str ("e"))
     f = new_prt_spec (var_str ("f"))
-    
+
     call pe1%init_spec (a)
     write (u, "(A)")  char (pe1%to_string ())
 
@@ -928,7 +928,7 @@ Nested expressions (only basic particles, no decay specs).
     write (u, *)
     write (u, "(A)")  "* Nested expressions"
     write (u, *)
-    
+
     call pe4%init_list (2)
     select type (x => pe4%x)
     type is (prt_spec_list_t)
@@ -941,7 +941,7 @@ Nested expressions (only basic particles, no decay specs).
        call x%expr(2)%init_spec (c)
     end select
     write (u, "(A)")  char (pe4%to_string ())
-          
+
     call pe5%init_list (2)
     select type (x => pe5%x)
     type is (prt_spec_list_t)
@@ -954,7 +954,7 @@ Nested expressions (only basic particles, no decay specs).
        call x%expr(2)%init_spec (c)
     end select
     write (u, "(A)")  char (pe5%to_string ())
-          
+
     call pe6%init_sum (2)
     select type (x => pe6%x)
     type is (prt_spec_sum_t)
@@ -967,7 +967,7 @@ Nested expressions (only basic particles, no decay specs).
        end select
     end select
     write (u, "(A)")  char (pe6%to_string ())
-          
+
     call pe7%init_list (2)
     select type (x => pe7%x)
     type is (prt_spec_list_t)
@@ -985,7 +985,7 @@ Nested expressions (only basic particles, no decay specs).
        call x%expr(2)%init_spec (d)
     end select
     write (u, "(A)")  char (pe7%to_string ())
-          
+
     call pe8%init_sum (2)
     select type (x => pe8%x)
     type is (prt_spec_sum_t)
@@ -1023,11 +1023,11 @@ Nested expressions (only basic particles, no decay specs).
        end select
     end select
     write (u, "(A)")  char (pe9%to_string ())
-          
+
     write (u, *)
     write (u, "(A)")  "* Expand as sum"
     write (u, *)
-    
+
     call pe1%expand ()
     write (u, "(A)")  char (pe1%to_string ())
 
@@ -1042,13 +1042,13 @@ Nested expressions (only basic particles, no decay specs).
 
     call pe7%expand ()
     write (u, "(A)")  char (pe7%to_string ())
-    
+
     call pe8%expand ()
     write (u, "(A)")  char (pe8%to_string ())
-    
+
     call pe9%expand ()
     write (u, "(A)")  char (pe9%to_string ())
-    
+
     write (u, *)
     write (u, "(A)")  "* Transform to arrays:"
 
@@ -1057,7 +1057,7 @@ Nested expressions (only basic particles, no decay specs).
        call pe1%term_to_array (pa, i)
        call prt_spec_write (pa, u)
     end do
-    
+
     write (u, *)
     write (u, "(A)")  "* List"
     do i = 1, pe5%get_n_terms ()
@@ -1082,14 +1082,14 @@ Nested expressions (only basic particles, no decay specs).
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particle_specifiers_2"
   end subroutine particle_specifiers_2
-  
+
 @ %def particle_specifiers_2
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{PDG arrays}
 
 For defining aliases, we introduce a special type which holds a set of
-(integer) PDG codes. 
+(integer) PDG codes.
 <<[[pdg_arrays.f90]]>>=
 <<File header>>
 
@@ -1113,7 +1113,7 @@ contains
 
 end module pdg_arrays
 @ %def pdg_arrays
-@ 
+@
 \subsection{Type definition}
 Using an allocatable array eliminates the need for initializer and/or
 finalizer.
@@ -1150,7 +1150,7 @@ finalizer.
   end subroutine pdg_array_write
 
 @ %def pdg_array_write
-@ 
+@
 <<PDG arrays: public>>=
   public :: pdg_array_write_set
 <<PDG arrays: procedures>>=
@@ -1170,9 +1170,9 @@ finalizer.
 Assignment.  We define assignment from and to an integer array.
 Note that the integer array, if it is the l.h.s., must be declared
 allocatable by the caller.
-<<PDG arrays: public>>=   
+<<PDG arrays: public>>=
   public :: assignment(=)
-<<PDG arrays: interfaces>>=   
+<<PDG arrays: interfaces>>=
   interface assignment(=)
      module procedure pdg_array_from_int_array
      module procedure pdg_array_from_int
@@ -1276,7 +1276,7 @@ allocatable by the caller.
     integer :: pdg
     if (present (i)) then
        pdg = aval%pdg(i)
-    else 
+    else
        pdg = aval%pdg(1)
     end if
   end function pdg_array_get
@@ -1313,7 +1313,7 @@ allocatable by the caller.
     aval_new%pdg(i:i+l-1) = pdg_new
     aval_new%pdg(i+l:) = aval%pdg(i+1:)
   end function pdg_array_replace
-    
+
 @ %def pdg_array_replace
 @ Concatenate two PDG arrays
 <<PDG arrays: public>>=
@@ -1342,7 +1342,7 @@ allocatable by the caller.
   end function concat_pdg_arrays
 
 @ %def concat_pdg_arrays
-@ 
+@
 \subsection{Matching}
 A PDG array matches a given PDG code if the code is present within the
 array.  If either one is zero (UNDEFINED), the match also succeeds.
@@ -1375,40 +1375,40 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 <<PDG arrays: public>>=
   public :: is_quark
 <<PDG arrays: procedures>>=
-  elemental function is_quark (pdg_nr) result(res)
-      logical :: res
-      integer, intent(in) :: pdg_nr
-      if (abs (pdg_nr) >= 1 .and. abs (pdg_nr) <= 6) then 
-	res = .true.
-      else
-        res = .false.
-      end if
-   end function is_quark
+  elemental function is_quark (pdg_nr)
+    logical :: is_quark
+    integer, intent(in) :: pdg_nr
+    if (abs (pdg_nr) >= 1 .and. abs (pdg_nr) <= 6) then
+       is_quark = .true.
+    else
+       is_quark = .false.
+    end if
+  end function is_quark
 
 @ %def is_quark
 @ Check if pdg-number corresponds to a gluon
 <<PDG arrays: public>>=
   public :: is_gluon
 <<PDG arrays: procedures>>=
-   elemental function is_gluon (pdg_nr) result(res)
-     logical :: res
-     integer, intent(in) :: pdg_nr
-     if (pdg_nr == 21) then
-       res = .true.
-     else
-       res = .false.
-     end if
-   end function is_gluon
+  elemental function is_gluon (pdg_nr)
+    logical :: is_gluon
+    integer, intent(in) :: pdg_nr
+    if (pdg_nr == 21) then
+       is_gluon = .true.
+    else
+       is_gluon = .false.
+    end if
+  end function is_gluon
 
 @ %def is_gluon
 @ Check if pdg-number corresponds to a colored particle
 <<PDG arrays: public>>=
   public :: is_colored
 <<PDG arrays: procedures>>=
-  elemental function is_colored (pdg_nr) result (res)
-    logical :: res
+  elemental function is_colored (pdg_nr)
+    logical :: is_colored
     integer, intent(in) :: pdg_nr
-    res = is_quark (pdg_nr) .or. is_gluon (pdg_nr)
+    is_colored = is_quark (pdg_nr) .or. is_gluon (pdg_nr)
   end function is_colored
 
 @ %def is_colored
@@ -1416,17 +1416,28 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 <<PDG arrays: public>>=
   public :: is_lepton
 <<PDG arrays: procedures>>=
-  function is_lepton (pdg_nr) result(res)
+  elemental function is_lepton (pdg_nr)
+    logical :: is_lepton
     integer, intent(in) :: pdg_nr
-    logical :: res
     if (abs (pdg_nr) >= 11 .and. abs (pdg_nr) <= 16) then
-      res = .true.
+      is_lepton = .true.
     else
-      res = .false.
+      is_lepton = .false.
     end if
   end function is_lepton
 
 @ %def is_lepton
+@
+<<PDG arrays: public>>=
+  public :: is_fermion
+<<PDG arrays: procedures>>=
+  elemental function is_fermion (pdg_nr)
+    logical :: is_fermion
+    integer, intent(in) :: pdg_nr
+    is_fermion = is_lepton(pdg_nr) .or. is_quark(pdg_nr)
+  end function is_fermion
+
+@ %def is_fermion
 @ Check if the pdg-number corresponds to a massless vector boson
 <<PDG arrays: public>>=
   public :: is_massless_vector
@@ -1628,7 +1639,7 @@ vice versa.
   end function pdg_array_inequivalent
 
 @ %def pdg_array_equivalent
-@ 
+@
 \subsection{Sorting}
 Sort a PDG array by absolute value, particle before antiparticle.  After
 sorting, we eliminate double entries.
@@ -1638,7 +1649,7 @@ sorting, we eliminate double entries.
   interface sort_abs
      module procedure pdg_array_sort_abs
   end interface
-  
+
 <<PDG arrays: pdg array: TBP>>=
   procedure :: sort_abs => pdg_array_sort_abs
 <<PDG arrays: procedures>>=
@@ -1680,7 +1691,7 @@ sorting, we eliminate double entries.
    integer :: i
    isec = pack (aval1%pdg, [(any(aval1%pdg(i) == match), i=1,size(aval1%pdg))])
    aval2 = isec
-  end function pdg_array_intersect 
+  end function pdg_array_intersect
 
 @ %def pdg_array_intersect
 @
@@ -1728,7 +1739,7 @@ some convenience methods.
    contains
    <<PDG arrays: pdg list: TBP>>
   end type pdg_list_t
-  
+
 @ %def pdg_list_t
 @ Output, as a comma-separated list without advancing I/O.
 <<PDG arrays: pdg list: TBP>>=
@@ -1746,7 +1757,7 @@ some convenience methods.
        end do
     end if
   end subroutine pdg_list_write
-    
+
 @ %def pdg_list_write
 @ Initialize for a certain size.  The entries are initially empty PDG arrays.
 <<PDG arrays: pdg list: TBP>>=
@@ -1758,7 +1769,7 @@ some convenience methods.
     integer, intent(in) :: n
     allocate (pl%a (n))
   end subroutine pdg_list_init_size
-  
+
 @ %def pdg_list_init_size
 @ Initialize with a definite array of PDG codes.  That is, each entry
 in the list becomes a single-particle PDG array.
@@ -1775,7 +1786,7 @@ in the list becomes a single-particle PDG array.
        pl%a(i) = pdg(i)
     end do
   end subroutine pdg_list_init_int_array
-  
+
 @ %def pdg_list_init_array
 @ Set one of the entries.  No bounds-check.
 <<PDG arrays: pdg list: TBP>>=
@@ -1792,21 +1803,21 @@ in the list becomes a single-particle PDG array.
     integer, intent(in) :: pdg
     pl%a(i) = pdg
   end subroutine pdg_list_set_int
-  
+
   subroutine pdg_list_set_int_array (pl, i, pdg)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: pdg
     pl%a(i) = pdg
   end subroutine pdg_list_set_int_array
-  
+
   subroutine pdg_list_set_pdg_array (pl, i, pa)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     type(pdg_array_t), intent(in) :: pa
     pl%a(i) = pa
   end subroutine pdg_list_set_pdg_array
-  
+
 @ %def pdg_list_set
 @ Array size, not the length of individual entries
 <<PDG arrays: pdg list: TBP>>=
@@ -1821,19 +1832,19 @@ in the list becomes a single-particle PDG array.
        n = 0
     end if
   end function pdg_list_get_size
-  
+
 @ %def pdg_list_get_size
 @ Return an entry, as a PDG array.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: get => pdg_list_get
 <<PDG arrays: procedures>>=
   function pdg_list_get (pl, i) result (pa)
+    type(pdg_array_t) :: pa
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
-    type(pdg_array_t) :: pa
     pa = pl%a(i)
   end function pdg_list_get
-  
+
 @ %def pdg_list_get
 @ Check if the list entries are all either mutually disjoint or identical.
 The individual entries (PDG arrays) should already be sorted, so we can test
@@ -1858,7 +1869,7 @@ for equality.
        end do
     end do
   end function pdg_list_is_regular
-  
+
 @ %def pdg_list_is_regular
 @ Sort the list.  First, each entry gets sorted, including elimination
 of doublers.  Then, we sort the list, using the first member of each
@@ -1903,7 +1914,7 @@ entries.
        end do
     end if
   end function pdg_list_sort_abs
-    
+
 @ %def pdg_list_sort_abs
 @ Compare sorted lists: equality.  The result is undefined if some entries
 are not allocated.
@@ -1937,7 +1948,7 @@ are not allocated.
        end if
     end if
   end function pdg_list_eq
-  
+
 @ %def pdg_list_eq
 @ Compare sorted lists.  The result is undefined if some entries
 are not allocated.
@@ -1992,7 +2003,7 @@ false.
        end if
     end if
   end function pdg_list_lt
-  
+
 @ %def pdg_list_lt
 @ Replace an entry.  In the result, the entry [[#i]] is replaced by
 the contents of the second argument.  The result is not sorted.
@@ -2043,7 +2054,7 @@ the remainder after entry [[n_in]].
        end if
 !    end if
   end function pdg_list_replace
-    
+
 @ %def pdg_list_replace
 @ Replace the entries of [[pl]] by the matching entries of [[pl_match]], one by
 one.  This is done in-place.  If there is no match, return failure.
@@ -2067,7 +2078,7 @@ one.  This is done in-place.  If there is no match, return failure.
        return
     end do SCAN_ENTRIES
   end subroutine pdg_list_match_replace
- 
+
 @ %def pdg_list_match_replace
 @ Just check if a PDG array matches any entry in the PDG list.  The second
 version returns the position of the match within the list.  An optional mask
@@ -2083,7 +2094,7 @@ indicates the list elements that should be checked.
     logical :: flag
     flag = pl%find_match (pa) /= 0
   end function pdg_list_match_pdg_array
-  
+
   function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), intent(in) :: pa
@@ -2097,7 +2108,7 @@ indicates the list elements that should be checked.
     end do
     i = 0
   end function pdg_list_find_match_pdg_array
-  
+
 @ %def pdg_list_match_pdg_array
 @ %def pdg_list_find_match_pdg_array
 @ Some old compilers have problems with allocatable arrays as
@@ -2151,7 +2162,7 @@ intent(out) or as function result, so be conservative here:
        do i = 1, n
           if (collect (i)) pl_anti%a(i) = pl_inverse%a(i)
        end do
-   end if    
+   end if
   end subroutine pdg_list_create_antiparticles
 
 @ %def pdg_list_create_antiparticles
@@ -2198,13 +2209,13 @@ Test module, followed by the corresponding implementation module.
 module pdg_arrays_ut
   use unit_tests
   use pdg_arrays_uti
-  
+
 <<Standard module head>>
 
 <<PDG arrays: public test>>
 
 contains
-  
+
 <<PDG arrays: test driver>>
 
 end module pdg_arrays_ut
@@ -2234,7 +2245,7 @@ end module pdg_arrays_uti
   subroutine pdg_arrays_test (u, results)
     integer, intent(in) :: u
     type (test_results_t), intent(inout) :: results
-  <<PDG arrays: execute tests>>  
+  <<PDG arrays: execute tests>>
   end subroutine pdg_arrays_test
 
 @ %def pdg_arrays_test
@@ -2242,10 +2253,10 @@ end module pdg_arrays_uti
 <<PDG arrays: execute tests>>=
   call test (pdg_arrays_1, "pdg_arrays_1", &
        "create and sort PDG array", &
-       u, results) 
+       u, results)
 <<PDG arrays: test declarations>>=
   public :: pdg_arrays_1
-<<PDG arrays: tests>>=     
+<<PDG arrays: tests>>=
   subroutine pdg_arrays_1 (u)
     integer, intent(in) :: u
 
@@ -2255,16 +2266,16 @@ end module pdg_arrays_uti
     write (u, "(A)")  "* Test output: pdg_arrays_1"
     write (u, "(A)")  "*   Purpose: create and sort PDG arrays"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Assignment"
     write (u, "(A)")
-    
+
     call pa%write (u)
     write (u, *)
     write (u, "(A,I0)")  "length = ", pa%get_length ()
     pdg = pa
     write (u, "(A,3(1x,I0))")  "contents = ", pdg
-    
+
     write (u, *)
     pa = 1
     call pa%write (u)
@@ -2272,7 +2283,7 @@ end module pdg_arrays_uti
     write (u, "(A,I0)")  "length = ", pa%get_length ()
     pdg = pa
     write (u, "(A,3(1x,I0))")  "contents = ", pdg
-    
+
     write (u, *)
     pa = [1, 2, 3]
     call pa%write (u)
@@ -2281,7 +2292,7 @@ end module pdg_arrays_uti
     pdg = pa
     write (u, "(A,3(1x,I0))")  "contents = ", pdg
     write (u, "(A,I0)")  "element #2 = ", pa%get (2)
-    
+
     write (u, *)
     write (u, "(A)")  "* Replace"
     write (u, *)
@@ -2289,7 +2300,7 @@ end module pdg_arrays_uti
     pa = pa%replace (2, [-5, 5, -7])
     call pa%write (u)
     write (u, *)
-    
+
     write (u, *)
     write (u, "(A)")  "* Sort"
     write (u, *)
@@ -2303,7 +2314,7 @@ end module pdg_arrays_uti
     write (u, *)
     call pa2%write (u)
     write (u, *)
-    
+
     write (u, *)
     write (u, "(A)")  "* Compare"
     write (u, *)
@@ -2314,7 +2325,7 @@ end module pdg_arrays_uti
     pa4 = [1, 2, 4]
     pa5 = [1, 2, -4]
     pa6 = [1, 2, -3]
-    
+
     write (u, "(A,6(1x,L1))")  "< ", &
          pa1 < pa2, pa2 < pa3, pa3 < pa4, pa4 < pa5, pa5 < pa6, pa6 < pa1
     write (u, "(A,6(1x,L1))")  "> ", &
@@ -2327,20 +2338,20 @@ end module pdg_arrays_uti
          pa1 == pa2, pa2 == pa3, pa3 == pa4, pa4 == pa5, pa5 == pa6, pa6 == pa1
     write (u, "(A,6(1x,L1))")  "/=", &
          pa1 /= pa2, pa2 /= pa3, pa3 /= pa4, pa4 /= pa5, pa5 /= pa6, pa6 /= pa1
-   
+
     write (u, *)
     pa1 = [0]
     pa2 = [1, 2]
     pa3 = [1, -2]
-    
+
     write (u, "(A,6(1x,L1))")  "eqv ", &
          pa1 .eqv. pa1, pa1 .eqv. pa2, &
          pa2 .eqv. pa2, pa2 .eqv. pa3
-    
+
     write (u, "(A,6(1x,L1))")  "neqv", &
          pa1 .neqv. pa1, pa1 .neqv. pa2, &
          pa2 .neqv. pa2, pa2 .neqv. pa3
-    
+
 
     write (u, *)
     write (u, "(A,6(1x,L1))")  "match", &
@@ -2348,19 +2359,19 @@ end module pdg_arrays_uti
          pa2 .match. 0, pa2 .match. 1, pa2 .match. 3
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: pdg_arrays_1"        
-    
+    write (u, "(A)")  "* Test output end: pdg_arrays_1"
+
   end subroutine pdg_arrays_1
-  
+
 @ %def pdg_arrays_1
 @ PDG array list, i.e., arrays of arrays.
 <<PDG arrays: execute tests>>=
   call test (pdg_arrays_2, "pdg_arrays_2", &
        "create and sort PDG lists", &
-       u, results) 
+       u, results)
 <<PDG arrays: test declarations>>=
   public :: pdg_arrays_2
-<<PDG arrays: tests>>=     
+<<PDG arrays: tests>>=
   subroutine pdg_arrays_2 (u)
     integer, intent(in) :: u
 
@@ -2370,10 +2381,10 @@ end module pdg_arrays_uti
     write (u, "(A)")  "* Test output: pdg_arrays_2"
     write (u, "(A)")  "*   Purpose: create and sort PDG lists"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Assignment"
     write (u, "(A)")
-    
+
     call pl%init (3)
     call pl%set (1, 42)
     call pl%set (2, [3, 2])
@@ -2386,7 +2397,7 @@ end module pdg_arrays_uti
     write (u, "(A)")
     write (u, "(A)")  "* Sort"
     write (u, "(A)")
-    
+
     pl = pl%sort_abs ()
     call pl%write (u)
     write (u, *)
@@ -2394,7 +2405,7 @@ end module pdg_arrays_uti
     write (u, "(A)")
     write (u, "(A)")  "* Extract item #3"
     write (u, "(A)")
-    
+
     pa = pl%get (3)
     call pa%write (u)
     write (u, *)
@@ -2402,30 +2413,30 @@ end module pdg_arrays_uti
     write (u, "(A)")
     write (u, "(A)")  "* Replace item #3"
     write (u, "(A)")
-    
+
     call pl1%init (2)
     call pl1%set (1, [2, 4])
     call pl1%set (2, -7)
-    
+
     pl = pl%replace (3, pl1)
     call pl%write (u)
     write (u, *)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: pdg_arrays_2"        
-    
+    write (u, "(A)")  "* Test output end: pdg_arrays_2"
+
   end subroutine pdg_arrays_2
-  
+
 @ %def pdg_arrays_2
 @ Check if a (sorted) PDG array lists is regular.  The entries (PDG arrays)
 must not overlap, unless they are identical.
 <<PDG arrays: execute tests>>=
   call test (pdg_arrays_3, "pdg_arrays_3", &
        "check PDG lists", &
-       u, results) 
+       u, results)
 <<PDG arrays: test declarations>>=
   public :: pdg_arrays_3
-<<PDG arrays: tests>>=     
+<<PDG arrays: tests>>=
   subroutine pdg_arrays_3 (u)
     integer, intent(in) :: u
 
@@ -2434,10 +2445,10 @@ must not overlap, unless they are identical.
     write (u, "(A)")  "* Test output: pdg_arrays_3"
     write (u, "(A)")  "*   Purpose: check for regular PDG lists"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Regular list"
     write (u, "(A)")
-    
+
     call pl%init (4)
     call pl%set (1, [1, 2])
     call pl%set (2, [1, 2])
@@ -2450,7 +2461,7 @@ must not overlap, unless they are identical.
     write (u, "(A)")
     write (u, "(A)")  "* Irregular list"
     write (u, "(A)")
-    
+
     call pl%init (4)
     call pl%set (1, [1, 2])
     call pl%set (2, [1, 2])
@@ -2461,20 +2472,20 @@ must not overlap, unless they are identical.
     write (u, "(L1)") pl%is_regular ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: pdg_arrays_3"        
-    
+    write (u, "(A)")  "* Test output end: pdg_arrays_3"
+
   end subroutine pdg_arrays_3
-  
+
 @ %def pdg_arrays_3
 @ Compare PDG array lists.  The lists must be regular, i.e., sorted and with
 non-overlapping (or identical) entries.
 <<PDG arrays: execute tests>>=
   call test (pdg_arrays_4, "pdg_arrays_4", &
        "compare PDG lists", &
-       u, results) 
+       u, results)
 <<PDG arrays: test declarations>>=
   public :: pdg_arrays_4
-<<PDG arrays: tests>>=     
+<<PDG arrays: tests>>=
   subroutine pdg_arrays_4 (u)
     integer, intent(in) :: u
 
@@ -2483,10 +2494,10 @@ non-overlapping (or identical) entries.
     write (u, "(A)")  "* Test output: pdg_arrays_4"
     write (u, "(A)")  "*   Purpose: check for regular PDG lists"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Create lists"
     write (u, "(A)")
-    
+
     call pl1%init (4)
     call pl1%set (1, [1, 2])
     call pl1%set (2, [1, 2])
@@ -2513,7 +2524,7 @@ non-overlapping (or identical) entries.
     write (u, "(A)")
     write (u, "(A)")  "* a == b"
     write (u, "(A)")
-    
+
     write (u, "(2x,A)")  "123"
     write (u, *)
     write (u, "(I1,1x,4L1)")  1, pl1 == pl1, pl1 == pl2, pl1 == pl3
@@ -2523,7 +2534,7 @@ non-overlapping (or identical) entries.
     write (u, "(A)")
     write (u, "(A)")  "* a < b"
     write (u, "(A)")
-    
+
     write (u, "(2x,A)")  "123"
     write (u, *)
     write (u, "(I1,1x,4L1)")  1, pl1 < pl1, pl1 < pl2, pl1 < pl3
@@ -2531,20 +2542,20 @@ non-overlapping (or identical) entries.
     write (u, "(I1,1x,4L1)")  3, pl3 < pl1, pl3 < pl2, pl3 < pl3
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: pdg_arrays_4"        
-    
+    write (u, "(A)")  "* Test output end: pdg_arrays_4"
+
   end subroutine pdg_arrays_4
-  
+
 @ %def pdg_arrays_4
 @ Match-replace: translate all entries in the first list into the
 matching entries of the second list, if there is a match.
 <<PDG arrays: execute tests>>=
   call test (pdg_arrays_5, "pdg_arrays_5", &
        "match PDG lists", &
-       u, results) 
+       u, results)
 <<PDG arrays: test declarations>>=
   public :: pdg_arrays_5
-<<PDG arrays: tests>>=     
+<<PDG arrays: tests>>=
   subroutine pdg_arrays_5 (u)
     integer, intent(in) :: u
 
@@ -2554,10 +2565,10 @@ matching entries of the second list, if there is a match.
     write (u, "(A)")  "* Test output: pdg_arrays_5"
     write (u, "(A)")  "*   Purpose: match-replace"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Create lists"
     write (u, "(A)")
-    
+
     call pl1%init (2)
     call pl1%set (1, [1, 2])
     call pl1%set (2, 42)
@@ -2586,12 +2597,12 @@ matching entries of the second list, if there is a match.
     write (u, *)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: pdg_arrays_5"        
-    
+    write (u, "(A)")  "* Test output end: pdg_arrays_5"
+
   end subroutine pdg_arrays_5
-  
+
 @ %def pdg_arrays_5
-@ 
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Jets}
@@ -2603,15 +2614,15 @@ and tests.
 <<File header>>
 
 module jets
-    
+
   use fastjet !NODEP!
-  
+
 <<Standard module head>>
 
 <<Jets: public>>
 
 contains
-  
+
 <<Jets: procedures>>
 
 end module jets
@@ -2635,7 +2646,7 @@ re-export some symbols.
   subroutine fastjet_init ()
     call print_banner ()
   end subroutine fastjet_init
-  
+
 @ %def fastjet_init
 @ The jet algorithm codes (actually, integers)
 <<Jets: public>>=
@@ -2649,8 +2660,8 @@ re-export some symbols.
   public :: ee_genkt_algorithm
   public :: plugin_algorithm
   public :: undefined_jet_algorithm
-  
-@ 
+
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[jets_ut.f90]]>>=
@@ -2659,13 +2670,13 @@ Test module, followed by the corresponding implementation module.
 module jets_ut
   use unit_tests
   use jets_uti
-  
+
 <<Standard module head>>
 
 <<Jets: public test>>
 
 contains
-  
+
 <<Jets: test driver>>
 
 end module jets_ut
@@ -2698,7 +2709,7 @@ end module jets_uti
   subroutine jets_test (u, results)
     integer, intent(in) :: u
     type (test_results_t), intent(inout) :: results
-  <<Jets: execute tests>>  
+  <<Jets: execute tests>>
   end subroutine jets_test
 
 @ %def jets_test
@@ -2713,10 +2724,10 @@ which we can finalize explicitly.
 <<Jets: execute tests>>=
   call test (jets_1, "jets_1", &
        "basic FastJet functionality", &
-       u, results) 
+       u, results)
 <<Jets: test declarations>>=
   public :: jets_1
-<<Jets: tests>>=     
+<<Jets: tests>>=
   subroutine jets_1 (u)
     integer, intent(in) :: u
 
@@ -2729,7 +2740,7 @@ which we can finalize explicitly.
 
     write (u, "(A)")  "* Test output: jets_1"
     write (u, "(A)")  "*   Purpose: test basic FastJet functionality"
-    write (u, "(A)")    
+    write (u, "(A)")
 
     write (u, "(A)")  "* Print banner"
     call print_banner ()
@@ -2786,7 +2797,7 @@ which we can finalize explicitly.
     call cs%final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: jets_1"        
+    write (u, "(A)")  "* Test output end: jets_1"
 
   end subroutine jets_1
 
@@ -2805,7 +2816,7 @@ and combinations which are constructed in cut or analysis expressions.
 module subevents
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
 <<Use kinds>>
   use io_units
   use format_defs, only: FMT_14, FMT_19
@@ -2832,7 +2843,7 @@ contains
 
 end module subevents
 @ %def subevents
-@ 
+@
 \subsection{Particles}
 For the purpose of this module, a particle has a type which can
 indicate a beam, incoming, outgoing, or composite particle, flavor and
@@ -2846,7 +2857,7 @@ particle, the array contains only the index of the particle itself.
 For incoming particles, the momentum is inverted before storing it in
 the particle object.
 <<Subevents: parameters>>=
-  integer, parameter, public :: PRT_UNDEFINED = 0 
+  integer, parameter, public :: PRT_UNDEFINED = 0
   integer, parameter, public :: PRT_BEAM = -9
   integer, parameter, public :: PRT_INCOMING = 1
   integer, parameter, public :: PRT_OUTGOING = 2
@@ -2859,7 +2870,7 @@ the particle object.
 @ %def PRT_INCOMING PRT_OUTGOING PRT_COMPOSITE
 @ %def PRT_COMPOSITE PRT_VIRTUAL PRT_RESONANT
 @ %def PRT_BEAM_REMNANT
-@ 
+@
 \subsubsection{The type}
 We initialize only the type here and mark as unpolarized.  The
 initializers below do the rest.
@@ -2890,7 +2901,7 @@ needed.
     prt%type = PRT_BEAM
     call prt_set (prt, pdg, - p, p2, src)
   end subroutine prt_init_beam
-    
+
   subroutine prt_init_incoming (prt, pdg, p, p2, src)
     type(prt_t), intent(out) :: prt
     integer, intent(in) :: pdg
@@ -2900,7 +2911,7 @@ needed.
     prt%type = PRT_INCOMING
     call prt_set (prt, pdg, - p, p2, src)
   end subroutine prt_init_incoming
-    
+
   subroutine prt_init_outgoing (prt, pdg, p, p2, src)
     type(prt_t), intent(out) :: prt
     integer, intent(in) :: pdg
@@ -2910,7 +2921,7 @@ needed.
     prt%type = PRT_OUTGOING
     call prt_set (prt, pdg, p, p2, src)
   end subroutine prt_init_outgoing
-    
+
   subroutine prt_init_composite (prt, p, src)
     type(prt_t), intent(out) :: prt
     type(vector4_t), intent(in) :: p
@@ -2920,7 +2931,7 @@ needed.
   end subroutine prt_init_composite
 
 @ %def prt_init_beam prt_init_incoming prt_init_outgoing prt_init_composite
-@ 
+@
 This version is for temporary particle objects, so the [[src]] array
 is not set.
 <<Subevents: public>>=
@@ -2950,9 +2961,9 @@ is not set.
          vector3_moving ([jet%px(), jet%py(), jet%pz()]))
     call prt_set (prt, pdg, p, p**2, src)
   end subroutine prt_init_pseudojet
-  
+
 @ %def prt_init_pseudojet
-@ 
+@
 \subsubsection{Accessing contents}
 <<Subevents: public>>=
   public :: prt_get_pdg
@@ -3004,7 +3015,7 @@ is not set.
   end function prt_get_helicity
 
 @ %def prt_get_helicity
-@ 
+@
 \subsubsection{Setting data}
 Set the PDG, momentum and momentum squared, and ancestors.  If
 allocate-on-assignment is available, this can be simplified.
@@ -3094,7 +3105,7 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
   end function c_prt_from_prt
 
 @ %def c_prt_from_prt
-@ 
+@
 \subsubsection{Output}
 <<Subevents: public>>=
   public :: prt_write
@@ -3105,7 +3116,7 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
     logical, intent(in), optional :: testflag
     logical :: pacified
     type(prt_t) :: tmp
-    character(len=7) :: fmt   
+    character(len=7) :: fmt
     integer :: u, i
     call pac_fmt (fmt, FMT_19, FMT_14, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
@@ -3144,7 +3155,7 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
   end subroutine prt_write
 
 @ %def prt_write
-@ 
+@
 \subsubsection{Tools}
 Two particles match if their [[src]] arrays are the same.
 <<Subevents: interfaces>>=
@@ -3591,7 +3602,7 @@ incoming/outgoing particles.
   end subroutine subevt_polarize
 
 @ %def subevt_polarize
-@ 
+@
 \subsubsection{Accessing contents}
 Return true if the subevent has entries.
 <<Subevents: public>>=
@@ -3644,7 +3655,7 @@ Return true if the subevent has entries.
     end do
     sqrts_hat = p ** 1
   end function subevt_get_sqrts_hat
-    
+
 @ %def subevt_get_sqrts_hat
 @ Return the number of incoming (outgoing) particles, respectively.
 Beam particles or composites are not counted.
@@ -3657,16 +3668,16 @@ Beam particles or composites are not counted.
     integer :: n_in
     n_in = count (subevt%prt(:subevt%n_active)%type == PRT_INCOMING)
   end function subevt_get_n_in
-    
+
   function subevt_get_n_out (subevt) result (n_out)
     type(subevt_t), intent(in) :: subevt
     integer :: n_out
     n_out = count (subevt%prt(:subevt%n_active)%type == PRT_OUTGOING)
   end function subevt_get_n_out
-    
+
 @ %def subevt_get_n_in
 @ %def subevt_get_n_out
-@ 
+@
 <<Subevents: interfaces>>=
   interface c_prt
      module procedure c_prt_from_subevt
@@ -3690,7 +3701,7 @@ Beam particles or composites are not counted.
 
 @ %def c_prt_from_subevt
 @ %def c_prt_array_from_subevt
-@ 
+@
 \subsubsection{Operations with subevents}
 The join operation joins two subevents.  When appending the
 elements of the second list, we check for each particle whether it is
@@ -4076,7 +4087,7 @@ to double precision, even if the main program uses higher precision.
      module procedure pacify_prt
      module procedure pacify_subevt
   end interface pacify
-  
+
 @ %def pacify
 <<Subevents: procedures>>=
   subroutine pacify_prt (prt)
@@ -4086,7 +4097,7 @@ to double precision, even if the main program uses higher precision.
     call pacify (prt%p, e)
     call pacify (prt%p2, 1E3_default * e)
   end subroutine pacify_prt
-  
+
   subroutine pacify_subevt (subevt)
     class(subevt_t), intent(inout) :: subevt
     integer :: i
@@ -4099,7 +4110,7 @@ to double precision, even if the main program uses higher precision.
 @ %def pacify_subevt
 @
 \clearpage
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Analysis tools}
 
 This module defines structures useful for data analysis.  These
@@ -4131,7 +4142,6 @@ module analysis
   use io_units
   use format_utils, only: quote_underscore, tex_format
   use system_defs, only: TAB
-  use unit_tests
   use diagnostics
   use os_interface
   use ifiles
@@ -4154,7 +4164,7 @@ contains
 
 end module analysis
 @ %def analysis
-@ 
+@
 \subsection{Output formats}
 These formats share a common field width (alignment).
 <<Analysis: parameters>>=
@@ -4163,7 +4173,7 @@ These formats share a common field width (alignment).
   character(*), parameter, public :: HISTOGRAM_DATA_FORMAT = "ES19.12"
 
 @ %def HISTOGRAM_HEAD_FORMAT HISTOGRAM_INTG_FORMAT HISTOGRAM_DATA_FORMAT
-@ 
+@
 \subsection{Graph options}
 These parameters are used for displaying data.  They apply to a whole graph,
 which may contain more than one plot element.
@@ -4299,7 +4309,7 @@ plots, also as graph elements.  The [[graph_options]] copy is used for
     write (u, 1)  "gmlcode_bg  =", char (gro%gmlcode_bg)
     write (u, 1)  "gmlcode_fg  =", char (gro%gmlcode_fg)
   end subroutine graph_options_write
-  
+
 @ %def graph_options_write
 @ Write a \LaTeX\ header/footer for the analysis file.
 <<Analysis: procedures>>=
@@ -4381,13 +4391,13 @@ plots, also as graph elements.  The [[graph_options]] copy is used for
     type(graph_options_t), intent(in) :: gro
     cmd = 'label.bot (<' // '<' // gro%x_label // '>' // '>, out);'
   end function graph_options_get_gml_x_label
-    
+
   function graph_options_get_gml_y_label (gro) result (cmd)
     type(string_t) :: cmd
     type(graph_options_t), intent(in) :: gro
     cmd = 'label.ulft (<' // '<' // gro%y_label // '>' // '>, out);'
   end function graph_options_get_gml_y_label
-    
+
 @ %def graph_options_get_gml_x_label
 @ %def graph_options_get_gml_y_label
 @ Create an appropriate [[graphrange]] statement for the given graph options.
@@ -4526,7 +4536,7 @@ These options apply to an individual graph element (histogram or plot).
     write (u, 1)  "gmlcode_bg  =", char (dro%gmlcode_bg)
     write (u, 1)  "gmlcode_fg  =", char (dro%gmlcode_fg)
   end subroutine drawing_options_write
-  
+
 @ %def drawing_options_write
 @ Init with empty strings and default options, appropriate for either
 histogram or plot.
@@ -4612,7 +4622,7 @@ of all, we may have to compute a baseline:
   end function drawing_options_get_calc_command
 
 @ %def drawing_options_get_calc_command
-@ Return the drawing command.  
+@ Return the drawing command.
 <<Analysis: procedures>>=
   function drawing_options_get_draw_command (dro) result (cmd)
     type(string_t) :: cmd
@@ -4801,9 +4811,9 @@ sums which are necessary for proper averaging.
   \end{equation}
   and
   \begin{equation}
-    \Delta x 
+    \Delta x
     = \sqrt{\frac{1}{n-1}
-            \left(\frac{\sum x_i^2 w_i}{\sum w_i} 
+            \left(\frac{\sum x_i^2 w_i}{\sum w_i}
                   - \frac{(\sum x_i w_i)^2}{(\sum w_i)^2}\right)}
   \end{equation}
   For $w_i=1$, this specializes to the previous formula.
@@ -4852,7 +4862,7 @@ sums which are necessary for proper averaging.
 <<Analysis: procedures>>=
   function observable_get_label (obs, wl, wu) result (string)
     type(string_t) :: string
-    type(observable_t), intent(in) :: obs 
+    type(observable_t), intent(in) :: obs
     logical, intent(in) :: wl, wu
     type(string_t) :: obs_label, obs_unit
     if (wl) then
@@ -4881,7 +4891,7 @@ sums which are necessary for proper averaging.
   end function observable_get_label
 
 @ %def observable_get_label
-@ 
+@
 \subsection{Output}
 <<Analysis: procedures>>=
   subroutine observable_write (obs, unit)
@@ -4950,7 +4960,7 @@ sums which are necessary for proper averaging.
        n_digits = 1
     end if
     if (heading) then
-       write (u, "(A)") 
+       write (u, "(A)")
        if (obs%graph_options%title /= "") then
           write (u, "(A)")  "\section{" // char (obs%graph_options%title) &
                // "}"
@@ -4974,14 +4984,14 @@ sums which are necessary for proper averaging.
     write (u, "(A)")  "}"
     write (u, "(A)", advance="no")  "     \quad[n_{\text{entries}} = "
     write (u, "(I0)",advance="no")  observable_get_n_entries (obs)
-    write (u, "(A)")  "]$"          ! $ fool Emacs' noweb mode 
+    write (u, "(A)")  "]$"          ! $ fool Emacs' noweb mode
     if (heading) then
        write (u, "(A)") "\end{flushleft}"
     end if
   end subroutine observable_write_driver
 
 @ %def observable_write_driver
-@ 
+@
 \subsection{Histograms}
 \subsubsection{Bins}
 <<Analysis: types>>=
@@ -5060,7 +5070,7 @@ sums which are necessary for proper averaging.
     type(bin_t), intent(in) :: bin
     n = bin%count
   end function bin_get_n_entries
-  
+
   function bin_get_sum (bin) result (s)
     real(default) :: s
     type(bin_t), intent(in) :: bin
@@ -5112,7 +5122,7 @@ sums which are necessary for proper averaging.
 
 @ %def bin_write_header
 @ %def bin_write
-@ 
+@
 \subsubsection{Histograms}
 <<Analysis: types>>=
   type :: histogram_t
@@ -5132,7 +5142,7 @@ sums which are necessary for proper averaging.
   end type histogram_t
 
 @ %def histogram_t
-@ 
+@
 \subsubsection{Initializer/finalizer}
 Initialize a histogram.  We may provide either the bin width or the
 number of bins.  A finalizer is not needed, since the histogram contains no
@@ -5157,12 +5167,12 @@ pointer (sub)components.
     type(drawing_options_t), intent(in), optional :: drawing_options
     real(default) :: bin_width
     integer :: i
-    call observable_init (h%obs_within_bounds, obs_label, obs_unit) 
-    call observable_init (h%obs, obs_label, obs_unit) 
+    call observable_init (h%obs_within_bounds, obs_label, obs_unit)
+    call observable_init (h%obs, obs_label, obs_unit)
     h%lower_bound = lower_bound
     h%upper_bound = upper_bound
     h%n_bins = max (n_bins, 1)
-    h%width = h%upper_bound - h%lower_bound    
+    h%width = h%upper_bound - h%lower_bound
     h%normalize_bins = normalize_bins
     bin_width = h%width / h%n_bins
     allocate (h%bin (h%n_bins))
@@ -5295,7 +5305,7 @@ excess weight that could be returned by the unweighting procedure.
   end subroutine histogram_record_value_weighted
 
 @ %def histogram_record_value_weighted
-@ 
+@
 \subsubsection{Access contents}
 Inherited from the observable component (all-over average etc.)
 <<Analysis: procedures>>=
@@ -5429,7 +5439,7 @@ results for underflow or overflow, respectively.
   end function histogram_get_drawing_options_ptr
 
 @ %def histogram_get_drawing_options_ptr
-@ 
+@
 \subsubsection{Output}
 <<Analysis: procedures>>=
   subroutine histogram_write (h, unit)
@@ -5465,14 +5475,14 @@ results for underflow or overflow, respectively.
     type(histogram_t), intent(in) :: h
     type(string_t), intent(in) :: filename
     integer, intent(in), optional :: unit
-    character(*), parameter :: fmt = "(ES15.8)"    
+    character(*), parameter :: fmt = "(ES15.8)"
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Histogram:";'
     write (u, "(4x,A)")  'dx := #' &
          // real2char (h%width / h%n_bins / 2, fmt) // ';'
-    write (u, "(4x,A)")  'for i withinblock:' 
+    write (u, "(4x,A)")  'for i withinblock:'
     write (u, "(6x,A)")  'get x, y, y.d, y.n, y.e;'
     if (h%drawing_options%with_hbars) then
        write (u, "(6x,A)")  'plot (' // char (h%drawing_options%dataset) &
@@ -5655,7 +5665,7 @@ results for underflow or overflow, respectively.
   end subroutine point_write
 
 @ %def point_write
-@ 
+@
 \subsubsection{Plots}
 <<Analysis: types>>=
   type :: plot_t
@@ -5668,7 +5678,7 @@ results for underflow or overflow, respectively.
   end type plot_t
 
 @ %def plot_t
-@ 
+@
 \subsubsection{Initializer/finalizer}
 Initialize a plot.  We provide the lower and upper bound in the $x$
 direction.
@@ -5744,7 +5754,7 @@ original.
   end subroutine plot_final
 
 @ %def plot_final
-@ 
+@
 \subsubsection{Fill plots}
 Clear the plot contents, but do not modify the structure.
 <<Analysis: procedures>>=
@@ -5777,7 +5787,7 @@ it is recorded as under-/overflow.
   end subroutine plot_record_value
 
 @ %def plot_record_value
-@ 
+@
 \subsubsection{Access contents}
 The number of points.
 <<Analysis: procedures>>=
@@ -5806,7 +5816,7 @@ The number of points.
   end function plot_get_drawing_options_ptr
 
 @ %def plot_get_drawing_options_ptr
-@ 
+@
 \subsubsection{Output}
 This output format is used by the GAMELAN driver below.
 <<Analysis: procedures>>=
@@ -5840,7 +5850,7 @@ This output format is used by the GAMELAN driver below.
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Plot:";'
-    write (u, "(4x,A)")  'for i withinblock:' 
+    write (u, "(4x,A)")  'for i withinblock:'
     write (u, "(6x,A)")  'get x, y, y.err, x.err;'
     write (u, "(6x,A)")  'plot (' // char (p%drawing_options%dataset) &
          // ') (x,y);'
@@ -6017,7 +6027,7 @@ contents are always copied from elementary histograms or plots.
   end subroutine graph_element_write_gml_reader
 
 @ %def graph_element_write_gml_reader
-@ 
+@
 \subsubsection{The graph type}
 The actual graph type contains its own [[graph_options]], which override the
 individual settings.  The [[drawing_options]] are set in the graph elements.
@@ -6100,7 +6110,7 @@ filled one by one, optionally with modified drawing options.
   end subroutine graph_final
 
 @ %def graph_final
-@ 
+@
 \subsubsection{Access contents}
 The number of elements.
 <<Analysis: procedures>>=
@@ -6235,7 +6245,7 @@ identified by their ID strings.
   end type analysis_object_t
 
 @ %def analysis_object_t
-@ 
+@
 \subsubsection{Initializer/finalizer}
 Allocate with the correct type but do not fill initial values.
 <<Analysis: procedures>>=
@@ -6290,7 +6300,7 @@ objects.
   end subroutine analysis_object_clear
 
 @ %def analysis_object_clear
-@ 
+@
 \subsubsection{Fill with data}
 Record data.  The effect depends on the type of analysis object.
 <<Analysis: procedures>>=
@@ -6334,7 +6344,7 @@ Record data.  The effect depends on the type of analysis object.
   end subroutine analysis_object_set_next_ptr
 
 @ %def analysis_object_set_next_ptr
-@ 
+@
 \subsubsection{Access contents}
 Return a pointer to the next object in the list.
 <<Analysis: procedures>>=
@@ -6484,7 +6494,7 @@ Return a pointer to the next object in the list.
   end function analysis_object_has_plot
 
 @ %def analysis_object_has_plot
-@ 
+@
 \subsubsection{Output}
 <<Analysis: procedures>>=
   subroutine analysis_object_write (obj, unit, verbose)
@@ -6717,7 +6727,7 @@ The iterator must point to a valid entry.
     end subroutine invalid
   end subroutine analysis_iterator_get_data
 
-@ %def analysis_iterator_get_data     
+@ %def analysis_iterator_get_data
 @
 \subsection{Analysis store}
 This data structure holds all observables, histograms and such that
@@ -6769,7 +6779,7 @@ identified by their ID strings and types.
 @ %def analysis_store_append_object
 @ Return a pointer to the analysis object with given ID.
 <<Analysis: procedures>>=
-  function analysis_store_get_object_ptr (id) result (obj) 
+  function analysis_store_get_object_ptr (id) result (obj)
     type(string_t), intent(in) :: id
     type(analysis_object_t), pointer :: obj
     obj => analysis_store%first
@@ -6870,7 +6880,7 @@ Write a driver file for all objects in the store.
 @ %def analysis_store_write_driver_all
 @
 Write a driver file for an array of objects.
-<<Analysis: procedures>>=   
+<<Analysis: procedures>>=
   subroutine analysis_store_write_driver_obj (filename_data, id, unit)
     type(string_t), intent(in) :: filename_data
     type(string_t), dimension(:), intent(in) :: id
@@ -6886,7 +6896,7 @@ Write a driver file for an array of objects.
     call analysis_store_write_driver_footer (unit)
   end subroutine analysis_store_write_driver_obj
 
-@ %def analysis_store_write_driver_obj  
+@ %def analysis_store_write_driver_obj
 @ The beginning of the driver file.
 <<Analysis: procedures>>=
   subroutine analysis_store_write_driver_header (unit)
@@ -6902,7 +6912,7 @@ Write a driver file for an array of objects.
     write (u, '(A)') "   \DeclareGraphicsRule{*}{mps}{*}{}"
     write (u, '(A)') "\else"
     write (u, '(A)') "   \DeclareGraphicsRule{*}{eps}{*}{}"
-    write (u, '(A)') "\fi"    
+    write (u, '(A)') "\fi"
     write (u, *)
     write (u, '(A)') "\begin{document}"
     write (u, '(A)') "\begin{gmlfile}"
@@ -6973,7 +6983,7 @@ The specific versions below:
     type(string_t), intent(in), optional :: obs_label, obs_unit
     type(graph_options_t), intent(in), optional :: graph_options
     type(drawing_options_t), intent(in), optional :: drawing_options
-    type(analysis_object_t), pointer :: obj   
+    type(analysis_object_t), pointer :: obj
     type(histogram_t), pointer :: h
     call analysis_store_init_object (id, AN_HISTOGRAM, obj)
     h => analysis_object_get_histogram_ptr (obj)
@@ -7007,7 +7017,7 @@ The specific versions below:
 <<Analysis: procedures>>=
   subroutine analysis_init_plot (id, graph_options, drawing_options)
     type(string_t), intent(in) :: id
-    type(graph_options_t), intent(in), optional :: graph_options    
+    type(graph_options_t), intent(in), optional :: graph_options
     type(drawing_options_t), intent(in), optional :: drawing_options
     type(analysis_object_t), pointer :: obj
     type(plot_t), pointer :: plot
@@ -7023,7 +7033,7 @@ The specific versions below:
   subroutine analysis_init_graph (id, n_elements, graph_options)
     type(string_t), intent(in) :: id
     integer, intent(in) :: n_elements
-    type(graph_options_t), intent(in), optional :: graph_options    
+    type(graph_options_t), intent(in), optional :: graph_options
     type(analysis_object_t), pointer :: obj
     type(graph_t), pointer :: graph
     call analysis_store_init_object (id, AN_GRAPH, obj)
@@ -7127,13 +7137,13 @@ given as input.  The object must exist and already be initialized as a graph.
   end subroutine analysis_fill_graph
 
 @ %def analysis_fill_graph
-@ 
+@
 \subsubsection{Retrieve generic results}
 Check if a named object exists.
 <<Analysis: public>>=
   public :: analysis_exists
 <<Analysis: procedures>>=
-  function analysis_exists (id) result (flag) 
+  function analysis_exists (id) result (flag)
     type(string_t), intent(in) :: id
     logical :: flag
     type(analysis_object_t), pointer :: obj
@@ -7262,7 +7272,7 @@ has wrong type, the iterator will be invalid.
   end subroutine analysis_init_iterator
 
 @ %def analysis_init_iterator
-@ 
+@
 \subsubsection{Output}
 <<Analysis: public>>=
   public :: analysis_write
@@ -7372,13 +7382,13 @@ has wrong type, the iterator will be invalid.
     write (unit, "(A)")  "MPOST = " // char (os_data%mpost)
     write (unit, "(A)")  "GML = " // char (os_data%gml)
     write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
-    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)    
+    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)
     write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
          char(os_data%whizard_texpath) // '"'
     write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
          char(os_data%whizard_texpath) // '"'
-    write (unit, "(A)")  ""       
-    write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"    
+    write (unit, "(A)")  ""
+    write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"
     if (os_data%event_analysis_pdf) then
        write (unit, "(5A)")  "TEX_OBJECTS = ", char (filename), ".pdf"
     else
@@ -7391,7 +7401,7 @@ has wrong type, the iterator will be invalid.
        else
           write (unit, "(5A)")  char (filename), ".ps: ", &
                char (filename), ".tex"
-       end if    
+       end if
        write (unit, "(5A)")  TAB, "-TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
             char (filename) // ".tex"
        if (has_gmlcode) then
@@ -7404,38 +7414,38 @@ has wrong type, the iterator will be invalid.
        if (os_data%event_analysis_pdf) then
           write (unit, "(5A)")  TAB, "$(PS2PDF) " // char (filename) // ".ps"
        end if
-    end if       
+    end if
     write (unit, "(A)")
     write (unit, "(A)")  "compile: $(TEX_OBJECTS)"
-    write (unit, "(A)")  ".PHONY: compile" 
+    write (unit, "(A)")  ".PHONY: compile"
     write (unit, "(A)")
-    write (unit, "(5A)")  "CLEAN_OBJECTS = ",  char (filename), ".aux"  
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".log"         
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"                
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".out"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9]"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9]"    
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9][0-9]"   
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9]"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS = ",  char (filename), ".aux"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".log"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".out"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9]"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9]"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9][0-9]"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ltp"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mp"
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mpx"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"              
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ps"           
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".pdf"               
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mpx"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ps"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".pdf"
     write (unit, "(A)")
     write (unit, "(A)")  "# Generic cleanup targets"
     write (unit, "(A)")  "clean-objects:"
     write (unit, "(A)")  TAB // "rm -f $(CLEAN_OBJECTS)"
     write (unit, "(A)")  ""
     write (unit, "(A)")  "clean: clean-objects"
-    write (unit, "(A)")  ".PHONY: clean" 
+    write (unit, "(A)")  ".PHONY: clean"
   end subroutine analysis_write_makefile
 
 @ %def analysis_write_makefile
-@ 
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[analysis_ut.f90]]>>=
@@ -7444,13 +7454,13 @@ Test module, followed by the corresponding implementation module.
 module analysis_ut
   use unit_tests
   use analysis_uti
-  
+
 <<Standard module head>>
 
 <<Analysis: public test>>
 
 contains
-  
+
 <<Analysis: test driver>>
 
 end module analysis_ut
@@ -7484,7 +7494,7 @@ end module analysis_uti
   subroutine analysis_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<Analysis: execute tests>>  
+  <<Analysis: execute tests>>
   end subroutine analysis_test
 
 @ %def analysis_test
@@ -7503,11 +7513,11 @@ end module analysis_uti
     id2 = "bar"
     id3 = "hist"
     id4 = "plot"
-    
+
     write (u, "(A)")  "* Test output: Analysis"
     write (u, "(A)")  "*   Purpose: test the analysis routines"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     call analysis_init_observable (id1)
     call analysis_init_observable (id2)
     call analysis_init_histogram &
@@ -7542,7 +7552,7 @@ end module analysis_uti
     write (u, "(A)")
     write (u, "(A)") "* Clear analysis #2"
     write (u, "(A)")
-    
+
     call analysis_clear (id2)
     do i = 4, 6
        print *, "data = ", real(i,default)
@@ -7573,13 +7583,13 @@ end module analysis_uti
     call analysis_write (u)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"    
-       
+    write (u, "(A)")  "* Cleanup"
+
     call analysis_clear ()
     call analysis_final ()
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: analysis_1"            
+    write (u, "(A)")  "* Test output end: analysis_1"
   end subroutine analysis_1
 
-@ %def analysis_1    
+@ %def analysis_1

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -263,7 +263,7 @@ module powheg_matching
                           update_particle_set
      procedure :: update_momenta => powheg_matching_update_momenta
      procedure :: update_particle_set => powheg_matching_update_particle_set
-     procedure :: update_event_deps => powheg_matching_update_event_deps 
+     procedure :: update_event_deps => powheg_matching_update_event_deps
      procedure :: boost_preal_to_lab_frame => powheg_matching_boost_preal_to_lab_frame
      procedure :: reweight_matrix_elements => powheg_matching_reweight_matrix_elements
      procedure :: compute_sqme_real => powheg_matching_compute_sqme_real
@@ -1028,7 +1028,7 @@ contains
   function powheg_matching_get_method (matching) result (method)
      type(string_t) :: method
      class(powheg_matching_t), intent(in) :: matching
-     method = matching_method (MATCH_POWHEG) 
+     method = matching_method (MATCH_POWHEG)
   end function powheg_matching_get_method
 
   subroutine powheg_matching_before_shower &
@@ -1204,7 +1204,7 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p_born
     type(lorentz_transformation_t) :: lt_lab_to_cms
     real(default) :: sqme_born
-    
+
     sqme_born = powheg%process_instance%get_sqme (powheg%process_deps%i_born)
     if (.not. powheg%process_deps%cm_frame) then
        lt_lab_to_cms = powheg%process_instance%get_boost_to_cms (1)
@@ -1252,7 +1252,7 @@ contains
        end if
     end associate
   end subroutine powheg_matching_boost_preal_to_lab_frame
-    
+
   function powheg_matching_reweight_matrix_elements (powheg, r) result (accepted)
     logical :: accepted
     class(powheg_matching_t), intent(inout) :: powheg
@@ -1589,7 +1589,7 @@ contains
           if (present (particle_set)) then
              select type (config => pcm%config)
              type is (pcm_nlo_t)
-                emitter = config%region_data%get_emitter (r_max%alr) 
+                emitter = config%region_data%get_emitter (r_max%alr)
                 call powheg%build_particle_set (particle_set, &
                    powheg%event_deps%p_born_lab%get_momenta (1), &
                    p_real_max, emitter)
@@ -1738,7 +1738,7 @@ contains
                    i = i + 1
                 end if
              end if
-          end do 
+          end do
        end associate
        call matching%event_deps%p_born_lab%init (n_tot_born, 1)
        call matching%event_deps%p_born_cms%init (n_tot_born, 1)

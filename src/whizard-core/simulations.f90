@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -429,11 +429,15 @@ contains
     logical, intent(in) :: use_process, integrate
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
+    call msg_debug (D_CORE, "prepare_process")
+    call msg_debug (D_CORE, "global present", present (global))
     if (present (global)) then
        process => global%process_stack%get_process_ptr (process_id)
     else
        process => local%process_stack%get_process_ptr (process_id)
     end if
+    call msg_debug (D_CORE, "use_process", use_process)
+    call msg_debug (D_CORE, "associated process", associated (process))
     if (use_process .and. .not. associated (process)) then
        if (integrate) then
           call msg_message ("Simulate: process '" &
@@ -446,8 +450,8 @@ contains
           call integrate_process (process_id, local, global, &
             init_only = .not. integrate)
        else
-          call integrate_process (process_id, local, local_stack=.true., &
-            init_only = .not. integrate)
+          call integrate_process (process_id, local, &
+               local_stack = .true., init_only = .not. integrate)
        end if
        if (signal_is_pending ())  return
        process => global%process_stack%get_process_ptr (process_id)
@@ -463,6 +467,14 @@ contains
                // char (process_id) // "' could not be initialized: aborting")
        end if
     else if (.not. associated (process)) then
+       if (present (global)) then
+          call integrate_process (process_id, local, global, &
+               init_only = .true.)
+       else
+          call integrate_process (process_id, local, &
+               local_stack = .true., init_only = .true.)
+       end if
+       process => global%process_stack%get_process_ptr (process_id)
        call msg_message &
             ("Simulate: process '" &
                // char (process_id) // "': enabled for rescan only")
@@ -708,6 +720,7 @@ contains
     type(process_t), intent(inout), target :: process
     class(model_data_t), intent(in), optional :: model
     type(rt_data_t), intent(in), optional, target :: local
+    integer :: i_component
     allocate (process_instance)
     call process_instance%init (process)
     if (process%is_nlo_calculation ()) then
@@ -716,12 +729,15 @@ contains
           select type (config => pcm%config)
           type is (pcm_nlo_t)
              if (.not. config%settings%combined_integration) &
-                call pcm%disable_subtraction ()
+                  call pcm%set_radiation_event ()
           end select
        end select
-       if (process%needs_extra_code () .and. present (local)) &
-          call process_instance%create_and_load_extra_libraries &
-               (local%beam_structure, local%os_data)
+       if (process%needs_extra_code () .and. present (local)) then
+             call process%create_and_load_extra_libraries &
+                  (local%beam_structure, process%get_var_list_ptr (), &
+                  local%os_data)
+          call process_instance%setup_blha_helicities ()
+       end if
     end if
     call process_instance%setup_event_data (model)
   end subroutine prepare_process_instance
@@ -768,7 +784,7 @@ contains
   subroutine entry_setup_additional_entries (entry)
     class(entry_t), intent(inout), target :: entry
     type(entry_t), pointer :: current_entry
-    integer :: i, n_phs, n_flv
+    integer :: i, n_phs
     type(evt_nlo_t), pointer :: evt
     integer :: mode
     evt => null ()
@@ -777,7 +793,6 @@ contains
        select type (config => pcm%config)
        type is (pcm_nlo_t)
           n_phs = config%region_data%n_phs
-          n_flv = config%region_data%n_flv_real
        end select
     end select
     select type (entry)
@@ -786,10 +801,10 @@ contains
        current_entry%first => entry
        call get_nlo_evt_ptr (current_entry, evt, mode)
        if (mode > EVT_NLO_SEPARATE_BORNLIKE) then
-          allocate (evt%particle_set_radiated (n_phs * n_flv + 1))
+          allocate (evt%particle_set_radiated (n_phs + 1))
           evt%event_deps%n_phs = n_phs
           evt%qcd => entry%qcd
-          do i = 1, n_phs * n_flv
+          do i = 1, n_phs
              allocate (current_entry%next)
              current_entry%next%first => current_entry%first
              current_entry => current_entry%next
@@ -1385,7 +1400,7 @@ contains
           call simulation%entry(i)%determine_if_powheg_matching ()
           if (signal_is_pending ())  return
           if (simulation%entry(i)%is_nlo ()) &
-             call simulation%entry(i)%setup_additional_entries ()
+               call simulation%entry(i)%setup_additional_entries ()
        end do
        simulation%valid = any (simulation%entry%valid)
        if (.not. simulation%valid) then
@@ -2007,6 +2022,8 @@ contains
     logical :: decay_rest_frame
     type(string_t) :: process_id
     enable_alt = .true.;  if (present (alt))  enable_alt = alt
+    call msg_debug (D_CORE, "simulation_get_data")
+    call msg_debug (D_CORE, "alternative setup", enable_alt)
     if (enable_alt) then
        call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt

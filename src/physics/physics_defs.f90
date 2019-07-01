@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -146,9 +146,14 @@ module physics_defs
   integer, dimension(2), parameter, public :: ass_quark = [5, 6]
   integer, dimension(2), parameter, public :: ass_boson = [3, 4]
 
+  integer, parameter, public :: PROC_MODE_UNDEFINED = 0
+  integer, parameter, public :: PROC_MODE_TT = 1
+  integer, parameter, public :: PROC_MODE_WBWB = 2
+
 
   public :: component_status
   public :: is_nlo_component
+  public :: is_subtraction_component
   public :: thr_leg
 
   interface component_status
@@ -218,6 +223,12 @@ contains
        is_nlo = .false.
     end select
   end function is_nlo_component
+
+  function is_subtraction_component (emitter, nlo_type) result (is_subtraction)
+    logical :: is_subtraction
+    integer, intent(in) :: emitter, nlo_type
+    is_subtraction = nlo_type == NLO_REAL .and. emitter < 0
+  end function is_subtraction_component
 
   function thr_leg (emitter) result (leg)
     integer :: leg

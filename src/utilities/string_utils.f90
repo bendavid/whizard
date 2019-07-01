@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module string_utils
-  
+
   use, intrinsic :: iso_c_binding
 
   use kinds, only: default
@@ -49,6 +49,7 @@ module string_utils
   public :: str
   public :: read_rval
   public :: read_ival
+  public :: string_contains_word
   public :: split_string
 
   interface upper_case
@@ -200,46 +201,46 @@ contains
   end function str_complexs
 
   function read_rval (s) result (rval)
-    type(string_t), intent(in) :: s
     real(default) :: rval
+    type(string_t), intent(in) :: s
     character(80) :: buffer
     buffer = s
     read (buffer, *)  rval
   end function read_rval
-    
+
   function read_ival (s) result (ival)
-    type(string_t), intent(in) :: s
     integer :: ival
+    type(string_t), intent(in) :: s
     character(80) :: buffer
     buffer = s
     read (buffer, *)  ival
   end function read_ival
-    
+
+  function string_contains_word (str, word) result (val)
+    logical :: val
+    type(string_t), intent(in) :: str, word
+    type(string_t) :: str_tmp, str_out
+    str_tmp = str
+    call split (str_tmp, str_out, word)
+    val = str_out /= ""
+  end function string_contains_word
+
   subroutine split_string (str, separator, str_array)
     type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(string_t), intent(in) :: str, separator
     type(string_t) :: str_tmp, str_out
     integer :: n_str
     n_str = 0; str_tmp = str
-    do while (contains_word (str_tmp, separator))
+    do while (string_contains_word (str_tmp, separator))
        n_str = n_str + 1
        call split (str_tmp, str_out, separator)
     end do
     allocate (str_array (n_str))
     n_str = 1; str_tmp = str
-    do while (contains_word (str_tmp, separator))
+    do while (string_contains_word (str_tmp, separator))
        call split (str_tmp, str_array (n_str), separator)
        n_str = n_str + 1
     end do
-  contains
-    function contains_word (str, word) result (val)
-      logical :: val
-      type(string_t), intent(in) :: str, word
-      type(string_t) :: str_tmp, str_out
-      str_tmp = str
-      call split (str_tmp, str_out, word)
-      val = str_out /= "" 
-    end function contains_word
   end subroutine split_string
 
 

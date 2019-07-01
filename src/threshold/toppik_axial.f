@@ -1,4 +1,4 @@
-! WHIZARD 2.4.0 Nov 28 2016
+! WHIZARD 2.4.1 Mar 24 2017
 
 ! TOPPIK code by M. Jezabek, T. Teubner (v1.1, 1992), T. Teubner (1998)
 !
@@ -111,7 +111,7 @@ c                 ``zeroth order'' G_0(p) in the LS-equation:
 c                 0 : no correction, means  G = G_0 + G_0 int V G
 c                      with G_0=1/[E+iGamma_t-p^2/m_t]*(1+xkincm)+xkinca
 c                 1 : apply the correction in the LS equation as
-c                      G = G_0 + xkincv*p^2/m_t^2/[E+iGamma_t-p^2/m_t] + 
+c                      G = G_0 + xkincv*p^2/m_t^2/[E+iGamma_t-p^2/m_t] +
 c                          G_0 int V G
 c                     and correct the integral over Im[G(p)] to get sigma_tot
 c                     from the optical theorem by the same factor.
@@ -232,7 +232,7 @@ c
 c Not needed for the fixed order potentials:
            alamb5=0.2d0
 c
-c      WRITE(*,*) 'INPUT TGAMMA=',TGAMMA           
+c      WRITE(*,*) 'INPUT TGAMMA=',TGAMMA
 c Needed in subroutine GAMMAT:
            GFERMI=1.16637d-5
 c           CALL GAMMAT
@@ -340,7 +340,7 @@ c  is done already.)
               zftild(i)=vec(i)
               gg(i) = bb(i)*g0c(pp(i))
 cc            gg(i) = (1.d0 + bb(i))*g0c(pp(i))
-cc Urspruenglich anderes (Minus) VZ hier, dafuer kein Minus mehr bei der 
+cc Urspruenglich anderes (Minus) VZ hier, dafuer kein Minus mehr bei der
 cc  Definition des WQs ueber Im G, 2.6.1998, tt.
 cc            gg(i) = - (1.d0 + bb(i))*g0c(pp(i))
 50         continue
@@ -444,7 +444,7 @@ c Normalisation on R:
            sig1  = sig1 / (2.d0*pi**2) * const
            sig2  = sig2 / (2.d0*pi**2) * const
 c
-c The results from the momentum space approach finally are: 
+c The results from the momentum space approach finally are:
 cc Jetzt Minus hier, 2.6.98, tt.
 c          xim=-sig1
 c          xdi=sig2
@@ -622,7 +622,7 @@ c Not better:
 c                call adqua(xb1,xb2,fretil1ax,xerg,eps)
 c                a3=xerg
 c Also not better:
-c                a1=adglg1(fretil1ax, buf, xb2, eps)             
+c                a1=adglg1(fretil1ax, buf, xb2, eps)
 c
                  a4=adglg2(fimtil1ax,xb1,xb2,eps)
 c                a5 = adglg2(fretil1ax, xb2, ddcut, eps)

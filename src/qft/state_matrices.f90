@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -62,7 +62,7 @@ module state_matrices
   integer, parameter, public :: FM_FACTOR_HELICITY = 3
   integer, parameter, public :: FM_CORRELATED_HELICITY = 4
 
-       
+
   type :: node_t
      private
      type(quantum_numbers_t) :: qn
@@ -125,7 +125,7 @@ module state_matrices
      procedure :: set_matrix_element_qn => state_matrix_set_matrix_element_qn
      procedure :: set_matrix_element_all => state_matrix_set_matrix_element_all
      procedure :: set_matrix_element_array => &
-          state_matrix_set_matrix_element_array 
+          state_matrix_set_matrix_element_array
      procedure :: set_matrix_element_single => &
           state_matrix_set_matrix_element_single
      procedure :: set_matrix_element_clone => &
@@ -161,6 +161,7 @@ module state_matrices
      procedure :: get_me_index => state_iterator_get_me_index
      procedure :: get_me_count => state_iterator_get_me_count
      procedure :: get_depth => state_iterator_get_depth
+     procedure :: go_to_qn => state_iterator_go_to_qn
      generic :: get_quantum_numbers => get_qn_multi, get_qn_slice, &
           get_qn_range, get_qn_single
      generic :: get_flavor => get_flv_multi, get_flv_slice, &
@@ -187,7 +188,8 @@ module state_matrices
      procedure :: get_hel_single => state_iterator_get_hel_single
      procedure :: set_model => state_iterator_set_model
      procedure :: get_matrix_element => state_iterator_get_matrix_element
-     procedure :: set_matrix_element => state_iterator_set_matrix_element  
+     procedure :: set_matrix_element => state_iterator_set_matrix_element
+     procedure :: add_to_matrix_element => state_iterator_add_to_matrix_element
   end type state_iterator_t
 
   type :: state_flv_content_t
@@ -202,7 +204,7 @@ module state_matrices
      procedure :: fill => state_flv_content_fill
      procedure :: match => state_flv_content_match
   end type state_flv_content_t
-  
+
 
   interface assignment(=)
      module procedure state_matrix_assign
@@ -322,7 +324,7 @@ contains
        current => current%next
     end do
   end subroutine node_write_rec
-  
+
   recursive subroutine node_write_raw_rec (node, u)
     type(node_t), intent(in), target :: node
     integer, intent(in) :: u
@@ -402,7 +404,7 @@ contains
     character(len=7) :: fmt
     integer :: u
     integer :: i
-    call pac_fmt (fmt, FMT_19, FMT_17, testflag)        
+    call pac_fmt (fmt, FMT_19, FMT_17, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A," // fmt // ")") "State matrix:  norm = ", state%norm
     if (associated (state%root)) then
@@ -419,7 +421,7 @@ contains
        if (write_value_list .and. allocated (state%me)) then
           do i = 1, size (state%me)
              write (u, "(1x,I0,A)", advance="no")  i, ":"
-             me_dum = state%me(i)             
+             me_dum = state%me(i)
              if (real(state%me(i)) == -real(state%me(i))) then
                 me_dum = &
                      cmplx (0._default, aimag(me_dum), kind=default)
@@ -515,7 +517,7 @@ contains
        call it%advance ()
     end do
   end subroutine state_matrix_set_model
-    
+
   elemental function state_matrix_is_defined (state) result (defined)
     logical :: defined
     class(state_matrix_t), intent(in) :: state
@@ -556,8 +558,8 @@ contains
        if (sub > state%n_sub) state%n_sub = sub
        call it%advance ()
     end do
-  end subroutine state_matrix_compute_n_sub 
-      
+  end subroutine state_matrix_compute_n_sub
+
   pure function state_matrix_get_n_sub (state) result (n)
     integer :: n
     class(state_matrix_t), intent(in) :: state
@@ -605,7 +607,7 @@ contains
        call it%advance ()
     end do
   end function state_matrix_get_quantum_number
-  
+
   subroutine state_matrix_get_quantum_numbers (state, qn)
     type(quantum_numbers_t), dimension(:,:), allocatable, intent(out) :: qn
     class(state_matrix_t), intent(in), target :: state
@@ -786,20 +788,15 @@ contains
        allocate (state%me (size(qn)))
     end if
     call it%init (state)
-    do while (it%is_valid ())
-       if (all (qn == it%get_quantum_numbers ())) then
-          call it%set_matrix_element (value)
-          return
-       end if
-       call it%advance ()
-    end do
+    call it%go_to_qn (qn)
+    call it%set_matrix_element (value)
   end subroutine state_matrix_set_matrix_element_qn
 
   subroutine state_matrix_set_matrix_element_all (state, value)
     class(state_matrix_t), intent(inout) :: state
     complex(default), intent(in) :: value
     if (.not. allocated (state%me)) then
-       allocate (state%me (state%n_matrix_elements))    
+       allocate (state%me (state%n_matrix_elements))
     end if
     state%me = value
   end subroutine state_matrix_set_matrix_element_all
@@ -818,7 +815,7 @@ contains
     integer, intent(in) :: i
     complex(default), intent(in) :: value
     if (.not. allocated (state%me)) then
-       allocate (state%me (state%n_matrix_elements))    
+       allocate (state%me (state%n_matrix_elements))
     end if
     state%me(i) = value
   end subroutine state_matrix_set_matrix_element_single
@@ -831,11 +828,19 @@ contains
     state%me = state1%me
   end subroutine state_matrix_set_matrix_element_clone
 
-  subroutine state_matrix_add_to_matrix_element (state, i, value)
-    class(state_matrix_t), intent(inout) :: state
-    integer, intent(in) :: i
+  subroutine state_matrix_add_to_matrix_element (state, qn, value, match_only_flavor)
+    class(state_matrix_t), intent(inout), target :: state
+    type(quantum_numbers_t), dimension(:), intent(in) :: qn
     complex(default), intent(in) :: value
-    state%me(i) = state%me(i) + value
+    logical, intent(in), optional :: match_only_flavor
+    type(state_iterator_t) :: it
+    call it%init (state)
+    call it%go_to_qn (qn, match_only_flavor)
+    if (it%is_valid ()) then
+       call it%add_to_matrix_element (value)
+    else
+       call msg_fatal ("Cannot add to matrix element - it%node not allocated")
+    end if
   end subroutine state_matrix_add_to_matrix_element
 
   subroutine state_iterator_init (it, state)
@@ -852,7 +857,7 @@ contains
        it%node => null ()
     end if
   end subroutine state_iterator_init
-    
+
   subroutine state_iterator_advance (it)
     class(state_iterator_t), intent(inout) :: it
     call find_next (it%node)
@@ -903,6 +908,29 @@ contains
     class(state_iterator_t), intent(in) :: state_iterator
     depth = state_iterator%depth
   end function state_iterator_get_depth
+
+  subroutine state_iterator_go_to_qn (it, qn, match_only_flavor)
+    class(state_iterator_t), intent(inout) :: it
+    type(quantum_numbers_t), dimension(:), intent(in) :: qn
+    logical, intent(in), optional :: match_only_flavor
+    logical :: match_flv
+    match_flv = .false.; if (present (match_only_flavor)) match_flv = .true.
+    do while (it%is_valid ())
+       if (match_flv) then
+          if (all (qn .fmatch. it%get_quantum_numbers ())) then
+             return
+          else
+             call it%advance ()
+          end if
+       else
+          if (all (qn == it%get_quantum_numbers ())) then
+             return
+          else
+             call it%advance ()
+          end if
+       end if
+    end do
+  end subroutine state_iterator_go_to_qn
 
   function state_iterator_get_qn_multi (it) result (qn)
     class(state_iterator_t), intent(in) :: it
@@ -1062,7 +1090,7 @@ contains
        node => node%parent
     end do
   end subroutine state_iterator_set_model
-  
+
   function state_iterator_get_matrix_element (it) result (me)
     complex(default) :: me
     class(state_iterator_t), intent(in) :: it
@@ -1078,10 +1106,15 @@ contains
   subroutine state_iterator_set_matrix_element (it, value)
     class(state_iterator_t), intent(inout) :: it
     complex(default), intent(in) :: value
-    if (it%node%me_index /= 0) then
-       it%state%me(it%node%me_index) = value
-    end if
+    if (it%node%me_index /= 0) it%state%me(it%node%me_index) = value
   end subroutine state_iterator_set_matrix_element
+
+  subroutine state_iterator_add_to_matrix_element (it, value)
+    class(state_iterator_t), intent(inout) :: it
+    complex(default), intent(in) :: value
+    if (it%node%me_index /= 0) &
+         it%state%me(it%node%me_index) = it%state%me(it%node%me_index) + value
+  end subroutine state_iterator_add_to_matrix_element
 
   subroutine state_matrix_assign (state_out, state_in)
     type(state_matrix_t), intent(out) :: state_out
@@ -1155,7 +1188,7 @@ contains
     real(default), intent(in) :: norm
     state%norm = norm
   end subroutine state_matrix_set_norm
-  
+
   function state_matrix_sum (state) result (value)
     complex(default) :: value
     class(state_matrix_t), intent(in) :: state
@@ -1360,7 +1393,7 @@ contains
     logical, dimension(:,:), allocatable :: mask
     ok = .true.
     if (x /= 0) then
-       xt = x * state%trace (qn_in)
+       xt = x * abs (state%trace (qn_in))
     else
        xt = 0
     end if
@@ -1376,14 +1409,7 @@ contains
           end if
        end if
        if (all (qn%are_diagonal ())) then
-          value = it%get_matrix_element ()
-          if (real (value, default) < 0) then
-             call state%write ()
-             print *, value
-             call msg_bug ("Event generation: " &
-                  // "Negative real part of squared matrix element value")
-             value = 0
-          end if
+          value = abs (it%get_matrix_element ())
           s = s + value
           if (s > xt)  exit
        end if
@@ -1405,7 +1431,7 @@ contains
        do i = 1, depth
           call single_state(i)%add_state ([qn(i)], value=value)
        end do
-       if (.not. present (correlated_state)) then       
+       if (.not. present (correlated_state)) then
           do i = 1, size(single_state)
              call single_state(i)%freeze ()
           end do
@@ -1474,7 +1500,7 @@ contains
        end do
     else
        call msg_fatal ("Polarization state not allocated!")
-    end if 
+    end if
   end function state_matrix_get_polarization_density_matrix
 
   subroutine state_flv_content_write (state_flv, unit)
@@ -1496,18 +1522,18 @@ contains
        write (u, "(' )')")
     end do
   end subroutine state_flv_content_write
-    
+
   subroutine state_flv_content_init (state_flv, n, mask)
     class(state_flv_content_t), intent(out) :: state_flv
     integer, intent(in) :: n
     logical, dimension(:), intent(in) :: mask
     integer :: d, i
-    d = size (mask)    
+    d = size (mask)
     allocate (state_flv%pdg (d, n), source = 0)
     allocate (state_flv%map (d, n), source = spread ([(i, i = 1, d)], 2, n))
     allocate (state_flv%mask (d), source = mask)
   end subroutine state_flv_content_init
-    
+
   subroutine state_flv_content_set_entry (state_flv, i, pdg, map)
     class(state_flv_content_t), intent(inout) :: state_flv
     integer, intent(in) :: i
@@ -1517,7 +1543,7 @@ contains
        state_flv%map(:,i) = map
     end where
   end subroutine state_flv_content_set_entry
-  
+
   subroutine state_flv_content_fill &
        (state_flv, state_full, mask)
     class(state_flv_content_t), intent(out) :: state_flv
@@ -1553,7 +1579,7 @@ contains
        !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        !!! pdg = flv%get_pdg ()
        do j = 1, d
-          pdg(j) = flv(j)%get_pdg ()          
+          pdg(j) = flv(j)%get_pdg ()
        end do
        idx_subset = pack (idx, mask)
        pdg_subset = pack (pdg, mask)
@@ -1600,7 +1626,7 @@ contains
        where (pdg == 0)  map = 0
     end if
   end subroutine state_flv_content_match
-    
+
   elemental function pacify_complex (c_in) result (c_pac)
     complex(default), intent(in) :: c_in
     complex(default) :: c_pac
@@ -1614,6 +1640,6 @@ contains
             cmplx (real(c_pac), 0._default, kind=default)
     end if
   end function pacify_complex
-  
+
 
 end module state_matrices

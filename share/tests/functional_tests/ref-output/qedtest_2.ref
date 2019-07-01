@@ -20,13 +20,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qedtest_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_2_p1'
-|   Library name  = 'qedtest_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_2_p1_i1':   e+, e- => m+, m- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e+  (mass = 0.0000000E+00 GeV)
@@ -35,6 +28,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qedtest_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_2_p1'
+|   Library name  = 'qedtest_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_2_p1_i1':   e+, e- => m+, m- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -65,13 +65,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qedtest_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_2_p1'
-|   Library name  = 'qedtest_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_2_p1_i1':   e+, e- => m+, m- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e+  (mass = 0.0000000E+00 GeV)
@@ -80,6 +73,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qedtest_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_2_p1'
+|   Library name  = 'qedtest_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_2_p1_i1':   e+, e- => m+, m- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -110,13 +110,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qedtest_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_2_p1'
-|   Library name  = 'qedtest_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_2_p1_i1':   e+, e- => m+, m- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e+  (mass = 0.0000000E+00 GeV)
@@ -125,6 +118,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qedtest_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_2_p1'
+|   Library name  = 'qedtest_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_2_p1_i1':   e+, e- => m+, m- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

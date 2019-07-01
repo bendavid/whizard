@@ -20,13 +20,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process lhef_3_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lhef_3_p'
-|   Library name  = 'lhef_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lhef_3_p_i1':   u, ubar => gl, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -36,6 +29,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'lhef_3_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'lhef_3_p'
+|   Library name  = 'lhef_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'lhef_3_p_i1':   u, ubar => gl, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 18 equivalences between channels.

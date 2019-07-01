@@ -9,4 +9,12 @@
 
  RNG factory: tao (2,0)
 
+* Allocate RNG factory as rng_stream_factory_t
+
+ RNG Stream factory
+ Next seed = [
+                  3.0,                  3.0,                  3.0,
+                  3.0,                  3.0,                  3.0,
+ ]
+
 * Test output end: dispatch_rng_1

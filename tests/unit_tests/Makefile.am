@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -78,6 +78,8 @@ UNIT_TESTS = \
     sf_escan.run \
     phs_base.run \
     phs_single.run \
+    resonances.run \
+    phs_trees.run \
     phs_forests.run \
     phs_wood.run \
     phs_fks_generator.run \
@@ -85,10 +87,14 @@ UNIT_TESTS = \
     nlo_color_data.run \
     rng_base.run \
     rng_tao.run \
+    rng_stream.run \
     selectors.run \
+    vegas.run \
+    vamp2.run \
     mci_base.run \
     mci_midpoint.run \
     mci_vamp.run \
+    mci_vamp2.run \
     prclib_interfaces.run \
     particle_specifiers.run \
     process_libraries.run \
@@ -154,7 +160,10 @@ UNIT_TESTS_REQ_OCAML = \
     prc_omega.run \
     compilations.run \
     compilations_static.run
-
+    
+UNIT_TESTS_REQ_RECOLA = \
+   prc_recola.run
+    
 UNIT_TESTS_REQ_LHAPDF5 = \
     sf_lhapdf5.run 
 UNIT_TESTS_REQ_LHAPDF6 = \
@@ -168,8 +177,8 @@ TEST_DRIVERS_RUN = \
     $(UNIT_TESTS_REQ_FASTJET) \
     $(UNIT_TESTS_REQ_LHAPDF5) \
     $(UNIT_TESTS_REQ_LHAPDF6) \
-    $(UNIT_TESTS_REQ_OCAML)
-
+    $(UNIT_TESTS_REQ_OCAML) \
+    $(UNIT_TESTS_REQ_RECOLA)
 TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
 
 ########################################################################
@@ -186,6 +195,7 @@ UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF5)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF6)
 UNIT_TESTS += $(UNIT_TESTS_REQ_OCAML)
 UNIT_TESTS += $(UNIT_TESTS_REQ_EV_ANA)
+UNIT_TESTS += $(UNIT_TESTS_REQ_RECOLA)
 
 TESTS += $(UNIT_TESTS)
 XFAIL_TESTS += $(XFAIL_UNIT_TESTS)
@@ -246,6 +256,7 @@ BUILT_SOURCES = \
     GAMELAN_FLAG \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
+    RECOLA_FLAG \
     PYTHIA6_FLAG \
     STATIC_FLAG \
     ref-output \
@@ -292,6 +303,11 @@ if OCAML_AVAILABLE
 	touch $@
 endif
 
+RECOLA_FLAG:
+if RECOLA_AVAILABLE
+	touch $@
+endif
+
 PYTHIA6_FLAG:
 if PYTHIA6_AVAILABLE
 	touch $@
@@ -328,24 +344,25 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG 
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG RECOLA_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* 
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *.makefile
-	rm -f *.grid
+	rm -f *.grid output.rcl
 	rm -rf err-output
 	rm -rf ref-output
-	rm -f *.sin *.hbc 
+	rm -f *.sin *.hbc *_fks_regions.out
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.mdl
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
-	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
+	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f *.vg2 *.vegas *.grids
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 if FC_SUBMODULES
 	rm -f *.smod

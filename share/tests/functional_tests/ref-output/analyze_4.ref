@@ -33,13 +33,6 @@ n_events = 10
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process analyze_4_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'analyze_4_p'
-|   Library name  = 'analyze_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'analyze_4_p_i1':   e-, e+ => u, ubar, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -48,6 +41,13 @@ n_events = 10
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'analyze_4_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'analyze_4_p'
+|   Library name  = 'analyze_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'analyze_4_p_i1':   e-, e+ => u, ubar, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 5 dimensions
 | Phase space: found 4 channels, collected in 2 groves.
 | Phase space: Using 4 equivalences between channels.

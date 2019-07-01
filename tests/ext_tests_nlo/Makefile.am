@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -43,7 +43,8 @@ TESTS_EXTENDED = \
 	extra_nlo_uu_powheg.run \
 	extra_nlo_methods_gosam.run \
 	extra_threshold_factorized.run \
-	extra_nlo_threshold.run
+	extra_nlo_threshold.run \
+	extra_nlo_jets.run
 
 XFAIL_TESTS_EXTENDED =
 
@@ -193,7 +194,7 @@ notestflag:
 
 ## Remove generated files
 clean-local:
-	rm -f gamelan.sty TEST.mdl 
+	rm -f gamelan.sty  
 	rm -f TESTFLAG
 	rm -f *_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe

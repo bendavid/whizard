@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,8 +41,8 @@ module muli_trapezium
   use muli_base
 
   implicit none
-  private  
-  
+  private
+
   integer, private, parameter :: value_dimension = 7
   integer, private, parameter :: r_value_index = 1
   integer, private, parameter :: d_value_index = 2
@@ -50,11 +50,11 @@ module muli_trapezium
   integer, private, parameter :: d_integral_index = 4
   integer, private, parameter :: r_probability_index = 5
   integer, private, parameter :: d_probability_index = 6
-  integer, private, parameter :: error_index = 7  
+  integer, private, parameter :: error_index = 7
 
 
   public :: muli_trapezium_t
-  public :: muli_trapezium_node_class_t 
+  public :: muli_trapezium_node_class_t
   public :: muli_trapezium_tree_t
   public :: muli_trapezium_list_t
 
@@ -67,67 +67,67 @@ module muli_trapezium
      real(default), dimension(:,:), allocatable :: values
    contains
      procedure :: write_to_marker => muli_trapezium_write_to_marker
-     procedure :: read_from_marker => muli_trapezium_read_from_marker  
-     procedure :: print_to_unit => muli_trapezium_print_to_unit  
-     procedure, nopass :: get_type => muli_trapezium_get_type  
+     procedure :: read_from_marker => muli_trapezium_read_from_marker
+     procedure :: print_to_unit => muli_trapezium_print_to_unit
+     procedure, nopass :: get_type => muli_trapezium_get_type
      procedure, nopass :: verify_type => muli_trapezium_verify_type
      procedure :: measure => muli_trapezium_measure
-     procedure :: initialize => muli_trapezium_initialize  
-     procedure :: get_dimension => muli_trapezium_get_dimension  
+     procedure :: initialize => muli_trapezium_initialize
+     procedure :: get_dimension => muli_trapezium_get_dimension
      procedure :: get_l_position => muli_trapezium_get_l_position
-     procedure :: get_r_position => muli_trapezium_get_r_position  
-     procedure :: get_d_position => muli_trapezium_get_d_position  
+     procedure :: get_r_position => muli_trapezium_get_r_position
+     procedure :: get_d_position => muli_trapezium_get_d_position
      generic :: get_l_value => get_l_value_array, get_l_value_element
      procedure :: get_l_value_array => muli_trapezium_get_l_value_array
-     procedure :: get_l_value_element => muli_trapezium_get_l_value_element    
-     generic :: get_r_value => get_r_value_array, get_r_value_element  
+     procedure :: get_l_value_element => muli_trapezium_get_l_value_element
+     generic :: get_r_value => get_r_value_array, get_r_value_element
      procedure :: get_r_value_array => muli_trapezium_get_r_value_array
-     procedure :: get_r_value_element => muli_trapezium_get_r_value_element  
-     generic :: get_d_value => get_d_value_array, get_d_value_element  
+     procedure :: get_r_value_element => muli_trapezium_get_r_value_element
+     generic :: get_d_value => get_d_value_array, get_d_value_element
      procedure :: get_d_value_array => muli_trapezium_get_d_value_array
-     procedure :: get_d_value_element => muli_trapezium_get_d_value_element  
-     generic :: get_l_integral => get_l_integral_array, get_l_integral_element  
+     procedure :: get_d_value_element => muli_trapezium_get_d_value_element
+     generic :: get_l_integral => get_l_integral_array, get_l_integral_element
      procedure :: get_l_integral_array => muli_trapezium_get_l_integral_array
-     procedure :: get_l_integral_element => muli_trapezium_get_l_integral_element  
-     generic :: get_r_integral => get_r_integral_array, get_r_integral_element  
+     procedure :: get_l_integral_element => muli_trapezium_get_l_integral_element
+     generic :: get_r_integral => get_r_integral_array, get_r_integral_element
      procedure :: get_r_integral_array => muli_trapezium_get_r_integral_array
-     procedure :: get_r_integral_element => muli_trapezium_get_r_integral_element   
-     generic :: get_d_integral => get_d_integral_array, get_d_integral_element  
+     procedure :: get_r_integral_element => muli_trapezium_get_r_integral_element
+     generic :: get_d_integral => get_d_integral_array, get_d_integral_element
      procedure :: get_d_integral_array => muli_trapezium_get_d_integral_array
      procedure :: get_d_integral_element => muli_trapezium_get_d_integral_element
      generic :: get_l_probability => &
-          get_l_probability_array, get_l_probability_element  
+          get_l_probability_array, get_l_probability_element
      procedure :: get_l_probability_element => &
           muli_trapezium_get_l_probability_element
      procedure :: get_l_probability_array => &
-          muli_trapezium_get_l_probability_array  
+          muli_trapezium_get_l_probability_array
      generic :: get_r_probability => &
-          get_r_probability_array, get_r_probability_element  
+          get_r_probability_array, get_r_probability_element
      procedure :: get_r_probability_element => &
           muli_trapezium_get_r_probability_element
      procedure :: get_r_probability_array => &
-          muli_trapezium_get_r_probability_array  
+          muli_trapezium_get_r_probability_array
      generic :: get_d_probability => &
-          get_d_probability_array, get_d_probability_element  
+          get_d_probability_array, get_d_probability_element
      procedure :: get_d_probability_element => &
           muli_trapezium_get_d_probability_element
      procedure :: get_d_probability_array => &
-          muli_trapezium_get_d_probability_array  
+          muli_trapezium_get_d_probability_array
      procedure :: get_error => muli_trapezium_get_error
      procedure :: get_error_sum => muli_trapezium_get_error_sum
      procedure :: get_integral_sum => muli_trapezium_get_integral_sum
-     procedure :: get_value_at_position => muli_trapezium_get_value_at_position  
+     procedure :: get_value_at_position => muli_trapezium_get_value_at_position
      procedure :: set_r_value => muli_trapezium_set_r_value
      procedure :: set_d_value => muli_trapezium_set_d_value
      procedure :: set_r_integral => muli_trapezium_set_r_integral
      procedure :: set_d_integral => muli_trapezium_set_d_integral
      procedure :: set_r_probability => muli_trapezium_set_r_probability
      procedure :: set_d_probability => muli_trapezium_set_d_probability
-     procedure :: set_error => muli_trapezium_set_error  
+     procedure :: set_error => muli_trapezium_set_error
      procedure :: is_left_of => muli_trapezium_is_left_of
      procedure :: includes => muli_trapezium_includes
      procedure :: to_node => muli_trapezium_to_node
-     procedure :: sum_up => muli_trapezium_sum_up  
+     procedure :: sum_up => muli_trapezium_sum_up
      procedure :: approx_value => muli_trapezium_approx_value
      procedure :: approx_value_n => muli_trapezium_approx_value_n
      procedure :: approx_integral => muli_trapezium_approx_integral
@@ -138,9 +138,9 @@ module muli_trapezium
           muli_trapezium_approx_position_by_integral
      ! procedure :: choose_partons => muli_trapezium_choose_partons
      procedure :: split => muli_trapezium_split
-     procedure :: update => muli_trapezium_update    
-  end type muli_trapezium_t  
-  
+     procedure :: update => muli_trapezium_update
+  end type muli_trapezium_t
+
   type, extends (muli_trapezium_t), abstract :: muli_trapezium_node_class_t
      private
      class(muli_trapezium_node_class_t), pointer :: left => null()
@@ -148,93 +148,93 @@ module muli_trapezium
      ! real(default) :: criterion
    contains
      procedure :: deserialize_from_marker => &
-          muli_trapezium_node_deserialize_from_marker  
-     procedure(muli_trapezium_append_interface), deferred :: append  
+          muli_trapezium_node_deserialize_from_marker
+     procedure(muli_trapezium_append_interface), deferred :: append
      procedure(muli_trapezium_final_interface), deferred :: finalize
      procedure :: nullify => muli_trapezium_node_nullify
      procedure :: get_left => muli_trapezium_node_get_left
      procedure :: get_right => muli_trapezium_node_get_right
      procedure :: get_leftmost => muli_trapezium_node_get_leftmost
      procedure :: get_rightmost => muli_trapezium_node_get_rightmost
-     generic :: decide => decide_by_value, decide_by_position  
-     procedure :: decide_by_value => muli_trapezium_node_decide_by_value  
+     generic :: decide => decide_by_value, decide_by_position
+     procedure :: decide_by_value => muli_trapezium_node_decide_by_value
      procedure :: decide_by_position => muli_trapezium_node_decide_by_position
      procedure :: decide_decreasing => muli_trapezium_node_decide_decreasing
      procedure :: to_tree => muli_trapezium_node_to_tree
      procedure :: untangle => muli_trapezium_node_untangle
-     procedure :: apply => muli_trapezium_node_apply 
+     procedure :: apply => muli_trapezium_node_apply
      ! procedure :: copy => muli_trapezium_node_copy
      ! generic :: assignment(=) => copy
      ! procedure, deferred :: approx => muli_trapezium_node_approx
   end type muli_trapezium_node_class_t
-  
+
   type, extends(muli_trapezium_node_class_t) :: muli_trapezium_tree_t
      class(muli_trapezium_node_class_t), pointer :: down => null()
    contains
      procedure :: write_to_marker => muli_trapezium_tree_write_to_marker
-     procedure :: read_from_marker => muli_trapezium_tree_read_from_marker  
-     procedure :: print_to_unit => muli_trapezium_tree_print_to_unit    
+     procedure :: read_from_marker => muli_trapezium_tree_read_from_marker
+     procedure :: print_to_unit => muli_trapezium_tree_print_to_unit
      procedure, nopass :: get_type => muli_trapezium_tree_get_type
-     procedure, nopass :: verify_type => muli_trapezium_tree_verify_type  
-     procedure :: nullify => muli_trapezium_tree_nullify  
+     procedure, nopass :: verify_type => muli_trapezium_tree_verify_type
+     procedure :: nullify => muli_trapezium_tree_nullify
      procedure :: finalize => muli_trapezium_tree_finalize
-     procedure :: decide_by_value => muli_trapezium_tree_decide_by_value    
+     procedure :: decide_by_value => muli_trapezium_tree_decide_by_value
      procedure :: decide_by_position => muli_trapezium_tree_decide_by_position
      procedure :: decide_decreasing => muli_trapezium_tree_decide_decreasing
      procedure :: get_left_list => muli_trapezium_tree_get_left_list
-     procedure :: get_right_list => muli_trapezium_tree_get_right_list  
-     generic :: find => find_by_value, find_by_position  
+     procedure :: get_right_list => muli_trapezium_tree_get_right_list
+     generic :: find => find_by_value, find_by_position
      procedure :: find_by_value => muli_trapezium_tree_find_by_value
-     procedure :: find_by_position => muli_trapezium_tree_find_by_position  
+     procedure :: find_by_position => muli_trapezium_tree_find_by_position
      procedure :: find_decreasing => muli_trapezium_tree_find_decreasing
      procedure :: approx_by_integral => muli_trapezium_tree_approx_by_integral
      procedure :: approx_by_probability => muli_trapezium_tree_approx_by_probability
-     procedure :: to_tree => muli_trapezium_tree_to_tree  
-     procedure :: append => muli_trapezium_tree_append    
+     procedure :: to_tree => muli_trapezium_tree_to_tree
+     procedure :: append => muli_trapezium_tree_append
      procedure :: gnuplot => muli_trapezium_tree_gnuplot
   end type muli_trapezium_tree_t
-  
+
   type, extends (muli_trapezium_node_class_t) :: muli_trapezium_list_t
    contains
-     procedure :: append => muli_trapezium_list_append  
+     procedure :: append => muli_trapezium_list_append
      procedure :: write_to_marker => muli_trapezium_list_write_to_marker
-     procedure :: read_from_marker => muli_trapezium_list_read_from_marker  
+     procedure :: read_from_marker => muli_trapezium_list_read_from_marker
      procedure :: read_target_from_marker => &
-          muli_trapezium_list_read_target_from_marker  
+          muli_trapezium_list_read_target_from_marker
      procedure :: print_to_unit => muli_trapezium_list_print_to_unit
      procedure, nopass :: get_type => muli_trapezium_list_get_type
      procedure, nopass :: verify_type => muli_trapezium_list_verify_type
      procedure :: finalize => muli_trapezium_list_finalize
-     generic :: insert_right => insert_right_a   !, insert_right_b    
+     generic :: insert_right => insert_right_a   !, insert_right_b
      procedure :: insert_right_a => muli_trapezium_list_insert_right_a
-     ! procedure :: insert_right_b => muli_trapezium_list_insert_right_b  
-     generic :: insert_left => insert_left_a   !, insert_left_b  
+     ! procedure :: insert_right_b => muli_trapezium_list_insert_right_b
+     generic :: insert_left => insert_left_a   !, insert_left_b
      procedure :: insert_left_a => muli_trapezium_list_insert_left_a
-     ! procedure :: insert_left_b => muli_trapezium_list_insert_left_b  
+     ! procedure :: insert_left_b => muli_trapezium_list_insert_left_b
      procedure :: to_tree => muli_trapezium_list_to_tree
-     procedure :: gnuplot => muli_trapezium_list_gnuplot  
-     procedure :: integrate => muli_trapezium_list_integrate  
-     procedure :: check => muli_trapezium_list_check  
-     procedure :: apply => muli_trapezium_list_apply  
+     procedure :: gnuplot => muli_trapezium_list_gnuplot
+     procedure :: integrate => muli_trapezium_list_integrate
+     procedure :: check => muli_trapezium_list_check
+     procedure :: apply => muli_trapezium_list_apply
   end type muli_trapezium_list_t
-  
+
 
   abstract interface
      subroutine muli_trapezium_append_interface (this, right)
        import muli_trapezium_node_class_t
        class(muli_trapezium_node_class_t), intent(inout), target :: this, right
      end subroutine muli_trapezium_append_interface
-  end interface  
+  end interface
   abstract interface
      subroutine muli_trapezium_final_interface (this)
        import muli_trapezium_node_class_t
        class(muli_trapezium_node_class_t), intent(inout) :: this
      end subroutine muli_trapezium_final_interface
   end interface
-  
+
 
 contains
-  
+
     subroutine muli_trapezium_write_to_marker (this,marker,status)
     class(muli_trapezium_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -251,7 +251,7 @@ contains
     end if
     call marker%mark_end ("muli_trapezium_t")
   end subroutine muli_trapezium_write_to_marker
-  
+
   subroutine muli_trapezium_read_from_marker (this,marker,status)
     class(muli_trapezium_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -269,7 +269,7 @@ contains
     end if
     call marker%pick_end("muli_trapezium_t",status)
   end subroutine muli_trapezium_read_from_marker
-  
+
   subroutine muli_trapezium_print_to_unit (this, unit, parents, components, peers)
     class(muli_trapezium_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -278,8 +278,8 @@ contains
     write (unit, fmt=*)"Dimension:        ",this%dim
     write (unit,fmt=*)"Right position:   ",this%r_position
     write (unit,fmt=*)"Position step:    ",this%d_position
-    if (allocated(this%values)) then    
-       if (components>0) then          
+    if (allocated(this%values)) then
+       if (components>0) then
           write (unit,fmt=*)"Right values:     ",muli_trapezium_get_r_value_array(this)
           write (unit,fmt=*) "Value step:       ", this%get_d_value()
           write (unit,fmt=*)"Right integrals:  ",this%get_r_integral()
@@ -293,24 +293,24 @@ contains
     else
        write (unit, "(3x,A)") "Values are not allocated."
     end if
-  end subroutine muli_trapezium_print_to_unit  
+  end subroutine muli_trapezium_print_to_unit
 
   pure subroutine muli_trapezium_get_type (type)
     character(:),allocatable, intent(out) :: type
     allocate (type, source="muli_trapezium_t")
   end subroutine muli_trapezium_get_type
-  
+
   elemental logical function muli_trapezium_verify_type (type) result (match)
     character(*), intent(in) :: type
     match = type == "muli_trapezium_t"
   end function muli_trapezium_verify_type
-  
+
   elemental function muli_trapezium_measure (this)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: muli_trapezium_measure
     muli_trapezium_measure = this%measure_comp
   end function muli_trapezium_measure
-  
+
   subroutine muli_trapezium_initialize (this, dim, r_position, d_position)
     class(muli_trapezium_t), intent(inout) :: this
     integer, intent(in) :: dim
@@ -324,7 +324,7 @@ contains
     do dim2 = 1, value_dimension-1
        do dim1 = 0, dim-1
           this%values(dim1,dim2) = zero
-       end do       
+       end do
     end do
     do dim1 = 0, dim-1
        this%values(dim1, value_dimension) = huge(one)
@@ -337,39 +337,39 @@ contains
     integer :: dim
     dim = this%dim
   end function muli_trapezium_get_dimension
-  
+
   pure function muli_trapezium_get_l_position (this) result (pos)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: pos
     pos = this%r_position - this%d_position
   end function muli_trapezium_get_l_position
-  
+
   pure function muli_trapezium_get_r_position (this) result (pos)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: pos
     pos = this%r_position
   end function muli_trapezium_get_r_position
-  
+
   pure function muli_trapezium_get_d_position (this) result (pos)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: pos
     pos = this%d_position
   end function muli_trapezium_get_d_position
-  
+
   pure function muli_trapezium_get_l_value_array (this) result (subarray)
     class(muli_trapezium_t), intent(in) :: this
     real(default), dimension(this%dim) :: subarray
     subarray = this%values(0:this%dim-1, r_value_index) - &
          this%values(0:this%dim-1, d_value_index)
   end function muli_trapezium_get_l_value_array
-  
+
   pure function muli_trapezium_get_l_value_element (this, set) result (element)
     class(muli_trapezium_t), intent(in) :: this
     integer, intent(in) :: set
     real(default) :: element
     element = this%values(set, r_value_index) - this%values(set, d_value_index)
   end function muli_trapezium_get_l_value_element
-  
+
   pure function muli_trapezium_get_r_value_element (this, set) result (element)
     class(muli_trapezium_t), intent(in) :: this
     integer, intent(in) :: set
@@ -382,7 +382,7 @@ contains
     real(default), dimension(this%dim) :: subarray
     subarray = this%values(0:this%dim-1, r_value_index)
   end function muli_trapezium_get_r_value_array
-  
+
   pure function muli_trapezium_get_d_value_element (this, set) result (element)
     class(muli_trapezium_t), intent(in) :: this
     integer, intent(in) :: set
@@ -395,7 +395,7 @@ contains
     real(default), dimension(this%dim) :: subarray
     subarray = this%values(0:this%dim-1, d_value_index)
   end function muli_trapezium_get_d_value_array
-  
+
   pure function muli_trapezium_get_l_integral_element &
        (this, set) result (element)
     class(muli_trapezium_t), intent(in) :: this
@@ -424,8 +424,8 @@ contains
     real(default), dimension(this%dim) :: subarray
     subarray = this%values (0:this%dim-1, r_integral_index)
   end function muli_trapezium_get_r_integral_array
-  
-  pure function muli_trapezium_get_d_integral_element & 
+
+  pure function muli_trapezium_get_d_integral_element &
        (this, set) result (element)
     class(muli_trapezium_t), intent(in) :: this
     integer, intent(in) :: set
@@ -438,7 +438,7 @@ contains
     real(default), dimension(this%dim) :: subarray
     subarray = this%values (0:this%dim-1, d_integral_index)
   end function muli_trapezium_get_d_integral_array
-  
+
   pure function muli_trapezium_get_l_probability_element &
        (this, set) result (element)
     class(muli_trapezium_t), intent(in) :: this
@@ -468,7 +468,7 @@ contains
     real(default), dimension(this%dim) :: subarray
     subarray = this%values (0:this%dim-1, r_probability_index)
   end function muli_trapezium_get_r_probability_array
-  
+
   pure function muli_trapezium_get_d_probability_array (this) result (subarray)
     class(muli_trapezium_t), intent(in) :: this
     real(default), dimension(this%dim) :: subarray
@@ -494,13 +494,13 @@ contains
     real(default), dimension(this%dim) :: error
     error = this%values (0:this%dim-1, error_index)
   end function muli_trapezium_get_error
-  
+
   pure function muli_trapezium_get_integral_sum (this) result (error)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: error
     error = sum (this%values (0:this%dim-1, d_integral_index))
   end function muli_trapezium_get_integral_sum
-  
+
   subroutine muli_trapezium_get_value_at_position (this, pos, subarray)
     class(muli_trapezium_t), intent(in) :: this
     real(default), intent(in) :: pos
@@ -538,20 +538,20 @@ contains
     real(default), intent(in), dimension(0:this%dim-1) :: subarray
     this%values (0:this%dim-1,r_probability_index) = subarray
   end subroutine muli_trapezium_set_r_probability
-  
+
   subroutine muli_trapezium_set_d_probability (this, subarray)
     class(muli_trapezium_t), intent(inout) :: this
     real(default), intent(in), dimension(0:this%dim-1) :: subarray
     this%values (0:this%dim-1,d_probability_index) = subarray
   end subroutine muli_trapezium_set_d_probability
-  
+
   subroutine muli_trapezium_set_error (this, subarray)
     class(muli_trapezium_t), intent(inout) :: this
     real(default), intent(in), dimension(0:this%dim-1) :: subarray
     this%values (0:this%dim-1, error_index) = subarray
     this%measure_comp = sum (subarray)
   end subroutine muli_trapezium_set_error
-  
+
   pure function muli_trapezium_is_left_of (this, that) result (is_left)
     logical :: is_left
     class(muli_trapezium_t), intent(in) :: this, that
@@ -583,12 +583,12 @@ contains
     if (present (probability)) then
        if (this%get_l_probability(dim) > probability .or. &
             probability >= this%get_r_probability(dim))  includes = .false.
-    end if    
+    end if
   end function muli_trapezium_includes
 
   subroutine muli_trapezium_to_node (this, value, list, tree)
     class(muli_trapezium_t), intent(in) :: this
-    real(default), intent(in) :: value  
+    real(default), intent(in) :: value
     ! class(muli_trapezium_node_class_t), optional, pointer, intent(out) :: node
     class(muli_trapezium_list_t), optional, pointer, intent(out) :: list
     class(muli_trapezium_tree_t), optional, pointer, intent(out) :: tree
@@ -612,7 +612,7 @@ contains
        tree%r_position = this%r_position
        tree%d_position = this%d_position
        allocate (tree%values (0:this%dim-1, value_dimension), source=this%values)
-    end if    
+    end if
   end subroutine muli_trapezium_to_node
 
   subroutine muli_trapezium_sum_up (this)
@@ -624,7 +624,7 @@ contains
        end do
     end if
   end subroutine muli_trapezium_sum_up
-  
+
   pure function muli_trapezium_approx_value (this, x) result (val)
     ! returns the values at x
     class(muli_trapezium_t), intent(in) :: this
@@ -657,8 +657,8 @@ contains
          this%d_position*this%get_r_value_array())) / &
          (2 * this%d_position)
   end function muli_trapezium_approx_integral
-  
-  elemental function muli_trapezium_approx_integral_n (this, x, n) result (val)    
+
+  elemental function muli_trapezium_approx_integral_n (this, x, n) result (val)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: val
     real(default), intent(in) :: x
@@ -668,7 +668,7 @@ contains
          this%d_position * this%get_r_value_element (n))) / &
          (2 * this%d_position)
   end function muli_trapezium_approx_integral_n
-    
+
    pure function muli_trapezium_approx_probability (this, x) result (prop)
     class(muli_trapezium_t), intent(in) :: this
     real(default), dimension(this%dim) :: prop
@@ -683,20 +683,20 @@ contains
     integer, intent(in) :: n
     val = exp (- this%approx_integral_n (x, n))
   end function muli_trapezium_approx_probability_n
-     
+
   elemental function muli_trapezium_approx_position_by_integral &
        (this, dim, int) result (val)
     class(muli_trapezium_t), intent(in) :: this
     real(default) :: val
     integer, intent(in) :: dim
     real(default), intent(in) :: int
-    real(default) :: dpdv    
+    real(default) :: dpdv
     dpdv = (this%d_position / this%values (dim,d_value_index))
     val = this%r_position - dpdv * (this%values (dim, r_value_index) - &
            sqrt (((this%values (dim, r_integral_index) - int) * two / dpdv) + &
            this%values (dim, r_value_index)**2))
   end function muli_trapezium_approx_position_by_integral
-  
+
   subroutine muli_trapezium_split (this, c_value, c_position, new_node)
     class(muli_trapezium_t), intent(inout) :: this
     real(default), intent(in) :: c_position
@@ -730,7 +730,7 @@ contains
     ! write (*, "(3x,11(ES20.10)")  new_node%get_d_integral()
     ! write (*, "(3x,11(ES20.10)")  this%get_d_integral()
   end subroutine muli_trapezium_split
-  
+
   subroutine muli_trapezium_update (this)
     class(muli_trapezium_t), intent(inout) :: this
     real(default), dimension(:), allocatable :: integral
@@ -743,7 +743,7 @@ contains
     call this%set_error (abs (this%get_d_integral() - integral))
     ! write (*, "(3x,11(ES20.10)")  this%get_d_integral()
   end subroutine muli_trapezium_update
-  
+
   subroutine muli_trapezium_node_deserialize_from_marker (this, name, marker)
     class(muli_trapezium_node_class_t), intent(out) :: this
     character(*), intent(in) :: name
@@ -760,7 +760,7 @@ contains
     call marker%pop_reference (ser)
     deallocate (ser)
   end subroutine muli_trapezium_node_deserialize_from_marker
-  
+
   subroutine muli_trapezium_list_append (this, right)
     class(muli_trapezium_list_t), intent(inout), target :: this
     class(muli_trapezium_node_class_t), intent(inout), target :: right
@@ -773,19 +773,19 @@ contains
     nullify (this%left)
     nullify (this%right)
   end subroutine muli_trapezium_node_nullify
-  
+
   subroutine muli_trapezium_node_get_left (this, left)
     class(muli_trapezium_node_class_t), intent(in) :: this
     class(muli_trapezium_node_class_t), pointer, intent(out) :: left
     left => this%left
   end subroutine muli_trapezium_node_get_left
-  
+
   subroutine muli_trapezium_node_get_right (this, right)
     class(muli_trapezium_node_class_t), intent(in) :: this
     class(muli_trapezium_node_class_t), pointer, intent(out) :: right
     right => this%right
   end subroutine muli_trapezium_node_get_right
-  
+
   subroutine muli_trapezium_node_get_leftmost (this, node)
     class(muli_trapezium_node_class_t), intent(in) :: this
     class(muli_trapezium_node_class_t), pointer, intent(out) :: node
@@ -798,7 +798,7 @@ contains
        nullify (node)
     end if
   end subroutine muli_trapezium_node_get_leftmost
-  
+
   subroutine muli_trapezium_node_get_rightmost (this, right)
     class(muli_trapezium_node_class_t), intent(in) :: this
     class(muli_trapezium_node_class_t), pointer, intent(out) :: right
@@ -811,7 +811,7 @@ contains
        nullify (right)
     end if
   end subroutine muli_trapezium_node_get_rightmost
-  
+
   subroutine muli_trapezium_node_decide_by_value (this, value, dim, record, node)
     class(muli_trapezium_node_class_t), intent(in) :: this
     real(default), intent(in) :: value
@@ -834,7 +834,7 @@ contains
        node => this%right
     end if
   end subroutine muli_trapezium_node_decide_by_position
-  
+
   subroutine muli_trapezium_node_decide_decreasing &
        (this, value, dim, record, node)
     class(muli_trapezium_node_class_t), intent(in) :: this
@@ -847,14 +847,14 @@ contains
        node => this%right
     end if
   end subroutine muli_trapezium_node_decide_decreasing
-  
+
   subroutine muli_trapezium_node_to_tree (this, out_tree)
     class(muli_trapezium_node_class_t), target, intent(in) :: this
     class(muli_trapezium_tree_t), intent(out) :: out_tree
     out_tree%left => this%left
     out_tree%right => this%right
   end subroutine muli_trapezium_node_to_tree
-  
+
   subroutine muli_trapezium_node_untangle(this)
     class(muli_trapezium_node_class_t), intent(inout), target :: this
     if (associated (this%left)) then
@@ -862,7 +862,7 @@ contains
           nullify (this%left%right)
           nullify (this%left)
        end if
-    end if    
+    end if
   end subroutine muli_trapezium_node_untangle
 
   recursive subroutine muli_trapezium_node_apply(this,proc)
@@ -877,7 +877,7 @@ contains
     if (associated(this%left))call proc(this%left)
     call proc(this)
   end subroutine muli_trapezium_node_apply
- 
+
   subroutine muli_trapezium_tree_write_to_marker (this, marker, status)
     class(muli_trapezium_tree_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -952,23 +952,23 @@ contains
        write (unit, "(1x,A)")  "Right is not associated."
     end if
   end subroutine muli_trapezium_tree_print_to_unit
-  
+
   pure subroutine muli_trapezium_tree_get_type (type)
     character(:),allocatable, intent(out) :: type
     allocate (type, source="muli_trapezium_tree_t")
   end subroutine muli_trapezium_tree_get_type
-  
+
   elemental logical function muli_trapezium_tree_verify_type (type) result (match)
     character(*), intent(in) :: type
     match = type == "muli_trapezium_tree_t"
   end function muli_trapezium_tree_verify_type
-  
+
   subroutine muli_trapezium_tree_nullify (this)
     class(muli_trapezium_tree_t), intent(out) :: this
     call muli_trapezium_node_nullify (this)
     nullify (this%down)
   end subroutine muli_trapezium_tree_nullify
-    
+
   recursive subroutine muli_trapezium_tree_finalize (this)
     class(muli_trapezium_tree_t), intent(inout) :: this
     if (associated (this%right)) then
@@ -981,9 +981,9 @@ contains
        call this%left%finalize ()
        deallocate (this%left)
     end if
-    this%dim = 0 
+    this%dim = 0
   end subroutine muli_trapezium_tree_finalize
-  
+
   subroutine muli_trapezium_tree_decide_by_value (this, value, dim, record, node)
     class(muli_trapezium_tree_t), intent(in) :: this
     real(default), intent(in) :: value
@@ -995,7 +995,7 @@ contains
        node => this%right
     end if
   end subroutine muli_trapezium_tree_decide_by_value
-  
+
   subroutine muli_trapezium_tree_decide_by_position (this, position, node)
     class(muli_trapezium_tree_t), intent(in) :: this
     real(default), intent(in) :: position
@@ -1006,7 +1006,7 @@ contains
        node => this%right
     end if
   end subroutine muli_trapezium_tree_decide_by_position
-  
+
   subroutine muli_trapezium_tree_decide_decreasing &
        (this, value, dim, record, node)
     class(muli_trapezium_tree_t), intent(in) :: this
@@ -1026,7 +1026,7 @@ contains
        node => this%right
     end if
   end subroutine muli_trapezium_tree_decide_decreasing
-  
+
   subroutine muli_trapezium_tree_get_left_list (this, list)
     class(muli_trapezium_tree_t), intent(in) :: this
     class(muli_trapezium_list_t), pointer, intent(out) :: list
@@ -1057,10 +1057,10 @@ contains
           nullify (list)
        end select
     else
-       nullify (list) 
+       nullify (list)
     end if
   end subroutine muli_trapezium_tree_get_right_list
-  
+
   subroutine muli_trapezium_tree_find_by_value (this, value, dim, record, node)
     class(muli_trapezium_tree_t), intent(in), target :: this
     real(default), intent(in) :: value
@@ -1092,7 +1092,7 @@ contains
        call node%decide_decreasing (value, dim, r_integral_index, node)
     end do
   end subroutine muli_trapezium_tree_find_decreasing
-  
+
   subroutine muli_trapezium_tree_approx_by_integral &
        (this, int, dim, in_range, position, value, integral, content)
     class(muli_trapezium_tree_t), intent(in), target :: this
@@ -1163,7 +1163,7 @@ contains
        in_range = .false.
     end if
   end subroutine muli_trapezium_tree_approx_by_probability
-  
+
   subroutine muli_trapezium_tree_to_tree (this, out_tree)
     class(muli_trapezium_tree_t), target, intent(in) :: this
     class(muli_trapezium_tree_t), intent(out) :: out_tree
@@ -1171,13 +1171,13 @@ contains
     out_tree%right => this%right
     out_tree%down => this%down
   end subroutine muli_trapezium_tree_to_tree
-  
+
   subroutine muli_trapezium_tree_append(this,right)
     class(muli_trapezium_tree_t), intent(inout), target :: this
     class(muli_trapezium_node_class_t), intent(inout), target :: right
     call msg_error ("muli_trapezium_tree_append: Not yet implemented.")
   end subroutine muli_trapezium_tree_append
-  
+
   subroutine muli_trapezium_tree_gnuplot (this, dir)
     class(muli_trapezium_tree_t), intent(in) :: this
     character(len=*), intent(in) :: dir
@@ -1185,14 +1185,14 @@ contains
     call this%get_left_list (list)
     call list%gnuplot (dir)
   end subroutine muli_trapezium_tree_gnuplot
-  
+
   recursive subroutine muli_trapezium_list_write_to_marker (this, marker, status)
     class(muli_trapezium_list_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status 
+    integer(dik), intent(out) :: status
     class(ser_class_t), pointer :: ser
     call marker%mark_begin ("muli_trapezium_list_t")
-    call muli_trapezium_write_to_marker (this, marker, status)   
+    call muli_trapezium_write_to_marker (this, marker, status)
     ser => this%right
     call marker%mark_pointer ("right", ser)
     call marker%mark_end ("muli_trapezium_list_t")
@@ -1231,7 +1231,7 @@ contains
     end if
     call marker%pick_end ("muli_trapezium_list_t", status)
   end subroutine muli_trapezium_list_read_target_from_marker
-  
+
   recursive subroutine muli_trapezium_list_print_to_unit &
        (this, unit, parents, components, peers)
     class(muli_trapezium_list_t), intent(in) :: this
@@ -1247,17 +1247,17 @@ contains
     call serialize_print_peer_pointer &
          (ser, unit, parents, components, peers, "RIGHT")
   end subroutine muli_trapezium_list_print_to_unit
-    
+
   pure subroutine muli_trapezium_list_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="muli_trapezium_list_t")
   end subroutine muli_trapezium_list_get_type
-  
+
   elemental logical function muli_trapezium_list_verify_type (type) result (match)
     character(*), intent(in) :: type
     match = type == "muli_trapezium_list_t"
   end function muli_trapezium_list_verify_type
-  
+
   recursive subroutine muli_trapezium_list_finalize(this)
     class(muli_trapezium_list_t), intent(inout)::this
     if (associated(this%right)) then
@@ -1266,7 +1266,7 @@ contains
     end if
     this%dim=0
   end subroutine muli_trapezium_list_finalize
-  
+
   subroutine muli_trapezium_list_insert_right_a (this, value, content, new_node)
     class(muli_trapezium_list_t), intent(inout), target :: this
     real(default), intent(in) :: value
@@ -1284,7 +1284,7 @@ contains
     tmp_list%left => this
     new_node => tmp_list
   end subroutine muli_trapezium_list_insert_right_a
-  
+
   subroutine muli_trapezium_list_insert_left_a (this, value, content, new_node)
     class(muli_trapezium_list_t), intent(inout), target :: this
     real(default), intent(in) :: value
@@ -1365,7 +1365,7 @@ contains
     deallocate(do_list%right%right)
     deallocate(do_list%right)
   end subroutine muli_trapezium_list_to_tree
-  
+
   subroutine muli_trapezium_list_gnuplot (this, dir)
     class(muli_trapezium_list_t), intent(in), target :: this
     character(len=*), intent(in) :: dir
@@ -1390,7 +1390,7 @@ contains
     open (den_unit, file = dir // den_file)
     do while (associated (list))
        ! print *,list%r_position,list%get_r_value()
-       !!! !!! !!! gfortran 5.0.0 ICE       
+       !!! !!! !!! gfortran 5.0.0 ICE
        ! write (val_unit, fmt, advance="no")  list%r_position
        ! call write_array (val_unit, list%get_r_value_array(), fmt)
        ! write (int_unit,fmt,advance="no")  list%r_position
@@ -1447,7 +1447,7 @@ contains
        !      (node%get_d_value() / 2 - node%get_r_value_array ()))
        call node%set_r_probability (exp (-integral))
        call node%set_r_integral (integral)
-       !!! !!! !!! gfortran 5.0.0 ICE       
+       !!! !!! !!! gfortran 5.0.0 ICE
        ! integral = integral - node%get_d_integral()
        ! call node%set_d_probability (node%get_r_probability() - exp(-integral))
        ! call muli_trapezium_write (node, output_unit)
@@ -1455,7 +1455,7 @@ contains
     end do integrate
     integral_sum = integral (1)
   end subroutine muli_trapezium_list_integrate
-  
+
   recursive subroutine muli_trapezium_list_check (this)
     class(muli_trapezium_list_t), intent(in),target :: this
     class(muli_trapezium_node_class_t), pointer :: tn, next
@@ -1482,7 +1482,7 @@ contains
        print *,"end of list at ",this%r_position
     end if
   end subroutine muli_trapezium_list_check
-  
+
   recursive subroutine muli_trapezium_list_apply (this, proc)
     class(muli_trapezium_list_t), intent(inout) :: this
     interface
@@ -1494,7 +1494,7 @@ contains
     if (associated (this%right))call this%right%apply (proc)
     call proc (this)
   end subroutine muli_trapezium_list_apply
-  
+
 !  subroutine muli_trapezium_list_insert_right_old &
 !       (this, value, content, new_node)
 !    class(muli_trapezium_list_t), intent(inout), target :: this
@@ -1517,6 +1517,6 @@ contains
 !!    print ("muli_trapezium_node: Trying to access unallocated content.")
 !!    call this%print()
 !  end subroutine muli_trapezium_node_error_no_content
-  
-  
+
+
 end module muli_trapezium

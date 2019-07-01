@@ -1,12 +1,12 @@
 
 module muli_fibonacci_tree
-  
+
   use kinds, only: default
   use diagnostics
   use muli_base
 
   implicit none
-  private  
+  private
 
   public :: fibonacci_node_t
   public :: fibonacci_leave_t
@@ -17,7 +17,7 @@ module muli_fibonacci_tree
   character(*), parameter :: no_ret = "edge=\noreturn"
   character(*), parameter :: no_kid = "edge=\nochild"
   character(*), parameter :: le_kid = "edge=\childofleave"
-    
+
 
   type, extends (measure_class_t) :: fibonacci_node_t
      ! private
@@ -31,32 +31,32 @@ module muli_fibonacci_tree
      procedure :: write_to_marker => fibonacci_node_write_to_marker
      procedure :: read_from_marker => fibonacci_node_read_from_marker
      procedure :: read_target_from_marker => fibonacci_node_read_target_from_marker
-     procedure :: print_to_unit => fibonacci_node_print_to_unit  
-     procedure, nopass :: get_type => fibonacci_node_get_type  
+     procedure :: print_to_unit => fibonacci_node_print_to_unit
+     procedure, nopass :: get_type => fibonacci_node_get_type
      procedure :: deserialize_from_marker => fibonacci_node_deserialize_from_marker
      procedure :: measure => fibonacci_node_measure
      procedure :: deallocate_tree => fibonacci_node_deallocate_tree
-     procedure :: deallocate_all => fibonacci_node_deallocate_all  
+     procedure :: deallocate_all => fibonacci_node_deallocate_all
      procedure :: get_depth => fibonacci_node_get_depth
      procedure :: count_leaves => fibonacci_node_count_leaves
      procedure,public,nopass :: is_leave => fibonacci_node_is_leave
      procedure,public,nopass :: is_root => fibonacci_node_is_root
-     procedure,public,nopass :: is_inner => fibonacci_node_is_inner  
+     procedure,public,nopass :: is_inner => fibonacci_node_is_inner
      procedure :: write_association => fibonacci_node_write_association
      procedure :: write_contents => fibonacci_node_write_contents
      procedure :: write_values => fibonacci_node_write_values
      procedure :: write_leaves => fibonacci_node_write_leaves
-     ! procedure :: write => fibonacci_node_write_contents  
-     procedure :: write_pstricks => fibonacci_node_write_pstricks  
+     ! procedure :: write => fibonacci_node_write_contents
+     procedure :: write_pstricks => fibonacci_node_write_pstricks
      procedure :: copy_node => fibonacci_node_copy_node
-     procedure :: find_root => fibonacci_node_find_root  
+     procedure :: find_root => fibonacci_node_find_root
      procedure :: find_leftmost => fibonacci_node_find_leftmost
      procedure :: find_rightmost => fibonacci_node_find_rightmost
      procedure :: find => fibonacci_node_find
      procedure :: find_left_leave => fibonacci_node_find_left_leave
      procedure :: find_right_leave => fibonacci_node_find_right_leave
-     procedure :: apply_to_leaves => fibonacci_node_apply_to_leaves 
-     procedure :: apply_to_leaves_rl => fibonacci_node_apply_to_leaves_rl  
+     procedure :: apply_to_leaves => fibonacci_node_apply_to_leaves
+     procedure :: apply_to_leaves_rl => fibonacci_node_apply_to_leaves_rl
      procedure :: set_depth => fibonacci_node_set_depth
      procedure :: append_left => fibonacci_node_append_left
      procedure :: append_right => fibonacci_node_append_right
@@ -80,22 +80,22 @@ module muli_fibonacci_tree
      procedure :: is_right_too_short => fibonacci_node_is_right_too_short
      procedure :: is_too_unbalanced => fibonacci_node_is_too_unbalanced
      procedure :: is_left_child => fibonacci_node_is_left_child
-     procedure :: is_right_child => fibonacci_node_is_right_child  
+     procedure :: is_right_child => fibonacci_node_is_right_child
      ! user
      ! node
      ! tree
      ! procedure :: balance
      ! procedure :: sort
      ! procedure :: merge
-     ! procedure :: split  
+     ! procedure :: split
   end type fibonacci_node_t
-  
+
   type, extends (fibonacci_node_t) :: fibonacci_leave_t
      ! class(measure_class_t), pointer :: content
   contains
     ! procedure :: write_to_marker => fibonacci_leave_write_to_marker
     ! procedure :: read_from_marker => fibonacci_leave_read_from_marker
-    procedure :: print_to_unit => fibonacci_leave_print_to_unit    
+    procedure :: print_to_unit => fibonacci_leave_print_to_unit
     procedure, nopass :: get_type => fibonacci_leave_get_type
     procedure :: deallocate_all => fibonacci_leave_deallocate_all
     procedure :: pick => fibonacci_leave_pick
@@ -113,9 +113,9 @@ module muli_fibonacci_tree
     procedure :: is_unbalanced => fibonacci_leave_is_unbalanced
     procedure :: is_left_too_short => fibonacci_leave_is_left_too_short
     procedure :: is_right_too_short => fibonacci_leave_is_right_too_short
-    procedure :: is_too_unbalanced => fibonacci_leave_is_too_unbalanced    
+    procedure :: is_too_unbalanced => fibonacci_leave_is_too_unbalanced
   end type fibonacci_leave_t
-  
+
   type, extends (fibonacci_node_t) :: fibonacci_root_t
      logical::is_valid_c=.false.
      class(fibonacci_leave_t),pointer :: leftmost => null()
@@ -123,14 +123,14 @@ module muli_fibonacci_tree
   contains
     procedure :: write_to_marker => fibonacci_root_write_to_marker
     procedure :: read_target_from_marker => fibonacci_root_read_target_from_marker
-    procedure :: print_to_unit => fibonacci_root_print_to_unit  
-    procedure, nopass :: get_type => fibonacci_root_get_type  
+    procedure :: print_to_unit => fibonacci_root_print_to_unit
+    procedure, nopass :: get_type => fibonacci_root_get_type
     procedure :: get_leftmost=>fibonacci_root_get_leftmost
-    procedure :: get_rightmost=>fibonacci_root_get_rightmost  
+    procedure :: get_rightmost=>fibonacci_root_get_rightmost
     procedure, nopass :: is_root => fibonacci_root_is_root
-    procedure, nopass :: is_inner => fibonacci_root_is_inner   
+    procedure, nopass :: is_inner => fibonacci_root_is_inner
     procedure :: is_valid => fibonacci_root_is_valid
-    procedure :: count_leaves => fibonacci_root_count_leaves 
+    procedure :: count_leaves => fibonacci_root_count_leaves
     procedure :: write_pstricks => fibonacci_root_write_pstricks
     procedure :: copy_root => fibonacci_root_copy_root
     procedure :: push_by_content => fibonacci_root_push_by_content
@@ -145,17 +145,17 @@ module muli_fibonacci_tree
     procedure :: init_by_content => fibonacci_root_init_by_content
     procedure :: reset => fibonacci_root_reset
     procedure :: deallocate_tree => fibonacci_root_deallocate_tree
-    procedure :: deallocate_all => fibonacci_root_deallocate_all    
+    procedure :: deallocate_all => fibonacci_root_deallocate_all
      procedure :: is_left_child => fibonacci_root_is_left_child
      procedure :: is_right_child => fibonacci_root_is_right_child
   end type fibonacci_root_t
-  
-  ! class(serializable_ref_type), pointer :: ref_list  
+
+  ! class(serializable_ref_type), pointer :: ref_list
   type, extends (fibonacci_root_t) :: fibonacci_stub_t
    contains
      procedure :: write_to_marker => fibonacci_stub_write_to_marker
      procedure :: read_target_from_marker => fibonacci_stub_read_target_from_marker
-     ! procedure :: print_to_unit => fibonacci_stub_print_to_unit  
+     ! procedure :: print_to_unit => fibonacci_stub_print_to_unit
      procedure, nopass :: get_type => fibonacci_stub_get_type
      procedure :: push_by_content => fibonacci_stub_push_by_content
      procedure :: push_by_leave => fibonacci_stub_push_by_leave
@@ -167,7 +167,7 @@ module muli_fibonacci_tree
      class(fibonacci_leave_t), pointer :: leave => null()
      class(fibonacci_leave_list_t), pointer :: next => null()
   end type fibonacci_leave_list_t
-  
+
 
 contains
 
@@ -246,13 +246,13 @@ contains
     ser => this%right
     call serialize_print_peer_pointer &
          (ser, unit, parents, components, peers, "Right:  ")
-  end subroutine fibonacci_node_print_to_unit  
+  end subroutine fibonacci_node_print_to_unit
 
   pure subroutine fibonacci_node_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="fibonacci_node_t")
   end subroutine fibonacci_node_get_type
-    
+
   subroutine fibonacci_node_deserialize_from_marker (this, name, marker)
     class(fibonacci_node_t), intent(out) :: this
     character(*), intent(in) :: name
@@ -266,15 +266,15 @@ contains
     call marker%pop_reference (ser)
     deallocate (ser)
     call marker%pop_reference (ser)
-    deallocate (ser)    
+    deallocate (ser)
   end subroutine fibonacci_node_deserialize_from_marker
-  
+
   elemental function fibonacci_node_measure (this)
     class(fibonacci_node_t), intent(in) :: this
     real(default) :: fibonacci_node_measure
     fibonacci_node_measure = this%down%measure ()
   end function fibonacci_node_measure
-  
+
   recursive subroutine fibonacci_node_deallocate_tree (this)
     class(fibonacci_node_t), intent(inout) :: this
     if (associated (this%left)) then
@@ -300,13 +300,13 @@ contains
     end if
     call this%set_depth (0)
   end subroutine fibonacci_node_deallocate_all
-  
+
   elemental function fibonacci_node_get_depth (this)
     class(fibonacci_node_t), intent(in) :: this
     integer :: fibonacci_node_get_depth
     fibonacci_node_get_depth = this%depth
   end function fibonacci_node_get_depth
-  
+
   recursive subroutine fibonacci_node_count_leaves (this, n)
     class(fibonacci_node_t), intent(in) :: this
     integer, intent(out) :: n
@@ -334,7 +334,7 @@ contains
     logical :: fibonacci_node_is_inner
     fibonacci_node_is_inner = .true.
   end function fibonacci_node_is_inner
-    
+
   subroutine fibonacci_node_write_association (this, that)
     class(fibonacci_node_t), intent(in), target :: this
     class(fibonacci_node_t), intent(in), target :: that
@@ -346,7 +346,7 @@ contains
     end if
     if (associated (that%up, this)) then
        write(*, "(A)")  "This is parent of that"
-    end if    
+    end if
     if (associated (this%left, that)) then
        write(*, "(A)")  "That is left child of this"
     end if
@@ -357,25 +357,25 @@ contains
        write(*, "(A)")  "That is parent of this"
     end if
   end subroutine fibonacci_node_write_association
-  
+
   subroutine fibonacci_node_write_contents (this, unit)
     class(fibonacci_node_t), intent(in), target :: this
     integer, intent(in), optional :: unit
     call this%apply_to_leaves (fibonacci_leave_write_content, unit)
   end subroutine fibonacci_node_write_contents
-  
+
   subroutine fibonacci_node_write_values (this, unit)
     class(fibonacci_node_t), intent(in), target :: this
     integer, intent(in), optional :: unit
     call this%apply_to_leaves (fibonacci_leave_write_value, unit)
   end subroutine fibonacci_node_write_values
-  
+
   subroutine fibonacci_node_write_leaves (this, unit)
     class(fibonacci_node_t), intent(in), target :: this
     integer, intent(in),optional :: unit
     call this%apply_to_leaves (fibonacci_leave_write, unit)
   end subroutine fibonacci_node_write_leaves
-    
+
   recursive subroutine fibonacci_node_write_pstricks (this, unitnr)
     class(fibonacci_node_t), intent(in), target :: this
     integer, intent(in) :: unitnr
@@ -408,7 +408,7 @@ contains
     end if
     write (unitnr, '("\end{psTree}")')
   end subroutine fibonacci_node_write_pstricks
-  
+
   subroutine fibonacci_node_copy_node (this, primitive)
     class(fibonacci_node_t), intent(out) :: this
     class(fibonacci_node_t), intent(in) :: primitive
@@ -418,7 +418,7 @@ contains
     this%depth = primitive%depth
     this%down => primitive%down
   end subroutine fibonacci_node_copy_node
-  
+
   subroutine fibonacci_node_find_root (this, root)
     class(fibonacci_node_t), intent(in), target :: this
     class(fibonacci_root_t), pointer, intent(out) :: root
@@ -436,7 +436,7 @@ contains
             "compatible to fibonacci_root_t. Retured NULL().")
     end select
   end subroutine fibonacci_node_find_root
-  
+
   subroutine fibonacci_node_find_leftmost (this, leave)
     class(fibonacci_node_t), intent(in), target :: this
     class(fibonacci_leave_t), pointer, intent(out) :: leave
@@ -452,7 +452,7 @@ contains
        leave => null()
     end select
   end subroutine fibonacci_node_find_leftmost
-  
+
   subroutine fibonacci_node_find_rightmost (this, leave)
     class(fibonacci_node_t), intent(in), target :: this
     class(fibonacci_leave_t), pointer, intent(out) :: leave
@@ -468,7 +468,7 @@ contains
        leave => null()
     end select
   end subroutine fibonacci_node_find_rightmost
-  
+
   subroutine fibonacci_node_find (this, value, leave)
     class(fibonacci_node_t), intent(in), target :: this
     real(default), intent(in) :: value
@@ -500,7 +500,7 @@ contains
        end select
     end do
   end subroutine fibonacci_node_find
-  
+
   subroutine fibonacci_node_find_left_leave (this, leave)
     class(fibonacci_node_t), intent(in), target :: this
     class(fibonacci_node_t), pointer :: node
@@ -522,7 +522,7 @@ contains
        node => node%up
     end do
   end subroutine fibonacci_node_find_left_leave
-  
+
   subroutine fibonacci_node_find_right_leave (this, leave)
     class(fibonacci_node_t), intent(in), target :: this
     class(fibonacci_node_t), pointer :: node
@@ -558,12 +558,12 @@ contains
     select type (node)
     class is (fibonacci_leave_t)
        call func (node, unit)
-    class default 
+    class default
        call node%left%apply_to_leaves (func, unit)
        call node%right%apply_to_leaves (func, unit)
     end select
   end subroutine fibonacci_node_apply_to_leaves
-  
+
   recursive subroutine fibonacci_node_apply_to_leaves_rl (node, func, unit)
     class(fibonacci_node_t), intent(in), target :: node
     interface
@@ -577,32 +577,32 @@ contains
     select type (node)
     class is (fibonacci_leave_t)
        call func (node, unit)
-    class default 
+    class default
        call node%right%apply_to_leaves_rl (func, unit)
        call node%left%apply_to_leaves_rl (func, unit)
     end select
   end subroutine fibonacci_node_apply_to_leaves_rl
-  
+
   subroutine fibonacci_node_set_depth (this, depth)
     class(fibonacci_node_t), intent(inout) :: this
     integer, intent(in) :: depth
     this%depth = depth
   end subroutine fibonacci_node_set_depth
-  
+
   subroutine fibonacci_node_append_left(this,new_branch)
     class(fibonacci_node_t),target :: this
     class(fibonacci_node_t),target :: new_branch
     this%left => new_branch
     new_branch%up => this
   end subroutine fibonacci_node_append_left
-    
+
   subroutine fibonacci_node_append_right (this, new_branch)
     class(fibonacci_node_t), intent(inout), target :: this
     class(fibonacci_node_t), target :: new_branch
     this%right => new_branch
     new_branch%up => this
   end subroutine fibonacci_node_append_right
-  
+
   subroutine fibonacci_node_replace (this, old_node)
     class(fibonacci_node_t), intent(inout), target :: this
     class(fibonacci_node_t), target :: old_node
@@ -619,7 +619,7 @@ contains
        nullify (this%up)
     end if
   end subroutine fibonacci_node_replace
-  
+
   subroutine fibonacci_node_swap_nodes (left, right)
     class(fibonacci_node_t), target, intent(inout) :: left, right
     class(fibonacci_node_t), pointer :: left_left, right_right
@@ -657,7 +657,7 @@ contains
 !    this%up => par_a
 !    that%up => par_i
 !  end subroutine fibonacci_node_swap_nodes
-  
+
   subroutine fibonacci_node_flip_children (this)
     class(fibonacci_node_t), intent(inout) :: this
     class(fibonacci_node_t), pointer :: child
@@ -665,7 +665,7 @@ contains
     this%left => this%right
     this%right => child
   end subroutine fibonacci_node_flip_children
-  
+
   subroutine fibonacci_node_rip (this)
     class(fibonacci_node_t), intent(inout), target :: this
     if (this%is_left_child ()) then
@@ -676,14 +676,14 @@ contains
     end if
     nullify (this%up)
   end subroutine fibonacci_node_rip
-  
+
   subroutine fibonacci_node_remove_and_keep_parent (this, pa)
     class(fibonacci_node_t), intent(inout), target :: this
     class(fibonacci_node_t), intent(out), pointer :: pa
     class(fibonacci_node_t), pointer :: twin
     if (.not. (this%is_root ())) then
        pa => this%up
-       if (this%is_left_child ()) then         
+       if (this%is_left_child ()) then
           twin => pa%right
        else
           twin => pa%left
@@ -715,7 +715,7 @@ contains
        pa => this
     end if
   end subroutine fibonacci_node_remove_and_keep_parent
-  
+
   subroutine fibonacci_node_remove_and_keep_twin (this, twin)
     class(fibonacci_node_t), intent(inout), target :: this
     class(fibonacci_node_t), intent(out), pointer :: twin
@@ -723,7 +723,7 @@ contains
     if (.not. (this%is_root ())) then
        pa => this%up
        if (.not. pa%is_root ()) then
-          if (this%is_left_child ()) then         
+          if (this%is_left_child ()) then
              twin => pa%right
           else
              twin => pa%left
@@ -747,7 +747,7 @@ contains
        deallocate (pa)
     end if
   end subroutine fibonacci_node_remove_and_keep_twin
-  
+
   subroutine fibonacci_node_rotate_left (this)
     class(fibonacci_node_t), intent(inout), target :: this
     call this%swap (this%right)
@@ -768,7 +768,7 @@ contains
     ! value = this%value
     ! this%value = this%right%value
     ! this%right%value = value
-  end subroutine fibonacci_node_rotate_right  
+  end subroutine fibonacci_node_rotate_right
 
   subroutine fibonacci_node_rotate (this)
     class(fibonacci_node_t), intent(inout), target :: this
@@ -829,7 +829,7 @@ contains
     class(fibonacci_node_t), intent(inout) :: this
     this%depth = max (this%left%depth+1, this%right%depth+1)
   end subroutine fibonacci_node_update_depth_unsave
-  
+
   subroutine fibonacci_node_repair (this)
     class(fibonacci_node_t), intent(inout), target :: this
     class(fibonacci_node_t), pointer:: node
@@ -852,13 +852,13 @@ contains
     class(fibonacci_node_t), intent(in) :: this
     fibonacci_node_is_right_short = (this%right%depth < this%left%depth)
   end function fibonacci_node_is_right_short
-    
+
   elemental logical function fibonacci_node_is_unbalanced (this)
     class(fibonacci_node_t), intent(in) :: this
     fibonacci_node_is_unbalanced = &
          (this%is_left_short () .or. this%is_right_short ())
   end function fibonacci_node_is_unbalanced
-  
+
   elemental logical function fibonacci_node_is_left_too_short (this)
     class(fibonacci_node_t), intent(in) :: this
     fibonacci_node_is_left_too_short = (this%left%depth+1 < this%right%depth)
@@ -874,17 +874,17 @@ contains
     fibonacci_node_is_too_unbalanced = &
          (this%is_left_too_short() .or. this%is_right_too_short())
   end function fibonacci_node_is_too_unbalanced
-  
+
   elemental logical function fibonacci_node_is_left_child (this)
     class(fibonacci_node_t), intent(in),target :: this
     fibonacci_node_is_left_child = associated (this%up%left, this)
   end function fibonacci_node_is_left_child
-  
+
   elemental logical function fibonacci_node_is_right_child (this)
     class(fibonacci_node_t), intent(in),target :: this
     fibonacci_node_is_right_child = associated (this%up%right, this)
   end function fibonacci_node_is_right_child
-  
+
   subroutine fibonacci_leave_print_to_unit &
        (this, unit, parents, components, peers)
     class(fibonacci_leave_t), intent(in) :: this
@@ -898,7 +898,7 @@ contains
     call serialize_print_comp_pointer &
          (ser, unit, parents, components, peers, "Content:")
   end subroutine fibonacci_leave_print_to_unit
-  
+
   pure subroutine fibonacci_leave_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="fibonacci_leave_t")
@@ -943,7 +943,7 @@ contains
        leave => node
     end select
   end subroutine fibonacci_leave_get_left
-    
+
   subroutine fibonacci_leave_get_right (this, leave)
     class(fibonacci_leave_t), intent(in) :: this
     class(fibonacci_leave_t), intent(out), pointer :: leave
@@ -962,7 +962,7 @@ contains
        nullify (leave)
     end if
   end subroutine fibonacci_leave_get_right
-  
+
   subroutine fibonacci_leave_write_pstricks (this, unitnr)
     class(fibonacci_leave_t), intent(in), target :: this
     integer, intent(in) :: unitnr
@@ -977,25 +977,25 @@ contains
     end if
     write (unitnr, "(A)")  "\end{psTree}"
   end subroutine fibonacci_leave_write_pstricks
-  
+
   subroutine fibonacci_leave_copy_content (this, content)
     class(fibonacci_leave_t) :: this
     class(measure_class_t), intent(in) :: content
     allocate (this%down, source=content)
   end subroutine fibonacci_leave_copy_content
-  
+
   subroutine fibonacci_leave_set_content (this, content)
     class(fibonacci_leave_t) :: this
     class(measure_class_t), target, intent(in) :: content
     this%down => content
   end subroutine fibonacci_leave_set_content
-  
+
   subroutine fibonacci_leave_get_content (this, content)
     class(fibonacci_leave_t), intent(in) :: this
     class(measure_class_t), pointer :: content
     content => this%down
   end subroutine fibonacci_leave_get_content
-  
+
   elemental logical function fibonacci_leave_is_inner ()
     fibonacci_leave_is_inner = .false.
   end function fibonacci_leave_is_inner
@@ -1003,7 +1003,7 @@ contains
   elemental logical function fibonacci_leave_is_leave ()
     fibonacci_leave_is_leave = .true.
   end function fibonacci_leave_is_leave
-  
+
   subroutine fibonacci_leave_insert_leave_by_node (this, new_leave)
     class(fibonacci_leave_t), target, intent(inout) :: this,new_leave
     class(fibonacci_node_t), pointer :: parent, new_node
@@ -1061,7 +1061,7 @@ contains
     call fibonacci_node_write_to_marker (this, marker, status)
     ! marker%mark_end ("fibonacci_root_t")
   end subroutine fibonacci_root_write_to_marker
-  
+
   subroutine fibonacci_root_read_target_from_marker (this, marker, status)
     class(fibonacci_root_t), target, intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -1088,17 +1088,17 @@ contains
     call serialize_print_peer_pointer &
          (ser, unit, parents, components, min(peers, i_one), "Rightmost:")
   end subroutine fibonacci_root_print_to_unit
-  
+
   elemental logical function fibonacci_root_is_left_child (this)
     class(fibonacci_root_t),target, intent(in) :: this
     fibonacci_root_is_left_child = .false.
   end function fibonacci_root_is_left_child
-  
+
   elemental logical function fibonacci_root_is_right_child (this)
     class(fibonacci_root_t),target, intent(in) :: this
     fibonacci_root_is_right_child = .false.
   end function fibonacci_root_is_right_child
-  
+
   pure subroutine fibonacci_root_get_type (type)
     character(:),allocatable, intent(out) :: type
     allocate (type, source="fibonacci_root_t")
@@ -1115,30 +1115,30 @@ contains
     class(fibonacci_leave_t),pointer :: rightmost
     rightmost => this%rightmost
   end subroutine fibonacci_root_get_rightmost
-    
+
   elemental function fibonacci_root_is_root ()
     logical::fibonacci_root_is_root
     fibonacci_root_is_root = .true.
   end function fibonacci_root_is_root
-  
+
   elemental function fibonacci_root_is_inner ()
     logical::fibonacci_root_is_inner
     fibonacci_root_is_inner = .false.
   end function fibonacci_root_is_inner
-  
+
   elemental function fibonacci_root_is_valid (this)
     class(fibonacci_root_t), intent(in) :: this
     logical :: fibonacci_root_is_valid
     fibonacci_root_is_valid = this%is_valid_c
   end function fibonacci_root_is_valid
-  
+
   subroutine fibonacci_root_count_leaves (this, n)
     class(fibonacci_root_t), intent(in) :: this
     integer, intent(out) :: n
     n = 0
     call fibonacci_node_count_leaves (this, n)
   end subroutine fibonacci_root_count_leaves
-  
+
   subroutine fibonacci_root_write_pstricks (this, unitnr)
     class(fibonacci_root_t), intent(in), target :: this
     integer, intent(in) :: unitnr
@@ -1190,7 +1190,7 @@ contains
        write (*, "(A)")  "No output is written to unit."
     end if
   end subroutine fibonacci_root_write_pstricks
-  
+
   subroutine fibonacci_root_copy_root (this, primitive)
     class(fibonacci_root_t), intent(out) :: this
     class(fibonacci_root_t), intent(in) :: primitive
@@ -1198,7 +1198,7 @@ contains
     this%leftmost => primitive%leftmost
     this%rightmost => primitive%rightmost
   end subroutine fibonacci_root_copy_root
-  
+
   subroutine fibonacci_root_push_by_content (this, content)
     class(fibonacci_root_t), target, intent(inout) :: this
     class(measure_class_t), target, intent(in) :: content
@@ -1208,7 +1208,7 @@ contains
     node%down => content
     call this%push_by_leave (node)
   end subroutine fibonacci_root_push_by_content
-    
+
   subroutine fibonacci_root_push_by_leave (this, new_leave)
     class(fibonacci_root_t), target, intent(inout) :: this
     class(fibonacci_leave_t), pointer, intent(inout) :: new_leave
@@ -1256,7 +1256,7 @@ contains
              else
                 leave_c => node%right
                 select type (leave_c)
-                class is (fibonacci_leave_t)          
+                class is (fibonacci_leave_t)
                    if (new_leave <= leave_c) then
                       ! print *,"right left"
                       call fibonacci_node_spawn (new_node, new_leave, &
@@ -1286,7 +1286,7 @@ contains
     ! call this%write_pstricks (11)
     ! print *, new_node%value, new_node%left%value, new_node%right%value
   end subroutine fibonacci_root_push_by_leave
-  
+
   subroutine fibonacci_root_pop_left (this, leave)
     class(fibonacci_root_t), intent(inout), target :: this
     class(fibonacci_leave_t), pointer, intent(out) :: leave
@@ -1308,7 +1308,7 @@ contains
        class is (fibonacci_leave_t)
           this%leftmost => parent
        class default
-          call parent%print_all()          
+          call parent%print_all()
           call msg_fatal ("fibonacci_root_pop_left: ERROR: leftmost is no leave.")
        end select
        ! call this%write_pstricks (11)   ! PSTRICKS
@@ -1323,7 +1323,7 @@ contains
           parent%left%up => this
           this%left => parent%left
           this%right => parent%right
-          this%depth = 1 
+          this%depth = 1
           deallocate (parent)
           parent => this%left
           select type (parent)
@@ -1340,7 +1340,7 @@ contains
     ! call this%write_pstricks (11)   ! PSTRICKS
     ! flush (11)   ! PSTRICKS
   end subroutine fibonacci_root_pop_left
-  
+
   subroutine fibonacci_root_pop_right (this, leave)
     class(fibonacci_root_t), intent(inout), target :: this
     class(fibonacci_leave_t), pointer, intent(out) :: leave
@@ -1360,7 +1360,7 @@ contains
        class is (fibonacci_leave_t)
           this%rightmost => parent
        class default
-          call parent%print_all()          
+          call parent%print_all()
           call msg_fatal ("fibonacci_root_pop_left: ERROR: leftmost is no leave.")
        end select
        call grand%repair ()
@@ -1382,7 +1382,7 @@ contains
        end if
     end if
   end subroutine fibonacci_root_pop_right
-  
+
   subroutine fibonacci_root_list_to_tree (this, n_leaves, leave_list_target)
     class(fibonacci_root_t), target, intent(inout) :: this
     integer, intent(in) :: n_leaves
@@ -1449,7 +1449,7 @@ contains
     call this%set_leftmost
     call this%set_rightmost
   end subroutine fibonacci_root_list_to_tree
-  
+
   subroutine fibonacci_root_merge(this_tree,that_tree,merge_tree)
     class(fibonacci_root_t), intent(in) :: this_tree
     class(fibonacci_root_t), intent(in) :: that_tree
@@ -1510,7 +1510,7 @@ contains
        deallocate (last_leave)
     end if
   end subroutine fibonacci_root_merge
-  
+
   subroutine fibonacci_root_set_leftmost (this)
     class(fibonacci_root_t) :: this
     call this%find_leftmost (this%leftmost)
@@ -1543,7 +1543,7 @@ contains
     this%rightmost%left => this%leftmost
     this%is_valid_c = .true.
   end subroutine fibonacci_root_init_by_leave
-  
+
   subroutine fibonacci_root_init_by_content (this, left_content, right_content)
     class(fibonacci_root_t), target, intent(out) :: this
     class(measure_class_t), intent(in), target :: left_content, right_content
@@ -1560,12 +1560,12 @@ contains
     this%down => this%leftmost%down
     this%is_valid_c = .true.
   end subroutine fibonacci_root_init_by_content
-  
+
   subroutine fibonacci_root_reset (this)
     class(fibonacci_root_t), target, intent(inout) :: this
     call this%deallocate_tree ()
     allocate (this%leftmost)
-    allocate (this%rightmost) 
+    allocate (this%rightmost)
     this%depth = 1
     this%leftmost%depth = 0
     this%rightmost%depth = 0
@@ -1576,7 +1576,7 @@ contains
     this%leftmost%right => this%rightmost
     this%rightmost%left => this%leftmost
   end subroutine fibonacci_root_reset
-  
+
   recursive subroutine fibonacci_root_deallocate_tree (this)
     class(fibonacci_root_t), intent(inout) :: this
     call this%deallocate_tree ()
@@ -1596,7 +1596,7 @@ contains
     class(marker_t), intent(inout) :: marker
     integer(dik), intent(out) :: status
   end subroutine fibonacci_stub_write_to_marker
-  
+
   subroutine fibonacci_stub_read_target_from_marker (this, marker, status)
     class(fibonacci_stub_t), target, intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -1622,7 +1622,7 @@ contains
     class(fibonacci_leave_t), pointer, intent(inout) :: new_leave
     class(fibonacci_leave_t), pointer :: old_leave
     if (this%depth < 1) then
-       if (associated (this%leftmost)) then     
+       if (associated (this%leftmost)) then
           old_leave => this%leftmost
           call this%init_by_leave (old_leave, new_leave)
        else
@@ -1632,7 +1632,7 @@ contains
        call fibonacci_root_push_by_leave (this, new_leave)
     end if
   end subroutine fibonacci_stub_push_by_leave
-  
+
   subroutine fibonacci_stub_pop_left (this, leave)
     class(fibonacci_stub_t), intent(inout), target :: this
     class(fibonacci_leave_t), pointer, intent(out) :: leave
@@ -1680,7 +1680,7 @@ contains
        call fibonacci_root_pop_right (this, leave)
     end if
   end subroutine fibonacci_stub_pop_right
-     
+
 !  subroutine fibonacci_node_update_value (this, right_value)
 !    class(fibonacci_node_t), target :: this
 !    class(fibonacci_node_t), pointer:: node
@@ -1781,7 +1781,7 @@ contains
     left_leave%right => right_leave
     right_leave%left => left_leave
   end subroutine fibonacci_node_spawn
-    
-   
+
+
 end module muli_fibonacci_tree
 

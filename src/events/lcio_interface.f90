@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module lcio_interface
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use constants, only: PI
@@ -62,6 +62,12 @@ module lcio_interface
   public :: lcio_event_final
   public :: lcio_event_set_alpha_qcd
   public :: lcio_event_set_scale
+  public :: lcio_event_set_sqrts
+  public :: lcio_event_set_xsec
+  public :: lcio_event_set_beam
+  public :: lcio_event_set_polarization
+  public :: lcio_event_set_beam_file
+  public :: lcio_event_set_process_name
   public :: lcio_event_add_coll
   public :: lcio_particle_t
   public :: lcio_particle_add_to_evt_coll
@@ -76,11 +82,11 @@ module lcio_interface
   public :: lcio_particle_to_pol
   public :: lcio_particle_to_hel
   public :: lcio_particle_set_vtx
-  public :: lcio_particle_set_t 
+  public :: lcio_particle_set_t
   public :: lcio_particle_set_parent
-  public :: lcio_particle_get_status  
-  public :: lcio_particle_get_pdg  
-  public :: lcio_particle_get_n_parents 
+  public :: lcio_particle_get_status
+  public :: lcio_particle_get_pdg
+  public :: lcio_particle_get_n_parents
   public :: lcio_particle_get_n_children
   public :: lcio_get_n_parents
   public :: lcio_get_n_children
@@ -95,7 +101,7 @@ module lcio_interface
   public :: lcio_event_get_process_id
   public :: lcio_event_get_n_tot
   public :: lcio_event_get_alphas
-  public :: lcio_event_get_scaleval  
+  public :: lcio_event_get_scaleval
   public :: lcio_event_get_particle
 
   type :: lcio_run_header_t
@@ -183,7 +189,7 @@ module lcio_interface
      subroutine lcio_event_to_file (evt_obj, filename) bind(C)
        import
        type(c_ptr), value :: evt_obj
-       character(c_char), dimension(*), intent(in) :: filename       
+       character(c_char), dimension(*), intent(in) :: filename
      end subroutine lcio_event_to_file
   end interface
   interface
@@ -193,13 +199,55 @@ module lcio_interface
        real(c_double), value :: alphas
      end subroutine lcio_set_alpha_qcd
   end interface
-  interface 
+  interface
      subroutine lcio_set_scale (evt_obj, scale) bind(C)
        import
        type(c_ptr), value :: evt_obj
        real(c_double), value :: scale
      end subroutine lcio_set_scale
-  end interface  
+  end interface
+  interface
+     subroutine lcio_set_sqrts (evt_obj, sqrts) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: sqrts
+     end subroutine lcio_set_sqrts
+  end interface
+  interface
+     subroutine lcio_set_xsec (evt_obj, xsec, xsec_err) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: xsec, xsec_err
+     end subroutine lcio_set_xsec
+  end interface
+  interface
+     subroutine lcio_set_beam (evt_obj, pdg, beam) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: pdg, beam
+     end subroutine lcio_set_beam
+  end interface
+  interface
+     subroutine lcio_set_pol (evt_obj, pol1, pol2) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: pol1, pol2
+     end subroutine lcio_set_pol
+  end interface
+  interface
+     subroutine lcio_set_beam_file (evt_obj, file) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       character(len=1, kind=c_char), dimension(*), intent(in) :: file
+     end subroutine lcio_set_beam_file
+  end interface
+  interface
+     subroutine lcio_set_process_name (evt_obj, name) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       character(len=1, kind=c_char), dimension(*), intent(in) :: name
+     end subroutine lcio_set_process_name
+  end interface
   interface
      subroutine lcio_event_add_collection &
           (evt_obj, lccoll_obj) bind(C)
@@ -260,7 +308,7 @@ module lcio_interface
        type(c_ptr), value :: prt_obj
      end function lcio_mass
   end interface
-  interface 
+  interface
      real(c_double) function lcio_vtx_x (prt) bind(C)
        import
        type(c_ptr), value :: prt
@@ -302,7 +350,7 @@ module lcio_interface
        real(c_double) :: degree
        type(c_ptr), value :: prt_obj
      end function lcio_polarization_degree
-  end interface  
+  end interface
   interface
      function lcio_polarization_theta (prt_obj) result (theta) bind(C)
        import
@@ -330,14 +378,14 @@ module lcio_interface
        type(c_ptr), value :: prt_obj
        real(c_double), value :: t
      end subroutine lcio_particle_set_time
-  end interface  
-  
+  end interface
+
   interface
      subroutine lcio_particle_add_parent (prt_obj1, prt_obj2) bind(C)
        import
        type(c_ptr), value :: prt_obj1, prt_obj2
      end subroutine lcio_particle_add_parent
-  end interface  
+  end interface
   interface
      integer(c_int) function lcio_particle_get_generator_status &
           (prt_obj) bind(C)
@@ -437,7 +485,7 @@ module lcio_interface
   end interface
   interface
      function lcio_event_get_scale (evt_obj) result (scale) bind(C)
-       import 
+       import
        real(c_double) :: scale
        type(c_ptr), value :: evt_obj
      end function lcio_event_get_scale
@@ -464,7 +512,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.4.0")
+         "WHIZARD version:" // "2.4.1")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -510,13 +558,54 @@ contains
     call lcio_set_alpha_qcd (evt%obj, real (alphas, c_double))
   end subroutine lcio_event_set_alpha_qcd
 
-  subroutine lcio_event_set_scale (evt, scale) 
+  subroutine lcio_event_set_scale (evt, scale)
     type(lcio_event_t), intent(inout) :: evt
     real(default), intent(in) :: scale
     call lcio_set_scale (evt%obj, real (scale, c_double))
   end subroutine lcio_event_set_scale
 
-  subroutine lcio_event_add_coll (evt) 
+  subroutine lcio_event_set_sqrts (evt, sqrts)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: sqrts
+    call lcio_set_sqrts (evt%obj, real (sqrts, c_double))
+  end subroutine lcio_event_set_sqrts
+
+  subroutine lcio_event_set_xsec (evt, xsec, xsec_err)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: xsec, xsec_err
+    call lcio_set_xsec (evt%obj, &
+         real (xsec, c_double), real (xsec_err, c_double))
+  end subroutine lcio_event_set_xsec
+
+  subroutine lcio_event_set_beam (evt, pdg, beam)
+    type(lcio_event_t), intent(inout) :: evt
+    integer, intent(in) :: pdg, beam
+    call lcio_set_beam (evt%obj, &
+         int (pdg, c_int), int (beam, c_int))
+  end subroutine lcio_event_set_beam
+
+  subroutine lcio_event_set_polarization (evt, pol)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in), dimension(2) :: pol
+    call lcio_set_pol (evt%obj, &
+         real (pol(1), c_double), real (pol(2), c_double))
+  end subroutine lcio_event_set_polarization
+
+  subroutine lcio_event_set_beam_file (evt, file)
+    type(lcio_event_t), intent(inout) :: evt
+    type(string_t), intent(in) :: file
+    call lcio_set_beam_file (evt%obj, &
+         char (file) // c_null_char)
+  end subroutine lcio_event_set_beam_file
+
+  subroutine lcio_event_set_process_name (evt, name)
+    type(lcio_event_t), intent(inout) :: evt
+    type(string_t), intent(in) :: name
+    call lcio_set_process_name (evt%obj, &
+         char (name) // c_null_char)
+  end subroutine lcio_event_set_process_name
+
+  subroutine lcio_event_add_coll (evt)
     type(lcio_event_t), intent(inout) :: evt
     call lcio_event_add_collection (evt%obj, &
          evt%lccoll%obj)
@@ -550,7 +639,7 @@ contains
     type(color_t), intent(in) :: col
     integer(c_int), dimension(2) :: c
     c(1) = col%get_col ()
-    c(2) = col%get_acl ()    
+    c(2) = col%get_acl ()
     if (c(1) /= 0 .or. c(2) /= 0)  then
        call lcio_set_color_flow (prt%obj, c(1), c(2))
     end  if
@@ -570,7 +659,7 @@ contains
     integer, dimension(2) :: col
     type(lcio_particle_t), intent(in) :: prt
     col(1) = lcio_particle_flow (prt%obj, 0_c_int)
-    col(2) = - lcio_particle_flow (prt%obj, 1_c_int)    
+    col(2) = - lcio_particle_flow (prt%obj, 1_c_int)
   end function lcio_particle_get_flow
 
   function lcio_particle_get_momentum (prt) result (p)
@@ -598,7 +687,7 @@ contains
     real(default) :: vx, vy, vz
     vx = lcio_vtx_x (prt%obj)
     vy = lcio_vtx_y (prt%obj)
-    vz = lcio_vtx_z (prt%obj)    
+    vz = lcio_vtx_z (prt%obj)
     vtx = vector3_moving ([vx, vy, vz])
   end function lcio_particle_get_vertex
 
@@ -607,7 +696,7 @@ contains
     type(lcio_particle_t), intent(in) :: prt
     time = lcio_prt_time (prt%obj)
   end function lcio_particle_get_time
-  
+
   subroutine lcio_polarization_init_pol (prt, pol)
     type(lcio_particle_t), intent(inout) :: prt
     type(polarization_t), intent(in) :: pol
@@ -677,7 +766,7 @@ contains
     call hel%init (sign (hmax, nint (cos (theta))))
   end subroutine lcio_particle_to_hel
 
-  subroutine lcio_particle_set_vtx (prt, vtx) 
+  subroutine lcio_particle_set_vtx (prt, vtx)
     type(lcio_particle_t), intent(inout) :: prt
     type(vector3_t), intent(in) :: vtx
     call lcio_particle_set_vertex (prt%obj, real(vtx%p(1), c_double), &
@@ -690,7 +779,7 @@ contains
     call lcio_particle_set_time (prt%obj, real(t, c_double))
   end subroutine lcio_particle_set_t
 
-  subroutine lcio_particle_set_parent (daughter, parent) 
+  subroutine lcio_particle_set_parent (daughter, parent)
     type(lcio_particle_t), intent(inout) :: daughter, parent
     call lcio_particle_add_parent (daughter%obj, parent%obj)
   end subroutine lcio_particle_set_parent
@@ -700,25 +789,25 @@ contains
     type(lcio_particle_t), intent(in) :: lptr
     status = lcio_particle_get_generator_status (lptr%obj)
   end function lcio_particle_get_status
-  
+
   function lcio_particle_get_pdg (lptr) result (pdg)
     integer :: pdg
     type(lcio_particle_t), intent(in) :: lptr
     pdg = lcio_particle_get_pdg_code (lptr%obj)
   end function lcio_particle_get_pdg
-  
+
   function lcio_particle_get_n_parents (lptr) result (n_parents)
     integer :: n_parents
     type(lcio_particle_t), intent(in) :: lptr
     n_parents = lcio_n_parents (lptr%obj)
   end function lcio_particle_get_n_parents
-  
+
   function lcio_particle_get_n_children (lptr) result (n_children)
     integer :: n_children
     type(lcio_particle_t), intent(in) :: lptr
     n_children = lcio_n_daughters (lptr%obj)
   end function lcio_particle_get_n_children
-  
+
   function lcio_get_n_parents (evt, num_part, k_parent) result (index_parent)
     type(lcio_event_t), intent(in) :: evt
     integer, intent(in) :: num_part, k_parent

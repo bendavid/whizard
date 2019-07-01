@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module process_libraries_uti
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use os_interface
@@ -46,7 +46,7 @@ module process_libraries_uti
   use prc_core_def
 
   use process_libraries
-  
+
   use prclib_interfaces_ut, only: test_writer_4_t
 
   implicit none
@@ -73,13 +73,13 @@ module process_libraries_uti
      procedure :: allocate_driver => prcdef_2_allocate_driver
      procedure :: connect => prcdef_2_connect
   end type prcdef_2_t
-  
+
   type, extends (process_driver_internal_t) :: prctest_2_t
    contains
      procedure, nopass :: type_name => prctest_2_type_name
      procedure :: fill_constants => prctest_2_fill_constants
   end type prctest_2_t
-  
+
   type, extends (prc_core_def_t) :: prcdef_5_t
    contains
      procedure, nopass :: type_string => prcdef_5_type_string
@@ -91,12 +91,12 @@ module process_libraries_uti
      procedure, nopass :: get_features => prcdef_5_get_features
      procedure :: connect => prcdef_5_connect
   end type prcdef_5_t
-  
+
   type, extends (prc_core_driver_t) :: prctest_5_t
    contains
      procedure, nopass :: type_name => prctest_5_type_name
   end type prctest_5_t
-  
+
   type, extends (prc_core_def_t) :: prcdef_6_t
    contains
      procedure, nopass :: type_string => prcdef_6_type_string
@@ -108,7 +108,7 @@ module process_libraries_uti
      procedure, nopass :: get_features => prcdef_6_get_features
      procedure :: connect => prcdef_6_connect
   end type prcdef_6_t
-  
+
   abstract interface
      subroutine proc1_t (n) bind(C)
        import
@@ -121,7 +121,7 @@ module process_libraries_uti
    contains
      procedure, nopass :: type_name => prctest_6_type_name
   end type prctest_6_t
-  
+
 
 contains
 
@@ -138,7 +138,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_1"
   end subroutine process_libraries_1
-  
+
   subroutine process_libraries_2 (u)
     integer, intent(in) :: u
     type(prc_template_t), dimension(:), allocatable :: process_core_templates
@@ -162,12 +162,12 @@ contains
 
     allocate (process_core_templates (1))
     allocate (prcdef_2_t :: process_core_templates(1)%core_def)
-    
+
     allocate (entry)
     call entry%init (var_str ("first"), n_in = 0, n_components = 0)
     call entry%compute_md5sum ()
     call process_def_list%append (entry)
-    
+
     allocate (entry)
     call entry%init (var_str ("second"), model_name = var_str ("Test"), &
          n_in = 1, n_components = 2)
@@ -207,21 +207,21 @@ contains
     open (unit = scratch_unit, status="scratch", action = "readwrite")
     call process_def_list%write (scratch_unit)
     call process_def_list%final ()
-    
+
     write (u, "(A)")  "* Reread it"
     write (u, "(A)")  ""
 
     rewind (scratch_unit)
     call process_def_list%read (scratch_unit, process_core_templates)
     close (scratch_unit)
-    
+
     call process_def_list%write (u)
     call process_def_list%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_2"
   end subroutine process_libraries_2
-  
+
   subroutine process_libraries_3 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -243,7 +243,7 @@ contains
 
     call lib%set_status (STAT_ACTIVE)
     call lib%allocate_entries (5)
-   
+
     allocate (entry)
     call entry%init (var_str ("test_a"), n_in = 2, n_components = 2)
     allocate (prctest_2_t :: driver_template)
@@ -263,14 +263,14 @@ contains
     call lib%init_entry (5, STAT_LINKED, entry%process_def_t, 1, 3, &
          driver_template)
     call lib%append (entry)
-    
+
     call lib%write (u)
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_3"
   end subroutine process_libraries_3
-  
+
   subroutine process_libraries_4 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -331,11 +331,11 @@ contains
 
     call lib%write (u)
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_4"
   end subroutine process_libraries_4
-  
+
   subroutine process_libraries_5 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -369,7 +369,7 @@ contains
          method  = var_str ("test"), &
          variant = core_def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
@@ -381,7 +381,7 @@ contains
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
-    
+
     write (u, "(A)")  "* Write driver source code"
     write (u, "(A)")
     call lib%write_driver (force = .true.)
@@ -399,13 +399,13 @@ contains
     call lib%make_link (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     call lib%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_5"
   end subroutine process_libraries_5
-  
+
   subroutine process_libraries_6 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -453,7 +453,7 @@ contains
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
-    
+
     write (u, "(A)")  "* Write driver source code"
     write (u, "(A)")
     call lib%write_driver (force = .true.)
@@ -463,11 +463,11 @@ contains
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,A,A)")  "name                      = '", &
          char (lib%get_name ()), "'"
     write (u, "(1x,A,L1)")  "is active                 = ", &
@@ -500,7 +500,7 @@ contains
        write (u, "(1x,A)", advance="no")  char (name_list(i))
     end do
     write (u, *)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Constants of proclibs6_a_i1:"
     write (u, "(A)")
@@ -524,7 +524,7 @@ contains
     write (u, "(1x,A,10(1x,L1))") "ghost flag =", data%ghost_flag
     write (u, "(1x,A,10(1x,F5.3))") "color factors =", data%color_factors
     write (u, "(1x,A,10(1x,I0))") "cf index =", data%cf_index
-       
+
     write (u, "(A)")
     write (u, "(A)")  "* Call feature of proclibs6_a:"
     write (u, "(A)")
@@ -540,7 +540,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_6"
   end subroutine process_libraries_6
-  
+
   subroutine process_libraries_7 (u)
     integer, intent(in) :: u
     type(prc_template_t), dimension(:), allocatable :: process_core_templates
@@ -558,7 +558,7 @@ contains
 
     allocate (process_core_templates (1))
     allocate (prcdef_2_t :: process_core_templates(1)%core_def)
-    
+
     call entry%init (var_str ("first"), model_name = var_str ("Test"), &
          n_in = 1, n_components = 2)
     allocate (prcdef_2_t :: test_def)
@@ -581,7 +581,7 @@ contains
          method  = var_str ("test"), &
          variant = test_def)
     call entry%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute MD5 sums"
     write (u, "(A)")
@@ -619,7 +619,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_7"
   end subroutine process_libraries_7
-  
+
   subroutine process_libraries_8 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -660,7 +660,7 @@ contains
 
     call lib%configure (os_data)
     call lib%compute_md5sum ()
-    
+
     call lib%test_transfer_md5sum (1, 1, 1)
 
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
@@ -671,15 +671,15 @@ contains
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
-    
+
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
-    
+
     call lib%update_status (os_data)
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Write driver source code"
     write (u, "(A)")
@@ -705,7 +705,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Append process and reconfigure"
     write (u, "(A)")
-    
+
     allocate (prcdef_6_t :: core_def)
     select type (core_def)
     type is (prcdef_6_t)
@@ -737,43 +737,43 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
-    
+
     call lib%update_status (os_data)
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Write source code"
     write (u, "(A)")
-    
+
     call lib%make_source (os_data)
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset status"
     write (u, "(A)")
-    
+
     call lib%set_status (STAT_CONFIGURED, entries=.true.)
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
-    
+
     call lib%update_status (os_data)
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Partial cleanup"
     write (u, "(A)")
@@ -783,18 +783,18 @@ contains
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
-    
+
 
     write (u, "(A)")
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
-    
+
     call lib%update_status (os_data)
     write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
     write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
     write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Complete cleanup"
 
@@ -804,7 +804,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_libraries_8"
   end subroutine process_libraries_8
-  
+
 
   function prcdef_2_type_string () result (string)
     type(string_t) :: string
@@ -816,7 +816,7 @@ contains
     integer, intent(in) :: unit
     write (unit, "(3x,A,I0)")  "Test data         = ", object%data
   end subroutine prcdef_2_write
-  
+
   subroutine prcdef_2_read (object, unit)
     class(prcdef_2_t), intent(out) :: object
     integer, intent(in) :: unit
@@ -825,7 +825,7 @@ contains
     call strip_equation_lhs (buffer)
     read (buffer, *)  object%data
   end subroutine prcdef_2_read
-  
+
   subroutine prcdef_2_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (0))
@@ -839,14 +839,14 @@ contains
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
   end subroutine prcdef_2_generate_code
-  
+
   subroutine prcdef_2_allocate_driver (object, driver, basename)
     class(prcdef_2_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
     allocate (prctest_2_t :: driver)
   end subroutine prcdef_2_allocate_driver
-  
+
   subroutine prcdef_2_connect (def, lib_driver, i, proc_driver)
     class(prcdef_2_t), intent(in) :: def
     class(prclib_driver_t), intent(in) :: lib_driver
@@ -858,7 +858,7 @@ contains
     type(string_t) :: type
     type = "test"
   end function prctest_2_type_name
-  
+
   subroutine prctest_2_fill_constants (driver, data)
     class(prctest_2_t), intent(in) :: driver
     type(process_constants_t), intent(out) :: data
@@ -873,29 +873,29 @@ contains
     class(prcdef_5_t), intent(out) :: object
     allocate (test_writer_4_t :: object%writer)
   end subroutine prcdef_5_init
-  
+
   subroutine prcdef_5_write (object, unit)
     class(prcdef_5_t), intent(in) :: object
     integer, intent(in) :: unit
   end subroutine prcdef_5_write
-  
+
   subroutine prcdef_5_read (object, unit)
     class(prcdef_5_t), intent(out) :: object
     integer, intent(in) :: unit
   end subroutine prcdef_5_read
-  
+
   subroutine prcdef_5_allocate_driver (object, driver, basename)
     class(prcdef_5_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
     allocate (prctest_5_t :: driver)
   end subroutine prcdef_5_allocate_driver
-  
+
   function prcdef_5_needs_code () result (flag)
     logical :: flag
     flag = .true.
   end function prcdef_5_needs_code
-  
+
   subroutine prcdef_5_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (1))
@@ -913,7 +913,7 @@ contains
     type(string_t) :: type
     type = "test_file"
   end function prctest_5_type_name
-  
+
   function prcdef_6_type_string () result (string)
     type(string_t) :: string
     string = "test_file"
@@ -924,29 +924,29 @@ contains
     allocate (test_writer_4_t :: object%writer)
     call object%writer%init_test ()
   end subroutine prcdef_6_init
-  
+
   subroutine prcdef_6_write (object, unit)
     class(prcdef_6_t), intent(in) :: object
     integer, intent(in) :: unit
   end subroutine prcdef_6_write
-  
+
   subroutine prcdef_6_read (object, unit)
     class(prcdef_6_t), intent(out) :: object
     integer, intent(in) :: unit
   end subroutine prcdef_6_read
-  
+
   subroutine prcdef_6_allocate_driver (object, driver, basename)
     class(prcdef_6_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
     allocate (prctest_6_t :: driver)
   end subroutine prcdef_6_allocate_driver
-  
+
   function prcdef_6_needs_code () result (flag)
     logical :: flag
     flag = .true.
   end function prcdef_6_needs_code
-  
+
   subroutine prcdef_6_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (1))
@@ -973,6 +973,6 @@ contains
     type(string_t) :: type
     type = "test_file"
   end function prctest_6_type_name
-  
+
 
 end module process_libraries_uti

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -93,7 +93,7 @@ module sf_ewa
      logical :: mass_set = .false.
      logical :: recoil = .false.
      logical :: keep_energy = .false.
-     integer :: id = 0 
+     integer :: id = 0
      integer :: error = NONE
    contains
      procedure :: init => ewa_data_init
@@ -102,7 +102,7 @@ module sf_ewa
      procedure :: write => ewa_data_write
      procedure :: get_n_par => ewa_data_get_n_par
      procedure :: get_pdg_out => ewa_data_get_pdg_out
-     procedure :: allocate_sf_int => ewa_data_allocate_sf_int  
+     procedure :: allocate_sf_int => ewa_data_allocate_sf_int
   end type ewa_data_t
 
   type, extends (sf_int_t) :: ewa_t
@@ -120,8 +120,8 @@ module sf_ewa
      procedure :: complete_kinematics => ewa_complete_kinematics
      procedure :: inverse_kinematics => ewa_inverse_kinematics
      procedure :: apply => ewa_apply
-  end type ewa_t 
-  
+  end type ewa_t
+
 
 contains
 
@@ -139,7 +139,7 @@ contains
     if (.not. any (pdg_in .match. &
          [1,2,3,4,5,6,11,13,15,-1,-2,-3,-4,-5,-6,-11,-13,-15])) then
        data%error = WRONG_PRT;  return
-    end if   
+    end if
     n_flv = pdg_array_get_length (pdg_in)
     allocate (data%flv_in (n_flv))
     allocate (data%flv_out(n_flv))
@@ -152,23 +152,23 @@ contains
     data%x_max = 1
     if (vanishes (data%x_min)) then
        data%error = ZERO_XMIN;  return
-    end if    
+    end if
     select case (char (data%model%get_name ()))
     case ("QCD","QED","Test")
        data%error = NO_EWA;  return
     end select
     ee = data%model%get_real (var_str ("ee"))
-    data%sinthw = data%model%get_real (var_str ("sw"))    
-    data%costhw = data%model%get_real (var_str ("cw"))        
+    data%sinthw = data%model%get_real (var_str ("sw"))
+    data%costhw = data%model%get_real (var_str ("cw"))
     data%mZ = data%model%get_real (var_str ("mZ"))
-    data%mW = data%model%get_real (var_str ("mW"))    
+    data%mW = data%model%get_real (var_str ("mW"))
     if (data%sinthw /= 0) then
        g = ee / data%sinthw
     else
        data%error = ZERO_SW;  return
     end if
     data%cv = g / 2._default
-    data%ca = g / 2._default   
+    data%ca = g / 2._default
     data%coeff = 1._default / (8._default * PI**2)
     data%recoil = recoil
     data%keep_energy = keep_energy
@@ -197,9 +197,9 @@ contains
        data%flv_out = data%flv_in
     case (24)
        do i = 1, size (data%flv_in)
-          pdg = data%flv_in(i)%get_pdg () 
+          pdg = data%flv_in(i)%get_pdg ()
           isospin = data%flv_in(i)%get_isospin_type ()
-          if (isospin > 0) then            
+          if (isospin > 0) then
              !!! up-type quark or neutrinos
              if (data%flv_in(i)%is_antiparticle ()) then
                 call data%flv_out(i)%init (pdg + 1, data%model)
@@ -222,7 +222,7 @@ contains
           end if
        end if
     end select
-  end subroutine ewa_set_id 
+  end subroutine ewa_set_id
 
   subroutine ewa_data_check (data)
     class(ewa_data_t), intent(in) :: data
@@ -250,7 +250,7 @@ contains
     end select
   end subroutine ewa_data_check
 
-  subroutine ewa_data_write (data, unit, verbose) 
+  subroutine ewa_data_write (data, unit, verbose)
     class(ewa_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -273,21 +273,21 @@ contains
        write (u, "(3x,A," // FMT_19 // ")") "  x_min     = ", data%x_min
        write (u, "(3x,A," // FMT_19 // ")") "  x_max     = ", data%x_max
        write (u, "(3x,A," // FMT_19 // ")") "  pt_max    = ", data%pt_max
-       write (u, "(3x,A," // FMT_19 // ")") "  sqrts     = ", data%sqrts    
+       write (u, "(3x,A," // FMT_19 // ")") "  sqrts     = ", data%sqrts
        write (u, "(3x,A," // FMT_19 // ")") "  mass      = ", data%mass
        write (u, "(3x,A," // FMT_19 // ")") "  cv        = ", data%cv
        write (u, "(3x,A," // FMT_19 // ")") "  ca        = ", data%ca
        write (u, "(3x,A," // FMT_19 // ")") "  coeff     = ", data%coeff
        write (u, "(3x,A," // FMT_19 // ")") "  costhw    = ", data%costhw
-       write (u, "(3x,A," // FMT_19 // ")") "  sinthw    = ", data%sinthw    
+       write (u, "(3x,A," // FMT_19 // ")") "  sinthw    = ", data%sinthw
        write (u, "(3x,A," // FMT_19 // ")") "  mZ        = ", data%mZ
        write (u, "(3x,A," // FMT_19 // ")") "  mW        = ", data%mW
        write (u, "(3x,A,L2)")      "  recoil    = ", data%recoil
-       write (u, "(3x,A,L2)")      "  keep en.  = ", data%keep_energy 
+       write (u, "(3x,A,L2)")      "  keep en.  = ", data%keep_energy
        write (u, "(3x,A,I2)")      "  PDG (VB)  = ", data%id
     else
        write (u, "(3x,A)") "[undefined]"
-    end if       
+    end if
   end subroutine ewa_data_write
 
   function ewa_data_get_n_par (data) result (n)
@@ -299,7 +299,7 @@ contains
        n = 1
     end if
   end function ewa_data_get_n_par
-  
+
   subroutine ewa_data_get_pdg_out (data, pdg_out)
     class(ewa_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -316,23 +316,23 @@ contains
     end do
     pdg_out(1) = pdg1
   end subroutine ewa_data_get_pdg_out
-  
+
   subroutine ewa_data_allocate_sf_int (data, sf_int)
     class(ewa_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (ewa_t :: sf_int)
   end subroutine ewa_data_allocate_sf_int
-  
+
   function ewa_type_string (object) result (string)
     class(ewa_t), intent(in) :: object
     type(string_t) :: string
     if (associated (object%data)) then
-       string = "EWA: equivalent W/Z approx." 
+       string = "EWA: equivalent W/Z approx."
     else
        string = "EWA: [undefined]"
     end if
   end function ewa_type_string
-  
+
   subroutine ewa_write (object, unit, testflag)
     class(ewa_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -348,9 +348,9 @@ contains
        call object%base_write (u, testflag)
     else
        write (u, "(1x,A)")  "EWA data: [undefined]"
-    end if    
+    end if
   end subroutine ewa_write
-    
+
   subroutine ewa_init (sf_int, data)
     class(ewa_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -364,17 +364,17 @@ contains
     type(polarization_iterator_t) :: it_hel
     integer :: i, isospin
     select type (data)
-    type is (ewa_data_t)   
+    type is (ewa_data_t)
        mask = quantum_numbers_mask (.false., .false., &
             mask_h = [.false., .false., .true.])
        hel_lock = [2, 1, 0]
        call col0%init ()
        select case (data%id)
        case (23)
-          !!! Z boson, flavor is not changing    
+          !!! Z boson, flavor is not changing
           call sf_int%base_init (mask, [data%mass**2], [data%mass**2], &
                [data%mZ**2], hel_lock = hel_lock)
-          sf_int%data => data          
+          sf_int%data => data
           call flv_z%init (Z_BOSON, data%model)
           call qn_z%init (flv_z, col0)
           do i = 1, size (data%flv_in)
@@ -393,17 +393,17 @@ contains
              end do
              !  call pol%final ()
           end do
-       case (24)    
+       case (24)
           call sf_int%base_init (mask, [data%mass**2], [data%m_out**2], &
                [data%mW**2], hel_lock = hel_lock)
-          sf_int%data => data                       
+          sf_int%data => data
           call flv_wp%init (W_BOSON, data%model)
           call flv_wm%init (- W_BOSON, data%model)
           call qn_wp%init (flv_wp, col0)
           call qn_wm%init (flv_wm, col0)
           do i = 1, size (data%flv_in)
              isospin = data%flv_in(i)%get_isospin_type ()
-             if (isospin > 0) then            
+             if (isospin > 0) then
                 !!! up-type quark or neutrinos
                 if (data%flv_in(i)%is_antiparticle ()) then
                    qn_w = qn_wm
@@ -434,7 +434,7 @@ contains
                 call sf_int%add_state ([qn, qn_rad, qn_w])
                 call it_hel%advance ()
              end do
-             ! call pol%final ()    
+             ! call pol%final ()
           end do
        case default
           call msg_fatal ("EWA initialization failed: wrong particle type.")
@@ -442,7 +442,7 @@ contains
        call sf_int%freeze ()
        if (data%keep_energy) then
           sf_int%on_shell_mode = KEEP_ENERGY
-       else 
+       else
           sf_int%on_shell_mode = KEEP_MOMENTUM
        end if
        call sf_int%set_incoming ([1])
@@ -450,14 +450,14 @@ contains
        call sf_int%set_outgoing ([3])
     end select
   end subroutine ewa_init
-    
+
   subroutine ewa_setup_constants (sf_int)
     class(ewa_t), intent(inout), target :: sf_int
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     real(default) :: q, t3
     integer :: i
-    sf_int%n_me = sf_int%get_n_matrix_elements () 
+    sf_int%n_me = sf_int%get_n_matrix_elements ()
     allocate (sf_int%cv (sf_int%n_me))
     allocate (sf_int%ca (sf_int%n_me))
     associate (data => sf_int%data)
@@ -472,11 +472,11 @@ contains
             if (flv%is_antiparticle ()) then
                sf_int%cv(i) = - data%cv &
                     * (t3 - 2._default * q * data%sinthw**2) / data%costhw
-               sf_int%ca(i) = data%ca *  t3 / data%costhw    
-            else          
+               sf_int%ca(i) = data%ca *  t3 / data%costhw
+            else
                sf_int%cv(i) = data%cv &
                     * (t3 - 2._default * q * data%sinthw**2) / data%costhw
-               sf_int%ca(i) = data%ca *  t3 / data%costhw    
+               sf_int%ca(i) = data%ca *  t3 / data%costhw
             end if
             call it%advance ()
          end do
@@ -488,7 +488,7 @@ contains
             if (flv%is_antiparticle ()) then
                sf_int%cv(i) = data%cv / sqrt(2._default)
                sf_int%ca(i) = - data%ca / sqrt(2._default)
-            else          
+            else
                sf_int%cv(i) = data%cv / sqrt(2._default)
                sf_int%ca(i) = data%ca / sqrt(2._default)
             end if
@@ -498,7 +498,7 @@ contains
     end associate
     sf_int%status = SF_INITIAL
   end subroutine ewa_setup_constants
-  
+
   subroutine ewa_complete_kinematics (sf_int, x, f, r, rb, map)
     class(ewa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -516,7 +516,7 @@ contains
        case (24)
           x0 = max (sf_int%data%x_min, sf_int%data%mw / e_1)
        end select
-    else 
+    else
        x0 = sf_int%data%x_min
     end if
     x1 = sf_int%data%x_max
@@ -529,9 +529,9 @@ contains
        lx0 = log (x0)
        lx1 = log (x1)
        lx = lx1 * r(1) + lx0 * rb(1)
-       x(1) = exp(lx)       
+       x(1) = exp(lx)
        f = x(1) * (lx1 - lx0)
-    else       
+    else
        x(1) = r(1)
        if (x0 < x(1) .and. x(1) < x1) then
           f = 1
@@ -566,7 +566,7 @@ contains
     real(default) :: x0, x1, lx0, lx1, lx, e_1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
-    e_1 = energy (sf_int%get_momentum (1))    
+    e_1 = energy (sf_int%get_momentum (1))
     if (sf_int%data%recoil) then
        select case (sf_int%data%id)
        case (23)
@@ -574,7 +574,7 @@ contains
        case (24)
           x0 = max (sf_int%data%x_min, sf_int%data%mw / e_1)
        end select
-    else 
+    else
        x0 = sf_int%data%x_min
     end if
     x1 = sf_int%data%x_max
@@ -594,7 +594,7 @@ contains
           f = 0
        end if
     end if
-    if (size(r) == 3) then 
+    if (size(r) == 3) then
        r (2:3) = x(2:3)
        rb(2:3) = 1 - x(2:3)
     end if
@@ -618,8 +618,8 @@ contains
     real(default) :: cv, ca
     real(default) :: f, fm, fp, fL
     integer :: i
-    associate (data => sf_int%data)     
-      x  = sf_int%x      
+    associate (data => sf_int%data)
+      x  = sf_int%x
       xb = sf_int%xb
       pt2 = min ((data%pt_max)**2, (xb * data%sqrts / 2)**2)
       select case (data%id)
@@ -640,12 +640,12 @@ contains
          fp = data%coeff * &
               ((cv - ca)**2 + ((cv + ca) * xb)**2) * (c1 - c2) / (2 * x)
          fL = data%coeff * &
-              (cv**2 + ca**2) * (2 * xb / x) * c2       
+              (cv**2 + ca**2) * (2 * xb / x) * c2
          f = fp + fm + fL
          if (.not. vanishes (f)) then
             fp = fp / f
             fm = fm / f
-            fL = fL / f      
+            fL = fL / f
          end if
          call sf_int%set_matrix_element (i, cmplx (f, kind=default))
       end do

@@ -28,6 +28,15 @@ SM.mtop =>  1.73200E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1234
 | Initializing integration for process nlo_decay_1_p1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0385000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_decay_1_p1_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_decay_1_p1_i3.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'nlo_decay_1_p1'
 |   Library name  = 'nlo_decay_1_lib'
@@ -38,12 +47,6 @@ SM.mtop =>  1.73200E+02
 |     3: 'nlo_decay_1_p1_i3':   W+ => u, dbar [inactive], [Virtual]
 |     4: 'nlo_decay_1_p1_i4':   W+ => u, dbar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0385000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -52,9 +55,6 @@ SM.mtop =>  1.73200E+02
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p1_i3.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -74,6 +74,12 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    2       1000     5.354E-02   8.51E-04    1.59    0.50    30.1    0.03   2
 |=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     5.354E-02   8.51E-04    1.59    0.00    30.1
+|=============================================================================|
 | Process library 'nlo_decay_1_lib': unloading
 | Process library 'nlo_decay_1_lib': open
 | Process library 'nlo_decay_1_lib': recorded process 'nlo_decay_1_p2'
@@ -91,6 +97,15 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1235
 | Initializing integration for process nlo_decay_1_p2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   t  (mass = 1.7320000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_decay_1_p2_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_decay_1_p2_i3.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'nlo_decay_1_p2'
 |   Library name  = 'nlo_decay_1_lib'
@@ -101,12 +116,6 @@ Warning: No cuts have been defined.
 |     3: 'nlo_decay_1_p2_i3':   t => b, W+ [inactive], [Virtual]
 |     4: 'nlo_decay_1_p2_i4':   t => b, W+ [inactive], [Subtraction]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   t  (mass = 1.7320000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -115,9 +124,6 @@ Warning: No cuts have been defined.
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p2_i3.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -137,16 +143,22 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    2       1000    -4.523E-01   9.47E-03    2.09    0.66    13.5    0.25   2
 |=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0    -4.523E-01   9.47E-03    2.09    0.00     0.0
+|=============================================================================|
 | There were no errors and    2 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
-Total number of regions:   2
-alr ||         flst_real ||  em || mul || nreg ||               ftuples ||     flst_born || i_uborn
-  1 || [ 24,  2, -1, 21] ||   2 ||   1 ||    2 || {(2,4)  (3,4)}  || [ 24,  2, -1] ||       1
-  2 || [ 24,  2, -1, 21] ||   3 ||   1 ||    2 || {(2,4)  (3,4)}  || [ 24,  2, -1] ||       1
+Total number of regions:    2
+alr ||         flst_real || i_real ||  em || mul || nreg ||       ftuples ||     flst_born ||  i_born
+  1 || [ 24,  2, -1, 21] ||      1 ||   2 ||   1 ||    2 || {(2,4),(3,4)} || [ 24,  2, -1] ||       1
+  2 || [ 24,  2, -1, 21] ||      1 ||   3 ||   1 ||    2 || {(2,4),(3,4)} || [ 24,  2, -1] ||       1
 ------------------------------------------------------------------------
-Total number of regions:   2
-alr ||         flst_real ||  em || mul || nreg ||               ftuples ||     flst_born || i_uborn
-  1 || [  6,  5, 24, 21] ||   2 ||   1 ||    2 || {(2,4)  (1,4)}  || [  6,  5, 24] ||       1
-  2 || [  6,  5, 24, 21] ||   1 ||   1 ||    2 || {(2,4)  (1,4)}  || [  6,  5, 24] ||       1
+Total number of regions:    2
+alr ||         flst_real || i_real ||  em || mul || nreg ||       ftuples ||     flst_born ||  i_born
+  1 || [  6,  5, 24, 21] ||      1 ||   2 ||   1 ||    2 || {(2,4),(1,4)} || [  6,  5, 24] ||       1
+  2 || [  6,  5, 24, 21] ||      1 ||   1 ||   1 ||    2 || {(2,4),(1,4)} || [  6,  5, 24] ||       1
 ------------------------------------------------------------------------

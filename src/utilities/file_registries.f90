@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module file_registries
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
 
@@ -56,7 +56,7 @@ module file_registries
      procedure :: get_file => file_handle_get_file
      procedure :: get_unit => file_handle_get_unit
   end type file_handle_t
-  
+
   type, extends (file_handle_t) :: file_entry_t
      type(file_entry_t), pointer :: prev => null ()
      type(file_entry_t), pointer :: next => null ()
@@ -69,10 +69,10 @@ module file_registries
      procedure :: open => file_registry_open
      procedure :: close => file_registry_close
   end type file_registry_t
-  
+
 
 contains
-  
+
   subroutine file_handle_write (handle, u, show_unit)
     class(file_handle_t), intent(in) :: handle
     integer, intent(in) :: u
@@ -87,13 +87,13 @@ contains
             char (handle%file), handle%refcount
     end if
   end subroutine file_handle_write
-  
+
   subroutine file_handle_init (handle, file)
     class(file_handle_t), intent(out) :: handle
     type(string_t), intent(in) :: file
     handle%file = file
   end subroutine file_handle_init
-  
+
   subroutine file_handle_open (handle)
     class(file_handle_t), intent(inout) :: handle
     if (handle%refcount == 0) then
@@ -103,7 +103,7 @@ contains
     end if
     handle%refcount = handle%refcount + 1
   end subroutine file_handle_open
-    
+
   subroutine file_handle_close (handle)
     class(file_handle_t), intent(inout) :: handle
     handle%refcount = handle%refcount - 1
@@ -112,25 +112,25 @@ contains
        handle%unit = 0
     end if
   end subroutine file_handle_close
-  
+
   function file_handle_is_open (handle) result (flag)
     class(file_handle_t), intent(in) :: handle
     logical :: flag
     flag = handle%unit /= 0
   end function file_handle_is_open
-  
+
   function file_handle_get_file (handle) result (file)
     class(file_handle_t), intent(in) :: handle
     type(string_t) :: file
     file = handle%file
   end function file_handle_get_file
-  
+
   function file_handle_get_unit (handle) result (unit)
     class(file_handle_t), intent(in) :: handle
     integer :: unit
     unit = handle%unit
   end function file_handle_get_unit
-  
+
   subroutine file_registry_write (registry, unit, show_unit)
     class(file_registry_t), intent(in) :: registry
     integer, intent(in), optional :: unit
@@ -149,7 +149,7 @@ contains
        write (u, "(1x,A)")  "File registry: [empty]"
     end if
   end subroutine file_registry_write
-    
+
   subroutine file_registry_open (registry, file, unit)
     class(file_registry_t), intent(inout) :: registry
     type(string_t), intent(in) :: file
@@ -197,6 +197,6 @@ contains
        end if
     end if
   end subroutine file_registry_close
-    
+
 
 end module file_registries

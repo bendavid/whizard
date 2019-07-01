@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -35,7 +35,7 @@
 
 module diagnostics
 
-  use, intrinsic :: iso_c_binding !NODEP! 
+  use, intrinsic :: iso_c_binding !NODEP!
   use, intrinsic :: iso_fortran_env, only: output_unit !NODEP!
 
   use kinds, only: default
@@ -131,7 +131,7 @@ module diagnostics
   type :: string_list_pointer
      type(string_list), pointer :: first, last
   end type string_list_pointer
-  
+
 
   integer, save, dimension(D_ALL:D_LAST) :: msg_level = RESULT
   logical, save :: mask_fatal_errors = .false.
@@ -200,7 +200,7 @@ module diagnostics
      module procedure pacify_real_default
      module procedure pacify_complex_default
   end interface pacify
-  
+
   interface
      integer(c_int) function wo_mask_sigint () bind(C)
        import
@@ -485,7 +485,7 @@ contains
        is_error = .true.
     case (FATAL)
        prep_string   = "*** FATAL ERROR: "
-       aux_string    = "***              "                     
+       aux_string    = "***              "
        severe = .true.
        is_error = .true.
     case (ERROR)
@@ -503,7 +503,7 @@ contains
     end select
     if (present (color)) then
        if (color > COL_UNDEFINED) then
-          col_string = create_col_string (color) 
+          col_string = create_col_string (color)
           prep_string = achar(27) // col_string // prep_string
           app_string = app_string // achar(27) // "[0m"
        end if
@@ -512,8 +512,8 @@ contains
     lu = log_unit
     if (present(unit)) then
        if (unit /= output_unit) then
-          if (severe) write (unit, "(A)") char(head_footer) 
-          if (is_error) write (unit, "(A)") char(head_footer) 
+          if (severe) write (unit, "(A)") char(head_footer)
+          if (is_error) write (unit, "(A)") char(head_footer)
           write (unit, "(A,A,A)") char(prep_string), trim(msg_buffer), &
                char(app_string)
           if (present (str_arr)) then
@@ -521,54 +521,54 @@ contains
                 write (unit, "(A,A)") char(aux_string), char(trim(str_arr(i)))
              end do
           end if
-          if (is_error) write (unit, "(A)") char(head_footer) 
+          if (is_error) write (unit, "(A)") char(head_footer)
           if (severe) write (unit, "(A)") char(head_footer)
           flush (unit)
           lu = -1
        else if (level <= msg_level(ar)) then
-          if (severe) print "(A)", char(head_footer) 
-          if (is_error) print "(A)", char(head_footer) 
+          if (severe) print "(A)", char(head_footer)
+          if (is_error) print "(A)", char(head_footer)
           print "(A,A,A)", char(prep_string), trim(msg_buffer), &
                char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
-             end do                
+             end do
           end if
-          if (is_error) print "(A)", char(head_footer) 
+          if (is_error) print "(A)", char(head_footer)
           if (severe) print "(A)", char(head_footer)
           flush (output_unit)
           if (unit == log_unit)  lu = -1
        end if
     else if (level <= msg_level(ar)) then
-       if (severe) print "(A)", char(head_footer) 
-       if (is_error) print "(A)", char(head_footer) 
+       if (severe) print "(A)", char(head_footer)
+       if (is_error) print "(A)", char(head_footer)
        print "(A,A,A)", char(prep_string), trim(msg_buffer), &
                char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
-             end do                
+             end do
           end if
-       if (is_error) print "(A)", char(head_footer) 
-       if (severe) print "(A)", char(head_footer) 
+       if (is_error) print "(A)", char(head_footer)
+       if (severe) print "(A)", char(head_footer)
        flush (output_unit)
     end if
     if (present (logfile)) then
        if (.not. logfile)  lu = -1
     end if
     if (logging .and. lu >= 0) then
-       if (severe) write (lu, "(A)") char(head_footer) 
-       if (is_error) write (lu, "(A)") char(head_footer) 
+       if (severe) write (lu, "(A)") char(head_footer)
+       if (is_error) write (lu, "(A)") char(head_footer)
        write (lu, "(A,A,A)")  char(prep_string), trim(msg_buffer), &
                char(app_string)
        if (present (str_arr)) then
           do i = 1, size(str_arr)
              write (lu, "(A,A)") char(aux_string), char(trim(str_arr(i)))
-          end do                
+          end do
        end if
-       if (is_error) write (lu, "(A)") char(head_footer) 
-       if (severe) write (lu, "(A)") char(head_footer) 
+       if (is_error) write (lu, "(A)") char(head_footer)
+       if (severe) write (lu, "(A)") char(head_footer)
        flush (lu)
     end if
     call msg_add (level)
@@ -605,7 +605,7 @@ contains
     call msg_list_clear ()
     if (return_code /= 0) then
        call exit (return_code)
-    else 
+    else
        !!! Should implement WHIZARD exit code (currently only via C)
        ! stop
        call exit (0)
@@ -719,7 +719,7 @@ contains
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
     call msg_debug_none (area, char (string // " = " // str (value)), &
-       color = color)
+         color = color)
   end subroutine msg_debug_logical
 
   subroutine msg_debug_integer (area, string, value, color)
@@ -728,7 +728,7 @@ contains
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
     call msg_debug_none (area, char (string // " = " // str (value)), &
-       color = color)
+         color = color)
   end subroutine msg_debug_integer
 
   subroutine msg_debug_real (area, string, value, color)
@@ -737,7 +737,7 @@ contains
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
     call msg_debug_none (area, char (string // " = " // str (value)), &
-       color = color)
+         color = color)
   end subroutine msg_debug_real
 
   subroutine msg_debug_complex (area, string, value, color)
@@ -746,7 +746,7 @@ contains
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
     call msg_debug_none (area, char (string // " = " // str (value)), &
-       color = color)
+         color = color)
   end subroutine msg_debug_complex
 
   subroutine msg_debug_string (area, string, value, color)
@@ -755,7 +755,7 @@ contains
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
     call msg_debug_none (area, char (string // " = " // value), &
-       color = color)
+         color = color)
   end subroutine msg_debug_string
 
   subroutine msg_print_color_none (string, color)
@@ -917,9 +917,9 @@ contains
     call message_print (0, "|        with contributions from Christian Speckner                           |", unit=unit)
     call message_print (0, "|        Contact: <whizard@desy.de>                                           |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
-    call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)   
+    call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)
     call message_print (0, "|        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |", unit=unit)
-    call message_print (0, "|                                          [arXiv: 0708.4233 [hep-ph]]        |", unit=unit)   
+    call message_print (0, "|                                          [arXiv: 0708.4233 [hep-ph]]        |", unit=unit)
     call message_print (0, "|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|=============================================================================|", unit=unit)
@@ -1061,7 +1061,7 @@ contains
     real(default), intent(in) :: tolerance
     if (abs (x) < tolerance)  x = 0._default
   end subroutine pacify_real_default
-  
+
   elemental subroutine pacify_complex_default (x, tolerance)
     complex(default), intent(inout) :: x
     real(default), intent(in) :: tolerance
@@ -1069,7 +1069,7 @@ contains
          x = cmplx (0._default, aimag (x), kind=default)
     if (abs (aimag (x)) < tolerance)  &
          x = cmplx (real (x), 0._default, kind=default)
-  end subroutine pacify_complex_default  
+  end subroutine pacify_complex_default
 
   subroutine mask_term_signals ()
     logical :: ok

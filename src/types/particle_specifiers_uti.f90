@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -74,7 +74,7 @@ contains
     call prt_spec_read (prt_spec, &
          var_str (" a, b( *), c( dec1), d (dec1 + dec2 ), e()"))
     call prt_spec_write (prt_spec, u)
-    
+
     do i = 1, size (prt_spec)
        write (u, "(A)")
        write (u, "(A,A)")  char (prt_spec(i)%get_name ()), ":"
@@ -92,7 +92,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particle_specifiers_1"
   end subroutine particle_specifiers_1
-  
+
   subroutine particle_specifiers_2 (u)
     integer, intent(in) :: u
     type(prt_spec_t) :: a, b, c, d, e, f
@@ -114,7 +114,7 @@ contains
     d = new_prt_spec (var_str ("d"))
     e = new_prt_spec (var_str ("e"))
     f = new_prt_spec (var_str ("f"))
-    
+
     call pe1%init_spec (a)
     write (u, "(A)")  char (pe1%to_string ())
 
@@ -137,7 +137,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* Nested expressions"
     write (u, *)
-    
+
     call pe4%init_list (2)
     select type (x => pe4%x)
     type is (prt_spec_list_t)
@@ -150,7 +150,7 @@ contains
        call x%expr(2)%init_spec (c)
     end select
     write (u, "(A)")  char (pe4%to_string ())
-          
+
     call pe5%init_list (2)
     select type (x => pe5%x)
     type is (prt_spec_list_t)
@@ -163,7 +163,7 @@ contains
        call x%expr(2)%init_spec (c)
     end select
     write (u, "(A)")  char (pe5%to_string ())
-          
+
     call pe6%init_sum (2)
     select type (x => pe6%x)
     type is (prt_spec_sum_t)
@@ -176,7 +176,7 @@ contains
        end select
     end select
     write (u, "(A)")  char (pe6%to_string ())
-          
+
     call pe7%init_list (2)
     select type (x => pe7%x)
     type is (prt_spec_list_t)
@@ -194,7 +194,7 @@ contains
        call x%expr(2)%init_spec (d)
     end select
     write (u, "(A)")  char (pe7%to_string ())
-          
+
     call pe8%init_sum (2)
     select type (x => pe8%x)
     type is (prt_spec_sum_t)
@@ -232,11 +232,11 @@ contains
        end select
     end select
     write (u, "(A)")  char (pe9%to_string ())
-          
+
     write (u, *)
     write (u, "(A)")  "* Expand as sum"
     write (u, *)
-    
+
     call pe1%expand ()
     write (u, "(A)")  char (pe1%to_string ())
 
@@ -251,13 +251,13 @@ contains
 
     call pe7%expand ()
     write (u, "(A)")  char (pe7%to_string ())
-    
+
     call pe8%expand ()
     write (u, "(A)")  char (pe8%to_string ())
-    
+
     call pe9%expand ()
     write (u, "(A)")  char (pe9%to_string ())
-    
+
     write (u, *)
     write (u, "(A)")  "* Transform to arrays:"
 
@@ -266,7 +266,7 @@ contains
        call pe1%term_to_array (pa, i)
        call prt_spec_write (pa, u)
     end do
-    
+
     write (u, *)
     write (u, "(A)")  "* List"
     do i = 1, pe5%get_n_terms ()
@@ -291,6 +291,6 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particle_specifiers_2"
   end subroutine particle_specifiers_2
-  
+
 
 end module particle_specifiers_uti

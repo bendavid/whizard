@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -340,11 +340,10 @@ contains
     class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_in
     integer, intent(in) :: alpha_power, alphas_power
-    integer, dimension(:,:), allocatable, intent(in) :: &
-         flv_born, flv_real
+    integer, intent(in), dimension(:,:), allocatable :: flv_born, flv_real
     integer :: i_file
     if (master%n_files < 1) &
-       call msg_fatal ("Attempting to generate OLP-files, but none are specified!")
+         call msg_fatal ("Attempting to generate OLP-files, but none are specified!")
     i_file = 1
     call master%generate_loop (basename, model, n_in, alpha_power, &
          alphas_power, flv_born, i_file)
@@ -516,16 +515,16 @@ subroutine blha_master_generate_born (master, basename, model, n_in, &
   contains
      subroutine cms_warning ()
         call msg_warning ("You have set ?openloops_use_cms = true, but not all matrix ", &
-           [var_str ("element methods are set to OpenLoops. Note that other "), &
-            var_str ("methods might not necessarily support the complex mass "), &
-            var_str ("scheme. This can yield inconsistencies in your NLO results!")])
+             [var_str ("element methods are set to OpenLoops. Note that other "), &
+              var_str ("methods might not necessarily support the complex mass "), &
+              var_str ("scheme. This can yield inconsistencies in your NLO results!")])
      end subroutine cms_warning
 
      subroutine gosam_error_message ()
         call msg_fatal ("You are trying to evaluate a process at NLO ", &
-           [var_str ("which involves polarized beams using GoSam. "), &
-            var_str ("This feature is not supported yet. "), &
-            var_str ("Please use OpenLoops instead")])
+             [var_str ("which involves polarized beams using GoSam. "), &
+              var_str ("This feature is not supported yet. "), &
+              var_str ("Please use OpenLoops instead")])
      end subroutine gosam_error_message
   end subroutine blha_master_setup_additional_features
 
@@ -574,7 +573,7 @@ subroutine blha_master_generate_born (master, basename, model, n_in, &
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
          blha_flavor, amp_type)
-   call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
+    call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
          correction_type = BLHA_CT_QCD, &
          irreg = BLHA_IRREG_CDR, alphas_power = asp, &
          alpha_power = ap, ew_scheme = ew_scheme, &
@@ -932,7 +931,7 @@ subroutine blha_master_generate_born (master, basename, model, n_in, &
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
        else
-          write (u, "(A)") "# BLHA order written by WHIZARD 2.4.0"
+          write (u, "(A)") "# BLHA order written by WHIZARD 2.4.1"
        end if
        write (u, "(A)")
     end if
@@ -1051,8 +1050,11 @@ subroutine blha_master_generate_born (master, basename, model, n_in, &
          case (BLHA_AMP_LOOP); buf = "Loop"
          case (BLHA_AMP_CC); buf = "ccTree"
          case (BLHA_AMP_SC)
-            buf = "scTree"
-            if (cfg%mode == BLHA_MODE_OPENLOOPS) write_process = .false.
+            if (cfg%mode == BLHA_MODE_OPENLOOPS) then
+               buf = "sctree_polvect"
+            else
+               buf = "scTree"
+            end if
          case (BLHA_AMP_TREE); buf = "Tree"
          case (BLHA_AMP_LOOPINDUCED); buf = "LoopInduced"
        end select

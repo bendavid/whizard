@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -56,11 +56,11 @@ contains
     integer :: u_tmp
     type(cstream_t) :: cstream
     logical :: success
-    
+
     write (u, "(A)")  "* Test output: xml_1"
     write (u, "(A)")  "*   Purpose: write and read tag"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Empty tag"
     write (u, *)
 
@@ -87,7 +87,7 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with preceding blank lines"
     write (u, *)
@@ -118,7 +118,7 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with preceding comments"
     write (u, *)
@@ -151,7 +151,7 @@ contains
     deallocate (tag)
 
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with name mismatch"
     write (u, *)
@@ -179,7 +179,7 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_1"
 
@@ -195,10 +195,10 @@ contains
     write (u, "(A)")  "* Test output: xml_2"
     write (u, "(A)")  "*   Purpose: handle optional tag"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Optional tag present"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -233,11 +233,11 @@ contains
     deallocate (tag1, tag2)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Optional tag absent"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -268,7 +268,7 @@ contains
     deallocate (tag1, tag2)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_2"
 
@@ -285,10 +285,10 @@ contains
     write (u, "(A)")  "* Test output: xml_3"
     write (u, "(A)")  "*   Purpose: handle tag with content"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Tag without content"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -314,10 +314,10 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")  "* Tag with content"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -346,11 +346,11 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with multiline content"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -386,7 +386,7 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_3"
 
@@ -398,11 +398,11 @@ contains
     integer :: u_tmp
     type(cstream_t) :: cstream
     logical :: success
-    
+
     write (u, "(A)")  "* Test output: xml_4"
     write (u, "(A)")  "*   Purpose: handle tag with attributes"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Tag with one mandatory and one optional attribute,"
     write (u, "(A)")  "* unknown attribute ignored"
     write (u, *)
@@ -432,7 +432,7 @@ contains
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_4"
 

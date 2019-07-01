@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -40,7 +40,7 @@ module muli_interactions
   use muli_momentum
 
   implicit none
-  private  
+  private
 
   public :: muli_get_state_transformations
   public :: h_to_c_param
@@ -62,11 +62,11 @@ module muli_interactions
   public :: voxel_c_to_h_noparam
   public :: voxel_h_to_c_param
   public :: voxel_c_to_h_param
-  public :: voxel_h_to_c_smooth 
+  public :: voxel_h_to_c_smooth
   public :: voxel_c_to_h_smooth
   public :: voxel_h_to_c_ort_def
   public :: voxel_c_to_h_ort_def
-  public :: voxel_h_to_c_param_def 
+  public :: voxel_h_to_c_param_def
   public :: voxel_c_to_h_param_def
   public :: voxel_h_to_c_smooth_def
   public :: voxel_c_to_h_smooth_def
@@ -95,7 +95,7 @@ module muli_interactions
   public :: ps_io_pol
   public :: interactions_dddsigma
   public :: interactions_dddsigma_print
-  public :: interactions_dddsigma_cart 
+  public :: interactions_dddsigma_cart
   public :: cuba_gg_me_smooth
   public :: cuba_gg_me_param
   public :: cuba_gg_me_ort
@@ -108,7 +108,7 @@ module muli_interactions
        ["-6", "-5", "-4", "-3", "-2", "-1", "00", &
         "+1", "+2", "+3", "+4", "+5", "+6" ]
   character, dimension(-6:6),parameter :: traditional_parton_names = &
-       ["T", "B", "C", "S", "U", "D", "g", "d", "u", "s", "c", "b", "t"]    
+       ["T", "B", "C", "S", "U", "D", "g", "d", "u", "s", "c", "b", "t"]
   real(default), dimension(1:4,1:5), parameter :: &
        phase_space_coefficients_in = reshape (source = &
        [ 6144, -4608,  +384,    0, &
@@ -116,8 +116,8 @@ module muli_interactions
          6144, -2048,  +128, -576, &
         13824, -9600, +1056,    0, &
         31104,-19872, +2160, +486 ], shape=[4,5])
-  integer, parameter :: hadron_A_kind =  2212 
-  integer, parameter :: hadron_B_kind = -2212 
+  integer, parameter :: hadron_A_kind =  2212
+  integer, parameter :: hadron_B_kind = -2212
   integer, dimension(4), parameter, public :: &
        parton_kind_of_int_kind = [1, 1, 2, 2]
   real(default), parameter :: b_sigma_tot_all = 100 !mb PDG
@@ -185,20 +185,20 @@ module muli_interactions
   integer, parameter, public :: PDF_SEA = 2
   integer, parameter, public :: PDF_VALENCE_DOWN = 3
   integer, parameter, public :: PDF_VALENCE_UP = 4
-  integer, parameter, public :: PDF_TWIN = 5  
+  integer, parameter, public :: PDF_TWIN = 5
 
   real(default), dimension(1:4,1:8),parameter :: &
        phase_space_coefficients_inout = reshape(source=[ &
-       3072,  -2304,  +192,    0,  & 
+       3072,  -2304,  +192,    0,  &
        6144,  -5120,  +384,    0,  &
        0,         0,   192,  -96,  &
-       3072,  -2048,  +192,  -96,  & 
-       0,      2048, -2176, +576,  & 
+       3072,  -2048,  +192,  -96,  &
+       0,      2048, -2176, +576,  &
        0,       288,  -306,  +81,  &
        6912,  -4800,  +528,    0,  &
        31104,-23328, +5832, -486], &
-       shape=[4,8])  
-  
+       shape=[4,8])
+
   integer, dimension(1:4,0:8), parameter :: inout_signatures = &
        reshape (source = [ &
         1, 1, 1, 1, &   !1a
@@ -211,7 +211,7 @@ module muli_interactions
         1, 0, 1, 0, &   !7
         0, 0, 0, 0  ], &
         shape = [4,9])
-  
+
   integer, dimension(6,-234:234), save, public :: valid_processes
   data valid_processes (:,-234)  / -6,  -6,  -6,  -6,   2,   2 /
   data valid_processes (:,-233)  / -6,  -5,  -6,  -5,   1,   1 /
@@ -682,7 +682,7 @@ module muli_interactions
   data valid_processes (:, 232)  /  6,   5,   5,   6,   1,   1 /
   data valid_processes (:, 233)  /  6,   5,   6,   5,   1,   1 /
   data valid_processes (:, 234)  /  6,   6,   6,   6,   2,   2 /
-  
+
   integer, dimension(2,0:16), parameter, public :: &
        double_pdf_kinds = reshape ( [ &
        0, 0, &
@@ -702,13 +702,13 @@ module muli_interactions
        4, 2, &
        4, 3, &
        4, 4], [2, 17])
-  
+
   integer, parameter, dimension(371), public :: int_all = [ &
          -6,  -5,  -4,  -3,  -2,  -1,   0,  1 ,   2, &
           3,   4,   5,   6, -14, -13, -12, -11, -10, &
           9,  -8,  -7,   7,   8,   9,  10,  11,  12, &
          13,  14,   7,   8,   9,  10,-151,-150,-115, &
-       -114, -79, -78, -43, -42,  42,  43,  78,  79, & 
+       -114, -79, -78, -43, -42,  42,  43,  78,  79, &
         114, 115, 150, 151,-158,-157,-156,-155,-154, &
        -153,-152,-149,-148,-147,-146,-145,-144,-143, &
        -142,-141,-140,-139,-138,-137,-136,-135,-134, &
@@ -746,10 +746,10 @@ module muli_interactions
          68,  69,  70,  71,  72,  73,  74,  75,  76, &
          77,  80,  81,  82,  83,  84,  85,  86,  80, &
          81,  82 ]
-  
+
   integer, parameter, dimension(16), public :: int_sizes_all = &
        [13, 16, 2, 2, 16, 208, 26, 26, 2, 26, 1, 2, 2, 26, 2, 1]
-  
+
   integer, parameter, dimension(3,0:8), public :: muli_flow_stats = &
        reshape( [ &
            1,  2,  4,   &
@@ -762,7 +762,7 @@ module muli_interactions
           23, 28, 16,   &
           29, 52, 96 ], &
           [3,9])
-  
+
   integer, parameter, dimension(0:4,52), public :: muli_flows = &
        reshape( [ &
        3, 0, 0, 1, 2, &   !1a
@@ -818,10 +818,10 @@ module muli_interactions
        3, 3, 4, 2, 1, &
        5, 4, 3, 2, 1], [5, 52])
 
-  real(default) :: pts2_scale  
+  real(default) :: pts2_scale
 
   abstract interface
-     function trafo_in (in) 
+     function trafo_in (in)
        use kinds !NODEP!
        real(default), dimension(3) :: trafo_in
        real(default), dimension(3), intent(in) :: in
@@ -855,11 +855,11 @@ module muli_interactions
        real(double), intent(in) :: x, q
        real(double), intent(out), dimension(-6:6) :: f
      end subroutine evolvepdf
-  end interface  
-  
+  end interface
+
 
 contains
-        
+
   pure function muli_get_state_transformations &
        (inout_kind, lha_flavors) result (transformations)
     integer, intent(in) :: inout_kind
@@ -896,7 +896,7 @@ contains
     ! print *,"signature",signature
     ! print *,"transformations=",transformations
   end function muli_get_state_transformations
-  
+
   pure function h_to_c_param (hyp)
     real(default), dimension(3) :: h_to_c_param
     real(default), dimension(3), intent(in) :: hyp
@@ -907,7 +907,7 @@ contains
          (((hyp(2)-(5E-1_default))**3)*4)**2) + &
          ((hyp(2)-(5E-1_default))**3)*4), hyp(3)]
   end function h_to_c_param
-  
+
   pure function c_to_h_param (cart)
     real(default), dimension(3) :: c_to_h_param
     real(default), dimension(3), intent(in)::cart
@@ -915,13 +915,13 @@ contains
          (one - cart(3)))**(1/four), (one + sign(abs((cart(2)**2) - &
          (cart(1)**2))**(1/three), cart(2) - cart(1))) / two, cart(3) ]
   end function c_to_h_param
-  
+
   pure function h_to_c_param_def (hyp)
     real(default), dimension(3) :: h_to_c_param_def
     real(default), dimension(3), intent(in) :: hyp
     h_to_c_param_def = h_to_c_param ([hyp(1), hyp(2), pts2_scale])
   end function h_to_c_param_def
-    
+
   pure function h_to_c_ort (hyp)
     real(default), dimension(3) :: h_to_c_ort
     real(default), dimension(3), intent(in) :: hyp
@@ -930,26 +930,26 @@ contains
          sqrt (sqrt (((hyp(1) * (one - hyp(3))) + hyp(3))**2 + &
          (hyp(2)-(5E-1_default))**2) + (hyp(2) - (5E-1_default))), hyp(3)]
   end function h_to_c_ort
-  
+
   pure function c_to_h_ort (cart)
     real(default), dimension(3) :: c_to_h_ort
     real(default), dimension(3), intent(in) :: cart
     c_to_h_ort = [ (cart(3) - (cart(1)*cart(2))) / (cart(3) - one), &
          (one - cart(1)**2 + cart(2)**2) / two, cart(3)]
   end function c_to_h_ort
-  
+
   pure function h_to_c_ort_def (hyp)
     real(default), dimension(3) :: h_to_c_ort_def
     real(default), dimension(3), intent(in) :: hyp
     h_to_c_ort_def = h_to_c_ort ([hyp(1), hyp(2), pts2_scale])
   end function h_to_c_ort_def
-  
+
   pure function c_to_h_ort_def (cart)
     real(default), dimension(3) :: c_to_h_ort_def
     real(default), dimension(3), intent(in) :: cart
     c_to_h_ort_def = c_to_h_ort ([ cart(1), cart(2), pts2_scale])
   end function c_to_h_ort_def
-    
+
   pure function h_to_c_noparam (hyp)
     real(default), dimension(2) :: h_to_c_noparam
     real(default), dimension(2), intent(in) :: hyp
@@ -976,7 +976,7 @@ contains
        c_to_h_param_def = [-one, -one, -one]
     end if
   end function c_to_h_param_def
-  
+
   pure function h_to_c_smooth (hyp)
     real(default), dimension(3) :: h_to_c_smooth
     real(default), dimension(3), intent(in) :: hyp
@@ -988,7 +988,7 @@ contains
          sqrt (sqrt((((hyp(1)**4)*(one-hyp(3)))+hyp(3))**2+h2**2) + h2), &
          hyp(3)]
   end function h_to_c_smooth
-  
+
   pure function c_to_h_smooth (cart)
     real(default), dimension(3) :: c_to_h_smooth
     real(default), dimension(3), intent(in) :: cart
@@ -1007,7 +1007,7 @@ contains
     real(default), dimension(3), intent(in) :: hyp
     h_to_c_smooth_def = h_to_c_smooth ([hyp(1), hyp(2), pts2_scale])
   end function h_to_c_smooth_def
-  
+
   pure function c_to_h_smooth_def (cart)
     real(default), dimension(3)::c_to_h_smooth_def
     real(default), dimension(3), intent(in) :: cart
@@ -1024,7 +1024,7 @@ contains
     real(default) :: T, TH1
     T = one - hyp(3)
     TH1 = T * (one - hyp(1))
-    voxel_h_to_c_ort = sqrt (T**2 / (five - four*(one-hyp(2))*hyp(2) - &    
+    voxel_h_to_c_ort = sqrt (T**2 / (five - four*(one-hyp(2))*hyp(2) - &
          four*(two-TH1)*TH1))
   end function voxel_h_to_c_ort
 
@@ -1089,7 +1089,7 @@ contains
     voxel_h_to_c_smooth = 8._default * (hyp(1)**3 * (one + three * &
          (hyp(2) - one)*hyp(2))*T) / sqrt ((one - two*hyp(2) * (two + &
          hyp(2)*(two*hyp(2)-three)))**2 + &
-         four * (one + (hyp(1)**4 - one)*T)**2) 
+         four * (one + (hyp(1)**4 - one)*T)**2)
   end function voxel_h_to_c_smooth
 
   pure function voxel_c_to_h_smooth (cart)
@@ -1167,7 +1167,7 @@ end function voxel_c_to_h_smooth
        denom_ort = zero
     end if
   end function denom_ort
-  
+
   pure function denom_param (hyp)
     real(default) :: denom_param
     real(default), dimension(3), intent(in) :: hyp
@@ -1229,7 +1229,7 @@ end function voxel_c_to_h_smooth
        denom_smooth_reg = zero
     end if
   end function denom_smooth_reg
-  
+
    pure function denom_cart_save (cart)
     real(default) :: denom_cart_save
     real(default), dimension(3), intent(in) :: cart
@@ -1350,7 +1350,7 @@ end function voxel_c_to_h_smooth
     cart = h_to_c_smooth (hyp)
     denom = denom_smooth (hyp)
   end subroutine coordinates_hcd_smooth
-  
+
   subroutine coordinates_hcd_smooth_reg (hyp, cart, denom)
     real(default), dimension(3), intent(in) :: hyp
     real(default), dimension(3), intent(out) :: cart
@@ -1384,7 +1384,7 @@ end function voxel_c_to_h_smooth
        dddsigma = zero
     end if
   end subroutine interactions_dddsigma_reg
-  
+
   pure function pdf_in_in_kind (process_id, double_pdf_id, c1, c2, gev_pt)
     real(default) :: pdf_in_in_kind
     real(default), intent(in) :: c1, c2, gev_pt
@@ -1418,7 +1418,7 @@ end function voxel_c_to_h_smooth
       end select
     end subroutine single_pdf
   end function pdf_in_in_kind
-  
+
   elemental function ps_io_pol (process_io_id, pt2shat)
     real(default) :: ps_io_pol
     integer, intent(in) :: process_io_id
@@ -1614,7 +1614,7 @@ end function voxel_c_to_h_smooth
     end if
   end subroutine cuba_gg_me_cart
 
-  subroutine interactions_proton_proton_integrand_generic_17_reg & 
+  subroutine interactions_proton_proton_integrand_generic_17_reg &
        (hyp_2, trafo, f, pt)
     real(default), dimension(2), intent(in) :: hyp_2
     procedure(coord_hcd_in) :: trafo
@@ -1628,7 +1628,7 @@ end function voxel_c_to_h_smooth
          pdf_seaquark_seaquark, pdf_seaquark_gluon, pdf_gluon_gluon, &
          pdf_up_seaquark, pdf_up_gluon, pdf_down_seaquark, pdf_down_gluon, &
          v1u, v1d, v2u, v2d, denom
-        
+
     pts = pt%get_unit_scale()
     pt2s = pt%get_unit2_scale()
     gev_pt = pt%get_gev_scale()
@@ -1812,7 +1812,7 @@ end function voxel_c_to_h_smooth
          (hyp_2, coordinates_hcd_param_reg, f, pt)
     ! write (53,*)  hyp_2,momentum_get_pts_scale(),f
   end subroutine interactions_proton_proton_integrand_param_17_reg
-  
+
   subroutine interactions_proton_proton_integrand_smooth_17_reg &
        (d_hyp, hyp_2, d_f, f, pt)
     integer, intent(in) :: d_hyp, d_f
@@ -1823,7 +1823,7 @@ end function voxel_c_to_h_smooth
          (hyp_2, coordinates_hcd_smooth_reg, f, pt)
     ! write (53,*)hyp_2,momentum_get_pts_scale(), f
   end subroutine interactions_proton_proton_integrand_smooth_17_reg
-  
-  
+
+
 end module muli_interactions
 

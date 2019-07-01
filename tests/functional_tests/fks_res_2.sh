@@ -4,9 +4,7 @@ echo "Running script $0"
 if test -f OCAML_FLAG; then
     name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging
-    cat $name.log | sed -e 's/Reading model file.*/Reading model file SM_rad.mdl/' > $name.log.tmp
-    cat ${name}_p1.debug >> $name.log.tmp
-    mv $name.log.tmp $name.log
+    cat ${name}_p1.debug >> $name.log
     diff ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"

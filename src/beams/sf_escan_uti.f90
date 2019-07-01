@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -62,12 +62,12 @@ contains
     type(pdg_array_t), dimension(2) :: pdg_out
     integer, dimension(:), allocatable :: pdg1, pdg2
     class(sf_data_t), allocatable :: data
-    
+
     write (u, "(A)")  "* Test output: sf_escan_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &energy-scan structure function data"
     write (u, "(A)")
-    
+
     call model%init_qed_test ()
     pdg_in(1) = ELECTRON
     pdg_in(2) = -ELECTRON
@@ -89,7 +89,7 @@ contains
     write (u, "(2x,99(1x,I0))")  pdg1, pdg2
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_escan_1"
 
@@ -106,12 +106,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: x_free, f
-    
+
     write (u, "(A)")  "* Test output: sf_escan_2"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &beam-events structure function data"
     write (u, "(A)")
-    
+
     call model%init_qed_test ()
     call flv(1)%init (ELECTRON, model)
     call flv(2)%init (-ELECTRON, model)
@@ -119,16 +119,16 @@ contains
     pdg_in(2) = -ELECTRON
 
     call reset_interaction_counter ()
-    
+
     allocate (escan_data_t :: data)
     select type (data)
     type is (escan_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1,2])
@@ -187,7 +187,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_escan_2"
 

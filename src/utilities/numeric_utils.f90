@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -60,6 +60,8 @@ module numeric_utils
   public :: expanded_amp2
   public :: abs2
   public :: remove_duplicates_from_list
+  public :: extend_integer_array
+  public :: crop_integer_array
 
 
 
@@ -68,7 +70,7 @@ module numeric_utils
   interface nearly_equal
      module procedure nearly_equal_real
      module procedure nearly_equal_complex
-  end interface
+  end interface nearly_equal
 
 
 contains
@@ -257,6 +259,35 @@ contains
     allocate (list_clean (n_buf))
     list_clean = buf (1 : n_buf)
   end function remove_duplicates_from_list
-    
+
+  subroutine extend_integer_array (list, incr, initial_value)
+    integer, intent(inout), dimension(:), allocatable :: list
+    integer, intent(in) :: incr
+    integer, intent(in), optional :: initial_value
+    integer, dimension(:), allocatable :: list_store
+    integer :: n, ini
+    ini = 0; if (present (initial_value)) ini = initial_value
+    n = size (list)
+    allocate (list_store (n))
+    list_store = list
+    deallocate (list)
+    allocate (list (n+incr))
+    list(1:n) = list_store
+    list(1+n : n+incr) = ini
+    deallocate (list_store)
+  end subroutine extend_integer_array
+
+  subroutine crop_integer_array (list, i_crop)
+    integer, intent(inout), dimension(:), allocatable :: list
+    integer, intent(in) :: i_crop
+    integer, dimension(:), allocatable :: list_store
+    allocate (list_store (i_crop))
+    list_store = list(1:i_crop)
+    deallocate (list)
+    allocate (list (i_crop))
+    list = list_store
+    deallocate (list_store)
+  end subroutine crop_integer_array
+
 
 end module numeric_utils

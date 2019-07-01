@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -80,7 +80,7 @@ contains
 
     write (u, "(A)")  "* Test output: HEP events"
     write (u, "(A)")  "*   Purpose: test HepMC event routines"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Reading model file"
 
@@ -166,11 +166,11 @@ contains
     call eval%receive_momenta ()
     call eval%evaluate ()
     call eval%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (complete, polarized)"
     write (u, "(A)")
-    
+
     int => eval%interaction_t
     call particle_set1%init &
          (ok, int, int, FM_FACTOR_HELICITY, &
@@ -180,7 +180,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (in/out only, selected helicity)"
     write (u, "(A)")
-    
+
     int => eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
@@ -190,19 +190,19 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
-    write (u, "(A)") 
-    
+    write (u, "(A)")
+
     int => eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
           [0.7_default, 0.7_default], .false., .true.)
-    call particle_set2%write (u)      
+    call particle_set2%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Transfer particle_set to HepMC, print, and output to"
     write (u, "(A)")  "        hep_events.hepmc.dat"
     write (u, "(A)")
-    
+
     cross_section = 42.0_default
     error = 17.0_default
     weight = 1.0_default
@@ -219,7 +219,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Recover from HepMC file"
     write (u, "(A)")
-    
+
     call particle_set2%final ()
     call hepmc_event_final (hepmc_event)
     call hepmc_event_init (hepmc_event)
@@ -229,23 +229,23 @@ contains
     call hepmc_iostream_close (iostream)
     call hepmc_event_to_particle_set (particle_set2, &
          hepmc_event, model, model, PRT_DEFINITE_HELICITY)
-    call particle_set2%write (u)   
+    call particle_set2%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call particle_set1%final ()
     call particle_set2%final ()
     call eval%final ()
     call int1%final ()
     call int2%final ()
-    call hepmc_event_final (hepmc_event)            
+    call hepmc_event_final (hepmc_event)
     call model%final ()
-       
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: hep_events_1"
 
   end subroutine hep_events_1
-  
+
 
 end module hep_events_uti

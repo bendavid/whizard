@@ -1,6 +1,6 @@
-%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: common types and objects
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Abstract variables and expressions}
 \includemodulegraph{expr_base}
 
@@ -27,10 +27,10 @@ just value retrieval; concrete implementations should implement more.
 <<File header>>
 
 module var_base
-  
+
 <<Use kinds>>
 <<Use strings>>
-  
+
 <<Standard module head>>
 
 <<Var base: public>>
@@ -60,7 +60,7 @@ attribute, just in case.
        class(vars_t), intent(in), target :: target_vars
      end subroutine vars_link
   end interface
-  
+
 @ %def vars_link
 @ Require a finalizer, just in case.  [[follow_link]] will finalize
 also linked variable collections, which may or may not be intended.
@@ -74,7 +74,7 @@ also linked variable collections, which may or may not be intended.
        logical, intent(in), optional :: follow_link
      end subroutine vars_final
   end interface
-  
+
 @ %def vars_final
 @
 @
@@ -98,7 +98,7 @@ for setting parameters, more options, value kinds, or anything else.
    contains
    <<Var base: vars: TBP>>
   end type vars_t
-  
+
 @ %def vars_t
 @
 \subsection{Retrieve data}
@@ -122,7 +122,7 @@ Check if a variable exists in the collection / is known.
        logical, intent(in), optional :: follow_link
      end function vars_get_lval
   end interface
-  
+
 @ %def vars_get_lval
 @
 Return one of the elementary value kinds.  The implementation may
@@ -143,7 +143,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end function vars_get_ival
   end interface
-  
+
   abstract interface
      function vars_get_rval (vars, name, follow_link) result (rval)
        import
@@ -153,7 +153,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end function vars_get_rval
   end interface
-  
+
   abstract interface
      function vars_get_cval (vars, name, follow_link) result (cval)
        import
@@ -163,7 +163,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end function vars_get_cval
   end interface
-  
+
   abstract interface
      function vars_get_sval (vars, name, follow_link) result (sval)
        import
@@ -173,7 +173,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end function vars_get_sval
   end interface
-  
+
 @ %def vars_get_ival
 @ %def vars_get_rval
 @ %def vars_get_cval
@@ -192,7 +192,7 @@ becomes unknown.
        logical, intent(in), optional :: follow_link
      end subroutine vars_unset
   end interface
-  
+
 @ %def vars_unset
 @
 Set a value of the elementary value kinds.  The implementation may
@@ -213,7 +213,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_ival
   end interface
-  
+
   abstract interface
      subroutine vars_set_rval (vars, name, rval, follow_link)
        import
@@ -223,7 +223,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_rval
   end interface
-  
+
   abstract interface
      subroutine vars_set_cval (vars, name, cval, follow_link)
        import
@@ -233,7 +233,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_cval
   end interface
-  
+
   abstract interface
      subroutine vars_set_lval (vars, name, lval, follow_link)
        import
@@ -243,7 +243,7 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_lval
   end interface
-  
+
   abstract interface
      subroutine vars_set_sval (vars, name, sval, follow_link)
        import
@@ -253,13 +253,13 @@ check type consistency if desired.
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_sval
   end interface
-  
+
 @ %def vars_set_ival
 @ %def vars_set_rval
 @ %def vars_set_cval
 @ %def vars_set_lval
 @ %def vars_set_sval
-@ 
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Abstract Expressions}
@@ -313,7 +313,7 @@ The abstract type is empty.  All data are provided by the implementation.
        class(expr_t), intent(inout) :: expr
      end subroutine expr_final
   end interface
-  
+
 @ %def expr_final
 @ Output
 <<Expr base: expr: TBP>>=
@@ -327,7 +327,7 @@ The abstract type is empty.  All data are provided by the implementation.
        logical, intent(in), optional :: write_vars
      end subroutine expr_write
   end interface
-  
+
 @ %def expr_write
 @ Configure the expression for a specific result type.  The expression
 should evaluate to a logical (real), respectively.  We take a variable
@@ -344,7 +344,7 @@ expression object, therefore intent(inout).
        class(vars_t), intent(in), target :: vars
      end subroutine expr_setup_expr
   end interface
-  
+
 @ %def expr_setup_expr
 @ Evaluate.  We can assume that all data are inside the object (partly via
 pointer), so no extra arguments.
@@ -357,7 +357,7 @@ pointer), so no extra arguments.
        class(expr_t), intent(inout) :: expr
      end subroutine expr_evaluate
   end interface
-  
+
 @ %def expr_evaluate
 @ Get results.  First, check if it is actually defined:
 <<Expr base: expr: TBP>>=
@@ -370,7 +370,7 @@ pointer), so no extra arguments.
        logical :: flag
      end function expr_is_known
   end interface
-  
+
 @ %def expr_is_known
 @ Get value.
 <<Expr base: expr: TBP>>=
@@ -384,7 +384,7 @@ pointer), so no extra arguments.
        logical :: lval
      end function expr_get_log
   end interface
-  
+
   abstract interface
      function expr_get_real (expr) result (rval)
        import
@@ -392,7 +392,7 @@ pointer), so no extra arguments.
        real(default) :: rval
      end function expr_get_real
   end interface
-  
+
 @ %def expr_get_log expr_get_real
 @
 \subsection{Abstract factory type}
@@ -419,7 +419,7 @@ expression with matching type.
        integer, intent(in), optional :: unit
      end subroutine expr_factory_write
   end interface
-  
+
 @ %def expr_factory_write
 @ Build method.
 <<Expr base: expr factory: TBP>>=
@@ -432,5 +432,5 @@ expression with matching type.
        class(expr_t), intent(out), allocatable :: expr
      end subroutine expr_factory_build
   end interface
-  
+
 @ %def expr_factory_build

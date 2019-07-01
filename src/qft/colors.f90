@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -39,7 +39,7 @@ module colors
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
-  
+
   implicit none
   private
 
@@ -102,28 +102,28 @@ module colors
      module procedure color_init_from_array2
      module procedure color_init_from_array2g
   end interface color_init_from_array
-  
+
   interface color_write
      module procedure color_write_single
      module procedure color_write_array
   end interface color_write
-  
+
   interface color_get_max_value
      module procedure color_get_max_value0
      module procedure color_get_max_value1
      module procedure color_get_max_value2
   end interface color_get_max_value
-  
+
   interface make_color_map
      module procedure color_make_color_map
   end interface make_color_map
-  
+
   interface color_translate
      module procedure color_translate0
      module procedure color_translate0_offset
      module procedure color_translate1
   end interface color_translate
-  
+
 
 contains
 
@@ -308,7 +308,7 @@ contains
        write (u) col%ghost
     end if
   end subroutine color_write_raw
-    
+
   subroutine color_read_raw (col, u, iostat)
     class(color_t), intent(inout) :: col
     integer, intent(in) :: u
@@ -712,10 +712,10 @@ contains
     if (col%defined .and. .not. col%ghost) then
        col_tmp = col
        do i = 1, size (map,2)
-          where (abs (col%c1) == map(1,i))  
+          where (abs (col%c1) == map(1,i))
              col_tmp%c1 = sign (map(2,i), col%c1)
           end where
-          where (abs (col%c2) == map(1,i))  
+          where (abs (col%c2) == map(1,i))
              col_tmp%c2 = sign (map(2,i), col%c2)
           end where
        end do
@@ -735,11 +735,11 @@ contains
        mask1 = col%c1 /= 0
        mask2 = col%c2 /= 0
        do i = 1, size (map,2)
-          where (abs (col%c1) == map(1,i))  
+          where (abs (col%c1) == map(1,i))
              col_tmp%c1 = sign (map(2,i), col%c1)
              mask1 = .false.
           end where
-          where (abs (col%c2) == map(1,i))  
+          where (abs (col%c2) == map(1,i))
              col_tmp%c2 = sign (map(2,i), col%c2)
              mask2 = .false.
           end where

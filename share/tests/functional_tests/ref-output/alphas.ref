@@ -21,13 +21,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process alphas_ugug:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'alphas_ugug'
-|   Library name  = 'alphas_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'alphas_ugug_i1':   u, gl => u, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: u, gl
 | Beam data (collision):
 |   u   (mass = 0.0000000E+00 GeV)
@@ -36,6 +29,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'alphas_ugug_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'alphas_ugug'
+|   Library name  = 'alphas_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'alphas_ugug_i1':   u, gl => u, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 3 groves.
 | Phase space: Using 5 equivalences between channels.
@@ -67,6 +67,12 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process alphas_ugug:
+| Beam structure: u, gl
+| Beam data (collision):
+|   u   (mass = 0.0000000E+00 GeV)
+|   gl  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: keeping configuration file 'alphas_ugug_i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'
@@ -74,12 +80,6 @@ seed = 0
 |   Process components:
 |     1: 'alphas_ugug_i1':   u, gl => u, gl [omega]
 | ------------------------------------------------------------------------
-| Beam structure: u, gl
-| Beam data (collision):
-|   u   (mass = 0.0000000E+00 GeV)
-|   gl  (mass = 0.0000000E+00 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'alphas_ugug_i1.phs'
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 3 groves.
 | Phase space: Using 5 equivalences between channels.
@@ -111,6 +111,12 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process alphas_ugug:
+| Beam structure: u, gl
+| Beam data (collision):
+|   u   (mass = 0.0000000E+00 GeV)
+|   gl  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: keeping configuration file 'alphas_ugug_i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'
@@ -118,12 +124,6 @@ seed = 0
 |   Process components:
 |     1: 'alphas_ugug_i1':   u, gl => u, gl [omega]
 | ------------------------------------------------------------------------
-| Beam structure: u, gl
-| Beam data (collision):
-|   u   (mass = 0.0000000E+00 GeV)
-|   gl  (mass = 0.0000000E+00 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'alphas_ugug_i1.phs'
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 3 groves.
 | Phase space: Using 5 equivalences between channels.

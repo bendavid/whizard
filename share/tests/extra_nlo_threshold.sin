@@ -56,7 +56,8 @@ integrate (extra_nlo_threshold_signal)
 !!! tree level result from amp_blob, i.e. with factorized onshell LO decays
 process extra_nlo_threshold_factorized = e1, E1 => Wp, Wm, b, B
 FF = 9        !!! on
-offshell_strategy = 0+2+0+0+0 ! activate factorization
+!!! Active factorization. Also, need to force FF - 1 (2048) to have agreement with signal
+offshell_strategy = 0+2+0+0+0+0+0+0+0+0+0+2048
 seed = 0
 integrate (extra_nlo_threshold_factorized)
 
@@ -68,7 +69,8 @@ expect (integral (extra_nlo_threshold_signal) ==
 !!! Now with onshell projection
 process extra_nlo_threshold_onshell = e1, E1 => Wp, Wm, b, B
 FF = 9       !!! on
-offshell_strategy = 0+2+0+8+0
+!!! Need to force FF - 1 to have agreement with signal
+offshell_strategy = 0+2+0+8+0+0+0+0+0+0+0+2048
 seed = 0
 integrate (extra_nlo_threshold_onshell)
 

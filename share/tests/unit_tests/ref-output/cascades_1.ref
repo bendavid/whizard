@@ -37,7 +37,7 @@ Cascade #       2
   Grove:       #       0
   act/cmp/inc:   T F F
   Bincode:      2
-  Flavor:       f(-1)  Active flavor:        1
+  Flavor:       f(-1)  Active flavor:       -1
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      0
@@ -47,7 +47,7 @@ Cascade #       2
   n res/log/tch:       0       0       0
   Depth:              1
   Tree:                2
-  Tree(PDG):           1
+  Tree(PDG):          -1
   Tree(mapping):      -1
   Tree(res):     F
 Cascade #       1
@@ -124,7 +124,7 @@ Cascade #      20
   Grove:       #       0
   act/cmp/inc:   T F T
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      0
@@ -134,14 +134,14 @@ Cascade #      20
   n res/log/tch:       0       0       0
   Depth:              1
   Tree:               16
-  Tree(PDG):           2
+  Tree(PDG):          -2
   Tree(mapping):      -1
   Tree(res):     F
 Cascade #      77
   Grove:       #       1
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -196,7 +196,7 @@ Cascade #      78
   Grove:       #       1
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -233,7 +233,7 @@ Cascade #      80
   Grove:       #       2
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   9.118820000000E+01  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -252,7 +252,7 @@ Cascade #       9
   Grove:       #       0
   act/cmp/inc:   T F F
   Bincode:      6
-  Flavor:       f(-1)  Active flavor:        1
+  Flavor:       f(-1)  Active flavor:       -1
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      5
@@ -262,7 +262,7 @@ Cascade #       9
   n res/log/tch:       0       1       0
   Depth:              3
   Tree:                2       4       6
-  Tree(PDG):           0       0       1
+  Tree(PDG):           0       0      -1
   Tree(mapping):      -1      -1       5
   Tree(res):     F F F
   Daughter1/2:        3       2
@@ -280,7 +280,7 @@ Cascade #      15
   n res/log/tch:       0       1       0
   Depth:              5
   Tree:                1       2       4       6       7
-  Tree(PDG):           0       0       0       1      22
+  Tree(PDG):           0       0       0      -1      22
   Tree(mapping):      -1      -1      -1       5       0
   Tree(res):     F F F F F
   Daughter1/2:        9       1
@@ -288,7 +288,7 @@ Cascade #      81
   Grove:       #       1
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -298,7 +298,7 @@ Cascade #      81
   n res/log/tch:       0       1       0
   Depth:              7
   Tree:                1       2       4       6       7       8      16
-  Tree(PDG):           0       0       0       1       0       0       0
+  Tree(PDG):           0       0       0      -1       0       0       0
   Tree(mapping):      -1      -1      -1       5       0      -1      -1
   Tree(res):     F F F F F F F
   Daughter1/2:       19      15
@@ -317,7 +317,7 @@ Cascade #      17
   n res/log/tch:       1       1       0
   Depth:              5
   Tree:                1       2       4       6       7
-  Tree(PDG):           0       0       0       1      23
+  Tree(PDG):           0       0       0      -1      23
   Tree(mapping):      -1      -1      -1       5       1
   Tree(res):     F F F F T
   Daughter1/2:        9       1
@@ -325,7 +325,7 @@ Cascade #      83
   Grove:       #       2
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   9.118820000000E+01  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -335,7 +335,7 @@ Cascade #      83
   n res/log/tch:       1       1       0
   Depth:              7
   Tree:                1       2       4       6       7       8      16
-  Tree(PDG):           0       0       0       1      23       0       0
+  Tree(PDG):           0       0       0      -1      23       0       0
   Tree(mapping):      -1      -1      -1       5       1      -1      -1
   Tree(res):     F F F F T F F
   Daughter1/2:       19      17
@@ -362,7 +362,7 @@ Cascade #      84
   Grove:       #       3
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -417,7 +417,7 @@ Cascade #      86
   Grove:       #       4
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -454,7 +454,7 @@ Cascade #      90
   Grove:       #       5
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   9.118820000000E+01  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -491,7 +491,7 @@ Cascade #      92
   Grove:       #       6
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -528,7 +528,7 @@ Cascade #      94
   Grove:       #       4
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -565,7 +565,7 @@ Cascade #      98
   Grove:       #       5
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   9.118820000000E+01  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -602,7 +602,7 @@ Cascade #     100
   Grove:       #       6
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -631,7 +631,7 @@ Cascade #     103
   n res/log/tch:       0       2       1
   Depth:              5
   Tree:                2       4       6       8      14
-  Tree(PDG):           0       0       1       0      24
+  Tree(PDG):           0       0      -1       0      24
   Tree(mapping):      -1      -1       5      -1       2
   Tree(res):     F F F F F
   Daughter1/2:       19       9
@@ -639,7 +639,7 @@ Cascade #     102
   Grove:       #       3
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -649,7 +649,7 @@ Cascade #     102
   n res/log/tch:       0       2       1
   Depth:              7
   Tree:                1       2       4       6       8      14      16
-  Tree(PDG):           0       0       0       1       0      24       0
+  Tree(PDG):           0       0       0      -1       0      24       0
   Tree(mapping):      -1      -1      -1       5      -1       2      -1
   Tree(res):     F F F F F F F
   Daughter1/2:      103       1
@@ -694,7 +694,7 @@ Cascade #     104
   Grove:       #       7
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -749,7 +749,7 @@ Cascade #     106
   Grove:       #       7
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -796,7 +796,7 @@ Cascade #     126
   n res/log/tch:       0       2       1
   Depth:              7
   Tree:                1       2       4       6       8      16      17
-  Tree(PDG):           0       0       0       1       0       0      24
+  Tree(PDG):           0       0       0      -1       0       0      24
   Tree(mapping):      -1      -1      -1       5      -1      -1       2
   Tree(res):     F F F F F F F
   Daughter1/2:      127       9
@@ -1138,7 +1138,7 @@ Cascade #     162
   Grove:       #       0
   act/cmp/inc:   T F F
   Bincode:      2
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      0
@@ -1148,7 +1148,7 @@ Cascade #     162
   n res/log/tch:       0       0       0
   Depth:              1
   Tree:                2
-  Tree(PDG):           2
+  Tree(PDG):          -2
   Tree(mapping):      -1
   Tree(res):     F
 Cascade #     161
@@ -1226,7 +1226,7 @@ Cascade #     169
   Grove:       #       0
   act/cmp/inc:   T F F
   Bincode:      6
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      5
@@ -1236,7 +1236,7 @@ Cascade #     169
   n res/log/tch:       0       1       0
   Depth:              3
   Tree:                2       4       6
-  Tree(PDG):           0       0       2
+  Tree(PDG):           0       0      -2
   Tree(mapping):      -1      -1       5
   Tree(res):     F F F
   Daughter1/2:        3     162
@@ -1254,7 +1254,7 @@ Cascade #     175
   n res/log/tch:       0       1       0
   Depth:              5
   Tree:                1       2       4       6       7
-  Tree(PDG):           0       0       0       2      22
+  Tree(PDG):           0       0       0      -2      22
   Tree(mapping):      -1      -1      -1       5       0
   Tree(res):     F F F F F
   Daughter1/2:      169     161
@@ -1272,7 +1272,7 @@ Cascade #     177
   n res/log/tch:       1       1       0
   Depth:              5
   Tree:                1       2       4       6       7
-  Tree(PDG):           0       0       0       2      23
+  Tree(PDG):           0       0       0      -2      23
   Tree(mapping):      -1      -1      -1       5       1
   Tree(res):     F F F F T
   Daughter1/2:      169     161
@@ -1308,7 +1308,7 @@ Cascade #     303
   n res/log/tch:       0       2       1
   Depth:              5
   Tree:                2       4       6       8      14
-  Tree(PDG):           0       0       2       0      22
+  Tree(PDG):           0       0      -2       0      22
   Tree(mapping):      -1      -1       5      -1       2
   Tree(res):     F F F F F
   Daughter1/2:       19     169
@@ -1388,7 +1388,7 @@ Cascade #     312
   Grove:       #       8
   act/cmp/inc:   T T F
   Bincode:      16
-  Flavor:       f(-2)  Active flavor:        2
+  Flavor:       f(-2)  Active flavor:       -2
   Is vector:    F
   Mass (m/r/e):   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
   Mapping:      *
@@ -1666,7 +1666,7 @@ Hash array
    map   5 collinear       1 ! d
  ! Channel #3
    tree  6 7
-   map   6 collinear       1 ! d
+   map   6 collinear      -1 ! dbar
 
  ! Multiplicity = 1, 1 resonance,   1 logs,  0 off-shell,  s-channel graph
  grove #2
@@ -1676,7 +1676,7 @@ Hash array
    map   7 s_channel      23 ! Z
  ! Channel #5
    tree  6 7
-   map   6 collinear       1 ! d
+   map   6 collinear      -1 ! dbar
    map   7 s_channel      23 ! Z
 
  ! Multiplicity = 3, no resonances,  2 logs,  0 off-shell,  1 t-channel line
@@ -1687,11 +1687,11 @@ Hash array
    map  10 t_channel      24 ! W+
  ! Channel #7
    tree  6 14
-   map   6 collinear       1 ! d
+   map   6 collinear      -1 ! dbar
    map  14 t_channel      24 ! W+
  ! Channel #8
    tree  6 17
-   map   6 collinear       1 ! d
+   map   6 collinear      -1 ! dbar
    map  17 t_channel      24 ! W+
  ! Channel #9
    tree  5 21

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -145,6 +145,10 @@ module events
      procedure :: get_index => event_get_index
      procedure :: get_fac_scale => event_get_fac_scale
      procedure :: get_alpha_s => event_get_alpha_s
+     procedure :: get_sqrts => event_get_sqrts
+     procedure :: get_polarization => event_get_polarization
+     procedure :: get_beam_file => event_get_beam_file
+     procedure :: get_process_name => event_get_process_name
      procedure :: get_actual_calls_total => event_get_actual_calls_total
   end type event_t
 
@@ -502,7 +506,6 @@ contains
              select type (evt)
              type is (evt_nlo_t)
                 failed_but_keep = .not. evt%is_valid_event (i_term) .and. evt%keep_failed_events
-                call evt%copy_previous_particle_set ()
                 if (.not. evt%is_valid_event (i_term) .and. .not. failed_but_keep) &
                    return
              end select
@@ -529,7 +532,7 @@ contains
              select type (evt)
              type is (evt_nlo_t)
                 if (evt%i_evaluation > 0) then
-                   call evt%build_radiated_particle_set (event%i_event + 1)
+                   evt%particle_set_radiated (event%i_event + 1) = evt%particle_set
                 else
                    call evt%keep_and_boost_born_particle_set (event%i_event + 1)
                 end if
@@ -942,6 +945,30 @@ contains
     real(default) :: alpha_s
     alpha_s = event%instance%get_alpha_s (event%selected_i_term)
   end function event_get_alpha_s
+
+  function event_get_sqrts (event) result (sqrts)
+    class(event_t), intent(in) :: event
+    real(default) :: sqrts
+    sqrts = event%instance%get_sqrts ()
+  end function event_get_sqrts
+
+  function event_get_polarization (event) result (pol)
+    class(event_t), intent(in) :: event
+    real(default), dimension(2) :: pol
+    pol = event%instance%get_polarization ()
+  end function event_get_polarization
+
+  function event_get_beam_file (event) result (file)
+    class(event_t), intent(in) :: event
+    type(string_t) :: file
+    file = event%instance%get_beam_file ()
+  end function event_get_beam_file
+
+  function event_get_process_name (event) result (name)
+    class(event_t), intent(in) :: event
+    type(string_t) :: name
+    name = event%instance%get_process_name ()
+  end function event_get_process_name
 
   elemental function event_get_actual_calls_total (event) result (n)
     class(event_t), intent(in) :: event

@@ -1,5 +1,5 @@
 module integration_results
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -9,7 +9,7 @@ module integration_results
   use md5
   use os_interface
   use mci_base
-  
+
   implicit none
   private
 
@@ -62,7 +62,7 @@ module integration_results
      procedure :: display_pass => integration_results_display_pass
      procedure :: display_final => integration_results_display_final
      procedure :: write_chain_weights => &
-          integration_results_write_chain_weights 
+          integration_results_write_chain_weights
      procedure :: expand => integration_results_expand
      procedure :: new_pass => integration_results_new_pass
      procedure :: append_entry => integration_results_append_entry
@@ -82,7 +82,7 @@ module integration_results
 
 
 contains
-  
+
   subroutine integration_entry_init (entry, &
        process_type, pass, it, n_it, n_calls, improved, &
        integral, error, efficiency, chi2, chain_weights)
@@ -207,7 +207,7 @@ contains
          "  Err[%]    Acc  Eff[%]   Chi2 N[It] |"
     call msg_message (unit=u, logfile=logfile)
   end subroutine write_header
-       
+
   subroutine write_hline (unit)
     integer, intent(in), optional :: unit
     integer :: u
@@ -215,7 +215,7 @@ contains
     write (u, "(A)")  "|" // (repeat ("-", 77)) // "|"
     flush (u)
   end subroutine write_hline
-  
+
   subroutine write_dline (unit)
     integer, intent(in), optional :: unit
     integer :: u
@@ -223,12 +223,12 @@ contains
     write (u, "(A)")  "|" // (repeat ("=", 77)) // "|"
     flush (u)
   end subroutine write_dline
-  
+
   subroutine integration_entry_write (entry, unit, verbose, suppress)
     type(integration_entry_t), intent(in) :: entry
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
-    logical, intent(in), optional :: suppress   
+    logical, intent(in), optional :: suppress
     integer :: u
     character(1) :: star
     character(12) :: fmt
@@ -236,7 +236,7 @@ contains
     logical :: verb, supp
     u = given_output_unit (unit);  if (u < 0)  return
     verb = .false.;  if (present (verbose))  verb = verbose
-    supp = .false.;  if (present (suppress)) supp = suppress 
+    supp = .false.;  if (present (suppress)) supp = suppress
     if (verb)  then
        write (u, *)  "process_type = ", entry%process_type
        write (u, *)  "        pass = ", entry%pass
@@ -277,7 +277,7 @@ contains
                entry%n_it
        else
           write (u, "(1x,I3,1x,I10,1x," // fmt // ",1x,ES9.2,1x,F7.2," // &
-            "1x,F7.2,A1," // fmt2 // ",1x,F7.2,1x,I3)") &          
+            "1x,F7.2,A1," // fmt2 // ",1x,F7.2,1x,I3)") &
                entry%it, &
                entry%n_calls, &
                entry%integral, &
@@ -313,12 +313,12 @@ contains
        read (unit, *)  dummy, equals, entry%chain_weights
     end if
   end subroutine integration_entry_read
-    
+
   subroutine integration_entry_write_chain_weights (entry, unit)
     type(integration_entry_t), intent(in) :: entry
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = given_output_unit (unit);  if (u < 0)  return    
+    u = given_output_unit (unit);  if (u < 0)  return
     if (allocated (entry%chain_weights)) then
        do i = 1, size (entry%chain_weights)
           write (u, "(1x,I3)", advance="no")  nint (entry%chain_weights(i) * 100)
@@ -400,7 +400,7 @@ contains
     real(default), intent(in) :: error_threshold
     results%error_threshold = error_threshold
   end subroutine integration_results_set_error_threshold
-  
+
   subroutine integration_results_write (object, unit, verbose, suppress)
     class(integration_results_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -493,7 +493,7 @@ contains
        end if
     end if
   end subroutine integration_results_display_init
-  
+
   subroutine integration_results_display_current (results, pacify)
     class(integration_results_t), intent(in) :: results
     integer :: u
@@ -551,7 +551,7 @@ contains
        call msg_message ("Phase-space chain (grove) weight history: " &
             // "(numbers in %)", unit)
        write (u, "(A9)", advance="no")  "| chain |"
-          do i = 1, integration_entry_get_n_groves (results%entry(1))
+    do i = 1, integration_entry_get_n_groves (results%entry(1))
           write (u, "(1x,I3)", advance="no")  i
        end do
        write (u, *)
@@ -676,7 +676,7 @@ contains
     class(integration_results_t), intent(inout) :: results
     results%current_pass = results%current_pass + 1
   end subroutine integration_results_new_pass
-  
+
   subroutine integration_results_append_entry (results, entry)
     class(integration_results_t), intent(inout) :: results
     type(integration_entry_t), intent(in), optional :: entry
@@ -700,7 +700,7 @@ contains
 
   subroutine integration_results_append (results, &
        n_it, n_calls, &
-       integral, error, efficiency, &      
+       integral, error, efficiency, &
        chain_weights)
     class(integration_results_t), intent(inout) :: results
     integer, intent(in) :: n_it, n_calls
@@ -722,12 +722,12 @@ contains
     end if
     call integration_entry_init (entry, &
          results%process_type, results%current_pass, &
-         results%n_it+1, n_it, n_calls, improved, & 
+         results%n_it+1, n_it, n_calls, improved, &
          integral, err_checked, efficiency, &
          chain_weights=chain_weights)
     call results%append_entry (entry)
   end subroutine integration_results_append
-         
+
   subroutine integration_results_append_null (results, pass, n_it)
     type(integration_results_t), intent(inout) :: results
     integer, intent(in) :: pass, n_it
@@ -737,17 +737,17 @@ contains
          0._default, 0._default, 0._default)
     call results%append_entry (entry)
   end subroutine integration_results_append_null
-         
+
   subroutine integration_results_record &
        (object, n_it, n_calls, integral, error, efficiency, &
         chain_weights, suppress)
     class(integration_results_t), intent(inout) :: object
     integer, intent(in) :: n_it, n_calls
     real(default), intent(in) :: integral, error, efficiency
-    real(default), dimension(:), intent(in), optional :: chain_weights    
+    real(default), dimension(:), intent(in), optional :: chain_weights
     real(default) :: err
     logical, intent(in), optional :: suppress
-    
+
     if (abs (error) >= abs (integral) * INTEGRATION_ERROR_TOLERANCE) then
        err = error
     else
@@ -756,7 +756,7 @@ contains
     call object%append (n_it, n_calls, integral, err, efficiency, chain_weights)
     call object%display_current (suppress)
   end subroutine integration_results_record
-    
+
   function integration_results_exist (results) result (flag)
     logical :: flag
     class(integration_results_t), intent(in) :: results
@@ -799,7 +799,7 @@ contains
       call msg_fatal ("Requested integration result is not available")
     end subroutine error
   end function results_get_entry
-  
+
   function integration_results_get_n_calls (results, last, it, pass) &
        result (n_calls)
     class(integration_results_t), intent(in), target :: results
@@ -915,8 +915,8 @@ contains
   subroutine integration_results_pacify (results, efficiency_reset)
     class(integration_results_t), intent(inout) :: results
     logical, intent(in), optional :: efficiency_reset
-    integer :: i 
-    logical :: reset    
+    integer :: i
+    logical :: reset
     reset = .false.
     if (present (efficiency_reset))  reset = efficiency_reset
     if (allocated (results%entry)) then
@@ -925,16 +925,16 @@ contains
                results%entry(i)%integral * 1.E-9_default)
           if (reset)  results%entry(i)%efficiency = 1
        end do
-    end if    
+    end if
     if (allocated (results%average)) then
        do i = 1, size (results%average)
           call pacify (results%average(i)%error, &
                results%average(i)%integral * 1.E-9_default)
           if (reset)  results%average(i)%efficiency = 1
        end do
-    end if    
+    end if
   end subroutine integration_results_pacify
-        
+
   subroutine integration_results_record_correction (object, corr, err)
     class(integration_results_t), intent(inout) :: object
     real(default), intent(in) :: corr, err
@@ -957,7 +957,7 @@ contains
     integer :: n, i, n_pass, pass
     integer, dimension(:), allocatable :: ipass
     real(default) :: ymin, ymax, yavg, ydif, y0, y1
-    logical :: reset 
+    logical :: reset
     file_tex = filename // ".tex"
     unit = free_unit ()
     open (unit=unit, file=char(file_tex), action="write", status="replace")
@@ -1078,7 +1078,7 @@ contains
     do i = 1, n
        write (unit, "(A,I0,A,A,A,A,A)") "  plot (history) (#", &
           i, ", #""", &
-          char (mp_format (integration_entry_get_integral (results%entry(i)))),&
+    char (mp_format (integration_entry_get_integral (results%entry(i)))),&
           """) vbar #""", &
           char (mp_format (integration_entry_get_error (results%entry(i)))), &
           """;"
@@ -1091,14 +1091,14 @@ contains
     write (unit, "(A)")  "    base := (120*unitlength,170*unitlength);"
     write (unit, "(A)")  "    height := 9.6*unitlength;"
     write (unit, "(A)")  "    width := 11.2*unitlength;"
-    write (unit, "(A)")  "  endgmleps;"    
+    write (unit, "(A)")  "  endgmleps;"
     write (unit, "(A)") "\end{gmlgraph*}"
     write (unit, "(A)") "\end{gmlfile}"
     write (unit, "(A)") "\clearpage"
     write (unit, "(A)") "\begin{verbatim}"
     if (reset) then
       call results%pacify (reset)
-    end if      
+    end if
     call integration_results_write (results, unit)
     write (unit, "(A)") "\end{verbatim}"
     write (unit, "(A)") "\end{document}"
@@ -1122,7 +1122,7 @@ contains
     file_ps = filename // ".ps"
     file_pdf = filename // ".pdf"
     file_mp = filename // ".mp"
-    call msg_message ("Creating integration history display "& 
+    call msg_message ("Creating integration history display "&
          // char (file_ps) // " and " // char (file_pdf))
     BLOCK: do
        unit_dev = free_unit ()
@@ -1151,7 +1151,7 @@ contains
        if (os_data%gml /= "") then
           call os_system_call (setenv_mp // os_data%gml // " " // &
                file_mp // pipe, status)
-       else 
+       else
           call msg_error ("Could not use GAMELAN/MetaPOST.")
           exit BLOCK
        end if

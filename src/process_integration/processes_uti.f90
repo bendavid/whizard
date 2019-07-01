@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -45,6 +45,9 @@ module processes_uti
   use lorentz
   use pdg_arrays
   use model_data
+  use var_base, only: vars_t
+  use model_testbed, only: prepare_model
+  use particle_specifiers, only: new_prt_spec
   use flavors
   use interactions, only: reset_interaction_counter
   use particles
@@ -55,9 +58,14 @@ module processes_uti
   use sf_base
   use phs_base
   use phs_single
+  use phs_forests, only: syntax_phs_forest_init, syntax_phs_forest_final
+  use phs_wood, only: phs_wood_config_t
+  use resonances, only: resonance_history_t
   use process_constants
+  use prc_core_def, only: prc_core_def_t
   use prc_core
   use prc_test, only: prc_test_create_library
+  use prc_template_me, only: template_me_def_t
   use process_libraries
   use prc_test_core
 
@@ -92,6 +100,7 @@ module processes_uti
   public :: processes_15
   public :: processes_16
   public :: processes_17
+  public :: processes_18
 
 contains
 
@@ -1636,6 +1645,127 @@ contains
 
   end subroutine processes_17
 
+  subroutine processes_18 (u)
+    integer, intent(in) :: u
+    type(process_library_t), target :: lib
+    type(string_t) :: libname
+    type(string_t) :: procname
+    type(string_t) :: model_name
+    type(string_t) :: run_id
+    type(os_data_t) :: os_data
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    class(prc_core_def_t), allocatable :: def
+    type(process_def_entry_t), pointer :: entry
+    type(qcd_t) :: qcd
+    class(rng_factory_t), allocatable :: rng_factory
+    class(model_data_t), pointer :: model
+    class(vars_t), pointer :: vars
+    type(process_t), allocatable, target :: process
+    class(mci_t), allocatable :: mci_template
+    class(phs_config_t), allocatable :: phs_config_template
+    class(phs_config_t), pointer :: phs_config
+    real(default) :: sqrts
+    type(resonance_history_t), dimension(:), allocatable :: res_hist
+    integer :: i
+
+    write (u, "(A)")  "* Test output: processes_18"
+    write (u, "(A)")  "*   Purpose: extra resonance histories"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Build and load a test library with one process"
+    write (u, "(A)")
+
+    libname = "processes_18_lib"
+    procname = "processes_18_p"
+    run_id = "run18"
+    call os_data_init (os_data)
+
+    allocate (rng_test_factory_t :: rng_factory)
+
+    call syntax_phs_forest_init ()
+
+    write (u, "(A)")  "* Initialize a process library with one process"
+    write (u, "(A)")
+
+    model_name = "SM"
+    call prepare_model (model, model_name, vars)
+
+    call lib%init (libname)
+
+    allocate (prt_in (2), prt_out (3))
+    prt_in = [var_str ("e+"), var_str ("e-")]
+    prt_out = [var_str ("d"), var_str ("ubar"), var_str ("W+")]
+
+    allocate (template_me_def_t :: def)
+    select type (def)
+    type is (template_me_def_t)
+       call def%init (model, prt_in, prt_out, unity = .false.)
+    end select
+    allocate (entry)
+    call entry%init (procname, &
+         model_name = model_name, &
+         n_in = 2, n_components = 1)
+    call entry%import_component (1, n_out = size (prt_out), &
+         prt_in  = new_prt_spec (prt_in), &
+         prt_out = new_prt_spec (prt_out), &
+         method  = var_str ("template"), &
+         variant = def)
+    call entry%write (u)
+
+    call lib%append (entry)
+
+    call lib%configure (os_data)
+    call lib%write_makefile (os_data, force = .true.)
+    call lib%clean (os_data, distclean = .false.)
+    call lib%write_driver (force = .true.)
+    call lib%load (os_data)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize a process object"
+    write (u, "(A)")
+
+    allocate (process)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, model)
+
+    call process%setup_test_cores ()
+    allocate (phs_wood_config_t :: phs_config_template)
+    call process%init_component &
+       (1, .true., mci_template, phs_config_template)
+
+    write (u, "(A)")  "* Configure phase space"
+
+    sqrts = 1000
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
+    call process%configure_phs ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonance history set"
+
+    phs_config => process%get_phs_config (1)
+    select type (phs_config)
+    type is (phs_wood_config_t)
+       call phs_config%extract_resonance_histories (res_hist)
+    end select
+
+    do i = 1, size (res_hist)
+       write (u, *)
+       call res_hist(i)%write (u)
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call process%final ()
+    deallocate (process)
+
+    call syntax_phs_forest_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: processes_18"
+
+  end subroutine processes_18
+
 
   subroutine prepare_test_process (process, process_instance, model)
     type(process_t), intent(out), target :: process
@@ -1692,6 +1822,7 @@ contains
        call mci%set_max_factor (conv * twopi4 &
             / (2 * sqrt (lambda (sqrts **2, 125._default**2, 125._default**2))))
     end select
+    call process%nullify_library_pointer ()  ! avoid dangling pointer
   end subroutine prepare_test_process
 
   subroutine cleanup_test_process (process, process_instance)

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -67,7 +67,7 @@ module shower_base
   public :: mass_squared_type
   public :: number_of_flavors
 
-  integer, parameter :: PS_UNDEFINED = 0  
+  integer, parameter :: PS_UNDEFINED = 0
   integer, parameter :: PS_WHIZARD = 1
   integer, parameter :: PS_PYTHIA6 = 2
   integer, parameter :: PS_PYTHIA8 = 3
@@ -226,7 +226,7 @@ contains
   subroutine shower_settings_init (settings, var_list)
     class(shower_settings_t), intent(out) :: settings
     type(var_list_t), intent(in) :: var_list
-    
+
     settings%fsr_active = &
          var_list%get_lval (var_str ("?ps_fsr_active"))
     settings%isr_active = &
@@ -305,7 +305,7 @@ contains
     write (u, "(3x,A,1x,L1)") &
          "muli_active                  = ", settings%muli_active
     write (u, "(3x,A,1x,L1)") &
-         "hadronization_active         = ", settings%hadronization_active    
+         "hadronization_active         = ", settings%hadronization_active
     write (u, "(1x,A)")  "General settings:"
     if (settings%isr_active .or. settings%fsr_active) then
        write (u, "(3x,A)") &

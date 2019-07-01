@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -69,7 +69,7 @@ module expr_base
        class(expr_t), intent(inout) :: expr
      end subroutine expr_final
   end interface
-  
+
   abstract interface
      subroutine expr_write (expr, unit, write_vars)
        import
@@ -78,7 +78,7 @@ module expr_base
        logical, intent(in), optional :: write_vars
      end subroutine expr_write
   end interface
-  
+
   abstract interface
      subroutine expr_setup_expr (expr, vars)
        import
@@ -86,14 +86,14 @@ module expr_base
        class(vars_t), intent(in), target :: vars
      end subroutine expr_setup_expr
   end interface
-  
+
   abstract interface
      subroutine expr_evaluate (expr)
        import
        class(expr_t), intent(inout) :: expr
      end subroutine expr_evaluate
   end interface
-  
+
   abstract interface
      function expr_is_known (expr) result (flag)
        import
@@ -101,7 +101,7 @@ module expr_base
        logical :: flag
      end function expr_is_known
   end interface
-  
+
   abstract interface
      function expr_get_log (expr) result (lval)
        import
@@ -109,7 +109,7 @@ module expr_base
        logical :: lval
      end function expr_get_log
   end interface
-  
+
   abstract interface
      function expr_get_real (expr) result (rval)
        import
@@ -117,7 +117,7 @@ module expr_base
        real(default) :: rval
      end function expr_get_real
   end interface
-  
+
   abstract interface
      subroutine expr_factory_write (expr_factory, unit)
        import
@@ -125,7 +125,7 @@ module expr_base
        integer, intent(in), optional :: unit
      end subroutine expr_factory_write
   end interface
-  
+
   abstract interface
      subroutine expr_factory_build (expr_factory, expr)
        import
@@ -133,6 +133,6 @@ module expr_base
        class(expr_t), intent(out), allocatable :: expr
      end subroutine expr_factory_build
   end interface
-  
+
 
 end module expr_base

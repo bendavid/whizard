@@ -3106,6 +3106,8 @@ procedure with type [[V_NONE]].
          0._default, intrinsic=.true.)
     call var_list%append_real (var_str ("channel_weights_power"), 0.25_default, &
           intrinsic=.true.)
+    call var_list%append_string (var_str ("$grid_path"), var_str (""), &
+          intrinsic=.true.)
   end subroutine var_list_set_integration_defaults
 
 @ %def var_list_set_integration_defaults
@@ -3450,7 +3452,7 @@ procedure with type [[V_NONE]].
     call var_list%append_string &
          (var_str ("$hadronization_method"), var_str ("PYTHIA6"), intrinsic = .true.)
     call var_list%append_real &
-         (var_str ("hadron_enhanced_fraction"), 0.01_default, intrinsic = .true.)        
+         (var_str ("hadron_enhanced_fraction"), 0.01_default, intrinsic = .true.)
     call var_list%append_real &
          (var_str ("hadron_enhanced_width"), 2.0_default, intrinsic = .true.)
   end subroutine var_list_set_hadronization_defaults
@@ -3525,8 +3527,6 @@ procedure with type [[V_NONE]].
     class(var_list_t), intent(inout) :: var_list
     call var_list%append_log (var_str ("?powheg_matching"), &
          .false., intrinsic = .true.)
-    call var_list%append_real (var_str ("powheg_damping_scale"), &
-          10._default, intrinsic = .true.)
     call var_list%append_log (var_str ("?powheg_use_singular_jacobian"), &
          .false., intrinsic = .true.)
     call var_list%append_int (var_str ("powheg_grid_size_xi"), &
@@ -3540,8 +3540,6 @@ procedure with type [[V_NONE]].
     call var_list%append_real (var_str ("powheg_lambda"), &
           LAMBDA_QCD_REF, intrinsic = .true.)
     call var_list%append_log (var_str ("?powheg_rebuild_grids"), &
-          .false., intrinsic = .true.)
-    call var_list%append_log (var_str ("?powheg_use_damping"), &
           .false., intrinsic = .true.)
     call var_list%append_log (var_str ("?powheg_test_sudakov"), &
           .false., intrinsic = .true.)
@@ -3587,16 +3585,22 @@ procedure with type [[V_NONE]].
          var_str ("omega"), intrinsic = .true.)
     call var_list%append_string (var_str ("$real_tree_me_method"), &
          var_str ("omega"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$soft_mismatch_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$dglap_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
     call var_list%append_log (&
          var_str ("?test_soft_limit"), .false., intrinsic = .true.)
     call var_list%append_log (&
          var_str ("?test_coll_limit"), .false., intrinsic = .true.)
     call var_list%append_log (&
          var_str ("?test_anti_coll_limit"), .false., intrinsic = .true.)
-    call var_list%append_int (&
-         var_str ("fixed_alpha_region"), 0, intrinsic = .true.)
-    call var_list%append_log (&
-         var_str ("?switch_off_virtual_subtraction"), .false., intrinsic = .true.)
+    call var_list%append_string (var_str ("$select_alpha_regions"), &
+         var_str (""), intrinsic = .true.)
+    call var_list%append_string (var_str ("$virtual_selection"), &
+         var_str ("Full"), intrinsic = .true.)
+    call var_list%append_log (var_str ("?virtual_collinear_resonance_aware"), &
+         .true., intrinsic = .true.)
     call var_list%append_real (&
          var_str ("blha_use_top_yukawa"), -1._default, intrinsic = .true.)
     call var_list%append_string (var_str ("$blha_ew_scheme"), &
@@ -3604,7 +3608,7 @@ procedure with type [[V_NONE]].
     call var_list%append_int (var_str ("openloops_verbosity"), 1, &
          intrinsic = .true.)
     call var_list%append_log (var_str ("?openloops_use_cms"), &
-         .false., intrinsic = .true.)
+         .true., intrinsic = .true.)
     call var_list%append_int (var_str ("openloops_phs_tolerance"), 7, &
          intrinsic = .true.)
     call var_list%append_int (var_str ("openloops_stability_log"), 0, &
@@ -3615,6 +3619,8 @@ procedure with type [[V_NONE]].
           var_str (""), intrinsic = .true.)
     call var_list%append_log (var_str ("?openloops_use_collier"), &
          .true., intrinsic = .true.)
+    call var_list%append_real (var_str ("recola_mu_ir"), &
+         100._default, intrinsic = .true.)
     call var_list%append_log (var_str ("?disable_subtraction"), &
          .false., intrinsic = .true.)
     call var_list%append_real (var_str ("fks_dij_exp1"), &
@@ -3625,6 +3631,8 @@ procedure with type [[V_NONE]].
          0.0000001_default, intrinsic = .true.)
     call var_list%append_real (var_str ("fks_y_max"), &
          1._default, intrinsic = .true.)
+    call var_list%append_log (var_str ("?vis_fks_regions"), &
+         .false., intrinsic = .true.)
     call var_list%append_string (var_str ("$fks_mapping_type"), &
          var_str ("default"), intrinsic = .true.)
     call var_list%append_string (var_str ("$resonances_exclude_particles"), &
@@ -3664,6 +3672,20 @@ procedure with type [[V_NONE]].
     call var_list%append_real (&
          var_str ("mult_call_dglap"), 1._default, &
          intrinsic = .true.)
+    call var_list%append_string (var_str ("$dalitz_plot"), &
+         var_str (''), intrinsic = .true.)
+    call var_list%append_string (var_str ("$nlo_correction_type"), &
+         var_str ("QCD"), intrinsic = .true.) !!! leaving "QCD" as default for now
+    call var_list%append_string (var_str ("$exclude_gauge_splittings"), &
+         var_str ("c:b:t:e2:e3"), intrinsic = .true.)
+    call var_list%append_log (var_str ("?nlo_use_born_scale"), &
+         .true., intrinsic = .true.)
+    call var_list%append_log (var_str ("?nlo_cut_all_sqmes"), &
+         .true., intrinsic = .true.)
+    call var_list%append_log (var_str ("?nlo_use_real_partition"), &
+          .false., intrinsic = .true.)
+    call var_list%append_real (var_str ("real_partition_scale"), &
+          10._default, intrinsic = .true.)
   end subroutine var_list_set_nlo_defaults
 
 @ %def var_list_set_nlo_defaults

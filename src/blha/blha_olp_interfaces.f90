@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,7 +41,8 @@ module blha_olp_interfaces
   use kinds
   use iso_varying_string, string_t => varying_string
   use constants
-  use numeric_utils
+  use numeric_utils, only: vanishes
+  use numeric_utils, only: extend_integer_array, crop_integer_array
   use io_units
   use string_utils
   use physics_defs
@@ -85,6 +86,7 @@ module blha_olp_interfaces
   public :: parameter_error_message
   public :: blha_cc_fill_diag
   public :: blha_cc_fill_offdiag
+  public :: blha_loop_positions
 
   integer, parameter, public :: OLP_PARAMETER_LIMIT = 10
   integer, parameter, public :: OLP_MOMENTUM_LIMIT = 50
@@ -96,7 +98,7 @@ module blha_olp_interfaces
   integer, parameter :: I_SW2 = 3
 
   integer, parameter :: LEN_MAX_FLAVOR_STRING = 100
-  integer, parameter :: N_MAX_FLAVORS = 20
+  integer, parameter :: N_MAX_FLAVORS = 100
 
   type :: blha_template_t
     integer :: I_BORN = 0
@@ -130,6 +132,7 @@ module blha_olp_interfaces
 
   type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
     integer :: n_particles
+    integer :: n_hel
     integer :: n_proc
     integer, dimension(:), allocatable :: i_tree, i_sc, i_cc
     integer, dimension(:), allocatable :: i_virt
@@ -148,6 +151,7 @@ module blha_olp_interfaces
     procedure :: print_parameter_file => prc_blha_print_parameter_file
     procedure :: compute_amplitude => prc_blha_compute_amplitude
      procedure :: init_blha => prc_blha_init_blha
+    procedure :: set_mass_and_width => prc_blha_set_mass_and_width
     procedure :: set_particle_properties => prc_blha_set_particle_properties
     procedure :: init_ew_parameters => prc_blha_init_ew_parameters
     procedure :: compute_sqme_virt => prc_blha_compute_sqme_virt
@@ -173,6 +177,7 @@ module blha_olp_interfaces
 
   type, abstract, extends (user_defined_driver_t) :: blha_driver_t
     type(string_t) :: contract_file
+    type(string_t) :: nlo_suffix
     logical :: include_polarizations = .false.
     logical :: switch_off_muon_yukawas = .false.
     real(default) :: external_top_yukawa = -1.0
@@ -418,7 +423,8 @@ contains
 
     n = size (p)
     if (n > 10) call msg_fatal ("Number of external particles exceeds" &
-                                 // "size of BLHA-internal momentum array")
+           // "size of BLHA-internal momentum array")
+
     mom = zero
     k = 1
     do i = 1, n
@@ -599,17 +605,17 @@ contains
     call c_f_procpointer (c_fptr, object%blha_olp_eval2)
     call check_for_error (var_str ("OLP_EvalSubProcess2"))
 
-    !!! Is OLP_Option really not implemented in OpenLoops?
+    !!! The following three functions are not implemented in OpenLoops.
+    !!! In another BLHA provider, they need to be implemented separately.
+
     !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Option"))
     !!! call c_f_procpointer (c_fptr, object%blha_olp_option)
     !!! call check_for_error (var_str ("OLP_Option"))
 
-    !!! Is OLP_Polvec really not implemented in OpenLoops?
     !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Polvec"))
     !!! call c_f_procpointer (c_fptr, object%blha_olp_polvec)
     !!! call check_for_error (var_str ("OLP_Polvec"))
 
-    !!! Is OLP_Finalize really not implemented in OpenLoops?
     !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Finalize"))
     !!! call c_f_procpointer (c_fptr, object%blha_olp_finalize)
     !!! call check_for_error (var_str ("OLP_Finalize"))
@@ -628,21 +634,25 @@ contains
   end subroutine blha_driver_load
 
   subroutine blha_driver_read_contract_file (driver, flavors, &
-     amp_type, flv_index, label, helicities)
+       amp_type, flv_index, label, helicities)
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in), dimension(:,:) :: flavors
-    integer, intent(out), dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
+    integer, intent(out), dimension(:), allocatable :: amp_type, flv_index, label
     integer, intent(out), dimension(:,:) :: helicities
     integer :: unit, filestat
     character(len=LEN_MAX_FLAVOR_STRING) :: rd_line
-    logical :: read_flavor, born_found
-    integer :: k, i_flv
+    logical :: read_flavor, give_warning
+    integer :: label_count, i_flv
     integer :: i_hel, n_in
     integer :: i_next, n_entries
     integer, dimension(size(flavors, 1) + 2) :: i_array
     integer, dimension(size(flavors, 1) + 2) :: hel_array
     integer, parameter :: NO_NUMBER = -1000
     integer, parameter :: PROC_NOT_FOUND = -1001
+    integer, parameter :: list_incr = 50
+    integer :: n_found
+    allocate (amp_type (N_MAX_FLAVORS), flv_index (N_MAX_FLAVORS), &
+           label (N_MAX_FLAVORS))
     amp_type = -1; flv_index = -1; label = -1
     helicities = 0
     n_in = size (helicities, dim = 2)
@@ -650,8 +660,10 @@ contains
     unit = free_unit ()
     open (unit, file = char (driver%contract_file), status="old")
     read_flavor = .false.
-    k = 1
+    label_count = 1
     i_hel = 0
+    n_found = 0
+    give_warning = .false.
     do
       read (unit, "(A)", iostat = filestat) rd_line
       if (filestat == iostat_end) then
@@ -660,21 +672,22 @@ contains
          if (rd_line(1:13) == 'AmplitudeType') then
             if (i_hel > 2 * n_in - 1) i_hel = 0
             i_next = find_next_word_index (rd_line, 13)
+            if (label_count > size (amp_type)) &
+                 call extend_integer_array (amp_type, list_incr)
             if (rd_line(i_next : i_next + 4) == 'Loop') then
-               amp_type(k) = BLHA_AMP_LOOP
+               amp_type(label_count) = BLHA_AMP_LOOP
             else if (rd_line(i_next : i_next + 4) == 'Tree') then
-               amp_type(k) = BLHA_AMP_TREE
+               amp_type(label_count) = BLHA_AMP_TREE
             else if (rd_line(i_next : i_next + 6) == 'ccTree') then
-               amp_type(k) = BLHA_AMP_CC
-            else if (rd_line(i_next : i_next + 6) == 'scTree') then
-               amp_type(k) = BLHA_AMP_SC
+               amp_type(label_count) = BLHA_AMP_CC
+            else if (rd_line(i_next : i_next + 6) == 'scTree' .or. &
+                 rd_line(i_next : i_next + 14) == 'sctree_polvect') then
+               amp_type(label_count) = BLHA_AMP_SC
             else
-               call msg_fatal ("AmplitudeType present but &
-                               &AmpType not known!")
+               call msg_fatal ("AmplitudeType present but AmpType not known!")
             end if
             read_flavor = .true.
          else if (read_flavor) then
-            born_found = .false.
             i_array = create_flavor_string (rd_line, n_entries)
             if (driver%include_polarizations) then
                hel_array = create_helicity_string (rd_line, n_entries)
@@ -682,32 +695,47 @@ contains
             else
                hel_array = 0
             end if
-            if (all (i_array == PROC_NOT_FOUND)) &
-               call msg_fatal ("The desired process has not been found ",  &
-                    [var_str ("by the OLP-Provider. Maybe the value of alpha_power "), &
-                     var_str ("or alphas_power does not correspond to the process. "), &
-                     var_str ("If you are using OpenLoops, you can set the option "), &
-                     var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
-                     var_str ("more information")])
+            if (.not. all (i_array == PROC_NOT_FOUND)) then
                do i_flv = 1, size (flavors, 2)
                    if (all (i_array (1 : n_entries - 2) == flavors (:,i_flv))) then
-                      label(k) = i_array (n_entries)
-                      flv_index (k) = i_flv + i_hel
+                      if (label_count > size (label)) &
+                           call extend_integer_array (label, list_incr)
+                      label(label_count) = i_array (n_entries)
+                      if (label_count > size (flv_index)) &
+                           call extend_integer_array (flv_index, list_incr)
+                      flv_index (label_count) = i_flv + i_hel
                       if (driver%include_polarizations) then
-                         helicities (label(k), :) = hel_array (1:n_in)
+                         helicities (label(label_count), :) = hel_array (1:n_in)
                          i_hel = i_hel + 1
                       end if
-                      born_found = .true.
-                      k = k + 1
-                      read_flavor = .false.
+                      n_found = n_found + 1
+                      label_count = label_count + 1
                       exit
                    end if
                end do
-            if (.not. born_found) call msg_fatal &
-                     ("No underlying Born found")
+               give_warning = .false.
+            else
+               give_warning = .true.
+            end if
+            read_flavor = .false.
          end if
       end if
     end do
+    call crop_integer_array (amp_type, label_count-1)
+    if (n_found == 0) then
+       call msg_fatal ("The desired process has not been found ",  &
+            [var_str ("by the OLP-Provider. Maybe the value of alpha_power "), &
+             var_str ("or alphas_power does not correspond to the process. "), &
+             var_str ("If you are using OpenLoops, you can set the option "), &
+             var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
+             var_str ("more information")])
+    else if (give_warning) then
+       call msg_warning ("Some processes have not been found in the OLC file.", &
+            [var_str ("This is because these processes do not fit the required "), &
+             var_str ("coupling alpha_power and alphas_power. Be aware that the "), &
+             var_str ("results of this calculation are not necessarily an accurate "), &
+             var_str ("description of the physics of interest.")])
+    end if
     close(unit)
 
   contains
@@ -926,7 +954,7 @@ contains
     GF = model%get_real (var_str ('GF'))
     select type (driver => object%driver)
     class is (blha_driver_t)
-      call driver%set_GF (GF)
+       call driver%set_GF (GF)
     end select
   end subroutine prc_blha_set_GF
 
@@ -958,13 +986,14 @@ contains
   subroutine prc_blha_read_contract_file (object, flavors)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flavors
-    integer, dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
+    integer, dimension(:), allocatable :: amp_type, flv_index, label
     integer, dimension(:,:), allocatable :: helicities
     integer :: i_proc
     allocate (helicities (N_MAX_FLAVORS, object%data%n_in))
     select type (driver => object%driver)
     class is (blha_driver_t)
-       call driver%read_contract_file (flavors, amp_type, flv_index, label, helicities)
+       call driver%read_contract_file (flavors, amp_type, flv_index, &
+            label, helicities)
     end select
     object%n_proc = count (amp_type >= 0)
     do i_proc = 1, object%n_proc
@@ -1039,48 +1068,43 @@ contains
     amp = zero
   end function prc_blha_compute_amplitude
 
-  subroutine prc_blha_init_blha (object, blha_template)
+  subroutine prc_blha_init_blha (object, blha_template, n_in, &
+         n_particles, n_flv, n_hel)
     class(prc_blha_t), intent(inout) :: object
     type(blha_template_t), intent(in) :: blha_template
-    integer :: n_hel
-    object%n_particles = size (object%data%flv_state, 1)
-    object%n_flv = size (object%data%flv_state, 2)
+    integer, intent(in) :: n_in, n_particles, n_flv, n_hel
+    object%n_particles = n_particles
+    object%n_flv = n_flv
+    object%n_hel = n_hel
     if (blha_template%compute_loop ()) then
        if (blha_template%include_polarizations) then
-          allocate (object%i_virt (object%n_flv * object%data%n_in * 2), &
-                    object%i_cc (object%n_flv * object%data%n_in * 2))
+          allocate (object%i_virt (n_flv * n_hel), &
+               object%i_cc (n_flv * n_hel))
           if (blha_template%use_internal_color_correlations) then
-             n_hel = object%n_flv * object%data%n_in * 4
+             allocate (object%i_hel (n_flv * n_in * n_hel * 2, n_in))
           else
-             n_hel = object%n_flv * object%data%n_in * 2
+             allocate (object%i_hel (n_flv * n_in * n_hel, n_in))
           end if
-          allocate (object%i_hel (n_hel, object%data%n_in))
        else
-          allocate (object%i_virt (object%n_flv), &
-                    object%i_cc (object%n_flv))
+          allocate (object%i_virt (n_flv), object%i_cc (n_flv))
        end if
        object%i_virt = 0
        object%i_cc = 0
     else if (blha_template%compute_subtraction ()) then
        if (blha_template%include_polarizations) then
-          allocate (object%i_tree (object%n_flv * 4), &
-             object%i_cc (object%n_flv * 4), &
-             object%i_sc (object%n_flv * 4))
+          allocate (object%i_tree (n_flv * n_hel), &
+               object%i_cc (n_flv * n_hel), &
+               object%i_sc (n_flv * n_hel))
        else
-          allocate (object%i_tree (object%n_flv), &
-             object%i_cc (object%n_flv) , object%i_sc (object%n_flv))
+          allocate (object%i_tree (n_flv), object%i_cc (n_flv) , &
+               object%i_sc (n_flv))
        end if
        object%i_tree = 0
        object%i_cc = 0
        object%i_sc = 0
     else if (blha_template%compute_real_trees () .or. blha_template%compute_born ()) then
-       if (blha_template%include_polarizations) then
-          n_hel = 4
-          allocate (object%i_hel (n_hel, object%data%n_in))
-       else
-          n_hel = 1
-       end if
-       allocate (object%i_tree (object%n_flv * n_hel))
+       if (blha_template%include_polarizations) allocate (object%i_hel (n_hel, n_in))
+       allocate (object%i_tree (n_flv * n_hel))
        object%i_tree = 0
     end if
 
@@ -1093,6 +1117,16 @@ contains
        driver%external_top_yukawa = blha_template%external_top_yukawa
     end select
   end subroutine prc_blha_init_blha
+
+  subroutine prc_blha_set_mass_and_width (object, i_pdg, mass, width)
+    class(prc_blha_t), intent(inout) :: object
+    integer, intent(in) :: i_pdg
+    real(default), intent(in) :: mass, width
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+       call driver%set_mass_and_width (i_pdg, mass, width)
+    end select
+  end subroutine prc_blha_set_mass_and_width
 
   subroutine prc_blha_set_particle_properties (object, model)
     class(prc_blha_t), intent(inout) :: object
@@ -1142,7 +1176,7 @@ contains
   end subroutine prc_blha_init_ew_parameters
 
   subroutine prc_blha_compute_sqme_virt (object, &
-     i_flv, p, ren_scale, sqme, bad_point)
+       i_flv, p, ren_scale, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p
@@ -1155,30 +1189,37 @@ contains
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
-    allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
-    call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
-    call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
-    call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv)", object%i_virt(i_flv))
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_blha_compute_sqme_virt: ren_scale vanishes")
-    mu_dble = dble(ren_scale)
-    alpha_s = object%qcd%alpha%get (ren_scale)
-    select type (driver => object%driver)
-    class is (blha_driver_t)
-      call driver%set_alpha_s (alpha_s)
-      call driver%blha_olp_eval2 (object%i_virt(i_flv), mom, mu_dble, r, acc_dble)
-    end select
-    acc = acc_dble
-    sqme = r(1:4)
-    bad_point = acc > object%maximum_accuracy
-    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
-    !!! GoSam does not support polarization
-    if (object%includes_polarization ()) sqme = four * sqme
+    if (object%i_virt(i_flv) > 0) then
+       allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
+       call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
+       call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
+       call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv)", object%i_virt(i_flv))
+       if (debug2_active (D_VIRTUAL)) then
+           call msg_debug2 (D_VIRTUAL, "use momenta: ")
+           call vector4_write_set (p, show_mass = .true., &
+                check_conservation = .true.)
+       end if
+       mom = object%create_momentum_array (p)
+       if (vanishes (ren_scale)) &
+            call msg_fatal ("prc_blha_compute_sqme_virt: ren_scale vanishes")
+       mu_dble = dble(ren_scale)
+       alpha_s = object%qcd%alpha%get (ren_scale)
+       select type (driver => object%driver)
+       class is (blha_driver_t)
+          call driver%set_alpha_s (alpha_s)
+          call driver%blha_olp_eval2 (object%i_virt(i_flv), mom, mu_dble, r, acc_dble)
+       end select
+       acc = acc_dble
+       sqme = r(1:4)
+       bad_point = acc > object%maximum_accuracy
+       if (object%includes_polarization ()) sqme = object%n_hel * sqme
+    else
+       sqme = zero
+    end if
   end subroutine prc_blha_compute_sqme_virt
 
-  subroutine prc_blha_compute_sqme &
-         (object, i_flv, p, ren_scale, sqme, bad_point)
+  subroutine prc_blha_compute_sqme (object, i_flv, p, &
+      ren_scale, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
@@ -1189,23 +1230,25 @@ contains
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
     real(double) :: mu_dble, acc_dble
     real(default) :: acc, alpha_s
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
-    mu_dble = dble(ren_scale)
-    alpha_s = object%qcd%alpha%get (ren_scale)
-    select type (driver => object%driver)
-    class is (blha_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       call driver%blha_olp_eval2 (object%i_tree(i_flv), mom, &
-          mu_dble, r, acc_dble)
-       sqme = r(object%sqme_tree_pos)
-    end select
-    acc = acc_dble
-    bad_point = acc > object%maximum_accuracy
-    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
-    !!! GoSam does not support polarization
-    if (object%includes_polarization ()) sqme = four * sqme
+    if (object%i_tree(i_flv) > 0) then
+       mom = object%create_momentum_array (p)
+       if (vanishes (ren_scale)) &
+            call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
+       mu_dble = dble(ren_scale)
+       alpha_s = object%qcd%alpha%get (ren_scale)
+       select type (driver => object%driver)
+       class is (blha_driver_t)
+          call driver%set_alpha_s (alpha_s)
+          call driver%blha_olp_eval2 (object%i_tree(i_flv), mom, &
+               mu_dble, r, acc_dble)
+          sqme = r(object%sqme_tree_pos)
+       end select
+       acc = acc_dble
+       bad_point = acc > object%maximum_accuracy
+       if (object%includes_polarization ()) sqme = object%n_hel * sqme
+    else
+       sqme = zero
+    end if
   end subroutine prc_blha_compute_sqme
 
   subroutine blha_cc_fill_diag (sqme_born, flavors, sqme_cc)
@@ -1253,24 +1296,26 @@ contains
     real(double), dimension(size(rr)) :: r
     real(default) :: alpha_s, acc
     real(double) :: mu_dble, acc_dble
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_blha_compute_sqme_cc: ren_scale vanishes")
-    mu_dble = dble(ren_scale)
-    alpha_s = object%qcd%alpha%get (ren_scale)
+    if (object%i_cc(i_flv) > 0) then
+       mom = object%create_momentum_array (p)
+       if (vanishes (ren_scale)) &
+          call msg_fatal ("prc_blha_compute_sqme_cc: ren_scale vanishes")
+       mu_dble = dble(ren_scale)
+       alpha_s = object%qcd%alpha%get (ren_scale)
 
-    select type (driver => object%driver)
-    class is (blha_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       call driver%blha_olp_eval2 (object%i_cc(i_flv), &
-          mom, mu_dble, r, acc_dble)
-    end select
-    rr = r
-    acc = acc_dble
-    bad_point = acc > object%maximum_accuracy
-    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
-    !!! GoSam does not support polarization
-    if (object%includes_polarization ()) rr = four * rr
+       select type (driver => object%driver)
+       class is (blha_driver_t)
+          call driver%set_alpha_s (alpha_s)
+          call driver%blha_olp_eval2 (object%i_cc(i_flv), &
+               mom, mu_dble, r, acc_dble)
+       end select
+       rr = r
+       acc = acc_dble
+       bad_point = acc > object%maximum_accuracy
+       if (object%includes_polarization ()) rr = object%n_hel * rr
+    else
+       rr = zero
+    end if
   end subroutine prc_blha_compute_sqme_cc_raw
 
   subroutine prc_blha_compute_sqme_cc &
@@ -1344,18 +1389,29 @@ contains
   subroutine prc_blha_reset_helicity_list (object)
     class(prc_blha_t), intent(inout) :: object
     if (allocated (object%i_whizard_to_i_olc)) &
-       deallocate (object%i_whizard_to_i_olc)
+         deallocate (object%i_whizard_to_i_olc)
   end subroutine prc_blha_reset_helicity_list
 
-  subroutine prc_blha_set_helicity_list_trivial (object, n_sub)
+  recursive function blha_loop_positions (i_flv, n_sub) result (index)
+    integer :: index
+    integer, intent(in) :: i_flv, n_sub
+    index = 0
+    if (i_flv == 1) then
+       index = 1
+    else
+       index = blha_loop_positions (i_flv - 1, n_sub) + n_sub + 1
+    end if
+  end function blha_loop_positions
+
+  subroutine prc_blha_set_helicity_list_trivial (object, n_flv, n_sub)
     class(prc_blha_t), intent(inout) :: object
-    integer, intent(in) :: n_sub
-    integer :: i, k
-    allocate (object%i_whizard_to_i_olc (1 + n_sub))
-    k = 1
-    do i = 1, 1 + n_sub
-       object%i_whizard_to_i_olc (i) = k
-       k = k + 2
+    integer, intent(in) :: n_flv, n_sub
+    integer :: i_flv
+    if (allocated (object%i_whizard_to_i_olc)) &
+         deallocate (object%i_whizard_to_i_olc)
+    allocate (object%i_whizard_to_i_olc (n_flv))
+    do i_flv = 1, n_flv
+       object%i_whizard_to_i_olc (i_flv) = blha_loop_positions (i_flv, n_sub)
     end do
   end subroutine prc_blha_set_helicity_list_trivial
 
@@ -1368,6 +1424,8 @@ contains
     integer :: i, j
     n1 = size (helicities, dim=1)
     n2 = size (object%get_beam_helicities (), dim=1)
+    if (allocated (object%i_whizard_to_i_olc)) &
+         deallocate (object%i_whizard_to_i_olc)
     allocate (object%i_whizard_to_i_olc (n2))
     allocate (hel_olc (n2, 2))
     hel_olc = object%get_beam_helicities (invert_second = .true.)
@@ -1377,6 +1435,7 @@ contains
              object%i_whizard_to_i_olc (j) = i
        end do
     end do
+    deallocate (hel_olc)
   end subroutine prc_blha_set_helicity_list
 
   function prc_blha_get_helicity_list_all (object) result (i_out)
@@ -1408,7 +1467,7 @@ contains
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%set_alpha_s (alpha_s)
-       do i_hel = 1, 4
+       do i_hel = 1, object%n_hel
           call driver%blha_olp_eval2 (i_hel, mom, ren_scale, r, acc)
        end do
     end select

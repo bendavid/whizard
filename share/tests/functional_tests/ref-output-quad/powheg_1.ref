@@ -36,6 +36,17 @@ sqrts =  5.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process powheg_1_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_1_p1_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_1_p1_i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'powheg_1_p1'
 |   Library name  = 'powheg_1_lib'
@@ -46,15 +57,7 @@ sqrts =  5.00000E+02
 |     3: 'powheg_1_p1_i3':   e+, e- => t, tbar [dummy], [Virtual]
 |     4: 'powheg_1_p1_i4':   e+, e- => t, tbar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e+  (mass = 5.1099700E-04 GeV)
-|   e-  (mass = 5.1099700E-04 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p1_i1.phs'
-| Phase space: 1 channels, 2 dimensions
+| Phase space: 1 channels, 5 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
@@ -62,10 +65,7 @@ sqrts =  5.00000E+02
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p1_i3.phs'
-| Phase space: 1 channels, 2 dimensions
+| Phase space: 1 channels, 5 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
@@ -145,8 +145,8 @@ n_events = 2
 |         ... event sample complete.
 | Events: actual unweighting efficiency =  28.57 %
 | Events: closing ASCII file 'powheg_1_p1.debug'
-?powheg_use_damping = true
-powheg_damping_scale =  5.00000E+00
+?nlo_use_real_partition = true
+real_partition_scale =  5.00000E+00
 | Process library 'powheg_1_lib': unloading
 | Process library 'powheg_1_lib': open
 | Process library 'powheg_1_lib': recorded process 'powheg_1_p2'
@@ -165,6 +165,20 @@ powheg_damping_scale =  5.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process powheg_1_p2:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_1_p2_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_1_p2_i3.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_1_p2_i5.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'powheg_1_p2'
 |   Library name  = 'powheg_1_lib'
@@ -176,15 +190,7 @@ powheg_damping_scale =  5.00000E+00
 |     4: 'powheg_1_p2_i4':   e+, e- => t, tbar [inactive], [Subtraction]
 |     5: 'powheg_1_p2_i5':   e+, e- => t, tbar, gl [omega], [Real]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e+  (mass = 5.1099700E-04 GeV)
-|   e-  (mass = 5.1099700E-04 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i1.phs'
-| Phase space: 1 channels, 2 dimensions
+| Phase space: 1 channels, 5 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
@@ -192,16 +198,10 @@ powheg_damping_scale =  5.00000E+00
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i3.phs'
-| Phase space: 1 channels, 2 dimensions
+| Phase space: 1 channels, 5 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i5.phs'
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -216,9 +216,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       3000     3.474E+02   5.87E+00    1.69    0.92    12.9
+   1       3000     3.867E+02   5.05E+00    1.31    0.72    17.1
 |-----------------------------------------------------------------------------|
-   1       3000     3.474E+02   5.87E+00    1.69    0.92    12.9
+   1       3000     3.867E+02   5.05E+00    1.31    0.72    17.1
 |=============================================================================|
 | Starting integration for process 'powheg_1_p2' part 'Real'
 | Integrate: iterations = 1:3000:"gw"
@@ -228,17 +228,19 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       3000     1.376E+02   3.18E+00    2.31    1.26    10.7
+   1       3000     9.657E+01   3.23E+00    3.34    1.83     6.8
 |-----------------------------------------------------------------------------|
-   1       3000     1.376E+02   3.18E+00    2.31    1.26    10.7
+   1       3000     9.657E+01   3.23E+00    3.34    1.83     6.8
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0     4.850E+02   6.67E+00    1.38    0.00    12.2
+   1          0     4.833E+02   6.00E+00    1.24    0.00    13.1
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  0.0000 +-   0.00000 ) %
 |=============================================================================|
-tolerance =  2.32913E+01
+tolerance =  2.15821E+01
 | expect: success
 | Starting simulation for process 'powheg_1_p2'
 | Simulate: using integration grids from file 'powheg_1_p2_m1.vg'
@@ -250,7 +252,7 @@ tolerance =  2.32913E+01
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Simulation: requested number of events = 2
-|             corr. to luminosity [fb-1] =   4.1238E-03
+|             corr. to luminosity [fb-1] =   4.1384E-03
 | Events: writing to ASCII file 'powheg_1_p2.debug'
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
@@ -519,8 +521,8 @@ Contents of powheg_1_p2.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  1.75887E-04
-   Squared matrix el. (prc) =  1.75887E-04
+   Squared matrix el. (ref) =  1.76848E-04
+   Squared matrix el. (prc) =  1.76848E-04
    Event weight (ref)       =  1.00000E+00
    Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
@@ -614,8 +616,8 @@ n_out* => 3
 n_tot* => 5
 $process_id* => "powheg_1_p2"
 process_num_id* => [unknown integer]
-sqme* =>  1.75887E-04
-sqme_ref* =>  1.75887E-04
+sqme* =>  1.76848E-04
+sqme_ref* =>  1.76848E-04
 event_index* => 1
 event_weight* =>  1.00000E+00
 event_weight_ref* =>  1.00000E+00
@@ -636,8 +638,8 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  2.60642E-02
-   Squared matrix el. (prc) =  2.60642E-02
+   Squared matrix el. (ref) =  2.60146E-02
+   Squared matrix el. (prc) =  2.60146E-02
    Event weight (ref)       =  1.00000E+00
    Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
@@ -725,8 +727,8 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "powheg_1_p2"
 process_num_id* => [unknown integer]
-sqme* =>  2.60642E-02
-sqme_ref* =>  2.60642E-02
+sqme* =>  2.60146E-02
+sqme_ref* =>  2.60146E-02
 event_index* => 2
 event_weight* =>  1.00000E+00
 event_weight_ref* =>  1.00000E+00

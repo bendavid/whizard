@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -81,6 +81,7 @@ module sf_base
      procedure (sf_data_get_pdg_out), deferred :: get_pdg_out
      procedure (sf_data_allocate_sf_int), deferred :: allocate_sf_int
      procedure :: get_pdf_set => sf_data_get_pdf_set
+     procedure :: get_beam_file => sf_data_get_beam_file
   end type sf_data_t
 
   type :: sf_config_t
@@ -90,8 +91,9 @@ module sf_base
      procedure :: write => sf_config_write
      procedure :: init => sf_config_init
      procedure :: get_pdf_set => sf_config_get_pdf_set
+     procedure :: get_beam_file => sf_config_get_beam_file
   end type sf_config_t
-  
+
   type, abstract, extends (interaction_t) :: sf_int_t
      integer :: status = SF_UNDEFINED
      real(default), dimension(:), allocatable :: mi2
@@ -145,7 +147,7 @@ module sf_base
      procedure :: compute_values => sf_int_compute_values
      procedure :: compute_value => sf_int_compute_value
   end type sf_int_t
-  
+
   type :: sf_instance_t
      class(sf_int_t), allocatable :: int
      type(evaluator_t) :: eval
@@ -155,7 +157,7 @@ module sf_base
      logical, dimension(:), allocatable :: m
      real(default), dimension(:), allocatable :: x
   end type sf_instance_t
-  
+
   type, extends (beam_t) :: sf_chain_t
      type(beam_data_t), pointer :: beam_data => null ()
      integer :: n_in = 0
@@ -180,7 +182,7 @@ module sf_base
      procedure :: write_trace_header => sf_chain_write_trace_header
      procedure :: trace => sf_chain_trace
   end type sf_chain_t
-     
+
   type, extends (beam_t) :: sf_chain_instance_t
      type(sf_chain_t), pointer :: config => null ()
      integer :: status = SF_UNDEFINED
@@ -220,7 +222,7 @@ module sf_base
      procedure :: get_status => sf_chain_instance_get_status
      procedure :: get_matrix_elements => sf_chain_instance_get_matrix_elements
   end type sf_chain_instance_t
-     
+
 
   abstract interface
      subroutine sf_data_write (data, unit, verbose)
@@ -230,7 +232,7 @@ module sf_base
        logical, intent(in), optional :: verbose
      end subroutine sf_data_write
   end interface
-  
+
   abstract interface
      function sf_data_get_int (data) result (n)
        import
@@ -246,7 +248,7 @@ module sf_base
        type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
      end subroutine sf_data_get_pdg_out
   end interface
-  
+
   abstract interface
      subroutine sf_data_allocate_sf_int (data, sf_int)
        import
@@ -262,7 +264,7 @@ module sf_base
        type(string_t) :: string
      end function sf_int_type_string
   end interface
-  
+
   abstract interface
      subroutine sf_int_write (object, unit, testflag)
        import
@@ -271,7 +273,7 @@ module sf_base
        logical, intent(in), optional :: testflag
      end subroutine sf_int_write
   end interface
-  
+
   abstract interface
      subroutine sf_int_init (sf_int, data)
        import
@@ -279,7 +281,7 @@ module sf_base
        class(sf_data_t), intent(in), target :: data
      end subroutine sf_int_init
   end interface
-     
+
   abstract interface
      subroutine sf_int_complete_kinematics (sf_int, x, f, r, rb, map)
        import
@@ -291,7 +293,7 @@ module sf_base
        logical, intent(in) :: map
      end subroutine sf_int_complete_kinematics
   end interface
-  
+
   abstract interface
      subroutine sf_int_inverse_kinematics (sf_int, x, f, r, rb, map, &
           set_momenta)
@@ -305,7 +307,7 @@ module sf_base
        logical, intent(in), optional :: set_momenta
      end subroutine sf_int_inverse_kinematics
   end interface
-  
+
   abstract interface
      subroutine sf_int_apply (sf_int, scale)
        import
@@ -322,13 +324,19 @@ contains
     logical :: flag
     flag = .false.
   end function sf_data_is_generator
-  
+
   function sf_data_get_pdf_set (data) result (pdf_set)
     class(sf_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = 0
   end function sf_data_get_pdf_set
-  
+
+  function sf_data_get_beam_file (data) result (file)
+    class(sf_data_t), intent(in) :: data
+    type(string_t) :: file
+    file = ""
+  end function sf_data_get_beam_file
+
   subroutine sf_config_write (object, unit)
     class(sf_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -342,7 +350,7 @@ contains
        write (u, "(1x,A)")  "Structure-function configuration: [undefined]"
     end if
   end subroutine sf_config_write
-       
+
   subroutine sf_config_init (sf_config, i_beam, sf_data)
     class(sf_config_t), intent(out) :: sf_config
     integer, dimension(:), intent(in) :: i_beam
@@ -350,13 +358,19 @@ contains
     allocate (sf_config%i (size (i_beam)), source = i_beam)
     allocate (sf_config%data, source = sf_data)
   end subroutine sf_config_init
-  
+
   function sf_config_get_pdf_set (sf_config) result (pdf_set)
     class(sf_config_t), intent(in) :: sf_config
     integer :: pdf_set
     pdf_set = sf_config%data%get_pdf_set ()
   end function sf_config_get_pdf_set
-  
+
+  function sf_config_get_beam_file (sf_config) result (file)
+    class(sf_config_t), intent(in) :: sf_config
+    type(string_t) :: file
+    file = sf_config%data%get_beam_file ()
+  end function sf_config_get_beam_file
+
   subroutine write_sf_status (status, u)
     integer, intent(in) :: status
     integer, intent(in) :: u
@@ -412,7 +426,7 @@ contains
          write (u, "(3x,A,1x," // FMT_19 // ")")  "q_max     =", object%qmax
     call object%interaction_t%basic_write (u, testflag = testflag)
   end subroutine sf_int_base_write
-  
+
   subroutine sf_int_base_init &
        (sf_int, mask, mi2, mr2, mo2, qmin, qmax, hel_lock)
     class(sf_int_t), intent(out) :: sf_int
@@ -440,7 +454,7 @@ contains
          (size (mi2), 0, size (mr2) + size (mo2), &
          mask = mask, hel_lock = hel_lock, set_relations = .true.)
   end subroutine sf_int_base_init
-    
+
   subroutine sf_int_set_incoming (sf_int, incoming)
     class(sf_int_t), intent(inout) :: sf_int
     integer, dimension(:), intent(in) :: incoming
@@ -465,7 +479,7 @@ contains
   subroutine sf_int_setup_constants (sf_int)
     class(sf_int_t), intent(inout), target :: sf_int
   end subroutine sf_int_setup_constants
-  
+
   subroutine sf_int_set_beam_index (sf_int, beam_index)
     class(sf_int_t), intent(inout) :: sf_int
     integer, dimension(:), intent(in) :: beam_index
@@ -496,7 +510,7 @@ contains
        sf_int%status = SF_SEED_KINEMATICS
     end if
   end subroutine sf_int_seed_momenta
-  
+
   subroutine sf_int_seed_energies (sf_int, E)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: E
@@ -513,7 +527,7 @@ contains
        end if
     end if
   end subroutine sf_int_seed_energies
-  
+
   function sf_int_is_generator (sf_int) result (flag)
     class(sf_int_t), intent(in) :: sf_int
     logical :: flag
@@ -527,7 +541,7 @@ contains
     r = 0
     rb= 1
   end subroutine sf_int_generate_free
-    
+
   subroutine sf_int_split_momentum (sf_int, x, xb1)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -581,7 +595,7 @@ contains
        end if
     end if
   end subroutine sf_int_split_momentum
-    
+
   subroutine sf_int_split_momenta (sf_int, x, xb1)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -621,7 +635,7 @@ contains
        end if
     end if
   end subroutine sf_int_split_momenta
-    
+
   subroutine sf_int_reduce_momenta (sf_int, x)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -653,7 +667,7 @@ contains
        end if
     end if
   end subroutine sf_int_reduce_momenta
-    
+
   subroutine sf_int_recover_x (sf_int, x, x_free)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -670,7 +684,7 @@ contains
        case (1)
           call sd%init (k(1), &
                sf_int%mi2(1), sf_int%mr2(1), sf_int%mo2(1), &
-               collinear = size (x) == 1) 
+               collinear = size (x) == 1)
           call sd%recover (k(1), q(2), sf_int%on_shell_mode)
           x(1) = sd%get_x ()
           select case (size (x))
@@ -688,7 +702,7 @@ contains
                 if (sf_int%qmin_defined) then
                    call sd%inverse_t (x(2), t1 = - sf_int%qmin(1) ** 2)
                 else
-                   call sd%inverse_t (x(2)) 
+                   call sd%inverse_t (x(2))
                 end if
              end if
              call sd%inverse_phi (x(3))
@@ -722,32 +736,32 @@ contains
        end select
     end if
   end subroutine sf_int_recover_x
-  
+
   pure function sf_int_get_n_in (object) result (n_in)
     class(sf_int_t), intent(in) :: object
     integer :: n_in
     n_in = object%interaction_t%get_n_in ()
   end function sf_int_get_n_in
-  
+
   pure function sf_int_get_n_rad (object) result (n_rad)
     class(sf_int_t), intent(in) :: object
     integer :: n_rad
     n_rad = object%interaction_t%get_n_out () &
          - object%interaction_t%get_n_in ()
   end function sf_int_get_n_rad
-  
+
   pure function sf_int_get_n_out (object) result (n_out)
     class(sf_int_t), intent(in) :: object
     integer :: n_out
     n_out = object%interaction_t%get_n_in ()
   end function sf_int_get_n_out
-  
+
   function sf_int_get_n_states (sf_int) result (n_states)
     class(sf_int_t), intent(in) :: sf_int
     integer :: n_states
     n_states = sf_int%get_n_matrix_elements ()
   end function sf_int_get_n_states
-  
+
   function sf_int_get_state (sf_int, i) result (qn)
     class(sf_int_t), intent(in) :: sf_int
     type(quantum_numbers_t), dimension(:), allocatable :: qn
@@ -812,7 +826,7 @@ contains
     class(sf_chain_t), intent(inout) :: object
     integer :: i
     call object%final_tracing ()
-    if (allocated (object%sf)) then 
+    if (allocated (object%sf)) then
        do i = 1, size (object%sf, 1)
           associate (sf => object%sf(i))
             if (allocated (sf%int)) then
@@ -856,7 +870,7 @@ contains
        write (u, "(3x,A)")  "[undefined]"
     end if
   end subroutine sf_chain_write
-  
+
   subroutine sf_chain_init (sf_chain, beam_data, sf_config)
     class(sf_chain_t), intent(out) :: sf_chain
     type(beam_data_t), intent(in), target :: beam_data
@@ -873,14 +887,14 @@ contains
        end do
     end if
   end subroutine sf_chain_init
-  
+
   subroutine sf_chain_receive_beam_momenta (sf_chain)
     class(sf_chain_t), intent(inout), target :: sf_chain
     type(interaction_t), pointer :: beam_int
     beam_int => sf_chain%get_beam_int_ptr ()
     call beam_int%receive_momenta ()
   end subroutine sf_chain_receive_beam_momenta
-  
+
   subroutine sf_chain_set_beam_momenta (sf_chain, p)
     class(sf_chain_t), intent(inout) :: sf_chain
     type(vector4_t), dimension(:), intent(in) :: p
@@ -906,25 +920,25 @@ contains
       end if
     end associate
   end subroutine sf_chain_set_strfun
-    
+
   function sf_chain_get_n_par (sf_chain) result (n)
     class(sf_chain_t), intent(in) :: sf_chain
     integer :: n
     n = sf_chain%n_par
   end function sf_chain_get_n_par
-  
+
   function sf_chain_get_n_bound (sf_chain) result (n)
     class(sf_chain_t), intent(in) :: sf_chain
     integer :: n
     n = sf_chain%n_bound
   end function sf_chain_get_n_bound
-  
+
   function sf_chain_get_beam_int_ptr (sf_chain) result (int)
     class(sf_chain_t), intent(in), target :: sf_chain
     type(interaction_t), pointer :: int
     int => beam_get_int_ptr (sf_chain%beam_t)
   end function sf_chain_get_beam_int_ptr
-  
+
   subroutine sf_chain_setup_tracing (sf_chain, file)
     class(sf_chain_t), intent(inout) :: sf_chain
     type(string_t), intent(in) :: file
@@ -960,7 +974,7 @@ contains
        write (u, "('# ',A)")  "Columns: channel, p(n_par), x(n_par), f, Jac * f"
     end if
   end subroutine sf_chain_write_trace_header
-    
+
   subroutine sf_chain_trace (sf_chain, c_sel, p, x, f, sf_sum)
     class(sf_chain_t), intent(in) :: sf_chain
     integer, intent(in) :: c_sel
@@ -985,11 +999,11 @@ contains
        sf_sum_pac = sf_sum
        f_sf_sum_pac = f(c_sel) * sf_sum
        call pacify (sf_sum_pac, 1.E-28_default)
-       call pacify (f_sf_sum_pac, 1.E-28_default)       
+       call pacify (f_sf_sum_pac, 1.E-28_default)
        write (u, "(2(1x," // FMT_17 // "))")  sf_sum_pac, f_sf_sum_pac
     end if
   end subroutine sf_chain_trace
-  
+
   subroutine sf_chain_instance_final (object)
     class(sf_chain_instance_t), intent(inout) :: object
     integer :: i
@@ -1083,7 +1097,7 @@ contains
        end do
     end if
   end subroutine sf_chain_instance_write
-  
+
   subroutine sf_chain_instance_init (chain, config, n_channel)
     class(sf_chain_instance_t), intent(out), target :: chain
     type(sf_chain_t), intent(in), target :: config
@@ -1135,7 +1149,7 @@ contains
     end do
     chain%status = SF_INITIAL
   end subroutine sf_chain_instance_init
-  
+
   subroutine sf_chain_instance_select_channel (chain, channel)
     class(sf_chain_instance_t), intent(inout) :: chain
     integer, intent(in), optional :: channel
@@ -1145,7 +1159,7 @@ contains
        chain%selected_channel = 0
     end if
   end subroutine sf_chain_instance_select_channel
-  
+
   subroutine sf_chain_instance_set_channel (chain, c, channel)
     class(sf_chain_instance_t), intent(inout) :: chain
     integer, intent(in) :: c
@@ -1160,15 +1174,22 @@ contains
             if (channel%is_multi_mapping (i)) then
                do k = 1, size (sf%int%beam_index)
                   j = j + 1
-                  call chain%channel(c)%set_par_index (j, sf%int%par_index(k))
+                  call chain%channel(c)%set_par_index &
+                       (j, sf%int%par_index(k))
                end do
             end if
           end associate
        end do
+       if (j /= chain%channel(c)%get_multi_mapping_n_par ()) then
+          print *, "index last filled    = ", j
+          print *, "number of parameters = ", &
+               chain%channel(c)%get_multi_mapping_n_par ()
+          call msg_bug ("Structure-function setup: mapping index mismatch")
+       end if
        chain%status = SF_INITIAL
     end if
   end subroutine sf_chain_instance_set_channel
-  
+
   subroutine sf_chain_instance_link_interactions (chain)
     class(sf_chain_instance_t), intent(inout), target :: chain
     type(interaction_t), pointer :: int
@@ -1209,7 +1230,7 @@ contains
       end select
     end subroutine link
   end subroutine sf_chain_instance_link_interactions
-  
+
   subroutine sf_chain_exchange_mask (chain)
     class(sf_chain_instance_t), intent(inout), target :: chain
     type(interaction_t), pointer :: int
@@ -1239,7 +1260,7 @@ contains
        chain%status = SF_DONE_MASK
     end if
   end subroutine sf_chain_exchange_mask
-  
+
   subroutine sf_chain_instance_init_evaluators (chain)
     class(sf_chain_instance_t), intent(inout), target :: chain
     type(interaction_t), pointer :: int
@@ -1289,7 +1310,7 @@ contains
       end do
     end subroutine find_outgoing_particles
   end subroutine sf_chain_instance_init_evaluators
-  
+
   subroutine sf_chain_instance_compute_kinematics (chain, c_sel, p_in)
     class(sf_chain_instance_t), intent(inout), target :: chain
     integer, intent(in) :: c_sel
@@ -1390,7 +1411,7 @@ contains
        chain%status = SF_DONE_KINEMATICS
     end if
   end subroutine sf_chain_instance_compute_kinematics
-  
+
   subroutine sf_chain_instance_inverse_kinematics (chain, x)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), dimension(:), intent(in) :: x
@@ -1444,7 +1465,7 @@ contains
        chain%status = SF_DONE_KINEMATICS
     end if
   end subroutine sf_chain_instance_inverse_kinematics
-  
+
   subroutine sf_chain_instance_recover_kinematics (chain, c_sel)
     class(sf_chain_instance_t), intent(inout), target :: chain
     integer, intent(in) :: c_sel
@@ -1540,7 +1561,7 @@ contains
        chain%status = SF_EVALUATED
     end if
   end subroutine sf_chain_instance_evaluate
-  
+
   subroutine sf_chain_instance_get_out_momenta (chain, p)
     class(sf_chain_instance_t), intent(in), target :: chain
     type(vector4_t), dimension(:), intent(out) :: p
@@ -1559,7 +1580,7 @@ contains
        end do
     end if
   end subroutine sf_chain_instance_get_out_momenta
-       
+
   function sf_chain_instance_get_out_int_ptr (chain) result (int)
     class(sf_chain_instance_t), intent(in), target :: chain
     type(interaction_t), pointer :: int
@@ -1576,7 +1597,7 @@ contains
     integer :: i
     i = chain%out_eval_i(j)
   end function sf_chain_instance_get_out_i
-    
+
   function sf_chain_instance_get_out_mask (chain) result (mask)
     class(sf_chain_instance_t), intent(in), target :: chain
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
@@ -1585,14 +1606,14 @@ contains
     int => chain%get_out_int_ptr ()
     mask = int%get_mask (chain%out_eval_i)
   end function sf_chain_instance_get_out_mask
-    
+
   subroutine sf_chain_instance_get_mcpar (chain, c, r)
     class(sf_chain_instance_t), intent(in) :: chain
     integer, intent(in) :: c
     real(default), dimension(:), intent(out) :: r
     if (allocated (chain%p))  r = pack (chain%p(:,c), chain%bound)
   end subroutine sf_chain_instance_get_mcpar
-  
+
   function sf_chain_instance_get_f (chain, c) result (f)
     class(sf_chain_instance_t), intent(in) :: chain
     integer, intent(in) :: c
@@ -1603,13 +1624,13 @@ contains
        f = 1
     end if
   end function sf_chain_instance_get_f
-  
+
   function sf_chain_instance_get_status (chain) result (status)
     class(sf_chain_instance_t), intent(in) :: chain
     integer :: status
     status = chain%status
   end function sf_chain_instance_get_status
-  
+
   subroutine sf_chain_instance_get_matrix_elements (chain, i, ff)
      class(sf_chain_instance_t), intent(in) :: chain
      integer, intent(in) :: i
@@ -1618,7 +1639,7 @@ contains
      associate (sf => chain%sf(i))
         ff = real (sf%int%get_matrix_element ())
      end associate
-  end subroutine sf_chain_instance_get_matrix_elements 
+  end subroutine sf_chain_instance_get_matrix_elements
 
 
 end module sf_base

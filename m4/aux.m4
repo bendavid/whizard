@@ -40,16 +40,16 @@ AC_DEFUN([WO_AUTOMAKE],
 done])
 
 dnl This adds a package which resides in a subdirectory of 'src'
-dnl The `variable' is inserted into AC_SUBST; it will refer to 
+dnl The `variable' is inserted into AC_SUBST; it will refer to
 enl the package subdirectory in Makefiles.  The package
 dnl resides in src/XXX and  and optionally has a Makefile (or similar).
 dnl WO_PACKAGE(variable, identifier [,Makefiles [,Executables]])
 AC_DEFUN([WO_PACKAGE],
 [WO_SET($1,src/$2)
-ifelse($#, 3, 
+ifelse($#, 3,
 [WO_OUTFILES($$1, $3)
 WO_AUTOMAKE($$1, $3)])
-ifelse($#, 4, 
+ifelse($#, 4,
 [WO_OUTFILES($$1, $3)
 WO_EXECUTABLES($$1, $4)])
 ])
@@ -145,7 +145,7 @@ AC_SUBST($1_DIR)
 AC_SUBST($1_LIB)
 ])
 
-dnl WHIZARD summary 
+dnl WHIZARD summary
 AC_DEFUN([WO_SUMMARY],[dnl
 WO_VERSION=AC_PACKAGE_VERSION()
 echo "|=============================================================================|"
@@ -194,9 +194,9 @@ echo "|  by:   Wolfgang Kilian, Thorsten Ohl, Juergen Reuter                    
 echo "|        with contributions from Christian Speckner                           |"
 echo "|        Contact: <whizard@desy.de>                                           |"
 echo "|                                                                             |"
-echo "|  if you use WHIZARD please cite:                                            |"   
+echo "|  if you use WHIZARD please cite:                                            |"
 echo "|        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |"
-echo "|                                          @<:@arXiv: 0708.4233 @<:@hep-ph@:>@@:>@        |"   
+echo "|                                          @<:@arXiv: 0708.4233 @<:@hep-ph@:>@@:>@        |"
 echo "|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |"
 echo "|                                                                             |"
 echo "|=============================================================================|"
@@ -277,7 +277,7 @@ if test "$HOPPET_AVAILABLE_FLAG" = ".true." ; then
    echo "HOPPET (PDF match.) :   yes, v$HOPPET_VERSION"
 else
    echo "HOPPET (PDF match.) :   no"
-fi   
+fi
 if test "$FASTJET_AVAILABLE_FLAG" = "yes" ; then
    echo "FastJet (clustering):   yes, v$FASTJET_VERSION"
 else
@@ -298,6 +298,12 @@ if test "$OPENLOOPS_AVAILABLE_FLAG" = ".true." ; then
    echo "           path     :   $OPENLOOPS_DIR"
 else
    echo "OpenLoops (OLP)     :   no"
+fi
+if test "$RECOLA_AVAILABLE_FLAG" = ".true." ; then
+   echo "RECOLA (OLP)        :   yes, v$RECOLA_VERSION"
+   echo "           path     :   $RECOLA_DIR"   
+else
+   echo "RECOLA (OLP)        :   no"
 fi
 if test "$LOOPTOOLS_AVAILABLE_FLAG" = ".true." ; then
    echo "LoopTools           :   yes"

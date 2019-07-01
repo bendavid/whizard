@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -84,8 +84,8 @@ module sf_gaussian
      procedure :: complete_kinematics => gaussian_complete_kinematics
      procedure :: inverse_kinematics => gaussian_inverse_kinematics
      procedure :: apply => gaussian_apply
-  end type gaussian_t 
-  
+  end type gaussian_t
+
 
 contains
 
@@ -109,13 +109,13 @@ contains
     logical :: flag
     flag = .true.
   end function gaussian_data_is_generator
-  
+
   function gaussian_data_get_n_par (data) result (n)
     class(gaussian_data_t), intent(in) :: data
     integer :: n
     n = 2
   end function gaussian_data_get_n_par
-  
+
   subroutine gaussian_data_get_pdg_out (data, pdg_out)
     class(gaussian_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -125,23 +125,23 @@ contains
        pdg_out(i) = data%flv_in(i)%get_pdg ()
     end do
   end subroutine gaussian_data_get_pdg_out
-  
+
   subroutine gaussian_data_allocate_sf_int (data, sf_int)
     class(gaussian_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (gaussian_t :: sf_int)
   end subroutine gaussian_data_allocate_sf_int
-  
-  subroutine gaussian_data_write (data, unit, verbose) 
+
+  subroutine gaussian_data_write (data, unit, verbose)
     class(gaussian_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose        
+    logical, intent(in), optional :: verbose
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "Gaussian beam spread data:"
     write (u, "(3x,A,A,A,A)") "prt_in = ", &
          char (data%flv_in(1)%get_name ()), &
-         ", ", char (data%flv_in(2)%get_name ())    
+         ", ", char (data%flv_in(2)%get_name ())
     write (u, "(3x,A,2(1x," // FMT_12 // "))") "spread =", data%spread
     call data%rng_factory%write (u)
   end subroutine gaussian_data_write
@@ -155,7 +155,7 @@ contains
        string = "Gaussian: [undefined]"
     end if
   end function gaussian_type_string
-  
+
   subroutine gaussian_write (object, unit, testflag)
     class(gaussian_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -170,7 +170,7 @@ contains
        write (u, "(1x,A)")  "gaussian data: [undefined]"
     end if
   end subroutine gaussian_write
-    
+
   subroutine gaussian_init (sf_int, data)
     class(gaussian_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -222,7 +222,7 @@ contains
     end select
     call sf_int%data%rng_factory%make (sf_int%rng)
   end subroutine gaussian_init
-    
+
   subroutine sf_gaussian_final (object)
     class(gaussian_t), intent(inout) :: object
     call object%interaction_t%final ()
@@ -233,7 +233,7 @@ contains
     logical :: flag
     flag = sf_int%data%is_generator ()
   end function gaussian_is_generator
-  
+
   subroutine gaussian_generate_free (sf_int, r, rb, x_free)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
@@ -249,7 +249,7 @@ contains
       end do
     end associate
   end subroutine gaussian_generate_free
-    
+
   subroutine gaussian_complete_kinematics (sf_int, x, f, r, rb, map)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -294,7 +294,7 @@ contains
     real(default), intent(in) :: scale
     real(default) :: f
     f = 1
-    call sf_int%set_matrix_element (cmplx (f, kind=default))        
+    call sf_int%set_matrix_element (cmplx (f, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine gaussian_apply
 

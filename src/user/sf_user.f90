@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -56,7 +56,7 @@ module sf_user
   use interactions
   use sf_aux
   use sf_base
-  
+
   implicit none
   private
 
@@ -83,7 +83,7 @@ module sf_user
      procedure :: write => user_data_write
      procedure :: allocate_sf_int => user_data_allocate_sf_int
      procedure :: get_n_par => user_data_get_n_par
-     procedure :: get_pdg_out => user_data_get_pdg_out  
+     procedure :: get_pdg_out => user_data_get_pdg_out
   end type user_data_t
 
   !!! JRR: WK please check (#529)
@@ -98,15 +98,15 @@ module sf_user
      procedure :: complete_kinematics => user_complete_kinematics
      procedure :: inverse_kinematics => user_inverse_kinematics
      procedure :: apply => user_apply
-  end type user_t 
-  
+  end type user_t
+
 
 contains
 
-  subroutine user_data_write (data, unit, verbose) 
+  subroutine user_data_write (data, unit, verbose)
     class(user_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose        
+    logical, intent(in), optional :: verbose
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A,A)") "User structure function: ", char (data%name)
@@ -128,7 +128,7 @@ contains
     integer :: i, s
     integer(c_int) :: i_prt, i_state
     select type (data)
-    type is (user_data_t)   
+    type is (user_data_t)
        allocate (mask (data%n_tot))
        allocate (hel_lock (data%n_tot))
        allocate (qn (data%n_tot))
@@ -147,7 +147,7 @@ contains
        !      hel_lock = hel_lock)
        call sf_int%basic_init &
             (data%n_in, 0, data%n_out, mask=mask, &
-            hel_lock=hel_lock, set_relations=.true.)       
+            hel_lock=hel_lock, set_relations=.true.)
        do s = 1, data%n_states
           i_state = s
           do i = 1, data%n_tot
@@ -188,13 +188,13 @@ contains
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (user_t :: sf_int)
   end subroutine user_data_allocate_sf_int
-  
+
   function user_data_get_n_par (data) result (n)
     class(user_data_t), intent(in) :: data
     integer :: n
     n = data%n_var
   end function user_data_get_n_par
-  
+
   subroutine user_data_get_pdg_out (data, pdg_out)
     class(user_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -206,7 +206,7 @@ contains
     !!! pdg_out(1:n) = pack ([(i, i = -6, 6)], data%mask)
     !!! if (np == 1)  pdg_out(n+np) = PHOTON
   end subroutine user_data_get_pdg_out
-  
+
   function user_type_string (object) result (string)
     class(user_t), intent(in) :: object
     type(string_t) :: string
@@ -216,7 +216,7 @@ contains
        string = "User structure function: [undefined]"
     end if
   end function user_type_string
-  
+
   subroutine user_write (object, unit, testflag)
     !!! JRR: WK please check (#529)
     !!! Guess these variables do not exist for user strfun (?)
@@ -239,10 +239,10 @@ contains
        write (u, "(1x,A)")  "User structure function data: [undefined]"
     end if
   end subroutine user_write
-    
+
   subroutine user_complete_kinematics (sf_int, x, f, r, rb, map)
     !!! JRR: WK please check (#529)
-    !!! This cannot be correct, as the CIRCE1 structure function has 
+    !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -270,7 +270,7 @@ contains
 
   subroutine user_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
     !!! JRR: WK please check (#529)
-    !!! This cannot be correct, as the CIRCE1 structure function has 
+    !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -302,7 +302,7 @@ contains
     end if
   end subroutine user_inverse_kinematics
 
-  subroutine user_apply (sf_int, scale) !, x, data)    
+  subroutine user_apply (sf_int, scale) !, x, data)
     !!! JRR: WK please check (#529)
     class(user_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale

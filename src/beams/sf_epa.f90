@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -54,7 +54,7 @@ module sf_epa
   use interactions
   use sf_aux
   use sf_base
-  
+
   implicit none
   private
 
@@ -92,14 +92,14 @@ module sf_epa
      procedure :: write => epa_data_write
      procedure :: get_n_par => epa_data_get_n_par
      procedure :: get_pdg_out => epa_data_get_pdg_out
-     procedure :: allocate_sf_int => epa_data_allocate_sf_int  
+     procedure :: allocate_sf_int => epa_data_allocate_sf_int
   end type epa_data_t
 
   type, extends (sf_int_t) :: epa_t
      type(epa_data_t), pointer :: data => null ()
      real(default) :: x  = 0
      real(default) :: xb = 0
-     real(default) :: E  = 0     
+     real(default) :: E  = 0
      real(default), dimension(:), allocatable :: charge2
    contains
      procedure :: type_string => epa_type_string
@@ -110,8 +110,8 @@ module sf_epa
      procedure :: inverse_kinematics => epa_inverse_kinematics
      procedure :: recover_x => sf_epa_recover_x
      procedure :: apply => epa_apply
-  end type epa_t 
-  
+  end type epa_t
+
 
 contains
 
@@ -143,7 +143,7 @@ contains
     select case (char (data%model%get_name ()))
     case ("QCD","Test")
        data%error = NO_EPA;  return
-    end select     
+    end select
     if (present (recoil)) then
        data%recoil = recoil
     end if
@@ -156,7 +156,7 @@ contains
        data%mass = data%flv_in(1)%get_mass ()
        if (any (data%flv_in%get_mass () /= data%mass)) then
           data%error = MASS_MIX;  return
-       end if 
+       end if
     end if
     if (max (data%mass, data%q_min) == 0) then
        data%error = ZERO_QMIN;  return
@@ -187,7 +187,7 @@ contains
     end select
   end subroutine epa_data_check
 
-  subroutine epa_data_write (data, unit, verbose) 
+  subroutine epa_data_write (data, unit, verbose)
     class(epa_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -228,29 +228,29 @@ contains
        n = 1
     end if
   end function epa_data_get_n_par
-  
+
   subroutine epa_data_get_pdg_out (data, pdg_out)
     class(epa_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
     pdg_out(1) = PHOTON
   end subroutine epa_data_get_pdg_out
-  
+
   subroutine epa_data_allocate_sf_int (data, sf_int)
     class(epa_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (epa_t :: sf_int)
   end subroutine epa_data_allocate_sf_int
-  
+
   function epa_type_string (object) result (string)
     class(epa_t), intent(in) :: object
     type(string_t) :: string
     if (associated (object%data)) then
-       string = "EPA: equivalent photon approx." 
+       string = "EPA: equivalent photon approx."
     else
        string = "EPA: [undefined]"
     end if
   end function epa_type_string
-  
+
   subroutine epa_write (object, unit, testflag)
     class(epa_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -264,14 +264,14 @@ contains
           write (u, "(3x,A," // FMT_17 // ")")  "x =", object%x
           if (object%status >= SF_FAILED_EVALUATION) then
              write (u, "(3x,A," // FMT_17 // ")")  "E =", object%E
-          end if          
+          end if
        end if
        call object%base_write (u, testflag)
     else
        write (u, "(1x,A)")  "EPA data: [undefined]"
     end if
   end subroutine epa_write
-    
+
   subroutine epa_init (sf_int, data)
     class(epa_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -290,7 +290,7 @@ contains
     select type (data)
     type is (epa_data_t)
        call sf_int%base_init (mask, [data%mass**2], &
-            [data%mass**2], [0._default], hel_lock = hel_lock)       
+            [data%mass**2], [0._default], hel_lock = hel_lock)
        sf_int%data => data
        call flv_photon%init (PHOTON, data%model)
        call col_photon%init ()
@@ -314,15 +314,15 @@ contains
        call sf_int%freeze ()
        if (data%keep_energy) then
           sf_int%on_shell_mode = KEEP_ENERGY
-       else 
+       else
           sf_int%on_shell_mode = KEEP_MOMENTUM
-       end if       
+       end if
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
     end select
   end subroutine epa_init
-    
+
   subroutine epa_setup_constants (sf_int)
     class(epa_t), intent(inout), target :: sf_int
     type(state_iterator_t) :: it
@@ -339,7 +339,7 @@ contains
     end do
     sf_int%status = SF_INITIAL
   end subroutine epa_setup_constants
-  
+
   subroutine epa_complete_kinematics (sf_int, x, f, r, rb, map)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -349,14 +349,14 @@ contains
     logical, intent(in) :: map
     real(default) :: xb1
     real(default) :: delta, sqrt_delta, lx
-    if (map) then                                   
+    if (map) then
        associate (data => sf_int%data)
          delta = data%log ** 2 -  4 * (r(1) * data%c1 + rb(1) * data%c0)
          if (delta > 0) then
             sqrt_delta = sqrt (delta)
             lx = (data%log - sqrt_delta) / 2
          else
-            sf_int%status = SF_FAILED_KINEMATICS          
+            sf_int%status = SF_FAILED_KINEMATICS
             f = 0
             return
          end if
@@ -371,11 +371,11 @@ contains
           sf_int%status = SF_FAILED_KINEMATICS
           f = 0
           return
-       end if       
-    end if       
+       end if
+    end if
     xb1 = 1 - x(1)
     if (size(x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1) 
+    call sf_int%split_momentum (x, xb1)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
@@ -444,7 +444,7 @@ contains
     sf_int%x  = x(1)
     sf_int%xb = 1 - x(1)
   end subroutine sf_epa_recover_x
-  
+
   subroutine epa_apply (sf_int, scale)
     class(epa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale

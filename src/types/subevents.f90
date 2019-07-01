@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module subevents
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds, only: default
   use io_units
   use format_defs, only: FMT_14, FMT_19
@@ -94,7 +94,7 @@ module subevents
   public :: subevt_select_pdg_code
   public :: pacify
 
-  integer, parameter, public :: PRT_UNDEFINED = 0 
+  integer, parameter, public :: PRT_UNDEFINED = 0
   integer, parameter, public :: PRT_BEAM = -9
   integer, parameter, public :: PRT_INCOMING = 1
   integer, parameter, public :: PRT_OUTGOING = 2
@@ -151,7 +151,7 @@ module subevents
      module procedure pacify_prt
      module procedure pacify_subevt
   end interface pacify
-  
+
 
 contains
 
@@ -164,7 +164,7 @@ contains
     prt%type = PRT_BEAM
     call prt_set (prt, pdg, - p, p2, src)
   end subroutine prt_init_beam
-    
+
   subroutine prt_init_incoming (prt, pdg, p, p2, src)
     type(prt_t), intent(out) :: prt
     integer, intent(in) :: pdg
@@ -174,7 +174,7 @@ contains
     prt%type = PRT_INCOMING
     call prt_set (prt, pdg, - p, p2, src)
   end subroutine prt_init_incoming
-    
+
   subroutine prt_init_outgoing (prt, pdg, p, p2, src)
     type(prt_t), intent(out) :: prt
     integer, intent(in) :: pdg
@@ -184,7 +184,7 @@ contains
     prt%type = PRT_OUTGOING
     call prt_set (prt, pdg, p, p2, src)
   end subroutine prt_init_outgoing
-    
+
   subroutine prt_init_composite (prt, p, src)
     type(prt_t), intent(out) :: prt
     type(vector4_t), intent(in) :: p
@@ -214,7 +214,7 @@ contains
          vector3_moving ([jet%px(), jet%py(), jet%pz()]))
     call prt_set (prt, pdg, p, p**2, src)
   end subroutine prt_init_pseudojet
-  
+
   elemental function prt_get_pdg (prt) result (pdg)
     integer :: pdg
     type(prt_t), intent(in) :: prt
@@ -310,7 +310,7 @@ contains
     logical, intent(in), optional :: testflag
     logical :: pacified
     type(prt_t) :: tmp
-    character(len=7) :: fmt   
+    character(len=7) :: fmt
     integer :: u, i
     call pac_fmt (fmt, FMT_19, FMT_14, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
@@ -689,19 +689,19 @@ contains
     end do
     sqrts_hat = p ** 1
   end function subevt_get_sqrts_hat
-    
+
   function subevt_get_n_in (subevt) result (n_in)
     type(subevt_t), intent(in) :: subevt
     integer :: n_in
     n_in = count (subevt%prt(:subevt%n_active)%type == PRT_INCOMING)
   end function subevt_get_n_in
-    
+
   function subevt_get_n_out (subevt) result (n_out)
     type(subevt_t), intent(in) :: subevt
     integer :: n_out
     n_out = count (subevt%prt(:subevt%n_active)%type == PRT_OUTGOING)
   end function subevt_get_n_out
-    
+
   function c_prt_from_subevt (subevt, i) result (c_prt)
     type(c_prt_t) :: c_prt
     type(subevt_t), intent(in) :: subevt
@@ -996,7 +996,7 @@ contains
     call pacify (prt%p, e)
     call pacify (prt%p2, 1E3_default * e)
   end subroutine pacify_prt
-  
+
   subroutine pacify_subevt (subevt)
     class(subevt_t), intent(inout) :: subevt
     integer :: i

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -90,7 +90,6 @@ module rt_data
      logical :: model_is_copy = .false.
      type(model_t), pointer :: preload_model => null ()
      type(model_t), pointer :: fallback_model => null ()
-     type(model_t), pointer :: radiation_model => null ()
      type(prclib_stack_t) :: prclib_stack
      type(process_library_t), pointer :: prclib => null ()
      type(beam_structure_t) :: beam_structure
@@ -124,7 +123,6 @@ module rt_data
      procedure :: local_final => rt_data_local_final
      procedure :: read_model => rt_data_read_model
      procedure :: init_fallback_model => rt_data_init_fallback_model
-     procedure :: init_radiation_model => rt_data_init_radiation_model
      procedure :: select_model => rt_data_select_model
      procedure :: unselect_model => rt_data_unselect_model
      procedure :: ensure_model_copy => rt_data_ensure_model_copy
@@ -428,7 +426,6 @@ contains
          var_str (""), intrinsic=.true.)
     call local%init_pointer_variables ()
     local%fallback_model => global%fallback_model
-    local%radiation_model => global%radiation_model
     local%os_data = global%os_data
     local%logfile = global%logfile
     call local%model_list%link (global%model_list)
@@ -584,13 +581,6 @@ contains
     call global%model_list%read_model &
          (name, filename, global%os_data, global%fallback_model)
   end subroutine rt_data_init_fallback_model
-
-  subroutine rt_data_init_radiation_model (global, name, filename)
-    class(rt_data_t), intent(inout) :: global
-    type(string_t), intent(in) :: name, filename
-    call global%model_list%read_model &
-         (name, filename, global%os_data, global%radiation_model)
-  end subroutine rt_data_init_radiation_model
 
   subroutine rt_data_select_model (global, name, scheme)
     class(rt_data_t), intent(inout), target :: global

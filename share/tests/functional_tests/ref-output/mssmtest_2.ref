@@ -18,13 +18,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process mssmtest_su_1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'mssmtest_su_1'
-|   Library name  = 'mssmtest_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'mssmtest_su_1_i1':   u, ubar => su1, su1c [omega]
-| ------------------------------------------------------------------------
 | Beam structure: u, ubar
 | Beam data (collision):
 |   u     (mass = 0.0000000E+00 GeV)
@@ -33,6 +26,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'mssmtest_su_1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'mssmtest_su_1'
+|   Library name  = 'mssmtest_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'mssmtest_su_1_i1':   u, ubar => su1, su1c [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.

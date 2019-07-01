@@ -25,14 +25,6 @@ seed = 0
 | Initializing integration for process flvsum_1_p0:
 | Process component 'flvsum_1_p0_i2': matrix element vanishes
 | Process component 'flvsum_1_p0_i3': matrix element vanishes
-| ------------------------------------------------------------------------
-| Process [scattering]: 'flvsum_1_p0'
-|   Library name  = 'flvsum_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'flvsum_1_p0_i1':   e-, e+ => u, ubar [omega]
-|     4: 'flvsum_1_p0_i4':   e-, e+ => d, dbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -41,13 +33,21 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'flvsum_1_p0_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'flvsum_1_p0_i4.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'flvsum_1_p0'
+|   Library name  = 'flvsum_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'flvsum_1_p0_i1':   e-, e+ => u, ubar [omega]
+|     4: 'flvsum_1_p0_i4':   e-, e+ => d, dbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'flvsum_1_p0_i4.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -88,13 +88,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process flvsum_1_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'flvsum_1_p1'
-|   Library name  = 'flvsum_1_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'flvsum_1_p1_i1':   e-, e+ => d:u, dbar:ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -103,6 +96,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'flvsum_1_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'flvsum_1_p1'
+|   Library name  = 'flvsum_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'flvsum_1_p1_i1':   e-, e+ => d:u, dbar:ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -124,13 +124,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process flvsum_1_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'flvsum_1_p2'
-|   Library name  = 'flvsum_1_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'flvsum_1_p2_i1':   e-, e+ => d:u, dbar:ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -139,6 +132,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'flvsum_1_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'flvsum_1_p2'
+|   Library name  = 'flvsum_1_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'flvsum_1_p2_i1':   e-, e+ => d:u, dbar:ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

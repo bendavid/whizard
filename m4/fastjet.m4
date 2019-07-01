@@ -40,7 +40,7 @@ dnl #####################################################################
 dnl CHECK FASTJET BEGIN
 dnl
 dnl This script can be used in configure scripts to check for the
-dnl usability of the FastJet librarty.
+dnl usability of the FastJet library.
 dnl
 dnl By defaults, it searches the FastJet library in standard system
 dnl locations but an alternative path can be specified using the

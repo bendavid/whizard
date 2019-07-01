@@ -12,6 +12,11 @@ sqrts =  1.000000000000E+03
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process testproc_5_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   s  (mass = 1.2500000E+02 GeV)
+|   s  (mass = 1.2500000E+02 GeV)
+|   sqrts = 1.000000000000E+03 GeV
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_5_p1'
 |   Library name  = 'testproc_5_lib'
@@ -19,11 +24,6 @@ sqrts =  1.000000000000E+03
 |   Process components:
 |     1: 'testproc_5_p1_i1':   s, s => s, s [unit_test]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 1.000000000000E+03 GeV
 | Phase space: 1 channels, 2 dimensions
 | Phase space: single-particle
 Warning: No cuts have been defined.

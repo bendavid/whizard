@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -383,7 +383,7 @@ contains
   subroutine gosam_driver_set_GF (driver, GF)
     class(gosam_driver_t), intent(inout) :: driver
     real(default), intent(in) :: GF
-    integer :: ierr 
+    integer :: ierr
     call driver%blha_olp_set_parameter &
        (c_char_'GF'//c_null_char, &
         dble(GF), 0._double, ierr)
@@ -393,7 +393,7 @@ contains
   subroutine gosam_driver_set_weinberg_angle (driver, sw2)
     class(gosam_driver_t), intent(inout) :: driver
     real(default), intent(in) :: sw2
-    integer :: ierr 
+    integer :: ierr
     call driver%blha_olp_set_parameter &
        (c_char_'sw2'//c_null_char, &
         dble(sw2), 0._double, ierr)
@@ -418,8 +418,10 @@ contains
   end subroutine prc_gosam_prepare_library
 
   subroutine prc_gosam_create_and_load_extra_libraries ( &
-         core, os_data, libname, model, i_core)
+         core, flv_states, var_list, os_data, libname, model, i_core)
     class(prc_gosam_t), intent(inout) :: core
+    integer, intent(in), dimension(:,:), allocatable :: flv_states
+    type(var_list_t), intent(in) :: var_list
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
@@ -427,7 +429,7 @@ contains
     core%sqme_tree_pos = 4
     call core%prepare_library (os_data, libname)
     call core%start ()
-    call core%read_contract_file (core%data%flv_state)
+    call core%read_contract_file (flv_states)
     call core%set_particle_properties (model)
     call core%set_electroweak_parameters (model)
     call core%print_parameter_file (i_core)
@@ -448,7 +450,7 @@ contains
     type(string_t), intent(in) :: libname
     select type (driver => object%driver)
     type is (gosam_driver_t)
-       call os_system_call ("make -f " // & 
+       call os_system_call ("make -f " // &
           libname // "_gosam.makefile")
     end select
   end subroutine prc_gosam_execute_makefile
@@ -510,20 +512,23 @@ contains
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: olp_file, olc_file, olp_dir
+    type(string_t) :: suffix
 
     select type (def => object%def)
     type is (gosam_def_t)
-      olp_file = def%basename // def%suffix // '.olp'
-      olc_file = def%basename // def%suffix // '.olc'
-      olp_dir = def%basename // def%suffix // '_olp_modules'
+       suffix = def%suffix
+       olp_file = def%basename // suffix // '.olp'
+       olc_file = def%basename // suffix // '.olc'
+       olp_dir = def%basename // suffix // '_olp_modules'
     class default
-      call msg_bug ("prc_gosam_init_driver: core_def should be of gosam-type")
+       call msg_bug ("prc_gosam_init_driver: core_def should be of gosam-type")
     end select
 
     select type(driver => object%driver)
     type is (gosam_driver_t)
-      call driver%init_gosam (os_data, olp_file, olc_file, olp_dir, &
-           var_str ("libgolem_olp"))
+       driver%nlo_suffix = suffix
+       call driver%init_gosam (os_data, olp_file, olc_file, olp_dir, &
+            var_str ("libgolem_olp"))
     end select
   end subroutine prc_gosam_init_driver
 
@@ -533,8 +538,7 @@ contains
   end subroutine prc_gosam_set_initialized
 
   subroutine prc_gosam_compute_sqme_sc (object, &
-                i_flv, em, p, ren_scale, &
-            me_sc, bad_point)
+       i_flv, em, p, ren_scale, me_sc, bad_point)
     class(prc_gosam_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     integer, intent(in) :: em
@@ -549,31 +553,34 @@ contains
     integer :: pos_real, pos_imag
     real(double) :: acc_dble
     real(default) :: acc, alpha_s
+    if (object%i_sc(i_flv) > 0) then
+       me_sc = cmplx (zero ,zero, kind=default)
+       mom = object%create_momentum_array (p)
+       if (vanishes (ren_scale)) &
+          call msg_fatal ("prc_gosam_compute_sqme_sc: ren_scale vanishes")
+       alpha_s = object%qcd%alpha%get (ren_scale)
+       ren_scale_dble = dble (ren_scale)
+       select type (driver => object%driver)
+       type is (gosam_driver_t)
+          call driver%set_alpha_s (alpha_s)
+          call driver%blha_olp_eval2 (object%i_sc(i_flv), &
+               mom, ren_scale_dble, r, acc_dble)
+       end select
+       igm1 = em - 1
+       n = size(p)
+       do i = 0, n - 1
+          pos_real = 2 * igm1 + 2 * n * i + 1
+          pos_imag = pos_real + 1
+          me_sc = me_sc + cmplx (r(pos_real), r(pos_imag), default)
+       end do
 
-    me_sc = cmplx (zero ,zero, kind=default)
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_gosam_compute_sqme_sc: ren_scale vanishes")
-    alpha_s = object%qcd%alpha%get (ren_scale)
-    ren_scale_dble = dble (ren_scale)
-    select type (driver => object%driver)
-    type is (gosam_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       call driver%blha_olp_eval2 (object%i_sc(i_flv), &
-            mom, ren_scale_dble, r, acc_dble)
-    end select
-    igm1 = em - 1
-    n = size(p)
-    do i = 0, n - 1
-      pos_real = 2 * igm1 + 2 * n*i + 1
-      pos_imag = pos_real + 1
-      me_sc = me_sc + cmplx (r(pos_real), r(pos_imag), default)
-    end do
+       me_sc = - conjg(me_sc) / CA
 
-    me_sc = - conjg(me_sc) / CA
-
-    acc = acc_dble
-    if (acc > object%maximum_accuracy) bad_point = .true.
+       acc = acc_dble
+       if (acc > object%maximum_accuracy) bad_point = .true.
+    else
+       r = 0._double
+    end if
   end subroutine prc_gosam_compute_sqme_sc
 
   subroutine prc_gosam_allocate_workspace (object, core_state)

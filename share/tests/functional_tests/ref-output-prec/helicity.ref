@@ -22,13 +22,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_ee_mm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_ee_mm'
-|   Library name  = 'helicity_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'helicity_ee_mm_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -37,6 +30,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_ee_mm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_ee_mm'
+|   Library name  = 'helicity_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'helicity_ee_mm_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -63,13 +63,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_ee_mm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_ee_mm'
-|   Library name  = 'helicity_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'helicity_ee_mm_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -78,6 +71,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_ee_mm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_ee_mm'
+|   Library name  = 'helicity_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'helicity_ee_mm_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -102,13 +102,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_ee_mm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_ee_mm'
-|   Library name  = 'helicity_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'helicity_ee_mm_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -117,6 +110,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_ee_mm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_ee_mm'
+|   Library name  = 'helicity_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'helicity_ee_mm_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -151,13 +151,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_aa_ww:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_aa_ww'
-|   Library name  = 'helicity_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: A, A
 | Beam data (collision):
 |   A  (mass = 0.0000000E+00 GeV)
@@ -166,6 +159,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_aa_ww_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_aa_ww'
+|   Library name  = 'helicity_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 1 grove.
 | Phase space: Using 8 equivalences between channels.
@@ -192,13 +192,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_aa_ww:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_aa_ww'
-|   Library name  = 'helicity_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: A, A
 | Beam data (collision):
 |   A  (mass = 0.0000000E+00 GeV)
@@ -207,6 +200,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_aa_ww_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_aa_ww'
+|   Library name  = 'helicity_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 1 grove.
 | Phase space: Using 8 equivalences between channels.
@@ -240,13 +240,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_aa_ww:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_aa_ww'
-|   Library name  = 'helicity_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: A, A
 | Beam data (collision):
 |   A  (mass = 0.0000000E+00 GeV)
@@ -255,6 +248,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_aa_ww_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_aa_ww'
+|   Library name  = 'helicity_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 1 grove.
 | Phase space: Using 8 equivalences between channels.
@@ -281,13 +281,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process helicity_aa_ww:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'helicity_aa_ww'
-|   Library name  = 'helicity_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: A, A
 | Beam data (collision):
 |   A  (mass = 0.0000000E+00 GeV)
@@ -296,6 +289,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'helicity_aa_ww_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'helicity_aa_ww'
+|   Library name  = 'helicity_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'helicity_aa_ww_i1':   A, A => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 1 grove.
 | Phase space: Using 8 equivalences between channels.

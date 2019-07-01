@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_data
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -73,10 +73,10 @@ module eio_data
      procedure :: init => event_sample_data_init
      procedure :: write => event_sample_data_write
   end type event_sample_data_t
-  
+
 
 contains
-  
+
   subroutine event_sample_data_init (data, n_proc, n_alt)
     class(event_sample_data_t), intent(out) :: data
     integer, intent(in) :: n_proc
@@ -91,7 +91,7 @@ contains
        data%md5sum_alt = ""
     end if
   end subroutine event_sample_data_init
-  
+
   subroutine event_sample_data_write (data, unit)
     class(event_sample_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
@@ -135,6 +135,6 @@ contains
        end do
     end if
   end subroutine event_sample_data_write
-    
+
 
 end module eio_data

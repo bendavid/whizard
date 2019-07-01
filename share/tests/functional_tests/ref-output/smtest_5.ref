@@ -35,6 +35,12 @@ auto_decays_multiplicity = 2
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process decay_p24_1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_p24_1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_1'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -42,12 +48,6 @@ auto_decays_multiplicity = 2
 |   Process components:
 |     1: 'decay_p24_1_i1':   W+ => dbar, u [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -70,6 +70,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process decay_p24_2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_p24_2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_2'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -77,12 +83,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_p24_2_i1':   W+ => sbar, c [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -105,6 +105,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process decay_p24_3:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_p24_3_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_3'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -112,12 +118,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_p24_3_i1':   W+ => e+, nue [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_3_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -140,6 +140,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process decay_p24_4:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_p24_4_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_4'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -147,12 +153,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_p24_4_i1':   W+ => mu+, numu [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_4_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -175,6 +175,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process decay_p24_5:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_p24_5_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_5'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -182,12 +188,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_p24_5_i1':   W+ => tau+, nutau [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_5_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -243,6 +243,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process decay_a24_1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_a24_1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_1'
 |   Library name  = 'smtest_5_lib_da24'
@@ -250,12 +256,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_a24_1_i1':   W- => d, ubar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -278,6 +278,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 6
 | Initializing integration for process decay_a24_2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_a24_2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_2'
 |   Library name  = 'smtest_5_lib_da24'
@@ -285,12 +291,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_a24_2_i1':   W- => s, cbar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -313,6 +313,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 7
 | Initializing integration for process decay_a24_3:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_a24_3_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_3'
 |   Library name  = 'smtest_5_lib_da24'
@@ -320,12 +326,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_a24_3_i1':   W- => e-, nuebar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_3_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -348,6 +348,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 8
 | Initializing integration for process decay_a24_4:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_a24_4_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_4'
 |   Library name  = 'smtest_5_lib_da24'
@@ -355,12 +361,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_a24_4_i1':   W- => mu-, numubar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_4_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -383,6 +383,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 9
 | Initializing integration for process decay_a24_5:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_a24_5_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_5'
 |   Library name  = 'smtest_5_lib_da24'
@@ -390,12 +396,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_a24_5_i1':   W- => tau-, nutaubar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_5_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

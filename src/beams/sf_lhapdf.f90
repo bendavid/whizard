@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,7 +41,7 @@ module sf_lhapdf
   use io_units
   use system_dependencies, only: LHAPDF_PDFSETS_PATH
   use system_dependencies, only: LHAPDF5_AVAILABLE
-  use system_dependencies, only: LHAPDF6_AVAILABLE  
+  use system_dependencies, only: LHAPDF6_AVAILABLE
   use diagnostics
   use physics_defs, only: PROTON, PHOTON, PIPLUS, GLUON
   use physics_defs, only: HADRON_REMNANT_SINGLET
@@ -78,7 +78,7 @@ module sf_lhapdf
      private
      type(string_t) :: prefix
      type(string_t) :: file
-     type(lhapdf_pdf_t) :: pdf 
+     type(lhapdf_pdf_t) :: pdf
      integer :: member = 0
      class(model_data_t), pointer :: model => null ()
      type(flavor_t) :: flv_in
@@ -91,7 +91,7 @@ module sf_lhapdf
      real(default) :: qmin = 0, qmax = 0
      logical, dimension(-6:6) :: mask = .true.
      logical :: mask_photon = .true.
-     logical :: hoppet_b_matching = .false.     
+     logical :: hoppet_b_matching = .false.
    contains
        procedure :: init => lhapdf_data_init
        procedure :: write => lhapdf_data_write
@@ -113,8 +113,8 @@ module sf_lhapdf
      procedure :: write => lhapdf_write
      procedure :: init => lhapdf_init
      procedure :: apply => lhapdf_apply
-  end type lhapdf_t 
-  
+  end type lhapdf_t
+
   type, extends (alpha_qcd_t) :: alpha_qcd_lhapdf_t
      type(string_t) :: pdfset_dir
      type(string_t) :: pdfset_file
@@ -125,7 +125,7 @@ module sf_lhapdf
      procedure :: get => alpha_qcd_lhapdf_get
      procedure :: init => alpha_qcd_lhapdf_init
   end type alpha_qcd_lhapdf_t
-  
+
 
   character(*), parameter :: LHAPDF5_DEFAULT_PROTON = "cteq6ll.LHpdf"
   character(*), parameter :: LHAPDF5_DEFAULT_PION   = "ABFKWPI.LHgrid"
@@ -276,26 +276,26 @@ contains
        end if
        call InitPDFM (set, member)
     else if (LHAPDF6_AVAILABLE) then
-    ! TODO: (bcn 2015-07-07) we should have a closer look why this global 
+    ! TODO: (bcn 2015-07-07) we should have a closer look why this global
     !                        check must not be executed
     !   if (lhapdf_global_status_is_initialized (set) .and. &
     !        pdf%is_associated ()) return
        if (file == "") then
           select case (set)
           case (1);  file = LHAPDF6_DEFAULT_PROTON
-          case (2);  
+          case (2);
              call msg_fatal ("LHAPDF6: no pion PDFs supported")
-          case (3);  
+          case (3);
              call msg_fatal ("LHAPDF6: no photon PDFs supported")
           end select
        end if
-       if (data_file_exists (prefix // "/" // file // "/" // file // ".info")) then          
+       if (data_file_exists (prefix // "/" // file // "/" // file // ".info")) then
           call pdf%init (char (file), member)
        else
           call msg_fatal ("LHAPDF: Data file '" &
                // char (file) // "' not found in '" // char (prefix) // "'.")
           return
-       end if        
+       end if
     end if
     if (present (b_match)) then
        if (b_match) then
@@ -429,11 +429,11 @@ contains
     else
        data%file = ""
     end if
-    if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching    
+    if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching
     if (LHAPDF5_AVAILABLE) then
        call lhapdf_initialize &
             (data%set, data%prefix, data%file, data%member, &
-            b_match = data%hoppet_b_matching) 
+            b_match = data%hoppet_b_matching)
        call GetXminM (data%set, data%member, xmin)
        call GetXmaxM (data%set, data%member, xmax)
        call GetQ2minM (data%set, data%member, q2min)
@@ -441,21 +441,21 @@ contains
        data%xmin = xmin
        data%xmax = xmax
        data%qmin = sqrt (q2min)
-       data%qmax = sqrt (q2max)       
-       data%has_photon = has_photon ()       
+       data%qmax = sqrt (q2max)
+       data%has_photon = has_photon ()
     else if (LHAPDF6_AVAILABLE) then
        call lhapdf_initialize &
             (data%set, data%prefix, data%file, data%member, &
-            data%pdf, data%hoppet_b_matching)              
+            data%pdf, data%hoppet_b_matching)
        data%xmin = data%pdf%getxmin ()
        data%xmax = data%pdf%getxmax ()
        data%qmin = sqrt(data%pdf%getq2min ())
        data%qmax = sqrt(data%pdf%getq2max ())
-       data%has_photon = data%pdf%has_photon ()       
+       data%has_photon = data%pdf%has_photon ()
     end if
   end subroutine lhapdf_data_init
 
-  subroutine lhapdf_data_write (data, unit, verbose) 
+  subroutine lhapdf_data_write (data, unit, verbose)
     class(lhapdf_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -465,7 +465,7 @@ contains
        verb = verbose
     else
        verb = .false.
-    end if       
+    end if
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "LHAPDF data:"
     if (data%set /= 0) then
@@ -493,7 +493,7 @@ contains
        if (data%set == 1)  write (u, "(3x,A,L1)") &
             "  hoppet_b     =  ", data%hoppet_b_matching
     else
-       write (u, "(3x,A)") "[undefined]"       
+       write (u, "(3x,A)") "[undefined]"
     end if
   end subroutine lhapdf_data_write
   function lhapdf_data_get_n_par (data) result (n)
@@ -501,7 +501,7 @@ contains
     integer :: n
     n = 1
   end function lhapdf_data_get_n_par
-  
+
   subroutine lhapdf_data_get_pdg_out (data, pdg_out)
     class(lhapdf_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -514,19 +514,19 @@ contains
     if (np == 1)  pdg1(n+np) = PHOTON
     pdg_out(1) = pdg1
   end subroutine lhapdf_data_get_pdg_out
-  
+
   subroutine lhapdf_data_allocate_sf_int (data, sf_int)
     class(lhapdf_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (lhapdf_t :: sf_int)
   end subroutine lhapdf_data_allocate_sf_int
-  
+
   function lhapdf_data_get_pdf_set (data) result (pdf_set)
     class(lhapdf_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = data%set
   end function lhapdf_data_get_pdf_set
-  
+
   function lhapdf_type_string (object) result (string)
     class(lhapdf_t), intent(in) :: object
     type(string_t) :: string
@@ -536,7 +536,7 @@ contains
        string = "LHAPDF: [undefined]"
     end if
   end function lhapdf_type_string
-  
+
   subroutine lhapdf_write (object, unit, testflag)
     class(lhapdf_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -557,7 +557,7 @@ contains
        write (u, "(1x,A)")  "LHAPDF data: [undefined]"
     end if
   end subroutine lhapdf_write
-    
+
   subroutine lhapdf_init (sf_int, data)
     class(lhapdf_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -575,7 +575,7 @@ contains
        do i = -6, 6
           if (data%mask(i)) then
              call qn(1)%init (data%flv_in, col = col0)
-             if (i == 0) then                
+             if (i == 0) then
                 call flv%init (GLUON, data%model)
                 call flv_remnant%init (HADRON_REMNANT_OCTET, data%model)
              else
@@ -613,7 +613,7 @@ contains
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     real(default) :: x, s
-    double precision :: xx, qq, ss    
+    double precision :: xx, qq, ss
     double precision, dimension(-6:6) :: ff
     double precision :: fphot
     complex(default), dimension(:), allocatable :: fc
@@ -637,7 +637,7 @@ contains
                end if
             else
                if (data%hoppet_b_matching) then
-                  call hoppet_eval (xx, qq, ff(6:-6:-1)) 
+                  call hoppet_eval (xx, qq, ff(6:-6:-1))
                else
                   if (LHAPDF5_AVAILABLE) then
                      call evolvePDFM (data% set, xx, qq, ff(6:-6:-1))
@@ -655,7 +655,7 @@ contains
                end if
             else
                if (data%hoppet_b_matching) then
-                  call hoppet_eval (xx, qq, ff) 
+                  call hoppet_eval (xx, qq, ff)
                else
                   if (LHAPDF5_AVAILABLE) then
                      call evolvePDFM (data% set, xx, qq, ff)
@@ -687,7 +687,7 @@ contains
     call sf_int%set_matrix_element (fc)
     sf_int%status = SF_EVALUATED
   end subroutine lhapdf_apply
-  
+
   subroutine alpha_qcd_lhapdf_write (object, unit)
     class(alpha_qcd_lhapdf_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -697,7 +697,7 @@ contains
     write (u, "(5x,A,A)")  "PDF set    = ", char (object%pdfset_file)
     write (u, "(5x,A,I0)") "PDF member = ", object%pdfset_member
   end subroutine alpha_qcd_lhapdf_write
-  
+
   function alpha_qcd_lhapdf_get (alpha_qcd, scale) result (alpha)
     class(alpha_qcd_lhapdf_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
@@ -708,7 +708,7 @@ contains
        alpha = alpha_qcd%pdf%alphas_pdf (dble (scale))
     end if
   end function alpha_qcd_lhapdf_get
-  
+
   subroutine alpha_qcd_lhapdf_init (alpha_qcd, file, member, path)
     class(alpha_qcd_lhapdf_t), intent(out) :: alpha_qcd
     type(string_t), intent(inout) :: file
@@ -726,6 +726,6 @@ contains
             (1, path, file, member, alpha_qcd%pdf)
     end if
   end subroutine alpha_qcd_lhapdf_init
-    
+
 
 end module sf_lhapdf

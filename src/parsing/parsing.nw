@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: text handling and parsing
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Text handling}
@@ -53,7 +53,7 @@ contains
 
 end module ifiles
 @ %def ifiles
-@ 
+@
 \subsection{The line type}
 The line entry type is for internal use, it is the list entry to be
 collected in an [[ifile]] object.
@@ -88,7 +88,7 @@ be deallocated explicitly, just deallocate the object itself.
   end subroutine line_entry_destroy
 
 @ %def line_entry_destroy
-@ 
+@
 \subsection{The ifile type}
 The internal file is a linked list of line entries.
 <<Ifiles: public>>=
@@ -134,7 +134,7 @@ the file is destroyed.
      module procedure ifile_clear
   end interface
 @ %def ifile_final
-@ 
+@
 \subsection{I/O on ifiles}
 Fill an ifile from an ordinary external file, i.e., I/O unit.  If the
 ifile is not empty, the old contents will be destroyed.  We can read
@@ -173,7 +173,7 @@ there is a variant which reads from another ifile, effectively copying it.
     call ifile_clear (ifile)
     call ifile_append (ifile, char)
   end subroutine ifile_read_from_char_array
-    
+
   subroutine ifile_read_from_unit (ifile, unit, iostat)
     type(ifile_t), intent(inout) :: ifile
     integer, intent(in) :: unit
@@ -181,14 +181,14 @@ there is a variant which reads from another ifile, effectively copying it.
     call ifile_clear (ifile)
     call ifile_append (ifile, unit, iostat)
   end subroutine ifile_read_from_unit
-    
+
   subroutine ifile_read_from_ifile (ifile, ifile_in)
     type(ifile_t), intent(inout) :: ifile
     type(ifile_t), intent(in) :: ifile_in
     call ifile_clear (ifile)
     call ifile_append (ifile, ifile_in)
   end subroutine ifile_read_from_ifile
-    
+
 @ %def ifile_read
 @ Append to an ifile.  The same as reading, but without resetting the
 ifile.  In addition, there is a routine for appending a whole ifile.
@@ -237,7 +237,7 @@ ifile.  In addition, there is a routine for appending a whole ifile.
        call ifile_append_from_string (ifile, var_str (trim (char(i))))
     end do
   end subroutine ifile_append_from_char_array
-    
+
   subroutine ifile_append_from_unit (ifile, unit, iostat)
     class(ifile_t), intent(inout) :: ifile
     integer, intent(in) :: unit
@@ -256,7 +256,7 @@ ifile.  In addition, there is a routine for appending a whole ifile.
        call get (unit, buffer)  ! trigger error again
     end if
   end subroutine ifile_append_from_unit
-    
+
   subroutine ifile_append_from_ifile (ifile, ifile_in)
     class(ifile_t), intent(inout) :: ifile
     type(ifile_t), intent(in) :: ifile_in
@@ -267,8 +267,8 @@ ifile.  In addition, there is a routine for appending a whole ifile.
        current => current%next
     end do
   end subroutine ifile_append_from_ifile
-    
-@ %def ifile_append    
+
+@ %def ifile_append
 @ Write the ifile contents to an external unit
 <<Ifiles: public>>=
   public :: ifile_write
@@ -307,7 +307,7 @@ function:
   end subroutine ifile_to_string_array
 
 @ %def ifile_to_string_array
-@ 
+@
 \subsection{Ifile tools}
 <<Ifiles: public>>=
   public :: ifile_get_length
@@ -319,7 +319,7 @@ function:
   end function ifile_get_length
 
 @ %def ifile_get_length
-@ 
+@
 \subsection{Line pointers}
 Instead of the implicit pointer used in ordinary file access, we
 define explicit pointers, so there can be more than one at a time.
@@ -393,10 +393,10 @@ define explicit pointers, so there can be more than one at a time.
   end function line_is_associated
 
 @ %def line_is_associated
-@ 
+@
 \subsection{Access lines via pointers}
 We do not need the ifile as an argument to these functions, because
-the [[line]] type will point to an existing ifile.  
+the [[line]] type will point to an existing ifile.
 <<Ifiles: public>>=
   public :: line_get_string
 <<Ifiles: subroutines>>=
@@ -411,7 +411,7 @@ the [[line]] type will point to an existing ifile.
   end function line_get_string
 
 @ %def line_get_string
-@ Variant where the line pointer is advanced after reading.  
+@ Variant where the line pointer is advanced after reading.
 <<Ifiles: public>>=
   public :: line_get_string_advance
 <<Ifiles: subroutines>>=
@@ -495,10 +495,10 @@ module lexers
   use system_defs, only: LF
   use system_defs, only: WHITESPACE_CHARS, LCLETTERS, UCLETTERS, DIGITS
   use diagnostics
-  use ifiles, only: ifile_t 
+  use ifiles, only: ifile_t
   use ifiles, only: line_p, line_is_associated, line_init, line_final
   use ifiles, only: line_get_string_advance
-  
+
 <<Standard module head>>
 
 <<Lexer: public>>
@@ -515,7 +515,7 @@ contains
 
 end module lexers
 @ %def lexers
-@ 
+@
 \subsection{Input streams}
 For flexible input, we define a generic stream type that refers to
 either an external file, an external unit which is already open, a
@@ -587,14 +587,14 @@ be undefined before calling this.
     stream%unit = unit
     stream%eof = .false.
   end subroutine stream_init_unit
-    
+
   subroutine stream_init_string (stream, string)
     class(stream_t), intent(out) :: stream
     type(string_t), intent(in) :: string
     allocate (stream%string)
     stream%string = string
   end subroutine stream_init_string
-    
+
   subroutine stream_init_ifile (stream, ifile)
     class(stream_t), intent(out) :: stream
     type(ifile_t), intent(in) :: ifile
@@ -604,15 +604,15 @@ be undefined before calling this.
     allocate (stream%ifile)
     stream%ifile = ifile
   end subroutine stream_init_ifile
-    
+
   subroutine stream_init_line (stream, line)
     class(stream_t), intent(out) :: stream
     type(line_p), intent(in) :: line
     allocate (stream%line)
     stream%line = line
   end subroutine stream_init_line
-    
-@ %def stream_init   
+
+@ %def stream_init
 @ The finalizer restores the initial state.  If an external file was
 opened, it is closed.
 <<Lexer: public>>=
@@ -734,7 +734,7 @@ argument is mandatory.
   end function stream_get_record_info_string
 
 @ %def stream_get_record_info_string
-@ 
+@
 \subsection{Keyword list}
 The lexer should be capable of identifying a token as a known
 keyword.  To this end, we store a list of keywords:
@@ -847,7 +847,7 @@ keyword.  To this end, we store a list of keywords:
   end subroutine keyword_list_final
 
 @ %def keyword_list_final
-@ 
+@
 \subsection{Lexeme templates}
 This type is handled like a rudimentary regular expression.  It
 determines the lexer behavior when matching a string.  The actual
@@ -874,7 +874,7 @@ are listed below.
   integer, parameter :: EMPTY = 0, WHITESPACE = 10
   integer, parameter :: NO_MATCH = 11, IO_ERROR = 12, OVERFLOW = 13
   integer, parameter :: UNMATCHED_QUOTE = 14
-@ %def EMPTY WHITESPACE NO_MATCH IO_ERROR OVERFLOW UNMATCHED_QUOTE 
+@ %def EMPTY WHITESPACE NO_MATCH IO_ERROR OVERFLOW UNMATCHED_QUOTE
 @ In addition, we have [[EOF]] which is a negative integer, normally $-1$.
 @ Printout for debugging:
 <<Lexer: procedures>>=
@@ -903,7 +903,7 @@ are listed below.
     write (unit, "(A)", advance="no") "'" // tt%charset1(1:tt%len1) // "'"
     write (unit, "(A)", advance="no") " '" // tt%charset2(1:tt%len2) // "'"
   end subroutine template_write
-    
+
 @ %def template_write
 @ The matching functions all return the number of matched characters in
 the provided string.  If this number is zero, the match has failed.
@@ -1016,7 +1016,7 @@ return the lexeme as a string but do not read it.
 @ %def template_numeric
 @ A numeric lexeme may be real or integer.  We purposely do not allow
 for a preceding sign.  If the number is followed by an exponent, this
-is included, otherwise the rest is ignored.  
+is included, otherwise the rest is ignored.
 
 There is a possible pitfall with this behavior: while the string
 [[1e3]] will be interpreted as a single number, the analogous string
@@ -1114,7 +1114,7 @@ are zero.
   end subroutine match
 
 @ %def match
-@ 
+@
 \subsection{The lexer setup}
 This object contains information about character classes.  As said
 above, one class consists of quoting chars (matching left and right),
@@ -1127,7 +1127,7 @@ against the input stream.
 BLANK should always be taken as whitespace, some things may depend on
 this.  TAB is also fixed by convention, but may in principle be
 modified.  Newline (DOS!) and linefeed are also defined as whitespace.
-@ 
+@
 The lexer setup, containing the list of lexeme templates.  No
 defaults yet.  The type with index zero will be assigned to the
 [[NO_MATCH]] lexeme.
@@ -1219,7 +1219,7 @@ that should be glued together as identifiers).
          call msg_bug ("Size mismatch in lexer setup")
     setup%keyword_list => keyword_list
   end subroutine lexer_setup_init
-  
+
 @ %def lexer_setup_init
 @ The destructor is needed only if the object is not itself part of an
 allocatable array
@@ -1254,7 +1254,7 @@ allocatable array
    end subroutine lexer_setup_write
 
 @ %def lexer_setup_write
-@ 
+@
 \subsection{The lexeme type}
 An object of this type is returned by the lexer.  Apart from the lexeme
 string, it gives information about the relevant substring (first and
@@ -1379,7 +1379,7 @@ The last function returns true if there is a break condition reached
     type = t%type
   end function lexeme_get_type
 
-@ %def lexeme_get_string lexeme_get_contents lexeme_get_type 
+@ %def lexeme_get_string lexeme_get_contents lexeme_get_type
 @ Check for a generic break condition (error/eof) and for eof in
 particular.
 <<Lexer: public>>=
@@ -1404,7 +1404,7 @@ particular.
   end function lexeme_is_eof
 
 @ %def lexeme_is_break lexeme_is_eof
-@ 
+@
 \subsection{The lexer object}
 We store the current lexeme and the current line.  The line buffer is
 set each time a new line is read from file.  The working buffer has
@@ -1497,7 +1497,7 @@ before.
   end subroutine lexer_final
 
 @ %def lexer_final
-@ 
+@
 \subsection{The lexer routine}
 For lexing we need to associate an input stream to the lexer.
 <<Lexer: public>>=
@@ -1644,9 +1644,9 @@ pushed back into the input stream.  Do not do this more than once.
        call msg_bug (" Lexer: lex_back fails; probably called twice")
     end if
   end subroutine lexer_put_back
-  
+
 @ %def lexer_put__back
-@ 
+@
 \subsection{Diagnostics}
 For debugging: print just the setup
 <<Lexer: public>>=
@@ -1715,7 +1715,7 @@ and a pointer to the current column within the line.
   end subroutine lexer_show_source
 
 @ %def lexer_show_source
-@ 
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[lexers_ut.f90]]>>=
@@ -1724,13 +1724,13 @@ Test module, followed by the corresponding implementation module.
 module lexers_ut
   use unit_tests
   use lexers_uti
-  
+
 <<Standard module head>>
 
 <<Lexer: public test>>
 
 contains
-  
+
 <<Lexer: test driver>>
 
 end module lexers_ut
@@ -1767,7 +1767,7 @@ end module lexers_uti
 
 @ %def lexer_test
 @ Test the lexer by lexing and printing all lexemes from unit [[u]],
-one per line, using preset conventions. 
+one per line, using preset conventions.
 <<Lexer: execute tests>>=
   call test (lexer_1, "lexer_1", &
        "check lexer", u, results)
@@ -1800,7 +1800,7 @@ one per line, using preset conventions.
   end subroutine lexer_1
 
 @ %def lexer_1
-@ 
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Syntax rules}
@@ -1962,14 +1962,14 @@ anything.  Finalizer: not needed (no pointer components).
        call syntax_rule_set_separator (rule)
     end select
   end subroutine syntax_rule_init
-       
+
 @ %def syntax_rule_init
 @ These characters will not be enclosed in quotes when writing syntax
 rules:
 <<Syntax: parameters>>=
   character(*), parameter :: &
            UNQUOTED = "(),|_"//LCLETTERS//UCLETTERS//DIGITS
-@ 
+@
 \subsection{I/O}
 Write an account of the rule.  Setting [[short]] true will suppress
 the node type.  Setting [[key_only]] true will suppress the
@@ -1996,7 +1996,7 @@ newline.
     case (S_LOGICAL);    call write_atom ("LOGICAL", typ)
     case (S_INTEGER);    call write_atom ("INTEGER", typ)
     case (S_REAL);       call write_atom ("REAL", typ)
-    case (S_COMPLEX);    call write_atom ("COMPLEX", typ)    
+    case (S_COMPLEX);    call write_atom ("COMPLEX", typ)
     case (S_IDENTIFIER); call write_atom ("IDENTIFIER", typ)
     case (S_KEYWORD);    call write_atom ("KEYWORD", typ)
     case (S_QUOTED)
@@ -2209,7 +2209,7 @@ Set the separator and delimiter entries, using defaults:
   end subroutine syntax_rule_check
 
 @ %def syntax_rule_check
-@ 
+@
 \subsection{Accessing rules}
 This is the API for syntax rules:
 <<Syntax: public>>=
@@ -2299,7 +2299,7 @@ loop bounds, we do not need a check in the second routine.
   end function syntax_rule_last_repetitive
 
 @ %def syntax_rule_last_optional syntax_rule_last_repetitive
-@ 
+@
 Return true if the rule is atomic, i.e., logical, real, keyword etc.
 <<Syntax: public>>=
   public :: syntax_rule_is_atomic
@@ -2317,7 +2317,7 @@ Return true if the rule is atomic, i.e., logical, real, keyword etc.
   end function syntax_rule_is_atomic
 
 @ %def syntax_rule_is_atomic
-@ 
+@
 \subsection{Syntax tables}
 A syntax table contains the tree of syntax rules and, for direct
 parser access, the list of valid keywords.
@@ -2327,7 +2327,7 @@ The syntax contains an array of rules and a list of keywords.  The
 array is actually used as a tree, where the top rule is the first
 array element, and the other rules are recursively pointed to by this
 first rule.  (No rule should be used twice or be unused.)  The keyword
-list is derived from the rule tree.  
+list is derived from the rule tree.
 
 Objects of this type need the target attribute if they are associated
 with a lexer.  The keyword list will be pointed to by this lexer.
@@ -2519,7 +2519,7 @@ table and associate the parent rule with them.
             call syntax_rule_set_modifier &
                  (rule, lexeme_get_string (lexeme(n_token)))
             n_children = n_token - 4
-         else 
+         else
             if (n_token <= 3) call broken_rule (rule)
             n_children = n_token - 3
          end if
@@ -2737,7 +2737,7 @@ Write a readable representation of the syntax table
   end subroutine syntax_write
 
 @ %def syntax_write
-@ 
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The parser}
@@ -2761,7 +2761,7 @@ module parser
   use md5
   use lexers
   use syntax_rules
-  
+
 <<Standard module head>>
 
 <<Parser: public>>
@@ -2922,7 +2922,7 @@ and key.  Otherwise, set the type to [[S_UNKNOWN]].
     allocate (token%kval)
     token%kval = key
   end subroutine token_init_key
-  
+
 @ %def token_init_key
 @ Reset a token to an empty state, freeing allocated memory, and
 deallocate the token itself.
@@ -3001,7 +3001,7 @@ other pointers remain disassociated.
     case (S_LOGICAL);    allocate (token%lval);  token%lval = token_in%lval
     case (S_INTEGER);    allocate (token%ival);  token%ival = token_in%ival
     case (S_REAL);       allocate (token%rval);  token%rval = token_in%rval
-    case (S_COMPLEX); allocate (token%cval);  token%cval = token_in%cval    
+    case (S_COMPLEX); allocate (token%cval);  token%cval = token_in%cval
     case (S_IDENTIFIER); allocate (token%sval);  token%sval = token_in%sval
     case (S_QUOTED);     allocate (token%sval);  token%sval = token_in%sval
        allocate (token%quote(2));  token%quote = token_in%quote
@@ -3057,7 +3057,7 @@ other pointers remain disassociated.
   end subroutine token_assign_string
 
 @ %def token_assign
-@ 
+@
 \subsection{Retrieve token contents}
 These functions all do a trivial sanity check that should avoid
 crashes.
@@ -3091,7 +3091,7 @@ crashes.
        call token_mismatch (token, "real")
     end if
   end function token_get_real
-  
+
   function token_get_cmplx (token) result (cval)
     complex(default) :: cval
     type(token_t), intent(in) :: token
@@ -3144,7 +3144,7 @@ crashes.
   end subroutine token_mismatch
 
 @ %def token_mismatch
-@ 
+@
 \subsection{The parse tree: nodes}
 The parser will generate a parse tree from the input stream.  Each
 node in this parse tree points to the syntax rule that was applied.
@@ -3262,7 +3262,7 @@ sub-nodes.
   end subroutine parse_node_final
 
 @ %def parse_node_final
-@ 
+@
 \subsection{Filling nodes}
 The constructors allocate and initialize the node.  There are two
 possible initializers (in a later version, should correspond to
@@ -3298,7 +3298,7 @@ If the lexeme argument is absent, the token is left empty.
     node%rule => rule
     call token_init_key (node%token, syntax_rule_get_key (rule))
   end subroutine parse_node_create_key
-    
+
 @ %def parse_node_create_key
 @ This version allows us to manually create a leaf node that holds a fixed
 value.  Only one of the optional values should be provided.
@@ -3316,7 +3316,7 @@ value.  Only one of the optional values should be provided.
     node%rule => rule
     call parse_node_set_value (node, ival, rval, cval, sval, lval)
   end subroutine parse_node_create_value
-    
+
 @ %def parse_node_create_value
 @ Directly set the value without changing anything else.
 <<Parser: public>>=
@@ -3341,7 +3341,7 @@ value.  Only one of the optional values should be provided.
        node%token = sval
     end if
   end subroutine parse_node_set_value
-    
+
 @ %def parse_node_set_value
 @ Second, branch nodes.  We first assign the rule:
 <<Parser: public>>=
@@ -3353,7 +3353,7 @@ value.  Only one of the optional values should be provided.
     allocate (node)
     node%rule => rule
   end subroutine parse_node_create_branch
-    
+
 @ %def parse_node_create_branch
 @ Copy a node.  This is a shallow copy.  Note that we have to nullify the
 [[next]] pointer if we don't want to inherit the context of the original node.
@@ -3370,7 +3370,7 @@ value.  Only one of the optional values should be provided.
     end select
     copy%next => null ()
   end subroutine parse_node_copy
-  
+
 @ %def parse_node_copy
 @ Append a sub-node.  The sub-node must exist and be a valid target,
 otherwise nothing is done.
@@ -3391,7 +3391,7 @@ otherwise nothing is done.
        node%sub_last => sub
     end if
   end subroutine parse_node_append_sub
-  
+
 @ %def parse_node_append_sub
 @ For easy access, once the list is complete we count the number of
 sub-nodes.  If there are no subnodes, the whole node is deleted.
@@ -3421,7 +3421,7 @@ adheres to the syntax of the new rule.
     type(syntax_rule_t), intent(in), target :: rule
     node%rule => rule
   end subroutine parse_node_replace_rule
-  
+
 @ %def parse_node_replace_rule
 @ Replace the last subnode by the target node.  Since the subnodes are
 stored as a linked list, we can do this only if we copy the subnodes.
@@ -3474,7 +3474,7 @@ objects as the subnodes of the target node.
   end subroutine parse_node_replace_last_sub
 
 @ %def parse_node_replace_last_sub
-@ 
+@
 \subsection{Accessing nodes}
 Return the node contents.  Check if pointers are associated.  No
 check when accessing a sub-node; assume that [[parse_node_n_sub]] is always
@@ -3505,7 +3505,7 @@ The token extractor returns a pointer.
   end function parse_node_get_rule_ptr
 
   function parse_node_get_n_sub (node) result (n)
-    class(parse_node_t), intent(in) :: node 
+    class(parse_node_t), intent(in) :: node
     integer :: n
     n = node%n_sub
   end function parse_node_get_n_sub
@@ -3529,7 +3529,7 @@ The token extractor returns a pointer.
     end if
     call parse_node_check (sub, tag, required)
   end function parse_node_get_sub_ptr
-  
+
   function parse_node_get_next_ptr (sub, n, tag, required) result (next)
     class(parse_node_t), intent(in), target :: sub
     type(parse_node_t), pointer :: next
@@ -3549,7 +3549,7 @@ The token extractor returns a pointer.
     end if
     call parse_node_check (next, tag, required)
   end function parse_node_get_next_ptr
-  
+
   function parse_node_get_last_sub_ptr (node, tag, required) result (sub)
     type(parse_node_t), pointer :: sub
     type(parse_node_t), intent(in), target :: node
@@ -3558,12 +3558,12 @@ The token extractor returns a pointer.
     sub => node%sub_last
     call parse_node_check (sub, tag, required)
   end function parse_node_get_last_sub_ptr
-  
+
 @ %def parse_node_get_rule_ptr
 @ %def parse_node_get_n_sub parse_node_get_sub_ptr
 @ %def parse_node_get_next_ptr
 @ %def parse_node_get_last_sub_ptr
-<<Parser: procedures>>=       
+<<Parser: procedures>>=
   subroutine parse_node_undefined (node, obj)
     type(parse_node_t), intent(in) :: node
     character(*), intent(in) :: obj
@@ -3642,7 +3642,7 @@ actual nodes do not match
     real(default) :: rval
     rval = token_get_real (parse_node_get_token_ptr (node))
   end function parse_node_get_real
-  
+
   function parse_node_get_cmplx (node) result (cval)
     class(parse_node_t), intent(in), target :: node
     complex(default) :: cval
@@ -3698,7 +3698,7 @@ to a scratch file and to evaluate the MD5 sum of that file.
   end function parse_node_get_md5sum
 
 @ %def parse_node_get_md5sum
-@ 
+@
 \subsection{The parse tree}
 The parse tree is a tree of nodes, where leaf nodes hold a valid
 token, while branch nodes point to a list of sub-nodes.
@@ -3903,7 +3903,7 @@ If [[sep]] is true, we look for a separator after each element.
           else if (i == 1) then
              ok = .false.
              exit SCAN_RULE
-          else             
+          else
              call parse_error (rule, lexeme)
           end if
        end if
@@ -4057,7 +4057,7 @@ a bug.
   end subroutine parse_tree_bug
 
 @ %def parse_tree_bug
-@ 
+@
 \subsection{Access the parser}
 For scanning the parse tree we give access to the top node, as a node
 pointer.  Of course, there should be no write access.
@@ -4073,7 +4073,7 @@ pointer.  Of course, there should be no write access.
 @ %def parse_tree_get_root_ptr
 @
 \subsection{Tools}
-This operation traverses the parse tree and simplifies any occurences of a 
+This operation traverses the parse tree and simplifies any occurences of a
 set of syntax rules.  If such a parse node has only one sub-node, it is
 replaced by that subnode.  (This makes sense only of the rules to eliminate
 have no meaningful token.)
@@ -4111,7 +4111,7 @@ have no meaningful token.)
             else
                parse_tree%root_node => pn
             end if
-            if (associated (pn_tmp%next)) then 
+            if (associated (pn_tmp%next)) then
                pn%next => pn_tmp%next
             else if (associated (pn_parent)) then
                pn_parent%sub_last => pn
@@ -4180,7 +4180,7 @@ unassociated.
   end function parse_tree_get_process_ptr
 
 @ %def parse_tree_get_process_ptr
-@ 
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[parser_ut.f90]]>>=
@@ -4189,13 +4189,13 @@ Test module, followed by the corresponding implementation module.
 module parser_ut
   use unit_tests
   use parser_uti
-  
+
 <<Standard module head>>
 
 <<Parser: public test>>
 
 contains
-  
+
 <<Parser: test driver>>
 
 end module parser_ut
@@ -4227,9 +4227,9 @@ end module parser_uti
   subroutine parse_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<Parser: execute tests>>  
+  <<Parser: execute tests>>
   end subroutine parse_test
-  
+
 @  %def parse_test
 @ This checks the parser.
 <<Parser: execute tests>>=
@@ -4242,18 +4242,18 @@ end module parser_uti
   subroutine parse_1 (u)
     use ifiles
     use lexers
-    integer, intent(in) :: u    
+    integer, intent(in) :: u
 
     type(ifile_t) :: ifile
     type(syntax_t), target :: syntax
     type(lexer_t) :: lexer
     type(stream_t), target :: stream
     type(parse_tree_t), target :: parse_tree
-    
+
     write (u, "(A)")  "* Test output: Parsing"
     write (u, "(A)")  "*   Purpose: test parse routines"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     call ifile_append (ifile, "SEQ expr = term addition*")
     call ifile_append (ifile, "SEQ addition = plus_or_minus term")
     call ifile_append (ifile, "SEQ term = factor multiplication*")
@@ -4270,17 +4270,17 @@ end module parser_uti
     call ifile_append (ifile, "KEY '/'")
     call ifile_append (ifile, "KEY '^'")
     call ifile_append (ifile, "REA real")
-    
+
     write (u, "(A)")  "* File contents (syntax definition):"
     call ifile_write (ifile, u)
     write (u, "(A)")  "EOF"
     write (u, "(A)")
-    
+
     call syntax_init (syntax, ifile)
     call ifile_final (ifile)
     call syntax_write (syntax, u)
     write (u, "(A)")
-    
+
     call lexer_init (lexer, &
          comment_chars = "", &
          quote_chars = "'", &
@@ -4290,46 +4290,46 @@ end module parser_uti
          keyword_list = syntax_get_keyword_list_ptr (syntax))
     call lexer_write_setup (lexer, u)
     write (u, "(A)")
-    
+
     call ifile_append (ifile, "(27+8^3-2/3)*(4+7)^2*99")
     write (u, "(A)")  "* File contents (input file):"
     call ifile_write (ifile, u)
     write (u, "(A)")  "EOF"
     print *
-    
+
     call stream_init (stream, ifile)
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (parse_tree, syntax, lexer)
     call stream_final (stream)
     call parse_tree_write (parse_tree, u, .true.)
     print *
-    
+
     write (u, "(A)")  "* Cleanup, everything should now be empty:"
     write (u, "(A)")
-    
+
     call parse_tree_final (parse_tree)
     call parse_tree_write (parse_tree, u, .true.)
     write (u, "(A)")
-    
+
     call lexer_final (lexer)
     call lexer_write_setup (lexer, u)
     write (u, "(A)")
-    
+
     call ifile_final (ifile)
     write (u, "(A)")  "* File contents:"
     call ifile_write (ifile, u)
     write (u, "(A)")  "EOF"
     write (u, "(A)")
-    
+
     call syntax_final (syntax)
     call syntax_write (syntax, u)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: parser_1"    
-    
+    write (u, "(A)")  "* Test output end: parser_1"
+
   end subroutine parse_1
 @ %def parse_1
-@ 
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{XML Parser}
@@ -4381,7 +4381,7 @@ and presented to the caller for the next read.
    contains
    <<XML: cstream: TBP>>
   end type cstream_t
-  
+
 @ %def cached_stream
 @ The initializers are simply inherited.
 
@@ -4394,7 +4394,7 @@ Finalizer: also inherited, in essence:
     stream%cache_is_empty = .true.
     call stream%stream_t%final ()
   end subroutine cstream_final
-  
+
 @ %def cstream_final
 @ Get record: now, if there is a cache string, return this instead of
 the record from the stream.
@@ -4413,7 +4413,7 @@ the record from the stream.
        iostat = 0
     end if
   end subroutine cstream_get_record
-  
+
 @ %def cstream_get_record
 @ Revert: return the (partially read) record to the stream, putting it
 in the cache.
@@ -4430,7 +4430,7 @@ in the cache.
        call msg_bug ("CStream: attempt to revert twice")
     end if
   end subroutine cstream_revert_record
-  
+
 @ %def cstream_revert_record
 @
 \subsection{Attributes}
@@ -4442,9 +4442,9 @@ attribute is defined, the [[known]] flag indicates this.
      type(string_t) :: value
      logical :: known = .false.
    contains
-   <<XML: attribute: TBP>>     
+   <<XML: attribute: TBP>>
   end type attribute_t
-  
+
 @ %def attribute_t
 @ Output in standard format, non-advancing.  (If the value is unknown,
 we indicate this by a question mark, which is non-standard.)
@@ -4463,7 +4463,7 @@ we indicate this by a question mark, which is non-standard.)
        write (u, "('?')", advance = "no")
     end if
   end subroutine attribute_write
-    
+
 @ %def attribute_write
 @ This is a genuine constructor.  The value is optional.
 <<XML: public>>=
@@ -4493,7 +4493,7 @@ we indicate this by a question mark, which is non-standard.)
     attribute%value = value
     attribute%known = .true.
   end subroutine attribute_set_value
-  
+
 @ %def attribute_set_value
 @ Extract a value.  If unset, return [["?"]]
 <<XML: attribute: TBP>>=
@@ -4508,7 +4508,7 @@ we indicate this by a question mark, which is non-standard.)
        value = "?"
     end if
   end function attribute_get_value
-  
+
 @ %def attribute_get_value
 @
 \subsection{The Tag Type}
@@ -4526,7 +4526,7 @@ content or not.  The content itself is not stored in the data structure.
    contains
    <<XML: tag: TBP>>
   end type xml_tag_t
-  
+
 @ %def xml_tag_t
 @ Initialization.  There are different versions, depending on content.
 <<XML: tag: TBP>>=
@@ -4541,7 +4541,7 @@ content or not.  The content itself is not stored in the data structure.
     allocate (tag%attribute (0))
     if (present (has_content))  tag%has_content = has_content
   end subroutine xml_tag_init_no_attributes
-  
+
 @ %def xml_tag_init_no_attributes
 @ This version sets attributes.
 <<XML: tag: TBP>>=
@@ -4558,7 +4558,7 @@ content or not.  The content itself is not stored in the data structure.
     tag%attribute = attribute
     if (present (has_content))  tag%has_content = has_content
   end subroutine xml_tag_init_with_attributes
-  
+
 @ %def xml_tag_init_with_attributes
 @ Set an attribute value explicitly.
 <<XML: tag: TBP>>=
@@ -4570,7 +4570,7 @@ content or not.  The content itself is not stored in the data structure.
     type(string_t), intent(in) :: value
     call tag%attribute(i)%set_value (value)
   end subroutine xml_tag_set_attribute
-  
+
 @ %def xml_tag_set_attribute
 @ Get an attribute value.
 <<XML: tag: TBP>>=
@@ -4582,7 +4582,7 @@ content or not.  The content itself is not stored in the data structure.
     type(string_t) :: value
     value = tag%attribute(i)%get_value ()
   end function xml_tag_get_attribute
-  
+
 @ %def xml_tag_set_attribute
 @ Output to an I/O unit, default STDOUT.  We use non-advancing output.
 <<XML: tag: TBP>>=
@@ -4605,7 +4605,7 @@ content or not.  The content itself is not stored in the data structure.
        write (u, "(' />')", advance = "no")
     end if
   end subroutine xml_tag_write
-  
+
 @ %def xml_tag_write
 @ If there is content, we should write the context next (arbitrary
 format), the write the corresponding closing tag.  Again, non-advancing.
@@ -4619,7 +4619,7 @@ format), the write the corresponding closing tag.  Again, non-advancing.
     u = given_output_unit (unit)
     write (u, "('</',A,'>')", advance = "no")  char (tag%name)
   end subroutine xml_tag_close
-    
+
 @ %def xml_tag_close
 @ Given content as a single string, we can write tag, content, and
 closing at once
@@ -4637,7 +4637,7 @@ closing at once
     write (u, "(A)", advance = "no")  char (content)
     call tag%close (u)
   end subroutine xml_tag_write_with_content
-  
+
 @ %def xml_tag_write_with_content
 @ Input from stream.  We know what we are looking for, so we check if
 the name matches, then fill attributes.  We report an error if (a) an
@@ -4673,7 +4673,7 @@ XML.
        ! Look for comment beginning
        p2 = p1 + 3
        if (extract (string, p1, p2) /= "<!--")  exit FIND_NON_COMMENT
-       
+
        ! Look for comment end, then restart
        string = extract (string, p2 + 1)
        FIND_COMMENT_END: do
@@ -4729,7 +4729,7 @@ XML.
           end if
 
           ! Return trailing text to the stream
-          string = extract (string, p2 + 1) 
+          string = extract (string, p2 + 1)
           if (string /= "")  call cstream%revert_record (string)
           success = .true.
 
@@ -4749,13 +4749,13 @@ XML.
       end select
       success = .false.
     end subroutine err_io
-    
+
     subroutine err_incomplete ()
       call msg_fatal ("XML: Error reading tag '" // char (tag%name) &
            // "': tag incomplete")
       success = .false.
     end subroutine err_incomplete
-    
+
   end subroutine xml_tag_read
 
 @ %def xml_tag_read
@@ -4773,7 +4773,7 @@ report this.
     character(2), parameter :: WS = BLANK // TAB
     type(string_t) :: name, value
     integer :: p1, p2, i
-    
+
     p1 = verify (string, WS);  if (p1 == 0)  call err ()
     p2 = p1
 
@@ -4790,7 +4790,7 @@ report this.
           p2 = scan (string, '=')
           if (p2 == 0)  call err ()
           name = trim (extract (string, p1, p2 - 1))
-          
+
           ! Look for '"'
           string = extract (string, p2 + 1)
           p1 = verify (string, WS);  if (p1 == 0)  call err ()
@@ -4810,21 +4810,21 @@ report this.
                 exit SCAN_KNOWN_ATTRIBUTES
              end if
           end do SCAN_KNOWN_ATTRIBUTES
-          
+
           string = extract (string, p2 + 1)
           done = .false.
        end if
     end if
 
   contains
-    
+
     subroutine err ()
       call msg_fatal ("XML: Error reading attributes of '" // char (tag%name) &
            // "': syntax error")
     end subroutine err
-    
+
   end subroutine xml_tag_read_attribute
-    
+
 @ %def xml_tag_read_attribute
 @ Read the content string of a tag.  We check for the appropriate
 closing tag and report it.  If a closing tag does not match in name,
@@ -4860,7 +4860,7 @@ content.
           p1 = verify (string, WS);  if (p1 == 0)  call err_incomplete ()
           p2 = p1 + len (tag%name) - 1
           if (extract (string, p1, p2) == tag%name) then
-             
+
              ! Tag name matches: look for final >
              string = extract (string, p2 + 1)
              p1 = verify (string, WS);  if (p1 == 0)  call err_incomplete ()
@@ -4877,9 +4877,9 @@ content.
           end if
        end if
     end do FIND_CLOSING
-    
+
   contains
-    
+
     subroutine err_io ()
       select case (iostat)
       case (:-1)
@@ -4891,15 +4891,15 @@ content.
       end select
       closing = .false.
     end subroutine err_io
-    
+
     subroutine err_incomplete ()
       call msg_fatal ("XML: Error reading content '" // char (tag%name) &
            // "': closing tag incomplete")
       closing = .false.
     end subroutine err_incomplete
-    
+
   end subroutine xml_tag_read_content
-          
+
 @ %def xml_tag_read_content
 @
 \subsection{Unit tests}
@@ -4910,13 +4910,13 @@ Test module, followed by the corresponding implementation module.
 module xml_ut
   use unit_tests
   use xml_uti
-  
+
 <<Standard module head>>
 
 <<XML: public test>>
 
 contains
-  
+
 <<XML: test driver>>
 
 end module xml_ut
@@ -4953,7 +4953,7 @@ end module xml_uti
     type(test_results_t), intent(inout) :: results
   <<XML: execute tests>>
 end subroutine xml_test
-  
+
 @ %def xml_test
 @
 \subsection{Auxiliary Routines}
@@ -4990,11 +4990,11 @@ Write a tag and read it again, using a temporary file.
     integer :: u_tmp
     type(cstream_t) :: cstream
     logical :: success
-    
+
     write (u, "(A)")  "* Test output: xml_1"
     write (u, "(A)")  "*   Purpose: write and read tag"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Empty tag"
     write (u, *)
 
@@ -5021,7 +5021,7 @@ Write a tag and read it again, using a temporary file.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with preceding blank lines"
     write (u, *)
@@ -5052,7 +5052,7 @@ Write a tag and read it again, using a temporary file.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with preceding comments"
     write (u, *)
@@ -5085,7 +5085,7 @@ Write a tag and read it again, using a temporary file.
     deallocate (tag)
 
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with name mismatch"
     write (u, *)
@@ -5113,7 +5113,7 @@ Write a tag and read it again, using a temporary file.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_1"
 
@@ -5140,10 +5140,10 @@ Write and read two tags, one of them optional.
     write (u, "(A)")  "* Test output: xml_2"
     write (u, "(A)")  "*   Purpose: handle optional tag"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Optional tag present"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -5178,11 +5178,11 @@ Write and read two tags, one of them optional.
     deallocate (tag1, tag2)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Optional tag absent"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -5213,7 +5213,7 @@ Write and read two tags, one of them optional.
     deallocate (tag1, tag2)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_2"
 
@@ -5241,10 +5241,10 @@ Write and read a tag with single-line content.
     write (u, "(A)")  "* Test output: xml_3"
     write (u, "(A)")  "*   Purpose: handle tag with content"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Tag without content"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -5270,10 +5270,10 @@ Write and read a tag with single-line content.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")  "* Tag with content"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -5302,11 +5302,11 @@ Write and read a tag with single-line content.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Tag with multiline content"
     write (u, *)
-    
+
     u_tmp = free_unit ()
     open (u_tmp, status = "scratch", action = "readwrite")
 
@@ -5342,7 +5342,7 @@ Write and read a tag with single-line content.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_3"
 
@@ -5365,11 +5365,11 @@ Write a tag and read it again, using a temporary file.
     integer :: u_tmp
     type(cstream_t) :: cstream
     logical :: success
-    
+
     write (u, "(A)")  "* Test output: xml_4"
     write (u, "(A)")  "*   Purpose: handle tag with attributes"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Tag with one mandatory and one optional attribute,"
     write (u, "(A)")  "* unknown attribute ignored"
     write (u, *)
@@ -5399,7 +5399,7 @@ Write a tag and read it again, using a temporary file.
     deallocate (tag)
     close (u_tmp)
     call cstream%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: xml_4"
 

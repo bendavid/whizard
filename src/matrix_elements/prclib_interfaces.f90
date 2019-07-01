@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module prclib_interfaces
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -92,7 +92,7 @@ module prclib_interfaces
      procedure :: write_col_state_call => prc_writer_f_module_write_col_state_call
      procedure :: write_color_factors_call => prc_writer_f_module_write_color_factors_call
   end type prc_writer_f_module_t
-  
+
   type, extends (prc_writer_t), abstract :: prc_writer_c_lib_t
    contains
      procedure :: write_md5sum_call => prc_writer_c_lib_write_md5sum_call
@@ -102,7 +102,7 @@ module prclib_interfaces
           prc_writer_c_lib_write_color_factors_call
      procedure :: write_standard_interface => prc_writer_c_lib_write_interface
   end type prc_writer_c_lib_t
-  
+
   type :: prclib_driver_record_t
      type(string_t) :: id
      type(string_t) :: model_name
@@ -204,14 +204,14 @@ module prclib_interfaces
      procedure :: get_md5sum_driver => prclib_driver_get_md5sum_driver
      procedure :: get_md5sum_source => prclib_driver_get_md5sum_source
   end type prclib_driver_t
-  
+
   type, extends (prclib_driver_t) :: prclib_driver_dynamic_t
      type(dlaccess_t) :: dlaccess
    contains
      procedure :: check_dlerror => prclib_driver_check_dlerror
      procedure :: get_c_funptr => prclib_driver_dynamic_get_c_funptr
   end type prclib_driver_dynamic_t
-  
+
 
   abstract interface
      function get_const_string () result (string)
@@ -227,7 +227,7 @@ module prclib_interfaces
        type(string_t), intent(in) :: id
      end subroutine write_code_file
   end interface
-  
+
   abstract interface
      subroutine write_code (writer, unit, id)
        import
@@ -236,7 +236,7 @@ module prclib_interfaces
        type(string_t), intent(in) :: id
      end subroutine write_code
   end interface
-  
+
   abstract interface
      subroutine write_code_os (writer, unit, id, os_data, testflag)
        import
@@ -247,7 +247,7 @@ module prclib_interfaces
        logical, intent(in), optional :: testflag
      end subroutine write_code_os
   end interface
-  
+
   abstract interface
      subroutine write_feature_code (writer, unit, id, feature)
        import
@@ -256,7 +256,7 @@ module prclib_interfaces
        type(string_t), intent(in) :: id, feature
      end subroutine write_feature_code
   end interface
-  
+
   abstract interface
      subroutine prc_write_wrapper (writer, unit, id, feature)
        import
@@ -330,7 +330,7 @@ module prclib_interfaces
        type(c_funptr), intent(out) :: fptr
      end subroutine prc_get_fptr
   end interface
-  
+
   abstract interface
      subroutine write_driver_code (unit, prefix, id, procname)
        import
@@ -363,26 +363,26 @@ module prclib_interfaces
 
 
 contains
-  
+
   function prc_writer_get_procname (feature) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: feature
     name = feature
   end function prc_writer_get_procname
-  
+
   function prc_writer_get_c_procname (writer, id, feature) result (name)
     class(prc_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id, feature
     type(string_t) :: name
     name = id // "_" // feature
   end function prc_writer_get_c_procname
-  
+
   function prc_writer_get_module_name (id) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: id
     name = id
   end function prc_writer_get_module_name
-  
+
   subroutine prc_writer_write_use_line (writer, unit, id, feature)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -396,7 +396,7 @@ contains
     class(prc_writer_t), intent(out) :: writer
     writer%md5sum = "1234567890abcdef1234567890abcdef"
   end subroutine prc_writer_init_test
-  
+
   subroutine prclib_driver_record_write (object, unit)
     class(prclib_driver_record_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -404,7 +404,7 @@ contains
     class(prc_writer_t), pointer :: writer
     write (unit, "(3x,A,2x,'[',A,']')")  &
          char (object%id), char (object%model_name)
-    if (allocated (object%feature)) then 
+    if (allocated (object%feature)) then
        writer => object%writer
        write (unit, "(5x,A,A)", advance="no") &
             char (writer%type_name ()), ":"
@@ -422,7 +422,7 @@ contains
     type(string_t), intent(in) :: feature
     name = record%writer%get_c_procname (record%id, feature)
   end function prclib_driver_record_get_c_procname
-  
+
   subroutine prclib_driver_record_write_use_line (record, unit, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
@@ -432,7 +432,7 @@ contains
        call writer%write_use_line (unit, record%id, feature)
     end select
   end subroutine prclib_driver_record_write_use_line
-  
+
   subroutine prclib_driver_record_write_interface (record, unit, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
@@ -443,7 +443,7 @@ contains
        call writer%write_interface (unit, record%id, feature)
     end select
   end subroutine prclib_driver_record_write_interface
-  
+
   subroutine prclib_driver_record_write_interfaces (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
@@ -452,7 +452,7 @@ contains
        call record%writer%write_interface (unit, record%id, record%feature(i))
     end do
   end subroutine prclib_driver_record_write_interfaces
-  
+
   subroutine prclib_driver_record_write_wrappers (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
@@ -484,8 +484,8 @@ contains
     integer, intent(in) :: unit
     logical, intent(in), optional :: libpath
     logical :: write_lib
-    integer :: i    
-    write_lib = .true.    
+    integer :: i
+    write_lib = .true.
     if (present (libpath))  write_lib = libpath
     write (unit, "(1x,A,A)")  &
          "External matrix-element code library: ", char (object%basename)
@@ -516,7 +516,7 @@ contains
        write (unit, "(1x,A)")  "Matrix-element code entries: [undefined]"
     end if
   end subroutine prclib_driver_write
-  
+
   subroutine dispatch_prclib_driver &
        (driver, basename, modellibs_ldflags)
     class(prclib_driver_t), intent(inout), allocatable :: driver
@@ -531,20 +531,20 @@ contains
     driver%basename = basename
     driver%modellibs_ldflags = modellibs_ldflags
   end subroutine dispatch_prclib_driver
-  
+
   subroutine prclib_driver_init (driver, n_processes)
     class(prclib_driver_t), intent(inout) :: driver
     integer, intent(in) :: n_processes
     driver%n_processes = n_processes
     allocate (driver%record (n_processes))
   end subroutine prclib_driver_init
-  
+
   subroutine prclib_driver_set_md5sum (driver, md5sum)
     class(prclib_driver_t), intent(inout) :: driver
     character(32), intent(in) :: md5sum
     driver%md5sum = md5sum
   end subroutine prclib_driver_set_md5sum
-  
+
   subroutine prclib_driver_set_record (driver, i, &
        id, model_name, features, writer)
     class(prclib_driver_t), intent(inout) :: driver
@@ -563,7 +563,7 @@ contains
        end associate
     end if
   end subroutine prclib_driver_set_record
-  
+
   subroutine prclib_driver_write_interfaces (driver, unit, feature)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -597,7 +597,7 @@ contains
     write (unit, "(A)")  "# Compiler"
     write (unit, "(A)")  "FC = " // char (os_data%fc)
     write (unit, "(A)")  "CC = " // char (os_data%cc)
-    write (unit, "(A)")  ""    
+    write (unit, "(A)")  ""
     write (unit, "(A)")  "# Included libraries"
     write (unit, "(A)")  "FCINCL = " // char (os_data%whizard_includes)
     write (unit, "(A)")  ""
@@ -614,12 +614,12 @@ contains
     write (unit, "(A)")  "LATEX = " // char (os_data%latex)
     write (unit, "(A)")  "MPOST = " // char (os_data%mpost)
     write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
-    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)    
+    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)
     write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
          char(os_data%whizard_texpath) // '"'
     write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
          char(os_data%whizard_texpath) // '"'
-    write (unit, "(A)")  ""    
+    write (unit, "(A)")  ""
     write (unit, "(A)")  "# Libtool"
     write (unit, "(A)")  "LIBTOOL = " // char (os_data%whizard_libtool)
     write (unit, "(A)")  "FCOMPILE = $(LIBTOOL) --tag=FC --mode=compile"
@@ -652,7 +652,7 @@ contains
     write (unit, "(A)")  "# Main targets"
     write (unit, "(A)")  "link: compile $(BASE).la"
     write (unit, "(A)")  "compile: source $(OBJECTS) $(TEX_OBJECTS) $(BASE).lo"
-    write (unit, "(A)")  "compile_tex: $(TEX_OBJECTS)"    
+    write (unit, "(A)")  "compile_tex: $(TEX_OBJECTS)"
     write (unit, "(A)")  "source: $(SOURCES) $(BASE).f90 $(TEX_SOURCES)"
     write (unit, "(A)")  ".PHONY: link diags compile compile_tex source"
     write (unit, "(A)")  ""
@@ -717,7 +717,7 @@ contains
        call driver%record(i)%write_wrappers (unit)
     end do
   end subroutine prclib_driver_generate_code
-  
+
   subroutine prclib_driver_write_module (unit, prefix)
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -830,7 +830,7 @@ contains
     write (unit, "(A)")  "  md5sum = '" // driver%md5sum // "'"
     write (unit, "(A)")  "end function " // char (prefix) // "md5sum"
   end subroutine prclib_driver_write_lib_md5sum_fun
-    
+
   subroutine write_get_n_processes_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -869,7 +869,7 @@ contains
       string = buffer(1)
     end subroutine set_string
   end subroutine get_string_via_cptr
-    
+
   subroutine write_string_to_array_fun (unit, prefix)
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -944,7 +944,7 @@ contains
     write (unit, "(A)")  "end subroutine " // char (prefix) &
          // "get_process_id_ptr"
   end subroutine write_get_process_id_fun
-  
+
   subroutine write_get_model_name_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -1033,7 +1033,7 @@ contains
     integer, intent(in) :: unit
     call record%writer%write_md5sum_call (unit, record%id)
   end subroutine prclib_driver_record_write_md5sum_call
-  
+
   subroutine prc_writer_f_module_write_md5sum_call (writer, unit, id)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1042,7 +1042,7 @@ contains
          char (writer%get_c_procname (id, var_str ("md5sum"))), " ())"
     write (unit, "(5x,9A)")  "cptr = c_loc (md5sum)"
   end subroutine prc_writer_f_module_write_md5sum_call
-  
+
   subroutine prc_writer_c_lib_write_md5sum_call (writer, unit, id)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1051,28 +1051,28 @@ contains
          "cptr =  ", &
          char (writer%get_c_procname (id, var_str ("get_md5sum"))), " ()"
   end subroutine prc_writer_c_lib_write_md5sum_call
-  
+
   function prclib_driver_get_process_id (driver, i) result (string)
     type(string_t) :: string
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     call get_string_via_cptr (string, i, driver%get_process_id_ptr)
   end function prclib_driver_get_process_id
-  
+
   function prclib_driver_get_model_name (driver, i) result (string)
     type(string_t) :: string
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     call get_string_via_cptr (string, i, driver%get_model_name_ptr)
   end function prclib_driver_get_model_name
-  
+
   function prclib_driver_get_md5sum (driver, i) result (string)
     type(string_t) :: string
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     call get_string_via_cptr (string, i, driver%get_md5sum_ptr)
   end function prclib_driver_get_md5sum
-  
+
   subroutine write_get_openmp_status_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -1124,7 +1124,7 @@ contains
     write (unit, "(9A)")  "end function ", char (prefix), &
          "get_", char (feature)
   end subroutine write_get_int_fun
-  
+
   subroutine write_case_int_fun (record, unit, i, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
@@ -1133,7 +1133,7 @@ contains
     write (unit, "(5x,A,I0,9A)")  "case (", i, ");  ", &
          char (feature), " = ", char (record%get_c_procname (feature))
   end subroutine write_case_int_fun
-  
+
   subroutine write_set_int_sub (driver, unit, prefix, feature)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -1163,14 +1163,14 @@ contains
     write (unit, "(9A)")  "end subroutine ", char (prefix), &
          "set_", char (feature), "_ptr"
   end subroutine write_set_int_sub
-  
+
   subroutine prclib_driver_record_write_int_sub_call (record, unit, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     type(string_t), intent(in) :: feature
     call record%writer%write_int_sub_call (unit, record%id, feature)
   end subroutine prclib_driver_record_write_int_sub_call
-  
+
   subroutine prc_writer_f_module_write_int_sub_call (writer, unit, id, feature)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1185,7 +1185,7 @@ contains
          char (feature), "_tmp", "(i,j)"
     write (unit, "(5x,9A)")  "end forall"
   end subroutine prc_writer_f_module_write_int_sub_call
-  
+
   subroutine prc_writer_c_lib_write_int_sub_call (writer, unit, id, feature)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1193,7 +1193,7 @@ contains
     write (unit, "(5x,9A)")  "call ", &
          char (writer%get_c_procname (id, feature)), " (", char (feature), ")"
   end subroutine prc_writer_c_lib_write_int_sub_call
-  
+
   subroutine write_set_col_state_sub (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -1234,7 +1234,7 @@ contains
     integer, intent(in) :: unit
     call record%writer%write_col_state_call (unit, record%id)
   end subroutine prclib_driver_record_write_col_state_call
-  
+
   subroutine prc_writer_f_module_write_col_state_call (writer, unit, id)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1256,7 +1256,7 @@ contains
          "ghost_flag(i + shape(2)*(j-1)) = ghost_flag_tmp(i,j)"
     write (unit, "(5x,9A)")  "end forall"
   end subroutine prc_writer_f_module_write_col_state_call
-  
+
   subroutine prc_writer_c_lib_write_col_state_call (writer, unit, id)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1265,7 +1265,7 @@ contains
          char (writer%get_c_procname (id, var_str ("col_state"))), &
          " (col_state, ghost_flag)"
   end subroutine prc_writer_c_lib_write_col_state_call
-  
+
   subroutine write_set_color_factors_sub (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -1299,13 +1299,13 @@ contains
     write (unit, "(A)")  "end subroutine " // char (prefix) &
          // "set_color_factors_ptr"
   end subroutine write_set_color_factors_sub
-  
+
   subroutine prclib_driver_record_write_color_factors_call (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     call record%writer%write_color_factors_call (unit, record%id)
   end subroutine prclib_driver_record_write_color_factors_call
-  
+
   subroutine prc_writer_f_module_write_color_factors_call (writer, unit, id)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1317,7 +1317,7 @@ contains
     write (unit, "(5x,9A)")  "cf_index2(1:shape(1)) = cf%i2"
     write (unit, "(5x,9A)")  "color_factors(1:shape(1)) = cf%factor"
   end subroutine prc_writer_f_module_write_color_factors_call
-  
+
   subroutine prc_writer_c_lib_write_color_factors_call (writer, unit, id)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1326,7 +1326,7 @@ contains
          char (writer%get_c_procname (id, var_str ("color_factors"))), &
          " (cf_index1, cf_index2, color_factors)"
   end subroutine prc_writer_c_lib_write_color_factors_call
-  
+
   subroutine prc_writer_c_lib_write_interface (writer, unit, id, feature)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1339,7 +1339,7 @@ contains
             " () result (cptr) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "implicit none"
-       write (unit, "(7x,9A)")  "type(c_ptr) :: cptr"    
+       write (unit, "(7x,9A)")  "type(c_ptr) :: cptr"
        write (unit, "(5x,9A)")  "end function ", &
             char (writer%get_c_procname (id, var_str ("get_md5sum")))
        write (unit, "(2x,9A)")  "end interface"
@@ -1350,7 +1350,7 @@ contains
             " () result (status) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "implicit none"
-       write (unit, "(7x,9A)")  "logical(c_bool) :: status"    
+       write (unit, "(7x,9A)")  "logical(c_bool) :: status"
        write (unit, "(5x,9A)")  "end function ", &
             char (writer%get_c_procname (id, feature))
        write (unit, "(2x,9A)")  "end interface"
@@ -1361,7 +1361,7 @@ contains
             " () result (n) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "implicit none"
-       write (unit, "(7x,9A)")  "integer(c_int) :: n"    
+       write (unit, "(7x,9A)")  "integer(c_int) :: n"
        write (unit, "(5x,9A)")  "end function ", &
             char (writer%get_c_procname (id, feature))
        write (unit, "(2x,9A)")  "end interface"
@@ -1426,7 +1426,7 @@ contains
          (pid, c_flv_state, int ([n_tot, n_flv], kind=c_int))
     flv_state = c_flv_state
   end subroutine prclib_driver_set_flv_state
-    
+
   subroutine prclib_driver_set_hel_state (driver, i, hel_state)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -1443,7 +1443,7 @@ contains
          (pid, c_hel_state, int ([n_tot, n_hel], kind=c_int))
     hel_state = c_hel_state
   end subroutine prclib_driver_set_hel_state
-    
+
   subroutine prclib_driver_set_col_state (driver, i, col_state, ghost_flag)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -1466,7 +1466,7 @@ contains
     col_state = c_col_state
     ghost_flag = c_ghost_flag
   end subroutine prclib_driver_set_col_state
-    
+
   subroutine prclib_driver_set_color_factors (driver, i, color_factors, cf_index)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -1491,7 +1491,7 @@ contains
     cf_index(1,:) = c_cf_index1
     cf_index(2,:) = c_cf_index2
   end subroutine prclib_driver_set_color_factors
-    
+
   subroutine write_get_fptr_sub (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
@@ -1539,21 +1539,21 @@ contains
     call os_system_call ("make source " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_source
-  
+
   subroutine prclib_driver_make_compile (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     call os_system_call ("make compile " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_compile
-  
+
   subroutine prclib_driver_make_link (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     call os_system_call ("make link " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_link
-  
+
   subroutine prclib_driver_clean_library (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1562,7 +1562,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_library
-  
+
   subroutine prclib_driver_clean_objects (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1571,7 +1571,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_objects
-  
+
   subroutine prclib_driver_clean_source (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1580,7 +1580,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_source
-  
+
   subroutine prclib_driver_clean_driver (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1589,7 +1589,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_driver
-  
+
   subroutine prclib_driver_clean_makefile (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1598,7 +1598,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_makefile
-  
+
   subroutine prclib_driver_clean (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1607,7 +1607,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean
-  
+
   subroutine prclib_driver_distclean (driver, os_data)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
@@ -1616,7 +1616,7 @@ contains
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_distclean
-  
+
   subroutine prclib_driver_clean_proc (driver, i, os_data)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -1629,22 +1629,22 @@ contains
            // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_proc
-  
+
   function prclib_driver_makefile_exists (driver) result (flag)
     class(prclib_driver_t), intent(in) :: driver
     logical :: flag
     inquire (file = char (driver%basename) // ".makefile", exist = flag)
   end function prclib_driver_makefile_exists
-  
+
   subroutine prclib_driver_load (driver, os_data, noerror)
     class(prclib_driver_t), intent(inout) :: driver
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: noerror
     type(c_funptr) :: c_fptr
     logical :: ignore
-    
+
     ignore = .false.;  if (present (noerror))  ignore = noerror
-    
+
     driver%libname = os_get_dlname (driver%basename, os_data, noerror, noerror)
     if (driver%libname == "")  return
     select type (driver)
@@ -1729,7 +1729,7 @@ contains
     driver%loaded = driver%loaded .and. associated (driver%get_fptr)
 
   end subroutine prclib_driver_load
-  
+
   subroutine prclib_driver_unload (driver)
     class(prclib_driver_t), intent(inout) :: driver
     select type (driver)
@@ -1758,14 +1758,14 @@ contains
     nullify (driver%set_color_factors_ptr)
     nullify (driver%get_fptr)
   end subroutine prclib_driver_unload
-    
+
   subroutine prclib_driver_check_dlerror (driver)
     class(prclib_driver_dynamic_t), intent(in) :: driver
     if (dlaccess_has_error (driver%dlaccess)) then
        call msg_fatal (char (dlaccess_get_error (driver%dlaccess)))
     end if
   end subroutine prclib_driver_check_dlerror
-  
+
   function prclib_driver_dynamic_get_c_funptr (driver, feature) result (c_fptr)
     class(prclib_driver_dynamic_t), intent(inout) :: driver
     type(string_t), intent(in) :: feature
@@ -1804,7 +1804,7 @@ contains
        close (u)
     end if
   end function prclib_driver_get_md5sum_makefile
-    
+
   function prclib_driver_get_md5sum_driver (driver) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     character(32) :: md5sum
@@ -1832,7 +1832,7 @@ contains
        close (u)
     end if
   end function prclib_driver_get_md5sum_driver
-    
+
   function prclib_driver_get_md5sum_source (driver, i) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -1842,7 +1842,7 @@ contains
     logical :: exist
     integer :: u, iostat
     md5sum = ""
-    
+
     filename = driver%record(i)%id // ".f90"
     inquire (file = char (filename), exist = exist)
     if (exist) then
@@ -1862,6 +1862,6 @@ contains
        close (u)
     end if
   end function prclib_driver_get_md5sum_source
-    
+
 
 end module prclib_interfaces

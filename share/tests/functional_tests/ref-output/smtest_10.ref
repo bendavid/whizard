@@ -18,6 +18,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_10d:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_10d_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_10d'
 |   Library name  = 'smtest_10_lib'
@@ -25,12 +31,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'smtest_10d_i1':   W+ => e+, nue [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'smtest_10d_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -53,13 +53,6 @@ sqrts =  7.000000000000E+03
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process smtest_10p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_10p'
-|   Library name  = 'smtest_10_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_10p_i1':   u, gl => d, W+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -69,6 +62,13 @@ sqrts =  7.000000000000E+03
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_10p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_10p'
+|   Library name  = 'smtest_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_10p_i1':   u, gl => d, W+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.

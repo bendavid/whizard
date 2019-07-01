@@ -1,0 +1,3283 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% WHIZARD code as NOWEB source: VEGAS algorithm
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{VEGAS Integration}
+\label{cha:vegas-integration}
+
+@ The backbone integrator of WHIZARD is a object-oriented implemetation of the VEGAS algorithm.
+
+<<[[vegas.f90]]>>=
+<<File header>>
+
+module vegas
+<<Use kinds>>
+  use diagnostics
+  use io_units
+  use format_utils, only: write_indent
+  use format_defs, only: FMT_14
+  use rng_base, only: rng_t
+
+<<Standard module head>>
+
+<<vegas: public>>
+
+<<vegas: parameters>>
+
+<<vegas: types>>
+
+<<vegas: interfaces>>
+
+contains
+
+<<vegas: procedures>>
+
+end module vegas
+@ %def vegas
+@
+\section{Integration modes}
+\label{sec:integration-modes}
+
+@ VEGAS operates in three different modes: [[vegas_mode_importance_only]], [[vegas_mode_importance]] or [[vegas_mode_stratified]].
+The default mode is [[vegas_mode_importance]], where the algorithm decides whether if it is possible to use importance sampling or stratified sampling.
+In low dimensions VEGAS uses strict stratified sampling.
+
+<<vegas: parameters>>=
+  integer, parameter, public :: VEGAS_MODE_IMPORTANCE = 0, &
+       & VEGAS_MODE_STRATIFIED = 1, VEGAS_MODE_IMPORTANCE_ONLY = 2
+@ %def vegas_mode_importance vegas_mode_stratified vegas_mode_importance_only
+@
+\section{Type: vegas\_func\_t}
+\label{sec:type:vegas_func_t}
+
+We define a abstract [[func]] type which only gives an interface to an [[evaluate]] procedure.
+The inside of implementation and also the optimization of are not a concern of the [[vegas]] implementation.
+<<vegas: public>>=
+  public :: vegas_func_t
+<<vegas: types>>=
+  type, abstract :: vegas_func_t
+     !
+   contains
+     procedure(vegas_func_evaluate), deferred, pass, public :: evaluate
+  end type vegas_func_t
+
+@ %def vegas_func_t
+@ The only procedure called in [[vegas]] is [[vegas_func_evaluate]].
+It takes a real value [[x]] and returns a real value [[f]].
+<<vegas: interfaces>>=
+  abstract interface
+     real(default) function vegas_func_evaluate (self, x) result (f)
+       import :: default, vegas_func_t
+       class(vegas_func_t), intent(inout) :: self
+       real(default), dimension(:), intent(in) :: x
+     end function vegas_func_evaluate
+  end interface
+
+@ %def vegas_func_evaluate
+@
+\section{Type: vegas\_config\_t}
+\label{sec:type:vegas_config_t}
+
+We store the complete configuration in a transparent container.
+The [[vegas_config_t]] object inside VEGAS must not be directly accesible.
+We provide a get method which returns a copy of the [[vegas_config_t]] object.
+
+Apart from the options which can be set by the constructor of [[vegas_t]] object, we store the run-time configuration [[n_calls]], [[calls_per_box]], [[n_bins]] and [[n_boxes]].
+Those are calculated and set accordingly by VEGAS.
+<<vegas: public>>=
+  public :: vegas_config_t
+<<vegas: types>>=
+  type :: vegas_config_t
+     integer :: n_dim = 0
+     real(default) :: alpha = 1.5
+     integer :: n_bins_max = 50
+     integer :: iterations = 5
+     integer :: mode = VEGAS_MODE_STRATIFIED
+     integer :: calls_per_box = 0
+     integer :: n_calls = 0
+     integer :: n_calls_min = 20
+     integer :: n_boxes = 1
+     integer :: n_bins = 1
+   contains
+   <<vegas: vegas config: TBP>>
+  end type vegas_config_t
+
+@ %def vegas_config_t, n_calls, calls_per_box, n_bins, n_boxes
+@ Write out the configuration of the grid.
+<<vegas: vegas config: TBP>>=
+  procedure, public :: write => vegas_config_write
+<<vegas: procedures>>=
+  subroutine vegas_config_write (self, unit, indent)
+    class(vegas_config_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Number of dimensions = ", self%n_dim
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Adaption power (alpha) = ", self%alpha
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Max. number of bins (per dim.) = ", self%n_bins_max
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Number of iterations = ", self%iterations
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Mode (stratified or importance) = ", self%mode
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Calls per box = ", self%calls_per_box
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Number of calls = ", self%n_calls
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Min. number of calls = ", self%n_calls_min
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Number of bins = ", self%n_bins
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Number of boxes = ", self%n_boxes
+  end subroutine vegas_config_write
+@ %def vegas_config_write
+@
+\section{Type: vegas\_grid\_t}
+\label{sec:type:-vegas_g}
+
+We provide a simple and transparent grid container. The container can then later
+be used, to export the actual grid.
+<<vegas: public>>=
+  public :: vegas_grid_t
+<<vegas: types>>=
+  type :: vegas_grid_t
+     integer :: n_dim = 0
+     integer :: n_bins = 0
+     real(default), dimension(:), allocatable :: x_lower
+     real(default), dimension(:), allocatable :: x_upper
+     real(default), dimension(:), allocatable :: delta_x
+     real(default), dimension(:,:), allocatable :: xi
+   contains
+   <<vegas: vegas grid: TBP>>
+  end type vegas_grid_t
+
+@ %def vegas_grid_t
+@ Output.
+<<vegas: vegas grid: TBP>>=
+  procedure, public :: write => vegas_grid_write
+<<vegas: procedures>>=
+  subroutine vegas_grid_write (self, unit, indent)
+    class(vegas_grid_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind, i, j
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    write (u, descr_fmt) "begin x_lower"
+    do j = 1, self%n_dim
+       call write_indent (u, ind)
+       write (u, double_array_fmt)  j, self%x_lower(j)
+    end do
+    write (u, descr_fmt) "end x_lower"
+    write (u, descr_fmt) "begin x_upper"
+    do j = 1, self%n_dim
+       call write_indent (u, ind)
+       write (u, double_array_fmt) j, self%x_upper(j)
+    end do
+    write (u, descr_fmt) "end x_upper"
+    write (u, descr_fmt) "begin delta_x"
+    do j = 1, self%n_dim
+       call write_indent (u, ind)
+       write (u, double_array_fmt)  j, self%delta_x(j)
+    end do
+    write (u, descr_fmt) "end delta_x"
+    write (u, descr_fmt) "begin xi"
+    do j = 1, self%n_dim
+       do i = 1, self%n_bins + 1
+          call write_indent (u, ind)
+          write (u, double_array2_fmt) i, j, self%xi(i, j)
+       end do
+    end do
+    write (u, descr_fmt) "end xi"
+  end subroutine vegas_grid_write
+
+@ %def vegas_grid_write
+@ Find the probability for a given [[x]] in the unit hypercube. We use a binary
+search algorithm to find the correct bin along each axis.
+<<vegas: vegas grid: TBP>>=
+  procedure, public :: get_probability => vegas_grid_get_probability
+<<vegas: procedures>>=
+  function vegas_grid_get_probability (self, x) result (g)
+    class(vegas_grid_t), intent(in) :: self
+    real(default), dimension(:), intent(in) :: x
+    real(default) :: g, y
+    integer :: j, i_lower, i_higher, i_mid
+    g = 1.
+    ndim: do j = 1, self%n_dim
+       y = (x(j) - self%x_lower(j)) / self%delta_x(j)
+       if (y >= 0. .or. y <= 1.) then
+          i_lower = 1
+          i_higher = self%n_bins + 1
+          search: do
+             if (i_lower >= (i_higher - 1)) then
+                g = g / (self%delta_x(j) * &
+                     & self%n_bins * (self%xi(i_higher, j) - self%xi(i_higher - 1, j)))
+                cycle ndim
+             end if
+             i_mid = (i_higher + i_lower) / 2
+             if (y > self%xi(i_mid, j)) then
+                i_lower = i_mid
+             else
+                i_higher = i_mid
+             end if
+          end do search
+       else
+          g = 0.
+          exit ndim
+       end if
+    end do ndim
+  end function vegas_grid_get_probability
+
+@ %def vegas_grid_get_probability
+@
+\section{Type: vegas\_result\_t}
+\label{sec:type:-vegas_r}
+
+We store the result of the latest iteration(s) in a transparent container.
+The [[vegas_result_t]] object inside VEGAS must not be directly accessible.
+We export the a copy of the result via a get-method of the [[vegas_t]] object.
+<<vegas: public>>=
+  public :: vegas_result_t
+<<vegas: types>>=
+  type :: vegas_result_t
+     integer :: it_start = 0
+     integer :: it_num = 0
+     integer :: samples = 0
+     real(default) :: sum_int_wgtd = 0.
+     real(default) :: sum_wgts
+     real(default) :: sum_chi = 0.
+     real(default) :: chi2 = 0.
+     real(default) :: efficiency = 0.
+     real(default) :: efficiency_pos = 0.
+     real(default) :: efficiency_neg = 0.
+     real(default) :: max_abs_f = 0.
+     real(default) :: max_abs_f_pos = 0.
+     real(default) :: max_abs_f_neg = 0.
+     real(default) :: result = 0.
+     real(default) :: std = 0.
+   contains
+   <<vegas: vegas result: TBP>>
+  end type vegas_result_t
+
+@ %def vegas_results_t
+@ Write out the current status of the integration result.
+<<vegas: vegas result: TBP>>=
+  procedure, public :: write => vegas_result_write
+<<vegas: procedures>>=
+  subroutine vegas_result_write (self, unit, indent)
+    class(vegas_result_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Start iteration = ", self%it_start
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Iteration number = ", self%it_num
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Sample number = ", self%samples
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 //")") "Sum of weighted integrals = ", self%sum_int_wgtd
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Sum of weights = ", self%sum_wgts
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Sum of chi = ", self%sum_chi
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "chi2 = ", self%chi2
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Overall efficiency = ", self%efficiency
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "f-positive efficiency = ", self%efficiency_pos
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "f-negative efficiency = ", self%efficiency_neg
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Maximum absolute overall value = ", self%max_abs_f
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Maximum absolute positive value = ", self%max_abs_f_pos
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Maximum absolute negative value = ", self%max_abs_f_neg
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Integral (of latest iteration) = ", self%result
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Standard deviation = ", self%std
+  end subroutine vegas_result_write
+
+@  %def vegas_results_write
+@
+\section{Type: vegas\_t}
+\label{sec:type:-vegas_t}
+
+The VEGAS object contains the methods for integration and grid resize- and
+refinement. We store the grid configuration and the (current) result in
+transparent containers alongside with the actual grid and the distribution.
+
+The values of the distribution depend on the chosen mode whether the function
+value or the variance is stored. The distribution is used after each iteration
+to refine the grid.
+<<vegas: public>>=
+  public :: vegas_t
+<<vegas: types>>=
+  type :: vegas_t
+     private
+     type(vegas_config_t) :: config
+     real(default) :: hypercube_volume = 0.
+     real(default) :: jacobian = 0.
+     real(default), dimension(:, :), allocatable :: d
+     real(default), dimension(:), allocatable :: weight
+     type(vegas_grid_t) :: grid
+     integer, dimension(:), allocatable :: bin
+     integer, dimension(:), allocatable :: box
+     type(vegas_result_t) :: result
+   contains
+   <<vegas: vegas: TBP>>
+  end type vegas_t
+
+@ %def vegas_t
+@ We overload the type constructor of [[vegas_t]] which initialises the
+mandatory argument [[n_dim]] and allocate memory for the grid.
+<<vegas: interfaces>>=
+  interface vegas_t
+     module procedure vegas_init
+  end interface vegas_t
+<<vegas: procedures>>=
+  type(vegas_t) function vegas_init (n_dim, alpha, n_bins_max, iterations, mode) result (self)
+    integer, intent(in) :: n_dim
+    integer, intent(in), optional :: n_bins_max
+    real(default), intent(in), optional :: alpha
+    integer, intent(in), optional :: iterations
+    integer, intent(in), optional :: mode
+    self%config%n_dim = n_dim
+    if (present (alpha)) self%config%alpha = alpha
+    if (present (n_bins_max)) self%config%n_bins_max = n_bins_max
+    if (present (iterations)) self%config%iterations = iterations
+    if (present (mode)) self%config%mode = mode
+    allocate (self%d(self%config%n_bins_max, n_dim), source=0.0_default)
+    allocate (self%grid%x_upper(n_dim), source=1.0_default)
+    allocate (self%grid%x_lower(n_dim), source=0.0_default)
+    allocate (self%grid%delta_x(n_dim), source=1.0_default)
+    allocate (self%grid%xi((self%config%n_bins_max + 1), n_dim), source=0.0_default)
+    allocate (self%weight(self%config%n_bins_max), source=0.0_default)
+    allocate (self%box(n_dim), source=1)
+    allocate (self%bin(n_dim), source=1)
+    self%config%n_bins = 1
+    self%config%n_boxes = 1
+    call self%set_limits (self%grid%x_lower, self%grid%x_upper)
+    call self%reset_grid ()
+    call self%reset_result ()
+  end function vegas_init
+
+@ %def vegas_init
+
+@ Finalize the grid. Deallocate grid memory.
+<<vegas: vegas: TBP>>=
+  procedure, public :: final => vegas_final
+<<vegas: procedures>>=
+  subroutine vegas_final (self)
+    class(vegas_t), intent(inout) :: self
+    deallocate (self%grid%x_upper)
+    deallocate (self%grid%x_lower)
+    deallocate (self%grid%delta_x)
+    deallocate (self%d)
+    deallocate (self%grid%xi)
+    deallocate (self%weight)
+    deallocate (self%box)
+    deallocate (self%bin)
+  end subroutine vegas_final
+@ %def vegas_final
+
+\section{Get-/Set-methods}
+\label{sec:set-get-methods}
+
+@ The VEGAS object prohibits direct access from outside. Communication is handle
+via get- or set-methods. Set the limits of integration. The defaults limits
+correspong the $n$-dimensionl unit hypercube.
+
+\textit{Remark:} After setting the limits, the grid is initialised, again.
+Previous results are lost due to recalculation of the overall jacobian.
+<<vegas: vegas: TBP>>=
+  procedure, public :: set_limits => vegas_set_limits
+<<vegas: procedures>>=
+  subroutine vegas_set_limits (self, x_lower, x_upper)
+    class(vegas_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x_lower
+    real(default), dimension(:), intent(in) :: x_upper
+    if (size (x_lower) /= self%config%n_dim &
+         & .or. size (x_upper) /= self%config%n_dim) then
+       write (msg_buffer, "(A, I5, A, I5, A, I5)") &
+            "VEGAS: [set_limits] n_dim of new lower/upper integration limit&
+            & does not match previously set n_dim. ", self%config%n_dim, " =/=&
+            & ", size (x_lower), " =/= ", size (x_upper)
+       call msg_fatal ()
+    end if
+    if (any(x_upper < x_lower)) then
+       call msg_fatal ("VEGAS: [set_limits] upper limits are smaller than lower limits.")
+    end if
+
+    if (any((x_upper - x_lower) > huge(0._default))) then
+       call msg_fatal ("VEGAS: [set_limits] upper and lower limits exceed rendering.")
+    end if
+    self%grid%x_upper = x_upper
+    self%grid%x_lower = x_lower
+    self%grid%delta_x = self%grid%x_upper - self%grid%x_lower
+    self%hypercube_volume = product (self%grid%delta_x)
+    call self%reset_result ()
+  end subroutine vegas_set_limits
+
+@ %def vegas_set_limits
+@ Set the number of calls. If the number of calls changed during different
+passes, we resize the grid preserving the probability density. We should reset
+the results after changing the number of calls which change the size of the grid
+and the running mode of VEGAS. But, this is a set method only for the number of
+calls.
+<<vegas: vegas: TBP>>=
+  procedure, public :: set_calls => vegas_set_n_calls
+<<vegas: procedures>>=
+  subroutine vegas_set_n_calls (self, n_calls)
+    class(vegas_t), intent(inout) :: self
+    integer, intent(in) :: n_calls
+    if (.not. (n_calls > 0)) then
+       write (msg_buffer, "(A, I5)") &
+            "VEGAS: [set_calls] number of calls must be a positive number. Keep&
+            & number of calls = ", self%config%n_calls
+       call msg_warning ()
+    else
+       self%config%n_calls = max (n_calls, self%config%n_calls_min)
+       if (self%config%n_calls /= n_calls) then
+          write (msg_buffer, "(A,I5)") &
+               "VEGAS: [set calls] number of calls is too few, reset to ", self%config%n_calls
+          call msg_warning ()
+       end if
+       call self%init_grid ()
+    end if
+  end subroutine vegas_set_n_calls
+
+@ %def vegas_set_n_calls
+@ Get the config object.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_config => vegas_get_config
+<<vegas: procedures>>=
+  subroutine vegas_get_config (self, config)
+    class(vegas_t), intent(in) :: self
+    type(vegas_config_t), intent(out) :: config
+    config = self%config
+  end subroutine vegas_get_config
+
+@ %def vegas_get_config
+@ Set non-runtime dependent configuration. It will no be possible to change
+[[n_bins_max]].
+<<vegas: vegas: TBP>>=
+  procedure, public :: set_config => vegas_set_config
+<<vegas: procedures>>=
+  subroutine vegas_set_config (self, config)
+    class(vegas_t), intent(inout) :: self
+    class(vegas_config_t), intent(in) :: config
+    self%config%alpha = config%alpha
+    self%config%iterations = config%iterations
+    self%config%mode = config%mode
+    self%config%n_calls_min = config%n_calls_min
+   end subroutine vegas_set_config
+
+@ %def vegas_set_config
+@ Get the grid object and set [[n_bins]], [[n_dim]] inside grid container.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_grid => vegas_get_grid
+<<vegas: procedures>>=
+  type(vegas_grid_t) function vegas_get_grid (self) result (grid)
+    class(vegas_t), intent(in) :: self
+    grid = self%grid
+    grid%n_dim = self%config%n_dim
+    grid%n_bins = self%config%n_bins
+  end function vegas_get_grid
+
+@ %def vegas_get_grid
+@ Get the result object.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_result => vegas_get_result
+<<vegas: procedures>>=
+  subroutine vegas_get_result (self, result)
+    class(vegas_t), intent(in) :: self
+    type(vegas_result_t), intent(out) :: result
+    result = self%result
+  end subroutine vegas_get_result
+
+@ %def vegas_get_result
+@ Get (actual) number of calls.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_calls => vegas_get_n_calls
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_n_calls (self) result (n_calls)
+    class(vegas_t), intent(in) :: self
+    n_calls = self%config%n_calls
+  end function vegas_get_n_calls
+
+@ %def vegas_get_n_calls
+@ Get the cumulative result of the integration. Recalculate weighted average of the integration.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_integral => vegas_get_integral
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_integral (self) result (integral)
+    class(vegas_t), intent(in) :: self
+    integral = 0.
+    if (self%result%sum_wgts > 0.) then
+       integral = self%result%sum_int_wgtd / self%result%sum_wgts
+    end if
+  end function vegas_get_integral
+
+@ %def vegas_get_integral
+@ Get the cumulative variance of the integration. Recalculate the variance.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_variance => vegas_get_variance
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_variance (self) result (variance)
+    class(vegas_t), intent(in) :: self
+    variance = 0.
+    if (self%result%sum_wgts > 0.) then
+       variance = 1.0 / self%result%sum_wgts
+    end if
+  end function vegas_get_variance
+
+@ %def vegas_get_variance
+@ Get efficiency.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_efficiency => vegas_get_efficiency
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_efficiency (self) result (efficiency)
+    class(vegas_t), intent(in) :: self
+    efficiency = 0.
+    if (self%result%efficiency > 0. ) then
+       efficiency = self%result%efficiency
+    end if
+  end function vegas_get_efficiency
+
+@ %def vegas_get_efficiency
+@ Get [[f_max]].
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_max_abs_f => vegas_get_max_abs_f
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_max_abs_f (self) result (max_abs_f)
+    class(vegas_t), intent(in) :: self
+    max_abs_f = 0.
+    if (self%result%max_abs_f > 0.) then
+       max_abs_f = self%result%max_abs_f
+    end if
+  end function vegas_get_max_abs_f
+
+@ %def vegas_get_max_abs_f
+@ Get [[f_max_pos]].
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_max_abs_f_pos => vegas_get_max_abs_f_pos
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_max_abs_f_pos (self) result (max_abs_f)
+    class(vegas_t), intent(in) :: self
+    max_abs_f = 0.
+    if (self%result%max_abs_f_pos > 0.) then
+       max_abs_f = self%result%max_abs_f_pos
+    end if
+  end function vegas_get_max_abs_f_pos
+
+@ %def vegas_get_max_abs_f_pos
+@ Get [[f_max_neg]].
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_max_abs_f_neg => vegas_get_max_abs_f_neg
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_max_abs_f_neg (self) result (max_abs_f)
+    class(vegas_t), intent(in) :: self
+    max_abs_f = 0.
+    if (self%result%max_abs_f_neg > 0.) then
+       max_abs_f = self%result%max_abs_f_neg
+    end if
+  end function vegas_get_max_abs_f_neg
+
+@ %def vegas_get_max_abs_f_neg
+@ Get the current distribution.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_distribution => vegas_get_distribution
+<<vegas: procedures>>=
+  subroutine vegas_get_distribution (self, distribution)
+    class(vegas_t), intent(in) :: self
+    real(default), dimension(self%config%n_bins_max, self%config%n_dim), intent(out) :: distribution
+    distribution = self%d
+  end subroutine vegas_get_distribution
+
+@ %def vegas_get_distribution
+@ Set the distribution. Use with care! After setting the distribution, we refine the grid.
+<<vegas: vegas: TBP>>=
+  procedure, public :: set_distribution => vegas_set_distribution
+<<vegas: procedures>>=
+  subroutine vegas_set_distribution (self, distribution)
+    class(vegas_t), intent(inout) :: self
+    real(default), dimension(:, :), intent(in) :: distribution
+    if (size (distribution, 1) > self%config%n_bins_max) then
+       write (msg_buffer, "(A, I5)") &
+            "[set_distribution] new distribution size exceeds", self%config%n_bins_max
+       call msg_bug ()
+    end if
+    self%d = distribution(1:self%config%n_bins_max, 1:self%config%n_dim)
+    call self%refine ()
+  end subroutine vegas_set_distribution
+
+@ %def vegas_set_distribution
+@
+\section{Grid resize- and refinement}
+\label{sec:grid-resize-refin}
+
+Before integration the grid itself must be initialised. Given the number of
+[[n_calls]] and [[n_dim]] we prepare the grid for the integration.
+
+The grid is binned according to the VEGAS mode and [[n_calls]]. If the mode is
+not set to [[vegas_importance_only]], the grid is divided in to equal boxes. We
+try for 2 calls per box
+\begin{equation}
+  boxes = \sqrt[n_{dim}]{\frac{calls}{2}}.
+\end{equation}
+If the numbers of boxes exceeds the number of bins, which is the case for low
+dimensions, the algorithm switches to stratified sampling. Otherwise, we are
+still using importance sampling, but keep the boxes for book keeping. If the
+number of bins changes from the previous invocation, bins are expanded or
+contracted accordingly, while preserving bin density.
+<<vegas: vegas: TBP>>=
+  procedure, private :: init_grid => vegas_init_grid
+<<vegas: procedures>>=
+  subroutine vegas_init_grid (self)
+    class(vegas_t), intent(inout) :: self
+    integer :: n_bins, n_boxes, box_per_bin, n_total_boxes
+    n_bins = self%config%n_bins_max
+    n_boxes = 1
+    if (self%config%mode /= VEGAS_MODE_IMPORTANCE_ONLY) then
+       ! We try for 2 calls per box
+       n_boxes = max (floor ((self%config%n_calls / 2.)**(1. / self%config%n_dim)), 1)
+       self%config%mode = VEGAS_MODE_IMPORTANCE
+       if (2 * n_boxes >= self%config%n_bins_max) then
+          ! if n_bins/box < 2
+          box_per_bin = max (n_boxes / self%config%n_bins_max, 1)
+          n_bins =  min (n_boxes / box_per_bin, self%config%n_bins_max)
+          n_boxes = box_per_bin * n_bins
+          self%config%mode = VEGAS_MODE_STRATIFIED
+       end if
+    end if
+    n_total_boxes = n_boxes**self%config%n_dim
+    self%config%calls_per_box = max (floor (real (self%config%n_calls) / n_total_boxes), 2)
+    self%config%n_calls = self%config%calls_per_box * n_total_boxes
+    !  Total volume of x-space/(average n_calls per bin)
+    self%jacobian = self%hypercube_volume * real(n_bins, default)&
+         &**self%config%n_dim / real(self%config%n_calls, default)
+    self%config%n_boxes = n_boxes
+    if (n_bins /= self%config%n_bins) then
+       call self%resize (n_bins)
+    end if
+  end subroutine vegas_init_grid
+
+@ %def vegas_init_grid
+@ Reset the cumulative result, and efficiency and max. grid values.
+<<vegas: vegas: TBP>>=
+  procedure, public :: reset_result => vegas_reset_result
+<<vegas: procedures>>=
+  subroutine vegas_reset_result (self)
+    class(vegas_t), intent(inout) :: self
+    self%result%sum_int_wgtd = 0.
+    self%result%sum_wgts = 0.
+    self%result%sum_chi = 0.
+    self%result%it_num = 0
+    self%result%samples = 0
+    self%result%chi2 = 0
+    self%result%efficiency = 0.
+    self%result%efficiency_pos = 0.
+    self%result%efficiency_neg = 0.
+    self%result%max_abs_f = 0.
+    self%result%max_abs_f_pos = 0.
+    self%result%max_abs_f_neg = 0.
+  end subroutine vegas_reset_result
+
+@ %def vegas_reset_results
+@ Reset the grid. Purge the adapted grid and the distribution.
+Furthermore, reset the results. The maximal size of the grid remains.
+
+Note: Handle [[vegas_reset_grid]] with great care! Instead of reusing an old
+object, create a new one.
+<<vegas: vegas: TBP>>=
+  procedure, public :: reset_grid => vegas_reset_grid
+<<vegas: procedures>>=
+  subroutine vegas_reset_grid (self)
+    class(vegas_t), intent(inout) :: self
+    self%config%n_bins = 1
+    self%d = 0._default
+    self%grid%xi = 0._default
+    self%grid%xi(1, :) = 0._default
+    self%grid%xi(2, :) = 1._default
+    call self%reset_result ()
+  end subroutine vegas_reset_grid
+
+@ %def vegas_reset_grid
+@ Resize the grid to new number of [[bins]]. Bins are expanded or contracted accordingly, while preserving bin density.
+The resizing weight is the ratio of old [[n_bins]] over new [[n_bins]].
+<<vegas: vegas: TBP>>=
+  procedure, private :: resize => vegas_resize_grid
+<<vegas: procedures>>=
+  subroutine vegas_resize_grid (self, n_bins)
+    class(vegas_t), intent(inout) :: self
+    integer, intent(in) :: n_bins
+    integer :: i, j, k
+    real(default) :: pts_per_bin, d_width
+    real(default), dimension(n_bins + 1) :: xi_new
+    pts_per_bin = real(self%config%n_bins, default) / real(n_bins, default)
+    do j = 1, self%config%n_dim
+       d_width = 0.
+       i = 2
+       do k = 1, self%config%n_bins
+          d_width = d_width + 1.
+          associate (x_upper => self%grid%xi(k + 1, j), x_lower => self%grid%xi(k, j))
+            do while (d_width > pts_per_bin .and. i <= n_bins)
+               d_width = d_width - pts_per_bin
+               xi_new(i) = x_upper - (x_upper - x_lower) * d_width
+               i = i + 1
+            end do
+          end associate
+       end do
+       self%grid%xi(:, j) = 0. ! Reset grid explicitly
+       self%grid%xi(2:n_bins, j) = xi_new(2:n_bins)
+       self%grid%xi(n_bins + 1, j) = 1.
+    end do
+    self%config%n_bins = n_bins
+  end subroutine vegas_resize_grid
+
+@ %def vegas_resize_grid
+@ Refine the grid to match the distribution [[d]].
+
+Average the distribution over neighbouring bins, then contract or expand the bins.
+The averaging dampens high fluctuations amog the integrand or the variance.
+
+We make the type-bound procedure public accessible because the multi-channel
+integration refines each grid after integration over all grids.
+<<vegas: vegas: TBP>>=
+  procedure, public :: refine => vegas_refine_grid
+<<vegas: procedures>>=
+  subroutine vegas_refine_grid (self)
+    class(vegas_t), intent(inout) :: self
+    integer :: i, j, k
+    real(default) :: oldg, newg, rc
+    real(default) :: grid_total_jacobian, total_weight
+    real(default) :: pts_per_bin, x_old, x_new, d_width
+    real(default), dimension(self%config%n_bins_max + 1) :: xi_new
+    ndim: do j = 1, self%config%n_dim
+       oldg = self%d(1, j)
+       newg = self%d(2, j)
+       self%d(1, j) = (oldg + newg) / 2.
+       ! d[i][j] = (d[i-1][j]+d[i][j]+d[i+1][j])/3
+       do i = 2, self%config%n_bins - 1
+          rc = oldg + newg
+          oldg = newg
+          newg = self%d(i + 1, j)
+          self%d(i, j) = (rc + newg) / 3
+       end do
+       self%d(self%config%n_bins, j) = (newg + oldg) / 2.
+       grid_total_jacobian = sum(self%d(:, j))
+       self%weight = 0.
+       do i = 1, self%config%n_bins
+          if (self%d(i, j) > 0.) then
+             oldg = grid_total_jacobian / self%d(i, j)
+             self%weight(i) = ((oldg - 1.) / oldg / log(oldg))**self%config%alpha
+          end if
+       end do
+       total_weight = sum(self%weight)
+       pts_per_bin = total_weight / self%config%n_bins
+       xi_new = self%grid%xi(:, j)
+       x_new = 0.
+       d_width = 0.
+       i = 2
+       do k = 1, self%config%n_bins
+          d_width = d_width + self%weight(k)
+          associate (x_upper => self%grid%xi(k + 1, j), x_lower => self%grid%xi(k, j))
+            do while (d_width > pts_per_bin .and. i <= self%config%n_bins)
+               d_width = d_width - pts_per_bin
+               xi_new(i) = x_upper - (x_upper - x_lower) * d_width / self%weight(k)
+               i = i + 1
+            end do
+          end associate
+       end do
+       self%grid%xi(:, j) = 0. ! Reset explicitly the grid
+       self%grid%xi(2:self%config%n_bins, j) = xi_new(2:self%config%n_bins)
+       self%grid%xi(self%config%n_bins + 1, j) = 1.
+    end do ndim
+  end subroutine vegas_refine_grid
+
+@ %def vegas_refine_grid
+@
+\section{Integration}
+\label{sec:integration}
+
+Integrate [[func]], in the previous set bounds [[x_lower]] to [[x_upper]], with [[n_calls]].
+Use results from previous invocations of [[integrate]] with [[opt_reset_result =
+.false.]] and better with subsequent calls.
+
+Before we walk through the hybercube, we initialise the grid (at a central position).
+
+We step through the (equidistant) boxes which ensure we do not miss any place in the n-dim. hypercube.
+In each box we sample [[calls_per_box]] random points and transform them to bin coordinates.
+The total integral and the total (sample) variance over each box $i$ is then calculated by
+\begin{align*}
+  E(I)_{i} = \sum_{j}^{\text{calls per box}} I_{i, j}, \\
+  V(I)_{i} = \text{calls per box} \frac{\sum_{j}^{\text{calls per box}}} I_{i, j}^{2} - (\sum_{j}^{\text{calls per box}} I_{i, j})**2 \frac{\text{calls per box}}{\text{calls per box} - 1}.
+\end{align*}
+The stratification of the $n$-dimensional hybercube allows a simple
+parallelisation of the algorithm (R. Kreckel, "Parallelization of adaptive MC integrators", Computer Physics Communications, vol. 106, no. 3, pp. 258–266, Nov. 1997.).
+We have to ensure that all boxes are sampled, but the number of boxes to
+distribute is too large. We allow each thread to sample a fraction $r$ of all
+boxes $k$ such that $r \ll k$. Furthermore, we constrain that the number of
+process $p$ is much smaller than $r$.
+
+The overall constraint is
+\begin{equation}
+p \ll r \ll k.
+\end{equation}
+We divide the intgeration into a parallel and
+a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
+\lfloor \frac{D}{2} \rfloor$.
+<<vegas: vegas: TBP>>=
+  procedure, public :: integrate => vegas_integrate
+<<vegas: procedures>>=
+  subroutine vegas_integrate (self, func, rng, iterations, opt_reset_result,&
+       & opt_refine_grid, opt_verbose, result, abserr)
+    class(vegas_t), intent(inout) :: self
+    class(vegas_func_t), intent(inout) :: func
+    class(rng_t), intent(inout) :: rng
+    integer, intent(in), optional :: iterations
+    logical, intent(in), optional :: opt_reset_result
+    logical, intent(in), optional :: opt_refine_grid
+    logical, intent(in), optional :: opt_verbose
+    real(default), optional, intent(out) :: result, abserr
+    integer :: it, j, k
+    real(default), dimension(self%config%n_dim) :: x
+    real(default) :: fval, fval_sq, bin_volume
+    real(default) :: fval_box, fval_sq_box
+    real(default) :: total_integral, total_sq_integral, total_variance, chi, wgt
+    real(default) :: cumulative_int, cumulative_std
+    real(default) :: sum_abs_f_pos, max_abs_f_pos
+    real(default) :: sum_abs_f_neg, max_abs_f_neg
+    logical :: reset_result = .true.
+    logical :: refine_grid = .true.
+    logical :: verbose = .false.
+    integer :: n_dim_par
+    logical :: box_success
+    if (present (iterations)) self%config%iterations = iterations
+    if (present (opt_reset_result)) reset_result = opt_reset_result
+    if (present (opt_refine_grid)) refine_grid = opt_refine_grid
+    if (present (opt_verbose)) verbose = opt_verbose
+    call self%init_grid ()
+    if (reset_result) call self%reset_result
+    self%result%it_start = self%result%it_num
+    cumulative_int = 0.
+    cumulative_std = 0.
+    if (verbose) then
+       call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
+    end if
+    n_dim_par = floor (self%config%n_dim / 2.)
+    iteration: do it = 1, self%config%iterations
+       self%result%it_num = self%result%it_start + it
+       self%d = 0.
+       self%box = 1
+       self%bin = 1
+       total_integral = 0.
+       total_sq_integral = 0.
+       total_variance = 0.
+       sum_abs_f_pos = 0.
+       max_abs_f_pos = 0.
+       sum_abs_f_neg = 0.
+       max_abs_f_neg = 0.
+       box_success = .true.
+       loop_over_par_boxes: do while (box_success)
+          loop_over_perp_boxes: do while (box_success)
+             fval_box = 0._default
+             fval_sq_box = 0._default
+             do k = 1, self%config%calls_per_box
+                call self%random_point (rng, x, bin_volume)
+                ! Call the function, yeah, call it...
+                fval = self%jacobian * bin_volume * func%evaluate (x)
+                fval_sq = fval**2
+                fval_box = fval_box + fval
+                fval_sq_box = fval_sq_box + fval_sq
+                if (fval > 0.) then
+                   max_abs_f_pos = max(abs (fval), max_abs_f_pos)
+                   sum_abs_f_pos = sum_abs_f_pos + abs(fval)
+                else
+                   max_abs_f_neg = max(abs (fval), max_abs_f_neg)
+                   sum_abs_f_neg = sum_abs_f_neg + abs(fval)
+                end if
+                if (self%config%mode /= VEGAS_MODE_STRATIFIED) then
+                   call self%accumulate_distribution (fval_sq)
+                end if
+             end do
+             fval_sq_box = sqrt (fval_sq_box * self%config%calls_per_box)
+             ! (a - b) * (a + b) = a**2 - b**2
+             fval_sq_box = (fval_sq_box - fval_box) * (fval_sq_box + fval_box)
+             if (fval_sq_box <= 0.0) fval_sq_box = tiny (1.0_default)
+             total_integral = total_integral + fval_box
+             total_sq_integral = total_sq_integral + fval_sq_box
+             if (self%config%mode == VEGAS_MODE_STRATIFIED) then
+                call self%accumulate_distribution (fval_sq_box)
+             end if
+             call increment_box_coord (self%box(n_dim_par + 1:self%config&
+                  &%n_dim), box_success)
+          end do loop_over_perp_boxes
+          call increment_box_coord (self%box(1:n_dim_par), box_success)
+       end do loop_over_par_boxes
+       ! Compute final results for this iterations
+       total_variance = total_sq_integral / (self%config%calls_per_box - 1.)
+       ! Ensure variance is always positive and larger than zero.
+       if (total_variance < tiny (1._default) / epsilon (1._default) &
+            & * max (total_integral**2, 1._default)) then
+          total_variance = tiny (1._default) / epsilon (1._default) &
+               & * max (total_integral**2, 1._default)
+       end if
+       wgt = 1. / total_variance
+       ! Reuse of variable!
+       total_sq_integral = total_integral**2
+       self%result%result = total_integral
+       self%result%std = sqrt (total_variance)
+       self%result%samples = self%result%samples + 1
+       if (self%result%samples == 1) then
+          self%result%chi2 = 0._default
+       else
+          chi = total_integral
+          if (self%result%sum_wgts > 0) chi = chi - self%result%sum_int_wgtd / self%result%sum_wgts
+          self%result%chi2 = self%result%chi2 * (self%result%samples - 2.0_default)
+          self%result%chi2 = (wgt / (1._default + (wgt / self%result%sum_wgts))) &
+               & * chi**2
+          self%result%chi2 = self%result%chi2 / (self%result%samples - 1._default)
+       end if
+       self%result%sum_wgts = self%result%sum_wgts + wgt
+       self%result%sum_int_wgtd = self%result%sum_int_wgtd + (total_integral * wgt)
+       self%result%sum_chi = self%result%sum_chi + (total_sq_integral * wgt)
+       cumulative_int = self%result%sum_int_wgtd / self%result%sum_wgts
+       cumulative_std = sqrt (1. / self%result%sum_wgts)
+       self%result%max_abs_f_pos = max_abs_f_pos
+       self%result%max_abs_f_neg = max_abs_f_neg
+       self%result%efficiency_pos = 0.
+       if (max_abs_f_pos > 0.) then
+          self%result%efficiency_pos = sum_abs_f_pos / (self%config%n_calls * max_abs_f_pos)
+       end if
+       self%result%efficiency_neg = 0.
+       if (max_abs_f_neg > 0.) then
+          self%result%efficiency_neg = sum_abs_f_neg / (self%config%n_calls * max_abs_f_neg)
+       end if
+       self%result%max_abs_f = max (self%result%max_abs_f_pos, self%result%max_abs_f_neg)
+       self%result%efficiency = self%result%efficiency_pos + self%result%efficiency_neg
+       if (verbose) then
+          write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_14 // ",1x))") &
+               & it, self%config%n_calls, cumulative_int, cumulative_std, &
+               & self%result%chi2, self%result%efficiency
+          call msg_message ()
+       end if
+       if (refine_grid) call self%refine ()
+    end do iteration
+    if (present(result)) result = cumulative_int
+    if (present(abserr)) abserr = abs(cumulative_std)
+  contains
+    <<vegas: vegas integrate: procedures>>
+  end subroutine vegas_integrate
+
+@ %def vegas_integrate
+@ Increment the box coordinates by 1. If we reach the largest value for the
+current axis (starting with the largest dimension number), we reset the counter
+to 1 and increment the next axis counter by 1. And so on, until we reach the
+maximum counter value of the axis with the lowest dimension, then we set
+[[success]] to false and the box coord is set to 1.
+<<vegas: vegas integrate: procedures>>=
+  subroutine increment_box_coord (box, success)
+    integer, dimension(:), intent(inout) :: box
+    logical, intent(out) :: success
+    integer :: j
+    success = .true.
+    do j = size(box), 1, -1
+       box(j) = box(j) + 1
+       if (box(j) <= self%config%n_boxes) return
+       box(j) = 1
+    end do
+    success = .false.
+  end subroutine increment_box_coord
+
+@ %def increment_box_coord
+@ Obtain a random point inside the $n$-dimensional hypercube, transform onto the
+correct interval and calculate the bin volume.
+<<vegas: vegas: TBP>>=
+  procedure, private :: random_point => vegas_random_point
+<<vegas: procedures>>=
+  subroutine vegas_random_point (self, rng, x, bin_volume)
+    class(vegas_t), intent(inout) :: self
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(self%config%n_dim), intent(out) :: x
+    real(default), intent(out) :: bin_volume
+    integer :: j
+    real(default) :: r, y, z, bin_width
+    bin_volume = 1.
+    ndim: do j = 1, self%config%n_dim
+       call rng%generate (r)
+       z = ((self%box(j) - 1 + r) / self%config%n_boxes) * self%config%n_bins + 1
+       self%bin(j) = max (min (int (z), self%config%n_bins), 1)
+       if (self%bin(j) == 1) then
+          bin_width = self%grid%xi(2, j)
+          y = (z - self%bin(j)) * bin_width
+       else
+          bin_width = self%grid%xi(self%bin(j) + 1, j) - self%grid%xi(self%bin(j), j)
+          y = self%grid%xi(self%bin(j), j) + (z - self%bin(j)) * bin_width
+       end if
+       x(j) = self%grid%x_lower(j) + y * self%grid%delta_x(j)
+       bin_volume = bin_volume * bin_width
+    end do ndim
+  end subroutine vegas_random_point
+
+@ %def vegas_random_point
+@ Obtain a random point inside the $n$-dimensional hyper-cube. We neglect
+stratification and generate the random point in the most simple way. Hence, we
+do not need to know in which box we are actually sampling. This is useful for
+only for event generation.
+<<vegas: vegas: TBP>>=
+  procedure, private :: simple_random_point => vegas_simple_random_point
+<<vegas: procedures>>=
+  subroutine vegas_simple_random_point (self, rng, x, bin_volume)
+    class(vegas_t), intent(inout) :: self
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(self%config%n_dim), intent(out) :: x
+    real(default), intent(out) :: bin_volume
+    integer :: j, k
+    real(default) :: r, y, z, bin_width
+    bin_volume = 1.
+    ndim: do j = 1, self%config%n_dim
+       call rng%generate (r)
+       z = r * self%config%n_bins + 1
+       k = max (min (int (z), self%config%n_bins), 1)
+       if (k == 1) then
+          bin_width = self%grid%xi(2, j)
+          y = (z - 1) * bin_width
+       else
+          bin_width = self%grid%xi(k + 1, j) - self%grid%xi(k, j)
+          y = self%grid%xi(k, j) + (z - k) * bin_width
+       end if
+       x(j) = self%grid%x_lower(j) + y * self%grid%delta_x(j)
+       bin_volume = bin_volume * bin_width
+    end do ndim
+  end subroutine vegas_simple_random_point
+
+@ %def vegas_simple_random_point
+@
+<<vegas: vegas: TBP>>=
+  procedure, private :: accumulate_distribution => vegas_accumulate_distribution
+<<vegas: procedures>>=
+  subroutine vegas_accumulate_distribution (self, y)
+    class(vegas_t), intent(inout) :: self
+    real(default), intent(in) :: y
+    integer :: j
+    do j = 1, self%config%n_dim
+       self%d(self%bin(j), j) = self%d(self%bin(j), j) + y
+    end do
+  end subroutine vegas_accumulate_distribution
+
+@ %def vegas_accumulate_distribution
+@ Generate random event. We accept on the rate
+\begin{equation}
+  \frac{|f(x)|}{\underset{x}{\max} |f(x)|}.
+\end{equation}
+We keep separate maximum weights for positive and negative weights, and use
+them, accordingly.
+In the case of unweighted event generation, if the current weight exceeds the
+the maximum weight, we update the maximum, accordingly.
+<<vegas: vegas: TBP>>=
+  procedure, public :: generate_event => vegas_generate_event
+<<vegas: procedures>>=
+  subroutine vegas_generate_event (self, func, rng, x, weight)
+    class(vegas_t), intent(inout) :: self
+    class(vegas_func_t), intent(inout) :: func
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(self%config%n_dim), intent(out) :: x
+    real(default), intent(out), optional :: weight
+    real(default) :: bin_volume
+    real(default) :: fval, max_abs_f
+    real(default) :: r
+    generate: do
+       call self%simple_random_point (rng, x, bin_volume)
+       fval = self%jacobian * bin_volume * func%evaluate (x)
+       if (present(weight)) then
+          weight = fval
+          exit generate
+       end if
+       if (fval > 0.) then
+          if (abs (fval) > self%result%max_abs_f_pos) then
+             self%result%max_abs_f_pos = abs (fval)
+             write (msg_buffer, "(A,1X," // FMT_14 // ")") &
+                  & "[VEGAS] Adjust maximal absolute value for event&
+                  & generation.", self%result%max_abs_f_pos
+             call msg_warning ()
+             exit generate
+          end if
+          max_abs_f = self%result%max_abs_f_pos
+       else
+          if (abs (fval) > self%result%max_abs_f_neg) then
+             self%result%max_abs_f_neg = abs (fval)
+             write (msg_buffer, "(A,1X," // FMT_14 // ")") "[VEGAS] Adjust&
+                  & maximal absolute value for event generation.", self%result&
+                  &%max_abs_f_neg
+             call msg_warning ()
+             exit generate
+          end if
+          max_abs_f = self%result%max_abs_f_neg
+       end if
+       call rng%generate (r)
+       ! Do not use division, because max_abs_f could be zero.
+       if (max_abs_f * r <= abs(fval)) then
+          exit generate
+       end if
+    end do generate
+  end subroutine vegas_generate_event
+
+@ %def vegas_random_event
+\section{I/0 operation}
+\label{sec:i0-operation}
+@ Write grid to file. We use the original VAMP formater.
+<<vegas: parameters>>=
+character(len=*), parameter, private :: &
+     descr_fmt =         "(1X,A)", &
+     integer_fmt =       "(1X,A18,1X,I15)", &
+     integer_array_fmt = "(1X,I18,1X,I15)", &
+     logical_fmt =       "(1X,A18,1X,L1)", &
+     double_fmt =        "(1X,A18,1X," // FMT_14 // ")", &
+     double_array_fmt =  "(1X,I18,1X," // FMT_14 // ")", &
+     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_14 // ")"
+
+@ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
+@ %def double_fmt double_array_fmt double_array2_fmt
+<<vegas: vegas: TBP>>=
+  procedure, public :: write_grid => vegas_write_grid
+<<vegas: procedures>>=
+  subroutine vegas_write_grid (self, unit)
+    class(vegas_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer :: i, j
+    u = given_output_unit (unit)
+    write (u, descr_fmt) "begin type(vegas_t)"
+    write (u, integer_fmt) "n_dim =", self%config%n_dim
+    write (u, integer_fmt) "n_bins_max =", self%config%n_bins_max
+    write (u, double_fmt) "alpha =", self%config%alpha
+    write (u, integer_fmt) "iterations =", self%config%iterations
+    write (u, integer_fmt) "mode =", self%config%mode
+    write (u, integer_fmt) "calls_per_box =", self%config%calls_per_box
+    write (u, integer_fmt) "n_calls =", self%config%n_calls
+    write (u, integer_fmt) "n_calls_min =", self%config%n_calls_min
+    write (u, integer_fmt) "n_boxes =", self%config%n_boxes
+    write (u, integer_fmt) "n_bins =", self%config%n_bins
+    write (u, integer_fmt) "it_start =", self%result%it_start
+    write (u, integer_fmt) "it_num =", self%result%it_num
+    write (u, integer_fmt) "samples =", self%result%samples
+    write (u, double_fmt) "sum_int_wgtd =", self%result%sum_int_wgtd
+    write (u, double_fmt) "sum_wgts =", self%result%sum_wgts
+    write (u, double_fmt) "sum_chi =", self%result%sum_chi
+    write (u, double_fmt) "chi2 =", self%result%chi2
+    write (u, double_fmt) "efficiency =", self%result%efficiency
+    write (u, double_fmt) "efficiency =", self%result%efficiency_pos
+    write (u, double_fmt) "efficiency =", self%result%efficiency_neg
+    write (u, double_fmt) "max_abs_f =", self%result%max_abs_f
+    write (u, double_fmt) "max_abs_f_pos =", self%result%max_abs_f_pos
+    write (u, double_fmt) "max_abs_f_neg =", self%result%max_abs_f_neg
+    write (u, double_fmt) "result =", self%result%result
+    write (u, double_fmt) "std =", self%result%std
+    write (u, double_fmt) "hypercube_volume =", self%hypercube_volume
+    write (u, double_fmt) "jacobian =", self%jacobian
+    write (u, descr_fmt) "begin x_lower"
+    do j = 1, self%config%n_dim
+       write (u, double_array_fmt) j, self%grid%x_lower(j)
+    end do
+    write (u, descr_fmt) "end x_lower"
+    write (u, descr_fmt) "begin x_upper"
+    do j = 1, self%config%n_dim
+       write (u, double_array_fmt) j, self%grid%x_upper(j)
+    end do
+    write (u, descr_fmt) "end x_upper"
+    write (u, descr_fmt) "begin delta_x"
+    do j = 1, self%config%n_dim
+       write (u, double_array_fmt) j, self%grid%delta_x(j)
+    end do
+    write (u, descr_fmt) "end delta_x"
+    write (u, integer_fmt) "n_bins =", self%config%n_bins
+    write (u, descr_fmt) "begin bin"
+    do j = 1, self%config%n_dim
+       write (u, integer_array_fmt) j, self%bin(j)
+    end do
+    write (u, descr_fmt) "end n_bin"
+    write (u, integer_fmt) "n_boxes =", self%config%n_boxes
+    write (u, descr_fmt) "begin box"
+    do j = 1, self%config%n_dim
+       write (u, integer_array_fmt) j, self%box(j)
+    end do
+    write (u, descr_fmt) "end box"
+    write (u, descr_fmt) "begin d"
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max
+          write (u, double_array2_fmt) i, j, self%d(i, j)
+       end do
+    end do
+    write (u, descr_fmt) "end d"
+    write (u, descr_fmt) "begin xi"
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max + 1
+          write (u,  double_array2_fmt) i, j, self%grid%xi(i, j)
+       end do
+    end do
+    write (u, descr_fmt) "end xi"
+    write (u, descr_fmt) "end type(vegas_t)"
+  end subroutine vegas_write_grid
+
+@ %def vegas_write_grid
+@ Read grid configuration from file.
+<<vegas: vegas: TBP>>=
+  procedure, public :: read_grid => vegas_read_grid
+<<vegas: procedures>>=
+  subroutine vegas_read_grid (self, unit)
+    class(vegas_t), intent(out) :: self
+    integer, intent(in) :: unit
+    integer :: i, j
+    character(len=80) :: buffer
+    integer :: ibuffer, jbuffer
+    read (unit, descr_fmt) buffer
+    read (unit, integer_fmt) buffer, ibuffer
+    read (unit, integer_fmt) buffer, jbuffer
+    select type(self)
+    type is (vegas_t)
+       self = vegas_t (n_dim = ibuffer, n_bins_max = jbuffer)
+    end select
+    read (unit, double_fmt) buffer, self%config%alpha
+    read (unit, integer_fmt) buffer, self%config%iterations
+    read (unit, integer_fmt) buffer, self%config%mode
+    read (unit, integer_fmt) buffer, self%config%calls_per_box
+    read (unit, integer_fmt) buffer, self%config%n_calls
+    read (unit, integer_fmt) buffer, self%config%n_calls_min
+    read (unit, integer_fmt) buffer, self%config%n_boxes
+    read (unit, integer_fmt) buffer, self%config%n_bins
+    read (unit, integer_fmt) buffer, self%result%it_start
+    read (unit, integer_fmt) buffer, self%result%it_num
+    read (unit, integer_fmt) buffer, self%result%samples
+    read (unit, double_fmt) buffer, self%result%sum_int_wgtd
+    read (unit, double_fmt) buffer, self%result%sum_wgts
+    read (unit, double_fmt) buffer, self%result%sum_chi
+    read (unit, double_fmt) buffer, self%result%chi2
+    read (unit, double_fmt) buffer, self%result%efficiency
+    read (unit, double_fmt) buffer, self%result%efficiency_pos
+    read (unit, double_fmt) buffer, self%result%efficiency_neg
+    read (unit, double_fmt) buffer, self%result%max_abs_f
+    read (unit, double_fmt) buffer, self%result%max_abs_f_pos
+    read (unit, double_fmt) buffer, self%result%max_abs_f_neg
+    read (unit, double_fmt) buffer, self%result%result
+    read (unit, double_fmt) buffer, self%result%std
+    read (unit, double_fmt) buffer, self%hypercube_volume
+    read (unit, double_fmt) buffer, self%jacobian
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       read (unit, double_array_fmt) jbuffer, self%grid%x_lower(j)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       read (unit, double_array_fmt) jbuffer, self%grid%x_upper(j)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       read (unit, double_array_fmt) jbuffer, self%grid%delta_x(j)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, integer_fmt) buffer, self%config%n_bins
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       read (unit, integer_array_fmt) jbuffer, self%bin(j)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, integer_fmt) buffer, self%config%n_boxes
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       read (unit, integer_array_fmt) jbuffer, self%box(j)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max
+          read (unit, double_array2_fmt) ibuffer, jbuffer, self%d(i, j)
+       end do
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max + 1
+          read (unit,  double_array2_fmt) ibuffer, jbuffer, self%grid%xi(i, j)
+       end do
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+  end subroutine vegas_read_grid
+
+@ %def vegas_read_grid
+@
+\section{Unit tests}
+\label{sec:unit-tests}
+
+Test module, followed by the corresponding implementation module.
+
+<<[[vegas_ut.f90]]>>=
+<<File header>>
+
+module vegas_ut
+  use unit_tests
+  use vegas_uti
+
+<<Standard module head>>
+
+<<vegas: public test>>
+
+contains
+<<vegas: test driver>>
+end module vegas_ut
+@ %def vegas_ut
+@
+<<[[vegas_uti.f90]]>>=
+<<File header>>
+
+module vegas_uti
+<<Use kinds>>
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_10, FMT_12
+  use rng_base
+  use rng_tao
+  use vegas
+
+<<Standard module head>>
+
+<<vegas: test declaration>>
+
+<<vegas: test types>>
+
+contains
+<<vegas: tests>>
+end module vegas_uti
+@ %def vegas_uti
+@ API: driver for the unit tests below.
+<<vegas: public test>>=
+  public :: vegas_test
+<<vegas: test driver>>=
+  subroutine vegas_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    <<vegas: execute tests>>
+  end subroutine vegas_test
+
+@ %def vegas_test
+@
+\subsubsection{Test function}
+\label{sec:test-function}
+
+We use the example from the Monte Carlo Examples of the GSL library
+\begin{equation}
+  I = \int_{-pi}^{+pi} {dk_x/(2 pi)}  \int_{-pi}^{+pi} {dk_y/(2 pi)}  \int_{-pi}^{+pi} {dk_z/(2 pi)}  1 / (1 - cos(k_x)cos(k_y)cos(k_z)).
+\end{equation}
+The integral is reduced to region (0,0,0) $\rightarrow$ ($\pi$, $\pi$, $\pi$) and multiplied by 8.
+<<vegas: test types>>=
+  type, extends (vegas_func_t) :: vegas_test_func_t
+     !
+   contains
+   <<vegas: vegas test func: TBP>>
+  end type vegas_test_func_t
+
+@ %def vegas_test_func_t
+@ Evaluate the integrand.
+<<vegas: vegas test func: TBP>>=
+  procedure, public :: evaluate => vegas_test_func_evaluate
+<<vegas: tests>>=
+  real(default) function vegas_test_func_evaluate (self, x) result (f)
+    class(vegas_test_func_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    f = 1.0 / (pi**3)
+    f = f / ( 1.0 - cos (x(1)) * cos (x(2)) * cos (x(3)))
+  end function vegas_test_func_evaluate
+
+@ %def vegas_test_func_evaluate
+@ The second test function is the normalised n-dim.\@ gaussian distribution.
+<<vegas: test types>>=
+  type, extends (vegas_func_t) :: vegas_gaussian_test_func_t
+     !
+   contains
+   <<vegas: vegas gaussian test func: TBP>>
+  end type vegas_gaussian_test_func_t
+
+@ %def vegas_gaussian_test_func_t
+@ Evaluate the integrand.
+<<vegas: vegas gaussian test func: TBP>>=
+  procedure, public :: evaluate => vegas_gaussian_evaluate
+<<vegas: tests>>=
+  real(default) function vegas_gaussian_evaluate (self, x) result (f)
+    class(vegas_gaussian_test_func_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    real(default), parameter :: inv_sqrt_pi = 1._default / sqrt(pi)
+    f = inv_sqrt_pi**size (x)
+    f = f * exp (- dot_product(x, x))
+  end function vegas_gaussian_evaluate
+
+@ %def vegas_gaussian_evaluate
+@ The third test function is a three-dimensional polynomial function which
+factories. The function is defined in such a way that the integral in the unit
+range is normalised to zero.
+\begin{equation}
+  f(x) = - \frac{8}{3} (x + 1)*(y-1)*z
+\end{equation}
+<<vegas: test types>>=
+  type, extends (vegas_func_t) :: vegas_polynomial_func_t
+     !
+   contains
+   <<vegas: vegas polynomial func: TBP>>
+   end type vegas_polynomial_func_t
+
+@ %def vegas_polynomial_func_t
+<<vegas: vegas polynomial func: TBP>>=
+  procedure, public :: evaluate => vegas_polynomial_evaluate
+<<vegas: tests>>=
+  real(default) function vegas_polynomial_evaluate (self, x) result (f)
+    class(vegas_polynomial_func_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    f = - 8. / 3. * (x(1) + 1.) * (x(2) - 1.) * x(3)
+  end function vegas_polynomial_evaluate
+
+@ %def vegas_polynomial_evaluate
+@
+\subsubsection{MC Integrator check}
+\label{sec:mc-integrator-check}
+
+Initialise the VEGAS MC integrator and call to [[vegas_init_grid]] for the
+initialisation of the grid.
+<<vegas: execute tests>>=
+  call test (vegas_1, "vegas_1", "VEGAS initialisation and&
+       & grid preparation", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_1
+<<vegas: tests>>=
+  subroutine vegas_1 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vegas_func_t), allocatable :: func
+    real(default), dimension(3), parameter :: x_lower = 0., &
+         x_upper = pi
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vegas_1"
+    write (u, "(A)") "*   Purpose: initialise the VEGAS MC integrator and the grid"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vegas_test_func_t :: func)
+    mc_integrator = vegas_t (3)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (10000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (2000)
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid"
+    write (u, "(A)")
+
+    call mc_integrator%write_grid (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vegas_1
+@ %def vegas_1
+@
+\subsubsection{Configuration and result check}
+\label{sec:conf-result-check}
+
+Initialise the MC integrator. Get and write the config object, also the (empty) result object.
+<<vegas: execute tests>>=
+  call test (vegas_2, "vegas_2", "VEGAS configuration and result object", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_2
+<<vegas: tests>>=
+  subroutine vegas_2 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    type(vegas_config_t) :: mc_integrator_config
+    type(vegas_result_t) :: mc_integrator_result
+
+    write (u, "(A)") "* Test output: vegas_2"
+    write (u, "(A)") "*   Purpose: use transparent containers for&
+         & configuration and result."
+    write (u, "(A)")
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 10"
+    write (u, "(A)")
+
+    mc_integrator = vegas_t (10)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000 (Importance Sampling)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (10000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS config object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS empty result object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_result (mc_integrator_result)
+    call mc_integrator_result%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid"
+    write (u, "(A)")
+
+    call mc_integrator%write_grid (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+  end subroutine vegas_2
+@ %def vegas_2
+@
+\subsubsection{Grid check}
+\label{sec:conf-result-check}
+
+Initialise the MC integrator. Get and write the config object. Integrate the gaussian distribution.
+Get and write the result object. Before and after integration get the grid
+object and output both.
+Repeat with different number of dimensions.
+<<vegas: execute tests>>=
+  call test (vegas_3, "vegas_3", "VEGAS integration of multi-dimensional gaussian", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_3
+<<vegas: tests>>=
+  subroutine vegas_3 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vegas_func_t), allocatable :: func
+    real(default), dimension(3), parameter :: x_lower_3 = -10._default, &
+         x_upper_3 = 10._default
+    type(vegas_config_t) :: mc_integrator_config
+    type(vegas_grid_t) :: mc_integrator_grid
+    type(vegas_result_t) :: mc_integrator_result
+
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vegas_3"
+    write (u, "(A)") "*   Purpose: Integrate gaussian distribution."
+    write (u, "(A)")
+
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vegas_gaussian_test_func_t :: func)
+    mc_integrator = vegas_t (3)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower_3, x_upper_3)
+    call mc_integrator%set_calls (10000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS config object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS grid object and write out"
+    write (u, "(A)")
+
+    mc_integrator_grid = mc_integrator%get_grid ()
+    call mc_integrator_grid%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 20000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (2000)
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS result object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_result (mc_integrator_result)
+    call mc_integrator_result%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS grid object and write out"
+    write (u, "(A)")
+
+    mc_integrator_grid = mc_integrator%get_grid ()
+    call mc_integrator_grid%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid"
+    write (u, "(A)")
+
+    call mc_integrator%write_grid (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+  end subroutine vegas_3
+@ %def vegas_3
+\subsubsection{Three-dimensional integration with polynomial function}
+\label{sec:conf-result-check}
+
+Initialise the MC integrator. Get and write the config object. Integrate the
+factorisable polynomial function. Get and write the result object. Repeat with
+different number of dimensions.
+<<vegas: execute tests>>=
+  call test (vegas_4, "vegas_4", "VEGAS integration of three&
+       &-dimensional factorisable polynomial function", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_4
+<<vegas: tests>>=
+  subroutine vegas_4 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vegas_func_t), allocatable :: func
+    real(default), dimension(3), parameter :: x_lower_3 = 0._default, &
+         x_upper_3 = 1._default
+    type(vegas_config_t) :: mc_integrator_config
+    type(vegas_result_t) :: mc_integrator_result
+
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vegas_4"
+    write (u, "(A)") "*   Purpose: Integrate gaussian distribution."
+    write (u, "(A)")
+
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vegas_polynomial_func_t :: func)
+    mc_integrator = vegas_t (3)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 2000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower_3, x_upper_3)
+    call mc_integrator%set_calls (2000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 20000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (20000)
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS result object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_result (mc_integrator_result)
+    call mc_integrator_result%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid"
+    write (u, "(A)")
+
+    call mc_integrator%write_grid (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+  end subroutine vegas_4
+
+@ %def vegas_4
+@
+\subsubsection{Event generation}
+
+Initialise the MC integrator. Integrate the gaussian distribution.
+Get and write the result object. Finally, generate events in accordance to the
+adapted grid and print them out.
+<<vegas: execute tests>>=
+  call test (vegas_5, "vegas_5", "VEGAS integration and event&
+       & generation of multi-dimensional gaussian", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_5
+<<vegas: tests>>=
+  subroutine vegas_5 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vegas_func_t), allocatable :: func
+    real(default), dimension(1), parameter :: x_lower_1 = -10._default, &
+         x_upper_1 = 10._default
+    type(vegas_config_t) :: mc_integrator_config
+    type(vegas_result_t) :: mc_integrator_result
+
+    integer :: i, u_event
+    real(default), dimension(1) :: event
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vegas_5"
+    write (u, "(A)") "*   Purpose: Integrate gaussian distribution."
+    write (u, "(A)")
+
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 1"
+    write (u, "(A)")
+
+    allocate (vegas_gaussian_test_func_t :: func)
+    mc_integrator = vegas_t (1)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower_1, x_upper_1)
+    call mc_integrator%set_calls (1000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 100000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (10000)
+    call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS result object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_result (mc_integrator_result)
+    call mc_integrator_result%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Generate 1000 events based on the adaptation."
+    write (u, "(A)")
+
+    do i = 1, 1000
+       call mc_integrator%generate_event (func, rng, event)
+       write (u, "(2x,I4,1x," // FMT_10 // ")") i, event
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+  end subroutine vegas_5
+
+@ %def vegas_5
+@
+\subsubsection{Grid I/O}
+\label{sec:grid-io}
+
+Initialise the MC integrator. Get and write the config object. Integrate the
+factorisable polynomial function. Get and write the result object. Write grid to
+file and start with fresh grid.
+<<vegas: execute tests>>=
+  call test (vegas_6, "vegas_6", "VEGAS integrate and write grid, &
+       & read grid and continue", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_6
+<<vegas: tests>>=
+  subroutine vegas_6 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vegas_func_t), allocatable :: func
+    real(default), dimension(3), parameter :: x_lower_3 = 0._default, &
+         x_upper_3 = 1._default
+    type(vegas_config_t) :: mc_integrator_config
+    type(vegas_result_t) :: mc_integrator_result
+
+    real(default) :: result, abserr
+    integer :: unit
+
+    write (u, "(A)") "* Test output: vegas_6"
+    write (u, "(A)") "*   Purpose: Write and read grid, and continue."
+    write (u, "(A)")
+
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vegas_polynomial_func_t :: func)
+    mc_integrator = vegas_t (3)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 2000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower_3, x_upper_3)
+    call mc_integrator%set_calls (2000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid to file vegas_io.grid"
+    write (u, "(A)")
+
+    unit = free_unit ()
+    open (unit, file = "vegas_io.grid", &
+         action = "write", status = "replace")
+    call mc_integrator%write_grid (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Read grid from file vegas_io.grid"
+    write (u, "(A)")
+
+    call mc_integrator%final ()
+    open (unit, file = "vegas_io.grid", &
+         action = "read", status = "old")
+    call mc_integrator%read_grid (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 20000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (20000)
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+
+    call mc_integrator%get_config (mc_integrator_config)
+    call mc_integrator_config%write (u)
+
+    write (u, "(A)")
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Get VEGAS result object and write out"
+    write (u, "(A)")
+
+    call mc_integrator%get_result (mc_integrator_result)
+    call mc_integrator_result%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+  end subroutine vegas_6
+
+@ %def vegas_6
+@
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{VAMP2}
+\label{sec:vamp2}
+
+We concentrate all configuration and run-time data in a derived-type, such that,
+[[mci_t]] can spwan each time a distinctive MCI VEGAS integrator object.
+
+<<[[vamp2.f90]]>>=
+<<File header>>
+
+module vamp2
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_utils, only: pac_fmt
+  use format_utils, only: write_separator, write_indent
+  use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
+  use diagnostics
+  use rng_base
+
+  use vegas
+
+<<Standard module head>>
+
+<<vamp2: public>>
+
+<<vamp2: parameters>>
+
+<<vamp2: types>>
+
+<<vamp2: interfaces>>
+
+contains
+
+<<vamp2: procedures>>
+
+end module vamp2
+@ %def vamp2
+@
+\subsection{Type: vamp2\_func\_t}
+\label{sec:vamp2-func}
+
+We extend [[vegas_func_t]] with the multi-channel weights and the
+[[vegas_grid_t]], such that, the overall multi-channel weight can be calculated
+by the function itself.
+
+We add an additional logicial [[valid_x]], if it is set to [[.false.]], we do
+not compute weighted function and just set the weighted integrand to zero.
+This behavior is in particular very useful, if a mapping is prohibited or fails.
+Or in the case of WHIZARD, a phase cut is applied.
+<<vamp2: public>>=
+  public :: vamp2_func_t
+<<vamp2: types>>=
+  type, abstract, extends(vegas_func_t) :: vamp2_func_t
+     integer :: current_channel = 0
+     integer :: n_dim = 0
+     integer :: n_channel = 0
+     integer :: n_calls = 0
+     logical :: valid_x = .false.
+     real(default), dimension(:, :), allocatable :: xi
+     real(default), dimension(:), allocatable :: det
+     real(default), dimension(:), allocatable :: wi
+     real(default), dimension(:), allocatable :: gi
+     type(vegas_grid_t), dimension(:), allocatable :: grids
+     real(default) :: g = 0.
+   contains
+   <<vamp2: vamp2 func: TBP>>
+  end type vamp2_func_t
+
+@ %def vamp2_func_t
+@ Init.
+<<vamp2: vamp2 func: TBP>>=
+  procedure, public :: init => vamp2_func_init
+<<vamp2: procedures>>=
+  subroutine vamp2_func_init (self, n_dim, n_channel)
+    class(vamp2_func_t), intent(out) :: self
+    integer, intent(in) :: n_dim
+    integer, intent(in) :: n_channel
+    self%n_dim = n_dim
+    self%n_channel = n_channel
+    allocate (self%xi(n_dim, n_channel), source=0._default)
+    allocate (self%det(n_channel), source=1._default)
+    allocate (self%wi(n_channel), source=0._default)
+    allocate (self%gi(n_channel), source=0._default)
+    allocate (self%grids(n_channel))
+  end subroutine vamp2_func_init
+
+@ %def vamp2_func_init
+@ Set current channel.
+<<vamp2: vamp2 func: TBP>>=
+  procedure, public :: set_channel => vamp2_func_set_channel
+<<vamp2: procedures>>=
+  subroutine vamp2_func_set_channel (self, channel)
+    class(vamp2_func_t), intent(inout) :: self
+    integer, intent(in) :: channel
+    self%current_channel = channel
+  end subroutine vamp2_func_set_channel
+
+@ %def vamp2_func_set_channel
+@ Get number of function calls.
+<<vamp2: vamp2 func: TBP>>=
+  procedure, public :: get_n_calls => vamp2_func_get_n_calls
+<<vamp2: procedures>>=
+  integer function vamp2_func_get_n_calls (self) result (n_calls)
+    class(vamp2_func_t), intent(in) :: self
+    n_calls = self%n_calls
+  end function vamp2_func_get_n_calls
+
+@ %def vamp2_func_get_func_calls
+@ Reset number of calls.
+<<vamp2: vamp2 func: TBP>>=
+  procedure, public :: reset_n_calls => vamp2_func_reset_n_calls
+<<vamp2: procedures>>=
+  subroutine vamp2_func_reset_n_calls (self)
+    class(vamp2_func_t), intent(inout) :: self
+    self%n_calls = 0
+  end subroutine vamp2_func_reset_n_calls
+
+@ %def vamp2_func_reset_n_calls
+@ Evaluate mappings. We defer this method to be implemented by the user.
+The result must be written to [[xi]] and [[det]].
+
+The mapping is defined by $\phi : U \rightarrow M$. We map $x \in M$ to the
+different mappings of the hypercube $U_{i}$, such that $x_{i} \in U_{i}$.
+
+The mapping should determine, whether [[x]] is a valid point, e.g. can be
+mapped, or is restricted otherwise.
+<<vamp2: vamp2 func: TBP>>=
+  procedure(vamp2_func_evaluate_maps), deferred :: evaluate_maps
+<<vamp2: interfaces>>=
+ abstract interface
+    subroutine vamp2_func_evaluate_maps (self, x)
+      import :: vamp2_func_t, default
+      class(vamp2_func_t), intent(inout) :: self
+      real(default), dimension(:), intent(in) :: x
+    end subroutine vamp2_func_evaluate_maps
+ end interface
+
+@ %def vamp2_evaluate_func
+@ Evaluate channel weights.
+<<vamp2: vamp2 func: TBP>>=
+  procedure, private :: evaluate_weight => vamp2_func_evaluate_weight
+<<vamp2: procedures>>=
+  subroutine vamp2_func_evaluate_weight (self)
+    class(vamp2_func_t), intent(inout) :: self
+    integer :: ch
+    self%g = 0.
+    self%gi = 0.
+    do ch = 1, self%n_channel
+       if (self%wi(ch) /= 0) then
+          self%gi(ch) = self%grids(ch)%get_probability (self%xi(:, ch))
+       end if
+    end do
+    if (self%gi(self%current_channel) /= 0) then
+       do ch = 1, self%n_channel
+          if (self%wi(ch) /= 0 .and. self%det(ch) /= 0) then
+             self%g = self%g + self%wi(ch) * self%gi(ch) / self%det(ch)
+          end if
+       end do
+       self%g = self%g / self%gi(self%current_channel)
+    end if
+  end subroutine vamp2_func_evaluate_weight
+
+@ %def vamp2_func_evaluate_weight
+@ Evaluate function at [[x]]. We call this procedure in [[vamp2_func_evaluate]].
+<<vamp2: vamp2 func: TBP>>=
+  procedure(vamp2_func_evaluate_func), deferred :: evaluate_func
+<<vamp2: interfaces>>=
+  abstract interface
+     real(default) function vamp2_func_evaluate_func (self, x) result (f)
+       import :: vamp2_func_t, default
+       class(vamp2_func_t), intent(in) :: self
+       real(default), dimension(:), intent(in) :: x
+     end function vamp2_func_evaluate_func
+  end interface
+
+@ %def vamp2_func_evaluate_func
+<<vamp2: vamp2 func: TBP>>=
+  procedure, public :: evaluate => vamp2_func_evaluate
+<<vamp2: procedures>>=
+  real(default) function vamp2_func_evaluate (self, x) result (f)
+    class(vamp2_func_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    call self%evaluate_maps (x)
+    f = 0.
+    self%gi = 0.
+    self%g = 1
+    if (self%valid_x) then
+       call self%evaluate_weight ()
+       f = self%evaluate_func (x) / self%g
+    end if
+    self%n_calls = self%n_calls + 1
+  end function vamp2_func_evaluate
+
+@ %def vamp2_func_evaluate
+\subsection{Type: vamp2\_config\_t}
+\label{sec:vamp2-config}
+
+This is a transparent container which incorporates and extends the definitions
+in [[vegas_config]]. The parent object can then be used to parametrise the VEGAS
+grids directly, where the new parameters are exclusively used in the
+multi-channel implementation of VAMP2.
+[[n_calls_min]] is calculated by [[n_calls_min_per_channel]] and [[n_channel]].
+The channels weights (and the result [[n_calls]] for each channel) are
+calculated regarding [[n_calls_threshold]].
+<<vamp2: public>>=
+  public :: vamp2_config_t
+<<vamp2: types>>=
+  type, extends(vegas_config_t) :: vamp2_config_t
+     integer :: n_channel = 0
+     integer :: n_calls_min_per_channel = 20
+     integer :: n_calls_threshold = 10
+     logical :: stratified = .true.
+     real(default) :: beta = 0.5_default
+     real(default) :: accuracy_goal = 0._default
+     real(default) :: error_goal = 0._default
+     real(default) :: rel_error_goal = 0._default
+   contains
+   <<vamp2: vamp2 config: TBP>>
+  end type vamp2_config_t
+
+@ %def vamp2_config_t
+@ Write.
+<<vamp2: vamp2 config: TBP>>=
+  procedure, public :: write => vamp2_config_write
+<<vamp2: procedures>>=
+  subroutine vamp2_config_write (self, unit, indent)
+    class(vamp2_config_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call self%vegas_config_t%write (unit, indent)
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Number of channels = ", self%n_channel
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Min. number of calls per channel (setting calls) = ", &
+         self%n_calls_min_per_channel
+    call write_indent (u, ind)
+    write (u, "(2x,A,I0)") "Threshold number of calls (adapting weights) = ", &
+         self%n_calls_threshold
+    call write_indent (u, ind)
+    write (u, "(2x,A,L1)") "Stratified = ", self%stratified
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_14 // ")") "Adaption power (beta) = ", &
+         self%beta
+    if (self%accuracy_goal > 0) then
+       call write_indent (u, ind)
+       write (u, "(2x,A," // FMT_14 // ")") "accuracy_goal         = ", &
+            self%accuracy_goal
+    end if
+    if (self%error_goal > 0) then
+       call write_indent (u, ind)
+       write (u, "(2x,A," // FMT_14 // ")") "error_goal            = ", &
+            self%error_goal
+    end if
+    if (self%rel_error_goal > 0) then
+       call write_indent (u, ind)
+       write (u, "(2x,A," // FMT_14 // ")") "rel_error_goal        = ", &
+            self%rel_error_goal
+    end if
+  end subroutine vamp2_config_write
+
+@ %def vamp2_config_write
+@
+\subsection{Type: vamp2\_result\_t}
+\label{sec:vamp2-result}
+
+This is a transparent container which incorporates and extends the definitions
+of [[vegas_result_t]].
+
+<<vamp2: public>>=
+  public :: vamp2_result_t
+<<vamp2: types>>=
+  type, extends(vegas_result_t) :: vamp2_result_t
+   contains
+   <<vamp2: vamp2 result: TBP>>
+  end type vamp2_result_t
+
+@ %def vamp2_result_t
+@ Output.
+<<vamp2: vamp2 result: TBP>>=
+  procedure, public :: write => vamp2_result_write
+<<vamp2: procedures>>=
+  subroutine vamp2_result_write (self, unit, indent)
+    class(vamp2_result_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call self%vegas_result_t%write (unit, indent)
+  end subroutine vamp2_result_write
+
+@ %def vamp2_result_write
+
+\subsection{Type: vamp2\_t}
+\label{sec:vamp2-t}
+
+<<vamp2: public>>=
+  public :: vamp2_t
+<<vamp2: types>>=
+  type :: vamp2_t
+     private
+     type(vamp2_config_t) :: config
+     type(vegas_t), dimension(:), allocatable :: integrator
+     real(default), dimension(:), allocatable :: weight
+     real(default), dimension(:), allocatable :: integral
+     real(default), dimension(:), allocatable :: variance
+     real(default), dimension(:), allocatable :: efficiency
+     type(vamp2_result_t) :: result
+   contains
+   <<vamp2: vamp2: TBP>>
+  end type vamp2_t
+
+<<vamp2: interfaces>>=
+  interface vamp2_t
+     module procedure vamp2_init
+  end interface vamp2_t
+
+@ %def vamp2_t
+@ Constructor.
+<<vamp2: procedures>>=
+  type(vamp2_t) function vamp2_init (n_channel, n_dim, alpha, beta, n_bins_max,&
+       & n_calls_min_per_channel, iterations, mode) result (self)
+    integer, intent(in) :: n_channel
+    integer, intent(in) :: n_dim
+    integer, intent(in), optional :: n_bins_max
+    integer, intent(in), optional :: n_calls_min_per_channel
+    real(default), intent(in), optional :: alpha
+    real(default), intent(in), optional :: beta
+    integer, intent(in), optional :: iterations
+    integer, intent(in), optional :: mode
+    integer :: ch
+    self%config%n_dim = n_dim
+    self%config%n_channel = n_channel
+    if (present (n_bins_max)) self%config%n_bins_max = n_bins_max
+    if (present (n_calls_min_per_channel)) self%config%n_calls_min_per_channel = n_calls_min_per_channel
+    if (present (alpha)) self%config%alpha = alpha
+    if (present (beta)) self%config%beta = beta
+    if (present (iterations)) self%config%iterations = iterations
+    if (present (mode)) self%config%mode = mode
+    allocate (self%integrator(n_channel))
+    allocate (self%weight(n_channel), source=0._default)
+    allocate (self%integral(n_channel), source=0._default)
+    allocate (self%variance(n_channel), source=0._default)
+    allocate (self%efficiency(n_channel), source=0._default)
+    do ch = 1, n_channel
+       self%integrator(ch) = vegas_t (n_dim, alpha, n_bins_max, 1, mode)
+    end do
+    self%weight = 1. / self%config%n_channel
+    call self%reset_result ()
+  end function vamp2_init
+
+@ %def vamp2_init
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: final => vamp2_final
+<<vamp2: procedures>>=
+  subroutine vamp2_final (self)
+    class(vamp2_t), intent(inout) :: self
+    integer :: ch
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%final ()
+    end do
+  end subroutine vamp2_final
+
+@ %def vamp2_final
+@ Output.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: write => vamp2_write
+<<vamp2: procedures>>=
+  subroutine vamp2_write (self, unit, indent)
+    class(vamp2_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind, ch
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call write_indent (u, ind)
+    write (u, "(A)") "VAMP2: VEGAS AMPlified 2"
+    call write_indent (u, ind)
+    call self%config%write (unit, indent)
+    call self%result%write (unit, indent)
+  end subroutine vamp2_write
+
+@ %def vamp2_write
+@ Get the config object.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: get_config => vamp2_get_config
+<<vamp2: procedures>>=
+  subroutine vamp2_get_config (self, config)
+    class(vamp2_t), intent(in) :: self
+    type(vamp2_config_t), intent(out) :: config
+    config = self%config
+  end subroutine vamp2_get_config
+
+@ %def vamp2_get_config
+@ Set non-runtime dependent configuration. It will no be possible to change
+[[n_bins_max]].
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: set_config => vamp2_set_config
+<<vamp2: procedures>>=
+  subroutine vamp2_set_config (self, config)
+    class(vamp2_t), intent(inout) :: self
+    class(vamp2_config_t), intent(in) :: config
+    integer :: ch
+    self%config%n_calls_min_per_channel = config%n_calls_min_per_channel
+    self%config%n_calls_threshold = config%n_calls_threshold
+    self%config%n_calls_min = config%n_calls_min
+    self%config%beta = config%beta
+    self%config%accuracy_goal = config%accuracy_goal
+    self%config%error_goal = config%error_goal
+    self%config%rel_error_goal = config%rel_error_goal
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%set_config (config)
+    end do
+  end subroutine vamp2_set_config
+
+@ %def vamp2_set_config
+@ Set the overall number of calls. The number of calls each channel is scaled by
+the channel weights
+\begin{equation}
+  N_i = \alpha_i N.
+\end{equation}
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: set_calls => vamp2_set_n_calls
+<<vamp2: procedures>>=
+  subroutine vamp2_set_n_calls (self, n_calls)
+    class(vamp2_t), intent(inout) :: self
+    integer, intent(in) :: n_calls
+    integer :: ch
+    self%config%n_calls_min = self%config%n_calls_min_per_channel &
+         & * self%config%n_channel
+    self%config%n_calls = max(n_calls, self%config%n_calls_min)
+    if (self%config%n_calls > n_calls) then
+       write (msg_buffer, "(A,I0)") "VAMP2: [set_calls] number of calls too few,&
+            & reset to = ", self%config%n_calls
+       call msg_message ()
+    end if
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%set_calls (max (nint (self%config%n_calls *&
+            & self%weight(ch)), self%config%n_calls_min_per_channel))
+    end do
+  end subroutine vamp2_set_n_calls
+
+@ %def vamp2_set_n_calls
+@ Set limits. We only support same limits for all channels.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: set_limits => vamp2_set_limits
+<<vamp2: procedures>>=
+  subroutine vamp2_set_limits (self, x_upper, x_lower)
+    class(vamp2_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x_upper
+    real(default), dimension(:), intent(in) :: x_lower
+    integer :: ch
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%set_limits (x_upper, x_lower)
+    end do
+  end subroutine vamp2_set_limits
+
+@ %def vamp2_set_limits
+@ Get the cumulative result of the integration. Recalculate weighted average of the integration.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: get_integral => vamp2_get_integral
+<<vamp2: procedures>>=
+  elemental real(default) function vamp2_get_integral (self) result (integral)
+    class(vamp2_t), intent(in) :: self
+    integral = 0.
+    if (self%result%sum_wgts > 0.) then
+       integral = self%result%sum_int_wgtd / self%result%sum_wgts
+    end if
+  end function vamp2_get_integral
+
+@ %def vamp2_get_integral
+@ Get the cumulative variance of the integration. Recalculate the variance.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: get_variance => vamp2_get_variance
+<<vamp2: procedures>>=
+  elemental real(default) function vamp2_get_variance (self) result (variance)
+    class(vamp2_t), intent(in) :: self
+    variance = 0.
+    if (self%result%sum_wgts > 0.) then
+       variance = 1.0 / self%result%sum_wgts
+    end if
+  end function vamp2_get_variance
+
+@ %def vamp2_get_variance
+@ Get efficiency.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: get_efficiency => vamp2_get_efficiency
+<<vamp2: procedures>>=
+  elemental real(default) function vamp2_get_efficiency (self) result (efficiency)
+    class(vamp2_t), intent(in) :: self
+    efficiency = 0.
+    if (self%result%efficiency > 0.) then
+       efficiency = self%result%efficiency
+    end if
+  end function vamp2_get_efficiency
+@ Adapt. We adapt the weights due the contribution of variances with $\beta >
+0$.
+\begin{equation}
+  \alpha_i = \frac{\alpha_i V_i^\beta}{\sum_i \alpha_i V_i^\beta}
+\end{equation}
+If [[n_calls_threshold]] is set, we rescale the weights in such a way, that the
+[[n_calls]] for each channel are greater than [[n_calls_threshold]].
+We calculate the distance of the weights to the [[weight_min]] and reset those weights
+which are less than [[weight_mins]] to this value. The other values are
+accordingly resized to fit the boundary condition of the partition of unity.
+<<vamp2: vamp2: TBP>>=
+  procedure, private :: adapt_weights => vamp2_adapt_weights
+<<vamp2: procedures>>=
+  subroutine vamp2_adapt_weights (self)
+    class(vamp2_t), intent(inout) :: self
+    integer :: ch
+    integer :: n_weights_underflow
+    real(default) :: weight_min, sum_weights_underflow
+    self%weight = self%weight * self%integrator%get_variance ()**self%config%beta
+    if (sum (self%weight) == 0) self%weight = real(self%config%n_calls, default)
+    self%weight = self%weight / sum(self%weight)
+    if (self%config%n_calls_threshold /= 0) then
+       weight_min = real(self%config%n_calls_threshold, default) &
+            & / self%config%n_calls
+       sum_weights_underflow = sum (self%weight, self%weight < weight_min)
+       n_weights_underflow = count (self%weight < weight_min)
+       where (self%weight < weight_min)
+          self%weight = weight_min
+       elsewhere
+          self%weight = self%weight * (1. - n_weights_underflow * weight_min) &
+               & / (1. - sum_weights_underflow)
+       end where
+    end if
+    call self%set_calls (self%config%n_calls)
+  end subroutine vamp2_adapt_weights
+
+@ %def vamp2_adapt_weights
+@ Reset the cumulative result.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: reset_result => vamp2_reset_result
+<<vamp2: procedures>>=
+  subroutine vamp2_reset_result (self)
+    class(vamp2_t), intent(inout) :: self
+    self%result%sum_int_wgtd = 0.
+    self%result%sum_wgts = 0.
+    self%result%sum_chi = 0.
+    self%result%it_num = 0
+    self%result%samples = 0
+    self%result%chi2 = 0
+    self%result%efficiency = 0.
+  end subroutine vamp2_reset_result
+
+@ %def vamp2_reset_result
+@ Integrate. We integrate each channel separately and combine the results
+\begin{align}
+  I & = \sum_i \alpha_i I_i, \\
+  \sigma^2 & = \sum_i \alpha_i^2 \sigma^2_i.
+\end{align}
+Although, the (population) variance is given by
+\begin{equation}
+  \begin{split}
+    \sigma^2 & = \frac{1}{N} \left( \sum_i \alpha_i I^2_i - I^2 \right) \\
+    & = \frac{1}{N - 1} \left( \sum_i \left( N_i \sigma^2_i + I^2_i \right) -I^2
+    \right) \\
+    & = \frac{1}{N - 1} \left( \sum_i \alpha_i \sigma^2_i + \alpha_i I^2_i - I^2
+    \right),
+  \end{split}
+\end{equation}
+where we used $\sigma^2_i = \frac{1}{N} \left( \langle I^2_i \rangle - \langle
+  I_i \rangle^2 \right)$, we use the approximation for numeric stability.
+The population variance relates to sample variance
+\begin{equation}
+  s^2 = \frac{n}{n - 1} \sigma^2,
+\end{equation}
+which gives an unbiased error estimate.
+
+Beside those adaption to multichannel, the overall processing of
+[[total_integral]], [[total_sq_integral]] and [[total_variance]] is the same as
+in [[vegas_integrate]].
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: integrate => vamp2_integrate
+<<vamp2: procedures>>=
+  subroutine vamp2_integrate (self, func, rng, iterations, opt_reset_result,&
+       & opt_refine_grid, opt_adapt_weight, opt_verbose, result, abserr)
+    class(vamp2_t), intent(inout) :: self
+    class(vamp2_func_t), intent(inout) :: func
+    class(rng_t), intent(inout) :: rng
+    integer, intent(in), optional :: iterations
+    logical, intent(in), optional :: opt_reset_result
+    logical, intent(in), optional :: opt_refine_grid
+    logical, intent(in), optional :: opt_adapt_weight
+    logical, intent(in), optional :: opt_verbose
+    real(default), optional, intent(out) :: result, abserr
+    integer :: it, ch
+    real(default) :: total_integral, total_sq_integral, total_variance, chi, wgt
+    real(default) :: cumulative_int, cumulative_std
+    logical :: reset_result = .true.
+    logical :: adapt_weight = .true.
+    logical :: refine_grid = .true.
+    logical :: verbose = .false.
+    if (present (iterations)) self%config%iterations = iterations
+    if (present (opt_reset_result)) reset_result = opt_reset_result
+    if (present (opt_adapt_weight)) adapt_weight = opt_adapt_weight
+    if (present (opt_refine_grid)) refine_grid = opt_refine_grid
+    if (present (opt_verbose)) verbose = opt_verbose
+    cumulative_int = 0.
+    cumulative_std = 0.
+    if (reset_result) call self%reset_result
+    if (verbose) then
+       call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
+    end if
+    iteration: do it = 1, self%config%iterations
+       total_integral = 0._default
+       total_sq_integral = 0._default
+       total_variance = 0._default
+       self%integral = 0._default
+       self%variance = 0._default
+       do ch = 1, self%config%n_channel
+          func%wi(ch) = self%weight(ch)
+          func%grids(ch) = self%integrator(ch)%get_grid ()
+       end do
+       channel: do ch = 1, self%config%n_channel
+          ! Oh, do me! Integrate me! Integrate me, soooo hard!
+          call func%set_channel (ch)
+          call self%integrator(ch)%integrate ( &
+               & func, rng, iterations, opt_refine_grid = .false., opt_verbose = verbose)
+          total_integral = total_integral &
+               & + self%weight(ch) * self%integrator(ch)%get_integral ()
+          total_sq_integral = total_sq_integral &
+               & + self%weight(ch) * self%integrator(ch)%get_integral ()**2
+          total_variance = total_variance &
+               & + self%weight(ch)**2 * self%config%n_calls * self%integrator(ch)%get_variance ()
+       end do channel
+       associate (result => self%result)
+         ! a**2 - b**2 = (a - b) * (a + b)
+         total_variance = sqrt (total_variance + total_sq_integral)
+         total_variance = 1. / self%config%n_calls * &
+              & (total_variance + total_integral) * (total_variance - total_integral)
+         ! Ensure variance is always positive and larger than zero
+         if (total_variance < tiny (1._default) / epsilon (1._default) * max (total_integral**2, 1._default)) then
+            total_variance = tiny (1._default) / epsilon (1._default) * max (total_integral**2, 1._default)
+         end if
+         wgt = 1. / total_variance
+         result%result = total_integral
+         result%std = sqrt (total_variance)
+         result%samples = result%samples + 1
+         if (result%samples == 1) then
+            result%chi2 = 0._default
+         else
+            chi = total_integral
+            if (result%sum_wgts > 0) chi = chi - result%sum_int_wgtd / result%sum_wgts
+            result%chi2 = result%chi2 * (result%samples - 2.0_default)
+            result%chi2 = (wgt / (1._default + (wgt / result%sum_wgts))) &
+                 & * chi**2
+            result%chi2 = result%chi2 / (result%samples - 1._default)
+         end if
+         result%sum_wgts = result%sum_wgts + wgt
+         result%sum_int_wgtd = result%sum_int_wgtd + (total_integral * wgt)
+         result%sum_chi = result%sum_chi + (total_sq_integral * wgt)
+         result%max_abs_f = dot_product (self%weight * self%config%n_calls, self%integrator%get_max_abs_f ())
+         result%max_abs_f_pos = dot_product (self%weight * self%config%n_calls, self%integrator%get_max_abs_f_pos ())
+         result%max_abs_f_neg = dot_product (self%weight * self%config%n_calls, self%integrator%get_max_abs_f_neg ())
+         result%efficiency = 0.
+         if (result%max_abs_f > 0.) then
+            result%efficiency = dot_product (self%weight, &
+                 & (self%integrator%get_efficiency () * self%weight * self%config%n_calls * self%integrator%get_max_abs_f ())) &
+                 & / result%max_abs_f
+            ! TODO pos. or. negative efficiency would be very nice.
+         end if
+         cumulative_int = result%sum_int_wgtd / result%sum_wgts
+         cumulative_std = sqrt (1. / result%sum_wgts)
+         if (verbose) then
+            write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_14 // ",1x))") &
+                 & it, self%config%n_calls, cumulative_int, cumulative_std, &
+                 & self%result%chi2, self%result%efficiency
+            call msg_message ()
+         end if
+       end associate
+       if (adapt_weight) then
+          call self%adapt_weights ()
+       end if
+       if (refine_grid) then
+          do ch = 1, self%config%n_channel
+             call self%integrator(ch)%refine ()
+          end do
+       end if
+    end do iteration
+    if (present (result)) result = cumulative_int
+    if (present (abserr)) abserr = abs (cumulative_std)
+  end subroutine vamp2_integrate
+
+@ %def vamp2_integrate
+@ Generate event from multi-channel weight $w(x) = f(x) / g(x)$.
+
+We select a channel using the a-priori weights and $f_{i}^{\text{max}}$, to
+flatten possible unbalanced channel weight(s).
+The reade may have mercy for the completely misuse of weight.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: generate_event => vamp2_generate_event
+<<vamp2: procedures>>=
+  subroutine vamp2_generate_event (self, func, rng, x, opt_event_weight, opt_event_excess)
+    class(vamp2_t), intent(inout) :: self
+    class(vamp2_func_t), intent(inout) :: func
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(self%config%n_dim), intent(out)  :: x
+    real(default), intent(out), optional :: opt_event_weight
+    real(default), intent(out), optional :: opt_event_excess
+    integer :: ch, i
+    real(default) :: r, event_weight, max_abs_f
+    real(default), dimension(self%config%n_channel) :: weight
+    if (any (self%integrator%get_max_abs_f () > 0)) then
+       weight = self%weight * self%integrator%get_max_abs_f ()
+    else
+       weight = self%weight
+    end if
+    weight = weight / sum (weight)
+    call rng%generate (r)
+    nchannel: do ch = 1, self%config%n_channel
+       r = r - weight(ch)
+       if (r <= 0._default) exit nchannel
+    end do nchannel
+    ch = min (ch, self%config%n_channel)
+    call func%set_channel (ch)
+    ! TODO move to a separat procedure and let this be done at initialisation
+    do i = 1, self%config%n_channel
+       func%wi(i) = self%weight(i)
+       func%grids(i) = self%integrator(i)%get_grid ()
+    end do
+    if (present (opt_event_excess)) opt_event_excess = 0
+    generate: do
+       call self%integrator(ch)%generate_event (func, rng, x, event_weight)
+       if (present (opt_event_weight)) then
+          opt_event_weight = event_weight * self%weight(ch) / weight(ch)
+          exit generate
+       end if
+       if (event_weight > 0.) then
+          if (abs (event_weight) > self%integrator(ch)%get_max_abs_f_pos ()) then
+             if (present (opt_event_excess)) then
+                opt_event_excess = event_weight / self%integrator(ch)%get_max_abs_f_pos () - 1._default
+             else
+                write (msg_buffer, "(A,1X," // FMT_14 // ",A)") "[VAMP2] Event&
+                     & generation: weight > 1 (", self%result%max_abs_f_pos, ")"
+                call msg_warning ()
+             end if
+          end if
+          max_abs_f = self%integrator(ch)%get_max_abs_f_pos ()
+       else
+          if (abs (event_weight) > self%integrator(ch)%get_max_abs_f_neg ()) then
+             if (present (opt_event_excess)) then
+                opt_event_excess = event_weight / self%integrator(ch)%get_max_abs_f_neg () - 1._default
+             else
+                write (msg_buffer, "(A,1X," // FMT_14 // ",A)") "[VAMP2] Event&
+                     & generation: weight > 1 (", self%result%max_abs_f_neg, ")"
+                call msg_warning ()
+             end if
+          end if
+          max_abs_f = self%integrator(ch)%get_max_abs_f_neg ()
+       end if
+       call rng%generate (r)
+       ! Do not use division, because max_abs_f could be zero.
+       if (max_abs_f * r <= abs(event_weight)) then
+          exit generate
+       end if
+    end do generate
+  end subroutine vamp2_generate_event
+
+@ %def vamp2_generate_event
+@ Write grids to unit.
+<<vamp2: parameters>>=
+  character(len=*), parameter, private :: &
+     descr_fmt =         "(1X,A)", &
+     integer_fmt =       "(1X,A18,1X,I15)", &
+     integer_array_fmt = "(1X,I18,1X,I15)", &
+     logical_fmt =       "(1X,A18,1X,L1)", &
+     double_fmt =        "(1X,A18,1X," // FMT_14 // ")", &
+     double_array_fmt =  "(1X,I18,1X," // FMT_14 // ")", &
+     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_14 // ")"
+@ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
+@ %def double_fmt double_array_fmt double_array2_fmt
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: write_grids => vamp2_write_grids
+<<vamp2: procedures>>=
+  subroutine vamp2_write_grids (self, unit)
+    class(vamp2_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer :: ch
+    u = given_output_unit (unit)
+    write (u, descr_fmt) "begin type(vamp2_t)"
+    write (u, integer_fmt) "n_channel =", self%config%n_channel
+    write (u, integer_fmt) "n_dim =", self%config%n_dim
+    write (u, integer_fmt) "n_calls_min_ch =", self%config%n_calls_min_per_channel
+    write (u, integer_fmt) "n_calls_thres =", self%config%n_calls_threshold
+    write (u, logical_fmt) "stratified =", self%config%stratified
+    write (u, double_fmt) "alpha =", self%config%alpha
+    write (u, double_fmt) "beta =", self%config%beta
+    write (u, integer_fmt) "n_bins_max =", self%config%n_bins_max
+    write (u, integer_fmt) "iterations =", self%config%iterations
+    write (u, integer_fmt) "n_calls =", self%config%n_calls
+    write (u, integer_fmt) "it_start =", self%result%it_start
+    write (u, integer_fmt) "it_num =", self%result%it_num
+    write (u, integer_fmt) "samples =", self%result%samples
+    write (u, double_fmt) "sum_int_wgtd =", self%result%sum_int_wgtd
+    write (u, double_fmt) "sum_wgts =", self%result%sum_wgts
+    write (u, double_fmt) "sum_chi =", self%result%sum_chi
+    write (u, double_fmt) "chi2 =", self%result%chi2
+    write (u, double_fmt) "efficiency =", self%result%efficiency
+    write (u, double_fmt) "efficiency =", self%result%efficiency_pos
+    write (u, double_fmt) "efficiency =", self%result%efficiency_neg
+    write (u, double_fmt) "max_abs_f =", self%result%max_abs_f
+    write (u, double_fmt) "max_abs_f_pos =", self%result%max_abs_f_pos
+    write (u, double_fmt) "max_abs_f_neg =", self%result%max_abs_f_neg
+    write (u, double_fmt) "result =", self%result%result
+    write (u, double_fmt) "std =", self%result%std
+    write (u, descr_fmt) "begin weight"
+    do ch = 1, self%config%n_channel
+       write (u, double_array_fmt) ch, self%weight(ch)
+    end do
+    write (u, descr_fmt) "end weight"
+    write (u, descr_fmt) "begin integrator"
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%write_grid (unit)
+    end do
+    write (u, descr_fmt) "end integrator"
+    write (u, descr_fmt) "end type(vamp2_t)"
+  end subroutine vamp2_write_grids
+
+@ %def vamp2_write_grids
+@ Read grids from unit.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: read_grids => vamp2_read_grids
+<<vamp2: procedures>>=
+  subroutine vamp2_read_grids (self, unit)
+    class(vamp2_t), intent(out) :: self
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer :: ibuffer, jbuffer, ch
+    character(len=80) :: buffer
+    read (unit, descr_fmt) buffer
+    read (unit, integer_fmt) buffer, ibuffer
+    read (unit, integer_fmt) buffer, jbuffer
+    select type (self)
+    type is (vamp2_t)
+       self = vamp2_t (n_channel = ibuffer, n_dim = jbuffer)
+    end select
+    read (unit, integer_fmt) buffer, self%config%n_calls_min_per_channel
+    read (unit, integer_fmt) buffer, self%config%n_calls_threshold
+    read (unit, logical_fmt) buffer, self%config%stratified
+    read (unit, double_fmt) buffer, self%config%alpha
+    read (unit, double_fmt) buffer, self%config%beta
+    read (unit, integer_fmt) buffer, self%config%n_bins_max
+    read (unit, integer_fmt) buffer, self%config%iterations
+    read (unit, integer_fmt) buffer, self%config%n_calls
+    read (unit, integer_fmt) buffer, self%result%it_start
+    read (unit, integer_fmt) buffer, self%result%it_num
+    read (unit, integer_fmt) buffer, self%result%samples
+    read (unit, double_fmt) buffer, self%result%sum_int_wgtd
+    read (unit, double_fmt) buffer, self%result%sum_wgts
+    read (unit, double_fmt) buffer, self%result%sum_chi
+    read (unit, double_fmt) buffer, self%result%chi2
+    read (unit, double_fmt) buffer, self%result%efficiency
+    read (unit, double_fmt) buffer, self%result%efficiency_pos
+    read (unit, double_fmt) buffer, self%result%efficiency_neg
+    read (unit, double_fmt) buffer, self%result%max_abs_f
+    read (unit, double_fmt) buffer, self%result%max_abs_f_pos
+    read (unit, double_fmt) buffer, self%result%max_abs_f_neg
+    read (unit, double_fmt) buffer, self%result%result
+    read (unit, double_fmt) buffer, self%result%std
+    read (unit, descr_fmt) buffer
+    do ch = 1, self%config%n_channel
+       read (unit, double_array_fmt) ibuffer, self%weight(ch)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%read_grid (unit)
+    end do
+    read (unit, descr_fmt) buffer
+    read (unit, descr_fmt) buffer
+  end subroutine vamp2_read_grids
+
+@ %def vamp2_read_grids
+@
+\section{Unit tests}
+\label{sec:unit-tests}
+
+Test module, followed by the corresponding implementation module.
+
+<<[[vamp2_ut.f90]]>>=
+<<File header>>
+
+module vamp2_ut
+  use unit_tests
+  use vamp2_uti
+
+<<Standard module head>>
+
+<<vamp2: public test>>
+
+contains
+<<vamp2: test driver>>
+end module vamp2_ut
+@ %def vamp2_ut
+@
+<<[[vamp2_uti.f90]]>>=
+<<File header>>
+
+module vamp2_uti
+<<Use kinds>>
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_12
+  use rng_base
+  use rng_tao
+  use rng_stream
+  use vegas, only: vegas_func_t
+  use vamp2
+
+<<Standard module head>>
+
+<<vamp2: test declaration>>
+
+<<vamp2: test types>>
+
+contains
+<<vamp2: tests>>
+end module vamp2_uti
+@ %def vamp2_uti
+@ API: driver for the unit tests below.
+<<vamp2: public test>>=
+  public :: vamp2_test
+<<vamp2: test driver>>=
+  subroutine vamp2_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    <<vamp2: execute tests>>
+  end subroutine vamp2_test
+
+@ %def vamp2_test
+@
+\subsubsection{Test function}
+\label{sec:test-function}
+
+We use the example from the Monte Carlo Examples of the GSL library
+\begin{equation}
+  I = \int_{-pi}^{+pi} {dk_x/(2 pi)}  \int_{-pi}^{+pi} {dk_y/(2 pi)}  \int_{-pi}^{+pi} {dk_z/(2 pi)}  1 / (1 - cos(k_x)cos(k_y)cos(k_z)).
+\end{equation}
+The integral is reduced to region (0,0,0) $\rightarrow$ ($\pi$, $\pi$, $\pi$) and multiplied by 8.
+<<vamp2: test types>>=
+   type, extends (vamp2_func_t) :: vamp2_test_func_t
+     !
+   contains
+   <<vamp2: vamp2 test func: TBP>>
+end type vamp2_test_func_t
+
+@ %def vegas_test_func_t
+@
+<<vamp2: vamp2 test func: TBP>>=
+  procedure, public :: evaluate_maps => vamp2_test_func_evaluate_maps
+<<vamp2: tests>>=
+  subroutine vamp2_test_func_evaluate_maps (self, x)
+    class(vamp2_test_func_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    self%xi(:, 1) = x
+    self%det(1) = 1
+    self%valid_x = .true.
+  end subroutine vamp2_test_func_evaluate_maps
+
+@ %def vamp2_test_func_evaluate_maps
+@ Evaluate the integrand.
+<<vamp2: vamp2 test func: TBP>>=
+  procedure, public :: evaluate_func => vamp2_test_func_evaluate
+<<vamp2: tests>>=
+  real(default) function vamp2_test_func_evaluate (self, x) result (f)
+    class(vamp2_test_func_t), intent(in) :: self
+    real(default), dimension(:), intent(in) :: x
+    f = 1.0 / (pi**3)
+    f = f / ( 1.0 - cos (x(1)) * cos (x(2)) * cos (x(3)))
+  end function vamp2_test_func_evaluate
+
+@ %def vamp2_test_func_evaluate
+@ The second test function implements
+\begin{equation}
+  f(\vec{x}) = 4 \sin^{2}(\pi x_{1})\sin^{2}(\pi x_{2}) + 2\sin^2(\pi v),
+\end{equation}
+where
+\begin{align}
+  x = u^{v} & y = u^{1 - v} \\
+  u = xy & v = \frac{1}{2} \left( 1 + \frac{\log(x/y}{\log(xy)} \right).
+\end{align}
+The jacobian is $\frac{\partial (x, y)}{\partial (u, v)}$.
+
+<<vamp2: test types>>=
+  type, extends(vamp2_func_t) :: vamp2_test_func_2_t
+     !
+   contains
+   <<vamp2: vamp2 test func 2: TBP>>
+  end type vamp2_test_func_2_t
+
+@ %def vamp2_test_func_2_t
+@ Evaluate maps.
+<<vamp2: vamp2 test func 2: TBP>>=
+  procedure :: evaluate_maps => vamp2_test_func_2_evaluate_maps
+<<vamp2: tests>>=
+  subroutine vamp2_test_func_2_evaluate_maps (self, x)
+    class(vamp2_test_func_2_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    select case (self%current_channel)
+    case (1)
+       self%xi(:, 1) = x
+       self%xi(1, 2) = x(1) * x(2)
+       self%xi(2, 2) = 0.5 * ( 1. + log(x(1) / x(2)) / log(x(1) * x(2)))
+    case (2)
+       self%xi(1, 1) = x(1)**x(2)
+       self%xi(2, 1) = x(1)**(1. - x(2))
+       self%xi(:, 2) = x
+    end select
+    self%det(1) = 1.
+    self%det(2) = abs (log(self%xi(1, 2)))
+    self%valid_x = .true.
+  end subroutine vamp2_test_func_2_evaluate_maps
+
+@ %def vamp2_test_func_2_evaluate_maps
+@ Evaluate func.
+<<vamp2: vamp2 test func 2: TBP>>=
+  procedure :: evaluate_func => vamp2_test_func_2_evaluate_func
+<<vamp2: tests>>=
+  real(default) function vamp2_test_func_2_evaluate_func (self, x) result (f)
+    class(vamp2_test_func_2_t), intent(in) :: self
+    real(default), dimension(:), intent(in) :: x
+    f = 4. * sin(pi * self%xi(1, 1))**2 * sin(pi * self%xi(2, 1))**2 + 2. * sin(pi * self%xi(2, 2))**2
+  end function vamp2_test_func_2_evaluate_func
+
+@ %def vamp2_test_func_2_evaluate_func
+@
+\subsubsection{MC Integrator check}
+\label{sec:mc-integrator-check}
+
+We reproduce the first test case of VEGAS.
+Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initialisation of the grid.
+<<vamp2: execute tests>>=
+  call test (vamp2_1, "vamp2_1", "VAMP2 initialisation and&
+       & grid preparation", u, results)
+<<vamp2: test declaration>>=
+  public :: vamp2_1
+<<vamp2: tests>>=
+  subroutine vamp2_1 (u)
+    integer, intent(in) :: u
+    type(vamp2_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vamp2_func_t), allocatable :: func
+    real(default), dimension(3), parameter :: x_lower = 0., &
+         x_upper = pi
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vamp2_1"
+    write (u, "(A)") "*   Purpose: initialise the VAMP2 MC integrator and the grid"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_channel = 1 and n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vamp2_test_func_t :: func)
+    call func%init (n_dim = 3, n_channel = 1)
+    mc_integrator = vamp2_t (1, 3)
+    call mc_integrator%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (10000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (2000)
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grids"
+    write (u, "(A)")
+
+    call mc_integrator%write_grids (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vamp2_1
+
+@ %def vamp2_1
+@ Integrate a function with two-dimensional argument and two channels.
+<<vamp2: execute tests>>=
+  call test (vamp2_2, "vamp2_2", "VAMP2 intgeration of two-dimensional &
+       & function with two channels", u, results)
+<<vamp2: test declaration>>=
+  public :: vamp2_2
+<<vamp2: tests>>=
+  subroutine vamp2_2 (u)
+    integer, intent(in) :: u
+    type(vamp2_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vamp2_func_t), allocatable :: func
+    real(default), dimension(2), parameter :: x_lower = 0., &
+         x_upper = 1.
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vamp2_2"
+    write (u, "(A)") "*   Purpose:  intgeration of two-dimensional &
+       & function with two channels"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_channel = 1 and n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vamp2_test_func_2_t :: func)
+    call func%init (n_dim = 2, n_channel = 2)
+    mc_integrator = vamp2_t (2, 2)
+    call mc_integrator%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (1000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, opt_verbose = .true., result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (200)
+    call mc_integrator%integrate (func, rng, 3, opt_verbose = .true., result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grids"
+    write (u, "(A)")
+
+    call mc_integrator%write_grids (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vamp2_2
+
+@ %def vamp2_2
+@ Integrate a function with two-dimensional argument and two channels.
+<<vamp2: execute tests>>=
+  call test (vamp2_3, "vamp2_3", "VAMP2 intgeration of two-dimensional &
+       & function with two channels", u, results)
+<<vamp2: test declaration>>=
+  public :: vamp2_3
+<<vamp2: tests>>=
+  subroutine vamp2_3 (u)
+    integer, intent(in) :: u
+    type(vamp2_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vamp2_func_t), allocatable :: func
+    real(default), dimension(2), parameter :: x_lower = 0., &
+         x_upper = 1.
+    real(default) :: result, abserr
+    integer :: unit
+
+    write (u, "(A)") "* Test output: vamp2_3"
+    write (u, "(A)") "*   Purpose:  intgeration of two-dimensional &
+       & function with two channels"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_channel = 1 and n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vamp2_test_func_2_t :: func)
+    call func%init (n_dim = 2, n_channel = 2)
+    mc_integrator = vamp2_t (2, 2)
+    call mc_integrator%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (1000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid to file vegas_io.grid"
+    write (u, "(A)")
+
+    unit = free_unit ()
+    open (unit, file = "vamp2_io.grids", &
+         action = "write", status = "replace")
+    call mc_integrator%write_grids (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Read grid from file vegas_io.grid"
+    write (u, "(A)")
+
+    call mc_integrator%final ()
+    open (unit, file = "vamp2_io.grids", &
+         action = "read", status = "old")
+    call mc_integrator%read_grids (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (200)
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grids"
+    write (u, "(A)")
+
+    call mc_integrator%write_grids (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vamp2_3
+
+@ %def vamp2_3
+@

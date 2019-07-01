@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -37,10 +37,14 @@ module fks_regions
 
   use kinds, only: default
   use format_utils, only: write_separator
+  use numeric_utils, only: remove_duplicates_from_list, extend_integer_array
   use numeric_utils, only: remove_duplicates_from_list
+  use string_utils, only: str
   use io_units
+  use os_interface
   use iso_varying_string, string_t => varying_string
   use constants
+  use permutations
   use diagnostics
   use flavors
   use process_constants
@@ -48,7 +52,7 @@ module fks_regions
   use pdg_arrays
   use models
   use physics_defs
-  use cascades
+  use resonances, only: resonance_contributors_t, resonance_history_t
   use phs_fks, only: phs_identifier_t, check_for_phs_identifier
 
   use nlo_data
@@ -58,9 +62,12 @@ module fks_regions
 
   public :: ftuple_t
   public :: flv_structure_t
+  public :: flavor_permutation_t
   public :: singular_region_t
   public :: fks_mapping_default_t
   public :: fks_mapping_resonances_t
+  public :: operator(.equiv.)
+  public :: operator(.equivtag.)
   public :: region_data_t
   public :: assignment(=)
   public :: create_resonance_histories_for_threshold
@@ -76,7 +83,7 @@ module fks_regions
 
 
   type :: ftuple_t
-    integer, dimension(2) :: ireg
+    integer, dimension(2) :: ireg = [-1,-1]
     integer :: i_res = 0
     integer :: splitting_type
     logical :: pseudo_isr = .false.
@@ -86,6 +93,8 @@ module fks_regions
     procedure :: set => ftuple_set
     procedure :: determine_splitting_type_fsr => ftuple_determine_splitting_type_fsr
     procedure :: determine_splitting_type_isr => ftuple_determine_splitting_type_isr
+    procedure :: has_negative_elements => ftuple_has_negative_elements
+    procedure :: has_identical_elements => ftuple_has_identical_elements
   end type ftuple_t
 
   type :: ftuple_list_t
@@ -97,15 +106,18 @@ module fks_regions
   contains
      procedure :: write => ftuple_list_write
      procedure :: append => ftuple_list_append
+     procedure :: compare => ftuple_list_compare
      procedure :: get_n_tuples => ftuple_list_get_n_tuples
      procedure :: get_entry => ftuple_list_get_entry
      procedure :: get_ftuple => ftuple_list_get_ftuple
      procedure :: set_equiv => ftuple_list_set_equiv
      procedure :: check_equiv => ftuple_list_check_equiv
+     procedure :: to_array => ftuple_list_to_array
   end type ftuple_list_t
 
   type :: flv_structure_t
     integer, dimension(:), allocatable :: flst
+    integer, dimension(:), allocatable :: tag
     integer :: nlegs = 0
     integer :: n_in = 0
     logical, dimension(:), allocatable :: massive
@@ -116,14 +128,31 @@ module fks_regions
     procedure :: insert_particle_fsr => flv_structure_insert_particle_fsr
     procedure :: insert_particle_isr => flv_structure_insert_particle_isr
     procedure :: insert_particle => flv_structure_insert_particle
-    procedure :: get_nlegs => flv_structure_get_nlegs
     procedure :: count_particle => flv_structure_count_particle
     procedure :: init => flv_structure_init
     procedure :: write => flv_structure_write
+    procedure :: to_string => flv_structure_to_string
     procedure :: create_uborn => flv_structure_create_uborn
     procedure :: init_mass_and_color => flv_structure_init_mass_and_color
+    procedure :: get_last_two => flv_structure_get_last_two
     procedure :: final => flv_structure_final
   end type flv_structure_t
+
+  type :: flavor_permutation_t
+    integer, dimension(:,:), allocatable :: perms
+  contains
+    procedure :: init => flavor_permutation_init
+    procedure :: write => flavor_permutation_write
+    procedure :: reset => flavor_permutation_final
+    procedure :: final => flavor_permutation_final
+    generic :: apply => apply_permutation, &
+           apply_flavor, apply_integer, apply_ftuple
+    procedure :: apply_permutation => flavor_permutation_apply_permutation
+    procedure :: apply_flavor => flavor_permutation_apply_flavor
+    procedure :: apply_integer => flavor_permutation_apply_integer
+    procedure :: apply_ftuple => flavor_permutation_apply_ftuple
+    procedure :: test => flavor_permutation_test
+  end type flavor_permutation_t
 
   type :: singular_region_t
     integer :: alr
@@ -144,11 +173,13 @@ module fks_regions
   contains
     procedure :: init => singular_region_init
     procedure :: write => singular_region_write
+    procedure :: write_latex => singular_region_write_latex
     procedure :: set_splitting_info => singular_region_set_splitting_info
     procedure :: double_fsr_factor => singular_region_double_fsr_factor
     procedure :: has_soft_divergence => singular_region_has_soft_divergence
     procedure :: has_collinear_divergence => &
-              singular_region_has_collinear_divergence
+           singular_region_has_collinear_divergence
+    procedure :: has_identical_ftuples => singular_region_has_identical_ftuples
   end type singular_region_t
 
   type :: resonance_mapping_t
@@ -171,6 +202,7 @@ module fks_regions
      real(default) :: sumdij
      real(default) :: sumdij_soft
      logical :: pseudo_isr = .false.
+     real(default) :: normalization_factor = one
   contains
     procedure (fks_mapping_dij), deferred :: dij
     procedure (fks_mapping_compute_sumdij), deferred :: compute_sumdij
@@ -223,7 +255,6 @@ module fks_regions
     integer :: n_legs_real = 0
     integer :: n_phs = 0
     integer, dimension(:), allocatable :: underlying_borns
-    type(flavor_t) :: flv_extra
     class(fks_mapping_t), allocatable :: fks_mapping
     integer, dimension(:), allocatable :: resonances
     type(resonance_contributors_t), dimension(:), allocatable :: alr_contributors
@@ -240,7 +271,7 @@ module fks_regions
     procedure :: set_isr_pseudo_regions => region_data_set_isr_pseudo_regions
     procedure :: split_up_interference_regions_for_threshold => &
          region_data_split_up_interference_regions_for_threshold
-    procedure :: evaluate_flavors => region_data_evaluate_flavors
+    procedure :: set_mass_and_color => region_data_set_mass_and_color
     procedure :: uses_resonances => region_data_uses_resonances
     procedure :: get_emitter_list => region_data_get_emitter_list
     procedure :: get_associated_resonances => region_data_get_associated_resonances
@@ -249,10 +280,9 @@ module fks_regions
     procedure :: emitter_is_in_resonance => region_data_emitter_is_in_resonance
     procedure :: get_contributors => region_data_get_contributors
     procedure :: get_emitter => region_data_get_emitter
-    procedure :: get_underlying_born_index => region_data_get_underlying_born_index
+    procedure :: map_real_to_born_index => region_data_map_real_to_born_index
     procedure :: get_uborn_group_size => region_data_get_uborn_group_size
     procedure :: get_uborn_group => region_data_get_uborn_group
-    procedure :: get_real_index => region_data_get_real_index
     procedure :: get_emitter_group_size => region_data_get_emitter_group_size
     procedure :: get_emitter_group => region_data_get_emitter_group
     generic :: get_flv_states_born => get_flv_states_born_single, get_flv_states_born_array
@@ -261,7 +291,15 @@ module fks_regions
     generic :: get_flv_states_real => get_flv_states_real_single, get_flv_states_real_array
     procedure :: get_flv_states_real_single => region_data_get_flv_states_real_single
     procedure :: get_flv_states_real_array => region_data_get_flv_states_real_array
-    procedure :: get_svalue => region_data_get_svalue
+    procedure :: get_all_flv_states => region_data_get_all_flv_states
+    procedure :: get_n_in => region_data_get_n_in
+    procedure :: get_n_legs_real => region_data_get_n_legs_real
+    procedure :: get_n_legs_born => region_data_get_n_legs_born
+    procedure :: get_n_flv_real => region_data_get_n_flv_real
+    procedure :: get_n_flv_born => region_data_get_n_flv_born
+    generic :: get_svalue => get_svalue_last_pos, get_svalue_ij
+    procedure :: get_svalue_last_pos => region_data_get_svalue_last_pos
+    procedure :: get_svalue_ij => region_data_get_svalue_ij
     procedure :: get_svalue_soft => region_data_get_svalue_soft
     procedure :: find_regions => region_data_find_regions
     procedure :: init_singular_regions => region_data_init_singular_regions
@@ -272,21 +310,29 @@ module fks_regions
     procedure :: set_contributors => region_data_set_contributors
     procedure :: extend_ftuples => region_data_extend_ftuples
     procedure :: set_underlying_borns => region_data_set_underlying_borns
-    procedure :: get_uborn_indices => region_data_get_uborn_indices
+    procedure :: get_flavor_indices => region_data_get_flavor_indices
+    procedure :: get_matrix_element_index => region_data_get_matrix_element_index
     procedure :: compute_number_of_phase_spaces &
        => region_data_compute_number_of_phase_spaces
     procedure :: get_n_phs => region_data_get_n_phs
     procedure :: set_splitting_info => region_data_set_splitting_info
     procedure :: init_phs_identifiers => region_data_init_phs_identifiers
+    procedure :: get_all_ftuples => region_data_get_all_ftuples
     procedure :: write_to_file => region_data_write_to_file
+    procedure :: write_latex => region_data_write_latex
     procedure :: write => region_data_write
     procedure :: has_pseudo_isr => region_data_has_pseudo_isr
+    procedure :: check_consistency => region_data_check_consistency
     procedure :: final => region_data_final
   end type region_data_t
 
 
   interface assignment(=)
      module procedure ftuple_assign
+  end interface
+
+  interface operator(==)
+     module procedure ftuple_equal
   end interface
 
   interface assignment(=)
@@ -297,8 +343,12 @@ module fks_regions
      module procedure resonance_mapping_assign
   end interface
 
-  interface operator(==)
-    module procedure flv_structure_equivalent
+  interface operator(.equiv.)
+    module procedure flv_structure_equivalent_no_tag
+  end interface
+
+  interface operator(.equivtag.)
+    module procedure flv_structure_equivalent_with_tag
   end interface
 
   interface assignment(=)
@@ -385,7 +435,7 @@ module fks_regions
 
 contains
 
-  subroutine ftuple_assign (ftuple_out, ftuple_in)
+  pure subroutine ftuple_assign (ftuple_out, ftuple_in)
     type(ftuple_t), intent(out) :: ftuple_out
     type(ftuple_t), intent(in) :: ftuple_in
     ftuple_out%ireg = ftuple_in%ireg
@@ -394,20 +444,87 @@ contains
     ftuple_out%pseudo_isr = ftuple_in%pseudo_isr
   end subroutine ftuple_assign
 
-  subroutine ftuple_write (ftuple, unit)
+  elemental function ftuple_equal (f1, f2) result (value)
+    logical :: value
+    type(ftuple_t), intent(in) :: f1, f2
+    value = all (f1%ireg == f2%ireg) .and. f1%i_res == f2%i_res &
+         .and. f1%splitting_type == f2%splitting_type &
+         .and. (f1%pseudo_isr .eqv. f2%pseudo_isr)
+  end function ftuple_equal
+
+  elemental function ftuple_compare (f1, f2) result (greater)
+    logical :: greater
+    type(ftuple_t), intent(in) :: f1, f2
+    if (f1%ireg(1) == f2%ireg(1)) then
+       greater = f1%ireg(2) > f2%ireg(2)
+    else
+       greater = f1%ireg(1) > f2%ireg(2)
+    end if
+  end function ftuple_compare
+
+  subroutine ftuple_write (ftuple, unit, newline)
     class(ftuple_t), intent(in) :: ftuple
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: newline
     integer :: u
+    logical :: nl
     u = given_output_unit (unit); if (u < 0) return
-    if (ftuple%i_res > 0) then
-       print *, 'Check : ', ftuple%i_res
-       write (u, "(A1,I1,A1,I1,A1,I1,A1)") &
-         '(', ftuple%ireg(1), ',', ftuple%ireg(2), ';', ftuple%i_res, ')'
+    nl = .true.; if (present(newline)) nl = newline
+    if (all (ftuple%ireg > -1)) then
+       if (ftuple%i_res > 0) then
+          if (nl) then
+             write (u, "(A1,I1,A1,I1,A1,I1,A1)") &
+                 '(', ftuple%ireg(1), ',', ftuple%ireg(2), ';', ftuple%i_res, ')'
+          else
+             write (u, "(A1,I1,A1,I1,A1,I1,A1)", advance = "no") &
+                 '(', ftuple%ireg(1), ',', ftuple%ireg(2), ';', ftuple%i_res, ')'
+          end if
+       else
+          if (nl) then
+             write (u, "(A1,I1,A1,I1,A1)") &
+                  '(', ftuple%ireg(1), ',', ftuple%ireg(2), ')'
+          else
+             write (u, "(A1,I1,A1,I1,A1)", advance = "no") &
+                  '(', ftuple%ireg(1), ',', ftuple%ireg(2), ')'
+          end if
+       end if
     else
-       write (u, "(A1,I1,A1,I1,A1)") &
-         '(', ftuple%ireg(1), ',', ftuple%ireg(2), ')'
+       write (u, "(A)") "(Empty)"
     end if
   end subroutine ftuple_write
+
+  function ftuple_string (ftuples, latex)
+    type(string_t) :: ftuple_string
+    type(ftuple_t), intent(in), dimension(:) :: ftuples
+    logical, intent(in) :: latex
+    integer :: i, nreg
+    integer :: i1, i2
+    if (latex) then
+       ftuple_string = var_str ("$\left\{")
+    else
+       ftuple_string = var_str ("{")
+    end if
+    nreg = size(ftuples)
+    do i = 1, nreg
+       if (ftuples(i)%i_res == 0) then
+          ftuple_string = ftuple_string // var_str ("(") // &
+               str (ftuples(i)%ireg(1)) // var_str (",") // &
+               str (ftuples(i)%ireg(2)) // var_str (")")
+       else
+          ftuple_string = ftuple_string // var_str ("(") // &
+               str (ftuples(i)%ireg(1)) // var_str (",") // &
+               str (ftuples(i)%ireg(2)) // var_str (";") // &
+               str (ftuples(i)%i_res) // var_str (")")
+       end if
+       if (ftuples(i)%pseudo_isr) ftuple_string = ftuple_string // var_str ("*")
+       if (i < nreg) ftuple_string = ftuple_string // var_str (",")
+    end do
+    if (latex) then
+       ftuple_string = ftuple_string // var_str ("\right\}$")
+    else
+       ftuple_string = ftuple_string // var_str ("}")
+    end if
+  end function ftuple_string
 
   subroutine ftuple_get (ftuple, pos1, pos2)
     class(ftuple_t), intent(in) :: ftuple
@@ -461,20 +578,40 @@ contains
     end associate
   end subroutine ftuple_determine_splitting_type_isr
 
-  subroutine ftuple_list_write (list)
+  elemental function ftuple_has_negative_elements (ftuple) result (value)
+    logical :: value
+    class(ftuple_t), intent(in) :: ftuple
+    value = any (ftuple%ireg < 0)
+  end function ftuple_has_negative_elements
+
+  elemental function ftuple_has_identical_elements (ftuple) result (value)
+    logical :: value
+    class(ftuple_t), intent(in) :: ftuple
+    value = ftuple%ireg(1) == ftuple%ireg(2)
+  end function ftuple_has_identical_elements
+
+  subroutine ftuple_list_write (list, unit, verbose)
     class(ftuple_list_t), intent(in), target :: list
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
     type(ftuple_list_t), pointer :: current
+    logical :: verb
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    verb = .false.; if (present (verbose)) verb = verbose
     select type (list)
     type is (ftuple_list_t)
        current => list
        do
-          call current%ftuple%write
+          call current%ftuple%write (unit = u, newline = .false.)
+          if (verb .and. associated (current%equiv)) write (u, '(A)', advance = "no") "'"
           if (associated (current%next)) then
              current => current%next
           else
              exit
           end if
        end do
+       write (u, *) ""
     end select
   end subroutine ftuple_list_write
 
@@ -486,31 +623,38 @@ contains
    select type (list)
    type is (ftuple_list_t)
    if (list%index == 0) then
-      nullify(list%next)
+      nullify (list%next)
       list%index = 1
       list%ftuple = ftuple
    else
       current => list
       do
        if (associated (current%next)) then
-         current => current%next
+          current => current%next
        else
-         allocate (current%next)
-         nullify (current%next%next)
-         nullify (current%next%equiv)
-         current%next%prev => current
-         current%next%index = current%index + 1
-         current%next%ftuple = ftuple
-         exit
+          allocate (current%next)
+          nullify (current%next%next)
+          nullify (current%next%equiv)
+          current%next%prev => current
+          current%next%index = current%index + 1
+          current%next%ftuple = ftuple
+          exit
        end if
      end do
    end if
    end select
   end subroutine ftuple_list_append
 
-  function ftuple_list_get_n_tuples (list) result(n_tuples)
-    class(ftuple_list_t), intent(in), target :: list
+  function ftuple_list_compare (ftuple_list, i1, i2) result (greater)
+    logical :: greater
+    class(ftuple_list_t), intent(in) :: ftuple_list
+    integer, intent(in) :: i1, i2
+    greater = ftuple_compare (ftuple_list%get_ftuple (i1), ftuple_list%get_ftuple (i2))
+  end function ftuple_list_compare
+
+  impure elemental function ftuple_list_get_n_tuples (list) result(n_tuples)
     integer :: n_tuples
+    class(ftuple_list_t), intent(in), target :: list
     type(ftuple_list_t), pointer :: current
     n_tuples = 0
     select type (list)
@@ -531,35 +675,30 @@ contains
   end function ftuple_list_get_n_tuples
 
   function ftuple_list_get_entry (list, index) result (entry)
-   class(ftuple_list_t), intent(in), target :: list
-   integer, intent(in) :: index
-   type(ftuple_list_t), pointer :: entry
-   type(ftuple_list_t), pointer :: current
-   integer :: i
-   entry => null()
-   select type (list)
-   type is (ftuple_list_t)
-      current => list
-      if (index <= list%get_n_tuples ()) then
-         if (index == 1) then
-            entry => current
-         else
-            do i = 1, index - 1
-               current => current%next
-            end do
-            entry => current
-         end if
-      else
-         call msg_fatal &
-              ("Index must be smaller or equal than the total number of regions!")
-      end if
-   end select
- end function ftuple_list_get_entry
-
-  function ftuple_list_get_ftuple (list, index)  result (ftuple)
+    type(ftuple_list_t), pointer :: entry
     class(ftuple_list_t), intent(in), target :: list
     integer, intent(in) :: index
+    type(ftuple_list_t), pointer :: current
+    integer :: i
+    entry => null()
+    select type (list)
+    type is (ftuple_list_t)
+       current => list
+       if (index == 1) then
+          entry => current
+       else
+          do i = 1, index - 1
+             current => current%next
+          end do
+          entry => current
+       end if
+    end select
+  end function ftuple_list_get_entry
+
+  function ftuple_list_get_ftuple (list, index)  result (ftuple)
     type(ftuple_t) :: ftuple
+    class(ftuple_list_t), intent(in), target :: list
+    integer, intent(in) :: index
     type(ftuple_list_t), pointer :: entry
     entry => list%get_entry (index)
     ftuple = entry%ftuple
@@ -568,11 +707,19 @@ contains
   subroutine ftuple_list_set_equiv (list, i1, i2)
     class(ftuple_list_t), intent(in) :: list
     integer, intent(in) :: i1, i2
-    type(ftuple_list_t), pointer :: list1, list2
+    type(ftuple_list_t), pointer :: list1, list2 => null ()
+    type(ftuple_t) :: f1, f2
     select type (list)
     type is (ftuple_list_t)
-       list1 => list%get_entry (i1)
-       list2 => list%get_entry (i2)
+    f1 = list%get_ftuple (i1)
+    f2 = list%get_ftuple (i2)
+       if (list%compare (i1, i2)) then
+          list1 => list%get_entry (i2)
+          list2 => list%get_entry (i1)
+       else
+          list1 => list%get_entry (i1)
+          list2 => list%get_entry (i2)
+       end if
        do
           if (associated (list1%equiv)) then
              list1 => list1%equiv
@@ -607,6 +754,67 @@ contains
     end select
   end function ftuple_list_check_equiv
 
+  subroutine ftuple_list_to_array (ftuple_list, ftuple_array, equivalences, ordered)
+    class(ftuple_list_t), intent(in), target :: ftuple_list
+    type(ftuple_t), intent(out), dimension(:), allocatable :: ftuple_array
+    logical, intent(out), dimension(:,:), allocatable :: equivalences
+    logical, intent(in) :: ordered
+    integer :: i_tuple, n
+    type(ftuple_list_t), pointer :: current => null ()
+    integer :: i1, i2
+    type(ftuple_t) :: ftuple_tmp
+    logical, dimension(:), allocatable :: eq_tmp
+    n = ftuple_list%get_n_tuples ()
+    allocate (ftuple_array (n), equivalences (n, n))
+    equivalences = .false.
+    select type (ftuple_list)
+    type is (ftuple_list_t)
+       current => ftuple_list
+       i_tuple = 1
+       do
+          ftuple_array(i_tuple) = current%ftuple
+          if (associated (current%equiv)) then
+             i1 = current%index
+             i2 = current%equiv%index
+             equivalences (i1, i2) = .true.
+          end if
+          if (associated (current%next)) then
+             current => current%next
+             i_tuple = i_tuple + 1
+          else
+             exit
+          end if
+       end do
+    end select
+    if (ordered) then
+       allocate (eq_tmp (n))
+       do i1 = 2, n
+          i2 = i1
+          do while (i2 > 1 .and. ftuple_compare (ftuple_array(i2 - 1), ftuple_array(i2)))
+             ftuple_tmp = ftuple_array(i2 - 1)
+             eq_tmp = equivalences(i2, :)
+             ftuple_array(i2 - 1) = ftuple_array(i2)
+             ftuple_array(i2) = ftuple_tmp
+             equivalences(i2 - 1, :) = equivalences(i2, :)
+             equivalences(i2, :) = eq_tmp
+             i2 = i2 - 1
+          end do
+       end do
+       deallocate (eq_tmp)
+    end if
+  end subroutine ftuple_list_to_array
+
+  subroutine print_equivalence_matrix (ftuple_array, equivalences)
+    type(ftuple_t), intent(in), dimension(:) :: ftuple_array
+    logical, intent(in), dimension(:,:) :: equivalences
+    integer :: i, i1, i2
+    print *, 'Equivalence matrix: '
+    do i = 1, size (ftuple_array)
+       call ftuple_array(i)%get(i1,i2)
+       print *, 'i: ', i, '(', i1, i2, '): ', equivalences(i,:)
+    end do
+  end subroutine print_equivalence_matrix
+
   function flv_structure_valid_pair &
      (flv, i, j, flv_ref, model) result (valid)
     logical :: valid
@@ -619,11 +827,10 @@ contains
     integer, dimension(:), allocatable :: flv_orig
     valid = .false.
     if (all ([i, j] <= flv%n_in)) return
-    call model%match_vertex &
-         (flv%flst(i), flv%flst(j), flv_orig)
+    call model%match_vertex (flv%flst(i), flv%flst(j), flv_orig)
     n_orig = size (flv_orig)
     if (n_orig == 0) then
-      return
+       return
     else
       do k = 1, n_orig
          if (any ([i, j] <= flv%n_in)) then
@@ -631,7 +838,7 @@ contains
          else
             flv_test = flv%insert_particle_fsr (i, j, flv_orig(k))
          end if
-         valid = flv_ref == flv_test
+         valid = flv_ref .equiv. flv_test
          call flv_test%final ()
          if (valid) return
       end do
@@ -639,45 +846,41 @@ contains
     deallocate (flv_orig)
   end function flv_structure_valid_pair
 
-  function flv_structure_equivalent (flv1, flv2) result(equiv)
+  function flv_structure_equivalent (flv1, flv2, with_tag) result(equiv)
     logical :: equiv
     type(flv_structure_t), intent(in) :: flv1, flv2
-    integer :: i, j, n
-    logical, dimension(:), allocatable :: present, checked
+    logical, intent(in) :: with_tag
+    type(flavor_permutation_t) :: perm
+    integer :: n
     n = size (flv1%flst)
     equiv = .true.
     if (n /= size (flv2%flst)) then
        call msg_fatal &
-          ('flv_structure_equivalent: flavor arrays do not have equal lengths')
+            ('flv_structure_equivalent: flavor arrays do not have equal lengths')
     else if (flv1%n_in /= flv2%n_in) then
        call msg_fatal &
-          ('flv_structure_equivalent: flavor arrays do not have equal n_in')
+            ('flv_structure_equivalent: flavor arrays do not have equal n_in')
     else
-       allocate (present(n))
-       allocate (checked(n))
-       present = .false.; checked = .false.
-       do i = 1, flv1%n_in
-          if (flv1%flst(i) /= flv2%flst(i)) then
-             equiv = .false.
-             return
-          end if
-       end do
-       do i = flv1%n_in + 1 , n
-          do j = flv1%n_in + 1 ,n
-             if (flv1%flst(i) == flv2%flst(j) .and. .not. checked(j)) then
-                present(i) = .true.
-                checked(j) = .true.
-                exit
-             end if
-          end do
-       end do
-       do i = flv1%n_in + 1 , n
-          if (.not.present(i)) equiv = .false.
-       end do
+       call perm%init (flv1, flv2, flv1%n_in, flv1%nlegs, with_tag)
+       equiv = perm%test (flv2, flv1, with_tag)
+       call perm%final ()
     end if
   end function flv_structure_equivalent
 
-  subroutine flv_structure_assign_flv (flv_out, flv_in)
+  function flv_structure_equivalent_no_tag (flv1, flv2) result(equiv)
+    logical :: equiv
+    type(flv_structure_t), intent(in) :: flv1, flv2
+    equiv = flv_structure_equivalent (flv1, flv2, .false.)
+  end function flv_structure_equivalent_no_tag
+
+  function flv_structure_equivalent_with_tag (flv1, flv2) result(equiv)
+    logical :: equiv
+    type(flv_structure_t), intent(in) :: flv1, flv2
+    equiv = flv_structure_equivalent (flv1, flv2, .true.)
+  end function flv_structure_equivalent_with_tag
+
+
+  pure subroutine flv_structure_assign_flv (flv_out, flv_in)
     type(flv_structure_t), intent(out) :: flv_out
     type(flv_structure_t), intent(in) :: flv_in
     flv_out%nlegs = flv_in%nlegs
@@ -685,6 +888,10 @@ contains
     if (allocated (flv_in%flst)) then
        allocate (flv_out%flst (size (flv_in%flst)))
        flv_out%flst = flv_in%flst
+    end if
+    if (allocated (flv_in%tag)) then
+       allocate (flv_out%tag (size (flv_in%tag)))
+       flv_out%tag = flv_in%tag
     end if
     if (allocated (flv_in%massive)) then
        allocate (flv_out%massive (size (flv_in%massive)))
@@ -696,12 +903,15 @@ contains
     end if
   end subroutine flv_structure_assign_flv
 
-  subroutine flv_structure_assign_integer (flv_out, iarray)
+  pure subroutine flv_structure_assign_integer (flv_out, iarray)
     type(flv_structure_t), intent(out) :: flv_out
     integer, intent(in), dimension(:) :: iarray
+    integer :: i
     flv_out%nlegs = size (iarray)
     allocate (flv_out%flst (flv_out%nlegs))
+    allocate (flv_out%tag (flv_out%nlegs))
     flv_out%flst = iarray
+    flv_out%tag = [(i, i = 1, flv_out%nlegs)]
   end subroutine flv_structure_assign_integer
 
   function flv_structure_remove_particle (flv, index) result(flv_new)
@@ -709,19 +919,28 @@ contains
     class(flv_structure_t), intent(in) :: flv
     integer, intent(in) :: index
     integer :: n1, n2
-    n1 = size (flv%flst)
-    n2 = n1 - 1
-    allocate (flv_new%flst (n2))
+    integer :: i, removed_tag
+    n1 = size (flv%flst); n2 = n1 - 1
+    allocate (flv_new%flst (n2), flv_new%tag (n2))
     flv_new%nlegs = n2
     flv_new%n_in = flv%n_in
+    removed_tag = flv%tag(index)
     if (index == 1) then
-      flv_new%flst(1 : n2) = flv%flst(2 : n1)
+       flv_new%flst(1 : n2) = flv%flst(2 : n1)
+       flv_new%tag(1 : n2) = flv%tag(2 : n1)
     else if (index == n1) then
-      flv_new%flst(1 : n2) = flv%flst(1 : n2)
+       flv_new%flst(1 : n2) = flv%flst(1 : n2)
+       flv_new%tag(1 : n2) = flv%tag(1 : n2)
     else
-      flv_new%flst(1 : index - 1) = flv%flst(1 : index - 1)
-      flv_new%flst(index : n2) = flv%flst(index + 1 : n1)
+       flv_new%flst(1 : index - 1) = flv%flst(1 : index - 1)
+       flv_new%flst(index : n2) = flv%flst(index + 1 : n1)
+       flv_new%tag(1 : index - 1) = flv%tag(1 : index - 1)
+       flv_new%tag(index : n2) = flv%tag(index + 1 : n1)
     end if
+    do i = 1, n2
+       if (flv_new%tag(i) > removed_tag) &
+            flv_new%tag(i) = flv_new%tag(i) - 1
+    end do
   end function flv_structure_remove_particle
 
   function flv_structure_insert_particle_fsr (flv, i1, i2, flv_add) result (flv_new)
@@ -752,38 +971,40 @@ contains
     integer, intent(in) :: i1, i2, particle
     type(flv_structure_t) :: flv_tmp
     integer :: n1, n2
-    n1 = size (flv%flst)
-    n2 = n1 - 1
-    allocate (flv_new%flst(n2))
+    integer :: new_tag
+    n1 = size (flv%flst); n2 = n1 - 1
+    allocate (flv_new%flst (n2), flv_new%tag (n2))
     flv_new%nlegs = n2
     flv_new%n_in = flv%n_in
+    new_tag = maxval(flv%tag) + 1
     if (i1 < i2) then
-      flv_tmp = flv%remove_particle (i1)
-      flv_tmp = flv_tmp%remove_particle (i2 - 1)
+       flv_tmp = flv%remove_particle (i1)
+       flv_tmp = flv_tmp%remove_particle (i2 - 1)
     else if(i2 < i1) then
-      flv_tmp = flv%remove_particle(i2)
-      flv_tmp = flv_tmp%remove_particle(i1 - 1)
+       flv_tmp = flv%remove_particle(i2)
+       flv_tmp = flv_tmp%remove_particle(i1 - 1)
     else
-      call msg_fatal ("flv_structure_insert_particle: Indices are identical!")
+       call msg_fatal ("flv_structure_insert_particle: Indices are identical!")
     end if
     if (i1 == 1) then
-      flv_new%flst(1) = particle
-      flv_new%flst(2 : n2) = flv_tmp%flst(1 : n2 - 1)
+       flv_new%flst(1) = particle
+       flv_new%flst(2 : n2) = flv_tmp%flst(1 : n2 - 1)
+       flv_new%tag(1) = new_tag
+       flv_new%tag(2 : n2) = flv_tmp%tag(1 : n2 - 1)
     else if (i1 == n1 .or. i1 == n2) then
-      flv_new%flst(1 : n2 - 1) = flv_tmp%flst(1 : n2 - 1)
-      flv_new%flst(n2) = particle
+       flv_new%flst(1 : n2 - 1) = flv_tmp%flst(1 : n2 - 1)
+       flv_new%flst(n2) = particle
+       flv_new%tag(1 : n2 - 1) = flv_tmp%tag(1 : n2 - 1)
+       flv_new%tag(n2) = new_tag
     else
-      flv_new%flst(1 : i1 - 1) = flv_tmp%flst(1 : i1 - 1)
-      flv_new%flst(i1) = particle
-      flv_new%flst(i1 + 1 : n2) = flv_tmp%flst(i1 : n2 - 1)
+       flv_new%flst(1 : i1 - 1) = flv_tmp%flst(1 : i1 - 1)
+       flv_new%flst(i1) = particle
+       flv_new%flst(i1 + 1 : n2) = flv_tmp%flst(i1 : n2 - 1)
+       flv_new%tag(1 : i1 - 1) = flv_tmp%tag(1 : i1 - 1)
+       flv_new%tag(i1) = new_tag
+       flv_new%tag(i1 + 1 : n2) = flv_tmp%tag(i1 : n2 - 1)
     end if
   end function flv_structure_insert_particle
-
-  function flv_structure_get_nlegs (flv) result(n)
-    class(flv_structure_t), intent(in) :: flv
-    integer :: n
-    n = size (flv%flst)
-  end function flv_structure_get_nlegs
 
   function flv_structure_count_particle (flv, part) result (n)
     class(flv_structure_t), intent(in) :: flv
@@ -792,14 +1013,22 @@ contains
     n = count (flv%flst == part)
   end function flv_structure_count_particle
 
-  subroutine flv_structure_init (flv, aval, n_in)
+  subroutine flv_structure_init (flv, aval, n_in, tags)
     class(flv_structure_t), intent(inout) :: flv
     integer, intent(in), dimension(:) :: aval
     integer, intent(in) :: n_in
-    integer :: n
+    integer, intent(in), dimension(:), optional :: tags
+    integer :: i, n
     n = size (aval)
-    allocate (flv%flst (n))
-    flv%flst(1 : n) = aval(1 : n)
+    allocate (flv%flst (n), flv%tag (n))
+    flv%flst = aval
+    if (present (tags)) then
+       flv%tag = tags
+    else
+       do i = 1, n
+          flv%tag(i) = i
+       end do
+    end if
     flv%nlegs = n
     flv%n_in = n_in
   end subroutine flv_structure_init
@@ -809,12 +1038,24 @@ contains
     integer, intent(in), optional :: unit
     integer :: i, u
     u = given_output_unit (unit); if (u < 0) return
-    write (u, '(A1)',advance = 'no') '['
-    do i = 1, size(flv%flst) - 1
-      write (u, '(I3,A1)', advance = 'no') flv%flst(i), ','
-    end do
-    write (u, '(I3,A1)') flv%flst(i), ']'
+    write (u, '(A)') char (flv%to_string ())
   end subroutine flv_structure_write
+
+  function flv_structure_to_string (flv) result (flv_string)
+    type(string_t) :: flv_string
+    class(flv_structure_t), intent(in) :: flv
+    integer :: i, n
+    if (allocated (flv%flst)) then
+       flv_string = var_str ("[")
+       n = size (flv%flst)
+       do i = 1, n - 1
+          flv_string = flv_string // str (flv%flst(i)) // var_str(",")
+       end do
+       flv_string = flv_string // str (flv%flst(n)) // var_str("]")
+    else
+       flv_string = var_str ("[not allocated]")
+    end if
+  end function flv_structure_to_string
 
   function flv_structure_create_uborn (flv, emitter) result(flv_uborn)
     type(flv_structure_t) :: flv_uborn
@@ -823,17 +1064,19 @@ contains
     integer n_legs
     integer :: f1, f2
     n_legs = size(flv%flst)
-    allocate (flv_uborn%flst (n_legs - 1))
+    allocate (flv_uborn%flst (n_legs - 1), flv_uborn%tag (n_legs - 1))
     if (emitter > flv%n_in) then
        f1 = flv%flst(n_legs); f2 = flv%flst(n_legs - 1)
        if (f1 == 21) then
           !!! Emitted particle is a gluon => just remove it
           flv_uborn = flv%remove_particle(n_legs)
        else if (is_quark (f1) .and. is_quark (f2) .and. f1 + f2 == 0) then
-          !!! Emission type is a gluon splitting into two quars
+          !!! Emission type is a gluon splitting into two quarks
           flv_uborn = flv%insert_particle(n_legs - 1, n_legs, 21)
        else
-          call msg_fatal ("Create underlying Born: Unsupported splitting type.")
+          call msg_error ("Create underlying Born: Unsupported splitting type.")
+          call msg_error (char (str (flv%flst)))
+          call msg_fatal ("FKS - FAIL")
        end if
     else if (emitter > 0) then
        f1 = flv%flst(n_legs); f2 = flv%flst(emitter)
@@ -859,30 +1102,208 @@ contains
        call flavor%init (flv%flst(i), model)
        flv%massive(i) = flavor%get_mass () > 0
        flv%colored(i) = &
-          is_quark (flv%flst(i)) .or. is_gluon (flv%flst(i))
+            is_quark (flv%flst(i)) .or. is_gluon (flv%flst(i))
     end do
   end subroutine flv_structure_init_mass_and_color
+
+  function flv_structure_get_last_two (flv, n) result (flst_last)
+    integer, dimension(2) :: flst_last
+    class(flv_structure_t), intent(in) :: flv
+    integer, intent(in) :: n
+    flst_last = [flv%flst(n - 1), flv%flst(n)]
+  end function flv_structure_get_last_two
 
   subroutine flv_structure_final (flv)
     class(flv_structure_t), intent(inout) :: flv
     if (allocated (flv%flst)) deallocate (flv%flst)
-    if (allocated (flv%flst)) deallocate (flv%massive)
-    if (allocated (flv%flst)) deallocate (flv%colored)
+    if (allocated (flv%tag)) deallocate (flv%tag)
+    if (allocated (flv%massive)) deallocate (flv%massive)
+    if (allocated (flv%colored)) deallocate (flv%colored)
   end subroutine flv_structure_final
 
+  subroutine flavor_permutation_init (perm, flv_in, flv_ref, n_first, n_last, with_tag)
+    class(flavor_permutation_t), intent(out) :: perm
+    type(flv_structure_t), intent(in) :: flv_in, flv_ref
+    integer, intent(in) :: n_first, n_last
+    logical, intent(in) :: with_tag
+    integer :: flv1, flv2, tmp
+    integer :: tag1, tag2
+    integer :: i, j, j_min, i_perm
+    integer, dimension(:,:), allocatable :: perm_list_tmp
+    type(flv_structure_t) :: flv_copy
+    logical :: condition
+    logical, dimension(:), allocatable :: already_correct
+    flv_copy = flv_in
+    allocate (perm_list_tmp (factorial (n_last - n_first - 1), 2))
+    allocate (already_correct (flv_in%nlegs))
+    already_correct = flv_in%flst == flv_ref%flst
+    if (with_tag) &
+         already_correct = already_correct .and. (flv_in%tag == flv_ref%tag)
+    j_min = n_first + 1
+    i_perm = 0
+    do i = n_first + 1, n_last
+       flv1 = flv_ref%flst(i)
+       tag1 = flv_ref%tag(i)
+       do j = j_min, n_last
+          if (already_correct(i) .or. already_correct(j)) cycle
+          flv2 = flv_copy%flst(j)
+          tag2 = flv_copy%tag(j)
+          condition = (flv1 == flv2) .and. i /= j
+          if (with_tag) condition = condition .and. (tag1 == tag2)
+          if (condition) then
+             i_perm = i_perm + 1
+             tmp = flv_copy%flst(i)
+             flv_copy%flst(i) = flv2
+             flv_copy%flst(j) = tmp
+             tmp = flv_copy%tag(i)
+             flv_copy%tag(i) = tag2
+             flv_copy%tag(j) = tmp
+             perm_list_tmp (i_perm, 1) = i
+             perm_list_tmp (i_perm, 2) = j
+             exit
+          end if
+       end do
+       j_min = j_min + 1
+    end do
+    allocate (perm%perms (i_perm, 2))
+    perm%perms = perm_list_tmp (1 : i_perm, :)
+    deallocate (perm_list_tmp)
+    call flv_copy%final ()
+  end subroutine flavor_permutation_init
+
+  subroutine flavor_permutation_write (perm, unit)
+    class(flavor_permutation_t), intent(in) :: perm
+    integer, intent(in), optional :: unit
+    integer :: i, n, u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(A)") "Flavor permutation list: "
+    n = size (perm%perms, dim = 1)
+    if (n > 0) then
+       do i = 1, n
+          write (u, "(A1,I1,1X,I1,A1)", advance = "no") "[", perm%perms(i,1), perm%perms(i,2), "]"
+          if (i < n) write (u, "(A4)", advance = "no") " // "
+       end do
+       write (u, "(A)") ""
+    else
+       write (u, "(A)") "[Empty]"
+    end if
+  end subroutine flavor_permutation_write
+
+  subroutine flavor_permutation_final (perm)
+    class(flavor_permutation_t), intent(inout) :: perm
+    if (allocated (perm%perms)) deallocate (perm%perms)
+  end subroutine flavor_permutation_final
+
+  elemental function flavor_permutation_apply_permutation (perm_1, perm_2) &
+         result (perm_out)
+    type(flavor_permutation_t) :: perm_out
+    class(flavor_permutation_t), intent(in) :: perm_1
+    type(flavor_permutation_t), intent(in) :: perm_2
+    integer :: n1, n2
+    n1 = size (perm_1%perms, dim = 1)
+    n2 = size (perm_2%perms, dim = 1)
+    allocate (perm_out%perms (n1 + n2, 2))
+    perm_out%perms (1 : n1, :) = perm_1%perms
+    perm_out%perms (n1 + 1: n1 + n2, :) = perm_2%perms
+  end function flavor_permutation_apply_permutation
+
+  elemental function flavor_permutation_apply_flavor (perm, flv_in, invert) &
+         result (flv_out)
+    type(flv_structure_t) :: flv_out
+    class(flavor_permutation_t), intent(in) :: perm
+    type(flv_structure_t), intent(in) :: flv_in
+    logical, intent(in), optional :: invert
+    integer :: i, i1, i2
+    integer :: p1, p2, incr
+    integer :: flv_tmp, tag_tmp
+    logical :: inv
+    inv = .false.; if (present(invert)) inv = invert
+    flv_out = flv_in
+    if (inv) then
+       p1 = 1
+       p2 = size (perm%perms, dim = 1)
+       incr = 1
+    else
+       p1 = size (perm%perms, dim = 1)
+       p2 = 1
+       incr = -1
+    end if
+    do i = p1, p2, incr
+       i1 = perm%perms(i,1)
+       i2 = perm%perms(i,2)
+       flv_tmp = flv_out%flst(i1)
+       tag_tmp = flv_out%tag(i1)
+       flv_out%flst(i1) = flv_out%flst(i2)
+       flv_out%flst(i2) = flv_tmp
+       flv_out%tag(i1) = flv_out%tag(i2)
+       flv_out%tag(i2) = tag_tmp
+    end do
+  end function flavor_permutation_apply_flavor
+
+  elemental function flavor_permutation_apply_integer (perm, i_in) result (i_out)
+    integer :: i_out
+    class(flavor_permutation_t), intent(in) :: perm
+    integer, intent(in) :: i_in
+    integer :: i, i1, i2
+    i_out = i_in
+    do i = size (perm%perms(:,1)), 1, -1
+       i1 = perm%perms(i,1)
+       i2 = perm%perms(i,2)
+       if (i_out == i1) then
+          i_out = i2
+       else if (i_out == i2) then
+          i_out = i1
+       end if
+    end do
+  end function flavor_permutation_apply_integer
+
+  elemental function flavor_permutation_apply_ftuple (perm, f_in) result (f_out)
+    type(ftuple_t) :: f_out
+    class(flavor_permutation_t), intent(in) :: perm
+    type(ftuple_t), intent(in) :: f_in
+    integer :: i, i1, i2
+    f_out = f_in
+    do i = size (perm%perms, dim = 1), 1, -1
+       i1 = perm%perms(i,1)
+       i2 = perm%perms(i,2)
+       if (f_out%ireg(1) == i1) then
+          f_out%ireg(1) = i2
+       else if (f_out%ireg(1) == i2) then
+          f_out%ireg(1) = i1
+       end if
+       if (f_out%ireg(2) == i1) then
+          f_out%ireg(2) = i2
+       else if (f_out%ireg(2) == i2) then
+          f_out%ireg(2) = i1
+       end if
+    end do
+    if (f_out%ireg(1) > f_out%ireg(2)) f_out%ireg = f_out%ireg([2,1])
+  end function flavor_permutation_apply_ftuple
+
+  function flavor_permutation_test (perm, flv1, flv2, with_tag) result (valid)
+    logical :: valid
+    class(flavor_permutation_t), intent(in) :: perm
+    type(flv_structure_t), intent(in) :: flv1, flv2
+    logical, intent(in) :: with_tag
+    type(flv_structure_t) :: flv_test
+    flv_test = perm%apply (flv2, invert = .true.)
+    valid = all (flv_test%flst == flv1%flst)
+    if (with_tag) valid = valid .and. all (flv_test%tag == flv1%tag)
+    call flv_test%final ()
+  end function flavor_permutation_test
+
   subroutine singular_region_init (sregion, alr, mult, i_res, &
-         flst_real, flst_uborn, flv_born, emitter, ftuples, index)
+         flst_real, flst_uborn, flv_born, emitter, ftuples, equivalences)
     class(singular_region_t), intent(out) :: sregion
     integer, intent(in) :: alr, mult, i_res
     type(flv_structure_t), intent(in) :: flst_real
     type(flv_structure_t), intent(in) :: flst_uborn
     type(flv_structure_t), dimension(:), intent(in) :: flv_born
     integer, intent(in) :: emitter
-    type(ftuple_list_t), intent(in), dimension(:), target :: ftuples
-    integer, dimension(:), intent(in) :: index
-    type(ftuple_list_t), pointer :: current_region
-    integer :: i, i1, i2, nlegs
-    call msg_debug (D_SUBTRACTION, "singular_region_init")
+    type(ftuple_t), intent(inout), dimension(:) :: ftuples
+    logical, intent(inout), dimension(:,:) :: equivalences
+    integer :: i, i1, i2
+    integer :: n_regions, n_legs
     call debug_input_values ()
     sregion%alr = alr
     sregion%mult = mult
@@ -890,39 +1311,29 @@ contains
     sregion%flst_real = flst_real
     sregion%flst_uborn = flst_uborn
     sregion%emitter = emitter
-    sregion%nregions = ftuples (index(alr))%get_n_tuples ()
-    nlegs = size (flst_real%flst)
+    n_regions = size (ftuples)
+    sregion%nregions = size (ftuples)
+    n_legs = size (flst_real%flst)
     allocate (sregion%ftuples (sregion%nregions))
-    do i = 1, sregion%nregions
-       current_region => ftuples (index(alr))%get_entry (i)
-       if (.not. associated (current_region%equiv)) then
-          call current_region%ftuple%get (i1, i2)
-          if (i2 /= nlegs) call current_region%ftuple%set (i1, nlegs)
-       end if
-       sregion%ftuples (i) = current_region%ftuple
-    end do
+    sregion%ftuples = ftuples
     do i = 1, size(flv_born)
-       if (flv_born (i) == sregion%flst_uborn) then
+       if (flv_born (i) .equiv. sregion%flst_uborn) then
           sregion%uborn_index = i
           exit
        end if
     end do
   contains
     subroutine debug_input_values()
+      integer :: i
+      call msg_debug2 (D_SUBTRACTION, "singular_region_init")
       if (debug2_active (D_SUBTRACTION)) then
          print *, 'alr =    ', alr
          print *, 'mult =    ', mult
          print *, 'i_res =    ', i_res
          call flst_real%write ()
          call flst_uborn%write ()
-         do i = 1, size (flv_born)
-            call flv_born(i)%write ()
-         end do
          print *, 'emitter =    ', emitter
-         do i = 1, size (ftuples)
-            call ftuples(i)%write ()
-         end do
-         print *, 'index =    ', index
+         call print_equivalence_matrix (ftuples, equivalences)
       end if
     end subroutine debug_input_values
   end subroutine singular_region_init
@@ -950,6 +1361,8 @@ contains
        write (u, flst_format, advance = 'no') sregion%flst_real%flst(i), ','
     end do
     write (u, flst_format, advance = 'no') sregion%flst_real%flst(nreal), ']'
+    call write_vline (u)
+    write (u, '(I6)', advance = 'no') sregion%real_index
     call write_vline (u)
     write (u, '(I3)', advance = 'no') sregion%emitter
     call write_vline (u)
@@ -979,42 +1392,7 @@ contains
           write(u, ireg_space_format, advance='no') ' '
        end do
     end if
-    write (u,'(A1)', advance = 'no') '{'
-    if (nreg > 1) then
-       do i = 1, nreg - 1
-          call sregion%ftuples(i)%get (i1, i2)
-          if (sregion%ftuples(i)%pseudo_isr) then
-             closing_bracket = ')*'
-          else
-             closing_bracket = ')'
-          end if
-          i_res = sregion%ftuples(i)%i_res
-          if (i_res > 0) then
-             write (u, ireg_format_resonant, advance = 'no') &
-                '(', i1, ',', i2, ';', i_res, closing_bracket
-          else
-             write(u, ireg_format, advance = 'no') '(', i1, ',', i2, closing_bracket
-          end if
-       end do
-    end if
-    call sregion%ftuples(nreg)%get (i1, i2)
-    i_res = sregion%ftuples(nreg)%i_res
-    if (sregion%ftuples(nreg)%pseudo_isr) then
-       closing_bracket = ')*}'
-    else
-       closing_bracket = ')}'
-    end if
-    if (i_res > 0) then
-       write (u, ireg_format_resonant, advance = 'no') &
-          '(', i1, ',', i2, '; ', i_res, closing_bracket
-    else
-       write (u, ireg_format, advance = 'no') '(', i1, ',', i2, closing_bracket
-    end if
-    if (nright > 0) then
-       do i = 1, nright
-          write(u, ireg_space_format, advance='no') ' '
-       end do
-    end if
+    write (u, '(A)', advance = 'no') char (ftuple_string (sregion%ftuples, .false.))
     call write_vline (u)
     write (u,'(A1)',advance = 'no') '['
     do i = 1, nborn - 1
@@ -1025,6 +1403,19 @@ contains
     write (u, '(I7)', advance = 'no') sregion%uborn_index
     write (u, '(A)')
   end subroutine singular_region_write
+
+  subroutine singular_region_write_latex (region, unit)
+    class(singular_region_t), intent(in) :: region
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(I2,A3,A,A3,I2,A3,I1,A3,I1,A3,A,A3,I2,A3,A,A3)") &
+           region%alr, " & ", char (region%flst_real%to_string ()), &
+           " & ", region%real_index, " & ", region%emitter, " & ", &
+           region%mult, " & ", char (ftuple_string (region%ftuples, .true.)), &
+           " & ", region%uborn_index, " & ",  char (region%flst_uborn%to_string ()), &
+           " \\"
+  end subroutine singular_region_write_latex
 
   subroutine singular_region_set_splitting_info (region)
     class(singular_region_t), intent(inout) :: region
@@ -1038,16 +1429,15 @@ contains
              cycle
           else
              region%soft_divergence = &
-                ftuple(reg)%splitting_type /= G_TO_QQ
+                  ftuple(reg)%splitting_type /= G_TO_QQ
 
              if (i1 == 0) then
                region%coll_divergence = .true.
              else
-               region%coll_divergence = &
-                    .not. region%flst_real%massive(i1)
+               region%coll_divergence = .not. region%flst_real%massive(i1)
              end if
 
-             if (ftuple(reg)%splitting_type > 1) then
+             if (ftuple(reg)%splitting_type == G_TO_GG) then
                 region%double_fsr = .true.
                 exit
              else if (ftuple(reg)%splitting_type == UNDEFINED_SPLITTING) then
@@ -1064,25 +1454,35 @@ contains
     real(default) :: val
     real(default) :: E_rad, E_em
     if (region%double_fsr) then
-      E_em = energy (p(region%emitter))
-      E_rad = energy (p(region%flst_real%get_nlegs()))
-      val = two * E_em / (E_em + E_rad)
+       E_em = energy (p(region%emitter))
+       E_rad = energy (p(region%flst_real%nlegs))
+       val = two * E_em / (E_em + E_rad)
     else
-      val = one
+       val = one
     end if
   end function singular_region_double_fsr_factor
 
   function singular_region_has_soft_divergence (region) result (div)
-     class(singular_region_t), intent(in) :: region
      logical :: div
+     class(singular_region_t), intent(in) :: region
      div = region%soft_divergence
   end function singular_region_has_soft_divergence
 
   function singular_region_has_collinear_divergence (region) result (div)
-    class(singular_region_t), intent(in) :: region
     logical :: div
+    class(singular_region_t), intent(in) :: region
     div = region%coll_divergence
   end function singular_region_has_collinear_divergence
+
+  elemental function singular_region_has_identical_ftuples (sregion) result (value)
+    logical :: value
+    class(singular_region_t), intent(in) :: sregion
+    integer :: alr
+    value = .false.
+    do alr = 1, sregion%nregions
+       value = value .or. (count (sregion%ftuples(alr) == sregion%ftuples) > 1)
+    end do
+  end function singular_region_has_identical_ftuples
 
   subroutine singular_region_assign (reg_out, reg_in)
     type(singular_region_t), intent(out) :: reg_out
@@ -1117,7 +1517,7 @@ contains
     do i_hist1 = 1, n_hist
        if (i_hist1 + 1 <= n_hist) then
           do i_hist2 = i_hist1 + 1, n_hist
-             if (.not. res_hist(i_hist1) > res_hist(i_hist2)) &
+             if (.not. (res_hist(i_hist1) .contains. res_hist(i_hist2))) &
                 n_contributors = n_contributors + res_hist(i_hist2)%n_resonances
           end do
        else
@@ -1224,7 +1624,7 @@ contains
     integer, intent(in) :: alr
     type(vector4_t), intent(in), dimension(:) :: p
     real(default) :: sumpfr
-    integer :: i_res, i_alr
+    integer :: i_res
     sumpfr = zero
     do i_res = 1, size (res_map%res_histories)
        sumpfr = sumpfr + res_map%get_resonance_value (i_res, p)
@@ -1280,7 +1680,7 @@ contains
   end subroutine region_data_allocate_fks_mappings
 
   subroutine region_data_init (reg_data, n_in, model, flavor_born, &
-    flavor_real)
+      flavor_real)
     class(region_data_t), intent(inout) :: reg_data
     integer, intent(in) :: n_in
     type(model_t), intent(in) :: model
@@ -1289,27 +1689,27 @@ contains
     integer, dimension(:), allocatable :: emitter
     type(flv_structure_t), dimension(:), allocatable :: flst_alr
     integer :: i
+    integer :: n_flv_real_before_check
     reg_data%n_in = n_in
     reg_data%n_flv_born = size (flavor_born, dim = 2)
-    reg_data%n_flv_real = size (flavor_real, dim = 2)
     reg_data%n_legs_born = size (flavor_born, dim = 1)
     reg_data%n_legs_real = reg_data%n_legs_born + 1
+    n_flv_real_before_check = size (flavor_real, dim = 2)
     allocate (reg_data%flv_born (reg_data%n_flv_born))
-    allocate (reg_data%flv_real (reg_data%n_flv_real))
+    allocate (reg_data%flv_real (n_flv_real_before_check))
     do i = 1, reg_data%n_flv_born
        call reg_data%flv_born(i)%init (flavor_born (:, i), n_in)
     end do
-    do i = 1, reg_data%n_flv_real
+    do i = 1, n_flv_real_before_check
        call reg_data%flv_real(i)%init (flavor_real (:, i), n_in)
     end do
 
-    call reg_data%flv_extra%init &
-       (reg_data%flv_real(1)%flst(reg_data%n_legs_real), model)
     call reg_data%find_regions (model, ftuples, emitter, flst_alr)
     call reg_data%init_singular_regions (ftuples, emitter, flst_alr)
+    reg_data%n_flv_real = maxval (reg_data%regions%real_index)
     call reg_data%find_emitters ()
     call reg_data%set_underlying_borns ()
-    call reg_data%evaluate_flavors (model)
+    call reg_data%set_mass_and_color (model)
     call reg_data%set_splitting_info ()
   end subroutine region_data_init
 
@@ -1442,9 +1842,10 @@ contains
           region%nregions = n_new_reg
        end associate
     end do
+    reg_data%fks_mapping%normalization_factor = 0.5_default
   end subroutine region_data_split_up_interference_regions_for_threshold
 
-  subroutine region_data_evaluate_flavors (reg_data, model)
+  subroutine region_data_set_mass_and_color (reg_data, model)
     class(region_data_t), intent(inout) :: reg_data
     type(model_t), intent(in) :: model
     integer :: i
@@ -1457,10 +1858,10 @@ contains
     do i = 1, reg_data%n_flv_born
        call reg_data%flv_born(i)%init_mass_and_color (model)
     end do
-    do i = 1, reg_data%n_flv_real
+    do i = 1, size (reg_data%flv_real)
        call reg_data%flv_real(i)%init_mass_and_color (model)
     end do
-  end subroutine region_data_evaluate_flavors
+  end subroutine region_data_set_mass_and_color
 
   function region_data_uses_resonances (reg_data) result (val)
     logical :: val
@@ -1578,7 +1979,7 @@ contains
     emitter = reg_data%regions(alr)%emitter
   end function region_data_get_emitter
 
-  function region_data_get_underlying_born_index (reg_data, real_index) result (uborn_index)
+  function region_data_map_real_to_born_index (reg_data, real_index) result (uborn_index)
     integer :: uborn_index
     class(region_data_t), intent(in) :: reg_data
     integer, intent(in) :: real_index
@@ -1590,7 +1991,7 @@ contains
           exit
        end if
     end do
-  end function region_data_get_underlying_born_index
+  end function region_data_map_real_to_born_index
 
   function region_data_get_uborn_group_size (reg_data, uborn_index) result (n_uborn)
     integer :: n_uborn
@@ -1598,6 +1999,8 @@ contains
     integer, intent(in) :: uborn_index
     integer :: alr
     n_uborn = 0
+    call msg_debug (D_SUBTRACTION, "inside region_data_get_uborn_group_size")
+    call msg_debug (D_SUBTRACTION, "n_regions = ", reg_data%n_regions)
     do alr = 1, reg_data%n_regions
        if (reg_data%regions(alr)%i_res > 1) cycle
        if (reg_data%regions(alr)%uborn_index == uborn_index) n_uborn = n_uborn + 1
@@ -1608,37 +2011,20 @@ contains
     integer, dimension(:), allocatable :: uborn_group
     class(region_data_t), intent(in) :: reg_data
     integer, intent(in) :: uborn_index
-    integer :: alr, n_uborn, i_uborn
+    integer :: alr, n_uborn, i_born
     n_uborn = reg_data%get_uborn_group_size (uborn_index)
     if (n_uborn > 0) then
        allocate (uborn_group (n_uborn))
-       i_uborn = 1
+       i_born = 1
        do alr = 1, reg_data%n_regions
           if (reg_data%regions(alr)%i_res > 1) cycle
           if (reg_data%regions(alr)%uborn_index == uborn_index) then
-             uborn_group (i_uborn) = alr
-             i_uborn = i_uborn + 1
+             uborn_group (i_born) = alr
+             i_born = i_born + 1
           end if
        end do
     end if
   end function region_data_get_uborn_group
-
-  function region_data_get_real_index (reg_data, i_phs) result (i_flv)
-    integer :: i_flv
-    class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: i_phs
-    type(phs_identifier_t), dimension(:), allocatable :: phs_id
-    integer :: i
-    i_flv = 0
-    call reg_data%init_phs_identifiers (phs_id)
-    do i = 1, reg_data%n_regions
-       if (reg_data%regions(i)%emitter == phs_id(i_phs)%emitter) then
-          i_flv = reg_data%regions(i)%real_index
-          exit
-       end if
-    end do
-    deallocate (phs_id)
-  end function region_data_get_real_index
 
   function region_data_get_emitter_group_size (reg_data, emitter) result (n_emitter)
     integer :: n_emitter
@@ -1681,13 +2067,27 @@ contains
     end do
   end function region_data_get_flv_states_born_array
 
-  function region_data_get_flv_states_born_single (reg_data, i) result (flv_states)
+  function region_data_get_flv_states_born_single (reg_data, i_flv) result (flv_states)
     integer, dimension(:), allocatable :: flv_states
     class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: i
+    integer, intent(in) :: i_flv
     allocate (flv_states (reg_data%n_legs_born))
-    flv_states = reg_data%flv_born(i)%flst
+    flv_states = reg_data%flv_born(i_flv)%flst
   end function region_data_get_flv_states_born_single
+
+  function region_data_get_flv_states_real_single (reg_data, i_flv) result (flv_states)
+    integer, dimension(:), allocatable :: flv_states
+    class(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: i_flv
+    integer :: i_reg
+    allocate (flv_states (reg_data%n_legs_real))
+    do i_reg = 1, reg_data%n_regions
+       if (i_flv == reg_data%regions(i_reg)%real_index) then
+          flv_states = reg_data%regions(i_reg)%flst_real%flst
+          exit
+       end if
+    end do
+  end function region_data_get_flv_states_real_single
 
   function region_data_get_flv_states_real_array (reg_data) result (flv_states)
     integer, dimension(:,:), allocatable :: flv_states
@@ -1695,22 +2095,53 @@ contains
     integer :: i_flv
     allocate (flv_states (reg_data%n_legs_real, reg_data%n_flv_real))
     do i_flv = 1, reg_data%n_flv_real
-       flv_states (:, i_flv) = reg_data%flv_real(i_flv)%flst
+       flv_states (:, i_flv) = reg_data%get_flv_states_real (i_flv)
     end do
   end function region_data_get_flv_states_real_array
 
-  function region_data_get_flv_states_real_single (reg_data, i) result (flv_states)
-    integer, dimension(:), allocatable :: flv_states
-    class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: i
-    allocate (flv_states (reg_data%n_legs_real))
-    flv_states = reg_data%flv_real(i)%flst
-  end function region_data_get_flv_states_real_single
+  subroutine region_data_get_all_flv_states (reg_data, flv_born, flv_real)
+     class(region_data_t), intent(in) :: reg_data
+     integer, dimension(:,:), allocatable, intent(out) :: flv_born, flv_real
+     allocate (flv_born (reg_data%n_legs_born, reg_data%n_flv_born))
+     flv_born = reg_data%get_flv_states_born ()
+     allocate (flv_real (reg_data%n_legs_real, reg_data%n_flv_real))
+     flv_real = reg_data%get_flv_states_real ()
+  end subroutine region_data_get_all_flv_states
 
-  function region_data_get_svalue (reg_data, p, alr, emitter, i_res) result (sval)
+  function region_data_get_n_in (reg_data) result (n_in)
+    integer :: n_in
+    class(region_data_t), intent(in) :: reg_data
+    n_in = reg_data%n_in
+  end function region_data_get_n_in
+
+  function region_data_get_n_legs_real (reg_data) result (n_legs)
+    integer :: n_legs
+    class(region_data_t), intent(in) :: reg_data
+    n_legs = reg_data%n_legs_real
+  end function region_data_get_n_legs_real
+
+  function region_data_get_n_legs_born (reg_data) result (n_legs)
+    integer :: n_legs
+    class(region_data_t), intent(in) :: reg_data
+    n_legs = reg_data%n_legs_born
+  end function region_data_get_n_legs_born
+
+  function region_data_get_n_flv_real (reg_data) result (n_flv)
+    integer :: n_flv
+    class(region_data_t), intent(in) :: reg_data
+    n_flv = reg_data%n_flv_real
+  end function region_data_get_n_flv_real
+
+  function region_data_get_n_flv_born (reg_data) result (n_flv)
+    integer :: n_flv
+    class(region_data_t), intent(in) :: reg_data
+    n_flv = reg_data%n_flv_born
+  end function region_data_get_n_flv_born
+
+  function region_data_get_svalue_ij (reg_data, p, alr, i, j, i_res) result (sval)
     class(region_data_t), intent(inout) :: reg_data
     type(vector4_t), intent(in), dimension(:) :: p
-    integer, intent(in) :: alr, emitter
+    integer, intent(in) :: alr, i, j
     integer, intent(in) :: i_res
     real(default) :: sval
     associate (map => reg_data%fks_mapping)
@@ -1718,11 +2149,20 @@ contains
        select type (map)
        type is (fks_mapping_resonances_t)
           map%i_con = reg_data%alr_to_i_contributor (alr)
-          map%pseudo_isr = reg_data%regions(alr)%pseudo_isr
        end select
-       sval = map%svalue (p, emitter, reg_data%n_legs_real, i_res)
+       map%pseudo_isr = reg_data%regions(alr)%pseudo_isr
+       sval = map%svalue (p, i, j, i_res) * map%normalization_factor
     end associate
-  end function region_data_get_svalue
+  end function region_data_get_svalue_ij
+
+  function region_data_get_svalue_last_pos (reg_data, p, alr, emitter, i_res) result (sval)
+    class(region_data_t), intent(inout) :: reg_data
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: alr, emitter
+    integer, intent(in) :: i_res
+    real(default) :: sval
+    sval = reg_data%get_svalue (p, alr, emitter, reg_data%n_legs_real, i_res)
+  end function region_data_get_svalue_last_pos
 
   function region_data_get_svalue_soft &
        (reg_data, p, p_soft, alr, emitter, i_res) result (sval)
@@ -1736,266 +2176,399 @@ contains
        select type (map)
        type is (fks_mapping_resonances_t)
           map%i_con = reg_data%alr_to_i_contributor (alr)
-          map%pseudo_isr = reg_data%regions(alr)%pseudo_isr
        end select
-       sval = map%svalue_soft (p, p_soft, emitter, i_res)
+       map%pseudo_isr = reg_data%regions(alr)%pseudo_isr
+       sval = map%svalue_soft (p, p_soft, emitter, i_res) * map%normalization_factor
     end associate
   end function region_data_get_svalue_soft
 
   subroutine region_data_find_regions &
-       (reg_data, model, ftuples, emitter, flst_alr)
+       (reg_data, model, ftuples, emitters, flst_alr)
     class(region_data_t), intent(in) :: reg_data
     type(model_t), intent(in) :: model
     type(ftuple_list_t), intent(out), dimension(:), allocatable :: ftuples
-    integer, intent(out), dimension(:), allocatable :: emitter
+    integer, intent(out), dimension(:), allocatable :: emitters
     type(flv_structure_t), intent(out), dimension(:), allocatable :: flst_alr
     type(ftuple_t) :: current_ftuple
     integer, dimension(:), allocatable :: emitter_tmp
     type(flv_structure_t), dimension(:), allocatable :: flst_alr_tmp
-    integer :: nreg, nborn, nreal
-    integer :: nlegreal
-    integer, parameter :: maxnregions = 200
-    integer :: i_real
+    type(ftuple_list_t), dimension(:,:), allocatable :: ftuples_tmp
+    integer, dimension(:,:), allocatable :: ftuple_index
+    integer :: n_born, n_real
+    integer :: n_legreal
+    integer, parameter :: n_regions_start = 20
+    integer, parameter :: increment_list = 50
+    integer :: i_born, i_real, i_reg, i_ftuple
+    integer :: last_registered_i_born, last_registered_i_real
 
-    nborn = size (reg_data%flv_born)
-    nreal = size (reg_data%flv_real)
-    nlegreal = size (reg_data%flv_real(1)%flst)
-    allocate (ftuples (nreal))
-    allocate (emitter_tmp (maxnregions))
-    allocate (flst_alr_tmp (maxnregions))
-    nreg = 0
+    n_born = size (reg_data%flv_born)
+    n_real = size (reg_data%flv_real)
+    n_legreal = size (reg_data%flv_real(1)%flst)
+    allocate (ftuples_tmp (n_born,n_real))
+    allocate (ftuple_index (n_born,n_real))
+    allocate (emitter_tmp (n_regions_start))
+    allocate (flst_alr_tmp (n_regions_start))
+    i_reg = 0
+    ftuple_index = 0
+    i_ftuple = 0
+    last_registered_i_born = 0; last_registered_i_real = 0
 
-    do i_real = 1, nreal
-       call check_final_state_emissions (i_real, nreg)
-       call check_initial_state_emissions (i_real, nreg)
+    do i_real = 1, n_real
+       do i_born = 1, n_born
+          call check_final_state_emissions (i_real, i_born, i_reg)
+          call check_initial_state_emissions (i_real, i_born, i_reg)
+       end do
     end do
 
-    allocate (flst_alr (nreg))
-    allocate (emitter (nreg))
-    flst_alr(1 : nreg) = flst_alr_tmp(1 : nreg)
-    emitter(1 : nreg) = emitter_tmp(1 : nreg)
+    allocate (flst_alr (i_reg))
+    flst_alr = flst_alr_tmp(1 : i_reg)
+    allocate (emitters (i_reg))
+    emitters = emitter_tmp(1 : i_reg)
+    allocate (ftuples (count (ftuples_tmp%get_n_tuples () > 0)))
+    do i_born = 1, n_born
+       do i_real = 1, n_real
+          if (ftuples_tmp(i_born,i_real)%get_n_tuples () > 0) &
+               ftuples(ftuple_index(i_born,i_real)) = ftuples_tmp(i_born,i_real)
+       end do
+    end do
+    deallocate (flst_alr_tmp)
+    deallocate (emitter_tmp)
+    deallocate (ftuples_tmp)
+    deallocate (ftuple_index)
 
   contains
-    subroutine check_final_state_emissions (i_real, i_reg)
-      integer, intent(in) :: i_real
-      integer, intent(inout) :: i_reg
-      integer :: leg1, leg2, i_born
-      type(flv_structure_t) :: born_flavor
-      logical :: valid1, valid2
-      do leg1 = reg_data%n_in + 1, nlegreal
-         do leg2 = leg1 + 1, nlegreal
-            do i_born = 1, nborn
-               born_flavor = reg_data%flv_born(i_born)
-               associate (flv_real => reg_data%flv_real(i_real))
-                  valid1 = flv_real%valid_pair(leg1, leg2, born_flavor, model)
-                  valid2 = flv_real%valid_pair(leg2, leg1, born_flavor, model)
-                  if ( valid1 .or. valid2) then
-                     i_reg = i_reg + 1
-                     if(valid1) then
-                        flst_alr_tmp(i_reg) = &
-                             create_alr (flv_real, reg_data%n_in, leg1, leg2)
-                     else
-                        flst_alr_tmp(i_reg) = &
-                             create_alr (flv_real, reg_data%n_in, leg2, leg1)
-                     end if
-                     call current_ftuple%set (leg1, leg2)
-                     call current_ftuple%determine_splitting_type_fsr &
-                          (flv_real, leg1, leg2)
-                     call ftuples(i_real)%append (current_ftuple)
-                     emitter_tmp(i_reg) = nlegreal - 1
-                     exit
-                  end if
-               end associate
-            end do
-         end do
-      end do
-    end subroutine check_final_state_emissions
+    subroutine extend_flv_array (flv)
+      type(flv_structure_t), intent(inout), dimension(:), allocatable :: flv
+      type(flv_structure_t), dimension(:), allocatable :: flv_store
+      integer :: n
+      n = size (flv)
+      allocate (flv_store (n))
+      flv_store = flv
+      deallocate (flv)
+      allocate (flv (n + increment_list))
+      flv(1:n) = flv_store
+      deallocate (flv_store)
+    end subroutine extend_flv_array
 
-    subroutine check_initial_state_emissions (i_real, i_reg)
-      integer, intent(in) :: i_real
+    function incr_i_ftuple_if_required (i_born, i_real, i_ftuple_in) result (i_ftuple)
+      integer :: i_ftuple
+      integer, intent(in) :: i_born, i_real, i_ftuple_in
+      if (last_registered_i_born /= i_born .or. last_registered_i_real /= i_real) then
+         last_registered_i_born = i_born
+         last_registered_i_real = i_real
+         i_ftuple = i_ftuple_in + 1
+      else
+         i_ftuple = i_ftuple_in
+      end if
+    end function incr_i_ftuple_if_required
+
+    subroutine check_final_state_emissions (i_real, i_born, i_reg)
+      integer, intent(in) :: i_real, i_born
       integer, intent(inout) :: i_reg
-      integer :: leg, i_born, emitter
+      integer :: leg1, leg2
       type(flv_structure_t) :: born_flavor
       logical :: valid1, valid2
-      do leg = reg_data%n_in + 1, nlegreal
-         do i_born = 1, nborn
-            born_flavor = reg_data%flv_born (i_born)
+      born_flavor = reg_data%flv_born(i_born)
+      do leg1 = reg_data%n_in + 1, n_legreal
+         do leg2 = leg1 + 1, n_legreal
             associate (flv_real => reg_data%flv_real(i_real))
-               valid1 = flv_real%valid_pair(1, leg, born_flavor, model)
-               if (reg_data%n_in > 1) then
-                  valid2 = flv_real%valid_pair(2, leg, born_flavor, model)
-               else
-                  valid2 = .false.
-               end if
-               if (valid1 .and. valid2) then
-                  emitter = 0
-               else if (valid1 .and. .not. valid2) then
-                  emitter = 1
-               else if (.not. valid1 .and. valid2) then
-                  emitter = 2
-               else
-                  emitter = -1
-               end if
+               valid1 = flv_real%valid_pair(leg1, leg2, born_flavor, model)
+               valid2 = flv_real%valid_pair(leg2, leg1, born_flavor, model)
                if (valid1 .or. valid2) then
                   i_reg = i_reg + 1
-                  call current_ftuple%set(emitter, leg)
-                  call current_ftuple%determine_splitting_type_isr &
-                     (flv_real, emitter, leg)
-                  call ftuples(i_real)%append (current_ftuple)
-                  emitter_tmp(i_reg) = emitter
-                  flst_alr_tmp(i_reg) = &
-                     create_alr (flv_real, reg_data%n_in, emitter, leg)
+                  if (i_reg > size (flst_alr_tmp)) call extend_flv_array (flst_alr_tmp)
+                  if(valid1) then
+                     flst_alr_tmp(i_reg) = create_alr (flv_real, &
+                          reg_data%n_in, leg1, leg2)
+                  else
+                     flst_alr_tmp(i_reg) = create_alr (flv_real, &
+                          reg_data%n_in, leg2, leg1)
+                  end if
+                  call current_ftuple%set (leg1, leg2)
+                  call current_ftuple%determine_splitting_type_fsr &
+                       (flv_real, leg1, leg2)
+                  i_ftuple = incr_i_ftuple_if_required (i_born, i_real, i_ftuple)
+                  call ftuples_tmp(i_born,i_real)%append (current_ftuple)
+                  ftuple_index(i_born,i_real) = i_ftuple
+                  if (i_reg > size (emitter_tmp)) &
+                       call extend_integer_array (emitter_tmp, increment_list)
+                  emitter_tmp(i_reg) = n_legreal - 1
                end if
             end associate
          end do
       end do
+    end subroutine check_final_state_emissions
+
+    subroutine check_initial_state_emissions (i_real, i_born, i_reg)
+      integer, intent(in) :: i_real, i_born
+      integer, intent(inout) :: i_reg
+      integer :: leg, emitter
+      type(flv_structure_t) :: born_flavor
+      logical :: valid1, valid2
+      born_flavor = reg_data%flv_born (i_born)
+      do leg = reg_data%n_in + 1, n_legreal
+         associate (flv_real => reg_data%flv_real(i_real))
+            valid1 = flv_real%valid_pair(1, leg, born_flavor, model)
+            if (reg_data%n_in > 1) then
+               valid2 = flv_real%valid_pair(2, leg, born_flavor, model)
+            else
+               valid2 = .false.
+            end if
+            if (valid1 .and. valid2) then
+               emitter = 0
+            else if (valid1 .and. .not. valid2) then
+               emitter = 1
+            else if (.not. valid1 .and. valid2) then
+               emitter = 2
+            else
+               emitter = -1
+            end if
+            if (valid1 .or. valid2) then
+               i_reg = i_reg + 1
+               call current_ftuple%set(emitter, leg)
+               call current_ftuple%determine_splitting_type_isr &
+                    (flv_real, emitter, leg)
+               i_ftuple = incr_i_ftuple_if_required (i_born, i_real, i_ftuple)
+               call ftuples_tmp(i_born,i_real)%append (current_ftuple)
+               ftuple_index(i_born,i_real) = i_real
+               if (i_reg > size (emitter_tmp)) &
+                    call extend_integer_array (emitter_tmp, increment_list)
+               emitter_tmp(i_reg) = emitter
+               if (i_reg > size (flst_alr_tmp)) call extend_flv_array (flst_alr_tmp)
+               flst_alr_tmp(i_reg) = &
+                    create_alr (flv_real, reg_data%n_in, emitter, leg)
+            end if
+         end associate
+      end do
     end subroutine check_initial_state_emissions
+
   end subroutine region_data_find_regions
 
   subroutine region_data_init_singular_regions &
          (reg_data, ftuples, emitter, flv_alr)
     class(region_data_t), intent(inout) :: reg_data
     type(ftuple_list_t), intent(inout), dimension(:), allocatable :: ftuples
-    integer :: n_valid_ftuples
+    integer :: n_independent_flv
     integer, intent(in), dimension(:) :: emitter
     type(flv_structure_t), intent(in), dimension(:) :: flv_alr
-    type(flv_structure_t), dimension(:), allocatable :: flv_uborn, flv_alr2
+    type(flv_structure_t), dimension(:), allocatable :: flv_uborn, flv_alr_registered
     integer, dimension(:), allocatable :: mult
     integer, dimension(:), allocatable :: flst_emitter
-    integer :: nregions, maxregions
-    integer, dimension(:,:), allocatable :: perm_list
+    integer :: n_regions, maxregions
     integer, dimension(:), allocatable :: index
-    integer :: i, j, k, l
-    integer :: nlegs
-    logical :: equiv
-    integer :: i_first, j_first
-    integer, dimension(:), allocatable :: &
-         region_to_ftuple, ftuple_limits, k_index
-    type(flv_structure_t) :: flv_save
+    integer :: i, i_flv, n_legs
+    logical :: equiv, valid_fs_splitting
+    integer :: i_first, i_reg, i_reg_prev
+    integer, dimension(:), allocatable :: region_to_ftuple, alr_limits
+    integer, dimension(:), allocatable :: equiv_index
 
     maxregions = size (emitter)
-    nlegs = flv_alr(1)%nlegs
+    n_legs = flv_alr(1)%nlegs
 
     allocate (flv_uborn (maxregions))
-    allocate (flv_alr2 (maxregions))
+    allocate (flv_alr_registered (maxregions))
     allocate (mult (maxregions))
+    mult = 0
     allocate (flst_emitter (maxregions))
     allocate (index (maxregions))
     allocate (region_to_ftuple (maxregions))
-    allocate (k_index (maxregions))
+    allocate (equiv_index (maxregions))
 
-    mult = 0
-    n_valid_ftuples = 0
-    do i = 1, size (ftuples)
-       if (ftuples(i)%get_n_tuples() > 0) &
-          n_valid_ftuples = n_valid_ftuples + 1
-    end do
-    allocate (ftuple_limits (n_valid_ftuples))
-
-    j = 1
-    do i = 1, size (ftuples)
-       if (ftuples(i)%get_n_tuples() > 0) then
-          ftuple_limits(j) = ftuples(i)%get_n_tuples ()
-          j = j + 1
-       end if
-    end do
-    if (.not. (sum (ftuple_limits) == maxregions)) &
-       call msg_fatal ("Too many regions!")
-    k = 1
-    do j = 1, n_valid_ftuples
-       do i = 1, ftuple_limits(j)
-          region_to_ftuple(k) = i
-          k = k + 1
-       end do
-    end do
+    call setup_region_mappings (n_independent_flv, alr_limits, region_to_ftuple)
     i_first = 1
-    j_first = 1
-    j = 1
-    SCAN_REGIONS: do l = 1, n_valid_ftuples
-       SCAN_FTUPLES: do i = i_first, i_first + ftuple_limits (l) - 1
+    i_reg = 1
+    SCAN_FLAVORS: do i_flv = 1, n_independent_flv
+       SCAN_FTUPLES: do i = i_first, i_first + alr_limits (i_flv) - 1
           equiv = .false.
           if (i == i_first) then
-             flv_alr2(j) = flv_alr(i)
-             mult(j) = mult(j) + 1
-             flv_uborn(j) = flv_alr(i)%create_uborn (emitter(i))
-             flst_emitter(j) = emitter(i)
-             index (j) = region_to_index(ftuples, i)
-             k_index (j) = region_to_ftuple(i)
-             j = j + 1
+             flv_alr_registered(i_reg) = flv_alr(i)
+             mult(i_reg) = mult(i_reg) + 1
+             flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i))
+             flst_emitter(i_reg) = emitter(i)
+             index (i_reg) = region_to_index(ftuples, i)
+             equiv_index (i_reg) = region_to_ftuple(i)
+             i_reg  = i_reg + 1
           else
              !!! Check for equivalent flavor structures
-             do k = j_first, j - 1
-                if (emitter(i) == emitter(k) .and. emitter(i) > reg_data%n_in) then
-                   if (flv_alr(i) == flv_alr2(k) .and. &
-                      flv_alr(i)%flst(nlegs - 1) == flv_alr2(k)%flst(nlegs - 1) &
-                      .and. flv_alr(i)%flst(nlegs) == flv_alr2(k)%flst(nlegs)) then
-                      mult(k) = mult(k) + 1
+             do i_reg_prev = 1, i_reg - 1
+                if (emitter(i) == emitter(i_reg_prev) .and. emitter(i) > reg_data%n_in) then
+                   valid_fs_splitting = check_fs_splitting (flv_alr(i)%get_last_two(n_legs), &
+                          flv_alr_registered(i_reg_prev)%get_last_two(n_legs), &
+                          flv_alr(i)%tag(n_legs - 1), flv_alr_registered(i_reg_prev)%tag(n_legs - 1))
+                   if ((flv_alr(i) .equiv. flv_alr_registered(i_reg_prev)) &
+                        .and. valid_fs_splitting) then
+                      mult(i_reg_prev) = mult(i_reg_prev) + 1
                       equiv = .true.
                       call ftuples (region_to_index(ftuples, i))%set_equiv &
-                         (k_index(k), region_to_ftuple(i))
+                           (equiv_index(i_reg_prev), region_to_ftuple(i))
                       exit
                    end if
-                else if (emitter(i) == emitter(k) .and. emitter(i) <= reg_data%n_in) then
-                   if (flv_alr(i) == flv_alr2(k)) then
-                      mult(k) = mult(k) + 1
+                else if (emitter(i) == emitter(i_reg_prev) .and. emitter(i) <= reg_data%n_in) then
+                   if (flv_alr(i) .equiv. flv_alr_registered(i_reg_prev)) then
+                      mult(i_reg_prev) = mult(i_reg_prev) + 1
                       equiv = .true.
-                      call ftuples (region_to_index(ftuples,i))%set_equiv &
-                         (k_index(k), region_to_ftuple(i))
+                      call ftuples (region_to_index(ftuples, i))%set_equiv &
+                           (equiv_index(i_reg_prev), region_to_ftuple(i))
                       exit
                    end if
                 end if
              end do
              if (.not. equiv) then
-                flv_alr2(j) = flv_alr(i)
-                mult(j) = mult(j) + 1
-                flv_uborn(j) = flv_alr(i)%create_uborn (emitter(i))
-                flst_emitter(j) = emitter(i)
-                index (j) = region_to_index (ftuples, i)
-                k_index (j) = region_to_ftuple(i)
-                j = j + 1
+                flv_alr_registered(i_reg) = flv_alr(i)
+                mult(i_reg) = mult(i_reg) + 1
+                flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i))
+                flst_emitter(i_reg) = emitter(i)
+                index (i_reg) = region_to_index (ftuples, i)
+                equiv_index (i_reg) = region_to_ftuple(i)
+                i_reg = i_reg + 1
              end if
           end if
        end do SCAN_FTUPLES
-       i_first = i_first + ftuple_limits(l)
-       j_first = j_first + j - 1
-    end do SCAN_REGIONS
-    nregions = j - 1
-    allocate (reg_data%regions (nregions))
-    reg_data%n_regions = nregions
-    do j = 1, nregions
-       do i = 1, reg_data%n_flv_born
-          if (reg_data%flv_born (i) == flv_uborn (j)) then
-             if (allocated (perm_list)) deallocate (perm_list)
-             call fks_permute_born &
-                (reg_data%flv_born (i), reg_data%n_in, flv_uborn (j), perm_list)
-             call fks_apply_perm (flv_alr2(j), flst_emitter(j), perm_list)
-          end if
-       end do
-    end do
-    do i = 1, nregions
-       call reg_data%regions(i)%init (i, mult(i), 0, flv_alr2(i), &
-          flv_uborn(i), reg_data%flv_born, flst_emitter(i), ftuples, &
-          index)
-    end do
-    ! TODO: (bcn 2015-12-15) can this be put in singular_region_init?
-    k = 1
-    associate (regions => reg_data%regions)
-       do i = 1, nregions
-          if (i == 1) then
-             regions(i)%real_index = 1
-             flv_save = flv_alr2(1)
-             cycle
-          end if
-          if (flv_alr2(i) == flv_save) then
-             regions(i)%real_index = k
-          else
-             k = k + 1
-             regions(i)%real_index = k
-             flv_save = flv_alr2(i)
-          end if
-       end do
-    end associate
+       i_first = i_first + alr_limits(i_flv)
+    end do SCAN_FLAVORS
+    n_regions = i_reg - 1
 
+    allocate (reg_data%regions (n_regions))
+    reg_data%n_regions = n_regions
+    call init_regions_with_permuted_flavors ()
+    call assign_real_indices ()
+
+    deallocate (flv_uborn)
+    deallocate (flv_alr_registered)
+    deallocate (mult)
+    deallocate (flst_emitter)
+    deallocate (index)
+    deallocate (region_to_ftuple)
+    deallocate (equiv_index)
+
+  contains
+
+    subroutine setup_region_mappings (n_independent_flv, &
+           alr_limits, region_to_ftuple)
+       integer, intent(inout) :: n_independent_flv
+       integer, intent(inout), dimension(:), allocatable :: alr_limits
+       integer, intent(inout), dimension(:), allocatable :: region_to_ftuple
+       integer :: i, j, i_flv
+       n_independent_flv = 0
+       do i = 1, size (ftuples)
+          if (ftuples(i)%get_n_tuples() > 0) &
+             n_independent_flv = n_independent_flv + 1
+       end do
+       allocate (alr_limits (n_independent_flv))
+
+       j = 1
+       do i = 1, size (ftuples)
+          if (ftuples(i)%get_n_tuples() > 0) then
+             alr_limits(j) = ftuples(i)%get_n_tuples ()
+             j = j + 1
+          end if
+       end do
+
+       if (.not. (sum (alr_limits) == maxregions)) &
+            call msg_fatal ("Too many regions!")
+
+       j = 1
+       do i_flv = 1, n_independent_flv
+          do i = 1, alr_limits(i_flv)
+             region_to_ftuple(j) = i
+             j = j + 1
+          end do
+       end do
+    end subroutine setup_region_mappings
+
+    subroutine check_permutation (perm, flv_perm, flv_orig, i_reg)
+      type(flavor_permutation_t), intent(in) :: perm
+      type(flv_structure_t), intent(in) :: flv_perm, flv_orig
+      integer, intent(in) :: i_reg
+      type(flv_structure_t) :: flv_test
+      flv_test = perm%apply (flv_orig, invert = .true.)
+      if (.not. all (flv_test%flst == flv_perm%flst)) then
+         print *, 'Fail at: ', i_reg
+         print *, 'Original flavor structure: ', flv_orig%flst
+         call perm%write ()
+         print *, 'Permuted flavor: ', flv_perm%flst
+         print *, 'Should be: ', flv_test%flst
+         call msg_fatal ("Permutation does not reproduce original flavor!")
+      end if
+    end subroutine check_permutation
+
+    subroutine init_regions_with_permuted_flavors ()
+       type(flavor_permutation_t) :: perm_list
+       type(ftuple_t), dimension(:), allocatable :: ftuple_array
+       logical, dimension(:,:), allocatable :: equivalences
+       integer :: i, j
+       do j = 1, n_regions
+          do i = 1, reg_data%n_flv_born
+             if (reg_data%flv_born (i) .equiv. flv_uborn (j)) then
+                call perm_list%reset ()
+                call perm_list%init (reg_data%flv_born(i), flv_uborn(j), &
+                     reg_data%n_in, reg_data%n_legs_born, .true.)
+                flv_uborn(j) = perm_list%apply (flv_uborn(j))
+                flv_alr_registered(j) = perm_list%apply (flv_alr_registered(j))
+                flst_emitter(j) = perm_list%apply (flst_emitter(j))
+             end if
+          end do
+          call ftuples(index(j))%to_array (ftuple_array, equivalences, .true.)
+          do i = 1, size (reg_data%flv_real)
+             if (reg_data%flv_real(i) .equiv. flv_alr_registered(j)) then
+                call perm_list%reset ()
+                call perm_list%init (flv_alr_registered(j), reg_data%flv_real(i), &
+                     reg_data%n_in, reg_data%n_legs_real, .false.)
+                if (debug_active (D_SUBTRACTION)) call check_permutation &
+                     (perm_list, reg_data%flv_real(i), flv_alr_registered(j), j)
+                ftuple_array = perm_list%apply (ftuple_array)
+             end if
+          end do
+          call reg_data%regions(j)%init (j, mult(j), 0, flv_alr_registered(j), &
+               flv_uborn(j), reg_data%flv_born, flst_emitter(j), ftuple_array, &
+               equivalences)
+          if (allocated (ftuple_array)) deallocate (ftuple_array)
+          if (allocated (equivalences)) deallocate (equivalences)
+       end do
+    end subroutine init_regions_with_permuted_flavors
+
+    subroutine assign_real_indices ()
+      type(flv_structure_t) :: current_flv_real
+      integer :: i_real, current_uborn_index
+      i_real = 1
+      associate (regions => reg_data%regions)
+         do i = 1, reg_data%n_regions
+            if (i == 1) then
+               regions(i)%real_index = 1
+               current_flv_real = flv_alr_registered(1)
+               current_uborn_index = regions(i)%uborn_index
+            else if ((flv_alr_registered(i) .equiv. current_flv_real) &
+                   .and. regions(i)%uborn_index == current_uborn_index) then
+               regions(i)%real_index = i_real
+            else
+               i_real = i_real + 1
+               regions(i)%real_index = i_real
+               current_flv_real = flv_alr_registered(i)
+               current_uborn_index = regions(i)%uborn_index
+            end if
+         end do
+      end associate
+   end subroutine assign_real_indices
+
+    subroutine write_perm_list (perm_list)
+      integer, intent(in), dimension(:,:) :: perm_list
+      integer :: i
+      do i = 1, size (perm_list(:,1))
+         write (*,'(I1,1x,I1,A)', advance = "no" ) perm_list(i,1), perm_list(i,2), '/'
+      end do
+      print *, ''
+    end subroutine write_perm_list
+
+    function check_fs_splitting (flv1, flv2, tag1, tag2) result (valid)
+      logical :: valid
+      integer, intent(in), dimension(2) :: flv1, flv2
+      integer, intent(in) :: tag1, tag2
+      if (flv1(1) + flv1(2) == 0) then
+         valid = abs(flv1(1)) == abs(flv2(1)) .and. abs(flv1(2)) == abs(flv2(2))
+      else
+         valid = flv1(1) == flv2(1) .and. flv1(2) == flv2(2) .and. tag1 == tag2
+      end if
+    end function check_fs_splitting
   end subroutine region_data_init_singular_regions
 
   subroutine region_data_find_emitters (reg_data)
@@ -2291,12 +2864,24 @@ contains
     end do
   end subroutine region_data_set_underlying_borns
 
-  function region_data_get_uborn_indices (reg_data) result (uborn_indices)
-    integer, dimension(:), allocatable :: uborn_indices
+  function region_data_get_flavor_indices (reg_data, born) result (i_flv)
+    integer, dimension(:), allocatable :: i_flv
     class(region_data_t), intent(in) :: reg_data
-    allocate (uborn_indices (reg_data%n_flv_born))
-    uborn_indices = reg_data%underlying_borns
-  end function region_data_get_uborn_indices
+    logical, intent(in) :: born
+    allocate (i_flv (reg_data%n_regions))
+    if (born) then
+       i_flv = reg_data%regions%uborn_index
+    else
+       i_flv = reg_data%regions%real_index
+    end if
+  end function region_data_get_flavor_indices
+
+  function region_data_get_matrix_element_index (reg_data, i_reg) result (i_me)
+    integer :: i_me
+    class(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: i_reg
+    i_me = reg_data%regions(i_reg)%real_index
+  end function region_data_get_matrix_element_index
 
   subroutine region_data_compute_number_of_phase_spaces (reg_data)
     class(region_data_t), intent(inout) :: reg_data
@@ -2375,38 +2960,116 @@ contains
     end do
   end subroutine region_data_init_phs_identifiers
 
-  subroutine region_data_write_to_file (reg_data, proc_id)
+  subroutine region_data_get_all_ftuples (reg_data, ftuples)
+    class(region_data_t), intent(in) :: reg_data
+    type(ftuple_t), intent(inout), dimension(:), allocatable :: ftuples
+    type(ftuple_t), dimension(:), allocatable :: ftuple_tmp
+    integer :: i, j, alr
+    !!! Can have at most n * (n-1) ftuples
+    j = 0
+    allocate (ftuple_tmp (reg_data%n_legs_real * (reg_data%n_legs_real - 1)))
+    do i = 1, reg_data%n_regions
+       associate (region => reg_data%regions(i))
+          do alr = 1, region%nregions
+             if (.not. any (region%ftuples(alr) == ftuple_tmp)) then
+                j = j + 1
+                ftuple_tmp(j) = region%ftuples(alr)
+             end if 
+          end do
+       end associate
+    end do
+    allocate (ftuples (j))
+    ftuples = ftuple_tmp(1:j)
+    deallocate (ftuple_tmp)
+  end subroutine region_data_get_all_ftuples
+
+  subroutine region_data_write_to_file (reg_data, proc_id, latex, os_data)
      class(region_data_t), intent(inout) :: reg_data
      type(string_t), intent(in) :: proc_id
+     logical, intent(in) :: latex
+     type(os_data_t), intent(in) :: os_data
      type(string_t) :: filename
      integer :: u
+     integer :: status
 
-     filename = proc_id // "_fks_regions.log"
+     if (latex) then
+         filename = proc_id // "_fks_regions.tex"
+     else
+        filename = proc_id // "_fks_regions.out"
+     end if
      u = free_unit ()
      open (u, file=char(filename), action = "write", status="replace")
-     call reg_data%write (u)
-     close (u)
+     if (latex) then
+        !call reg_data%write_latex (os_data, proc_id // "_fks_regions", stat_out = status)
+        call reg_data%write_latex (u)
+        close (u)
+        call os_data_build_latex_file (os_data, proc_id // "_fks_regions", stat_out = status)
+        if (status /= 0) &
+             call msg_error (char ("Failed to compile " // filename))
+     else
+        call reg_data%write (u)
+        close (u)
+     end if
   end subroutine region_data_write_to_file
+
+  subroutine region_data_write_latex (reg_data, unit)
+    class(region_data_t), intent(in) :: reg_data
+    integer, intent(in), optional :: unit
+    integer :: i, u
+    u = given_output_unit (); if (present (unit)) u = unit
+    write (u, "(A)") "\documentclass{article}"
+    write (u, "(A)") "\begin{document}"
+    write (u, "(A)") "%FKS region data, automatically created by WHIZARD"
+    write (u, "(A)") "\begin{table}"
+    write (u, "(A)") "\begin{center}"
+    write (u, "(A)") "\begin{tabular} {|c|c|c|c|c|c|c|c|}"
+    write (u, "(A)") "\hline"
+    write (u, "(A)") "$\alpha_r$ & $f_r$ & $i_r$ & $\varepsilon$ & $\varsigma$ & $\mathcal{P}_{\rm{FKS}}$ & $i_b$ & $f_b$ \\"
+    write (u, "(A)") "\hline"
+    do i = 1, reg_data%n_regions
+       call reg_data%regions(i)%write_latex (u)
+    end do
+    write (u, "(A)") "\hline"
+    write (u, "(A)") "\end{tabular}"
+    write (u, "(A)") "\caption{List of singular regions}"
+    write (u, "(A)") "\begin{description}"
+    write (u, "(A)") "\item[$\alpha_r$] Index of the singular region"
+    write (u, "(A)") "\item[$f_r$] Real flavor structure"
+    write (u, "(A)") "\item[$i_r$] Index of the associated real flavor structure"
+    write (u, "(A)") "\item[$\varepsilon$] Emitter"
+    write (u, "(A)") "\item[$\varsigma$] Multiplicity" !!! The symbol used by 0908.4272 for multiplicities
+    write (u, "(A)") "\item[$\mathcal{P}_{\rm{FKS}}$] The set of singular FKS-pairs"
+    write (u, "(A)") "\item[$i_b$] Underlying Born index"
+    write (u, "(A)") "\item[$f_b$] Underlying Born flavor structure"
+    write (u, "(A)") "\end{description}"
+    write (u, "(A)") "\end{center}"
+    write (u, "(A)") "\end{table}"
+    write (u, "(A)") "\end{document}"
+  end subroutine region_data_write_latex
 
   subroutine region_data_write (reg_data, unit)
      class(region_data_t), intent(in) :: reg_data
      integer, intent(in), optional :: unit
      integer :: j
-     integer :: maxnregions
+     integer :: maxnregions, i_reg_max
      type(string_t) :: flst_title, ftuple_title
      integer :: n_res, u
      u = given_output_unit (unit); if (u < 0) return
-     maxnregions = 1
+     maxnregions = 1; i_reg_max = 1
      do j = 1, reg_data%n_regions
-        if (size (reg_data%regions(j)%ftuples) > maxnregions) &
-             maxnregions = reg_data%regions(j)%nregions
+        if (size (reg_data%regions(j)%ftuples) > maxnregions) then
+           maxnregions = reg_data%regions(j)%nregions
+           i_reg_max = j
+        end if
      end do
      flst_title = '(A' // flst_title_format(reg_data%n_legs_real) // ')'
      ftuple_title = '(A' // ftuple_title_format() // ')'
-     write (u,'(A,1X,I2)') 'Total number of regions: ', size(reg_data%regions)
+     write (u,'(A,1X,I3)') 'Total number of regions: ', size(reg_data%regions)
      write (u, '(A3)', advance = 'no') 'alr'
      call write_vline (u)
      write (u, char (flst_title), advance = 'no') 'flst_real'
+     call write_vline (u)
+     write (u, '(A6)', advance = 'no') 'i_real'
      call write_vline (u)
      write (u, '(A3)', advance = 'no') 'em'
      call write_vline (u)
@@ -2426,7 +3089,7 @@ contains
      flst_title = '(A' // flst_title_format(reg_data%n_legs_born) // ')'
      write (u, char (flst_title), advance = 'no') 'flst_born'
      call write_vline (u)
-     write (u, '(A7)') 'i_uborn'
+     write (u, '(A7)') 'i_born'
      do j = 1, reg_data%n_regions
         write (u, '(I3)', advance = 'no') j
         call reg_data%regions(j)%write (u, maxnregions)
@@ -2459,9 +3122,18 @@ contains
 
     function ftuple_title_format () result (frmt)
        type(string_t) :: frmt
-       character(len=2) :: frmt_char
-       write (frmt_char, '(I2)') 10 * maxnregions + 1
-       frmt = var_str (frmt_char)
+       integer :: n_ftuple_char
+       !!! An ftuple (x,x) consists of five characters. In the string, they
+       !!! are separated by maxregions - 1 commas. In total these are
+       !!! 5 * maxnregions + maxnregions - 1 = 6 * maxnregions - 1 characters.
+       !!! The {} brackets at add two additional characters.
+       n_ftuple_char = 6 * maxnregions + 1
+       !!! If there are resonances, each ftuple with a resonance adds a ";x"
+       !!! to the ftuple
+       n_ftuple_char = n_ftuple_char + 2 * count (reg_data%regions(i_reg_max)%ftuples%i_res > 0)
+       !!! Pseudo-ISR regions are denoted with a * at the end
+       n_ftuple_char = n_ftuple_char + count (reg_data%regions(i_reg_max)%ftuples%pseudo_isr)
+       frmt = str (n_ftuple_char)
     end function ftuple_title_format
 
   end subroutine region_data_write
@@ -2521,7 +3193,6 @@ contains
     else
        call msg_warning ("Copying region data without allocated underlying born flavor indices!")
     end if
-    reg_data_out%flv_extra = reg_data_in%flv_extra
     if (allocated (reg_data_in%fks_mapping)) then
        select type (fks_mapping_in => reg_data_in%fks_mapping)
        type is (fks_mapping_default_t)
@@ -2593,17 +3264,22 @@ contains
     type(flv_structure_t) :: flv2
     integer :: n
     n = size (flv1%flst)
-    allocate (flv2%flst (n))
+    allocate (flv2%flst (n), flv2%tag (n))
     flv2%nlegs = n
     flv2%n_in = n_in
     if (i_em > n_in) then
-       flv2%flst(1 : 2) = flv1%flst(1 : 2)
+       flv2%flst(1 : n_in) = flv1%flst(1 : n_in)
        flv2%flst(n - 1) = flv1%flst(i_em)
        flv2%flst(n) = flv1%flst(i_rad)
+       flv2%tag(1 : n_in) = flv1%tag(1 : n_in)
+       flv2%tag(n - 1) = flv1%tag(i_em)
+       flv2%tag(n) = flv1%tag(i_rad)
        call fill_remaining_flavors (n_in, .true.)
     else
-       flv2%flst(1 : 2) = flv1%flst(1 : 2)
+       flv2%flst(1 : n_in) = flv1%flst(1 : n_in)
        flv2%flst(n) = flv1%flst(i_rad)
+       flv2%tag(1 : n_in) = flv1%tag(1 : n_in)
+       flv2%tag(n) = flv1%tag(i_rad)
        call fill_remaining_flavors (n_in, .false.)
     end if
   contains
@@ -2621,73 +3297,125 @@ contains
          end if
          if (check) then
             flv2%flst(j) = flv1%flst(i)
+            flv2%tag(j) = flv1%tag(i)
             j = j + 1
          end if
       end do
     end subroutine fill_remaining_flavors
   end function create_alr
 
-  subroutine fks_permute_born (flv_in, n_in, flv_out, perm_list)
-    type(flv_structure_t), intent(in) :: flv_in
-    integer, intent(in) :: n_in
-    type(flv_structure_t), intent(inout) :: flv_out
-    integer, intent(out), dimension(:,:), allocatable :: perm_list
-    integer, dimension(:,:), allocatable :: perm_list_tmp
-    integer :: n_perms, n_perms_max
-    integer :: nlegs
-    integer :: flv1, flv2, tmp
-    integer :: i, j, j_min
-    n_perms_max = 100
-    !!! actually (n-1)!, but there seems to be no intrinsic function
-    !!! of this type in fortran
-    if (allocated (perm_list_tmp)) deallocate (perm_list_tmp)
-    allocate (perm_list_tmp (n_perms_max,2))
-    n_perms = 0
-    j_min = n_in + 1
-    nlegs = size (flv_in%flst)
-    do i = n_in + 1, nlegs
-       flv1 = flv_in%flst(i)
-       do j = j_min, nlegs
-          flv2 = flv_out%flst(j)
-          if (flv1 == flv2 .and. i /= j) then
-             n_perms = n_perms + 1
-             tmp = flv_out%flst(i)
-             flv_out%flst(i) = flv2
-             flv_out%flst(j) = tmp
-             perm_list_tmp (n_perms, 1) = j
-             perm_list_tmp (n_perms, 2) = i
-             j_min = j_min + 1
-             exit
-          end if
-       end do
-    end do
-    allocate (perm_list (n_perms, 2))
-    perm_list (1:n_perms, :) = perm_list_tmp (1:n_perms, :)
-  end subroutine fks_permute_born
-
-  subroutine fks_apply_perm (flv, emitter, perm_list)
-    type(flv_structure_t), intent(inout) :: flv
-    integer, intent(inout) :: emitter
-    integer, intent(in), dimension(:,:), allocatable :: perm_list
-    integer :: i
-    integer :: i1, i2
-    integer :: tmp
-    do i = 1, size (perm_list (:,1))
-       i1 = perm_list (i,1)
-       i2 = perm_list (i,2)
-       tmp = flv%flst (i1)
-       flv%flst (i1) = flv%flst (i2)
-       flv%flst (i2) = tmp
-       if (i1 == emitter) emitter = i2
-    end do
-  end subroutine fks_apply_perm
-
   function region_data_has_pseudo_isr (reg_data) result (val)
     logical :: val
     class(region_data_t), intent(in) :: reg_data
     val = any (reg_data%regions%pseudo_isr)
-    !val = .true.
   end function region_data_has_pseudo_isr
+
+  subroutine region_data_check_consistency (reg_data, fail_fatal, unit)
+    class(region_data_t), intent(in) :: reg_data
+    logical, intent(in) :: fail_fatal
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer :: i_reg, alr
+    integer :: i1, f1, f2
+    logical :: undefined_ftuples, same_ftuple_indices, valid_splitting
+    logical, dimension(4) :: no_fail
+    u = given_output_unit(unit); if (u < 0) return
+    no_fail = .true.
+    call msg_message ("Check that no negative ftuple indices occur", unit = u)
+    do i_reg = 1, reg_data%n_regions
+       if (any (reg_data%regions(i_reg)%ftuples%has_negative_elements ())) then
+          !!! This error is so severe that we stop immediately
+          call msg_fatal ("Negative ftuple indices!")
+       end if
+    end do
+    call msg_message ("Success!", unit = u)
+    call msg_message ("Check that there is no ftuple with identical elements", unit = u)
+    do i_reg = 1, reg_data%n_regions
+       if (any (reg_data%regions(i_reg)%ftuples%has_identical_elements ())) then
+          !!! This error is so severe that we stop immediately
+          call msg_fatal ("Identical ftuple indices!")
+       end if
+    end do
+    call msg_message ("Success!", unit = u)
+    call msg_message ("Check that there are no duplicate ftuples in a region", unit = u)
+    do i_reg = 1, reg_data%n_regions
+       if (reg_data%regions(i_reg)%has_identical_ftuples ()) then
+          if (no_fail(1)) then
+             call msg_error ("FAIL: ", unit = u)
+             no_fail(1) = .false.
+          end if
+          write (u, '(A,1x,I3)') 'i_reg:', i_reg
+       end if
+    end do
+    if (no_fail(1)) call msg_message ("Success!", unit = u)
+    call msg_message ("Check that ftuples add up to a valid splitting", unit = u)
+    do i_reg = 1, reg_data%n_regions
+       do alr = 1, reg_data%regions(i_reg)%nregions
+          associate (region => reg_data%regions(i_reg))
+             i1 = region%ftuples(alr)%ireg(1)
+             if (i1 == 0) i1 = 1 !!! Gluon emission from both initial-state quarks
+             f1 = region%flst_real%flst(i1)
+             f2 = region%flst_real%flst(region%ftuples(alr)%ireg(2))
+             valid_splitting = f1 + f2 == 0 &
+                  .or. (f1 == 21 .and. f2 == 21) &
+                  .or. is_quark_gluon_splitting (f1, f2)
+             if (.not. valid_splitting) then
+                if (no_fail(2)) then
+                   call msg_error ("FAIL: ", unit = u)
+                   no_fail(2) = .false.
+                end if
+                write (u, '(A,1x,I3)') 'i_reg:', i_reg
+                exit
+             end if
+          end associate
+       end do
+    end do
+    if (no_fail(2)) call msg_message ("Success!", unit = u)
+    call msg_message ("Check that at least one ftuple contains the emitter", unit = u)
+    do i_reg = 1, reg_data%n_regions
+       associate (region => reg_data%regions(i_reg))
+          if (.not. any (region%emitter == region%ftuples%ireg(1))) then
+             if (no_fail(3)) then
+                call msg_error ("FAIL: ", unit = u)
+                no_fail(3) = .false.
+             end if
+             write (u, '(A,1x,I3)') 'i_reg:', i_reg
+          end if
+       end associate
+    end do
+    if (no_fail(3)) call msg_message ("Success!", unit = u)
+    call msg_message ("Check that each region has at least one ftuple &
+         &with index n + 1", unit = u)
+    do i_reg = 1, reg_data%n_regions
+       if (.not. any (reg_data%regions(i_reg)%ftuples%ireg(2) == reg_data%n_legs_real)) then
+          if (no_fail(4)) then
+             call msg_error ("FAIL: ", unit = u)
+             no_fail(4) = .false.
+          end if
+          write (u, '(A,1x,I3)') 'i_reg:', i_reg
+       end if
+    end do
+    if (no_fail(4)) call msg_message ("Success!", unit = u)
+    if (.not. all (no_fail)) &
+         call abort_with_message ("Stop due to inconsistent region data!")
+
+  contains
+    subroutine abort_with_message (msg)
+      character(len=*), intent(in) :: msg
+      if (fail_fatal) then
+         call msg_fatal (msg)
+      else
+         call msg_error (msg, unit = u)
+      end if
+    end subroutine abort_with_message
+
+    function is_quark_gluon_splitting (pdg_1, pdg_2) result (value)
+      logical :: value
+      integer, intent(in) :: pdg_1, pdg_2
+      value = (is_quark(pdg_1) .and. is_gluon (pdg_2)) .or. &
+           (is_quark(pdg_2) .and. is_gluon (pdg_1))
+    end function
+  end subroutine region_data_check_consistency
 
   subroutine region_data_final (reg_data)
     class(region_data_t), intent(inout) :: reg_data
@@ -2718,16 +3446,12 @@ contains
     integer, intent(in) :: i, j
     integer, intent(in), optional :: i_con
     d = zero
-    if (i /= j) then
-        if (map%pseudo_isr) then
-           d = dij_threshold_gluon_from_top (i, j, p, map%exp_1)
-        else if (i > map%n_in .and. j > map%n_in) then
-           d = dij_fsr (p(i), p(j), map%exp_1)
-        else
-           d = dij_isr (map%n_in, i, j, p, map%exp_2)
-        end if
+    if (map%pseudo_isr) then
+       d = dij_threshold_gluon_from_top (i, j, p, map%exp_1)
+    else if (i > map%n_in .and. j > map%n_in) then
+       d = dij_fsr (p(i), p(j), map%exp_1)
     else
-      call msg_fatal ("Invalid FKS region: Emitter equals FKS parton!")
+       d = dij_isr (map%n_in, i, j, p, map%exp_2)
     end if
   contains
 
@@ -3092,7 +3816,7 @@ contains
     integer, intent(in), dimension(:,:) :: flv_born, flv_real
     type(region_data_t), intent(out) :: reg_data
     type(model_t), pointer :: test_model => null ()
-    call create_test_model (var_str ("SM_rad"), test_model)
+    call create_test_model (var_str ("SM"), test_model)
     call reg_data%init (n_in, test_model, flv_born, flv_real)
   end subroutine setup_region_data_for_test
 

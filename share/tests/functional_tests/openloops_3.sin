@@ -11,6 +11,9 @@ model = "SM"
 ?integration_timer = false
 ?pacify = true
 
+$born_me_method = "openloops"
+$real_tree_me_method = "openloops"
+$correlation_me_method = "openloops"
 $loop_me_method = "openloops"
 
 openmp_num_threads = 1

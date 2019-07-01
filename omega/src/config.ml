@@ -1,6 +1,6 @@
 (* config.ml.in --
 
-   Copyright (C) 1999-2016 by
+   Copyright (C) 1999-2017 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,9 +21,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let version = "2.4.0"
-let date = "Nov 28 2016"
-let status = "alpha"
+let version = "2.4.1"
+let date = "Mar 24 2017"
+let status = "release"
 
 let default_UFO_dir = "/Users/reuter/local/omega/share/UFO"
 

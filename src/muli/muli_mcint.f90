@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,14 +34,14 @@
 ! to the source 'whizard.nw'
 
 module muli_mcint
-  use kinds, only: default  
+  use kinds, only: default
   use constants
   use muli_base
   use tao_random_numbers !NODEP!
   use muli_interactions
 
   implicit none
-  private  
+  private
 
   integer, parameter :: max_n = 2**30
   real(default), parameter :: max_d = one * max_n
@@ -63,22 +63,22 @@ module muli_mcint
    contains
      procedure :: write_to_marker => sample_region_write_to_marker
      procedure :: read_from_marker => sample_region_read_from_marker
-     procedure :: print_to_unit => sample_region_print_to_unit  
-     procedure, nopass :: get_type => sample_region_get_type  
+     procedure :: print_to_unit => sample_region_print_to_unit
+     procedure, nopass :: get_type => sample_region_get_type
      procedure :: initialize => sample_region_initialize
      procedure :: generate_hit => sample_region_generate_hit
      procedure :: confirm_hit => sample_region_confirm_hit
-     procedure :: split => sample_region_split  
+     procedure :: split => sample_region_split
      procedure :: write_hits => sample_region_write_hits
-     procedure :: is_full => sample_region_is_full  
+     procedure :: is_full => sample_region_is_full
      procedure :: move_components => sample_region_move_components
      procedure :: mean => sample_region_mean
-     procedure :: area => sample_region_area  
+     procedure :: area => sample_region_area
      procedure :: density => sample_region_density
      procedure :: contains => sample_region_contains
-     procedure :: to_generator => sample_region_to_generator    
+     procedure :: to_generator => sample_region_to_generator
   end type sample_region_t
-  
+
   type, extends (ser_class_t) :: sample_2d_t
      integer :: n_regions = 0
      integer :: n_alloc = 0
@@ -89,7 +89,7 @@ module muli_mcint
      procedure :: write_to_marker => sample_2d_write_to_marker
      procedure :: read_from_marker => sample_2d_read_from_marker
      procedure :: print_to_unit => sample_2d_print_to_unit
-     procedure, nopass :: get_type => sample_2d_get_type    
+     procedure, nopass :: get_type => sample_2d_get_type
      procedure :: initialize => sample_2d_initialize
      procedure :: contains => sample_2d_contains
      procedure :: generate_hit => sample_2d_generate_hit
@@ -102,29 +102,29 @@ module muli_mcint
      procedure :: thickness => sample_2d_thickness
      procedure :: analyse => sample_2d_analyse
      procedure :: to_generator => sample_2d_to_generator
-     procedure :: mean => sample_2d_mean  
+     procedure :: mean => sample_2d_mean
   end type sample_2d_t
-  
+
   type, extends (ser_class_t) :: sample_3d_t
      integer::n_slices=0
      integer::n_alloc=0
-     type(sample_2d_t), dimension(:),allocatable::slices     
+     type(sample_2d_t), dimension(:),allocatable::slices
    contains
      procedure :: write_to_marker => sample_3d_write_to_marker
      procedure :: read_from_marker => sample_3d_read_from_marker
      procedure :: print_to_unit => sample_3d_print_to_unit
-     procedure, nopass :: get_type => sample_3d_get_type  
-     procedure :: measure => sample_3d_measure  
+     procedure, nopass :: get_type => sample_3d_get_type
+     procedure :: measure => sample_3d_measure
      procedure :: to_generator => sample_3d_to_generator
-     generic :: initialize => sample_3d_initialize  
+     generic :: initialize => sample_3d_initialize
      procedure :: sample_3d_initialize
      procedure :: sample_3d_generate_hit
-     generic :: generate_hit => sample_3d_generate_hit    
+     generic :: generate_hit => sample_3d_generate_hit
      procedure :: sample_3d_confirm_hit
-     generic :: confirm_hit => sample_3d_confirm_hit    
+     generic :: confirm_hit => sample_3d_confirm_hit
      procedure :: enlarge => sample_3d_enlarge
   end type sample_3d_t
-  
+
   type, extends (sample_3d_t) :: sample_int_kind_t
      integer :: n_proc = 0
      integer(kind=i64) :: n_tries = 0
@@ -137,18 +137,18 @@ module muli_mcint
      procedure :: read_from_marker => sample_int_kind_read_from_marker
      procedure :: print_to_unit => sample_int_kind_print_to_unit
      procedure, nopass :: get_type => sample_int_kind_get_type
-     procedure :: to_generator => sample_int_kind_to_generator  
+     procedure :: to_generator => sample_int_kind_to_generator
      procedure :: process_id => sample_int_kind_process_id
      procedure :: sample_int_kind_initialize
-     generic :: initialize => sample_int_kind_initialize  
+     generic :: initialize => sample_int_kind_initialize
      procedure :: sample_int_kind_generate_hit
      procedure :: mcgenerate_hit => sample_int_kind_mcgenerate_hit
      generic :: generate_hit => sample_int_kind_generate_hit
      procedure :: sample_int_kind_confirm_hit
-     generic :: confirm_hit => sample_int_kind_confirm_hit    
-     procedure :: analyse => sample_int_kind_analyse  
+     generic :: confirm_hit => sample_int_kind_confirm_hit
+     procedure :: analyse => sample_int_kind_analyse
   end type sample_int_kind_t
-  
+
   type, extends (ser_class_t) :: sample_inclusive_t
      integer :: n_alloc = 0
      integer(kind=i64) :: n_tries_sum = i_zero
@@ -159,8 +159,8 @@ module muli_mcint
      procedure :: write_to_marker => sample_inclusive_write_to_marker
      procedure :: read_from_marker => sample_inclusive_read_from_marker
      procedure :: print_to_unit => sample_inclusive_print_to_unit
-     procedure, nopass :: get_type => sample_inclusive_get_type  
-     procedure :: process_id => sample_inclusive_process_id 
+     procedure, nopass :: get_type => sample_inclusive_get_type
+     procedure :: process_id => sample_inclusive_process_id
      procedure :: initialize => sample_inclusive_initialize
      procedure :: finalize => sample_inclusive_finalize
      procedure :: generate_hit => sample_inclusive_generate_hit
@@ -169,10 +169,10 @@ module muli_mcint
      procedure :: sum_up => sample_inclusive_sum_up
      procedure :: analyse => sample_inclusive_analyse
      procedure :: to_generator => sample_inclusive_to_generator
-     procedure :: allocate => sample_inclusive_allocate    
+     procedure :: allocate => sample_inclusive_allocate
   end type sample_inclusive_t
-  
-  
+
+
 contains
 
   subroutine sample_region_write_to_marker (this, marker, status)
@@ -192,11 +192,11 @@ contains
     end if
     call marker%mark_end ("sample_region_t")
   end subroutine sample_region_write_to_marker
-  
+
   subroutine sample_region_read_from_marker (this, marker, status)
     class(sample_region_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status  
+    integer(dik), intent(out) :: status
     integer :: n
     call marker%pick_begin ("sample_region_t", status=status)
     call marker%pick ("n_hits", this%n_hits, status)
@@ -211,7 +211,7 @@ contains
     end if
     call marker%pick_end ("sample_region_t", status)
   end subroutine sample_region_read_from_marker
-  
+
   subroutine sample_region_print_to_unit &
        (this, unit, parents, components, peers)
     class(sample_region_t), intent(in) :: this
@@ -233,7 +233,7 @@ contains
        write (unit, "(3x,A)")  "hits are not allocated."
     end if
   end subroutine sample_region_print_to_unit
-  
+
   pure subroutine sample_region_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="sample_region_t")
@@ -246,7 +246,7 @@ contains
     allocate (this%hyp_hits (3,n_alloc))
     this%n_alloc = n_alloc
   end subroutine sample_region_initialize
-  
+
   pure subroutine sample_region_generate_hit (this, rnd, area, hit)
     class(sample_region_t), intent(in) :: this
     integer, intent(in), dimension(2) :: rnd
@@ -255,7 +255,7 @@ contains
     call muli_mcint_generate_hit (rnd, this%corners, hit)
     area = this%area ()
   end subroutine sample_region_generate_hit
-  
+
   subroutine sample_region_confirm_hit (this, hit)
     class(sample_region_t), intent(inout) :: this
     real(default), dimension(3), intent(in) :: hit
@@ -267,14 +267,14 @@ contains
        print *, "sample_region_confirm_hit: Region is already full."
     end if
   end subroutine sample_region_confirm_hit
-  
+
   subroutine sample_region_split (this, pos, dimX, n_alloc, lower, upper)
     class(sample_region_t), intent(in) :: this
     type(sample_region_t), intent(out) :: lower, upper
     real(default), dimension(3) :: hit
     real(default), intent(in) :: pos
     integer, intent(in) :: dimX, n_alloc
-    integer :: n_hit    
+    integer :: n_hit
     call lower%initialize (n_alloc)
     call upper%initialize (n_alloc)
     do n_hit = 1, this%n_hits
@@ -292,7 +292,7 @@ contains
        upper%corners(dimX,1) = pos
     end if
   end subroutine sample_region_split
-  
+
   subroutine sample_region_write_hits (this, unit)
     class(sample_region_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -301,12 +301,12 @@ contains
        write (unit, *)  this%hyp_hits (1:3,n)
     end do
   end subroutine sample_region_write_hits
-  
+
   elemental logical function sample_region_is_full (this)
     class(sample_region_t), intent(in) :: this
     sample_region_is_full = this%n_alloc == this%n_hits
   end function sample_region_is_full
-  
+
   subroutine sample_region_move_components (this, that)
     class(sample_region_t), intent(inout) :: this
     class(sample_region_t), intent(out) :: that
@@ -317,20 +317,20 @@ contains
     this%n_alloc = 0
     this%n_hits = 0
   end subroutine sample_region_move_components
-  
+
   elemental function sample_region_mean (this, dim)
     real(default) :: sample_region_mean
     class(sample_region_t), intent(in) :: this
     integer, intent(in) :: dim
     sample_region_mean = sum (this%hyp_hits (dim,1:this%n_hits)) / this%n_hits
   end function sample_region_mean
-  
+
   elemental function sample_region_area (this)
     real(default) :: sample_region_area
     class(sample_region_t), intent(in) :: this
     sample_region_area = product (this%corners(1:2,2) - this%corners(1:2,1))
   end function sample_region_area
-  
+
   elemental function sample_region_density (this)
     real(default) :: sample_region_density
     class(sample_region_t), intent(in) :: this
@@ -345,13 +345,13 @@ contains
          this%corners(2,1) <= hit(2) .and. &
          hit(2) <= this%corners(2,2))
   end function sample_region_contains
-  
+
   subroutine sample_region_to_generator (this)
     class(sample_region_t), intent(inout) :: this
     if (allocated (this%hyp_hits))  deallocate (this%hyp_hits)
     this%n_alloc = 0
   end subroutine sample_region_to_generator
-  
+
   subroutine sample_2d_write_to_marker (this, marker, status)
     class(sample_2d_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -372,11 +372,11 @@ contains
     end if
     call marker%mark_end ("sample_2d_t")
   end subroutine sample_2d_write_to_marker
-  
+
   subroutine sample_2d_read_from_marker (this, marker, status)
     class(sample_2d_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status  
+    integer(dik), intent(out) :: status
     integer :: n
     call marker%pick_begin ("sample_2d_t", status=status)
     call marker%pick ("n_regions", this%n_regions, status)
@@ -393,7 +393,7 @@ contains
     end if
     call marker%pick_end ("sample_2d_t", status)
   end subroutine sample_2d_read_from_marker
-  
+
   subroutine sample_2d_print_to_unit (this, unit, parents, components, peers)
     class(sample_2d_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -417,12 +417,12 @@ contains
        write (unit, "(3x,A)")  "regions are not allocated."
     end if
   end subroutine sample_2d_print_to_unit
-  
+
   pure subroutine sample_2d_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="sample_2d_t")
   end subroutine sample_2d_get_type
-  
+
   subroutine sample_2d_initialize (this, n_alloc)
     class(sample_2d_t), intent(out) :: this
     integer, intent(in) :: n_alloc
@@ -436,13 +436,13 @@ contains
     !    call this%regions(n)%initialize (n_alloc)
     ! end do
   end subroutine sample_2d_initialize
-  
+
   pure logical function sample_2d_contains (this, pts2)
     class(sample_2d_t), intent(in) :: this
     real(default), intent(in) :: pts2
     sample_2d_contains = this%range(1) <= pts2 .and. pts2 <= this%range(2)
   end function sample_2d_contains
-  
+
   pure subroutine sample_2d_generate_hit (this, rnd, boost, hit, region)
     class(sample_2d_t), intent(in) :: this
     integer, dimension(3), intent(in) :: rnd
@@ -452,7 +452,7 @@ contains
     real(default), intent(out) :: boost
     if (0 < this%n_hits .and. this%n_hits < 10) then
        !!! this should be improved
-       sum = modulo(rnd(1),this%n_hits) + 1  
+       sum = modulo(rnd(1),this%n_hits) + 1
        region = 0
        do while (sum > 0)
           region = region + 1
@@ -463,7 +463,7 @@ contains
     else
        if (this%n_regions > 1) then
           !!! this should be improved
-          region = modulo(rnd(1), this%n_regions) + 1 
+          region = modulo(rnd(1), this%n_regions) + 1
           call this%regions(region)%generate_hit (rnd(2:3), boost, hit)
           boost = boost * this%n_regions
        else
@@ -483,14 +483,14 @@ contains
 !    call this%regions(region)%generate_hit (rnd(2:3), boost, hit)
 !    boost = boost * this%n_regions
 !  end subroutine sample_2d_generate_hit
-    
+
   subroutine sample_2d_confirm_hit (this, hit, region, full)
     class(sample_2d_t), intent(inout) :: this
     integer, intent(in) :: region
     real(default), dimension(3), intent(in) :: hit
     type(sample_region_t), allocatable :: old_region
     real(default), dimension(2) :: mean, var, diff, cm, cv, c
-    integer :: n, n_alloc, dim 
+    integer :: n, n_alloc, dim
     logical, intent(out) :: full
     this%n_hits = this%n_hits + 1
     if (region <= this%n_alloc) then
@@ -529,7 +529,7 @@ contains
             " not allocated."
     end if
   end subroutine sample_2d_confirm_hit
-  
+
   recursive subroutine sample_2d_split (this, n_alloc, pos, lower, upper)
     class(sample_2d_t), intent(in) :: this
     integer, intent(in) :: n_alloc
@@ -546,7 +546,7 @@ contains
           if (hit(3) > pos) then
              call upper%push (hit)
           else
-             call lower%push (hit)             
+             call lower%push (hit)
           end if
        end do
     end do
@@ -576,7 +576,7 @@ contains
 !    lower%range = [this%range(1), pos]
 !    upper%range = [pos, this%range(2)]
 !  end subroutine sample_2d_split
-    
+
   subroutine sample_2d_push (this, hit)
     class(sample_2d_t), intent(inout) :: this
     real(default), dimension(3), intent(in) :: hit
@@ -590,10 +590,10 @@ contains
           exit
        end if
     end do
-    if (region > this%n_regions) & 
+    if (region > this%n_regions) &
          print *, "sample_2d_push: no region contains ", hit
   end subroutine sample_2d_push
-  
+
   subroutine sample_2d_write_hits (this, unit)
     class(sample_2d_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -602,12 +602,12 @@ contains
        call this%regions(n)%write_hits (unit)
     end do
   end subroutine sample_2d_write_hits
-  
+
   elemental logical function sample_2d_is_full (this)
     class(sample_2d_t), intent(in) :: this
     sample_2d_is_full = this%n_alloc == this%n_regions
   end function sample_2d_is_full
-  
+
   subroutine sample_2d_move_components (this, that)
     class(sample_2d_t), intent(inout) :: this
     class(sample_2d_t), intent(out) :: that
@@ -621,13 +621,13 @@ contains
     this%n_hits = 0
     this%range = [zero,zero]
   end subroutine sample_2d_move_components
-  
+
   elemental function sample_2d_thickness (this)
     class(sample_2d_t), intent(in) :: this
     real(default) :: sample_2d_thickness
     sample_2d_thickness = this%range(2) - this%range(1)
   end function sample_2d_thickness
-  
+
   subroutine sample_2d_analyse (this, dir, file)
     class(sample_2d_t), intent(in) :: this
     character(*), intent(in) :: dir, file
@@ -662,7 +662,7 @@ contains
     end do
     close (u)
   end subroutine sample_2d_analyse
-  
+
   subroutine sample_2d_to_generator (this)
     class(sample_2d_t), intent(inout) :: this
     integer :: region
@@ -670,7 +670,7 @@ contains
        call this%regions(region)%to_generator ()
     end do
   end subroutine sample_2d_to_generator
-  
+
   elemental function sample_2d_mean (this, dim) result (mean)
     class(sample_2d_t), intent(in) :: this
     integer, intent(in) :: dim
@@ -684,11 +684,11 @@ contains
     end do
     mean = mean / this%n_hits
   end function sample_2d_mean
-  
+
   subroutine sample_3d_write_to_marker (this, marker, status)
     class(sample_3d_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status 
+    integer(dik), intent(out) :: status
     integer :: n
     call marker%mark_begin ("sample_3d_t")
     call marker%mark ("n_slices", this%n_slices)
@@ -703,11 +703,11 @@ contains
     end if
     call marker%mark_end ("sample_3d_t")
   end subroutine sample_3d_write_to_marker
-  
+
   subroutine sample_3d_read_from_marker (this, marker, status)
     class(sample_3d_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status  
+    integer(dik), intent(out) :: status
     integer :: n
     call marker%pick_begin ("sample_3d_t", status=status)
     call marker%pick ("n_slices", this%n_slices, status)
@@ -722,7 +722,7 @@ contains
     end if
     call marker%pick_end ("sample_3d_t", status)
   end subroutine sample_3d_read_from_marker
-  
+
   subroutine sample_3d_print_to_unit (this, unit, parents, components, peers)
     class(sample_3d_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -743,18 +743,18 @@ contains
        write (unit, "(3x,A)")  "slices are not allocated."
     end if
   end subroutine sample_3d_print_to_unit
-  
+
   pure subroutine sample_3d_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="sample_3d_t")
   end subroutine sample_3d_get_type
-  
+
   elemental function sample_3d_measure (this)
     real(default) :: sample_3d_measure
     class(sample_3d_t), intent(in) :: this
     sample_3d_measure = one
   end function sample_3d_measure
-  
+
   subroutine sample_3d_to_generator(this)
     class(sample_3d_t), intent(inout)::this
     integer::slice
@@ -762,7 +762,7 @@ contains
        call this%slices(slice)%to_generator()
     end do
   end subroutine sample_3d_to_generator
-  
+
   subroutine sample_3d_initialize (this, n_alloc)
     class(sample_3d_t), intent(out) :: this
     integer, intent(in) :: n_alloc
@@ -776,7 +776,7 @@ contains
        this%n_alloc = 0
     end if
   end subroutine sample_3d_initialize
-  
+
   pure subroutine sample_3d_generate_hit &
        (this, rnd, pts2, boost, hit, region, slice)
     class(sample_3d_t), intent(in) :: this
@@ -792,13 +792,13 @@ contains
        region = 1
     else
        do slice = 1, this%n_slices
-          if (this%slices(slice)%contains (pts2))  exit          
+          if (this%slices(slice)%contains (pts2))  exit
        end do
        call this%slices(slice)%generate_hit (rnd, boost, hit(1:2), region)
     end if
     hit(3) = pts2
   end subroutine sample_3d_generate_hit
-  
+
   subroutine sample_3d_confirm_hit (this, hit, region, slice)
     class(sample_3d_t), intent(inout) :: this
     integer, intent(in) :: slice, region
@@ -822,7 +822,7 @@ contains
        end if
     end if
   end subroutine sample_3d_confirm_hit
-  
+
   subroutine sample_3d_enlarge (this)
     class(sample_3d_t), intent(inout) :: this
     type(sample_2d_t), allocatable, dimension(:) :: old_slices
@@ -835,7 +835,7 @@ contains
        call old_slices(n)%move_components(this%slices(n))
     end do
   end subroutine sample_3d_enlarge
-  
+
   subroutine sample_int_kind_write_to_marker (this, marker, status)
     class(sample_int_kind_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -854,11 +854,11 @@ contains
     end if
     call marker%mark_end ("sample_int_kind_t")
   end subroutine sample_int_kind_write_to_marker
-  
+
   subroutine sample_int_kind_read_from_marker (this, marker, status)
     class(sample_int_kind_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
-    integer(dik), intent(out) :: status  
+    integer(dik), intent(out) :: status
     call marker%pick_begin ("sample_int_kind_t", status=status)
     call sample_3d_read_from_marker (this, marker, status)
     call marker%pick ("n_hits", this%n_hits, status)
@@ -876,7 +876,7 @@ contains
     end if
     call marker%pick_end ("sample_int_kind_t", status)
   end subroutine sample_int_kind_read_from_marker
-  
+
 
   subroutine sample_int_kind_print_to_unit (this, unit, parents, components, peers)
     class(sample_int_kind_t), intent(in) :: this
@@ -896,12 +896,12 @@ contains
     write (unit, "(3x,A)")  "processes:"
     write (unit, "(3x,2(I0,1x))") this%processes
   end subroutine sample_int_kind_print_to_unit
-  
+
   pure subroutine sample_int_kind_get_type (type)
     character(:),allocatable, intent(out) :: type
     allocate (type, source="sample_int_kind_t")
   end subroutine sample_int_kind_get_type
-  
+
   subroutine sample_int_kind_to_generator(this)
     class(sample_int_kind_t), intent(inout)::this
     integer::int_kind
@@ -914,7 +914,7 @@ contains
     integer, intent(in) :: subprocess
     sample_int_kind_process_id = this%processes(subprocess)
   end function sample_int_kind_process_id
-  
+
   subroutine sample_int_kind_initialize (this, n_alloc, processes, overall_boost)
     class(sample_int_kind_t), intent(out) :: this
     integer, intent(in) :: n_alloc
@@ -939,7 +939,7 @@ contains
     this%overall_boost = this%overall_boost * this%n_proc
     ! print *, this%weights
   end subroutine sample_int_kind_initialize
-  
+
   pure subroutine sample_int_kind_generate_hit &
        (this, rnd, pts2, boost, hit, region, slice, subprocess)
     class(sample_int_kind_t), intent(in) :: this
@@ -961,7 +961,7 @@ contains
     boost = boost * this%overall_boost * (this%n_proc + this%n_hits) / &
          (this%n_proc * (this%weights(subprocess) + 1))
   end subroutine sample_int_kind_generate_hit
-  
+
   subroutine sample_int_kind_mcgenerate_hit (this, pts2, mean, &
        integrand_kind, tao_rnd, process_id, cart_hit)
     class(sample_int_kind_t), intent(inout) :: this
@@ -975,7 +975,7 @@ contains
     integer, dimension(4) :: i_rnd
     real(default) :: dddsigma, d_rnd
     real(default), dimension(3) :: hyp_hit
-    MC: do 
+    MC: do
        this%n_tries = this%n_tries + 1
        call tao_random_number (tao_rnd, i_rnd)
        call tao_random_number (tao_rnd, d_rnd)
@@ -996,7 +996,7 @@ contains
        call this%confirm_hit (hyp_hit, region, slice, subprocess, .false.)
     end if
   end subroutine sample_int_kind_mcgenerate_hit
-  
+
   subroutine sample_int_kind_confirm_hit &
        (this, hit, region, slice, subprocess, over)
     class(sample_int_kind_t), intent(inout) :: this
@@ -1024,7 +1024,7 @@ contains
     this%weights(subprocess) = this%weights(subprocess) + 1
     call sample_3d_confirm_hit (this, hit, region, slice)
   end subroutine sample_int_kind_confirm_hit
-  
+
   subroutine sample_int_kind_analyse (this, dir, prefix)
     class(sample_int_kind_t), intent(in) :: this
     character(*), intent(in) :: dir, prefix
@@ -1056,11 +1056,11 @@ contains
           write (subprocs_unit, fmt=*) 0, 0
        end if
     end do
-    do n = 1, this%n_slices       
+    do n = 1, this%n_slices
        slice = int_a (n)
        call integer_with_leading_zeros (n, 3, slice_name)
        call sample_2d_analyse (this%slices(slice), dir, prefix // &
-            slice_name // ".plot")  
+            slice_name // ".plot")
        print *, this%n_hits, this%slices(slice)%range(2) - &
             this%slices(slice)%range(1)
        if (this%n_hits > 0) then
@@ -1077,7 +1077,7 @@ contains
     close (slices_unit)
     close (subprocs_unit)
   end subroutine sample_int_kind_analyse
-  
+
   subroutine sample_inclusive_write_to_marker (this, marker, status)
     class(sample_inclusive_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -1096,7 +1096,7 @@ contains
     end if
     call marker%mark_end ("sample_inclusive_t")
   end subroutine sample_inclusive_write_to_marker
-  
+
   subroutine sample_inclusive_read_from_marker (this, marker, status)
     class(sample_inclusive_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -1114,7 +1114,7 @@ contains
     end if
     call marker%pick_end ("sample_inclusive_t", status)
   end subroutine sample_inclusive_read_from_marker
-  
+
   subroutine sample_inclusive_print_to_unit (this, unit, parents, components, peers)
     class(sample_inclusive_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -1136,12 +1136,12 @@ contains
        write (unit, "(3x,A)")  "int_kinds are not allocated."
     end if
   end subroutine sample_inclusive_print_to_unit
-  
+
   pure subroutine sample_inclusive_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source = "sample_inclusive_t")
   end subroutine sample_inclusive_get_type
-  
+
   elemental integer function sample_inclusive_process_id &
        (this, subprocess, int_kind)
     class(sample_inclusive_t), intent(in) :: this
@@ -1149,7 +1149,7 @@ contains
     sample_inclusive_process_id = &
          this%int_kinds(int_kind)%processes (subprocess)
   end function sample_inclusive_process_id
-  
+
   subroutine sample_inclusive_initialize &
        (this, n_alloc, sizes, processes, overall_boost)
     class(sample_inclusive_t), intent(out) :: this
@@ -1169,13 +1169,13 @@ contains
        sum = sum + sizes(n)
     end do
   end subroutine sample_inclusive_initialize
-  
+
   subroutine sample_inclusive_finalize (this)
     class(sample_inclusive_t), intent(inout) :: this
     deallocate (this%int_kinds)
     this%n_alloc = 0
   end subroutine sample_inclusive_finalize
-  
+
   pure subroutine sample_inclusive_generate_hit &
        (this, rnd, pts2, int_kind, hit, region, boost, slice, process)
     class(sample_inclusive_t), intent(in) :: this
@@ -1188,7 +1188,7 @@ contains
     call this%int_kinds(int_kind)%generate_hit &
          (rnd, pts2, boost, hit, region, slice, process)
   end subroutine sample_inclusive_generate_hit
-  
+
   subroutine sample_inclusive_mcgenerate_hit &
        (this, pts2, mean, integrand_kind, tao_rnd, process_id, cart_hit)
     class(sample_inclusive_t), intent(inout) :: this
@@ -1203,7 +1203,7 @@ contains
     call sample_int_kind_mcgenerate_hit (this%int_kinds(integrand_kind), &
          pts2, mean, integrand_kind, tao_rnd, process_id, cart_hit)
   end subroutine sample_inclusive_mcgenerate_hit
-  
+
   subroutine sample_inclusive_confirm_hit &
        (this, hit, int_kind, region, slice, process, over)
     class(sample_inclusive_t), intent(inout) :: this
@@ -1213,7 +1213,7 @@ contains
     call this%int_kinds(int_kind)%confirm_hit &
          (hit, region, slice, process, over)
   end subroutine sample_inclusive_confirm_hit
-  
+
   subroutine sample_inclusive_sum_up (this)
     class(sample_inclusive_t), intent(inout) :: this
     integer :: n
@@ -1226,12 +1226,12 @@ contains
        this%n_over_sum = this%n_over_sum+this%int_kinds(n)%n_over
     end do
   end subroutine sample_inclusive_sum_up
-  
+
   subroutine sample_inclusive_analyse (this, dir, subdirs)
     class(sample_inclusive_t), intent(in) :: this
     character(*), intent(in) :: dir
     logical, intent(in) :: subdirs
-    integer :: inclusive_unit    
+    integer :: inclusive_unit
     integer :: n, n_hits
     character(2) :: sample_name
     call generate_unit (inclusive_unit)
@@ -1253,7 +1253,7 @@ contains
     end do
     close (inclusive_unit)
   end subroutine sample_inclusive_analyse
-  
+
   subroutine sample_inclusive_to_generator (this)
     class(sample_inclusive_t), intent(inout) :: this
     integer :: int_kind
@@ -1261,14 +1261,14 @@ contains
        call this%int_kinds(int_kind)%to_generator ()
     end do
   end subroutine sample_inclusive_to_generator
-  
+
   subroutine sample_inclusive_allocate (this, n_alloc)
     class(sample_inclusive_t), intent(out) :: this
     integer, intent(in) :: n_alloc
     allocate (this%int_kinds (n_alloc))
     this%n_alloc = n_alloc
   end subroutine sample_inclusive_allocate
-  
+
   pure subroutine muli_mcint_generate_hit (rnd, corners, hit)
     real(default), dimension(2), intent(out) :: hit
     integer, intent(in), dimension(2) :: rnd
@@ -1278,7 +1278,7 @@ contains
     ! print *, (corners(1:2,2) - corners(1:2,1))
     hit = (rnd / max_d) * (corners(1:2,2) - corners(1:2,1)) + corners(1:2,1)
   end subroutine muli_mcint_generate_hit
-  
+
   subroutine plot_pstvue3d (unit, corners, density)
     integer, intent(in) :: unit
     real(default), dimension(2,2), intent(in) :: corners
@@ -1294,7 +1294,7 @@ contains
     plot(2,2) = mean(2)
     plot(3,2) = density / two
     call log_color_code (density, plot(1:3,3))
-    if (density > one) then                      
+    if (density > one) then
        write (unit, fmt='("\mybigcube{",F14.7,"}{",F14.7,"}{",F14.7,"} &
             & {",F14.7,"}{",F14.7,"}{",F14.7,"}{",F14.7,"}{",F14.7,"} &
             & {",F14.7,"}")') plot
@@ -1320,12 +1320,12 @@ contains
              if (number < exp(-two)) then
                 rgb = [(number-exp(-three))/(exp(-two)-exp(-three)), one, zero]
              else
-                if (number < exp(-one)) then                   
+                if (number < exp(-one)) then
                    rgb = [one, one-(number-exp(-two))/(exp(-one)-exp(-two)), zero]
                 else
                    if (number < one) then
                       rgb = [one, zero, (number-exp(-three))/(one-exp(-three))]
-                   else                      
+                   else
                       rgb = [exp(one), one, one] * exp(-number)
                       return
                    end if
@@ -1382,7 +1382,7 @@ contains
        end if
     end if
   end subroutine misc_sort
-  
+
 
 end module muli_mcint
 

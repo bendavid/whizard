@@ -1,0 +1,49 @@
+!!! Tests the integration of an NLO process with multiple
+!!! flavors in the final-state.
+
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_qed"
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+### The OpenLoops version installed might not be new enough to support Collier
+?openloops_use_collier = false
+$loop_me_method = "openloops"
+
+!!! Tests should be run single-threaded
+openmp_num_threads = 1
+
+?use_vamp_equivalences = false
+?alpha_s_is_fixed = true
+?alpha_s_from_mz = false
+alphas = 0.1178
+
+ms = 0
+mc = 0
+mb = 0
+
+process openloops_5_p1_nlo = E1, e1 => u:U:d:D:s:S:c:C:b:B, u:U:d:D:s:S:c:C:b:B { nlo_calculation = "Full" }
+process openloops_5_p2_nlo = E1, e1 => U, u { nlo_calculation = "Full" }
+process openloops_5_p3_nlo = E1, e1 => D, d { nlo_calculation = "Full" }
+process openloops_5_p4_nlo = E1, e1 => S, s { nlo_calculation = "Full" }
+process openloops_5_p5_nlo = E1, e1 => C, c { nlo_calculation = "Full" }
+process openloops_5_p6_nlo = E1, e1 => B, b { nlo_calculation = "Full" }
+
+sqrts = 500 GeV
+iterations = 1:100:"gw"
+tolerance = 0.001
+
+integrate (openloops_5_p1_nlo) { seed = 0 }
+integrate (openloops_5_p2_nlo) { seed = 0 }
+integrate (openloops_5_p3_nlo) { seed = 0 }
+integrate (openloops_5_p4_nlo) { seed = 0 }
+integrate (openloops_5_p5_nlo) { seed = 0 }
+integrate (openloops_5_p6_nlo) { seed = 0 }
+
+expect (integral (openloops_5_p1_nlo) == integral (openloops_5_p2_nlo)
+       + integral (openloops_5_p3_nlo) + integral (openloops_5_p4_nlo)
+       + integral (openloops_5_p5_nlo) + integral (openloops_5_p6_nlo))

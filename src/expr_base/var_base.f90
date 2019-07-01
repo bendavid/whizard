@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,10 +34,10 @@
 ! to the source 'whizard.nw'
 
 module var_base
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
-  
+
   implicit none
   private
 
@@ -61,7 +61,7 @@ module var_base
      procedure (vars_set_lval), deferred :: set_lval
      procedure (vars_set_sval), deferred :: set_sval
   end type vars_t
-  
+
 
   abstract interface
      subroutine vars_link (vars, target_vars)
@@ -70,7 +70,7 @@ module var_base
        class(vars_t), intent(in), target :: target_vars
      end subroutine vars_link
   end interface
-  
+
   abstract interface
      subroutine vars_final (vars, follow_link)
        import
@@ -78,7 +78,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_final
   end interface
-  
+
   abstract interface
      function vars_get_lval (vars, name, follow_link) result (lval)
        import
@@ -88,7 +88,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end function vars_get_lval
   end interface
-  
+
   abstract interface
      function vars_get_ival (vars, name, follow_link) result (ival)
        import
@@ -98,7 +98,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end function vars_get_ival
   end interface
-  
+
   abstract interface
      function vars_get_rval (vars, name, follow_link) result (rval)
        import
@@ -108,7 +108,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end function vars_get_rval
   end interface
-  
+
   abstract interface
      function vars_get_cval (vars, name, follow_link) result (cval)
        import
@@ -118,7 +118,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end function vars_get_cval
   end interface
-  
+
   abstract interface
      function vars_get_sval (vars, name, follow_link) result (sval)
        import
@@ -128,7 +128,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end function vars_get_sval
   end interface
-  
+
   abstract interface
      subroutine vars_unset (vars, name, follow_link)
        import
@@ -137,7 +137,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_unset
   end interface
-  
+
   abstract interface
      subroutine vars_set_ival (vars, name, ival, follow_link)
        import
@@ -147,7 +147,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_ival
   end interface
-  
+
   abstract interface
      subroutine vars_set_rval (vars, name, rval, follow_link)
        import
@@ -157,7 +157,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_rval
   end interface
-  
+
   abstract interface
      subroutine vars_set_cval (vars, name, cval, follow_link)
        import
@@ -167,7 +167,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_cval
   end interface
-  
+
   abstract interface
      subroutine vars_set_lval (vars, name, lval, follow_link)
        import
@@ -177,7 +177,7 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_lval
   end interface
-  
+
   abstract interface
      subroutine vars_set_sval (vars, name, sval, follow_link)
        import
@@ -187,6 +187,6 @@ module var_base
        logical, intent(in), optional :: follow_link
      end subroutine vars_set_sval
   end interface
-  
+
 
 end module var_base

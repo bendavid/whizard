@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -105,7 +105,8 @@ module sm_physics
   public :: top_width_sm_qcd_nlo_massless_b
   public :: f0
   public :: f1
-  public :: top_width_sm_qcd_nlo
+  public :: top_width_sm_qcd_nlo_jk
+  public :: top_width_sm_qcd_nlo_ce
   public :: ff0
   public :: ff_f0
   public :: ff_lambda
@@ -844,7 +845,7 @@ contains
          - (one - w2) * (five + 9 * w2 - 6 * w2**2)
   end function f1
 
-  elemental function top_width_sm_qcd_nlo &
+  elemental function top_width_sm_qcd_nlo_jk &
          (alpha, sinthw, mtop, mw, mb, alphas) result (gamma)
     real(default) :: gamma
     real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alphas
@@ -855,7 +856,41 @@ contains
     i_xi = (mw / mtop)**2
     gamma = prefac * (ff0 (eps2, i_xi) - &
          (two * alphas) / (3 * Pi) * ff1 (eps2, i_xi))
-  end function top_width_sm_qcd_nlo
+  end function top_width_sm_qcd_nlo_jk
+
+  elemental function top_width_sm_qcd_nlo_ce (alpha, sinthw, mtop, mw, mb, alpha_s) result (gamma)
+    real(default) :: gamma
+    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alpha_s
+    real(default) :: pm, pp, p0, p3
+    real(default) :: yw, yp
+    real(default) :: W0, Wp, Wm, w2
+    real(default) :: beta2
+    real(default) :: f
+    real(default) :: g_mu, gamma0
+    beta2 = (mb / mtop)**2
+    w2 = (mw / mtop)**2
+    p0 = (one - w2 + beta2) / two
+    p3 = sqrt (lambda (one, w2, beta2)) / two
+    pp = p0 + p3
+    pm = p0 - p3
+    W0 = (one + w2 - beta2) / two
+    Wp = W0 + p3
+    Wm = W0 - p3
+    yp = log (pp / pm) / two
+    yw = log (Wp / Wm) / two
+    f = (one - beta2)**2 + w2 * (one + beta2) - two * w2**2
+    g_mu = g_mu_from_alpha (alpha, mw, sinthw)
+    gamma0 = g_mu * mtop**3 / (8 * pi * sqrt(two))
+    gamma = gamma0 * alpha_s / twopi * CF * &
+          (8 * f * p0 * (Li2(one - pm) - Li2(one - pp) - two * Li2(one - pm / pp) &
+         + yp * log((four * p3**2) / (pp**2 * Wp)) + yw * log (pp)) &
+         + four * (one - beta2) * ((one - beta2)**2 + w2 * (one + beta2) - four * w2**2) * yw &
+         + (3 - beta2 + 11 * beta2**2 - beta2**3 + w2 * (6 - 12 * beta2 + two * beta2**2) &
+              - w2**2 * (21 + 5 * beta2) + 12 * w2**3) * yp &
+         + 8 * f * p3 * log (sqrt(w2) / (four * p3**2)) &
+         + 6 * (one - four * beta2 + 3 * beta2**2 + w2 * (3 + beta2) - four * w2**2) * p3 * log(sqrt(beta2)) &
+         + (5 - 22 * beta2 + 5 * beta2**2 + 9 * w2 * (one + beta2) - 6 * w2**2) * p3)
+  end function top_width_sm_qcd_nlo_ce
 
   elemental function ff0 (eps2, w2) result (f)
     real(default) :: f
@@ -891,17 +926,17 @@ contains
           - log (one - uq * uw)**2 + one / four * log (w2 / uw)**2 &
           - log (uw) * log ((one - uq * uw)**2 / (one - uq)) &
           - two * log (uq) * log ((one - uq) * (one - uq * uw))) &
-         - sq_lam * fff * (two * log (sqrt (w2)) &
+          - sq_lam * fff * (two * log (sqrt (w2)) &
           + three * log (sqrt (eps2)) - two * log (sq_lam**2)) &
-         + four * (one - eps2) * ((one - eps2)**2 + w2 * (one + eps2) &
+          + four * (one - eps2) * ((one - eps2)**2 + w2 * (one + eps2) &
           - four * w2**2) * log (uw) &
-         + (three - eps2 + 11 * eps2**2 - eps2**3 + w2 * &
-          (6 - 12 * eps2 + 2 * eps2**2) - w2**2 * (21 + five * eps2) &
+          + (three - eps2 + 11 * eps2**2 - eps2**3 + w2 * &
+            (6 - 12 * eps2 + 2 * eps2**2) - w2**2 * (21 + five * eps2) &
           + 12 * w2**3) * log (uq) &
-         + 6 * sq_lam * (one - eps2) * &
-          (one + eps2 - w2) * log (sqrt (eps2)) &
-         + sq_lam * (- five + 22 * eps2 - five * eps2**2 - 9 * w2 * &
-          (one + eps2) + 6 * w2**2)
+          + 6 * sq_lam * (one - eps2) * &
+            (one + eps2 - w2) * log (sqrt (eps2)) &
+          + sq_lam * (- five + 22 * eps2 - five * eps2**2 - 9 * w2 * &
+            (one + eps2) + 6 * w2**2)
   end function ff1
 
 

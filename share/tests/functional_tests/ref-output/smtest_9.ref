@@ -26,13 +26,6 @@ seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process smtest_9_res:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_9_res'
-|   Library name  = 'smtest_9_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_9_res_i1':   u, dbar => e+, nue [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -42,6 +35,13 @@ seed = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_9_res_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_9_res'
+|   Library name  = 'smtest_9_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_9_res_i1':   u, dbar => e+, nue [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -73,13 +73,6 @@ seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process smtest_9_pro:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_9_pro'
-|   Library name  = 'smtest_9_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'smtest_9_pro_i1':   u, dbar => W+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -88,6 +81,13 @@ seed = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_9_pro_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_9_pro'
+|   Library name  = 'smtest_9_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'smtest_9_pro_i1':   u, dbar => W+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 0 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -115,6 +115,12 @@ error_threshold =  5.000000000000E-10
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process smtest_9_dec:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_9_dec_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_9_dec'
 |   Library name  = 'smtest_9_lib'
@@ -122,12 +128,6 @@ error_threshold =  5.000000000000E-10
 |   Process components:
 |     1: 'smtest_9_dec_i1':   W+ => e+, nue [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'smtest_9_dec_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

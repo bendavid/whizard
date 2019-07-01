@@ -20,6 +20,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process lhef_7_d1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'lhef_7_d1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'lhef_7_d1'
 |   Library name  = 'lhef_7_lib'
@@ -27,12 +33,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'lhef_7_d1_i1':   W+ => u, dbar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'lhef_7_d1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -56,6 +56,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process lhef_7_d2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'lhef_7_d2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'lhef_7_d2'
 |   Library name  = 'lhef_7_lib'
@@ -63,12 +69,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'lhef_7_d2_i1':   W- => e-, nuebar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'lhef_7_d2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -110,13 +110,6 @@ $sample = "lhef_7a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process lhef_7_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lhef_7_p1'
-|   Library name  = 'lhef_7_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lhef_7_p1_i1':   u, ubar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -126,6 +119,13 @@ $sample = "lhef_7a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'lhef_7_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'lhef_7_p1'
+|   Library name  = 'lhef_7_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'lhef_7_p1_i1':   u, ubar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.

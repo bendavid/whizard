@@ -23,13 +23,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_2_cc:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_2_cc'
-|   Library name  = 'smtest_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_2_cc_i1':   e-, e+ => u, dbar, mu-, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -38,30 +31,37 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_2_cc_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_2_cc'
+|   Library name  = 'smtest_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_2_cc_i1':   e-, e+ => u, dbar, mu-, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 13 channels, 8 dimensions
-| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: found 13 channels, collected in 6 groves.
 | Phase space: Using 13 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'smtest_2_cc'
 | Integrate: iterations = 2:10000:"gw", 3:5000
-| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: 6 chains, 13 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 10000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       9997  2.9284954E+02  1.53E+01    5.23    5.23*   2.44
-   2       9994  2.7039002E+02  2.53E+00    0.94    0.94*  12.96
+   1       9997  2.9047918E+02  1.52E+01    5.24    5.24*   2.58
+   2       9993  2.7310730E+02  2.54E+00    0.93    0.93*  12.16
 |-----------------------------------------------------------------------------|
-   2      19991  2.7098725E+02  2.50E+00    0.92    1.30   12.96    2.09   2
+   2      19990  2.7357676E+02  2.50E+00    0.92    1.29   12.16    1.27   2
 |-----------------------------------------------------------------------------|
-   3       4993  2.6400951E+02  3.87E+00    1.47    1.04    9.89
-   4       4993  2.6879378E+02  3.61E+00    1.34    0.95*   9.40
-   5       4993  2.6976640E+02  3.58E+00    1.33    0.94*   9.12
+   3       4995  2.6488803E+02  3.84E+00    1.45    1.02    9.40
+   4       4995  2.6946016E+02  3.61E+00    1.34    0.95*   9.09
+   5       4995  2.7039293E+02  3.52E+00    1.30    0.92*   8.76
 |-----------------------------------------------------------------------------|
-   5      14979  2.6769624E+02  2.12E+00    0.79    0.97    9.12    0.67   3
+   5      14985  2.6841866E+02  2.11E+00    0.78    0.96    8.76    0.62   3
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'smtest_2_cc'
@@ -69,12 +69,12 @@ n_events = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
-|             corr. to luminosity [fb-1] =   3.7356E-03
+|             corr. to luminosity [fb-1] =   3.7255E-03
 | Events: writing to raw file 'smtest_2_cc.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  25.00 %
+| Events: actual unweighting efficiency =  12.50 %
 | Events: closing raw file 'smtest_2_cc.evx'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

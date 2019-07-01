@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -62,6 +62,8 @@ module parton_states
   private
 
   public :: isolated_state_t
+  public :: connected_state_t
+  public :: refill_evaluator
 
   type, abstract :: parton_state_t
      logical :: has_trace = .false.
@@ -100,7 +102,6 @@ module parton_states
      procedure :: evaluate_sf_chain => isolated_state_evaluate_sf_chain
   end type isolated_state_t
 
-  public :: connected_state_t
   type, extends (parton_state_t) :: connected_state_t
      type(state_flv_content_t) :: state_flv
      logical :: has_flows_sf = .false.
@@ -230,13 +231,14 @@ contains
   end subroutine isolated_state_init
 
   subroutine isolated_state_setup_square_trace (state, core, &
-       qn_mask_in, col)
+       qn_mask_in, col, keep_fs_flavor)
     class(isolated_state_t), intent(inout), target :: state
     class(prc_core_t), intent(in) :: core
     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask_in
     !!! Actually need allocatable attribute here fore once because col might
     !!! enter the subroutine non-allocated.
     integer, intent(in), dimension(:), allocatable :: col
+    logical, intent(in) :: keep_fs_flavor
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
     associate (data => core%data)
       allocate (qn_mask (data%n_in + data%n_out))
@@ -244,16 +246,16 @@ contains
               quantum_numbers_mask (.false., .true., .false.) &
               .or. qn_mask_in
       qn_mask(data%n_in + 1 : ) = &
-           quantum_numbers_mask (.true., .true., .true.)
-    if (core%use_color_factors) then
-       call state%trace%init_square (state%int_eff, qn_mask, &
-            col_flow_index = data%cf_index, &
-            col_factor = data%color_factors, &
-            col_index_hi = col, &
-            nc = core%nc)
-    else
-       call state%trace%init_square (state%int_eff, qn_mask, nc = core%nc)
-    end if
+              quantum_numbers_mask (.not. keep_fs_flavor, .true., .true.)
+      if (core%use_color_factors) then
+         call state%trace%init_square (state%int_eff, qn_mask, &
+              col_flow_index = data%cf_index, &
+              col_factor = data%color_factors, &
+              col_index_hi = col, &
+              nc = core%nc)
+      else
+         call state%trace%init_square (state%int_eff, qn_mask, nc = core%nc)
+      end if
     end associate
     state%has_trace = .true.
   end subroutine isolated_state_setup_square_trace
@@ -575,49 +577,44 @@ contains
   subroutine isolated_state_evaluate_sf_chain (state, fac_scale)
     class(isolated_state_t), intent(inout) :: state
     real(default), intent(in) :: fac_scale
-    if (state%sf_chain_is_allocated) then
-       call state%sf_chain_eff%evaluate (fac_scale)
-    end if
+    if (state%sf_chain_is_allocated) call state%sf_chain_eff%evaluate (fac_scale)
   end subroutine isolated_state_evaluate_sf_chain
 
   subroutine parton_state_evaluate_trace (state)
     class(parton_state_t), intent(inout) :: state
-    if (state%has_trace) then
-       call state%trace%evaluate ()
-    end if
+    if (state%has_trace) call state%trace%evaluate ()
   end subroutine parton_state_evaluate_trace
 
   subroutine parton_state_evaluate_matrix (state)
     class(parton_state_t), intent(inout) :: state
-    if (state%has_matrix) then
-       call state%matrix%evaluate ()
-    end if
+    if (state%has_matrix) call state%matrix%evaluate ()
   end subroutine parton_state_evaluate_matrix
 
-  subroutine parton_state_evaluate_event_data (state)
+  subroutine parton_state_evaluate_event_data (state, only_momenta)
     class(parton_state_t), intent(inout) :: state
+    logical, intent(in), optional :: only_momenta
+    logical :: only_mom
+    only_mom = .false.; if (present (only_momenta)) only_mom = only_momenta
     select type (state)
     type is (connected_state_t)
        if (state%has_flows_sf) then
           call state%flows_sf%receive_momenta ()
-          call state%flows_sf%evaluate ()
+          if (.not. only_mom) call state%flows_sf%evaluate ()
        end if
     end select
     if (state%has_matrix) then
        call state%matrix%receive_momenta ()
-       call state%matrix%evaluate ()
+       if (.not. only_mom) call state%matrix%evaluate ()
     end if
     if (state%has_flows) then
        call state%flows%receive_momenta ()
-       call state%flows%evaluate ()
+       if (.not. only_mom) call state%flows%evaluate ()
     end if
   end subroutine parton_state_evaluate_event_data
 
   subroutine parton_state_normalize_matrix_by_trace (state)
     class(parton_state_t), intent(inout) :: state
-    if (state%has_matrix) then
-       call state%matrix%normalize_by_trace ()
-    end if
+    if (state%has_matrix) call state%matrix%normalize_by_trace ()
   end subroutine parton_state_normalize_matrix_by_trace
 
   function parton_state_get_trace_int_ptr (state) result (ptr)
@@ -661,6 +658,23 @@ contains
     integer, dimension(:), intent(out) :: i_in
     call state%expr%get_in_index (i_in)
   end subroutine connected_state_get_in_index
+
+  subroutine refill_evaluator (sqme, qn, flv_index, evaluator)
+    complex(default), intent(in), dimension(:) :: sqme
+    type(quantum_numbers_t), intent(in), dimension(:,:) :: qn
+    integer, intent(in), dimension(:), optional :: flv_index
+    type(evaluator_t), intent(inout) :: evaluator
+    integer :: i, i_flv
+    do i = 1, size (sqme)
+       if (present (flv_index)) then
+          i_flv = flv_index(i)
+       else
+          i_flv = i
+       end if
+       call evaluator%add_to_matrix_element (qn(:,i_flv), sqme(i), &
+            match_only_flavor = .true.)
+    end do
+  end subroutine refill_evaluator
 
   function parton_state_get_n_out (state) result (n)
     class(parton_state_t), intent(in), target :: state

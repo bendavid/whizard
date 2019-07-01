@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -48,7 +48,9 @@ module sf_mappings
   public :: sf_mapping_t
   public :: sf_s_mapping_t
   public :: sf_res_mapping_t
+  public :: sf_res_mapping_single_t
   public :: sf_os_mapping_t
+  public :: sf_os_mapping_single_t
   public :: sf_ep_mapping_t
   public :: sf_epr_mapping_t
   public :: sf_epo_mapping_t
@@ -61,6 +63,8 @@ module sf_mappings
   public :: log_prec
   public :: map_on_shell
   public :: map_on_shell_inverse
+  public :: map_on_shell_single
+  public :: map_on_shell_single_inverse
   public :: map_power_1
   public :: map_power_inverse_1
   public :: sf_channel_t
@@ -79,6 +83,8 @@ module sf_mappings
   integer, parameter :: SFMAP_MULTI_IPR = 9
   integer, parameter :: SFMAP_MULTI_IPO = 10
   integer, parameter :: SFMAP_MULTI_EI = 11
+  integer, parameter :: SFMAP_MULTI_SRS = 13
+  integer, parameter :: SFMAP_MULTI_SON = 14
 
 
   type, abstract :: sf_mapping_t
@@ -87,13 +93,14 @@ module sf_mappings
      procedure (sf_mapping_write), deferred :: write
      procedure :: base_init => sf_mapping_base_init
      procedure :: set_index => sf_mapping_set_index
+     procedure :: get_index => sf_mapping_get_index
      procedure :: get_n_dim => sf_mapping_get_n_dim
      procedure (sf_mapping_compute), deferred :: compute
      procedure (sf_mapping_inverse), deferred :: inverse
      procedure :: check => sf_mapping_check
      procedure :: integral => sf_mapping_integral
   end type sf_mapping_t
-     
+
   type, extends (sf_mapping_t) :: sf_s_mapping_t
      logical :: power_set = .false.
      real(default) :: power = 1
@@ -103,7 +110,7 @@ module sf_mappings
      procedure :: compute => sf_s_mapping_compute
      procedure :: inverse => sf_s_mapping_inverse
   end type sf_s_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_res_mapping_t
      real(default) :: m = 0
      real(default) :: w = 0
@@ -113,7 +120,17 @@ module sf_mappings
      procedure :: compute => sf_res_mapping_compute
      procedure :: inverse => sf_res_mapping_inverse
   end type sf_res_mapping_t
-  
+
+  type, extends (sf_mapping_t) :: sf_res_mapping_single_t
+     real(default) :: m = 0
+     real(default) :: w = 0
+   contains
+     procedure :: write => sf_res_mapping_single_write
+     procedure :: init => sf_res_mapping_single_init
+     procedure :: compute => sf_res_mapping_single_compute
+     procedure :: inverse => sf_res_mapping_single_inverse
+  end type sf_res_mapping_single_t
+
   type, extends (sf_mapping_t) :: sf_os_mapping_t
      real(default) :: m = 0
      real(default) :: lm2 = 0
@@ -123,7 +140,17 @@ module sf_mappings
      procedure :: compute => sf_os_mapping_compute
      procedure :: inverse => sf_os_mapping_inverse
   end type sf_os_mapping_t
-  
+
+  type, extends (sf_mapping_t) :: sf_os_mapping_single_t
+     real(default) :: m = 0
+     real(default) :: lm2 = 0
+   contains
+     procedure :: write => sf_os_mapping_single_write
+     procedure :: init => sf_os_mapping_single_init
+     procedure :: compute => sf_os_mapping_single_compute
+     procedure :: inverse => sf_os_mapping_single_inverse
+  end type sf_os_mapping_single_t
+
   type, extends (sf_mapping_t) :: sf_ep_mapping_t
      real(default) :: a = 1
    contains
@@ -132,7 +159,7 @@ module sf_mappings
      procedure :: compute => sf_ep_mapping_compute
      procedure :: inverse => sf_ep_mapping_inverse
   end type sf_ep_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_epr_mapping_t
      real(default) :: a = 1
      real(default) :: m = 0
@@ -144,7 +171,7 @@ module sf_mappings
      procedure :: compute => sf_epr_mapping_compute
      procedure :: inverse => sf_epr_mapping_inverse
   end type sf_epr_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_epo_mapping_t
      real(default) :: a = 1
      real(default) :: m = 0
@@ -155,7 +182,7 @@ module sf_mappings
      procedure :: compute => sf_epo_mapping_compute
      procedure :: inverse => sf_epo_mapping_inverse
   end type sf_epo_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_ip_mapping_t
      real(default) :: eps = 0
    contains
@@ -164,7 +191,7 @@ module sf_mappings
      procedure :: compute => sf_ip_mapping_compute
      procedure :: inverse => sf_ip_mapping_inverse
   end type sf_ip_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_ipr_mapping_t
      real(default) :: eps = 0
      real(default) :: m = 0
@@ -176,7 +203,7 @@ module sf_mappings
      procedure :: compute => sf_ipr_mapping_compute
      procedure :: inverse => sf_ipr_mapping_inverse
   end type sf_ipr_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_ipo_mapping_t
      real(default) :: eps = 0
      real(default) :: m = 0
@@ -186,7 +213,7 @@ module sf_mappings
      procedure :: compute => sf_ipo_mapping_compute
      procedure :: inverse => sf_ipo_mapping_inverse
   end type sf_ipo_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_ei_mapping_t
      type(sf_ep_mapping_t) :: ep
      type(sf_ip_mapping_t) :: ip
@@ -197,7 +224,7 @@ module sf_mappings
      procedure :: compute => sf_ei_mapping_compute
      procedure :: inverse => sf_ei_mapping_inverse
   end type sf_ei_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_eir_mapping_t
      type(sf_res_mapping_t) :: res
      type(sf_epr_mapping_t) :: ep
@@ -209,7 +236,7 @@ module sf_mappings
      procedure :: compute => sf_eir_mapping_compute
      procedure :: inverse => sf_eir_mapping_inverse
   end type sf_eir_mapping_t
-  
+
   type, extends (sf_mapping_t) :: sf_eio_mapping_t
      type(sf_os_mapping_t) :: os
      type(sf_epr_mapping_t) :: ep
@@ -221,7 +248,7 @@ module sf_mappings
      procedure :: compute => sf_eio_mapping_compute
      procedure :: inverse => sf_eio_mapping_inverse
   end type sf_eio_mapping_t
-  
+
   type :: sf_channel_t
      integer, dimension(:), allocatable :: map_code
      class(sf_mapping_t), allocatable :: multi_mapping
@@ -245,9 +272,10 @@ module sf_mappings
      procedure :: set_eio_mapping => sf_channel_set_eio_mapping
      procedure :: is_single_mapping => sf_channel_is_single_mapping
      procedure :: is_multi_mapping => sf_channel_is_multi_mapping
+     procedure :: get_multi_mapping_n_par => sf_channel_get_multi_mapping_n_par
      procedure :: set_par_index => sf_channel_set_par_index
   end type sf_channel_t
-  
+
 
   abstract interface
      subroutine sf_mapping_write (object, unit)
@@ -267,7 +295,7 @@ module sf_mappings
        real(default), intent(inout), optional :: x_free
      end subroutine sf_mapping_compute
   end interface
-  
+
   abstract interface
      subroutine sf_mapping_inverse (mapping, r, rb, f, p, pb, x_free)
        import
@@ -278,7 +306,7 @@ module sf_mappings
        real(default), intent(inout), optional :: x_free
      end subroutine sf_mapping_inverse
   end interface
-  
+
 
 contains
 
@@ -288,19 +316,26 @@ contains
     allocate (mapping%i (n_par))
     mapping%i = 0
   end subroutine sf_mapping_base_init
-    
+
   subroutine sf_mapping_set_index (mapping, j, i)
     class(sf_mapping_t), intent(inout) :: mapping
     integer, intent(in) :: j, i
     mapping%i(j) = i
   end subroutine sf_mapping_set_index
-    
+
+  function sf_mapping_get_index (mapping, j) result (i)
+    class(sf_mapping_t), intent(inout) :: mapping
+    integer, intent(in) :: j
+    integer :: i
+    i = mapping%i(j)
+  end function sf_mapping_get_index
+
   function sf_mapping_get_n_dim (mapping) result (n)
     class(sf_mapping_t), intent(in) :: mapping
     integer :: n
     n = size (mapping%i)
   end function sf_mapping_get_n_dim
-  
+
   subroutine sf_mapping_check (mapping, u, p_in, pb_in, fmt_p, fmt_f)
     class(sf_mapping_t), intent(inout) :: mapping
     integer, intent(in) :: u
@@ -313,10 +348,10 @@ contains
     p = p_in
     pb= pb_in
     call mapping%compute (r, rb, f, p, pb)
-    call pacify (p, tolerance)  
-    call pacify (pb, tolerance) 
-    call pacify (r, tolerance)  
-    call pacify (rb, tolerance) 
+    call pacify (p, tolerance)
+    call pacify (pb, tolerance)
+    call pacify (r, tolerance)
+    call pacify (rb, tolerance)
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "p =", p
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "pb=", pb
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "r =", r
@@ -328,10 +363,10 @@ contains
     end if
     write (u, *)
     call mapping%inverse (r, rb, f, p, pb)
-    call pacify (p, tolerance)  
-    call pacify (pb, tolerance) 
-    call pacify (r, tolerance)  
-    call pacify (rb, tolerance) 
+    call pacify (p, tolerance)
+    call pacify (pb, tolerance)
+    call pacify (r, tolerance)
+    call pacify (rb, tolerance)
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "p =", p
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "pb=", pb
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "r =", r
@@ -344,7 +379,7 @@ contains
     write (u, *)
     write (u, "(3x,A,9(1x," // fmt_p // "))")  "*r=", product (r)
   end subroutine sf_mapping_check
-    
+
   function sf_mapping_integral (mapping, n_calls) result (integral)
     class(sf_mapping_t), intent(inout) :: mapping
     integer, intent(in) :: n_calls
@@ -399,7 +434,7 @@ contains
     end if
     write (u, "(A,F7.5,A)")  ": standard (", object%power, ")"
   end subroutine sf_s_mapping_write
-  
+
   subroutine sf_s_mapping_init (mapping, power)
     class(sf_s_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: power
@@ -409,7 +444,7 @@ contains
        mapping%power = power
     end if
   end subroutine sf_s_mapping_init
-    
+
   subroutine sf_s_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_s_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -463,7 +498,7 @@ contains
     end if
     write (u, "(A,F7.5,', ',F7.5,A)")  ": resonance (", object%m, object%w, ")"
   end subroutine sf_res_mapping_write
-  
+
   subroutine sf_res_mapping_init (mapping, m, w)
     class(sf_res_mapping_t), intent(out) :: mapping
     real(default), intent(in) :: m, w
@@ -471,7 +506,7 @@ contains
     mapping%m = m
     mapping%w = w
   end subroutine sf_res_mapping_init
-    
+
   subroutine sf_res_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_res_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -514,6 +549,62 @@ contains
     f = fbw * f2
   end subroutine sf_res_mapping_inverse
 
+  subroutine sf_res_mapping_single_write (object, unit)
+    class(sf_res_mapping_single_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)", advance="no")  "map"
+    if (any (object%i /= 0)) then
+       write (u, "('(',I0,')')", advance="no")  object%i
+    end if
+    write (u, "(A,F7.5,', ',F7.5,A)")  ": resonance (", object%m, object%w, ")"
+  end subroutine sf_res_mapping_single_write
+
+  subroutine sf_res_mapping_single_init (mapping, m, w)
+    class(sf_res_mapping_single_t), intent(out) :: mapping
+    real(default), intent(in) :: m, w
+    call mapping%base_init (1)
+    mapping%m = m
+    mapping%w = w
+  end subroutine sf_res_mapping_single_init
+
+  subroutine sf_res_mapping_single_compute (mapping, r, rb, f, p, pb, x_free)
+    class(sf_res_mapping_single_t), intent(inout) :: mapping
+    real(default), dimension(:), intent(out) :: r, rb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(in) :: p, pb
+    real(default), intent(inout), optional :: x_free
+    real(default), dimension(1) :: r2, p2
+    real(default) :: fbw
+    integer :: j
+    p2 = p(mapping%i)
+    call map_breit_wigner &
+         (r2(1), fbw, p2(1), mapping%m, mapping%w, x_free)
+    f = fbw
+    r = p
+    rb= pb
+    r (mapping%i(1)) = r2(1)
+    rb(mapping%i(1)) = 1 - r2(1)
+  end subroutine sf_res_mapping_single_compute
+
+  subroutine sf_res_mapping_single_inverse (mapping, r, rb, f, p, pb, x_free)
+    class(sf_res_mapping_single_t), intent(inout) :: mapping
+    real(default), dimension(:), intent(in) :: r, rb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(out) :: p, pb
+    real(default), intent(inout), optional :: x_free
+    real(default), dimension(1) :: p2
+    real(default) :: fbw
+    call map_breit_wigner_inverse &
+         (r(mapping%i(1)), fbw, p2(1), mapping%m, mapping%w, x_free)
+    p = r
+    pb= rb
+    p (mapping%i(1)) = p2(1)
+    pb(mapping%i(1)) = 1 - p2(1)
+    f = fbw
+  end subroutine sf_res_mapping_single_inverse
+
   subroutine sf_os_mapping_write (object, unit)
     class(sf_os_mapping_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -525,7 +616,7 @@ contains
     end if
     write (u, "(A,F7.5,A)")  ": on-shell (", object%m, ")"
   end subroutine sf_os_mapping_write
-  
+
   subroutine sf_os_mapping_init (mapping, m)
     class(sf_os_mapping_t), intent(out) :: mapping
     real(default), intent(in) :: m
@@ -533,7 +624,7 @@ contains
     mapping%m = m
     mapping%lm2 = abs (2 * log (mapping%m))
   end subroutine sf_os_mapping_init
-    
+
   subroutine sf_os_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_os_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -569,6 +660,57 @@ contains
     pb(mapping%i(2)) = 1 - p2(2)
   end subroutine sf_os_mapping_inverse
 
+  subroutine sf_os_mapping_single_write (object, unit)
+    class(sf_os_mapping_single_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)", advance="no")  "map"
+    if (any (object%i /= 0)) then
+       write (u, "('(',I0,')')", advance="no")  object%i
+    end if
+    write (u, "(A,F7.5,A)")  ": on-shell (", object%m, ")"
+  end subroutine sf_os_mapping_single_write
+
+  subroutine sf_os_mapping_single_init (mapping, m)
+    class(sf_os_mapping_single_t), intent(out) :: mapping
+    real(default), intent(in) :: m
+    call mapping%base_init (1)
+    mapping%m = m
+    mapping%lm2 = abs (2 * log (mapping%m))
+  end subroutine sf_os_mapping_single_init
+
+  subroutine sf_os_mapping_single_compute (mapping, r, rb, f, p, pb, x_free)
+    class(sf_os_mapping_single_t), intent(inout) :: mapping
+    real(default), dimension(:), intent(out) :: r, rb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(in) :: p, pb
+    real(default), intent(inout), optional :: x_free
+    real(default), dimension(1) :: r2, p2
+    integer :: j
+    p2 = p(mapping%i)
+    call map_on_shell_single (r2, f, p2, mapping%lm2, x_free)
+    r = p
+    rb= pb
+    r (mapping%i(1)) = r2(1)
+    rb(mapping%i(1)) = 1 - r2(1)
+  end subroutine sf_os_mapping_single_compute
+
+  subroutine sf_os_mapping_single_inverse (mapping, r, rb, f, p, pb, x_free)
+    class(sf_os_mapping_single_t), intent(inout) :: mapping
+    real(default), dimension(:), intent(in) :: r, rb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(out) :: p, pb
+    real(default), intent(inout), optional :: x_free
+    real(default), dimension(1) :: p2, r2
+    r2 = r(mapping%i)
+    call map_on_shell_single_inverse (r2, f, p2, mapping%lm2, x_free)
+    p = r
+    pb= rb
+    p (mapping%i(1)) = p2(1)
+    pb(mapping%i(1)) = 1 - p2(1)
+  end subroutine sf_os_mapping_single_inverse
+
   subroutine sf_ep_mapping_write (object, unit)
     class(sf_ep_mapping_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -580,14 +722,14 @@ contains
     end if
     write (u, "(A,ES12.5,A)")  ": endpoint (a =", object%a, ")"
   end subroutine sf_ep_mapping_write
-  
+
   subroutine sf_ep_mapping_init (mapping, a)
     class(sf_ep_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: a
     call mapping%base_init (2)
     if (present (a))  mapping%a = a
   end subroutine sf_ep_mapping_init
-    
+
   subroutine sf_ep_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_ep_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -649,7 +791,7 @@ contains
        write (u, "(A,F7.5,A)")  ": ep/nores (a = ", object%a, ")"
     end if
   end subroutine sf_epr_mapping_write
-  
+
   subroutine sf_epr_mapping_init (mapping, a, m, w)
     class(sf_epr_mapping_t), intent(out) :: mapping
     real(default), intent(in) :: a
@@ -663,7 +805,7 @@ contains
        mapping%resonance = .false.
     end if
   end subroutine sf_epr_mapping_init
-    
+
   subroutine sf_epr_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_epr_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -730,7 +872,7 @@ contains
     write (u, "(A,F7.5,A,F7.5,A)")  ": ep/on-shell (a = ", object%a, &
          " | ", object%m, ")"
   end subroutine sf_epo_mapping_write
-  
+
   subroutine sf_epo_mapping_init (mapping, a, m)
     class(sf_epo_mapping_t), intent(out) :: mapping
     real(default), intent(in) :: a, m
@@ -739,7 +881,7 @@ contains
     mapping%m = m
     mapping%lm2 = abs (2 * log (mapping%m))
   end subroutine sf_epo_mapping_init
-    
+
   subroutine sf_epo_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_epo_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -793,7 +935,7 @@ contains
     end if
     write (u, "(A,ES12.5,A)")  ": isr (eps =", object%eps, ")"
   end subroutine sf_ip_mapping_write
-  
+
   subroutine sf_ip_mapping_init (mapping, eps)
     class(sf_ip_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: eps
@@ -802,7 +944,7 @@ contains
     if (mapping%eps <= 0) &
          call msg_fatal ("ISR mapping: regulator epsilon must not be zero")
   end subroutine sf_ip_mapping_init
-    
+
   subroutine sf_ip_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_ip_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -878,7 +1020,7 @@ contains
        write (u, "(A,F7.5,A)")  ": isr/res (eps = ", object%eps, ")"
     end if
   end subroutine sf_ipr_mapping_write
-  
+
   subroutine sf_ipr_mapping_init (mapping, eps, m, w)
     class(sf_ipr_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: eps, m, w
@@ -893,7 +1035,7 @@ contains
        mapping%resonance = .false.
     end if
   end subroutine sf_ipr_mapping_init
-    
+
   subroutine sf_ipr_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_ipr_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -976,7 +1118,7 @@ contains
     write (u, "(A,F7.5,A,F7.5,A)")  ": isr/os (eps = ", object%eps, &
          " | ", object%m, ")"
   end subroutine sf_ipo_mapping_write
-  
+
   subroutine sf_ipo_mapping_init (mapping, eps, m)
     class(sf_ipo_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: eps, m
@@ -986,7 +1128,7 @@ contains
          call msg_fatal ("ISR mapping: regulator epsilon must not be zero")
     mapping%m = m
   end subroutine sf_ipo_mapping_init
-    
+
   subroutine sf_ipo_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_ipo_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -1053,7 +1195,7 @@ contains
     write (u, "(A,ES12.5,A,ES12.5,A)")  ": ep/isr (a =", object%ep%a, &
          ", eps =", object%ip%eps, ")"
   end subroutine sf_ei_mapping_write
-  
+
   subroutine sf_ei_mapping_init (mapping, a, eps)
     class(sf_ei_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: a, eps
@@ -1061,7 +1203,7 @@ contains
     call mapping%ep%init (a)
     call mapping%ip%init (eps)
   end subroutine sf_ei_mapping_init
-    
+
   subroutine sf_ei_mapping_set_index (mapping, j, i)
     class(sf_ei_mapping_t), intent(inout) :: mapping
     integer, intent(in) :: j, i
@@ -1071,7 +1213,7 @@ contains
     case (3:4);  call mapping%ip%set_index (j-2, i)
     end select
   end subroutine sf_ei_mapping_set_index
-    
+
   subroutine sf_ei_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_ei_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -1111,7 +1253,7 @@ contains
          ": ep/isr/res (a =", object%ep%a, &
          ", eps =", object%ip%eps, " | ", object%res%m, object%res%w, ")"
   end subroutine sf_eir_mapping_write
-  
+
   subroutine sf_eir_mapping_init (mapping, a, eps, m, w)
     class(sf_eir_mapping_t), intent(out) :: mapping
     real(default), intent(in) :: a, eps, m, w
@@ -1120,7 +1262,7 @@ contains
     call mapping%ep%init (a)
     call mapping%ip%init (eps)
   end subroutine sf_eir_mapping_init
-    
+
   subroutine sf_eir_mapping_set_index (mapping, j, i)
     class(sf_eir_mapping_t), intent(inout) :: mapping
     integer, intent(in) :: j, i
@@ -1134,7 +1276,7 @@ contains
     case (3:4);  call mapping%ip%set_index (j-2, i)
     end select
   end subroutine sf_eir_mapping_set_index
-    
+
   subroutine sf_eir_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_eir_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -1175,7 +1317,7 @@ contains
     write (u, "(A,F7.5,A,F7.5,A,F7.5,A)")  ": ep/isr/os (a =", object%ep%a, &
          ", eps =", object%ip%eps, " | ", object%os%m, ")"
   end subroutine sf_eio_mapping_write
-  
+
   subroutine sf_eio_mapping_init (mapping, a, eps, m)
     class(sf_eio_mapping_t), intent(out) :: mapping
     real(default), intent(in), optional :: a, eps, m
@@ -1184,7 +1326,7 @@ contains
     call mapping%ep%init (a)
     call mapping%ip%init (eps)
   end subroutine sf_eio_mapping_init
-    
+
   subroutine sf_eio_mapping_set_index (mapping, j, i)
     class(sf_eio_mapping_t), intent(inout) :: mapping
     integer, intent(in) :: j, i
@@ -1198,7 +1340,7 @@ contains
     case (3:4);  call mapping%ip%set_index (j-2, i)
     end select
   end subroutine sf_eio_mapping_set_index
-    
+
   subroutine sf_eio_mapping_compute (mapping, r, rb, f, p, pb, x_free)
     class(sf_eio_mapping_t), intent(inout) :: mapping
     real(default), dimension(:), intent(out) :: r, rb
@@ -1338,7 +1480,7 @@ contains
        zb = 1 - z
     end if
   end subroutine compute_prec_xy_1
-   
+
   subroutine compute_prec_xy_0 (z, zb, x, xb, y)
     real(default), intent(out) :: z, zb
     real(default), intent(in) :: x, xb, y
@@ -1355,7 +1497,7 @@ contains
        zb = 1 - z
     end if
   end subroutine compute_prec_xy_0
-   
+
   subroutine inverse_prec_x (r, rb, x, xb)
     real(default), dimension(2), intent(in) :: r, rb
     real(default), intent(out) :: x, xb
@@ -1370,7 +1512,7 @@ contains
        xb = 1 - x
     end if
   end subroutine inverse_prec_x
-    
+
   subroutine inverse_prec_y (r, rb, y, yb)
     real(default), dimension(2), intent(in) :: r, rb
     real(default), intent(out) :: y, yb
@@ -1385,7 +1527,7 @@ contains
        end if
        if (abs(log2) < epsilon (one)) then
           yb = zero
-       else 
+       else
           yb = one / (one + log1 / log2)
        end if
        return
@@ -1401,7 +1543,7 @@ contains
        yb = one / (one + log1 / log2)
     end if
   end subroutine inverse_prec_y
-  
+
   function log_prec (x, xb) result (lx)
     real(default), intent(in) :: x, xb
     real(default) :: a1, a2, a3, lx
@@ -1414,7 +1556,7 @@ contains
        lx = log (x)
     end if
   end function log_prec
-  
+
   subroutine map_on_shell (r, factor, p, lm2, x_free)
     real(default), dimension(2), intent(out) :: r
     real(default), intent(out) :: factor
@@ -1440,7 +1582,31 @@ contains
     p(2) = abs (log (r(1))) / lx
     factor = lx
   end subroutine map_on_shell_inverse
-    
+
+  subroutine map_on_shell_single (r, factor, p, lm2, x_free)
+    real(default), dimension(1), intent(out) :: r
+    real(default), intent(out) :: factor
+    real(default), dimension(1), intent(in) :: p
+    real(default), intent(in) :: lm2
+    real(default), intent(in), optional :: x_free
+    real(default) :: lx
+    lx = lm2;  if (present (x_free))  lx = lx + log (x_free)
+    r(1) = exp (- lx)
+    factor = 1
+  end subroutine map_on_shell_single
+
+  subroutine map_on_shell_single_inverse (r, factor, p, lm2, x_free)
+    real(default), dimension(1), intent(in) :: r
+    real(default), intent(out) :: factor
+    real(default), dimension(1), intent(out) :: p
+    real(default), intent(in) :: lm2
+    real(default), intent(in), optional :: x_free
+    real(default) :: lx
+    lx = lm2;  if (present (x_free))  lx = lx + log (x_free)
+    p(1) = 0
+    factor = 1
+  end subroutine map_on_shell_single_inverse
+
   subroutine map_breit_wigner (r, factor, p, m, w, x_free)
     real(default), intent(out) :: r
     real(default), intent(out) :: factor
@@ -1462,13 +1628,13 @@ contains
     if (-pi/2 < z .and. z < pi/2) then
        tmp = tan (z)
        r = max (m2 + mw * tmp, 0._default)
-       factor = a3 * (1 + tmp ** 2) 
+       factor = a3 * (1 + tmp ** 2)
     else
        r = 0
        factor = 0
     end if
   end subroutine map_breit_wigner
-    
+
   subroutine map_breit_wigner_inverse (r, factor, p, m, w, x_free)
     real(default), intent(in) :: r
     real(default), intent(out) :: factor
@@ -1557,7 +1723,7 @@ contains
     end if
     xb = real (xb_db, kind=default)
   end subroutine map_power_1
-    
+
   subroutine map_power_inverse_1 (xb, factor, rb, eps)
     real(default), intent(in) :: xb
     real(default), intent(out) :: rb, factor
@@ -1574,7 +1740,7 @@ contains
     end if
     rb = real (rb_db, kind=default)
   end subroutine map_power_inverse_1
-    
+
   subroutine map_power_01 (y, yb, factor, r, eps)
     real(default), intent(out) :: y, yb, factor
     real(default), intent(in) :: r
@@ -1597,7 +1763,7 @@ contains
     y  = zp / 2
     yb = zm / 2
   end subroutine map_power_01
-    
+
   subroutine map_power_inverse_01 (y, yb, factor, r, eps)
     real(default), intent(in) :: y, yb
     real(default), intent(out) :: r, factor
@@ -1617,7 +1783,7 @@ contains
        r = ub / 2
     end if
   end subroutine map_power_inverse_01
-    
+
   subroutine sf_channel_write (object, unit)
     class(sf_channel_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -1632,9 +1798,9 @@ contains
              write (u, "(1x,A)", advance="no") "+"
           case (SFMAP_MULTI_S)
              write (u, "(1x,A)", advance="no") "s"
-          case (SFMAP_MULTI_RES)
+          case (SFMAP_MULTI_RES, SFMAP_MULTI_SRS)
              write (u, "(1x,A)", advance="no") "r"
-          case (SFMAP_MULTI_ONS)
+          case (SFMAP_MULTI_ONS, SFMAP_MULTI_SON)
              write (u, "(1x,A)", advance="no") "o"
           case (SFMAP_MULTI_EP)
              write (u, "(1x,A)", advance="no") "e"
@@ -1650,6 +1816,8 @@ contains
              write (u, "(1x,A)", advance="no") "i"
           case (SFMAP_MULTI_EI)
              write (u, "(1x,A)", advance="no") "i"
+          case default
+             write (u, "(1x,A)", advance="no") "?"
           end select
        end do
     else
@@ -1662,14 +1830,14 @@ contains
        write (u, *)
     end if
   end subroutine sf_channel_write
-       
+
   subroutine sf_channel_init (channel, n_strfun)
     class(sf_channel_t), intent(out) :: channel
     integer, intent(in) :: n_strfun
     allocate (channel%map_code (n_strfun))
     channel%map_code = SFMAP_NONE
   end subroutine sf_channel_init
-    
+
   subroutine sf_channel_assign (copy, original)
     class(sf_channel_t), intent(out) :: copy
     type(sf_channel_t), intent(in) :: original
@@ -1679,7 +1847,7 @@ contains
        allocate (copy%multi_mapping, source = original%multi_mapping)
     end if
   end subroutine sf_channel_assign
-  
+
   subroutine allocate_sf_channels (channel, n_channel, n_strfun)
     type(sf_channel_t), dimension(:), intent(out), allocatable :: channel
     integer, intent(in) :: n_channel
@@ -1696,7 +1864,7 @@ contains
     integer, dimension(:), intent(in) :: i_sf
     channel%map_code(i_sf) = SFMAP_SINGLE
   end subroutine sf_channel_activate_mapping
-  
+
   subroutine sf_channel_set_s_mapping (channel, i_sf, power)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
@@ -1709,28 +1877,48 @@ contains
     end select
   end subroutine sf_channel_set_s_mapping
 
-  subroutine sf_channel_set_res_mapping (channel, i_sf, m, w)
+  subroutine sf_channel_set_res_mapping (channel, i_sf, m, w, single)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in) :: m, w
-    channel%map_code(i_sf) = SFMAP_MULTI_RES
-    allocate (sf_res_mapping_t :: channel%multi_mapping)
-    select type (mapping => channel%multi_mapping)
-    type is (sf_res_mapping_t)
-       call mapping%init (m, w)
-    end select
+    logical, intent(in) :: single
+    if (single) then
+       channel%map_code(i_sf) = SFMAP_MULTI_SRS
+       allocate (sf_res_mapping_single_t :: channel%multi_mapping)
+       select type (mapping => channel%multi_mapping)
+       type is (sf_res_mapping_single_t)
+          call mapping%init (m, w)
+       end select
+    else
+       channel%map_code(i_sf) = SFMAP_MULTI_RES
+       allocate (sf_res_mapping_t :: channel%multi_mapping)
+       select type (mapping => channel%multi_mapping)
+       type is (sf_res_mapping_t)
+          call mapping%init (m, w)
+       end select
+    end if
   end subroutine sf_channel_set_res_mapping
 
-  subroutine sf_channel_set_os_mapping (channel, i_sf, m)
+  subroutine sf_channel_set_os_mapping (channel, i_sf, m, single)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in) :: m
-    channel%map_code(i_sf) = SFMAP_MULTI_ONS
-    allocate (sf_os_mapping_t :: channel%multi_mapping)
-    select type (mapping => channel%multi_mapping)
-    type is (sf_os_mapping_t)
-       call mapping%init (m)
-    end select
+    logical, intent(in) :: single
+    if (single) then
+       channel%map_code(i_sf) = SFMAP_MULTI_SON
+       allocate (sf_os_mapping_single_t :: channel%multi_mapping)
+       select type (mapping => channel%multi_mapping)
+       type is (sf_os_mapping_single_t)
+          call mapping%init (m)
+       end select
+    else
+       channel%map_code(i_sf) = SFMAP_MULTI_ONS
+       allocate (sf_os_mapping_t :: channel%multi_mapping)
+       select type (mapping => channel%multi_mapping)
+       type is (sf_os_mapping_t)
+          call mapping%init (m)
+       end select
+    end if
   end subroutine sf_channel_set_os_mapping
 
   subroutine sf_channel_set_ep_mapping (channel, i_sf, a)
@@ -1846,7 +2034,7 @@ contains
     integer, intent(in) :: i_sf
     logical :: flag
     flag = channel%map_code(i_sf) == SFMAP_SINGLE
-  end function sf_channel_is_single_mapping 
+  end function sf_channel_is_single_mapping
 
   function sf_channel_is_multi_mapping (channel, i_sf) result (flag)
     class(sf_channel_t), intent(in) :: channel
@@ -1858,7 +2046,17 @@ contains
     case default
        flag = .true.
     end select
-  end function sf_channel_is_multi_mapping 
+  end function sf_channel_is_multi_mapping
+
+  function sf_channel_get_multi_mapping_n_par (channel) result (n_par)
+    class(sf_channel_t), intent(in) :: channel
+    integer :: n_par
+    if (allocated (channel%multi_mapping)) then
+       n_par = channel%multi_mapping%get_n_dim ()
+    else
+       n_par = 0
+    end if
+  end function sf_channel_get_multi_mapping_n_par
 
   function any_sf_channel_has_mapping (channel) result (flag)
     type(sf_channel_t), dimension(:), intent(in) :: channel
@@ -1869,13 +2067,23 @@ contains
        flag = flag .or. any (channel(c)%map_code /= SFMAP_NONE)
     end do
   end function any_sf_channel_has_mapping
-  
+
   subroutine sf_channel_set_par_index (channel, j, i_par)
     class(sf_channel_t), intent(inout) :: channel
     integer, intent(in) :: j
     integer, intent(in) :: i_par
-    call channel%multi_mapping%set_index (j, i_par)
+    associate (mapping => channel%multi_mapping)
+      if (j >= 1 .and. j <= mapping%get_n_dim ()) then
+         if (mapping%get_index (j) == 0) then
+            call channel%multi_mapping%set_index (j, i_par)
+         else
+            call msg_bug ("Structure-function setup: mapping index set twice")
+         end if
+      else
+         call msg_bug ("Structure-function setup: mapping index out of range")
+      end if
+    end associate
   end subroutine sf_channel_set_par_index
-    
+
 
 end module sf_mappings

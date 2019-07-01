@@ -18,6 +18,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process show_2_p1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   H  (mass = 1.2500000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'show_2_p1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_2_p1'
 |   Library name  = 'show_2_lib'
@@ -25,12 +31,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'show_2_p1_i1':   H => b, bbar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   H  (mass = 1.2500000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'show_2_p1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

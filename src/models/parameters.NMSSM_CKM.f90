@@ -1,6 +1,6 @@
 ! $Id: parameters.NMSSM_CKM.f90,v 1.1 2005/10/25 09:21:48 reuter Exp $
 !
-! Copyright (C) 1999-2016 by 
+! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

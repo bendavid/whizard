@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -54,36 +54,36 @@ contains
 
     write (u, "(A)")  "* Test output: su_algebra_1"
     write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* su(N) generators: &
          &list and mark Cartan subalgebra"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call cartan_check (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call cartan_check (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call cartan_check (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call cartan_check (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call cartan_check (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: su_algebra_1"    
-      
+    write (u, "(A)")  "* Test output end: su_algebra_1"
+
   contains
-    
+
     subroutine cartan_check (s)
       integer, intent(in) :: s
       integer :: i
@@ -92,7 +92,7 @@ contains
          write (u, "(1x,L1)", advance="no")  is_cartan_generator (s, i)
       end do
       write (u, *)
-      
+
     end subroutine cartan_check
 
   end subroutine su_algebra_1
@@ -102,8 +102,8 @@ contains
 
     write (u, "(A)")  "* Test output: su_algebra_2"
     write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* diagonal su(N) generators: &
          &show explicit representation"
     write (u, "(A)")  "* and check trace and Killing form"
@@ -111,24 +111,24 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call cartan_show (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call cartan_show (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call cartan_show (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call cartan_show (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: su_algebra_2"    
-      
+    write (u, "(A)")  "* Test output end: su_algebra_2"
+
   contains
-    
+
     subroutine cartan_show (s)
       integer, intent(in) :: s
       real(default), dimension(:,:), allocatable :: rd
@@ -137,7 +137,7 @@ contains
 
       n = algebra_dimension (s)
       d = fundamental_dimension (s)
-      
+
       write (u, *)
       write (u, "(A2,5X)", advance="no")  "h:"
       do i = 1, d
@@ -146,7 +146,7 @@ contains
       end do
       write (u, "(8X)", advance="no")
       write (u, "(1X,A)")  "tr"
-      
+
       allocate (rd (n,d), source = 0._default)
       do i = 1, d
          h = helicity_value (s, i)
@@ -167,14 +167,14 @@ contains
          write (u, "(8X)", advance="no")
          write (u, 1)  sum (rd(ci(k),:))
       end do
-      
+
       write (u, *)
       write (u, "(6X)", advance="no")
       do k = 1, d-1
          write (u, "(2X,'T',I2,3X)", advance="no")  ci(k)
-      end do 
+      end do
       write (u, *)
-      
+
       do k = 1, d-1
          write (u, "('T',I2,2X)", advance="no")  ci(k)
          do l = 1, d-1
@@ -184,7 +184,7 @@ contains
       end do
 
 1     format (1x,F7.4)
-      
+
     end subroutine cartan_show
 
   end subroutine su_algebra_2
@@ -194,32 +194,32 @@ contains
 
     write (u, "(A)")  "* Test output: su_algebra_3"
     write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* diagonal su(N) generators: &
          &transform to matrix and back"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call cartan_expand (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call cartan_expand (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call cartan_expand (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call cartan_expand (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: su_algebra_3"    
-      
+    write (u, "(A)")  "* Test output end: su_algebra_3"
+
   contains
-    
+
     subroutine cartan_expand (s)
       integer, intent(in) :: s
       real(default), dimension(:,:), allocatable :: rd
@@ -230,7 +230,7 @@ contains
 
       n = algebra_dimension (s)
       d = fundamental_dimension (s)
-      
+
       allocate (rd (n,d), source = 0._default)
       do i = 1, d
          h = helicity_value (s, i)
@@ -260,7 +260,7 @@ contains
       end do
 
 1     format (1X,F7.4)
-      
+
     end subroutine cartan_expand
 
   end subroutine su_algebra_3
@@ -270,39 +270,39 @@ contains
 
     write (u, "(A)")  "* Test output: su_algebra_4"
     write (u, "(A)")  "*   Purpose: test su(N) algebra implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* off-diagonal su(N) generators: &
          &mapping from/to helicity pair"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call root_expand (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call root_expand (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call root_expand (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call root_expand (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: su_algebra_4"    
-      
+    write (u, "(A)")  "* Test output end: su_algebra_4"
+
   contains
-    
+
     subroutine root_expand (s)
       integer, intent(in) :: s
       integer :: n, d, i, j, h1, h2
       logical :: r
 
       n = algebra_dimension (s)
-      
+
       write (u, *)
       do i = 1, n
          if (is_cartan_generator (s, i))  cycle
@@ -316,7 +316,7 @@ contains
             write (u, "('*')")
          end if
       end do
-      
+
     end subroutine root_expand
 
   end subroutine su_algebra_4

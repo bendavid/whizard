@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -37,6 +37,7 @@ module phs_forests_uti
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use io_units
   use format_defs, only: FMT_12
   use lorentz
   use flavors
@@ -44,6 +45,7 @@ module phs_forests_uti
   use model_data
   use mappings
   use phs_base
+  use resonances, only: resonance_history_t
 
   use phs_forests
 
@@ -51,6 +53,7 @@ module phs_forests_uti
   private
 
   public :: phs_forest_1
+  public :: phs_forest_2
 
 contains
 
@@ -64,7 +67,7 @@ contains
     type(flavor_t), dimension(5) :: flv
     type(string_t) :: filename
     type(interaction_t) :: int
-    integer, parameter :: unit_fix = 20
+    integer :: unit_fix
     type(mapping_defaults_t) :: mapping_defaults
     logical :: found_process, ok
     integer :: n_channel, ch, i
@@ -87,6 +90,7 @@ contains
     write (u, "(A)")
 
     call flv%init ([11, -11, 11, -11, 22], model)
+    unit_fix = free_unit ()
     open (file="phs_forest_test.phs", unit=unit_fix, action="write")
     write (unit_fix, *) "process foo"
     write (unit_fix, *) 'md5sum_process    = "6ABA33BC2927925D0F073B1C1170780A"'
@@ -180,6 +184,86 @@ contains
     write (u, "(A)")  "* Test output end: phs_forest_1"
 
   end subroutine phs_forest_1
+
+  subroutine phs_forest_2 (u)
+    use os_interface
+    integer, intent(in) :: u
+    integer :: unit_fix
+    type(phs_forest_t) :: forest
+    type(model_data_t), target :: model
+    type(string_t) :: process_id
+    type(string_t) :: filename
+    logical :: found_process
+    type(resonance_history_t), dimension(:), allocatable :: res_history
+    integer :: i
+
+    write (u, "(A)")  "* Test output: phs_forest_2"
+    write (u, "(A)")  "*   Purpose: test PHS forest routines"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Reading model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create phase-space file 'phs_forest_2.phs'"
+    write (u, "(A)")
+
+    unit_fix = free_unit ()
+    open (file="phs_forest_2.phs", unit=unit_fix, action="write")
+    write (unit_fix, *) "process foo"
+    write (unit_fix, *) 'md5sum_process    = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"'
+    write (unit_fix, *) 'md5sum_model_par  = "1A0B151EE6E2DEB92D880320355A3EAB"'
+    write (unit_fix, *) 'md5sum_phs_config = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"'
+    write (unit_fix, *) "sqrts         =    100.00000000000000"
+    write (unit_fix, *) "m_threshold_s =    50.000000000000000"
+    write (unit_fix, *) "m_threshold_t =    100.00000000000000"
+    write (unit_fix, *) "off_shell =            2"
+    write (unit_fix, *) "t_channel =            6"
+    write (unit_fix, *) "keep_nonresonant =  F"
+    write (unit_fix, *) ""
+    write (unit_fix, *) "  grove"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "      map 3 s_channel -24"
+    write (unit_fix, *) "    tree 5 7"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "      map 3 s_channel -24"
+    write (unit_fix, *) "      map 7 s_channel 23"
+    write (unit_fix, *) "    tree 5 7"
+    write (unit_fix, *) "      map 7 s_channel 25"
+    write (unit_fix, *) "    tree 3 11"
+    write (unit_fix, *) "      map 3 s_channel -24"
+    close (unit_fix)
+
+    write (u, "(A)")  "* Read phase-space file 'phs_forest_2.phs'"
+
+    call syntax_phs_forest_init ()
+    process_id = "foo"
+    filename = "phs_forest_2.phs"
+    call phs_forest_read &
+         (forest, filename, process_id, 2, 3, model, found_process)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonance history set"
+
+    call forest%extract_resonance_histories (res_history)
+    do i = 1, size (res_history)
+       write (u, *)
+       call res_history(i)%write (u)
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call model%final ()
+    call phs_forest_final (forest)
+    call syntax_phs_forest_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_forest_2"
+
+  end subroutine phs_forest_2
 
 
 end module phs_forests_uti

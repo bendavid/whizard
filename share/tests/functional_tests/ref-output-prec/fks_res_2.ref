@@ -27,6 +27,17 @@ sqrts =  5.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2222
 | Initializing integration for process fks_res_2_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'fks_res_2_p1_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'fks_res_2_p1_i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'fks_res_2_p1'
 |   Library name  = 'fks_res_2_lib'
@@ -38,14 +49,6 @@ sqrts =  5.00000E+02
 |     4: 'fks_res_2_p1_i4':   e+, e- => b, bbar, mu-, mu+ [inactive], [Subtraction]
 |     5: 'fks_res_2_p1_i5':   e+, e- => b, bbar, mu-, mu+ [omega], [Mismatch]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e+  (mass = 5.1099700E-04 GeV)
-|   e-  (mass = 5.1099700E-04 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'fks_res_2_p1_i1.phs'
 | Phase space: 54 channels, 8 dimensions
 | Phase space: found 54 channels, collected in 12 groves.
 | Phase space: no equivalences between channels used.
@@ -54,9 +57,6 @@ sqrts =  5.00000E+02
 | Phase space: found 54 channels, collected in 12 groves.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'fks_res_2_p1_i3.phs'
 | Phase space: 54 channels, 8 dimensions
 | Phase space: found 54 channels, collected in 12 groves.
 | Phase space: no equivalences between channels used.
@@ -78,6 +78,12 @@ Warning: No cuts have been defined.
    2       9963    -3.419E+00   9.10E-02    2.66    2.66     4.2
 |-----------------------------------------------------------------------------|
    2      19953    -3.349E+00   7.79E-02    2.33    3.29     4.2    2.18   2
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0    -3.349E+00   7.79E-02    2.33    0.00     0.0
 |=============================================================================|
 n_events = 1
 ?debug_decay = false

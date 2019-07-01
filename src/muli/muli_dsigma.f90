@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -45,9 +45,9 @@ module muli_dsigma
 
   implicit none
   private
-  
+
   integer, parameter :: dim_f = 17
-  
+
 
   public :: muli_dsigma_t
 
@@ -58,18 +58,18 @@ module muli_dsigma
    contains
      procedure :: write_to_marker => muli_dsigma_write_to_marker
      procedure :: read_from_marker => muli_dsigma_read_from_marker
-     procedure :: print_to_unit => muli_dsigma_print_to_unit  
-     procedure, nopass :: get_type => muli_dsigma_get_type    
+     procedure :: print_to_unit => muli_dsigma_print_to_unit
+     procedure, nopass :: get_type => muli_dsigma_get_type
      procedure :: generate => muli_dsigma_generate
      procedure :: evaluate => muli_dsigma_evaluate
      generic :: initialize => muli_dsigma_initialize
      procedure :: muli_dsigma_initialize
-     ! procedure :: reset => muli_dsigma_reset    
+     ! procedure :: reset => muli_dsigma_reset
   end type muli_dsigma_t
 
-  
+
 contains
-  
+
   subroutine muli_dsigma_write_to_marker (this, marker, status)
     class(muli_dsigma_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -80,7 +80,7 @@ contains
     call this%cuba_int%serialize (marker, "cuba_int")
     call marker%mark_end ("muli_dsigma_t")
   end subroutine muli_dsigma_write_to_marker
-  
+
   subroutine muli_dsigma_read_from_marker (this, marker, status)
     class(muli_dsigma_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -107,7 +107,7 @@ contains
        write (unit, "(A)")  "Skipping components of cuba_int:"
     end if
   end subroutine muli_dsigma_print_to_unit
-  
+
   pure subroutine muli_dsigma_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="muli_dsigma_t")
@@ -169,7 +169,7 @@ contains
     !    stop
     ! end if
   end subroutine muli_dsigma_evaluate
-  
+
   subroutine muli_dsigma_initialize &
        (this, id, name, goal, max_nodes, dim, cuba_goal)
     class(muli_dsigma_t), intent(inout) :: this
@@ -178,11 +178,11 @@ contains
     character(*), intent(in) :: name
     real(default), intent(in) :: goal, cuba_goal
     call this%initialize (id,name)
-    ! 1E-4      
+    ! 1E-4
     this%rel_error_goal = goal
     this%max_nodes = max_nodes
     call this%cuba_int%set_common (dim_f=dim, dim_x=2, &
-         ! 1E-6           
+         ! 1E-6
          eps_rel=cuba_goal, flags = 0)
     call this%cuba_int%set_deferred (xgiven_flat = [1.E-2_default, &
          5.E-1_default + epsilon(1._default), &
@@ -202,7 +202,7 @@ contains
   !   call this%initialize &
   !      (id, name, d_goal, max_nodes, dim_f, init, cuba_goal)
   ! end subroutine muli_dsigma_reset
-    
+
 
 end module muli_dsigma
 

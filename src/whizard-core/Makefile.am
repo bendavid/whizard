@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by
+# Copyright (C) 1999-2017 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -58,7 +58,7 @@ libwhizard_core_ut_la_SOURCES = \
   process_configurations_uti.f90 process_configurations_ut.f90 \
   compilations_uti.f90 compilations_ut.f90 \
   integrations_uti.f90 integrations_ut.f90 \
-  event_streams_uti.f90 event_streams_ut.f90 \
+event_streams_uti.f90 event_streams_ut.f90 \
   simulations_uti.f90 simulations_ut.f90 \
   commands_uti.f90 commands_ut.f90
 
@@ -100,10 +100,12 @@ module_lists = \
   ../events/Modules \
   ../phase_space/Modules \
   ../mci/Modules \
+  ../vegas/Modules \
   ../user/Modules \
   ../blha/Modules \
   ../gosam/Modules \
   ../openloops/Modules \
+  ../recola/Modules \
   ../fks/Modules \
   ../variables/Modules \
   ../model_features/Modules \
@@ -165,8 +167,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola
-
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../vegas  -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola -I../recola
 ########################################################################
 ## Default Fortran compiler options
 

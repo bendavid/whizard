@@ -19,13 +19,6 @@ sqrts =  1.000000000000E+03
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process lcio_1_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lcio_1_p'
-|   Library name  = 'lcio_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lcio_1_p_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1100000E-04 GeV)
@@ -34,6 +27,13 @@ sqrts =  1.000000000000E+03
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'lcio_1_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'lcio_1_p'
+|   Library name  = 'lcio_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'lcio_1_p_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -78,8 +78,17 @@ Output from running lcio_1_rd:
  detector : unknown
  event parameters: 
  parameter ProcessID [int]: 1, 
+ parameter beamPDG0 [int]: 11, 
+ parameter beamPDG1 [int]: -11, 
+ parameter Energy [float]: 1000, 
+ parameter Pol0 [float]: 0, 
+ parameter Pol1 [float]: 0, 
  parameter alphaQCD [float]: 0.1178, 
+ parameter crossSection [float]: 84.6204, 
+ parameter crossSectionError [float]: 1.8082, 
  parameter scale [float]: 1000, 
+ parameter BeamSpectrum [string]: , 
+ parameter processName [string]: lcio_1_p, 
 
  collection name : MCParticle
  parameters: 
@@ -92,9 +101,9 @@ Output from running lcio_1_rd:
 
 [   id   ]index|      PDG |    px,     py,        pz    | energy  |gen|[simstat ]| vertex x,     y   ,   z     |    mass |  charge |            spin             | colorflow | [parents] - [daughters]
 
-[00000004]    0|        11| 0.00e+00, 0.00e+00, 5.00e+02| 5.00e+02| 3 |[s       ]| 0.00e+00, 0.00e+00, 0.00e+00| 5.11e-04|-1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [] - [2,3] 
-[00000005]    1|       -11| 0.00e+00, 0.00e+00,-5.00e+02| 5.00e+02| 3 |[s       ]| 0.00e+00, 0.00e+00, 0.00e+00| 5.11e-04| 1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [] - [2,3] 
-[00000006]    2|        13| 2.85e+02, 3.98e+02,-1.04e+02| 5.00e+02| 1 |[s       ]| 0.00e+00, 0.00e+00, 0.00e+00| 1.06e-01|-1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [0,1] - [] 
-[00000007]    3|       -13|-2.85e+02,-3.98e+02, 1.04e+02| 5.00e+02| 1 |[s       ]| 0.00e+00, 0.00e+00, 0.00e+00| 1.06e-01| 1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [0,1] - [] 
+[00000004]    0|        11| 0.00e+00, 0.00e+00, 5.00e+02| 5.00e+02| 3 |[    0   ]| 0.00e+00, 0.00e+00, 0.00e+00| 5.11e-04|-1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [] - [2,3] 
+[00000005]    1|       -11| 0.00e+00, 0.00e+00,-5.00e+02| 5.00e+02| 3 |[    0   ]| 0.00e+00, 0.00e+00, 0.00e+00| 5.11e-04| 1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [] - [2,3] 
+[00000006]    2|        13| 2.85e+02, 3.98e+02,-1.04e+02| 5.00e+02| 1 |[    0   ]| 0.00e+00, 0.00e+00, 0.00e+00| 1.06e-01|-1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [0,1] - [] 
+[00000007]    3|       -13|-2.85e+02,-3.98e+02, 1.04e+02| 5.00e+02| 1 |[    0   ]| 0.00e+00, 0.00e+00, 0.00e+00| 1.06e-01| 1.00e+00| 0.00e+00, 0.00e+00, 0.00e+00|  (0, 0)   | [0,1] - [] 
 
 -------------------------------------------------------------------------------- 

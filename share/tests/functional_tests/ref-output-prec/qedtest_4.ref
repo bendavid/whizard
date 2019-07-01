@@ -21,13 +21,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qedtest_4_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_4_p1'
-|   Library name  = 'qedtest_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_4_p1_i1':   e-, e+ => A, A, A [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -36,6 +29,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qedtest_4_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_4_p1'
+|   Library name  = 'qedtest_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_4_p1_i1':   e-, e+ => A, A, A [omega]
+| ------------------------------------------------------------------------
 | Phase space: 12 channels, 5 dimensions
 | Phase space: found 12 channels, collected in 1 grove.
 | Phase space: Using 72 equivalences between channels.

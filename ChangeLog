@@ -2,7 +2,75 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.4.0
+	Version 2.4.1
+
+2017-03-24
+	RELEASE: version 2.4.1
+
+2017-03-16
+	Distinguish resonance charge in phase space channels
+	Keep track of resonance histories in phase space
+	Complex mass scheme default for OpenLoops amplitudes
+
+2017-03-13
+	Fix helicities for polarized OpenLoops calculations
+
+2017-03-09
+	Possibility to advance RNG state in rng_stream
+
+2017-03-04
+	General setup for partitioning real emission
+	   phase space
+
+2017-03-06
+	Bugfix on rescan command for converting event files
+
+2017-02-27
+	Alternative multi-channel VEGAS implementation
+	   VAMP2: serial backbone for MPI setup
+	Smoothstep top threshold matching
+
+2017-02-25
+	Single-beam structure function with
+	   s-channel mapping supported
+	Safeguard against invalid process libraries
+
+2017-02-16
+	Radiation generator for photon emission
+
+2017-02-10
+	Fixes for NLO QCD processes (color correlations)
+
+2017-01-16
+	LCIO variable takes precedence over LCIO_DIR
+
+2017-01-13
+	Alternative random number generator
+	   rng_stream (cf. L'Ecuyer et al.)
+
+2017-01-01
+	Fix for multi-flavor BLHA tree
+	   matrix elements
+
+2016-12-31
+	Grid path option for VAMP grids
+
+2016-12-28
+	Alpha version of Recola OLP support
+2016-12-27
+	Dalitz plots for FKS phase space
+
+2016-12-14
+	NLO multi-flavor events possible
+
+2016-12-09
+	LCIO event header information added
+
+2016-12-02
+	Alpha version of RECOLA interface
+	Bugfix for generator status in LCIO
+
+##################################################################
 
 2016-11-28
 	RELEASE: version 2.4.0
@@ -11,25 +79,25 @@ Use svn log to see detailed changes.
 	Bugfix for OpenLoops interface: EW scheme
 	   is set by WHIZARD
 	Bugfixes for top threshold implementation
-	
+
 2016-11-11
 	Refactoring of dispatching
-	
+
 2016-10-18
 	Bug fix for LCIO output
 
 2016-10-10
 	First implementation for collinear soft terms
-	
+
 2016-10-06
 	First full WHIZARD models from UFO files
-	
+
 2016-10-05
 	WHIZARD does not support legacy gcc 4.7.4 any longer
 
 2016-09-30
 	Major refactoring of process core and NLO components
-	
+
 2016-09-23
 	WHIZARD homogeneous entity: discarding subconfigures
 	  for CIRCE1/2, O'Mega, VAMP subpackages; these are

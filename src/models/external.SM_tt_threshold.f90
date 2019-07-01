@@ -32,7 +32,8 @@ subroutine init_external_parameters (par) bind (C)
   real(c_default_float), dimension(*), intent(inout) :: par
   real(default) :: m1s, Vtb, wt_inv, alphas, mZ, &
                    nrqcd_order, sh, sf, FF, offshell_strategy, v1, v2, mpole, &
-                   aemi, sw, mW, mb, wtop, sqrts_min, sqrts_max, sqrts_it
+                   aemi, sw, mW, mb, wtop, sqrts_min, sqrts_max, sqrts_it, &
+                   top_helicity_selection
   logical :: mpole_fixed
   call msg_debug (D_THRESHOLD, "init_external_parameters")
   mZ     = par(1)
@@ -48,17 +49,19 @@ subroutine init_external_parameters (par) bind (C)
   sf     = par(25)
   FF     = par(26)
   offshell_strategy = par(27)
-  v1     = par(28)
-  v2     = par(29)
-  sqrts_min = par(30)
-  sqrts_max = par(31)
-  sqrts_it = par(32)
-  mpole_fixed = par(35) > 0.0_default
-  sw     = par(38)
+  top_helicity_selection = par(28)
+  v1     = par(29)
+  v2     = par(30)
+  sqrts_min = par(31)
+  sqrts_max = par(32)
+  sqrts_it = par(33)
+  mpole_fixed = par(36) > 0.0_default
+  sw     = par(39)
   call init_parameters (mpole, wtop, m1s, Vtb, wt_inv, aemi, &
                         sw, alphas, mZ, mW, mb, sh, sf, nrqcd_order, FF, &
                         offshell_strategy, v1, v2, &
-                        sqrts_min, sqrts_max, sqrts_it, mpole_fixed)
-  par(40) = mpole
-  par(41) = wtop
+                        sqrts_min, sqrts_max, sqrts_it, mpole_fixed, &
+                        top_helicity_selection)
+  par(41) = mpole
+  par(42) = wtop
 end subroutine init_external_parameters

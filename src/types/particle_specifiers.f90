@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -55,7 +55,7 @@ module particle_specifiers
      procedure (prt_spec_expr_to_string), deferred :: to_string
      procedure (prt_spec_expr_expand_sub), deferred :: expand_sub
   end type prt_spec_expr_t
-  
+
   type :: prt_expr_t
      class(prt_spec_expr_t), allocatable :: x
    contains
@@ -67,7 +67,7 @@ module particle_specifiers
      procedure :: term_to_array => prt_expr_term_to_array
      procedure :: expand => prt_expr_expand
   end type prt_expr_t
-  
+
   type, extends (prt_spec_expr_t) :: prt_spec_t
      private
      type(string_t) :: name
@@ -82,7 +82,7 @@ module particle_specifiers
      procedure :: get_decays => prt_spec_get_decays
      procedure :: expand_sub => prt_spec_expand_sub
   end type prt_spec_t
-  
+
   type, extends (prt_spec_expr_t) :: prt_spec_list_t
      type(prt_expr_t), dimension(:), allocatable :: expr
    contains
@@ -90,7 +90,7 @@ module particle_specifiers
      procedure :: flatten => prt_spec_list_flatten
      procedure :: expand_sub => prt_spec_list_expand_sub
   end type prt_spec_list_t
-  
+
   type, extends (prt_spec_expr_t) :: prt_spec_sum_t
      type(prt_expr_t), dimension(:), allocatable :: expr
    contains
@@ -98,7 +98,7 @@ module particle_specifiers
      procedure :: flatten => prt_spec_sum_flatten
      procedure :: expand_sub => prt_spec_sum_expand_sub
   end type prt_spec_sum_t
-  
+
 
   abstract interface
      function prt_spec_expr_to_string (object) result (string)
@@ -107,7 +107,7 @@ module particle_specifiers
        type(string_t) :: string
      end function prt_spec_expr_to_string
   end interface
-  
+
   abstract interface
      subroutine prt_spec_expr_expand_sub (object)
        import
@@ -140,7 +140,7 @@ contains
        string = ""
     end if
   end function prt_expr_to_string
-  
+
   subroutine prt_expr_init_spec (object, spec)
     class(prt_expr_t), intent(out) :: object
     type(prt_spec_t), intent(in) :: spec
@@ -150,7 +150,7 @@ contains
        x = spec
     end select
   end subroutine prt_expr_init_spec
-  
+
   subroutine prt_expr_init_list (object, n)
     class(prt_expr_t), intent(out) :: object
     integer, intent(in) :: n
@@ -160,7 +160,7 @@ contains
        allocate (x%expr (n))
     end select
   end subroutine prt_expr_init_list
-  
+
   subroutine prt_expr_init_sum (object, n)
     class(prt_expr_t), intent(out) :: object
     integer, intent(in) :: n
@@ -170,7 +170,7 @@ contains
        allocate (x%expr (n))
     end select
   end subroutine prt_expr_init_sum
-  
+
   function prt_expr_get_n_terms (object) result (n)
     class(prt_expr_t), intent(in) :: object
     integer :: n
@@ -185,7 +185,7 @@ contains
        n = 0
     end if
   end function prt_expr_get_n_terms
-  
+
   recursive subroutine prt_expr_term_to_array (object, array, i)
     class(prt_expr_t), intent(in) :: object
     type(prt_spec_t), dimension(:), intent(inout), allocatable :: array
@@ -208,7 +208,7 @@ contains
        call x%expr(i)%term_to_array (array, 1)
     end select
   end subroutine prt_expr_term_to_array
-  
+
   subroutine prt_spec_write1 (object, unit, advance)
     type(prt_spec_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -219,7 +219,7 @@ contains
     adv = "yes";  if (present (advance))  adv = advance
     write (u, "(A)", advance = adv)  char (object%to_string ())
   end subroutine prt_spec_write1
-       
+
   subroutine prt_spec_write2 (prt_spec, unit, advance)
     type(prt_spec_t), dimension(:), intent(in) :: prt_spec
     integer, intent(in), optional :: unit
@@ -234,7 +234,7 @@ contains
     end do
     write (u, "(A)", advance = adv)
   end subroutine prt_spec_write2
-       
+
   pure subroutine prt_spec_read1 (prt_spec, string)
     type(prt_spec_t), intent(out) :: prt_spec
     type(string_t), intent(in) :: string
@@ -294,7 +294,7 @@ contains
        buffer = extract (buffer, c+1)
     end do
   end subroutine prt_spec_read2
-  
+
   elemental function new_prt_spec (name) result (prt_spec)
     type(string_t), intent(in) :: name
     type(prt_spec_t) :: prt_spec
@@ -323,7 +323,7 @@ contains
     type(string_t) :: name
     name = prt_spec%name
   end function prt_spec_get_name
-  
+
   function prt_spec_to_string (object) result (string)
     class(prt_spec_t), intent(in) :: object
     type(string_t) :: string
@@ -340,19 +340,19 @@ contains
        string = string // "(*)"
     end if
   end function prt_spec_to_string
-  
+
   elemental function prt_spec_is_polarized (prt_spec) result (flag)
     class(prt_spec_t), intent(in) :: prt_spec
     logical :: flag
     flag = prt_spec%polarized
   end function prt_spec_is_polarized
-  
+
   elemental function prt_spec_is_unstable (prt_spec) result (flag)
     class(prt_spec_t), intent(in) :: prt_spec
     logical :: flag
     flag = allocated (prt_spec%decay)
   end function prt_spec_is_unstable
-  
+
   elemental function prt_spec_get_n_decays (prt_spec) result (n)
     class(prt_spec_t), intent(in) :: prt_spec
     integer :: n
@@ -362,7 +362,7 @@ contains
        n = 0
     end if
   end function prt_spec_get_n_decays
-  
+
   subroutine prt_spec_get_decays (prt_spec, decay)
     class(prt_spec_t), intent(in) :: prt_spec
     type(string_t), dimension(:), allocatable, intent(out) :: decay
@@ -373,7 +373,7 @@ contains
        allocate (decay (0))
     end if
   end subroutine prt_spec_get_decays
-  
+
   subroutine prt_spec_expand_sub (object)
     class(prt_spec_t), intent(inout) :: object
   end subroutine prt_spec_expand_sub
@@ -426,7 +426,7 @@ contains
     if (allocated (tmp_expr)) &
          call move_alloc (from = tmp_expr, to = object%expr)
   end subroutine prt_spec_list_flatten
-    
+
   subroutine distribute_prt_spec_list (object)
     class(prt_spec_expr_t), intent(inout), allocatable :: object
     class(prt_spec_expr_t), allocatable :: new_object
@@ -477,7 +477,7 @@ contains
     end select
     if (allocated (new_object)) call move_alloc (from = new_object, to = object)
   end subroutine distribute_prt_spec_list
-    
+
   recursive subroutine prt_spec_list_expand_sub (object)
     class(prt_spec_list_t), intent(inout) :: object
     integer :: i
@@ -538,7 +538,7 @@ contains
     if (allocated (tmp_expr)) &
          call move_alloc (from = tmp_expr, to = object%expr)
   end subroutine prt_spec_sum_flatten
-    
+
   recursive subroutine prt_spec_sum_expand_sub (object)
     class(prt_spec_sum_t), intent(inout) :: object
     integer :: i

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_hepmc
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use string_utils
@@ -78,10 +78,10 @@ module eio_hepmc
      procedure :: input_event => eio_hepmc_input_event
      procedure :: skip => eio_hepmc_skip
   end type eio_hepmc_t
-  
+
 
 contains
-  
+
   subroutine eio_hepmc_set_parameters &
        (eio, &
        recover_beams, use_alpha_s_from_file, use_scale_from_file, &
@@ -106,7 +106,7 @@ contains
     if (present (output_cross_section)) &
          eio%output_cross_section = output_cross_section
   end subroutine eio_hepmc_set_parameters
-  
+
   subroutine eio_hepmc_write (object, unit)
     class(eio_hepmc_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -132,9 +132,9 @@ contains
        do i = 1, size (object%proc_num_id)
           write (u, "(5x,I0,': ',I0)")  i, object%proc_num_id(i)
        end do
-    end if    
+    end if
   end subroutine eio_hepmc_write
-  
+
   subroutine eio_hepmc_final (object)
     class(eio_hepmc_t), intent(inout) :: object
     if (allocated (object%proc_num_id))  deallocate (object%proc_num_id)
@@ -152,7 +152,7 @@ contains
        object%reading = .false.
     end if
   end subroutine eio_hepmc_final
-  
+
   subroutine eio_hepmc_split_out (eio)
     class(eio_hepmc_t), intent(inout) :: eio
     if (eio%split) then
@@ -165,7 +165,7 @@ contains
        call hepmc_iostream_open_out (eio%iostream, eio%filename)
     end if
   end subroutine eio_hepmc_split_out
-  
+
   subroutine eio_hepmc_common_init (eio, sample, data, extension)
     class(eio_hepmc_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -175,7 +175,7 @@ contains
          call msg_bug ("HepMC initialization: missing data")
     eio%data = data
     if (data%n_beam /= 2) &
-         call msg_fatal ("HepMC: defined for scattering processes only")    
+         call msg_fatal ("HepMC: defined for scattering processes only")
     ! We could relax this condition now with weighted hepmc events
     if (data%unweighted) then
        select case (data%norm_mode)
@@ -184,14 +184,14 @@ contains
             ("HepMC: normalization for unweighted events must be '1'")
        end select
     end if
-    eio%sample = sample    
+    eio%sample = sample
     if (present (extension)) then
        eio%extension = extension
     end if
     call eio%set_filename ()
     allocate (eio%proc_num_id (data%n_proc), source = data%proc_num_id)
   end subroutine eio_hepmc_common_init
-  
+
   subroutine eio_hepmc_init_out (eio, sample, data, success, extension)
     class(eio_hepmc_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -207,7 +207,7 @@ contains
     call hepmc_iostream_open_out (eio%iostream, eio%filename)
     if (present (success))  success = .true.
   end subroutine eio_hepmc_init_out
-    
+
   subroutine eio_hepmc_init_in (eio, sample, data, success, extension)
     class(eio_hepmc_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -226,14 +226,14 @@ contains
     call hepmc_iostream_open_in (eio%iostream, eio%filename)
     if (present (success))  success = .true.
   end subroutine eio_hepmc_init_in
-    
+
   subroutine eio_hepmc_switch_inout (eio, success)
     class(eio_hepmc_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("HepMC: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_hepmc_switch_inout
-  
+
   subroutine eio_hepmc_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_hepmc_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -246,12 +246,12 @@ contains
     if (eio%writing) then
        pset_ptr => event%get_particle_set_ptr ()
        call hepmc_event_init (eio%hepmc_event, &
-            proc_id = eio%proc_num_id (i_prc), &
+            proc_id = eio%proc_num_id(i_prc), &
             event_id = event%get_index ())
        if (eio%output_cross_section) then
           call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr, &
                eio%data%cross_section(i_prc), eio%data%error(i_prc))
-       else 
+       else
           call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr)
        end if
        call hepmc_event_set_scale (eio%hepmc_event, event%get_fac_scale ())
@@ -276,8 +276,8 @@ contains
     call hepmc_event_init (eio%hepmc_event)
     call hepmc_iostream_read_event (eio%iostream, eio%hepmc_event, ok)
     proc_num_id = hepmc_event_get_process_id (eio%hepmc_event)
-    if (.not. ok) then 
-       iostat = -1 
+    if (.not. ok) then
+       iostat = -1
        return
     end if
     i_prc = 0
@@ -307,7 +307,7 @@ contains
          eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
-         use_scale = eio%use_scale_from_file) 
+         use_scale = eio%use_scale_from_file)
     call hepmc_event_final (eio%hepmc_event)
   end subroutine eio_hepmc_input_event
 

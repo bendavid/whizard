@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -64,17 +64,17 @@ module eio_weights
      procedure :: input_event => eio_weights_input_event
      procedure :: skip => eio_weights_skip
   end type eio_weights_t
-  
+
 
 contains
-  
+
   subroutine eio_weights_set_parameters (eio, pacify)
     class(eio_weights_t), intent(inout) :: eio
     logical, intent(in), optional :: pacify
-    if (present (pacify))  eio%pacify = pacify    
+    if (present (pacify))  eio%pacify = pacify
     eio%extension = "weights.dat"
   end subroutine eio_weights_set_parameters
-  
+
   subroutine eio_weights_write (object, unit)
     class(eio_weights_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -83,12 +83,12 @@ contains
     write (u, "(1x,A)")  "Weight stream:"
     if (object%writing) then
        write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
-       write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify 
+       write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify
     else
        write (u, "(3x,A)")  "[closed]"
     end if
   end subroutine eio_weights_write
-  
+
   subroutine eio_weights_final (object)
     class(eio_weights_t), intent(inout) :: object
     if (object%writing) then
@@ -99,7 +99,7 @@ contains
        object%writing = .false.
     end if
   end subroutine eio_weights_final
-  
+
   subroutine eio_weights_init_out (eio, sample, data, success, extension)
     class(eio_weights_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -108,7 +108,7 @@ contains
     logical, intent(out), optional :: success
     if (present(extension)) then
        eio%extension = extension
-    else 
+    else
        eio%extension = "weights.dat"
     end if
     eio%filename = sample // "." // eio%extension
@@ -121,7 +121,7 @@ contains
          action = "write", status = "replace")
     if (present (success))  success = .true.
   end subroutine eio_weights_init_out
-    
+
   subroutine eio_weights_init_in (eio, sample, data, success, extension)
     class(eio_weights_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -131,14 +131,14 @@ contains
     call msg_bug ("Weight stream: event input not supported")
     if (present (success))  success = .false.
   end subroutine eio_weights_init_in
-    
+
   subroutine eio_weights_switch_inout (eio, success)
     class(eio_weights_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("Weight stream: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_weights_switch_inout
-  
+
   subroutine eio_weights_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_weights_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -152,13 +152,13 @@ contains
        sqme_prc = event%get_sqme_prc ()
        n_alt = event%get_n_alt ()
 1      format (I0,3(1x,ES17.10),3(1x,I0))
-2      format (I0,3(1x,ES15.8),3(1x,I0))       
+2      format (I0,3(1x,ES15.8),3(1x,I0))
        if (eio%pacify) then
           write (eio%unit, 2)  0, weight, sqme_prc, sqme_ref, &
-               i_prc 
+               i_prc
        else
           write (eio%unit, 1)  0, weight, sqme_prc, sqme_ref, &
-               i_prc 
+               i_prc
        end if
        do i = 1, n_alt
           weight = event%get_weight_alt(i)
@@ -166,7 +166,7 @@ contains
           if (eio%pacify) then
              write (eio%unit, 2)  i, weight, sqme_prc
           else
-             write (eio%unit, 1)  i, weight, sqme_prc          
+             write (eio%unit, 1)  i, weight, sqme_prc
           end if
        end do
     else

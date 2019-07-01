@@ -1,15 +1,15 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: Header, intro and generic stuff
 
-\documentclass[a4paper]{report} 
+\documentclass[a4paper]{report}
 
 \usepackage{amsmath,dsfont}
 
 \usepackage
   [bookmarks,bookmarksopen=true,bookmarksopenlevel=1,bookmarksnumbered=true]
-  {hyperref} 
-  
-\usepackage{noweb} 
+  {hyperref}
+
+\usepackage{noweb}
 \usepackage{graphics,graphicx}
 \usepackage{url}
 \setlength{\nwmarginglue}{1em}
@@ -20,7 +20,7 @@
 \let\nwdocspar\relax
 
 %\makeindex
- 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Macros
 
@@ -47,13 +47,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.4.0}
-\def\WhizardDate{Nov 28 2016}
+\def\WhizardVersion{2.4.1}
+\def\WhizardDate{Mar 24 2017}
 <<Version>>=
-2.4.0
+2.4.1
 <<Date>>=
-Nov 28 2016
-@ 
+Mar 24 2017
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
   \whizard\footnote{The original meaning of the acronym is \emph{$W$,
@@ -70,7 +70,7 @@ Nov 28 2016
 \date{Version \WhizardVersion, \WhizardDate \\
  \mbox{}
  with contributions from:
- Fabian Bach, Felix Braam, Hans-Werner Boschmann, 
+ Fabian Bach, Felix Braam, Hans-Werner Boschmann,
  Bijan Chokouf\'{e} Nejad, Christian Fleper, David Gordo Gomez,
  Sebastian Schmidt, Marco Sekulla, So Young Shim, Christian Speckner,
  Christian Weiss, Daniel Wiesler, Zhijie Zhao
@@ -79,7 +79,7 @@ Nov 28 2016
  \includegraphics[width=4cm]{Whizard-Logo}
  \end{center}
  \mbox{} \\
- \vspace{.2cm}} 
+ \vspace{.2cm}}
 \maketitle
 
 
@@ -89,7 +89,7 @@ Adaptive multi-channel integration and event generation. The bare
 \texttt{VAMP} library is augmented by modules for Lorentz algebra,
 particles, phase space, etc., such that physical processes with
 arbitrary complex final states [well, in principle\ldots] can be
-integrated and \emph{unweighted} events be generated.  
+integrated and \emph{unweighted} events be generated.
 \end{abstract}
 
 
@@ -105,7 +105,7 @@ integrated and \emph{unweighted} events be generated.
 
 \tableofcontents
 
-\newpage 
+\newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Changes}
@@ -117,30 +117,30 @@ integrated and \emph{unweighted} events be generated.
 The WHIZARD file header:
 <<File header>>=
 ! WHIZARD <<Version>> <<Date>>
-! 
-! Copyright (C) 1999-2016 by 
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -150,7 +150,7 @@ The WHIZARD file header:
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This file has been stripped of most comments.  For documentation, refer
 ! to the source 'whizard.nw'
-@ 
+@
 We are strict with our names:
 <<Standard module head>>=
   implicit none

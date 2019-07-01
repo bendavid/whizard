@@ -24,13 +24,6 @@ sqrts =  5.000000000000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process decay_err_1_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'decay_err_1_p'
-|   Library name  = 'decay_err_1_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'decay_err_1_p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -39,6 +32,13 @@ sqrts =  5.000000000000E+02
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'decay_err_1_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'decay_err_1_p'
+|   Library name  = 'decay_err_1_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'decay_err_1_p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -61,6 +61,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process decay_err_1_d1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   t  (mass = 1.7090000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_err_1_d1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_err_1_d1'
 |   Library name  = 'decay_err_1_lib'
@@ -68,12 +74,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'decay_err_1_d1_i1':   t => d, W+ [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   t  (mass = 1.7090000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_err_1_d1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -96,6 +96,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process decay_err_1_d2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   t  (mass = 1.7090000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_err_1_d2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_err_1_d2'
 |   Library name  = 'decay_err_1_lib'
@@ -103,12 +109,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_err_1_d2_i1':   t => s, W+ [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   t  (mass = 1.7090000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_err_1_d2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -131,6 +131,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process decay_err_1_d3:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   t  (mass = 1.7090000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'decay_err_1_d3_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_err_1_d3'
 |   Library name  = 'decay_err_1_lib'
@@ -138,12 +144,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'decay_err_1_d3_i1':   t => b, W+ [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   t  (mass = 1.7090000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'decay_err_1_d3_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

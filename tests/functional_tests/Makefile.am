@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -17,13 +17,13 @@
 #     Felix Braam, Sebastian Schmidt
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -65,9 +65,6 @@ TESTS_DEFAULT = \
     libraries_4.run
 
 XFAIL_TESTS_DEFAULT =
-
-TESTS_USER_STRFUN = \
-    user_strfun.run 
 
 TESTS_REQ_FASTJET = \
     analyze_4.run
@@ -166,7 +163,9 @@ TESTS_REQ_OCAML = \
     nlo_2.run \
     nlo_3.run \
     nlo_4.run \
+    nlo_5.run \
     nlo_decay_1.run \
+    real_partition_1.run \
     fks_res_1.run \
     fks_res_2.run \
     fks_res_3.run \
@@ -174,6 +173,8 @@ TESTS_REQ_OCAML = \
     openloops_2.run \
     openloops_3.run \
     openloops_4.run \
+    openloops_5.run \
+    openloops_6.run \
     powheg_1.run \
     spincor_1.run \
     show_1.run \
@@ -188,6 +189,7 @@ TESTS_REQ_OCAML = \
     flvsum_1.run \
     decay_err_1.run \
     decay_err_2.run \
+    decay_err_3.run \
     polarized_1.run \
     pdf_builtin.run \
     ep_1.run \
@@ -216,6 +218,7 @@ TESTS_REQ_OCAML = \
     ewa_2.run \
     ewa_3.run \
     ewa_4.run \
+    isr_1.run \
     ilc.run \
     gaussian_1.run \
     gaussian_2.run \
@@ -234,13 +237,12 @@ TESTS_REQ_OCAML = \
     user_cuts.run \
     user_prc_threshold_1.run \
     user_prc_threshold_2.run \
-    $(TESTS_USER_STRFUN) 
+    user_prc_threshold_3.run
 
 XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \
     hadronize_1.run \
-    user_cuts.run \
-    $(TESTS_USER_STRFUN)
+    user_cuts.run
 
 TESTS_REQ_HEPMC = \
     hepmc_1.run \
@@ -256,7 +258,10 @@ TESTS_REQ_HEPMC = \
 XFAIL_TESTS_REQ_HEPMC =
 
 TESTS_REQ_LCIO = \
-    lcio_1.run
+    lcio_1.run \
+    lcio_2.run \
+    lcio_3.run \
+    lcio_4.run
 XFAIL_TESTS_REQ_LCIO =
 
 TESTS_REQ_LHAPDF5 = \
@@ -278,9 +283,9 @@ TESTS_REQ_PYTHIA6 = \
     pythia6_4.run \
     tauola_1.run \
     tauola_2.run \
-    mlm_matching_isr.run \
-    mlm_pythia6_isr.run
-XFAIL_TESTS_REQ_PYTHIA6 = 
+    mlm_pythia6_isr.run \
+    mlm_matching_isr.run
+XFAIL_TESTS_REQ_PYTHIA6 =
 
 TESTS_REQ_EV_ANA = \
     analyze_3.run
@@ -378,10 +383,7 @@ static_2.exe.sin: $(top_builddir)/share/tests/functional_tests/static_2.exe.sin
 
 susyhit.run: susyhit.in
 user_cuts.run: user_cuts.f90
-user_strfun.run: user_strfun.f90
 user_cuts.f90: $(top_builddir)/share/tests/functional_tests/user_cuts.f90
-	cp $< $@
-user_strfun.f90: $(top_builddir)/share/tests/functional_tests/user_strfun.f90
 	cp $< $@
 
 model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
@@ -393,9 +395,6 @@ tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FC_MODULE_EXT)
 tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FC_MODULE_EXT)
 	cp $< $@
 threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EXT)
-	cp $< $@
-
-TEST.mdl: $(top_srcdir)/share/tests/TEST.mdl
 	cp $< $@
 
 WT_OMEGA_CACHE_SUFFIX=vertices
@@ -444,6 +443,9 @@ lcio_rd_SOURCES = lcio_rd.cpp
 lcio_rd_CXXFLAGS = $(LCIO_INCLUDES) $(AM_CXXFLAGS)
 lcio_rd_LDADD = $(LDFLAGS_LCIO)
 lcio_1.run: lcio_rd
+lcio_2.run: lcio_rd
+lcio_3.run: lcio_rd
+lcio_4.run: lcio_rd
 endif
 
 stdhep_4.run: stdhep_rd
@@ -564,7 +566,7 @@ notestflag:
 
 ## Remove generated files
 clean-local:
-	rm -f gamelan.sty TEST.mdl 
+	rm -f gamelan.sty 
 	rm -f TESTFLAG GAMELAN_FLAG 
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
@@ -576,7 +578,7 @@ clean-local:
 	rm -f *.grid
 	rm -rf err-output
 	rm -rf ref-output
-	rm -f *.sin *.hbc
+	rm -f *.sin *.hbc *_fks_regions.out
 	rm -f *.olc *.olp *.olp_parameters
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio

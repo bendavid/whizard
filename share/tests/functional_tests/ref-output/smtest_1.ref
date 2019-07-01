@@ -28,13 +28,6 @@ safety_factor =  1.200000000000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_1_nnh:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_1_nnh'
-|   Library name  = 'smtest_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_1_nnh_i1':   e-, e+ => nue, nuebar, H [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -43,6 +36,13 @@ safety_factor =  1.200000000000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_1_nnh_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_1_nnh'
+|   Library name  = 'smtest_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_1_nnh_i1':   e-, e+ => nue, nuebar, H [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 5 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.

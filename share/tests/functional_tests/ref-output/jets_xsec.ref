@@ -22,13 +22,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process jets_jj:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'jets_jj'
-|   Library name  = 'jets_xsec_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'jets_jj_i1':   ubar, u => u:ubar:d:dbar:gl, u:ubar:d:dbar:gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: ubar, u
 | Beam data (collision):
 |   ubar  (mass = 0.0000000E+00 GeV)
@@ -37,6 +30,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'jets_jj_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_jj'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'jets_jj_i1':   ubar, u => u:ubar:d:dbar:gl, u:ubar:d:dbar:gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 6 channels, 2 dimensions
 | Phase space: found 6 channels, collected in 4 groves.
 | Phase space: Using 6 equivalences between channels.
@@ -60,13 +60,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process jets_uu:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'jets_uu'
-|   Library name  = 'jets_xsec_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'jets_uu_i1':   ubar, u => ubar, u [omega]
-| ------------------------------------------------------------------------
 | Beam structure: ubar, u
 | Beam data (collision):
 |   ubar  (mass = 0.0000000E+00 GeV)
@@ -75,6 +68,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'jets_uu_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_uu'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'jets_uu_i1':   ubar, u => ubar, u [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 3 groves.
 | Phase space: Using 4 equivalences between channels.
@@ -98,13 +98,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process jets_dd:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'jets_dd'
-|   Library name  = 'jets_xsec_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'jets_dd_i1':   ubar, u => dbar, d [omega]
-| ------------------------------------------------------------------------
 | Beam structure: ubar, u
 | Beam data (collision):
 |   ubar  (mass = 0.0000000E+00 GeV)
@@ -113,6 +106,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'jets_dd_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_dd'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'jets_dd_i1':   ubar, u => dbar, d [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 3 groves.
 | Phase space: Using 4 equivalences between channels.
@@ -136,13 +136,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process jets_gg:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'jets_gg'
-|   Library name  = 'jets_xsec_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'jets_gg_i1':   ubar, u => gl, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: ubar, u
 | Beam data (collision):
 |   ubar  (mass = 0.0000000E+00 GeV)
@@ -151,6 +144,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'jets_gg_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_gg'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'jets_gg_i1':   ubar, u => gl, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 18 equivalences between channels.

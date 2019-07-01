@@ -13,13 +13,6 @@ $method = "unit_test"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process errors_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'errors_p'
-|   Library name  = 'fatal_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'errors_p_i1':   s, s => s, s [unit_test]
-| ------------------------------------------------------------------------
 ******************************************************************************
 ******************************************************************************
 *** FATAL ERROR:  Colliding beams: sqrts is zero (please set sqrts)

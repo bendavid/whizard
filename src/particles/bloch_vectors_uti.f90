@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -60,39 +60,39 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_1"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization (unpolarized)"
 
     write (u, "(A)")
     write (u, "(A)")  "* unknown"
     call bloch_init (UNKNOWN)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_init (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_init (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_init (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_init (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_init (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_1"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_1"
+
   contains
-    
+
     subroutine bloch_init (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol
@@ -129,8 +129,8 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_2"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization (polarized, diagonal): &
          &display vector and norm"
     write (u, "(A)")  "*   transform back"
@@ -138,28 +138,28 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_diagonal (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_diagonal (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_diagonal (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_diagonal (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_diagonal (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_2"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_2"
+
   contains
-    
+
     subroutine bloch_diagonal (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol
@@ -216,36 +216,36 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_3"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization (pure polarized, arbitrary):"
     write (u, "(A)")  "*   input matrix, transform, display norm, transform back"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_arbitrary (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_arbitrary (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_arbitrary (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_arbitrary (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_arbitrary (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_3"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_3"
+
   contains
-    
+
     subroutine bloch_arbitrary (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol
@@ -284,7 +284,7 @@ contains
          end do
       end do
     end subroutine init_matrix
-    
+
     subroutine write_matrix (d, r)
       integer, intent(in) :: d
       complex(default), dimension(:,:), intent(in) :: r
@@ -306,35 +306,35 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_4"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Raw I/O"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_io (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_io (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_io (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_io (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_io (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_4"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_4"
+
   contains
-    
+
     subroutine bloch_io (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol
@@ -365,35 +365,35 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_5"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Massless states: equipartition"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_massless_unpol (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_massless_unpol (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_massless_unpol (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_massless_unpol (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_massless_unpol (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_5"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_5"
+
   contains
-    
+
     subroutine bloch_massless_unpol (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol
@@ -432,36 +432,36 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_6"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization (pure polarized massless, arbitrary):"
     write (u, "(A)")  "*   input matrix, transform, display norm, transform back"
 
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_massless (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_massless (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_massless (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_massless (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_massless (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_6"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_6"
+
   contains
-    
+
     subroutine bloch_massless (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol
@@ -500,7 +500,7 @@ contains
          end do
       end do
     end subroutine init_matrix
-    
+
     subroutine write_matrix (d, r)
       integer, intent(in) :: d
       complex(default), dimension(:,:), intent(in) :: r
@@ -522,8 +522,8 @@ contains
     write (u, "(A)")  "* Test output: bloch_vectors_7"
     write (u, "(A)")  "*   Purpose: test Bloch-vector &
          &polarization implementation"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization &
          &(pure polarized massless, arbitrary Bloch vector):"
     write (u, "(A)")  "*   input vector, transform, display norm, &
@@ -532,28 +532,28 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* s = 0"
     call bloch_massless_vector (SCALAR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1/2"
     call bloch_massless_vector (SPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 1"
     call bloch_massless_vector (VECTOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 3/2"
     call bloch_massless_vector (VECTORSPINOR)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* s = 2"
     call bloch_massless_vector (TENSOR)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: bloch_vectors_7"    
-      
+    write (u, "(A)")  "* Test output end: bloch_vectors_7"
+
   contains
-    
+
     subroutine bloch_massless_vector (s)
       integer, intent(in) :: s
       type(bloch_vector_t) :: pol

@@ -1,0 +1,176 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+openmp_num_threads = 1
+$loop_me_method = "dummy"
+?use_vamp_equivalences = false
+sqrts =  2.50000E+02
+seed = 0
+| Process library 'real_partition_1_lib': recorded process 'nlo_1_p1'
+| Integrate: current process library needs compilation
+| Process library 'real_partition_1_lib': compiling ...
+| Process library 'real_partition_1_lib': writing makefile
+| Process library 'real_partition_1_lib': removing old files
+| Process library 'real_partition_1_lib': writing driver
+| Process library 'real_partition_1_lib': creating source code
+| Process library 'real_partition_1_lib': compiling sources
+| Process library 'real_partition_1_lib': linking
+| Process library 'real_partition_1_lib': loading
+| Process library 'real_partition_1_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process nlo_1_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 2.500000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_1_p1_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_1_p1_i3.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'nlo_1_p1'
+|   Library name  = 'real_partition_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'nlo_1_p1_i1':   e-, e+ => u, ubar [inactive]
+|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
+|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [Virtual]
+|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Using user-defined general scale.
+| Starting integration for process 'nlo_1_p1' part 'Real'
+| Integrate: iterations = 2:5000
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 5000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       5000     2.262E+02   4.98E+00    2.20    1.56     2.0
+   2       5000     2.336E+02   3.44E+00    1.47    1.04     2.0
+|-----------------------------------------------------------------------------|
+   2      10000     2.312E+02   2.83E+00    1.22    1.22     2.0    1.50   2
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     2.312E+02   2.83E+00    1.22    0.00     2.0
+|=============================================================================|
+seed = 1
+?nlo_use_real_partition = true
+real_partition_scale =  5.00000E+01
+| Process library 'real_partition_1_lib': unloading
+| Process library 'real_partition_1_lib': open
+| Process library 'real_partition_1_lib': recorded process 'nlo_1_p2'
+| Integrate: current process library needs compilation
+| Process library 'real_partition_1_lib': compiling ...
+| Process library 'real_partition_1_lib': writing makefile
+| Process library 'real_partition_1_lib': removing old files
+| Process library 'real_partition_1_lib': writing driver
+| Process library 'real_partition_1_lib': creating source code
+| Process library 'real_partition_1_lib': compiling sources
+| Process library 'real_partition_1_lib': linking
+| Process library 'real_partition_1_lib': loading
+| Process library 'real_partition_1_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process nlo_1_p2:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 2.500000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_1_p2_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_1_p2_i3.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_1_p2_i5.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'nlo_1_p2'
+|   Library name  = 'real_partition_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'nlo_1_p2_i1':   e-, e+ => u, ubar [inactive]
+|     2: 'nlo_1_p2_i2':   e-, e+ => u, ubar, gl [omega], [Real]
+|     3: 'nlo_1_p2_i3':   e-, e+ => u, ubar [inactive], [Virtual]
+|     4: 'nlo_1_p2_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+|     5: 'nlo_1_p2_i5':   e-, e+ => u, ubar, gl [omega], [Real]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 4 channels, 5 dimensions
+| Phase space: found 4 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Using user-defined general scale.
+| Starting integration for process 'nlo_1_p2' part 'Real'
+| Integrate: iterations = 2:5000
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 5000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       5000    -6.258E+02   2.52E+01    4.03    2.85     3.8
+   2       5000    -5.796E+02   2.32E+01    4.00    2.83     3.6
+|-----------------------------------------------------------------------------|
+   2      10000    -6.007E+02   1.70E+01    2.84    2.84     3.6    1.82   2
+|=============================================================================|
+| Starting integration for process 'nlo_1_p2' part 'Real'
+| Integrate: iterations = 2:5000
+| Integrator: 2 chains, 4 channels, 5 dimensions
+| Integrator: 5000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       5000     8.091E+02   4.35E+01    5.38    3.81     3.0
+   2       5000     8.627E+02   4.50E+01    5.22    3.69     2.9
+|-----------------------------------------------------------------------------|
+   2      10000     8.350E+02   3.13E+01    3.75    3.75     2.9    0.73   2
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     2.343E+02   3.56E+01   15.22    0.00     0.8
+|=============================================================================|
+| There were no errors and    2 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

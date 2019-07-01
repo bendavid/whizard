@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module event_base
-  
+
   use system_defs, only: LF
   use kinds, only: default
   use kinds, only: i64
@@ -120,13 +120,18 @@ module event_base
      procedure (generic_event_write), deferred :: write
      procedure (generic_event_generate), deferred :: generate
      procedure (generic_event_set_hard_particle_set), deferred :: &
-          set_hard_particle_set 
+          set_hard_particle_set
      procedure (generic_event_handler), deferred :: evaluate_expressions
      procedure (generic_event_select), deferred :: select
      procedure (generic_event_get_model_ptr), deferred :: get_model_ptr
      procedure (generic_event_get_index), deferred :: get_index
      procedure (generic_event_get_fac_scale), deferred :: get_fac_scale
      procedure (generic_event_get_alpha_s), deferred :: get_alpha_s
+     procedure (generic_event_get_sqrts), deferred :: get_sqrts
+     procedure (generic_event_get_polarization), deferred :: get_polarization
+     procedure (generic_event_get_beam_file), deferred :: get_beam_file
+     procedure (generic_event_get_process_name), deferred :: &
+          get_process_name
      procedure (generic_event_set_alpha_qcd_forced), deferred :: &
           set_alpha_qcd_forced
      procedure (generic_event_set_scale_forced), deferred :: &
@@ -135,21 +140,21 @@ module event_base
      procedure :: base_reset => generic_event_reset
      procedure :: pacify_particle_set => generic_event_pacify_particle_set
   end type generic_event_t
-  
+
   type, abstract :: event_callback_t
      private
    contains
      procedure(event_callback_write), deferred :: write
      procedure(event_callback_proc), deferred :: proc
   end type event_callback_t
-  
+
   type, extends (event_callback_t) :: event_callback_nop_t
      private
    contains
      procedure :: write => event_callback_nop_write
      procedure :: proc => event_callback_nop
   end type event_callback_nop_t
-  
+
 
   abstract interface
      subroutine generic_event_write (object, unit, &
@@ -175,7 +180,7 @@ module event_base
        integer, intent(in), optional :: i_nlo
      end subroutine generic_event_generate
   end interface
-     
+
   abstract interface
      subroutine generic_event_set_hard_particle_set (event, particle_set)
        import
@@ -190,7 +195,7 @@ module event_base
        class(generic_event_t), intent(inout) :: event
      end subroutine generic_event_handler
   end interface
-  
+
   abstract interface
      subroutine generic_event_select (event,  i_mci, i_term, channel)
        import
@@ -198,7 +203,7 @@ module event_base
        integer, intent(in) :: i_mci, i_term, channel
      end subroutine generic_event_select
   end interface
-  
+
   abstract interface
      function generic_event_get_model_ptr (event) result (model)
        import
@@ -206,7 +211,7 @@ module event_base
        class(model_data_t), pointer :: model
      end function generic_event_get_model_ptr
   end interface
-  
+
   abstract interface
      function generic_event_get_index (event) result (index)
        import
@@ -214,7 +219,7 @@ module event_base
        integer :: index
      end function generic_event_get_index
   end interface
-    
+
   abstract interface
      function generic_event_get_fac_scale (event) result (fac_scale)
        import
@@ -222,13 +227,45 @@ module event_base
        real(default) :: fac_scale
      end function generic_event_get_fac_scale
   end interface
-    
+
   abstract interface
      function generic_event_get_alpha_s (event) result (alpha_s)
        import
        class(generic_event_t), intent(in) :: event
        real(default) :: alpha_s
      end function generic_event_get_alpha_s
+  end interface
+
+  abstract interface
+     function generic_event_get_sqrts (event) result (sqrts)
+       import
+       class(generic_event_t), intent(in) :: event
+       real(default) :: sqrts
+     end function generic_event_get_sqrts
+  end interface
+
+  abstract interface
+     function generic_event_get_polarization (event) result (pol)
+       import
+       class(generic_event_t), intent(in) :: event
+       real(default), dimension(2) :: pol
+     end function generic_event_get_polarization
+  end interface
+
+  abstract interface
+     function generic_event_get_beam_file (event) result (file)
+       import
+       class(generic_event_t), intent(in) :: event
+       type(string_t) :: file
+     end function generic_event_get_beam_file
+  end interface
+
+  abstract interface
+     function generic_event_get_process_name (event) result (name)
+       import
+       class(generic_event_t), intent(in) :: event
+       type(string_t) :: name
+     end function generic_event_get_process_name
   end interface
 
   abstract interface
@@ -254,7 +291,7 @@ module event_base
        integer, intent(in), optional :: unit
      end subroutine event_callback_write
   end interface
-  
+
   abstract interface
      subroutine event_callback_proc (event_callback, i, event)
        import
@@ -263,10 +300,10 @@ module event_base
        class(generic_event_t), intent(in) :: event
      end subroutine event_callback_proc
   end interface
-  
+
 
 contains
-  
+
   subroutine generic_event_init (event, n_alt)
     class(generic_event_t), intent(out) :: event
     integer, intent(in) :: n_alt
@@ -274,29 +311,29 @@ contains
     allocate (event%sqme_alt (n_alt))
     allocate (event%weight_alt (n_alt))
   end subroutine generic_event_init
-  
+
   function generic_event_has_valid_particle_set (event) result (flag)
     class(generic_event_t), intent(in) :: event
     logical :: flag
     flag = event%particle_set_is_valid
   end function generic_event_has_valid_particle_set
-  
+
   subroutine generic_event_accept_particle_set (event)
     class(generic_event_t), intent(inout) :: event
     event%particle_set_is_valid = .true.
   end subroutine generic_event_accept_particle_set
-  
+
   subroutine generic_event_discard_particle_set (event)
     class(generic_event_t), intent(inout) :: event
     event%particle_set_is_valid = .false.
   end subroutine generic_event_discard_particle_set
-  
+
   function generic_event_get_particle_set_ptr (event) result (ptr)
     class(generic_event_t), intent(in) :: event
     type(particle_set_t), pointer :: ptr
     ptr => event%particle_set
   end function generic_event_get_particle_set_ptr
-  
+
   subroutine generic_event_link_particle_set (event, particle_set)
     class(generic_event_t), intent(inout) :: event
     type(particle_set_t), intent(in), target :: particle_set
@@ -351,7 +388,7 @@ contains
     integer :: n
     n = event%n_alt
   end function generic_event_get_n_alt
-  
+
   function generic_event_get_sqme_prc (event) result (sqme)
     class(generic_event_t), intent(in) :: event
     real(default) :: sqme
@@ -499,7 +536,7 @@ contains
     end if
     if (present (sqme_ref)) then
        call event%set_sqme_ref (sqme_ref)
-    end if 
+    end if
     if (present (sqme_alt)) then
        call event%set_sqme_alt (sqme_alt)
     end if
@@ -516,7 +553,7 @@ contains
        call event%set_excess_prc (excess_prc)
     end if
   end subroutine generic_event_set
-  
+
   subroutine generic_event_reset (event)
     class(generic_event_t), intent(inout) :: event
     call event%discard_particle_set ()
@@ -528,7 +565,7 @@ contains
     event%weight_alt_known = .false.
     event%excess_prc_known = .false.
   end subroutine generic_event_reset
-  
+
   subroutine generic_event_pacify_particle_set (event)
     class(generic_event_t), intent(inout) :: event
     if (event%has_valid_particle_set ())  call pacify (event%particle_set)
@@ -558,7 +595,7 @@ contains
             // char (string) // "'")
     end select
   end function event_normalization_mode
-  
+
   function event_normalization_string (norm_mode) result (string)
     integer, intent(in) :: norm_mode
     type(string_t) :: string
@@ -571,7 +608,7 @@ contains
     case default;          string = "???"
     end select
   end function event_normalization_string
-  
+
   subroutine event_normalization_update (weight, sigma, n, mode_new, mode_old)
     real(default), intent(inout) :: weight
     real(default), intent(in) :: sigma
@@ -598,7 +635,7 @@ contains
       end select
     end function factor
   end subroutine event_normalization_update
-  
+
   subroutine event_callback_nop_write (event_callback, unit)
     class(event_callback_nop_t), intent(in) :: event_callback
     integer, intent(in), optional :: unit
@@ -606,12 +643,12 @@ contains
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "NOP"
   end subroutine event_callback_nop_write
-  
+
   subroutine event_callback_nop (event_callback, i, event)
     class(event_callback_nop_t), intent(in) :: event_callback
     integer(i64), intent(in) :: i
     class(generic_event_t), intent(in) :: event
   end subroutine event_callback_nop
-  
+
 
 end module event_base

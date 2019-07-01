@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -53,7 +53,7 @@ module evt_nlo
 
   use phs_fks, only: phs_fks_t, phs_fks_generator_t
   use phs_fks, only: phs_identifier_t, phs_point_set_t
-  use cascades, only: resonance_contributors_t
+  use resonances, only: resonance_contributors_t
   use fks_regions, only: region_data_t
 
   implicit none
@@ -74,7 +74,6 @@ module evt_nlo
      type(phs_point_set_t) :: p_real_lab
      type(resonance_contributors_t), dimension(:), allocatable :: contributors
      type(phs_identifier_t), dimension(:), allocatable :: phs_identifiers
-     integer, dimension(:), allocatable :: i_evaluation_to_i_phs
      integer, dimension(:), allocatable :: alr_to_i_con
      integer :: n_phs = 0
   end type nlo_event_deps_t
@@ -89,23 +88,22 @@ module evt_nlo
     type(nlo_event_deps_t) :: event_deps
     integer :: mode = EVT_NLO_UNDEFINED
     integer, dimension(:), allocatable :: &
-       i_evaluation_to_i_phs, i_evaluation_to_i_flv, i_evaluation_to_emitter, &
+       i_evaluation_to_i_phs, i_evaluation_to_emitter, &
        i_evaluation_to_i_term
     logical :: keep_failed_events = .false.
+    integer :: selected_i_flv = 0
   contains
     procedure :: write_name => evt_nlo_write_name
     procedure :: write => evt_nlo_write
     procedure :: connect => evt_nlo_connect
     procedure :: set_i_evaluation_mappings => evt_nlo_set_i_evaluation_mappings
     procedure :: get_i_phs => evt_nlo_get_i_phs
-    procedure :: get_i_flv => evt_nlo_get_i_flv
     procedure :: get_emitter => evt_nlo_get_emitter
-    procedure :: prepare_new_event => evt_nlo_prepare_new_event
+    procedure :: get_i_term => evt_nlo_get_i_term
     procedure :: copy_previous_particle_set => evt_nlo_copy_previous_particle_set
     procedure :: generate_weighted => evt_nlo_generate_weighted
     procedure :: reset_phs_identifiers => evt_nlo_reset_phs_identifiers
     procedure :: make_particle_set => evt_nlo_make_particle_set
-    procedure :: build_radiated_particle_set => evt_nlo_build_radiated_particle_set
     procedure :: keep_and_boost_born_particle_set => &
          evt_nlo_keep_and_boost_born_particle_set
     procedure :: evaluate_real_kinematics => evt_nlo_evaluate_real_kinematics
@@ -117,6 +115,7 @@ module evt_nlo
     procedure :: setup_real_event_kinematics => evt_nlo_setup_real_event_kinematics
     procedure :: set_mode => evt_nlo_set_mode
     procedure :: is_valid_event => evt_nlo_is_valid_event
+    procedure :: prepare_new_event => evt_nlo_prepare_new_event
   end type evt_nlo_t
 
 
@@ -164,43 +163,38 @@ contains
     class(evt_nlo_t), intent(inout) :: evt
     type(region_data_t), intent(in) :: reg_data
     integer, intent(in), dimension(:) :: alr_to_i_phs
-    integer :: n_flv, n_phs, alr
-    integer :: i_evaluation, i_phs, i_flv, emitter
+    integer :: n_phs, alr
+    integer :: i_evaluation, i_phs, emitter
     logical :: checked
     type :: registered_triple_t
-      integer, dimension(3) :: phs_flv_em
+      integer, dimension(2) :: phs_em
       type(registered_triple_t), pointer :: next => null ()
     end type registered_triple_t
     type(registered_triple_t), allocatable, target :: check_list
     i_evaluation = 1
-    n_phs = reg_data%n_phs; n_flv = reg_data%n_flv_real
-    evt%weight_multiplier = n_phs * n_flv + 1
-    allocate (evt%i_evaluation_to_i_phs (n_phs * n_flv), source = 0)
-    allocate (evt%i_evaluation_to_i_flv (n_phs * n_flv), source = 0)
-    allocate (evt%i_evaluation_to_emitter (n_phs * n_flv), source = -1)
-    allocate (evt%i_evaluation_to_i_term (0 : n_phs * n_flv), source = 0)
+    n_phs = reg_data%n_phs
+    evt%weight_multiplier = n_phs + 1
+    allocate (evt%i_evaluation_to_i_phs (n_phs), source = 0)
+    allocate (evt%i_evaluation_to_emitter (n_phs), source = -1)
+    allocate (evt%i_evaluation_to_i_term (0 : n_phs), source = 0)
     do alr = 1, reg_data%n_regions
        i_phs = alr_to_i_phs (alr)
-       i_flv = reg_data%regions(alr)%real_index
        emitter = reg_data%regions(alr)%emitter
        call search_check_list (checked)
        if (.not. checked) then
           evt%i_evaluation_to_i_phs (i_evaluation) = i_phs
-          evt%i_evaluation_to_i_flv (i_evaluation) = i_flv
           evt%i_evaluation_to_emitter (i_evaluation) = emitter
           i_evaluation = i_evaluation + 1
        end if
     end do
     call fill_i_evaluation_to_i_term ()
     if (.not. (all (evt%i_evaluation_to_i_phs > 0) &
-       .and. all (evt%i_evaluation_to_i_flv > 0) &
        .and. all (evt%i_evaluation_to_emitter > -1))) then
        call msg_fatal ("evt_nlo: Inconsistent mappings!")
     else
        if (debug2_active (D_TRANSFORMS)) then
           print *, 'evt_nlo Mappings, i_evaluation -> '
           print *, 'i_phs: ', evt%i_evaluation_to_i_phs
-          print *, 'i_flv: ', evt%i_evaluation_to_i_flv
           print *, 'emitter: ', evt%i_evaluation_to_emitter
        end if
     end if
@@ -227,13 +221,13 @@ contains
       if (allocated (check_list)) then
          current_triple => check_list
          do
-            if (all (current_triple%phs_flv_em == [i_phs, i_flv, emitter])) then
+            if (all (current_triple%phs_em == [i_phs, emitter])) then
                found = .true.
                exit
             end if
             if (.not. associated (current_triple%next)) then
                allocate (current_triple%next)
-               current_triple%next%phs_flv_em = [i_phs, i_flv, emitter]
+               current_triple%next%phs_em = [i_phs, emitter]
                found = .false.
                exit
             else
@@ -242,7 +236,7 @@ contains
          end do
       else
          allocate (check_list)
-         check_list%phs_flv_em = [i_phs, i_flv, emitter]
+         check_list%phs_em = [i_phs, emitter]
          found = .false.
       end if
     end subroutine search_check_list
@@ -254,22 +248,21 @@ contains
     i_phs = evt%i_evaluation_to_i_phs (evt%i_evaluation)
   end function evt_nlo_get_i_phs
 
-  function evt_nlo_get_i_flv (evt) result (i_flv)
-    integer :: i_flv
-    class(evt_nlo_t), intent(in) :: evt
-    i_flv = evt%i_evaluation_to_i_flv (evt%i_evaluation)
-  end function evt_nlo_get_i_flv
-
   function evt_nlo_get_emitter (evt) result (emitter)
     integer :: emitter
     class(evt_nlo_t), intent(in) :: evt
     emitter = evt%i_evaluation_to_emitter (evt%i_evaluation)
   end function evt_nlo_get_emitter
 
-  subroutine evt_nlo_prepare_new_event (evt, i_mci, i_term)
-    class(evt_nlo_t), intent(inout) :: evt
-    integer, intent(in) :: i_mci, i_term
-  end subroutine evt_nlo_prepare_new_event
+  function evt_nlo_get_i_term (evt) result (i_term)
+    integer :: i_term
+    class(evt_nlo_t), intent(in) :: evt
+    if (evt%mode >= EVT_NLO_SEPARATE_REAL) then
+       i_term = evt%i_evaluation_to_i_term (evt%i_evaluation)
+    else
+       i_term = evt%process_instance%get_first_active_i_term ()
+    end if
+  end function evt_nlo_get_i_term
 
   subroutine evt_nlo_copy_previous_particle_set (evt)
     class(evt_nlo_t), intent(inout) :: evt
@@ -348,52 +341,24 @@ contains
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
-    evt%particle_set_exists = .true.
-  end subroutine evt_nlo_make_particle_set
-
-  subroutine evt_nlo_build_radiated_particle_set (evt, i_event)
-    class(evt_nlo_t), intent(inout) :: evt
-    integer, intent(in) :: i_event
-    integer :: emitter
-    type(vector4_t), dimension(:), allocatable :: p_new
-    integer, dimension(:), allocatable :: flv_radiated
-    real(default) :: r_col
-    integer :: i_phs, i_flv
-    call msg_debug (D_TRANSFORMS, "evt_nlo_build_radiated_particle_set")
-    call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
-    evt%particle_set_radiated(i_event) = evt%particle_set
-    select type (pcm => evt%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       select type (config => pcm%config)
+    if (evt%mode >= EVT_NLO_SEPARATE_BORNLIKE) then
+       select type (config => evt%process_instance%pcm%config)
        type is (pcm_nlo_t)
-             i_flv = evt%get_i_flv ()
-             allocate (flv_radiated (size (config%region_data%get_flv_states_real (i_flv))))
-             flv_radiated = config%region_data%get_flv_states_real (i_flv)
-             call evt%rng%generate (r_col)
-             call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
-             if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
-             i_phs = evt%get_i_phs()
-             emitter = evt%get_emitter ()
-             if (emitter == 0) emitter = choose_in_or_out ()
-             call msg_debug (D_TRANSFORMS, "emitter", emitter)
-             allocate (p_new (size (pcm%get_momenta (i_phs = i_phs, born_phsp = .false.))))
-             p_new = pcm%get_momenta (i_phs = i_phs, born_phsp = .false.)
-             call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
-                evt%process_instance%process%get_model_ptr (), r_col)
+          if (evt%i_evaluation > 0) then
+             call make_factorized_particle_set (evt, factorization_mode, &
+                  keep_correlations, r, evt%get_i_term (), &
+                  config%qn_real(:, evt%selected_i_flv))
+          else
+             call make_factorized_particle_set (evt, factorization_mode, &
+                  keep_correlations, r, evt%get_i_term (), &
+                  config%qn_born(:, evt%selected_i_flv))
+          end if
        end select
-    end select
-  contains
-    function choose_in_or_out () result (em)
-      integer :: em
-      real(default) :: r
-      call evt%rng%generate (r)
-      if (r > 0.5_default) then
-         em = 2
-      else
-         em = 1
-      end if
-    end function choose_in_or_out
-  end subroutine evt_nlo_build_radiated_particle_set
+    else
+       call make_factorized_particle_set (evt, factorization_mode, &
+            keep_correlations, r)
+    end if
+  end subroutine evt_nlo_make_particle_set
 
   subroutine evt_nlo_keep_and_boost_born_particle_set (evt, i_event)
     class(evt_nlo_t), intent(inout) :: evt
@@ -416,55 +381,58 @@ contains
     integer :: alr, i_phs, i_con, emitter
     real(default), dimension(3) :: x_rad
     logical :: use_contributors
+    integer :: i_term
 
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        x_rad = pcm%real_kinematics%x_rad
        associate (event_deps => evt%event_deps)
+          i_term = evt%get_i_term ()
           event_deps%p_born_lab%phs_point(1) = &
-             evt%particle_set%get_in_and_out_momenta ()
+               evt%process_instance%term(i_term)%connected%matrix%get_momenta ()
           event_deps%p_born_cms%phs_point(1) &
-             = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1))
+               = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1))
           call evt%phs_fks_generator%set_sqrts_hat &
-             (event_deps%p_born_cms%get_energy (1, 1))
+               (event_deps%p_born_cms%get_energy (1, 1))
           use_contributors = allocated (event_deps%contributors)
-          do alr = 1, size (event_deps%i_evaluation_to_i_phs)
-             i_phs = event_deps%i_evaluation_to_i_phs(alr)
+          do alr = 1, pcm%get_n_regions ()
+             i_phs = pcm%real_kinematics%alr_to_i_phs(alr)
              if (event_deps%phs_identifiers(i_phs)%evaluated) cycle
              emitter = event_deps%phs_identifiers(i_phs)%emitter
              associate (generator => evt%phs_fks_generator)
+                !!! TODO: (cw-2016-12-30): Replace by n_in
                 if (emitter <= 2) then
                    call generator%prepare_generation (x_rad, i_phs, emitter, &
-                      event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
+                        event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                    call generator%generate_isr (i_phs, &
-                      event_deps%p_born_lab%phs_point(1)%p, &
-                      event_deps%p_real_lab%phs_point(i_phs))
+                        event_deps%p_born_lab%phs_point(1)%p, &
+                        event_deps%p_real_lab%phs_point(i_phs))
                    event_deps%p_real_cms%phs_point(i_phs) &
-                      = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
+                        = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
                 else
                    if (use_contributors) then
                       i_con = event_deps%alr_to_i_con(alr)
                       call generator%prepare_generation (x_rad, i_phs, emitter, &
-                         event_deps%p_born_cms%phs_point(1)%p, &
-                         event_deps%phs_identifiers, event_deps%contributors, i_con)
+                           event_deps%p_born_cms%phs_point(1)%p, &
+                           event_deps%phs_identifiers, event_deps%contributors, i_con)
                       call generator%generate_fsr (emitter, i_phs, i_con, &
-                         event_deps%p_born_cms%phs_point(1)%p, &
-                         event_deps%p_real_cms%phs_point(i_phs))
+                           event_deps%p_born_cms%phs_point(1)%p, &
+                           event_deps%p_real_cms%phs_point(i_phs))
                    else
                       call generator%prepare_generation (x_rad, i_phs, emitter, &
-                         event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
+                           event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                       call generator%generate_fsr (emitter, i_phs, &
-                         event_deps%p_born_cms%phs_point(1)%p, &
-                         event_deps%p_real_cms%phs_point(i_phs))
+                           event_deps%p_born_cms%phs_point(1)%p, &
+                           event_deps%p_real_cms%phs_point(i_phs))
                    end if
                    event_deps%p_real_lab%phs_point(i_phs) &
                         = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
                 end if
              end associate
              call pcm%set_momenta (event_deps%p_born_lab%phs_point(1)%p, &
-                event_deps%p_real_lab%phs_point(i_phs)%p, i_phs)
+                  event_deps%p_real_lab%phs_point(i_phs)%p, i_phs)
              call pcm%set_momenta (event_deps%p_born_cms%phs_point(1)%p, &
-                event_deps%p_real_cms%phs_point(i_phs)%p, i_phs, cms = .true.)
+                  event_deps%p_real_cms%phs_point(i_phs)%p, i_phs, cms = .true.)
              event_deps%phs_identifiers(i_phs)%evaluated = .true.
           end do
        end associate
@@ -579,9 +547,6 @@ contains
        type is (pcm_instance_nlo_t)
           select type (config => pcm%config)
           type is (pcm_nlo_t)
-             allocate (event_deps%i_evaluation_to_i_phs &
-                (size (pcm%real_kinematics%alr_to_i_phs)))
-             event_deps%i_evaluation_to_i_phs = pcm%real_kinematics%alr_to_i_phs
              if (allocated (config%region_data%alr_contributors)) then
                 allocate (event_deps%contributors (size (config%region_data%alr_contributors)))
                 event_deps%contributors = config%region_data%alr_contributors
@@ -624,6 +589,42 @@ contains
     integer, intent(in) :: i_term
     valid = evt%process_instance%term(i_term)%passed
   end function evt_nlo_is_valid_event
+
+  subroutine evt_nlo_prepare_new_event (evt, i_mci, i_term)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+    real(default) :: s, x
+    real(default) :: sqme_total
+    real(default), dimension(:), allocatable :: sqme_flv
+    integer :: i
+    call evt%reset ()
+    if (evt%i_evaluation > 0) return
+    call evt%rng%generate (x)
+    sqme_total = zero
+    allocate (sqme_flv (evt%process_instance%term(1)%config%data%n_flv))
+    sqme_flv = zero
+    do i = 1, size (evt%process_instance%term)
+       associate (term => evt%process_instance%term(i))
+          sqme_total = sqme_total + real (sum ( &
+               term%connected%matrix%get_matrix_element ()))
+          sqme_flv = sqme_flv + real (term%connected%matrix%get_matrix_element ())
+       end associate
+    end do
+    !!! Need absolute values to take into account negative weights
+    x = x * abs (sqme_total)
+    s = zero
+    do i = 1, size (sqme_flv)
+       s = s + abs (sqme_flv (i))
+       if (s > x) then
+          evt%selected_i_flv = i
+          exit
+       end if
+    end do
+    if (debug2_active (D_TRANSFORMS)) then
+       call msg_print_color ("Selected i_flv: ", COL_GREEN)
+       print *, evt%selected_i_flv
+    end if
+  end subroutine evt_nlo_prepare_new_event
 
 
 end module evt_nlo

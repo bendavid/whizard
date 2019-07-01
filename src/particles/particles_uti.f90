@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -84,11 +84,11 @@ contains
     type(particle_set_t) :: particle_set3, particle_set4
     type(subevt_t) :: subevt
     logical :: ok
-    integer :: unit, iostat      
+    integer :: unit, iostat
 
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: test particle_set routines"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Reading model file"
 
@@ -174,11 +174,11 @@ contains
     call eval%receive_momenta ()
     call eval%evaluate ()
     call eval%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (complete, polarized)"
     write (u, "(A)")
-    
+
     int = eval%interaction_t
     call particle_set1%init &
          (ok, int, int, FM_FACTOR_HELICITY, &
@@ -188,7 +188,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (in/out only, selected helicity)"
     write (u, "(A)")
-    
+
     int = eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
@@ -198,19 +198,19 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
-    write (u, "(A)") 
-    
+    write (u, "(A)")
+
     int = eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
           [0.7_default, 0.7_default], .false., .true.)
-    call particle_set2%write (u)      
-        
+    call particle_set2%write (u)
+
     write (u, "(A)")
     write (u, "(A)")  &
          "* Factorize (complete, polarized, correlated); write and read again"
     write (u, "(A)")
-    
+
     int = eval%interaction_t
     call particle_set3%init &
          (ok, int, int, FM_FACTOR_HELICITY, &
@@ -224,7 +224,7 @@ contains
     call particle_set4%read_raw (unit, iostat=iostat)
     call particle_set4%set_model (model)
     close (unit)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Result from reading"
     write (u, "(A)")
@@ -234,13 +234,13 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Transform to a subevt object"
     write (u, "(A)")
-    
+
     call particle_set4%to_subevt (subevt)
     call subevt_write (subevt, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call particle_set1%final ()
     call particle_set2%final ()
     call particle_set3%final ()
@@ -250,10 +250,10 @@ contains
     call int2%final ()
 
     call model%final ()
-       
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_1"        
-    
+    write (u, "(A)")  "* Test output end: particles_1"
+
   end subroutine particles_1
 
   subroutine particles_2 (u)
@@ -265,15 +265,15 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: i, j
-    
+
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: reconstruct simple interaction"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Set up a 2 -> 3 interaction"
     write (u, "(A)")  "    + incoming partons marked as virtual"
     write (u, "(A)")  "    + no quantum numbers"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call reset_interaction_counter ()
     call int%basic_init (0, 2, 3)
@@ -289,21 +289,21 @@ contains
 
     call int%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually set up a flavor-content record"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call state_flv%init (1, &
          mask = [.false., .false., .true., .true., .true.])
     call state_flv%set_entry (1, &
          pdg = [11, 12, 3, 4, 5], &
          map = [1, 2, 3, 4, 5])
-    
+
     call state_flv%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually create a matching particle set"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     pset%n_beam = 0
     pset%n_in   = 2
@@ -333,7 +333,7 @@ contains
 
     call pset%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
@@ -345,12 +345,12 @@ contains
 
     call int%final ()
     call pset%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_2"
 
   end subroutine particles_2
-  
+
   subroutine particles_3 (u)
 
     integer, intent(in) :: u
@@ -359,14 +359,14 @@ contains
     type(particle_set_t) :: pset
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: i, j
-    
+
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: reconstruct simple interaction"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Set up a 2 -> 2 -> 3 interaction with radiation"
     write (u, "(A)")  "    + no quantum numbers"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call reset_interaction_counter ()
     call int%basic_init (0, 6, 3)
@@ -386,9 +386,9 @@ contains
 
     call int%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually set up a flavor-content record"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call state_flv%init (1, &
          mask = [.false., .false., .false., .false., .false., .false., &
@@ -396,18 +396,18 @@ contains
     call state_flv%set_entry (1, &
          pdg = [2011, 2012, 91, 11, 92, 12, 3, 4, 5], &
          map = [1, 2, 3, 4, 5, 6, 7, 8, 9])
-    
+
     call state_flv%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually create a matching particle set"
     write (u, "(A)")
 
     call create_test_particle_set_1 (pset)
 
     call pset%write (u)
- 
-    write (u, "(A)")      
+
+    write (u, "(A)")
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
@@ -419,12 +419,12 @@ contains
 
     call int%final ()
     call pset%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_3"
 
   end subroutine particles_3
-  
+
   subroutine particles_4 (u)
 
     integer, intent(in) :: u
@@ -435,15 +435,15 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: i, j
-    
+
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: reconstruct beams"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call reset_interaction_counter ()
 
     write (u, "(A)")  "* Set up an interaction that contains beams only"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call int_beams%basic_init (0, 0, 2)
     call int_beams%set_momentum (vector4_at_rest (1._default), 1)
@@ -451,13 +451,13 @@ contains
     allocate (qn (2))
     call int_beams%add_state (qn)
     call int_beams%freeze ()
-    
+
     call int_beams%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Set up a 2 -> 2 -> 3 interaction with radiation"
     write (u, "(A)")  "    + no quantum numbers"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call int%basic_init (0, 6, 3)
     call int%relate (1, 3)
@@ -480,9 +480,9 @@ contains
 
     call int%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually set up a flavor-content record"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call state_flv%init (1, &
          mask = [.false., .false., .false., .false., .false., .false., &
@@ -490,12 +490,12 @@ contains
     call state_flv%set_entry (1, &
          pdg = [2011, 2012, 91, 11, 92, 12, 3, 4, 5], &
          map = [1, 2, 3, 4, 5, 6, 7, 8, 9])
-    
+
     call state_flv%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually create a matching particle set"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     pset%n_beam = 0
     pset%n_in   = 2
@@ -530,8 +530,8 @@ contains
     end do
 
     call pset%write (u)
- 
-    write (u, "(A)")      
+
+    write (u, "(A)")
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
@@ -544,12 +544,12 @@ contains
 
     call int%final ()
     call pset%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_4"
 
   end subroutine particles_4
-  
+
   subroutine particles_5 (u)
 
     integer, intent(in) :: u
@@ -559,14 +559,14 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: i, j
-    
+
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: reconstruct event with duplicate entries"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Set up a 2 -> 2 -> 3 interaction with radiation"
     write (u, "(A)")  "    + no quantum numbers"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call reset_interaction_counter ()
     call int%basic_init (0, 6, 3)
@@ -586,9 +586,9 @@ contains
 
     call int%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually set up a flavor-content record"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call state_flv%init (1, &
          mask = [.false., .false., .false., .false., .false., .false., &
@@ -596,12 +596,12 @@ contains
     call state_flv%set_entry (1, &
          pdg = [2011, 2012, 91, 11, 92, 12, 3, 4, 5], &
          map = [1, 2, 3, 4, 5, 6, 7, 8, 9])
-    
+
     call state_flv%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually create a matching particle set"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     pset%n_beam = 2
     pset%n_in   = 2
@@ -666,8 +666,8 @@ contains
     end do
 
     call pset%write (u)
- 
-    write (u, "(A)")      
+
+    write (u, "(A)")
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
@@ -679,12 +679,12 @@ contains
 
     call int%final ()
     call pset%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_5"
 
   end subroutine particles_5
-  
+
   subroutine particles_6 (u)
 
     integer, intent(in) :: u
@@ -694,14 +694,14 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: i, j
-    
+
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: reconstruct interaction with pair spectrum"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Set up a 2 -> 2 -> 3 interaction with radiation"
     write (u, "(A)")  "    + no quantum numbers"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call reset_interaction_counter ()
     call int%basic_init (0, 6, 3)
@@ -722,9 +722,9 @@ contains
 
     call int%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually set up a flavor-content record"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call state_flv%init (1, &
          mask = [.false., .false., .false., .false., .false., .false., &
@@ -732,12 +732,12 @@ contains
     call state_flv%set_entry (1, &
          pdg = [1011, 1012, 21, 22, 11, 12, 3, 4, 5], &
          map = [1, 2, 3, 4, 5, 6, 7, 8, 9])
-    
+
     call state_flv%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually create a matching particle set"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     pset%n_beam = 2
     pset%n_in   = 2
@@ -786,8 +786,8 @@ contains
     end do
 
     call pset%write (u)
- 
-    write (u, "(A)")      
+
+    write (u, "(A)")
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
@@ -799,12 +799,12 @@ contains
 
     call int%final ()
     call pset%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_6"
 
   end subroutine particles_6
-  
+
   subroutine particles_7 (u)
 
     integer, intent(in) :: u
@@ -814,14 +814,14 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: i, j
-    
+
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: reconstruct decay interaction with reordering"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     write (u, "(A)")  "* Set up a 1 -> 3 interaction"
     write (u, "(A)")  "    + no quantum numbers"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call reset_interaction_counter ()
     call int%basic_init (0, 1, 3)
@@ -835,22 +835,22 @@ contains
 
     call int%basic_write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually set up a flavor-content record"
     write (u, "(A)")  "*   assumed interaction: 6 12 5 -11"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     call state_flv%init (1, &
          mask = [.false., .true., .true., .true.])
     call state_flv%set_entry (1, &
          pdg = [6, 5, -11, 12], &
          map = [1, 4, 2, 3])
-    
+
     call state_flv%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "* Manually create a matching particle set"
-    write (u, "(A)")      
+    write (u, "(A)")
 
     pset%n_beam = 0
     pset%n_in   = 1
@@ -879,7 +879,7 @@ contains
 
     call pset%write (u)
 
-    write (u, "(A)")      
+    write (u, "(A)")
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
@@ -891,12 +891,12 @@ contains
 
     call int%final ()
     call pset%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_7"
 
   end subroutine particles_7
-  
+
   subroutine particles_8 (u)
     integer, intent(in) :: u
     type(particle_set_t) :: particle_set
@@ -963,8 +963,8 @@ contains
     integer, intent(in) :: u
     write (u, "(A)")  "* Test output: particles_9"
     write (u, "(A)")  "*   Purpose: Order into Lund strings, "
-    write (u, "(A)")  "*              uncolored beam remnants"    
-    write (u, "(A)")    
+    write (u, "(A)")  "*              uncolored beam remnants"
+    write (u, "(A)")
   end subroutine particles_9
 
 

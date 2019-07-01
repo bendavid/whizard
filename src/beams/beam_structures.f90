@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module beam_structures
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -54,7 +54,7 @@ module beam_structures
    contains
      procedure :: to_string => beam_structure_entry_to_string
   end type beam_structure_entry_t
-  
+
   type :: beam_structure_record_t
      type(beam_structure_entry_t), dimension(:), allocatable :: entry
   end type beam_structure_record_t
@@ -101,7 +101,7 @@ module beam_structures
      procedure :: get_momenta => beam_structure_get_momenta
      procedure :: check_against_n_in => beam_structure_check_against_n_in
   end type beam_structure_t
-  
+
 
   abstract interface
      function strfun_mode_fun (name) result (n)
@@ -110,10 +110,10 @@ module beam_structures
        integer :: n
      end function strfun_mode_fun
   end interface
-  
+
 
 contains
-  
+
   function beam_structure_entry_to_string (object) result (string)
     class(beam_structure_entry_t), intent(in) :: object
     type(string_t) :: string
@@ -130,7 +130,7 @@ contains
     if (allocated (object%record))  deallocate (object%record)
     object%n_beam = 0
   end subroutine beam_structure_final_sf
-  
+
   subroutine beam_structure_write (object, unit)
     class(beam_structure_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -160,7 +160,7 @@ contains
             ")")  "angle ph =", object%phi
     end if
   end subroutine beam_structure_write
-  
+
   function beam_structure_to_string (object, sf_only) result (string)
     class(beam_structure_t), intent(in) :: object
     logical, intent(in), optional :: sf_only
@@ -197,7 +197,7 @@ contains
        string = "[any particles]"
     end select
   end function beam_structure_to_string
-    
+
   subroutine beam_structure_init_sf (beam_structure, prt, dim_array)
     class(beam_structure_t), intent(inout) :: beam_structure
     type(string_t), dimension(:), intent(in) :: prt
@@ -216,7 +216,7 @@ contains
        allocate (beam_structure%record (0))
     end if
   end subroutine beam_structure_init_sf
-    
+
   subroutine beam_structure_set_sf (beam_structure, i, j, name)
     class(beam_structure_t), intent(inout) :: beam_structure
     integer, intent(in) :: i, j
@@ -302,13 +302,13 @@ contains
     end do
     call move_alloc (from = new, to = beam_structure%record)
   end subroutine beam_structure_expand
-    
+
   subroutine beam_structure_final_pol (beam_structure)
     class(beam_structure_t), intent(inout) :: beam_structure
     if (allocated (beam_structure%smatrix))  deallocate (beam_structure%smatrix)
     if (allocated (beam_structure%pol_f))  deallocate (beam_structure%pol_f)
   end subroutine beam_structure_final_pol
-    
+
   subroutine beam_structure_init_pol (beam_structure, n)
     class(beam_structure_t), intent(inout) :: beam_structure
     integer, intent(in) :: n
@@ -317,7 +317,7 @@ contains
     if (.not. allocated (beam_structure%pol_f)) &
          allocate (beam_structure%pol_f (n), source = 1._default)
   end subroutine beam_structure_init_pol
-    
+
   elemental function beam_structure_has_polarized_beams (beam_structure) result (pol)
     logical :: pol
     class(beam_structure_t), intent(in) :: beam_structure
@@ -334,14 +334,14 @@ contains
     type(smatrix_t), intent(in) :: smatrix
     beam_structure%smatrix(i) = smatrix
   end subroutine beam_structure_set_smatrix
-  
+
   subroutine beam_structure_init_smatrix (beam_structure, i, n_entry)
     class(beam_structure_t), intent(inout) :: beam_structure
     integer, intent(in) :: i
     integer, intent(in) :: n_entry
     call beam_structure%smatrix(i)%init (2, n_entry)
   end subroutine beam_structure_init_smatrix
-  
+
   subroutine beam_structure_set_sentry &
        (beam_structure, i, i_entry, index, value)
     class(beam_structure_t), intent(inout) :: beam_structure
@@ -351,14 +351,14 @@ contains
     complex(default), intent(in) :: value
     call beam_structure%smatrix(i)%set_entry (i_entry, index, value)
   end subroutine beam_structure_set_sentry
-  
+
   subroutine beam_structure_set_pol_f (beam_structure, f)
     class(beam_structure_t), intent(inout) :: beam_structure
     real(default), dimension(:), intent(in) :: f
     if (allocated (beam_structure%pol_f))  deallocate (beam_structure%pol_f)
     allocate (beam_structure%pol_f (size (f)), source = f)
   end subroutine beam_structure_set_pol_f
-    
+
   subroutine beam_structure_final_mom (beam_structure)
     class(beam_structure_t), intent(inout) :: beam_structure
     if (allocated (beam_structure%p))  deallocate (beam_structure%p)
@@ -372,21 +372,21 @@ contains
     if (allocated (beam_structure%p))  deallocate (beam_structure%p)
     allocate (beam_structure%p (size (p)), source = p)
   end subroutine beam_structure_set_momentum
-    
+
   subroutine beam_structure_set_theta (beam_structure, theta)
     class(beam_structure_t), intent(inout) :: beam_structure
     real(default), dimension(:), intent(in) :: theta
     if (allocated (beam_structure%theta))  deallocate (beam_structure%theta)
     allocate (beam_structure%theta (size (theta)), source = theta)
   end subroutine beam_structure_set_theta
-    
+
   subroutine beam_structure_set_phi (beam_structure, phi)
     class(beam_structure_t), intent(inout) :: beam_structure
     real(default), dimension(:), intent(in) :: phi
     if (allocated (beam_structure%phi))  deallocate (beam_structure%phi)
     allocate (beam_structure%phi (size (phi)), source = phi)
   end subroutine beam_structure_set_phi
-    
+
   function beam_structure_is_set (beam_structure) result (flag)
     class(beam_structure_t), intent(in) :: beam_structure
     logical :: flag
@@ -415,7 +415,7 @@ contains
        n = 0
     end if
   end function beam_structure_get_n_record
-  
+
   function beam_structure_get_i_entry (beam_structure, i) result (i_entry)
     class(beam_structure_t), intent(in) :: beam_structure
     integer, intent(in) :: i
@@ -441,7 +441,7 @@ contains
       end select
     end associate
   end function beam_structure_get_i_entry
-  
+
   function beam_structure_get_name (beam_structure, i) result (name)
     class(beam_structure_t), intent(in) :: beam_structure
     integer, intent(in) :: i
@@ -454,7 +454,7 @@ contains
       end if
     end associate
   end function beam_structure_get_name
-  
+
   function beam_structure_contains (beam_structure, name) result (flag)
     class(beam_structure_t), intent(in) :: beam_structure
     character(*), intent(in) :: name
@@ -476,21 +476,21 @@ contains
     logical :: flag
     flag = allocated (beam_structure%smatrix)
   end function beam_structure_polarized
-  
+
   function beam_structure_get_smatrix (beam_structure) result (smatrix)
     class(beam_structure_t), intent(in) :: beam_structure
     type(smatrix_t), dimension(:), allocatable :: smatrix
     allocate (smatrix (size (beam_structure%smatrix)), &
          source = beam_structure%smatrix)
   end function beam_structure_get_smatrix
-  
+
   function beam_structure_get_pol_f (beam_structure) result (pol_f)
     class(beam_structure_t), intent(in) :: beam_structure
     real(default), dimension(:), allocatable :: pol_f
     allocate (pol_f (size (beam_structure%pol_f)), &
          source = beam_structure%pol_f)
   end function beam_structure_get_pol_f
-  
+
   function beam_structure_asymmetric (beam_structure) result (flag)
     class(beam_structure_t), intent(in) :: beam_structure
     logical :: flag
@@ -498,7 +498,7 @@ contains
          .or. allocated (beam_structure%theta) &
          .or. allocated (beam_structure%phi)
   end function beam_structure_asymmetric
-  
+
   function beam_structure_get_momenta (beam_structure) result (p)
     class(beam_structure_t), intent(in) :: beam_structure
     type(vector3_t), dimension(:), allocatable :: p
@@ -539,7 +539,7 @@ contains
             &momentum/a p undefined")
     end if
   end function beam_structure_get_momenta
-    
+
   subroutine beam_structure_check_against_n_in (beam_structure, n_in, applies)
     class(beam_structure_t), intent(in) :: beam_structure
     integer, intent(in) :: n_in
@@ -560,6 +560,6 @@ contains
        applies = .false.
     end if
   end subroutine beam_structure_check_against_n_in
-    
+
 
 end module beam_structures

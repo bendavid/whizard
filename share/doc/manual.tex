@@ -197,6 +197,7 @@
 \newcommand{\FeynRules}{\texttt{FeynRules}}
 \newcommand{\gosam}{\texttt{Gosam}}
 \newcommand{\openloops}{\texttt{OpenLoops}}
+\newcommand{\recola}{\texttt{Recola}}
 %%%%%
 \newcommand{\sindarin}{\texttt{SINDARIN}}
 \newcommand{\fortran}{\texttt{Fortran}}
@@ -268,7 +269,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.4.0}
+\newcommand{\thisversion}{2.4.1}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -288,31 +289,29 @@ Parameter & Value & Default & Description \\
  This work is supported by Helmholtz-Alliance ``Physics at the
  Terascale''.   
  In former stages this work has also been supported by
- the Helmholtz-Gemeinschaft VH--NG--005}
+ the Helmholtz-Gemeinschaft VH--NG--005 \\
+ E-mail: \texttt{whizard@desy.de}
+ }
  \\[\baselineskip]
 }
-\def\authormail{\texttt{kilian@physik.uni-siegen.de}, 
-  \texttt{ohl@physik.uni-wuerzburg.de},
-  \texttt{juergen.reuter@desy.de}, \texttt{cnspeckn@googlemail.com}}
+% \def\authormail{\texttt{kilian@physik.uni-siegen.de}, 
+%   \texttt{ohl@physik.uni-wuerzburg.de},
+%   \texttt{juergen.reuter@desy.de}, \texttt{cnspeckn@googlemail.com}}
 \author{%
   Wolfgang Kilian,%
-    \thanks{e-mail: \texttt{kilian@hep.physik.uni-siegen.de}}
   Thorsten Ohl,%
-    \thanks{e-mail: \texttt{ohl@physik.uni-wuerzburg.de}}
   J\"urgen Reuter,%
-    \thanks{e-mail: \texttt{juergen.reuter@desy.de}}
   with contributions from 
   Fabian Bach, %
-    \thanks{e-mail: \texttt{fabian.bach@desy.de}}
   Bijan Chokouf\'{e} Nejad, %
-    \thanks{e-mail: \texttt{bijan.chokoufe@desy.de}}
+  Christian Fleper, %
+  Vincent Rothe, %
   Sebastian Schmidt, %
-  Christian Speckner
-    \thanks{e-mail: \texttt{cnspeckn@googlemail.com}},
-  Florian Staub
-     \thanks{e-mail: \texttt{fnstaub@th.physik.uni-bonn.de}},
-  Christian Weiss
-     \thanks{e-mail: \texttt{christian.weiss@desy.de}}}
+  Marco Sekulla, %
+  Christian Speckner, %
+  So Young Shim, %
+  Florian Staub, %
+  Christian Weiss}
 
 %BEGIN LATEX
 \address{%
@@ -647,11 +646,13 @@ of \whizard:
   SM dim 6 operators supported
   \\\hline
   2.3.0 & 07/2016 & NLO: resonance mappings for FKS subtraction; more
-  advanced cascade syntax; GUI ($\alpha$ version); UFO support
+  advanced cascade syntax; \\
+  & & GUI ($\alpha$ version); UFO support 
   ($\alpha$ version); ILC v1.9x-v2.x final validation \\
   2.3.1 & 08/2016 & Complex mass scheme
   \\\hline
-  2.4.0 & 11/2016 & Refactoring of NLO setup
+  2.4.0 & 11/2016 & Refactoring of NLO setup \\
+  2.4.1 & 03/2017 & $\alpha$ version of new VEGAS implementation
   \\\hline
 \end{tabular}
 \end{center}
@@ -868,8 +869,10 @@ later, you just have to execute
 \end{interaction}
 within that directory.
 
-After checking out the sources, run\footnote{At least, version 2.65 of
-  the \ttt{autoconf} package is required.}
+After checking out the sources, you first have to create
+\ttt{configure.ac} by executing the shell script
+\ttt{build\_master.sh}. Afterwards, run\footnote{At least, version
+  2.65 of the \ttt{autoconf} package is required.}
 \begin{interaction}
   your-src-directory> autoreconf
 \end{interaction}
@@ -883,18 +886,19 @@ subset of the \fortranOThree\ standard.  At the time of this writing,
 this subset is supported by, at least, the following compilers:
 \begin{itemize}
 \item
-  \ttt{gfortran} (GNU, Open Source).  You will need version 4.7.4
-  or higher\footnote{Note that \whizard\ versions 2.0.0 until 2.1.1 compiled
-  with \ttt{gfortran} 4.5.x and 4.6.x, but the object-oriented
-  refactoring of the \whizard\ code from 2.2 on made a switch to
-  \ttt{gfortran} 4.7.4 or higher necessary. \ttt{gcc} 4.7.0 contains a
-  major bug in the static \ttt{libstdc++} library which prevented
-  static builds of \whizard\ with external \ttt{C++} libraries.}.
-  \ttt{gcc} 4.7.1-3 suffer from too many bugs in the object-orientation.
+  \ttt{gfortran} (GNU, Open Source).  You will need version 4.8.0
+  or higher\footnote{Note that \whizard\ versions 2.0.0 until 2.3.1 compiled
+  with \ttt{gfortran} 4.7.4, but the object-oriented
+  refactoring of the \whizard\ code from 2.4 on made a switch to
+  \ttt{gfortran} 4.8.0 or higher necessary.}. We recommend to use at
+  least version 4.8.4 or 4.9.4, as especially the the early version of
+  4.8.X and 4.9.X experience some severe bugs.
 \item
-  \ttt{nagfor} (NAG).  You will need version 5.2 or higher.
+  \ttt{nagfor} (NAG).  You will need version 6.0 or higher.
 \item
-  \ttt{ifort} (Intel). You will need version 16.0.0 or higher.
+  \ttt{ifort} (Intel). You will need version 16.0.0 or
+  higher. Unfortunately, versions 17.0.0 and 17.0.1 show a severe
+  regression and cannot be used.
 \end{itemize}
 There are some commercial compilers that might be able to compile
 \whizard\ 2.4 in the near future, but at the time of writing, all of
@@ -903,7 +907,7 @@ the compilers listed below contained compiler bugs. Consult the
 \begin{itemize}
 \item
   \ttt{pgfortran} (PGI).  You will need a more modern version than
-  15.10.
+  16.11.
 \item{ekopath}. You will need a more modern version than 4.0.  
 \end{itemize}
 
@@ -961,7 +965,7 @@ output (for \lhapdf\ version 6 or newer),
    configure:
    checking for lhapdf... /usr/local/bin/lhapdf
    checking for lhapdf-config... /usr/local/bin/lhapdf-config
-   checking the LHAPDF version... 6.1.3
+   checking the LHAPDF version... 6.1.6
    checking the major version... 6
    checking the LHAPDF pdfsets path... /usr/local/share/LHAPDF
    checking the standard PDF sets...  all standard PDF sets installed
@@ -1273,26 +1277,14 @@ If it is not already installed on your system, you may obtain
 \begin{quote}
   \url{http://lcio.desy.de}
 \end{quote}
-or 
-\begin{quote}
-  \url{https://sft.its.cern.ch/jira/browse/HEPMC}
-\end{quote}
-If the \hepmc\ library is linked with the installation, \whizard\ is
-able to read and write files in the \hepmc\ format.
+If the \lcio\ library is linked with the installation, \whizard\ is
+able to read and write files in the \lcio\ format.
 
 Detailed information on the installation and usage can be found on the
-\hepmc\ homepage. We give here only some brief details relevant for
-the usage with \whizard: For the compilation of HepMC one needs a
-\ttt{C++} compiler. Then the procedure is the same as for the
-\whizard\ package, namely configure HepMC: 
-\begin{interaction}
-  configure --with-momentum=GEV --with-length=MM --prefix=<install dir> 
-\end{interaction}
-Note that the particle momentum and decay length flags are mandatory, and
-we highly recommend to set them to the values \ttt{GEV} and \ttt{MM},
-respectively. After configuration, do \ttt{make}, an optional
-\ttt{make check} (which might sometimes fail for non-standard values
-of momentum and length), and finally \ttt{make install}.
+\lcio\ homepage. We give here only some brief details relevant for
+the usage with \whizard: For the compilation of \lcio\ one needs a
+\ttt{C++} compiler. \lcio\ is based on \ttt{cmake}. For the
+corresponding options please confer the \lcio\ manual.
 
 A \whizard\ configuration for \lcio\ looks like this:
 \begin{footnotesize}
@@ -1300,27 +1292,21 @@ A \whizard\ configuration for \lcio\ looks like this:
    configure: --------------------------------------------------------------
    configure: --- LCIO ---
    configure:
-   checking the LCIO version... 2.4.2
+   checking the LCIO version... 2.7.1
    checking for LCEventImpl class in -llcio... yes
    configure: --------------------------------------------------------------    
   \end{verbatim}
 \end{footnotesize}
 
 If \lcio\ is installed in a non-default directory where \whizard\
-would not find it, set the environment variable \ttt{LCIO\_DIR} to
-the correct installation path when configuring \whizard.  Furthermore,
-the environment variable \ttt{CXXFLAGS} allows you to set specific
-\ttt{C/C++} preprocessor flags, e.g. non-standard include paths for
-header files.
-
-{\bf Installation bug of \lcio:} when using \texttt{cmake}
-\texttt{v3}, it is (at least with most known \lcio\ versions) not
-possible to specify the installation path. Instead, files are
-installed into the source directory of \lcio. So the binaries in
-\texttt{bin}, the libraries in \texttt{lib}, and the headers in
-\texttt{include} have to be copied by hand to the desired
-\texttt{prefix}. 
-
+would not find it, set the environment variable \ttt{LCIO} or
+\ttt{LCIO\_DIR} to the correct installation path when configuring
+\whizard.  The first one is the variable exported by the
+\ttt{setup.sh}  script while the second one is analogous to the
+environment variables of other external packages. \ttt{LCIO} takes
+precedence over \ttt{LCIO\_DIR}. Furthermore, the environment variable
+\ttt{CXXFLAGS} allows you to set specific \ttt{C/C++} preprocessor
+flags, e.g. non-standard include paths for header files.
 
 %%%%%
 
@@ -1447,14 +1433,23 @@ The most important options are
   \ttt{LHADPF\_DIR} (variable): The location of the optional \lhapdf\
   package, if non-default.
 \item
+  \ttt{LOOPTOOLS\_DIR} (variable): The location of the optional \ttt{LOOPTOOLS}
+  package, if non-default.
+\item
+  \ttt{OPENLOOPS\_DIR} (variable): The location of the optional \openloops\
+  package, if non-default.
+\item
+  \ttt{GOSAM\_DIR} (variable): The location of the optional \gosam\
+  package, if non-default.
+\item
   \ttt{HOPPET\_DIR} (variable): The location of the optional \hoppet\
   package, if non-default.
 \item
   \ttt{HEPMC\_DIR} (variable): The location of the optional \hepmc\ package, if
   non-default.
 \item
-  \ttt{LCIO\_DIR} (variable): The location of the optional \lcio\
-  package, if non-default.
+  \ttt{LCIO}/\ttt{LCIO\_DIR} (variable): The location of the optional
+  \lcio\ package, if non-default.
 \end{itemize}
 
 Other flags that might help to work around possible problems are the
@@ -1684,186 +1679,17 @@ information.
 
 
 
-\subsection{Submitting Batch Jobs With WHIZARD I / Relocation of
-WHIZARD }
-\label{sec:batch}
+\subsection{Submitting Batch Jobs With WHIZARD}
 
-For long-running calculations, you may want to submit a \whizard\ job
-to a remote machine.  The challenge lies in the fact that \whizard\
-needs a complete installation with all auxiliary programs and data
-files to run, including a \fortran\ compiler.
-
-If the submitting machine where \whizard\ has been compiled is binary-
-or OS-incompatible with the batch machine, there is no way around
-doing the complete \whizard\ installation and compilation on the batch
-machine, possibly as part of the batch job.
-
-In this section, we describe batch-job preparation in the case that
-the batch machine has a compatible operating system, and the necessary
-system tools are available, albeit possibly in different locations.
-In that case, an existing \whizard\ installation can be transferred to
-the remote machine without recompilation.
-
-The option to completely relocate a configured, compiled and
-pre-installed \whizard\ installation to another location cannot only
-be used for the setup of \whizard\ on batch clusters, but also for
-automated installations, for testing purposes, for tutorial
-installations etc. It does not play a role whether the relocation is
-on the same machine, or on a different computer, as long as the other
-machine is OS-compatible, compiler and compiler paths are available on
-the other machine, and external libraries (like \ttt{HepMC},
-\ttt{LHAPDF}) are being found in the same locations. 
-
-We assume that it is possible to transfer files from and to the batch
-machine, and that the batch job is controlled by some script.  You
-(interactively) or the script should perform the following steps, as
-far as necessary.
-
-To relocate a \whizard\ installation, perform the following steps:
-\begin{enumerate}
-\item
-\item 
-  Pack the complete \whizard\ installation including all
-  subdirectories (\ttt{bin}, \ttt{include}, \ttt{lib}, \ttt{share},
-  \ttt{var} and the \ttt{libtool} script) and unpack it on an
-  arbitrary location, say \ttt{reloc-dir}.
-  Pack the complete \whizard\ installation including all
-  subdirectories and unpack it on the batch machine in an arbitrary
-  location, say \ttt{reloc-dir}. [only for relocation to a
-  different computer]
-\item
-  Copy the \sindarin\ script file (say, \ttt{run.sin}) to the batch
-  machine in the projected working directory [only relocation to a
-  different computer]
-\item
-  Check whether the correct (compatible!) \fortran\ compiler is
-  available in the standard path.  If not, create a symbolic link or
-  extend PATH accordingly. [only for relocation to a different
-  computer] 
-\item
-  Check whether the correct (compatible!) \fortran\ runtime library is
-  available in the standard load path, and has priority over any
-  conflicting libraries.  If not, create symbolic links or extend
-  LD\_LIBRARY\_PATH accordingly. [only for relocation to a different 
-  computer] 
-\item
-  Do the same for any external libraries as far as they have been
-  linked with the original installation (e.g., \lhapdf,
-  \hepmc).  You should verify that the \ttt{stdc++}
-  library can be loaded. [only for relocation to a different computer]
-\item
-  Check whether the batch machine has a working \LaTeX\ and \metapost\
-  installation.  If it doesn't, this is not a severe problem, you just
-  may get some extra error messages, and there won't be
-  graphical output from analysis requests. [only for relocation to a
-  different computer
-\item
-  Execute the relocation script in the \ttt{bin} directory of the
-  unpacked \whizard\ installation with a prefix option pointing to the
-  new location:
-  \begin{interaction}
-    reloc-dir/bin/whizard-relocate.sh --whizard_prefix reloc-dir
-  \end{interaction}
-  The \ttt{reloc-dir} is the path of the relocated \whizard\
-  installation, i.e. the directory that contains at least a \ttt{bin}
-  subdirectory, and in case the \whizard\ libraries are not found in
-  an accessible path, i.e \ttt{lib}, \ttt{include}, \ttt{share}
-  paths. 
-
-  This relocation script does the following steps, that can also be
-  run individually:
-  \begin{enumerate}
-  \item[8a.]
-  Run
-  \begin{interaction}
-    reloc-dir/bin/whizard-setup.sh --prefix reloc-dir
-  \end{interaction}
-  where \ttt{reloc-dir} is the directory where you unpacked the
-  \whizard\ installation, to add \whizard's \ttt{bin} and \ttt{lib}
-  directories to the run and load path, respectively. Note that
-  without the prefix this script adds the paths of the install
-  directory of the original build, i.e. \ttt{/usr/local} or the path
-  set in the original configure.
-\item[8b.]
-  The \whizard\ installation is self-contained, but the steering files
-  for the dynamically loaded libraries contain paths that will likely
-  be wrong on the batch system.  Fix this with
-  \begin{interaction}
-    libtool-relocate.sh --prefix reloc-dir
-  \end{interaction}
-  If you need \lhapdf, and the library is not in the same location as
-  on your host, run instead
-  \begin{interaction}
-    libtool-relocate.sh --prefix reloc-dir --lhapdf directory-of-liblhapdf
-  \end{interaction}
-\item[8c.]
-  The next obstacle might be \whizard's libtool script.  Libtool is a
-  standard tool, but contains machine-specific configurations.  If
-  there is -- or might be -- a problem, run
-  \begin{interaction}
-    libtool-config.sh --prefix reloc-dir    
-  \end{interaction}
-  This will create a tailored \ttt{libtool} in the current working
-  directory.
-\end{enumerate}
-\item
-  Now, the \whizard\ binary can be successfully launched.  If
-  \whizard\ doesn't even start, there is something wrong with the preceding
-  steps.  
-
-  Still, \whizard\ has to be told where to find its files.  This is
-  taken care of by the script \ttt{whizard.sh}. Please do not call
-  the \ttt{whizard} binary directly, use this shell wrapper
-  \ttt{whizard.sh} instead. You might want to add a line like: 
-  \begin{interaction}
-    alias "whizard=reloc-dir/bin/whizard.sh"
-  \end{interaction}
-  to a \ttt{.bash\_profile} or \ttt{.bashrc} file. 
-
-  Alternatively, one can run the \whizard\ binary directly with the
-  \ttt{--prefix} option 
-  \begin{interaction}
-    whizard --prefix=reloc-dir run.sin
-  \end{interaction}
-  You may want to catch standard output and standard error.  This
-  depends on your batch system.
-
-  If you had to rebuild libtool (see above), you need the additional option
-  \begin{interaction}
-    --libtool=my-libtool
-  \end{interaction}
-  where \ttt{my-libtool} is the tailored \ttt{libtool} that you
-  created, e.g., \ttt{\$pwd/libtool}.
-
-  If you need \lhapdf, and its location is different, you need the
-  additional option
-  \begin{interaction}
-    --lhapdf-dir=directory-where-lhapdf-is-installed
-  \end{interaction}
-  If these switches are not set correctly, \whizard\ will fail while
-  running. 
-\item
-  If all works well, \whizard\ will run as requested.  Copy back all
-  files of interest in the working directory, and you are done.
-\end{enumerate}  
-As a rule, the more similar the batch machine is to the local machine,
-the more steps can be omitted or are trivial.  However, with some
-trial and error it should be able to run batch jobs even if there are
-substantial differences.
-
-
-
-\subsection{Submitting Batch Jobs With WHIZARD II}
-
-There is another possibility that avoids some of the difficulties
-discussed above.  You can suggest \whizard\ to make a statically
-linked copy of itself, which includes all processes that you want to
-study, hard-coded.  The external libraries (\fortran, and possibly
-\hepmc\ and \ttt{stdc++}) must be available on the target system, and
-it must be binary-compatible, but there is no need for transferring
-the complete \whizard\ installation or relocating paths.  The drawback
-is that generating, compiling and linking matrix element code is done
-on the submitting host.
+There is  a possibility to distribute \whizard\ from one machine to
+another, e.g. on a batch cluster. You can suggest \whizard\ to make a
+statically linked copy of itself, which includes all processes that
+you want to study, hard-coded.  The external libraries (\fortran, and
+possibly \hepmc\ and \ttt{stdc++}) must be available on the target
+system, and it must be binary-compatible, but there is no need for
+transferring the complete \whizard\ installation or relocating paths.
+The drawback is that generating, compiling and linking matrix element
+code is done on the submitting host.
 
 Since this procedure is accomplished by \sindarin\ commands, it is
 explained below in Sec.~\ref{sec:static}.
@@ -2366,7 +2192,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.4.0
+		|                               WHIZARD 2.4.1
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2397,7 +2223,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.4.0
+|                               WHIZARD 2.4.1
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2456,7 +2282,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.4.0
+ |                               WHIZARD 2.4.1
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -5758,7 +5584,7 @@ in a dedicated section on lepton collider spectra,
 Sec.~\ref{sec:beamspectra}. 
 
 In this section, we discuss the usage of beamstrahlung spectra by
-means of the \ttt{circeone} package. The beamstrahlung spectra are
+means of the \circeone\ package. The beamstrahlung spectra are
 true spectra, so they have to be applied to pairs of beams, and an
 application to only one beam is meaningless. They are switched on by
 this \ttt{beams} statement including structure functions:
@@ -5801,11 +5627,29 @@ sqrts = 200 GeV
 beams = e1, E1 => circe1
 ?circe1_photon1 = true
 ?circe1_photon2 = true
+?circe1_generate = false
 \end{Verbatim}
 \end{footnotesize}
 \end{quote}
 In all cases (one or both beams with photon conversion) the beam
-spectrum applies to both beams simultaneously. 
+spectrum applies to both beams simultaneously.
+
+In the last example ($\gamma\gamma\to W^+W^-$) the default
+\circeone\ generator mode was turned off by unsetting
+\verb|?circe1_generate|.  In the other examples this flag is
+set, by default.  For standard use cases, 
+\circeone\ implements a beam-event generator inside the
+\whizard\ generator, which provides beam-event samples with correctly
+distributed probability.  For electrons, the beamstrahlung spectrum
+sharply peaks near maximum energy.  This distribution is most
+efficiently handled by the generator mode.  By contrast, in the $\gamma\gamma$
+mode, the beam-event c.m.\ energy is concentrated at low values.  For
+final states with low invariant mass, which are typically produced by
+beamstrahlung photons, the generator mode is appropriate.
+However, the $W^+W^-$ system requires substantial energy, and such
+events will be very rare in the beam-event sample.  Switching off the
+\circeone\ generator mode solves this
+problem.
 
 This is an overview over all options and flags for the \circeone\
 setup for lepton collider beamstrahlung:
@@ -5842,13 +5686,13 @@ values do not match, e.g. the user wants to simulate $t\bar t h$ at
 GeV. In that case, \ttt{circe1\_sqrts = 500 GeV} has to be set to use
 the closest possible available beam spectrum. 
 
-In general, in \circeone\ there are two options to use the beam
-spectra for beamstrahlung: intrinsic semi-analytic approximation
-formulae for the spectra, or a Monte-Carlo sampling of the
-sampling. The second possibility always give a better description of
-the spectra, and is the default for \whizard. It can, however, be
-switched off by setting the flag \ttt{?circe1\_generate} to
-\ttt{false}. 
+As mentioned in the discussion of the examples above, in
+\circeone\ there are two options to use the beam spectra for
+beamstrahlung: intrinsic semi-analytic approximation formulae for the
+spectra, or a Monte-Carlo sampling of the sampling. The second
+possibility always give a better description of the spectra, and is
+the default for \whizard. It can, however, be switched off by setting
+the flag \ttt{?circe1\_generate} to \ttt{false}.
 
 As the beamstrahlung spectra are sharply peaked at the collider
 energy, but still having long tails, a mapping of the spectra for an
@@ -6336,36 +6180,6 @@ This would be an example with three structure functions:
 \begin{code}
 beams = e1, E1 => circe1 => isr => epa
 \end{code}
-
-%%%%%%%%%%%%%%%
-
-\subsection{User-defined structure functions}
-\label{sec:userstrfun}
-
-{\color{red}
-{\em Note that in \whizard\ version v2.2.0-2 this mechanism is
-  temporarily disabled due to the refactoring procedure from v2.1 to
-  v2.2. It is expected to be switched on again as soon as possible,
-  most likely in one of the upcoming minor versions, v2.2.x}}
-
-There is also a sort of plug-in mechanism that allows to user to write
-his/her own \fortran\ code for a structure function or a pair
-spectrum, compile it and use it in a simulation within \whizard.
-The matching rules of beam and hard scattering particles with the
-structure function setups do apply here as well. The syntax is similar
-to the cases above, except that there is a mandatory string argument 
-\begin{code}
-beams = e1, E1 => user_strfun ("my_sf")
-\end{code}
-This syntax expects that there is a \fortranNinetyFive\ file named
-\ttt{my\_sf.f90} in the same directory as the SINDARIN file containing
-the command above. Furthermore, there are certain standard which
-functions and subroutines this code has to have. An example interface
-of such a file is given by \ttt{share/tests/user\_strfun.f90}.
-
-More details about user-plugin mechanisms in \whizard\ can be found in
-Chap.~\ref{chap:user}.
-
 
 %%%%%%%%%%%%%%%
 
@@ -8320,7 +8134,7 @@ A full NLO computation requires virtual matrix elements obtained from
 loop diagrams. Since \oMega\ cannot calculate such diagrams, external
 programs have to be used.  \whizard\ has a generic interface to each
 matrix-element generator which is BLHA-compatible.  
-Explicit implementations exist for \gosam\ and \openloops.
+Explicit implementations exist for \gosam\, \openloops and \recola.
 
 %%%%%
 
@@ -8356,12 +8170,16 @@ The installation of \openloops\ is explained in detail on the HepForge page
 \url{http://openloops.hepforge.org}. In the following the main steps for usage with \whizard\
 are summarized.
 
+Please note that at the moment, \openloops\ cannot be installed such
+that in almost all cases the explicit \openloops\ package directory
+has to be set via \texttt{--with-openloops=<openloops\_dir>}.
+
 \openloops\ can be checked out using the URL
 \begin{code}
    \url{http://openloops.hepforge.org/svn/OpenLoops/branches/public}.
 \end{code}
 The program can simply be installed by running \texttt{scons}, of which a local version
-is included in the \openloops directory. This produces the binary file \openloops, 
+is included in the \openloops directory. This produces the binary file \openloops,
 which is the main hook for all other usage of the program.
 
 \openloops\ works by loading pre-compiled external libraries, which have to be installed for
@@ -8380,34 +8198,29 @@ The libraries can then be installed via
 \begin{code}
    ./openloops libinstall proc_name
 \end{code}
-A list of supported library names can be found on the \openloops\ web page. Note that a process library 
-also includes all possible permutated processes, i.e. the process library $ppll$, for example, can 
+A list of supported library names can be found on the \openloops\ web page. Note that a process library
+also includes all possible permutated processes, i.e. the process library \texttt{ppll}, for example, can
 also be used to compute the matrix elements for $e^+ e^- \rightarrow q \bar{q}$ (massless quarks only).
+Additionally, there are process libraries for top and gauge boson decays, \texttt{tbw}, \texttt{vjj},
+\texttt{tbln} and \texttt{tbqq}.
 
-The \texttt{whizard} repository mentioned above contains dedicated loop routines for lepton collisions and decays.
-They are not listed on the \openloops\ webpage. These libraries are:
-\begin{itemize}
-  \item \texttt{eett},
-  \item \texttt{eehtt},
-  \item \texttt{eettv},
-  \item \texttt{eetttt},
-  \item \texttt{eetbw},
-  \item \texttt{eevjj},
-  \item \texttt{eevvjj} (\texttt{v} corresponds to massive vector bosons, i.e. $W^\pm$ and $Z$, so this library also includes the process $e^+ e^- \rightarrow bW^+\bar{b}W^-$),
-  \item \texttt{eehvvjj}, 
-  \item \texttt{eellllbb} (Off-shell top-quark pair production with leptonic vector boson decay),
-  \item \texttt{tbw} (Loops for top decay)
-\end{itemize}
 Finally, \openloops\ can be linked to \whizard\ during configuration by including
 \begin{code}
   --enable-openloops --with-openloops=$OPENLOOPS_PATH,
 \end{code}
-where \texttt{\$OPENLOOPS\_PATH} is the directory the \openloops\ binary is located in. \openloops\ can then be used with the 
+where \texttt{\$OPENLOOPS\_PATH} is the directory the \openloops\ binary is located in. \openloops\ can then be used with the
 \sindarin option
 \begin{code}
   $loop_me_method = "openloops".
 \end{code}
-\subsubsection{\openloops Sindarin flags}
+The functional tests which check the \openloops functionality require
+the libraries \texttt{ppll}, \texttt{eett} and \texttt{tbw} 
+to be installed (note that \texttt{eett} is not contained in
+\texttt{ppll}). During the configuration of \whizard, 
+it is automatically checked that these two libraries, as well as the
+option \texttt{compile\_extra=1}, are present. 
+
+\subsubsection{\openloops Sindarin flags} 
 Several sindarin options exist to control the behaviour of \openloops.
 \begin{itemize}
   \item \texttt{openloops\_verbosity}:\\
@@ -8433,6 +8246,28 @@ Several sindarin options exist to control the behaviour of \openloops.
 	  only contains the signal diagram.
   \item \texttt{?openloops\_use\_collier}: Use Collier as the reduction method (default true).
 \end{itemize}
+
+%%%%%
+
+\subsubsection{Setting up \recola}
+\label{sec:recola-setup}
+
+The installation of \recola\ is explained in detail on the HepForge page
+\url{http://recola.hepforge.org}. In the following the main steps for usage with \whizard\
+are summarized.
+
+\recola\ can be linked to \whizard\ during configuration by including
+\begin{code}
+  --enable-recola --with-recola=$RECOLA_PATH,
+\end{code}
+where \texttt{\$RECOLA\_PATH} is the directory the \recola\ binary is
+located in. \recola\ can then be used with the \sindarin option
+\begin{code}
+  $loop_me_method = "recola".
+\end{code}
+
+%%%%%
+
 \subsection{NLO cross sections}
 NLO computation can be switched on in \sindarin\ with
 \begin{code}
@@ -9620,7 +9455,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.4.0</generator_version>
+  <generator_version>2.4.1</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -10417,361 +10252,6 @@ function ptval (prt1) result (rval) bind(C)
 end function ptval
 \end{verbatim}
 \end{footnotesize}
-\end{quote}
-
-
-\section{Spectrum or Structure Function}
-
-\subsection{Definition}
-
-User-defined spectra or structure functions can be used in a
-\ttt{beams} definition just like ordinary ones (\ttt{isr},
-\ttt{pdf\_builtin}, etc.), for instance:
-\begin{quote}
-\begin{footnotesize}
-  \ttt{beams = p, p => user\_sf (\emph{name-string})}
-\end{footnotesize}
-\end{quote}
-or
-\begin{quote}
-\begin{footnotesize}
-  \ttt{beams = p, "e-" => user\_sf (\emph{name-string}), none}
-\end{footnotesize}
-\end{quote}
-To implement a particular spectrum or structure function, the user
-must code five different procedures.  Their names all must begin with
-\ttt{\emph{name-string}} with specific suffixes appended.  In the
-following, replace \ttt{user\_sf} by whatever \ttt{\emph{name-string}}
-has been chosen:
-\begin{enumerate}
-\item \ttt{user\_sf\_info}:\\
-  This subroutine tells \whizard\ about static information on the
-  spectrum.  In the user-provided source code, the function takes the
-  form (if it is coded in Fortran):
-  \begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine user_sf_info (n_in, n_out, n_states, n_col, n_dim, n_var) bind(C)
-  use iso_c_binding
-  integer(c_int), intent(inout) :: n_in, n_out, n_states, n_col
-  integer(c_int), intent(inout) :: n_dim, n_var
-  ! ... code that sets the parameters
-end subroutine user_sf_info
-\end{verbatim}
-  \end{footnotesize}
-  \end{quote}
-  The subroutine arguments describe the
-  overall properties of the spectrum.  For all arguments, there exist
-  default values which apply if the parameter is not set in the subroutine.
-  \begin{description}
-  \item[\ttt{n\_in}]  Number of incoming particles.  This is 1 for a
-    single-particle spectrum (default), or 2 for a two-particle
-    spectrum.
-  \item[\ttt{n\_out}]  Number of outgoing particles.  Should be
-    greater or equal to \ttt{n\_in}.  Default is 2.
-  \item[\ttt{n\_states}]  Number of distinct quantum states that are
-    supported by the spectrum.  Each possible combination of flavor,
-    color, and helicity counts as a separate state.  Quantum numbers
-    that are ignored (e.g., unpolarized particles) do not count.
-    Default is~1.
-  \item[\ttt{n\_col}]  Maximal number of distinct color-flow lines
-    attached to any particle.  In the Standard Model, this is 2 or less.
-    Usually, the default value (2) should be left untouched.
-  \item[\ttt{n\_dim}]  Number of independent integration parameters on
-    which the spectrum depends.  For instance, a parton structure
-    function depends on a single parameter, while ISR radiation with
-    generated transverse momentum depends on three parameters.
-    Default is~1.
-  \item[\ttt{n\_var}]  Number of real parameters that have to be
-    communicated from the kinematics routine to the evaluation
-    routine.  For instance, a PDF depends on one variable ($x$) that
-    is used both for computing the momentum and for evaluating the
-    structure function, so it must be communicated.  Default value
-    is~1.
-  \end{description}
-\item
-  \ttt{user\_sf\_mask}:\\
-  This subroutine tells \whizard\ which quantum numbers are explicit
-  and which ones are ignored.  The default is that all quantum numbers
-  are explicit, but it may be appropriate to ignore the polarization
-  of specific particles, e.g., a radiated photon.
-  \begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine user_sf_mask (i_prt, m_flv, m_col, m_hel, i_lock) bind(C)
-  use iso_c_binding
-  integer(c_int), intent(in) :: i_prt
-  integer(c_int), intent(inout) :: m_flv, m_hel, m_col, i_lock
-  ! ... code that sets m_flv, m_hel, m_col, i_lock
-end subroutine user_sf_mask
-\end{verbatim}
-  \end{footnotesize}
-  \end{quote}
-  The arguments define the properties of a specific particle within
-  the interaction that the spectrum describes.
-  \begin{description}
-  \item[\ttt{i\_prt}]  This is the index of the particle for which the
-    info is requested.  \ttt{i\_prt}, which is a value between 1 and
-    $\ttt{n\_in}+\ttt{n\_out}$.  For each possible value of
-    \ttt{i\_prt}, the subroutine should set the appropriate flags,
-    unless the default values are correct.  
-  \item[\ttt{m\_flv}]  If nonzero, the flavor of this particle is
-    unspecified.  In the process, the spectrum interaction matches any
-    particle.  Default is 0.
-  \item[\ttt{m\_col}]  If nonzero, the color of this particle is
-    unspecified.  In the process, the spectrum interaction matches any
-    color assignment, and the attached color lines are ignored for the
-    whole process.  Default is 0.
-  \item[\ttt{m\_hel}]  If nonzero, the helicity of this particle is
-    unspecified.  In the process, the spectrum interaction matches any
-    helicity assignment, i.e., the particle is treated as
-    unpolarized.  Default is 0.
-  \item[\ttt{i\_lock}]  If nonzero, this indicates a helicity
-    conservation rule.  The current particle (\ttt{i\_prt}) and the
-    particle with index \ttt{i\_lock} are declared to have the same
-    helicity.
-
-    The particle with index \ttt{i\_lock} must have a correponding
-    entry pointing to index \ttt{i\_prt}.  Of course, the conservation
-    rule must be satisfied by all quantum-number combination.
-
-    (The conservation rule improves efficiency when a beam is declared as
-    unpolarized.  (De-)polarization is carried through the
-    structure-function chain, so that it is the hard matrix element
-    which is effectively averaged over polarizations.)
-  \end{description}
-\item
-  \ttt{user\_sf\_state}:\\
-  This subroutine tells \whizard\ which quantum number combinations
-  are allowed in the spectrum.  For each particles, only the quantum
-  numbers allowed by the corresponding mask value (see above) have to
-  be set.
-  \begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine user_sf_state (i_state, i_prt, flv, hel, col) bind(C)
-  use iso_c_binding
-  integer(c_int), intent(in) :: i_state, i_prt
-  integer(c_int), intent(inout) :: flv, hel
-  integer(c_int), dimension(*), intent(inout) :: col
-  ! ... code that sets flv, hel, col
-end subroutine user_sf_state
-\end{verbatim}
-  \end{footnotesize}
-  \end{quote}
-  Given \ttt{i\_state} and \ttt{i\_prt}, the routine should return
-  appropriate values for the other parameters or leave them at zero
-  (default).
-  \begin{description}
-  \item[\ttt{i\_state}]  Index of a quantum number combination, a
-    number between 1 and \ttt{n\_states}.
-  \item[\ttt{i\_prt}]  Index of a particle in the interaction, a
-    number between 1 and $\ttt{n\_in}+\ttt{n\_out}$.  The incoming
-    particles come before the outgoing particles in the interaction.
-  \item[\ttt{flv}]  PDG code of the particle.
-  \item[\ttt{hel}]  Helicity value of the particle, as described above
-    in Sec.~\ref{sec:c_prt}.
-  \item[\ttt{col}]  Array of color-flow indices of the particle.  The
-    size of the array is \ttt{n\_col}.  Color
-    connections between particles are indicated by coinciding
-    color-flow indices.  By convention, color-flow indices are integer
-    values of $500$ and greater.
-  \end{description}
-\item
-  \ttt{user\_sf\_kinematics}:\\
-  This subroutine generates the momenta for the outgoing particles,
-  given the momenta of incoming particles and an array of parameters.
-  \begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine user_sf_kinematics (prt_in, rval, prt_out, xval) bind(C)
-  use iso_c_binding
-  use c_particles
-  type(c_prt_t), dimension(*), intent(in) :: prt_in
-  real(c_double), dimension(*), intent(in) :: rval
-  type(c_prt_t), dimension(*), intent(inout) :: prt_out
-  real(c_double), dimension(*), intent(out) :: xval
-  ! ... code that computes prt_out and xval
-end subroutine user_sf_kinematics
-\end{verbatim}
-  \end{footnotesize}
-  \end{quote}
-  \begin{description}
-  \item[\ttt{prt\_in}]  Array of incoming particles as generated by
-    \whizard.  Only the energy-momentum entries in the \ttt{c\_prt\_t}
-    objects are relevant, the others are meaningless at this stage.
-    The array size is \ttt{n\_in}.
-  \item[\ttt{rval}]  Array of real parameters, sufficient for
-    calculating the outgoing four-momenta.  The array size is
-    \ttt{n\_dim}.
-  \item[\ttt{prt\_out}]  Array of outgoing particles.  They must be
-    computed by the user-defined code.  Only the energy-momentum
-    entries will be used.  The array size is \ttt{n\_out}.
-  \item[\ttt{xval}]  Array of parameters that are needed for the
-    evaluation routine below, to uniquely determine the spectrum
-    values.  For instance, these could be the $x$ momentum fraction(s)
-    and possibly an extra Jacobian factor.  The array size is
-    \ttt{n\_var}.
-  \end{description}
-\item
-  \ttt{user\_sf\_evaluate}:\\
-  This subroutine computes the values (the squared matrix elements) of
-  the spectrum, one for each quantum-number combination, given the
-  variables returned by the kinematics routine above and the energy
-  scale of the event.
-  \begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine user_sf_evaluate (xval, scale, fval) bind(C)
-  use iso_c_binding
-  real(c_double), dimension(*), intent(in) :: xval
-  real(c_double), intent(in) :: scale
-  real(c_double), dimension(*), intent(out) :: fval
-end subroutine user_sf_evaluate
-\end{verbatim}
-  \end{footnotesize}
-  \end{quote}
-  \begin{description}
-  \item[\ttt{xval}]  Array of parameters as returned by the kinematics
-    routine.  The array size is \ttt{n\_var}.
-  \item[\ttt{scale}]  Energy scale in GeV computed by \whizard\ (using
-    the \sindarin\ expression for \ttt{scale}) for the current
-    kinematics.  The spectrum evaluation can use this
-    scale.  Alternatively, the kinematics routine may compute the scale
-    and transfer it to the evaluation via the \ttt{xval} array, which
-    ignores the \ttt{scale} argument.
-  \item[\ttt{fval}]  Value array of the structure function.  For each
-    state (combination of quantum numbers) there must be one value.
-    The array size is \ttt{n\_states}.
-  \end{description}
-\end{enumerate}
-
-
-\subsection{Example}
-
-For a simple example, we reproduce the effect of an
-\ttt{energy\_scan} spectrum for electrons, analogous to the generic
-one that is built into \whizard.  We assume
-that a fraction of the energy is transferred from the beam to the
-incoming parton.  In contrast to the actual energy-scan spectrum where
-no further particle is involved, we transfer the remaining energy to a
-radiated photon.  The user-defined spectrum can be used as in
-\begin{quote}
-\begin{footnotesize}
-  \ttt{beams = "e-", "e-" => user\_sf ("escan")}
-\end{footnotesize}
-\end{quote}
-where it is applied to both beams, independently.
-
-We are considering an interaction with one incoming and two outgoing
-colorless particles.  There are two quantum-number states, one input
-parameter, and no output parameters since the matrix element of this
-spectrum is constant (unity).
-\begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine escan_info (n_in, n_out, n_states, n_col, n_dim, n_var) bind(C)
-  use iso_c_binding
-  integer(c_int), intent(inout) :: n_in, n_out, n_states, n_col
-  integer(c_int), intent(inout) :: n_dim, n_var
-  n_in = 1
-  n_out = 2
-  n_states = 2
-  n_dim = 1
-  n_var = 0
-end subroutine escan_info
-\end{verbatim}
-  \end{footnotesize}
-\end{quote}
-The mask is set up such that polarization is transferred from the
-incoming to the outgoing particle (locking them together), and the
-radiated photon is unpolarized.
-\begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine escan_mask (i_prt, m_flv, m_col, m_hel, i_lock) bind(C)
-  use iso_c_binding
-  integer(c_int), intent(in) :: i_prt
-  integer(c_int), intent(inout) :: m_flv, m_hel, m_col, i_lock
-  select case (i_prt)
-  case (1)
-     i_lock = 3
-  case (2)
-     m_hel = 1
-  case (3)
-     i_lock = 1
-  end select
-end subroutine escan_mask
-\end{verbatim}
-  \end{footnotesize}
-\end{quote}
-There are two quantum-number states, one with negative and one with
-positive helicity for both incoming and outgoing electron.  They are
-color singlets (no color index), and the flavor of the three particles
-is electron, photon, electron.
-\begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine escan_state (i_state, i_prt, flv, hel, col) bind(C)
-  use iso_c_binding
-  integer(c_int), intent(in) :: i_state, i_prt
-  integer(c_int), intent(inout) :: flv, hel
-  integer(c_int), dimension(*), intent(inout) :: col
-  select case (i_prt)
-  case (1, 3)
-     flv = 11
-     select case (i_state)
-     case (1);  hel = -1
-     case (2);  hel = 1
-     end select
-  case (2)
-     flv = 22
-  end select
-end subroutine escan_state
-\end{verbatim}
-  \end{footnotesize}
-\end{quote}
-The kinematics routine computes the $x$ value as $x=r^2$, where $r$ is
-the integration parameter.  The four-momenta are simply scaled by the
-momentum fraction, assuming zero mass.
-\begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine escan_kinematics (prt_in, rval, prt_out, xval) bind(C)
-  use iso_c_binding
-  use c_particles
-  use kinds
-  use lorentz
-  type(c_prt_t), dimension(*), intent(in) :: prt_in
-  real(c_double), dimension(*), intent(in) :: rval
-  type(c_prt_t), dimension(*), intent(inout) :: prt_out
-  real(c_double), dimension(*), intent(out) :: xval
-  type(vector4_t), dimension(3) :: p
-  real(default) :: x
-  x = rval(1)**2
-  p(1) = vector4_from_c_prt (prt_in(1))
-  p(2) = (1-x) * p(1)
-  p(3) = x * p(1)
-  prt_out(1:2) = vector4_to_c_prt (p(2:3))
-end subroutine escan_kinematics
-\end{verbatim}
-  \end{footnotesize}
-\end{quote}
-Finally, the evaluation is trivial.  For each quantum-number state,
-the matrix element is unity.
-\begin{quote}
-  \begin{footnotesize}
-\begin{verbatim}
-subroutine escan_evaluate (xval, scale, fval) bind(C)
-  use iso_c_binding
-  real(c_double), dimension(*), intent(in) :: xval
-  real(c_double), intent(in) :: scale
-  real(c_double), dimension(*), intent(out) :: fval
-  fval(1) = 1
-  fval(2) = 1
-end subroutine escan_evaluate
-\end{verbatim}
-  \end{footnotesize}
 \end{quote}
 
 \section{User Code and Static Executables}
@@ -14036,6 +13516,7 @@ of an incoming lepton with an outgoing lepton (an alias for the
 leptons has to be defined, of course). (cf. also \ttt{collect},
 \ttt{select}, \ttt{extract}, \ttt{sort}, \ttt{+})
 %%%%%
+\item
 \ttt{combined\_nlo\_integration} (default: \ttt{false}) \newline
 When this option is set to \ttt{true}, the NLO integration will not
 be performed in the separate components, but instead the sum of all
@@ -14597,6 +14078,21 @@ the splitting for the equivalent $W$ approximation (EWA). This
 parameter has to be set by the user to a non-zero value smaller than
 one. (cf. also \ttt{ewa}, \ttt{ewa\_pt\_max}, \ttt{ewa\_mass},
 \ttt{?ewa\_keep\_energy}, \ttt{?ewa\_recoil}) 
+%%%%%
+\item
+\ttt{\$exclude\_gauge\_splittings} \qquad (default: \ttt{"c:b:t:e2:e3"}) \newline
+String variable that allows via \ttt{\$exclude\_gauge\_splittings =
+"{\em <prt1>, <prt2>, \dots}"} to exclude fermion flavors from gluon/photon
+splitting into fermion pairs beyond LO. For example
+\ttt{\$exclude\_gauge\_splittings = "c:s:b:t"} would lead to \ttt{gl => u U}
+and \ttt{gl => d D} as possible splittings in QCD. It is important to keep in mind
+that only the particles listed in the string are excluded! In QED this string would
+additionally allow for all splittings into lepton pairs \ttt{A => l L}. Therefore,
+once set the variable acts as a replacement of the default value, not as an addition!
+Note: \ttt{"\em <prt>"} can be both particle or antiparticle. It will always
+exclude the corresponding fermion pair. An empty string allows for all fermion
+flavors to take part in the splitting! Also, particles included in an \ttt{alias}
+are not excluded by \ttt{\$exclude\_gauge\_splittings}!
 %%%%%
 \item
 \ttt{exec} \newline
@@ -15863,6 +15359,12 @@ This is a function \ttt{nint ({\em <num\_val>})} that converts real
 numbers into the closest integer, e.g. \ttt{int i = nint (4.56789)}
 gives \ttt{i = 5}. (cf. also
 \ttt{int}, \ttt{floor}, \ttt{ceiling})
+%%%%%
+\item
+\ttt{\$nlo\_correction\_type} \qquad (default: \ttt{"QCD"}) \newline
+String variable which sets the NLO correction type via
+\ttt{nlo\_correction\_type = "{\em <type>}"} to either \ttt{"QCD"} or
+\ttt{"QED"}, or to both with \ttt{\em{<type>}} set to \ttt{"Full"}.
 %%%%%
 \item
 \ttt{no} \newline
@@ -17397,16 +16899,6 @@ used when recalculating matrix elements for events read from file, or
 the value that is stored in the file for that
 event. (cf. \ttt{rescan}, \ttt{?update\_sqme},
 \ttt{?use\_alpha\_s\_from\_file})
-%%%%%
-\item
-{\color{red}
-\ttt{user\_strfun} \newline
-Beam specifier, \ttt{beams = {\em <b1>}, {\em <b2>} => user\_strfun ("{\em <user\_sf>}")}
-for a user-defined structure function as an external code. For this
-command to work, there needs to be a file \ttt{{\em <user\_sf>}.f90} being
-present in the working directory. Note that this command is not yet
-reactivated again. 
-}
 %%%%%
 \item
 \ttt{?use\_vamp\_equivalences} \qquad (default: \ttt{true}) \newline

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_stdhep
-  
+
   use kinds, only: i32, i64
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -55,20 +55,20 @@ module eio_stdhep
   public :: eio_stdhep_hepev4_t
   public :: stdhep_init_out
   public :: stdhep_init_in
-  public :: stdhep_write 
-  public :: stdhep_end  
+  public :: stdhep_write
+  public :: stdhep_end
 
   type, abstract, extends (eio_t) :: eio_stdhep_t
      logical :: writing = .false.
      logical :: reading = .false.
      integer :: unit = 0
-     logical :: keep_beams = .false.     
+     logical :: keep_beams = .false.
      logical :: keep_remnants = .true.
      logical :: ensure_order = .false.
      logical :: recover_beams = .false.
      logical :: use_alpha_s_from_file = .false.
      logical :: use_scale_from_file = .false.
-     integer, dimension(:), allocatable :: proc_num_id     
+     integer, dimension(:), allocatable :: proc_num_id
      integer(i64) :: n_events_expected = 0
    contains
      procedure :: set_parameters => eio_stdhep_set_parameters
@@ -84,16 +84,16 @@ module eio_stdhep
      procedure :: input_event => eio_stdhep_input_event
      procedure :: skip => eio_stdhep_skip
   end type eio_stdhep_t
-  
+
   type, extends (eio_stdhep_t) :: eio_stdhep_hepevt_t
   end type eio_stdhep_hepevt_t
-  
+
   type, extends (eio_stdhep_t) :: eio_stdhep_hepeup_t
   end type eio_stdhep_hepeup_t
-  
+
   type, extends (eio_stdhep_t) :: eio_stdhep_hepev4_t
   end type eio_stdhep_hepev4_t
-  
+
 
   integer, save :: istr, lok
   integer, parameter :: &
@@ -101,7 +101,7 @@ module eio_stdhep
        STDHEP_HEPEUP = 11, STDHEP_HEPRUP = 12
 
 contains
-  
+
   subroutine eio_stdhep_set_parameters (eio, &
        keep_beams, keep_remnants, ensure_order, recover_beams, &
        use_alpha_s_from_file, use_scale_from_file, extension)
@@ -134,7 +134,7 @@ contains
        end select
     end if
   end subroutine eio_stdhep_set_parameters
-  
+
   subroutine eio_stdhep_write (object, unit)
     class(eio_stdhep_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -154,15 +154,15 @@ contains
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
          object%use_alpha_s_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
-         object%use_scale_from_file    
+         object%use_scale_from_file
     if (allocated (object%proc_num_id)) then
        write (u, "(3x,A)")  "Numerical process IDs:"
        do i = 1, size (object%proc_num_id)
           write (u, "(5x,I0,': ',I0)")  i, object%proc_num_id(i)
        end do
-    end if      
+    end if
   end subroutine eio_stdhep_write
-  
+
   subroutine eio_stdhep_final (object)
     class(eio_stdhep_t), intent(inout) :: object
     if (allocated (object%proc_num_id))  deallocate (object%proc_num_id)
@@ -180,7 +180,7 @@ contains
        object%reading = .false.
     end if
   end subroutine eio_stdhep_final
-  
+
   subroutine eio_stdhep_common_init (eio, sample, data, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -193,9 +193,9 @@ contains
     if (present (extension)) then
        eio%extension = extension
     end if
-    eio%sample = sample    
-    call eio%set_filename ()    
-    eio%unit = free_unit () 
+    eio%sample = sample
+    call eio%set_filename ()
+    eio%unit = free_unit ()
     allocate (eio%proc_num_id (data%n_proc), source = data%proc_num_id)
   end subroutine eio_stdhep_common_init
 
@@ -212,21 +212,21 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.4.0", eio%n_events_expected)
+               "WHIZARD 2.4.1", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
-       type is (eio_stdhep_hepevt_t) 
+       type is (eio_stdhep_hepevt_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.4.0", eio%n_events_expected) 
+               "WHIZARD 2.4.1", eio%n_events_expected)
           call stdhep_write (100)
        type is (eio_stdhep_hepev4_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.4.0", eio%n_events_expected)
+               "WHIZARD 2.4.1", eio%n_events_expected)
           call stdhep_write (100)
        end select
     end if
   end subroutine eio_stdhep_split_out
-  
+
   subroutine eio_stdhep_init_out (eio, sample, data, success, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -235,8 +235,8 @@ contains
     logical, intent(out), optional :: success
     integer :: i
     if (.not. present (data)) &
-         call msg_bug ("STDHEP initialization: missing data")        
-    call eio%set_splitting (data)    
+         call msg_bug ("STDHEP initialization: missing data")
+    call eio%set_splitting (data)
     call eio%common_init (sample, data, extension)
     eio%n_events_expected = data%n_evt
     write (msg_buffer, "(A,A,A)")  "Events: writing to STDHEP file '", &
@@ -250,29 +250,29 @@ contains
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
-            negative_weights = data%negative_weights)           
+            negative_weights = data%negative_weights)
        do i = 1, data%n_proc
           call heprup_set_process_parameters (i = i, &
                process_id = data%proc_num_id(i), &
                cross_section = data%cross_section(i), &
-               error = data%error(i))          
+               error = data%error(i))
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.4.0", eio%n_events_expected)
+            "WHIZARD 2.4.1", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.4.0", eio%n_events_expected) 
+            "WHIZARD 2.4.1", eio%n_events_expected)
        call stdhep_write (100)
     type is (eio_stdhep_hepev4_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.4.0", eio%n_events_expected)
+            "WHIZARD 2.4.1", eio%n_events_expected)
        call stdhep_write (100)
     end select
     if (present (success))  success = .true.
   end subroutine eio_stdhep_init_out
-    
+
   subroutine eio_stdhep_init_in (eio, sample, data, success, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -291,25 +291,25 @@ contains
     call stdhep_init_in (char (eio%filename), eio%n_events_expected)
     call stdhep_read (ilbl, lok)
     if (lok /= 0) then
-       call stdhep_end () 
+       call stdhep_end ()
        write (msg_buffer, "(A)")  "Events: STDHEP file appears to" // &
             " be empty."
-       call msg_message ()      
+       call msg_message ()
     end if
     if (ilbl == 100) then
        write (msg_buffer, "(A)")  "Events: reading in STDHEP events"
        call msg_message ()
-    end if 
+    end if
     if (present (success))  success = .false.
   end subroutine eio_stdhep_init_in
-    
+
   subroutine eio_stdhep_switch_inout (eio, success)
     class(eio_stdhep_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("STDHEP: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_stdhep_switch_inout
-  
+
   subroutine eio_stdhep_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_stdhep_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -342,7 +342,7 @@ contains
                ensure_order = eio%ensure_order, &
                fill_hepev4 = .true.)
           call stdhep_write (STDHEP_HEPEV4)
-       end select       
+       end select
     else
        call eio%write ()
        call msg_fatal ("STDHEP file is not open for writing")
@@ -376,7 +376,7 @@ contains
        end if
        if (ilbl == 11) then
           proc_num_id = IDPRUP
-       end if       
+       end if
     end select
     FIND_I_PRC: do i = 1, size (eio%proc_num_id)
        if (eio%proc_num_id(i) == proc_num_id) then
@@ -390,7 +390,7 @@ contains
       call msg_error ("STDHEP: reading events: undefined process ID " &
            // char (str (proc_num_id)) // ", aborting read")
       iostat = 1
-    end subroutine err_index    
+    end subroutine err_index
   end subroutine eio_stdhep_input_i_prc
 
   subroutine eio_stdhep_input_event (eio, event, iostat)
@@ -403,7 +403,7 @@ contains
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
-         use_scale = eio%use_scale_from_file)    
+         use_scale = eio%use_scale_from_file)
   end subroutine eio_stdhep_input_event
 
   subroutine eio_stdhep_skip (eio, iostat)
@@ -422,7 +422,7 @@ contains
     integer(i64), intent(in) :: nevt
     integer(i32) :: nevt32
     nevt32 = min (nevt, int (huge (1_i32), i64))
-    call stdxwinit (file, title, nevt32, istr, lok)    
+    call stdxwinit (file, title, nevt32, istr, lok)
   end subroutine stdhep_init_out
 
   subroutine stdhep_init_in (file, nevt)
@@ -434,7 +434,7 @@ contains
          file // "'.")
     nevt = int (nevt32, i64)
   end subroutine stdhep_init_in
-  
+
   subroutine stdhep_write (ilbl)
     integer, intent(in) :: ilbl
     call stdxwrt (ilbl, istr, lok)
@@ -445,10 +445,10 @@ contains
     call stdxrd (ilbl, istr, lok)
     if (lok /= 0)  return
   end subroutine stdhep_read
-  
+
   subroutine stdhep_end
     call stdxend (istr)
-  end subroutine stdhep_end  
-  
+  end subroutine stdhep_end
+
 
 end module eio_stdhep

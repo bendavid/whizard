@@ -2,7 +2,7 @@
 # Simple complete physics example: DY with PYTHIA shower
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -71,7 +71,7 @@ cuts = all M > 80 GeV [combine [e1,E1]]
 
 integrate (qqee) { iterations = 2:20000 }
 
-n_events = 100000
+n_events = 25000
 
 ?rebuild_events = true
 $sample = "DrellYanNoMatchingP"

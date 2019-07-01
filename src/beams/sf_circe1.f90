@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -58,13 +58,13 @@ module sf_circe1
   implicit none
   private
 
-  public :: circe1_data_t 
+  public :: circe1_data_t
   public :: circe1_t
 
-  type, extends (sf_data_t) :: circe1_data_t 
-     private 
-     class(model_data_t), pointer :: model => null () 
-     type(flavor_t), dimension(2) :: flv_in 
+  type, extends (sf_data_t) :: circe1_data_t
+     private
+     class(model_data_t), pointer :: model => null ()
+     type(flavor_t), dimension(2) :: flv_in
      integer, dimension(2) :: pdg_in
      real(default), dimension(2) :: m_in = 0
      logical, dimension(2) :: photon = .false.
@@ -72,29 +72,30 @@ module sf_circe1
      class(rng_factory_t), allocatable :: rng_factory
      real(default) :: sqrts = 0
      real(default) :: eps = 0
-     integer :: ver = 0 
-     integer :: rev = 0      
+     integer :: ver = 0
+     integer :: rev = 0
      character(6) :: acc = "?"
      integer :: chat = 0
      logical :: with_radiation = .false.
-   contains  
-       procedure :: init => circe1_data_init 
+   contains
+       procedure :: init => circe1_data_init
        procedure :: set_generator_mode => circe1_data_set_generator_mode
-       procedure :: check => circe1_data_check 
-       procedure :: write => circe1_data_write 
+       procedure :: check => circe1_data_check
+       procedure :: write => circe1_data_write
        procedure :: is_generator => circe1_data_is_generator
        procedure :: get_n_par => circe1_data_get_n_par
        procedure :: get_pdg_out => circe1_data_get_pdg_out
        procedure :: get_pdg_int => circe1_data_get_pdg_int
-       procedure :: allocate_sf_int => circe1_data_allocate_sf_int     
-  end type circe1_data_t 
- 
+       procedure :: allocate_sf_int => circe1_data_allocate_sf_int
+       procedure :: get_beam_file => circe1_data_get_beam_file
+  end type circe1_data_t
+
   type, extends (circe1_rng_t) :: rng_obj_t
      class(rng_t), allocatable :: rng
    contains
      procedure :: generate => rng_obj_generate
   end type rng_obj_t
-  
+
   type, extends (sf_int_t) :: circe1_t
      type(circe1_data_t), pointer :: data => null ()
      real(default), dimension(2) :: x = 0
@@ -111,24 +112,24 @@ module sf_circe1
      procedure :: complete_kinematics => circe1_complete_kinematics
      procedure :: inverse_kinematics => circe1_inverse_kinematics
      procedure :: apply => circe1_apply
-  end type circe1_t 
-  
+  end type circe1_t
+
 
 contains
 
   subroutine circe1_data_init &
        (data, model, pdg_in, sqrts, eps, out_photon, &
         ver, rev, acc, chat, with_radiation)
-    class(circe1_data_t), intent(out) :: data 
+    class(circe1_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), dimension(2), intent(in) :: pdg_in
-    real(default), intent(in) :: sqrts 
+    real(default), intent(in) :: sqrts
     real(default), intent(in) :: eps
     logical, dimension(2), intent(in) :: out_photon
     character(*), intent(in) :: acc
-    integer, intent(in) :: ver, rev, chat 
+    integer, intent(in) :: ver, rev, chat
     logical, intent(in) :: with_radiation
-    data%model => model 
+    data%model => model
     if (any (pdg_array_get_length (pdg_in) /= 1)) then
        call msg_fatal ("CIRCE1: incoming beam particles must be unique")
     end if
@@ -141,23 +142,23 @@ contains
     data%photon = out_photon
     data%ver = ver
     data%rev = rev
-    data%acc = acc 
-    data%chat = chat 
+    data%acc = acc
+    data%chat = chat
     data%with_radiation = with_radiation
     call data%check ()
     call circex (0.d0, 0.d0, dble (data%sqrts), &
          data%acc, data%ver, data%rev, data%chat)
-  end subroutine circe1_data_init 
- 
+  end subroutine circe1_data_init
+
   subroutine circe1_data_set_generator_mode (data, rng_factory)
     class(circe1_data_t), intent(inout) :: data
     class(rng_factory_t), intent(inout), allocatable :: rng_factory
     data%generate = .true.
     call move_alloc (from = rng_factory, to = data%rng_factory)
   end subroutine circe1_data_set_generator_mode
-  
-  subroutine circe1_data_check (data) 
-    class(circe1_data_t), intent(in) :: data 
+
+  subroutine circe1_data_check (data)
+    class(circe1_data_t), intent(in) :: data
     type(flavor_t) :: flv_electron, flv_photon
     call flv_electron%init (ELECTRON, data%model)
     call flv_photon%init (PHOTON, data%model)
@@ -173,43 +174,43 @@ contains
        call msg_error ("CIRCE1: circe1_eps = 0: integration will &
             &miss x=1 peak")
     end if
-  end subroutine circe1_data_check 
- 
+  end subroutine circe1_data_check
+
   subroutine circe1_data_write (data, unit, verbose)
-    class(circe1_data_t), intent(in) :: data 
-    integer, intent(in), optional :: unit 
+    class(circe1_data_t), intent(in) :: data
+    integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
-    u = given_output_unit (unit);  if (u < 0)  return 
-    write (u, "(1x,A)") "CIRCE1 data:" 
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)") "CIRCE1 data:"
     write (u, "(3x,A,2(1x,A))") "prt_in   =", &
          char (data%flv_in(1)%get_name ()), &
          char (data%flv_in(2)%get_name ())
     write (u, "(3x,A,2(1x,L1))")  "photon   =", data%photon
     write (u, "(3x,A,L1)")        "generate = ", data%generate
     write (u, "(3x,A,2(1x," // FMT_19 // "))") "m_in     =", data%m_in
-    write (u, "(3x,A," // FMT_19 // ")") "sqrts    = ", data%sqrts 
+    write (u, "(3x,A," // FMT_19 // ")") "sqrts    = ", data%sqrts
     write (u, "(3x,A," // FMT_19 // ")") "eps      = ", data%eps
-    write (u, "(3x,A,I0)") "ver      = ", data%ver 
-    write (u, "(3x,A,I0)") "rev      = ", data%rev 
-    write (u, "(3x,A,A)")  "acc      = ", data%acc 
-    write (u, "(3x,A,I0)") "chat     = ", data%chat 
+    write (u, "(3x,A,I0)") "ver      = ", data%ver
+    write (u, "(3x,A,I0)") "rev      = ", data%rev
+    write (u, "(3x,A,A)")  "acc      = ", data%acc
+    write (u, "(3x,A,I0)") "chat     = ", data%chat
     write (u, "(3x,A,L1)") "with rad.= ", data%with_radiation
     if (data%generate)  call data%rng_factory%write (u)
-  end subroutine circe1_data_write 
- 
+  end subroutine circe1_data_write
+
   function circe1_data_is_generator (data) result (flag)
     class(circe1_data_t), intent(in) :: data
     logical :: flag
     flag = data%generate
   end function circe1_data_is_generator
-  
+
   function circe1_data_get_n_par (data) result (n)
     class(circe1_data_t), intent(in) :: data
     integer :: n
     n = 2
   end function circe1_data_get_n_par
-  
+
   subroutine circe1_data_get_pdg_out (data, pdg_out)
     class(circe1_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -223,7 +224,7 @@ contains
        end if
     end do
   end subroutine circe1_data_get_pdg_out
-  
+
   function circe1_data_get_pdg_int (data) result (pdg)
     class(circe1_data_t), intent(in) :: data
     integer, dimension(2) :: pdg
@@ -236,13 +237,19 @@ contains
        end if
     end do
   end function circe1_data_get_pdg_int
-  
+
   subroutine circe1_data_allocate_sf_int (data, sf_int)
     class(circe1_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (circe1_t :: sf_int)
   end subroutine circe1_data_allocate_sf_int
-  
+
+  function circe1_data_get_beam_file (data) result (file)
+    class(circe1_data_t), intent(in) :: data
+    type(string_t) :: file
+    file = "CIRCE1: " // data%acc
+  end function circe1_data_get_beam_file
+
   subroutine rng_obj_generate (rng_obj, u)
     class(rng_obj_t), intent(inout) :: rng_obj
     real(double), intent(out) :: u
@@ -255,12 +262,12 @@ contains
     class(circe1_t), intent(in) :: object
     type(string_t) :: string
     if (associated (object%data)) then
-       string = "CIRCE1: beamstrahlung" 
+       string = "CIRCE1: beamstrahlung"
     else
        string = "CIRCE1: [undefined]"
     end if
   end function circe1_type_string
-  
+
   subroutine circe1_write (object, unit, testflag)
     class(circe1_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -281,13 +288,13 @@ contains
        write (u, "(1x,A)")  "CIRCE1 data: [undefined]"
     end if
   end subroutine circe1_write
-    
-  subroutine circe1_init (sf_int, data) 
-    class(circe1_t), intent(out) :: sf_int 
+
+  subroutine circe1_init (sf_int, data)
+    class(circe1_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
     logical, dimension(6) :: mask_h
-    type(quantum_numbers_mask_t), dimension(6) :: mask 
-    integer, dimension(6) :: hel_lock 
+    type(quantum_numbers_mask_t), dimension(6) :: mask
+    integer, dimension(6) :: hel_lock
     type(polarization_t), target :: pol1, pol2
     type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_fc2
     type(flavor_t) :: flv_photon
@@ -300,7 +307,7 @@ contains
     mask_h = .false.
     select type (data)
     type is (circe1_data_t)
-       mi2 = data%m_in**2       
+       mi2 = data%m_in**2
        if (data%with_radiation) then
           if (data%photon(1)) then
              hel_lock(1) = 3;  hel_lock(3) = 1;  mask_h(5) = .true.
@@ -332,20 +339,20 @@ contains
           call pol2%init_generic (data%flv_in(2))
           call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
           call it_hel1%init (pol1)
-          
-          do while (it_hel1%is_valid ()) 
+
+          do while (it_hel1%is_valid ())
              qn_hel1 = it_hel1%get_quantum_numbers ()
-             qn1 = qn_hel1 .merge. qn_fc1(1) 
+             qn1 = qn_hel1 .merge. qn_fc1(1)
              qn(1) = qn1
              if (data%photon(1)) then
                 qn(3) = qn1;  qn(5) = qn_photon
              else
                 qn(3) = qn_photon;  qn(5) = qn1
              end if
-             call it_hel2%init (pol2) 
-             do while (it_hel2%is_valid ()) 
-                qn_hel2 = it_hel2%get_quantum_numbers () 
-                qn2 = qn_hel2 .merge. qn_fc2(1) 
+             call it_hel2%init (pol2)
+             do while (it_hel2%is_valid ())
+                qn_hel2 = it_hel2%get_quantum_numbers ()
+                qn2 = qn_hel2 .merge. qn_fc2(1)
                 qn(2) = qn2
                 if (data%photon(2)) then
                    qn(4) = qn2;  qn(6) = qn_photon
@@ -354,13 +361,13 @@ contains
                 end if
                 call qn(3:4)%tag_radiated ()
                 call sf_int%add_state (qn)
-                call it_hel2%advance () 
+                call it_hel2%advance ()
              end do
              call it_hel1%advance ()
           end do
 !           call pol1%final ()
 !           call pol2%final ()
-          call sf_int%freeze () 
+          call sf_int%freeze ()
           call sf_int%set_incoming ([1,2])
           call sf_int%set_radiated ([3,4])
           call sf_int%set_outgoing ([5,6])
@@ -391,20 +398,20 @@ contains
           call pol2%init_generic (data%flv_in(2))
           call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
           call it_hel1%init (pol1)
-          
-          do while (it_hel1%is_valid ()) 
+
+          do while (it_hel1%is_valid ())
              qn_hel1 = it_hel1%get_quantum_numbers ()
-             qn1 = qn_hel1 .merge. qn_fc1(1) 
+             qn1 = qn_hel1 .merge. qn_fc1(1)
              qn(1) = qn1
              if (data%photon(1)) then
                 qn(3) = qn_photon
              else
                 qn(3) = qn1
              end if
-             call it_hel2%init (pol2) 
-             do while (it_hel2%is_valid ()) 
-                qn_hel2 = it_hel2%get_quantum_numbers () 
-                qn2 = qn_hel2 .merge. qn_fc2(1) 
+             call it_hel2%init (pol2)
+             do while (it_hel2%is_valid ())
+                qn_hel2 = it_hel2%get_quantum_numbers ()
+                qn2 = qn_hel2 .merge. qn_fc2(1)
                 qn(2) = qn2
                 if (data%photon(2)) then
                    qn(4) = qn_photon
@@ -412,17 +419,17 @@ contains
                    qn(4) = qn2
                 end if
                 call sf_int%add_state (qn(1:4))
-                call it_hel2%advance () 
+                call it_hel2%advance ()
              end do
              call it_hel1%advance ()
           end do
 !           call pol1%final ()
 !           call pol2%final ()
-          call sf_int%freeze () 
+          call sf_int%freeze ()
           call sf_int%set_incoming ([1,2])
           call sf_int%set_outgoing ([3,4])
        end if
-       sf_int%status = SF_INITIAL       
+       sf_int%status = SF_INITIAL
     end select
     if (sf_int%data%generate) then
        call sf_int%data%rng_factory%make (sf_int%rng_obj%rng)
@@ -434,7 +441,7 @@ contains
     logical :: flag
     flag = sf_int%data%is_generator ()
   end function circe1_is_generator
-  
+
   subroutine circe1_generate_free (sf_int, r, rb,  x_free)
     class(circe1_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
@@ -449,7 +456,7 @@ contains
        rb= 1
     end if
   end subroutine circe1_generate_free
-    
+
   subroutine circe_generate (x, pdg, rng_obj)
     real(default), dimension(2), intent(out) :: x
     integer, dimension(2), intent(in) :: pdg
@@ -486,7 +493,7 @@ contains
     sf_int%x = x
     f = 1
     if (sf_int%data%with_radiation) then
-       xb1 = 1 - x       
+       xb1 = 1 - x
        call sf_int%split_momenta (x, xb1)
     else
        call sf_int%reduce_momenta (x)
@@ -553,15 +560,15 @@ contains
          end if
       end if
     end associate
-    call sf_int%set_matrix_element (cmplx (sf_int%f, kind=default)) 
+    call sf_int%set_matrix_element (cmplx (sf_int%f, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine circe1_apply
- 
+
   function peak (x, eps) result (f)
     real(default), intent(in) :: x, eps
     real(default) :: f
     f = exp (-x / eps) / eps
   end function peak
-  
+
 
 end module sf_circe1

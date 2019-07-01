@@ -20,13 +20,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-   (mass = 0.0000000E+00 GeV)
@@ -35,6 +28,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -57,13 +57,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -77,6 +70,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -99,13 +99,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -119,6 +112,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -141,13 +141,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -161,6 +154,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -183,13 +183,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -203,6 +196,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -225,13 +225,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -247,6 +240,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -269,13 +269,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -291,6 +284,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -316,13 +316,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -338,6 +331,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -360,13 +360,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_1p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_1p'
-|   Library name  = 'beam_setup_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, mu+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -380,6 +373,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_1p'
+|   Library name  = 'beam_setup_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_1p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.

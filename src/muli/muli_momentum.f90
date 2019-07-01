@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,14 +34,14 @@
 ! to the source 'whizard.nw'
 
 module muli_momentum
-  
+
   use kinds, only: default
   use constants
   use muli_base
-  
+
   implicit none
   private
-  
+
   public :: transverse_mom_t
   public :: qcd_2_2_class
 
@@ -55,7 +55,7 @@ module muli_momentum
      procedure :: read_from_marker => transverse_mom_read_from_marker
      procedure :: mom_print_to_unit => transverse_mom_print_to_unit
      procedure :: print_to_unit => transverse_mom_print_to_unit
-     procedure, nopass :: get_type => transverse_mom_get_type    
+     procedure, nopass :: get_type => transverse_mom_get_type
      procedure :: get_gev_initial_cme => transverse_mom_get_gev_initial_cme
      procedure :: get_gev_max_scale => transverse_mom_get_gev_max_scale
      procedure :: get_gev2_max_scale => transverse_mom_get_gev2_max_scale
@@ -71,9 +71,9 @@ module muli_momentum
      procedure :: set_unit_scale => transverse_mom_set_unit_scale
      procedure :: set_unit2_scale => transverse_mom_set_unit2_scale
      generic :: initialize => transverse_mom_initialize
-     procedure :: transverse_mom_initialize  
+     procedure :: transverse_mom_initialize
   end type transverse_mom_t
-  
+
   type, extends (transverse_mom_t), abstract :: qcd_2_2_class
    contains
      procedure(qcd_get_int), deferred :: get_process_id
@@ -87,7 +87,7 @@ module muli_momentum
      procedure(qcd_get_real), deferred :: get_momentum_boost
      ! procedure(qcd_get_real_3),deferred :: get_parton_in_momenta
      procedure(qcd_get_real_2), deferred :: get_remnant_momentum_fractions
-     procedure(qcd_get_real_2), deferred :: get_total_momentum_fractions    
+     procedure(qcd_get_real_2), deferred :: get_total_momentum_fractions
   end type qcd_2_2_class
 
 
@@ -107,35 +107,35 @@ module muli_momentum
   ! end interface
   abstract interface
      elemental function qcd_get_real (this)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        real(default) :: qcd_get_real
      end function qcd_get_real
   end interface
   abstract interface
      pure function qcd_get_real_2 (this)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        real(default), dimension(2) :: qcd_get_real_2
      end function qcd_get_real_2
   end interface
   abstract interface
      pure function qcd_get_real_3 (this)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        real(default), dimension(3) :: qcd_get_real_3
      end function qcd_get_real_3
   end interface
   abstract interface
      elemental function qcd_get_int (this)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        integer :: qcd_get_int
      end function qcd_get_int
   end interface
   abstract interface
      pure function qcd_get_int_by_int (this, n)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        integer, intent(in) :: n
        integer :: qcd_get_int_by_int
@@ -143,14 +143,14 @@ module muli_momentum
   end interface
   abstract interface
      pure function qcd_get_int_2 (this)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        integer, dimension(2) :: qcd_get_int_2
      end function qcd_get_int_2
   end interface
   abstract interface
      pure function qcd_get_int_4 (this)
-       import 
+       import
        class(qcd_2_2_class), intent(in) :: this
        integer, dimension(4) :: qcd_get_int_4
      end function qcd_get_int_4
@@ -193,12 +193,12 @@ contains
     write (unit, "(A,E20.10)")  "Scale normalized  :", this%momentum(3)
     write (unit, "(A,E20.10)")  "Scale^2 normalized:", this%momentum(4)
   end subroutine transverse_mom_print_to_unit
-    
+
   pure subroutine transverse_mom_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="transverse_mom_t")
   end subroutine transverse_mom_get_type
-  
+
   elemental function transverse_mom_get_gev_initial_cme (this) result(scale)
     class(transverse_mom_t), intent(in) :: this
     real(default) :: scale
@@ -256,7 +256,7 @@ contains
     this%momentum(3) = this%momentum(1) / this%momentum(0)
     this%momentum(4) = this%momentum(3)**2
   end subroutine transverse_mom_set_gev_max_scale
-  
+
   subroutine transverse_mom_set_gev2_max_scale (this, new_gev2_max_scale)
     class(transverse_mom_t), intent(inout) :: this
     real(default), intent(in)  ::  new_gev2_max_scale
@@ -308,7 +308,7 @@ contains
     gev_s = sqrt (gev2_s)
     this%momentum = [gev_s/2, gev_s/2, gev2_s/4, one, one]
   end subroutine transverse_mom_initialize
-    
-    
+
+
 end module muli_momentum
 

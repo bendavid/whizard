@@ -56,13 +56,6 @@ Model: QCD
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qcdtest_6_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qcdtest_6_p1'
-|   Library name  = 'qcdtest_6_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qcdtest_6_p1_i1':   gl, gl => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   gl  (mass = 0.0000000E+00 GeV)
@@ -71,6 +64,13 @@ Model: QCD
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qcdtest_6_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qcdtest_6_p1'
+|   Library name  = 'qcdtest_6_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qcdtest_6_p1_i1':   gl, gl => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.
@@ -128,13 +128,6 @@ Model: QCD
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qcdtest_6_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qcdtest_6_p2'
-|   Library name  = 'qcdtest_6_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'qcdtest_6_p2_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   gl  (mass = 0.0000000E+00 GeV)
@@ -143,6 +136,13 @@ Model: QCD
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qcdtest_6_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qcdtest_6_p2'
+|   Library name  = 'qcdtest_6_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'qcdtest_6_p2_i1':   gl, gl => u, ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.
@@ -165,13 +165,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qcdtest_6_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qcdtest_6_p1'
-|   Library name  = 'qcdtest_6_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qcdtest_6_p1_i1':   gl, gl => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   gl  (mass = 0.0000000E+00 GeV)
@@ -180,6 +173,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qcdtest_6_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qcdtest_6_p1'
+|   Library name  = 'qcdtest_6_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qcdtest_6_p1_i1':   gl, gl => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.

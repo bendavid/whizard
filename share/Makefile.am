@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -82,7 +82,6 @@ dist_models_DATA = \
   models/SM.mdl \
   models/SM_Higgs.mdl \
   models/SM_hadrons.mdl \
-  models/SM_rad.mdl \
   models/SSC.mdl \
   models/SSC_2.mdl \
   models/SSC_AltT.mdl \
@@ -130,6 +129,7 @@ dist_examples_DATA = \
   examples/HERA_DIS.sin \
   examples/NLO_eettbar_GoSam.sin \
   examples/NLO_eettbar_OpenLoops.sin \
+  examples/NLO_NLL_matched.sin \
   examples/DrellYanMatchingP.sin \
   examples/DrellYanMatchingW.sin \
   examples/DrellYanNoMatchingP.sin \

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -62,31 +62,31 @@ module eio_base_uti
        integer, intent(in), optional :: n_alt
      end subroutine eio_prepare_event
   end interface
-  
+
   abstract interface
      subroutine eio_cleanup_event (event)
        import
        class(generic_event_t), intent(inout), pointer :: event
      end subroutine eio_cleanup_event
   end interface
-  
+
   procedure(eio_prepare_event), pointer :: eio_prepare_test => null ()
   procedure(eio_cleanup_event), pointer :: eio_cleanup_test => null ()
-  
+
   abstract interface
      subroutine eio_prepare_model (model)
        import
        class(model_data_t), intent(inout), pointer :: model
      end subroutine eio_prepare_model
   end interface
-  
+
   abstract interface
      subroutine eio_cleanup_model (model)
        import
        class(model_data_t), intent(inout), pointer :: model
      end subroutine eio_cleanup_model
   end interface
-  
+
   type, extends (eio_t) :: eio_test_t
      integer :: event_n = 0
      integer :: event_i = 0
@@ -107,7 +107,7 @@ module eio_base_uti
 
   procedure(eio_prepare_model), pointer :: eio_prepare_fallback_model => null ()
   procedure(eio_cleanup_model), pointer :: eio_cleanup_fallback_model => null ()
-  
+
 
 contains
 
@@ -125,46 +125,46 @@ contains
     write (u, "(A)")  "* Initialize test process"
 
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_test1"
- 
+
     allocate (eio_test_t :: eio)
-    
+
     call eio%init_out (sample)
     call event%generate (1, [0._default, 0._default])
     call eio%output (event, 42)
     call eio%write (u)
     call eio%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read the event"
     write (u, "(A)")
-    
+
     call eio%init_in (sample)
     call eio%input_i_prc (i_prc, iostat)
     call eio%input_event (event, iostat)
     call eio%write (u)
     write (u, "(A)")
     write (u, "(1x,A,I0)")  "i = ", i_prc
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate and append another event"
     write (u, "(A)")
-    
+
     call eio%switch_inout ()
     call event%generate (1, [0._default, 0._default])
     call eio%output (event, 5)
     call eio%write (u)
     call eio%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read both events"
     write (u, "(A)")
-    
+
     call eio%init_in (sample)
     call eio%input_i_prc (i_prc, iostat)
     call eio%input_event (event, iostat)
@@ -173,20 +173,20 @@ contains
     call eio%write (u)
     write (u, "(A)")
     write (u, "(1x,A,I0)")  "i = ", i_prc
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio%final ()
     deallocate (eio)
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_base_1"
-    
+
   end subroutine eio_base_1
-  
+
 
   subroutine eio_test_write (object, unit)
     class(eio_test_t), intent(in) :: object
@@ -201,12 +201,12 @@ contains
        end do
     end if
   end subroutine eio_test_write
-    
+
   subroutine eio_test_final (object)
     class(eio_test_t), intent(inout) :: object
     object%event_i = 0
   end subroutine eio_test_final
-    
+
   subroutine eio_test_init_out (eio, sample, data, success, extension)
     class(eio_test_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -219,7 +219,7 @@ contains
     allocate (eio%event_p (2, 10))
     if (present (success))  success = .true.
   end subroutine eio_test_init_out
-  
+
   subroutine eio_test_init_in (eio, sample, data, success, extension)
     class(eio_test_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -228,13 +228,13 @@ contains
     type(string_t), intent(in), optional :: extension
     if (present (success))  success = .true.
   end subroutine eio_test_init_in
-  
+
   subroutine eio_test_switch_inout (eio, success)
     class(eio_test_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     if (present (success))  success = .true.
   end subroutine eio_test_switch_inout
-  
+
   subroutine eio_test_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_test_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event

@@ -21,13 +21,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_14_1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_14_1'
-|   Library name  = 'smtest_14_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_14_1_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -36,6 +29,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_14_1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_14_1'
+|   Library name  = 'smtest_14_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_14_1_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -65,7 +65,7 @@ module sf_circe2
 
   type, extends (sf_data_t) :: circe2_data_t
      private
-     class(model_data_t), pointer :: model => null () 
+     class(model_data_t), pointer :: model => null ()
      type(flavor_t), dimension(2) :: flv_in
      integer, dimension(2) :: pdg_in
      real(default) :: sqrts = 0
@@ -73,8 +73,8 @@ module sf_circe2
      logical :: beams_polarized = .false.
      class(rng_factory_t), allocatable :: rng_factory
      type(string_t) :: filename
-     type(string_t) :: file 
-     type(string_t) :: design 
+     type(string_t) :: file
+     type(string_t) :: design
      real(default) :: lumi = 0
      real(default), dimension(4) :: lumi_hel_frac = 0
      integer, dimension(0:4) :: h1 = [0, -1, -1, 1, 1]
@@ -84,22 +84,23 @@ module sf_circe2
        procedure :: init => circe2_data_init
        procedure :: set_generator_mode => circe2_data_set_generator_mode
        procedure :: check_file => circe2_check_file
-       procedure :: check => circe2_data_check 
+       procedure :: check => circe2_data_check
        procedure :: write => circe2_data_write
        procedure :: is_generator => circe2_data_is_generator
        procedure :: get_n_par => circe2_data_get_n_par
        procedure :: get_pdg_out => circe2_data_get_pdg_out
        procedure :: allocate_sf_int => circe2_data_allocate_sf_int
+       procedure :: get_beam_file => circe2_data_get_beam_file
   end type circe2_data_t
 
   type(circe2_state) :: circe2_global_state
-  
+
   type, extends (circe2_rng_t) :: rng_obj_t
      class(rng_t), allocatable :: rng
    contains
      procedure :: generate => rng_obj_generate
   end type rng_obj_t
-  
+
   type, extends (sf_int_t) :: circe2_t
      type(circe2_data_t), pointer :: data => null ()
      type(rng_obj_t) :: rng_obj
@@ -114,8 +115,8 @@ module sf_circe2
      procedure :: complete_kinematics => circe2_complete_kinematics
      procedure :: inverse_kinematics => circe2_inverse_kinematics
      procedure :: apply => circe2_apply
-  end type circe2_t 
-  
+  end type circe2_t
+
 
 contains
 
@@ -164,7 +165,7 @@ contains
     class(rng_factory_t), intent(inout), allocatable :: rng_factory
     call move_alloc (from = rng_factory, to = data%rng_factory)
   end subroutine circe2_data_set_generator_mode
-  
+
   subroutine circe2_check_file (data, os_data)
     class(circe2_data_t), intent(inout) :: data
     type(os_data_t), intent(in) :: os_data
@@ -172,7 +173,7 @@ contains
     type(string_t) :: file
     file = data%filename
     if (file == "") &
-         call msg_fatal ("CIRCE2: $circe2_file is not set")    
+         call msg_fatal ("CIRCE2: $circe2_file is not set")
     inquire (file = char (file), exist = exist)
     if (exist) then
        data%file = file
@@ -187,9 +188,9 @@ contains
        end if
     end if
   end subroutine circe2_check_file
-    
-  subroutine circe2_data_check (data) 
-    class(circe2_data_t), intent(in) :: data 
+
+  subroutine circe2_data_check (data)
+    class(circe2_data_t), intent(in) :: data
     type(flavor_t) :: flv_photon, flv_electron
     call flv_photon%init (PHOTON, data%model)
     if (.not. flv_photon%is_defined ()) then
@@ -214,8 +215,8 @@ contains
        call msg_fatal ("CIRCE2: data file too large.")
     end select
   end subroutine circe2_data_check
-  
-  subroutine circe2_data_write (data, unit, verbose) 
+
+  subroutine circe2_data_write (data, unit, verbose)
     class(circe2_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -227,9 +228,9 @@ contains
     write (u, "(3x,A," // FMT_19 // ")") "sqrts  = ", data%sqrts
     write (u, "(3x,A,A,A,A)")   "prt_in = ", &
          char (data%flv_in(1)%get_name ()), &
-         ", ", char (data%flv_in(2)%get_name ())    
+         ", ", char (data%flv_in(2)%get_name ())
     write (u, "(3x,A,L1)")      "polarized  = ", data%polarized
-    write (u, "(3x,A,L1)")      "beams pol. = ", data%beams_polarized    
+    write (u, "(3x,A,L1)")      "beams pol. = ", data%beams_polarized
     write (u, "(3x,A," // FMT_19 // ")") "luminosity = ", data%lumi
     if (data%polarized) then
        do h = 1, 4
@@ -240,19 +241,19 @@ contains
     end if
     call data%rng_factory%write (u)
   end subroutine circe2_data_write
-  
+
   function circe2_data_is_generator (data) result (flag)
     class(circe2_data_t), intent(in) :: data
     logical :: flag
     flag = .true.
   end function circe2_data_is_generator
-  
+
   function circe2_data_get_n_par (data) result (n)
     class(circe2_data_t), intent(in) :: data
     integer :: n
     n = 2
   end function circe2_data_get_n_par
-  
+
   subroutine circe2_data_get_pdg_out (data, pdg_out)
     class(circe2_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -262,13 +263,19 @@ contains
        pdg_out(i) = data%pdg_in(i)
     end do
   end subroutine circe2_data_get_pdg_out
-  
+
   subroutine circe2_data_allocate_sf_int (data, sf_int)
     class(circe2_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (circe2_t :: sf_int)
   end subroutine circe2_data_allocate_sf_int
-  
+
+  function circe2_data_get_beam_file (data) result (file)
+    class(circe2_data_t), intent(in) :: data
+    type(string_t) :: file
+    file = "CIRCE2: " // data%filename
+  end function circe2_data_get_beam_file
+
   subroutine rng_obj_generate (rng_obj, u)
     class(rng_obj_t), intent(inout) :: rng_obj
     real(default), intent(out) :: u
@@ -286,7 +293,7 @@ contains
        string = "CIRCE2: [undefined]"
     end if
   end function circe2_type_string
-  
+
   subroutine circe2_write (object, unit, testflag)
     class(circe2_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -300,7 +307,7 @@ contains
        write (u, "(1x,A)")  "CIRCE2 data: [undefined]"
     end if
   end subroutine circe2_write
-    
+
   subroutine circe2_init (sf_int, data)
     class(circe2_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -324,8 +331,8 @@ contains
        mask_h(3:4) = .not. (data%polarized .or. data%beams_polarized)
        mask = quantum_numbers_mask (.false., .false., mask_h)
        call sf_int%base_init (mask, [0._default, 0._default], &
-            null_array, [0._default, 0._default])    
-       sf_int%data => data              
+            null_array, [0._default, 0._default])
+       sf_int%data => data
        if (data%polarized) then
           if (vanishes (sum (data%lumi_hel_frac)) .or. &
                any (data%lumi_hel_frac < 0)) then
@@ -335,7 +342,7 @@ contains
                   // "CIRCE2 file or "), &
                    var_str ("switch off the polarized" // &
                   " option for CIRCE2.")])
-          else             
+          else
              call sf_int%selector%init (data%lumi_hel_frac)
           end if
        end if
@@ -386,7 +393,7 @@ contains
     logical :: flag
     flag = sf_int%data%is_generator ()
   end function circe2_is_generator
-  
+
   subroutine circe2_generate_whizard_free (sf_int, r, rb, x_free)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
@@ -404,7 +411,7 @@ contains
     rb = 1 - r
     x_free = x_free * product (r)
   end subroutine circe2_generate_whizard_free
-    
+
   subroutine circe2_generate_whizard (x, pdg, hel, rng_obj)
     real(default), dimension(2), intent(out) :: x
     integer, dimension(2), intent(in) :: pdg

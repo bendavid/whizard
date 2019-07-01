@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module hep_common
-  
+
   use kinds, only: default
   use kinds, only: double
   use constants
@@ -61,7 +61,7 @@ module hep_common
   private
 
   public :: heprup_init
-  public :: assure_heprup 
+  public :: assure_heprup
   public :: combine_lhef_with_particle_set
   public :: w2p_write_lhef_event
   public :: heprup_get_run_parameters
@@ -89,7 +89,7 @@ module hep_common
   public :: hepevt_write_hepevt
   public :: hepevt_write_ascii
   public :: hepevt_write_athena
-  public :: hepevt_write_mokka  
+  public :: hepevt_write_mokka
   public :: hepeup_read_lhef
   public :: hepeup_from_particle_set
   public :: hepeup_to_particle_set
@@ -140,13 +140,13 @@ module hep_common
   integer, dimension(2, NMXHEP), public :: JDAHEP
 
   double precision, dimension(5, NMXHEP), public :: PHEP
-  
+
   double precision, dimension(4, NMXHEP) :: VHEP
-  
+
   integer, dimension(NMXHEP) :: hepevt_pol
 
   integer, public :: idruplh
-  
+
   double precision, public :: eventweightlh
 
   double precision, public :: alphaqedlh, alphaqcdlh
@@ -155,12 +155,12 @@ module hep_common
 
   double precision, dimension (3,NMXHEP), public :: spinlh
   integer, dimension (2,NMXHEP), public :: icolorflowlh
-  
+
   integer :: hepevt_n_out, hepevt_n_remnants
 
   double precision :: hepevt_weight, hepevt_function_value
   double precision :: hepevt_function_ratio
-  
+
 
   common /HEPRUP/ &
        IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, &
@@ -176,7 +176,7 @@ module hep_common
        NEVHEP, NHEP, ISTHEP, IDHEP, &
        JMOHEP, JDAHEP, PHEP, VHEP
   save /HEPEVT/
-  
+
   common /HEPEV4/ &
        eventweightlh, alphaqedlh, alphaqcdlh, scalelh, &
        spinlh, icolorflowlh, idruplh
@@ -184,7 +184,7 @@ module hep_common
 
 
 contains
-  
+
   subroutine heprup_init &
        (beam_pdg, beam_energy, n_processes, unweighted, negative_weights)
     integer, dimension(2), intent(in) :: beam_pdg
@@ -257,7 +257,7 @@ contains
        read (u,*, END=501, ERR=502) STRING
        IBEG = 0
        do
-          if (signal_is_pending ()) return              
+          if (signal_is_pending ()) return
           IBEG = IBEG + 1
           ! Allow indentation.
           IF (STRING (IBEG:IBEG) .EQ. ' ' .and. IBEG < MAXLEN-6) cycle
@@ -273,14 +273,14 @@ contains
     allocate (prt_tmp (1:n_tot+NUP))
     allocate (relations (1:NUP), mothers (1:NUP), tbd(1:NUP))
     do i = 1, n_tot
-       if (signal_is_pending ()) return           
+       if (signal_is_pending ()) return
        prt_tmp (i) = particle_set%get_particle (i)
     end do
     !!! transfer particles from lhef to particle_set
     !!!...Read NUP subsequent lines with information on each particle.
     n_entries = 1
     mothers = 0
-    relations = 0    
+    relations = 0
     PARTICLE_LOOP: do I = 1, NUP
        read (u,*, END=200, ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
             ICOLUP(1), ICOLUP(2), (PUP (J),J=1,5), VTIMUP, SPINUP
@@ -317,7 +317,7 @@ contains
             vector3_moving ([pup_dum (1), pup_dum (2), pup_dum (3)]))
        not_found = .true.
        SCAN_PARTICLES: do j = 1, n_tot
-          d_mom = prt_tmp(j)%get_momentum () 
+          d_mom = prt_tmp(j)%get_momentum ()
           if (all (nearly_equal &
                (mom%p, d_mom%p, abs_smallness = 1.E-4_default)) .and. &
                 (prt_tmp(j)%get_pdg () == IDUP)) then
@@ -326,23 +326,23 @@ contains
                   relations(i) = j
                   not_found = .false.
           end if
-       end do SCAN_PARTICLES               
+       end do SCAN_PARTICLES
        if (not_found) then
           if (debug_lhef) &
              print *, "Not found: adding particle"
-          call prt_tmp(n_tot+n_entries)%set_flavor (flv)    
+          call prt_tmp(n_tot+n_entries)%set_flavor (flv)
           call prt_tmp(n_tot+n_entries)%set_color (col)
           call prt_tmp(n_tot+n_entries)%set_momentum (mom)
-          if (MOTHUP(1) /= 0) then 
+          if (MOTHUP(1) /= 0) then
              if (relations(MOTHUP(1)) /= 0) then
                 call prt_tmp(n_tot+n_entries)%set_parents &
-                     ([relations(MOTHUP(1))])             
+                     ([relations(MOTHUP(1))])
                 call prt_tmp(relations(MOTHUP(1)))%add_child (n_tot+n_entries)
                 if (prt_tmp(relations(MOTHUP(1)))%get_status () &
                      == PRT_OUTGOING) &
                      call prt_tmp(relations(MOTHUP(1)))%reset_status &
                      (PRT_VIRTUAL)
-             end if             
+             end if
           end if
           call prt_tmp(n_tot+n_entries)%set_status (PRT_OUTGOING)
           if (debug_lhef) call prt_tmp(n_tot+n_entries)%write ()
@@ -352,16 +352,16 @@ contains
     do i = 1, n_tot
        if (prt_tmp(i)%get_status () == PRT_OUTGOING .and. &
            prt_tmp(i)%get_n_children () /= 0) then
-                call prt_tmp(i)%reset_status (PRT_VIRTUAL)          
+                call prt_tmp(i)%reset_status (PRT_VIRTUAL)
        end if
     end do
-    
+
     allocate (prt (1:n_tot+n_entries-1))
     prt = prt_tmp (1:n_tot+n_entries-1)
     ! transfer to particle_set
     call particle_set%replace (prt)
     deallocate (prt, prt_tmp)
-    
+
     if (debug_lhef) then
        call particle_set%write ()
        print *, "combine_lhef_with_particle_set"
@@ -382,7 +382,7 @@ contains
 505 write(*,*) "READING LHEF failed 505"
     return
   end subroutine combine_lhef_with_particle_set
-  
+
   subroutine w2p_write_lhef_event (unit)
     integer, intent(in) :: unit
     type(xml_tag_t), allocatable :: tag_lhef, tag_head, tag_init, &
@@ -396,14 +396,14 @@ contains
     call tag_init%init (var_str ("init"), .true.)
     call tag_event%init (var_str ("event"), .true.)
     call tag_gen_n%init (var_str ("generator_name"), .true.)
-    call tag_gen_v%init (var_str ("generator_version"), .true.)      
+    call tag_gen_v%init (var_str ("generator_version"), .true.)
     call tag_lhef%write (unit); write (unit, *)
     call tag_head%write (unit); write (unit, *)
     write (unit, "(2x)", advance = "no")
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
-    write (unit, "(2x)", advance = "no")      
-    call tag_gen_v%write (var_str ("2.4.0"), unit)
+    write (unit, "(2x)", advance = "no")
+    call tag_gen_v%write (var_str ("2.4.1"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -545,7 +545,7 @@ contains
             XSECUP(i), XERRUP(i), XMAXUP(i), LPRUP(i)
     end do
   end subroutine heprup_write_lhef
-  
+
   subroutine heprup_write_ascii (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -557,7 +557,7 @@ contains
             XSECUP(i), XERRUP(i), XMAXUP(i), LPRUP(i)
     end do
   end subroutine heprup_write_ascii
-  
+
   subroutine heprup_read_lhef (u)
     integer, intent(in) :: u
     integer :: i
@@ -568,7 +568,7 @@ contains
             XSECUP(i), XERRUP(i), XMAXUP(i), LPRUP(i)
     end do
   end subroutine heprup_read_lhef
-    
+
   subroutine hepeup_init (n_tot)
     integer, intent(in) :: n_tot
     NUP = n_tot
@@ -671,7 +671,7 @@ contains
     s4 = rotation_to_2nd (3, p3) * vector4_moving (0._default, s3)
     SPINUP(i) = enclosed_angle_ct (s4, p_mother)
   end subroutine hepeup_set_particle_spin_pol
-    
+
   subroutine hepeup_get_particle (i, pdg, status, parent, col, p, m2)
     integer, intent(in) :: i
     integer, intent(out), optional :: pdg, status
@@ -733,7 +733,7 @@ contains
     alphaqedlh        = -1
     scalelh           = -1
   end subroutine hepevt_init
-  
+
   subroutine hepevt_set_event_parameters &
        (proc_id, weight, function_value, function_ratio, &
        alpha_qcd, alpha_qed, scale, i_evt)
@@ -741,7 +741,7 @@ contains
     integer, intent(in), optional :: i_evt
     real(default), intent(in), optional :: weight, function_value, &
        function_ratio, alpha_qcd, alpha_qed, scale
-    if (present (proc_id))  idruplh = proc_id 
+    if (present (proc_id))  idruplh = proc_id
     if (present (i_evt))  NEVHEP = i_evt
     if (present (weight)) then
        hepevt_weight = weight
@@ -942,7 +942,7 @@ contains
     integer, intent(in), optional :: unit
     integer :: u, i
     integer, dimension(MAXNUP) :: spin_up
-    spin_up = SPINUP
+    spin_up = int(SPINUP)
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2(1x,I5),1x,ES17.10,3(1x,ES13.6))") &
          NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
@@ -957,7 +957,7 @@ contains
             write (u, "(1x,I5,4(1x,ES17.10))") i, PUP([ 4,1,2,3 ], i)
     end do
 
-  end subroutine hepeup_write_lha  
+  end subroutine hepeup_write_lha
 
   subroutine hepevt_write_hepevt (unit)
     integer, intent(in), optional :: unit
@@ -972,10 +972,10 @@ contains
        write (u, "(5(1x,ES17.10))") VHEP(:,i), 0.d0
     end do
   end subroutine hepevt_write_hepevt
-  
+
   subroutine hepevt_write_ascii (unit, long)
     integer, intent(in), optional :: unit
-    logical, intent(in) :: long   
+    logical, intent(in) :: long
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3(1x,I0),(1x,ES17.10))") &
@@ -985,12 +985,12 @@ contains
        write (u, "(2(1x,I0))") IDHEP(i), hepevt_pol(i)
        write (u, "(5(1x,ES17.10))") PHEP(:,i)
     end do
-    if (long) then 
+    if (long) then
        write (u, "(2(1x,ES17.10))") &
             hepevt_function_value, hepevt_function_ratio
     end if
   end subroutine hepevt_write_ascii
-  
+
   subroutine hepevt_write_athena (unit, i_evt)
     integer, intent(in), optional :: unit, i_evt
     integer :: u, i, num_event
@@ -1005,7 +1005,7 @@ contains
        write (u, "(5(1x,ES17.10))") VHEP(1:4,i)
     end do
   end subroutine hepevt_write_athena
-  
+
   subroutine hepevt_write_mokka (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -1018,7 +1018,7 @@ contains
             PHEP(1:3,i), PHEP(5,i)
     end do
   end subroutine hepevt_write_mokka
-  
+
   subroutine hepeup_read_lhef (u)
     integer, intent(in) :: u
     integer :: i
@@ -1145,7 +1145,7 @@ contains
     end if
     call particle_set%replace (prt)
   end subroutine hepeup_to_particle_set
-  
+
   subroutine hepevt_from_particle_set &
        (particle_set, keep_beams, keep_remnants, ensure_order, fill_hepev4)
     type(particle_set_t), intent(in) :: particle_set

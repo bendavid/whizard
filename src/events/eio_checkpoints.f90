@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_checkpoints
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
@@ -81,10 +81,10 @@ module eio_checkpoints
      procedure :: input_event => eio_checkpoints_input_event
      procedure :: skip => eio_checkpoints_skip
   end type eio_checkpoints_t
-  
+
 
 contains
-  
+
   subroutine eio_checkpoints_set_parameters (eio, checkpoint, blank)
     class(eio_checkpoints_t), intent(inout) :: eio
     integer, intent(in) :: checkpoint
@@ -92,7 +92,7 @@ contains
     eio%val = checkpoint
     if (present (blank))  eio%blank = blank
   end subroutine eio_checkpoints_set_parameters
-  
+
   subroutine eio_checkpoints_write (object, unit)
     class(eio_checkpoints_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -110,12 +110,12 @@ contains
        write (u, "(1x,A)")  "Event-sample checkpoints:  off"
     end if
   end subroutine eio_checkpoints_write
-  
+
   subroutine eio_checkpoints_final (object)
     class(eio_checkpoints_t), intent(inout) :: object
     object%active = .false.
   end subroutine eio_checkpoints_final
-  
+
   subroutine eio_checkpoints_init_out (eio, sample, data, success, extension)
     class(eio_checkpoints_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -132,7 +132,7 @@ contains
     end if
     if (present (success))  success = .true.
   end subroutine eio_checkpoints_init_out
-    
+
   subroutine eio_checkpoints_init_in (eio, sample, data, success, extension)
     class(eio_checkpoints_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -142,14 +142,14 @@ contains
     call msg_bug ("Event checkpoints: event input not supported")
     if (present (success))  success = .false.
   end subroutine eio_checkpoints_init_in
-    
+
   subroutine eio_checkpoints_switch_inout (eio, success)
     class(eio_checkpoints_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("Event checkpoints: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_checkpoints_switch_inout
-  
+
   subroutine eio_checkpoints_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_checkpoints_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -184,7 +184,7 @@ contains
        call eio%timer%start ()
     end if
   end subroutine eio_checkpoints_startup
-  
+
   subroutine eio_checkpoints_message (eio, testflag)
     class(eio_checkpoints_t), intent(inout) :: eio
     logical, intent(in), optional :: testflag

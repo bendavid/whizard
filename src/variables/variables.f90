@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -2703,6 +2703,8 @@ contains
          0._default, intrinsic=.true.)
     call var_list%append_real (var_str ("channel_weights_power"), 0.25_default, &
           intrinsic=.true.)
+    call var_list%append_string (var_str ("$grid_path"), var_str (""), &
+          intrinsic=.true.)
   end subroutine var_list_set_integration_defaults
 
   subroutine var_list_set_phase_space_defaults (var_list)
@@ -3017,7 +3019,7 @@ contains
     call var_list%append_string &
          (var_str ("$hadronization_method"), var_str ("PYTHIA6"), intrinsic = .true.)
     call var_list%append_real &
-         (var_str ("hadron_enhanced_fraction"), 0.01_default, intrinsic = .true.)        
+         (var_str ("hadron_enhanced_fraction"), 0.01_default, intrinsic = .true.)
     call var_list%append_real &
          (var_str ("hadron_enhanced_width"), 2.0_default, intrinsic = .true.)
   end subroutine var_list_set_hadronization_defaults
@@ -3077,8 +3079,6 @@ contains
     class(var_list_t), intent(inout) :: var_list
     call var_list%append_log (var_str ("?powheg_matching"), &
          .false., intrinsic = .true.)
-    call var_list%append_real (var_str ("powheg_damping_scale"), &
-          10._default, intrinsic = .true.)
     call var_list%append_log (var_str ("?powheg_use_singular_jacobian"), &
          .false., intrinsic = .true.)
     call var_list%append_int (var_str ("powheg_grid_size_xi"), &
@@ -3092,8 +3092,6 @@ contains
     call var_list%append_real (var_str ("powheg_lambda"), &
           LAMBDA_QCD_REF, intrinsic = .true.)
     call var_list%append_log (var_str ("?powheg_rebuild_grids"), &
-          .false., intrinsic = .true.)
-    call var_list%append_log (var_str ("?powheg_use_damping"), &
           .false., intrinsic = .true.)
     call var_list%append_log (var_str ("?powheg_test_sudakov"), &
           .false., intrinsic = .true.)
@@ -3129,16 +3127,22 @@ contains
          var_str ("omega"), intrinsic = .true.)
     call var_list%append_string (var_str ("$real_tree_me_method"), &
          var_str ("omega"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$soft_mismatch_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$dglap_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
     call var_list%append_log (&
          var_str ("?test_soft_limit"), .false., intrinsic = .true.)
     call var_list%append_log (&
          var_str ("?test_coll_limit"), .false., intrinsic = .true.)
     call var_list%append_log (&
          var_str ("?test_anti_coll_limit"), .false., intrinsic = .true.)
-    call var_list%append_int (&
-         var_str ("fixed_alpha_region"), 0, intrinsic = .true.)
-    call var_list%append_log (&
-         var_str ("?switch_off_virtual_subtraction"), .false., intrinsic = .true.)
+    call var_list%append_string (var_str ("$select_alpha_regions"), &
+         var_str (""), intrinsic = .true.)
+    call var_list%append_string (var_str ("$virtual_selection"), &
+         var_str ("Full"), intrinsic = .true.)
+    call var_list%append_log (var_str ("?virtual_collinear_resonance_aware"), &
+         .true., intrinsic = .true.)
     call var_list%append_real (&
          var_str ("blha_use_top_yukawa"), -1._default, intrinsic = .true.)
     call var_list%append_string (var_str ("$blha_ew_scheme"), &
@@ -3146,7 +3150,7 @@ contains
     call var_list%append_int (var_str ("openloops_verbosity"), 1, &
          intrinsic = .true.)
     call var_list%append_log (var_str ("?openloops_use_cms"), &
-         .false., intrinsic = .true.)
+         .true., intrinsic = .true.)
     call var_list%append_int (var_str ("openloops_phs_tolerance"), 7, &
          intrinsic = .true.)
     call var_list%append_int (var_str ("openloops_stability_log"), 0, &
@@ -3157,6 +3161,8 @@ contains
           var_str (""), intrinsic = .true.)
     call var_list%append_log (var_str ("?openloops_use_collier"), &
          .true., intrinsic = .true.)
+    call var_list%append_real (var_str ("recola_mu_ir"), &
+         100._default, intrinsic = .true.)
     call var_list%append_log (var_str ("?disable_subtraction"), &
          .false., intrinsic = .true.)
     call var_list%append_real (var_str ("fks_dij_exp1"), &
@@ -3167,6 +3173,8 @@ contains
          0.0000001_default, intrinsic = .true.)
     call var_list%append_real (var_str ("fks_y_max"), &
          1._default, intrinsic = .true.)
+    call var_list%append_log (var_str ("?vis_fks_regions"), &
+         .false., intrinsic = .true.)
     call var_list%append_string (var_str ("$fks_mapping_type"), &
          var_str ("default"), intrinsic = .true.)
     call var_list%append_string (var_str ("$resonances_exclude_particles"), &
@@ -3206,6 +3214,20 @@ contains
     call var_list%append_real (&
          var_str ("mult_call_dglap"), 1._default, &
          intrinsic = .true.)
+    call var_list%append_string (var_str ("$dalitz_plot"), &
+         var_str (''), intrinsic = .true.)
+    call var_list%append_string (var_str ("$nlo_correction_type"), &
+         var_str ("QCD"), intrinsic = .true.) !!! leaving "QCD" as default for now
+    call var_list%append_string (var_str ("$exclude_gauge_splittings"), &
+         var_str ("c:b:t:e2:e3"), intrinsic = .true.)
+    call var_list%append_log (var_str ("?nlo_use_born_scale"), &
+         .true., intrinsic = .true.)
+    call var_list%append_log (var_str ("?nlo_cut_all_sqmes"), &
+         .true., intrinsic = .true.)
+    call var_list%append_log (var_str ("?nlo_use_real_partition"), &
+          .false., intrinsic = .true.)
+    call var_list%append_real (var_str ("real_partition_scale"), &
+          10._default, intrinsic = .true.)
   end subroutine var_list_set_nlo_defaults
 
 

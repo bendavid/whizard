@@ -24,13 +24,6 @@ epa_mass =  5.109970000000E-04
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process circe1_photons_3_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe1_photons_3_p2'
-|   Library name  = 'circe1_photons_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'circe1_photons_3_p2_i1':   A, A => H [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => epa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -39,6 +32,13 @@ epa_mass =  5.109970000000E-04
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe1_photons_3_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_photons_3_p2'
+|   Library name  = 'circe1_photons_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'circe1_photons_3_p2_i1':   A, A => H [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 0 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -75,13 +75,6 @@ circe1_chat = 2
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process circe1_photons_3_p3:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe1_photons_3_p3'
-|   Library name  = 'circe1_photons_3_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'circe1_photons_3_p3_i1':   A, A => H [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => epa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -93,6 +86,13 @@ circe1_chat = 2
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe1_photons_3_p3_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_photons_3_p3'
+|   Library name  = 'circe1_photons_3_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'circe1_photons_3_p3_i1':   A, A => H [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 0 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

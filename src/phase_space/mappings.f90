@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -101,6 +101,12 @@ module mappings
      real(default) :: b2 = 0
      real(default) :: b3 = 0
      logical :: variable_limits = .true.
+   contains
+     procedure :: is_set => mapping_is_set
+     procedure :: is_s_channel => mapping_is_s_channel
+     procedure :: is_on_shell => mapping_is_on_shell
+     procedure :: get_bincode => mapping_get_bincode
+     procedure :: get_flv => mapping_get_flv
   end type mapping_t
 
 
@@ -218,8 +224,7 @@ contains
        call msg_bug ("Mappings: encountered undefined mapping key '" &
             // char (type) // "'")
     end select
-    if (present (f) .and. present (model)) &
-         call mapping%flv%init (abs (f), model)
+    if (present (f) .and. present (model))  call mapping%flv%init (f, model)
   end subroutine mapping_init
 
   subroutine mapping_set_parameters (map, mapping_defaults, variable_limits)
@@ -269,22 +274,34 @@ contains
   end subroutine mapping_set_step_mapping_parameters
 
   function mapping_is_set (mapping) result (flag)
+    class(mapping_t), intent(in) :: mapping
     logical :: flag
-    type(mapping_t), intent(in) :: mapping
     flag = mapping%type /= NO_MAPPING
   end function mapping_is_set
 
   function mapping_is_s_channel (mapping) result (flag)
+    class(mapping_t), intent(in) :: mapping
     logical :: flag
-    type(mapping_t), intent(in) :: mapping
     flag = mapping%type == S_CHANNEL
   end function mapping_is_s_channel
 
   function mapping_is_on_shell (mapping) result (flag)
+    class(mapping_t), intent(in) :: mapping
     logical :: flag
-    type(mapping_t), intent(in) :: mapping
     flag = mapping%type == ON_SHELL
   end function mapping_is_on_shell
+
+  function mapping_get_bincode (mapping) result (bincode)
+    class(mapping_t), intent(in) :: mapping
+    integer(TC) :: bincode
+    bincode = mapping%bincode
+  end function mapping_get_bincode
+
+  function mapping_get_flv (mapping) result (flv)
+    class(mapping_t), intent(in) :: mapping
+    type(flavor_t) :: flv
+    flv = mapping%flv
+  end function mapping_get_flv
 
   function mapping_get_mass (mapping) result (mass)
     real(default) :: mass

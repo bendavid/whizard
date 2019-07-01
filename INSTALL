@@ -69,6 +69,9 @@ WHIZARD:
 -- OpenLoops for NLO matrix elements.
    Available from: http://openloops.hepforge.org/
 
+-- Recola for NLO matrix elements.
+   Available from: http://recola.hepforge.org/
+
 -- LoopTools for one-loop functions (for the top threshold)
    You can get it from: http://www.feynarts.de/looptools/
 
@@ -241,6 +244,8 @@ Optional Features:
   			  [[no]]
   --enable-openloops	  (experimental) enable OpenLoops for NLO matrix elements 
   			  [[no]]
+  --enable-recola         (experimental) enable Recola for NLO matrix elements 
+  			  [[no]]			  
   --enable-looptools      enable LoopTools loop integral library [[no]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file
@@ -271,6 +276,7 @@ Optional Packages:
   --with-ninja=dir        assume the given directory for Ninja
   --with-samurai=dir      assume the given directory for Samurai
   --with-openloops=dir    assume the given directory for OpenLoops  
+  --with-recola=dir	  assume the given directory for Recola
 
 Some influential environment variables:
   CC          C compiler command
@@ -308,6 +314,7 @@ The check out can be done in that way:
 svn co http://whizard.hepforge.org/svn/trunk <checkout_dir>
 
 cd <checkout_dir>
+./build_master.sh
 autoreconf
 
 Now continue with directions as if you unpacked a source code tarball.

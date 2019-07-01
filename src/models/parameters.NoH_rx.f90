@@ -1,6 +1,6 @@
 ! $Id: parameters.NoH_rx.f90,v 1.0 2014/02/21 13:31:48 msekulla Exp $
 !
-! Copyright (C) 1999-2016 by 
+! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

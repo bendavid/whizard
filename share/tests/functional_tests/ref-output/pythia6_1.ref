@@ -22,13 +22,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process pythia6_1_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'pythia6_1_p1'
-|   Library name  = 'pythia6_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'pythia6_1_p1_i1':   e-, e+ => u, ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -37,6 +30,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'pythia6_1_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pythia6_1_p1'
+|   Library name  = 'pythia6_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pythia6_1_p1_i1':   e-, e+ => u, ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

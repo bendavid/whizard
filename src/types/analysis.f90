@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -40,7 +40,6 @@ module analysis
   use io_units
   use format_utils, only: quote_underscore, tex_format
   use system_defs, only: TAB
-  use unit_tests
   use diagnostics
   use os_interface
   use ifiles
@@ -362,7 +361,7 @@ contains
     write (u, 1)  "gmlcode_bg  =", char (gro%gmlcode_bg)
     write (u, 1)  "gmlcode_fg  =", char (gro%gmlcode_fg)
   end subroutine graph_options_write
-  
+
   subroutine graph_options_write_tex_header (gro, unit)
     type(graph_options_t), intent(in) :: gro
     integer, intent(in), optional :: unit
@@ -431,13 +430,13 @@ contains
     type(graph_options_t), intent(in) :: gro
     cmd = 'label.bot (<' // '<' // gro%x_label // '>' // '>, out);'
   end function graph_options_get_gml_x_label
-    
+
   function graph_options_get_gml_y_label (gro) result (cmd)
     type(string_t) :: cmd
     type(graph_options_t), intent(in) :: gro
     cmd = 'label.ulft (<' // '<' // gro%y_label // '>' // '>, out);'
   end function graph_options_get_gml_y_label
-    
+
   function graph_options_get_gml_graphrange &
        (gro, x_min, x_max, y_min, y_max) result (cmd)
     type(string_t) :: cmd
@@ -532,7 +531,7 @@ contains
     write (u, 1)  "gmlcode_bg  =", char (dro%gmlcode_bg)
     write (u, 1)  "gmlcode_fg  =", char (dro%gmlcode_fg)
   end subroutine drawing_options_write
-  
+
   subroutine drawing_options_init_histogram (dro)
     type(drawing_options_t), intent(out) :: dro
     dro%dataset = "dat"
@@ -757,7 +756,7 @@ contains
 
   function observable_get_label (obs, wl, wu) result (string)
     type(string_t) :: string
-    type(observable_t), intent(in) :: obs 
+    type(observable_t), intent(in) :: obs
     logical, intent(in) :: wl, wu
     type(string_t) :: obs_label, obs_unit
     if (wl) then
@@ -848,7 +847,7 @@ contains
        n_digits = 1
     end if
     if (heading) then
-       write (u, "(A)") 
+       write (u, "(A)")
        if (obs%graph_options%title /= "") then
           write (u, "(A)")  "\section{" // char (obs%graph_options%title) &
                // "}"
@@ -872,7 +871,7 @@ contains
     write (u, "(A)")  "}"
     write (u, "(A)", advance="no")  "     \quad[n_{\text{entries}} = "
     write (u, "(I0)",advance="no")  observable_get_n_entries (obs)
-    write (u, "(A)")  "]$"          ! $ fool Emacs' noweb mode 
+    write (u, "(A)")  "]$"          ! $ fool Emacs' noweb mode
     if (heading) then
        write (u, "(A)") "\end{flushleft}"
     end if
@@ -935,7 +934,7 @@ contains
     type(bin_t), intent(in) :: bin
     n = bin%count
   end function bin_get_n_entries
-  
+
   function bin_get_sum (bin) result (s)
     real(default) :: s
     type(bin_t), intent(in) :: bin
@@ -991,12 +990,12 @@ contains
     type(drawing_options_t), intent(in), optional :: drawing_options
     real(default) :: bin_width
     integer :: i
-    call observable_init (h%obs_within_bounds, obs_label, obs_unit) 
-    call observable_init (h%obs, obs_label, obs_unit) 
+    call observable_init (h%obs_within_bounds, obs_label, obs_unit)
+    call observable_init (h%obs, obs_label, obs_unit)
     h%lower_bound = lower_bound
     h%upper_bound = upper_bound
     h%n_bins = max (n_bins, 1)
-    h%width = h%upper_bound - h%lower_bound    
+    h%width = h%upper_bound - h%lower_bound
     h%normalize_bins = normalize_bins
     bin_width = h%width / h%n_bins
     allocate (h%bin (h%n_bins))
@@ -1245,14 +1244,14 @@ contains
     type(histogram_t), intent(in) :: h
     type(string_t), intent(in) :: filename
     integer, intent(in), optional :: unit
-    character(*), parameter :: fmt = "(ES15.8)"    
+    character(*), parameter :: fmt = "(ES15.8)"
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Histogram:";'
     write (u, "(4x,A)")  'dx := #' &
          // real2char (h%width / h%n_bins / 2, fmt) // ';'
-    write (u, "(4x,A)")  'for i withinblock:' 
+    write (u, "(4x,A)")  'for i withinblock:'
     write (u, "(6x,A)")  'get x, y, y.d, y.n, y.e;'
     if (h%drawing_options%with_hbars) then
        write (u, "(6x,A)")  'plot (' // char (h%drawing_options%dataset) &
@@ -1524,7 +1523,7 @@ contains
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Plot:";'
-    write (u, "(4x,A)")  'for i withinblock:' 
+    write (u, "(4x,A)")  'for i withinblock:'
     write (u, "(6x,A)")  'get x, y, y.err, x.err;'
     write (u, "(6x,A)")  'plot (' // char (p%drawing_options%dataset) &
          // ') (x,y);'
@@ -2201,7 +2200,7 @@ contains
     analysis_store%last => obj
   end subroutine analysis_store_append_object
 
-  function analysis_store_get_object_ptr (id) result (obj) 
+  function analysis_store_get_object_ptr (id) result (obj)
     type(string_t), intent(in) :: id
     type(analysis_object_t), pointer :: obj
     obj => analysis_store%first
@@ -2305,7 +2304,7 @@ contains
     write (u, '(A)') "   \DeclareGraphicsRule{*}{mps}{*}{}"
     write (u, '(A)') "\else"
     write (u, '(A)') "   \DeclareGraphicsRule{*}{eps}{*}{}"
-    write (u, '(A)') "\fi"    
+    write (u, '(A)') "\fi"
     write (u, *)
     write (u, '(A)') "\begin{document}"
     write (u, '(A)') "\begin{gmlfile}"
@@ -2355,7 +2354,7 @@ contains
     type(string_t), intent(in), optional :: obs_label, obs_unit
     type(graph_options_t), intent(in), optional :: graph_options
     type(drawing_options_t), intent(in), optional :: drawing_options
-    type(analysis_object_t), pointer :: obj   
+    type(analysis_object_t), pointer :: obj
     type(histogram_t), pointer :: h
     call analysis_store_init_object (id, AN_HISTOGRAM, obj)
     h => analysis_object_get_histogram_ptr (obj)
@@ -2384,7 +2383,7 @@ contains
 
   subroutine analysis_init_plot (id, graph_options, drawing_options)
     type(string_t), intent(in) :: id
-    type(graph_options_t), intent(in), optional :: graph_options    
+    type(graph_options_t), intent(in), optional :: graph_options
     type(drawing_options_t), intent(in), optional :: drawing_options
     type(analysis_object_t), pointer :: obj
     type(plot_t), pointer :: plot
@@ -2396,7 +2395,7 @@ contains
   subroutine analysis_init_graph (id, n_elements, graph_options)
     type(string_t), intent(in) :: id
     integer, intent(in) :: n_elements
-    type(graph_options_t), intent(in), optional :: graph_options    
+    type(graph_options_t), intent(in), optional :: graph_options
     type(analysis_object_t), pointer :: obj
     type(graph_t), pointer :: graph
     call analysis_store_init_object (id, AN_GRAPH, obj)
@@ -2470,7 +2469,7 @@ contains
     end if
   end subroutine analysis_fill_graph
 
-  function analysis_exists (id) result (flag) 
+  function analysis_exists (id) result (flag)
     type(string_t), intent(in) :: id
     logical :: flag
     type(analysis_object_t), pointer :: obj
@@ -2647,13 +2646,13 @@ contains
     write (unit, "(A)")  "MPOST = " // char (os_data%mpost)
     write (unit, "(A)")  "GML = " // char (os_data%gml)
     write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
-    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)    
+    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)
     write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
          char(os_data%whizard_texpath) // '"'
     write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
          char(os_data%whizard_texpath) // '"'
-    write (unit, "(A)")  ""       
-    write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"    
+    write (unit, "(A)")  ""
+    write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"
     if (os_data%event_analysis_pdf) then
        write (unit, "(5A)")  "TEX_OBJECTS = ", char (filename), ".pdf"
     else
@@ -2666,7 +2665,7 @@ contains
        else
           write (unit, "(5A)")  char (filename), ".ps: ", &
                char (filename), ".tex"
-       end if    
+       end if
        write (unit, "(5A)")  TAB, "-TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
             char (filename) // ".tex"
        if (has_gmlcode) then
@@ -2679,34 +2678,34 @@ contains
        if (os_data%event_analysis_pdf) then
           write (unit, "(5A)")  TAB, "$(PS2PDF) " // char (filename) // ".ps"
        end if
-    end if       
+    end if
     write (unit, "(A)")
     write (unit, "(A)")  "compile: $(TEX_OBJECTS)"
-    write (unit, "(A)")  ".PHONY: compile" 
+    write (unit, "(A)")  ".PHONY: compile"
     write (unit, "(A)")
-    write (unit, "(5A)")  "CLEAN_OBJECTS = ",  char (filename), ".aux"  
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".log"         
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"                
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".out"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9]"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9]"    
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9][0-9]"   
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9]"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS = ",  char (filename), ".aux"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".log"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".out"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9]"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9]"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9][0-9]"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ltp"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mp"
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mpx"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"              
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ps"           
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".pdf"               
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mpx"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ps"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".pdf"
     write (unit, "(A)")
     write (unit, "(A)")  "# Generic cleanup targets"
     write (unit, "(A)")  "clean-objects:"
     write (unit, "(A)")  TAB // "rm -f $(CLEAN_OBJECTS)"
     write (unit, "(A)")  ""
     write (unit, "(A)")  "clean: clean-objects"
-    write (unit, "(A)")  ".PHONY: clean" 
+    write (unit, "(A)")  ".PHONY: clean"
   end subroutine analysis_write_makefile
 
 

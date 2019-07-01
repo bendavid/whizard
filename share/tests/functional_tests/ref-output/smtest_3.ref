@@ -18,6 +18,12 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_1_tbw:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   t  (mass = 1.7310000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_1_tbw_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_1_tbw'
 |   Library name  = 'smtest_3_lib'
@@ -25,12 +31,6 @@ openmp_num_threads = 1
 |   Process components:
 |     1: 'smtest_1_tbw_i1':   t => b, W+ [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   t  (mass = 1.7310000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'smtest_1_tbw_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

@@ -1,0 +1,579 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+?openloops_use_collier = false
+$loop_me_method = "openloops"
+openmp_num_threads = 1
+?use_vamp_equivalences = false
+?alpha_s_is_fixed = true
+?alpha_s_from_mz = false
+SM.alphas =>  1.17800E-01
+SM.ms =>  0.00000E+00
+SM.mc =>  0.00000E+00
+SM.mb =>  0.00000E+00
+| Process library 'openloops_5_lib': recorded process 'openloops_5_p1_nlo'
+| Process library 'openloops_5_lib': recorded process 'openloops_5_p2_nlo'
+| Process library 'openloops_5_lib': recorded process 'openloops_5_p3_nlo'
+| Process library 'openloops_5_lib': recorded process 'openloops_5_p4_nlo'
+| Process library 'openloops_5_lib': recorded process 'openloops_5_p5_nlo'
+| Process library 'openloops_5_lib': recorded process 'openloops_5_p6_nlo'
+sqrts =  5.00000E+02
+tolerance =  1.00000E-03
+seed = 0
+| Integrate: current process library needs compilation
+| Process library 'openloops_5_lib': compiling ...
+| Process library 'openloops_5_lib': writing makefile
+| Process library 'openloops_5_lib': removing old files
+| Process library 'openloops_5_lib': writing driver
+| Process library 'openloops_5_lib': creating source code
+| Process library 'openloops_5_lib': compiling sources
+| Process library 'openloops_5_lib': linking
+| Process library 'openloops_5_lib': loading
+| Process library 'openloops_5_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process openloops_5_p1_nlo:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p1_nlo_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p1_nlo_i3.phs'
+Warning: You have set ?openloops_use_cms = true, but not all matrix
+element methods are set to OpenLoops. Note that other
+methods might not necessarily support the complex mass
+scheme. This can yield inconsistencies in your NLO results!
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_5_p1_nlo'
+|   Library name  = 'openloops_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'openloops_5_p1_nlo_i1':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [omega]
+|     2: 'openloops_5_p1_nlo_i2':   e+, e- => d:dbar:u:ubar:s:sbar:c:cbar:b:bbar, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar, gl [omega], [Real]
+|     3: 'openloops_5_p1_nlo_i3':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [openloops], [Virtual]
+|     4: 'openloops_5_p1_nlo_i4':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'openloops_5_p1_nlo' part 'Born'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     2.506E+03   1.87E+02    7.47    0.75    36.4
+|-----------------------------------------------------------------------------|
+   1        100     2.506E+03   1.87E+02    7.47    0.75    36.4
+|=============================================================================|
+| Starting integration for process 'openloops_5_p1_nlo' part 'Real'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     1.943E+02   1.83E+01    9.42    0.94    20.4
+|-----------------------------------------------------------------------------|
+   1        100     1.943E+02   1.83E+01    9.42    0.94    20.4
+|=============================================================================|
+| Starting integration for process 'openloops_5_p1_nlo' part 'Virtual'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100    -9.950E+01   7.13E+00    7.16    0.72    40.3
+|-----------------------------------------------------------------------------|
+   1        100    -9.950E+01   7.13E+00    7.16    0.72    40.3
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     2.600E+03   1.88E+02    7.24    0.00    33.2
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  3.7823 +-   0.83299 ) %
+|=============================================================================|
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process openloops_5_p2_nlo:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p2_nlo_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p2_nlo_i3.phs'
+Warning: You have set ?openloops_use_cms = true, but not all matrix
+element methods are set to OpenLoops. Note that other
+methods might not necessarily support the complex mass
+scheme. This can yield inconsistencies in your NLO results!
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_5_p2_nlo'
+|   Library name  = 'openloops_5_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'openloops_5_p2_nlo_i1':   e+, e- => ubar, u [omega]
+|     2: 'openloops_5_p2_nlo_i2':   e+, e- => ubar, u, gl [omega], [Real]
+|     3: 'openloops_5_p2_nlo_i3':   e+, e- => ubar, u [openloops], [Virtual]
+|     4: 'openloops_5_p2_nlo_i4':   e+, e- => ubar, u [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'openloops_5_p2_nlo' part 'Born'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     6.912E+02   5.10E+01    7.38    0.74    36.6
+|-----------------------------------------------------------------------------|
+   1        100     6.912E+02   5.10E+01    7.38    0.74    36.6
+|=============================================================================|
+| Starting integration for process 'openloops_5_p2_nlo' part 'Real'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     5.357E+01   5.01E+00    9.36    0.94    20.5
+|-----------------------------------------------------------------------------|
+   1        100     5.357E+01   5.01E+00    9.36    0.94    20.5
+|=============================================================================|
+| Starting integration for process 'openloops_5_p2_nlo' part 'Virtual'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100    -2.744E+01   1.94E+00    7.07    0.71    40.5
+|-----------------------------------------------------------------------------|
+   1        100    -2.744E+01   1.94E+00    7.07    0.71    40.5
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     7.173E+02   5.13E+01    7.15    0.00    33.4
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  3.7808 +-   0.82617 ) %
+|=============================================================================|
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process openloops_5_p3_nlo:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p3_nlo_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p3_nlo_i3.phs'
+Warning: You have set ?openloops_use_cms = true, but not all matrix
+element methods are set to OpenLoops. Note that other
+methods might not necessarily support the complex mass
+scheme. This can yield inconsistencies in your NLO results!
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_5_p3_nlo'
+|   Library name  = 'openloops_5_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'openloops_5_p3_nlo_i1':   e+, e- => dbar, d [omega]
+|     2: 'openloops_5_p3_nlo_i2':   e+, e- => dbar, d, gl [omega], [Real]
+|     3: 'openloops_5_p3_nlo_i3':   e+, e- => dbar, d [openloops], [Virtual]
+|     4: 'openloops_5_p3_nlo_i4':   e+, e- => dbar, d [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'openloops_5_p3_nlo' part 'Born'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     3.744E+02   2.84E+01    7.59    0.76    36.1
+|-----------------------------------------------------------------------------|
+   1        100     3.744E+02   2.84E+01    7.59    0.76    36.1
+|=============================================================================|
+| Starting integration for process 'openloops_5_p3_nlo' part 'Real'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     2.904E+01   2.76E+00    9.49    0.95    20.2
+|-----------------------------------------------------------------------------|
+   1        100     2.904E+01   2.76E+00    9.49    0.95    20.2
+|=============================================================================|
+| Starting integration for process 'openloops_5_p3_nlo' part 'Virtual'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100    -1.487E+01   1.08E+00    7.27    0.73    40.0
+|-----------------------------------------------------------------------------|
+   1        100    -1.487E+01   1.08E+00    7.27    0.73    40.0
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     3.886E+02   2.86E+01    7.36    0.00    32.9
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  3.7841 +-   0.84144 ) %
+|=============================================================================|
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process openloops_5_p4_nlo:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p4_nlo_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p4_nlo_i3.phs'
+Warning: You have set ?openloops_use_cms = true, but not all matrix
+element methods are set to OpenLoops. Note that other
+methods might not necessarily support the complex mass
+scheme. This can yield inconsistencies in your NLO results!
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_5_p4_nlo'
+|   Library name  = 'openloops_5_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'openloops_5_p4_nlo_i1':   e+, e- => sbar, s [omega]
+|     2: 'openloops_5_p4_nlo_i2':   e+, e- => sbar, s, gl [omega], [Real]
+|     3: 'openloops_5_p4_nlo_i3':   e+, e- => sbar, s [openloops], [Virtual]
+|     4: 'openloops_5_p4_nlo_i4':   e+, e- => sbar, s [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'openloops_5_p4_nlo' part 'Born'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     3.744E+02   2.84E+01    7.59    0.76    36.1
+|-----------------------------------------------------------------------------|
+   1        100     3.744E+02   2.84E+01    7.59    0.76    36.1
+|=============================================================================|
+| Starting integration for process 'openloops_5_p4_nlo' part 'Real'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     2.904E+01   2.76E+00    9.49    0.95    20.2
+|-----------------------------------------------------------------------------|
+   1        100     2.904E+01   2.76E+00    9.49    0.95    20.2
+|=============================================================================|
+| Starting integration for process 'openloops_5_p4_nlo' part 'Virtual'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100    -1.487E+01   1.08E+00    7.27    0.73    40.0
+|-----------------------------------------------------------------------------|
+   1        100    -1.487E+01   1.08E+00    7.27    0.73    40.0
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     3.886E+02   2.86E+01    7.36    0.00    32.9
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  3.7841 +-   0.84144 ) %
+|=============================================================================|
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process openloops_5_p5_nlo:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p5_nlo_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p5_nlo_i3.phs'
+Warning: You have set ?openloops_use_cms = true, but not all matrix
+element methods are set to OpenLoops. Note that other
+methods might not necessarily support the complex mass
+scheme. This can yield inconsistencies in your NLO results!
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_5_p5_nlo'
+|   Library name  = 'openloops_5_lib'
+|   Process index = 5
+|   Process components:
+|     1: 'openloops_5_p5_nlo_i1':   e+, e- => cbar, c [omega]
+|     2: 'openloops_5_p5_nlo_i2':   e+, e- => cbar, c, gl [omega], [Real]
+|     3: 'openloops_5_p5_nlo_i3':   e+, e- => cbar, c [openloops], [Virtual]
+|     4: 'openloops_5_p5_nlo_i4':   e+, e- => cbar, c [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'openloops_5_p5_nlo' part 'Born'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     6.912E+02   5.10E+01    7.38    0.74    36.6
+|-----------------------------------------------------------------------------|
+   1        100     6.912E+02   5.10E+01    7.38    0.74    36.6
+|=============================================================================|
+| Starting integration for process 'openloops_5_p5_nlo' part 'Real'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     5.357E+01   5.01E+00    9.36    0.94    20.5
+|-----------------------------------------------------------------------------|
+   1        100     5.357E+01   5.01E+00    9.36    0.94    20.5
+|=============================================================================|
+| Starting integration for process 'openloops_5_p5_nlo' part 'Virtual'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100    -2.744E+01   1.94E+00    7.07    0.71    40.5
+|-----------------------------------------------------------------------------|
+   1        100    -2.744E+01   1.94E+00    7.07    0.71    40.5
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     7.173E+02   5.13E+01    7.15    0.00    33.4
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  3.7808 +-   0.82617 ) %
+|=============================================================================|
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process openloops_5_p6_nlo:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p6_nlo_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_5_p6_nlo_i3.phs'
+Warning: You have set ?openloops_use_cms = true, but not all matrix
+element methods are set to OpenLoops. Note that other
+methods might not necessarily support the complex mass
+scheme. This can yield inconsistencies in your NLO results!
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_5_p6_nlo'
+|   Library name  = 'openloops_5_lib'
+|   Process index = 6
+|   Process components:
+|     1: 'openloops_5_p6_nlo_i1':   e+, e- => bbar, b [omega]
+|     2: 'openloops_5_p6_nlo_i2':   e+, e- => bbar, b, gl [omega], [Real]
+|     3: 'openloops_5_p6_nlo_i3':   e+, e- => bbar, b [openloops], [Virtual]
+|     4: 'openloops_5_p6_nlo_i4':   e+, e- => bbar, b [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'openloops_5_p6_nlo' part 'Born'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     3.744E+02   2.84E+01    7.59    0.76    36.1
+|-----------------------------------------------------------------------------|
+   1        100     3.744E+02   2.84E+01    7.59    0.76    36.1
+|=============================================================================|
+| Starting integration for process 'openloops_5_p6_nlo' part 'Real'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     2.904E+01   2.76E+00    9.49    0.95    20.2
+|-----------------------------------------------------------------------------|
+   1        100     2.904E+01   2.76E+00    9.49    0.95    20.2
+|=============================================================================|
+| Starting integration for process 'openloops_5_p6_nlo' part 'Virtual'
+| Integrate: iterations = 1:100:"gw"
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100    -1.487E+01   1.08E+00    7.27    0.73    40.0
+|-----------------------------------------------------------------------------|
+   1        100    -1.487E+01   1.08E+00    7.27    0.73    40.0
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     3.886E+02   2.86E+01    7.36    0.00    32.9
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  3.7841 +-   0.84144 ) %
+|=============================================================================|
+| expect: success
+| Summary of value checks:
+|   Failures: 0 / Total: 1
+| There were no errors and   12 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

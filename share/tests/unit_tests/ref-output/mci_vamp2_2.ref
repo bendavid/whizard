@@ -1,0 +1,78 @@
+* Test output: mci_vamp2_2
+*   Purpose: integrate function in one dimension (single channel), but multiple iterations.
+
+* Initialize integrator, sampler, instance
+
+ Test sampler: f(x) = 11 x^10
+
+* Integrate with n_it = 3 and n_calls = 100
+
+ VAMP2 integrator:
+   Integral             =  9.8888948874E-01
+   Error                =  2.0388984576E-02
+   Efficiency           =  9.2592245626E-02
+   Number of channels   = 1
+   Number of dimensions = 1
+ Grid config:
+   Number of dimensions = 0
+   Adaption power (alpha) =  1.5000000E+00
+   Max. number of bins (per dim.) = 50
+   Number of iterations = 5
+   Mode (stratified or importance) = 1
+   Calls per box = 0
+   Number of calls = 0
+   Min. number of calls = 0
+   Number of bins = 1
+   Number of boxes = 1
+   Number of channels = 0
+   Min. number of calls per channel (setting calls) = 20
+   Threshold number of calls (adapting weights) = 10
+   Stratified = T
+   Adaption power (beta) =  5.0000000E-01
+     integrator_defined =  T
+   integrator_from_file =  F
+            adapt_grids =  F
+          adapt_weights =  F
+          n_adapt_grids =                0
+        n_adapt_weights =                0
+                verbose =  F
+ Integration pass:
+                   n_it =                3
+                n_calls =              100
+            adapt grids =  F
+          adapt weights =  F
+ Results:  [it, calls, integral, error, efficiency]
+  1 100  9.8087371892E-01  1.3886137963E-02  1.0630591006E-01
+  2 100  1.0114038492E+00  1.4433101581E-02  9.4296645673E-02
+  3 100  9.8888948874E-01  2.0388984576E-02  9.2592245626E-02
+ MD5 sum (including result DFF606A42E55A512692FF9CB1A80F904
+
+* Contents of mci_instance:
+
+ MCI VAMP2 instance
+        Selected channel =               0
+               Integrand =  1.0680046E+01
+              MCI weight =  1.0000000E+00
+                   Valid = T
+ MCI a-priori weight
+                         1  1.0000000E+00
+ MCI jacobian
+                         1  1.0000000E+00
+ MCI mapped x
+         1        1  9.9705254E-01
+ MCI channel weight
+                         1  1.0000000E+00
+         Number of event =               0
+         Event generated = F
+            Event weight =  0.0000000E+00
+            Event excess =  0.0000000E+00
+ Negative (event) weight = F
+ MCI event
+                         1  0.0000000E+00
+
+* Dump channel weights and grids
+
+
+* Cleanup
+
+* Test output end: mci_vamp2_2

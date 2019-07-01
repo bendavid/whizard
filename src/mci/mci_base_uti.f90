@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -40,7 +40,7 @@ module mci_base_uti
   use diagnostics
   use phs_base
   use rng_base
-  
+
   use mci_base
 
   use rng_base_ut, only: rng_test_t
@@ -81,7 +81,7 @@ module mci_base_uti
           mci_test_generate_unweighted_event
      procedure :: rebuild_event => mci_test_rebuild_event
   end type mci_test_t
-  
+
   type, extends (mci_instance_t) :: mci_test_instance_t
      type(mci_test_t), pointer :: mci => null ()
      real(default) :: g = 0
@@ -114,7 +114,7 @@ module mci_base_uti
      procedure :: rebuild => test_sampler_rebuild
      procedure :: fetch => test_sampler_fetch
   end type test_sampler_t
-  
+
   type, extends (mci_results_t) :: mci_test_results_t
      integer :: n_it = 0
      integer :: n_calls = 0
@@ -125,7 +125,7 @@ module mci_base_uti
      procedure :: write => mci_test_results_write
      procedure :: record => mci_test_results_record
   end type mci_test_results_t
-  
+
 
 contains
 
@@ -133,7 +133,7 @@ contains
     class(mci_test_t), intent(inout) :: object
     call object%base_final ()
   end subroutine mci_test_final
-  
+
   subroutine mci_test_write (object, unit, pacify, md5sum_version)
     class(mci_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -148,7 +148,7 @@ contains
     end if
     if (allocated (object%rng))  call object%rng%write (u)
   end subroutine mci_test_write
-  
+
   subroutine mci_test_startup_message (mci, unit, n_calls)
     class(mci_test_t), intent(in) :: mci
     integer, intent(in), optional :: unit, n_calls
@@ -157,12 +157,12 @@ contains
          "Integrator: Test:", mci%divisions, "divisions"
     call msg_message (unit = unit)
   end subroutine mci_test_startup_message
-  
+
   subroutine mci_test_write_log_entry (mci, u)
     class(mci_test_t), intent(in) :: mci
     integer, intent(in) :: u
   end subroutine mci_test_write_log_entry
-       
+
   subroutine mci_test_compute_md5sum (mci, pacify)
     class(mci_test_t), intent(inout) :: mci
     logical, intent(in), optional :: pacify
@@ -172,36 +172,36 @@ contains
     class(mci_test_t), intent(inout) :: mci
     integer, dimension(:), intent(in) :: dim_flat
   end subroutine mci_test_ignore_flat_dimensions
-  
+
   subroutine mci_test_ignore_equivalences (mci, channel, dim_offset)
     class(mci_test_t), intent(inout) :: mci
     type(phs_channel_t), dimension(:), intent(in) :: channel
     integer, intent(in) :: dim_offset
   end subroutine mci_test_ignore_equivalences
-  
+
   subroutine mci_test_set_divisions (object, divisions)
     class(mci_test_t), intent(inout) :: object
     integer, intent(in) :: divisions
     object%divisions = divisions
   end subroutine mci_test_set_divisions
-  
+
   subroutine mci_test_set_max_factor (object, max_factor)
     class(mci_test_t), intent(inout) :: object
     real(default), intent(in) :: max_factor
     object%max_factor = max_factor
   end subroutine mci_test_set_max_factor
-  
+
   subroutine mci_test_allocate_instance (mci, mci_instance)
     class(mci_test_t), intent(in) :: mci
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_test_instance_t :: mci_instance)
   end subroutine mci_test_allocate_instance
-  
+
   subroutine mci_test_integrate (mci, instance, sampler, &
        n_it, n_calls, results, pacify)
     class(mci_test_t), intent(inout) :: mci
-    class(mci_instance_t), intent(inout) :: instance
-    class(mci_sampler_t), intent(inout) :: sampler
+    class(mci_instance_t), intent(inout), target :: instance
+    class(mci_sampler_t), intent(inout), target :: sampler
     integer, intent(in) :: n_it
     integer, intent(in) :: n_calls
     logical, intent(in), optional :: pacify
@@ -248,11 +248,11 @@ contains
        end if
     end select
   end subroutine mci_test_integrate
-  
+
   subroutine mci_test_ignore_prepare_simulation (mci)
     class(mci_test_t), intent(inout) :: mci
   end subroutine mci_test_ignore_prepare_simulation
-  
+
   subroutine mci_test_generate_weighted_event (mci, instance, sampler)
     class(mci_test_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
@@ -279,13 +279,13 @@ contains
        call instance%evaluate (sampler, c, x)
     end select
   end subroutine mci_test_generate_weighted_event
-       
+
   subroutine mci_test_generate_unweighted_event (mci, instance, sampler)
     class(mci_test_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
     class(mci_sampler_t), intent(inout), target :: sampler
     real(default) :: r
-    integer :: i 
+    integer :: i
     select type (instance)
     type is (mci_test_instance_t)
        mci%tries = 0
@@ -297,7 +297,7 @@ contains
        end do
     end select
   end subroutine mci_test_generate_unweighted_event
-    
+
   subroutine mci_test_rebuild_event (mci, instance, sampler, state)
     class(mci_test_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout) :: instance
@@ -308,7 +308,7 @@ contains
        call instance%recall (sampler, state)
     end select
   end subroutine mci_test_rebuild_event
-    
+
   subroutine mci_test_instance_write (object, unit, pacify)
     class(mci_test_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -328,11 +328,11 @@ contains
        write (u, "(4x,A,9(1x,F9.7))")  "x =", object%x(:,c)
     end do
   end subroutine mci_test_instance_write
-  
+
   subroutine mci_test_instance_final (object)
     class(mci_test_instance_t), intent(inout) :: object
   end subroutine mci_test_instance_final
-  
+
   subroutine mci_test_instance_init (mci_instance, mci)
     class(mci_test_instance_t), intent(out) :: mci_instance
     class(mci_t), intent(in), target :: mci
@@ -351,7 +351,7 @@ contains
        mci_instance%max = 2._default
     end select
   end subroutine mci_test_instance_init
-    
+
   subroutine mci_test_instance_compute_weight (mci, c)
     class(mci_test_instance_t), intent(inout) :: mci
     integer, intent(in) :: c
@@ -370,7 +370,7 @@ contains
     end do
     mci%mci_weight = mci%gi(c) / mci%g
   end subroutine mci_test_instance_compute_weight
-    
+
   subroutine mci_test_instance_record_integrand (mci, integrand)
     class(mci_test_instance_t), intent(inout) :: mci
     real(default), intent(in) :: integrand
@@ -379,29 +379,29 @@ contains
     mci%rel_value = mci%value / mci%max(mci%selected_channel) &
          / mci%mci%max_factor
   end subroutine mci_test_instance_record_integrand
-  
+
   subroutine mci_test_instance_init_simulation (instance, safety_factor)
     class(mci_test_instance_t), intent(inout) :: instance
     real(default), intent(in), optional :: safety_factor
   end subroutine mci_test_instance_init_simulation
-  
+
   subroutine mci_test_instance_final_simulation (instance)
     class(mci_test_instance_t), intent(inout) :: instance
   end subroutine mci_test_instance_final_simulation
-  
+
   function mci_test_instance_get_event_excess (mci) result (excess)
     class(mci_test_instance_t), intent(in) :: mci
     real(default) :: excess
     excess = 0
   end function mci_test_instance_get_event_excess
-  
+
   subroutine test_sampler_init (sampler, n)
     class(test_sampler_t), intent(out) :: sampler
     integer, intent(in) :: n
     allocate (sampler%x (n, n))
     allocate (sampler%f (n))
   end subroutine test_sampler_init
-  
+
   subroutine test_sampler_write (object, unit, testflag)
     class(test_sampler_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -416,7 +416,7 @@ contains
        write (u, "(4x,A,9(1x,F9.7))") "x =", object%x(:,c)
     end do
   end subroutine test_sampler_write
-  
+
   subroutine test_sampler_compute (sampler, c, x_in)
     class(test_sampler_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -447,7 +447,7 @@ contains
     logical :: valid
     valid = .true.
   end function test_sampler_is_valid
-  
+
   subroutine test_sampler_evaluate (sampler, c, x_in, val, x, f)
     class(test_sampler_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -497,7 +497,7 @@ contains
     write (u, "(3x,A,1x,F12.10)")  "Error      = ", object%error
     write (u, "(3x,A,1x,F12.10)")  "Efficiency = ", object%efficiency
   end subroutine mci_test_results_write
-  
+
   subroutine mci_test_results_record (object, n_it, n_calls, &
        integral, error, efficiency, chain_weights, suppress)
     class(mci_test_results_t), intent(inout) :: object
@@ -522,30 +522,30 @@ contains
     class(mci_sampler_t), allocatable :: sampler
 
     real(default) :: integrand
-    
+
     write (u, "(A)")  "* Test output: mci_base_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &test integrator"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
 
     allocate (mci_test_t :: mci)
     call mci%set_dimensions (2, 2)
-    
+
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize instance"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Initialize test sampler"
     write (u, "(A)")
-    
+
     allocate (test_sampler_t :: sampler)
     select type (sampler)
     type is (test_sampler_t)
@@ -554,43 +554,43 @@ contains
 
     write (u, "(A)")  "* Evaluate sampler for given point and channel"
     write (u, "(A)")
-    
+
     call sampler%evaluate (1, [0.25_default, 0.8_default], &
          integrand, mci_instance%x, mci_instance%f)
 
     call sampler%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute MCI weight"
     write (u, "(A)")
-    
+
     call mci_instance%compute_weight (1)
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Get integrand and compute weight for another point"
     write (u, "(A)")
-    
+
     call mci_instance%evaluate (sampler, 2, [0.5_default, 0.6_default])
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Recall results, again"
     write (u, "(A)")
-    
+
     call mci_instance%final ()
     deallocate (mci_instance)
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
 
     call mci_instance%fetch (sampler, 2)
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Retrieve value"
     write (u, "(A)")
-    
+
     write (u, "(1x,A,ES13.7)")  "Weighted integrand = ", &
          mci_instance%get_value ()
 
@@ -607,11 +607,11 @@ contains
     class(mci_t), allocatable, target :: mci
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
-    
+
     write (u, "(A)")  "* Test output: mci_base_2"
     write (u, "(A)")  "*   Purpose: perform a test integral"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
 
@@ -621,32 +621,32 @@ contains
     type is (mci_test_t)
        call mci%set_divisions (10)
     end select
-    
+
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize instance"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Initialize test sampler"
     write (u, "(A)")
-    
+
     allocate (test_sampler_t :: sampler)
     select type (sampler)
     type is (test_sampler_t)
        call sampler%init (1)
     end select
-    
+
     write (u, "(A)")  "* Integrate"
     write (u, "(A)")
-    
+
     call mci%integrate (mci_instance, sampler, 0, 0)
-    
+
     call mci%write (u)
-    
+
     call mci_instance%final ()
     call mci%final ()
 
@@ -660,11 +660,11 @@ contains
     class(mci_t), allocatable, target :: mci
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
-    
+
     write (u, "(A)")  "* Test output: mci_base_3"
     write (u, "(A)")  "*   Purpose: perform a nontrivial test integral"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
 
@@ -677,25 +677,25 @@ contains
 
     write (u, "(A)")  "* Initialize instance"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Initialize test sampler"
     write (u, "(A)")
-    
+
     allocate (test_sampler_t :: sampler)
     select type (sampler)
     type is (test_sampler_t)
        call sampler%init (2)
     end select
-    
+
     write (u, "(A)")  "* Integrate"
     write (u, "(A)")
-    
+
     call mci%integrate (mci_instance, sampler, 0, 0)
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with higher resolution"
     write (u, "(A)")
@@ -722,11 +722,11 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_base_4"
     write (u, "(A)")  "*   Purpose: generate events"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator, instance, sampler"
     write (u, "(A)")
 
@@ -736,32 +736,32 @@ contains
     type is (mci_test_t)
        call mci%set_divisions (10)
     end select
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_t :: sampler)
     select type (sampler)
     type is (test_sampler_t)
        call sampler%init (2)
     end select
-    
+
     allocate (rng_test_t :: rng)
     call mci%import_rng (rng)
-    
+
     write (u, "(A)")  "* Generate weighted event"
     write (u, "(A)")
-    
+
     call mci%generate_weighted_event (mci_instance, sampler)
 
     call sampler%write (u)
     write (u, *)
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate unweighted event"
     write (u, "(A)")
-    
+
     call mci%generate_unweighted_event (mci_instance, sampler)
 
     select type (mci)
@@ -769,11 +769,11 @@ contains
        write (u, "(A,I0)")  " Success in try ", mci%tries
        write (u, "(A)")
     end select
-    
+
     call sampler%write (u)
     write (u, *)
     call mci_instance%write (u)
-    
+
     call mci_instance%final ()
     call mci%final ()
 
@@ -789,11 +789,11 @@ contains
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
     class(mci_state_t), allocatable :: state
-    
+
     write (u, "(A)")  "* Test output: mci_base_5"
     write (u, "(A)")  "*   Purpose: store and recall an event"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator, instance, sampler"
     write (u, "(A)")
 
@@ -803,43 +803,43 @@ contains
     type is (mci_test_t)
        call mci%set_divisions (10)
     end select
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_t :: sampler)
     select type (sampler)
     type is (test_sampler_t)
        call sampler%init (2)
     end select
-    
+
     allocate (rng_test_t :: rng)
     call mci%import_rng (rng)
-    
+
     write (u, "(A)")  "* Generate weighted event"
     write (u, "(A)")
-    
+
     call mci%generate_weighted_event (mci_instance, sampler)
 
     call sampler%write (u)
     write (u, *)
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Store data"
     write (u, "(A)")
-    
+
     allocate (state)
     call mci_instance%store (state)
     call mci_instance%final ()
     deallocate (mci_instance)
-    
+
     call state%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Recall data and rebuild event"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
     call mci%rebuild_event (mci_instance, sampler, state)
@@ -847,7 +847,7 @@ contains
     call sampler%write (u)
     write (u, *)
     call mci_instance%write (u)
-    
+
     call mci_instance%final ()
     call mci%final ()
 
@@ -859,25 +859,25 @@ contains
   subroutine mci_base_6 (u)
     integer, intent(in) :: u
     class(mci_t), allocatable, target :: mci
-    
+
     write (u, "(A)")  "* Test output: mci_base_6"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &test integrator with chains"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
 
     allocate (mci_test_t :: mci)
     call mci%set_dimensions (1, 5)
-    
+
     write (u, "(A)")  "* Introduce chains"
     write (u, "(A)")
-    
+
     call mci%declare_chains ([1, 2, 2, 1, 2])
 
     call mci%write (u)
-    
+
     call mci%final ()
 
     write (u, "(A)")
@@ -891,12 +891,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(mci_results_t), allocatable :: results
-    
+
     write (u, "(A)")  "* Test output: mci_base_7"
     write (u, "(A)")  "*   Purpose: perform a nontrivial test integral &
          &and record results"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
 
@@ -909,33 +909,33 @@ contains
 
     write (u, "(A)")  "* Initialize instance"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Initialize test sampler"
     write (u, "(A)")
-    
+
     allocate (test_sampler_t :: sampler)
     select type (sampler)
     type is (test_sampler_t)
        call sampler%init (2)
     end select
-    
+
     allocate (mci_test_results_t :: results)
 
     write (u, "(A)")  "* Integrate"
     write (u, "(A)")
-    
+
     call mci%integrate (mci_instance, sampler, 1, 1000, results)
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Display results"
     write (u, "(A)")
 
     call results%write (u)
-    
+
     call mci_instance%final ()
     call mci%final ()
 
@@ -953,7 +953,7 @@ contains
     write (u, "(A)")  "* Test output: mci_base_8"
     write (u, "(A)")  "*   Purpose: check timer availability"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize integrator with timer"
     write (u, "(A)")
 
@@ -966,7 +966,7 @@ contains
 
     call mci%set_timer (active = .true.)
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Start timer"
     write (u, "(A)")
@@ -987,7 +987,7 @@ contains
 
     dummy = mci%get_time ()
     write (u, "(A)")  " (ok)"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Deactivate timer"
     write (u, "(A)")

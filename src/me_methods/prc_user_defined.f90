@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -47,6 +47,7 @@ module prc_user_defined
   use lorentz
   use interactions
   use sm_qcd
+  use variables, only: var_list_t
 
   use model_data
   use prclib_interfaces
@@ -210,9 +211,11 @@ module prc_user_defined
 
   abstract interface
     subroutine prc_user_defined_base_create_and_load_extra_libraries ( &
-         core, os_data, libname, model, i_core)
+         core, flv_states, var_list, os_data, libname, model, i_core)
       import
       class(prc_user_defined_base_t), intent(inout) :: core
+      integer, intent(in), dimension(:,:), allocatable :: flv_states
+      type(var_list_t), intent(in) :: var_list
       type(os_data_t), intent(in) :: os_data
       type(string_t), intent(in) :: libname
       type(model_data_t), intent(in), target :: model
@@ -372,13 +375,20 @@ contains
     logical, intent(out) :: bad_point
     real(default), intent(out), optional :: born_out
     call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
-    if (present (born_out))  born_out = 0.0015_default
-    born_cc = zero
-    born_cc(3,3) = - CF * born_out
-    born_cc(4,4) = - CF * born_out
-    born_cc(3,4) = CF * born_out
-    born_cc(4,3) = born_cc(3,4)
-    bad_point = .false.
+    if (size (p) == 4) then
+       if (present (born_out)) then
+          born_out = 0.0015_default
+          born_cc = zero
+          born_cc(3,3) = - CF * born_out
+          born_cc(4,4) = - CF * born_out
+          born_cc(3,4) = CF * born_out
+          born_cc(4,3) = born_cc(3,4)
+          bad_point = .false.
+       end if
+    else
+       if (present (born_out)) born_out = zero
+       born_cc = zero
+    end if
   end subroutine prc_user_defined_base_compute_sqme_cc
 
   subroutine prc_user_defined_base_compute_alpha_s (object, core_state, fac_scale)
@@ -896,8 +906,10 @@ contains
   end function prc_user_defined_test_includes_polarization
 
   subroutine prc_user_defined_test_create_and_load_extra_libraries ( &
-         core, os_data, libname, model, i_core)
+         core, flv_states, var_list, os_data, libname, model, i_core)
     class(prc_user_defined_test_t), intent(inout) :: core
+    integer, intent(in), dimension(:,:), allocatable :: flv_states
+    type(var_list_t), intent(in) :: var_list
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model

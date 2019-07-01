@@ -1477,13 +1477,13 @@ Test module, followed by the corresponding implementation module.
 module md5_ut
   use unit_tests
   use md5_uti
-  
+
 <<Standard module head>>
 
 <<MD5: public test>>
 
 contains
-  
+
 <<MD5: test driver>>
 
 end module md5_ut
@@ -1847,6 +1847,8 @@ permutation to start with, which must have the same length as the
 @ %def permutation_array_with_mask
 @ The factorial function is needed for pre-determining the number of
 permutations that will be generated:
+<<Permutations: public>>=
+  public :: factorial
 <<Permutations: procedures>>=
   function factorial (n) result (f)
     integer, intent(in) :: n
@@ -2178,13 +2180,13 @@ Test module, followed by the corresponding implementation module.
 module sorting_ut
   use unit_tests
   use sorting_uti
-  
+
 <<Standard module head>>
 
 <<Sorting: public test>>
 
 contains
-  
+
 <<Sorting: test driver>>
 
 end module sorting_ut
@@ -2443,7 +2445,7 @@ default number of points is used then for each dimension.
     real(default), dimension(:), intent(in) :: values
     grid%values = values
   end subroutine grid_set_values
-  
+
 @ %def grid_set_values
 @ A reasonable default
 <<grids: parameters>>=
@@ -2760,13 +2762,13 @@ Test module, followed by the corresponding implementation module.
 module grids_ut
   use unit_tests
   use grids_uti
-  
+
 <<Standard module head>>
 
 <<grids: public test>>
 
 contains
-  
+
 <<grids: test driver>>
 
 end module grids_ut
@@ -3233,13 +3235,13 @@ Test module, followed by the corresponding implementation module.
 module solver_ut
   use unit_tests
   use solver_uti
-  
+
 <<Standard module head>>
 
 <<solver: public test>>
 
 contains
-  
+
 <<solver: test driver>>
 
 end module solver_ut
@@ -3381,7 +3383,7 @@ end module solver_uti
     zero_position = solve_interval (test_func_4, two, 10.0_default, success)
     call assert (u, success, "success")
     call assert_equal (u, zero_position, &
-         3.5216674011865940283397224_default, & 
+         3.5216674011865940283397224_default, &
          "test_func_4: zero_position", rel_smallness=1000*DEFAULT_PRECISION)
 
     write (u, "(A)")

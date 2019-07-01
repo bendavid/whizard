@@ -32,13 +32,6 @@ circe1_eps =  1.00000E-05
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process ewa_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_2_p1'
-|   Library name  = 'ewa_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'ewa_2_p1_i1':   W-, W+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => ewa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -50,6 +43,13 @@ circe1_eps =  1.00000E-05
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_2_p1'
+|   Library name  = 'ewa_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ewa_2_p1_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -83,13 +83,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process ewa_2_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_2_p2'
-|   Library name  = 'ewa_2_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'ewa_2_p2_i1':   Z, Z => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => ewa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -101,6 +94,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_2_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_2_p2'
+|   Library name  = 'ewa_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ewa_2_p2_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.
@@ -134,13 +134,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process ewa_2_p3:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_2_p3'
-|   Library name  = 'ewa_2_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'ewa_2_p3_i1':   W-, W+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => isr => ewa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -149,6 +142,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_2_p3_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_2_p3'
+|   Library name  = 'ewa_2_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'ewa_2_p3_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -182,13 +182,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process ewa_2_p4:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_2_p4'
-|   Library name  = 'ewa_2_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'ewa_2_p4_i1':   Z, Z => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => isr => ewa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -197,6 +190,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_2_p4_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_2_p4'
+|   Library name  = 'ewa_2_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'ewa_2_p4_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.

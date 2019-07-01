@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -39,13 +39,13 @@ module phs_fks_uti
   use format_utils, only: write_separator, pac_fmt
   use format_defs, only: FMT_15, FMT_19
   use numeric_utils, only: nearly_equal
-  use constants, only: tiny_07, zero, two
+  use constants, only: tiny_07, zero, one, two
   use lorentz
 
   use physics_defs, only: THR_POS_B, THR_POS_BBAR, THR_POS_WP, THR_POS_WM, THR_POS_GLUON
   use physics_defs, only: thr_leg
 
-  use cascades, only: resonance_contributors_t
+  use resonances, only: resonance_contributors_t
   use phs_fks
 
   implicit none
@@ -459,6 +459,7 @@ contains
   end subroutine phs_fks_generator_4
 
   subroutine phs_fks_generator_5 (u)
+    use ttv_formfactors, only: init_parameters
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
@@ -471,6 +472,7 @@ contains
     type(lorentz_transformation_t) :: L_to_cms
     real(default), parameter :: sqrts = 360._default
     real(default), parameter :: momentum_tolerance = 1E-10_default
+    real(default) :: mpole, gam_out
 
     write (u, "(A)") "* Test output: phs_fks_generator_5"
     write (u, "(A)") "* Puropse: Perform threshold on-shell projection of "
@@ -509,6 +511,12 @@ contains
     mtop = 172._default
 
     generator%sqrts = sqrts
+
+    !!! Dummy-initialization of the threshold model because generate_fsr_threshold
+    !!! uses m1s_to_mpole to determine if it is above or below threshold.
+    call init_parameters (mpole, gam_out, mtop, one, one / 1.5_default, 125._default, &
+         0.47_default, 0.118_default, 91._default, 80._default, 4.2_default, &
+         one, one, one, one, zero, zero, zero, zero, zero, zero, .false., zero)
 
     write (u, "(A)") "* Use four-particle phase space containing: "
     call vector4_write_set (p_born, u, testflag = .true., ultra = .true.)

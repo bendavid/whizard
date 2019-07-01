@@ -1,8 +1,10 @@
 
 digraph G {
 dispatch_rng -> rng_tao
+rng_stream -> rng_base
 selectors -> rng_base
 rng_tao -> rng_base
 dispatch_rng -> rng_base
+dispatch_rng -> rng_stream
  }
 

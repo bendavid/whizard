@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -63,17 +63,17 @@ contains
     type(flavor_t), dimension(3) :: flv
     type(color_t), dimension(3) :: col
     type(quantum_numbers_t), dimension(3) :: qn
-    
+
     write (u, "(A)")  "* Test output: state_matrix_1"
     write (u, "(A)")  "*   Purpose: create and merge two quantum states"
     write (u, "(A)")
 
     write (u, "(A)")  "*  Initialization"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     write (u, "(A)")  "*  State matrix 1"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     call state1%init ()
     call flv%init ([1, 2, 11])
     call qn%init (flv, helicity ([ 1, 1, 1]))
@@ -100,32 +100,32 @@ contains
     call state2%write (u)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Merge the state matrices"   
+    write (u, "(A)")  "* Merge the state matrices"
     write (u, "(A)")
-        
+
     call merge_state_matrices (state1, state2, state3)
     call state3%write (u)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Collapse the state matrix"    
+    write (u, "(A)")  "* Collapse the state matrix"
     write (u, "(A)")
-    
+
     call state3%collapse (quantum_numbers_mask (.false., .false., &
          [.true.,.false.,.false.]))
     call state3%write (u)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"    
-    write (u, "(A)")    
-    
+    write (u, "(A)")  "* Cleanup"
+    write (u, "(A)")
+
     call state1%final ()
     call state2%final ()
     call state3%final ()
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: state_matrix_1"    
-    write (u, "(A)")    
-    
+    write (u, "(A)")  "* Test output end: state_matrix_1"
+    write (u, "(A)")
+
   end subroutine state_matrix_1
 
   subroutine state_matrix_2 (u)
@@ -139,15 +139,15 @@ contains
     type(helicity_t), dimension(2) :: hel
     type(quantum_numbers_t), dimension(2) :: qn
     logical :: ok
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output: state_matrix_2"
     write (u, "(A)")  "*   Purpose: factorize correlated 3-particle state"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "*  Initialization"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     call state%init ()
     do f = 1, 2
        do h11 = -1, 1, 2
@@ -172,7 +172,7 @@ contains
     write (u, "(A,'('," // FMT_19 // ",','," // FMT_19 // ",')')") &
          "* Trace = ", state%trace ()
     write (u, "(A)")
-    
+
     do mode = 1, 3
        write (u, "(A)")
        write (u, "(A,I1)")  "* Mode = ", mode
@@ -193,15 +193,15 @@ contains
        end do
        call correlated_state%final ()
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call state%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: state_matrix_2"
-    
+
   end subroutine state_matrix_2
 
   subroutine state_matrix_3 (u)
@@ -211,14 +211,14 @@ contains
     type(flavor_t), dimension(4) :: flv
     type(color_t), dimension(4) :: col
     type(quantum_numbers_t), dimension(4) :: qn
-    
+
     write (u, "(A)")  "* Test output: state_matrix_3"
     write (u, "(A)")  "*   Purpose: add color connections to colored state"
-    write (u, "(A)")    
-       
+    write (u, "(A)")
+
     write (u, "(A)")  "*  Initialization"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call state%init ()
     call flv%init ([ 1, -HADRON_REMNANT_TRIPLET, -1, HADRON_REMNANT_TRIPLET ])
     call col(1)%init ([17])
@@ -237,24 +237,24 @@ contains
     call state%freeze ()
 
     write (u, "(A)") "* State:"
-    write (u, "(A)") 
-    
+    write (u, "(A)")
+
     call state%write (u)
     call state%add_color_contractions ()
 
     write (u, "(A)") "* State with contractions:"
     write (u, "(A)")
-    
+
     call state%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-        
+
     call state%final ()
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: state_matrx_3"    
-    
+    write (u, "(A)")  "* Test output end: state_matrx_3"
+
   end subroutine state_matrix_3
 
   subroutine state_matrix_4 (u)
@@ -266,15 +266,15 @@ contains
     type(helicity_t), dimension(2) :: hel
     type(quantum_numbers_t), dimension(2) :: qn
     integer :: unit, iostat
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output: state_matrix_4"
     write (u, "(A)")  "*   Purpose: raw I/O for correlated 3-particle state"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "*  Initialization"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     allocate (state)
 
     call state%init ()
@@ -300,35 +300,35 @@ contains
     do i = 1, state%get_n_leaves ()
        call state%set_matrix_element (i, cmplx (2 * i, 2 * i + 1, default))
     end do
-    
+
     call state%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Write to file and read again "
     write (u, "(A)")
-    
+
     unit = free_unit ()
     open (unit, action="readwrite", form="unformatted", status="scratch")
     call state%write_raw (unit)
     call state%final ()
     deallocate (state)
-    
+
     allocate(state)
     rewind (unit)
     call state%read_raw (unit, iostat=iostat)
     close (unit)
-    
+
     call state%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call state%final ()
     deallocate (state)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: state_matrix_4"
-    
+
   end subroutine state_matrix_4
 
   subroutine state_matrix_5 (u)
@@ -341,14 +341,14 @@ contains
     type(helicity_t), dimension(4) :: hel1, hel2, hel3
     type(quantum_numbers_t), dimension(4) :: qn
     logical, dimension(4) :: mask
-    
+
     write (u, "(A)")  "* Test output: state_matrix_5"
     write (u, "(A)")  "*   Purpose: check flavor-content state"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Set up arbitrary state matrix"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call flv1%init ([1, 4, 2, 7])
     call flv2%init ([1, 3,-3, 8])
     call flv3%init ([5, 6, 3, 7])
@@ -389,31 +389,31 @@ contains
     call state%add_state (qn)
     call qn%init (flv1, col1, hel1)
     call state%add_state (qn)
-    
+
     write (u, "(A)")  "* Quantum number content"
     write (u, "(A)")
-    
+
     call it%init (state)
     do while (it%is_valid ())
        call quantum_numbers_write (it%get_quantum_numbers (), u)
        write (u, *)
        call it%advance ()
     end do
-    
-    write (u, "(A)")    
+
+    write (u, "(A)")
     write (u, "(A)")  "* Extract the flavor content"
     write (u, "(A)")
-    
+
     mask = [.true., .true., .true., .false.]
 
     allocate (state_flv)
     call state_flv%fill (state, mask)
     call state_flv%write (u)
 
-    write (u, "(A)")    
+    write (u, "(A)")
     write (u, "(A)")  "* Match trial sets"
     write (u, "(A)")
-   
+
     call check ([1, 2, 3, 0])
     call check ([1, 4, 2, 0])
     call check ([4, 2, 1, 0])
@@ -421,19 +421,19 @@ contains
     call check ([1, -3, 3, 0])
     call check ([6, 3, 5, 0])
 
-    write (u, "(A)")    
+    write (u, "(A)")
     write (u, "(A)")  "* Determine the flavor content with mask"
     write (u, "(A)")
-    
+
     mask = [.false., .true., .true., .false.]
 
     call state_flv%fill (state, mask)
     call state_flv%write (u)
-    
-    write (u, "(A)")    
+
+    write (u, "(A)")
     write (u, "(A)")  "* Match trial sets"
     write (u, "(A)")
-   
+
     call check ([1, 2, 3, 0])
     call check ([1, 4, 2, 0])
     call check ([4, 2, 1, 0])
@@ -443,15 +443,15 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     deallocate (state_flv)
-    
+
     call state%final ()
     deallocate (state)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: state_matrix_5"
-    
+
   contains
 
     subroutine check (pdg)
@@ -479,13 +479,13 @@ contains
     type(quantum_numbers_mask_t), dimension(4) :: qn_mask
     integer :: h1, h2, h3 , h4
     integer :: n_states = 0
-    
+
     write (u, "(A)") "* Test output: state_matrix_6"
     write (u, "(A)") "* Purpose: Check state matrix reduction"
     write (u, "(A)")
 
     write (u, "(A)") "* Set up helicity-diagonal state matrix"
-    write (u, "(A)") 
+    write (u, "(A)")
 
     allocate (state_orig)
     call state_orig%init ()
@@ -504,7 +504,7 @@ contains
              end do
           end do
        end do
-    end do 
+    end do
     call state_orig%freeze ()
 
     write (u, "(A)") "* Original state: "
@@ -520,7 +520,7 @@ contains
     call quantum_numbers_mask_write (qn_mask, u)
     write (u, "(A)")
     write (u, "(A)") "* Reducing the state matrix using above mask"
-    write (u, "(A)") 
+    write (u, "(A)")
     allocate (state_reduced)
     call state_orig%reduce (qn_mask, state_reduced)
 
@@ -530,7 +530,7 @@ contains
     write (u, "(A)")
     write (u, "(A)") "* Test output end: state_matrix_6"
 
-    
+
   end subroutine state_matrix_6
 
 

@@ -25,13 +25,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process ewa_1_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_1_p1'
-|   Library name  = 'ewa_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'ewa_1_p1_i1':   W-, W+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W-  (mass = 8.0419000E+01 GeV)
@@ -40,6 +33,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_1_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p1'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ewa_1_p1_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -69,13 +69,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process ewa_1_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_1_p2'
-|   Library name  = 'ewa_1_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'ewa_1_p2_i1':   Z, Z => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   Z  (mass = 9.1188200E+01 GeV)
@@ -84,6 +77,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_1_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p2'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ewa_1_p2_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.
@@ -115,13 +115,6 @@ ewa_mass =  5.10997E-04
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process ewa_1_p3:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_1_p3'
-|   Library name  = 'ewa_1_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'ewa_1_p3_i1':   W-, W+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => ewa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -130,6 +123,13 @@ ewa_mass =  5.10997E-04
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_1_p3_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p3'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'ewa_1_p3_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -163,13 +163,6 @@ ewa_mass =  5.10997E-04
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process ewa_1_p4:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ewa_1_p4'
-|   Library name  = 'ewa_1_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'ewa_1_p4_i1':   Z, Z => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => ewa
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -178,6 +171,13 @@ ewa_mass =  5.10997E-04
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ewa_1_p4_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p4'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'ewa_1_p4_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.

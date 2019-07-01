@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -119,6 +119,7 @@ module interactions
      procedure :: is_empty => interaction_is_empty
      procedure :: get_n_matrix_elements => &
           interaction_get_n_matrix_elements
+     procedure :: get_n_in_helicities => interaction_get_n_in_helicities
      procedure :: get_me_size => interaction_get_me_size
      procedure :: get_norm => interaction_get_norm
      procedure :: get_n_sub => interaction_get_n_sub
@@ -146,9 +147,11 @@ module interactions
           interaction_set_matrix_element_clone
      procedure :: interaction_set_matrix_element_qn
      procedure :: interaction_set_matrix_element_all
-     procedure :: interaction_set_matrix_element_array 
+     procedure :: interaction_set_matrix_element_array
      procedure :: interaction_set_matrix_element_single
      procedure :: interaction_set_matrix_element_clone
+     procedure :: set_only_matrix_element => interaction_set_only_matrix_element
+     procedure :: add_to_matrix_element => interaction_add_to_matrix_element
      procedure :: get_diagonal_entries => interaction_get_diagonal_entries
      procedure :: normalize_by_trace => interaction_normalize_by_trace
      procedure :: normalize_by_max => interaction_normalize_by_max
@@ -257,7 +260,7 @@ contains
        write (u, "(1x,I0)", advance="no")  object%link(i)
     end do
   end subroutine internal_link_list_write
-  
+
   subroutine internal_link_list_append (link_list, link)
     class(internal_link_list_t), intent(inout) :: link_list
     integer, intent(in) :: link
@@ -443,7 +446,7 @@ contains
                   write (u, "(1x,A)", advance="no") "=>"
              write (u, "(1x,A)", advance="no") "X"
              if (int%children(i)%has_entries ()) &
-                  write (u, "(1x,A)", advance="no") "=>" 
+                  write (u, "(1x,A)", advance="no") "=>"
              call int%children(i)%write (u)
              write (u, *)
           end if
@@ -493,7 +496,7 @@ contains
        verbose = verbose, unit = unit, col_verbose = col_verbose, &
        testflag = testflag)
   end subroutine interaction_write_state_matrix
- 
+
   subroutine interaction_reduce_state_matrix (int, qn_mask)
     class(interaction_t), intent(inout) :: int
     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
@@ -588,6 +591,36 @@ contains
     class(interaction_t), intent(in) :: int
     n = int%state_matrix%get_n_matrix_elements ()
   end function interaction_get_n_matrix_elements
+
+  function interaction_get_n_in_helicities (int) result (n_hel)
+    integer :: n_hel
+    class(interaction_t), intent(in) :: int
+    type(interaction_t) :: int_copy
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn
+    integer :: i
+    allocate (qn_mask (int%n_tot))
+    do i = 1, int%n_tot
+       if (i <= int%n_in) then
+          call qn_mask(i)%init (.true., .true., .false.)
+       else
+          call qn_mask(i)%init (.true., .true., .true.)
+       end if
+    end do
+    int_copy = int
+    call int_copy%set_mask (qn_mask)
+    call int_copy%freeze ()
+    allocate (qn (int_copy%state_matrix%get_n_matrix_elements (), &
+         int_copy%state_matrix%get_depth ()))
+    qn = int_copy%get_quantum_numbers ()
+    n_hel = 0
+    do i = 1, size (qn, dim=1)
+       if (all (qn(i,:)%get_subtraction_index () == 0)) n_hel = n_hel + 1
+    end do
+    call int_copy%final ()
+    deallocate (qn_mask)
+    deallocate (qn)
+  end function interaction_get_n_in_helicities
 
   pure function interaction_get_me_size (int) result (n)
     integer :: n
@@ -721,6 +754,22 @@ contains
     class(interaction_t), intent(in) :: int1
     call int%state_matrix%set_matrix_element (int1%state_matrix)
   end subroutine interaction_set_matrix_element_clone
+
+  subroutine interaction_set_only_matrix_element (int, i, value)
+    class(interaction_t), intent(inout) :: int
+    integer, intent(in) :: i
+    complex(default), intent(in) :: value
+    call int%set_matrix_element (cmplx (0, 0, default))
+    call int%set_matrix_element (i, value)
+  end subroutine interaction_set_only_matrix_element
+
+  subroutine interaction_add_to_matrix_element (int, qn, value, match_only_flavor)
+    class(interaction_t), intent(inout) :: int
+    type(quantum_numbers_t), dimension(:), intent(in) :: qn
+    complex(default), intent(in) :: value
+    logical, intent(in), optional :: match_only_flavor
+    call int%state_matrix%add_to_matrix_element (qn, value, match_only_flavor)
+  end subroutine interaction_add_to_matrix_element
 
   subroutine interaction_get_diagonal_entries (int, i)
     class(interaction_t), intent(in) :: int
@@ -1044,7 +1093,7 @@ contains
        call it%advance ()
     end do
   end subroutine interaction_get_flv_out
-  
+
   subroutine interaction_get_flv_content (int, state_flv, n_out_hard)
     type(interaction_t), intent(in), target :: int
     type(state_flv_content_t), intent(out) :: state_flv
@@ -1056,7 +1105,7 @@ contains
     mask(n_tot-n_out_hard + 1 : ) = .true.
     call state_flv%fill (int%get_state_matrix_ptr (), mask)
   end subroutine interaction_get_flv_content
-  
+
   subroutine interaction_set_mask (int, mask)
     class(interaction_t), intent(inout) :: int
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: mask
@@ -1172,7 +1221,7 @@ contains
     logical, intent(in), optional :: resonant
     logical :: reson
     integer :: i, j, i2, k2
-    reson = .false.;  if (present (resonant))  reson = resonant 
+    reson = .false.;  if (present (resonant))  reson = resonant
     do i = 1, size (map_connections)
        k2 = connection_index(i)
        do j = 1, int_in%children(k2)%get_length ()
@@ -1265,7 +1314,7 @@ contains
     int1 => external_link_get_ptr (link)
     i1 = external_link_get_index (link)
   end subroutine interaction_find_source
-    
+
   function interaction_get_ultimate_source (int, i) result (link)
     type(external_link_t) :: link
     type(interaction_t), intent(in) :: int
@@ -1364,7 +1413,7 @@ contains
     do i = 1, n_me_orig
        call int%state_matrix%set_matrix_element (i, me_orig(i))
        call int%state_matrix%set_matrix_element (i + n_me_orig, me_orig(i))
-    end do 
+    end do
   end subroutine interaction_declare_subtraction
 
   subroutine find_connections (int1, int2, n, connection_index)
@@ -1432,7 +1481,7 @@ contains
        allocate (ordering (n))
        ordering = order (conn_index_tmp(:,1))
        connection_index = conn_index_tmp(ordering,:)
-    else               
+    else
        connection_index = conn_index_tmp
     end if
   end subroutine find_connections

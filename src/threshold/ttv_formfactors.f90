@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -57,36 +57,37 @@ module ttv_formfactors
   public :: onshell_projection_t
   public :: settings_t
   public :: formfactor_t
+  public :: width_t
   public :: threshold
   public :: threshold_t
-  public :: GAM
+  public :: GAM, GAM_M1S
   public :: AS_SOFT
   public :: AS_LL_SOFT
   public :: AS_USOFT
   public :: AS_HARD
-  public :: P0_DEPENDENT_RESUMMED
   public :: SWITCHOFF_RESUMMED
   public :: TOPPIK_RESUMMED
-  public :: init_parameters
   public :: m1s_to_mpole
+  public :: init_parameters
   public :: init_threshold_grids
   public :: v_matching
   public :: f_switch_off
+  public :: alphas_notsohard
   public :: generate_on_shell_decay_threshold
 
   integer, parameter :: VECTOR = 1
   integer, parameter :: AXIAL = 2
-  integer, parameter, public :: MATCHED_EXPANDED = - 3, &
-                                RESUMMED_SWITCHOFF_P0CONSTANT = - 2, &
+  integer, parameter, public :: MATCHED_EXPANDED_NOTSOHARD = -5, &
+                                MATCHED_NOTSOHARD = -4, &
+                                MATCHED_EXPANDED = - 3, &
+                                RESUMMED_SWITCHOFF = - 2, &
                                 MATCHED = -1, &
-                                RESUMMED_P0DEPENDENT = 0, &
-                                RESUMMED_P0CONSTANT = 1, &
-                                EXPANDED_HARD_P0DEPENDENT = 3, &
-                                EXPANDED_HARD_P0CONSTANT = 4, &
-                                EXPANDED_SOFT_P0CONSTANT = 5, &
-                                EXPANDED_SOFT_SWITCHOFF_P0CONSTANT = 6, &
+                                RESUMMED = 1, &
+                                EXPANDED_HARD = 4, &
+                                EXPANDED_SOFT = 5, &
+                                EXPANDED_SOFT_SWITCHOFF = 6, &
                                 RESUMMED_ANALYTIC_LL = 7, &
-                                EXPANDED_SOFT_HARD_P0CONSTANT = 8, &
+                                EXPANDED_NOTSOHARD = 8, &
                                 TREE = 9
   real(default), parameter :: NF = 5.0_default
 
@@ -109,10 +110,15 @@ module ttv_formfactors
      procedure :: active => onshell_projection_active
   end type onshell_projection_t
 
+  type :: helicity_approximation_t
+    logical :: simple = .false.
+    logical :: extra = .false.
+    logical :: ultra = .false.
+  contains
+  
+  end type helicity_approximation_t
+
   type :: settings_t
-     logical :: helicity_approximated
-     logical :: helicity_approximated_extra
-     logical :: ext_vinput
      ! look what is set by initialized_parameters, bundle them in a class and rename to initialized
      logical :: initialized_parameters
      ! this belongs to init_threshold_phase_space_grid in phase_space_grid_t
@@ -123,14 +129,19 @@ module ttv_formfactors
      integer :: offshell_strategy
      logical :: factorized_computation
      logical :: interference
-     logical :: factorized_interference_term
-     type(onshell_projection_t) :: onshell_projection
+     logical :: only_interference_term
      logical :: nlo
      logical :: no_nlo_width_in_signal_propagators
      logical :: force_minus_one
      logical :: flip_relative_sign
+     integer :: sel_hel_top = 0
+     integer :: sel_hel_topbar = 0
+     logical :: Z_disabled
+     type(onshell_projection_t) :: onshell_projection
+     type(helicity_approximation_t) :: helicity_approximation
   contains
      procedure :: setup_flags => settings_setup_flags
+     procedure :: write => settings_write
      procedure :: use_nlo_width => settings_use_nlo_width
   end type settings_t
 
@@ -142,9 +153,22 @@ module ttv_formfactors
      procedure :: compute => formfactor_compute
   end type formfactor_t
 
+  type :: width_t
+    real(default) :: aem
+    real(default) :: sw
+    real(default) :: mw
+    real(default) :: mb
+    real(default) :: vtb
+    real(default) :: gam_inv
+  contains
+     procedure :: init => width_init
+     procedure :: compute => width_compute
+  end type width_t
+
   type :: threshold_t
      type(settings_t) :: settings
      type(formfactor_t) :: formfactor
+     type(width_t) :: width
   contains
    
   end type threshold_t
@@ -177,10 +201,11 @@ module ttv_formfactors
   real(default) :: MTPOLE = - one
   real(default) :: mtpole_init
   real(default) :: RESCALE_H, MU_HARD, AS_HARD
+  real(default) :: AS_MZ, MASS_Z
   real(default) :: MU_USOFT, AS_USOFT
 
   real(default) :: RESCALE_F, MU_SOFT, AS_SOFT, AS_LL_SOFT, NUSTAR_FIXED
-  logical :: NUSTAR_DYNAMIC, SWITCHOFF_RESUMMED, TOPPIK_RESUMMED, P0_DEPENDENT_RESUMMED
+  logical :: NUSTAR_DYNAMIC, SWITCHOFF_RESUMMED, TOPPIK_RESUMMED
   real(default) :: B0
   real(default) :: B1
 
@@ -189,7 +214,7 @@ module ttv_formfactors
   type(nr_spline_t) :: ff_p_spline
   real(default) :: v1, v2
 
-  integer :: POINTS_SQ, POINTS_P, POINTS_P0, n_p_p0dep, n_q
+  integer :: POINTS_SQ, POINTS_P, POINTS_P0, n_q
   real(default), dimension(:), allocatable :: sq_grid, p_grid, p0_grid, q_grid
   complex(default), dimension(:,:,:,:), allocatable :: ff_grid
   complex(single), dimension(:,:,:,:,:), allocatable :: Vmatrix
@@ -232,46 +257,96 @@ contains
 
   ! TODO: (bcn 2016-03-21) break this up into a part regarding the
   ! FF grid and a part regarding the settings
-  subroutine settings_setup_flags (settings, ff_in, offshell_strategy_in)
+  subroutine settings_setup_flags (settings, ff_in, offshell_strategy_in, &
+           top_helicity_selection)
     class(settings_t), intent(inout) :: settings
-    integer, intent(in) :: ff_in, offshell_strategy_in
+    integer, intent(in) :: ff_in, offshell_strategy_in, top_helicity_selection
+    logical :: bit_top, bit_topbar
+    !!! RESUMMED_SWITCHOFF = - 2
+    !!! MATCHED = -1, &
     SWITCHOFF_RESUMMED                 = ff_in < 0
     TOPPIK_RESUMMED                    = ff_in <= 1
-    P0_DEPENDENT_RESUMMED              = ff_in == 0
     settings%nlo = btest(offshell_strategy_in, 0)
     settings%factorized_computation = btest(offshell_strategy_in, 1)
     settings%interference = btest(offshell_strategy_in, 2)
     call settings%onshell_projection%set_all(btest(offshell_strategy_in, 3))
     settings%no_nlo_width_in_signal_propagators = btest(offshell_strategy_in, 4)
-    settings%helicity_approximated = btest(offshell_strategy_in, 5)
+    settings%helicity_approximation%simple = btest(offshell_strategy_in, 5)
     if (.not. settings%onshell_projection%active ()) then
        settings%onshell_projection%production = btest(offshell_strategy_in, 6)
        settings%onshell_projection%decay = btest(offshell_strategy_in, 7)
     end if
     settings%onshell_projection%width = .not. btest(offshell_strategy_in, 8)
     settings%onshell_projection%boost_decay = btest(offshell_strategy_in, 9)
-    settings%helicity_approximated_extra = btest(offshell_strategy_in, 10)
+    settings%helicity_approximation%extra = btest(offshell_strategy_in, 10)
     settings%force_minus_one = btest(offshell_strategy_in, 11)
     settings%flip_relative_sign = btest(offshell_strategy_in, 12)
-    settings%factorized_interference_term = btest(offshell_strategy_in, 13)
+    if (top_helicity_selection > -1) then
+       settings%helicity_approximation%ultra = .true.
+       bit_top = btest (top_helicity_selection, 0)
+       bit_topbar = btest (top_helicity_selection, 1)
+       if (bit_top) then
+          settings%sel_hel_top = 1
+       else
+          settings%sel_hel_top = -1
+       end if
+       if (bit_topbar) then
+          settings%sel_hel_topbar = 1
+       else
+          settings%sel_hel_topbar = -1
+       end if
+    end if
+    settings%only_interference_term = btest(offshell_strategy_in, 14)
+    settings%Z_disabled = btest(offshell_strategy_in, 15)
+    if (ff_in == MATCHED .or. ff_in == MATCHED_NOTSOHARD) then
+       settings%onshell_projection%width = .true.
+       settings%onshell_projection%production = .true.
+       settings%onshell_projection%decay = .true.
+       settings%factorized_computation = .true.
+       settings%interference = .true.
+       settings%onshell_projection%boost_decay = .true.
+    end if
     call msg_debug (D_THRESHOLD, "SWITCHOFF_RESUMMED", SWITCHOFF_RESUMMED)
     call msg_debug (D_THRESHOLD, "TOPPIK_RESUMMED", TOPPIK_RESUMMED)
-    call msg_debug (D_THRESHOLD, "P0_DEPENDENT_RESUMMED", P0_DEPENDENT_RESUMMED)
-    call msg_debug (D_THRESHOLD, "settings%nlo", settings%nlo)
-    call msg_debug (D_THRESHOLD, "settings%factorized_computation", &
-         settings%factorized_computation)
-    call msg_debug (D_THRESHOLD, "settings%interference", &
-         settings%interference)
-    call msg_debug (D_THRESHOLD, "settings%factorized_interference_term", &
-         settings%factorized_interference_term)
-    call settings%onshell_projection%debug_write ()
-    call msg_debug (D_THRESHOLD, "settings%no_nlo_width_in_signal_propagators", &
-         settings%no_nlo_width_in_signal_propagators)
-    call msg_debug (D_THRESHOLD, "settings%helicity_approximated", &
-         settings%helicity_approximated)
-    call msg_debug (D_THRESHOLD, "settings%helicity_approximated_extra", &
-         settings%helicity_approximated_extra)
+    if (debug_active (D_THRESHOLD)) &
+         call settings%write ()
   end subroutine settings_setup_flags
+
+  subroutine settings_write (settings, unit)
+    class(settings_t), intent(in) :: settings
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, '(A,L1)') "settings%helicity_approximation%simple = ", &
+         settings%helicity_approximation%simple
+    write (u, '(A,L1)') "settings%helicity_approximation%extra = ", &
+         settings%helicity_approximation%extra
+    write (u, '(A,L1)') "settings%helicity_approximation%ultra = ", &
+         settings%helicity_approximation%ultra
+    write (u, '(A,L1)') "settings%initialized_parameters = ", &
+         settings%initialized_parameters
+    write (u, '(A,L1)') "settings%initialized_ps = ", &
+         settings%initialized_ps
+    write (u, '(A,L1)') "settings%initialized_ff = ", &
+         settings%initialized_ff
+    write (u, '(A,L1)') "settings%mpole_dynamic = ", &
+         settings%mpole_dynamic
+    write (u, '(A,I5)') "settings%offshell_strategy = ", &
+         settings%offshell_strategy
+    write (u, '(A,L1)') "settings%factorized_computation = ", &
+         settings%factorized_computation
+    write (u, '(A,L1)') "settings%interference = ", settings%interference
+    write (u, '(A,L1)') "settings%only_interference_term = ", &
+         settings%only_interference_term
+    write (u, '(A,L1)') "settings%Z_disabled = ", &
+         settings%Z_disabled
+    write (u, '(A,L1)') "settings%nlo = ", settings%nlo
+    write (u, '(A,L1)') "settings%no_nlo_width_in_signal_propagators = ", &
+         settings%no_nlo_width_in_signal_propagators
+    write (u, '(A,L1)') "settings%force_minus_one = ", settings%force_minus_one
+    write (u, '(A,L1)') "settings%flip_relative_sign = ", settings%flip_relative_sign
+    call settings%onshell_projection%debug_write ()
+  end subroutine settings_write
 
   pure function settings_use_nlo_width (settings, ff) result (nlo)
     logical :: nlo
@@ -296,52 +371,86 @@ contains
     type(phase_space_point_t), intent(in) :: ps
     integer, intent(in) :: vec_type, FF_mode
     real(default) :: f
-    !!! this cries for polymorphism OTOH we have multiple formfactors active at once
     if (threshold%settings%initialized_parameters .and. formfactor%active) then
        select case (FF_mode)
-       case (MATCHED, RESUMMED_P0DEPENDENT, RESUMMED_P0CONSTANT, &
-          RESUMMED_SWITCHOFF_P0CONSTANT)
-          FF = resummed_formfactor (ps, vec_type)
+       case (MATCHED, MATCHED_NOTSOHARD, RESUMMED, RESUMMED_SWITCHOFF)
+          FF = resummed_formfactor (ps, vec_type) - one
        case (MATCHED_EXPANDED)
-          f = f_switch_off (v_matching (ps%sqrts, GAM))
-          ! TODO: (bcn 2016-02-08) can be simplified
-          FF = - expanded_formfactor (AS_HARD, AS_HARD, ps, vec_type, no_p0=.true.) &
-               + expanded_formfactor (AS_HARD, f * alphas_soft (ps%sqrts) + &
-                 (1-f) * AS_HARD, ps, vec_type, no_p0=.true.) &
-               - expanded_formfactor (f * AS_HARD, &
-                 f * alphas_soft (ps%sqrts), ps, vec_type, no_p0=.true.)
-       case (EXPANDED_HARD_P0DEPENDENT)
-          FF = expanded_formfactor (AS_HARD, AS_HARD, ps, vec_type)
-       case (EXPANDED_HARD_P0CONSTANT)
-          FF = expanded_formfactor (AS_HARD, AS_HARD, ps, vec_type, no_p0=.true.)
-       case (EXPANDED_SOFT_HARD_P0CONSTANT)
-          f = f_switch_off (v_matching (ps%sqrts, GAM))
-          FF = expanded_formfactor (AS_HARD, f * alphas_soft (ps%sqrts) + &
-               (1-f) * AS_HARD, ps, vec_type, no_p0=.true.)
-       case (EXPANDED_SOFT_P0CONSTANT)
-          FF = expanded_formfactor (AS_HARD, alphas_soft (ps%sqrts), ps, vec_type, no_p0=.true.)
-       case (EXPANDED_SOFT_SWITCHOFF_P0CONSTANT)
-          f = f_switch_off (v_matching (ps%sqrts, GAM))
+          f = f_switch_off (v_matching (ps%sqrts, GAM_M1S))
+          FF = - expanded_formfactor (f * AS_HARD, f * AS_HARD, ps, vec_type) &
+               + resummed_formfactor (ps, vec_type)
+       case (MATCHED_EXPANDED_NOTSOHARD)
+          f = f_switch_off (v_matching (ps%sqrts, GAM_M1S))
+          FF = - expanded_formfactor (f * alphas_notsohard (ps%sqrts), f * &
+               alphas_notsohard (ps%sqrts), ps, vec_type) &
+               + resummed_formfactor (ps, vec_type)
+       case (EXPANDED_HARD)
+          FF = expanded_formfactor (AS_HARD, AS_HARD, ps, vec_type) - one
+       case (EXPANDED_NOTSOHARD)
+          FF = expanded_formfactor (alphas_notsohard (ps%sqrts), &
+               alphas_notsohard (ps%sqrts), ps, vec_type) - one
+       case (EXPANDED_SOFT)
+          FF = expanded_formfactor (AS_HARD, alphas_soft (ps%sqrts), ps, &
+               vec_type) - one
+       case (EXPANDED_SOFT_SWITCHOFF)
+          f = f_switch_off (v_matching (ps%sqrts, GAM_M1S))
           FF = expanded_formfactor (f * AS_HARD, &
-               f * alphas_soft (ps%sqrts), ps, vec_type, no_p0=.true.)
+               f * alphas_soft (ps%sqrts), ps, vec_type) - one
        case (RESUMMED_ANALYTIC_LL)
-          FF = formfactor_LL_analytic_p0 (alphas_soft (ps%sqrts), ps, vec_type)
+          FF = formfactor_LL_analytic (alphas_soft (ps%sqrts), ps%sqrts, &
+               ps%p, vec_type) - one
        case (TREE)
-          FF = two
+          FF = zero
        case default
-          FF = one
+          FF = zero
        end select
     else
-       FF = one
+       FF = zero
     end if
     if (debug2_active (D_THRESHOLD)) then
+       call update_global_sqrts_dependent_variables (ps%sqrts)
        call msg_debug2 (D_THRESHOLD, "threshold%settings%initialized_parameters", threshold%settings%initialized_parameters)
        call msg_debug2 (D_THRESHOLD, "formfactor%active", formfactor%active)
        call msg_debug2 (D_THRESHOLD, "FF_mode", FF_mode)
        call msg_debug2 (D_THRESHOLD, "FF", FF)
+       call msg_debug2 (D_THRESHOLD, "v", sqrts_to_v (ps%sqrts, GAM))
+       call msg_debug2 (D_THRESHOLD, "vec_type", vec_type)
        call ps%write ()
     end if
   end function formfactor_compute
+
+  pure subroutine width_init (width, aemi, sw, mw, mb, vtb, gam_inv)
+    class(width_t), intent(inout) :: width
+    real(default), intent(in) :: aemi, sw, mw, mb, vtb, gam_inv
+    width%aem = one / aemi
+    width%sw = sw
+    width%mw = mw
+    width%mb = mb
+    width%vtb = vtb
+    width%gam_inv = gam_inv
+  end subroutine width_init
+
+  pure function width_compute (width, top_mass, sqrts, initial) result (gamma)
+    real(default) :: gamma
+    class(width_t), intent(in) :: width
+    real(default), intent(in) :: top_mass, sqrts
+    logical, intent(in), optional :: initial
+    real(default) :: alphas
+    logical :: ini
+    ini = .false.;  if (present (initial))  ini = initial
+    if (ini) then
+       alphas = AS_HARD
+    else
+       alphas = alphas_notsohard (sqrts)
+    end if
+    if (threshold%settings%nlo) then
+       gamma = top_width_sm_qcd_nlo_jk (width%aem, width%sw, top_mass, &
+            width%mw, width%mb, alphas) + width%gam_inv
+    else
+       gamma = top_width_sm_lo (width%aem, width%sw, width%vtb, top_mass, &
+            width%mw, width%mb) + width%gam_inv
+    end if
+  end function width_compute
 
   pure subroutine phase_space_point_init_rel (ps_point, p2, k2, q2, m)
     class(phase_space_point_t), intent(inout) :: ps_point
@@ -433,10 +542,21 @@ contains
     write (u, '(A)') char ("onshell = " // str (psp%onshell))
   end subroutine phase_space_point_write
 
+  function set_nrqcd_order (nrqcd_order_in) result (nrqcdorder)
+    integer :: nrqcdorder
+    real(default), intent(in) :: nrqcd_order_in
+    nrqcdorder = 1
+    if ( int(nrqcd_order_in) > nrqcdorder ) then
+      call msg_warning ("reset to highest available NRQCD_ORDER = " // char(nrqcdorder))
+    else
+      nrqcdorder = int(nrqcd_order_in)
+    end if
+  end function set_nrqcd_order
+
   subroutine init_parameters (mpole_out, gam_out, m1s_in, Vtb, gam_inv, &
          aemi, sw, az, mz, mw, mb, h_in, f_in, nrqcd_order_in, ff_in, &
          offshell_strategy_in, v1_in, v2_in, scan_sqrts_min, &
-         scan_sqrts_max, scan_sqrts_stepsize, mpole_fixed)
+         scan_sqrts_max, scan_sqrts_stepsize, mpole_fixed, top_helicity_selection)
     real(default), intent(out) :: mpole_out
     real(default), intent(out) :: gam_out
     real(default), intent(in) :: m1s_in
@@ -459,34 +579,69 @@ contains
     real(default), intent(in) :: scan_sqrts_max
     real(default), intent(in) :: scan_sqrts_stepsize
     logical, intent(in) :: mpole_fixed
+    real(default), intent(in) :: top_helicity_selection
     if (debug_active (D_THRESHOLD))  call show_input()
     threshold%settings%initialized_parameters = .false.
     M1S = m1s_in
     threshold%settings%mpole_dynamic = .not. mpole_fixed
     threshold%settings%offshell_strategy = int (offshell_strategy_in)
-    NRQCD_ORDER = 1
-    if ( int(nrqcd_order_in) > NRQCD_ORDER ) then
-      call msg_warning ("reset to highest available NRQCD_ORDER = " // char(NRQCD_ORDER))
-    else
-      NRQCD_ORDER = int(nrqcd_order_in)
-    end if
-    threshold%settings%ext_vinput = threshold%settings%ext_vinput .and. NRQCD_ORDER > 0
+    call threshold%settings%setup_flags (int(ff_in), &
+         threshold%settings%offshell_strategy, &
+         int (top_helicity_selection))
+    NRQCD_ORDER = set_nrqcd_order (nrqcd_order_in)
     v1 = v1_in
     v2 = v2_in
     sqrts_min = scan_sqrts_min
     sqrts_max = scan_sqrts_max
     sqrts_it = scan_sqrts_stepsize
-
-    !!! global hard parameters incl. hard alphas used in *all* form factors
-    RESCALE_H    = h_in
-    MU_HARD = M1S * RESCALE_H
+    !!! global hard parameters incl. hard alphas used in all form factors
+    RESCALE_H = h_in
+    MU_HARD   = M1S * RESCALE_H
+    AS_MZ     = az
+    MASS_Z    = mz
     AS_HARD   = running_as (MU_HARD, az, mz, 2, NF)
-    call threshold%settings%setup_flags (int(ff_in), threshold%settings%offshell_strategy)
-    if (threshold%settings%nlo) then
-       GAM_M1S = top_width_sm_qcd_nlo (one / aemi, sw, m1s, mw, mb, AS_HARD) + gam_inv
-    else
-       GAM_M1S = top_width_sm_lo (one / aemi, sw, Vtb, m1s, mw, mb) + gam_inv
-    end if
+    call threshold%width%init (aemi, sw, mw, mb, vtb, gam_inv)
+    GAM_M1S = threshold%width%compute (M1S, zero, initial=.true.)
+    call compute_global_auxiliary_numbers ()
+    !!! soft parameters incl. mtpole
+    !!! (depend on sqrts: initialize with sqrts ~ 2*M1S)
+    NUSTAR_FIXED = - one
+    NUSTAR_DYNAMIC = NUSTAR_FIXED  < zero
+    RESCALE_F = f_in
+    call update_global_sqrts_dependent_variables (2. * M1S)
+    mtpole_init = MTPOLE
+    mpole_out = mtpole_init
+    gam_out = GAM
+    threshold%settings%initialized_parameters = .true.
+  contains
+      subroutine show_input()
+        call msg_debug (D_THRESHOLD, "init_parameters")
+        call msg_debug (D_THRESHOLD, "m1s_in", m1s_in)
+        call msg_debug (D_THRESHOLD, "Vtb", Vtb)
+        call msg_debug (D_THRESHOLD, "gam_inv", gam_inv)
+        call msg_debug (D_THRESHOLD, "aemi", aemi)
+        call msg_debug (D_THRESHOLD, "sw", sw)
+        call msg_debug (D_THRESHOLD, "az", az)
+        call msg_debug (D_THRESHOLD, "mz", mz)
+        call msg_debug (D_THRESHOLD, "mw", mw)
+        call msg_debug (D_THRESHOLD, "mb", mb)
+        call msg_debug (D_THRESHOLD, "h_in", h_in)
+        call msg_debug (D_THRESHOLD, "f_in", f_in)
+        call msg_debug (D_THRESHOLD, "nrqcd_order_in", nrqcd_order_in)
+        call msg_debug (D_THRESHOLD, "ff_in", ff_in)
+        call msg_debug (D_THRESHOLD, "offshell_strategy_in", offshell_strategy_in)
+        call msg_debug (D_THRESHOLD, "top_helicity_selection", top_helicity_selection)
+        call msg_debug (D_THRESHOLD, "v1_in", v1_in)
+        call msg_debug (D_THRESHOLD, "v2_in", v2_in)
+        call msg_debug (D_THRESHOLD, "scan_sqrts_min", scan_sqrts_min)
+        call msg_debug (D_THRESHOLD, "scan_sqrts_max", scan_sqrts_max)
+        call msg_debug (D_THRESHOLD, "scan_sqrts_stepsize", scan_sqrts_stepsize)
+        call msg_debug (D_THRESHOLD, "AS_HARD", AS_HARD)
+      end subroutine show_input
+
+  end subroutine init_parameters
+
+  subroutine compute_global_auxiliary_numbers ()
     !!! auxiliary numbers needed later
     !!! current coefficients Ai(S,L,J), cf. arXiv:hep-ph/0609151, Eqs. (63)-(64)
     !!! 3S1 coefficients (s-wave, vector current)
@@ -509,50 +664,7 @@ contains
     aa5(2) =  1./3. * CF**2/(4.*(B0-2.*CA))
     aa8(2) = -1./3. * CF**2/(B0-CA)
     aa0(2) = -1./3. * 8.*CA*CF*(CA+4.*CF)/(3.*B0**2)
-
-    !!! soft parameters incl. mtpole (depend on sqrts: initialize with sqrts ~ 2*M1S)
-    NUSTAR_FIXED = - one
-    NUSTAR_DYNAMIC = NUSTAR_FIXED  < zero
-    RESCALE_F = f_in
-    GAM = zero
-    call update_global_sqrts_dependent_variables (2. * M1S)    
-    mtpole_init = MTPOLE
-    mpole_out = mtpole_init
-    !!! compute the total top width from t->bW decay plus optional invisible width
-    if (threshold%settings%nlo) then
-       GAM = top_width_sm_qcd_nlo (one / aemi, sw, MTPOLE, mw, mb, AS_HARD) + gam_inv
-    else
-       GAM = top_width_sm_lo (one / aemi, sw, Vtb, MTPOLE, mw, mb) + gam_inv
-    end if
-    call msg_debug (D_THRESHOLD, "GAM", GAM)
-    gam_out = GAM
-
-    threshold%settings%initialized_parameters = .true.
-  contains
-      subroutine show_input()
-        call msg_debug (D_THRESHOLD, "init_parameters")
-        call msg_debug (D_THRESHOLD, "m1s_in", m1s_in)
-        call msg_debug (D_THRESHOLD, "Vtb", Vtb)
-        call msg_debug (D_THRESHOLD, "gam_inv", gam_inv)
-        call msg_debug (D_THRESHOLD, "aemi", aemi)
-        call msg_debug (D_THRESHOLD, "sw", sw)
-        call msg_debug (D_THRESHOLD, "az", az)
-        call msg_debug (D_THRESHOLD, "mz", mz)
-        call msg_debug (D_THRESHOLD, "mw", mw)
-        call msg_debug (D_THRESHOLD, "mb", mb)
-        call msg_debug (D_THRESHOLD, "h_in", h_in)
-        call msg_debug (D_THRESHOLD, "f_in", f_in)
-        call msg_debug (D_THRESHOLD, "nrqcd_order_in", nrqcd_order_in)
-        call msg_debug (D_THRESHOLD, "ff_in", ff_in)
-        call msg_debug (D_THRESHOLD, "offshell_strategy_in", offshell_strategy_in)
-        call msg_debug (D_THRESHOLD, "v1_in", v1_in)
-        call msg_debug (D_THRESHOLD, "v2_in", v2_in)
-        call msg_debug (D_THRESHOLD, "scan_sqrts_min", scan_sqrts_min)
-        call msg_debug (D_THRESHOLD, "scan_sqrts_max", scan_sqrts_max)
-        call msg_debug (D_THRESHOLD, "scan_sqrts_stepsize", scan_sqrts_stepsize)
-      end subroutine show_input
-
-  end subroutine init_parameters
+  end subroutine compute_global_auxiliary_numbers
 
   subroutine init_threshold_grids (test)
     real(default), intent(in) :: test
@@ -579,34 +691,21 @@ contains
     complex(default) :: c
     c = one
     if (.not. threshold%settings%initialized_ff .or. .not. ps%inside_grid) return
-    if (P0_DEPENDENT_RESUMMED) then
-      if (vec_type == 2) return
-      call interpolate_linear (sq_grid, p_grid, p0_grid, ff_grid(:,:,:,vec_type), &
-        ps%sqrts, ps%p, ps%p0, c)
-    else
-      call interpolate_linear (sq_grid, p_grid, ff_grid(:,:,1,vec_type), ps%sqrts, ps%p, c)
-    end if
+    call interpolate_linear (sq_grid, p_grid, ff_grid(:,:,1,vec_type), ps%sqrts, ps%p, c)
   end function resummed_formfactor
 
   !!! leading nonrelativistic O(alphas^1) contribution (-> expansion of resummation)
-  pure function expanded_formfactor (alphas_hard, alphas_soft, ps, vec_type, no_p0) result (FF)
+  function expanded_formfactor (alphas_hard, alphas_soft, ps, vec_type) result (FF)
     complex(default) :: FF
     real(default), intent(in) :: alphas_hard, alphas_soft
     type(phase_space_point_t), intent(in) :: ps
     integer, intent(in) :: vec_type
-    logical, optional, intent(in) :: no_p0
-    real(default) :: p0, shift_from_hard_current
+    real(default) :: shift_from_hard_current
     complex(default) :: v, contrib_from_potential
-    logical :: nop0
     FF = one
     if (.not. threshold%settings%initialized_parameters .or. vec_type == AXIAL) return
-    nop0 = .false.; if (present (no_p0))  nop0 = no_p0
+    call update_global_sqrts_dependent_variables (ps%sqrts)
     v = sqrts_to_v (ps%sqrts, GAM)
-    if (nop0) then
-       p0 = zero
-    else
-       p0 = ps%p0
-    end if
     if (NRQCD_ORDER == 1) then
        shift_from_hard_current = - two * CF / pi
     else
@@ -616,8 +715,8 @@ contains
        contrib_from_potential = CF * ps%mpole * Pi / (4 * ps%p)
     else
        contrib_from_potential = imago * CF * ps%mpole * &
-            log ((ps%p + ps%mpole * v + p0) / &
-                 (-ps%p + ps%mpole * v + p0) + ieps) / (two * ps%p)
+            log ((ps%p + ps%mpole * v) / &
+                 (-ps%p + ps%mpole * v) + ieps) / (two * ps%p)
     end if
     FF = one + alphas_soft * contrib_from_potential + &
          alphas_hard * shift_from_hard_current
@@ -685,9 +784,6 @@ contains
     allocate (p_grid(POINTS_P))
     read (u) p_grid
     POINTS_P0 = ff_shape(3)
-    if (P0_DEPENDENT_RESUMMED) then
-       call init_p0_grid (p_grid, POINTS_P0)
-    end if
     allocate (ff_grid_sp(POINTS_SQ,POINTS_P,POINTS_P0,2))
     read (u) ff_grid_sp
     allocate (ff_grid(POINTS_SQ,POINTS_P,POINTS_P0,2))
@@ -719,9 +815,9 @@ contains
 
   pure function parameters_string () result (str)
     character(len(parameters_ref)) :: str
-    str = char(M1S) // " " // char(GAM) // " " // char(NRQCD_ORDER) &
+    str = char(M1S) // " " // char(GAM_M1S) // " " // char(NRQCD_ORDER) &
            // " " // char(RESCALE_H) &
-           // " " // char(RESCALE_F) // " " // char(P0_DEPENDENT_RESUMMED) &
+           // " " // char(RESCALE_F) &
            //  " " // char(sqrts_min) &
            // " " // char(sqrts_max) // " " // char(sqrts_it)
   end function parameters_string
@@ -754,6 +850,13 @@ contains
        AS_USOFT = AS_USOFT * f
     end if
     MTPOLE = m1s_to_mpole (sqrts)
+    GAM = threshold%width%compute (MTPOLE, sqrts)
+    call msg_debug (D_THRESHOLD, "GAM", GAM)
+    call msg_debug (D_THRESHOLD, "nu_soft", nu_soft)
+    call msg_debug (D_THRESHOLD, "MTPOLE", MTPOLE)
+    call msg_debug (D_THRESHOLD, "AS_SOFT", AS_SOFT)
+    call msg_debug (D_THRESHOLD, "AS_LL_SOFT", AS_LL_SOFT)
+    call msg_debug (D_THRESHOLD, "AS_USOFT", AS_USOFT)
   end subroutine update_global_sqrts_dependent_variables
 
   !!! Coulomb potential coefficients needed by TOPPIK
@@ -807,23 +910,21 @@ contains
   pure function v_matching (sqrts, gamma) result (v)
     real(default) :: v
     real(default), intent(in) :: sqrts, gamma
-    v = abs (sqrts_to_v (sqrts, gamma))
+    v = abs (sqrts_to_v_1S (sqrts, gamma))
   end function v_matching
 
-  !!! smooth transition from f1 to f2 between v1 and v2 (2 combined parabolas)
   pure function f_switch_off (v) result (fval)
     real(default), intent(in) :: v
     real(default) :: fval
-    real(default) :: vm, f1, f2
+    real(default) :: vm, f1, f2, x
     f1 = one
     f2 = zero + tiny_10
     vm = (v1+v2) / 2.
     if ( v < v1 ) then
       fval = f1
-    else if ( v < vm ) then
-      fval = (f2-f1) / ((vm-v1)*(v2-v1)) * (v-v1)**2 + f1
-    else if ( v < v2 ) then
-      fval = (f2-f1) / ((vm-v2)*(v2-v1)) * (v-v2)**2 + f2
+    else if (v < v2) then
+       x = (v - v1) / (v2 - v1)
+       fval = 1 - x**2 * (3 - 2 * x)
     else
       fval = f2
     end if
@@ -838,6 +939,7 @@ contains
     real(default) :: en
     c = one
     if (.not. threshold%settings%initialized_parameters) return
+    call update_global_sqrts_dependent_variables (sqrts)
     en = sqrts_to_en (sqrts, MTPOLE)
     select case (vec_type)
       case (1)
@@ -909,52 +1011,6 @@ contains
     c   = m / 2. / p**3 * ( 2.*p + imago*k*(1.-la)*(z1-z2) + imago*k*(z3-z4) )
   end function G0p_ax
 
-  !!! include |p0| dependence
-  function formfactor_LL_analytic_p0 (a_soft, ps, vec_type) result (c)
-    real(default), intent(in) :: a_soft
-    type(phase_space_point_t), intent(in) :: ps
-    integer, intent(in) :: vec_type
-    complex(default) :: c
-    c = one
-    if (.not. threshold%settings%initialized_parameters) return
-    select case (vec_type)
-      case (1)
-        c = formfactor_LL_analytic_p0_swave (CF*a_soft, ps%en, ps%p, ps%p0, ps%mpole, GAM)
-      case (2)
-        !!! not implemented
-!        c = formfactor_LL_analytic_p0_pwave (CF*a_soft, en, p, p0, MTPOLE, GAM)
-        c = one
-      case default
-        call msg_fatal ("unknown ttZ/ttA vertex component, vec_type = " // char(vec_type))
-    end select
-  end function formfactor_LL_analytic_p0
-
-  function formfactor_LL_analytic_p0_swave (a, en, p, p0, m, w) result (c)
-    real(default), intent(in) :: a
-    real(default), intent(in) :: en
-    real(default), intent(in) :: p
-    real(default), intent(in) :: p0
-    real(default), intent(in) :: m
-    real(default), intent(in) :: w
-    complex(default) :: c
-    complex(default) :: k, la, z1, z2
-    complex(default) :: aa, bb, cc, dd
-    real(default), parameter :: eps = 1.E-3
-    k  = sqrt( -m*en -imago*m*w )
-    la = a * m / 2. / k
-    aa = eps
-    bb = 1.+eps
-    cc = 1. + eps - la
-    dd = (k-imago*(p-abs(p0))) / (2.*k)
-    z1 = nr_hypgeo (aa, bb, cc, dd)
-    dd = (k+imago*(p+abs(p0))) / (2.*k)
-    z2 = nr_hypgeo (aa, bb, cc, dd)
-    !!! DGamma(x) is Fortran 2008: use NR's implementation
-    c  = one - imago*k*la * &
-           nr_gamma(eps) * nr_gamma(1.+eps) * nr_gamma(real(1.-la)) * &
-           ( -z1 + z2 ) / (p*nr_gamma(real(cc)))
-  end function formfactor_LL_analytic_p0_swave
-
   pure function nustar (sqrts) result (nu)
     real(default), intent(in) :: sqrts
     real(default) :: nu
@@ -974,10 +1030,20 @@ contains
     real(default), intent(in) :: sqrts
     real(default) :: mu_soft, nusoft
     nusoft = RESCALE_F * nustar (sqrts)
-    ! TODO: (bcn 2015-10-13) can we use the global MU_SOFT here?
-    mu_soft = M1S * RESCALE_H * nusoft
+    mu_soft = RESCALE_H * M1S * nusoft
     a_soft = running_as (mu_soft, AS_HARD, MU_HARD, NRQCD_ORDER, NF)
   end function alphas_soft
+
+  pure function alphas_notsohard (sqrts) result (a_soft)
+    real(default) :: a_soft
+    real(default), intent(in) :: sqrts
+    real(default) :: mu_notsohard
+    ! complex(default) :: v
+    ! v = sqrts_to_v_1S (sqrts, GAM_M1S)
+    ! mu_notsohard = RESCALE_H * M1S * sqrt(abs(v))
+    mu_notsohard = RESCALE_H * M1S * sqrt(nustar (sqrts))
+    a_soft = running_as (mu_notsohard, AS_MZ, MASS_Z, 2, NF)
+  end function alphas_notsohard
 
   pure function m1s_to_mpole (sqrts) result (mpole)
     real(default), intent(in) :: sqrts
@@ -1034,7 +1100,6 @@ contains
     complex(default), dimension(POINTS_P) :: ff_analytic
     integer :: i_p
     ff_analytic = [(formfactor_LL_analytic (a_soft, sqrts, p_grid(i_p), vec_type), i_p=1, POINTS_P)]
-    if (P0_DEPENDENT_RESUMMED) call ff_p_spline%init (p_grid, ff_analytic)
   end function scan_formfactor_over_p_LL_analytic
 
   !!! tttoppik wrapper
@@ -1112,25 +1177,24 @@ contains
     end if
     p_toppik = xpp(1:POINTS_P)
     ff_toppik = zff(1:POINTS_P)
-    if (P0_DEPENDENT_RESUMMED) then
-      call ff_p_spline%init (p_toppik, ff_toppik)
-    else
-      !!! TOPPIK output p-grid scales with en above ~ 4 GeV:
-      !!! interpolate for global sqrts/p grid
-      if (.not. nearly_equal (p_toppik(42), p_grid(42), rel_smallness=1E-6_default)) then
-        call toppik_spline%init (p_toppik, ff_toppik)
-        ff_toppik(2:POINTS_P) = [(toppik_spline%interpolate (p_grid(i_p)), i_p=2, POINTS_P)]
-        call toppik_spline%dealloc ()
-      end if
-      !!! TOPPIK output includes tree level ~ 1, a_soft @ LL in current coefficient!
-      if (SWITCHOFF_RESUMMED) then
-         f = f_switch_off (v_matching (sqrts, GAM))
-         alphas_hard = AS_HARD * f
-      else
-         alphas_hard = AS_HARD
-      end if
-      ff_toppik = ff_toppik * current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type)
+    !!! TOPPIK output p-grid scales with en above ~ 4 GeV:
+    !!! interpolate for global sqrts/p grid
+    if (.not. nearly_equal (p_toppik(42), p_grid(42), rel_smallness=1E-6_default)) then
+      call toppik_spline%init (p_toppik, ff_toppik)
+      ff_toppik(2:POINTS_P) = [(toppik_spline%interpolate (p_grid(i_p)), i_p=2, POINTS_P)]
+      call toppik_spline%dealloc ()
     end if
+    !!! TOPPIK output includes tree level ~ 1, a_soft @ LL in current coefficient!
+    if (SWITCHOFF_RESUMMED) then
+       f = f_switch_off (v_matching (sqrts, GAM_M1S))
+       alphas_hard = AS_HARD * f
+    else
+       alphas_hard = AS_HARD
+    end if
+    ff_toppik = ff_toppik * current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type)
+    call msg_debug (D_THRESHOLD, &
+         "current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type)", &
+         current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type))
   end subroutine scan_formfactor_over_p_TOPPIK
 
   function scan_formfactor_over_p (sqrts, vec_type) result (ff)
@@ -1140,7 +1204,7 @@ contains
     call msg_debug (D_THRESHOLD, "scan_formfactor_over_p")
     select case (NRQCD_ORDER)
       case (0)
-!        ff = scan_formfactor_over_p_LL_analytic (a_soft, vec_type, i_sq)
+       ! ff = scan_formfactor_over_p_LL_analytic (AS_SOFT, sqrts, vec_type)
         call scan_formfactor_over_p_TOPPIK (AS_SOFT, sqrts, vec_type, ff_toppik=ff)
       case (1)
         call scan_formfactor_over_p_TOPPIK (AS_SOFT, sqrts, vec_type, ff_toppik=ff)
@@ -1181,12 +1245,9 @@ contains
         end do UNTIL_STABLE
         call cpu_time (t2)
         !!!  include p0 dependence by an integration over the p0-independent FF
-        if (P0_DEPENDENT_RESUMMED)  ff_grid(i_sq,1:n_p_p0dep,:,vec_type) = &
-             scan_formfactor_over_p_p0 (sq_grid(i_sq), vec_type)
         call cpu_time (t3)
         t_toppik = t_toppik + t2 - t1
         t_p0_dep = t_p0_dep + t3 - t2
-        if (P0_DEPENDENT_RESUMMED)  call ff_p_spline%dealloc ()
       end do
       call msg_show_progress (i_sq, POINTS_SQ)
     end do ENERGY_SCAN
@@ -1197,7 +1258,6 @@ contains
     if (any (ff_unstable))  call handle_TOPPIK_instabilities (ff_grid, ff_unstable)
     if (allocated(Vmatrix))  deallocate(Vmatrix)
     if (allocated(q_grid))  deallocate(q_grid)
-    if (P0_DEPENDENT_RESUMMED)  call trim_p_grid (n_p_p0dep)
     threshold%settings%initialized_ff = .true.
   end subroutine scan_formfactor_over_phase_space_grid
 
@@ -1214,19 +1274,7 @@ contains
     POINTS_P = 360
     allocate (p_grid(POINTS_P))
     p_grid = p_grid_from_TOPPIK ()
-    if (P0_DEPENDENT_RESUMMED) then
-      if (threshold%settings%ext_vinput) then
-        ! This is only for setup of the p_grid not the form factor
-        p_grid = p_grid_from_TOPPIK (173.0_default)
-        call import_Vmatrices ()
-      else
-        POINTS_P0 = 85
-        n_p_p0dep = 315
-      end if
-      call init_p0_grid (p_grid, POINTS_P0)
-    else
-      POINTS_P0 = 1
-    end if
+    POINTS_P0 = 1
     threshold%settings%initialized_ps = .true.
   end subroutine init_threshold_phase_space_grid
 
@@ -1324,6 +1372,12 @@ contains
     v = sqrt ((sqrts - two * m + imago * gamma) / m)
   end function sqrts_to_v
 
+  pure function sqrts_to_v_1S (sqrts, gamma) result (v)
+    complex(default) :: v
+    real(default), intent(in) :: sqrts, gamma
+    v = sqrt ((sqrts - two * M1S + imago * gamma) / M1S)
+  end function sqrts_to_v_1S
+
   pure function v_to_sqrts (v) result (sqrts)
     real(default), intent(in) :: v
     real(default) :: sqrts
@@ -1362,81 +1416,6 @@ contains
         call msg_fatal ("unknown ttZ/ttA vertex component, vec_type = " // char(vec_type))
     end select
   end function minus_q2_V
-
-  function scan_formfactor_over_p_p0 (sqrts, vec_type) result (ff_p0)
-    real(default), intent(in) :: sqrts
-    complex(default), dimension(n_p_p0dep,POINTS_P0) :: ff_p0
-    integer, intent(in) :: vec_type
-    complex(single), dimension(:,:,:), allocatable :: Vmat
-    complex(default), dimension(:), allocatable :: Tvec
-    integer :: i_p, i_p0, i_q
-    real(default) :: en, p, p0
-    type(phase_space_point_t) :: ps
-    type(p0_q_integrand_t) :: q_integrand
-    complex(default) :: q_integral, ff
-    real(default) :: current_c1, alphas_hard, f
-    if (vec_type==2) return
-    call msg_warning ("DEPRECATED FEATURE: " // &
-         "p0 dependence as implemented breaks gauge invariance!")
-    call msg_debug (D_THRESHOLD, "scan_formfactor_over_p_p0")
-    call msg_debug (D_THRESHOLD, "threshold%settings%ext_vinput", &
-         threshold%settings%ext_vinput)
-    en = sqrts_to_en (sqrts, MTPOLE)
-    call msg_debug (D_THRESHOLD, "en", en)
-    if (threshold%settings%ext_vinput) then
-       call msg_debug (D_THRESHOLD, "Allocate and compute Vmat and Tvec")
-      allocate (Vmat(POINTS_P0,n_p_p0dep,n_q))
-      allocate (Tvec(n_q))
-      select case (NRQCD_ORDER)
-         case (0)
-           Vmat = Vmatrix(0,vec_type,:,:,:) * AS_SOFT
-         case (1)
-           Vmat = Vmatrix(0,vec_type,:,:,:) * (AS_SOFT + AS_SOFT**2 *B0*log(MU_SOFT)/(2*pi)) + &
-                  Vmatrix(1,vec_type,:,:,:) * AS_SOFT**2
-         case default
-           call msg_fatal ("NRQCD_ORDER = " // char(NRQCD_ORDER))
-      end select
-      do i_q = 1, n_q
-         Tvec(i_q) = ff_p_spline%interpolate(q_grid(i_q)) * &
-              G0p_tree(en,q_grid(i_q),MTPOLE,GAM)
-!         Tvec(i_q) = formfactor_LL_analytic (AS_SOFT, sqrts, q_grid(i_q), vec_type) * &
-!                     G0p_tree(en,q_grid(i_q),MTPOLE,GAM)
-      end do
-    end if
-    if (SWITCHOFF_RESUMMED) then
-       f = f_switch_off (v_matching (sqrts, GAM))
-       alphas_hard = AS_HARD * f
-    else
-       alphas_hard = AS_HARD
-    end if
-    !!! AS_SOFT @ LL in current coefficient!
-    current_c1 = current_coeff (alphas_hard, AS_LL_SOFT, AS_USOFT, vec_type)
-    call msg_debug (D_THRESHOLD, "Integrate over q for each p, p0")
-    do i_p = 1, n_p_p0dep
-       p = p_grid(i_p)
-       do i_p0 = 1, POINTS_P0
-          p0 = p0_grid(i_p0)
-          call ps%init_nonrel (sqrts, p, p0)
-          if (threshold%settings%ext_vinput) then
-             !!! Andre's matrix summation
-             q_integral = sum (Vmat(i_p0,i_p,:) * Tvec)
-          else if (NRQCD_ORDER > 0) then
-             !!! numerical integration using NR's Gaussian summation
-             call compute_support_points (en, i_p, i_p0, 10)
-!             q_integral = 1./(2.*pi)**2 * nr_qgaus (integrand, q_grid)
-             call q_integrand%update (AS_SOFT, ps, vec_type)
-             q_integral = 1./(2.*pi)**2 * solve_qgaus (q_integrand, q_grid)
-          else
-             !!! analytic FF incl. p0 dependence @ LL
-             q_integral = formfactor_LL_analytic_p0 (AS_SOFT, ps, vec_type) - one
-          end if
-          !!! q_integral is a pure correction of O(alphas): add tree level ~ 1 again
-          ff = current_c1 * (one + q_integral)
-          !if (matching_version > 0)  call match_resummed_formfactor (ff, ps, vec_type)
-          ff_p0(i_p,i_p0) = ff
-       end do
-    end do
-  end function scan_formfactor_over_p_p0
 
   !!! compute support points (~> q-grid) for numerical integration: trim p-grid and
   !!! merge with singular points of integrand: q = p, |p-p0|, p+p0, sqrt(mpole*E)
@@ -1478,95 +1457,12 @@ contains
     call nr_sort (q_grid)
   end subroutine compute_support_points
 
-  subroutine import_Vmatrices ()
-    complex(single), dimension(:), allocatable :: mat_1d
-    logical :: ex
-    integer :: u, st, i_line, i_loop, vec_type
-    character(len=1) :: flag
-    real(single) :: re, im
-    type(string_t) :: Vpath, Vfile
-    Vpath = PREFIX // "/share/whizard/SM_tt_threshold_data/SM_tt_threshold_Vmatrices/"
-    do vec_type = 1, 2
-       ! TODO: (bcn 2015-07-31) I suppose this should be removed at some point?!
-       if (vec_type==2) return
-       do i_loop = 0, NRQCD_ORDER
-          select case (10*vec_type+i_loop)
-             case (10)
-               Vfile = Vpath // "Vmatrix_s-wave_LO.dat"
-             case (11)
-               Vfile = Vpath // "Vmatrix_s-wave_NLO.dat"
-             case (20)
-               Vfile = Vpath // "Vmatrix_p-wave_LO.dat"
-             case (21)
-               Vfile = Vpath // "Vmatrix_p-wave_NLO.dat"
-             case default
-               call msg_fatal ("import Vmatrix: no input file for i_loop = "  &
-                                 // char(i_loop) // " and vec_type = " // char(vec_type))
-          end select
-          inquire (file=char(Vfile), exist=ex)
-          call msg_message ("Trying to load " // char(Vfile))
-          if (.not.ex) then
-             call msg_message ("Input data missing. You may choose to:")
-             call msg_message (" (d)ownload files from whizard.hepforge.org (180/590 MB packed/unpacked);")
-             call msg_message (" (c)ompute data on the fly (may take 1-3 hours to initialize).")
-             call msg_message (" Please enter d/c:")
-             read (input_unit, *) flag
-             select case (flag)
-               case ("d")
-                 call msg_message ("===> Please run the download script:")
-                 call msg_message (PREFIX // "/share/whizard/SM_tt_threshold_data/download_data.sh")
-                 call msg_message ("and restart WHIZARD.")
-                 call msg_terminate ()
-               case ("c")
-                 threshold%settings%ext_vinput = .false.
-                 return
-               case default
-                 call msg_fatal ("unknown option " // flag)
-             end select
-          end if
-          i_line = 1
-          u = free_unit ()
-          open (u, file=char(Vfile), status='old', action='read', iostat=st)
-          if (st /= 0) call msg_fatal ("open " // char(Vfile) // ": iostat = " // char(st))
-          PARSE: do
-             if (i_line == 1) then
-                read (u, *, iostat=st) POINTS_P0, n_p_p0dep, n_q
-                if (st /= 0) exit PARSE
-                if (.not. allocated (q_grid)) allocate (q_grid(n_q))
-                allocate (mat_1d(POINTS_P0*n_p_p0dep*n_q))
-             else if (i_line <= n_q+1) then
-                read (u, *, iostat=st) q_grid(i_line-1)
-                if (st /= 0)  exit PARSE
-             else
-                read (u, *, iostat=st) re, im
-                if (st /= 0)  exit PARSE
-                mat_1d(i_line-n_q-1) = cmplx (re, im, kind=single)
-             end if
-             i_line = i_line + 1
-          end do PARSE
-          if (st > 0)  call msg_fatal ("import " // char(Vfile) // ": read line " &
-                          // char(i_line) // ": iostat = " // char(st))
-          close (u, iostat=st)
-          if (st > 0)  call msg_fatal ("close " // char(Vfile) // ": iostat = " // char(st))
-          if (i_line-n_q-2 /= size(mat_1d)) &
-               call msg_fatal ("import Vmatrix: inconsistent input file " // char(Vfile))
-          if (.not. allocated (Vmatrix)) then
-             allocate (Vmatrix(0:NRQCD_ORDER,2,POINTS_P0,n_p_p0dep,n_q))
-          else if (any ([POINTS_P0,n_p_p0dep,n_q] /= shape (Vmatrix(0,1,:,:,:)))) then
-             call msg_fatal ("import Vmatrix: incompatible shape in file " // char(Vfile))
-          end if
-          Vmatrix(i_loop,vec_type,:,:,:) = reshape (mat_1d, [POINTS_P0, n_p_p0dep, n_q])
-          deallocate (mat_1d)
-       end do
-    end do
-  end subroutine import_Vmatrices
-
   !!! cf. arXiv:hep-ph/9503238, validated against arXiv:hep-ph/0008171
   pure function formfactor_ttv_relativistic_nlo (alphas, ps, J0) result (c)
     real(default), intent(in) :: alphas
     type(phase_space_point_t), intent(in) :: ps
     complex(default), intent(in) :: J0
-    complex(default) :: c 
+    complex(default) :: c
     real(default) :: p2, k2, q2, kp, pq, kq
     complex(default) :: D2, chi, ln1, ln2, L1, L2, z, S, m2, m
     complex(default) :: JA, JB, JC, JD, JE, IA, IB, IC, ID, IE
@@ -1770,7 +1666,7 @@ contains
     real(default), parameter :: E_offset = 0.001_default
     !!! (TODO-cw-2016-10-13) Find a better way to get masses
     real(default), parameter :: mb = 4.2_default
-    real(default), parameter :: mw = 80.419_default 
+    real(default), parameter :: mw = 80.419_default
 
     call get_rest_frame (p1_in, p2_in, p1_rest, p2_rest)
 
@@ -1805,7 +1701,7 @@ contains
     !!! Gluon must be on first position in this array
     type(vector4_t), intent(in), dimension(:) :: p_decay
     type(vector4_t), intent(inout) :: p_top
-    type(vector4_t), intent(inout), dimension(:) :: p_decay_onshell 
+    type(vector4_t), intent(inout), dimension(:) :: p_decay_onshell
     procedure(evaluate_one_to_two_splitting_special), pointer :: ppointer
     ppointer => evaluate_one_to_two_splitting_threshold
     call generate_on_shell_decay (p_top, p_decay, p_decay_onshell, 1, &

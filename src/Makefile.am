@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -16,13 +16,13 @@
 #     Hans-Werner Boschmann, Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -48,8 +48,9 @@ SUBDIRS = \
   beams tauola \
   me_methods shower user \
   blha model_features \
-  gosam openloops phase_space \
-  fks mci \
+  gosam openloops \
+  recola phase_space \
+  fks vegas mci \
   process_integration \
   matching \
   transforms \
@@ -60,7 +61,7 @@ SUBDIRS += gamelan feynmf
 endif
 
 ########################################################################
-## Build 
+## Build
 ## (1) the toplevel WHIZARD library, which wraps various libraries
 ## built in the subdirectories
 ## (2) the WHIZARD test library that is linked to the main executable
@@ -92,8 +93,10 @@ libwhizard_la_LIBADD = \
   fks/libfks.la \
   gosam/libgosam.la \
   openloops/liboloops.la \
+  recola/libwo_recola.la \
   blha/libblha.la \
   user/libuser.la \
+  vegas/libvegas.la \
   mci/libmci.la \
   phase_space/libphase_space.la \
   xdr/libWOStdHep.la \
@@ -124,7 +127,7 @@ if LCIO_AVAILABLE
 libwhizard_la_LIBADD += lcio/libLCIOWrap.la
 else
 libwhizard_la_LIBADD += lcio/libLCIOWrap_dummy.la
-endif 
+endif
 
 ## If (parts of) LHAPDF is not available, link in a dummy as replacements
 if LHAPDF5_AVAILABLE
@@ -148,19 +151,19 @@ if HOPPET_AVAILABLE
 libwhizard_la_LIBADD += $(LDFLAGS_HOPPET) hoppet/libhoppet.la
 else
 libwhizard_la_LIBADD += hoppet/libhoppet_dummy.la
-endif 
+endif
 
 if FASTJET_AVAILABLE
 libwhizard_la_LIBADD += $(FASTJET_LIBS) fastjet/libFastjetWrap.la
 else
 libwhizard_la_LIBADD += fastjet/libFastjetWrap_dummy.la
-endif 
+endif
 
-if LOOPTOOLS_AVAILABLE 
-libwhizard_la_LIBADD += $(LDFLAGS_LOOPTOOLS) looptools/liblooptools.la 
-else 
-libwhizard_la_LIBADD += looptools/liblooptools_dummy.la 
-endif 
+if LOOPTOOLS_AVAILABLE
+libwhizard_la_LIBADD += $(LDFLAGS_LOOPTOOLS) looptools/liblooptools.la
+else
+libwhizard_la_LIBADD += looptools/liblooptools_dummy.la
+endif
 
 ## -------------------------------------------------------------------
 ## WHIZARD unit-test library
@@ -177,9 +180,10 @@ libwhizard_test_la_LIBADD = \
   fks/libfks_ut.la \
   shower/libshower_ut.la \
   process_integration/libprocess_integration_ut.la \
+  recola/libwo_recola_ut.la \
   blha/libblha_ut.la \
   model_features/libmodel_features_ut.la \
-  mci/libmci_ut.la \
+  vegas/libvegas_ut.la mci/libmci_ut.la \
   phase_space/libphase_space_ut.la \
   events/libevents_ut.la \
   beams/libbeams_ut.la \
@@ -203,11 +207,15 @@ libomega_la_LIBADD = \
   ../omega/src/libomega_core.la \
   models/libmodels.la
 
+if RECOLA_AVAILABLE
+libwhizard_la_LIBADD += $(LDFLAGS_RECOLA)
+libwhizard_test_la_LIBADD += $(LDFLAGS_RECOLA)
+endif
 
 ########################################################################
 ## Build a standalone program
 
-bin_PROGRAMS = whizard 
+bin_PROGRAMS = whizard
 
 whizard_SOURCES =
 

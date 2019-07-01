@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -67,7 +67,7 @@ contains
     class(prc_core_driver_t), allocatable :: driver
     real(default), dimension(0:3,4) :: p
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_test_1"
     write (u, "(A)")  "*   Purpose: create a trivial process"
     write (u, "(A)")  "*            build a library and &
@@ -83,7 +83,7 @@ contains
     allocate (prt_in (2), prt_out (2))
     prt_in  = [var_str ("s"), var_str ("s")]
     prt_out = [var_str ("s"), var_str ("s")]
-    
+
     allocate (prc_test_def_t :: def)
     select type (def)
     type is (prc_test_def_t)
@@ -98,21 +98,21 @@ contains
          method  = var_str ("test_me"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Load library"
     write (u, "(A)")
     call lib%load (os_data)
 
     call lib%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -145,7 +145,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_default, 0.0_default, 0.0_default, 1.0_default, &
          1.0_default, 0.0_default, 0.0_default,-1.0_default, &
@@ -166,19 +166,19 @@ contains
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_test_1"
-    
+
   end subroutine prc_test_1
-  
+
   subroutine prc_test_2 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
     class(prc_core_driver_t), allocatable :: driver
     type(process_constants_t) :: data
     real(default), dimension(0:3,4) :: p
-    
+
     write (u, "(A)")  "* Test output: prc_test_2"
     write (u, "(A)")  "*   Purpose: create a trivial process"
     write (u, "(A)")  "*            build a library and &
@@ -207,12 +207,12 @@ contains
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_test_2"
-    
+
   end subroutine prc_test_2
-  
+
   subroutine prc_test_3 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
@@ -225,7 +225,7 @@ contains
     class(prc_core_driver_t), allocatable :: driver
     real(default), dimension(0:3,3) :: p
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_test_3"
     write (u, "(A)")  "*   Purpose: create a trivial decay process"
     write (u, "(A)")  "*            build a library and &
@@ -241,7 +241,7 @@ contains
     allocate (prt_in (1), prt_out (2))
     prt_in  = [var_str ("s")]
     prt_out = [var_str ("f"), var_str ("F")]
-    
+
     allocate (prc_test_def_t :: def)
     select type (def)
     type is (prc_test_def_t)
@@ -256,21 +256,21 @@ contains
          method  = var_str ("test_me"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Load library"
     write (u, "(A)")
     call lib%load (os_data)
 
     call lib%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -304,7 +304,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          125._default, 0.0_default, 0.0_default, 0.0_default, &
          62.5_default, 0.0_default, 0.0_default, 62.5_default, &
@@ -324,19 +324,19 @@ contains
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_test_3"
-    
+
   end subroutine prc_test_3
-  
+
   subroutine prc_test_4 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
     class(prc_core_driver_t), allocatable :: driver
     type(process_constants_t) :: data
     real(default), dimension(0:3,3) :: p
-    
+
     write (u, "(A)")  "* Test output: prc_test_4"
     write (u, "(A)")  "*   Purpose: create a trivial decay process"
     write (u, "(A)")  "*            build a library and &
@@ -365,11 +365,11 @@ contains
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_test_4"
-    
+
   end subroutine prc_test_4
-  
+
 
 end module prc_test_uti

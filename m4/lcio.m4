@@ -14,7 +14,10 @@ AC_ARG_ENABLE([lcio],
     [enable LCIO for handling event data [[yes]]])],
   [], [enable_lcio="yes"])
 
-if test -n "$LCIO_DIR"; then
+# First test for LCIO, then for LCIO_DIR; LCIO takes precedence.
+if test -n "$LCIO"; then
+  wo_lcio_includes="-I$LCIO/include"
+elif test -n "$LCIO_DIR"; then
   wo_lcio_includes="-I$LCIO_DIR/include"
 fi
 
@@ -42,7 +45,10 @@ wo_lcio_ldflags="-llcio"
 if test "$enable_lcio" = "yes"; then
   wo_require_stdcpp="yes"
   AC_MSG_CHECKING([for LCEventImpl class in -llcio])
-  if test -n "$LCIO_DIR"; then
+# First test for LCIO, then for LCIO_DIR; LCIO takes precedence.
+  if test -n "$LCIO"; then
+    wo_lcio_ldflags="-Wl,-rpath,$LCIO/lib -L$LCIO/lib $wo_lcio_ldflags"
+  elif test -n "$LCIO_DIR"; then
     wo_lcio_ldflags="-Wl,-rpath,$LCIO_DIR/lib -L$LCIO_DIR/lib $wo_lcio_ldflags"
   fi
   wo_libs_tmp=$LIBS

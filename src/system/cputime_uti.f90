@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -55,8 +55,8 @@ contains
 
     write (u, "(A)")  "* Test output: cputime_1"
     write (u, "(A)")  "*   Purpose: check time operations"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)") "* Undefined time"
     write (u, *)
 
@@ -82,11 +82,11 @@ contains
     write (u, *)
     write (u, "(A)") "* Compute time difference"
     write (u, *)
-    
+
     time1 = 5.33
     time2 = 7.55
     time = time2 - time1
-    
+
     call time1%write (u)
     call time2%write (u)
     call time%write (u)
@@ -94,9 +94,9 @@ contains
     write (u, *)
     write (u, "(A)") "* Compute time sum"
     write (u, *)
-    
+
     time = time2 + time1
-    
+
     call time1%write (u)
     call time2%write (u)
     call time%write (u)
@@ -104,10 +104,10 @@ contains
     write (u, *)
     write (u, "(A)") "* Expand time"
     write (u, *)
-    
+
     time1 = ((24 + 1) * 60 + 1) * 60 + 1
     time2 = ((3 * 24 + 23) * 60 + 59) * 60 + 59
-    
+
     call time1%expand (s)
     write (u, 1)  "s =", s
     call time1%expand (m,s)
@@ -116,7 +116,7 @@ contains
     write (u, 1)  "hms =", h, m, s
     call time1%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
     call time2%expand (s)
     write (u, 1)  "s =", s
     call time2%expand (m,s)
@@ -125,14 +125,14 @@ contains
     write (u, 1)  "hms =", h, m, s
     call time2%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
     write (u, *)
     write (u, "(A)") "* Expand negative time"
     write (u, *)
-    
+
     time1 = - (((24 + 1) * 60 + 1) * 60 + 1)
     time2 = - (((3 * 24 + 23) * 60 + 59) * 60 + 59)
-    
+
     call time1%expand (s)
     write (u, 1)  "s =", s
     call time1%expand (m,s)
@@ -141,7 +141,7 @@ contains
     write (u, 1)  "hms =", h, m, s
     call time1%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
     call time2%expand (s)
     write (u, 1)  "s =", s
     call time2%expand (m,s)
@@ -150,16 +150,16 @@ contains
     write (u, 1)  "hms =", h, m, s
     call time2%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
 1   format (1x,A,1x,4(I0,:,':'))
 
     write (u, *)
     write (u, "(A)") "* String from time"
     write (u, *)
-    
+
     time1 = ((24 + 1) * 60 + 1) * 60 + 1
     time2 = ((3 * 24 + 23) * 60 + 59) * 60 + 59
-    
+
     write (u, "(A)")  char (time1%to_string_s ())
     write (u, "(A)")  char (time1%to_string_ms ())
     write (u, "(A)")  char (time1%to_string_hms ())
@@ -173,17 +173,17 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Blanking out the last second entry"
     write (u, "(A)")
-    
+
     write (u, "(A)")  char (time1%to_string_ms ())
     write (u, "(A)")  char (time1%to_string_ms (.true.))
-        
+
     write (u, *)
     write (u, "(A)") "* String from negative time"
     write (u, *)
-    
+
     time1 = -(((24 + 1) * 60 + 1) * 60 + 1)
     time2 = -(((3 * 24 + 23) * 60 + 59) * 60 + 59)
-    
+
     write (u, "(A)")  char (time1%to_string_s ())
     write (u, "(A)")  char (time1%to_string_ms ())
     write (u, "(A)")  char (time1%to_string_hms ())
@@ -193,20 +193,20 @@ contains
     write (u, "(A)")  char (time2%to_string_ms ())
     write (u, "(A)")  char (time2%to_string_hms ())
     write (u, "(A)")  char (time2%to_string_dhms ())
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: cputime_1"    
+    write (u, "(A)")  "* Test output end: cputime_1"
 
   end subroutine cputime_1
-  
+
   subroutine cputime_2 (u)
     integer, intent(in) :: u
     type(timer_t) :: timer
 
     write (u, "(A)")  "* Test output: cputime_2"
     write (u, "(A)")  "*   Purpose: check timer"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)") "* Undefined timer"
     write (u, *)
 
@@ -246,9 +246,9 @@ contains
     call timer%write (u)
 
     write (u, *)
-    write (u, "(A)")  "* Test output end: cputime_2"    
+    write (u, "(A)")  "* Test output end: cputime_2"
 
   end subroutine cputime_2
-  
+
 
 end module cputime_uti

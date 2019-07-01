@@ -23,13 +23,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process circe2_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe2_2_p1'
-|   Library name  = 'circe2_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'circe2_2_p1_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1100000E-04 GeV)
@@ -38,6 +31,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe2_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe2_2_p1'
+|   Library name  = 'circe2_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'circe2_2_p1_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -70,13 +70,6 @@ $circe2_design = "ILC"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process circe2_2_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe2_2_p2'
-|   Library name  = 'circe2_2_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'circe2_2_p2_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe2
 | Beam data (collision):
 |   e-  (mass = 5.1100000E-04 GeV)
@@ -88,6 +81,13 @@ $circe2_design = "ILC"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe2_2_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe2_2_p2'
+|   Library name  = 'circe2_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'circe2_2_p2_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

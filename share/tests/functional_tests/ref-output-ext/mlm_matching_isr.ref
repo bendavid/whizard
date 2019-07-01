@@ -39,13 +39,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process mlm_matching_isr_qqee:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'mlm_matching_isr_qqee'
-|   Library name  = 'mlm_matching_isr_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'mlm_matching_isr_qqee_i1':   u:d:ubar:dbar, u:d:ubar:dbar => e-, e+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, pbar => pdf_builtin
 | Beam data (collision):
 |   p     (mass = 0.0000000E+00 GeV)
@@ -55,6 +48,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'mlm_matching_isr_qqee_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'mlm_matching_isr_qqee'
+|   Library name  = 'mlm_matching_isr_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'mlm_matching_isr_qqee_i1':   u:d:ubar:dbar, u:d:ubar:dbar => e-, e+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -106,13 +106,6 @@ $sample = "mlm_matching_isr_a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process mlm_matching_isr_qqee:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'mlm_matching_isr_qqee'
-|   Library name  = 'mlm_matching_isr_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'mlm_matching_isr_qqee_i1':   u:d:ubar:dbar, u:d:ubar:dbar => e-, e+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, pbar => pdf_builtin
 | Beam data (collision):
 |   p     (mass = 0.0000000E+00 GeV)
@@ -121,6 +114,13 @@ $sample = "mlm_matching_isr_a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'mlm_matching_isr_qqee_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'mlm_matching_isr_qqee'
+|   Library name  = 'mlm_matching_isr_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'mlm_matching_isr_qqee_i1':   u:d:ubar:dbar, u:d:ubar:dbar => e-, e+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -145,13 +145,6 @@ $sample = "mlm_matching_isr_a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process mlm_matching_isr_qqeeg:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'mlm_matching_isr_qqeeg'
-|   Library name  = 'mlm_matching_isr_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'mlm_matching_isr_qqeeg_i1':   u:d:ubar:dbar, u:d:ubar:dbar => e-, e+, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, pbar => pdf_builtin
 | Beam data (collision):
 |   p     (mass = 0.0000000E+00 GeV)
@@ -160,6 +153,13 @@ $sample = "mlm_matching_isr_a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'mlm_matching_isr_qqeeg_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'mlm_matching_isr_qqeeg'
+|   Library name  = 'mlm_matching_isr_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'mlm_matching_isr_qqeeg_i1':   u:d:ubar:dbar, u:d:ubar:dbar => e-, e+, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 12 channels, 5 dimensions
 | Phase space: found 12 channels, collected in 3 groves.
 | Phase space: Using 24 equivalences between channels.
@@ -184,13 +184,6 @@ $sample = "mlm_matching_isr_a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process mlm_matching_isr_qgeeq:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'mlm_matching_isr_qgeeq'
-|   Library name  = 'mlm_matching_isr_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'mlm_matching_isr_qgeeq_i1':   u:d:ubar:dbar, gl => e-, e+, u:d:ubar:dbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, pbar => pdf_builtin
 | Beam data (collision):
 |   p     (mass = 0.0000000E+00 GeV)
@@ -199,6 +192,13 @@ $sample = "mlm_matching_isr_a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'mlm_matching_isr_qgeeq_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'mlm_matching_isr_qgeeq'
+|   Library name  = 'mlm_matching_isr_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'mlm_matching_isr_qgeeq_i1':   u:d:ubar:dbar, gl => e-, e+, u:d:ubar:dbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 9 channels, 5 dimensions
 | Phase space: found 9 channels, collected in 6 groves.
 | Phase space: Using 9 equivalences between channels.
@@ -223,13 +223,6 @@ $sample = "mlm_matching_isr_a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process mlm_matching_isr_gqeeq:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'mlm_matching_isr_gqeeq'
-|   Library name  = 'mlm_matching_isr_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'mlm_matching_isr_gqeeq_i1':   gl, u:d:ubar:dbar => e-, e+, u:d:ubar:dbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, pbar => pdf_builtin
 | Beam data (collision):
 |   p     (mass = 0.0000000E+00 GeV)
@@ -238,6 +231,13 @@ $sample = "mlm_matching_isr_a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'mlm_matching_isr_gqeeq_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'mlm_matching_isr_gqeeq'
+|   Library name  = 'mlm_matching_isr_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'mlm_matching_isr_gqeeq_i1':   gl, u:d:ubar:dbar => e-, e+, u:d:ubar:dbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 9 channels, 5 dimensions
 | Phase space: found 9 channels, collected in 6 groves.
 | Phase space: Using 9 equivalences between channels.

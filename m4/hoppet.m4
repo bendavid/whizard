@@ -68,14 +68,14 @@ else
 fi
 
 AC_SUBST([HOPPET_INCLUDES])
-AC_SUBST(LDFLAGS_HOPPET)
+AC_SUBST([LDFLAGS_HOPPET])
 
 if test "$enable_hoppet" = "yes"; then
   HOPPET_AVAILABLE_FLAG=".true."
 else
   HOPPET_AVAILABLE_FLAG=".false."
 fi
-AC_SUBST(HOPPET_AVAILABLE_FLAG)
+AC_SUBST([HOPPET_AVAILABLE_FLAG])
 
 AM_CONDITIONAL([HOPPET_AVAILABLE], [test "$enable_hoppet" = "yes"])
 ])

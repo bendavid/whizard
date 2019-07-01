@@ -24,13 +24,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qedtest_8_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_8_p'
-|   Library name  = 'qedtest_8_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_8_p_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -39,6 +32,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qedtest_8_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_8_p'
+|   Library name  = 'qedtest_8_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_8_p_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -70,6 +70,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process qedtest_8_p:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: keeping configuration file 'qedtest_8_p_i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'qedtest_8_p'
 |   Library name  = 'qedtest_8_lib'
@@ -77,12 +83,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'qedtest_8_p_i1':   e-, e+ => m-, m+ [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
-|   e+  (mass = 0.0000000E+00 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'qedtest_8_p_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

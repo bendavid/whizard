@@ -18,13 +18,6 @@ accuracy_goal =  1.000000000000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process rebuild_3_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'rebuild_3_p'
-|   Library name  = 'rebuild_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'rebuild_3_p_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -33,6 +26,13 @@ accuracy_goal =  1.000000000000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'rebuild_3_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'rebuild_3_p'
+|   Library name  = 'rebuild_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'rebuild_3_p_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -92,13 +92,6 @@ accuracy_goal =  1.000000000000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process rebuild_3_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'rebuild_3_p'
-|   Library name  = 'rebuild_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'rebuild_3_p_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -107,6 +100,13 @@ accuracy_goal =  1.000000000000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'rebuild_3_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'rebuild_3_p'
+|   Library name  = 'rebuild_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'rebuild_3_p_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module hepmc_interface
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use constants, only: PI
@@ -397,7 +397,7 @@ module hepmc_interface
        type(c_ptr), value :: v_obj
        real(c_double) :: t
      end function gen_vertex_time
-  end interface  
+  end interface
   interface
      type(c_ptr) function new_gen_vertex () bind(C)
        import
@@ -751,7 +751,7 @@ contains
           real (pa(3), c_double), &
           real (pa(0), c_double))
   end subroutine hepmc_four_vector_init_v4
-  
+
   subroutine hepmc_four_vector_init_v3 (pp, p)
     type(hepmc_four_vector_t), intent(out) :: pp
     type(vector3_t), intent(in) :: p
@@ -762,13 +762,13 @@ contains
           real (pa(2), c_double), &
           real (pa(3), c_double))
   end subroutine hepmc_four_vector_init_v3
-  
+
   subroutine hepmc_four_vector_init_hepmc_prt (pp, prt)
     type(hepmc_four_vector_t), intent(out) :: pp
     type(hepmc_particle_t), intent(in) :: prt
     pp%obj = gen_particle_momentum (prt%obj)
   end subroutine hepmc_four_vector_init_hepmc_prt
-  
+
   subroutine hepmc_four_vector_final (p)
     type(hepmc_four_vector_t), intent(inout) :: p
     call four_vector_delete (p%obj)
@@ -959,7 +959,7 @@ contains
     type(hepmc_particle_t), intent(in) :: prt
     is_beam = gen_particle_is_beam (prt%obj)
   end function hepmc_particle_is_beam
-    
+
   function hepmc_particle_get_production_vertex (prt) result (v)
     type(hepmc_vertex_t) :: v
     type(hepmc_particle_t), intent(in) :: prt
@@ -1063,7 +1063,7 @@ contains
        t = gen_vertex_time (vtx%obj)
        vx = gen_vertex_pos_x (vtx%obj)
        vy = gen_vertex_pos_y (vtx%obj)
-       vz = gen_vertex_pos_z (vtx%obj)    
+       vz = gen_vertex_pos_z (vtx%obj)
        v = vector4_moving (t, &
             vector3_moving ([vx, vy, vz]))
     end if
@@ -1198,7 +1198,7 @@ contains
     type(hepmc_event_t), intent(in) :: evt
     call gen_event_print (evt%obj)
   end subroutine hepmc_event_print
-    
+
   function hepmc_event_get_event_index (evt) result (i_proc)
     integer :: i_proc
     type(hepmc_event_t), intent(in) :: evt

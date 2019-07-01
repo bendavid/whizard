@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2016 by 
+! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -72,6 +72,72 @@ subroutine lcio_set_scale (evt_obj, scale) bind(C)
   write (0, "(A)")  "***********************************************************"
   stop                     
 end subroutine lcio_set_scale
+
+! extern "C" void lcio_set_sqrts ( LCEventImpl* evt, double sqrts )
+subroutine lcio_set_sqrts (evt_obj, sqrts) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  real(c_double), value :: sqrts
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end subroutine lcio_set_sqrts
+
+! extern "C" void lcio_set_xsec ( LCEventImpl* evt, double xsec, double xsec_err )
+subroutine lcio_set_xsec (evt_obj, xsec, xsec_err) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  real(c_double), value :: xsec, xsec_err
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end subroutine lcio_set_xsec
+
+! extern "C" void lcio_set_beam ( LCEventImpl* evt, int pdg, int beam )
+subroutine lcio_set_beam (evt_obj, pdg, beam) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  integer(c_int), value :: pdg, beam
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end subroutine lcio_set_beam
+
+! extern "C" void lcio_set_pol ( LCEventImpl* evt, double pol1, double pol2 )
+subroutine lcio_set_pol (evt_obj, pol1, pol2) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  real(c_double), value :: pol1, pol2
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end subroutine lcio_set_pol
+
+! extern "C" void lcio_set_beam_file ( LCEventImpl* evt, char* file ) {
+subroutine lcio_set_beam_file (evt_obj, file) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  character(len=1, kind=c_char), dimension(*), intent(in) :: file  
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end subroutine lcio_set_beam_file
+
+! extern "C" void lcio_set_process_name ( LCEventImpl* evt, char* name ) {
+subroutine lcio_set_process_name (evt_obj, name) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  character(len=1, kind=c_char), dimension(*), intent(in) :: name
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop                     
+end subroutine lcio_set_process_name
 
 ! extern "C" void lcio_event_delete( void* evt) {}
 subroutine lcio_event_delete (evt_obj) bind(C)

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -56,8 +56,9 @@ module integrations
   use mci_base
   use process_libraries
   use prc_core
-  !  TODO: (bcn 2016-09-13) details of process config should not be necessary here
-  use process_config
+  use process_config, only: COMP_MASTER, COMP_REAL_FIN, &
+       COMP_MISMATCH, COMP_PDF, COMP_REAL, COMP_SUB, COMP_VIRT, &
+       COMP_REAL_SING
   use process
   use instances
   use process_stacks
@@ -200,6 +201,8 @@ contains
     integer :: i_real = 0
     integer :: i_core
     integer :: i_core_born, i_core_real
+    logical :: first_real_component, use_real_partition
+    real(default) :: real_partition_scale
     verb = .true.; if (present (verbose))  verb = verbose
     call intg%process%set_var_list (local%get_var_list_ptr ())
     var_list => intg%process%get_var_list_ptr ()
@@ -212,16 +215,11 @@ contains
     call setup_log_and_history ()
 
     call dispatch_mci_s (mci_template, local%get_var_list_ptr (), intg%process_id, &
-       intg%process%is_nlo_calculation ())
+         intg%process%is_nlo_calculation ())
 
     call display_init_message (verb)
 
     n_components = intg%process%get_n_components ()
-
-    call blha_template%init (local%beam_structure%has_polarized_beams(), &
-       var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
-       var_list%get_rval (var_str ("blha_use_top_yukawa")), &
-       var_list%get_sval (var_str ("$blha_ew_scheme")))
 
     intg%combined_integration = var_list%get_lval &
        (var_str ('?combined_nlo_integration')) .and. &
@@ -247,12 +245,8 @@ contains
        deallocate (core_template)
     end do
 
-    do i_core = 1, intg%process%get_n_cores ()
-       call fill_blha_template (intg%process%get_nlo_type (i_core))
-       call intg%process%init_core (i_core, blha_template)
-       call blha_template%reset ()
-    end do
-
+    call intg%process%init_cores ()
+    first_real_component = .true.
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
        core => intg%process%get_core_nlo_type ( &
@@ -264,7 +258,7 @@ contains
        case (NLO_REAL)
           call setup_real_component ()
           if (intg%process%get_component_type (i_component) /= COMP_REAL_FIN) &
-             i_real = i_component
+               i_real = i_component
        case (NLO_MISMATCH)
           call setup_mismatch_component ()
        case (NLO_DGLAP)
@@ -274,17 +268,15 @@ contains
        case (NLO_SUBTRACTION)
           call setup_subtraction_component ()
        case (GKS)
-          call intg%process%init_component &
-             (i_component, core%has_matrix_element (), &
-             mci_template, phs_config_template)
+          call intg%process%init_component (i_component, &
+               core%has_matrix_element (), mci_template, &
+               phs_config_template)
        case default
           call msg_fatal ("setup_process: NLO type not implemented!")
        end select
        if (allocated (phs_config_template_other)) &
-          deallocate (phs_config_template_other)
+            deallocate (phs_config_template_other)
     end do
-
-    if (verb)  call intg%process%write (screen = .true.)
 
     intg%process_has_me = intg%process%has_matrix_element ()
     if (.not. intg%process_has_me) then
@@ -296,20 +288,40 @@ contains
     call setup_structure_functions ()
 
     call intg%process%configure_phs &
-         (intg%rebuild_phs, intg%ignore_phs_mismatch, verbose=verbose, &
+         (intg%rebuild_phs, intg%ignore_phs_mismatch, & !verbose=verbose, &
           combined_integration = intg%combined_integration)
 
     if (intg%process%is_nlo_calculation ()) then
-       call intg%process%check_if_threshold_method ()
+       call dispatch_fks_s (fks_template, local%var_list)
        call intg%process%init_nlo_settings (var_list, fks_template)
+       call intg%process%check_if_threshold_method ()
        i_core_real = intg%process%get_i_core_nlo_type (NLO_REAL)
        i_core_born = intg%process%get_i_core_nlo_type (BORN)
        call intg%process%setup_region_data (i_real, &
             intg%process%get_constants(i_core_born), &
             intg%process%get_constants(i_core_real))
+       if (var_list%get_lval (var_str ("?nlo_use_real_partition"))) then
+          call intg%process%setup_real_partition &
+               (var_list%get_rval (var_str ("real_partition_scale")))
+       end if 
     end if
 
     call intg%process%setup_terms (with_beams = local%beam_structure%is_set ())
+
+    if (intg%process%needs_extra_code ()) then
+       call blha_template%init (local%beam_structure%has_polarized_beams(), &
+            var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
+            var_list%get_rval (var_str ("blha_use_top_yukawa")), &
+            var_list%get_sval (var_str ("$blha_ew_scheme")))
+       call intg%process%init_blha_cores(blha_template, var_list)
+       call intg%process%create_and_load_extra_libraries &
+            (local%beam_structure, var_list, local%os_data)
+    end if
+
+    if (verb) then
+       call intg%process%write (screen = .true.)
+       call intg%process%print_phs_startup_message ()
+    end if
 
     if (intg%process_has_me) then
        if (size (sf_config) > 0) then
@@ -388,9 +400,9 @@ contains
       logical, intent(in) :: verb
       if (verb) then
          call msg_message ("Initializing integration for process " &
-            // char (intg%process_id) // ":")
+              // char (intg%process_id) // ":")
          if (intg%run_id /= "") &
-          call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
+              call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
       end if
     end subroutine display_init_message
 
@@ -410,108 +422,67 @@ contains
     end function get_me_method
 
     subroutine setup_born_component ()
-      call intg%process%init_component &
-         (i_component, core%has_matrix_element (), &
-          mci_template, phs_config_template)
-      if (intg%combined_integration) &
-         call intg%process%set_component_type (i_component, COMP_MASTER)
+      call intg%process%init_component (i_component, &
+           core%has_matrix_element (), mci_template, phs_config_template)
+      call intg%process%set_component_type (i_component, COMP_MASTER)
     end subroutine setup_born_component
 
     subroutine setup_virtual_component ()
-      call intg%process%init_component &
-         (i_component, core%has_matrix_element (), &
-          mci_template, phs_config_template)
-      if (intg%combined_integration) &
-         call intg%process%set_component_type (i_component, COMP_VIRT)
+      call intg%process%init_component (i_component, &
+           core%has_matrix_element (), mci_template, phs_config_template)
+      call intg%process%set_component_type (i_component, COMP_VIRT)
     end subroutine setup_virtual_component
 
     subroutine setup_real_component ()
-      logical :: use_powheg_damping
-      logical :: setup_real_fin
-      integer :: i = 0
-      use_powheg_damping = var_list%get_lval (var_str ("?powheg_use_damping"))
-      setup_real_fin = i > 0
-      if (.not. setup_real_fin) then
+      logical :: use_finite_real
+      use_finite_real = var_list%get_lval (var_str ("?nlo_use_real_partition"))
+      if (first_real_component) then
          call dispatch_phs (phs_config_template_other, local%var_list, &
-            local%os_data, intg%process_id, mapping_defs, phs_par, &
-            var_str ('fks'))
-         call dispatch_fks_s (fks_template, local%var_list)
+              local%os_data, intg%process_id, mapping_defs, phs_par, &
+              var_str ('fks'))
       else
          call dispatch_phs (phs_config_template_other, local%var_list, &
-            local%os_data, intg%process_id, mapping_defs, phs_par, &
-            var_str ('wood'))
+              local%os_data, intg%process_id, mapping_defs, phs_par, &
+              var_str ('wood'))
       end if
-      call intg%process%init_component &
-         (i_component, core%has_matrix_element (), mci_template, &
-          phs_config_template_other)
-      if (intg%combined_integration) then
-         if (use_powheg_damping) then
-            if (i == 0) then
-               call intg%process%set_component_type (i_component, COMP_REAL_SING)
-               i = i + 1
-            else
-               call intg%process%set_component_type (i_component, COMP_REAL_FIN)
-            end if
+      call intg%process%init_component (i_component, &
+           core%has_matrix_element (), mci_template, phs_config_template_other)
+      if (use_finite_real) then
+         if (first_real_component) then
+            call intg%process%set_component_type (i_component, COMP_REAL_SING)
+            first_real_component = .false.
          else
-            call intg%process%set_component_type (i_component, COMP_REAL)
+            call intg%process%set_component_type (i_component, COMP_REAL_FIN)
          end if
+      else
+         call intg%process%set_component_type (i_component, COMP_REAL)
       end if
     end subroutine setup_real_component
 
     subroutine setup_mismatch_component ()
       call dispatch_phs (phs_config_template_other, local%var_list, &
            local%os_data, intg%process_id, mapping_defs, phs_par, var_str ('fks'))
-      call intg%process%init_component &
-         (i_component, core%has_matrix_element (), mci_template, &
-         phs_config_template_other)
+      call intg%process%init_component (i_component, &
+           core%has_matrix_element (), mci_template, phs_config_template_other)
       if (intg%combined_integration) &
-         call intg%process%set_component_type (i_component, COMP_MISMATCH)
+           call intg%process%set_component_type (i_component, COMP_MISMATCH)
     end subroutine setup_mismatch_component
 
     subroutine setup_dglap_component ()
       call dispatch_phs (phs_config_template_other, local%var_list, local%os_data, &
-          intg%process_id, mapping_defs, phs_par, &
-          var_str ('fks'))
-      call intg%process%init_component &
-        (i_component, core%has_matrix_element (), &
-         mci_template, phs_config_template_other)
+           intg%process_id, mapping_defs, phs_par, var_str ('fks'))
+      call intg%process%init_component (i_component, &
+           core%has_matrix_element (), mci_template, phs_config_template_other)
       if (intg%combined_integration) &
-         call intg%process%set_component_type (i_component, COMP_PDF)
+           call intg%process%set_component_type (i_component, COMP_PDF)
     end subroutine setup_dglap_component
 
     subroutine setup_subtraction_component ()
-      call intg%process%init_component &
-          (i_component, .false., &
+      call intg%process%init_component (i_component, .false., &
            mci_template, phs_config_template)
       if (intg%combined_integration) &
-         call intg%process%set_component_type (i_component, COMP_SUB)
+           call intg%process%set_component_type (i_component, COMP_SUB)
     end subroutine setup_subtraction_component
-
-    function needs_entry (me_method) result (val)
-      logical :: val
-      type(string_t), intent(in) :: me_method
-      val = char (me_method) == 'gosam' .or. char (me_method) == 'openloops'
-    end function needs_entry
-
-    subroutine fill_blha_template (nlo_type)
-      integer, intent(in) :: nlo_type
-      select case (nlo_type)
-      case (BORN)
-         if (needs_entry (var_list%get_sval (var_str ("$born_me_method")))) &
-            call blha_template%set_born ()
-      case (NLO_REAL)
-         if (needs_entry (var_list%get_sval (var_str ("$real_tree_me_method")))) &
-            call blha_template%set_real_trees ()
-      case (NLO_VIRTUAL)
-         if (needs_entry (var_list%get_sval (var_str ("$loop_me_method")))) &
-            call blha_template%set_loop ()
-      case (NLO_SUBTRACTION)
-         if (needs_entry (var_list%get_sval (var_str ("$correlation_me_method")))) then
-            call blha_template%set_subtraction ()
-            call blha_template%set_internal_color_correlations ()
-         end if
-      end select
-    end subroutine fill_blha_template
 
     subroutine setup_beams ()
       real(default) :: sqrts
@@ -719,10 +690,8 @@ contains
     allocate (process_instance)
     call process_instance%init (intg%process)
 
-    if (intg%process%needs_extra_code ()) then
-       call process_instance%create_and_load_extra_libraries &
-               (local%beam_structure, local%os_data)
-    end if
+    if (intg%process%needs_extra_code ()) &
+       call process_instance%setup_blha_helicities ()
 
     var_list => intg%process%get_var_list_ptr ()
     call openmp_set_num_threads_verbose &
@@ -797,8 +766,6 @@ contains
              log_filename = intg%log_filename
           end if
           call intg%process%write_logfile (i_mci, log_filename)
-       else
-          if (nlo_type /= NLO_SUBTRACTION) display_summed = .false.
        end if
     end do
 

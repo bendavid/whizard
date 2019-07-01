@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -71,13 +71,13 @@ module iterations
      procedure :: adapt_weights => iterations_list_adapt_weights
      procedure :: get_n_it => iterations_list_get_n_it
   end type iterations_list_t
-     
+
   type :: iteration_multipliers_t
     real(default) :: mult_real = 1._default
     real(default) :: mult_virt = 1._default
     real(default) :: mult_dglap = 1._default
     real(default) :: mult_threshold = 1._default
-    integer, dimension(:), allocatable :: n_calls0 
+    integer, dimension(:), allocatable :: n_calls0
   end type iteration_multipliers_t
 
 
@@ -92,7 +92,7 @@ contains
     logical, dimension(:), intent(in), optional :: adapt_grids, adapt_weights
     integer :: i
     it_list%n_pass = size (n_it)
-    if (allocated (it_list%pass)) deallocate (it_list%pass)    
+    if (allocated (it_list%pass)) deallocate (it_list%pass)
     allocate (it_list%pass (it_list%n_pass))
     it_list%pass%n_it = n_it
     it_list%pass%n_calls = n_calls
@@ -154,13 +154,13 @@ contains
              if (it_list%pass(i)%adapt_grids)  buffer = buffer // "g"
              if (it_list%pass(i)%adapt_weights)  buffer = buffer // "w"
              buffer = buffer // '"'
-          end if          
+          end if
        end do
     else
        buffer = buffer // "[undefined]"
     end if
   end function iterations_list_to_string
-    
+
   function iterations_list_get_n_pass (it_list) result (n_pass)
     class(iterations_list_t), intent(in) :: it_list
     integer :: n_pass

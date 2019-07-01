@@ -86,7 +86,7 @@ opened at different positions simultaneously.
 <<File header>>
 
 module file_registries
-  
+
 <<Use strings>>
   use io_units
 
@@ -97,7 +97,7 @@ module file_registries
 <<File registries: types>>
 
 contains
-  
+
 <<File registries: procedures>>
 
 end module file_registries
@@ -115,7 +115,7 @@ deleted when the reference count drops to zero.
    contains
    <<File registries: file handle: TBP>>
   end type file_handle_t
-  
+
 @ %def file_handle_t
 @ Debugging output:
 <<File registries: file handle: TBP>>=
@@ -135,7 +135,7 @@ deleted when the reference count drops to zero.
             char (handle%file), handle%refcount
     end if
   end subroutine file_handle_write
-  
+
 @ %def file_handle_write
 @ Initialize with a file name, don't open the file yet:
 <<File registries: file handle: TBP>>=
@@ -146,7 +146,7 @@ deleted when the reference count drops to zero.
     type(string_t), intent(in) :: file
     handle%file = file
   end subroutine file_handle_init
-  
+
 @ %def file_handle_init
 @ We check the [[refcount]] before actually opening the file.
 <<File registries: file handle: TBP>>=
@@ -161,7 +161,7 @@ deleted when the reference count drops to zero.
     end if
     handle%refcount = handle%refcount + 1
   end subroutine file_handle_open
-    
+
 @ %def file_handle_open
 @ Analogously, close if the refcount drops to zero.  The caller may
 then delete the object.
@@ -176,7 +176,7 @@ then delete the object.
        handle%unit = 0
     end if
   end subroutine file_handle_close
-  
+
 @ %def file_handle_close
 @ The I/O unit will be nonzero when the file is open.
 <<File registries: file handle: TBP>>=
@@ -187,7 +187,7 @@ then delete the object.
     logical :: flag
     flag = handle%unit /= 0
   end function file_handle_is_open
-  
+
 @ %def file_handle_is_open
 @ Return the filename, so we can identify the entry.
 <<File registries: file handle: TBP>>=
@@ -198,7 +198,7 @@ then delete the object.
     type(string_t) :: file
     file = handle%file
   end function file_handle_get_file
-  
+
 @ %def file_handle_get_file
 @ For debugging, return the I/O unit number.
 <<File registries: file handle: TBP>>=
@@ -209,7 +209,7 @@ then delete the object.
     integer :: unit
     unit = handle%unit
   end function file_handle_get_unit
-  
+
 @ %def file_handle_get_unit
 @
 \subsection{File handles registry}
@@ -233,7 +233,7 @@ Extend the handle type to become a list entry:
    contains
    <<File registries: file registry: TBP>>
   end type file_registry_t
-  
+
 @ %def file_registry_t
 @ Debugging output.
 <<File registries: file registry: TBP>>=
@@ -257,7 +257,7 @@ Extend the handle type to become a list entry:
        write (u, "(1x,A)")  "File registry: [empty]"
     end if
   end subroutine file_registry_write
-    
+
 @ %def file_registry_write
 @ Open a file: find the appropriate entry.  Create a new entry and add
 to the list if necessary.  The list is extended at the beginning.
@@ -318,10 +318,10 @@ is no file connected to it anymore.
        end if
     end if
   end subroutine file_registry_close
-    
+
 @ %def file_registry_close
-@ 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{String Utilities}
 
 This module provides tools associated with strings
@@ -336,7 +336,7 @@ This module provides tools associated with strings
 <<File header>>
 
 module string_utils
-  
+
   use, intrinsic :: iso_c_binding
 
 <<Use kinds>>
@@ -516,25 +516,38 @@ s = s // str(x(size(x))) // ']'
   public :: read_ival
 <<String utils: procedures>>=
   function read_rval (s) result (rval)
-    type(string_t), intent(in) :: s
     real(default) :: rval
+    type(string_t), intent(in) :: s
     character(80) :: buffer
     buffer = s
     read (buffer, *)  rval
   end function read_rval
-    
+
   function read_ival (s) result (ival)
-    type(string_t), intent(in) :: s
     integer :: ival
+    type(string_t), intent(in) :: s
     character(80) :: buffer
     buffer = s
     read (buffer, *)  ival
   end function read_ival
-    
+
 @ %def read_rval read_ival
 @
 \subsection{String splitting}
-Create an array of strings using a separator.
+<<String utils: public>>=
+  public :: string_contains_word
+<<String utils: procedures>>=
+  function string_contains_word (str, word) result (val)
+    logical :: val
+    type(string_t), intent(in) :: str, word
+    type(string_t) :: str_tmp, str_out
+    str_tmp = str
+    call split (str_tmp, str_out, word)
+    val = str_out /= ""
+  end function string_contains_word
+
+@ %def string_contains_word
+@ Create an array of strings using a separator.
 <<String utils: public>>=
   public :: split_string
 <<String utils: procedures>>=
@@ -544,25 +557,16 @@ Create an array of strings using a separator.
     type(string_t) :: str_tmp, str_out
     integer :: n_str
     n_str = 0; str_tmp = str
-    do while (contains_word (str_tmp, separator))
+    do while (string_contains_word (str_tmp, separator))
        n_str = n_str + 1
        call split (str_tmp, str_out, separator)
     end do
     allocate (str_array (n_str))
     n_str = 1; str_tmp = str
-    do while (contains_word (str_tmp, separator))
+    do while (string_contains_word (str_tmp, separator))
        call split (str_tmp, str_array (n_str), separator)
        n_str = n_str + 1
     end do
-  contains
-    function contains_word (str, word) result (val)
-      logical :: val
-      type(string_t), intent(in) :: str, word
-      type(string_t) :: str_tmp, str_out
-      str_tmp = str
-      call split (str_tmp, str_out, word)
-      val = str_out /= "" 
-    end function contains_word
   end subroutine split_string
 
 @ %def split_string
@@ -1047,7 +1051,7 @@ adaption to specific use cases but have reasonable defaults.
   interface nearly_equal
      module procedure nearly_equal_real
      module procedure nearly_equal_complex
-  end interface
+  end interface nearly_equal
 
 <<Numeric utils: procedures>>=
   elemental function nearly_equal_real (a, b, abs_smallness, rel_smallness) result (r)
@@ -1157,5 +1161,45 @@ larger module which deals with list manipulations.
     allocate (list_clean (n_buf))
     list_clean = buf (1 : n_buf)
   end function remove_duplicates_from_list
-    
+
 @ %def remove_duplicates_from_list
+@
+<<Numeric utils: public>>=
+  public :: extend_integer_array
+<<Numeric utils: procedures>>=
+  subroutine extend_integer_array (list, incr, initial_value)
+    integer, intent(inout), dimension(:), allocatable :: list
+    integer, intent(in) :: incr
+    integer, intent(in), optional :: initial_value
+    integer, dimension(:), allocatable :: list_store
+    integer :: n, ini
+    ini = 0; if (present (initial_value)) ini = initial_value
+    n = size (list)
+    allocate (list_store (n))
+    list_store = list
+    deallocate (list)
+    allocate (list (n+incr))
+    list(1:n) = list_store
+    list(1+n : n+incr) = ini
+    deallocate (list_store)
+  end subroutine extend_integer_array
+
+@ %def extend_integer_array
+@
+<<Numeric utils: public>>=
+  public :: crop_integer_array
+<<Numeric utils: procedures>>=
+  subroutine crop_integer_array (list, i_crop)
+    integer, intent(inout), dimension(:), allocatable :: list
+    integer, intent(in) :: i_crop
+    integer, dimension(:), allocatable :: list_store
+    allocate (list_store (i_crop))
+    list_store = list(1:i_crop)
+    deallocate (list)
+    allocate (list (i_crop))
+    list = list_store
+    deallocate (list_store)
+  end subroutine crop_integer_array
+
+@ %def crop_integer_array
+@

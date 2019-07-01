@@ -6,6 +6,7 @@ module features
   use system_dependencies, only: openmp_is_active
   use system_dependencies, only: GOSAM_AVAILABLE
   use system_dependencies, only: OPENLOOPS_AVAILABLE
+  use system_dependencies, only: RECOLA_AVAILABLE
   use system_dependencies, only: LHAPDF5_AVAILABLE
   use system_dependencies, only: LHAPDF6_AVAILABLE
   use system_dependencies, only: HOPPET_AVAILABLE
@@ -31,6 +32,7 @@ contains
     call print_check ("OpenMP")
     call print_check ("GoSam")
     call print_check ("OpenLoops")
+    call print_check ("Recola")
     call print_check ("LHAPDF")
     call print_check ("HOPPET")
     call print_check ("fastjet")
@@ -64,6 +66,11 @@ contains
        help = "external NLO matrix element provider"
     case ("openloops")
        if (OPENLOOPS_AVAILABLE) then
+          result = "yes"
+       end if
+       help = "external NLO matrix element provider"
+    case ("recola")
+       if (RECOLA_AVAILABLE) then
           result = "yes"
        end if
        help = "external NLO matrix element provider"

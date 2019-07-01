@@ -24,6 +24,12 @@ error_threshold =  1.000000000000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_4_wp:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W+  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_4_wp_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_4_wp'
 |   Library name  = 'smtest_4_lib'
@@ -31,12 +37,6 @@ error_threshold =  1.000000000000E-08
 |   Process components:
 |     1: 'smtest_4_wp_i1':   W+ => u, dbar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W+  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'smtest_4_wp_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -64,6 +64,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process smtest_4_wm2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_4_wm2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_4_wm2'
 |   Library name  = 'smtest_4_lib'
@@ -71,12 +77,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'smtest_4_wm2_i1':   W- => mu-, numubar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'smtest_4_wm2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -99,6 +99,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process smtest_4_wm3:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_4_wm3_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_4_wm3'
 |   Library name  = 'smtest_4_lib'
@@ -106,12 +112,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'smtest_4_wm3_i1':   W- => tau-, nutaubar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'smtest_4_wm3_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -142,13 +142,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process smtest_4_ww:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_4_ww'
-|   Library name  = 'smtest_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_4_ww_i1':   e-, e+ => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -157,6 +150,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_4_ww_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_4_ww'
+|   Library name  = 'smtest_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_4_ww_i1':   e-, e+ => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.

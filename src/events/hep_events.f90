@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module hep_events
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use diagnostics
@@ -60,17 +60,17 @@ module hep_events
   public :: hepeup_from_event
   public :: hepeup_to_event
   public :: hepevt_from_event
-  public :: hepmc_event_from_particle_set 
+  public :: hepmc_event_from_particle_set
   public :: hepmc_event_to_particle_set
   public :: hepmc_to_event
   public :: particle_to_lcio
   public :: particle_from_lcio_particle
-  public :: lcio_event_from_particle_set 
+  public :: lcio_event_from_particle_set
   public :: lcio_event_to_particle_set
   public :: lcio_to_event
 
 contains
-  
+
   subroutine hepeup_from_event &
        (event, keep_beams, keep_remnants, process_index)
     class(generic_event_t), intent(in), target :: event
@@ -89,7 +89,7 @@ contains
        if (.not. vanishes (scale)) then
           call hepeup_set_event_parameters (scale = scale)
        end if
-       alpha_qcd = event%get_alpha_s ()       
+       alpha_qcd = event%get_alpha_s ()
        if (.not. vanishes (alpha_qcd)) then
           call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
        end if
@@ -138,8 +138,8 @@ contains
          (event, process_index, i_evt, keep_beams, keep_remnants, &
           ensure_order, fill_hepev4)
     class(generic_event_t), intent(in), target :: event
-    integer, intent(in), optional :: i_evt, process_index    
-    logical, intent(in), optional :: keep_beams  
+    integer, intent(in), optional :: i_evt, process_index
+    logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
     logical, intent(in), optional :: fill_hepev4
@@ -151,7 +151,7 @@ contains
             keep_remnants, ensure_order, fill_hepev4)
        if (present (process_index)) then
           call hepevt_set_event_parameters (proc_id = process_index)
-       end if       
+       end if
        if (event%weight_prc_is_known ()) then
           call hepevt_set_event_parameters (weight = event%get_weight_prc ())
        end if
@@ -163,7 +163,7 @@ contains
        if (.not. vanishes (scale)) then
           call hepevt_set_event_parameters (scale = scale)
        end if
-       alpha_qcd = event%get_alpha_s ()       
+       alpha_qcd = event%get_alpha_s ()
        if (.not. vanishes (alpha_qcd)) then
           call hepevt_set_event_parameters (alpha_qcd = alpha_qcd)
        end if
@@ -225,7 +225,7 @@ contains
     n_tot = particle_set%get_n_tot ()
     allocate (v_from (n_tot), v_to (n_tot))
     call particle_set%assign_vertices (v_from, v_to, n_vertices)
-    allocate (hprt (n_tot))    
+    allocate (hprt (n_tot))
     allocate (vtx (n_vertices))
     vtx = vector4_null
     do i = 1, n_tot
@@ -235,7 +235,7 @@ contains
              vtx(v_to(i)) = particle_set%prt(i)%get_vertex ()
           end if
        end if
-    end do  
+    end do
     if (present (cross_section) .and. present(error)) &
        call hepmc_event_set_cross_section (evt, cross_section, error)
     allocate (v (n_vertices))
@@ -248,12 +248,12 @@ contains
     do i = 1, n_tot
        is_beam(i) = particle_set%prt(i)%get_status () == PRT_BEAM
     end do
-    !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM    
+    !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
     if (.not. any (is_beam)) then
        do i = 1, n_tot
           is_beam(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
        end do
-       !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING       
+       !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
     end if
     if (count (is_beam) == 2) then
        hbeam = pack (hprt, is_beam)
@@ -276,7 +276,7 @@ contains
        end if
     end do FIND_SIGNAL_PROCESS
   end subroutine hepmc_event_from_particle_set
-  
+
   subroutine particle_from_hepmc_particle &
        (prt, hprt, model, fallback_model, polarization, barcode)
     type(particle_t), intent(out) :: prt
@@ -304,7 +304,7 @@ contains
     if (hepmc_particle_is_beam (hprt)) call prt%set_status (PRT_BEAM)
     call flv%init (hepmc_particle_get_pdg (hprt), model, fallback_model)
     call col%init (hepmc_particle_get_color (hprt))
-    call prt%set_flavor (flv)   
+    call prt%set_flavor (flv)
     call prt%set_color (col)
     call prt%set_polarization (polarization)
     select case (polarization)
@@ -437,7 +437,7 @@ contains
             call event%set_scale_forced (scale)
     end if
   end subroutine hepmc_to_event
-  
+
   subroutine particle_to_lcio (prt, lprt)
     type(particle_t), intent(in) :: prt
     type(lcio_particle_t), intent(out) :: lprt
@@ -457,12 +457,7 @@ contains
     case (PRT_BEAM)
        lcio_status = 4
     case (PRT_RESONANT)
-       if (abs (prt%get_pdg ()) == 13 .or. &
-            abs (prt%get_pdg ()) == 15) then
-          lcio_status = 2
-       else
-          lcio_status = 11
-       end if
+       lcio_status = 2
     case default
        lcio_status = 3
     end select
@@ -488,7 +483,7 @@ contains
     type(particle_t), intent(out) :: prt
     type(lcio_particle_t), intent(in) :: lprt
     type(model_data_t), intent(in), target :: model
-    integer, dimension(:), intent(in) :: daughters, parents    
+    integer, dimension(:), intent(in) :: daughters, parents
     type(vector4_t) :: vtx4
     type(flavor_t) :: flv
     type(color_t) :: col
@@ -501,7 +496,7 @@ contains
     case (3);  call prt%set_status (PRT_VIRTUAL)
     end select
     call flv%init (lcio_particle_get_pdg (lprt), model)
-    call col%init (lcio_particle_get_flow (lprt))    
+    call col%init (lcio_particle_get_flow (lprt))
     if (flv%is_beam_remnant ())  call prt%set_status (PRT_BEAM_REMNANT)
     call prt%set_flavor (flv)
     call prt%set_color (col)
@@ -522,16 +517,23 @@ contains
          call prt%set_status (PRT_INCOMING)
     vtx4 = vector4_moving (lcio_particle_get_time (lprt), &
          lcio_particle_get_vertex (lprt))
-    if (vtx4 /= vector4_null)  call prt%set_vertex (vtx4)       
+    if (vtx4 /= vector4_null)  call prt%set_vertex (vtx4)
   end subroutine particle_from_lcio_particle
 
   subroutine lcio_event_from_particle_set (evt, particle_set)
     type(lcio_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
     type(lcio_particle_t), dimension(:), allocatable :: lprt
-    integer, dimension(:), allocatable :: parent    
-    integer :: n_tot, i, j, n_parents
+    integer, dimension(:), allocatable :: parent
+    integer :: n_tot, i, j, n_beam, n_parents, type, beam_count
     n_tot = particle_set%n_tot
+    n_beam = count (particle_set%prt%get_status () == PRT_BEAM)
+    if (n_beam == 0) then
+       type = PRT_INCOMING
+    else
+       type = PRT_BEAM
+    end if
+    beam_count = 0
     allocate (lprt (n_tot))
     do i = 1, n_tot
        call particle_to_lcio (particle_set%prt(i), lprt(i))
@@ -544,11 +546,16 @@ contains
           end do
           deallocate (parent)
        end if
+       if (particle_set%prt(i)%get_status () == type) then
+          beam_count = beam_count + 1
+          call lcio_event_set_beam &
+               (evt, particle_set%prt(i)%get_pdg (), beam_count)
+       end if
        call lcio_particle_add_to_evt_coll (lprt(i), evt)
     end do
     call lcio_event_add_coll (evt)
   end subroutine lcio_event_from_particle_set
-  
+
   subroutine lcio_event_to_particle_set &
        (particle_set, evt, model, fallback_model, polarization)
     type(particle_set_t), intent(inout), target :: particle_set
@@ -563,7 +570,7 @@ contains
     do i = 1, n_tot
        prt = lcio_event_get_particle (evt, i-1)
        n_parents = lcio_particle_get_n_parents (prt)
-       n_children = lcio_particle_get_n_children (prt) 
+       n_children = lcio_particle_get_n_children (prt)
        allocate (daughters (n_children))
        allocate (parents (n_parents))
        if (n_children > 0) then
@@ -629,6 +636,6 @@ contains
             call event%set_scale_forced (scale)
     end if
   end subroutine lcio_to_event
-  
+
 
 end module hep_events

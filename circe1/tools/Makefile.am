@@ -5,7 +5,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -98,38 +98,38 @@ TRIPLE = $(top_srcdir)/circe1/src/prelude.nw $< $(top_srcdir)/circe1/src/postlud
 
 if NOWEB_AVAILABLE
 circe1_plot.f90: $(top_srcdir)/circe1/src/circe1.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_sample.f90: $(top_srcdir)/circe1/src/circe1.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 endif
 
 ########################################################################
 
 if NOWEB_AVAILABLE
 circe1_fit.f90: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_fit.sh: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_minuit1.f90: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_minuit2.f90: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_minuit1.sh: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_minuit2.sh: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_int.f90: $(top_srcdir)/circe1/src/interpol.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe1_int.sh: $(top_srcdir)/circe1/src/interpol.nw $(BRACKET)
-	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 endif
 
 ########################################################################

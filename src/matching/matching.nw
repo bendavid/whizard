@@ -451,7 +451,7 @@ jet momenta.
   function mlm_matching_get_method (matching) result (method)
      type(string_t) :: method
      class(mlm_matching_t), intent(in) :: matching
-     method = matching_method (MATCH_MLM) 
+     method = matching_method (MATCH_MLM)
   end function mlm_matching_get_method
 
 @ %def mlm_matching_get_method
@@ -1001,7 +1001,7 @@ from the matrix element generation is available.
   function ckkw_matching_get_method (matching) result (method)
      type(string_t) :: method
      class(ckkw_matching_t), intent(in) :: matching
-     method = matching_method (MATCH_CKKW) 
+     method = matching_method (MATCH_CKKW)
   end function ckkw_matching_get_method
 
 @ %def ckkw_matching_get_method
@@ -1978,7 +1978,7 @@ improved version.
 \begin{equation*}
   \frac{\log\Delta^{(U)} (p_T)}{\log\Delta^{(U)}(p_T^{\mathrm{max}}} = \log\Delta^{(U)}(p_T) = \log r_1
 \end{equation*}
-iteratively for $p_T$. If the current emission is not accepted, in the next step it is 
+iteratively for $p_T$. If the current emission is not accepted, in the next step it is
 $\log\Delta^{(U)}(p_T^{\mathrm{max}}) = \log r_1$, so that we have to solve the equation
 \begin{equation*}
   \log\Delta^{(U)}(p_T) = \log r_1 + \log r_2
@@ -2698,7 +2698,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
   function powheg_matching_get_method (matching) result (method)
      type(string_t) :: method
      class(powheg_matching_t), intent(in) :: matching
-     method = matching_method (MATCH_POWHEG) 
+     method = matching_method (MATCH_POWHEG)
   end function powheg_matching_get_method
 
 @ %def powheg_matching_get_method
@@ -2925,7 +2925,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     type(vector4_t), dimension(:), intent(in) :: p_born
     type(lorentz_transformation_t) :: lt_lab_to_cms
     real(default) :: sqme_born
-    
+
     sqme_born = powheg%process_instance%get_sqme (powheg%process_deps%i_born)
     if (.not. powheg%process_deps%cm_frame) then
        lt_lab_to_cms = powheg%process_instance%get_boost_to_cms (1)
@@ -2954,7 +2954,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
 @ %def powheg_matching_update
 @
 <<POWHEG matching: powheg matching: TBP>>=
-  procedure :: update_event_deps => powheg_matching_update_event_deps 
+  procedure :: update_event_deps => powheg_matching_update_event_deps
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_update_event_deps (powheg, sqme_born, p_born, lt_lab_to_cms)
     class(powheg_matching_t), intent(inout) :: powheg
@@ -2983,7 +2983,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
        end if
     end associate
   end subroutine powheg_matching_boost_preal_to_lab_frame
-    
+
 @ %def powheg_matching_boost_preal_to_lab_frame
 @
 <<POWHEG matching: powheg matching: TBP>>=
@@ -3400,7 +3400,7 @@ values $(f_B)$
           if (present (particle_set)) then
              select type (config => pcm%config)
              type is (pcm_nlo_t)
-                emitter = config%region_data%get_emitter (r_max%alr) 
+                emitter = config%region_data%get_emitter (r_max%alr)
                 call powheg%build_particle_set (particle_set, &
                    powheg%event_deps%p_born_lab%get_momenta (1), &
                    p_real_max, emitter)
@@ -3590,7 +3590,7 @@ $p_{T,\text{min}}^2$.
                    i = i + 1
                 end if
              end if
-          end do 
+          end do
        end associate
        call matching%event_deps%p_born_lab%init (n_tot_born, 1)
        call matching%event_deps%p_born_cms%init (n_tot_born, 1)

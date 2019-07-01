@@ -1,5 +1,5 @@
 ! circe2_ls.f90 -- beam spectra for linear colliders and photon colliders
-! Copyright (C) 2001-2016 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+! Copyright (C) 2001-2017 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !
 ! Circe2 is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by

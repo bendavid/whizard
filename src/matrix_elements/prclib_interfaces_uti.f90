@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module prclib_interfaces_uti
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds
   use system_dependencies, only: CC_HAS_QUADMATH, DEFAULT_FC_PRECISION
   use iso_varying_string, string_t => varying_string
@@ -70,7 +70,7 @@ module prclib_interfaces_uti
      procedure :: write_col_state_call => test_writer_1_col_state
      procedure :: write_color_factors_call => test_writer_1_col_factors
   end type test_writer_1_t
-  
+
   type, extends (prc_writer_f_module_t) :: test_writer_2_t
    contains
      procedure, nopass :: type_name => test_writer_2_type_name
@@ -79,7 +79,7 @@ module prclib_interfaces_uti
      procedure :: write_interface => test_writer_2_if
      procedure :: write_wrapper => test_writer_2_wr
   end type test_writer_2_t
-  
+
   type, extends (prc_writer_f_module_t) :: test_writer_4_t
    contains
      procedure, nopass :: type_name => test_writer_4_type_name
@@ -90,7 +90,7 @@ module prclib_interfaces_uti
      procedure :: write_interface => test_writer_4_if
      procedure :: write_wrapper => test_writer_4_wr
   end type test_writer_4_t
-  
+
   type, extends (prc_writer_c_lib_t) :: test_writer_5_t
    contains
      procedure, nopass :: type_name => test_writer_5_type_name
@@ -98,14 +98,14 @@ module prclib_interfaces_uti
      procedure :: write_source_code => test_writer_5_src
      procedure :: write_interface => test_writer_5_if
   end type test_writer_5_t
-  
+
   type, extends (test_writer_5_t) :: test_writer_6_t
    contains
      procedure, nopass :: type_name => test_writer_6_type_name
      procedure :: write_makefile_code => test_writer_6_mk
      procedure :: write_source_code => test_writer_6_src
   end type test_writer_6_t
-  
+
 
 contains
 
@@ -114,7 +114,7 @@ contains
     class(prclib_driver_t), allocatable :: driver
     character(32), parameter :: md5sum = "prclib_interfaces_1_md5sum      "
     class(prc_writer_t), pointer :: test_writer_1
-  
+
 
     write (u, "(A)")  "* Test output: prclib_interfaces_1"
     write (u, "(A)")  "*   Purpose: display the driver object contents"
@@ -138,13 +138,13 @@ contains
          [var_str ("init"), var_str ("some_proc")], test_writer_1)
 
     call driver%write (u)
-    
+
     deallocate (test_writer_1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prclib_interfaces_1"
   end subroutine prclib_interfaces_1
-  
+
   subroutine prclib_interfaces_2 (u)
     integer, intent(in) :: u
     class(prclib_driver_t), allocatable :: driver
@@ -163,13 +163,13 @@ contains
 
     allocate (test_writer_1_t :: test_writer_1)
     allocate (test_writer_2_t :: test_writer_2)
-    
+
     call driver%set_record (1, var_str ("test1"), var_str ("Test_model"), &
          [var_str ("proc1")], test_writer_1)
 
     call driver%set_record (2, var_str ("test2"), var_str ("Test_model"), &
          [var_str ("proc1"), var_str ("proc2")], test_writer_2)
-    
+
     call driver%write (u)
 
     write (u, "(A)")
@@ -178,14 +178,14 @@ contains
     write (u, "(A)")
 
     call driver%generate_driver_code (u)
-    
+
     deallocate (test_writer_1)
     deallocate (test_writer_2)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prclib_interfaces_2"
   end subroutine prclib_interfaces_2
-  
+
   subroutine prclib_interfaces_3 (u)
     integer, intent(in) :: u
     class(prclib_driver_t), allocatable :: driver
@@ -228,23 +228,23 @@ contains
 
     call driver%set_record (2, var_str ("test2"), var_str ("Test_model"), &
          [var_str ("proc1"), var_str ("proc2")], test_writer_2)
-    
+
     call driver%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Write Makefile"
     write (u, "(A)")  "* File contents:"
     write (u, "(A)")
-    
+
     call driver%generate_makefile (u, os_data)
-    
+
     deallocate (test_writer_1)
     deallocate (test_writer_2)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prclib_interfaces_3"
   end subroutine prclib_interfaces_3
-  
+
   subroutine prclib_interfaces_4 (u)
     integer, intent(in) :: u
     class(prclib_driver_t), allocatable :: driver
@@ -270,7 +270,7 @@ contains
     end interface
     procedure(proc1_t), pointer :: proc1
     integer(c_int) :: n
-    
+
     write (u, "(A)")  "* Test output: prclib_interfaces_4"
     write (u, "(A)")  "*   Purpose: compile, link, and load process library"
     write (u, "(A)")  "*            with (fake) matrix-element code &
@@ -299,11 +299,11 @@ contains
     open (u_file, file="prclib4.makefile", status="replace", action="write")
     call driver%generate_makefile (u_file, os_data)
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Recall MD5 sum from Makefile"
     write (u, "(A)")
-    
+
     md5sum_file = driver%get_md5sum_makefile ()
     write (u, "(1x,A,A,A)")  "MD5 sum = '", md5sum_file, "'"
 
@@ -314,11 +314,11 @@ contains
     open (u_file, file="prclib4.f90", status="replace", action="write")
     call driver%generate_driver_code (u_file)
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Recall MD5 sum from driver source"
     write (u, "(A)")
-    
+
     md5sum_file = driver%get_md5sum_driver ()
     write (u, "(1x,A,A,A)")  "MD5 sum = '", md5sum_file, "'"
 
@@ -329,24 +329,24 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Recall MD5 sum from matrix-element source"
     write (u, "(A)")
-    
+
     md5sum_file = driver%get_md5sum_source (1)
     write (u, "(1x,A,A,A)")  "MD5 sum = '", md5sum_file, "'"
 
     write (u, "(A)")
     write (u, "(A)")  "* Compile source code"
     call driver%make_compile (os_data)
-    
+
     write (u, "(A)")  "* Link library"
     call driver%make_link (os_data)
-    
+
     write (u, "(A)")  "* Load library"
     call driver%load (os_data)
 
     write (u, *)
     call driver%write (u)
     write (u, *)
-    
+
     if (driver%loaded) then
        write (u, "(A)")  "* Call library functions:"
        write (u, *)
@@ -389,15 +389,15 @@ contains
           call proc1 (n)
           write (u, "(1x,A,I0)")  "proc1(1) = ", n
        end if
-       
+
     end if
-    
+
     deallocate (test_writer_4)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prclib_interfaces_4"
   end subroutine prclib_interfaces_4
-  
+
   subroutine prclib_interfaces_5 (u)
     integer, intent(in) :: u
     class(prclib_driver_t), allocatable :: driver
@@ -422,7 +422,7 @@ contains
     end interface
     procedure(proc1_t), pointer :: proc1
     integer(c_int) :: n
-    
+
     write (u, "(A)")  "* Test output: prclib_interfaces_5"
     write (u, "(A)")  "*   Purpose: compile, link, and load process library"
     write (u, "(A)")  "*            with (fake) matrix-element code &
@@ -449,29 +449,29 @@ contains
     open (u_file, file="prclib5.makefile", status="replace", action="write")
     call driver%generate_makefile (u_file, os_data)
     close (u_file)
-    
+
     write (u, "(A)")  "* Write driver source code"
     u_file = free_unit ()
     open (u_file, file="prclib5.f90", status="replace", action="write")
     call driver%generate_driver_code (u_file)
     close (u_file)
-    
+
     write (u, "(A)")  "* Write matrix-element source code"
     call driver%make_source (os_data)
 
     write (u, "(A)")  "* Compile source code"
     call driver%make_compile (os_data)
-    
+
     write (u, "(A)")  "* Link library"
     call driver%make_link (os_data)
-    
+
     write (u, "(A)")  "* Load library"
     call driver%load (os_data)
 
     write (u, *)
     call driver%write (u)
     write (u, *)
-    
+
     if (driver%loaded) then
        write (u, "(A)")  "* Call library functions:"
        write (u, *)
@@ -512,15 +512,15 @@ contains
           call proc1 (n)
           write (u, "(1x,A,I0)")  "proc1(1) = ", n
        end if
-       
+
     end if
-    
+
     deallocate (test_writer_5)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prclib_interfaces_5"
   end subroutine prclib_interfaces_5
-  
+
   subroutine prclib_interfaces_6 (u)
     integer, intent(in) :: u
     class(prclib_driver_t), allocatable :: driver
@@ -545,7 +545,7 @@ contains
     end interface
     procedure(proc1_t), pointer :: proc1
     integer(c_int) :: n
-    
+
     write (u, "(A)")  "* Test output: prclib_interfaces_6"
     write (u, "(A)")  "*   Purpose: compile, link, and load process library"
     write (u, "(A)")  "*            with (fake) matrix-element code &
@@ -572,29 +572,29 @@ contains
     open (u_file, file="prclib6.makefile", status="replace", action="write")
     call driver%generate_makefile (u_file, os_data)
     close (u_file)
-    
+
     write (u, "(A)")  "* Write driver source code"
     u_file = free_unit ()
     open (u_file, file="prclib6.f90", status="replace", action="write")
     call driver%generate_driver_code (u_file)
     close (u_file)
-    
+
     write (u, "(A)")  "* Write matrix-element source code"
     call driver%make_source (os_data)
 
     write (u, "(A)")  "* Compile source code"
     call driver%make_compile (os_data)
-    
+
     write (u, "(A)")  "* Link library"
     call driver%make_link (os_data)
-    
+
     write (u, "(A)")  "* Load library"
     call driver%load (os_data)
 
     write (u, *)
     call driver%write (u)
     write (u, *)
-    
+
     if (driver%loaded) then
        write (u, "(A)")  "* Call library functions:"
        write (u, *)
@@ -635,15 +635,15 @@ contains
           call proc1 (n)
           write (u, "(1x,A,I0)")  "proc1(1) = ", n
        end if
-       
+
     end if
-    
+
     deallocate (test_writer_6)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prclib_interfaces_6"
   end subroutine prclib_interfaces_6
-  
+
   subroutine prclib_interfaces_7 (u)
     integer, intent(in) :: u
     class(prclib_driver_t), allocatable :: driver
@@ -674,23 +674,23 @@ contains
     open (u_file, file="prclib7.makefile", status="replace", action="write")
     call driver%generate_makefile (u_file, os_data)
     close (u_file)
-    
+
     write (u, "(A)")  "* Write driver source code"
     u_file = free_unit ()
     open (u_file, file="prclib7.f90", status="replace", action="write")
     call driver%generate_driver_code (u_file)
     close (u_file)
-    
+
     write (u, "(A)")  "* Write matrix-element source code"
     call driver%make_source (os_data)
 
     write (u, "(A)")  "* Compile source code"
     call driver%make_compile (os_data)
-    
+
     write (u, "(A)")  "* Link library"
     call driver%make_link (os_data)
 
-    
+
     write (u, "(A)")  "* File check"
     write (u, *)
     call check_file (u, "test7.f90")
@@ -738,7 +738,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* Test output end: prclib_interfaces_7"
   end subroutine prclib_interfaces_7
-  
+
 
   function test_writer_1_type_name () result (string)
     type(string_t) :: string
@@ -754,12 +754,12 @@ contains
     write (unit, "(5A)")  "# Makefile code for process ", char (id), &
          " goes here."
   end subroutine test_writer_1_mk
-  
+
   subroutine test_writer_1_src (writer, id)
     class(test_writer_1_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_1_src
-  
+
   subroutine test_writer_1_if (writer, unit, id, feature)
     class(test_writer_1_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -814,12 +814,12 @@ contains
     write (unit, "(5A)")  "# Makefile code for process ", char (id), &
          " goes here."
   end subroutine test_writer_2_mk
-  
+
   subroutine test_writer_2_src (writer, id)
     class(test_writer_2_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_2_src
-  
+
   subroutine test_writer_2_if (writer, unit, id, feature)
     class(test_writer_2_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -842,7 +842,7 @@ contains
     type(string_t) :: string
     string = "test_4"
   end function test_writer_4_type_name
-  
+
   function test_writer_4_get_module_name (id) result (name)
     type(string_t), intent(in) :: id
     type(string_t) :: name
@@ -861,15 +861,15 @@ contains
     write (unit, "(5A)")  "CLEAN_OBJECTS += tpr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
-    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"    
+    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
   end subroutine test_writer_4_mk
-  
+
   subroutine test_writer_4_src (writer, id)
     class(test_writer_4_t), intent(in) :: writer
     type(string_t), intent(in) :: id
     call write_test_module_file (id, var_str ("proc1"), writer%md5sum)
   end subroutine test_writer_4_src
-  
+
   subroutine test_writer_4_if (writer, unit, id, feature)
     class(test_writer_4_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -880,7 +880,7 @@ contains
        " (n) bind(C)"
     write (unit, "(7x,9A)")  "import"
     write (unit, "(7x,9A)")  "implicit none"
-    write (unit, "(7x,9A)")  "integer(c_int), intent(out) :: n"    
+    write (unit, "(7x,9A)")  "integer(c_int), intent(out) :: n"
     write (unit, "(5x,9A)")  "end subroutine ", &
        char (writer%get_c_procname (id, feature))
     write (unit, "(2x,9A)")  "end interface"
@@ -898,7 +898,7 @@ contains
     write (unit, "(2x,9A)")  "use tpr_", char (id), ", only: ", &
          char (writer%get_procname (feature))
     write (unit, "(2x,9A)")  "implicit none"
-    write (unit, "(2x,9A)")  "integer(c_int), intent(out) :: n"    
+    write (unit, "(2x,9A)")  "integer(c_int), intent(out) :: n"
     write (unit, "(2x,9A)")  "call ", char (feature), " (n)"
     write (unit, "(9A)")  "end subroutine ", &
        char (writer%get_c_procname (id, feature))
@@ -939,7 +939,7 @@ contains
     write (u, "(A)")  "end module tpr_" // char (basename)
     close (u)
   end subroutine write_test_module_file
-    
+
   subroutine write_test_me_code_1 (u)
     integer, intent(in) :: u
     write (u, "(2x,A)")  "public :: md5sum"
@@ -958,7 +958,7 @@ contains
     write (u, "(2x,A)")  "public :: col_state"
     write (u, "(2x,A)")  "public :: color_factors"
   end subroutine write_test_me_code_1
-    
+
   subroutine write_test_me_code_2 (u, md5sum)
     integer, intent(in) :: u
     character(32), intent(in) :: md5sum
@@ -1029,7 +1029,7 @@ contains
     write (u, "(2x,A)")  "  cf = [ OCF(1,1,+1._default) ]"
     write (u, "(2x,A)")  "end subroutine color_factors"
   end subroutine write_test_me_code_2
-    
+
   function test_writer_5_type_name () result (string)
     type(string_t) :: string
     string = "test_5"
@@ -1040,19 +1040,19 @@ contains
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
-    logical, intent(in), optional :: testflag 
+    logical, intent(in), optional :: testflag
     write (unit, "(5A)")  "SOURCES += ", char (id), ".f90"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
   end subroutine test_writer_5_mk
-  
+
   subroutine test_writer_5_src (writer, id)
     class(test_writer_5_t), intent(in) :: writer
     type(string_t), intent(in) :: id
     call write_test_f_lib_file (id, var_str ("proc1"))
   end subroutine test_writer_5_src
-  
+
   subroutine test_writer_5_if (writer, unit, id, feature)
     class(test_writer_5_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -1065,7 +1065,7 @@ contains
             " (n) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "implicit none"
-       write (unit, "(7x,9A)")  "integer(c_int), intent(out) :: n"    
+       write (unit, "(7x,9A)")  "integer(c_int), intent(out) :: n"
        write (unit, "(5x,9A)")  "end subroutine ", &
             char (writer%get_c_procname (id, feature))
        write (unit, "(2x,9A)")  "end interface"
@@ -1095,7 +1095,7 @@ contains
          // char (feature)
     close (u)
   end subroutine write_test_f_lib_file
-    
+
   subroutine write_test_me_code_3 (u, id)
     integer, intent(in) :: u
     character(*), intent(in) :: id
@@ -1215,7 +1215,7 @@ contains
     write (u, "(A)")  "  color_factors(1:1) = [1]"
     write (u, "(A)")  "end subroutine " // id // "_color_factors"
   end subroutine write_test_me_code_3
-    
+
   function test_writer_6_type_name () result (string)
     type(string_t) :: string
     string = "test_6"
@@ -1238,7 +1238,7 @@ contains
     type(string_t), intent(in) :: id
     call write_test_c_lib_file (id, var_str ("proc1"))
   end subroutine test_writer_6_src
-  
+
   subroutine write_test_c_lib_file (basename, feature)
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: feature
@@ -1261,7 +1261,7 @@ contains
     write (u, "(A)")  "}"
     close (u)
   end subroutine write_test_c_lib_file
-    
+
   subroutine write_test_me_code_4 (u, id)
     integer, intent(in) :: u
     character(*), intent(in) :: id
@@ -1342,14 +1342,14 @@ contains
     case default
        write (u, "(A)")  "void " // id // "_color_factors&
             &( int (*cf_index1)[], int (*cf_index2)[], &
-            &double _Complex (*color_factors)[] ) {"       
+            &double _Complex (*color_factors)[] ) {"
     end select
     write (u, "(A)")  "  (*color_factors)[0] = 1;"
     write (u, "(A)")  "  (*cf_index1)[0] = 1;"
     write (u, "(A)")  "  (*cf_index2)[0] = 1;"
     write (u, "(A)")  "}"
   end subroutine write_test_me_code_4
-    
+
   subroutine check_file (u, file)
     integer, intent(in) :: u
     character(*), intent(in) :: file
@@ -1357,6 +1357,6 @@ contains
     inquire (file=file, exist=exist)
     write (u, "(2x,A,A,L1)")  file, " = ", exist
   end subroutine check_file
-  
+
 
 end module prclib_interfaces_uti

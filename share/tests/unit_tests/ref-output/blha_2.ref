@@ -222,16 +222,25 @@ AmplitudeType            Tree
 AmplitudeType            ccTree
  11 -11 ->   1  -1
 
+AmplitudeType            sctree_polvect
+ 11 -11 ->   1  -1
+
 AmplitudeType            Tree
  11 -11 ->   2  -2
 
 AmplitudeType            ccTree
+ 11 -11 ->   2  -2
+
+AmplitudeType            sctree_polvect
  11 -11 ->   2  -2
 
 AmplitudeType            Tree
  11 -11 ->   3  -3
 
 AmplitudeType            ccTree
+ 11 -11 ->   3  -3
+
+AmplitudeType            sctree_polvect
  11 -11 ->   3  -3
 
 ------------------------------------------------------------------------

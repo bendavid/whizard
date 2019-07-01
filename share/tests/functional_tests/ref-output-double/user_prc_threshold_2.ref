@@ -45,13 +45,6 @@ SM_tt_threshold.offshell_strategy =>  4.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process user_prc_threshold_2_sig:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_2_sig'
-|   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'user_prc_threshold_2_sig_i1':   e-, e+ => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -60,26 +53,33 @@ SM_tt_threshold.offshell_strategy =>  4.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_2_sig_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_2_sig'
+|   Library name  = 'user_prc_threshold_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_prc_threshold_2_sig_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+| ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
-| Phase space: found 61 channels, collected in 22 groves.
+| Phase space: found 61 channels, collected in 25 groves.
 | Phase space: Using 71 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'user_prc_threshold_2_sig'
 | Integrate: iterations = 3:1000:"gw"
-| Integrator: 22 chains, 61 channels, 8 dimensions
+| Integrator: 25 chains, 61 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.236E+02   6.85E+01   13.09    4.09    17.3
-   2        937     5.401E+02   5.46E+01   10.11    3.09    10.0
-   3        916     4.482E+02   3.45E+01    7.70    2.33    13.2
+   1        976     5.101E+02   6.12E+01   11.99    3.75    22.1
+   2        934     5.340E+02   4.79E+01    8.96    2.74    10.6
+   3        912     4.670E+02   3.15E+01    6.74    2.03    12.0
 |-----------------------------------------------------------------------------|
-   3       2829     4.820E+02   2.68E+01    5.57    2.96    13.2    1.23   3
+   3       2822     4.908E+02   2.42E+01    4.92    2.61    12.0    0.74   3
 |=============================================================================|
 seed = 0
 | Process library 'user_prc_threshold_2_lib': unloading
@@ -102,13 +102,6 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process user_prc_threshold_2_sig_thr:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_2_sig_thr'
-|   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'user_prc_threshold_2_sig_thr_i1':   e-, e+ => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -117,26 +110,33 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_2_sig_thr_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_2_sig_thr'
+|   Library name  = 'user_prc_threshold_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'user_prc_threshold_2_sig_thr_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+| ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
-| Phase space: found 61 channels, collected in 22 groves.
+| Phase space: found 61 channels, collected in 25 groves.
 | Phase space: Using 71 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'user_prc_threshold_2_sig_thr'
 | Integrate: iterations = 3:1000:"gw"
-| Integrator: 22 chains, 61 channels, 8 dimensions
+| Integrator: 25 chains, 61 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.236E+02   6.85E+01   13.09    4.09    17.3
-   2        937     5.401E+02   5.46E+01   10.11    3.09    10.0
-   3        916     4.482E+02   3.45E+01    7.70    2.33    13.2
+   1        976     5.101E+02   6.12E+01   11.99    3.75    22.1
+   2        934     5.340E+02   4.79E+01    8.96    2.74    10.6
+   3        912     4.670E+02   3.15E+01    6.74    2.03    12.0
 |-----------------------------------------------------------------------------|
-   3       2829     4.820E+02   2.68E+01    5.57    2.96    13.2    1.23   3
+   3       2822     4.908E+02   2.42E+01    4.92    2.61    12.0    0.74   3
 |=============================================================================|
 tolerance =  1.00000E-03
 | expect: success
@@ -163,13 +163,6 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process user_prc_threshold_2_native:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_2_native'
-|   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'user_prc_threshold_2_native_i1':   e-, e+ => W+, W-, b, bbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -178,26 +171,33 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_2_native_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_2_native'
+|   Library name  = 'user_prc_threshold_2_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'user_prc_threshold_2_native_i1':   e-, e+ => W+, W-, b, bbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
-| Phase space: found 61 channels, collected in 22 groves.
+| Phase space: found 61 channels, collected in 25 groves.
 | Phase space: Using 71 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'user_prc_threshold_2_native'
 | Integrate: iterations = 3:1000:"gw"
-| Integrator: 22 chains, 61 channels, 8 dimensions
+| Integrator: 25 chains, 61 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.236E+02   6.85E+01   13.09    4.09    17.3
-   2        937     5.401E+02   5.46E+01   10.11    3.09    10.0
-   3        916     4.482E+02   3.45E+01    7.70    2.33    13.2
+   1        976     5.101E+02   6.12E+01   11.99    3.75    22.1
+   2        934     5.340E+02   4.79E+01    8.96    2.74    10.6
+   3        912     4.670E+02   3.15E+01    6.74    2.03    12.0
 |-----------------------------------------------------------------------------|
-   3       2829     4.820E+02   2.68E+01    5.57    2.96    13.2    1.23   3
+   3       2822     4.908E+02   2.42E+01    4.92    2.61    12.0    0.74   3
 |=============================================================================|
 tolerance =  1.00000E-03
 | expect: success
@@ -224,13 +224,6 @@ SM_tt_threshold.offshell_strategy =>  2.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process user_prc_threshold_2_factorized:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_2_factorized'
-|   Library name  = 'user_prc_threshold_2_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'user_prc_threshold_2_factorized_i1':   e-, e+ => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -239,28 +232,35 @@ SM_tt_threshold.offshell_strategy =>  2.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_2_factorized_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_2_factorized'
+|   Library name  = 'user_prc_threshold_2_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'user_prc_threshold_2_factorized_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+| ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
-| Phase space: found 61 channels, collected in 22 groves.
+| Phase space: found 61 channels, collected in 25 groves.
 | Phase space: Using 71 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'user_prc_threshold_2_factorized'
 | Integrate: iterations = 3:1000:"gw"
-| Integrator: 22 chains, 61 channels, 8 dimensions
+| Integrator: 25 chains, 61 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     4.964E+02   7.00E+01   14.10    4.40    16.8
-   2        931     5.432E+02   4.97E+01    9.14    2.79    11.7
-   3        906     4.763E+02   3.53E+01    7.42    2.23    10.4
+   1        976     5.081E+02   6.13E+01   12.07    3.77    22.0
+   2        933     5.260E+02   4.61E+01    8.76    2.67    10.9
+   3        909     4.672E+02   3.19E+01    6.83    2.06    10.9
 |-----------------------------------------------------------------------------|
-   3       2813     4.985E+02   2.66E+01    5.34    2.83    10.4    0.60   3
+   3       2818     4.896E+02   2.41E+01    4.93    2.62    10.9    0.60   3
 |=============================================================================|
-tolerance =  1.72471E+01
+tolerance =  1.75612E+01
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 3

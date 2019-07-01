@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -44,7 +44,7 @@ module parser
   use md5
   use lexers
   use syntax_rules
-  
+
   implicit none
   private
 
@@ -263,7 +263,7 @@ contains
     allocate (token%kval)
     token%kval = key
   end subroutine token_init_key
-  
+
   subroutine token_final (token)
     type(token_t), intent(inout) :: token
     token%type = S_UNKNOWN
@@ -315,7 +315,7 @@ contains
     case (S_LOGICAL);    allocate (token%lval);  token%lval = token_in%lval
     case (S_INTEGER);    allocate (token%ival);  token%ival = token_in%ival
     case (S_REAL);       allocate (token%rval);  token%rval = token_in%rval
-    case (S_COMPLEX); allocate (token%cval);  token%cval = token_in%cval    
+    case (S_COMPLEX); allocate (token%cval);  token%cval = token_in%cval
     case (S_IDENTIFIER); allocate (token%sval);  token%sval = token_in%sval
     case (S_QUOTED);     allocate (token%sval);  token%sval = token_in%sval
        allocate (token%quote(2));  token%quote = token_in%quote
@@ -395,7 +395,7 @@ contains
        call token_mismatch (token, "real")
     end if
   end function token_get_real
-  
+
   function token_get_cmplx (token) result (cval)
     complex(default) :: cval
     type(token_t), intent(in) :: token
@@ -527,7 +527,7 @@ contains
     node%rule => rule
     call token_init_key (node%token, syntax_rule_get_key (rule))
   end subroutine parse_node_create_key
-    
+
   subroutine parse_node_create_value (node, rule, ival, rval, cval, sval, lval)
     type(parse_node_t), intent(out) :: node
     type(syntax_rule_t), intent(in), target :: rule
@@ -539,7 +539,7 @@ contains
     node%rule => rule
     call parse_node_set_value (node, ival, rval, cval, sval, lval)
   end subroutine parse_node_create_value
-    
+
   subroutine parse_node_set_value (node, ival, rval, cval, sval, lval)
     type(parse_node_t), intent(inout) :: node
     integer, intent(in), optional :: ival
@@ -559,14 +559,14 @@ contains
        node%token = sval
     end if
   end subroutine parse_node_set_value
-    
+
   subroutine parse_node_create_branch (node, rule)
     type(parse_node_t), pointer :: node
     type(syntax_rule_t), intent(in), target :: rule
     allocate (node)
     node%rule => rule
   end subroutine parse_node_create_branch
-    
+
   subroutine parse_node_copy (node, copy)
     class(parse_node_t), intent(in) :: node
     type(parse_node_t), pointer, intent(out) :: copy
@@ -577,7 +577,7 @@ contains
     end select
     copy%next => null ()
   end subroutine parse_node_copy
-  
+
   subroutine parse_node_append_sub (node, sub)
     class(parse_node_t), intent(inout) :: node
     type(parse_node_t), pointer :: sub
@@ -590,7 +590,7 @@ contains
        node%sub_last => sub
     end if
   end subroutine parse_node_append_sub
-  
+
   subroutine parse_node_freeze_branch (node)
     type(parse_node_t), pointer :: node
     type(parse_node_t), pointer :: current
@@ -608,7 +608,7 @@ contains
     type(syntax_rule_t), intent(in), target :: rule
     node%rule => rule
   end subroutine parse_node_replace_rule
-  
+
   subroutine parse_node_replace_last_sub (node, pn_target)
     type(parse_node_t), intent(inout), target :: node
     type(parse_node_t), intent(in), target :: pn_target
@@ -655,7 +655,7 @@ contains
   end function parse_node_get_rule_ptr
 
   function parse_node_get_n_sub (node) result (n)
-    class(parse_node_t), intent(in) :: node 
+    class(parse_node_t), intent(in) :: node
     integer :: n
     n = node%n_sub
   end function parse_node_get_n_sub
@@ -679,7 +679,7 @@ contains
     end if
     call parse_node_check (sub, tag, required)
   end function parse_node_get_sub_ptr
-  
+
   function parse_node_get_next_ptr (sub, n, tag, required) result (next)
     class(parse_node_t), intent(in), target :: sub
     type(parse_node_t), pointer :: next
@@ -699,7 +699,7 @@ contains
     end if
     call parse_node_check (next, tag, required)
   end function parse_node_get_next_ptr
-  
+
   function parse_node_get_last_sub_ptr (node, tag, required) result (sub)
     type(parse_node_t), pointer :: sub
     type(parse_node_t), intent(in), target :: node
@@ -708,7 +708,7 @@ contains
     sub => node%sub_last
     call parse_node_check (sub, tag, required)
   end function parse_node_get_last_sub_ptr
-  
+
   subroutine parse_node_undefined (node, obj)
     type(parse_node_t), intent(in) :: node
     character(*), intent(in) :: obj
@@ -757,7 +757,7 @@ contains
     real(default) :: rval
     rval = token_get_real (parse_node_get_token_ptr (node))
   end function parse_node_get_real
-  
+
   function parse_node_get_cmplx (node) result (cval)
     class(parse_node_t), intent(in), target :: node
     complex(default) :: cval
@@ -948,7 +948,7 @@ contains
             else if (i == 1) then
                ok = .false.
                exit SCAN_RULE
-            else             
+            else
                call parse_error (rule, lexeme)
             end if
          end if
@@ -1100,7 +1100,7 @@ contains
             else
                parse_tree%root_node => pn
             end if
-            if (associated (pn_tmp%next)) then 
+            if (associated (pn_tmp%next)) then
                pn%next => pn_tmp%next
             else if (associated (pn_parent)) then
                pn_parent%sub_last => pn

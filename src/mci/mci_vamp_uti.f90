@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -127,7 +127,7 @@ contains
        write (u, "(1x,A)") "Test sampler: f(x) = (1 - 3 x^2) theta(x - 1/2)"
     end select
   end subroutine test_sampler_1_write
-  
+
   subroutine test_sampler_1_evaluate (sampler, c, x_in, val, x, f)
     class(test_sampler_1_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -160,7 +160,7 @@ contains
     logical :: valid
     valid = .true.
   end function test_sampler_1_is_valid
-  
+
   subroutine test_sampler_1_rebuild (sampler, c, x_in, val, x, f)
     class(test_sampler_1_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -185,7 +185,7 @@ contains
     x(:,1) = sampler%x
     f = 1
   end subroutine test_sampler_1_fetch
-    
+
   subroutine test_sampler_2_write (object, unit, testflag)
     class(test_sampler_2_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -194,7 +194,7 @@ contains
     u = given_output_unit (unit)
     write (u, "(1x,A)") "Two-channel test sampler 2"
   end subroutine test_sampler_2_write
-  
+
   subroutine test_sampler_2_compute (sampler, c, x_in)
     class(test_sampler_2_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -240,7 +240,7 @@ contains
     logical :: valid
     valid = .true.
   end function test_sampler_2_is_valid
-  
+
   subroutine test_sampler_2_rebuild (sampler, c, x_in, val, x, f)
     class(test_sampler_2_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -262,7 +262,7 @@ contains
     x = sampler%x
     f = sampler%f
   end subroutine test_sampler_2_fetch
-    
+
   subroutine test_sampler_3_write (object, unit, testflag)
     class(test_sampler_3_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -273,7 +273,7 @@ contains
     write (u, "(3x,A,F5.2)")  "a = ", object%a
     write (u, "(3x,A,F5.2)")  "b = ", object%b
   end subroutine test_sampler_3_write
-  
+
   subroutine test_sampler_3_compute (sampler, c, x_in)
     class(test_sampler_3_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -316,7 +316,7 @@ contains
     logical :: valid
     valid = .true.
   end function test_sampler_3_is_valid
-  
+
   subroutine test_sampler_3_rebuild (sampler, c, x_in, val, x, f)
     class(test_sampler_3_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -338,7 +338,7 @@ contains
     x = sampler%x
     f = sampler%f
   end subroutine test_sampler_3_fetch
-    
+
   subroutine mci_vamp_1 (u)
     integer, intent(in) :: u
     type(grid_parameters_t) :: grid_par
@@ -346,11 +346,11 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_1"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
          &(single channel)"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
@@ -362,23 +362,23 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize instance"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Initialize test sampler"
     write (u, "(A)")
-    
+
     allocate (test_sampler_1_t :: sampler)
     call sampler%write (u)
 
@@ -387,18 +387,18 @@ contains
     write (u, "(A)")  "   (lower precision to avoid"
     write (u, "(A)")  "      numerical noise)"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass ()
     end select
     call mci%integrate (mci_instance, sampler, 1, 1000, pacify = .true.)
     call mci%write (u, .true.)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u, .true.)
 
     write (u, "(A)")
@@ -419,11 +419,11 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_2"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
-         &(single channel)" 
-    
+         &(single channel)"
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -435,14 +435,14 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_1_t :: sampler)
     select type (sampler)
     type is (test_sampler_1_t)
@@ -453,20 +453,20 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 100"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .false.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 100)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -485,12 +485,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_3"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
-         &(single channel)" 
+         &(single channel)"
     write (u, "(A)")  "*            and adapt grid"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -502,14 +502,14 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_1_t :: sampler)
     select type (sampler)
     type is (test_sampler_1_t)
@@ -520,20 +520,20 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 100"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 100)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -552,12 +552,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_4"
     write (u, "(A)")  "*   Purpose: integrate function in two dimensions &
-         &(single channel)" 
+         &(single channel)"
     write (u, "(A)")  "*            and adapt grid"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -569,14 +569,14 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_1_t :: sampler)
     select type (sampler)
     type is (test_sampler_1_t)
@@ -587,20 +587,20 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -619,12 +619,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_5"
     write (u, "(A)")  "*   Purpose: integrate function in two dimensions &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            and adapt grid"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -637,34 +637,34 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_2_t :: sampler)
     call sampler%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -683,12 +683,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_6"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            and adapt weights"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -701,14 +701,14 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_3_t :: sampler)
     select type (sampler)
     type is (test_sampler_3_t)
@@ -720,20 +720,20 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_weights = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -755,30 +755,30 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_weights = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -801,10 +801,10 @@ contains
     real(default), dimension(:,:), allocatable :: x
     integer :: u_grid, iostat, i, div, ch
     character(16) :: buffer
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_7"
     write (u, "(A)")  "*   Purpose: check effect of channel equivalences"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -817,14 +817,14 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_3_t :: sampler)
     select type (sampler)
     type is (test_sampler_3_t)
@@ -837,7 +837,7 @@ contains
     write (u, "(A)")  "* Integrate with n_it = 2 and n_calls = 1000, &
          &adapt grids"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
@@ -845,7 +845,7 @@ contains
     call mci%integrate (mci_instance, sampler, 2, 1000)
 
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Write grids and extract binning"
     write (u, "(A)")
@@ -874,7 +874,7 @@ contains
     write (u, "(1x,A,L1)")  "Equal binning in both channels = ", &
          all (x(:,1) == x(:,2))
     deallocate (x)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -895,7 +895,7 @@ contains
        grid_par%use_vamp_equivalences = .true.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     write (u, "(A)")  "* Define equivalences"
     write (u, "(A)")
 
@@ -921,20 +921,20 @@ contains
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 2 and n_calls = 1000, &
          &adapt grids"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 2, 1000)
- 
+
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Write grids and extract binning"
     write (u, "(A)")
@@ -963,7 +963,7 @@ contains
     write (u, "(1x,A,L1)")  "Equal binning in both channels = ", &
          all (x(:,1) == x(:,2))
     deallocate (x)
-    
+
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -983,12 +983,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_8"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            in three passes"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1001,14 +1001,14 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_3_t :: sampler)
     select type (sampler)
     type is (test_sampler_3_t)
@@ -1020,54 +1020,54 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with grid and weight adaptation"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true., adapt_weights = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with grid adaptation"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Integrate without adaptation"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass ()
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -1086,12 +1086,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_9"
     write (u, "(A)")  "*   Purpose: integrate function in two dimensions &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            and generate a weighted event"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1104,25 +1104,25 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_2_t :: sampler)
     call sampler%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     call mci%add_pass ()
     call mci%integrate (mci_instance, sampler, 1, 1000)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate a weighted event"
     write (u, "(A)")
@@ -1132,7 +1132,7 @@ contains
 
     write (u, "(1x,A)")  "MCI instance:"
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -1156,10 +1156,10 @@ contains
     character(80) :: buffer1, buffer2
     integer :: u1, u2, iostat1, iostat2
     logical :: equal, success
-   
+
     write (u, "(A)")  "* Test output: mci_vamp_10"
     write (u, "(A)")  "*   Purpose: write and read VAMP grids"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1172,7 +1172,7 @@ contains
        grid_par%use_vamp_equivalences = .false.
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
@@ -1181,20 +1181,20 @@ contains
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_2_t :: sampler)
     call sampler%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     call mci%add_pass ()
     call mci%integrate (mci_instance, sampler, 1, 1000)
- 
+
     write (u, "(A)")  "* Write grids to file"
     write (u, "(A)")
- 
+
     file1 = "mci_vamp_10.1"
     select type (mci)
     type is (mci_vamp_t)
@@ -1205,7 +1205,7 @@ contains
     call mci_instance%final ()
     call mci%final ()
     deallocate (mci)
-    
+
     write (u, "(A)")  "* Read grids from file"
     write (u, "(A)")
 
@@ -1215,7 +1215,7 @@ contains
     type is (mci_vamp_t)
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
@@ -1238,7 +1238,7 @@ contains
        call mci%read_grids_data (mci_instance, read_integrals = .true.)
     end select
     write (u, "(1x,A,L1)")  "success = ", success
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Write grids again"
     write (u, "(A)")
@@ -1265,7 +1265,7 @@ contains
     end do
     close (u1)
     close (u2)
-    
+
     if (equal) then
        write (u, "(1x,A)")  "Success: grid files are identical"
     else
@@ -1274,7 +1274,7 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call mci_instance%final ()
     call mci%final ()
 
@@ -1290,12 +1290,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_11"
     write (u, "(A)")  "*   Purpose: integrate function in two dimensions &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            and generate a weighted event"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1309,22 +1309,22 @@ contains
        call mci%set_grid_parameters (grid_par)
        call mci%set_grid_filename (var_str ("mci_vamp_11"))
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_2_t :: sampler)
 
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     call mci%add_pass ()
     call mci%integrate (mci_instance, sampler, 1, 1000)
- 
+
     write (u, "(A)")  "* Reset instance"
     write (u, "(A)")
 
@@ -1356,12 +1356,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_12"
     write (u, "(A)")  "*   Purpose: integrate function in two dimensions &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            and generate an unweighted event"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1375,22 +1375,22 @@ contains
        call mci%set_grid_parameters (grid_par)
        call mci%set_grid_filename (var_str ("mci_vamp_12"))
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_2_t :: sampler)
 
     write (u, "(A)")  "* Integrate with n_it = 3 and n_calls = 1000"
     write (u, "(A)")
-    
+
     call mci%add_pass ()
     call mci%integrate (mci_instance, sampler, 1, 1000)
- 
+
     write (u, "(A)")  "* Reset instance"
     write (u, "(A)")
 
@@ -1406,7 +1406,7 @@ contains
 
     write (u, "(1x,A)")  "MCI instance:"
     call mci_instance%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -1424,10 +1424,10 @@ contains
     type(grid_parameters_t) :: grid_par
     class(mci_t), allocatable, target :: mci, mci_ref
     logical :: success
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_13"
     write (u, "(A)")  "*   Purpose: match and update integrators"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator with no passes"
     write (u, "(A)")
@@ -1441,7 +1441,7 @@ contains
        call mci%set_grid_parameters (grid_par)
     end select
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize reference"
     write (u, "(A)")
@@ -1452,7 +1452,7 @@ contains
     type is (mci_vamp_t)
        call mci_ref%set_grid_parameters (grid_par)
     end select
-    
+
     select type (mci_ref)
     type is (mci_vamp_t)
        call mci_ref%add_pass (adapt_grids = .true.)
@@ -1473,7 +1473,7 @@ contains
     end select
 
     call mci_ref%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Update integrator (no-op, should succeed)"
     write (u, "(A)")
@@ -1486,7 +1486,7 @@ contains
     write (u, "(1x,A,L1)")  "success = ", success
     write (u, "(A)")
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Add pass to integrator"
     write (u, "(A)")
@@ -1513,7 +1513,7 @@ contains
     write (u, "(1x,A,L1)")  "success = ", success
     write (u, "(A)")
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Add pass to integrator, wrong parameters"
     write (u, "(A)")
@@ -1535,7 +1535,7 @@ contains
     write (u, "(1x,A,L1)")  "success = ", success
     write (u, "(A)")
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset and add passes to integrator"
     write (u, "(A)")
@@ -1550,7 +1550,7 @@ contains
        mci%current_pass%error = [0.23_default, 0.45_default]
        mci%current_pass%efficiency = [0.1_default, 0.6_default]
        mci%current_pass%integral_defined = .true.
-       
+
        call mci%add_pass ()
        call mci%current_pass%configure (2, 2000, 0, 1, 7, 0)
     end select
@@ -1566,7 +1566,7 @@ contains
     write (u, "(1x,A,L1)")  "success = ", success
     write (u, "(A)")
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Update again (no-op, should succeed)"
     write (u, "(A)")
@@ -1579,7 +1579,7 @@ contains
     write (u, "(1x,A,L1)")  "success = ", success
     write (u, "(A)")
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Add extra result to integrator"
     write (u, "(A)")
@@ -1600,7 +1600,7 @@ contains
     write (u, "(1x,A,L1)")  "success = ", success
     write (u, "(A)")
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -1619,12 +1619,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_14"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
-         &(single channel)" 
+         &(single channel)"
     write (u, "(A)")  "*            and check accuracy goal"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1637,14 +1637,14 @@ contains
        grid_par%accuracy_goal = 5E-2_default
        call mci%set_grid_parameters (grid_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_1_t :: sampler)
     select type (sampler)
     type is (test_sampler_1_t)
@@ -1655,14 +1655,14 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Integrate with n_it = 5 and n_calls = 100"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 5, 100)
     call mci%write (u)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -1682,12 +1682,12 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_15"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
-         &(two channels)" 
+         &(two channels)"
     write (u, "(A)")  "*            in three passes, show history"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator, sampler, instance"
     write (u, "(A)")
@@ -1703,14 +1703,14 @@ contains
        call mci%set_grid_parameters (grid_par)
        call mci%set_history_parameters (history_par)
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     allocate (test_sampler_3_t :: sampler)
     select type (sampler)
     type is (test_sampler_3_t)
@@ -1721,25 +1721,25 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Pass 1: grid and weight adaptation"
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true., adapt_weights = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Pass 2: grid adaptation"
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
     call mci%integrate (mci_instance, sampler, 3, 1000)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Pass 3: without adaptation"
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass ()
@@ -1749,13 +1749,13 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Contents of MCI record, with history"
     write (u, "(A)")
-    
+
     call mci%write (u)
     select type (mci)
     type is (mci_vamp_t)
        call mci%write_history (u)
     end select
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -1774,11 +1774,11 @@ contains
     class(mci_instance_t), pointer :: mci_instance => null ()
     class(mci_sampler_t), allocatable :: sampler
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: mci_vamp_16"
     write (u, "(A)")  "*   Purpose: integrate function in one dimension &
          &(single channel)"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize integrator"
     write (u, "(A)")
@@ -1791,23 +1791,23 @@ contains
        call mci%set_grid_parameters (grid_par)
        mci%negative_weights = .true.
     end select
-    
+
     allocate (rng_tao_t :: rng)
     call rng%init ()
     call mci%import_rng (rng)
 
     call mci%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize instance"
     write (u, "(A)")
-    
+
     call mci%allocate_instance (mci_instance)
     call mci_instance%init (mci)
-    
+
     write (u, "(A)")  "* Initialize test sampler"
     write (u, "(A)")
-    
+
     allocate (test_sampler_1_t :: sampler)
     select type (sampler)
     type is (test_sampler_1_t)
@@ -1820,18 +1820,18 @@ contains
     write (u, "(A)")  "   (lower precision to avoid"
     write (u, "(A)")  "      numerical noise)"
     write (u, "(A)")
-    
+
     select type (mci)
     type is (mci_vamp_t)
        call mci%add_pass ()
     end select
     call mci%integrate (mci_instance, sampler, 1, 1000, pacify = .true.)
     call mci%write (u, .true.)
- 
+
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
-    
+
     call mci_instance%write (u, .true.)
 
     write (u, "(A)")

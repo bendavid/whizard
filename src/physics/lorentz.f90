@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -1281,12 +1281,11 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag, ultra
     integer :: u, i
-    logical :: tf, extreme
+    logical :: ult
     character(len=7) :: fmt
-    tf = .false.; if (present (testflag)) tf = testflag
-    extreme = .false.; if (present (ultra)) extreme = ultra
-    if (extreme) then
-       call pac_fmt (fmt, FMT_19, FMT_11, testflag)
+    ult = .false.; if (present (ultra)) ult = ultra
+    if (ult) then
+       call pac_fmt (fmt, FMT_19, FMT_11, ultra)
     else
        call pac_fmt (fmt, FMT_19, FMT_13, testflag)
     end if
@@ -1336,11 +1335,7 @@ contains
   function create_unit_vector (p_in) result (p_out)
     type(vector4_t), intent(in) :: p_in
     type(vector3_t) :: p_out
-    real(default) :: abs
-    abs = space_part_norm (p_in)
-    p_out%p(1) = p_in%p(1) / abs
-    p_out%p(2) = p_in%p(2) / abs
-    p_out%p(3) = p_in%p(3) / abs
+    p_out%p = p_in%p(1:3) / space_part_norm (p_in)
   end function create_unit_vector
 
   function normalize(p) result (p_norm)
@@ -1382,7 +1377,7 @@ contains
     real(default) :: E1, E2, p
     m1_sq = p1**2; m2_sq = p2**2
     p = sqrt (lambda (s, m1_sq, m2_sq)) / (two * sqrt (s))
-    E1 = sqrt (m1_sq + p**2); E2 = sqrt (m2_sq + p**2) 
+    E1 = sqrt (m1_sq + p**2); E2 = sqrt (m2_sq + p**2)
     p_rest(1)%p = [sqrt (s), zero, zero, zero]
     p_rest(2)%p(0) = E1
     p_rest(2)%p(1:3) = p * p1%p(1:3) / space_part_norm (p1)
@@ -1399,13 +1394,13 @@ contains
     real(default) :: cos_theta_12
     type(vector3_t) :: v3_unit
     type(lorentz_transformation_t) :: rot
-    m1_sq = p1**2 
+    m1_sq = p1**2
     m2_sq = p2**2
     m3_sq = p3**2
     s1 = (p1 + p2)**2
     s2 = (p2 + p3)**2
     s3 = (p3 + p1)**2
-    s = s1 + s2 + s3 - m1_sq - m2_sq - m3_sq 
+    s = s1 + s2 + s3 - m1_sq - m2_sq - m3_sq
     E1 = (s - s2 - m1_sq) / (two * sqrt (s2))
     E2 = (s2 + m2_sq - m3_sq) / (two * sqrt (s2))
     E3 = (s2 + m3_sq - m2_sq) / (two * sqrt (s2))
@@ -1429,7 +1424,7 @@ contains
   end function create_three_particle_decay
 
   recursive subroutine generate_on_shell_decay (p_dec, &
-      p_in, p_out, i_real, msq_in, jac, evaluate_special) 
+      p_in, p_out, i_real, msq_in, jac, evaluate_special)
     type(vector4_t), intent(in) :: p_dec
     type(vector4_t), intent(in), dimension(:) :: p_in
     type(vector4_t), intent(inout), dimension(:) :: p_out
@@ -1440,7 +1435,6 @@ contains
           pointer, optional :: evaluate_special
     type(vector4_t) :: p_dec_new
     integer :: n_recoil
-    real(default), dimension(4) :: inv_masses
     n_recoil = size (p_in) - 1
     if (n_recoil > 1) then
        if (present (evaluate_special)) then
@@ -1525,7 +1519,7 @@ contains
      type(vector3_t) :: vec
      vec = p_in%p(1:3) / space_part_norm (p_in)
      p_out = vector4_moving (E, p * vec)
-   end function shift_momentum 
+   end function shift_momentum
 
   end subroutine evaluate_one_to_two_splitting
 
@@ -1553,7 +1547,6 @@ contains
     if (bg2 > eps0) then
        g = sqrt(1 + bg2);  c = (g-1)/bg2
     else
-       !!!L = identity
        g = one + bg2 / two
        c = one / two
     end if

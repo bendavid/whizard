@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -115,8 +115,6 @@ DISTCLEANFILES = kinds.f90
 
 if NOWEB_AVAILABLE
 
-$(OMEGALIB_DERIVED_F90): omegalib.stamp
-
 omegalib.stamp: $(srcdir)/omegalib.nw
 	@rm -f omegalib.tmp
 	@touch omegalib.tmp
@@ -125,6 +123,7 @@ omegalib.stamp: $(srcdir)/omegalib.nw
 	done
 	@mv -f omegalib.tmp omegalib.stamp
 
+$(OMEGALIB_DERIVED_F90): omegalib.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f omegalib.stamp; \

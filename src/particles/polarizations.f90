@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -110,7 +110,7 @@ module polarizations
      procedure :: get_value => polarization_iterator_get_value
      procedure :: get_quantum_numbers => polarization_iterator_get_quantum_numbers
   end type polarization_iterator_t
-  
+
   type :: smatrix_t
      private
      integer :: dim = 0
@@ -123,7 +123,7 @@ module polarizations
      procedure :: set_entry => smatrix_set_entry
      procedure :: exists => smatrix_exists
   end type smatrix_t
-  
+
   type, extends (smatrix_t) :: pmatrix_t
      private
      integer :: spin_type = 0
@@ -139,8 +139,9 @@ module polarizations
      procedure :: normalize => pmatrix_normalize
      procedure :: is_polarized => pmatrix_is_polarized
      procedure :: is_diagonal => pmatrix_is_diagonal
+     procedure :: get_simple_pol => pmatrix_get_simple_pol
   end type pmatrix_t
-  
+
 
 
 
@@ -170,7 +171,7 @@ contains
        call pol%bv%init_unpolarized (spin_type)
     end select
   end subroutine polarization_init
-    
+
   subroutine polarization_init_flv (pol, flv)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
@@ -181,7 +182,7 @@ contains
          left_handed = flv%is_left_handed (), &
          right_handed = flv%is_right_handed ())
   end subroutine polarization_init_flv
-    
+
   subroutine polarization_init_generic (pol, spin_type, multiplicity, &
        anti, left_handed, right_handed)
     class(polarization_t), intent(out) :: pol
@@ -344,13 +345,13 @@ contains
     end do
     call state%freeze ()
   end subroutine polarization_to_state_matrix
-    
+
   subroutine polarization_init_unpolarized (pol, flv)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     call pol%init (flv)
   end subroutine polarization_init_unpolarized
-    
+
   subroutine polarization_init_circular (pol, flv, f)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
@@ -403,7 +404,7 @@ contains
     real(default), intent(in) :: r, theta, phi
     real(default), dimension(3) :: alpha
     real(default), parameter :: eps = 10 * epsilon (1._default)
-    
+
     alpha(1) = r * sin (theta) * cos (phi)
     alpha(2) = r * sin (theta) * sin (phi)
     alpha(3) = r * cos (theta)
@@ -514,7 +515,7 @@ contains
        end if
     end if
   end subroutine polarization_iterator_write
-  
+
   subroutine polarization_iterator_init (it, pol, all_states, tolerance)
     class(polarization_iterator_t), intent(out) :: it
     type(polarization_t), intent(in), target :: pol
@@ -561,7 +562,7 @@ contains
     end select
     if (it%valid .and. abs (it%value) <= it%tolerance)  call it%advance ()
   end subroutine polarization_iterator_init
-  
+
   recursive subroutine polarization_iterator_advance (it)
     class(polarization_iterator_t), intent(inout) :: it
     if (it%valid) then
@@ -606,7 +607,7 @@ contains
        value = 0
     end if
   end function polarization_iterator_get_value
-  
+
   function polarization_iterator_get_quantum_numbers (it) result (qn)
     class(polarization_iterator_t), intent(in) :: it
     type(helicity_t) :: hel
@@ -616,7 +617,7 @@ contains
     end if
     call qn%init (hel)
   end function polarization_iterator_get_quantum_numbers
-    
+
   subroutine smatrix_write (object, unit, indent)
     class(smatrix_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
@@ -641,7 +642,7 @@ contains
        write (u, "(A)")  "[undefined matrix]"
     end if
   end subroutine smatrix_write
-  
+
   subroutine smatrix_init (smatrix, dim, n_entry)
     class(smatrix_t), intent(out) :: smatrix
     integer, intent(in) :: dim
@@ -651,7 +652,7 @@ contains
     allocate (smatrix%index (dim, n_entry))
     allocate (smatrix%value (n_entry))
   end subroutine smatrix_init
-  
+
   subroutine smatrix_set_entry (smatrix, i, index, value)
     class(smatrix_t), intent(inout) :: smatrix
     integer, intent(in) :: i
@@ -660,7 +661,7 @@ contains
     smatrix%index(:,i) = index
     smatrix%value(i) = value
   end subroutine smatrix_set_entry
-  
+
   elemental function smatrix_exists (smatrix) result (exist)
     logical :: exist
     class(smatrix_t), intent(in) :: smatrix
@@ -681,13 +682,13 @@ contains
     write (u, "(3x,A,L1)")  "pure state    = ", object%pure
     call object%smatrix_t%write (u, 1)
   end subroutine pmatrix_write
-  
+
   subroutine pmatrix_assign_from_smatrix (pmatrix, smatrix)
     class(pmatrix_t), intent(out) :: pmatrix
     type(smatrix_t), intent(in) :: smatrix
     pmatrix%smatrix_t = smatrix
   end subroutine pmatrix_assign_from_smatrix
-  
+
   subroutine pmatrix_normalize (pmatrix, flv, degree, tolerance)
     class(pmatrix_t), intent(inout) :: pmatrix
     type(flavor_t), intent(in) :: flv
@@ -756,7 +757,7 @@ contains
             if (abs (aimag (value)) > tol)  call error ("diagonal must be real")
             value = real (value, kind=default)
             trace = trace + value
-            
+
          else if (any (pmatrix%index(1,:) == index(2) &
               .and.    pmatrix%index(2,:) == index(1))) then
             call error ("redundant off-diagonal entry")
@@ -794,19 +795,36 @@ contains
       call msg_fatal ("Spin density matrix: " // msg)
     end subroutine error
   end subroutine pmatrix_normalize
-  
+
   elemental function pmatrix_is_polarized (pmatrix) result (flag)
     class(pmatrix_t), intent(in) :: pmatrix
     logical :: flag
     flag = pmatrix%degree > 0
   end function pmatrix_is_polarized
-  
+
   elemental function pmatrix_is_diagonal (pmatrix) result (flag)
     class(pmatrix_t), intent(in) :: pmatrix
     logical :: flag
     flag = all (pmatrix%index(1,:) == pmatrix%index(2,:))
   end function pmatrix_is_diagonal
-  
+
+  elemental function pmatrix_get_simple_pol (pmatrix) result (pol)
+    class(pmatrix_t), intent(in) :: pmatrix
+    real(default) :: pol
+    if (pmatrix%is_polarized ()) then
+       select case (size (pmatrix%value))
+       case (0)
+          pol = 0
+       case (1)
+          pol = pmatrix%index (1,1) * pmatrix%degree
+       case (2)
+          pol = 42
+       end select
+    else
+       pol = 0
+    end if
+  end function pmatrix_get_simple_pol
+
   subroutine polarization_init_pmatrix (pol, pmatrix)
     class(polarization_t), intent(out) :: pol
     type(pmatrix_t), intent(in) :: pmatrix

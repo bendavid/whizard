@@ -1182,6 +1182,17 @@ necessary.
 @ %def phs_is_cm_frame
 @
 <<PHS base: phs: TBP>>=
+  procedure :: get_n_tot => phs_get_n_tot
+<<PHS base: procedures>>=
+  elemental function phs_get_n_tot (phs) result (n_tot)
+    integer :: n_tot
+    class(phs_t), intent(in) :: phs
+    n_tot = phs%config%n_tot
+  end function phs_get_n_tot
+
+@ %def phs_get_n_tot
+@
+<<PHS base: phs: TBP>>=
   procedure :: set_lorentz_transformation => phs_set_lorentz_transformation
 <<PHS base: procedures>>=
   subroutine phs_set_lorentz_transformation (phs, lt)
@@ -2227,8 +2238,6 @@ module phs_single
   use model_data
   use flavors
   use process_constants
-  use sf_mappings
-  use sf_base
   use phs_base
 
 <<Standard module head>>
@@ -2968,6 +2977,909 @@ time, implement a decay process.
 
 @ %def phs_single_4
 @
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Resonance Handler}
+For various purposes (e.g., shower histories), we should extract the set of
+resonances and resonant channels from a phase-space tree set.  A few methods
+do kinematics calculations specifically for those resonance data.
+<<[[resonances.f90]]>>=
+<<File header>>
+
+module resonances
+
+<<Use kinds>>
+!   use kinds, only: TC
+<<Use strings>>
+  use string_utils, only: str
+  use io_units
+  use diagnostics
+  use lorentz, only: vector4_t, compute_resonance_mass
+  use constants, only: one
+  use model_data, only: model_data_t
+  use flavors, only: flavor_t
+
+<<Standard module head>>
+
+<<Resonances: public>>
+
+<<Resonances: parameters>>
+
+<<Resonances: types>>
+
+contains
+
+<<Resonances: procedures>>
+
+end module resonances
+@ %def resonances
+@
+\subsection{Decay products (contributors)}
+This stores the indices of the particles that contribute to a resonance, i.e.,
+the decay products.
+<<Resonances: public>>=
+  public :: resonance_contributors_t
+<<Resonances: types>>=
+  type :: resonance_contributors_t
+     integer, dimension(:), allocatable :: c
+   contains
+   <<Resonances: resonance contributors: TBP>>
+  end type resonance_contributors_t
+
+@ %def resonance_contributors_t
+@ Equality (comparison)
+<<Resonances: resonance contributors: TBP>>=
+  procedure, private :: resonance_contributors_equal
+  generic :: operator(==) => resonance_contributors_equal
+<<Resonances: procedures>>=
+  elemental function resonance_contributors_equal (c1, c2) result (equal)
+    logical :: equal
+    class(resonance_contributors_t), intent(in) :: c1, c2
+    equal = allocated (c1%c) .and. allocated (c2%c)
+    if (equal) equal = size (c1%c) == size (c2%c)
+    if (equal) equal = all (c1%c == c2%c)
+  end function resonance_contributors_equal
+
+@ %def resonance_contributors_equal
+@ Assignment
+<<Resonances: resonance contributors: TBP>>=
+  procedure, private :: resonance_contributors_assign
+  generic :: assignment(=) => resonance_contributors_assign
+<<Resonances: procedures>>=
+  pure subroutine resonance_contributors_assign (contributors_out, contributors_in)
+    class(resonance_contributors_t), intent(inout) :: contributors_out
+    class(resonance_contributors_t), intent(in) :: contributors_in
+    if (allocated (contributors_out%c))  deallocate (contributors_out%c)
+    if (allocated (contributors_in%c)) then
+       allocate (contributors_out%c (size (contributors_in%c)))
+       contributors_out%c = contributors_in%c
+    end if
+  end subroutine resonance_contributors_assign
+
+@ %def resonance_contributors_assign
+@
+\subsection{Resonance info object}
+This data structure augments the set of resonance contributors by a flavor
+object, such that we can perform calculations that take into
+account the particle properties, including mass and width.
+
+Avoiding nameclash with similar but different [[resonance_t]] of
+[[phs_base]]:
+<<Resonances: public>>=
+  public :: resonance_info_t
+<<Resonances: types>>=
+  type :: resonance_info_t
+     type(flavor_t) :: flavor
+     type(resonance_contributors_t) :: contributors
+  contains
+   <<Resonances: resonance info: TBP>>
+  end type resonance_info_t
+
+@ %def resonance_info_t
+@
+<<Resonances: resonance info: TBP>>=
+  procedure :: write => resonance_info_write
+<<Resonances: procedures>>=
+  subroutine resonance_info_write (resonance, unit)
+    class(resonance_info_t), intent(in) :: resonance
+    integer, optional, intent(in) :: unit
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, '(A)', advance='no') "Resonance contributors: "
+    if (allocated (resonance%contributors%c)) then
+       do i = 1, size(resonance%contributors%c)
+          write (u, '(I0,1X)', advance='no') resonance%contributors%c(i)
+       end do
+    else
+       write (u, "(A)", advance="no")  "[not allocated]"
+    end if
+    if (resonance%flavor%is_defined ()) call resonance%flavor%write (u)
+    write (u, '(A)')
+  end subroutine resonance_info_write
+
+@ %def resonance_info_write
+@ Create a resonance-info object.  The particle info may be available
+in term of a flavor object or as a PDG code; in the latter case we
+have to require a model data object that provides mass and width information.
+<<Resonances: resonance info: TBP>>=
+  procedure, private :: resonance_info_init_pdg
+  procedure, private :: resonance_info_init_flv
+  generic :: init => resonance_info_init_pdg, resonance_info_init_flv
+<<Resonances: procedures>>=
+  subroutine resonance_info_init_pdg (resonance, mom_id, pdg, model, n_out)
+    class(resonance_info_t), intent(out) :: resonance
+    integer, intent(in) :: mom_id
+    integer, intent(in) :: pdg, n_out
+    class(model_data_t), intent(in), target :: model
+    type(flavor_t) :: flv
+    call msg_debug (D_PHASESPACE, "resonance_info_init_pdg")
+    call flv%init (pdg, model)
+    call resonance%init (mom_id, flv, n_out)
+  end subroutine resonance_info_init_pdg
+
+  subroutine resonance_info_init_flv (resonance, mom_id, flv, n_out)
+    class(resonance_info_t), intent(out) :: resonance
+    integer, intent(in) :: mom_id
+    type(flavor_t), intent(in) :: flv
+    integer, intent(in) :: n_out
+    integer :: i
+    logical, dimension(n_out) :: contrib
+    integer, dimension(n_out) :: tmp
+    call msg_debug (D_PHASESPACE, "resonance_info_init_flv")
+    resonance%flavor = flv
+    do i = 1, n_out
+       tmp(i) = i
+    end do
+    contrib = btest (mom_id, tmp - 1)
+    allocate (resonance%contributors%c (count (contrib)))
+    resonance%contributors%c = pack (tmp, contrib)
+  end subroutine resonance_info_init_flv
+
+@ %def resonance_info_init
+@
+<<Resonances: resonance info: TBP>>=
+  procedure, private :: resonance_info_equal
+  generic :: operator(==) => resonance_info_equal
+<<Resonances: procedures>>=
+  elemental function resonance_info_equal (r1, r2) result (equal)
+    logical :: equal
+    class(resonance_info_t), intent(in) :: r1, r2
+    equal = r1%flavor == r2%flavor .and. r1%contributors == r2%contributors
+  end function resonance_info_equal
+
+@ %def resonance_info_equal
+@ With each resonance region we associate a Breit-Wigner function
+\begin{equation*}
+  P = \frac{M_{res}^4}{(s - M_{res}^2)^2 + \Gamma_{res}^2 M_{res}^2},
+\end{equation*}
+where $s$ denotes the invariant mass of the outgoing momenta originating
+from this resonance. Note that the $M_{res}^4$ in the nominator makes
+the mapping a dimensionless quantity.
+<<Resonances: resonance info: TBP>>=
+  procedure :: mapping => resonance_info_mapping
+<<Resonances: procedures>>=
+  function resonance_info_mapping (resonance, s) result (bw)
+    real(default) :: bw
+    class(resonance_info_t), intent(in) :: resonance
+    real(default), intent(in) :: s
+    real(default) :: m, gamma
+    if (resonance%flavor%is_defined ()) then
+       m = resonance%flavor%get_mass ()
+       gamma = resonance%flavor%get_width ()
+       bw = m**4 / ((s - m**2)**2 + gamma**2 * m**2)
+    else
+       bw = one
+    end if
+  end function resonance_info_mapping
+
+@ %def resonance_info_mapping
+@
+\subsection{Resonance history object}
+This data structure stores a set of resonances, i.e., the resonances that
+appear in a particular Feynman graph or, in the context of phase space, phase
+space diagram.
+<<Resonances: public>>=
+  public :: resonance_history_t
+<<Resonances: types>>=
+  type :: resonance_history_t
+     type(resonance_info_t), dimension(:), allocatable :: resonances
+     integer :: n_resonances = 0
+  contains
+   <<Resonances: resonance history: TBP>>
+  end type resonance_history_t
+
+@ %def resonance_history_t
+@ Clear the resonance history.  Assuming that there are no
+pointer-allocated parts, a straightforward [[intent(out)]] will do.
+<<Resonances: resonance history: TBP>>=
+  procedure :: clear => resonance_history_clear
+<<Resonances: procedures>>=
+  subroutine resonance_history_clear (res_hist)
+    class(resonance_history_t), intent(out) :: res_hist
+  end subroutine resonance_history_clear
+
+@ %def resonance_history_clear
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: write => resonance_history_write
+<<Resonances: procedures>>=
+  subroutine resonance_history_write (res_hist, unit)
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, optional, intent(in) :: unit
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write(u, '(A,I0,A)') "Resonance history with ", &
+         res_hist%n_resonances, " resonances:"
+    do i = 1, res_hist%n_resonances
+       call res_hist%resonances(i)%write (u)
+    end do
+  end subroutine resonance_history_write
+
+@ %def resonance_history_write
+@ Equality.  If this turns out to slow down the program, we should
+change the implementation or use hash codes.  
+<<Resonances: resonance history: TBP>>=
+  procedure, private :: resonance_history_equal
+  generic :: operator(==) => resonance_history_equal
+<<Resonances: procedures>>=
+  elemental function resonance_history_equal (rh1, rh2) result (equal)
+    logical :: equal
+    class(resonance_history_t), intent(in) :: rh1, rh2
+    integer :: i
+    equal = .false.
+    if (rh1%n_resonances == rh2%n_resonances) then
+       if (size (rh1%resonances) == size (rh2%resonances)) then
+          do i = 1, rh1%n_resonances
+             if (.not. rh1%resonances(i) == rh2%resonances(i)) then
+                return
+             end if
+          end do
+          equal = .true.
+       end if
+    end if
+  end function resonance_history_equal
+
+@ %def resonance_history_equal
+<<Resonances: resonance history: TBP>>=
+  procedure, private :: resonance_history_contains
+  generic :: operator(.contains.) => resonance_history_contains
+@
+<<Resonances: procedures>>=
+  elemental function resonance_history_contains (rh1, rh2) result (is_sub_res)
+    logical :: is_sub_res
+    class(resonance_history_t), intent(in) :: rh1, rh2
+    integer :: i_res
+    is_sub_res = .false.
+    if (rh1%n_resonances > rh2%n_resonances) then
+       do i_res = 1, rh1%n_resonances
+          is_sub_res = is_sub_res &
+               .or. any (rh1%resonances(i_res) == rh2%resonances)
+       end do
+    end if
+  end function resonance_history_contains
+
+@ %def resonance_history_contains
+@ Number of entries for dynamically extending the resonance-info array.
+<<Resonances: parameters>>=
+  integer, parameter :: n_max_resonances = 10
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: add_resonance => resonance_history_add_resonance
+<<Resonances: procedures>>=
+  subroutine resonance_history_add_resonance (res_hist, resonance)
+    class(resonance_history_t), intent(inout) :: res_hist
+    type(resonance_info_t), intent(in) :: resonance
+    type(resonance_info_t), dimension(:), allocatable :: tmp
+    integer :: n
+    call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
+    if (.not. allocated (res_hist%resonances)) then
+       n = 0
+       allocate (res_hist%resonances (n_max_resonances))
+    else
+       n = res_hist%n_resonances
+       if (n >= size (res_hist%resonances)) then
+          allocate (tmp (n + n_max_resonances))
+          tmp(1:n) = res_hist%resonances(1:n)
+          call move_alloc (from=tmp, to=res_hist%resonances)
+       end if
+    end if
+    res_hist%resonances(n+1) = resonance
+    res_hist%n_resonances = n + 1
+    call msg_debug &
+         (D_PHASESPACE, "res_hist%n_resonances", res_hist%n_resonances)
+  end subroutine resonance_history_add_resonance
+
+@ %def resonance_history_add_resonance
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: remove_resonance => resonance_history_remove_resonance
+<<Resonances: procedures>>=
+  subroutine resonance_history_remove_resonance (res_hist, i_res)
+    class(resonance_history_t), intent(inout) :: res_hist
+    integer, intent(in) :: i_res
+    integer :: i
+    res_hist%n_resonances = res_hist%n_resonances - 1
+    if (res_hist%n_resonances == 0) then
+       deallocate (res_hist%resonances)
+    else
+       do i = i_res + 1, size (res_hist%resonances)
+          res_hist%resonances (i - 1) = res_hist%resonances (i)
+       end do
+    end if
+  end subroutine resonance_history_remove_resonance
+
+@ %def resonance_history_remove_resonance
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: add_offset => resonance_history_add_offset
+<<Resonances: procedures>>=
+  subroutine resonance_history_add_offset (res_hist, n)
+    class(resonance_history_t), intent(inout) :: res_hist
+    integer, intent(in) :: n
+    integer :: i_res
+    do i_res = 1, res_hist%n_resonances
+       associate (contributors => res_hist%resonances(i_res)%contributors%c)
+          contributors = contributors + n
+       end associate
+    end do
+  end subroutine resonance_history_add_offset
+
+@ %def resonance_history_add_offset
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: contains_leg => resonance_history_contains_leg
+<<Resonances: procedures>>=
+  function resonance_history_contains_leg (res_hist, i_leg) result (val)
+    logical :: val
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, intent(in) :: i_leg
+    integer :: i_res
+    val = .false.
+    do i_res = 1, res_hist%n_resonances
+       if (any (res_hist%resonances(i_res)%contributors%c == i_leg)) then
+          val = .true.
+          exit
+       end if
+    end do
+  end function resonance_history_contains_leg
+
+@ %def resonance_history_contains_leg
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: mapping => resonance_history_mapping
+<<Resonances: procedures>>=
+  function resonance_history_mapping (res_hist, p, i_gluon) result (p_map)
+    real(default) :: p_map
+    class(resonance_history_t), intent(in) :: res_hist
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in), optional :: i_gluon
+    integer :: i_res
+    real(default) :: s
+    p_map = one
+    do i_res = 1, res_hist%n_resonances
+       associate (res => res_hist%resonances(i_res))
+          s = compute_resonance_mass (p, res%contributors%c, i_gluon)**2
+          p_map = p_map * res%mapping (s)
+       end associate
+    end do
+  end function resonance_history_mapping
+
+@ %def resonance_history_mapping
+@ This predicate is true if all resonances in the history have exactly
+[[n]] contributors.  For instance, if $n=2$, all resonances have a
+two-particle decay.
+<<Resonances: resonance history: TBP>>=
+  procedure :: only_has_n_contributors => resonance_history_only_has_n_contributors
+<<Resonances: procedures>>=
+  function resonance_history_only_has_n_contributors (res_hist, n) result (value)
+    logical :: value
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, intent(in) :: n
+    integer :: i_res
+    value = .true.
+    do i_res = 1, res_hist%n_resonances
+       associate (res => res_hist%resonances(i_res))
+          value = value .and. size (res%contributors%c) == n
+       end associate
+    end do
+  end function resonance_history_only_has_n_contributors
+
+@ %def resonance_history_only_has_n_contributors
+@
+<<Resonances: resonance history: TBP>>=
+  procedure :: has_flavor => resonance_history_has_flavor
+<<Resonances: procedures>>=
+  function resonance_history_has_flavor (res_hist, flv) result (has_flv)
+    logical :: has_flv
+    class(resonance_history_t), intent(in) :: res_hist
+    type(flavor_t), intent(in) :: flv
+    integer :: i
+    has_flv = .false.
+    do i = 1, res_hist%n_resonances
+       has_flv = has_flv .or. res_hist%resonances(i)%flavor == flv
+    end do
+  end function resonance_history_has_flavor
+
+@ %def resonance_history_has_flavor
+@
+\subsection{O'Mega restriction strings}
+One application of the resonance module is creating restriction
+strings that can be fed into process definitions with the O'Mega
+generator.  Since O'Mega counts the incoming particles first, we have
+to supply [[n_in]] as an offset.
+<<Resonances: resonance info: TBP>>=
+  procedure :: as_omega_string => resonance_info_as_omega_string
+<<Resonances: resonance history: TBP>>=
+  procedure :: as_omega_string => resonance_history_as_omega_string
+<<Resonances: procedures>>=
+  function resonance_info_as_omega_string (res_info, n_in) result (string)
+    class(resonance_info_t), intent(in) :: res_info
+    integer, intent(in) :: n_in
+    type(string_t) :: string
+    integer :: i
+    string = ""
+    if (allocated (res_info%contributors%c)) then
+       do i = 1, size (res_info%contributors%c)
+          if (i > 1)  string = string // "+"
+          string = string // str (res_info%contributors%c(i) + n_in)
+       end do
+       string = string // "~" // res_info%flavor%get_name ()
+    end if
+  end function resonance_info_as_omega_string
+
+  function resonance_history_as_omega_string (res_hist, n_in) result (string)
+    class(resonance_history_t), intent(in) :: res_hist
+    integer, intent(in) :: n_in
+    type(string_t) :: string
+    integer :: i
+    string = ""
+    do i = 1, res_hist%n_resonances
+       if (i > 1)  string = string // " && "
+       string = string // res_hist%resonances(i)%as_omega_string (n_in)
+    end do
+  end function resonance_history_as_omega_string
+
+@ %def resonance_info_as_omega_string
+@ %def resonance_history_as_omega_string
+@
+\subsection{Resonance history set}
+This is an array of resonance histories.  The elements are supposed to
+be unique.  That is, entering a new element is successful only if the
+element does not already exist.
+
+The current implementation uses a straightforward linear search for
+comparison.  If this should become an issue, we may change the
+implementation to a hash table.  To keep this freedom, the set should
+be an opaque object.  In fact, we expect to use it as a transient data
+structure.  Once the set is complete, we transform it into a
+contiguous array.
+<<Resonances: public>>=
+  public :: resonance_history_set_t
+<<Resonances: types>>=
+  type :: resonance_history_set_t
+     integer :: n_filter = 0
+     type(resonance_history_t), dimension(:), allocatable :: history
+     integer :: last = 0
+   contains
+   <<Resonances: resonance history set: TBP>>
+  end type resonance_history_set_t
+
+@ %def resonance_history_set_t
+@ Display.
+<<Resonances: resonance history set: TBP>>=
+  procedure :: write => resonance_history_set_write
+<<Resonances: procedures>>=
+  subroutine resonance_history_set_write (res_set, unit)
+    class(resonance_history_set_t), intent(in) :: res_set
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(A)")  "Resonance history set:"
+    do i = 1, res_set%last
+       write (u, "('* ')", advance="no")
+       call res_set%history(i)%write (u)
+    end do
+  end subroutine resonance_history_set_write
+
+@ %def resonance_history_set_write
+@ Initialization.  The default initial size is 16 elements, to be doubled in
+size repeatedly as needed.
+<<Resonances: parameters>>=
+  integer, parameter :: resonance_history_set_initial_size = 16
+@ %def resonance_history_set_initial_size = 16
+<<Resonances: resonance history set: TBP>>=
+  procedure :: init => resonance_history_set_init
+<<Resonances: procedures>>=
+  subroutine resonance_history_set_init (res_set, n_filter, initial_size)
+    class(resonance_history_set_t), intent(out) :: res_set
+    integer, intent(in), optional :: n_filter
+    integer, intent(in), optional :: initial_size
+    if (present (n_filter))  res_set%n_filter = n_filter
+    if (present (initial_size)) then
+       allocate (res_set%history (initial_size))
+    else
+       allocate (res_set%history (resonance_history_set_initial_size))
+    end if
+  end subroutine resonance_history_set_init
+
+@ %def resonance_history_set_init
+@ Enter an entry: append to the array if it doesn't yet exist, expand
+as needed.  If a [[n_filter]] value has been provided, enter the
+resonance only if it fulfils the requirement.
+
+An empty resonance history is never entered.
+<<Resonances: resonance history set: TBP>>=
+  procedure :: enter => resonance_history_set_enter
+<<Resonances: procedures>>=
+  subroutine resonance_history_set_enter (res_set, res_history)
+    class(resonance_history_set_t), intent(inout) :: res_set
+    type(resonance_history_t), intent(in) :: res_history
+    integer :: i, new
+    if (res_history%n_resonances == 0)  return
+    if (res_set%n_filter > 0) then
+       if (.not. res_history%only_has_n_contributors (res_set%n_filter))  return
+    end if
+    do i = 1, res_set%last
+       if (res_set%history(i) == res_history)  return
+    end do 
+    new = res_set%last + 1
+    if (new > size (res_set%history))  call res_set%expand ()
+    res_set%history(new) = res_history
+    res_set%last = new
+  end subroutine resonance_history_set_enter
+
+@ %def resonance_history_set_enter
+@ Conversion to a plain array, sized correctly.
+<<Resonances: resonance history set: TBP>>=
+  procedure :: to_array => resonance_history_set_to_array
+<<Resonances: procedures>>=
+  subroutine resonance_history_set_to_array (res_set, res_history)
+    class(resonance_history_set_t), intent(inout) :: res_set
+    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_history
+    allocate (res_history (res_set%last))
+    res_history(:) = res_set%history(1:res_set%last)
+  end subroutine resonance_history_set_to_array
+
+@ %def resonance_history_set_to_array
+@ Expand: double the size of the array.  We do not need this in the API.
+<<Resonances: resonance history set: TBP>>=
+  procedure, private :: expand => resonance_history_set_expand
+<<Resonances: procedures>>=
+  subroutine resonance_history_set_expand (res_set)
+    class(resonance_history_set_t), intent(inout) :: res_set
+    type(resonance_history_t), dimension(:), allocatable :: history_new
+    integer :: s
+    s = size (res_set%history)
+    allocate (history_new (2 * s))
+    history_new(1:s) = res_set%history(1:s)
+    call move_alloc (history_new, res_set%history)
+  end subroutine resonance_history_set_expand
+
+@ %def resonance_history_set_expand
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[resonances_ut.f90]]>>=
+<<File header>>
+
+module resonances_ut
+  use unit_tests
+  use resonances_uti
+
+<<Standard module head>>
+
+<<Resonances: public test>>
+
+contains
+
+<<Resonances: test driver>>
+
+end module resonances_ut
+@ %def resonances_ut
+@
+<<[[resonances_uti.f90]]>>=
+<<File header>>
+
+module resonances_uti
+
+!!!<<Use kinds>>
+<<Use strings>>
+  use model_data, only: model_data_t
+
+  use resonances, only: resonance_history_t
+
+  use resonances
+
+<<Standard module head>>
+
+<<Resonances: test declarations>>
+
+contains
+
+<<Resonances: tests>>
+
+end module resonances_uti
+@ %def resonances_ut
+@ API: driver for the unit tests below.
+<<Resonances: public test>>=
+  public :: resonances_test
+<<Resonances: test driver>>=
+  subroutine resonances_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Resonances: execute tests>>
+  end subroutine resonances_test
+
+@  %def resonances_test
+@ Basic operations on a resonance history object.
+<<Resonances: execute tests>>=
+  call test (resonances_1, "resonances_1", &
+       "check resonance history setup", &
+       u, results)
+<<Resonances: test declarations>>=
+  public :: resonances_1
+<<Resonances: tests>>=
+  subroutine resonances_1 (u)
+    integer, intent(in) :: u
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(model_data_t), target :: model
+
+    write (u, "(A)")  "* Test output: resonances_1"
+    write (u, "(A)")  "*   Purpose: test resonance history setup"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Read model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Empty resonance history"
+    write (u, "(A)")
+
+    call res_history%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Add resonance"
+    write (u, "(A)")
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Add another resonance"
+    write (u, "(A)")
+
+    call res_info%init (7, 23, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Remove resonance"
+    write (u, "(A)")
+
+    call res_history%remove_resonance (1)
+    call res_history%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonances_1"
+
+  end subroutine resonances_1
+
+@ %def resonances_1
+@ Basic operations on a resonance history object.
+<<Resonances: execute tests>>=
+  call test (resonances_2, "resonances_2", &
+       "check O'Mega restriction strings", &
+       u, results)
+<<Resonances: test declarations>>=
+  public :: resonances_2
+<<Resonances: tests>>=
+  subroutine resonances_2 (u)
+    integer, intent(in) :: u
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(model_data_t), target :: model
+    type(string_t) :: restrictions
+
+    write (u, "(A)")  "* Test output: resonances_2"
+    write (u, "(A)")  "*   Purpose: test OMega restrictions strings &
+         &for resonance history"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Read model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Empty resonance history"
+    write (u, "(A)")
+
+    restrictions = res_history%as_omega_string (2)
+    write (u, "(A,A,A)")  "restrictions = '", char (restrictions), "'"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Add resonance"
+    write (u, "(A)")
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    restrictions = res_history%as_omega_string (2)
+    write (u, "(A,A,A)")  "restrictions = '", char (restrictions), "'"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Add another resonance"
+    write (u, "(A)")
+
+    call res_info%init (7, 23, model, 5)
+    call res_history%add_resonance (res_info)
+    restrictions = res_history%as_omega_string (2)
+    write (u, "(A,A,A)")  "restrictions = '", char (restrictions), "'"
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonances_2"
+
+  end subroutine resonances_2
+
+@ %def resonances_2
+@ Basic operations on a resonance history set.
+<<Resonances: execute tests>>=
+  call test (resonances_3, "resonances_3", &
+       "check resonance history set", &
+       u, results)
+<<Resonances: test declarations>>=
+  public :: resonances_3
+<<Resonances: tests>>=
+  subroutine resonances_3 (u)
+    integer, intent(in) :: u
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_t), dimension(:), allocatable :: res_histories
+    type(resonance_history_set_t) :: res_set
+    type(model_data_t), target :: model
+    integer :: i
+
+    write (u, "(A)")  "* Test output: resonances_3"
+    write (u, "(A)")  "*   Purpose: test resonance history set"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Read model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize resonance history set"
+    write (u, "(A)")
+
+    call res_set%init (initial_size = 2)
+
+    write (u, "(A)")  "* Add resonance histories, one at a time"
+    write (u, "(A)")
+
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_info%init (7, 23, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (7, 23, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Result"
+    write (u, "(A)")
+
+    call res_set%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Result in array form"
+
+    call res_set%to_array (res_histories)
+    do i = 1, size (res_histories)
+       write (u, *)
+       call res_histories(i)%write (u)
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-initialize resonance history set with filter n=2"
+    write (u, "(A)")
+
+    call res_set%init (n_filter = 2)
+
+    write (u, "(A)")  "* Add resonance histories, one at a time"
+    write (u, "(A)")
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_info%init (7, 23, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (7, 23, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, *)
+
+    call res_info%init (3, -24, model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+    call res_set%enter (res_history)
+    call res_history%clear ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Result"
+    write (u, "(A)")
+
+    call res_set%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonances_3"
+
+  end subroutine resonances_3
+
+@ %def resonances_3
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
 \section{Mappings}
@@ -3107,6 +4019,8 @@ are fixed if there is a fixed c.m. energy.
      real(default) :: b2 = 0
      real(default) :: b3 = 0
      logical :: variable_limits = .true.
+   contains
+   <<Mappings: mapping: TBP>>
   end type mapping_t
 
 @ %def mapping_t
@@ -3176,8 +4090,7 @@ Do not write empty mappings.
 \subsection{Define a mapping}
 The initialization routine sets the mapping type and the particle
 (binary code and flavor code) for which the mapping applies (e.g., a
-$Z$ resonance in branch \#3).  We only need the absolute value of the
-flavor code.
+$Z$ resonance in branch \#3).
 <<Mappings: public>>=
   public :: mapping_init
 <<Mappings: procedures>>=
@@ -3202,8 +4115,7 @@ flavor code.
        call msg_bug ("Mappings: encountered undefined mapping key '" &
             // char (type) // "'")
     end select
-    if (present (f) .and. present (model)) &
-         call mapping%flv%init (abs (f), model)
+    if (present (f) .and. present (model))  call mapping%flv%init (f, model)
   end subroutine mapping_init
 
 @ %def mapping_init
@@ -3275,28 +4187,54 @@ Return true if there is any / an s-channel mapping.
   public :: mapping_is_set
   public :: mapping_is_s_channel
   public :: mapping_is_on_shell
+<<Mappings: mapping: TBP>>=
+  procedure :: is_set => mapping_is_set
+  procedure :: is_s_channel => mapping_is_s_channel
+  procedure :: is_on_shell => mapping_is_on_shell
 <<Mappings: procedures>>=
   function mapping_is_set (mapping) result (flag)
+    class(mapping_t), intent(in) :: mapping
     logical :: flag
-    type(mapping_t), intent(in) :: mapping
     flag = mapping%type /= NO_MAPPING
   end function mapping_is_set
 
   function mapping_is_s_channel (mapping) result (flag)
+    class(mapping_t), intent(in) :: mapping
     logical :: flag
-    type(mapping_t), intent(in) :: mapping
     flag = mapping%type == S_CHANNEL
   end function mapping_is_s_channel
 
   function mapping_is_on_shell (mapping) result (flag)
+    class(mapping_t), intent(in) :: mapping
     logical :: flag
-    type(mapping_t), intent(in) :: mapping
     flag = mapping%type == ON_SHELL
   end function mapping_is_on_shell
 
 @ %def mapping_is_set
 @ %def mapping_is_s_channel
 @ %def mapping_is_on_shell
+@ Return the binary code for the mapped particle.
+<<Mappings: mapping: TBP>>=
+  procedure :: get_bincode => mapping_get_bincode
+<<Mappings: procedures>>=
+  function mapping_get_bincode (mapping) result (bincode)
+    class(mapping_t), intent(in) :: mapping
+    integer(TC) :: bincode
+    bincode = mapping%bincode
+  end function mapping_get_bincode
+
+@ %def mapping_get_bincode
+@ Return the flavor object for the mapped particle.
+<<Mappings: mapping: TBP>>=
+  procedure :: get_flv => mapping_get_flv
+<<Mappings: procedures>>=
+  function mapping_get_flv (mapping) result (flv)
+    class(mapping_t), intent(in) :: mapping
+    type(flavor_t) :: flv
+    flv = mapping%flv
+  end function mapping_get_flv
+
+@ %def mapping_get_flv
 @ Return stored mass and width, respectively.
 <<Mappings: public>>=
   public :: mapping_get_mass
@@ -4110,6 +5048,7 @@ module phs_trees
   use io_units
   use constants, only: twopi, twopi2, twopi5
   use format_defs, only: FMT_19
+  use numeric_utils, only: vanishes
   use diagnostics
   use lorentz
   use permutations, only: permutation_t, permutation_size
@@ -4117,6 +5056,7 @@ module phs_trees
   use permutations, only: tc_decay_level, tc_permute
   use model_data
   use flavors
+  use resonances, only: resonance_history_t, resonance_info_t
   use mappings
 
 <<Standard module head>>
@@ -4310,6 +5250,8 @@ boundaries.
      real(default), dimension(:), allocatable :: effective_width
      logical :: real_phsp = .false.
      integer, dimension(:), allocatable :: momentum_link
+   contains
+   <<PHS trees: phs tree: TBP>>
   end type phs_tree_t
 
 @ %def phs_tree_t
@@ -4332,9 +5274,12 @@ but appears manageable for realistic cases, e.g., for [[n_in=2]] and
   public :: phs_tree_init
   public :: phs_tree_final
 @ Here we set the masks for incoming and for all externals.
+<<PHS trees: phs tree: TBP>>=
+  procedure :: init => phs_tree_init
+  procedure :: final => phs_tree_final
 <<PHS trees: procedures>>=
   elemental subroutine phs_tree_init (tree, n_in, n_out, n_masses, n_angles)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     integer, intent(in) :: n_in, n_out, n_masses, n_angles
     integer(TC) :: i
     tree%n_externals = n_in + n_out
@@ -4361,7 +5306,7 @@ but appears manageable for realistic cases, e.g., for [[n_in=2]] and
   end subroutine phs_tree_init
 
   elemental subroutine phs_tree_final (tree)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     deallocate (tree%branch)
     deallocate (tree%mapping)
     deallocate (tree%mass_sum)
@@ -4375,9 +5320,11 @@ but appears manageable for realistic cases, e.g., for [[n_in=2]] and
 Write only the branches that are set:
 <<PHS trees: public>>=
   public :: phs_tree_write
+<<PHS trees: phs tree: TBP>>=
+  procedure :: write => phs_tree_write
 <<PHS trees: procedures>>=
   subroutine phs_tree_write (tree, unit)
-    type(phs_tree_t), intent(in) :: tree
+    class(phs_tree_t), intent(in) :: tree
     integer, intent(in), optional :: unit
     integer :: u
     integer(TC) :: k
@@ -4466,9 +5413,11 @@ Assume that the tree/array has been created before with the
 appropriate length and is empty.
 <<PHS trees: public>>=
   public :: phs_tree_from_array
+<<PHS trees: phs tree: TBP>>=
+  procedure :: from_array => phs_tree_from_array
 <<PHS trees: procedures>>=
   subroutine phs_tree_from_array (tree, a)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     integer(TC), dimension(:), intent(in) :: a
     integer :: i
     integer(TC) :: k
@@ -4695,9 +5644,11 @@ flipped tree.  Thus, the size of the array of mappings is given by the
 number of outgoing particles only.
 <<PHS trees: public>>=
   public :: phs_tree_init_mapping
+<<PHS trees: phs tree: TBP>>=
+  procedure :: init_mapping => phs_tree_init_mapping
 <<PHS trees: procedures>>=
   subroutine phs_tree_init_mapping (tree, k, type, pdg, model)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     integer(TC), intent(in) :: k
     type(string_t), intent(in) :: type
     integer, intent(in) :: pdg
@@ -4712,10 +5663,12 @@ number of outgoing particles only.
 parameter set.  Also set the mass sum array.
 <<PHS trees: public>>=
   public :: phs_tree_set_mapping_parameters
+<<PHS trees: phs tree: TBP>>=
+  procedure :: set_mapping_parameters => phs_tree_set_mapping_parameters
 <<PHS trees: procedures>>=
   subroutine phs_tree_set_mapping_parameters &
        (tree, mapping_defaults, variable_limits)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     type(mapping_defaults_t), intent(in) :: mapping_defaults
     logical, intent(in) :: variable_limits
     integer(TC) :: k
@@ -4747,9 +5700,11 @@ corresponding external particle; if more then one is set, we sum up
 the two masses (which we know have already been set).
 <<PHS trees: public>>=
   public :: phs_tree_set_mass_sum
+<<PHS trees: phs tree: TBP>>=
+  procedure :: set_mass_sum => phs_tree_set_mass_sum
 <<PHS trees: procedures>>=
   subroutine phs_tree_set_mass_sum (tree, flv)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     type(flavor_t), dimension(:), intent(in) :: flv
     integer(TC) :: k
     integer :: i
@@ -4780,9 +5735,11 @@ This routine has [[phs_tree_set_mass_sum]] and
 [[phs_tree_set_mapping_parameters]] as prerequisites.
 <<PHS trees: public>>=
   public :: phs_tree_set_effective_masses
+<<PHS trees: phs tree: TBP>>=
+  procedure :: set_effective_masses => phs_tree_set_effective_masses
 <<PHS trees: procedures>>=
   subroutine phs_tree_set_effective_masses (tree)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     tree%effective_mass = 0
     tree%effective_width = 0
     call set_masses_x (tree%mask_out)
@@ -4904,6 +5861,33 @@ This routine requires [[phs_tree_set_effective_masses]]
   end subroutine phs_tree_set_step_mappings
 
 @ %def phs_tree_set_step_mappings
+@
+\subsubsection{Resonance structure}
+We identify the resonances within a tree as the set of s-channel
+mappings.  The [[resonance_history_t]] type serves as the result
+container.
+<<PHS trees: phs tree: TBP>>=
+  procedure :: extract_resonance_history => phs_tree_extract_resonance_history
+<<PHS trees: procedures>>=
+  subroutine phs_tree_extract_resonance_history (tree, res_history)
+    class(phs_tree_t), intent(in) :: tree
+    type(resonance_history_t), intent(out) :: res_history
+    type(resonance_info_t) :: res_info
+    integer :: i
+    if (allocated (tree%mapping)) then
+       do i = 1, size (tree%mapping)
+          associate (mapping => tree%mapping(i))
+             if (mapping%is_s_channel ()) then
+                call res_info%init (mapping%get_bincode (), mapping%get_flv (), &
+		     n_out = tree%n_externals - tree%n_in)
+                call res_history%add_resonance (res_info)
+             end if
+          end associate
+       end do
+    end if
+  end subroutine phs_tree_extract_resonance_history
+
+@ %def phs_tree_extract_resonance_history
 @
 \subsubsection{Structural comparison}
 This function allows to check whether one tree is the permutation of
@@ -5470,7 +6454,7 @@ possible.
          else
             axis = axis_from_p_b3 (pf, -bg)
             LL = rotation_to_2nd (axis, vector3_canonical(3))
-            if (bg /= 0)  LL = LL * boost(-bg, 3)
+            if (.not. vanishes (bg))  LL = LL * boost(-bg, 3)
          end if
          n = space_part (LL * p1)
       else if (present (phi0)) then
@@ -5610,6 +6594,193 @@ generated here.  Note that the table is [[intent(out)]].
 
 @ %def phs_tree_set_momentum_links
 @
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[phs_trees_ut.f90]]>>=
+<<File header>>
+
+module phs_trees_ut
+  use unit_tests
+  use phs_trees_uti
+
+<<Standard module head>>
+
+<<PHS trees: public test>>
+
+contains
+
+<<PHS trees: test driver>>
+
+end module phs_trees_ut
+@ %def phs_trees_ut
+@
+<<[[phs_trees_uti.f90]]>>=
+<<File header>>
+
+module phs_trees_uti
+
+!!!<<Use kinds>>
+  use kinds, only: TC
+<<Use strings>>
+  use flavors, only: flavor_t
+  use model_data, only: model_data_t
+
+  use resonances, only: resonance_history_t
+  use mappings, only: mapping_defaults_t
+
+  use phs_trees
+
+<<Standard module head>>
+
+<<PHS trees: test declarations>>
+
+contains
+
+<<PHS trees: tests>>
+
+end module phs_trees_uti
+@ %def phs_trees_ut
+@ API: driver for the unit tests below.
+<<PHS trees: public test>>=
+  public :: phs_trees_test
+<<PHS trees: test driver>>=
+  subroutine phs_trees_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<PHS trees: execute tests>>
+  end subroutine phs_trees_test
+
+@  %def phs_trees_test
+@
+Create a simple $2\to 3$ PHS tree and display it.
+<<PHS trees: execute tests>>=
+  call test (phs_tree_1, "phs_tree_1", &
+       "check phs tree setup", &
+       u, results)
+<<PHS trees: test declarations>>=
+  public :: phs_tree_1
+<<PHS trees: tests>>=
+  subroutine phs_tree_1 (u)
+    integer, intent(in) :: u
+    type(phs_tree_t) :: tree
+    type(model_data_t), target :: model
+    type(flavor_t), dimension(5) :: flv
+    integer :: i
+
+    write (u, "(A)")  "* Test output: phs_tree_1"
+    write (u, "(A)")  "*   Purpose: test PHS tree routines"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Read model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set up flavors"
+    write (u, "(A)")
+
+    call flv%init ([1, -2, 24, 5, -5], model)
+    do i = 1, 5
+       write (u, "(1x)", advance="no")
+       call flv(i)%write (u)
+    end do
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create tree"
+    write (u, "(A)")
+
+    call tree%init (2, 3, 0, 0)
+    call tree%from_array ([integer(TC) :: 1, 2, 3, 4, 7, 8, 16])
+    call tree%set_mass_sum (flv)
+    call tree%set_effective_masses ()
+
+    call tree%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call tree%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_tree_1"
+
+  end subroutine phs_tree_1
+
+@ %def phs_tree_1
+@ The analogous tree with resonance (s-channel) mappings.
+<<PHS trees: execute tests>>=
+  call test (phs_tree_2, "phs_tree_2", &
+       "check phs tree with resonances", &
+       u, results)
+<<PHS trees: test declarations>>=
+  public :: phs_tree_2
+<<PHS trees: tests>>=
+  subroutine phs_tree_2 (u)
+    integer, intent(in) :: u
+    type(phs_tree_t) :: tree
+    type(model_data_t), target :: model
+    type(mapping_defaults_t) :: mapping_defaults
+    type(flavor_t), dimension(5) :: flv
+    type(resonance_history_t) :: res_history
+    integer :: i
+
+    write (u, "(A)")  "* Test output: phs_tree_2"
+    write (u, "(A)")  "*   Purpose: test PHS tree with resonances"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Read model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set up flavors"
+    write (u, "(A)")
+
+    call flv%init ([1, -2, 24, 5, -5], model)
+    do i = 1, 5
+       write (u, "(1x)", advance="no")
+       call flv(i)%write (u)
+    end do
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create tree with mappings"
+    write (u, "(A)")
+
+    call tree%init (2, 3, 0, 0)
+    call tree%from_array ([integer(TC) :: 1, 2, 3, 4, 7, 8, 16])
+    call tree%set_mass_sum (flv)
+
+    call tree%init_mapping (3_TC, var_str ("s_channel"), -24, model)
+    call tree%init_mapping (7_TC, var_str ("s_channel"), 23, model)
+
+    call tree%set_mapping_parameters (mapping_defaults, variable_limits=.false.)
+    call tree%set_effective_masses ()
+
+    call tree%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonances from mappings"
+    write (u, "(A)")
+
+    call tree%extract_resonance_history (res_history)
+    call res_history%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call tree%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_tree_2"
+
+  end subroutine phs_tree_2
+
+@ %def phs_tree_2
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The phase-space forest}
@@ -5659,6 +6830,8 @@ module phs_forests
   use interactions
 
   use phs_base
+  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
   use mappings
   use phs_trees
 
@@ -6404,6 +7577,30 @@ mapping; also return the resonance mass and width for this mapping.
 @ %def phs_forest_get_s_mapping
 @ %def phs_forest_get_on_shell
 @
+Extract the set of unique resonance histories, in form of an array.
+<<PHS forests: phs forest: TBP>>=
+  procedure :: extract_resonance_histories => phs_forest_extract_resonance_histories
+<<PHS forests: procedures>>=
+  subroutine phs_forest_extract_resonance_histories (forest, res_hist)
+    class(phs_forest_t), intent(in) :: forest
+    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hist
+    type(resonance_history_t) :: rh
+    type(resonance_history_set_t) :: res_hist_set
+    integer :: g, t
+    call res_hist_set%init ()
+    do g = 1, size (forest%grove)
+       associate (grove => forest%grove(g))
+          do t = 1, size (grove%tree)
+	     call grove%tree(t)%extract_resonance_history (rh)
+             call res_hist_set%enter (rh)
+          end do
+       end associate
+    end do
+    call res_hist_set%to_array (res_hist)
+  end subroutine phs_forest_extract_resonance_histories
+
+@ %def phs_forest_extract_resonance_histories
+@
 \subsection{Read the phase space setup from file}
 The phase space setup is stored in a file.  The file may be generated
 by the [[cascades]] module below, or by other means.  This file has to
@@ -6432,6 +7629,7 @@ Create lexer and syntax:
          // "t_channel = integer " &
          // "keep_nonresonant = logical")
     call ifile_append (ifile, "KEY '='")
+    call ifile_append (ifile, "KEY '-'")
     call ifile_append (ifile, "KEY md5sum_process")
     call ifile_append (ifile, "KEY md5sum_model_par")
     call ifile_append (ifile, "KEY md5sum_phs_config")
@@ -6452,7 +7650,7 @@ Create lexer and syntax:
     call ifile_append (ifile, "KEY tree")
     call ifile_append (ifile, "SEQ bincodes = bincode*")
     call ifile_append (ifile, "INT bincode")
-    call ifile_append (ifile, "SEQ mapping = map bincode channel pdg")
+    call ifile_append (ifile, "SEQ mapping = map bincode channel signed_pdg")
     call ifile_append (ifile, "KEY map")
     call ifile_append (ifile, "ALT channel = &
          &s_channel | t_channel | u_channel | &
@@ -6464,6 +7662,9 @@ Create lexer and syntax:
     call ifile_append (ifile, "KEY infrared")
     call ifile_append (ifile, "KEY radiation")
     call ifile_append (ifile, "KEY on_shell")
+    call ifile_append (ifile, "ALT signed_pdg = &
+         &pdg | negative_pdg")
+    call ifile_append (ifile, "SEQ negative_pdg = '-' pdg")
     call ifile_append (ifile, "INT pdg")
   end subroutine define_phs_forest_syntax
 
@@ -6492,7 +7693,7 @@ module variables:
          comment_chars = "#!", &
          quote_chars = '"', &
          quote_match = '"', &
-         single_chars = "", &
+         single_chars = "-", &
          special_class = ["="] , &
          keyword_list = syntax_get_keyword_list_ptr (syntax_phs_forest))
   end subroutine lexer_init_phs_forest
@@ -6707,7 +7908,7 @@ $s$-channel.  Then, find mappings and initialize them.
     type(phs_tree_t), intent(inout) :: tree
     type(parse_node_t), intent(in), target :: node
     class(model_data_t), intent(in), target :: model
-    type(parse_node_t), pointer :: node_bincodes, node_mapping
+    type(parse_node_t), pointer :: node_bincodes, node_mapping, pn_pdg
     integer :: n_bincodes, offset
     integer(TC), dimension(:), allocatable :: bincode
     integer :: b, n_mappings, m
@@ -6743,8 +7944,13 @@ $s$-channel.  Then, find mappings and initialize them.
             (parse_node_get_sub_ptr (node_mapping, 2))
        type = parse_node_get_key &
             (parse_node_get_sub_ptr (node_mapping, 3))
-       pdg = parse_node_get_integer &
-            (parse_node_get_sub_ptr (node_mapping, 4))
+       pn_pdg => parse_node_get_sub_ptr (node_mapping, 4)
+       select case (char (pn_pdg%get_rule_key ()))
+       case ("pdg")
+          pdg = pn_pdg%get_integer ()
+       case ("negative_pdg")
+          pdg = - parse_node_get_integer (pn_pdg%get_sub_ptr (2))
+       end select
        call phs_tree_init_mapping (tree, k, type, pdg, model)
     end do
   end subroutine phs_tree_set
@@ -7302,6 +8508,7 @@ module phs_forests_uti
 
 <<Use kinds>>
 <<Use strings>>
+  use io_units
   use format_defs, only: FMT_12
   use lorentz
   use flavors
@@ -7309,6 +8516,7 @@ module phs_forests_uti
   use model_data
   use mappings
   use phs_base
+  use resonances, only: resonance_history_t
 
   use phs_forests
 
@@ -7334,6 +8542,7 @@ end module phs_forests_uti
 
 @  %def phs_forests_test
 @
+\subsubsection{Basic universal test}
 Write a possible phase-space file for a $2\to 3$ process and make the
 corresponding forest, print the forest. Choose some in-particle
 momenta and a random-number array and evaluate out-particles and
@@ -7355,7 +8564,7 @@ phase-space factors.
     type(flavor_t), dimension(5) :: flv
     type(string_t) :: filename
     type(interaction_t) :: int
-    integer, parameter :: unit_fix = 20
+    integer :: unit_fix
     type(mapping_defaults_t) :: mapping_defaults
     logical :: found_process, ok
     integer :: n_channel, ch, i
@@ -7378,6 +8587,7 @@ phase-space factors.
     write (u, "(A)")
 
     call flv%init ([11, -11, 11, -11, 22], model)
+    unit_fix = free_unit ()
     open (file="phs_forest_test.phs", unit=unit_fix, action="write")
     write (unit_fix, *) "process foo"
     write (unit_fix, *) 'md5sum_process    = "6ABA33BC2927925D0F073B1C1170780A"'
@@ -7474,6 +8684,98 @@ phase-space factors.
 
 @ %def phs_forest_1
 @
+\subsubsection{Resonance histories}
+Read a suitably nontrivial forest from file and recover the set of
+resonance histories.
+<<PHS forests: execute tests>>=
+  call test (phs_forest_2, "phs_forest_2", &
+       "handle phs forest resonance content", &
+       u, results)
+<<PHS forests: test declarations>>=
+  public :: phs_forest_2
+<<PHS forests: tests>>=
+  subroutine phs_forest_2 (u)
+    use os_interface
+    integer, intent(in) :: u
+    integer :: unit_fix
+    type(phs_forest_t) :: forest
+    type(model_data_t), target :: model
+    type(string_t) :: process_id
+    type(string_t) :: filename
+    logical :: found_process
+    type(resonance_history_t), dimension(:), allocatable :: res_history
+    integer :: i
+
+    write (u, "(A)")  "* Test output: phs_forest_2"
+    write (u, "(A)")  "*   Purpose: test PHS forest routines"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Reading model file"
+
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create phase-space file 'phs_forest_2.phs'"
+    write (u, "(A)")
+
+    unit_fix = free_unit ()
+    open (file="phs_forest_2.phs", unit=unit_fix, action="write")
+    write (unit_fix, *) "process foo"
+    write (unit_fix, *) 'md5sum_process    = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"'
+    write (unit_fix, *) 'md5sum_model_par  = "1A0B151EE6E2DEB92D880320355A3EAB"'
+    write (unit_fix, *) 'md5sum_phs_config = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"'
+    write (unit_fix, *) "sqrts         =    100.00000000000000"
+    write (unit_fix, *) "m_threshold_s =    50.000000000000000"
+    write (unit_fix, *) "m_threshold_t =    100.00000000000000"
+    write (unit_fix, *) "off_shell =            2"
+    write (unit_fix, *) "t_channel =            6"
+    write (unit_fix, *) "keep_nonresonant =  F"
+    write (unit_fix, *) ""
+    write (unit_fix, *) "  grove"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "      map 3 s_channel -24"
+    write (unit_fix, *) "    tree 5 7"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "      map 3 s_channel -24"
+    write (unit_fix, *) "      map 7 s_channel 23"
+    write (unit_fix, *) "    tree 5 7"
+    write (unit_fix, *) "      map 7 s_channel 25"
+    write (unit_fix, *) "    tree 3 11"
+    write (unit_fix, *) "      map 3 s_channel -24"
+    close (unit_fix)
+
+    write (u, "(A)")  "* Read phase-space file 'phs_forest_2.phs'"
+
+    call syntax_phs_forest_init ()
+    process_id = "foo"
+    filename = "phs_forest_2.phs"
+    call phs_forest_read &
+         (forest, filename, process_id, 2, 3, model, found_process)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonance history set"
+
+    call forest%extract_resonance_histories (res_history)
+    do i = 1, size (res_history)
+       write (u, *)
+       call res_history(i)%write (u)
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call model%final ()
+    call phs_forest_final (forest)
+    call syntax_phs_forest_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_forest_2"
+
+  end subroutine phs_forest_2
+
+@ %def phs_forest_2
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Finding phase space parameterizations}
 If the phase space configuration is not found in the appropriate file,
@@ -7513,6 +8815,10 @@ module cascades
   use model_data
   use flavors
   use lorentz
+
+  use resonances, only: resonance_info_t
+  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
   use phs_forests
 
 <<Standard module head>>
@@ -7650,6 +8956,8 @@ the PDG tree as described above.
      type(cascade_t), pointer :: mother => null ()
      ! next in list
      type(cascade_t), pointer :: next => null ()
+   contains
+   <<Cascades: cascade: TBP>>
   end type cascade_t
 
 @ %def cascade_t
@@ -7681,7 +8989,9 @@ the PDG tree as described above.
 
 @ %def cascade_index
 @ We need three versions of writing cascades.  This goes to the
-phase-space file:
+phase-space file.
+
+For t/u channel mappings, we use the absolute value of the PDG code.
 <<Cascades: procedures>>=
   subroutine cascade_write_file_format (cascade, model, unit)
     type(cascade_t), intent(in) :: cascade
@@ -7699,7 +9009,7 @@ phase-space file:
        case (NO_MAPPING, EXTERNAL_PRT)
        case (S_CHANNEL)
           write(u,2) 'map', &
-               cascade%tree(i), 's_channel', abs (cascade%tree_pdg(i)), &
+               cascade%tree(i), 's_channel', cascade%tree_pdg(i), &
                char (flv%get_name ())
        case (T_CHANNEL)
           write(u,2) 'map', &
@@ -7711,19 +9021,19 @@ phase-space file:
                char (flv%get_name ())
        case (RADIATION)
           write(u,2) 'map', &
-               cascade%tree(i), 'radiation', abs (cascade%tree_pdg(i)), &
+               cascade%tree(i), 'radiation', cascade%tree_pdg(i), &
                char (flv%get_name ())
        case (COLLINEAR)
           write(u,2) 'map', &
-               cascade%tree(i), 'collinear', abs (cascade%tree_pdg(i)), &
+               cascade%tree(i), 'collinear', cascade%tree_pdg(i), &
                char (flv%get_name ())
        case (INFRARED)
           write(u,2) 'map', &
-               cascade%tree(i), 'infrared ',  abs (cascade%tree_pdg(i)), &
+               cascade%tree(i), 'infrared ', cascade%tree_pdg(i), &
                char (flv%get_name ())
        case (ON_SHELL)
           write(u,2) 'map', &
-               cascade%tree(i), 'on_shell ', abs (cascade%tree_pdg(i)), &
+               cascade%tree(i), 'on_shell ', cascade%tree_pdg(i), &
                char (flv%get_name ())
        case default
           call msg_bug (" Impossible mapping mode encountered")
@@ -7966,7 +9276,7 @@ is identified nevertheless.
     call cascade_init (cascade, 1)
     cascade%bincode = ibset (0_TC, pos-1)
     cascade%flv = flv
-    cascade%pdg = abs (cascade%flv%get_pdg ())
+    cascade%pdg = cascade%flv%get_pdg ()
     cascade%is_vector = flv%get_spin_type () == VECTOR
     cascade%m_min = flv%get_mass ()
     cascade%m_rea = cascade%m_min
@@ -7993,7 +9303,7 @@ is identified nevertheless.
     cascade%incoming = .true.
     cascade%bincode = ibset (0_TC, pos-1)
     cascade%flv = flv%anti ()
-    cascade%pdg = abs (flv%get_pdg ())
+    cascade%pdg = cascade%flv%get_pdg ()
     cascade%is_vector = flv%get_spin_type () == VECTOR
     cascade%m_min = flv%get_mass ()
     cascade%m_rea = cascade%m_min
@@ -8034,6 +9344,9 @@ number of times each particle appears as a resonance.
 We pack the PDG codes of the resonances in two arrays (s-channel and
 t-channel), sort them both, concatenate the results, transfer to
 [[i8]] integers, and compute the hash code from this byte stream.
+
+For t/u-channel, we remove the sign for antiparticles since this is not
+well-defined.
 <<Cascades: procedures>>=
   subroutine cascade_assign_resonance_hash (cascade)
     type(cascade_t), intent(inout) :: cascade
@@ -8041,7 +9354,7 @@ t-channel), sort them both, concatenate the results, transfer to
     cascade%res_hash = hash (transfer &
          (concat (sort (pack (cascade%tree_pdg, &
                               cascade%tree_resonant)), &
-                  sort (pack (cascade%tree_pdg, &
+                  sort (pack (abs (cascade%tree_pdg), &
                               cascade%tree_mapping == T_CHANNEL .or. &
                               cascade%tree_mapping == U_CHANNEL))), &
           mold))
@@ -9126,7 +10439,7 @@ prepare in addition a copy without the resonance.
     call cascade_init (cascade3, cascade1%depth + cascade2%depth + 1)
     cascade3%bincode = ior (cascade1%bincode, cascade2%bincode)
     cascade3%flv = flv%anti ()
-    cascade3%pdg = abs (cascade3%flv%get_pdg ())
+    cascade3%pdg = cascade3%flv%get_pdg ()
     cascade3%is_vector = flv%get_spin_type () == VECTOR
     cascade3%m_min = cascade1%m_min + cascade2%m_min
     cascade3%m_rea = flv%get_mass ()
@@ -9202,7 +10515,7 @@ prepare in addition a copy without the resonance.
     if (keep) then
        cascade3%on_shell = cascade3%resonant .or. cascade3%log_enhanced
        if (cascade3%resonant) then
-          cascade3%pdg = abs (cascade3%flv%get_pdg ())
+          cascade3%pdg = cascade3%flv%get_pdg ()
 	  if (cascade_set%keep_nonresonant) then
              allocate (cascade4)
              cascade4 = cascade3
@@ -9295,7 +10608,7 @@ cases and submitted for registration.
          .and. abs (cascade1%m_eff - cascade3%m_eff) &
                < cascade_set%m_threshold_t) &
          then
-       cascade3%pdg = abs (flv%get_pdg ())
+       cascade3%pdg = flv%get_pdg ()
        cascade3%log_enhanced = .true.
        cascade3%mapping = RADIATION
     end if
@@ -9956,283 +11269,23 @@ possibly be any phase space.
 @ %def phase_space_vanishes
 @
 \subsection{Return the resonance histories for subtraction}
-<<Cascades: public>>=
-  public :: resonance_contributors_t
-<<Cascades: types>>=
-  type :: resonance_contributors_t
-     integer, dimension(:), allocatable :: c
-  end type resonance_contributors_t
-
-@ %def resonance_contributors_t
-@
-<<Cascades: public>>=
-  public :: operator(==)
-<<Cascades: interfaces>>=
-  interface operator(==)
-    module procedure resonance_contributors_equal
-  end interface
-
-<<Cascades: procedures>>=
-  elemental function resonance_contributors_equal (c1, c2) result (equal)
-    logical :: equal
-    class(resonance_contributors_t), intent(in) :: c1, c2
-    equal = allocated (c1%c) .and. allocated (c2%c)
-    if (equal) equal = size (c1%c) == size (c2%c)
-    if (equal) equal = all (c1%c == c2%c)
-  end function resonance_contributors_equal
-
-@ %def resonance_contributors_equal
-@
+This appears to be essential (re-export of some imported assignment?)!
 <<Cascades: public>>=
   public :: assignment(=)
-<<Cascades: interfaces>>=
-  interface assignment(=)
-     module procedure resonance_contributors_assign
-  end interface
-
-<<Cascades: procedures>>=
-  pure subroutine resonance_contributors_assign (contributors_out, contributors_in)
-    type(resonance_contributors_t), intent(out) :: contributors_out
-    type(resonance_contributors_t), intent(in) :: contributors_in
-    if (allocated (contributors_in%c)) then
-       allocate (contributors_out%c (size (contributors_in%c)))
-       contributors_out%c = contributors_in%c
-    end if
-  end subroutine resonance_contributors_assign
-
-@ %def resonance_contributors_assign
 @
-Avoiding nameclash with similar but different [[resonance_t]] of
-[[phs_base]]:
-<<Cascades: public>>=
-  public :: resonance_info_t
-<<Cascades: types>>=
-  type :: resonance_info_t
-     type(flavor_t) :: flavor
-     type(resonance_contributors_t) :: contributors
-  contains
-   <<Cascades: resonance info: TBP>>
-  end type resonance_info_t
-
-@ %def resonance_info_t
-@
-<<Cascades: parameters>>=
-  integer, parameter :: n_max_resonances = 10
-<<Cascades: resonance info: TBP>>=
-  procedure :: write => resonance_info_write
+Extract the resonance set from a complete cascade.
+<<Cascades: cascade: TBP>>=
+  procedure :: extract_resonance_history => cascade_extract_resonance_history
 <<Cascades: procedures>>=
-  subroutine resonance_info_write (resonance, unit)
-    class(resonance_info_t), intent(in) :: resonance
-    integer, optional, intent(in) :: unit
-    integer :: u, i
-    u = given_output_unit (unit);  if (u < 0)  return
-    write (u, '(A)', advance='no') "Resonance contributors: "
-    do i = 1, size(resonance%contributors%c)
-       write (u, '(I0,1X)', advance='no') resonance%contributors%c(i)
-    end do
-    if (resonance%flavor%is_defined ()) call resonance%flavor%write (u)
-    write (u, '(A)')
-  end subroutine resonance_info_write
-
-@ %def resonance_info_write
-@
-<<Cascades: resonance info: TBP>>=
-  procedure :: init => resonance_info_init
-<<Cascades: procedures>>=
-  subroutine resonance_info_init (resonance, mom_id, pdg, model, n_out)
-    class(resonance_info_t), intent(out) :: resonance
-    integer, intent(in) :: mom_id, pdg, n_out
-    class(model_data_t), intent(in), target :: model
-    integer :: i
-    logical, dimension(n_out) :: contrib
-    integer, dimension(n_out) :: tmp
-    call msg_debug (D_PHASESPACE, "resonance_info_init")
-    do i = 1, n_out
-       tmp(i) = i
-    end do
-    contrib = btest (mom_id, tmp - 1)
-    allocate (resonance%contributors%c (count (contrib)))
-    resonance%contributors%c = pack (tmp, contrib)
-    call resonance%flavor%init (pdg, model)
-  end subroutine resonance_info_init
-
-@ %def resonance_info_init
-@ With each resonance region we associate a Breit-Wigner function
-\begin{equation*}
-  P = \frac{M_{res}^4}{(s - M_{res}^2)^2 + \Gamma_{res}^2 M_{res}^2},
-\end{equation*}
-where $s$ denotes the invariant mass of the outgoing momenta originating
-from this resonance. Note that the $M_{res}^4$ in the nominator makes
-the mapping a dimensionless quantity.
-<<Cascades: resonance info: TBP>>=
-  procedure :: mapping => resonance_info_mapping
-<<Cascades: procedures>>=
-  function resonance_info_mapping (resonance, s) result (bw)
-    real(default) :: bw
-    class(resonance_info_t), intent(in) :: resonance
-    real(default), intent(in) :: s
-    real(default) :: m, gamma
-    if (resonance%flavor%is_defined ()) then
-       m = resonance%flavor%get_mass ()
-       gamma = resonance%flavor%get_width ()
-       bw = m**4 / ((s - m**2)**2 + gamma**2 * m**2)
-    else
-       bw = one
-    end if
-  end function resonance_info_mapping
-
-@ %def resonance_info_mapping
-@
-<<Cascades: interfaces>>=
-  interface operator(==)
-     module procedure resonance_info_equal
-     module procedure resonance_history_equal
-  end interface
-<<Cascades: public>>=
-  public :: operator(>)
-<<Cascades: interfaces>>=
-  interface operator(>)
-     module procedure resonance_history_contains
-  end interface
-<<Cascades: procedures>>=
-  elemental function resonance_info_equal (r1, r2) result (equal)
-    logical :: equal
-    class(resonance_info_t), intent(in) :: r1, r2
-    equal = r1%flavor == r2%flavor .and. r1%contributors == r2%contributors
-  end function resonance_info_equal
-
-@ %def resonance_info_equal
-<<Cascades: procedures>>=
-  elemental function resonance_history_equal (rh1, rh2) result (equal)
-    logical :: equal
-    class(resonance_history_t), intent(in) :: rh1, rh2
-    integer :: i
-    equal = .false.
-    if (rh1%n_resonances == rh2%n_resonances) then
-       if (size (rh1%resonances) == size (rh2%resonances)) then
-          do i = 1, rh1%n_resonances
-             if (.not. rh1%resonances(i) == rh2%resonances(i)) then
-                return
-             end if
-          end do
-          equal = .true.
-       end if
-    end if
-  end function resonance_history_equal
-
-@ %def resonance_history_equal
-@
-<<Cascades: procedures>>=
-  elemental function resonance_history_contains (rh1, rh2) result (is_sub_res)
-    logical :: is_sub_res
-    class(resonance_history_t), intent(in) :: rh1, rh2
-    integer :: i_res
-    is_sub_res = .false.
-    if (rh1%n_resonances > rh2%n_resonances) then
-       do i_res = 1, rh1%n_resonances
-          is_sub_res = is_sub_res .or. any (rh1%resonances(i_res) == rh2%resonances)
-       end do
-    end if
-  end function resonance_history_contains
-
-@ %def resonance_history_contains
-@ A resonance history is determined by the set of [[resonances]].
-<<Cascades: public>>=
-  public :: resonance_history_t
-<<Cascades: types>>=
-  type :: resonance_history_t
-     type(resonance_info_t), dimension(:), allocatable :: resonances
-     integer :: n_resonances = 0
-  contains
-   <<Cascades: resonance history: TBP>>
-  end type resonance_history_t
-
-@ %def resonance_history_t
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: write => resonance_history_write
-<<Cascades: procedures>>=
-  subroutine resonance_history_write (res_hist, unit)
-    class(resonance_history_t), intent(in) :: res_hist
-    integer, optional, intent(in) :: unit
-    integer :: u, i
-    u = given_output_unit (unit);  if (u < 0)  return
-    write(u, '(A,I0,A)') "Resonance history with ", &
-         res_hist%n_resonances, " resonances:"
-    do i = 1, res_hist%n_resonances
-       call res_hist%resonances(i)%write (u)
-    end do
-  end subroutine resonance_history_write
-
-@ %def resonance_history_write
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: add_resonance => resonance_history_add_resonance
-<<Cascades: procedures>>=
-  subroutine resonance_history_add_resonance (res_hist, resonance)
-    class(resonance_history_t), intent(inout) :: res_hist
-    type(resonance_info_t), intent(in) :: resonance
-    type(resonance_info_t), dimension(:), allocatable :: tmp
-    logical :: create_new_array, extend_array
-    call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
-    res_hist%n_resonances = res_hist%n_resonances + 1
-    create_new_array = .not. allocated (res_hist%resonances)
-    extend_array = .false.
-    if (.not. create_new_array) &
-       extend_array = res_hist%n_resonances > size (res_hist%resonances)
-    if (create_new_array .or. extend_array) then
-       if (extend_array) then
-          call copy (tmp, res_hist%resonances)
-          deallocate (res_hist%resonances)
-       end if
-       call copy (res_hist%resonances, tmp)
-    end if
-    res_hist%resonances(res_hist%n_resonances) = resonance
-    call msg_debug (D_PHASESPACE, "res_hist%n_resonances", res_hist%n_resonances)
-  contains
-    pure subroutine copy (A,B)
-      type(resonance_info_t), dimension(:), allocatable, intent(inout) :: A, B
-      integer :: i
-      allocate (A (res_hist%n_resonances + n_max_resonances))
-      do i = 1, res_hist%n_resonances - 1
-         A(i) = B(i)
-      end do
-    end subroutine copy
-  end subroutine resonance_history_add_resonance
-
-@ %def resonance_history_add_resonance
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: remove_resonance => resonance_history_remove_resonance
-<<Cascades: procedures>>=
-  subroutine resonance_history_remove_resonance (res_hist, i_res)
-    class(resonance_history_t), intent(inout) :: res_hist
-    integer, intent(in) :: i_res
-    integer :: i
-    res_hist%n_resonances = res_hist%n_resonances - 1
-    if (res_hist%n_resonances == 0) then
-       deallocate (res_hist%resonances)
-    else
-       do i = i_res + 1, size (res_hist%resonances)
-          res_hist%resonances (i - 1) = res_hist%resonances (i)
-       end do
-    end if
-  end subroutine resonance_history_remove_resonance
-
-@ %def resonance_history_remove_resonance
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: of_cascade => resonance_history_of_cascade
-<<Cascades: procedures>>=
-  !pure
-  subroutine resonance_history_of_cascade (res_hist, cascade, model, n_out)
-    class(resonance_history_t), intent(out) :: res_hist
-    type(cascade_t), intent(in), target :: cascade
+  subroutine cascade_extract_resonance_history &
+       (cascade, res_hist, model, n_out)
+    class(cascade_t), intent(in), target :: cascade
+    type(resonance_history_t), intent(out) :: res_hist
     class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_out
     type(resonance_info_t) :: resonance
     integer :: i, mom_id, pdg
-    call msg_debug2 (D_PHASESPACE, "resonance_history_of_cascade")
+    call msg_debug2 (D_PHASESPACE, "cascade_extract_resonance_history")
     if (cascade%n_resonances > 0) then
        if (cascade%has_children) then
           call msg_debug2 (D_PHASESPACE, "cascade has resonances and children")
@@ -10250,99 +11303,9 @@ the mapping a dimensionless quantity.
           end do
        end if
     end if
-  end subroutine resonance_history_of_cascade
+  end subroutine cascade_extract_resonance_history
 
-@ %def resonance_history_of_cascade
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: add_offset => resonance_history_add_offset
-<<Cascades: procedures>>=
-  subroutine resonance_history_add_offset (res_hist, n)
-    class(resonance_history_t), intent(inout) :: res_hist
-    integer, intent(in) :: n
-    integer :: i_res
-    do i_res = 1, res_hist%n_resonances
-       associate (contributors => res_hist%resonances(i_res)%contributors%c)
-          contributors = contributors + n
-       end associate
-    end do
-  end subroutine resonance_history_add_offset
-
-@ %def resonance_history_add_offset
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: contains_leg => resonance_history_contains_leg
-<<Cascades: procedures>>=
-  function resonance_history_contains_leg (res_hist, i_leg) result (val)
-    logical :: val
-    class(resonance_history_t), intent(in) :: res_hist
-    integer, intent(in) :: i_leg
-    integer :: i_res
-    val = .false.
-    do i_res = 1, res_hist%n_resonances
-       if (any (res_hist%resonances(i_res)%contributors%c == i_leg)) then
-          val = .true.
-          exit
-       end if
-    end do
-  end function resonance_history_contains_leg
-
-@ %def resoance_history_contains_leg
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: mapping => resonance_history_mapping
-<<Cascades: procedures>>=
-  function resonance_history_mapping (res_hist, p, i_gluon) result (p_map)
-    real(default) :: p_map
-    class(resonance_history_t), intent(in) :: res_hist
-    type(vector4_t), intent(in), dimension(:) :: p
-    integer, intent(in), optional :: i_gluon
-    integer :: i_res
-    real(default) :: s
-    p_map = one
-    do i_res = 1, res_hist%n_resonances
-       associate (res => res_hist%resonances(i_res))
-          s = compute_resonance_mass (p, res%contributors%c, i_gluon)**2
-          p_map = p_map * res%mapping (s)
-       end associate
-    end do
-  end function resonance_history_mapping
-
-@ %def resonance_history_mapping
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: only_has_n_contributors => resonance_history_only_has_n_contributors
-<<Cascades: procedures>>=
-  function resonance_history_only_has_n_contributors (res_hist, n) result (value)
-    logical :: value
-    class(resonance_history_t), intent(in) :: res_hist
-    integer, intent(in) :: n
-    integer :: i_res
-    value = .true.
-    do i_res = 1, res_hist%n_resonances
-       associate (res => res_hist%resonances(i_res))
-          value = value .and. size (res%contributors%c) == n
-       end associate
-    end do
-  end function resonance_history_only_has_n_contributors
-
-@ %def resonance_history_only_has_n_contributors
-@
-<<Cascades: resonance history: TBP>>=
-  procedure :: has_flavor => resonance_history_has_flavor
-<<Cascades: procedures>>=
-  function resonance_history_has_flavor (res_hist, flv) result (has_flv)
-    logical :: has_flv
-    class(resonance_history_t), intent(in) :: res_hist
-    type(flavor_t), intent(in) :: flv
-    integer :: i
-    has_flv = .false.
-    do i = 1, res_hist%n_resonances
-       has_flv = has_flv .or. res_hist%resonances(i)%flavor == flv
-    end do
-  end function resonance_history_has_flavor
-
-@ %def resonance_history_has_flavor
+@ %def cascade_extract_resonance_history
 @
 <<Cascades: public>>=
   public :: cascade_set_get_n_trees
@@ -10369,6 +11332,8 @@ the mapping a dimensionless quantity.
   end function cascade_set_get_n_trees
 
 @ %def cascade_set_get_n_trees
+@ Distill the set of resonance histories from the cascade set.  The
+result is an array which contains each valid history exactly once.
 <<Cascades: public>>=
   public :: cascade_set_get_resonance_histories
 <<Cascades: procedures>>=
@@ -10379,49 +11344,30 @@ the mapping a dimensionless quantity.
     type(resonance_history_t), dimension(:), allocatable :: tmp
     type(cascade_t), pointer :: cascade
     type(resonance_history_t) :: res_hist
+    type(resonance_history_set_t) :: res_hist_set
     integer :: grove, i, n_hists
     logical :: included, add_to_list
     call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")
-    n_hists = 0
-    allocate (tmp (cascade_set_get_n_trees (cascade_set)))
+    call res_hist_set%init (n_filter = n_filter)
     do grove = 1, cascade_set%n_groves
        cascade => cascade_set%first_k
        do while (associated (cascade))
           if (cascade%active .and. cascade%complete) then
              if (cascade%grove == grove) then
                 call msg_debug2 (D_PHASESPACE, "grove", grove)
-                call res_hist%of_cascade (cascade, cascade_set%model, cascade_set%n_out)
-                if (res_hist%n_resonances > 0) then
-                   included = .false.
-                   call msg_debug (D_PHASESPACE, "Checking if res_hist is already included")
-                   do i = 1, n_hists
-                      included = tmp (i) == res_hist
-                      if (included) then
-                         exit
-                      end if
-                   end do
-                   call msg_debug (D_PHASESPACE, "included", included)
-                   add_to_list = .not. included
-                   if (present (n_filter)) &
-                      add_to_list = add_to_list &
-                         .and. res_hist%only_has_n_contributors (n_filter)
-                   if (add_to_list) then
-                      n_hists = n_hists + 1
-                      tmp(n_hists) = res_hist
-                   end if
-                end if
+		call cascade%extract_resonance_history &
+                     (res_hist, cascade_set%model, cascade_set%n_out)
+                call res_hist_set%enter (res_hist)
              end if
           end if
           cascade => cascade%next
        end do
     end do
-    allocate (res_hists (n_hists))
-    do i = 1, n_hists
-       res_hists(i) = tmp(i)
-    end do
+    call res_hist_set%to_array (res_hists)
   end subroutine cascade_set_get_resonance_histories
 
 @ %def cascade_set_get_resonance_histories
+@  
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[cascades_ut.f90]]>>=
@@ -10453,6 +11399,7 @@ module cascades_uti
   use flavors
   use model_data
   use phs_forests, only: phs_parameters_t
+  use resonances, only: resonance_history_t
 
   use cascades
 
@@ -10626,6 +11573,7 @@ module phs_wood
   use sf_base
   use phs_base
   use mappings
+  use resonances, only: resonance_history_t
   use phs_forests
   use cascades
 
@@ -10944,6 +11892,20 @@ object may become \emph{really} large.
   end subroutine phs_wood_config_clear_phase_space
 
 @ %def phs_wood_config_clear_phase_space
+@
+Extract the set of resonance histories
+<<PHS wood: phs wood config: TBP>>=
+  procedure :: extract_resonance_histories &
+       => phs_wood_config_extract_resonance_histories
+<<PHS wood: procedures>>=
+  subroutine phs_wood_config_extract_resonance_histories (phs_config, res_hist)
+    class(phs_wood_config_t), intent(in) :: phs_config
+    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hist
+    call phs_config%forest%extract_resonance_histories (res_hist)
+  end subroutine phs_wood_config_extract_resonance_histories
+
+@ %def phs_wood_config_extract_resonance_histories
+
 @
 \subsection{Phase-space configuration}
 We read the phase-space configuration from the stored I/O unit.  If
@@ -12428,11 +13390,13 @@ module phs_fks
   use sf_mappings
   use sf_base
   use phs_base
+  use resonances, only: resonance_contributors_t, resonance_history_t
+  use phs_forests, only: phs_forest_final
   use phs_wood
   use cascades
   use process_constants
   use process_libraries
-  use ttv_formfactors, only: generate_on_shell_decay_threshold
+  use ttv_formfactors, only: generate_on_shell_decay_threshold, m1s_to_mpole
 
 <<Standard module head>>
 
@@ -12560,7 +13524,7 @@ end module phs_fks
     class(phs_point_set_t), intent(in) :: phs_point_set
     integer, intent(in) :: i_phs
     allocate (p (phs_point_set%phs_point(i_phs)%n_momenta), &
-       source = phs_point_set%phs_point(i_phs)%p)
+         source = phs_point_set%phs_point(i_phs)%p)
   end function phs_point_set_get_momenta
 
 @ %def phs_point_set_get_momenta
@@ -12588,6 +13552,20 @@ end module phs_fks
   end function phs_point_set_get_energy
 
 @ %def phs_point_set_get_energy
+@
+<<phs fks: phs point set: TBP>>=
+  procedure :: get_sqrts => phs_point_set_get_sqrts
+<<phs fks: procedures>>=
+  function phs_point_set_get_sqrts (phs_point_set, i_phs) result (sqrts)
+    real(default) :: sqrts
+    class(phs_point_set_t), intent(in) :: phs_point_set
+    integer, intent(in) :: i_phs
+    associate (p => phs_point_set%phs_point(i_phs)%p)
+       sqrts = (p(1) + p(2))**1
+    end associate
+  end function phs_point_set_get_sqrts
+
+@ %def phs_point_set_get_sqrts
 @
 <<phs fks: phs point set: TBP>>=
   generic :: set_momenta => set_momenta_p, set_momenta_phs_point
@@ -12722,7 +13700,6 @@ end module phs_fks
     real(default), dimension(:), allocatable :: jac_rand
     real(default), dimension(:), allocatable :: y_soft
     real(default) :: cms_energy2
-    type(vector4_t), dimension(:), allocatable :: k_perp
     type(vector4_t), dimension(:), allocatable :: xi_ref_momenta
   contains
   <<phs fks: real kinematics: TBP>>
@@ -12744,7 +13721,6 @@ end module phs_fks
     call r%p_real_cms%init (n_tot, n_phs)
     call r%p_real_lab%init (n_tot, n_phs)
     allocate (r%jac (n_phs), r%jac_rand (n_phs))
-    allocate (r%k_perp (n_tot))
     allocate (r%alr_to_i_phs (n_alr))
     allocate (r%xi_ref_momenta (n_contr))
     r%alr_to_i_phs = 0
@@ -12795,7 +13771,12 @@ end module phs_fks
   end subroutine real_kinematics_write
 
 @ %def real_kinematics_write
-@
+@ The boost to the center-of-mass system only has a reasonable meaning
+above the threshold. Below the threshold, we do not apply boost at all, so
+that the top quarks stay in the rest frame. However, with top quarks exactly
+at rest, problems arise in the matrix elements (e.g. in the computation
+of angles). Therefore, we apply a boost which is not exactly 1, but has a
+tiny value differing from that.
 <<phs fks: public>>=
   public :: get_boost_for_threshold_projection
 <<phs fks: procedures>>=
@@ -12805,9 +13786,14 @@ end module phs_fks
     real(default), intent(in) :: sqrts, mtop
     type(vector4_t) :: p_tmp
     type(vector3_t) :: dir
-    real(default) :: scale_factor
+    real(default) :: scale_factor, arg
     p_tmp = p(THR_POS_WP) + p(THR_POS_B)
-    scale_factor = sqrt (sqrts**2 - 4 * mtop**2) / two
+    arg = sqrts**2 - four * mtop**2
+    if (arg > zero) then
+       scale_factor = sqrt (arg) / two
+    else
+       scale_factor = tiny_07*1000
+    end if
     dir = scale_factor * create_unit_vector (p_tmp)
     p_tmp = [sqrts / two, dir%p]
     L = boost (p_tmp, mtop)
@@ -12909,16 +13895,22 @@ end module phs_fks
     type(vector4_t), intent(in), dimension(:) :: p_in
     type(vector4_t), intent(out), dimension(:) :: p_onshell
     type(vector4_t), dimension(3) :: k_decay_onshell
+    type(vector4_t) :: p_tmp_1, p_tmp_2
+    type(lorentz_transformation_t) :: L_to_cms_inv
     p_onshell(1:2) = p_in(1:2)
+    L_to_cms_inv = inverse (L_to_cms)
+    p_tmp_1 = L_to_cms_inv * p_in(THR_POS_B)
+    p_tmp_2 = L_to_cms_inv * p_in(THR_POS_WP)
     k_decay_onshell = create_two_particle_decay (mtop**2, &
-         p_in(THR_POS_B), p_in(THR_POS_WP))
+         p_tmp_1, p_tmp_2)
     p_onshell([THR_POS_B, THR_POS_WP]) = k_decay_onshell([2, 3])
+    p_tmp_1 = L_to_cms * p_in(THR_POS_BBAR)
+    p_tmp_2 = L_to_cms * p_in(THR_POS_WM)
     k_decay_onshell = create_two_particle_decay (mtop**2, &
-         p_in(THR_POS_BBAR), p_in(THR_POS_WM))
+         p_tmp_1, p_tmp_2)
     p_onshell([THR_POS_BBAR, THR_POS_WM]) = k_decay_onshell([2, 3])
-    p_onshell (3:6) = L_to_cms * p_onshell (3:6)
-    call vector4_invert_direction (p_onshell (THR_POS_WM))
-    call vector4_invert_direction (p_onshell (THR_POS_BBAR))
+    p_onshell([THR_POS_WP, THR_POS_B]) = L_to_cms * p_onshell([THR_POS_WP, THR_POS_B])
+    p_onshell([THR_POS_WM, THR_POS_BBAR]) = L_to_cms_inv * p_onshell([THR_POS_WM, THR_POS_BBAR])
   end subroutine threshold_projection_born
 
 @ %def threshold_projection_born
@@ -12989,44 +13981,6 @@ four-momentum of the emitter.
   integer, parameter, public :: FSR_MASSIVE = 2
   integer, parameter, public :: FSR_MASSLESS_RECOILER = 3
 @ %def FSR_SIMPLE FSR_MASSIVE FSR_MASSLESS_RECOILER
-@ Another container for the $x_\oplus$- and $x_\ominus$-values for
-initial-state phase spaces.
-<<phs fks: real kinematics: TBP>>=
-  procedure :: compute_k_perp_isr => real_kinematics_compute_k_perp_isr
-<<phs fks: procedures>>=
-  subroutine real_kinematics_compute_k_perp_isr (real_kin, emitter)
-    class(real_kinematics_t), intent(inout) :: real_kin
-    integer, intent(in) :: emitter
-    associate (k => real_kin%k_perp(emitter))
-       k%p(0) = zero
-       k%p(1) = cos(real_kin%phi)
-       k%p(2) = sin(real_kin%phi)
-       k%p(3) = zero
-    end associate
-  end subroutine real_kinematics_compute_k_perp_isr
-
-@ %def real_kinematics_compute_k_perp_isr
-@
-<<phs fks: real kinematics: TBP>>=
-  procedure :: compute_k_perp_fsr => real_kinematics_compute_k_perp_fsr
-<<phs fks: procedures>>=
-  subroutine real_kinematics_compute_k_perp_fsr (real_kin, emitter)
-    class(real_kinematics_t), intent(inout) :: real_kin
-    integer, intent(in) :: emitter
-    type(vector3_t) :: vec
-    type(lorentz_transformation_t) :: rot
-    associate (p => real_kin%p_born_cms%phs_point(1)%p(emitter), k => real_kin%k_perp(emitter))
-       vec = p%p(1:3) / p%p(0)
-       k%p(0) = zero
-       k%p(1) = p%p(1); k%p(2) = p%p(2)
-       k%p(3) = - (p%p(1)**2 + p%p(2)**2) / p%p(3)
-       rot = rotation (cos(real_kin%phi), sin(real_kin%phi), vec)
-       k = rot * k
-       k%p(1:3) = k%p(1:3) / space_part_norm (k)
-    end associate
-  end subroutine real_kinematics_compute_k_perp_fsr
-
-@ %def real_kinematics_compute_k_perp_fsr
 @
 <<phs fks: real kinematics: TBP>>=
   procedure :: final => real_kinematics_final
@@ -13038,7 +13992,6 @@ initial-state phase spaces.
     if (allocated (real_kin%alr_to_i_phs)) deallocate (real_kin%alr_to_i_phs)
     if (allocated (real_kin%jac_rand)) deallocate (real_kin%jac_rand)
     if (allocated (real_kin%y_soft)) deallocate (real_kin%y_soft)
-    if (allocated (real_kin%k_perp)) deallocate (real_kin%k_perp)
     if (allocated (real_kin%xi_ref_momenta)) deallocate (real_kin%xi_ref_momenta)
     call real_kin%p_born_cms%final (); call real_kin%p_born_lab%final ()
     call real_kin%p_real_cms%final (); call real_kin%p_real_lab%final ()
@@ -13063,6 +14016,7 @@ initial-state phase spaces.
   type, extends (phs_wood_config_t) :: phs_fks_config_t
     integer :: mode = PHS_MODE_UNDEFINED
     character(32) :: md5sum_born_config
+    logical :: make_dalitz_plot = .false.
   contains
   <<phs fks: fks config: TBP>>
   end type phs_fks_config_t
@@ -13244,6 +14198,84 @@ be assured that Born flavors are used for this.
 
 @ %def phs_fks_config_get_resonance_histories
 @
+<<phs fks: public>>=
+  public :: dalitz_plot_t
+<<phs fks: types>>=
+  type :: dalitz_plot_t
+     integer :: unit = -1
+     type(string_t) :: filename
+     logical :: active = .false.
+     logical :: inverse = .false.
+  contains
+  <<phs fks: dalitz plot: TBP>>
+  end type dalitz_plot_t
+
+@ %def dalitz_plot_t
+@
+<<phs fks: dalitz plot: TBP>>=
+  procedure :: init => dalitz_plot_init
+<<phs fks: procedures>>=
+  subroutine dalitz_plot_init (plot, unit, filename, inverse)
+    class(dalitz_plot_t), intent(inout) :: plot
+    integer, intent(in) :: unit
+    type(string_t), intent(in) :: filename
+    logical, intent(in) :: inverse
+    plot%active = .true.
+    plot%unit = unit
+    plot%inverse = inverse
+    open (plot%unit, file = char (filename), action = "write")
+  end subroutine dalitz_plot_init
+
+@ %def daltiz_plot_init
+@
+<<phs fks: dalitz plot: TBP>>=
+  procedure :: write_header => dalitz_plot_write_header
+<<phs fks: procedures>>=
+  subroutine dalitz_plot_write_header (plot)
+    class(dalitz_plot_t), intent(in) :: plot
+    write (plot%unit, "(A36)") "### Dalitz plot generated by WHIZARD"
+    if (plot%inverse) then
+       write (plot%unit, "(A10,1x,A4)") "### k0_n+1", "k0_n"
+    else
+       write (plot%unit, "(A8,1x,A6)") "### k0_n", "k0_n+1"
+    end if
+  end subroutine dalitz_plot_write_header
+
+@ %def dalitz_plot_write_header
+@
+<<phs fks: dalitz plot: TBP>>=
+  procedure :: register => dalitz_plot_register
+<<phs fks: procedures>>=
+  subroutine dalitz_plot_register (plot, k0_n, k0_np1)
+    class(dalitz_plot_t), intent(in) :: plot
+    real(default), intent(in) :: k0_n, k0_np1
+    if (plot%inverse) then
+       write (plot%unit, "(F8.4,1X,F8.4)") k0_np1, k0_n
+    else
+       write (plot%unit, "(F8.4,1X,F8.4)") k0_np1, k0_n
+    end if
+  end subroutine dalitz_plot_register
+
+@ %def dalitz_plot_register
+@
+<<phs fks: dalitz plot: TBP>>=
+  procedure :: final => dalitz_plot_final
+<<phs fks: procedures>>=
+  subroutine dalitz_plot_final (plot)
+    class(dalitz_plot_t), intent(inout) :: plot
+    logical :: opened
+    plot%active = .false.
+    plot%inverse = .false.
+    if (plot%unit >= 0) then
+       inquire (unit = plot%unit, opened = opened)
+       if (opened) close (plot%unit)
+    end if
+    plot%filename = var_str ('')
+    plot%unit = -1
+  end subroutine dalitz_plot_final
+
+@ %def dalitz_plot_final
+@
 <<phs fks: parameters>>=
   integer, parameter, public :: GEN_REAL_PHASE_SPACE = 1
   integer, parameter, public :: GEN_SOFT_MISMATCH = 2
@@ -13259,6 +14291,33 @@ be assured that Born flavors are used for this.
   real(default), parameter :: y_test_coll = 0.999_default
 
 @
+@ Very soft or collinear phase-space points can become a problem for
+matrix elements providers, as some scalar products cannot be evaluated
+properly. Here, a nonsensical result can spoil the whole integration.
+We therefore check the scalar products appearing to be below a certain
+tolerance.
+<<phs fks: public>>=
+  public :: check_scalar_products
+<<phs fks: procedures>>=
+  function check_scalar_products (p) result (valid)
+    logical :: valid
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), parameter :: tolerance = 1E-6_default
+    integer :: i, j
+    valid = .true.
+    do i = 1, size (p)
+       do j = i, size (p)
+          if (i /= j) then
+             if (abs(p(i) * p(j)) < tolerance) then
+                valid = .false.
+                exit
+             end if
+          end if
+       end do
+    end do
+  end function check_scalar_products
+
+@ %def check_scalar_products
 @ [[xi_min]] should be set to a non-zero value in order to avoid
 phase-space points with [[p_real(emitter) = 0]].
 <<phs fks: public>>=
@@ -13286,6 +14345,7 @@ phase-space points with [[p_real(emitter) = 0]].
   end type phs_fks_generator_t
 
 @ %def phs_fks_generator_t
+@
 <<phs fks: phs fks generator: TBP>>=
   procedure :: connect_kinematics => phs_fks_generator_connect_kinematics
 <<phs fks: procedures>>=
@@ -13329,6 +14389,26 @@ phase-space points with [[p_real(emitter) = 0]].
   end subroutine phs_fks_generator_compute_isr_kinematics
 
 @ %def phs_fks_generator_compute_isr_kinematics
+@
+<<phs fks: phs fks generator: TBP>>=
+  procedure :: final => phs_fks_generator_final
+<<phs fks: procedures>>=
+  subroutine phs_fks_generator_final (generator)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    if (allocated (generator%emitters)) deallocate (generator%emitters)
+    if (associated (generator%real_kinematics)) nullify (generator%real_kinematics)
+    if (associated (generator%isr_kinematics)) nullify (generator%isr_kinematics)
+    if (allocated (generator%m2)) deallocate (generator%m2)
+    generator%massive_phsp = .false.
+    if (allocated (generator%is_massive)) deallocate (generator%is_massive)
+    generator%singular_jacobian = .false.
+    generator%i_fsr_first = -1
+    if (allocated (generator%resonance_contributors)) &
+           deallocate (generator%resonance_contributors)
+    generator%mode = GEN_REAL_PHASE_SPACE
+  end subroutine phs_fks_generator_final
+
+@ %def phs_fks_generator_final
 @ A resonance phase space is uniquely specified via the resonance contributors and the
 corresponding emitters. The [[phs_identifier]] type also checks whether
 the given contributor-emitter configuration has already been evaluated to
@@ -13885,13 +14965,13 @@ recoiling momenta.
   procedure :: generate_fsr_default => phs_fks_generator_generate_fsr_default
 <<phs fks: procedures>>=
   subroutine phs_fks_generator_generate_fsr_default (generator, emitter, i_phs, &
-     p_born, p_real, xi_y_phi)
-    !!! Important: Momenta must be input in the center-of-mass frame
+     p_born, p_real, xi_y_phi, no_jacobians)
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: emitter, i_phs
     type(vector4_t), intent(in), dimension(:) :: p_born
     type(phs_point_t), intent(inout) :: p_real
     real(default), intent(in), dimension(3), optional :: xi_y_phi
+    logical, intent(in), optional :: no_jacobians
     real(default) :: q0
 
     call generator%generate_fsr_in (p_born, p_real)
@@ -13902,7 +14982,8 @@ recoiling momenta.
     end if
 
     generator%i_fsr_first = generator%n_in + 1
-    call generator%generate_fsr_out (emitter, i_phs, p_born, p_real, q0, xi_y_phi = xi_y_phi)
+    call generator%generate_fsr_out (emitter, i_phs, p_born, p_real, q0, &
+         xi_y_phi = xi_y_phi, no_jacobians = no_jacobians)
     if (debug_active (D_PHASESPACE)) then
        call vector4_check_momentum_conservation (p_real%p, generator%n_in, &
            rel_smallness = 1000 * tiny_07, abs_smallness = tiny_07)
@@ -13915,13 +14996,14 @@ recoiling momenta.
   procedure :: generate_fsr_resonances => phs_fks_generator_generate_fsr_resonances
 <<phs fks: procedures>>=
   subroutine phs_fks_generator_generate_fsr_resonances (generator, &
-       emitter, i_phs, i_con, p_born, p_real, xi_y_phi)
+       emitter, i_phs, i_con, p_born, p_real, xi_y_phi, no_jacobians)
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: emitter, i_phs
     integer, intent(in) :: i_con
     type(vector4_t), intent(in), dimension(:) :: p_born
     type(phs_point_t), intent(inout) :: p_real
     real(default), intent(in), dimension(3), optional :: xi_y_phi
+    logical, intent(in), optional :: no_jacobians
     integer, dimension(:), allocatable :: resonance_list
     integer, dimension(size(p_born)) :: inv_resonance_list
     type(vector4_t), dimension(:), allocatable :: p_tmp_born
@@ -14030,6 +15112,7 @@ recoiling momenta.
     real(default) :: q0
     type(lorentz_transformation_t) :: boost_to_top
     integer :: leg, other_leg
+    real(default) :: sqrts, mtop
     call msg_debug2 (D_PHASESPACE, "phs_fks_generator_generate_fsr_resonances")
     nlegborn = size (p_born); nlegreal = nlegborn + 1
 
@@ -14043,7 +15126,13 @@ recoiling momenta.
     p_top = generator%real_kinematics%xi_ref_momenta(leg)
 
     q0 = p_top**1
-    boost_to_top = inverse (boost (p_top, q0))
+    sqrts = two * p_born(1)%p(0)
+    mtop = m1s_to_mpole (sqrts)
+    if (sqrts**2 - four * mtop**2 > zero) then
+       boost_to_top = inverse (boost (p_top, q0))
+    else
+       boost_to_top = identity
+    end if
     p_tmp_born = boost_to_top * p_tmp_born
 
     generator%i_fsr_first = 1
@@ -14080,7 +15169,7 @@ recoiling momenta.
   procedure :: generate_fsr_out => phs_fks_generator_generate_fsr_out
 <<phs fks: procedures>>=
   subroutine phs_fks_generator_generate_fsr_out (generator, &
-      emitter, i_phs, p_born, p_real, q0, p_emitter_index, xi_y_phi)
+      emitter, i_phs, p_born, p_real, q0, p_emitter_index, xi_y_phi, no_jacobians)
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: emitter, i_phs
     type(vector4_t), intent(in), dimension(:) :: p_born
@@ -14088,6 +15177,7 @@ recoiling momenta.
     real(default), intent(in) :: q0
     integer, intent(in), optional :: p_emitter_index
     real(default), intent(in), dimension(3), optional :: xi_y_phi
+    logical, intent(in), optional :: no_jacobians
     real(default) :: xi, y, phi
     integer :: nlegborn, nlegreal
     real(default) :: uk_np1, uk_n
@@ -14096,10 +15186,12 @@ recoiling momenta.
     real(default) :: uk_n_born, uk, k2, k0_n
     real(default) :: cpsi, beta
     type(vector3_t) :: vec, vec_orth
-    type(lorentz_transformation_t) :: rot, lambda
-    integer :: i
-    integer :: p_em
+    type(lorentz_transformation_t) :: rot
+    integer :: i, p_em
+    logical :: compute_jac
     p_em = emitter; if (present (p_emitter_index)) p_em = p_emitter_index
+    compute_jac = .true.
+    if (present (no_jacobians)) compute_jac = .not. no_jacobians
     if (generator%i_fsr_first < 0) &
        call msg_fatal ("FSR generator is called for outgoing particles but "&
           &"i_fsr_first is not set!")
@@ -14125,10 +15217,10 @@ recoiling momenta.
     uk_n_born = k_n_born**1
 
     generator%mrec2 = (q0 - p_born(p_em)%p(0))**2 &
-       - space_part_norm(p_born(p_em))**2
+         - space_part_norm(p_born(p_em))**2
     if (generator%is_massive(emitter)) then
-       call generator%compute_emitter_kinematics &
-          (y, emitter, i_phs, q0, k0_n, uk_n, uk)
+       call generator%compute_emitter_kinematics (y, emitter, &
+            i_phs, q0, k0_n, uk_n, uk, compute_jac)
     else
        call generator%compute_emitter_kinematics (y, q0, uk_n, uk)
        generator%real_kinematics%y_soft(i_phs) = y
@@ -14157,7 +15249,7 @@ recoiling momenta.
     rot = rotation (cpsi, sqrt (one - cpsi**2), vec_orth)
     p_real%p(nlegreal) = rot * p_real%p(nlegreal)
     call construct_recoiling_momenta ()
-    call compute_jacobians ()
+    if (compute_jac) call compute_jacobians ()
 
   contains
 
@@ -14207,11 +15299,12 @@ is
 \end{equation*}
 <<phs fks: generator generate fsr out procedures>>=
   subroutine construct_recoiling_momenta ()
+    type(lorentz_transformation_t) :: lambda
     k_rec0 = q0 - p_real%p(p_em)%p(0) - p_real%p(nlegreal)%p(0)
     uk_rec = sqrt (k_rec0**2 - generator%mrec2)
     if (generator%is_massive(emitter)) then
        beta = compute_beta (q0**2, k_rec0, uk_rec, &
-          p_born(p_em)%p(0), uk_n_born)
+              p_born(p_em)%p(0), uk_n_born)
     else
        beta = compute_beta (q0**2, k_rec0, uk_rec)
     end if
@@ -14236,7 +15329,7 @@ $\xi$.
   subroutine compute_jacobians ()
     associate (jac => generator%real_kinematics%jac(i_phs))
        if (generator%is_massive(emitter)) then
-          jac%jac(1) = jac%jac(1) * 4 / q0 / uk_n_born / xi
+          jac%jac(1) = jac%jac(1) * four / q0 / uk_n_born / xi
        else
           k2 = two * uk_n * uk_np1* (one - y)
           jac%jac(1) = uk_n**2 / uk_n_born / (uk_n - k2 / (two * q0))
@@ -14251,21 +15344,25 @@ $\xi$.
 <<phs fks: phs fks: TBP>>=
   procedure :: generate_fsr => phs_fks_generate_fsr
 <<phs fks: procedures>>=
-  subroutine phs_fks_generate_fsr (phs, emitter, i_phs, p_real, i_con, xi_y_phi)
+  subroutine phs_fks_generate_fsr (phs, emitter, i_phs, p_real, i_con, &
+         xi_y_phi, no_jacobians)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: emitter, i_phs
     type(phs_point_t), intent(inout) :: p_real
     integer, intent(in), optional :: i_con
     real(default), intent(in), dimension(3), optional :: xi_y_phi
+    logical, intent(in), optional :: no_jacobians
     type(vector4_t), dimension(:), allocatable :: p
     associate (generator => phs%generator)
        allocate (p (1 : generator%real_kinematics%p_born_cms%get_n_particles()), &
           source = generator%real_kinematics%p_born_cms%phs_point(1)%p)
        generator%real_kinematics%supply_xi_max = .true.
        if (present (i_con)) then
-          call generator%generate_fsr (emitter, i_phs, i_con, p, p_real, xi_y_phi)
+          call generator%generate_fsr (emitter, i_phs, i_con, p, p_real, &
+               xi_y_phi, no_jacobians)
        else
-          call generator%generate_fsr (emitter, i_phs, p, p_real, xi_y_phi)
+          call generator%generate_fsr (emitter, i_phs, p, p_real, &
+               xi_y_phi, no_jacobians)
        end if
        generator%real_kinematics%p_real_cms%phs_point(i_phs)%p = p_real%p
        if (.not. phs%config%cm_frame) p_real = phs%lt_cm_to_lab * p_real
@@ -14297,7 +15394,9 @@ $\xi$.
   pure function phs_fks_get_onshell_projected_momenta (phs) result (p)
     type(vector4_t), dimension(:), allocatable :: p
     class(phs_fks_t), intent(in) :: phs
-    p = phs%generator%real_kinematics%p_born_onshell%get_momenta (1)
+    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
+    allocate(p (size (phs%generator%real_kinematics%p_born_onshell%phs_point(1)%p)))
+    p = phs%generator%real_kinematics%p_born_onshell%phs_point(1)%p
   end function phs_fks_get_onshell_projected_momenta
 
 @ %def phs_fks_get_onshell_projected_momenta
@@ -14308,14 +15407,19 @@ $\xi$.
   subroutine phs_fks_generate_fsr_threshold (phs, emitter, i_phs, p_real)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: emitter, i_phs
-    type(phs_point_t), intent(inout) :: p_real
+    type(phs_point_t), intent(inout), optional :: p_real
     type(vector4_t), dimension(:), allocatable :: p_born
+    type(phs_point_t) :: pp
+    integer :: leg
     associate (generator => phs%generator)
        generator%real_kinematics%supply_xi_max = .true.
        allocate (p_born (1 : generator%real_kinematics%p_born_cms%get_n_particles()))
        p_born = generator%real_kinematics%p_born_onshell%get_momenta (1)
-       call generator%generate_fsr_threshold (emitter, i_phs, p_born, p_real)
-       generator%real_kinematics%p_real_onshell(thr_leg(emitter))%phs_point(i_phs)%p = p_real%p
+       pp = size (p_born) + 1
+       call generator%generate_fsr_threshold (emitter, i_phs, p_born, pp)
+       leg = thr_leg(emitter)
+       call generator%real_kinematics%p_real_onshell(leg)%set_momenta (i_phs, pp)
+       if (present (p_real)) p_real = pp
     end associate
   end subroutine phs_fks_generate_fsr_threshold
 
@@ -14389,12 +15493,13 @@ $\xi$.
   end subroutine phs_fks_generator_compute_emitter_kinematics_massless
 
   subroutine phs_fks_generator_compute_emitter_kinematics_massive &
-      (generator, y, em, i_phs, q0, k0_em, uk_em, uk)
+      (generator, y, em, i_phs, q0, k0_em, uk_em, uk, compute_jac)
     class(phs_fks_generator_t), intent(inout) :: generator
     real(default), intent(in) :: y
     integer, intent(in) :: em, i_phs
     real(default), intent(in) :: q0
     real(default), intent(inout) :: k0_em, uk_em, uk
+    logical, intent(in) :: compute_jac
     real(default) :: k0_np1, q2, mrec2, m2
     real(default) :: k0_rec_max, k0_em_max, k0_rec, uk_rec
     real(default) :: z, z1, z2
@@ -14414,7 +15519,8 @@ $\xi$.
     uk_em = sqrt(k0_em**2 - m2)
     uk_rec = sqrt(k0_rec**2 - mrec2)
     uk = uk_rec
-    generator%real_kinematics%jac(i_phs)%jac = q0 * (z1 - z2) / 4 * k0_np1
+    if (compute_jac) &
+         generator%real_kinematics%jac(i_phs)%jac = q0 * (z1 - z2) / four * k0_np1
     generator%real_kinematics%y_soft(i_phs) = &
        (two * q2 * z - q2 - mrec2 + m2) / (sqrt(k0_em_max**2 - m2) * q0) / two
   end subroutine phs_fks_generator_compute_emitter_kinematics_massive
@@ -15443,20 +16549,6 @@ has already been taken into account during its generation.
 @ %def phs_fks_generator_get_radiation_variables
 @
 <<phs fks: phs fks generator: TBP>>=
-  procedure :: get_jacobian => phs_fks_generator_get_jacobian
-<<phs fks: procedures>>=
-  subroutine phs_fks_generator_get_jacobian (generator, emitter, jac)
-    class(phs_fks_generator_t), intent(in) :: generator
-    integer, intent(in) :: emitter
-    real(default) :: jac
-    associate (rad_var => generator%real_kinematics)
-       jac = rad_var%jac_rand (emitter) * rad_var%jac(emitter)%jac(1)
-    end associate
-  end subroutine phs_fks_generator_get_jacobian
-
-@ %def phs_fks_generator_get_jacobian
-@
-<<phs fks: phs fks generator: TBP>>=
   procedure :: write => phs_fks_generator_write
 <<phs fks: procedures>>=
   subroutine phs_fks_generator_write (generator, unit)
@@ -15500,6 +16592,17 @@ has already been taken into account during its generation.
   end subroutine phs_fks_compute_isr_kinematics
 
 @ %def phs_fks_compute_isr_kinematics
+@
+<<phs fks: phs fks: TBP>>=
+  procedure :: final => phs_fks_final
+<<phs fks: procedures>>=
+  subroutine phs_fks_final (object)
+    class(phs_fks_t), intent(inout) :: object
+    call phs_forest_final (object%forest)
+    call object%generator%final ()
+  end subroutine phs_fks_final
+
+@ %def phs_fks_final
 @
 <<phs fks: public>>=
   public :: get_filtered_resonance_histories
@@ -15644,7 +16747,7 @@ has already been taken into account during its generation.
          do i_hist2 = 1, n_hist
             if (i_hist1 == i_hist2) cycle
             is_not_subres = is_not_subres .and. &
-               .not. res_history_in (i_hist2) > res_history_in (i_hist1)
+               .not.(res_history_in(i_hist2) .contains. res_history_in(i_hist1))
          end do
          if (is_not_subres) then
             n_hist_non_sub_res = n_hist_non_sub_res + 1
@@ -15751,13 +16854,13 @@ module phs_fks_uti
   use format_utils, only: write_separator, pac_fmt
   use format_defs, only: FMT_15, FMT_19
   use numeric_utils, only: nearly_equal
-  use constants, only: tiny_07, zero, two
+  use constants, only: tiny_07, zero, one, two
   use lorentz
 
   use physics_defs, only: THR_POS_B, THR_POS_BBAR, THR_POS_WP, THR_POS_WM, THR_POS_GLUON
   use physics_defs, only: thr_leg
 
-  use cascades, only: resonance_contributors_t
+  use resonances, only: resonance_contributors_t
   use phs_fks
 
 <<Standard module head>>
@@ -16219,6 +17322,7 @@ end module phs_fks_uti
   public :: phs_fks_generator_5
 <<phs fks: tests>>=
   subroutine phs_fks_generator_5 (u)
+    use ttv_formfactors, only: init_parameters
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
@@ -16231,6 +17335,7 @@ end module phs_fks_uti
     type(lorentz_transformation_t) :: L_to_cms
     real(default), parameter :: sqrts = 360._default
     real(default), parameter :: momentum_tolerance = 1E-10_default
+    real(default) :: mpole, gam_out
 
     write (u, "(A)") "* Test output: phs_fks_generator_5"
     write (u, "(A)") "* Puropse: Perform threshold on-shell projection of "
@@ -16269,6 +17374,12 @@ end module phs_fks_uti
     mtop = 172._default
 
     generator%sqrts = sqrts
+
+    !!! Dummy-initialization of the threshold model because generate_fsr_threshold
+    !!! uses m1s_to_mpole to determine if it is above or below threshold.
+    call init_parameters (mpole, gam_out, mtop, one, one / 1.5_default, 125._default, &
+         0.47_default, 0.118_default, 91._default, 80._default, 4.2_default, &
+         one, one, one, one, zero, zero, zero, zero, zero, zero, .false., zero)
 
     write (u, "(A)") "* Use four-particle phase space containing: "
     call vector4_write_set (p_born, u, testflag = .true., ultra = .true.)
@@ -16653,6 +17764,7 @@ structure-function chain.
     integer :: n_strfun, n_sf_channel, i
     logical :: sf_allow_s_mapping, circe1_map, circe1_generate
     logical :: s_mapping_enable, endpoint_mapping, power_mapping
+    logical :: single_parameter
     integer, dimension(:), allocatable :: s_mapping, single_mapping
     real(default) :: s_mapping_power
     real(default) :: circe1_mapping_slope, endpoint_mapping_slope
@@ -16675,6 +17787,7 @@ structure-function chain.
     endpoint_mapping = .false.
     endpoint_mapping_slope = 1
     power_mapping = .false.
+    single_parameter = .false.
     select case (char (sf_string))
     case ("", "[any particles]")
     case ("pdf_builtin, none", &
@@ -16685,6 +17798,7 @@ structure-function chain.
          "lhapdf_photon, none", &
          "none, lhapdf", &
          "none, lhapdf_photon")
+	 single_parameter = .true.
     case ("pdf_builtin, none => none, pdf_builtin", &
           "pdf_builtin, none => none, pdf_builtin_photon", &
           "pdf_builtin_photon, none => none, pdf_builtin", &
@@ -16706,6 +17820,7 @@ structure-function chain.
     case ("isr, none", &
          "none, isr")
        allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("isr, none => none, isr")
        allocate (s_mapping (2), source = [1, 2])
        power_mapping = .true.
@@ -16743,6 +17858,7 @@ structure-function chain.
     case ("epa, none", &
           "none, epa")
        allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("epa, none => none, epa")
        allocate (single_mapping (2), source = [1, 2])
     case ("epa, none => none, isr", &
@@ -16773,6 +17889,7 @@ structure-function chain.
     case ("ewa, none", &
           "none, ewa")
        allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("ewa, none => none, ewa")
        allocate (single_mapping (2), source = [1, 2])
     case ("energy_scan, none => none, energy_scan")
@@ -16935,19 +18052,23 @@ structure-function chain.
                 select type (prop)
                 type is (resonance_t)
                    call sf_channel(i)%set_res_mapping (s_mapping, &
-                        m = prop%mass / sqrts, w = prop%width / sqrts)
+                        m = prop%mass / sqrts, w = prop%width / sqrts, &
+                        single = single_parameter)
                 type is (on_shell_t)
                    call sf_channel(i)%set_os_mapping (s_mapping, &
-                        m = prop%mass / sqrts)
+                        m = prop%mass / sqrts, &
+			single = single_parameter)
                 end select
              else if (allocated (single_mapping)) then
                 select type (prop)
                 type is (resonance_t)
                    call sf_channel(i)%set_res_mapping (single_mapping, &
-                        m = prop%mass / sqrts, w = prop%width / sqrts)
+                           m = prop%mass / sqrts, w = prop%width / sqrts, &
+                           single = single_parameter)
                 type is (on_shell_t)
                    call sf_channel(i)%set_os_mapping (single_mapping, &
-                        m = prop%mass / sqrts)
+                        m = prop%mass / sqrts, &
+			single = single_parameter)
                 end select
              end if
           else if (endpoint_mapping .and. power_mapping) then

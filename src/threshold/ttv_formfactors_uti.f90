@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -59,6 +59,7 @@ contains
     type(formfactor_t) :: formfactor
     type(phase_space_point_t) :: ps
     logical :: mpole_fixed
+    integer :: top_helicity_selection
     write (u, "(A)")  "* Test output: ttv_formfactors_1"
     write (u, "(A)")  "*   Purpose: Basic setup"
     write (u, "(A)")
@@ -77,6 +78,7 @@ contains
     NRQCD_ORDER = one
     FF = MATCHED
     offshell_strategy = 0
+    top_helicity_selection = -1
     v1 = 0.3_default
     v2 = 0.5_default
     sqrts = 2 * m1s + 0.01_default
@@ -90,7 +92,7 @@ contains
           alphaemi, sw, alphas_mz, mz, mw, &
           mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
           v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed)
+          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
     call init_threshold_grids (test)
     call threshold%formfactor%activate ()
 
@@ -109,7 +111,7 @@ contains
           alphaemi, sw, alphas_mz, mz, mw, &
           mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
           v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed)
+          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
     call init_threshold_grids (test)
     call assert (u, m1s_to_mpole (350.0_default) > m1s + 0.1_default, &
          "m1s_to_mpole (350.0_default) > m1s")
@@ -123,18 +125,18 @@ contains
           alphaemi, sw, alphas_mz, mz, mw, &
           mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
           v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed)
+          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
     call init_threshold_grids (test)
-    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM)), one, "f_switch_off (v_matching (ps%sqrts, GAM))")
+    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
     call formfactor%disable ()
     call assert_equal (u, &
          abs(formfactor%compute (ps, 1, 1)), &
-         one, &
-         "disabled formfactor should return one")
+         zero, &
+         "disabled formfactor should return zero")
     call formfactor%activate ()
     call assert_equal (u, &
-         formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF_P0CONSTANT), &
-         formfactor%compute (ps, 1, EXPANDED_SOFT_P0CONSTANT), &
+         formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF), &
+         formfactor%compute (ps, 1, EXPANDED_SOFT), &
          "switchoff function should do nothing here")
     write (u, "(A)") ""
 
@@ -147,23 +149,23 @@ contains
           alphaemi, sw, alphas_mz, mz, mw, &
           mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
           v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed)
+          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
     call init_threshold_grids (test)
     ! For simplicity we test on-shell back-to-back tops
     call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
-    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM)), tiny_10, &
-         "f_switch_off (v_matching (ps%sqrts, GAM))")
+    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), tiny_10, &
+         "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
     call assert (u, &
-         abs (formfactor%compute (ps, 1, EXPANDED_HARD_P0CONSTANT)) > &
-         abs (formfactor%compute (ps, 1, RESUMMED_P0CONSTANT)), &
+         abs (formfactor%compute (ps, 1, EXPANDED_HARD)) > &
+         abs (formfactor%compute (ps, 1, RESUMMED)), &
          "expansion with hard alphas should be larger " // &
          "than resummed (with switchoff)")
     call assert_equal (u, &
-         abs (formfactor%compute (ps, 1, RESUMMED_P0CONSTANT)), one, &
-         "resummed (with switchoff) should be one (tree-level)")
+         abs (formfactor%compute (ps, 1, RESUMMED)), zero, &
+         "resummed (with switchoff) should be zero", abs_smallness=tiny_10)
     call assert_equal (u, &
-         abs (formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF_P0CONSTANT)), one, &
-         "expanded (with switchoff) should be one (tree-level)")
+         abs (formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF)), zero, &
+         "expanded (with switchoff) should be zero", abs_smallness=tiny_10)
     write (u, "(A)") ""
 
     write (u, "(A)") "Check global variables"
@@ -182,11 +184,10 @@ contains
     write (u, "(A)")  "*   Purpose: Test flags"
     write (u, "(A)")
 
-    write (u, "(A)") "RESUMMED_SWITCHOFF_P0CONSTANT + NLO"
-    call threshold%settings%setup_flags (-2, 1)
+    write (u, "(A)") "RESUMMED_SWITCHOFF + NLO"
+    call threshold%settings%setup_flags (-2, 1, -1)
     call assert (u, SWITCHOFF_RESUMMED, "SWITCHOFF_RESUMMED")
     call assert (u, TOPPIK_RESUMMED, "TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, threshold%settings%nlo, "threshold%settings%nlo")
     call assert (u, .not. threshold%settings%factorized_computation, &
          ".not. threshold%settings%factorized_computation")
@@ -196,67 +197,44 @@ contains
          ".not. threshold%settings%no_nlo_width_in_signal_propagators")
 
     write (u, "(A)") "MATCHED + FACTORIZATION"
-    call threshold%settings%setup_flags (-1, 0+2)
+    call threshold%settings%setup_flags (-1, 0+2, -1)
     call assert (u, .not. threshold%settings%nlo, ".not. threshold%settings%nlo")
     call assert (u, TOPPIK_RESUMMED, "TOPPIK_RESUMMED")
     call assert (u, threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
 
-    write (u, "(A)") "RESUMMED_P0DEPENDENT + NLO + FACTORIZATION"
-    call threshold%settings%setup_flags (0, 1+2)
+    write (u, "(A)") "RESUMMED + INTERFERENCE"
+    call threshold%settings%setup_flags (1, 0+0+4, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, ".not. SWITCHOFF_RESUMMED")
     call assert (u, TOPPIK_RESUMMED, "TOPPIK_RESUMMED")
-    call assert (u, P0_DEPENDENT_RESUMMED, "P0_DEPENDENT_RESUMMED")
-    call assert (u, threshold%settings%nlo, "threshold%settings%nlo")
-    call assert (u, threshold%settings%factorized_computation, &
-         "threshold%settings%factorized_computation")
-
-    write (u, "(A)") "RESUMMED_P0CONSTANT + INTERFERENCE"
-    call threshold%settings%setup_flags (1, 0+0+4)
-    call assert (u, .not. SWITCHOFF_RESUMMED, ".not. SWITCHOFF_RESUMMED")
-    call assert (u, TOPPIK_RESUMMED, "TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, .not. threshold%settings%nlo, ".not. threshold%settings%nlo")
     call assert (u, .not. threshold%settings%factorized_computation, &
          ".not. threshold%settings%factorized_computation")
     call assert (u, threshold%settings%interference, "threshold%settings%interference")
 
-    write (u, "(A)") "EXPANDED_HARD_P0DEPENDENT"
-    call threshold%settings%setup_flags (3, 1+0+4)
+    write (u, "(A)") "EXPANDED_HARD"
+    call threshold%settings%setup_flags (4, 0+2+4, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, ".not. SWITCHOFF_RESUMMED")
     call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, "P0_DEPENDENT_RESUMMED")
-    call assert (u, threshold%settings%nlo, "threshold%settings%nlo")
-    call assert (u, .not. threshold%settings%factorized_computation, &
-         ".not. threshold%settings%factorized_computation")
-    call assert (u, threshold%settings%interference, "threshold%settings%interference")
-
-    write (u, "(A)") "EXPANDED_HARD_P0CONSTANT"
-    call threshold%settings%setup_flags (4, 0+2+4)
-    call assert (u, .not. SWITCHOFF_RESUMMED, ".not. SWITCHOFF_RESUMMED")
-    call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, .not. threshold%settings%nlo, ".not. threshold%settings%nlo")
     call assert (u, threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
     call assert (u, threshold%settings%interference, "threshold%settings%interference")
 
-    write (u, "(A)") "EXPANDED_SOFT_P0CONSTANT"
-    call threshold%settings%setup_flags (5, 1+2+4)
+    write (u, "(A)") "EXPANDED_SOFT"
+    call threshold%settings%setup_flags (5, 1+2+4, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, ".not. SWITCHOFF_RESUMMED")
     call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, threshold%settings%nlo, "threshold%settings%nlo")
     call assert (u, threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
     call assert (u, threshold%settings%interference, &
          "threshold%settings%interference")
 
-    write (u, "(A)") "EXPANDED_SOFT_SWITCHOFF_P0CONSTANT"
-    call threshold%settings%setup_flags (6, 0+0+0+8)
+    write (u, "(A)") "EXPANDED_SOFT_SWITCHOFF"
+    call threshold%settings%setup_flags (6, 0+0+0+8, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, "SWITCHOFF_RESUMMED")
     call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, .not. threshold%settings%nlo, "threshold%settings%nlo")
     call assert (u, .not. threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
@@ -264,10 +242,9 @@ contains
          "threshold%settings%interference")
 
     write (u, "(A)") "RESUMMED_ANALYTIC_LL"
-    call threshold%settings%setup_flags (7, 0+0+4+8)
+    call threshold%settings%setup_flags (7, 0+0+4+8, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, "SWITCHOFF_RESUMMED")
     call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, .not. threshold%settings%nlo, "threshold%settings%nlo")
     call assert (u, .not. threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
@@ -275,11 +252,10 @@ contains
     call assert (u, threshold%settings%onshell_projection%production, &
          "threshold%settings%onshell_projection%production")
 
-    write (u, "(A)") "EXPANDED_SOFT_HARD_P0CONSTANT"
-    call threshold%settings%setup_flags (8, 0+2+0+128)
+    write (u, "(A)") "EXPANDED_SOFT_HARD"
+    call threshold%settings%setup_flags (8, 0+2+0+128, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, "SWITCHOFF_RESUMMED")
     call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, .not. threshold%settings%nlo, "threshold%settings%nlo")
     call assert (u, threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
@@ -290,10 +266,9 @@ contains
          "threshold%settings%onshell_projection%decay")
 
     write (u, "(A)") "EXTRA_TREE"
-    call threshold%settings%setup_flags (9, 1+0+0+16+64)
+    call threshold%settings%setup_flags (9, 1+0+0+16+64, -1)
     call assert (u, .not. SWITCHOFF_RESUMMED, "SWITCHOFF_RESUMMED")
     call assert (u, .not. TOPPIK_RESUMMED, ".not. TOPPIK_RESUMMED")
-    call assert (u, .not. P0_DEPENDENT_RESUMMED, ".not. P0_DEPENDENT_RESUMMED")
     call assert (u, threshold%settings%nlo, "threshold%settings%nlo")
     call assert (u, .not. threshold%settings%factorized_computation, &
          "threshold%settings%factorized_computation")
@@ -306,7 +281,7 @@ contains
          "threshold%settings%no_nlo_width_in_signal_propagators")
 
     write (u, "(A)") "test projection of width"
-    call threshold%settings%setup_flags (9, 0+0+0+0+256)
+    call threshold%settings%setup_flags (9, 0+0+0+0+256, -1)
     call assert (u, .not. threshold%settings%onshell_projection%production, &
          "threshold%settings%onshell_projection%production")
     call assert (u, .not. threshold%settings%onshell_projection%decay, &
@@ -315,26 +290,28 @@ contains
          "threshold%settings%onshell_projection%width")
 
     write (u, "(A)") "test boost of decay momenta"
-    call threshold%settings%setup_flags (9, 512)
+    call threshold%settings%setup_flags (9, 512, -1)
     call msg_debug (D_THRESHOLD, &
          "threshold%settings%onshell_projection%boost_decay", &
          threshold%settings%onshell_projection%boost_decay)
-    call threshold%settings%setup_flags (9, 0)
+    call threshold%settings%setup_flags (9, 0, -1)
     call msg_debug (D_THRESHOLD, &
          ".not. threshold%settings%onshell_projection%boost_decay", &
          .not. threshold%settings%onshell_projection%boost_decay)
 
     write (u, "(A)") "test helicity approximations"
-    call threshold%settings%setup_flags (9, 32)
-    call assert (u, threshold%settings%helicity_approximated, &
-         "threshold%settings%helicity_approximated")
-    call assert (u, .not. threshold%settings%helicity_approximated_extra, &
-         ".not. threshold%settings%helicity_approximated_extra")
-    call threshold%settings%setup_flags (9, 1024)
-    call assert (u, .not. threshold%settings%helicity_approximated, &
-         ".not. threshold%settings%helicity_approximated")
-    call assert (u, threshold%settings%helicity_approximated_extra, &
-         "threshold%settings%helicity_approximated_extra")
+    call threshold%settings%setup_flags (9, 32, -1)
+    call assert (u, threshold%settings%helicity_approximation%simple, &
+         "threshold%settings%helicity_approximation%simple")
+    call assert (u, .not. threshold%settings%helicity_approximation%extra, &
+         ".not. threshold%settings%helicity_approximation%extra")
+    call assert (u, .not. threshold%settings%helicity_approximation%ultra, &
+         ".not. threshold%settings%helicity_approximation%ultra")
+    call threshold%settings%setup_flags (9, 1024, -1)
+    call assert (u, .not. threshold%settings%helicity_approximation%simple, &
+         ".not. threshold%settings%helicity_approximation%simple")
+    call assert (u, threshold%settings%helicity_approximation%extra, &
+         "threshold%settings%helicity_approximation%extra")
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: ttv_formfactors_2"

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -59,7 +59,8 @@ module process_config
   use process_constants
   use prc_core
   use prc_user_defined
-  use prc_openloops
+  use prc_openloops, only: prc_openloops_t
+  use prc_recola, only: prc_recola_t
   use prc_threshold, only: prc_threshold_t
   use beams
   use mci_base
@@ -120,6 +121,7 @@ module process_config
      type(string_t) :: run_id
      type(var_list_t) :: var_list
      type(process_library_t), pointer :: lib => null ()
+     integer :: lib_update_counter = 0
      integer :: lib_index = 0
      integer :: n_components = 0
      type(string_t), dimension(:), allocatable :: component_id
@@ -157,6 +159,7 @@ module process_config
      procedure :: set_sf_channel => process_beam_config_set_sf_channel
      procedure :: sf_startup_message => process_beam_config_sf_startup_message
      procedure :: get_pdf_set => process_beam_config_get_pdf_set
+     procedure :: get_beam_file => process_beam_config_get_beam_file
      procedure :: compute_md5sum => process_beam_config_compute_md5sum
      procedure :: get_md5sum => process_beam_config_get_md5sum
   end type process_beam_config_t
@@ -507,6 +510,7 @@ contains
     meta%id = id
     meta%run_id = run_id
     meta%lib => lib
+    meta%lib_update_counter = lib%get_update_counter ()
     meta%lib_index = lib%get_entry_index (id)
     meta%num_id = lib%get_num_id (id)
     call lib%get_component_list (id, meta%component_id)
@@ -701,6 +705,19 @@ contains
     end if
   end function process_beam_config_get_pdf_set
 
+  function process_beam_config_get_beam_file (beam_config) result (file)
+    class(process_beam_config_t), intent(in) :: beam_config
+    type(string_t) :: file
+    integer :: i
+    file = ""
+    if (allocated (beam_config%sf)) then
+       do i = 1, size (beam_config%sf)
+          file = beam_config%sf(i)%get_beam_file ()
+          if (file /= "")  return
+       end do
+    end if
+  end function process_beam_config_get_beam_file
+
   subroutine process_beam_config_compute_md5sum (beam_config)
     class(process_beam_config_t), intent(inout) :: beam_config
     integer :: u
@@ -815,17 +832,15 @@ contains
 
   subroutine process_component_configure_phs &
        (component, sqrts, beam_config, rebuild, &
-        ignore_mismatch, verbose)
+        ignore_mismatch)
     class(process_component_t), intent(inout) :: component
     real(default), intent(in) :: sqrts
     type(process_beam_config_t), intent(in) :: beam_config
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    logical, intent(in), optional :: verbose
-    logical :: no_strfun, verb
+    logical :: no_strfun
     integer :: nlo_type
     no_strfun = beam_config%n_strfun == 0
-    verb = .true.;  if (present (verbose))  verb = verbose
     nlo_type = component%config%get_nlo_type ()
     call component%phs_config%configure (sqrts, &
          azimuthal_dependence = beam_config%azimuthal_dependence, &
@@ -833,7 +848,6 @@ contains
          cm_frame = beam_config%lab_is_cm_frame .and. no_strfun, &
          rebuild = rebuild, ignore_mismatch = ignore_mismatch, &
          nlo_type = nlo_type)
-    if (verb)  call component%phs_config%startup_message ()
   end subroutine process_component_configure_phs
 
   subroutine process_component_compute_md5sum (component)
@@ -878,10 +892,15 @@ contains
      nlo_type = component%config%get_nlo_type ()
   end function process_component_get_nlo_type
 
-  function process_component_needs_mci_entry (component) result (value)
-    class(process_component_t), intent(in) :: component
+  function process_component_needs_mci_entry (component, combined_integration) result (value)
     logical :: value
-    value = component%active .and. component%component_type <= COMP_MASTER
+    class(process_component_t), intent(in) :: component
+    logical, intent(in), optional :: combined_integration
+    value = component%active
+    if (present (combined_integration)) then
+       if (combined_integration) &
+            value = value .and. component%component_type <= COMP_MASTER
+    end if
   end function process_component_needs_mci_entry
 
   elemental function process_component_can_be_integrated (component) result (active)
@@ -968,10 +987,10 @@ contains
     end if
     use_internal_color = .false.
     if (present (subtraction_method)) &
-       use_internal_color = (char (subtraction_method) == 'omega') &
-            .or. (char (subtraction_method) == 'threshold')
+         use_internal_color = (char (subtraction_method) == 'omega') &
+         .or. (char (subtraction_method) == 'threshold')
     call term%setup_interaction (core, model, nlo_type = nlo_type, &
-       pol_beams = use_beam_pol, use_internal_color = use_internal_color)
+         pol_beams = use_beam_pol, use_internal_color = use_internal_color)
   end subroutine process_term_init
 
   subroutine process_term_setup_interaction (term, core, model, &
@@ -987,9 +1006,9 @@ contains
     type(color_t), dimension(:), allocatable :: col
     type(helicity_t), dimension(:), allocatable :: hel
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    logical :: yorn
-    integer :: nlo_t, n_hel, n_sub
-    yorn = .false.; if (present (pol_beams)) yorn = pol_beams
+    logical :: is_pol, use_color
+    integer :: nlo_t, n_sub
+    is_pol = .false.; if (present (pol_beams)) is_pol = pol_beams
     nlo_t = BORN; if (present (nlo_type)) nlo_t = nlo_type
     n_tot = term%data%n_in + term%data%n_out
     call count_number_of_states ()
@@ -1015,7 +1034,6 @@ contains
       n = 0
       select type (core)
       class is (prc_user_defined_base_t)
-         n_hel = 1; if (yorn) n_hel = 4
          do f = 1, term%data%n_flv
             do h = 1, term%data%n_hel
                do c = 1, term%data%n_col
@@ -1036,9 +1054,10 @@ contains
 
     subroutine compute_n_sub ()
       if (nlo_t == NLO_VIRTUAL) then
-         yorn = .false.; if (present (use_internal_color)) yorn = use_internal_color
+         use_color = .false.; if (present (use_internal_color)) &
+              use_color = use_internal_color
          n_sub = 1
-         if (.not. yorn) n_sub = n_sub + n_tot * (n_tot - 1) / 2
+         if (.not. use_color) n_sub = n_sub + n_tot * (n_tot - 1) / 2
       else
          n_sub = 0
       end if
@@ -1047,7 +1066,7 @@ contains
     subroutine fill_quantum_numbers ()
       if (nlo_t == NLO_VIRTUAL) then
          allocate (term%flv ((n_sub + 1) * n), &
-            term%col ((n_sub + 1) * n), term%hel ((n_sub + 1) * n))
+              term%col ((n_sub + 1) * n), term%hel ((n_sub + 1) * n))
       else
          allocate (term%flv (n), term%col (n), term%hel (n))
       end if
@@ -1070,9 +1089,9 @@ contains
                       term%col(i) = c
                       call flv%init (data%flv_state (:,f), model)
                       call color_init_from_array (col, &
-                         data%col_state(:,:,c), data%ghost_flag(:,c))
+                           data%col_state(:,:,c), data%ghost_flag(:,c))
                       call col(:data%n_in)%invert ()
-                      if (n_hel > 1) then
+                      if (is_pol) then
                          call hel%init (data%hel_state (:,h))
                          call qn%init (flv, hel, col, s)
                       else
@@ -1088,8 +1107,8 @@ contains
 
     subroutine setup_states_threshold ()
       integer :: s, f, c, h, i
-      if (n_hel > 1) &
-         call msg_fatal ("Polarized beams only supported by OpenLoops")
+      if (is_pol) &
+           call msg_fatal ("Polarized beams only supported by OpenLoops")
       i = 0
       n_sub = 0; if (nlo_t == NLO_VIRTUAL) n_sub = 1
       associate (data => term%data)
@@ -1116,7 +1135,7 @@ contains
     subroutine setup_states_other_user_defined ()
       integer :: s, f, i
       integer :: n_sub
-      if (n_hel > 1) &
+      if (is_pol) &
          call msg_fatal ("Polarized beams only supported by OpenLoops")
       i = 0
       n_sub = 0; if (nlo_t == NLO_VIRTUAL) n_sub = 1

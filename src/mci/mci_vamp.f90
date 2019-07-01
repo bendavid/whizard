@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -38,6 +38,7 @@ module mci_vamp
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
+  use constants, only: zero
   use format_utils, only: pac_fmt
   use format_utils, only: write_separator
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
@@ -48,9 +49,9 @@ module mci_vamp
   use rng_tao
   use vamp !NODEP!
   use exceptions !NODEP!
-  
+
   use mci_base
-  
+
   implicit none
   private
 
@@ -115,7 +116,7 @@ module mci_vamp
      procedure :: get_error => pass_get_error
      procedure :: get_efficiency => pass_get_efficiency
   end type pass_t
-     
+
   type, extends (mci_t) :: mci_vamp_t
      logical, dimension(:), allocatable :: dim_is_flat
      type(grid_parameters_t) :: grid_par
@@ -146,6 +147,7 @@ module mci_vamp
      procedure :: set_history_parameters => mci_vamp_set_history_parameters
      procedure :: set_rebuild_flag => mci_vamp_set_rebuild_flag
      procedure :: set_grid_filename => mci_vamp_set_grid_filename
+     procedure :: prepend_grid_path => mci_vamp_prepend_grid_path
      procedure :: declare_flat_dimensions => mci_vamp_declare_flat_dimensions
      procedure :: declare_equivalences => mci_vamp_declare_equivalences
      procedure :: allocate_instance => mci_vamp_allocate_instance
@@ -168,12 +170,12 @@ module mci_vamp
      procedure :: rebuild_event => mci_vamp_rebuild_event
      procedure :: pacify => mci_vamp_pacify
   end type mci_vamp_t
-  
+
   type, extends (vamp_data_t) :: mci_workspace_t
      class(mci_sampler_t), pointer :: sampler => null ()
      class(mci_vamp_instance_t), pointer :: instance => null ()
   end type mci_workspace_t
-  
+
   type, extends (mci_instance_t) :: mci_vamp_instance_t
      type(mci_vamp_t), pointer :: mci => null ()
      logical :: grids_defined = .false.
@@ -227,7 +229,7 @@ module mci_vamp
      procedure :: get_event_weight => mci_vamp_instance_get_event_weight
      procedure :: get_event_excess => mci_vamp_instance_get_event_excess
   end type mci_vamp_instance_t
-  
+
 
   interface operator (.matches.)
      module procedure pass_matches
@@ -237,14 +239,14 @@ module mci_vamp
   end interface operator (.matches.)
 
 contains
-  
+
   subroutine grid_parameters_write (object, unit)
     class(grid_parameters_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
     write (u, "(3x,A,I0)") "threshold_calls       = ", &
-         object%threshold_calls 
+         object%threshold_calls
     write (u, "(3x,A,I0)") "min_calls_per_channel = ", &
          object%min_calls_per_channel
     write (u, "(3x,A,I0)") "min_calls_per_bin     = ", &
@@ -293,7 +295,7 @@ contains
        call vamp_delete_history (object%v_histories)
     end if
   end subroutine pass_final
-  
+
   subroutine pass_write (object, unit, pacify)
     class(pass_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -318,7 +320,7 @@ contains
        write (u, "(3x,A)")  "Results: [undefined]"
     end if
   end subroutine pass_write
-  
+
   subroutine pass_read (object, u, n_pass, n_it)
     class(pass_t), intent(out) :: object
     integer, intent(in) :: u, n_pass, n_it
@@ -350,7 +352,7 @@ contains
        call msg_fatal ("Reading integration pass: corrupted file")
     end select
   end subroutine pass_read
-  
+
   subroutine pass_write_history (pass, unit)
     class(pass_t), intent(in) :: pass
     integer, intent(in), optional :: unit
@@ -368,13 +370,13 @@ contains
        write (u, "(1x,A)")  "Channel histories: [undefined]"
     end if
   end subroutine pass_write_history
-    
+
   subroutine pass_configure (pass, n_it, n_calls, min_calls, &
        min_bins, max_bins, min_channel_calls)
     class(pass_t), intent(inout) :: pass
     integer, intent(in) :: n_it, n_calls, min_channel_calls
     integer, intent(in) :: min_calls, min_bins, max_bins
-    pass%n_it = n_it    
+    pass%n_it = n_it
     if (min_calls /= 0) then
        pass%n_bins =  max (min_bins, &
             min (n_calls / min_calls, max_bins))
@@ -392,7 +394,7 @@ contains
     allocate (pass%error (n_it), source = 0._default)
     allocate (pass%efficiency (n_it), source = 0._default)
   end subroutine pass_configure
-  
+
   subroutine pass_configure_history (pass, n_channels, par)
     class(pass_t), intent(inout) :: pass
     integer, intent(in) :: n_channels
@@ -408,7 +410,7 @@ contains
             verbose = par%channel_verbose)
     end if
   end subroutine pass_configure_history
-  
+
   function pass_matches (pass, ref) result (ok)
     type(pass_t), intent(in) :: pass, ref
     integer :: n
@@ -430,7 +432,7 @@ contains
        if (ok)  ok = all (pass%efficiency(:n) .matches. ref%efficiency(:n))
     end if
   end function pass_matches
-    
+
   subroutine pass_update (pass, ref, ok)
     class(pass_t), intent(inout) :: pass
     type(pass_t), intent(in) :: ref
@@ -475,7 +477,7 @@ contains
     real(default), parameter :: tolerance = 1.e-8_default
     ok = abs (x - y) <= tolerance * max (abs (x), abs (y))
   end function real_matches
-  
+
   function pass_get_integration_index (pass) result (n)
     class (pass_t), intent(in) :: pass
     integer :: n
@@ -548,14 +550,14 @@ contains
     end do
     object%current_pass => null ()
   end subroutine mci_vamp_reset
-  
+
   subroutine mci_vamp_final (object)
     class(mci_vamp_t), intent(inout) :: object
     call object%reset ()
     call vamp_equivalences_final (object%equivalences)
     call object%base_final ()
   end subroutine mci_vamp_final
-  
+
   subroutine mci_vamp_write (object, unit, pacify, md5sum_version)
     class(mci_vamp_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -576,7 +578,7 @@ contains
     write (u, "(3x,A,L1)") "negative weights      = ", &
          object%negative_weights
     write (u, "(3x,A,L1)") "verbose               = ", &
-         object%verbose  
+         object%verbose
     if (object%grid_par%use_vamp_equivalences) then
        call vamp_equivalences_write (object%equivalences, u)
     end if
@@ -591,7 +593,7 @@ contains
             object%md5sum_adapted, "'"
     end if
   end subroutine mci_vamp_write
-  
+
   subroutine mci_vamp_write_history_parameters (mci, unit)
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in), optional :: unit
@@ -620,7 +622,7 @@ contains
        end do
     end if
   end subroutine mci_vamp_write_history
-  
+
   subroutine mci_vamp_compute_md5sum (mci, pacify)
     class(mci_vamp_t), intent(inout) :: mci
     logical, intent(in), optional :: pacify
@@ -634,7 +636,7 @@ contains
     mci%md5sum_adapted = md5sum (u)
     close (u)
   end subroutine mci_vamp_compute_md5sum
-    
+
   pure function mci_vamp_get_md5sum (mci) result (md5sum)
     class(mci_vamp_t), intent(in) :: mci
     character(32) :: md5sum
@@ -644,13 +646,13 @@ contains
        md5sum = mci%md5sum
     end if
   end function mci_vamp_get_md5sum
-  
+
   subroutine mci_vamp_startup_message (mci, unit, n_calls)
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in), optional :: unit, n_calls
     integer :: num_calls, n_bins
     if (present (n_calls)) then
-       num_calls = n_calls 
+       num_calls = n_calls
     else
        num_calls = 0
     end if
@@ -659,17 +661,17 @@ contains
             min (num_calls / mci%min_calls, &
             mci%grid_par%max_bins))
     else
-       n_bins = mci%grid_par%max_bins  
-    end if    
+       n_bins = mci%grid_par%max_bins
+    end if
     call mci%base_startup_message (unit = unit, n_calls = n_calls)
     if (mci%grid_par%use_vamp_equivalences) then
        write (msg_buffer, "(A,2(1x,I0,1x,A))") &
-            "Integrator: Using VAMP channel equivalences"    
+            "Integrator: Using VAMP channel equivalences"
        call msg_message (unit = unit)
     end if
     write (msg_buffer, "(A,2(1x,I0,1x,A),L1)") &
          "Integrator:", num_calls, &
-         "initial calls,", n_bins, & 
+         "initial calls,", n_bins, &
          "bins, stratified = ", &
          mci%grid_par%stratified
     call msg_message (unit = unit)
@@ -677,23 +679,23 @@ contains
          "Integrator: VAMP"
     call msg_message (unit = unit)
   end subroutine mci_vamp_startup_message
-    
+
   subroutine mci_vamp_write_log_entry (mci, u)
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in) :: u
-    write (u, "(1x,A)")  "MC Integrator is VAMP"       
+    write (u, "(1x,A)")  "MC Integrator is VAMP"
     call write_separator (u)
     call mci%write_history (u)
-    call write_separator (u)       
+    call write_separator (u)
     if (mci%grid_par%use_vamp_equivalences) then
-       call vamp_equivalences_write (mci%equivalences, u)          
+       call vamp_equivalences_write (mci%equivalences, u)
     else
        write (u, "(3x,A)") "No VAMP equivalences have been used"
     end if
     call write_separator (u)
-    call mci%write_chain_weights (u) 
+    call mci%write_chain_weights (u)
   end subroutine mci_vamp_write_log_entry
-       
+
   subroutine mci_vamp_record_index (mci, i_mci)
     class(mci_vamp_t), intent(inout) :: mci
     integer, intent(in) :: i_mci
@@ -717,13 +719,13 @@ contains
     mci%grid_par = grid_par
     mci%min_calls = grid_par%min_calls_per_bin * mci%n_channel
   end subroutine mci_vamp_set_grid_parameters
-  
+
   subroutine mci_vamp_set_history_parameters (mci, history_par)
     class(mci_vamp_t), intent(inout) :: mci
     type(history_parameters_t), intent(in) :: history_par
     mci%history_par = history_par
   end subroutine mci_vamp_set_history_parameters
-  
+
   subroutine mci_vamp_set_rebuild_flag (mci, rebuild, check_grid_file)
     class(mci_vamp_t), intent(inout) :: mci
     logical, intent(in) :: rebuild
@@ -731,7 +733,7 @@ contains
     mci%rebuild = rebuild
     mci%check_grid_file = check_grid_file
   end subroutine mci_vamp_set_rebuild_flag
-  
+
   subroutine mci_vamp_set_grid_filename (mci, name, run_id)
     class(mci_vamp_t), intent(inout) :: mci
     type(string_t), intent(in) :: name
@@ -743,7 +745,17 @@ contains
     end if
     mci%grid_filename_set = .true.
   end subroutine mci_vamp_set_grid_filename
-  
+
+  subroutine mci_vamp_prepend_grid_path (mci, prefix)
+    class(mci_vamp_t), intent(inout) :: mci
+    type(string_t), intent(in) :: prefix
+    if (mci%grid_filename_set) then
+       mci%grid_filename = prefix // "/" // mci%grid_filename
+    else
+       call msg_warning ("Cannot add prefix to invalid grid filename!")
+    end if
+  end subroutine mci_vamp_prepend_grid_path
+
   subroutine mci_vamp_declare_flat_dimensions (mci, dim_flat)
     class(mci_vamp_t), intent(inout) :: mci
     integer, dimension(:), intent(in) :: dim_flat
@@ -753,7 +765,7 @@ contains
        mci%dim_is_flat(dim_flat(d)) = .true.
     end do
   end subroutine mci_vamp_declare_flat_dimensions
-  
+
   subroutine mci_vamp_declare_equivalences (mci, channel, dim_offset)
     class(mci_vamp_t), intent(inout) :: mci
     type(phs_channel_t), dimension(:), intent(in) :: channel
@@ -799,7 +811,7 @@ contains
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_vamp_instance_t :: mci_instance)
   end subroutine mci_vamp_allocate_instance
-  
+
   subroutine mci_vamp_add_pass (mci, adapt_grids, adapt_weights, final_pass)
     class(mci_vamp_t), intent(inout) :: mci
     logical, intent(in), optional :: adapt_grids, adapt_weights, final_pass
@@ -834,7 +846,7 @@ contains
        new%is_final_pass = .false.
     end if
   end subroutine mci_vamp_add_pass
-  
+
   subroutine mci_vamp_update_from_ref (mci, mci_ref, success)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_t), intent(in) :: mci_ref
@@ -868,7 +880,7 @@ contains
        end do
     end select
   end subroutine mci_vamp_update_from_ref
-  
+
   subroutine mci_vamp_update (mci, u, success)
     class(mci_vamp_t), intent(inout) :: mci
     integer, intent(in) :: u
@@ -908,7 +920,7 @@ contains
        end if
     end if
   end subroutine mci_vamp_update
-  
+
   subroutine mci_vamp_write_grids (mci, instance)
     class(mci_vamp_t), intent(in) :: mci
     class(mci_instance_t), intent(inout) :: instance
@@ -962,7 +974,7 @@ contains
        call msg_bug ("VAMP: read grids: filename undefined")
     end if
   end subroutine mci_vamp_read_grids_header
-  
+
   subroutine mci_vamp_read_grids_data (mci, instance, read_integrals)
     class(mci_vamp_t), intent(in) :: mci
     class(mci_instance_t), intent(inout) :: instance
@@ -974,7 +986,7 @@ contains
        if (.not. instance%grids_defined) then
           u = free_unit ()
           open (u, file = char (mci%grid_filename), &
-               action = "read", status = "old") 
+               action = "read", status = "old")
           do
              read (u, "(A)")  buffer
              if (trim (adjustl (buffer)) == "VAMP grids:")  exit
@@ -988,7 +1000,7 @@ contains
        end if
     end select
   end subroutine mci_vamp_read_grids_data
-  
+
   subroutine mci_vamp_read_grids (mci, instance, success)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout) :: instance
@@ -1032,7 +1044,7 @@ contains
        end if
     end select
   end subroutine mci_vamp_read_grids
-  
+
   subroutine read_rval (u, rval)
     integer, intent(in) :: u
     real(default), intent(out) :: rval
@@ -1041,7 +1053,7 @@ contains
     buffer = adjustl (buffer(scan (buffer, "=") + 1:))
     read (buffer, *)  rval
   end subroutine read_rval
-    
+
   subroutine read_ival (u, ival)
     integer, intent(in) :: u
     integer, intent(out) :: ival
@@ -1050,7 +1062,7 @@ contains
     buffer = adjustl (buffer(scan (buffer, "=") + 1:))
     read (buffer, *)  ival
   end subroutine read_ival
-    
+
   subroutine read_sval (u, sval)
     integer, intent(in) :: u
     character(*), intent(out) :: sval
@@ -1059,7 +1071,7 @@ contains
     buffer = adjustl (buffer(scan (buffer, "=") + 1:))
     read (buffer, *)  sval
   end subroutine read_sval
-    
+
   subroutine read_lval (u, lval)
     integer, intent(in) :: u
     logical, intent(out) :: lval
@@ -1068,12 +1080,12 @@ contains
     buffer = adjustl (buffer(scan (buffer, "=") + 1:))
     read (buffer, *)  lval
   end subroutine read_lval
-    
+
   subroutine mci_vamp_integrate (mci, instance, sampler, &
        n_it, n_calls, results, pacify)
     class(mci_vamp_t), intent(inout) :: mci
-    class(mci_instance_t), intent(inout) :: instance
-    class(mci_sampler_t), intent(inout) :: sampler
+    class(mci_instance_t), intent(inout), target :: instance
+    class(mci_sampler_t), intent(inout), target :: sampler
     integer, intent(in) :: n_it
     integer, intent(in) :: n_calls
     class(mci_results_t), intent(inout), optional :: results
@@ -1217,7 +1229,7 @@ contains
        return
     end if
   end subroutine mci_vamp_check_goals
-    
+
   function mci_vamp_error_reached (mci, it) result (flag)
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in) :: it
@@ -1237,7 +1249,7 @@ contains
        flag = .false.
     end if
   end function mci_vamp_error_reached
-  
+
   function mci_vamp_rel_error_reached (mci, it) result (flag)
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in) :: it
@@ -1261,7 +1273,7 @@ contains
        flag = .false.
     end if
   end function mci_vamp_rel_error_reached
-  
+
   function mci_vamp_accuracy_reached (mci, it) result (flag)
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in) :: it
@@ -1286,7 +1298,7 @@ contains
        flag = .false.
     end if
   end function mci_vamp_accuracy_reached
-  
+
   subroutine mci_vamp_prepare_simulation (mci)
     class(mci_vamp_t), intent(inout) :: mci
     logical :: success
@@ -1302,7 +1314,7 @@ contains
        call msg_bug ("VAMP: simulation: no grids, no grid filename")
     end if
   end subroutine mci_vamp_prepare_simulation
-  
+
   subroutine mci_vamp_generate_weighted_event (mci, instance, sampler)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
@@ -1342,7 +1354,7 @@ contains
        end select
     end select
   end subroutine mci_vamp_generate_weighted_event
-       
+
   subroutine mci_vamp_generate_unweighted_event (mci, instance, sampler)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
@@ -1395,7 +1407,7 @@ contains
        end select
     end select
   end subroutine mci_vamp_generate_unweighted_event
-    
+
   subroutine mci_vamp_rebuild_event (mci, instance, sampler, state)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout) :: instance
@@ -1403,7 +1415,7 @@ contains
     class(mci_state_t), intent(in) :: state
     call msg_bug ("MCI vamp rebuild event not implemented yet")
   end subroutine mci_vamp_rebuild_event
-       
+
   subroutine mci_vamp_pacify (object, efficiency_reset, error_reset)
     class(mci_vamp_t), intent(inout) :: object
     logical, intent(in), optional :: efficiency_reset, error_reset
@@ -1411,7 +1423,7 @@ contains
     type(pass_t), pointer :: current_pass
     err_reset = .false.
     if (present (error_reset))  err_reset = error_reset
-    current_pass => object%first_pass    
+    current_pass => object%first_pass
     do while (associated (current_pass))
        if (allocated (current_pass%error) .and. err_reset) then
           current_pass%error = 0
@@ -1422,13 +1434,13 @@ contains
        current_pass => current_pass%next
     end do
   end subroutine mci_vamp_pacify
-    
+
   subroutine mci_vamp_instance_write (object, unit, pacify)
     class(mci_vamp_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: pacify    
+    logical, intent(in), optional :: pacify
     integer :: u, i
-    character(len=7) :: fmt 
+    character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
     u = given_output_unit (unit)
     write (u, "(3x,A," // FMT_19 // ")") "Integrand = ", object%integrand
@@ -1471,7 +1483,7 @@ contains
        write (u, "(5x,I0,1x," // FMT_12 // ")")  i, object%w(i)
     end do
   end subroutine mci_vamp_instance_write
-  
+
   subroutine mci_vamp_instance_write_grids (object, unit)
     class(mci_vamp_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -1481,7 +1493,7 @@ contains
        call vamp_write_grids (object%grids, u, write_integrals = .true.)
     end if
   end subroutine mci_vamp_instance_write_grids
-  
+
   subroutine mci_vamp_instance_final (object)
     class(mci_vamp_instance_t), intent(inout) :: object
     if (object%allocate_global_history) then
@@ -1498,10 +1510,10 @@ contains
     end if
     if (object%grids_defined) then
        call vamp_delete_grids (object%grids)
-       object%grids_defined = .false.       
+       object%grids_defined = .false.
     end if
   end subroutine mci_vamp_instance_final
-  
+
   subroutine mci_vamp_instance_init (mci_instance, mci)
     class(mci_vamp_instance_t), intent(out) :: mci_instance
     class(mci_t), intent(in), target :: mci
@@ -1515,7 +1527,7 @@ contains
        mci_instance%negative_weights = mci%negative_weights
     end select
   end subroutine mci_vamp_instance_init
-    
+
   subroutine mci_vamp_instance_new_pass (instance, reshape)
     class(mci_vamp_instance_t), intent(inout) :: instance
     logical, intent(out) :: reshape
@@ -1559,7 +1571,7 @@ contains
       end if
     end associate
   end subroutine mci_vamp_instance_new_pass
-  
+
   subroutine mci_vamp_instance_create_grids (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     type (pass_t), pointer :: current
@@ -1623,7 +1635,7 @@ contains
       end if
     end associate
   end subroutine mci_vamp_instance_discard_integrals
-    
+
   subroutine mci_vamp_instance_allow_adaptation (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     instance%allow_adapt_grids = .true.
@@ -1641,7 +1653,7 @@ contains
       end if
     end if
   end subroutine mci_vamp_instance_adapt_grids
-  
+
   subroutine mci_vamp_instance_adapt_weights (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     real(default) :: w_sum, w_avg_ch, sum_w_underflow, w_min
@@ -1700,7 +1712,7 @@ contains
        instance%n_adapt_weights = instance%n_adapt_weights + 1
     end if
   end subroutine mci_vamp_instance_adapt_weights
-  
+
   subroutine mci_vamp_instance_sample_grids (instance, rng, sampler, eq)
     class(mci_vamp_instance_t), intent(inout), target :: instance
     class(rng_t), intent(inout) :: rng
@@ -1809,12 +1821,12 @@ contains
       end if
     end associate
   end subroutine mci_vamp_instance_init_simulation
-  
+
   subroutine mci_vamp_instance_final_simulation (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     if (allocated (instance%vamp_x))  deallocate (instance%vamp_x)
   end subroutine mci_vamp_instance_final_simulation
-  
+
   function vamp_sampling_function &
        (xi, data, weights, channel, grids) result (f)
     real(default) :: f
@@ -1841,8 +1853,8 @@ contains
           call handle_vamp_exception (exc, verbose)
           call terminate_now_if_signal ()
        end if
-       call terminate_now_if_single_event ()
        f = instance%get_value ()
+       call terminate_now_if_single_event ()
     end select
   end function vamp_sampling_function
 
@@ -1883,13 +1895,13 @@ contains
        mci%mci_weight = 0
     end if
   end subroutine mci_vamp_instance_compute_weight
-    
+
   subroutine mci_vamp_instance_record_integrand (mci, integrand)
     class(mci_vamp_instance_t), intent(inout) :: mci
     real(default), intent(in) :: integrand
     mci%integrand = integrand
   end subroutine mci_vamp_instance_record_integrand
-  
+
   function mci_vamp_instance_get_event_weight (mci) result (value)
     class(mci_vamp_instance_t), intent(in) :: mci
     real(default) :: value
@@ -1899,7 +1911,7 @@ contains
        call msg_bug ("VAMP: attempt to read undefined event weight")
     end if
   end function mci_vamp_instance_get_event_weight
-   
+
   function mci_vamp_instance_get_event_excess (mci) result (value)
     class(mci_vamp_instance_t), intent(in) :: mci
     real(default) :: value
@@ -1909,7 +1921,7 @@ contains
        call msg_bug ("VAMP: attempt to read undefined event excess weight")
     end if
   end function mci_vamp_instance_get_event_excess
-   
+
   subroutine handle_vamp_exception (exc, verbose)
     type(exception), intent(in) :: exc
     logical, intent(in) :: verbose
@@ -1934,6 +1946,6 @@ contains
        end select
     end if
   end subroutine handle_vamp_exception
-  
+
 
 end module mci_vamp

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -100,13 +100,13 @@ contains
        f = 0
     end select
   end function bloch_factor
-    
+
   subroutine bloch_vector_init_unpolarized (pol, spin_type)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
     pol%spin_type = spin_type
   end subroutine bloch_vector_init_unpolarized
-    
+
   subroutine bloch_vector_init (pol, spin_type)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
@@ -116,13 +116,13 @@ contains
        allocate (pol%a (algebra_dimension (spin_type)), source = 0._default)
     end select
   end subroutine bloch_vector_init
-    
+
   subroutine bloch_vector_from_array (pol, a)
     class(bloch_vector_t), intent(inout) :: pol
     real(default), dimension(:), allocatable, intent(in) :: a
     pol%a(:) = a
   end subroutine bloch_vector_from_array
-    
+
   subroutine bloch_vector_to_array (pol, a)
     class(bloch_vector_t), intent(in) :: pol
     real(default), dimension(:), allocatable, intent(out) :: a
@@ -161,7 +161,7 @@ contains
     integer :: n
     n = fundamental_dimension (pol%spin_type)
   end function get_n_states
-    
+
   function get_length (pol) result (n)
     class(bloch_vector_t), intent(in) :: pol
     integer :: n
@@ -174,14 +174,14 @@ contains
     integer :: i
     i = helicity_index (pol%spin_type, h)
   end function bv_helicity_index
-    
+
   function bv_helicity_value (pol, i) result (h)
     class(bloch_vector_t), intent(in) :: pol
     integer, intent(in) :: i
     integer :: h
     h = helicity_value (pol%spin_type, i)
   end function bv_helicity_value
-    
+
   function bv_factor (pol) result (f)
     class(bloch_vector_t), intent(in) :: pol
     real(default) :: f
@@ -193,13 +193,13 @@ contains
     logical :: flag
     flag = pol%spin_type /= UNKNOWN
   end function bloch_vector_is_defined
-  
+
   function bloch_vector_is_polarized (pol) result (flag)
     class(bloch_vector_t), intent(in) :: pol
     logical :: flag
     flag = allocated (pol%a)
   end function bloch_vector_is_polarized
-  
+
   function bloch_vector_is_diagonal (pol) result (diagonal)
     class(bloch_vector_t), intent(in) :: pol
     logical :: diagonal
@@ -227,7 +227,7 @@ contains
        norm = 1
     end select
   end function bloch_vector_get_norm
-       
+
   subroutine bloch_vector_init_diagonal (pol, spin_type, rd)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
@@ -235,7 +235,7 @@ contains
     call pol%init (spin_type)
     call pol%set (rd)
   end subroutine bloch_vector_init_diagonal
-    
+
   subroutine bloch_vector_set_diagonal (pol, rd)
     class(bloch_vector_t), intent(inout) :: pol
     real(default), dimension(:), intent(in) :: rd
@@ -246,7 +246,7 @@ contains
        pol%a(:) = cartan_coeff (s, rd) / bloch_factor (s)
     end select
   end subroutine bloch_vector_set_diagonal
-  
+
   subroutine bloch_vector_init_max_weight (pol, spin_type)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
@@ -260,7 +260,7 @@ contains
        call pol%set ([0.5_default, 0._default, 0._default, 0._default, 0.5_default])
     end select
   end subroutine bloch_vector_init_max_weight
-  
+
   subroutine bloch_vector_init_vector (pol, s, a)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: s
@@ -271,7 +271,7 @@ contains
        pol%a(1:3) = a / bloch_factor (s)
     end select
   end subroutine bloch_vector_init_vector
-  
+
   subroutine bloch_vector_to_vector (pol, a)
     class(bloch_vector_t), intent(in) :: pol
     real(default), dimension(3), intent(out) :: a
@@ -284,7 +284,7 @@ contains
        a = 0
     end select
   end subroutine bloch_vector_to_vector
-  
+
   subroutine bloch_vector_init_matrix (pol, spin_type, r)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
@@ -324,7 +324,7 @@ contains
        end do
     end select
   end subroutine bloch_vector_set_matrix
-  
+
   subroutine bloch_vector_to_matrix (pol, r, only_max_weight)
     class(bloch_vector_t), intent(in) :: pol
     complex(default), dimension(:,:), intent(out), allocatable :: r
@@ -372,6 +372,6 @@ contains
        end if
     end do
   end subroutine bloch_vector_to_matrix
-    
+
 
 end module bloch_vectors

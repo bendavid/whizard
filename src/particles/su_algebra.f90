@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -59,13 +59,13 @@ contains
     integer, intent(in) :: s
     n = fundamental_dimension (s) ** 2 - 1
   end function algebra_dimension
-    
+
   function fundamental_dimension (s) result (d)
     integer :: d
     integer, intent(in) :: s
     d = s
   end function fundamental_dimension
-  
+
   function helicity_value (s, i) result (h)
     integer :: h
     integer, intent(in) :: s, i
@@ -98,7 +98,7 @@ contains
        end select
     end select
   end function helicity_value
-  
+
   function helicity_index (s, h) result (i)
     integer, intent(in) :: s, h
     integer :: i
@@ -120,7 +120,7 @@ contains
        i = hi5(h)
     end select
   end function helicity_index
-  
+
   elemental function is_cartan_generator (s, i) result (cartan)
     logical :: cartan
     integer, intent(in) :: s, i
@@ -154,7 +154,7 @@ contains
        cartan = .false.
     end select
   end function is_cartan_generator
-  
+
   elemental function cartan_index (s, k) result (ci)
     integer :: ci
     integer, intent(in) :: s, k
@@ -175,7 +175,7 @@ contains
        ci = 0
     end select
   end function cartan_index
-  
+
   function cartan_element (s, h) result (a)
     real(default), dimension(:), allocatable :: a
     integer, intent(in) :: s, h
@@ -241,7 +241,7 @@ contains
        end select
     end select
   end function cartan_element
-       
+
   function cartan_coeff (s, rd) result (a)
     real(default), dimension(:), allocatable :: a
     integer, intent(in) :: s
@@ -269,7 +269,7 @@ contains
        a(24) = (rd(1) + rd(2) - 4 * rd(3) + rd(4) + rd(5)) / sqrt10
     end select
   end function cartan_coeff
-          
+
   function root_index (s, h1, h2, r) result (ai)
     integer :: ai
     integer, intent(in) :: s, h1, h2
@@ -386,6 +386,6 @@ contains
        end select
     end select
   end subroutine root_helicity
-  
+
 
 end module su_algebra

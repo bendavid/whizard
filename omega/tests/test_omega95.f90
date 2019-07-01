@@ -1,6 +1,6 @@
 !  omegalib.nw --
 !
-!  Copyright (C) 1999-2016 by
+!  Copyright (C) 1999-2017 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
@@ -35,8 +35,10 @@ program test_omega95
   type(momentum) :: p, q, p0
   type(vector) :: vp, vq, vtest, v0
   type(tensor) :: ttest
+  type(spinor) :: test_psi, test_spinor1, test_spinor2
+  type(conjspinor) :: test_psibar, test_conjspinor1, test_conjspinor2
   integer, dimension(8) :: date_time
-  integer :: rsize
+  integer :: rsize, i
   logical :: passed
   call date_and_time (values = date_time)
   call random_seed (size = rsize)
@@ -76,6 +78,27 @@ program test_omega95
   call expect (abs(f_fv(c_one,ubar(-m,p,-1),vp)+m*ubar(-m,p,-1)), 0, "|ubar(-)[p+m]|=0", passed)
   call expect (abs(f_fv(c_one,vbar(-m,p,+1),vp)-m*vbar(-m,p,+1)), 0, "|vbar(+)[p-m]|=0", passed)
   call expect (abs(f_fv(c_one,vbar(-m,p,-1),vp)-m*vbar(-m,p,-1)), 0, "|vbar(-)[p-m]|=0", passed)
+  print *, "*** Spin Sums"
+  test_psi%a = [one, two, three, four]
+  test_spinor1 = f_vf (c_one, vp, test_psi) + m * test_psi
+  test_spinor2 = u (m, p, +1) * (ubar (m, p, +1) * test_psi) + &
+                 u (m, p, -1) * (ubar (m, p, -1) * test_psi)
+  do i = 1, 4
+    call expect (test_spinor1%a(i), test_spinor2%a(i), "(p+m)1=(sum u ubar)1", passed)
+  end do
+  test_spinor1 = f_vf (c_one, vp, test_psi) - m * test_psi
+  test_spinor2 = v (m, p, +1) * (vbar (m, p, +1) * test_psi) + &
+                 v (m, p, -1) * (vbar (m, p, -1) * test_psi)
+  do i = 1, 4
+    call expect (test_spinor1%a(i), test_spinor2%a(i), "(p-m)1=(sum v vbar)1", passed)
+  end do
+  test_psibar%a = [one, two, three, four]
+  test_conjspinor1 = f_fv (c_one, test_psibar, vp) - m * test_psibar
+  test_conjspinor2 = (test_psibar * v (m, p, +1)) * vbar (m, p, +1) + &
+                     (test_psibar * v (m, p, -1)) * vbar (m, p, -1)
+  do i = 1, 4
+    call expect (test_conjspinor1%a(i), test_conjspinor2%a(i), "(p-m)1=(sum v vbar)1", passed)
+  end do
   print *, "*** Checking the normalization ***:"
   call expect (ubar(m,p,+1)*u(m,p,+1), +2*m, "ubar(+)*u(+)=+2m", passed)
   call expect (ubar(m,p,-1)*u(m,p,-1), +2*m, "ubar(-)*u(-)=+2m", passed)

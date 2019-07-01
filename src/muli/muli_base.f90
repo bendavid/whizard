@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -91,10 +91,10 @@ module muli_base
   type, abstract :: ser_class_t
    contains
     procedure(ser_write_if), deferred :: write_to_marker
-    procedure(ser_read_if), deferred :: read_from_marker  
+    procedure(ser_read_if), deferred :: read_from_marker
     procedure(ser_unit), deferred :: print_to_unit
-    procedure(ser_type), nopass, deferred :: get_type  
-    procedure, nopass :: verify_type => serializable_verify_type  
+    procedure(ser_type), nopass, deferred :: get_type
+    procedure, nopass :: verify_type => serializable_verify_type
     procedure :: read_target_from_marker => &
          serializable_read_target_from_marker
     procedure :: write_type => serializable_write_type
@@ -115,16 +115,16 @@ module muli_base
          serializable_deserialize_from_marker
     generic :: serialize => serialize_to_file, serialize_to_unit, &
          serialize_to_marker
-    generic :: deserialize => deserialize_from_file, & 
+    generic :: deserialize => deserialize_from_file, &
          deserialize_from_unit, deserialize_from_marker
   end type ser_class_t
-  
+
   type, abstract, extends (ser_class_t) :: measure_class_t
     contains
       procedure(measure_int), public, deferred :: measure
   end type measure_class_t
 
-  type, extends (ser_class_t) :: identified_t 
+  type, extends (ser_class_t) :: identified_t
      private
      integer(dik) :: id
      type(string_t) :: name
@@ -134,25 +134,25 @@ module muli_base
      procedure :: base_read_from_marker => identified_read_from_marker
      procedure :: read_from_marker => identified_read_from_marker
      procedure :: base_print_to_unit => identified_print_to_unit
-     procedure :: print_to_unit => identified_print_to_unit  
-     procedure, nopass :: get_type => identified_get_type     
-     procedure, nopass :: verify_type => identified_verify_type  
-     generic :: initialize => identified_initialize  
-     procedure, private :: identified_initialize 
-     procedure :: get_id => identified_get_id  
+     procedure :: print_to_unit => identified_print_to_unit
+     procedure, nopass :: get_type => identified_get_type
+     procedure, nopass :: verify_type => identified_verify_type
+     generic :: initialize => identified_initialize
+     procedure, private :: identified_initialize
+     procedure :: get_id => identified_get_id
      procedure :: get_name => identified_get_name
   end type identified_t
-  
+
   type, extends (identified_t) :: unique_t
      private
      integer(dik) :: unique_id
    contains
-     procedure, nopass :: get_type => unique_get_type  
-     procedure, nopass :: verify_type => unique_verify_type  
-     procedure :: write_to_marker => unique_write_to_marker  
-     procedure :: print_to_unit => unique_print_to_unit  
-     procedure :: identified_initialize => unique_initialize  
-     procedure :: get_unique_id => unique_get_unique_id    
+     procedure, nopass :: get_type => unique_get_type
+     procedure, nopass :: verify_type => unique_verify_type
+     procedure :: write_to_marker => unique_write_to_marker
+     procedure :: print_to_unit => unique_print_to_unit
+     procedure :: identified_initialize => unique_initialize
+     procedure :: get_unique_id => unique_get_unique_id
   end type unique_t
 
   type :: serializable_ref_type
@@ -161,7 +161,7 @@ module muli_base
      class(ser_class_t), pointer :: ref => null()
      class(serializable_ref_type), pointer :: next => null()
    contains
-     procedure :: finalize => serializable_ref_finalize      
+     procedure :: finalize => serializable_ref_finalize
   end type serializable_ref_type
 
   type :: position_stack_t
@@ -169,16 +169,16 @@ module muli_base
      integer(dik), dimension(2) :: position
      class(position_stack_t), pointer :: next => null()
    contains
-     generic :: push => push_head, push_given  
-     procedure :: push_head => position_stack_push_head  
-     procedure :: push_given => position_stack_push_given    
-     generic :: pop => position_stack_pop, position_stack_drop  
+     generic :: push => push_head, push_given
+     procedure :: push_head => position_stack_push_head
+     procedure :: push_given => position_stack_push_given
+     generic :: pop => position_stack_pop, position_stack_drop
      procedure :: position_stack_pop
-     procedure :: position_stack_drop  
-     procedure :: nth_position => position_stack_nth_position  
-     procedure :: first => position_stack_first  
-     procedure :: last => position_stack_last  
-     procedure :: range => position_stack_range    
+     procedure :: position_stack_drop
+     procedure :: nth_position => position_stack_nth_position
+     procedure :: first => position_stack_first
+     procedure :: last => position_stack_last
+     procedure :: range => position_stack_range
   end type position_stack_t
 
   type :: page_ring_t
@@ -195,33 +195,33 @@ module muli_base
      integer(dik), dimension(2) :: eof_pos = [-1,-1]
      type(string_t) :: eof_string
      type(position_stack_t) :: position_stack
-     character(serialize_page_size), dimension(:), allocatable::ring     
+     character(serialize_page_size), dimension(:), allocatable::ring
    contains
      procedure :: open_for_read_access => page_ring_open_for_read_access
-     procedure :: read_page => page_ring_read_page  
+     procedure :: read_page => page_ring_read_page
      procedure :: open_for_write_access => page_ring_open_for_write_access
      procedure :: flush => page_ring_flush
      procedure :: break => page_ring_break
-     procedure :: str_equal => page_ring_str_equal  
+     procedure :: str_equal => page_ring_str_equal
      generic :: find => page_ring_find, page_ring_find_default
      procedure, private :: page_ring_find
-     procedure, private :: page_ring_find_default  
-     procedure :: find_pure => page_ring_find_pure  
-     generic :: get_position => page_ring_get_position1, page_ring_get_position2  
+     procedure, private :: page_ring_find_default
+     procedure :: find_pure => page_ring_find_pure
+     generic :: get_position => page_ring_get_position1, page_ring_get_position2
      procedure, private :: page_ring_get_position1
-     procedure, private :: page_ring_get_position2  
-     generic :: pop_position => pop_actual_position, pop_given_position  
+     procedure, private :: page_ring_get_position2
+     generic :: pop_position => pop_actual_position, pop_given_position
      procedure, private :: pop_actual_position => &
           page_ring_ring_pop_actual_position
      procedure, private :: pop_given_position => &
-          page_ring_ring_pop_given_position  
-     generic :: push_position => push_actual_position, push_given_position  
+          page_ring_ring_pop_given_position
+     generic :: push_position => push_actual_position, push_given_position
      procedure, private :: push_actual_position => &
           page_ring_ring_push_actual_position
      procedure, private :: push_given_position => &
-          page_ring_ring_push_given_position  
-     procedure :: set_position => page_ring_set_position  
-     procedure :: turn_page => page_ring_turn_page 
+          page_ring_ring_push_given_position
+     procedure :: set_position => page_ring_set_position
+     procedure :: turn_page => page_ring_turn_page
      procedure :: proceed => page_ring_proceed
      procedure :: print_to_unit => page_ring_print_to_unit
      procedure :: print_ring => page_ring_print_ring
@@ -235,16 +235,16 @@ module muli_base
      procedure, private :: push_integer_dik => page_ring_push_integer_dik
      procedure, private :: push_integer_array => page_ring_push_integer_array
      procedure, private :: push_integer_array_dik => &
-          page_ring_push_integer_array_dik 
+          page_ring_push_integer_array_dik
      procedure, private :: push_real => page_ring_push_real
-     procedure, private :: push_real_array => page_ring_push_real_array  
-     procedure :: get_character => page_ring_get_character  
-     procedure :: allocate_substring => page_ring_allocate_substring     
+     procedure, private :: push_real_array => page_ring_push_real_array
+     procedure :: get_character => page_ring_get_character
+     procedure :: allocate_substring => page_ring_allocate_substring
      procedure :: pop_character => page_ring_pop_character
      procedure :: pop_by_keys => page_ring_pop_by_keys
      generic :: substring => page_ring_substring1, page_ring_substring2
      procedure, private :: page_ring_substring1
-     procedure, private :: page_ring_substring2  
+     procedure, private :: page_ring_substring2
      generic :: substring_by_keys => page_ring_character_by_keys, &
           page_ring_positions_by_keys
      procedure, private :: page_ring_character_by_keys
@@ -252,27 +252,27 @@ module muli_base
      generic :: pop => pop_string, pop_integer, pop_integer_dik, &
           pop_real, pop_logical, pop_integer_array, &
           pop_integer_array_dik, pop_real_array
-     procedure, private :: pop_string => page_ring_pop_string 
+     procedure, private :: pop_string => page_ring_pop_string
      procedure, private :: pop_integer => page_ring_pop_integer
      procedure, private :: pop_integer_dik => page_ring_pop_integer_dik
      procedure, private :: pop_integer_array => page_ring_pop_integer_array
      procedure, private :: pop_integer_array_dik => &
           page_ring_pop_integer_array_dik
-     procedure, private :: pop_logical => page_ring_pop_logical  
+     procedure, private :: pop_logical => page_ring_pop_logical
      procedure, private :: pop_real => page_ring_pop_real
      procedure, private :: pop_real_array => page_ring_pop_real_array
      procedure :: close => page_ring_close
-     procedure :: ring_index => page_ring_ring_index 
-     procedure, private :: activate_next_page => page_ring_activate_next_page  
-     procedure, private :: enlarge => page_ring_enlarge  
+     procedure :: ring_index => page_ring_ring_index
+     procedure, private :: activate_next_page => page_ring_activate_next_page
+     procedure, private :: enlarge => page_ring_enlarge
      procedure, private :: actual_index => page_ring_actual_index
-     procedure, private :: actual_page => page_ring_actual_page 
+     procedure, private :: actual_page => page_ring_actual_page
      procedure, private :: actual_offset => page_ring_actual_offset
      procedure, private :: actual_position => page_ring_actual_position
      procedure, private :: first_index => page_ring_first_index
      procedure, private :: first_page => page_ring_first_page
      procedure, private :: last_index => page_ring_last_index
-     procedure, private :: last_page => page_ring_last_page  
+     procedure, private :: last_page => page_ring_last_page
   end type page_ring_t
 
   type, extends (page_ring_t) :: marker_t
@@ -322,18 +322,18 @@ module muli_base
      generic :: pick => pick_logical, &
           pick_integer, pick_integer_array, pick_integer_matrix, &
           pick_integer_dik, pick_integer_array_dik, pick_integer_matrix_dik, &
-          pick_default, pick_default_array, pick_default_matrix, pick_string    
+          pick_default, pick_default_array, pick_default_matrix, pick_string
      procedure :: pick_logical => marker_pick_logical
      procedure :: pick_integer => marker_pick_integer
      procedure :: pick_integer_array => marker_pick_integer_array
      procedure :: pick_integer_matrix => marker_pick_integer_matrix
      procedure :: pick_integer_dik => marker_pick_integer_dik
      procedure :: pick_integer_array_dik => marker_pick_integer_array_dik
-     procedure :: pick_integer_matrix_dik => marker_pick_integer_matrix_dik  
+     procedure :: pick_integer_matrix_dik => marker_pick_integer_matrix_dik
      procedure :: pick_default => marker_pick_default
      procedure :: pick_default_array => marker_pick_default_array
      procedure :: pick_default_matrix => marker_pick_default_matrix
-     procedure :: pick_string => marker_pick_string  
+     procedure :: pick_string => marker_pick_string
      procedure :: verify_nothing => marker_verify_nothing
      procedure :: indent => marker_indent
      procedure :: push_heap => marker_push_heap
@@ -342,11 +342,11 @@ module muli_base
      procedure :: pop_reference => marker_pop_reference
      procedure :: reset_references => marker_reset_references
      procedure :: search_reference => marker_search_reference
-     procedure :: reset_heap => marker_reset_heap  
+     procedure :: reset_heap => marker_reset_heap
      procedure :: finalize => marker_finalize
      generic :: search_heap => search_heap_by_id, search_heap_by_ref
      procedure :: search_heap_by_id => marker_search_heap_by_id
-     procedure :: search_heap_by_ref => marker_search_heap_by_ref    
+     procedure :: search_heap_by_ref => marker_search_heap_by_ref
   end type marker_t
 
 
@@ -360,7 +360,7 @@ module muli_base
        integer(dik), intent(out) :: status
      end subroutine ser_write_if
   end interface
-  
+
   abstract interface
      subroutine ser_read_if (this, marker, status)
        import ser_class_t
@@ -371,7 +371,7 @@ module muli_base
        integer(dik), intent(out) :: status
      end subroutine ser_read_if
   end interface
-  
+
   abstract interface
      subroutine ser_unit (this, unit, parents, components, peers)
        import ser_class_t
@@ -381,21 +381,21 @@ module muli_base
        integer(dik), intent(in) :: parents,components,peers
      end subroutine ser_unit
   end interface
-  
+
   abstract interface
      pure subroutine ser_type (type)
        character(:), allocatable, intent(out) :: type
      end subroutine ser_type
-  end interface  
+  end interface
 
   abstract interface
      elemental function measure_int (this)
-       import 
+       import
        class(measure_class_t), intent(in) :: this
        real(default) :: measure_int
      end function measure_int
-  end interface  
-  
+  end interface
+
   interface operator(<)
      module procedure measurable_less_measurable
      module procedure measurable_less_default
@@ -421,8 +421,8 @@ module muli_base
      module procedure page_ring_position_is_before_int_pos
      module procedure page_ring_position_is_before_pos_pos
      module procedure page_ring_position_is_before_pos_int
-  end interface 
-  
+  end interface
+
 
 contains
 
@@ -438,7 +438,7 @@ contains
     write (output_unit, "(A)") ""
     call this%read_from_marker (marker, status)
   end subroutine serializable_read_target_from_marker
-  
+
   subroutine serializable_serialize_to_unit (this, unit, name)
     class(ser_class_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -466,13 +466,13 @@ contains
        call msg_error ("serializable_serialize_to_unit: file is not opened.")
     end if
   end subroutine serializable_serialize_to_unit
-  
+
   elemental function serializable_verify_type (type) result (match)
     character(*), intent(in) :: type
     logical :: match
     match = type == "ser_class_t"
   end function serializable_verify_type
-  
+
   subroutine serializable_write_type (this, unit)
     class(ser_class_t), intent(in) :: this
     integer,intent(in) :: unit
@@ -480,7 +480,7 @@ contains
     call this%get_type (this_type)
     write (unit, "(A)", advance="no") this_type
   end subroutine serializable_write_type
-  
+
   recursive subroutine serializable_print &
        (this, parents, components, peers, unit)
     class(ser_class_t), intent(in) :: this
@@ -494,12 +494,12 @@ contains
     write (u, "(A)")
     call this%print_to_unit (u, parents, components, peers)
   end subroutine serializable_print
-  
+
   recursive subroutine serializable_print_error (this)
     class(ser_class_t), intent(in) :: this
     call this%print_to_unit (error_unit, i_zero, i_zero, i_zero)
   end subroutine serializable_print_error
- 
+
   recursive subroutine serializable_print_all (this, unit)
     class(ser_class_t), intent(in) :: this
     integer, intent(in), optional :: unit
@@ -511,7 +511,7 @@ contains
     write (u, "(A)")
     call this%print_to_unit (u, huge(i_one), huge(i_one), huge(i_one))
   end subroutine serializable_print_all
-  
+
   recursive subroutine serializable_print_little (this, unit)
     class(ser_class_t), intent(in) :: this
     integer, intent(in), optional :: unit
@@ -523,7 +523,7 @@ contains
     write(u, "(A)")
     call this%print_to_unit (u, i_zero, i_zero, i_zero)
   end subroutine serializable_print_little
-  
+
   recursive subroutine serializable_print_parents (this)
     class(ser_class_t), intent(in) :: this
     write(output_unit, "(A)")
@@ -532,7 +532,7 @@ contains
     write (output_unit, "(A)")
     call this%print_to_unit (output_unit, huge(i_one), i_zero, i_zero)
   end subroutine serializable_print_parents
-  
+
   recursive subroutine serializable_print_components(this)
     class(ser_class_t), intent(in) :: this
     write (output_unit, "(A)")
@@ -541,7 +541,7 @@ contains
     write(output_unit, "(A)")
     call this%print_to_unit (output_unit, i_zero, huge(i_one), i_zero)
   end subroutine serializable_print_components
-  
+
   recursive subroutine serializable_print_peers (this)
     class(ser_class_t), intent(in) :: this
     write (output_unit, "(A)")
@@ -550,7 +550,7 @@ contains
     write (output_unit, "(A)")
     call this%print_to_unit (output_unit, i_zero, i_zero, huge(i_one))
   end subroutine serializable_print_peers
-  
+
   subroutine serializable_serialize_to_file (this, name, file)
     class(ser_class_t), intent(in) :: this
     character(len=*), intent(in) :: file, name
@@ -567,19 +567,19 @@ contains
     call marker%close ()
     call marker%finalize ()
   end subroutine serializable_serialize_to_file
-  
+
   recursive subroutine serializable_serialize_to_marker (this, marker, name)
     class(ser_class_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
     character(len=*), intent(in) :: name
     if (marker%action == 1) then
        call marker%mark_instance (this, name)
-    else       
+    else
        call msg_error ("serializable_serialize_to_marker: Marker is " &
             // "not ready for write access.")
     end if
   end subroutine serializable_serialize_to_marker
-  
+
   subroutine serializable_deserialize_from_file (this, name, file)
     class(ser_class_t), intent(out) :: this
     character(*), intent(in) :: name, file
@@ -611,7 +611,7 @@ contains
     call marker%close ()
     call marker%finalize ()
   end subroutine serializable_deserialize_from_file
-  
+
   subroutine serializable_deserialize_from_unit (this, unit, name)
     class(ser_class_t), intent(inout) :: this
     integer, intent(in) :: unit
@@ -638,7 +638,7 @@ contains
        print *,"serializable_serialize_from_unit: file is not opened."
     end if
   end subroutine serializable_deserialize_from_unit
-  
+
   subroutine serializable_deserialize_from_marker (this, name, marker)
     class(ser_class_t), intent(out) :: this
     character(*), intent(in) :: name
@@ -646,12 +646,12 @@ contains
     integer(dik) :: status
     if (marker%action == 2) then
        call marker%pick_instance (name, this, status)
-    else       
+    else
        call msg_error ("serializable_deserialize_from_marker: Marker is " &
             // "not ready for read access.")
     end if
   end subroutine serializable_deserialize_from_marker
-  
+
   recursive subroutine serialize_print_peer_pointer &
        (ser, unit, parents, components, peers, name)
     class(ser_class_t), pointer, intent(in) :: ser
@@ -670,7 +670,7 @@ contains
        write (unit,*) name, " is not associated."
     end if
   end subroutine serialize_print_peer_pointer
-  
+
   recursive subroutine serialize_print_comp_pointer &
        (ser, unit, parents, components, peers, name)
     class(ser_class_t), pointer, intent(in) :: ser
@@ -689,7 +689,7 @@ contains
        write (unit,*) name," is not associated."
     end if
   end subroutine serialize_print_comp_pointer
-  
+
   subroutine serialize_print_allocatable &
        (ser, unit, parents, components, peers, name)
     class(ser_class_t), allocatable, intent(in) :: ser
@@ -720,7 +720,7 @@ contains
     call marker%mark ("id", id)
     call marker%mark_end ("identified_t")
   end subroutine identified_write_to_marker
-  
+
   subroutine identified_read_from_marker (this, marker, status)
     class(identified_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -732,7 +732,7 @@ contains
     call marker%pick_end ("identified_t", status=status)
     this%name = name
   end subroutine identified_read_from_marker
-  
+
   subroutine identified_print_to_unit (this, unit, parents, components, peers)
     class(identified_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -741,25 +741,25 @@ contains
     write (unit, "(A,A)")    "Name:             ", this%get_name ()
     write (unit, "(A,I10)")  "ID:               ", this%get_id ()
   end subroutine identified_print_to_unit
-    
+
   pure subroutine identified_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="identified_t")
   end subroutine identified_get_type
- 
+
   elemental logical function identified_verify_type (type)
     character(len=*), intent(in) ::type
     identified_verify_type = (type == "identified_t")
   end function identified_verify_type
-  
+
   subroutine identified_initialize (this, id, name)
     class(identified_t), intent(out) :: this
     integer(dik), intent(in) :: id
     character(len=*), intent(in) :: name
     this%name = name
-    this%id = id 
+    this%id = id
   end subroutine identified_initialize
-  
+
   elemental function identified_get_id (this) result(id)
     class(identified_t), intent(in) :: this
     integer(dik) :: id
@@ -776,12 +776,12 @@ contains
     character(:), allocatable, intent(out) :: type
     allocate (type, source="unique_t")
   end subroutine unique_get_type
-  
+
   elemental logical function unique_verify_type (type)
     character(len=*), intent(in) :: type
     unique_verify_type = (type == "unique_t")
   end function unique_verify_type
-  
+
   subroutine unique_write_to_marker (this, marker, status)
     class(unique_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -791,17 +791,17 @@ contains
     call marker%mark ("unique_id", this%get_unique_id ())
     call marker%mark_end ("unique_t")
   end subroutine unique_write_to_marker
-  
+
   subroutine unique_read_from_marker (this, marker, status)
     class(unique_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
     integer(dik), intent(out) :: status
-    call marker%pick_begin ("unique_t", status=status)    
+    call marker%pick_begin ("unique_t", status=status)
     call identified_read_from_marker (this, marker, status)
     call marker%pick ("unique_id", this%unique_id, status)
     call marker%pick_end ("unique_t", status)
   end subroutine unique_read_from_marker
-  
+
   subroutine unique_print_to_unit (this, unit, parents, components, peers)
     class(unique_t), intent(in) :: this
     integer,intent(in) :: unit
@@ -810,7 +810,7 @@ contains
          (this, unit, parents-1, components, peers)
     write (unit, "(A,I10)")  "Unique ID:        ", this%get_unique_id ()
   end subroutine unique_print_to_unit
-  
+
   subroutine unique_initialize(this,id,name)
     class(unique_t), intent(out) :: this
     integer(dik), intent(in) :: id
@@ -819,13 +819,13 @@ contains
     last_id = last_id + 1
     this%unique_id = last_id
   end subroutine unique_initialize
-  
+
   pure function unique_get_unique_id (this)
     class(unique_t), intent(in) :: this
     integer(dik) :: unique_get_unique_id
     unique_get_unique_id = this%unique_id
   end function unique_get_unique_id
-  
+
   subroutine serializable_ref_finalize (this)
     class(serializable_ref_type), intent(inout) :: this
     class(serializable_ref_type), pointer :: next
@@ -837,7 +837,7 @@ contains
     end do
     if (associated (this%ref))  nullify (this%ref)
   end subroutine serializable_ref_finalize
-  
+
   subroutine position_stack_push_head (this)
     class(position_stack_t) :: this
     class(position_stack_t), pointer :: new
@@ -846,7 +846,7 @@ contains
     new%position = this%position
     this%next => new
   end subroutine position_stack_push_head
-  
+
   subroutine position_stack_push_given (this, position)
     class(position_stack_t) :: this
     integer(dik), dimension(2), intent(in) :: position
@@ -856,7 +856,7 @@ contains
     new%position = position
     this%next => new
   end subroutine position_stack_push_given
-  
+
   subroutine position_stack_pop (this)
     class(position_stack_t) :: this
     class(position_stack_t), pointer :: old
@@ -881,7 +881,7 @@ contains
        position= [0,0]
     end if
   end subroutine position_stack_drop
-  
+
   function position_stack_nth_position (this, n) result (position)
     class(position_stack_t), intent(in) :: this
     integer(dik), intent(in) :: n
@@ -900,7 +900,7 @@ contains
        position = [0,0]
     end if
   end function position_stack_nth_position
-  
+
   function position_stack_first(this) result(position)
     class(position_stack_t), intent(in) :: this
     integer(kind=dik), dimension(2) :: position, tmp_position
@@ -914,7 +914,7 @@ contains
        tmp_stack => tmp_stack%next
     end do
   end function position_stack_first
-  
+
   function position_stack_last (this) result (position)
     class(position_stack_t), intent(in) :: this
     integer(dik), dimension(2) :: position, tmp_position
@@ -928,13 +928,13 @@ contains
        tmp_stack => tmp_stack%next
     end do
   end function position_stack_last
-    
+
   pure function position_stack_range (this) result (position)
     class(position_stack_t), intent(in) :: this
     integer(dik), dimension(2) :: position
     class(position_stack_t), pointer :: tmp
   end function position_stack_range
-    
+
   subroutine page_ring_open_for_read_access &
        (this, file, eof_string, asynchronous)
     class(page_ring_t), intent(inout) :: this
@@ -968,7 +968,7 @@ contains
     end if
     call this%read_page ()
   end subroutine page_ring_open_for_read_access
-  
+
   subroutine page_ring_read_page (this)
     class(page_ring_t), intent(inout) :: this
     integer(dik) :: iostat
@@ -986,7 +986,7 @@ contains
        end if
     end if
   end subroutine page_ring_read_page
-  
+
   subroutine page_ring_open_for_write_access (this, file, asynchronous)
     class(page_ring_t), intent(inout) :: this
     character(*), intent(in) :: file
@@ -997,7 +997,7 @@ contains
     if (this%unit < 0) then
        call msg_error ("page_ring_open: No free unit found.")
     end if
-    this%ring_size = 2 
+    this%ring_size = 2
     call this%set_position ([i_zero,i_one])
     this%active_pages = [i_zero,-i_one]
     if (allocated (this%ring))  deallocate (this%ring)
@@ -1032,14 +1032,14 @@ contains
          call this%activate_next_page ()
     call this%turn_page ()
   end subroutine page_ring_break
-  
+
   pure logical function page_ring_str_equal (this, string, pos)
     class(page_ring_t), intent(in) :: this
     character(*), intent(in) :: string
     integer(dik), dimension(2,2), intent(in) :: pos
     page_ring_str_equal = string == this%substring (pos)
   end function page_ring_str_equal
-  
+
   recursive subroutine page_ring_find &
        (this, exp, start, limit, skip, proceed, pos)
     class(page_ring_t), intent(inout) :: this
@@ -1148,7 +1148,7 @@ contains
     call this%find (exp, this%position_stack%position, this%eof_pos, &
          skip, proceed, pos)
   end subroutine page_ring_find_default
-  
+
   pure recursive function page_ring_find_pure &
        (this, exp, start, limit, skip) result (pos)
     class(page_ring_t),intent(in) :: this
@@ -1202,8 +1202,8 @@ contains
           else
              !!! The next page is available.
              page2 = mod(start(1)+1, this%ring_size)
-             !!! We concatenate the edges. When l is the length of exp, 
-             !!! then we want to concatenate the l-1 last characters of 
+             !!! We concatenate the edges. When l is the length of exp,
+             !!! then we want to concatenate the l-1 last characters of
              !!! page one and the first l characters of page two.
              ! print *,"overlap: |",this%ring(page) &
              !    (serialize_page_size-len(exp)+2:)//this%ring(page2) &
@@ -1222,7 +1222,7 @@ contains
                    pos = [start(1)+1, ind+1]
                 end select
              else
-                !!! EXP is not found in the overlap region. 
+                !!! EXP is not found in the overlap region.
                 !!! We recursively search the next pages.
                 pos = this%find_pure (exp, [start(i_one) + i_one, i_one], &
                      limit, skip)
@@ -1234,7 +1234,7 @@ contains
        pos = [0, 0]
     end if
   end function page_ring_find_pure
-  
+
   pure subroutine page_ring_get_position1 (this, pos)
     class(page_ring_t), intent(in) :: this
     integer(dik), intent(out) :: pos
@@ -1298,7 +1298,7 @@ contains
        if (deactivate)this%active_pages(1) = this%actual_page ()
     end if
   end subroutine page_ring_proceed
-  
+
   subroutine page_ring_print_to_unit (this, unit, parents, components, peers)
     class(page_ring_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -1322,7 +1322,7 @@ contains
        write (unit, "(3x,A)")  "Ring is not allocated."
     end if
   end subroutine page_ring_print_to_unit
-  
+
   subroutine page_ring_print_ring (this, unit)
     class(page_ring_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -1334,14 +1334,14 @@ contains
     end do
     write (unit, "(1x,A)")  "End of page ring"
   end subroutine page_ring_print_ring
-  
+
   subroutine page_ring_print_position(this)
     class(page_ring_t), intent(inout) :: this
     print *, this%actual_position(), &
          this%ring(this%actual_index()) (:this%actual_offset() - 1), "|", &
          this%ring(this%actual_index()) (this%actual_offset():)
   end subroutine page_ring_print_position
-  
+
   subroutine page_ring_put (this)
     class(page_ring_t), intent(inout) :: this
   end subroutine page_ring_put
@@ -1359,7 +1359,7 @@ contains
           call this%flush()
        else
           call this%proceed(l)
-       end if       
+       end if
     else
        cut = serialize_page_size-this%actual_offset() + 1
        call this%push_string(string(:cut))
@@ -1407,7 +1407,7 @@ contains
        end select
     end if
   end subroutine page_ring_push_integer_dik
-  
+
   subroutine page_ring_push_integer_array(this,int)
     class(page_ring_t), intent(inout) :: this
     integer, dimension(:), intent(in) :: int
@@ -1417,7 +1417,7 @@ contains
        call this%push (" ")
     end do
   end subroutine page_ring_push_integer_array
-  
+
   subroutine page_ring_push_integer_array_dik(this,int)
     class(page_ring_t), intent(inout) :: this
     integer(dik), dimension(:), intent(in) :: int
@@ -1427,7 +1427,7 @@ contains
        call this%push (" ")
     end do
   end subroutine page_ring_push_integer_array_dik
-    
+
   subroutine page_ring_push_real (this, dou)
     class(page_ring_t), intent(inout) :: this
     real(default), intent(in) :: dou
@@ -1438,7 +1438,7 @@ contains
     else
        f = int (scale (fraction(dou), digits(dou)), kind=dik)
        call this%push (digits(dou))
-       call this%push (":")    
+       call this%push (":")
        call this%push (f)
        call this%push (":")
        call this%push (exponent(dou))
@@ -1468,7 +1468,7 @@ contains
     character(:), allocatable, intent(out) :: string
     string = this%substring (p1, p2)
   end subroutine page_ring_allocate_substring
-  
+
   subroutine page_ring_pop_character (this, c)
     class(page_ring_t), intent(inout) :: this
     character, intent(out) :: c
@@ -1477,7 +1477,7 @@ contains
     if (this%actual_offset () == serialize_page_size)  call this%read_page
     call this%proceed (i_one)
   end subroutine page_ring_pop_character
-  
+
   subroutine page_ring_pop_by_keys (this, start, stop, inclusive, res)
     class(page_ring_t), intent(inout) :: this
     character(*), intent(in), optional :: start
@@ -1495,7 +1495,7 @@ contains
     res = this%substring (i1, i2)
     call this%set_position (i2)
   end subroutine page_ring_pop_by_keys
-  
+
   pure function page_ring_substring1 (this, i) result (res)
     class(page_ring_t), intent(in) :: this
     integer(dik), dimension(2,2), intent(in) :: i
@@ -1515,7 +1515,7 @@ contains
             this%ring (mod(page,this%ring_size)) (1:i(2,2))
     end if
   end function page_ring_substring1
-  
+
   pure function page_ring_substring2 (this, i1, i2) result (res)
     class(page_ring_t), intent(in) :: this
     integer(dik), dimension(2), intent(in) :: i1,i2
@@ -1534,7 +1534,7 @@ contains
        res(pos+2:pos+1+i2(2)) = this%ring(mod(page, this%ring_size)) (1:i2(2))
     end if
   end function page_ring_substring2
-  
+
   pure recursive subroutine page_ring_character_by_keys (this, exp1, &
        exp2, start, limit, inclusive, length, string)
     class(page_ring_t), intent(in) :: this
@@ -1580,7 +1580,7 @@ contains
        end if
     end if
   end subroutine page_ring_positions_by_keys
-  
+
   recursive subroutine page_ring_pop_string (this, res)
     class(page_ring_t), intent(inout) :: this
     character(len=*), intent(out) :: res
@@ -1588,7 +1588,7 @@ contains
     n = len(res)
     cut = serialize_page_size-this%actual_offset() + 1
     if (n <= cut) then
-       res = this%ring (this%actual_index()) & 
+       res = this%ring (this%actual_index()) &
             (this%actual_offset():this%actual_offset()+n)
        if (n == cut) then
           call this%read_page
@@ -1607,7 +1607,7 @@ contains
     call this%pop (in_dik)
     in = int(in_dik)
   end subroutine page_ring_pop_integer
-   
+
   subroutine page_ring_pop_integer_dik (this, int)
     class(page_ring_t), intent(inout) :: this
     integer(dik), intent(out) :: int
@@ -1651,7 +1651,7 @@ contains
     int = int * sign
     if (c == "<")  call this%proceed (-i_one)
   end subroutine page_ring_pop_integer_dik
-  
+
   subroutine page_ring_pop_integer_array (this, int)
     class(page_ring_t), intent(inout) :: this
     integer, dimension(:), intent(out) :: int
@@ -1660,7 +1660,7 @@ contains
        call this%pop (int(n))
     end do
   end subroutine page_ring_pop_integer_array
-  
+
    subroutine page_ring_pop_integer_array_dik (this, int)
     class(page_ring_t), intent(inout) :: this
     integer(dik), dimension(:), intent(out) :: int
@@ -1669,7 +1669,7 @@ contains
        call this%pop (int(n))
     end do
   end subroutine page_ring_pop_integer_array_dik
-  
+
   subroutine page_ring_pop_logical (this, l)
     class(page_ring_t), intent(inout) :: this
     logical, intent(out) :: l
@@ -1680,7 +1680,7 @@ contains
     end do
     read (lc, "(L1)") l
   end subroutine page_ring_pop_logical
-  
+
   subroutine page_ring_pop_real (this, def, skip)
     class(page_ring_t), intent(inout) :: this
     real(default), intent(out) :: def
@@ -1698,12 +1698,12 @@ contains
        if (.not. skip)  call this%proceed (-i_one)
     end if
   end subroutine page_ring_pop_real
-  
+
   subroutine page_ring_pop_real_array (this, def, skip)
     class(page_ring_t), intent(inout) :: this
     real(default), dimension(:), intent(out) :: def
     logical, optional, intent(in) :: skip
-    integer(dik) :: n    
+    integer(dik) :: n
     call this%pop_real (def(1))
     do n = 2, size(def)
        call this%pop_real (def(n))
@@ -1712,7 +1712,7 @@ contains
        if (.not. skip)  call this%proceed (-i_one)
     end if
   end subroutine page_ring_pop_real_array
-  
+
   subroutine page_ring_close (this)
     class(page_ring_t), intent(inout) :: this
     if (this%action == 1) then
@@ -1728,13 +1728,13 @@ contains
     end if
     close (this%unit)
   end subroutine page_ring_close
-  
+
   elemental integer(dik) function page_ring_ring_index (this, n)
     class(page_ring_t), intent(in) :: this
     integer(dik), intent(in) :: n
     page_ring_ring_index = mod(n, this%ring_size)
   end function page_ring_ring_index
-  
+
   subroutine page_ring_activate_next_page (this)
     class(page_ring_t), intent(inout) :: this
     if (this%active_pages(2) - this%active_pages(1) + 1 >= &
@@ -1764,28 +1764,28 @@ contains
     class(page_ring_t), intent(in) :: this
     page_ring_actual_page = this%position_stack%position(1)
   end function page_ring_actual_page
-  
+
   elemental integer(kind=dik) function page_ring_actual_offset(this)
     class(page_ring_t),intent(in) :: this
     page_ring_actual_offset=this%position_stack%position(2)
   end function page_ring_actual_offset
-  
+
   pure function page_ring_actual_position(this)
     class(page_ring_t), intent(in) :: this
     integer(dik), dimension(2) :: page_ring_actual_position
     page_ring_actual_position = this%position_stack%position
   end function page_ring_actual_position
-   
+
   elemental integer(dik) function page_ring_first_index (this)
     class(page_ring_t), intent(in) :: this
     page_ring_first_index = mod(this%active_pages(1), this%ring_size)
   end function page_ring_first_index
-  
+
   elemental integer(dik) function page_ring_first_page (this)
     class(page_ring_t), intent(in) :: this
     page_ring_first_page = this%active_pages(1)
   end function page_ring_first_page
-  
+
   elemental integer(dik) function page_ring_last_index (this)
     class(page_ring_t), intent(in) :: this
     page_ring_last_index = mod(this%active_pages(2), this%ring_size)
@@ -1795,7 +1795,7 @@ contains
     class(page_ring_t), intent(in) :: this
     page_ring_last_page = this%active_pages(2)
   end function page_ring_last_page
-    
+
   subroutine marker_mark_begin (this, tag, type, name, target, pointer, shape)
     class(marker_t), intent(inout) :: this
     character(*), intent(in) :: tag
@@ -1825,7 +1825,7 @@ contains
     call this%push (">")
     this%indentation = this%indentation + 1
   end subroutine marker_mark_begin
-  
+
   subroutine marker_mark_instance_begin &
        (this, ser, name, target, pointer, shape)
     class(marker_t), intent(inout) :: this
@@ -1837,7 +1837,7 @@ contains
     call ser%get_type (this_type)
     call this%mark_begin ("ser", this_type, name, target, pointer, shape)
   end subroutine marker_mark_instance_begin
-  
+
   subroutine marker_mark_end (this, tag)
     class(marker_t), intent(inout) :: this
     character(*), intent(in), optional :: tag
@@ -1868,7 +1868,7 @@ contains
     end if
     call this%push ("</"//name//">")
   end subroutine marker_mark_logical
-  
+
   subroutine marker_mark_integer (this, name, content)
     class(marker_t), intent(inout) :: this
     character(*), intent(in) :: name
@@ -1889,7 +1889,7 @@ contains
     call this%push ("</"//name//">")
   end subroutine marker_mark_integer_array
 
-  
+
   subroutine marker_mark_integer_matrix (this, name, content)
     class(marker_t), intent(inout) :: this
     character(*), intent(in) :: name
@@ -1940,7 +1940,7 @@ contains
     end do
     call this%push ("</"//name//">")
   end subroutine marker_mark_integer_matrix_dik
-  
+
   subroutine marker_mark_default (this, name, content)
     class(marker_t), intent(inout) :: this
     character(*), intent(in) :: name
@@ -2087,7 +2087,7 @@ contains
     end if
     call this%push ("/>")
   end subroutine marker_mark_empty
-  
+
   subroutine marker_pick_begin (this, tag, type, name, target, &
        pointer, shape, status)
     class(marker_t), intent(inout) :: this
@@ -2475,7 +2475,7 @@ contains
        call this%pick_end (name,status)
     end if
   end subroutine marker_pick_default_matrix
-  
+
   subroutine marker_pick_string (this, name, content, status)
     class(marker_t), intent(inout) :: this
     character(*), intent(in) :: name
@@ -2487,7 +2487,7 @@ contains
        call this%pick_end (name, status)
     end if
   end subroutine marker_pick_string
-    
+
   subroutine marker_verify_nothing (this, name, status)
     class(marker_t), intent(inout) :: this
     character(*), intent(in) :: name
@@ -2530,7 +2530,7 @@ contains
     new_ref%id = id
     this%heap => new_ref
   end subroutine marker_push_heap
-  
+
   subroutine marker_pop_heap (this, ser)
     class(marker_t), intent(inout) :: this
     class(ser_class_t), pointer, intent(out) :: ser
@@ -2560,7 +2560,7 @@ contains
     end if
     this%references => new_ref
   end subroutine marker_push_reference
-  
+
   subroutine marker_pop_reference (this, ser)
     class(marker_t), intent(inout) :: this
     class(ser_class_t), pointer, intent(out) :: ser
@@ -2583,13 +2583,13 @@ contains
        deallocate (this%references)
     end if
   end subroutine marker_reset_references
-  
+
   subroutine marker_search_reference (this, type, ser)
     class(marker_t), intent(in) :: this
     integer(dik), dimension(2,2), intent(in) :: type
     class(ser_class_t), pointer, intent(out) :: ser
     !!! !!! !!! NAG bug workaround
-    class(ser_class_t), pointer :: tmp_ser 
+    class(ser_class_t), pointer :: tmp_ser
     class(serializable_ref_type), pointer :: ref
     ref => this%references
     nullify (ser)
@@ -2616,7 +2616,7 @@ contains
     call this%reset_heap ()
     call this%reset_references ()
   end subroutine marker_finalize
-  
+
   subroutine marker_search_heap_by_ref (this, ref, id)
     class(marker_t), intent(in) :: this
     class(ser_class_t), pointer, intent(in) :: ref
@@ -2632,7 +2632,7 @@ contains
        ref_p => ref_p%next
     end do
   end subroutine marker_search_heap_by_ref
-  
+
   subroutine marker_search_heap_by_id (this, id, ser)
     class(marker_t), intent(in) :: this
     integer(dik), intent(in) :: id
@@ -2647,20 +2647,20 @@ contains
        ref => ref%next
     end do
   end subroutine marker_search_heap_by_id
-  
+
   elemental function measurable_less_measurable (mea1, mea2)
     class(measure_class_t), intent(in) :: mea1, mea2
     logical :: measurable_less_measurable
     measurable_less_measurable = mea1%measure() < mea2%measure()
   end function measurable_less_measurable
-  
+
   elemental function measurable_less_default (mea1, def)
     class(measure_class_t), intent(in) :: mea1
     real(default), intent(in) :: def
     logical :: measurable_less_default
     measurable_less_default = mea1%measure() < def
   end function measurable_less_default
-  
+
   elemental function measurable_less_or_equal_measurable (mea1, mea2)
     class(measure_class_t), intent(in) :: mea1, mea2
     logical :: measurable_less_or_equal_measurable
@@ -2699,7 +2699,7 @@ contains
     logical :: measurable_equal_or_greater_default
     measurable_equal_or_greater_default = mea1%measure() >= def
   end function measurable_equal_or_greater_default
-  
+
   elemental function measurable_greater_measurable (mea1, mea2)
     class(measure_class_t), intent(in) :: mea1,mea2
     logical :: measurable_greater_measurable
@@ -2773,13 +2773,13 @@ contains
     ring_position_metric1 = (p(1,2) - p(1,1)) * serialize_page_size + &
          p(2,2) - p(2,1) + 1
   end function ring_position_metric1
-  
+
   pure integer(dik) function ring_position_metric2 (p1, p2)
     integer(dik), dimension(2), intent(in) :: p1, p2
     ring_position_metric2 = (p2(1) - p1(1)) * &
          serialize_page_size + p2(2) - p1(2) + 1
   end function ring_position_metric2
-  
+
   subroutine generate_unit (unit, min, max)
     integer, intent(out) :: unit
     integer, intent(in), optional :: min,max
@@ -2804,8 +2804,8 @@ contains
           exit
        end if
     end do
-  end subroutine generate_unit  
-  
+  end subroutine generate_unit
+
   subroutine ilog2 (int, exp, rem)
     integer,intent(in) :: int
     integer,intent(out) :: exp, rem
@@ -2820,9 +2820,9 @@ contains
        rem = (int - ishft(count, -1))
     else
        rem = 0
-    end if    
+    end if
   end subroutine ilog2
-  
+
   subroutine integer_with_leading_zeros (number, length, string)
     integer, intent(in) :: number, length
     character(len=*), intent(out) :: string
@@ -2862,7 +2862,7 @@ contains
        end if
     end do
   end function character_is_in
-  
+
 
 end module muli_base
 

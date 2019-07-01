@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -38,6 +38,7 @@ module kinematics
   use kinds, only: default
   use format_utils, only: write_separator
   use diagnostics
+  use constants, only: two
   use io_units
   use lorentz
   use physics_defs
@@ -49,6 +50,7 @@ module kinematics
   use fks_regions
   use process_config
   use process_mci
+  use pcm, only: pcm_instance_nlo_t
   use ttv_formfactors, only: m1s_to_mpole
 
   implicit none
@@ -183,10 +185,11 @@ contains
     k%f_allocated = .true.
   end subroutine kinematics_init_phs
 
-  subroutine kinematics_evaluate_radiation_kinematics (k, r_in, reg_data)
+  subroutine kinematics_evaluate_radiation_kinematics (k, r_in, reg_data, nlo_type)
     class(kinematics_t), intent(inout) :: k
     real(default), intent(in), dimension(:) :: r_in
     type(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: nlo_type
     logical :: use_contributors
     use_contributors = allocated (reg_data%alr_contributors)
     select type (phs => k%phs)
@@ -194,7 +197,8 @@ contains
        if (use_contributors) then
           call phs%compute_xi_ref_momenta (reg_data%alr_contributors)
        else if (k%threshold) then
-          if (k%emitter > 0) call phs%compute_xi_ref_momenta_threshold ()
+          if (.not. is_subtraction_component (k%emitter, nlo_type)) &
+               call phs%compute_xi_ref_momenta_threshold ()
        else
           call phs%compute_xi_ref_momenta ()
        end if
@@ -219,8 +223,8 @@ contains
     call k%phs%set_incoming_momenta (p(1:k%n_in))
     call k%phs%compute_flux ()
     call k%phs%select_channel (phs_channel)
-    call k%phs%evaluate_selected_channel &
-           (phs_channel, mci_work%get_x_process ())
+    call k%phs%evaluate_selected_channel (phs_channel, &
+         mci_work%get_x_process ())
 
     select type (phs => k%phs)
     type is (phs_fks_t)
@@ -359,18 +363,51 @@ contains
     end if
   end subroutine kinematics_modify_momenta_for_subtraction
 
-  subroutine kinematics_threshold_projection (k)
+  subroutine kinematics_threshold_projection (k, pcm_instance, nlo_type)
     class(kinematics_t), intent(inout) :: k
+    type(pcm_instance_nlo_t), intent(inout) :: pcm_instance
+    integer, intent(in) :: nlo_type
+    real(default) :: sqrts, mtop
+    type(lorentz_transformation_t) :: L_to_cms
+    type(vector4_t), dimension(:), allocatable :: p_tot
+    integer :: n_tot
+    n_tot = k%phs%get_n_tot ()
     select type (phs => k%phs)
     type is (phs_fks_t)
-       call phs%threshold_projection (m1s_to_mpole (phs%get_sqrts()))
+       if (nlo_type == NLO_REAL) then !!! Pure Real
+            n_tot = n_tot - 1
+            allocate (p_tot (n_tot))
+            p_tot(1 : k%n_in) = phs%p_born
+            p_tot(k%n_in + 1 : n_tot) = phs%q_born
+       else !!! Mismatch
+          allocate (p_tot (n_tot))
+          p_tot(1 : k%n_in) = k%phs%p
+          p_tot(k%n_in + 1 : n_tot) = phs%q
+       end if
+       sqrts = two * energy (phs%p_born(1))
+    class default !!! Virtual, Born must be checked before
+       allocate (p_tot (n_tot))
+       p_tot(1 : k%n_in) = k%phs%p
+       p_tot(k%n_in + 1 : n_tot) = phs%q
+       sqrts = two * energy (phs%p(1))
     end select
+    mtop = m1s_to_mpole (sqrts)
+    L_to_cms = get_boost_for_threshold_projection (p_tot, sqrts, mtop)
+    call pcm_instance%real_kinematics%p_born_cms%set_momenta (1, p_tot)
+    associate (p_onshell => pcm_instance%real_kinematics%p_born_onshell%phs_point(1)%p)
+       call threshold_projection_born (mtop, L_to_cms, p_tot, p_onshell)
+       if (debug2_active (D_THRESHOLD)) then
+          print *, 'On-shell projected Born: '
+          call vector4_write_set (p_onshell)
+       end if
+    end associate
   end subroutine kinematics_threshold_projection
 
-  subroutine kinematics_evaluate_radiation (k, p_in, p_out)
+  subroutine kinematics_evaluate_radiation (k, p_in, p_out, success)
     class(kinematics_t), intent(inout) :: k
     type(vector4_t), intent(in), dimension(:) :: p_in
     type(vector4_t), intent(out), dimension(:), allocatable :: p_out
+    logical, intent(out) :: success
     type(phs_point_t) :: p
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default) :: xi_max_offshell, xi_offshell, y_offshell, jac_rand_dummy, phi
@@ -401,15 +438,18 @@ contains
                 xi_offshell = xi_max_offshell * phs%generator%real_kinematics%xi_tilde
                 phi = phs%generator%real_kinematics%phi
                 call phs%generate_fsr (k%emitter, k%i_phs, p, &
-                     xi_y_phi = [xi_offshell, y_offshell, phi])
+                     xi_y_phi = [xi_offshell, y_offshell, phi], no_jacobians = .true.)
                 call phs%generator%real_kinematics%p_real_cms%set_momenta (k%i_phs, p)
                 call phs%generate_fsr_threshold (k%emitter, k%i_phs, p)
+                if (debug2_active (D_SUBTRACTION)) &
+                     call generate_fsr_threshold_for_other_emitters (k%emitter, k%i_phs)
              else if (k%i_con > 0) then
                 call phs%generate_fsr (k%emitter, k%i_phs, p, k%i_con)
              else
                 call phs%generate_fsr (k%emitter, k%i_phs, p)
              end if
           end if
+          success = check_scalar_products (p%p)
           if (debug_active (D_SUBTRACTION)) then
              call msg_debug (D_SUBTRACTION, "Real phase-space: ")
              call p%write ()
@@ -417,8 +457,22 @@ contains
           p_out = p%p
        else
           allocate (p_out (size (p_in))); p_out = p_in
+          success = .true.
        end if
     end select
+  contains
+    subroutine generate_fsr_threshold_for_other_emitters (emitter, i_phs)
+      integer, intent(in) :: emitter, i_phs
+      integer :: ii_phs, this_emitter
+      select type (phs => k%phs)
+      type is (phs_fks_t)
+         do ii_phs = 1, size (phs%phs_identifiers)
+            this_emitter = phs%phs_identifiers(ii_phs)%emitter
+            if (ii_phs /= i_phs .and. this_emitter /= emitter) &
+                 call phs%generate_fsr_threshold (this_emitter, i_phs)
+         end do
+      end select
+    end subroutine
   end subroutine kinematics_evaluate_radiation
 
 

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,6 +36,7 @@ module subevt_expr
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use constants, only: zero, one
   use io_units
   use format_utils, only: write_separator
   use diagnostics
@@ -479,7 +480,7 @@ contains
              scale = expr%scale%get_real ()
           else
              call msg_error ("Evaluate scale expression: result undefined")
-             scale = 0
+             scale = zero
           end if
        else
           scale = expr%sqrts_hat
@@ -493,7 +494,7 @@ contains
           else
              call msg_error ("Evaluate factorization scale expression: &
                   &result undefined")
-             fac_scale = 0
+             fac_scale = zero
           end if
        else
           fac_scale = scale
@@ -507,7 +508,7 @@ contains
           else
              call msg_error ("Evaluate renormalization scale expression: &
                   &result undefined")
-             ren_scale = 0
+             ren_scale = zero
           end if
        else
           ren_scale = scale
@@ -518,11 +519,13 @@ contains
              weight = expr%weight%get_real ()
           else
              call msg_error ("Evaluate weight expression: result undefined")
-             weight = 0
+             weight = zero
           end if
        else
-          weight = 1
+          weight = one
        end if
+    else
+       weight = zero
     end if
   end subroutine parton_expr_evaluate
 

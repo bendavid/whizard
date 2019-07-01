@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -109,7 +109,7 @@ contains
     gamma0 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo_massless_b", rel_smallness=1.0E-5_default)
-    gamma0 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo", rel_smallness=1.0E-5_default)
 
@@ -118,7 +118,7 @@ contains
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     gamma1 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-4_default)
-    gamma1 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     ! It would be nice to get one more significant digit but the
     ! expression is numerically rather unstable for mb -> 0
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-3_default)
@@ -139,14 +139,14 @@ contains
     gamma0 = top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb)
     call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
     alphas = zero
-    gamma0 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
 
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.118 !(Z pole, NLL running to mu_h)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     write (u, "(A," // FMT_15 // ")")  "*   alphas = ", alphas
-    gamma1 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1 = ", gamma1
 
     mb = zero

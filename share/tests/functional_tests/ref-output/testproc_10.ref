@@ -13,13 +13,6 @@ sqrts =  1.000000000000E+03
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process testproc_10_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'testproc_10_p1'
-|   Library name  = 'testproc_10_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'testproc_10_p1_i1':   s, s => s, s [unit_test]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   s  (mass = 1.2500000E+02 GeV)
@@ -28,6 +21,13 @@ sqrts =  1.000000000000E+03
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'testproc_10_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'testproc_10_p1'
+|   Library name  = 'testproc_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'testproc_10_p1_i1':   s, s => s, s [unit_test]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 18 equivalences between channels.
@@ -51,6 +51,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process testproc_10_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   s  (mass = 1.2500000E+02 GeV)
+|   s  (mass = 1.2500000E+02 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: keeping configuration file 'testproc_10_p1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'
@@ -58,12 +64,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'testproc_10_p1_i1':   s, s => s, s [unit_test]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 1.000000000000E+03 GeV
-| Phase space: keeping configuration file 'testproc_10_p1_i1.phs'
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 18 equivalences between channels.
@@ -87,13 +87,6 @@ sqrts =  5.000000000000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process testproc_10_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'testproc_10_p1'
-|   Library name  = 'testproc_10_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'testproc_10_p1_i1':   s, s => s, s [unit_test]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   s  (mass = 1.2500000E+02 GeV)
@@ -103,6 +96,13 @@ sqrts =  5.000000000000E+02
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'testproc_10_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'testproc_10_p1'
+|   Library name  = 'testproc_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'testproc_10_p1_i1':   s, s => s, s [unit_test]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 18 equivalences between channels.
@@ -128,6 +128,12 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process testproc_10_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   s  (mass = 1.2500000E+02 GeV)
+|   s  (mass = 1.2500000E+02 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: keeping configuration file 'testproc_10_p1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'
@@ -135,12 +141,6 @@ Warning: No cuts have been defined.
 |   Process components:
 |     1: 'testproc_10_p1_i1':   s, s => s, s [unit_test]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'testproc_10_p1_i1.phs'
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 18 equivalences between channels.

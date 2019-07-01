@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2016 by 
+! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.4.0"
-  character(*), parameter :: WHIZARD_DATE = "Nov 28 2016"
+  character(*), parameter :: WHIZARD_VERSION = "2.4.1"
+  character(*), parameter :: WHIZARD_DATE = "Mar 24 2017"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -100,29 +100,33 @@ module system_dependencies
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
-      "-I" // WHIZARD_TEST_MODELS_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_THRESHOLD_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_OMEGA_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_ME_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_COMBINATORICS_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_BASICS_MODPATH // " " // &
-      "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod"
+       "-I" // WHIZARD_TEST_MODELS_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_THRESHOLD_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_OMEGA_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_ME_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_COMBINATORICS_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
+       "-I" // WHIZARD_TEST_BASICS_MODPATH // " " // &
+       "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod -I/usr/l&
+       &ocal/packages/recola/recola-collier-1.1/recola-1.1/modules" 
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_TEST_LDFLAGS = &
-      "-L" // WHIZARD_TEST_CORE_LIBPATH // " " // &
-      "-L" // WHIZARD_TEST_SRC_LIBPATH // " " // &
-      "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
-      "-L" // WHIZARD_TEST_LCIO_LIBPATH // " " // &
-      "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
-      "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_CORE_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_SRC_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_LCIO_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
        "-L/usr/local/lib -looptools -Wl,-rpath,/usr/local/packages/Ope&
-       &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops"
+       &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops " // &
+       "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.1/recol&
+       &a-1.1 -L/usr/local/packages/recola/recola-collier-1.1/recola-1.1 -lrec&
+       &ola"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -207,15 +211,19 @@ module system_dependencies
       "-I" // WHIZARD_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_BASICS_MODPATH // " " // &
-      "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod"
+       "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod -I/usr/l&
+       &ocal/packages/recola/recola-collier-1.1/recola-1.1/modules"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega " // &
+      "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
        "-L/usr/local/lib -looptools -Wl,-rpath,/usr/local/packages/Ope&
-       &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops"
+       &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops " // &
+       "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.1/recol&
+       &a-1.1 -L/usr/local/packages/recola/recola-collier-1.1/recola-1.1 -lrec&
+       &ola"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -311,6 +319,8 @@ module system_dependencies
   ! OpenLoops
   character(*), parameter :: OPENLOOPS_DIR = &
        "/usr/local/packages/OpenLoops"
+  character(*), parameter :: RECOLA_DIR = &
+       "/usr/local/packages/recola/recola-collier-1.1/recola-1.1"  
 
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &
@@ -335,6 +345,7 @@ module system_dependencies
 
   logical, parameter :: GOSAM_AVAILABLE = .true.
   logical, parameter :: OPENLOOPS_AVAILABLE = .true.
+  logical, parameter :: RECOLA_AVAILABLE = .true.  
 
 contains
 

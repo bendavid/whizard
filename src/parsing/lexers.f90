@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -42,10 +42,10 @@ module lexers
   use system_defs, only: LF
   use system_defs, only: WHITESPACE_CHARS, LCLETTERS, UCLETTERS, DIGITS
   use diagnostics
-  use ifiles, only: ifile_t 
+  use ifiles, only: ifile_t
   use ifiles, only: line_p, line_is_associated, line_init, line_final
   use ifiles, only: line_get_string_advance
-  
+
   implicit none
   private
 
@@ -195,14 +195,14 @@ contains
     stream%unit = unit
     stream%eof = .false.
   end subroutine stream_init_unit
-    
+
   subroutine stream_init_string (stream, string)
     class(stream_t), intent(out) :: stream
     type(string_t), intent(in) :: string
     allocate (stream%string)
     stream%string = string
   end subroutine stream_init_string
-    
+
   subroutine stream_init_ifile (stream, ifile)
     class(stream_t), intent(out) :: stream
     type(ifile_t), intent(in) :: ifile
@@ -212,14 +212,14 @@ contains
     allocate (stream%ifile)
     stream%ifile = ifile
   end subroutine stream_init_ifile
-    
+
   subroutine stream_init_line (stream, line)
     class(stream_t), intent(out) :: stream
     type(line_p), intent(in) :: line
     allocate (stream%line)
     stream%line = line
   end subroutine stream_init_line
-    
+
   subroutine stream_final (stream)
     class(stream_t), intent(inout) :: stream
     if (associated (stream%filename)) then
@@ -407,7 +407,7 @@ contains
     write (unit, "(A)", advance="no") "'" // tt%charset1(1:tt%len1) // "'"
     write (unit, "(A)", advance="no") " '" // tt%charset2(1:tt%len2) // "'"
   end subroutine template_write
-    
+
   pure function template_whitespace (chars) result (tt)
     character(*), intent(in) :: chars
     type(template_t) :: tt
@@ -620,7 +620,7 @@ contains
          call msg_bug ("Size mismatch in lexer setup")
     setup%keyword_list => keyword_list
   end subroutine lexer_setup_init
-  
+
   subroutine lexer_setup_final (setup)
     type(lexer_setup_t), intent(inout) :: setup
     deallocate (setup%tt, setup%type)
@@ -875,7 +875,7 @@ contains
        call msg_bug (" Lexer: lex_back fails; probably called twice")
     end if
   end subroutine lexer_put_back
-  
+
   subroutine lexer_write_setup (lexer, unit)
     type(lexer_t), intent(in) :: lexer
     integer, intent(in), optional :: unit

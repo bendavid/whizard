@@ -26,13 +26,6 @@ n_events = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process qedtest_9_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_9_p'
-|   Library name  = 'qedtest_9_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_9_p_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -41,6 +34,13 @@ n_events = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'qedtest_9_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_9_p'
+|   Library name  = 'qedtest_9_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_9_p_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -87,13 +87,6 @@ QED.mtau =>  0.000000000000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process qedtest_9_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'qedtest_9_p'
-|   Library name  = 'qedtest_9_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'qedtest_9_p_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -101,6 +94,13 @@ QED.mtau =>  0.000000000000E+00
 |   sqrts = 5.000000000000E+02 GeV
 Warning: Reading phs file: MD5 sum check disabled
 | Phase space: keeping configuration file 'qedtest_9_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'qedtest_9_p'
+|   Library name  = 'qedtest_9_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'qedtest_9_p_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

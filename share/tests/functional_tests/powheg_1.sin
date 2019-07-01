@@ -52,8 +52,8 @@ simulate (powheg_1_p1)
 n_events = 2
 simulate (powheg_1_p1)
 
-?powheg_use_damping = true
-powheg_damping_scale = 5 GeV
+?nlo_use_real_partition = true
+real_partition_scale = 5 GeV
 process powheg_1_p2 = E1, e1 => t, T { nlo_calculation = "Full" }
 integrate (powheg_1_p2) { iterations = 1:3000:"gw" }
 expect (integral(powheg_1_p1) == integral(powheg_1_p2))

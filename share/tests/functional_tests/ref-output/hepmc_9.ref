@@ -27,13 +27,6 @@ $sample = "hepmc_9a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process hepmc_9_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'hepmc_9_p'
-|   Library name  = 'hepmc_9_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'hepmc_9_p_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -43,6 +36,13 @@ $sample = "hepmc_9a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'hepmc_9_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'hepmc_9_p'
+|   Library name  = 'hepmc_9_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'hepmc_9_p_i1':   gl, gl => u, ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.

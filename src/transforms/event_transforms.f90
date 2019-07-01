@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -45,6 +45,7 @@ module event_transforms
   use particles
   use subevents
   use rng_base
+  use quantum_numbers, only: quantum_numbers_t
   use process, only: process_t
   use instances, only: process_instance_t
   use process_stacks
@@ -53,6 +54,7 @@ module event_transforms
   private
 
   public :: evt_t
+  public :: make_factorized_particle_set
   public :: evt_trivial_t
 
   type, abstract :: evt_t
@@ -215,12 +217,14 @@ contains
   end subroutine evt_set_particle_set
 
   subroutine evt_factorize_interactions &
-       (evt, int_matrix, int_flows, factorization_mode, keep_correlations, r)
+       (evt, int_matrix, int_flows, factorization_mode, &
+       keep_correlations, r, qn_select)
     class(evt_t), intent(inout) :: evt
     type(interaction_t), intent(in), target :: int_matrix, int_flows
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
+    type(quantum_numbers_t), dimension(:), intent(in), optional :: qn_select
     real(default), dimension(2) :: x
     if (present (r)) then
        if (size (r) == 2) then
@@ -233,9 +237,35 @@ contains
     end if
     call evt%particle_set%init (evt%particle_set_exists, &
          int_matrix, int_flows, factorization_mode, x, &
-         keep_correlations, keep_virtual=.true.)
+         keep_correlations, keep_virtual=.true., qn_select = qn_select)
     evt%particle_set_exists = .true.
   end subroutine evt_factorize_interactions
+
+  subroutine make_factorized_particle_set (evt, factorization_mode, &
+         keep_correlations, r, ii_term, qn_select)
+    class(evt_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+    integer, intent(in), optional :: ii_term
+    type(quantum_numbers_t), dimension(:), intent(in), optional :: qn_select
+    integer :: i_term
+    type(interaction_t), pointer :: int_matrix, int_flows
+    if (evt%process_instance%is_complete_event ()) then
+       if (present (ii_term)) then
+          i_term = ii_term
+       else
+          i_term = evt%process_instance%select_i_term ()
+       end if
+       int_matrix => evt%process_instance%get_matrix_int_ptr (i_term)
+       int_flows  => evt%process_instance%get_flows_int_ptr (i_term)
+       call evt%factorize_interactions (int_matrix, int_flows, &
+            factorization_mode, keep_correlations, r, qn_select)
+       call evt%tag_incoming ()
+    else
+       call msg_bug ("Event factorization: event is incomplete")
+    end if
+  end subroutine make_factorized_particle_set
 
   subroutine evt_tag_incoming (evt)
     class(evt_t), intent(inout) :: evt
@@ -289,18 +319,9 @@ contains
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
-    integer :: i_term
-    type(interaction_t), pointer :: int_matrix, int_flows
-    if (evt%process_instance%is_complete_event ()) then
-       i_term = evt%process_instance%select_i_term ()
-       int_matrix => evt%process_instance%get_matrix_int_ptr (i_term)
-       int_flows  => evt%process_instance%get_flows_int_ptr (i_term)
-       call evt%factorize_interactions (int_matrix, int_flows, &
-            factorization_mode, keep_correlations, r)
-       call evt%tag_incoming ()
-    else
-       call msg_bug ("Event factorization: event is incomplete")
-    end if
+    call make_factorized_particle_set (evt, factorization_mode, &
+         keep_correlations, r)
+    evt%particle_set_exists = .true.
   end subroutine evt_trivial_make_particle_set
 
 

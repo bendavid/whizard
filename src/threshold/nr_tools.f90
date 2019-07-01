@@ -1,5 +1,5 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! WHIZARD 2.4.0 Nov 28 2016
+! WHIZARD 2.4.1 Mar 24 2017
 
 ! routine hypgeo and other useful procedures from:
 !
@@ -18,7 +18,7 @@
 !      called by hypgeo, cf. line 4751
 !     -added explicit interface for function 'qgaus' to main module 'nr'
 !     -renamed function 'locate' to 'locatenr' to avoid segfault (???)
-!     
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -5278,7 +5278,7 @@ contains
     n = size(xa_in)
     allocate( spl%xa(n) )
     allocate( spl%ya_re(n) )
-    allocate( spl%ya_im(n) ) 
+    allocate( spl%ya_im(n) )
     allocate( spl%y2a_re(n) )
     allocate( spl%y2a_im(n) )
     spl%xa = real(xa_in,kind=sp)

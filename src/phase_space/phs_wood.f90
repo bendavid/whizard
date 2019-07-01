@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -52,6 +52,7 @@ module phs_wood
   use sf_base
   use phs_base
   use mappings
+  use resonances, only: resonance_history_t
   use phs_forests
   use cascades
 
@@ -92,6 +93,8 @@ module phs_wood
      procedure :: generate_phase_space => phs_wood_config_generate_phase_space
      procedure :: write_phase_space => phs_wood_config_write_phase_space
      procedure :: clear_phase_space => phs_wood_config_clear_phase_space
+     procedure :: extract_resonance_histories &
+          => phs_wood_config_extract_resonance_histories
      procedure :: configure => phs_wood_config_configure
      procedure :: reshuffle_flavors => phs_wood_config_reshuffle_flavors
      procedure :: set_momentum_links => phs_wood_config_set_momentum_links
@@ -323,6 +326,12 @@ contains
        deallocate (phs_config%cascade_set)
     end if
   end subroutine phs_wood_config_clear_phase_space
+
+  subroutine phs_wood_config_extract_resonance_histories (phs_config, res_hist)
+    class(phs_wood_config_t), intent(in) :: phs_config
+    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hist
+    call phs_config%forest%extract_resonance_histories (res_hist)
+  end subroutine phs_wood_config_extract_resonance_histories
 
   subroutine phs_wood_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &

@@ -288,6 +288,7 @@ Otherwise, the routine should compute the result directly.
           (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
           core_state) result (amp)
        import
+       complex(default) :: amp
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: j
        type(vector4_t), dimension(:), intent(in) :: p
@@ -296,7 +297,6 @@ Otherwise, the routine should compute the result directly.
        real(default), intent(in), allocatable :: alpha_qcd_forced
        class(prc_core_state_t), intent(inout), allocatable, optional :: &
             core_state
-       complex(default) :: amp
      end function prc_core_compute_amplitude
   end interface
 
@@ -858,7 +858,7 @@ responsible for writing interfaces and wrappers.
     write (unit, "(7x,A)", advance="no") &
                               "   Final state:   "
     do j = 1, object%n_out - 1
-       write (unit, "(1x,A)", advance="no") char (object%prt_out(i))
+       write (unit, "(1x,A)", advance="no") char (object%prt_out(j))
     end do
     write (unit, "(1x,A)") char (object%prt_out(object%n_out))
     write (unit, "(5x,A,I0)") "# part. (total) = ", object%n_tot
@@ -4624,6 +4624,7 @@ module prc_user_defined
   use lorentz
   use interactions
   use sm_qcd
+  use variables, only: var_list_t
 
   use model_data
   use prclib_interfaces
@@ -4901,7 +4902,11 @@ Used for testing.
   end subroutine prc_user_defined_base_compute_sqme_virt
 
 @ %def prc_user_defined_base_compute_sqme_virt
-@ Also return test output for color-correlated matrix elements
+@ Also return test output for color-correlated matrix elements. We only
+  give a sensible result for the processes used in the functional tests,
+  which have 2 -> 2 topology. All other processes will obtain a vanishing
+  dummy color-correlation. This effectively switches off the subtraction
+  contributions, reproducing the real phase-space volume.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_sqme_cc => prc_user_defined_base_compute_sqme_cc
 <<Prc User: procedures>>=
@@ -4915,13 +4920,20 @@ Used for testing.
     logical, intent(out) :: bad_point
     real(default), intent(out), optional :: born_out
     call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
-    if (present (born_out))  born_out = 0.0015_default
-    born_cc = zero
-    born_cc(3,3) = - CF * born_out
-    born_cc(4,4) = - CF * born_out
-    born_cc(3,4) = CF * born_out
-    born_cc(4,3) = born_cc(3,4)
-    bad_point = .false.
+    if (size (p) == 4) then
+       if (present (born_out)) then
+          born_out = 0.0015_default
+          born_cc = zero
+          born_cc(3,3) = - CF * born_out
+          born_cc(4,4) = - CF * born_out
+          born_cc(3,4) = CF * born_out
+          born_cc(4,3) = born_cc(3,4)
+          bad_point = .false.
+       end if
+    else
+       if (present (born_out)) born_out = zero
+       born_cc = zero
+    end if
   end subroutine prc_user_defined_base_compute_sqme_cc
 
 @ %def prc_user_defined_base_compute_sqme_cc
@@ -5150,9 +5162,11 @@ Used for testing.
 <<Prc User: interfaces>>=
   abstract interface
     subroutine prc_user_defined_base_create_and_load_extra_libraries ( &
-         core, os_data, libname, model, i_core)
+         core, flv_states, var_list, os_data, libname, model, i_core)
       import
       class(prc_user_defined_base_t), intent(inout) :: core
+      integer, intent(in), dimension(:,:), allocatable :: flv_states
+      type(var_list_t), intent(in) :: var_list
       type(os_data_t), intent(in) :: os_data
       type(string_t), intent(in) :: libname
       type(model_data_t), intent(in), target :: model
@@ -5774,8 +5788,10 @@ result of the integration is the n-particle-phase-space volume.
        prc_user_defined_test_create_and_load_extra_libraries
 <<Prc User: procedures>>=
   subroutine prc_user_defined_test_create_and_load_extra_libraries ( &
-         core, os_data, libname, model, i_core)
+         core, flv_states, var_list, os_data, libname, model, i_core)
     class(prc_user_defined_test_t), intent(inout) :: core
+    integer, intent(in), dimension(:,:), allocatable :: flv_states
+    type(var_list_t), intent(in) :: var_list
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
@@ -5805,6 +5821,7 @@ module prc_threshold
   use interactions
   use sm_qcd
   use model_data
+  use variables, only: var_list_t
 
   use prclib_interfaces
   use process_libraries
@@ -5907,41 +5924,31 @@ end module prc_threshold
 @
 \subsubsection{Driver}
 <<Prc Threshold: public>>=
-  public :: set_offshell_momenta_t
+  public :: threshold_set_process_mode
 <<Prc Threshold: interfaces>>=
   interface
-    subroutine set_offshell_momenta_t (p) bind(C)
+    subroutine threshold_set_process_mode (mode) bind(C)
       import
-      real(c_default_float), dimension(0:3,*), intent(in) :: p
-    end subroutine set_offshell_momenta_t
+      integer(kind = c_int), intent(in) :: mode
+    end subroutine threshold_set_process_mode
   end interface
 
-@ %def set_offshell_momenta
+@ %def threshold_set_process_mode
 @
 <<Prc Threshold: public>>=
-  public :: set_onshell_momenta_t
+  public :: threshold_get_amp_squared
 <<Prc Threshold: interfaces>>=
   interface
-    subroutine set_onshell_momenta_t (p) bind(C)
-      import
-      real(c_default_float), dimension(0:3,*), intent(in) :: p
-    end subroutine set_onshell_momenta_t
-  end interface
-
-@ %def set_onshell_momenta
-@
-<<Prc Threshold: public>>=
-  public :: get_amp_squared_t
-<<Prc Threshold: interfaces>>=
-  interface
-    subroutine get_amp_squared_t (amp2, p) bind(C)
+    subroutine threshold_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot) bind(C)
       import
       real(c_default_float), intent(out) :: amp2
-      real(c_default_float), dimension(0:3,*), intent(in) :: p
-    end subroutine get_amp_squared_t
+      real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
+      real(c_default_float), dimension(0:3,*), intent(in) :: p_ons
+      integer(kind = c_int) :: n_tot, leg
+    end subroutine threshold_get_amp_squared
   end interface
 
-@ %def get_amp_squared
+@ %def threshold_get_amp_squared
 @
 <<Prc Threshold: public>>=
   public :: threshold_olp_eval2
@@ -5991,11 +5998,9 @@ end module prc_threshold
   type, extends (user_defined_driver_t) :: threshold_driver_t
     procedure(threshold_olp_eval2), nopass, pointer :: &
          olp_eval2 => null ()
-    procedure(set_offshell_momenta_t), nopass, pointer :: &
-         set_offshell_momenta => null ()
-    procedure(set_onshell_momenta_t), nopass, pointer :: &
-         set_onshell_momenta => null ()
-    procedure(get_amp_squared_t), nopass, pointer :: &
+    procedure(threshold_set_process_mode), nopass, pointer :: &
+         set_process_mode => null ()
+    procedure(threshold_get_amp_squared), nopass, pointer :: &
          get_amp_squared => null ()
     procedure(threshold_start_openloops), nopass, pointer :: &
          start_openloops => null ()
@@ -6029,12 +6034,9 @@ end module prc_threshold
     type(string_t) :: lower_case_id
     call msg_debug (D_ME_METHODS, "threshold_driver_load")
     lower_case_id = lower_case (threshold_driver%id)
-    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_set_offshell_momenta")
-    call c_f_procpointer (c_fptr, threshold_driver%set_offshell_momenta)
-    call check_for_error (lower_case_id // "_set_offshell_momenta")
-    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_set_onshell_momenta")
-    call c_f_procpointer (c_fptr, threshold_driver%set_onshell_momenta)
-    call check_for_error (lower_case_id // "_set_onshell_momenta")
+    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_set_process_mode")
+    call c_f_procpointer (c_fptr, threshold_driver%set_process_mode)
+    call check_for_error (lower_case_id // "_set_process_mode")
     c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_get_amp_squared")
     call c_f_procpointer (c_fptr, threshold_driver%get_amp_squared)
     call check_for_error (lower_case_id // "_get_amp_squared")
@@ -6174,11 +6176,35 @@ end module prc_threshold
 
 @ %def threshold_def_connect
 @
+\subsubsection{Core state}
+<<Prc Threshold: public>>=
+  public :: threshold_state_t
+<<Prc Threshold: types>>=
+  type, extends (user_defined_state_t) :: threshold_state_t
+  contains
+  <<Prc Threshold: threshold state: TBP>>
+  end type threshold_state_t
+
+@ %def threshold_state_t
+@
+<<Prc Threshold: threshold state: TBP>>=
+  procedure :: write => threshold_state_write
+<<Prc Threshold: procedures>>=
+  subroutine threshold_state_write (object, unit)
+    class(threshold_state_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+  end subroutine threshold_state_write
+
+@ %def threshold_state_write
+@
 \subsubsection{Core}
 <<Prc Threshold: public>>=
   public :: prc_threshold_t
 <<Prc Threshold: types>>=
   type, extends (prc_user_defined_base_t) :: prc_threshold_t
+     real(default), dimension(:,:), allocatable :: parray_ofs
+     real(default), dimension(:,:), allocatable :: parray_ons
+     integer :: leg
   contains
   <<Prc Threshold: prc threshold: TBP>>
   end type prc_threshold_t
@@ -6238,7 +6264,7 @@ end module prc_threshold
   subroutine prc_threshold_allocate_workspace (object, core_state)
     class(prc_threshold_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
-    allocate (user_defined_test_state_t :: core_state)
+    allocate (threshold_state_t :: core_state)
   end subroutine prc_threshold_allocate_workspace
 
 @ %def prc_threshold_allocate_workspace
@@ -6247,20 +6273,12 @@ end module prc_threshold
   procedure :: set_offshell_momenta => prc_threshold_set_offshell_momenta
 <<Prc Threshold: procedures>>=
   subroutine prc_threshold_set_offshell_momenta (object, p)
-    class(prc_threshold_t), intent(in) :: object
+    class(prc_threshold_t), intent(inout) :: object
     type(vector4_t), intent(in), dimension(:) :: p
-    real(c_default_float), dimension(:,:), allocatable, save :: parray
-    integer :: n_tot, i
-    n_tot = size (p)
-    if (allocated (parray)) then
-       if (size(parray) /= n_tot)  deallocate (parray)
-    end if
-    if (.not. allocated (parray))  allocate (parray (0:3, n_tot))
-    forall (i = 1:n_tot)  parray(:,i) = p(i)%p
-    select type (driver => object%driver)
-    class is (threshold_driver_t)
-       call driver%set_offshell_momenta (parray)
-    end select
+    integer :: i
+    do i = 1, size(p)
+       object%parray_ofs(:,i) = p(i)%p
+    end do
   end subroutine prc_threshold_set_offshell_momenta
 
 @ %def prc_threshold_set_offshell_momenta
@@ -6269,23 +6287,41 @@ end module prc_threshold
   procedure :: set_onshell_momenta => prc_threshold_set_onshell_momenta
 <<Prc Threshold: procedures>>=
   subroutine prc_threshold_set_onshell_momenta (object, p)
-    class(prc_threshold_t), intent(in) :: object
+    class(prc_threshold_t), intent(inout) :: object
     type(vector4_t), intent(in), dimension(:) :: p
-    real(c_default_float), dimension(:,:), allocatable, save :: parray
-    integer :: n_tot, i
-    n_tot = size (p)
-    if (allocated (parray)) then
-       if (size(parray) /= n_tot)  deallocate (parray)
-    end if
-    if (.not. allocated (parray))  allocate (parray (0:3, n_tot))
-    forall (i = 1:n_tot)  parray(:,i) = p(i)%p
-    select type (driver => object%driver)
-    class is (threshold_driver_t)
-       call driver%set_onshell_momenta (parray)
-    end select
+    integer :: i
+    do  i = 1, size(p)
+       object%parray_ons(:,i) = p(i)%p
+    end do
   end subroutine prc_threshold_set_onshell_momenta
 
 @ %def prc_threshold_set_onshell_momenta
+@
+<<Prc Threshold: prc threshold: TBP>>=
+  procedure :: set_leg => prc_threshold_set_leg
+<<Prc Threshold: procedures>>=
+  subroutine prc_threshold_set_leg (object, leg)
+    class(prc_threshold_t), intent(inout) :: object
+    integer, intent(in) :: leg
+    object%leg = leg
+  end subroutine prc_threshold_set_leg
+
+@ %def prc_threshold_set_leg
+@
+<<Prc Threshold: prc threshold: TBP>>=
+  procedure :: set_process_mode => prc_threshold_set_process_mode
+<<Prc Threshold: procedures>>=
+  subroutine prc_threshold_set_process_mode (object, mode)
+    class(prc_threshold_t), intent(in) :: object
+    integer(kind = c_int), intent(in) :: mode
+    select type (driver => object%driver)
+    class is (threshold_driver_t)
+       if (associated (driver%set_process_mode)) &
+            call driver%set_process_mode (mode)
+    end select
+  end subroutine prc_threshold_set_process_mode
+
+@ %def prc_threshold_set_process_mode
 @
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: compute_sqme => prc_threshold_compute_sqme
@@ -6298,18 +6334,12 @@ end module prc_threshold
     real(default), intent(in) :: ren_scale
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
-    real(c_default_float), dimension(:,:), allocatable, save :: parray
-    integer :: n_tot, i
+    integer :: n_tot
     call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme")
     n_tot = size (p)
-    if (allocated (parray)) then
-       if (size(parray) /= n_tot)  deallocate (parray)
-    end if
-    if (.not. allocated (parray))  allocate (parray (0:3, n_tot))
-    forall (i = 1:n_tot)  parray(:,i) = p(i)%p
     select type (driver => object%driver)
     class is (threshold_driver_t)
-       call driver%get_amp_squared (sqme, parray)
+       call driver%get_amp_squared (sqme, object%parray_ofs, object%parray_ons, object%leg, n_tot)
     end select
     bad_point = .false.
   end subroutine prc_threshold_compute_sqme
@@ -6374,7 +6404,15 @@ end module prc_threshold
     type(process_library_t), intent(in), target :: lib
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
+    integer :: n_tot
     call object%base_init (def, lib, id, i_component)
+    n_tot = object%data%n_in + object%data%n_out
+    allocate (object%parray_ofs (0:3,n_tot), object%parray_ons (0:3,n_tot))
+    if (n_tot == 4) then
+       call object%set_process_mode (PROC_MODE_TT)
+    else
+       call object%set_process_mode (PROC_MODE_WBWB)
+    end if
     call object%activate_parameters ()
   end subroutine prc_threshold_init
 
@@ -6409,8 +6447,10 @@ matrix element.
   procedure :: create_and_load_extra_libraries => prc_threshold_create_and_load_extra_libraries
 <<Prc Threshold: procedures>>=
   subroutine prc_threshold_create_and_load_extra_libraries ( &
-         core, os_data, libname, model, i_core)
+         core, flv_states, var_list, os_data, libname, model, i_core)
     class(prc_threshold_t), intent(inout) :: core
+    integer, intent(in), dimension(:,:), allocatable :: flv_states
+    type(var_list_t), intent(in) :: var_list
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model

@@ -1,6 +1,6 @@
 ! $Id: parameters.QCD.omega.f90,v 1.1 2005/05/19 16:00:08 kilian Exp $
 !
-! Copyright (C) 1999-2016 by 
+! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

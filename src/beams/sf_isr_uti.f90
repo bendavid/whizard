@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -70,12 +70,12 @@ contains
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
     class(sf_data_t), allocatable :: data
-    
+
     write (u, "(A)")  "* Test output: sf_isr_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &test structure function data"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
@@ -103,9 +103,9 @@ contains
     call data%get_pdg_out (pdg_out)
     pdg1 = pdg_out(1)
     write (u, "(2x,99(1x,I0))")  pdg1
-        
+
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_1"
 
@@ -122,12 +122,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f, f_isr
-    
+
     write (u, "(A)")  "* Test output: sf_isr_2"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &test structure function object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -136,17 +136,17 @@ contains
     call flv%init (ELECTRON, model)
 
     call reset_interaction_counter ()
-    
+
     allocate (isr_data_t :: data)
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
             0.000511_default, order = 3, recoil = .false.)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1])
@@ -158,32 +158,32 @@ contains
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for r=0.9, no ISR mapping, &
          &collinear"
     write (u, "(A)")
-    
+
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
-    
+
     r = 0.9_default
     rb = 1 - r
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
 
     call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
-    
+
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
-    
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.) 
+
+    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
@@ -191,39 +191,39 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate ISR structure function"
     write (u, "(A)")
-    
+
     call sf_int%apply (scale = 100._default)
     call sf_int%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
 
     f_isr = sf_int%get_matrix_element (1)
-    
+
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
 
     write (u, "(A)")
     write (u, "(A)")  "* Re-evaluate structure function, leading order"
     write (u, "(A)")
-    
+
     select type (sf_int)
     type is (isr_t)
        call sf_int%set_order (0)
     end select
     call sf_int%apply (scale = 100._default)
     f_isr = sf_int%get_matrix_element (1)
-    
+
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_2"
 
@@ -240,12 +240,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f, f_isr
-    
+
     write (u, "(A)")  "* Test output: sf_isr_3"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &test structure function object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -254,17 +254,17 @@ contains
     pdg_in = ELECTRON
 
     call reset_interaction_counter ()
-    
+
     allocate (isr_data_t :: data)
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
             0.000511_default, order = 3, recoil = .false.)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1])
@@ -276,32 +276,32 @@ contains
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for r=0.7, with ISR mapping, &
          &collinear"
     write (u, "(A)")
-    
+
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
-    
+
     r = 0.7_default
     rb = 1 - r
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
 
     call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
-    
+
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
-    
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.) 
+
+    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
@@ -309,39 +309,39 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate ISR structure function"
     write (u, "(A)")
-    
+
     call sf_int%apply (scale = 100._default)
     call sf_int%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
 
     f_isr = sf_int%get_matrix_element (1)
-    
+
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
 
     write (u, "(A)")
     write (u, "(A)")  "* Re-evaluate structure function, leading order"
     write (u, "(A)")
-    
+
     select type (sf_int)
     type is (isr_t)
        call sf_int%set_order (0)
     end select
     call sf_int%apply (scale = 100._default)
     f_isr = sf_int%get_matrix_element (1)
-    
+
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_3"
 
@@ -361,12 +361,12 @@ contains
     real(default) :: f, f_isr
     character(len=80) :: buffer
     integer :: u_scratch, iostat
-    
+
     write (u, "(A)")  "* Test output: sf_isr_4"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &test structure function object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -375,7 +375,7 @@ contains
     pdg_in = ELECTRON
 
     call reset_interaction_counter ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
@@ -385,8 +385,8 @@ contains
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
             0.000511_default, order = 3, recoil = .true.)
-    end select    
-    
+    end select
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1])
@@ -399,84 +399,84 @@ contains
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
-        
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.25, with ISR mapping, "
     write (u, "(A)")  "          non-coll., keeping energy"
     write (u, "(A)")
-    
+
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
-    
+
     r = [0.5_default, 0.5_default, 0.25_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
     call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
-    
+
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "f =", f
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
-    
+
     q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1])
-    
+
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)    
-    
+    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate ISR structure function"
     write (u, "(A)")
-    
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.) 
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)    
+
+    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
     call sf_int%apply (scale = 10._default)
     u_scratch = free_unit ()
     open (u_scratch, status="scratch", action = "readwrite")
     call sf_int%write (u_scratch, testflag = .true.)
     rewind (u_scratch)
-    do 
-       read (u_scratch, "(A)", iostat=iostat) buffer    
+    do
+       read (u_scratch, "(A)", iostat=iostat) buffer
        if (iostat /= 0) exit
        if (buffer(1:25) == " P =   0.000000E+00  9.57") then
           buffer = replace (buffer, 26, "XXXX")
        end if
        if (buffer(1:25) == " P =   0.000000E+00 -9.57") then
           buffer = replace (buffer, 26, "XXXX")
-       end if       
+       end if
        write (u, "(A)") buffer
     end do
     close (u_scratch)
-       
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure-function value"
     write (u, "(A)")
 
     f_isr = sf_int%get_matrix_element (1)
-    
+
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_4"
 
@@ -495,12 +495,12 @@ contains
     real(default), dimension(:), allocatable :: p, pb, r, rb, x
     real(default), dimension(2) :: f, f_isr
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: sf_isr_5"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &test structure function object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -509,14 +509,14 @@ contains
     pdg_in = ELECTRON
 
     call reset_interaction_counter ()
-    
+
     allocate (isr_data_t :: data)
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
             0.000511_default, order = 3, recoil = .false.)
     end select
-       
+
     allocate (sf_ip_mapping_t :: mapping)
     select type (mapping)
     type is (sf_ip_mapping_t)
@@ -529,7 +529,7 @@ contains
     end select
 
     call mapping%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
@@ -551,17 +551,17 @@ contains
        call vector4_write (k(i), u)
        call sf_int(i)%seed_kinematics (k(i:i))
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for p=[0.7,0.4], collinear"
     write (u, "(A)")
-    
+
     allocate (p (2 * data%get_n_par ()))
     allocate (pb(size (p)))
     allocate (r (size (p)))
     allocate (rb(size (p)))
     allocate (x (size (p)))
-    
+
     p = [0.7_default, 0.4_default]
     pb= 1 - p
     call mapping%compute (r, rb, f_map, p, pb)
@@ -576,18 +576,18 @@ contains
        call sf_int(i)%complete_kinematics (x(i:i), f(i), r(i:i), rb(i:i), &
             map=.false.)
     end do
-    
+
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
-    
+
     do i = 1, 2
        call sf_int(i)%inverse_kinematics (x(i:i), f(i), r(i:i), rb(i:i), &
-            map=.false.) 
+            map=.false.)
     end do
     call mapping%inverse (r, rb, f_map, p, pb)
 
@@ -599,7 +599,7 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate ISR structure function"
-    
+
     call sf_int(1)%apply (scale = 100._default)
     call sf_int(2)%apply (scale = 100._default)
 
@@ -607,12 +607,12 @@ contains
     write (u, "(A)")  "* Structure function #1"
     write (u, "(A)")
     call sf_int(1)%write (u, testflag = .true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure function #2"
     write (u, "(A)")
     call sf_int(2)%write (u, testflag = .true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
@@ -620,7 +620,7 @@ contains
     do i = 1, 2
        f_isr(i) = sf_int(i)%get_matrix_element (1)
     end do
-    
+
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", &
          product (f_isr)
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", &
@@ -628,12 +628,12 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     do i = 1, 2
        call sf_int(i)%final ()
     end do
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_5"
 

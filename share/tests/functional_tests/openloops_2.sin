@@ -34,10 +34,20 @@ seed = 2222
 
 sqrts = 500 GeV
 
-### First check non-subtracted matrix element
-?switch_off_virtual_subtraction = true
+### Only OLP component
+$virtual_selection = "OLP"
 integrate (openloops_2_p1) { iterations = 1:1000:"gw" }
+real res_1 = integral(openloops_2_p1)
 
-### Now with subtraction
-?switch_off_virtual_subtraction = false
+### Only subtraction component
+$virtual_selection = "Subtraction"
 integrate (openloops_2_p1) { iterations = 1:1000:"gw" }
+real res_2 = integral(openloops_2_p1)
+
+### Both components
+$virtual_selection = "Full"
+integrate (openloops_2_p1) { iterations = 1:1000:"gw" }
+real res_3 = integral(openloops_2_p1)
+
+printf "RES: %f %f %f" (res_1, res_2, res_3)
+expect (res_1 + res_2 == res_3) { tolerance = 0.1 }

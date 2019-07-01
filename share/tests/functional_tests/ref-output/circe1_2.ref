@@ -25,13 +25,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process circe1_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe1_2_p1'
-|   Library name  = 'circe1_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'circe1_2_p1_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -40,6 +33,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe1_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_2_p1'
+|   Library name  = 'circe1_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'circe1_2_p1_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -76,13 +76,6 @@ circe1_mapping_slope =  2.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process circe1_2_p4:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe1_2_p4'
-|   Library name  = 'circe1_2_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'circe1_2_p4_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -91,6 +84,13 @@ circe1_mapping_slope =  2.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe1_2_p4_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_2_p4'
+|   Library name  = 'circe1_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'circe1_2_p4_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

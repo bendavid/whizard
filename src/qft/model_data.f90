@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module model_data
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds, only: default
   use kinds, only: i8, i32
   use kinds, only: c_default_float
@@ -77,17 +77,17 @@ module model_data
      procedure :: get_real_ptr => modelpar_data_get_real_ptr
      procedure :: get_complex_ptr => modelpar_data_get_complex_ptr
   end type modelpar_data_t
-  
+
   type, extends (modelpar_data_t) :: modelpar_real_t
      private
      real(default) :: value
   end type modelpar_real_t
-  
+
   type, extends (modelpar_data_t) :: modelpar_complex_t
      private
      complex(default) :: value
   end type modelpar_complex_t
-  
+
   type :: field_data_t
      private
      type(string_t) :: longname
@@ -188,11 +188,13 @@ module model_data
      class(model_data_t), pointer :: model => null ()
      integer, dimension(:), allocatable :: pdg
      integer :: vertex_index = 0
+     integer :: pdg_index = 0
+     logical :: save_pdg_index
    contains
      procedure :: init => vertex_iterator_init
      procedure :: get_next_match => vertex_iterator_get_next_match
   end type vertex_iterator_t
-  
+
   type :: vertex_table_entry_t
      private
      integer :: pdg1 = 0, pdg2 = 0
@@ -295,7 +297,7 @@ module model_data
      procedure :: init_qed_test => model_data_init_qed_test
      procedure :: init_sm_test => model_data_init_sm_test
   end type model_data_t
-     
+
 
 contains
 
@@ -313,7 +315,7 @@ contains
             advance="no")  par%value
     end select
   end subroutine par_write
-    
+
   subroutine par_show (par, l, u)
     class(modelpar_data_t), intent(in) :: par
     integer, intent(in) :: l, u
@@ -327,7 +329,7 @@ contains
             // FMT_19 // ",1x,'I')")  buffer, par%value
     end select
   end subroutine par_show
-    
+
   subroutine modelpar_data_init_real (par, name, value)
     class(modelpar_data_t), intent(out) :: par
     type(string_t), intent(in) :: name
@@ -371,7 +373,7 @@ contains
     type(string_t) :: name
     name = par%name
   end function modelpar_data_get_name
-  
+
   elemental function modelpar_data_get_real (par) result (value)
     class(modelpar_data_t), intent(in), target :: par
     real(default) :: value
@@ -382,7 +384,7 @@ contains
        value = par%value
     end select
   end function modelpar_data_get_real
-  
+
   elemental function modelpar_data_get_complex (par) result (value)
     class(modelpar_data_t), intent(in), target :: par
     complex(default) :: value
@@ -393,7 +395,7 @@ contains
        value = par%value
     end select
   end function modelpar_data_get_complex
-  
+
   function modelpar_data_get_real_ptr (par) result (ptr)
     class(modelpar_data_t), intent(in), target :: par
     real(default), pointer :: ptr
@@ -404,7 +406,7 @@ contains
        ptr => null ()
     end select
   end function modelpar_data_get_real_ptr
-  
+
   function modelpar_data_get_complex_ptr (par) result (ptr)
     class(modelpar_data_t), intent(in), target :: par
     complex(default), pointer :: ptr
@@ -415,7 +417,7 @@ contains
        ptr => null ()
     end select
   end function modelpar_data_get_complex_ptr
-  
+
   subroutine field_data_init (prt, longname, pdg)
     class(field_data_t), intent(out) :: prt
     type(string_t), intent(in) :: longname
@@ -425,7 +427,7 @@ contains
     prt%tex_name = ""
     prt%tex_anti = ""
   end subroutine field_data_init
-    
+
   subroutine field_data_copy_from (prt, prt_src)
     class(field_data_t), intent(inout) :: prt
     class(field_data_t), intent(in) :: prt_src
@@ -436,16 +438,16 @@ contains
     prt%right_handed = prt_src%right_handed
     prt%p_is_stable =             prt_src%p_is_stable
     prt%p_decays_isotropically =  prt_src%p_decays_isotropically
-    prt%p_decays_diagonal =       prt_src%p_decays_diagonal   
+    prt%p_decays_diagonal =       prt_src%p_decays_diagonal
     prt%p_has_decay_helicity =    prt_src%p_has_decay_helicity
     prt%p_decay_helicity =        prt_src%p_decay_helicity
-    prt%p_decays_diagonal =       prt_src%p_decays_diagonal   
-    prt%a_is_stable =             prt_src%a_is_stable        
+    prt%p_decays_diagonal =       prt_src%p_decays_diagonal
+    prt%a_is_stable =             prt_src%a_is_stable
     prt%a_decays_isotropically =  prt_src%a_decays_isotropically
-    prt%a_decays_diagonal =       prt_src%a_decays_diagonal   
+    prt%a_decays_diagonal =       prt_src%a_decays_diagonal
     prt%a_has_decay_helicity =    prt_src%a_has_decay_helicity
     prt%a_decay_helicity =        prt_src%a_decay_helicity
-    prt%p_polarized =             prt_src%p_polarized        
+    prt%p_polarized =             prt_src%p_polarized
     prt%a_polarized =             prt_src%a_polarized
     prt%spin_type = prt_src%spin_type
     prt%isospin_type = prt_src%isospin_type
@@ -588,13 +590,13 @@ contains
     real(default), intent(in) :: mass
     if (associated (prt%mass_val))  prt%mass_val = mass
   end subroutine field_data_set_mass
-    
+
   subroutine field_data_set_width (prt, width)
     class(field_data_t), intent(inout) :: prt
     real(default), intent(in) :: width
     if (associated (prt%width_val))  prt%width_val = width
   end subroutine field_data_set_width
-    
+
   elemental subroutine field_data_freeze (prt)
     class(field_data_t), intent(inout) :: prt
     if (.not. allocated (prt%name))  allocate (prt%name (0))
@@ -723,7 +725,7 @@ contains
        write (u, "(5x,A)")  "a_polarized"
     end if
   end subroutine field_data_write_decays
-  
+
   subroutine field_data_show (prt, l, u)
     class(field_data_t), intent(in) :: prt
     integer, intent(in) :: l, u
@@ -763,7 +765,7 @@ contains
        end if
     end if
   end subroutine field_data_show
-  
+
   elemental function field_data_get_pdg (prt) result (pdg)
     integer :: pdg
     class(field_data_t), intent(in) :: prt
@@ -926,7 +928,7 @@ contains
        flag = prt%p_polarized
     end if
   end function field_data_is_polarized
-       
+
   pure function field_data_get_longname (prt) result (name)
     type(string_t) :: name
     class(field_data_t), intent(in) :: prt
@@ -1005,7 +1007,7 @@ contains
        flag = name == field%longname .or. any (name == field%name)
     end if
   end function field_data_matches_name
-  
+
   elemental function field_data_get_spin_type (prt) result (type)
     integer :: type
     class(field_data_t), intent(in) :: prt
@@ -1087,7 +1089,7 @@ contains
        width = 0
     end if
   end function field_data_get_width
-  
+
   subroutine find_model (model, PDG, model_A, model_B)
     class(model_data_t), pointer, intent(out) :: model
     integer, intent(in) :: PDG
@@ -1144,7 +1146,7 @@ contains
     type(model_data_t), intent(in), target, optional :: new_model
     call vtx%init (old_vtx%pdg, new_model)
   end subroutine vertex_copy_from
-    
+
   subroutine vertex_get_match (vtx, pdg1, pdg2)
     class(vertex_t), intent(in) :: vtx
     integer, intent(in) :: pdg1
@@ -1174,30 +1176,42 @@ contains
     end function anti
   end subroutine vertex_get_match
 
-  subroutine vertex_iterator_init (it, model, pdg)
+  subroutine vertex_iterator_init (it, model, pdg, save_pdg_index)
     class(vertex_iterator_t), intent(out) :: it
     class(model_data_t), intent(in), target :: model
     integer, dimension(:), intent(in) :: pdg
+    logical, intent(in) :: save_pdg_index
     it%model => model
     allocate (it%pdg (size (pdg)), source = pdg)
+    it%save_pdg_index = save_pdg_index
   end subroutine vertex_iterator_init
-  
+
   subroutine vertex_iterator_get_next_match (it, pdg_match)
     class(vertex_iterator_t), intent(inout) :: it
     integer, dimension(:), allocatable, intent(out) :: pdg_match
     integer :: i, j
     do i = it%vertex_index + 1, size (it%model%vtx)
-       do j = 1, size (it%pdg)
-          call vertex_get_match (it%model%vtx(i), it%pdg(j), pdg_match)
-          if (allocated (pdg_match)) then
+       do j = it%pdg_index + 1, size (it%pdg)
+          call it%model%vtx(i)%get_match (it%pdg(j), pdg_match)
+          if (it%save_pdg_index) then
+             if (allocated (pdg_match) .and. j < size (it%pdg)) then
+                it%pdg_index = j
+                return
+             else if (allocated (pdg_match) .and. j == size (it%pdg)) then
+                it%vertex_index = i
+                it%pdg_index = 0
+                return
+             end if
+          else if (allocated (pdg_match)) then
              it%vertex_index = i
              return
           end if
        end do
     end do
     it%vertex_index = 0
+    it%pdg_index = 0
   end subroutine vertex_iterator_get_next_match
-  
+
   function vertex_table_size (n_vtx) result (n)
     integer(i32) :: n
     integer, intent(in) :: n_vtx
@@ -1383,7 +1397,7 @@ contains
     deallocate (model%par_real)
     deallocate (model%par_complex)
   end subroutine model_data_final
-  
+
   subroutine model_data_write (model, unit, verbose, &
        show_md5sum, show_variables, show_parameters, &
        show_particles, show_vertices, show_scheme)
@@ -1413,15 +1427,15 @@ contains
     if (show_par) then
        do i = 1, size (model%par_real)
           call model%par_real(i)%write (u)
-          write (u, "(A)")  
+          write (u, "(A)")
        end do
        do i = 1, size (model%par_complex)
           call model%par_complex(i)%write (u)
-          write (u, "(A)")  
+          write (u, "(A)")
        end do
     end if
     if (show_prt) then
-       write (u, "(A)")  
+       write (u, "(A)")
        call model%write_fields (u)
     end if
     if (show_vtx) then
@@ -1429,7 +1443,7 @@ contains
        call model%write_vertices (u, verbose)
     end if
   end subroutine model_data_write
-  
+
   subroutine model_data_init (model, name, &
        n_par_real, n_par_complex, n_field, n_vtx)
     class(model_data_t), intent(out) :: model
@@ -1443,13 +1457,13 @@ contains
     allocate (model%field (n_field))
     allocate (model%vtx (n_vtx))
   end subroutine model_data_init
-  
+
   subroutine model_data_set_scheme_num (model, scheme)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: scheme
     model%scheme = scheme
   end subroutine model_data_set_scheme_num
-  
+
   subroutine model_data_freeze_fields (model)
     class(model_data_t), intent(inout) :: model
     call model%field%freeze ()
@@ -1491,13 +1505,13 @@ contains
     type(string_t) :: name
     name = model%name
   end function model_data_get_name
-  
+
   function model_data_get_scheme_num (model) result (scheme)
     class(model_data_t), intent(in) :: model
     integer :: scheme
     scheme = model%scheme
   end function model_data_get_scheme_num
-  
+
   function model_data_get_parameters_md5sum (model) result (par_md5sum)
     character(32) :: par_md5sum
     class(model_data_t), intent(in) :: model
@@ -1529,7 +1543,7 @@ contains
     character(32) :: md5sum
     md5sum = model%get_parameters_md5sum ()
   end function model_data_get_md5sum
-  
+
   subroutine model_data_init_par_real (model, i, name, value)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: i
@@ -1537,7 +1551,7 @@ contains
     real(default), intent(in) :: value
     call model%par_real(i)%init (name, value)
   end subroutine model_data_init_par_real
-  
+
   subroutine model_data_init_par_complex (model, i, name, value)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: i
@@ -1545,69 +1559,69 @@ contains
     complex(default), intent(in) :: value
     call model%par_complex(i)%init (name, value)
   end subroutine model_data_init_par_complex
-  
+
   function model_data_get_n_real (model) result (n)
     class(model_data_t), intent(in) :: model
     integer :: n
     n = size (model%par_real)
   end function model_data_get_n_real
-  
+
   function model_data_get_n_complex (model) result (n)
     class(model_data_t), intent(in) :: model
     integer :: n
     n = size (model%par_complex)
   end function model_data_get_n_complex
-  
+
   subroutine model_data_real_par_to_array (model, array)
     class(model_data_t), intent(in) :: model
     real(default), dimension(:), intent(inout) :: array
     array = model%par_real%get_real ()
   end subroutine model_data_real_par_to_array
-  
+
   subroutine model_data_complex_par_to_array (model, array)
     class(model_data_t), intent(in) :: model
     complex(default), dimension(:), intent(inout) :: array
     array = model%par_complex%get_complex ()
   end subroutine model_data_complex_par_to_array
-  
+
   subroutine model_data_real_par_from_array (model, array)
     class(model_data_t), intent(inout) :: model
     real(default), dimension(:), intent(in) :: array
     model%par_real = array
   end subroutine model_data_real_par_from_array
-  
+
   subroutine model_data_complex_par_from_array (model, array)
     class(model_data_t), intent(inout) :: model
     complex(default), dimension(:), intent(in) :: array
     model%par_complex = array
   end subroutine model_data_complex_par_from_array
-  
+
   subroutine model_data_real_par_to_c_array (model, array)
     class(model_data_t), intent(in) :: model
     real(c_default_float), dimension(:), intent(inout) :: array
     array = model%par_real%get_real ()
   end subroutine model_data_real_par_to_c_array
-  
+
   subroutine model_data_real_par_from_c_array (model, array)
     class(model_data_t), intent(inout) :: model
     real(c_default_float), dimension(:), intent(in) :: array
     model%par_real = real (array, default)
   end subroutine model_data_real_par_from_c_array
-  
+
   function model_data_get_par_real_ptr_index (model, i) result (ptr)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: i
     class(modelpar_data_t), pointer :: ptr
     ptr => model%par_real(i)
   end function model_data_get_par_real_ptr_index
-  
+
   function model_data_get_par_complex_ptr_index (model, i) result (ptr)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: i
     class(modelpar_data_t), pointer :: ptr
     ptr => model%par_complex(i)
   end function model_data_get_par_complex_ptr_index
-  
+
   function model_data_get_par_data_ptr_name (model, name) result (ptr)
     class(model_data_t), intent(in) :: model
     type(string_t), intent(in) :: name
@@ -1627,7 +1641,7 @@ contains
     end do
     ptr => null ()
   end function model_data_get_par_data_ptr_name
-  
+
   function model_data_get_par_real_value (model, name) result (value)
     class(model_data_t), intent(in) :: model
     type(string_t), intent(in) :: name
@@ -1636,7 +1650,7 @@ contains
     par => model%get_par_data_ptr (name)
     value = par%get_real ()
   end function model_data_get_par_real_value
-  
+
   function model_data_get_par_complex_value (model, name) result (value)
     class(model_data_t), intent(in) :: model
     type(string_t), intent(in) :: name
@@ -1645,7 +1659,7 @@ contains
     par => model%get_par_data_ptr (name)
     value = par%get_complex ()
   end function model_data_get_par_complex_value
-  
+
   subroutine model_data_set_par_real (model, name, value)
     class(model_data_t), intent(inout) :: model
     type(string_t), intent(in) :: name
@@ -1654,7 +1668,7 @@ contains
     par => model%get_par_data_ptr (name)
     par = value
   end subroutine model_data_set_par_real
-  
+
   subroutine model_data_set_par_complex (model, name, value)
     class(model_data_t), intent(inout) :: model
     type(string_t), intent(in) :: name
@@ -1663,7 +1677,7 @@ contains
     par => model%get_par_data_ptr (name)
     par = value
   end subroutine model_data_set_par_complex
-  
+
   subroutine model_data_write_fields (model, unit)
     class(model_data_t), intent(in) :: model
     integer, intent(in), optional :: unit
@@ -1672,20 +1686,20 @@ contains
        call model%field(i)%write (unit)
     end do
   end subroutine model_data_write_fields
-    
+
   function model_data_get_n_field (model) result (n)
     class(model_data_t), intent(in) :: model
     integer :: n
     n = size (model%field)
   end function model_data_get_n_field
-  
+
   function model_data_get_field_pdg_index (model, i) result (pdg)
     class(model_data_t), intent(in) :: model
     integer, intent(in) :: i
     integer :: pdg
     pdg = model%field(i)%get_pdg ()
   end function model_data_get_field_pdg_index
-  
+
   function model_data_get_field_pdg_name (model, name, check) result (pdg)
     class(model_data_t), intent(in) :: model
     type(string_t), intent(in) :: name
@@ -1706,7 +1720,7 @@ contains
     pdg = 0
     call model%field_error (check, name)
   end function model_data_get_field_pdg_name
-    
+
   subroutine model_data_get_all_pdg (model, pdg)
     class(model_data_t), intent(in) :: model
     integer, dimension(:), allocatable, intent(inout) :: pdg
@@ -1725,13 +1739,13 @@ contains
        end associate
     end do
   end subroutine model_data_get_all_pdg
-    
+
   function model_data_get_field_array_ptr (model) result (ptr)
     class(model_data_t), intent(in), target :: model
     type(field_data_t), dimension(:), pointer :: ptr
     ptr => model%field
   end function model_data_get_field_array_ptr
-  
+
   function model_data_get_field_ptr_name (model, name, check) result (ptr)
     class(model_data_t), intent(in), target :: model
     type(string_t), intent(in) :: name
@@ -1786,7 +1800,7 @@ contains
     logical :: exist
     exist = associated (model%get_field_ptr (pdg, check))
   end function model_data_test_field_pdg
-  
+
   subroutine model_data_field_error (model, check, name, pdg)
     class(model_data_t), intent(in) :: model
     logical, intent(in), optional :: check
@@ -1811,7 +1825,7 @@ contains
        end if
     end if
   end subroutine model_data_field_error
-          
+
   subroutine model_data_set_field_mass_pdg (model, pdg, value)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: pdg
@@ -1820,7 +1834,7 @@ contains
     field => model%get_field_ptr (pdg, check = .true.)
     call field%set_mass (value)
   end subroutine model_data_set_field_mass_pdg
-    
+
   subroutine model_data_set_field_width_pdg (model, pdg, value)
     class(model_data_t), intent(inout) :: model
     integer, intent(in) :: pdg
@@ -1829,7 +1843,7 @@ contains
     field => model%get_field_ptr (pdg, check = .true.)
     call field%set_width (value)
   end subroutine model_data_set_field_width_pdg
-    
+
   subroutine model_data_set_unstable &
        (model, pdg, decay, isotropic, diagonal, decay_helicity)
     class(model_data_t), intent(inout), target :: model
@@ -1853,7 +1867,7 @@ contains
             a_decay_helicity = decay_helicity)
     end if
   end subroutine model_data_set_unstable
-       
+
   subroutine model_data_set_stable (model, pdg)
     class(model_data_t), intent(inout), target :: model
     integer, intent(in) :: pdg
@@ -1865,7 +1879,7 @@ contains
        call field%set (a_is_stable = .true.)
     end if
   end subroutine model_data_set_stable
-       
+
   subroutine model_data_set_polarized (model, pdg)
     class(model_data_t), intent(inout), target :: model
     integer, intent(in) :: pdg
@@ -1877,7 +1891,7 @@ contains
        call field%set (a_polarized = .true.)
     end if
   end subroutine model_data_set_polarized
-    
+
   subroutine model_data_set_unpolarized (model, pdg)
     class(model_data_t), intent(inout), target :: model
     integer, intent(in) :: pdg
@@ -1889,7 +1903,7 @@ contains
        call field%set (a_polarized = .false.)
     end if
   end subroutine model_data_set_unpolarized
-    
+
   subroutine model_clear_unstable (model)
     class(model_data_t), intent(inout), target :: model
     integer :: i
@@ -1902,7 +1916,7 @@ contains
        end if
     end do
   end subroutine model_clear_unstable
-  
+
   subroutine model_clear_polarized (model)
     class(model_data_t), intent(inout), target :: model
     integer :: i
@@ -1915,7 +1929,7 @@ contains
        end if
     end do
   end subroutine model_clear_polarized
-  
+
   subroutine model_data_write_vertices (model, unit, verbose)
     class(model_data_t), intent(in) :: model
     integer, intent(in), optional :: unit
@@ -1956,13 +1970,13 @@ contains
     class(model_data_t), intent(inout) :: model
     call model%vt%init (model%field, model%vtx)
   end subroutine model_data_freeze_vertices
-  
+
   function model_data_get_n_vtx (model) result (n)
     class(model_data_t), intent(in) :: model
     integer :: n
     n = size (model%vtx)
   end function model_data_get_n_vtx
-  
+
   subroutine model_data_match_vertex (model, pdg1, pdg2, pdg3)
     class(model_data_t), intent(in) :: model
     integer, intent(in) :: pdg1, pdg2
@@ -1999,13 +2013,13 @@ contains
     i = i + 1
     field => model%get_field_ptr_by_index (i)
     call field%init (var_str ("SCALAR"), 25)
-    call field%set (spin_type=1) 
+    call field%set (spin_type=1)
     call field%set (mass_data=model%get_par_real_ptr (2))
     call field%set (name = [var_str ("s")])
     i = i + 1
     field => model%get_field_ptr_by_index (i)
     call field%init (var_str ("FERMION"), 6)
-    call field%set (spin_type=2) 
+    call field%set (spin_type=2)
     call field%set (mass_data=model%get_par_real_ptr (4))
     call field%set (name = [var_str ("f")], anti = [var_str ("fbar")])
     call model%freeze_fields ()
@@ -2016,7 +2030,7 @@ contains
     call model%set_vertex (i, [var_str ("s"), var_str ("s"), var_str ("s")])
     call model%freeze_vertices ()
   end subroutine model_data_init_test
-  
+
   subroutine model_data_init_qed_test (model)
     class(model_data_t), intent(out) :: model
     type(field_data_t), pointer :: field
@@ -2043,7 +2057,7 @@ contains
     call model%freeze_fields ()
     call model%freeze_vertices ()
   end subroutine model_data_init_qed_test
-  
+
   subroutine model_data_init_sm_test (model)
     class(model_data_t), intent(out) :: model
     type(field_data_t), pointer :: field
@@ -2205,6 +2219,6 @@ contains
     call model%set_vertex (i, [var_str ("dbar"), var_str ("u"), var_str ("W-")])
     call model%freeze_vertices ()
   end subroutine model_data_init_sm_test
-  
+
 
 end module model_data

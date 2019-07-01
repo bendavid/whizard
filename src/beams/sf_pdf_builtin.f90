@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -100,7 +100,7 @@ module sf_pdf_builtin
      procedure :: inverse_kinematics => pdf_builtin_inverse_kinematics
      procedure :: apply => pdf_builtin_apply
   end type pdf_builtin_t
-  
+
   type, extends (alpha_qcd_t) :: alpha_qcd_pdf_builtin_t
      type(string_t) :: pdfset_name
      integer :: pdfset_id = -1
@@ -109,7 +109,7 @@ module sf_pdf_builtin
      procedure :: get => alpha_qcd_pdf_builtin_get
      procedure :: init => alpha_qcd_pdf_builtin_init
   end type alpha_qcd_pdf_builtin_t
-  
+
 
   character(*), parameter :: PDF_BUILTIN_DEFAULT_PROTON = "CTEQ6L"
   character(*), parameter :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
@@ -175,7 +175,7 @@ contains
   subroutine pdf_builtin_data_write (data, unit, verbose)
     class(pdf_builtin_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose    
+    logical, intent(in), optional :: verbose
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)")  "PDF builtin data:"
@@ -192,7 +192,7 @@ contains
          "mask         =", &
          data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
     write (u, "(3x,A,L1)") "photon mask  = ", data%mask_photon
-    write (u, "(3x,A,L1)") "hoppet_b     = ", data%hoppet_b_matching    
+    write (u, "(3x,A,L1)") "hoppet_b     = ", data%hoppet_b_matching
   end subroutine pdf_builtin_data_write
 
   function pdf_builtin_data_get_n_par (data) result (n)
@@ -200,7 +200,7 @@ contains
     integer :: n
     n = 1
   end function pdf_builtin_data_get_n_par
-  
+
   subroutine pdf_builtin_data_get_pdg_out (data, pdg_out)
     class(pdf_builtin_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -213,19 +213,19 @@ contains
     if (np == 1)  pdg1(n+np) = PHOTON
     pdg_out(1) = pdg1
   end subroutine pdf_builtin_data_get_pdg_out
-  
+
   subroutine pdf_builtin_data_allocate_sf_int (data, sf_int)
     class(pdf_builtin_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (pdf_builtin_t :: sf_int)
   end subroutine pdf_builtin_data_allocate_sf_int
-  
+
   function pdf_builtin_data_get_pdf_set (data) result (pdf_set)
     class(pdf_builtin_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = data%id
   end function pdf_builtin_data_get_pdf_set
-  
+
   function pdf_builtin_type_string (object) result (string)
     class(pdf_builtin_t), intent(in) :: object
     type(string_t) :: string
@@ -235,7 +235,7 @@ contains
        string = "PDF builtin: [undefined]"
     end if
   end function pdf_builtin_type_string
-  
+
   subroutine pdf_builtin_write (object, unit, testflag)
     class(pdf_builtin_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -256,7 +256,7 @@ contains
        write (u, "(1x,A)")  "PDF builtin data: [undefined]"
     end if
   end subroutine pdf_builtin_write
-    
+
   subroutine pdf_builtin_init (sf_int, data)
     class(pdf_builtin_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -396,7 +396,7 @@ contains
                call hoppet_eval (xx, qq, ff_dbl)
                ff = ff_dbl
             else
-               call pdf_evolve (data%id, x, scale, ff)               
+               call pdf_evolve (data%id, x, scale, ff)
             end if
          end if
       end if
@@ -422,14 +422,14 @@ contains
     write (u, "(5x,A,A)")  "PDF set = ", char (object%pdfset_name)
     write (u, "(5x,A,I0)") "PDF ID  = ", object%pdfset_id
   end subroutine alpha_qcd_pdf_builtin_write
-  
+
   function alpha_qcd_pdf_builtin_get (alpha_qcd, scale) result (alpha)
     class(alpha_qcd_pdf_builtin_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
     real(default) :: alpha
     alpha = pdf_alphas (alpha_qcd%pdfset_id, scale)
   end function alpha_qcd_pdf_builtin_get
-  
+
   subroutine alpha_qcd_pdf_builtin_init (alpha_qcd, name, path)
     class(alpha_qcd_pdf_builtin_t), intent(out) :: alpha_qcd
     type(string_t), intent(in) :: name
@@ -441,6 +441,6 @@ contains
          // char (name) // " is unknown")
     call pdf_init (alpha_qcd%pdfset_id, path)
   end subroutine alpha_qcd_pdf_builtin_init
-    
+
 
 end module sf_pdf_builtin

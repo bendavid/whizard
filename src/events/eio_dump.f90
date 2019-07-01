@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -74,10 +74,10 @@ module eio_dump
      procedure :: input_event => eio_dump_input_event
      procedure :: skip => eio_dump_skip
   end type eio_dump_t
-  
+
 
 contains
-  
+
   subroutine eio_dump_set_parameters (eio, extension, &
        pacify, weights, compressed, summary, screen)
     class(eio_dump_t), intent(inout) :: eio
@@ -95,7 +95,7 @@ contains
     eio%extension = "pset.dat"
     if (present (extension))  eio%extension = extension
   end subroutine eio_dump_set_parameters
-  
+
   subroutine eio_dump_write (object, unit)
     class(eio_dump_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -105,7 +105,7 @@ contains
     if (object%writing) then
        write (u, "(3x,A,L1)") "Screen output     = ", object%screen
        write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
-       write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify 
+       write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify
        write (u, "(3x,A,L1)") "Show weights/sqme = ", object%weights
        write (u, "(3x,A,L1)") "Compressed        = ", object%compressed
        write (u, "(3x,A,L1)") "Summary           = ", object%summary
@@ -113,7 +113,7 @@ contains
        write (u, "(3x,A)")  "[closed]"
     end if
   end subroutine eio_dump_write
-  
+
   subroutine eio_dump_final (object)
     class(eio_dump_t), intent(inout) :: object
     if (object%screen) then
@@ -129,7 +129,7 @@ contains
        object%writing = .false.
     end if
   end subroutine eio_dump_final
-  
+
   subroutine eio_dump_init_out (eio, sample, data, success, extension)
     class(eio_dump_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -138,7 +138,7 @@ contains
     logical, intent(out), optional :: success
     if (present(extension)) then
        eio%extension = extension
-    else 
+    else
        eio%extension = "pset.dat"
     end if
     if (sample /= "") then
@@ -158,7 +158,7 @@ contains
     eio%count = 0
     if (present (success))  success = .true.
   end subroutine eio_dump_init_out
-    
+
   subroutine eio_dump_init_in (eio, sample, data, success, extension)
     class(eio_dump_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -168,14 +168,14 @@ contains
     call msg_bug ("Event dump: event input not supported")
     if (present (success))  success = .false.
   end subroutine eio_dump_init_in
-    
+
   subroutine eio_dump_switch_inout (eio, success)
     class(eio_dump_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("Event dump: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_dump_switch_inout
-  
+
   subroutine eio_dump_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_dump_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -70,7 +70,7 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted=.false.)
 
     call data%init (1)
@@ -87,15 +87,15 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_hepmc_1"
- 
+
     allocate (eio_hepmc_t :: eio)
     select type (eio)
     type is (eio_hepmc_t)
        call eio%set_parameters ()
     end select
-    
+
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
 
@@ -122,18 +122,18 @@ contains
        if (buffer(1:10) == "P 10003 25") &
             call buffer_blanker (buffer, 29, 53, 78, 101)
        if (buffer(1:10) == "P 10004 25") &
-            call buffer_blanker (buffer, 28, 51, 76, 99)       
+            call buffer_blanker (buffer, 28, 51, 76, 99)
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_hepmc_t :: eio)
-    
+
     select type (eio)
     type is (eio_hepmc_t)
        call eio%set_parameters ()
@@ -142,14 +142,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_hepmc_1"
-    
+
   contains
-    
+
     subroutine buffer_blanker (buf, pos1, pos2, pos3, pos4)
       character(len=*), intent(inout) :: buf
       integer, intent(in) :: pos1, pos2, pos3
@@ -165,9 +165,9 @@ contains
       line = replace (line, "4999999999999", "5000000000000")
       buf = char (line)
     end subroutine buffer_blanker
-    
+
   end subroutine eio_hepmc_1
-  
+
   subroutine eio_hepmc_2 (u)
     integer, intent(in) :: u
     class(model_data_t), pointer :: fallback_model
@@ -183,12 +183,12 @@ contains
 
     write (u, "(A)")  "* Write a HepMC data file"
     write (u, "(A)")
-    
+
     u_file = free_unit ()
     sample = "eio_hepmc_2"
     open (u_file, file = char (sample // ".hepmc"), &
          status = "replace", action = "readwrite")
-    
+
     write (u_file, "(A)")  "HepMC::Version 2.06.09"
     write (u_file, "(A)")  "HepMC::IO_GenEvent-START_EVENT_LISTING"
     write (u_file, "(A)")  "E 0 -1 -1.0000000000000000e+00 &
@@ -211,9 +211,9 @@ contains
     write (u_file, "(A)")  "HepMC::IO_GenEvent-END_EVENT_LISTING"
     close (u_file)
 
-    write (u, "(A)")  "* Initialize test process" 
+    write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
-    
+
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted=.false.)
 
@@ -243,7 +243,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Read event"
     write (u, "(A)")
- 
+
     call eio%input_i_prc (i_prc, iostat)
 
     select type (eio)
@@ -251,15 +251,15 @@ contains
        write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
             " with ID = ", eio%proc_num_id(i_prc)
     end select
-    
+
     call eio%input_event (event, iostat)
-    
+
     call event%write (u)
-        
+
     write (u, "(A)")
     write (u, "(A)")  "* Read closing"
     write (u, "(A)")
-    
+
     call eio%input_i_prc (i_prc, iostat)
     write (u, "(A,I0)")  "iostat = ", iostat
 
@@ -273,8 +273,8 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_hepmc_2"
-    
+
   end subroutine eio_hepmc_2
-  
+
 
 end module eio_hepmc_uti

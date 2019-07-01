@@ -7,7 +7,7 @@ if test -f OCAML_FLAG; then
     ./run_whizard.sh @script@ --no-logging
     echo "Contents of ${name}_p1.debug:" >> $name.log
     cat ${name}_p1.debug >> $name.log
-    cat ${name}_p1_fks_regions.log >> $name.log
+    cat ${name}_p1_fks_regions.out >> $name.log
     diff ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"

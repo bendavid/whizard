@@ -24,13 +24,6 @@ n_events = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process observables_1_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'observables_1_p'
-|   Library name  = 'observables_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'observables_1_p_i1':   e-, e- => e-, e- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -39,6 +32,13 @@ n_events = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'observables_1_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'observables_1_p'
+|   Library name  = 'observables_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'observables_1_p_i1':   e-, e- => e-, e- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 1 grove.
 | Phase space: Using 16 equivalences between channels.

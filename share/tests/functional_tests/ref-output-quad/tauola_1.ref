@@ -29,13 +29,6 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process tauola_1_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'tauola_1_p1'
-|   Library name  = 'tauola_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'tauola_1_p1_i1':   e-, e+ => tau-, tau+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -49,6 +42,13 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'tauola_1_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'tauola_1_p1'
+|   Library name  = 'tauola_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'tauola_1_p1_i1':   e-, e+ => tau-, tau+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

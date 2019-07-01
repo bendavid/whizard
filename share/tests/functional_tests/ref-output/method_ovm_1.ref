@@ -27,13 +27,6 @@ sqrts =  2.50000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process method_ovm_1_1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'method_ovm_1_1'
-|   Library name  = 'method_ovm_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'method_ovm_1_1_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -42,6 +35,13 @@ sqrts =  2.50000E+02
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'method_ovm_1_1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'method_ovm_1_1'
+|   Library name  = 'method_ovm_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'method_ovm_1_1_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -72,13 +72,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process method_ovm_1_2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'method_ovm_1_2'
-|   Library name  = 'method_ovm_1_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'method_ovm_1_2_i1':   e-, e+ => mu-, mu+ [ovm]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -87,6 +80,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'method_ovm_1_2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'method_ovm_1_2'
+|   Library name  = 'method_ovm_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'method_ovm_1_2_i1':   e-, e+ => mu-, mu+ [ovm]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

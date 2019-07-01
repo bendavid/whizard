@@ -23,13 +23,6 @@ n_calls_test = 1000
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_7_nnh:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_7_nnh'
-|   Library name  = 'smtest_7_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_7_nnh_i1':   e-, e+ => nue, nuebar, H [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -38,6 +31,13 @@ n_calls_test = 1000
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_7_nnh_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_7_nnh'
+|   Library name  = 'smtest_7_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_7_nnh_i1':   e-, e+ => nue, nuebar, H [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 5 dimensions
 | Phase space: found 4 channels, collected in 3 groves.
 | Phase space: Using 4 equivalences between channels.

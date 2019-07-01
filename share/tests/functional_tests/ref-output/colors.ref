@@ -20,13 +20,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process colors_bbg:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'colors_bbg'
-|   Library name  = 'colors_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'colors_bbg_i1':   e-, e+ => b, bbar, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -35,6 +28,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'colors_bbg_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'colors_bbg'
+|   Library name  = 'colors_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'colors_bbg_i1':   e-, e+ => b, bbar, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 5 dimensions
 | Phase space: found 4 channels, collected in 2 groves.
 | Phase space: Using 4 equivalences between channels.
@@ -58,13 +58,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process colors_ugug:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'colors_ugug'
-|   Library name  = 'colors_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'colors_ugug_i1':   u, gl => u, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: u, gl
 | Beam data (collision):
 |   u   (mass = 0.0000000E+00 GeV)
@@ -73,6 +66,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'colors_ugug_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'colors_ugug'
+|   Library name  = 'colors_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'colors_ugug_i1':   u, gl => u, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 3 groves.
 | Phase space: Using 5 equivalences between channels.
@@ -98,13 +98,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process colors_bbg:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'colors_bbg'
-|   Library name  = 'colors_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'colors_bbg_i1':   e-, e+ => b, bbar, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -113,6 +106,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'colors_bbg_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'colors_bbg'
+|   Library name  = 'colors_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'colors_bbg_i1':   e-, e+ => b, bbar, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 5 dimensions
 | Phase space: found 4 channels, collected in 2 groves.
 | Phase space: Using 4 equivalences between channels.
@@ -136,13 +136,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process colors_ugug:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'colors_ugug'
-|   Library name  = 'colors_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'colors_ugug_i1':   u, gl => u, gl [omega]
-| ------------------------------------------------------------------------
 | Beam structure: u, gl
 | Beam data (collision):
 |   u   (mass = 0.0000000E+00 GeV)
@@ -151,6 +144,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'colors_ugug_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'colors_ugug'
+|   Library name  = 'colors_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'colors_ugug_i1':   u, gl => u, gl [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 3 groves.
 | Phase space: Using 5 equivalences between channels.

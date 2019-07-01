@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -87,7 +87,7 @@ module cputime
      procedure :: set_test_time2 => timer_set_test_time2
      procedure :: evaluate => timer_evaluate
   end type timer_t
-  
+
 
   interface assignment(=)
     module procedure real_assign_time
@@ -127,7 +127,7 @@ contains
        r = 0
     end if
   end subroutine real_assign_time
-    
+
   pure subroutine real_default_assign_time (r, time)
     real(default), intent(out) :: r
     class(time_t), intent(in) :: time
@@ -137,21 +137,21 @@ contains
        r = 0
     end if
   end subroutine real_default_assign_time
-    
+
   subroutine time_assign_from_integer (time, ival)
     class(time_t), intent(out) :: time
     integer, intent(in) :: ival
     time%value = ival
     time%known = .true.
   end subroutine time_assign_from_integer
-  
+
   subroutine time_assign_from_real (time, rval)
     class(time_t), intent(out) :: time
     real, intent(in) :: rval
     time%value = rval
     time%known = .true.
   end subroutine time_assign_from_real
-  
+
   pure function subtract_times (t_end, t_begin) result (time)
     type(time_t) :: time
     class(time_t), intent(in) :: t_end, t_begin
@@ -160,7 +160,7 @@ contains
        time%value = t_end%value - t_begin%value
     end if
   end function subtract_times
-    
+
   pure function add_times (t1, t2) result (time)
     type(time_t) :: time
     class(time_t), intent(in) :: t1, t2
@@ -169,13 +169,13 @@ contains
        time%value = t1%value + t2%value
     end if
   end function add_times
-    
+
   function time_is_known (time) result (flag)
     class(time_t), intent(in) :: time
     logical :: flag
     flag = time%known
   end function time_is_known
-  
+
   subroutine time_expand_s (time, sec)
     class(time_t), intent(in) :: time
     integer, intent(out) :: sec
@@ -239,7 +239,7 @@ contains
     class(time_t), intent(in) :: time
     logical, intent(in), optional :: blank
     type(string_t) :: str
-    character(256) :: buffer    
+    character(256) :: buffer
     integer :: s, m
     logical :: x_out
     x_out = .false.
@@ -290,39 +290,39 @@ contains
     call timer%t1%set_current ()
     timer%running = .true.
   end subroutine timer_start
-  
+
   subroutine timer_restart (timer)
     class(timer_t), intent(inout) :: timer
     if (timer%t1%known .and. .not. timer%running) then
        timer%running = .true.
     else
        call msg_bug ("Timer: restart attempt from wrong status")
-    end if       
+    end if
   end subroutine timer_restart
-  
+
   subroutine timer_stop (timer)
     class(timer_t), intent(inout) :: timer
     call timer%t2%set_current ()
     timer%running = .false.
     call timer%evaluate ()
   end subroutine timer_stop
-  
+
   subroutine timer_set_test_time1 (timer, t)
     class(timer_t), intent(inout) :: timer
     integer, intent(in) :: t
     timer%t1 = t
   end subroutine timer_set_test_time1
-  
+
   subroutine timer_set_test_time2 (timer, t)
     class(timer_t), intent(inout) :: timer
     integer, intent(in) :: t
     timer%t2 = t
   end subroutine timer_set_test_time2
-  
+
   subroutine timer_evaluate (timer)
     class(timer_t), intent(inout) :: timer
     timer%time_t = timer%t2 - timer%t1
   end subroutine timer_evaluate
-  
+
 
 end module cputime

@@ -10,10 +10,14 @@ end module @ID@_virtual
 
 subroutine @ID@_start_openloops () bind(C)
   use @ID@_virtual
+  use openloops_blha, only: olp_printparameter
   integer, dimension(12), parameter :: pdgs = [1,2,3,4,5,6,11,13,15,23,24,25]
   character(32) :: buffer
   integer :: i
-  ! coupling order alpha_ew^1, implies QCD correction for loop process
+  !!! Need to set this parameter to switch off OpenLoops' internal CS I-operators,
+  !!! which are not implemented for decays.
+  call set_parameter ("ir_on", 0)
+  !!! coupling order alpha_ew^1, implies QCD correction for loop process
   call set_parameter("order_ew", 1)
   call set_parameter("model", "sm")
   do i = 1, size(pdgs)
@@ -33,18 +37,15 @@ subroutine @ID@_start_openloops () bind(C)
   ! 11 for loop, 12 for loop^2
   id(1) = register_process("6(-1) -> 24 5", 11)
   id(2) = register_process("6(+1) -> 24 5", 11)
-  !id(1) = register_process("6 -> 24 5", 11)
-  !id(2) = register_process("6 -> 24 5", 11)
   !!! Anti-particles need opposite sign for the helicity
   !!! Different conventions in OMega and OpenLoops
   id(3) = register_process("-6(+1) -> -24 -5", 11)
   id(4) = register_process("-6(-1) -> -24 -5", 11)
-  !id(3) = register_process("-6 -> -24 -5", 11)
-  !id(4) = register_process("-6 -> -24 -5", 11)
   call start()
+  call olp_printparameter ("parameters.ol")
 end subroutine @ID@_start_openloops
 
-subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, parray, mu_c, &
+subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
        sqme_c, acc_c) bind(C)
   use @ID@_threshold
   use @ID@_virtual
@@ -56,12 +57,14 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, parray, mu_c, &
   implicit none
   integer(c_int), intent(in) :: i_flv
   real(c_default_float), intent(in) :: alpha_s_c
-  real(c_default_float), dimension(0:3,*), intent(in) :: parray
+  real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
   real(c_default_float), intent(in) :: mu_c
   real(c_default_float), dimension(4), intent(out) :: sqme_c
   real(c_default_float), intent(out) :: acc_c
+  type(momentum), dimension(:), allocatable :: mom_ofs, mom_ons
+  type(momentum), dimension(2) :: ptop_ofs, ptop_ons
+  type(momentum) :: p12
   complex(default), dimension(-1:1,-1:1,-1:1,-1:1) :: production_me
-  type(momentum), dimension(2) :: p_top
   integer :: h_el, h_pos, h_t, h_tbar
   integer :: leg, this_id, h_b, h_W
   real(double) :: virt_decay(0:3), total(0:3), acc
@@ -76,69 +79,92 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, parray, mu_c, &
        call msg_fatal ("@ID@_olp_eval2: OFFSHELL_STRATEGY is not factorized")
   alpha_s = alpha_s_c
   mu = mu_c
-  call init_workspace ()
+  allocate (mom_ofs(6), mom_ons(6))
+  call convert_to_mom_and_invert_sign (p_ofs, 6, mom_ofs)
   call set_parameter("alpha_s", alpha_s)
   call set_parameter("mu", mu)
   total = 0
-  do leg = 1, 2
-     p_decay(:,2,leg) = parray(:,ass_boson(leg))
-     p_decay(:,3,leg) = parray(:,ass_quark(leg))
-     p_decay(:,1,leg) = p_decay(:,2,leg) + p_decay(:,3,leg)
-     p_top(leg) = p_decay(:,1,leg)
-  end do
-  call compute_momentum_sums ()
-  call set_top_momenta ()
+
+  call compute_projected_momenta (mom_ofs, mom_ons)
   call set_parameter("width(6)", zero)
   call set_parameter("width(24)", zero)
-  bw = top_propagators (FF)
-  production_me = compute_production_me (FF)
+  ptop_ons(1) = mom_ons(THR_POS_WP) + mom_ons(THR_POS_B)
+  ptop_ons(2) = mom_ons(THR_POS_WM) + mom_ons(THR_POS_BBAR)
+  ptop_ofs(1) = mom_ofs(THR_POS_WP) + mom_ofs(THR_POS_B)
+  ptop_ofs(2) = mom_ofs(THR_POS_WM) + mom_ofs(THR_POS_BBAR)
+  p_decay(:,1,1) = ptop_ons(1)
+  p_decay(:,2,1) = mom_ons(THR_POS_WP)
+  p_decay(:,3,1) = mom_ons(THR_POS_B)
+  p_decay(:,1,2) = ptop_ons(2)
+  p_decay(:,2,2) = mom_ons(THR_POS_WM)
+  p_decay(:,3,2) = mom_ons(THR_POS_BBAR)
+  if (.not. threshold%settings%onshell_projection%boost_decay &
+         .and. debug2_active (D_THRESHOLD)) then
+     p12 = mom_ofs(1) + mom_ofs(2)
+     call check_rest_frame (ttv_mtpole (p12 * p12))
+  end if
+  bw = top_propagators (FF, mom_ofs(1) + mom_ofs(2), ptop_ofs)
+  production_me = compute_production_me (FF, mom_ofs, ptop_ofs, ptop_ons)
+  prod2 = zero
   do h_t = -1, 1, 2
   do h_tbar = -1, 1, 2
-     prod2 = 0
+     if (skip (h_t, h_tbar)) cycle
      do h_el = -1, 1, 2
      do h_pos = -1, 1, 2
-        prod2 = prod2 + abs2 (production_me(h_el, h_pos, h_t, h_tbar))
-     end do
-     end do
+        prod2 = abs2 (production_me(h_el, h_pos, h_t, h_tbar))
      do leg = 1, 2
-        dynamic_top_mass = sqrt (p_top(leg) * p_top(leg))
+        dynamic_top_mass = sqrt (ptop_ons(leg) * ptop_ons(leg))
         call set_parameter("mass(6)", dynamic_top_mass)
         born_decay_me2 = zero
         do h_W = -1, 1
         do h_b = -1, 1, 2
            if (leg == 1) then
-              born_decay_me = anti_top_decay_born (h_tbar, h_W, h_b)
+              born_decay_me = anti_top_decay_born (mom_ons, h_tbar, h_W, h_b)
               this_id = (3 + h_t) / 2
            else
-              born_decay_me = top_decay_born (h_t, h_W, h_b)
+              born_decay_me = top_decay_born (mom_ons, h_t, h_W, h_b)
               this_id = (3 + h_tbar) / 2 + 2
            end if
            born_decay_me2 = born_decay_me2 + abs2 (born_decay_me)
         end do
         end do
-        ! TODO: (bcn 2016-01-22) handle acc
-        call evaluate_loop (id(this_id), p_decay(:,:,leg), virt_decay(3), &
-             virt_decay(0:2), acc)
+        call evaluate_loop (id(this_id), p_decay(:,:,leg), &
+             virt_decay(3), virt_decay(0:2), acc)
+        acc_c = max (acc_c, acc)
         total = total + prod2 * born_decay_me2 * virt_decay * abs2 (bw)
      end do
   end do
   end do
-  !!! OpenLoops applies the averaging factor of four regardless whether
+  end do
+  end do
+  !!! OpenLoops applies the averaging factor of two regardless whether
   !!! the MEs are polarized or not
-  total = total * production_factors * four
+  total = total * production_factors
   sqme_c = [total(2), total(1), total(0), total(3)]
-  if (debug2_active (D_ME_METHODS)) then
-     print *, 'sqme_c =    ', sqme_c !!! Debugging
-  end if
+  if (debug2_active (D_ME_METHODS)) &
+       print *, 'sqme_c =    ', sqme_c !!! Debugging
 contains
-  subroutine set_top_momenta ()
-    mom_top_onshell = parray(:,THR_POS_WP) + parray(:,THR_POS_B)
-    mom_topbar_onshell = parray(:,THR_POS_WM) + parray(:,THR_POS_BBAR)
-    mom_wp_onshell = parray(:,THR_POS_WP)
-    mom_wm_onshell = parray(:,THR_POS_WM)
-    mom_b_onshell = parray(:,THR_POS_B)
-    mom_bbar_onshell = parray(:,THR_POS_BBAR)
-  end subroutine set_top_momenta
+  function skip (h_t, h_tbar)
+    logical :: skip
+    integer, intent(in) :: h_t, h_tbar
+    associate (s => threshold%settings)
+         skip = s%helicity_approximation%ultra &
+              .and. (h_t /= s%sel_hel_top .or. h_tbar /= s%sel_hel_topbar)
+    end associate
+  end function skip
+
+  subroutine check_rest_frame (mtop)
+    use, intrinsic :: iso_fortran_env, only: output_unit
+    use constants, only: tiny_07
+    use numeric_utils, only: assert_equal
+    real(default), intent(in) :: mtop
+    call assert_equal (output_unit, mtop, sqrt (ptop_ons(1) * ptop_ons(1)), &
+         'Top quark in rest frame?', abs_smallness = tiny_07, &
+         rel_smallness = tiny_07, exit_on_fail = .true.)
+    call assert_equal (output_unit, mtop, sqrt (ptop_ons(2) * ptop_ons(2)), &
+         'Anti-top quark in rest frame?', abs_smallness = tiny_07, &
+         rel_smallness = tiny_07, exit_on_fail = .true.)
+  end subroutine check_rest_frame
 end subroutine @ID@_olp_eval2
 
 subroutine @ID@_stop_openloops () bind(C)

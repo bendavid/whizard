@@ -32,6 +32,12 @@ error_threshold =  1.00000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process tauola_2_dec1:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   H  (mass = 1.2500000E+02 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'tauola_2_dec1_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'tauola_2_dec1'
 |   Library name  = 'tauola_2_lib'
@@ -39,12 +45,6 @@ error_threshold =  1.00000E-08
 |   Process components:
 |     1: 'tauola_2_dec1_i1':   H => tau-, tau+ [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   H  (mass = 1.2500000E+02 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'tauola_2_dec1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -67,6 +67,12 @@ error_threshold =  1.00000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process tauola_2_dec2:
+| Beam structure: [any particles]
+| Beam data (decay):
+|   W-  (mass = 8.0419000E+01 GeV)
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'tauola_2_dec2_i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'tauola_2_dec2'
 |   Library name  = 'tauola_2_lib'
@@ -74,12 +80,6 @@ error_threshold =  1.00000E-08
 |   Process components:
 |     1: 'tauola_2_dec2_i1':   W- => tau-, nutaubar [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (decay):
-|   W-  (mass = 8.0419000E+01 GeV)
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'tauola_2_dec2_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -102,13 +102,6 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process tauola_2_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'tauola_2_p1'
-|   Library name  = 'tauola_2_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'tauola_2_p1_i1':   e-, e+ => numu, numubar, H [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -122,6 +115,13 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'tauola_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'tauola_2_p1'
+|   Library name  = 'tauola_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'tauola_2_p1_i1':   e-, e+ => numu, numubar, H [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -147,13 +147,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process tauola_2_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'tauola_2_p2'
-|   Library name  = 'tauola_2_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'tauola_2_p2_i1':   e-, e+ => mu+, numu, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -167,6 +160,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'tauola_2_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'tauola_2_p2'
+|   Library name  = 'tauola_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'tauola_2_p2_i1':   e-, e+ => mu+, numu, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 11 channels, 5 dimensions
 | Phase space: found 11 channels, collected in 5 groves.
 | Phase space: Using 11 equivalences between channels.

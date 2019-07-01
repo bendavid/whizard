@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -86,8 +86,9 @@ module beams
      procedure :: get_energy => beam_data_get_energy
      procedure :: get_sqrts => beam_data_get_sqrts
      procedure :: cm_frame => beam_data_cm_frame
+     procedure :: get_polarization => beam_data_get_polarization
      procedure :: get_helicity_state_matrix => beam_data_get_helicity_state_matrix
-     procedure :: is_initialized => beam_data_is_initialized 
+     procedure :: is_initialized => beam_data_is_initialized
      procedure :: get_md5sum => beam_data_get_md5sum
      procedure :: init_structure => beam_data_init_structure
      procedure :: init_sqrts => beam_data_init_sqrts
@@ -150,7 +151,7 @@ contains
        write (u, "(1x,A)") "Beam data (decay):"
        if (verb) then
           call write_prt (1)
-          call beam_data%pmatrix(1)%write (u)          
+          call beam_data%pmatrix(1)%write (u)
           write (u, *) "R.f. momentum:"
           call vector4_write (beam_data%p_cm(1), u)
           write (u, *) "Lab momentum:"
@@ -162,7 +163,7 @@ contains
        write (u, "(1x,A)") "Beam data (collision):"
        if (verb) then
           call write_prt (1)
-          call beam_data%pmatrix(1)%write (u)          
+          call beam_data%pmatrix(1)%write (u)
           call write_prt (2)
           call beam_data%pmatrix(2)%write (u)
           call write_sqrts
@@ -251,7 +252,7 @@ contains
     integer :: i
     allocate (e (beam_data%n))
     if (beam_data%initialized) then
-       do i = 1, beam_data%n          
+       do i = 1, beam_data%n
           e(i) = energy (beam_data%p(i))
        end do
     else
@@ -264,13 +265,21 @@ contains
     real(default) :: sqrts
     sqrts = beam_data%sqrts
   end function beam_data_get_sqrts
-  
+
   function beam_data_cm_frame (beam_data) result (flag)
     class(beam_data_t), intent(in) :: beam_data
     logical :: flag
     flag = beam_data%lab_is_cm_frame
   end function beam_data_cm_frame
-  
+
+  function beam_data_get_polarization (beam_data) result (pol)
+    class(beam_data_t), intent(in) :: beam_data
+    real(default), dimension(2) :: pol
+    if (beam_data%n /= 2) &
+         call msg_fatal ("Beam data: can only treat scattering processes.")
+    pol = beam_data%pmatrix%get_simple_pol ()
+  end function beam_data_get_polarization
+
   function beam_data_get_helicity_state_matrix (beam_data) result (state_hel)
     type(state_matrix_t) :: state_hel
     class(beam_data_t), intent(in) :: beam_data
@@ -344,7 +353,7 @@ contains
        end select
     end if
   end subroutine beam_data_init_structure
-    
+
   subroutine beam_data_init_sqrts (beam_data, sqrts, flv, smatrix, pol_f)
     class(beam_data_t), intent(out) :: beam_data
     real(default), intent(in) :: sqrts
@@ -387,7 +396,7 @@ contains
     !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     !!! p = vector4_moving (e, p3)
     do i = 1, beam_data%n
-       p(i) = vector4_moving (e(i), p3(i))    
+       p(i) = vector4_moving (e(i), p3(i))
     end do
     p0 = sum (p)
     beam_data%p = p
@@ -409,7 +418,7 @@ contains
     end select
     call beam_data_finish_initialization (beam_data, flv, smatrix, pol_f)
   end subroutine beam_data_init_momenta
-    
+
   subroutine beam_data_finish_initialization (beam_data, flv, smatrix, pol_f)
     type(beam_data_t), intent(inout) :: beam_data
     type(flavor_t), dimension(:), intent(in) :: flv
@@ -484,7 +493,7 @@ contains
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     complex(default) :: value
     real(default), parameter :: tolerance = 100 * epsilon (1._default)
-    polarized = beam_data%pmatrix%is_polarized () 
+    polarized = beam_data%pmatrix%is_polarized ()
     diagonal = beam_data%pmatrix%is_diagonal ()
     mask = quantum_numbers_mask (.false., .false., &
          mask_h = .not. polarized, &

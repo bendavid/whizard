@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -70,7 +70,7 @@ module evaluators
      integer, dimension(:), allocatable :: i1, i2
      complex(default), dimension(:), allocatable :: factor
   end type pairing_array_t
-     
+
   type, extends (interaction_t) :: evaluator_t
      private
      integer :: type = EVAL_UNDEFINED
@@ -181,7 +181,7 @@ contains
     u = given_output_unit (unit);  if (u < 0)  return
     show_tab = .true.;  if (present (show_table))  show_tab = .false.
     call eval%basic_write &
-         (unit, verbose, show_momentum_sum, show_mass, & 
+         (unit, verbose, show_momentum_sum, show_mass, &
             show_state, col_verbose, testflag)
     if (show_tab) then
        write (u, "(1x,A)")  "Matrix-element multiplication"
@@ -265,7 +265,7 @@ contains
     allocate (map%entry (n))
     map%entry = 0
   end subroutine index_map_init
-    
+
   function index_map_exists (map) result (flag)
     logical :: flag
     type(index_map_t), intent(in) :: map
@@ -300,21 +300,21 @@ contains
     integer, intent(in) :: ival
     map%entry(i) = ival
   end subroutine index_map_set_entry
-    
+
   elemental function index_map_get_entry (map, i) result (ival)
     integer :: ival
     type(index_map_t), intent(in) :: map
     integer, intent(in) :: i
     ival = map%entry(i)
   end function index_map_get_entry
-    
+
   elemental subroutine index_map2_init (map, n)
     type(index_map2_t), intent(out) :: map
     integer, intent(in) :: n
     map%s = n
     allocate (map%entry (n, n))
   end subroutine index_map2_init
-    
+
   function index_map2_exists (map) result (flag)
     logical :: flag
     type(index_map2_t), intent(in) :: map
@@ -339,14 +339,14 @@ contains
     integer, intent(in) :: ival
     map%entry(i,j) = ival
   end subroutine index_map2_set_entry
-    
+
   elemental function index_map2_get_entry (map, i, j) result (ival)
     integer :: ival
     type(index_map2_t), intent(in) :: map
     integer, intent(in) :: i, j
     ival = map%entry(i,j)
   end function index_map2_get_entry
-    
+
   subroutine prt_mask_init (mask, n)
     type(prt_mask_t), intent(out) :: mask
     integer, intent(in) :: n
@@ -510,7 +510,7 @@ contains
     i1 = color_table%index(index1)
     i2 = color_table%index(index2)
     if (color_table%factor_is_known(i1,i2)) then
-       factor = color_table%factor(i1,i2)
+       factor = real(color_table%factor(i1,i2), kind=default)
     else
        factor = compute_color_factor &
             (color_table%col(:,i1), color_table%col(:,i2), nc)
@@ -552,7 +552,7 @@ contains
     integer, dimension(:,:), allocatable :: connection_index
     type(index_map_t), dimension(2) :: prt_map_in
     type(index_map_t) :: prt_map_conn
-    type(prt_mask_t), dimension(2) :: prt_is_connected    
+    type(prt_mask_t), dimension(2) :: prt_is_connected
     !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     type(quantum_numbers_mask_t), dimension(:), allocatable :: &
          qn_mask_conn_initial, int_in1_mask, int_in2_mask
@@ -585,11 +585,11 @@ contains
        prt_is_connected(i)%entry = .true.
        prt_is_connected(i)%entry(connection_index(:,i)) = .false.
     end do
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug    
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     allocate (qn_mask_conn_initial (n_conn), &
          int_in1_mask (n_conn), int_in2_mask (n_conn))
     int_in1_mask = int_in1%get_mask (connection_index(:,1))
-    int_in2_mask = int_in2%get_mask (connection_index(:,2))    
+    int_in2_mask = int_in2%get_mask (connection_index(:,2))
     do i = 1, n_conn
        qn_mask_conn_initial(i) = int_in1_mask(i) .or. int_in2_mask(i)
     end do
@@ -748,7 +748,7 @@ contains
       type(connection_table_t), intent(inout) :: connection_table
       call connection_table%state%final ()
     end subroutine connection_table_final
-   
+
     subroutine connection_table_write (connection_table, unit)
       type(connection_table_t), intent(in) :: connection_table
       integer, intent(in), optional :: unit
@@ -822,7 +822,7 @@ contains
       end do
       call index_map_init (connection_table%index_result, n_result_entries)
     end subroutine connection_table_fill
-      
+
     subroutine connection_entry_add_state &
         (entry, i, index_in, qn_in, connection_index, prt_is_connected, &
          color_offset)
@@ -1018,7 +1018,7 @@ contains
     end if
   end subroutine evaluator_init_square
 
-  subroutine evaluator_init_square_diag (eval, int_in, qn_mask, & 
+  subroutine evaluator_init_square_diag (eval, int_in, qn_mask, &
        col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
 
     class(evaluator_t), intent(out), target :: eval
@@ -1288,8 +1288,8 @@ contains
                n_entries(r) = n_entries(r) + 1
                ks = index_map_get_entry (entry%index_in(1), k)
                pa(r)%i1(n_entries(r)) = ks
-               m = m + 1  
-            end if               
+               m = m + 1
+            end if
          end do
       end do
     end subroutine make_pairing_array
@@ -1309,7 +1309,7 @@ contains
 
   end subroutine evaluator_init_square_diag
 
-  subroutine evaluator_init_square_nondiag (eval, int_in, qn_mask, & 
+  subroutine evaluator_init_square_nondiag (eval, int_in, qn_mask, &
        col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
 
     class(evaluator_t), intent(out), target :: eval
@@ -1334,7 +1334,7 @@ contains
       type(index_map_t) :: index_result
     end type connection_table_t
     type(connection_table_t) :: connection_table
-       
+
     logical :: sum_colors
     type(color_table_t) :: color_table
 
@@ -1383,7 +1383,7 @@ contains
     call connection_table_final (connection_table)
 
   contains
-    
+
     subroutine connection_table_init &
          (connection_table, state_in, qn_mask_in, qn_mask, n_tot)
       type(connection_table_t), intent(out) :: connection_table
@@ -1437,7 +1437,7 @@ contains
          call it%advance ()
       end do
     end subroutine connection_table_init
-         
+
     subroutine connection_table_final (connection_table)
       type(connection_table_t), intent(inout) :: connection_table
       call connection_table%state%final ()
@@ -1595,7 +1595,7 @@ contains
             else
                k1s = index_map_get_entry (entry%index_in(1), k)
                pa(r)%i1(n_entries(r)) = k1s
-            end if               
+            end if
             m = m + 1
          end do
       end do
@@ -1803,7 +1803,7 @@ contains
     integer, dimension(:), allocatable :: inotdropped
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
     logical, dimension(:), allocatable :: resonant
- 
+
     eval%type = EVAL_QN_SUM
     eval%int_in1 => int
     nullify (eval%int_in2)
@@ -1839,7 +1839,7 @@ contains
        if (dropped(j)) cycle
        call eval%set_source_link (i, int, j)
        i = i + 1
-    end do    
+    end do
     allocate (map(n_tot + ndropped))
     i = 1
     do j = 1, n_tot + ndropped

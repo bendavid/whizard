@@ -62,6 +62,42 @@ extern "C" void lcio_set_scale ( LCEventImpl* evt, double scale ) {
   evt->parameters().setValue ( "scale", scale_f );
 }
 
+extern "C" void lcio_set_sqrts ( LCEventImpl* evt, double sqrts ) {
+  float sqrts_f = sqrts;
+  evt->parameters().setValue ( "Energy", sqrts_f );
+}
+
+extern "C" void lcio_set_xsec ( LCEventImpl* evt, double xsec, double xsec_err ) {
+  float xsec_f = xsec;
+  float xsec_err_f = xsec_err;
+  evt->parameters().setValue ( "crossSection", xsec_f );
+  evt->parameters().setValue ( "crossSectionError", xsec_err_f );
+}
+
+extern "C" void lcio_set_beam ( LCEventImpl* evt, int pdg, int beam ) {
+  if (beam == 1){    
+    evt->parameters().setValue ( "beamPDG0", pdg );
+  }
+  else if (beam == 2){
+    evt->parameters().setValue ( "beamPDG1", pdg );
+  }
+}
+
+extern "C" void lcio_set_pol ( LCEventImpl* evt, double pol1, double pol2 ) {
+  float pol1_f = pol1;
+  float pol2_f = pol2;
+  evt->parameters().setValue ( "Pol0", pol1_f );
+  evt->parameters().setValue ( "Pol1", pol2_f );
+}
+
+extern "C" void lcio_set_beam_file ( LCEventImpl* evt, char* file ) {
+  evt->parameters().setValue ( "BeamSpectrum", file );
+}
+
+extern "C" void lcio_set_process_name ( LCEventImpl* evt, char* name ) {
+  evt->parameters().setValue ( "processName", name );
+}
+
 extern "C" LCEvent* read_lcio_event ( LCReader* lcRdr) {
   LCEvent* evt;
   if ((evt = lcRdr->readNextEvent ()) != 0) {    
@@ -322,7 +358,7 @@ extern "C" MCParticleImpl* new_lcio_particle
   mcp->setMass ( mass );
   mcp->setCharge ( charge );
   mcp->setGeneratorStatus ( status );
-  mcp->setCreatedInSimulation (true);
+  mcp->setCreatedInSimulation (false);
   return mcp; 
 }
 

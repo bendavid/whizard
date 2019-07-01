@@ -16,6 +16,11 @@ sqrts =  1.000000000000E+03
 | RNG: Setting seed for random-number generator to 0
 | Phase space: reading configuration from 'testproc_3.phs'
 | Initializing integration for process testproc_3_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   s  (mass = 1.2500000E+02 GeV)
+|   s  (mass = 1.2500000E+02 GeV)
+|   sqrts = 1.000000000000E+03 GeV
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_3_p1'
 |   Library name  = 'testproc_3_lib'
@@ -23,11 +28,6 @@ sqrts =  1.000000000000E+03
 |   Process components:
 |     1: 'testproc_3_p1_i1':   s, s => s, s [unit_test]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 1.000000000000E+03 GeV
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.

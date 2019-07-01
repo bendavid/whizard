@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -58,6 +58,7 @@ module pdg_arrays
   public :: is_gluon
   public :: is_colored
   public :: is_lepton
+  public :: is_fermion
   public :: is_massless_vector
   public :: is_massive_vector
   public :: operator(<)
@@ -119,7 +120,7 @@ module pdg_arrays
      procedure :: search_for_particle => pdg_list_search_for_particle
      procedure :: contains_colored_particles => pdg_list_contains_colored_particles
   end type pdg_list_t
-  
+
 
   interface assignment(=)
      module procedure pdg_array_from_int_array
@@ -165,7 +166,7 @@ module pdg_arrays
   interface sort_abs
      module procedure pdg_array_sort_abs
   end interface
-  
+
 
 contains
 
@@ -261,7 +262,7 @@ contains
     integer :: pdg
     if (present (i)) then
        pdg = aval%pdg(i)
-    else 
+    else
        pdg = aval%pdg(1)
     end if
   end function pdg_array_get
@@ -286,7 +287,7 @@ contains
     aval_new%pdg(i:i+l-1) = pdg_new
     aval_new%pdg(i+l:) = aval%pdg(i+1:)
   end function pdg_array_replace
-    
+
   function concat_pdg_arrays (aval1, aval2) result (aval)
     type(pdg_array_t) :: aval
     type(pdg_array_t), intent(in) :: aval1, aval2
@@ -317,41 +318,47 @@ contains
     end if
   end function pdg_array_match_integer
 
-  elemental function is_quark (pdg_nr) result(res)
-      logical :: res
-      integer, intent(in) :: pdg_nr
-      if (abs (pdg_nr) >= 1 .and. abs (pdg_nr) <= 6) then 
-        res = .true.
-      else
-        res = .false.
-      end if
-   end function is_quark
-
-   elemental function is_gluon (pdg_nr) result(res)
-     logical :: res
-     integer, intent(in) :: pdg_nr
-     if (pdg_nr == 21) then
-       res = .true.
-     else
-       res = .false.
-     end if
-   end function is_gluon
-
-  elemental function is_colored (pdg_nr) result (res)
-    logical :: res
+  elemental function is_quark (pdg_nr)
+    logical :: is_quark
     integer, intent(in) :: pdg_nr
-    res = is_quark (pdg_nr) .or. is_gluon (pdg_nr)
+    if (abs (pdg_nr) >= 1 .and. abs (pdg_nr) <= 6) then
+       is_quark = .true.
+    else
+       is_quark = .false.
+    end if
+  end function is_quark
+
+  elemental function is_gluon (pdg_nr)
+    logical :: is_gluon
+    integer, intent(in) :: pdg_nr
+    if (pdg_nr == 21) then
+       is_gluon = .true.
+    else
+       is_gluon = .false.
+    end if
+  end function is_gluon
+
+  elemental function is_colored (pdg_nr)
+    logical :: is_colored
+    integer, intent(in) :: pdg_nr
+    is_colored = is_quark (pdg_nr) .or. is_gluon (pdg_nr)
   end function is_colored
 
-  function is_lepton (pdg_nr) result(res)
+  elemental function is_lepton (pdg_nr)
+    logical :: is_lepton
     integer, intent(in) :: pdg_nr
-    logical :: res
     if (abs (pdg_nr) >= 11 .and. abs (pdg_nr) <= 16) then
-      res = .true.
+      is_lepton = .true.
     else
-      res = .false.
+      is_lepton = .false.
     end if
   end function is_lepton
+
+  elemental function is_fermion (pdg_nr)
+    logical :: is_fermion
+    integer, intent(in) :: pdg_nr
+    is_fermion = is_lepton(pdg_nr) .or. is_quark(pdg_nr)
+  end function is_fermion
 
   function is_massless_vector (pdg_nr) result (res)
     integer, intent(in) :: pdg_nr
@@ -519,7 +526,7 @@ contains
    integer :: i
    isec = pack (aval1%pdg, [(any(aval1%pdg(i) == match), i=1,size(aval1%pdg))])
    aval2 = isec
-  end function pdg_array_intersect 
+  end function pdg_array_intersect
 
   function pdg_array_search_for_particle (pdg, i_part) result (found)
     class(pdg_array_t), intent(in) :: pdg
@@ -556,13 +563,13 @@ contains
        end do
     end if
   end subroutine pdg_list_write
-    
+
   subroutine pdg_list_init_size (pl, n)
     class(pdg_list_t), intent(out) :: pl
     integer, intent(in) :: n
     allocate (pl%a (n))
   end subroutine pdg_list_init_size
-  
+
   subroutine pdg_list_init_int_array (pl, pdg)
     class(pdg_list_t), intent(out) :: pl
     integer, dimension(:), intent(in) :: pdg
@@ -572,28 +579,28 @@ contains
        pl%a(i) = pdg(i)
     end do
   end subroutine pdg_list_init_int_array
-  
+
   subroutine pdg_list_set_int (pl, i, pdg)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     integer, intent(in) :: pdg
     pl%a(i) = pdg
   end subroutine pdg_list_set_int
-  
+
   subroutine pdg_list_set_int_array (pl, i, pdg)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: pdg
     pl%a(i) = pdg
   end subroutine pdg_list_set_int_array
-  
+
   subroutine pdg_list_set_pdg_array (pl, i, pa)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     type(pdg_array_t), intent(in) :: pa
     pl%a(i) = pa
   end subroutine pdg_list_set_pdg_array
-  
+
   function pdg_list_get_size (pl) result (n)
     class(pdg_list_t), intent(in) :: pl
     integer :: n
@@ -603,14 +610,14 @@ contains
        n = 0
     end if
   end function pdg_list_get_size
-  
+
   function pdg_list_get (pl, i) result (pa)
+    type(pdg_array_t) :: pa
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
-    type(pdg_array_t) :: pa
     pa = pl%a(i)
   end function pdg_list_get
-  
+
   function pdg_list_is_regular (pl) result (flag)
     class(pdg_list_t), intent(in) :: pl
     logical :: flag
@@ -628,7 +635,7 @@ contains
        end do
     end do
   end function pdg_list_is_regular
-  
+
   function pdg_list_sort_abs (pl, n_in) result (pl_sorted)
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in), optional :: n_in
@@ -663,7 +670,7 @@ contains
        end do
     end if
   end function pdg_list_sort_abs
-    
+
   function pdg_list_eq (pl1, pl2) result (flag)
     class(pdg_list_t), intent(in) :: pl1, pl2
     logical :: flag
@@ -690,7 +697,7 @@ contains
        end if
     end if
   end function pdg_list_eq
-  
+
   function pdg_list_lt (pl1, pl2) result (flag)
     class(pdg_list_t), intent(in) :: pl1, pl2
     logical :: flag
@@ -731,7 +738,7 @@ contains
        end if
     end if
   end function pdg_list_lt
-  
+
   function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
@@ -772,7 +779,7 @@ contains
        end if
 !    end if
   end function pdg_list_replace
-    
+
   subroutine pdg_list_match_replace (pl, pl_match, success)
     class(pdg_list_t), intent(inout) :: pl
     class(pdg_list_t), intent(in) :: pl_match
@@ -790,14 +797,14 @@ contains
        return
     end do SCAN_ENTRIES
   end subroutine pdg_list_match_replace
- 
+
   function pdg_list_match_pdg_array (pl, pa) result (flag)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), intent(in) :: pa
     logical :: flag
     flag = pl%find_match (pa) /= 0
   end function pdg_list_match_pdg_array
-  
+
   function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), intent(in) :: pa
@@ -811,7 +818,7 @@ contains
     end do
     i = 0
   end function pdg_list_find_match_pdg_array
-  
+
   subroutine pdg_list_create_pdg_array (pl, pdg)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), dimension(:), intent(inout), allocatable :: pdg
@@ -853,7 +860,7 @@ contains
        do i = 1, n
           if (collect (i)) pl_anti%a(i) = pl_inverse%a(i)
        end do
-   end if    
+   end if
   end subroutine pdg_list_create_antiparticles
 
   function pdg_list_search_for_particle (pl, i_part) result (found)

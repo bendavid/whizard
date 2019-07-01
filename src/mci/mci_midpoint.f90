@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,7 +41,7 @@ module mci_midpoint
   use phs_base
 
   use mci_base
-  
+
   implicit none
   private
 
@@ -81,7 +81,7 @@ module mci_midpoint
           mci_midpoint_generate_unweighted_event
      procedure :: rebuild_event => mci_midpoint_rebuild_event
 end type mci_midpoint_t
-  
+
   type, extends (mci_instance_t) :: mci_midpoint_instance_t
      type(mci_midpoint_t), pointer :: mci => null ()
      logical :: max_known = .false.
@@ -103,15 +103,15 @@ end type mci_midpoint_t
      procedure :: final_simulation => mci_midpoint_instance_final_simulation
      procedure :: get_event_excess => mci_midpoint_instance_get_event_excess
   end type mci_midpoint_instance_t
-  
+
 
 contains
-  
+
   subroutine mci_midpoint_final (object)
     class(mci_midpoint_t), intent(inout) :: object
     call object%base_final ()
   end subroutine mci_midpoint_final
-  
+
   subroutine mci_midpoint_write (object, unit, pacify, md5sum_version)
     class(mci_midpoint_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -149,7 +149,7 @@ contains
     end if
     if (allocated (object%rng))  call object%rng%write (u)
   end subroutine mci_midpoint_write
-    
+
   subroutine mci_midpoint_startup_message (mci, unit, n_calls)
     class(mci_midpoint_t), intent(in) :: mci
     integer, intent(in), optional :: unit, n_calls
@@ -164,13 +164,13 @@ contains
     end if
     call msg_message (unit = unit)
   end subroutine mci_midpoint_startup_message
-    
+
   subroutine mci_midpoint_write_log_entry (mci, u)
     class(mci_midpoint_t), intent(in) :: mci
     integer, intent(in) :: u
     write (u, "(1x,A)")  "MC Integrator is Midpoint rule"
   end subroutine mci_midpoint_write_log_entry
-       
+
   subroutine mci_midpoint_compute_md5sum (mci, pacify)
     class(mci_midpoint_t), intent(inout) :: mci
     logical, intent(in), optional :: pacify
@@ -193,7 +193,7 @@ contains
             &for multiple channels")
     end if
   end subroutine mci_midpoint_set_dimensions
-  
+
   subroutine mci_midpoint_declare_flat_dimensions (mci, dim_flat)
     class(mci_midpoint_t), intent(inout) :: mci
     integer, dimension(:), intent(in) :: dim_flat
@@ -204,24 +204,24 @@ contains
     end do
     mci%n_dim_binned = count (mci%dim_is_binned)
   end subroutine mci_midpoint_declare_flat_dimensions
-  
+
   subroutine mci_midpoint_ignore_equivalences (mci, channel, dim_offset)
     class(mci_midpoint_t), intent(inout) :: mci
     type(phs_channel_t), dimension(:), intent(in) :: channel
     integer, intent(in) :: dim_offset
   end subroutine mci_midpoint_ignore_equivalences
-  
+
   subroutine mci_midpoint_allocate_instance (mci, mci_instance)
     class(mci_midpoint_t), intent(in) :: mci
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_midpoint_instance_t :: mci_instance)
   end subroutine mci_midpoint_allocate_instance
-  
+
   subroutine mci_midpoint_integrate (mci, instance, sampler, n_it, n_calls, &
        results, pacify)
     class(mci_midpoint_t), intent(inout) :: mci
-    class(mci_instance_t), intent(inout) :: instance
-    class(mci_sampler_t), intent(inout) :: sampler
+    class(mci_instance_t), intent(inout), target :: instance
+    class(mci_sampler_t), intent(inout), target :: sampler
     integer, intent(in) :: n_it
     integer, intent(in) :: n_calls
     logical, intent(in), optional :: pacify
@@ -294,7 +294,7 @@ contains
   subroutine mci_midpoint_ignore_prepare_simulation (mci)
     class(mci_midpoint_t), intent(inout) :: mci
   end subroutine mci_midpoint_ignore_prepare_simulation
-  
+
   subroutine mci_midpoint_generate_weighted_event (mci, instance, sampler)
     class(mci_midpoint_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
@@ -307,7 +307,7 @@ contains
        instance%excess_weight = 0
     end select
   end subroutine mci_midpoint_generate_weighted_event
-       
+
   subroutine mci_midpoint_generate_unweighted_event (mci, instance, sampler)
     class(mci_midpoint_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
@@ -337,7 +337,7 @@ contains
        end if
     end select
   end subroutine mci_midpoint_generate_unweighted_event
-    
+
   subroutine mci_midpoint_rebuild_event (mci, instance, sampler, state)
     class(mci_midpoint_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout) :: instance
@@ -348,7 +348,7 @@ contains
        call instance%recall (sampler, state)
     end select
   end subroutine mci_midpoint_rebuild_event
-       
+
   subroutine mci_midpoint_instance_write (object, unit, pacify)
     class(mci_midpoint_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -373,11 +373,11 @@ contains
        end if
     end if
   end subroutine mci_midpoint_instance_write
-  
+
   subroutine mci_midpoint_instance_final (object)
     class(mci_midpoint_instance_t), intent(inout) :: object
   end subroutine mci_midpoint_instance_final
-  
+
   subroutine mci_midpoint_instance_init (mci_instance, mci)
     class(mci_midpoint_instance_t), intent(out) :: mci_instance
     class(mci_t), intent(in), target :: mci
@@ -389,7 +389,7 @@ contains
        mci_instance%selected_channel = 1
     end select
   end subroutine mci_midpoint_instance_init
-    
+
   subroutine mci_midpoint_instance_get_max (instance)
     class(mci_midpoint_instance_t), intent(inout) :: instance
     associate (mci => instance%mci)
@@ -402,7 +402,7 @@ contains
       end if
     end associate
   end subroutine mci_midpoint_instance_get_max
-  
+
   subroutine mci_midpoint_instance_set_max (instance)
     class(mci_midpoint_instance_t), intent(inout) :: instance
     associate (mci => instance%mci)
@@ -432,7 +432,7 @@ contains
       end if
     end associate
   end subroutine mci_midpoint_instance_set_max
-  
+
   subroutine mci_midpoint_instance_compute_weight (mci, c)
     class(mci_midpoint_instance_t), intent(inout) :: mci
     integer, intent(in) :: c
@@ -443,7 +443,7 @@ contains
        call msg_fatal ("MCI midpoint integrator: only single channel supported")
     end select
   end subroutine mci_midpoint_instance_compute_weight
-    
+
   subroutine mci_midpoint_instance_record_integrand (mci, integrand)
     class(mci_midpoint_instance_t), intent(inout) :: mci
     real(default), intent(in) :: integrand
@@ -461,22 +461,22 @@ contains
        mci%max_known = .true.
     end if
   end subroutine mci_midpoint_instance_record_integrand
-  
+
   subroutine mci_midpoint_instance_init_simulation (instance, safety_factor)
     class(mci_midpoint_instance_t), intent(inout) :: instance
     real(default), intent(in), optional :: safety_factor
     if (present (safety_factor))  instance%safety_factor = safety_factor
   end subroutine mci_midpoint_instance_init_simulation
-  
+
   subroutine mci_midpoint_instance_final_simulation (instance)
     class(mci_midpoint_instance_t), intent(inout) :: instance
   end subroutine mci_midpoint_instance_final_simulation
-  
+
   function mci_midpoint_instance_get_event_excess (mci) result (excess)
     class(mci_midpoint_instance_t), intent(in) :: mci
     real(default) :: excess
     excess = mci%excess_weight
   end function mci_midpoint_instance_get_event_excess
-  
+
 
 end module mci_midpoint

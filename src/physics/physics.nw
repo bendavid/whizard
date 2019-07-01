@@ -210,9 +210,9 @@ explicit sign.
 Color types are defined as the dimension of the representation.
 
 \subsection{NLO status codes}
-Used to specify whether a component of a process instance is associated
-with a Born, real-subtracted, virtual-subtracted or subtraction-dummy
-matrix element.
+Used to specify whether a [[term_instance_t]] of a
+[[process_instance_t]] is associated with a Born, real-subtracted,
+virtual-subtracted or subtraction-dummy matrix element.
 <<Physics defs: public parameters>>=
   integer, parameter, public :: BORN = 0
   integer, parameter, public :: NLO_REAL = 1
@@ -303,6 +303,17 @@ convenient.
 
 @ %def is_nlo_component
 @
+<<Physics defs: public>>=
+  public :: is_subtraction_component
+<<Physics defs: procedures>>=
+  function is_subtraction_component (emitter, nlo_type) result (is_subtraction)
+    logical :: is_subtraction
+    integer, intent(in) :: emitter, nlo_type
+    is_subtraction = nlo_type == NLO_REAL .and. emitter < 0
+  end function is_subtraction_component
+
+@ %def is_subtraction_component
+@
 \subsection{Threshold}
 Some commonly used variables for the threshold computation
 <<Physics defs: public parameters>>=
@@ -319,6 +330,10 @@ Some commonly used variables for the threshold computation
 
   integer, dimension(2), parameter, public :: ass_quark = [5, 6]
   integer, dimension(2), parameter, public :: ass_boson = [3, 4]
+
+  integer, parameter, public :: PROC_MODE_UNDEFINED = 0
+  integer, parameter, public :: PROC_MODE_TT = 1
+  integer, parameter, public :: PROC_MODE_WBWB = 2
 
 @
 @
@@ -1971,12 +1986,11 @@ also is negative.
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag, ultra
     integer :: u, i
-    logical :: tf, extreme
+    logical :: ult
     character(len=7) :: fmt
-    tf = .false.; if (present (testflag)) tf = testflag
-    extreme = .false.; if (present (ultra)) extreme = ultra
-    if (extreme) then
-       call pac_fmt (fmt, FMT_19, FMT_11, testflag)
+    ult = .false.; if (present (ultra)) ult = ultra
+    if (ult) then
+       call pac_fmt (fmt, FMT_19, FMT_11, ultra)
     else
        call pac_fmt (fmt, FMT_19, FMT_13, testflag)
     end if
@@ -2095,11 +2109,7 @@ epsilon.
   function create_unit_vector (p_in) result (p_out)
     type(vector4_t), intent(in) :: p_in
     type(vector3_t) :: p_out
-    real(default) :: abs
-    abs = space_part_norm (p_in)
-    p_out%p(1) = p_in%p(1) / abs
-    p_out%p(2) = p_in%p(2) / abs
-    p_out%p(3) = p_in%p(3) / abs
+    p_out%p = p_in%p(1:3) / space_part_norm (p_in)
   end function create_unit_vector
 
 @ %def create_unit_vector
@@ -2162,7 +2172,7 @@ epsilon.
     real(default) :: E1, E2, p
     m1_sq = p1**2; m2_sq = p2**2
     p = sqrt (lambda (s, m1_sq, m2_sq)) / (two * sqrt (s))
-    E1 = sqrt (m1_sq + p**2); E2 = sqrt (m2_sq + p**2) 
+    E1 = sqrt (m1_sq + p**2); E2 = sqrt (m2_sq + p**2)
     p_rest(1)%p = [sqrt (s), zero, zero, zero]
     p_rest(2)%p(0) = E1
     p_rest(2)%p(1:3) = p * p1%p(1:3) / space_part_norm (p1)
@@ -2207,13 +2217,13 @@ momentum $1$ and $2$ can be determined to be
     real(default) :: cos_theta_12
     type(vector3_t) :: v3_unit
     type(lorentz_transformation_t) :: rot
-    m1_sq = p1**2 
+    m1_sq = p1**2
     m2_sq = p2**2
     m3_sq = p3**2
     s1 = (p1 + p2)**2
     s2 = (p2 + p3)**2
     s3 = (p3 + p1)**2
-    s = s1 + s2 + s3 - m1_sq - m2_sq - m3_sq 
+    s = s1 + s2 + s3 - m1_sq - m2_sq - m3_sq
     E1 = (s - s2 - m1_sq) / (two * sqrt (s2))
     E2 = (s2 + m2_sq - m3_sq) / (two * sqrt (s2))
     E3 = (s2 + m3_sq - m2_sq) / (two * sqrt (s2))
@@ -2259,7 +2269,7 @@ momentum $1$ and $2$ can be determined to be
   public :: generate_on_shell_decay
 <<Lorentz: procedures>>=
   recursive subroutine generate_on_shell_decay (p_dec, &
-      p_in, p_out, i_real, msq_in, jac, evaluate_special) 
+      p_in, p_out, i_real, msq_in, jac, evaluate_special)
     type(vector4_t), intent(in) :: p_dec
     type(vector4_t), intent(in), dimension(:) :: p_in
     type(vector4_t), intent(inout), dimension(:) :: p_out
@@ -2270,7 +2280,6 @@ momentum $1$ and $2$ can be determined to be
           pointer, optional :: evaluate_special
     type(vector4_t) :: p_dec_new
     integer :: n_recoil
-    real(default), dimension(4) :: inv_masses
     n_recoil = size (p_in) - 1
     if (n_recoil > 1) then
        if (present (evaluate_special)) then
@@ -2355,7 +2364,7 @@ momentum $1$ and $2$ can be determined to be
      type(vector3_t) :: vec
      vec = p_in%p(1:3) / space_part_norm (p_in)
      p_out = vector4_moving (E, p * vec)
-   end function shift_momentum 
+   end function shift_momentum
 
   end subroutine evaluate_one_to_two_splitting
 
@@ -2417,7 +2426,6 @@ rest frame of a particle, in particular $(E;\vec p)$ into $(m;\vec
     if (bg2 > eps0) then
        g = sqrt(1 + bg2);  c = (g-1)/bg2
     else
-       !!!L = identity
        g = one + bg2 / two
        c = one / two
     end if
@@ -4232,13 +4240,13 @@ the factor $\mathcal{F}_1$ can be expressed as
 \begin{align*}
   \mathcal{F}_1 = \frac{1}{2}f_0(1+\varepsilon^2-w^2)
                 & \left[\pi^2 + 2Li_2(u_w) - 2Li_2(1-u_w) - 4Li_2(u_q) \right. \\
-                & -4Li_2(u_q u_w) + \log\left(\frac{1-u_q}{w^2}\right)\log(1-u_q) + \log^2(1-u_q u_w) \\
+                & -4Li_2(u_q u_w) + \log\left(\frac{1-u_q}{w^2}\right)\log(1-u_q) - \log^2(1-u_q u_w) \\
                 & \left.+\frac{1}{4}\log^2\left(\frac{w^2}{u_w}\right) - \log(u_w) \log\left[\frac{(1-u_q u_w)^2}{1-u_q}\right]
                   -2\log(u_q)\log\left[(1-u_q)(1-u_q u_w)\right]\right] \\
                 & -\sqrt{\lambda}f_0(2\log(w) + 3\log(\varepsilon) - 2\log{\lambda}) \\
-                &  +4(1-\varepsilon)\left[(1-\varepsilon^2)^2 + w^2(1+\varepsilon^2) - 4w^4\right]\log(u_w) \\
+                &  +4(1-\varepsilon^2)\left[(1-\varepsilon^2)^2 + w^2(1+\varepsilon^2) - 4w^4\right]\log(u_w) \\
                 & \left[(3 - \varepsilon^2 + 11\varepsilon^4 - \varepsilon^6)
-                  + w^2(6 - 12\varepsilon +2\varepsilon^4) - w^4(21 + 5\varepsilon^2) + 12w^6\right] \log(u_q) \\
+                  + w^2(6 - 12\varepsilon^2 +2\varepsilon^4) - w^4(21 + 5\varepsilon^2) + 12w^6\right] \log(u_q) \\
                 & 6\sqrt{\lambda} (1-\varepsilon^2) (1 + \varepsilon^2 - w^2) \log(\varepsilon)
                   + \sqrt{\lambda}\left[-5 + 22\varepsilon^2 - 5\varepsilon^4 - 9w^2(1+\varepsilon^2) + 6w^4\right].
 \end{align*}
@@ -4326,9 +4334,9 @@ the factor $\mathcal{F}_1$ can be expressed as
 @ Basically, the same as above but with $m_b$ dependence,
 cf. Jezabek / Kuehn 1989.
 <<SM physics: public>>=
-  public :: top_width_sm_qcd_nlo
+  public :: top_width_sm_qcd_nlo_jk
 <<SM physics: procedures>>=
-  elemental function top_width_sm_qcd_nlo &
+  elemental function top_width_sm_qcd_nlo_jk &
          (alpha, sinthw, mtop, mw, mb, alphas) result (gamma)
     real(default) :: gamma
     real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alphas
@@ -4339,9 +4347,49 @@ cf. Jezabek / Kuehn 1989.
     i_xi = (mw / mtop)**2
     gamma = prefac * (ff0 (eps2, i_xi) - &
          (two * alphas) / (3 * Pi) * ff1 (eps2, i_xi))
-  end function top_width_sm_qcd_nlo
+  end function top_width_sm_qcd_nlo_jk
 
-@ %def top_width_sm_qcd_nlo
+@ %def top_width_sm_qcd_nlo_jk
+@ Same as above, $m_b > 0$, with the slightly different implementation (2.6)
+of arXiv:1204.1513v1 by Campbell and Ellis.
+<<SM physics: public>>=
+  public :: top_width_sm_qcd_nlo_ce
+<<SM physics: procedures>>=
+  elemental function top_width_sm_qcd_nlo_ce (alpha, sinthw, mtop, mw, mb, alpha_s) result (gamma)
+    real(default) :: gamma
+    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alpha_s
+    real(default) :: pm, pp, p0, p3
+    real(default) :: yw, yp
+    real(default) :: W0, Wp, Wm, w2
+    real(default) :: beta2
+    real(default) :: f
+    real(default) :: g_mu, gamma0
+    beta2 = (mb / mtop)**2
+    w2 = (mw / mtop)**2
+    p0 = (one - w2 + beta2) / two
+    p3 = sqrt (lambda (one, w2, beta2)) / two
+    pp = p0 + p3
+    pm = p0 - p3
+    W0 = (one + w2 - beta2) / two
+    Wp = W0 + p3
+    Wm = W0 - p3
+    yp = log (pp / pm) / two
+    yw = log (Wp / Wm) / two
+    f = (one - beta2)**2 + w2 * (one + beta2) - two * w2**2
+    g_mu = g_mu_from_alpha (alpha, mw, sinthw)
+    gamma0 = g_mu * mtop**3 / (8 * pi * sqrt(two))
+    gamma = gamma0 * alpha_s / twopi * CF * &
+          (8 * f * p0 * (Li2(one - pm) - Li2(one - pp) - two * Li2(one - pm / pp) &
+         + yp * log((four * p3**2) / (pp**2 * Wp)) + yw * log (pp)) &
+         + four * (one - beta2) * ((one - beta2)**2 + w2 * (one + beta2) - four * w2**2) * yw &
+         + (3 - beta2 + 11 * beta2**2 - beta2**3 + w2 * (6 - 12 * beta2 + two * beta2**2) &
+              - w2**2 * (21 + 5 * beta2) + 12 * w2**3) * yp &
+         + 8 * f * p3 * log (sqrt(w2) / (four * p3**2)) &
+         + 6 * (one - four * beta2 + 3 * beta2**2 + w2 * (3 + beta2) - four * w2**2) * p3 * log(sqrt(beta2)) &
+         + (5 - 22 * beta2 + 5 * beta2**2 + 9 * w2 * (one + beta2) - 6 * w2**2) * p3)
+  end function top_width_sm_qcd_nlo_ce
+
+@ %def top_width_sm_qcd_nlo_ce
 @
 <<SM physics: public>>=
   public :: ff0
@@ -4395,17 +4443,17 @@ cf. Jezabek / Kuehn 1989.
           - log (one - uq * uw)**2 + one / four * log (w2 / uw)**2 &
           - log (uw) * log ((one - uq * uw)**2 / (one - uq)) &
           - two * log (uq) * log ((one - uq) * (one - uq * uw))) &
-         - sq_lam * fff * (two * log (sqrt (w2)) &
+          - sq_lam * fff * (two * log (sqrt (w2)) &
           + three * log (sqrt (eps2)) - two * log (sq_lam**2)) &
-         + four * (one - eps2) * ((one - eps2)**2 + w2 * (one + eps2) &
+          + four * (one - eps2) * ((one - eps2)**2 + w2 * (one + eps2) &
           - four * w2**2) * log (uw) &
-         + (three - eps2 + 11 * eps2**2 - eps2**3 + w2 * &
-          (6 - 12 * eps2 + 2 * eps2**2) - w2**2 * (21 + five * eps2) &
+          + (three - eps2 + 11 * eps2**2 - eps2**3 + w2 * &
+            (6 - 12 * eps2 + 2 * eps2**2) - w2**2 * (21 + five * eps2) &
           + 12 * w2**3) * log (uq) &
-         + 6 * sq_lam * (one - eps2) * &
-          (one + eps2 - w2) * log (sqrt (eps2)) &
-         + sq_lam * (- five + 22 * eps2 - five * eps2**2 - 9 * w2 * &
-          (one + eps2) + 6 * w2**2)
+          + 6 * sq_lam * (one - eps2) * &
+            (one + eps2 - w2) * log (sqrt (eps2)) &
+          + sq_lam * (- five + 22 * eps2 - five * eps2**2 - 9 * w2 * &
+            (one + eps2) + 6 * w2**2)
   end function ff1
 
 @ %def ff1
@@ -4539,7 +4587,7 @@ end module sm_physics_uti
     gamma0 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo_massless_b", rel_smallness=1.0E-5_default)
-    gamma0 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo", rel_smallness=1.0E-5_default)
 
@@ -4548,7 +4596,7 @@ end module sm_physics_uti
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     gamma1 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-4_default)
-    gamma1 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     ! It would be nice to get one more significant digit but the
     ! expression is numerically rather unstable for mb -> 0
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-3_default)
@@ -4569,14 +4617,14 @@ end module sm_physics_uti
     gamma0 = top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb)
     call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
     alphas = zero
-    gamma0 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
 
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.118 !(Z pole, NLL running to mu_h)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     write (u, "(A," // FMT_15 // ")")  "*   alphas = ", alphas
-    gamma1 = top_width_sm_qcd_nlo (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1 = ", gamma1
 
     mb = zero

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,6 +41,8 @@ module auto_components
   use diagnostics
   use model_data
   use pdg_arrays
+  use physics_defs, only: PHOTON, GLUON, Z_BOSON, W_BOSON
+  use numeric_utils, only: extend_integer_array
 
   implicit none
   private
@@ -48,11 +50,13 @@ module auto_components
   public :: split_constraints_t
   public :: constrain_n_tot
   public :: constrain_n_loop
+  public :: constrain_splittings
   public :: constrain_insert
   public :: constrain_require
   public :: constrain_radiation
   public :: constrain_mass_sum
   public :: constrain_in_state
+  public :: constrain_couplings
   public :: ps_table_t
   public :: ds_table_t
   public :: fs_table_t
@@ -64,10 +68,10 @@ module auto_components
 
 
   type, abstract :: split_constraint_t
-   contains
-     procedure :: check_before_split  => split_constraint_check_before_split
-     procedure :: check_before_insert => split_constraint_check_before_insert
-     procedure :: check_before_record => split_constraint_check_before_record
+  contains
+    procedure :: check_before_split  => split_constraint_check_before_split
+    procedure :: check_before_insert => split_constraint_check_before_insert
+    procedure :: check_before_record => split_constraint_check_before_record
   end type split_constraint_t
 
   type :: split_constraint_wrap_t
@@ -98,6 +102,13 @@ module auto_components
    contains
      procedure :: check_before_record => constraint_n_loop_check_before_record
   end type constraint_n_loop
+
+  type, extends (split_constraint_t) :: constraint_splittings
+     private
+     type(pdg_list_t) :: pl_match, pl_excluded_gauge_splittings
+   contains
+     procedure :: check_before_insert => constraint_splittings_check_before_insert
+  end type constraint_splittings
 
   type, extends (split_constraint_t) :: constraint_insert
      private
@@ -135,6 +146,16 @@ module auto_components
    contains
      procedure :: check_before_record => constraint_in_state_check_before_record
   end type constraint_in_state
+
+  type, extends (split_constraint_t) :: constraint_coupling_t
+    private
+    logical :: qed = .false.
+    logical :: qcd = .true.
+    logical :: ew = .false.
+    integer :: n_nlo_correction_types
+  contains
+    procedure :: check_before_insert => constraint_coupling_check_before_insert
+  end type constraint_coupling_t
 
   type, extends (pdg_list_t) :: ps_entry_t
      integer :: n_loop = 0
@@ -326,6 +347,41 @@ contains
     passed = n_loop <= c%n_loop_max
   end subroutine constraint_n_loop_check_before_record
 
+  function constrain_splittings (pl_match, pl_excluded_gauge_splittings) result (c)
+    type(pdg_list_t), intent(in) :: pl_match
+    type(pdg_list_t), intent(in) :: pl_excluded_gauge_splittings
+    type(constraint_splittings) :: c
+    c%pl_match = pl_match
+    c%pl_excluded_gauge_splittings = pl_excluded_gauge_splittings
+  end function constrain_splittings
+
+  subroutine constraint_splittings_check_before_insert (c, table, pa, pl, passed)
+    class(constraint_splittings), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(pdg_list_t), intent(inout) :: pl
+    logical, intent(out) :: passed
+    logical :: has_massless_vector
+    integer :: i
+    has_massless_vector = .false.
+    do i = 1, pa%get_length ()
+       if (is_massless_vector(pa%get(i))) then
+          has_massless_vector = .true.
+          exit
+       end if
+    end do
+    passed = .false.
+    if (has_massless_vector .and. count (is_fermion(pl%a%get ())) == 2) then
+       do i = 1, c%pl_excluded_gauge_splittings%get_size ()
+          if (pl .match. c%pl_excluded_gauge_splittings%a(i)) return
+       end do
+       call pl%match_replace (c%pl_match, passed)
+       passed = .true.
+    else
+       call pl%match_replace (c%pl_match, passed)
+    end if
+  end subroutine constraint_splittings_check_before_insert
+
   function constrain_insert (pl_match) result (c)
     type(pdg_list_t), intent(in) :: pl_match
     type(constraint_insert) :: c
@@ -455,6 +511,58 @@ contains
     end select
     passed = .true.
   end subroutine constraint_in_state_check_before_record
+
+  function constrain_couplings (qcd, qed, n_nlo_correction_types) result (c)
+    type(constraint_coupling_t) :: c
+    logical, intent(in) :: qcd, qed
+    integer, intent(in) :: n_nlo_correction_types
+    c%qcd = qcd; c%qed = qed
+    c%n_nlo_correction_types = n_nlo_correction_types
+  end function constrain_couplings
+
+  subroutine constraint_coupling_check_before_insert (c, table, pa, pl, passed)
+    class(constraint_coupling_t), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(pdg_list_t), intent(inout) :: pl
+    logical, intent(out) :: passed
+    type(pdg_list_t) :: pl_vertex
+    type(pdg_array_t) :: pdg_gluon, pdg_photon, pdg_W_Z, pdg_gauge_bosons
+    integer :: i, j
+    pdg_gluon = GLUON; pdg_photon = PHOTON
+    pdg_W_Z = [W_BOSON,-W_BOSON, Z_BOSON]
+    if (c%qcd) pdg_gauge_bosons = pdg_gauge_bosons // pdg_gluon
+    if (c%qed) pdg_gauge_bosons = pdg_gauge_bosons // pdg_photon
+    if (c%ew) pdg_gauge_bosons = pdg_gauge_bosons // pdg_W_Z
+    do j = 1, pa%get_length ()
+       call pl_vertex%init (pl%get_size () + 1)
+       call pl_vertex%set (1, pa%get(j))
+       do i = 1, pl%get_size ()
+          call pl_vertex%set (i + 1, pl%get(i))
+       end do
+       if (is_massless_vector(pa%get(j))) then
+          if (.not. table%model%check_vertex &
+               (pl_vertex%a(1)%get (), pl_vertex%a(2)%get (), pl_vertex%a(3)%get ())) then
+             passed = .false.
+             cycle
+          end if
+       else if (.not. table%model%check_vertex &
+            (- pl_vertex%a(1)%get (), pl_vertex%a(2)%get (), pl_vertex%a(3)%get ())) then
+          passed = .false.
+          cycle
+       end if
+       if (.not. (pl_vertex .match. pdg_gauge_bosons)) then
+          passed = .false.
+          cycle
+       end if
+       if (.not. c%ew .and. (pl_vertex .match. pdg_W_Z)) then
+          passed = .false.
+          cycle
+       end if
+       passed = .true.
+       exit
+    end do
+  end subroutine constraint_coupling_check_before_insert
 
   subroutine ps_table_final (object)
     class(ps_table_t), intent(inout) :: object
@@ -707,7 +815,7 @@ contains
     type(split_constraints_t), intent(in) :: constraints
     logical, intent(in), optional :: record
     integer :: n_loop, i
-    logical :: passed
+    logical :: passed, save_pdg_index
     type(vertex_iterator_t) :: vit
     integer, dimension(:), allocatable :: pdg1
     integer, dimension(:), allocatable :: pdg2
@@ -722,11 +830,17 @@ contains
           end do INCR_LOOPS
        end if
     end if
+    select type (table)
+    type is (if_table_t)
+       save_pdg_index = .true.
+    class default
+       save_pdg_index = .false.
+    end select
     do i = 1, pl%get_size ()
        call constraints%check_before_split (table, pl, i, passed)
        if (passed) then
           pdg1 = pl%get (i)
-          call vit%init (table%model, pdg1)
+          call vit%init (table%model, pdg1, save_pdg_index)
           SCAN_VERTICES: do
              call vit%get_next_match (pdg2)
              if (allocated (pdg2)) then
@@ -756,10 +870,8 @@ contains
        call pl_insert%set (k, pdg(k))
     end do
     call constraints%check_before_insert (table, pl%get (i), pl_insert, passed)
-    if (passed) then
-       call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
+    if (passed) call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
             constraints, record = .true.)
-    end if
   end subroutine ps_table_insert
 
   recursive subroutine if_table_insert  &
@@ -820,7 +932,6 @@ contains
     logical, intent(out) :: passed
     type(ps_entry_t), pointer :: current
     passed = .false.
-    call pl%write ()
     if (.not. pl%is_regular ()) then
        call msg_warning ("Record ps_table entry: Irregular pdg-list encountered!")
        return
@@ -920,17 +1031,21 @@ contains
      type(vertex_iterator_t) :: vit
      integer, dimension(:), allocatable :: pdg1, pdg2
      integer :: n_emitters
-     integer, dimension(20) :: emitters_tmp
+     integer, dimension(:), allocatable :: emitters_tmp
+     integer, parameter :: buf0 = 6
      n_emitters = 0
      pl => table%first
+     allocate (emitters_tmp (buf0))
      do i = 1, pl%get_size ()
         call constraints%check_before_split (table, pl, i, passed)
         if (passed) then
            pdg1 = pl%get(i)
-           call vit%init (table%model, pdg1)
+           call vit%init (table%model, pdg1, .false.)
            do
               call vit%get_next_match(pdg2)
               if (allocated (pdg2)) then
+                 if (n_emitters + 1 > size (emitters_tmp)) &
+                      call extend_integer_array (emitters_tmp, 10)
                  emitters_tmp (n_emitters + 1) = pdg1(1)
                  n_emitters = n_emitters + 1
               else
@@ -941,6 +1056,7 @@ contains
      end do
      allocate (emitters (n_emitters))
      emitters = emitters_tmp (1:n_emitters)
+     deallocate (emitters_tmp)
   end subroutine ps_table_get_emitters
 
   subroutine ps_table_get_pdg_out (ps_table, i, pa_out, n_loop, n_rad)

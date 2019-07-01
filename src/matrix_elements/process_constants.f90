@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module process_constants
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
 
@@ -70,6 +70,7 @@ module process_constants
   contains
     procedure :: get_n_tot => process_constants_get_n_tot
     procedure :: get_flv_state => process_constants_get_flv_state
+    procedure :: get_n_flv => process_constants_get_n_flv
     procedure :: get_hel_state => process_constants_get_hel_state
     procedure :: get_col_state => process_constants_get_col_state
     procedure :: get_ghost_flag => process_constants_get_ghost_flag
@@ -102,6 +103,12 @@ contains
          size (prc_const%flv_state, 2)))
     flv_state = prc_const%flv_state
   end subroutine process_constants_get_flv_state
+
+  function process_constants_get_n_flv (data) result (n_flv)
+    integer :: n_flv
+    class(process_constants_t), intent(in) :: data
+    n_flv = data%n_flv
+  end function process_constants_get_n_flv
 
   subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const
@@ -145,9 +152,11 @@ contains
   subroutine process_constants_set_flv_state (prc_const, flv_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:), allocatable :: flv_state
+    if (allocated (prc_const%flv_state)) deallocate (prc_const%flv_state)
     allocate (prc_const%flv_state (size (flv_state, 1), &
          size (flv_state, 2)))
     prc_const%flv_state = flv_state
+    prc_const%n_flv = size (flv_state, 2)
   end subroutine process_constants_set_flv_state
 
   subroutine process_constants_set_col_state (prc_const, col_state)
@@ -210,7 +219,7 @@ contains
     unit = free_unit ()
     open (unit, status="scratch", action="readwrite")
     if (include_id) write (unit, '(A)') char (prc_const%id)
-    write (unit, '(A)') char (prc_const%model_name) 
+    write (unit, '(A)') char (prc_const%model_name)
     write (unit, '(L1)') prc_const%openmp_supported
     write (unit, '(I0)') prc_const%n_in
     write (unit, '(I0)') prc_const%n_out

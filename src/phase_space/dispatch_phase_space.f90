@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -153,6 +153,7 @@ contains
     integer :: n_strfun, n_sf_channel, i
     logical :: sf_allow_s_mapping, circe1_map, circe1_generate
     logical :: s_mapping_enable, endpoint_mapping, power_mapping
+    logical :: single_parameter
     integer, dimension(:), allocatable :: s_mapping, single_mapping
     real(default) :: s_mapping_power
     real(default) :: circe1_mapping_slope, endpoint_mapping_slope
@@ -175,6 +176,7 @@ contains
     endpoint_mapping = .false.
     endpoint_mapping_slope = 1
     power_mapping = .false.
+    single_parameter = .false.
     select case (char (sf_string))
     case ("", "[any particles]")
     case ("pdf_builtin, none", &
@@ -185,6 +187,7 @@ contains
          "lhapdf_photon, none", &
          "none, lhapdf", &
          "none, lhapdf_photon")
+         single_parameter = .true.
     case ("pdf_builtin, none => none, pdf_builtin", &
           "pdf_builtin, none => none, pdf_builtin_photon", &
           "pdf_builtin_photon, none => none, pdf_builtin", &
@@ -206,6 +209,7 @@ contains
     case ("isr, none", &
          "none, isr")
        allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("isr, none => none, isr")
        allocate (s_mapping (2), source = [1, 2])
        power_mapping = .true.
@@ -243,6 +247,7 @@ contains
     case ("epa, none", &
           "none, epa")
        allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("epa, none => none, epa")
        allocate (single_mapping (2), source = [1, 2])
     case ("epa, none => none, isr", &
@@ -273,6 +278,7 @@ contains
     case ("ewa, none", &
           "none, ewa")
        allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("ewa, none => none, ewa")
        allocate (single_mapping (2), source = [1, 2])
     case ("energy_scan, none => none, energy_scan")
@@ -435,19 +441,23 @@ contains
                 select type (prop)
                 type is (resonance_t)
                    call sf_channel(i)%set_res_mapping (s_mapping, &
-                        m = prop%mass / sqrts, w = prop%width / sqrts)
+                        m = prop%mass / sqrts, w = prop%width / sqrts, &
+                        single = single_parameter)
                 type is (on_shell_t)
                    call sf_channel(i)%set_os_mapping (s_mapping, &
-                        m = prop%mass / sqrts)
+                        m = prop%mass / sqrts, &
+                        single = single_parameter)
                 end select
              else if (allocated (single_mapping)) then
                 select type (prop)
                 type is (resonance_t)
                    call sf_channel(i)%set_res_mapping (single_mapping, &
-                        m = prop%mass / sqrts, w = prop%width / sqrts)
+                           m = prop%mass / sqrts, w = prop%width / sqrts, &
+                           single = single_parameter)
                 type is (on_shell_t)
                    call sf_channel(i)%set_os_mapping (single_mapping, &
-                        m = prop%mass / sqrts)
+                        m = prop%mass / sqrts, &
+                        single = single_parameter)
                 end select
              end if
           else if (endpoint_mapping .and. power_mapping) then

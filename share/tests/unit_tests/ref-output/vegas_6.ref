@@ -1,0 +1,68 @@
+* Test output: vegas_6
+*   Purpose: Write and read grid, and continue.
+
+ TAO random-number generator:
+   seed  = 0
+   calls = 0
+
+* Initialise MC integrator with n_dim = 3
+
+
+* Initialise grid with n_calls = 2000
+
+
+* Integrate with n_it = 3 and n_calls = 2000 (Adaptation)
+
+   Number of dimensions = 3
+   Adaption power (alpha) =  1.5000000E+00
+   Max. number of bins (per dim.) = 50
+   Number of iterations = 3
+   Mode (stratified or importance) = 0
+   Calls per box = 2
+   Number of calls = 2000
+   Min. number of calls = 20
+   Number of bins = 50
+   Number of boxes = 10
+
+  Result:  1.00158E+00 +/-  1.30812E-03
+
+* Write grid to file vegas_io.grid
+
+
+* Read grid from file vegas_io.grid
+
+
+* Integrate with n_it = 3 and n_calls = 20000 (Precision)
+
+   Number of dimensions = 3
+   Adaption power (alpha) =  1.5000000E+00
+   Max. number of bins (per dim.) = 50
+   Number of iterations = 3
+   Mode (stratified or importance) = 0
+   Calls per box = 2
+   Number of calls = 18522
+   Min. number of calls = 20
+   Number of bins = 50
+   Number of boxes = 21
+
+  Result:  9.98987E-01 +/-  4.39633E-04
+
+* Get VEGAS result object and write out
+
+   Start iteration = 0
+   Iteration number = 3
+   Sample number = 3
+   Sum of weighted integrals =  5.1686662E+06
+   Sum of weights =  5.1739067E+06
+   Sum of chi =  5.1634317E+06
+   chi2 =  3.3696654E-01
+   Overall efficiency =  5.0294720E-01
+   f-positive efficiency =  5.0294720E-01
+   f-negative efficiency =  0.0000000E+00
+   Maximum absolute overall value =  1.0718008E-04
+   Maximum absolute positive value =  1.0718008E-04
+   Maximum absolute negative value =  0.0000000E+00
+   Integral (of latest iteration) =  9.9844545E-01
+   Standard deviation =  7.9288384E-04
+
+* Cleanup

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -64,7 +64,7 @@ contains
     class(generic_event_t), pointer :: event
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
-    type(particle_set_t), pointer :: pset_ptr    
+    type(particle_set_t), pointer :: pset_ptr
     type(string_t) :: sample
     integer :: u_file, iostat
     character(215) :: buffer
@@ -74,7 +74,7 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event)
 
     call data%init (1)
@@ -91,9 +91,9 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_lcio_1"
- 
+
     allocate (eio_lcio_t :: eio)
     select type (eio)
     type is (eio_lcio_t)
@@ -101,33 +101,33 @@ contains
     end select
 
     call eio%init_out (sample, data)
-    
+
     call event%generate (1, [0._default, 0._default])
     call event%pacify_particle_set ()
-    
-    call eio%output (event, i_prc = 1)    
+
+    call eio%output (event, i_prc = 1)
     call eio%write (u)
     call eio%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_lcio_t :: eio)
-    
+
     select type (eio)
     type is (eio_lcio_t)
        call eio%set_parameters ()
     end select
     call eio%write (u)
 
-    write (u, "(A)") 
+    write (u, "(A)")
     write (u, "(A)")  "* Write LCIO file contents to ASCII file"
     write (u, "(A)")
 
-    select type (eio)    
-    type is (eio_lcio_t)       
+    select type (eio)
+    type is (eio_lcio_t)
        call lcio_event_init (eio%lcio_event, &
             proc_id = 42, &
             event_id = event%get_index ())
@@ -135,13 +135,13 @@ contains
        call lcio_event_from_particle_set &
             (eio%lcio_event,  pset_ptr)
        call write_lcio_event (eio%lcio_event, var_str ("test_file.slcio"))
-       call lcio_event_final (eio%lcio_event)       
+       call lcio_event_final (eio%lcio_event)
     end select
-    
-    write (u, "(A)") 
+
+    write (u, "(A)")
     write (u, "(A)")  "* Read in ASCII contents of LCIO file"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     u_file = free_unit ()
     open (u_file, file = "test_file.slcio", &
          action = "read", status = "old")
@@ -150,21 +150,21 @@ contains
        if (iostat /= 0)  exit
        if (trim (buffer) == "")  cycle
        if (buffer(1:12) == " - timestamp")  cycle
-       if (buffer(1:6) == " date:")  cycle       
+       if (buffer(1:6) == " date:")  cycle
        write (u, "(A)") trim (buffer)
     end do
-    close (u_file)    
-    
+    close (u_file)
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lcio_1"
 
   end subroutine eio_lcio_1
-  
+
   subroutine eio_lcio_2 (u)
     integer, intent(in) :: u
     class(model_data_t), pointer :: fallback_model
@@ -178,7 +178,7 @@ contains
     write (u, "(A)")  "*   Purpose: read a LCIO event"
     write (u, "(A)")
 
-    write (u, "(A)")  "* Initialize test process" 
+    write (u, "(A)")  "* Initialize test process"
 
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
@@ -192,7 +192,7 @@ contains
     data%proc_num_id = [42]
     data%cross_section(1) = 100
     data%error(1) = 1
-    data%total_cross_section = sum (data%cross_section)    
+    data%total_cross_section = sum (data%cross_section)
 
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
@@ -237,17 +237,17 @@ contains
     data%proc_num_id = [42]
     call data%write (u)
     write (u, *)
-    
+
     write (u, "(A)")  "* Initialize"
     write (u, "(A)")
-    
+
     call eio%init_in (sample, data)
-    call eio%write (u)        
+    call eio%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Read event"
     write (u, "(A)")
- 
+
     call eio%input_i_prc (i_prc, iostat)
 
     select type (eio)
@@ -255,14 +255,14 @@ contains
        write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
             " with ID = ", eio%proc_num_id(i_prc)
     end select
-    
-    call eio%input_event (event, iostat)    
+
+    call eio%input_event (event, iostat)
     call event%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Read closing"
     write (u, "(A)")
-    
+
     call eio%input_i_prc (i_prc, iostat)
     write (u, "(A,I0)")  "iostat = ", iostat
 
@@ -276,8 +276,8 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lcio_2"
-    
+
   end subroutine eio_lcio_2
-  
+
 
 end module eio_lcio_uti

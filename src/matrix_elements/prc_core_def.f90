@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,7 +41,7 @@ module prc_core_def
 
   use process_constants
   use prclib_interfaces
-  
+
   implicit none
   private
 
@@ -65,22 +65,22 @@ module prc_core_def
           :: get_features
      procedure(prc_core_def_connect), deferred :: connect
   end type prc_core_def_t
-  
+
   type :: prc_template_t
      class(prc_core_def_t), allocatable :: core_def
   end type prc_template_t
-  
+
   type, abstract :: prc_core_driver_t
    contains
      procedure(prc_core_driver_type_name), nopass, deferred :: type_name
   end type prc_core_driver_t
-  
+
   type, extends (prc_core_driver_t), abstract :: process_driver_internal_t
    contains
      procedure(process_driver_fill_constants), deferred :: fill_constants
   end type process_driver_internal_t
-  
-  type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t 
+
+  type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t
   end type prc_user_defined_base_driver_t
 
 
@@ -90,7 +90,7 @@ module prc_core_def
        type(string_t) :: string
      end function prc_core_def_get_string
   end interface
-  
+
   abstract interface
      subroutine prc_core_def_write (object, unit)
        import
@@ -115,7 +115,7 @@ module prc_core_def
        type(string_t), intent(in) :: basename
      end subroutine prc_core_def_allocate_driver
   end interface
-  
+
   abstract interface
      subroutine prc_core_def_get_features (features)
        import
@@ -139,7 +139,7 @@ module prc_core_def
        type(string_t) :: type
      end function prc_core_driver_type_name
   end interface
-  
+
   abstract interface
      subroutine process_driver_fill_constants (driver, data)
        import
@@ -147,7 +147,7 @@ module prc_core_def
        type(process_constants_t), intent(out) :: data
      end subroutine process_driver_fill_constants
   end interface
-  
+
 
 contains
 
@@ -156,12 +156,12 @@ contains
     character(32) :: md5sum
     if (allocated (core_def%writer))  core_def%writer%md5sum = md5sum
   end subroutine prc_core_def_set_md5sum
-  
+
   function prc_core_def_needs_code () result (flag)
     logical :: flag
     flag = .false.
   end function prc_core_def_needs_code
-  
+
   subroutine allocate_core_def (template, name, core_def)
     type(prc_template_t), dimension(:), intent(in) :: template
     type(string_t), intent(in) :: name
@@ -174,6 +174,6 @@ contains
        end if
     end do
   end subroutine allocate_core_def
-  
+
 
 end module prc_core_def

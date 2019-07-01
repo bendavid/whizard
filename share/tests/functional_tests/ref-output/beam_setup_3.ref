@@ -22,13 +22,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_3p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_3p'
-|   Library name  = 'beam_setup_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -42,6 +35,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_3p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_3p'
+|   Library name  = 'beam_setup_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -52,13 +52,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process beam_setup_3p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_3p'
-|   Library name  = 'beam_setup_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -72,6 +65,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_3p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_3p'
+|   Library name  = 'beam_setup_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -83,13 +83,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process beam_setup_3p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_3p'
-|   Library name  = 'beam_setup_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -103,6 +96,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_3p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_3p'
+|   Library name  = 'beam_setup_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -113,13 +113,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process beam_setup_3p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_3p'
-|   Library name  = 'beam_setup_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -133,6 +126,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_3p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_3p'
+|   Library name  = 'beam_setup_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_3p_i1':   e-, mu+ => nue, numubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.

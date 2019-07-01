@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_lhef
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -108,10 +108,10 @@ module eio_lhef
      procedure :: write_event_30 => eio_lhef_write_event_30
      procedure :: read_event_30 => eio_lhef_read_event_30
   end type eio_lhef_t
-  
+
 
 contains
-  
+
   subroutine eio_lhef_set_parameters (eio, &
        keep_beams, keep_remnants, recover_beams, &
        use_alpha_s_from_file, use_scale_from_file, &
@@ -153,7 +153,7 @@ contains
     if (present (write_sqme_prc))  eio%write_sqme_prc = write_sqme_prc
     if (present (write_sqme_alt))  eio%write_sqme_alt = write_sqme_alt
   end subroutine eio_lhef_set_parameters
-  
+
   subroutine eio_lhef_write (object, unit)
     class(eio_lhef_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -184,7 +184,7 @@ contains
        end do
     end if
   end subroutine eio_lhef_write
-  
+
   subroutine eio_lhef_final (object)
     class(eio_lhef_t), intent(inout) :: object
     if (allocated (object%proc_num_id))  deallocate (object%proc_num_id)
@@ -204,7 +204,7 @@ contains
        object%reading = .false.
     end if
   end subroutine eio_lhef_final
-  
+
   subroutine eio_lhef_common_init (eio, sample, data, extension)
     class(eio_lhef_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -239,7 +239,7 @@ contains
     call eio%init_tags (data)
     allocate (eio%proc_num_id (data%n_proc), source = data%proc_num_id)
   end subroutine eio_lhef_common_init
-  
+
   subroutine eio_lhef_init_tags (eio, data)
     class(eio_lhef_t), intent(inout) :: eio
     type(event_sample_data_t), intent(in) :: data
@@ -273,7 +273,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.4.0"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.4.1"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -345,7 +345,7 @@ contains
        call eio%tag_weights%init (var_str ("weights"), .true.)
     end select
   end subroutine eio_lhef_init_tags
-  
+
   subroutine eio_lhef_init_out (eio, sample, data, success, extension)
     class(eio_lhef_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -368,7 +368,7 @@ contains
           data%energy_beam, &
           n_processes = data%n_proc, &
           unweighted = data%unweighted, &
-          negative_weights = data%negative_weights)             
+          negative_weights = data%negative_weights)
     do i = 1, data%n_proc
        call heprup_set_process_parameters (i = i, &
             process_id = data%proc_num_id(i), &
@@ -384,7 +384,7 @@ contains
     call eio%tag_init%close (u);  write (u, *)
     if (present (success))  success = .true.
   end subroutine eio_lhef_init_out
-    
+
   subroutine eio_lhef_init_in (eio, sample, data, success, extension)
     class(eio_lhef_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -421,13 +421,13 @@ contains
     if (present (success))  success = .true.
 
   contains
-    
+
     subroutine err_init
       call msg_fatal ("LHEF: syntax error in init tag")
     end subroutine err_init
-      
+
   end subroutine eio_lhef_init_in
-    
+
   subroutine eio_merge_data (eio, data, data_file)
     class(eio_lhef_t), intent(inout) :: eio
     type(event_sample_data_t), intent(inout) :: data
@@ -470,14 +470,14 @@ contains
       call msg_error ("LHEF: mismatch in specified number of events (ignored)")
     end subroutine err_n_evt
   end subroutine eio_merge_data
-    
+
   subroutine eio_lhef_switch_inout (eio, success)
     class(eio_lhef_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("LHEF: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_lhef_switch_inout
-  
+
   subroutine eio_lhef_split_out (eio)
     class(eio_lhef_t), intent(inout) :: eio
     integer :: u
@@ -502,7 +502,7 @@ contains
        call eio%tag_init%close (u);  write (u, *)
     end if
   end subroutine eio_lhef_split_out
-  
+
   subroutine eio_lhef_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -634,7 +634,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.4.0"), u)
+       call eio%tag_gen_v%write (var_str ("2.4.1"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)
@@ -701,7 +701,7 @@ contains
             error = data%error(i))
     end do
   end subroutine eio_lhef_read_init_10
-  
+
   subroutine eio_lhef_write_init_20 (eio, data)
     class(eio_lhef_t), intent(in) :: eio
     type(event_sample_data_t), intent(in) :: data
@@ -712,7 +712,7 @@ contains
     call eio%tag_generator%close (u);  write (u, *)
     call eio%tag_xsecinfo%write (u);  write (u, *)
   end subroutine eio_lhef_write_init_20
-    
+
   subroutine eio_lhef_read_init_20 (eio, data)
     class(eio_lhef_t), intent(inout) :: eio
     type(event_sample_data_t), intent(out) :: data
@@ -756,7 +756,7 @@ contains
       call msg_fatal ("LHEF: syntax error after init tag")
     end subroutine err_init
   end subroutine eio_lhef_read_init_20
-  
+
   subroutine eio_lhef_write_event_20 (eio, event)
     class(eio_lhef_t), intent(in) :: eio
     class(generic_event_t), intent(in) :: event
@@ -786,7 +786,7 @@ contains
        call eio%tag_wgts_alt(1)%write (s, u)
     end if
   end subroutine eio_lhef_write_event_20
-    
+
   subroutine eio_lhef_read_event_20 (eio, event)
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(inout) :: event
@@ -817,7 +817,7 @@ contains
       call msg_fatal ("LHEF: syntax error after event tag")
     end subroutine err_event
   end subroutine eio_lhef_read_event_20
-    
+
   subroutine eio_lhef_write_init_30 (eio, data)
     class(eio_lhef_t), intent(in) :: eio
     type(event_sample_data_t), intent(in) :: data
@@ -842,7 +842,7 @@ contains
        call eio%tag_wgts_alt(i)%write (u);  write (u, *)
     end do
   end subroutine eio_lhef_write_init_30
-    
+
   subroutine eio_lhef_read_init_30 (eio, data)
     class(eio_lhef_t), intent(inout) :: eio
     type(event_sample_data_t), intent(out) :: data
@@ -898,7 +898,7 @@ contains
       call msg_fatal ("LHEF: syntax error after init tag")
     end subroutine err_init
   end subroutine eio_lhef_read_init_30
-  
+
   subroutine eio_lhef_write_event_30 (eio, event)
     class(eio_lhef_t), intent(in) :: eio
     class(generic_event_t), intent(in) :: event
@@ -928,7 +928,7 @@ contains
        call eio%tag_weights%write (trim (s), u);  write (u, *)
     end if
   end subroutine eio_lhef_write_event_30
-    
+
   subroutine eio_lhef_read_event_30 (eio, event)
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(inout) :: event
@@ -967,6 +967,6 @@ contains
       call msg_fatal ("LHEF: syntax error after event tag")
     end subroutine err_event
   end subroutine eio_lhef_read_event_30
-    
+
 
 end module eio_lhef

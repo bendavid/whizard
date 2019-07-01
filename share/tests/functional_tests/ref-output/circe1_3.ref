@@ -31,13 +31,6 @@ circe1_mapping_slope =  2.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process circe1_3_p4:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'circe1_3_p4'
-|   Library name  = 'circe1_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'circe1_3_p4_i1':   e-, e+ => Z [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -46,6 +39,13 @@ circe1_mapping_slope =  2.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'circe1_3_p4_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_3_p4'
+|   Library name  = 'circe1_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'circe1_3_p4_i1':   e-, e+ => Z [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 0 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

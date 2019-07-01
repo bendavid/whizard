@@ -24,13 +24,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process ep_1_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ep_1_p1'
-|   Library name  = 'ep_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'ep_1_p1_i1':   e-, u => e-, u [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, p => none, pdf_builtin
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -40,6 +33,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ep_1_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_1_p1'
+|   Library name  = 'ep_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ep_1_p1_i1':   e-, u => e-, u [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -73,13 +73,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process ep_1_q1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ep_1_q1'
-|   Library name  = 'ep_1_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'ep_1_q1_i1':   u, e- => e-, u [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, e- => pdf_builtin, none
 | Beam data (collision):
 |   p   (mass = 0.0000000E+00 GeV)
@@ -88,6 +81,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ep_1_q1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_1_q1'
+|   Library name  = 'ep_1_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'ep_1_q1_i1':   u, e- => e-, u [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -121,13 +121,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process ep_1_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ep_1_p2'
-|   Library name  = 'ep_1_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'ep_1_p2_i1':   e-, u => e-, u [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, p => isr, pdf_builtin
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -136,6 +129,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ep_1_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_1_p2'
+|   Library name  = 'ep_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ep_1_p2_i1':   e-, u => e-, u [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -169,13 +169,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process ep_1_q2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'ep_1_q2'
-|   Library name  = 'ep_1_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'ep_1_q2_i1':   u, e- => e-, u [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, e- => pdf_builtin, isr
 | Beam data (collision):
 |   p   (mass = 0.0000000E+00 GeV)
@@ -184,6 +177,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'ep_1_q2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_1_q2'
+|   Library name  = 'ep_1_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'ep_1_q2_i1':   u, e- => e-, u [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.

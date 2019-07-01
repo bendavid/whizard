@@ -21,13 +21,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_4p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_4p'
-|   Library name  = 'beam_setup_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -36,6 +29,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_4p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_4p'
+|   Library name  = 'beam_setup_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -73,13 +73,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_4p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_4p'
-|   Library name  = 'beam_setup_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   momentum = 1.000000000000E+02, 9.000000000000E+02
 | Beam data (collision):
@@ -90,6 +83,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_4p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_4p'
+|   Library name  = 'beam_setup_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -127,13 +127,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_4p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_4p'
-|   Library name  = 'beam_setup_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   momentum = 5.000000000000E+02, 5.000000000000E+02
 |   angle th = 0.000000000000E+00, 1.745329251994E-01
@@ -145,6 +138,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_4p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_4p'
+|   Library name  = 'beam_setup_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -182,13 +182,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process beam_setup_4p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_4p'
-|   Library name  = 'beam_setup_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   momentum = 5.000000000000E+02, 5.000000000000E+02
 |   angle th = 0.000000000000E+00, 1.745329251994E-01
@@ -201,6 +194,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_4p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_4p'
+|   Library name  = 'beam_setup_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_4p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

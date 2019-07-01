@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: system interfaces
 \chapter{System: Interfaces and Handlers}
 \includemodulegraph{system}
@@ -6,13 +6,13 @@
 Here, we collect modules that deal with the ``system'':
 operating-system interfaces, error handlers and diagnostics.
 \begin{description}
-\item[system\_defs] 
+\item[system\_defs]
   Constants relevant for the modules in this set.
-\item[diagnostics] 
+\item[diagnostics]
   Error and diagnostic message handling.  Any
   messages and errors issued by WHIZARD functions are handled by the
   subroutines in this module, if possible.
-\item[os\_interface] 
+\item[os\_interface]
   Execute system calls, build and link external object files and libraries.
 \item[cputime]
   Timer data type and methods, for measuring performance.
@@ -55,7 +55,7 @@ further modules.
   integer, parameter, public :: BUFFER_SIZE = 1000
 
 @ %def BUFFER_SIZE
-@ 
+@
 \subsection{IOSTAT Codes}
 Defined in [[iso_fortran_env]], but we would like to use shorthands.
 <<System defs: public parameters>>=
@@ -135,7 +135,7 @@ int wo_mask_sigterm () {
 }
 
 int wo_mask_sigxcpu () {
-  struct sigaction sa;  
+  struct sigaction sa;
   sigset_t blocks;
   sigfillset (&blocks);
   sa.sa_flags = 0;
@@ -155,7 +155,7 @@ int wo_mask_sigxfsz () {
 }
 
 int wo_release_sigint () {
-  struct sigaction sa;  
+  struct sigaction sa;
   sigset_t blocks;
   sigfillset (&blocks);
   sa.sa_flags = 0;
@@ -233,7 +233,7 @@ int sprintf_str(char* str, const char* format, const char* val) {
       character(c_char), dimension(*), intent(in) :: fmt
     end function sprintf_none
   end interface
-      
+
   interface
     function sprintf_int (str, fmt, val) result (stat) bind(C)
       use iso_c_binding !NODEP!
@@ -243,7 +243,7 @@ int sprintf_str(char* str, const char* format, const char* val) {
       integer(c_int), value :: val
     end function sprintf_int
   end interface
-      
+
   interface
     function sprintf_double (str, fmt, val) result (stat) bind(C)
       use iso_c_binding !NODEP!
@@ -253,7 +253,7 @@ int sprintf_str(char* str, const char* format, const char* val) {
       real(c_double), value :: val
     end function sprintf_double
   end interface
-      
+
   interface
     function sprintf_str(str, fmt, val) result (stat) bind(C)
       use iso_c_binding !NODEP!
@@ -264,7 +264,7 @@ int sprintf_str(char* str, const char* format, const char* val) {
     end function sprintf_str
   end interface
 
-@ %def sprintf_int sprintf_double sprintf_str    
+@ %def sprintf_int sprintf_double sprintf_str
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Error, Message and Signal Handling}
@@ -281,7 +281,7 @@ buffer, avoiding the necessety of formatted I/O in trivial cases.
 
 module diagnostics
 
-  use, intrinsic :: iso_c_binding !NODEP! 
+  use, intrinsic :: iso_c_binding !NODEP!
   use, intrinsic :: iso_fortran_env, only: output_unit !NODEP!
 
 <<Use kinds>>
@@ -550,7 +550,7 @@ entries beforehand, we use a linked list.
   type :: string_list_pointer
      type(string_list), pointer :: first, last
   end type string_list_pointer
-  
+
 @ %def string_list string_list_pointer
 <<Diagnostics: variables>>=
   type(string_list_pointer), dimension(TERMINATE:WARNING), save :: &
@@ -579,7 +579,7 @@ entries beforehand, we use a linked list.
 
 @ %def msg_add
 @
-Initialization: 
+Initialization:
 <<Diagnostics: public>>=
   public :: msg_list_clear
 <<Diagnostics: procedures>>=
@@ -710,7 +710,7 @@ message list (without prepending anything).
        is_error = .true.
     case (FATAL)
        prep_string   = "*** FATAL ERROR: "
-       aux_string    = "***              "                     
+       aux_string    = "***              "
        severe = .true.
        is_error = .true.
     case (ERROR)
@@ -728,7 +728,7 @@ message list (without prepending anything).
     end select
     if (present (color)) then
        if (color > COL_UNDEFINED) then
-          col_string = create_col_string (color) 
+          col_string = create_col_string (color)
           prep_string = achar(27) // col_string // prep_string
           app_string = app_string // achar(27) // "[0m"
        end if
@@ -737,8 +737,8 @@ message list (without prepending anything).
     lu = log_unit
     if (present(unit)) then
        if (unit /= output_unit) then
-          if (severe) write (unit, "(A)") char(head_footer) 
-          if (is_error) write (unit, "(A)") char(head_footer) 
+          if (severe) write (unit, "(A)") char(head_footer)
+          if (is_error) write (unit, "(A)") char(head_footer)
           write (unit, "(A,A,A)") char(prep_string), trim(msg_buffer), &
                char(app_string)
           if (present (str_arr)) then
@@ -746,54 +746,54 @@ message list (without prepending anything).
                 write (unit, "(A,A)") char(aux_string), char(trim(str_arr(i)))
              end do
           end if
-          if (is_error) write (unit, "(A)") char(head_footer) 
+          if (is_error) write (unit, "(A)") char(head_footer)
           if (severe) write (unit, "(A)") char(head_footer)
           flush (unit)
           lu = -1
        else if (level <= msg_level(ar)) then
-          if (severe) print "(A)", char(head_footer) 
-          if (is_error) print "(A)", char(head_footer) 
+          if (severe) print "(A)", char(head_footer)
+          if (is_error) print "(A)", char(head_footer)
           print "(A,A,A)", char(prep_string), trim(msg_buffer), &
                char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
-             end do                
+             end do
           end if
-          if (is_error) print "(A)", char(head_footer) 
+          if (is_error) print "(A)", char(head_footer)
           if (severe) print "(A)", char(head_footer)
           flush (output_unit)
           if (unit == log_unit)  lu = -1
        end if
     else if (level <= msg_level(ar)) then
-       if (severe) print "(A)", char(head_footer) 
-       if (is_error) print "(A)", char(head_footer) 
+       if (severe) print "(A)", char(head_footer)
+       if (is_error) print "(A)", char(head_footer)
        print "(A,A,A)", char(prep_string), trim(msg_buffer), &
                char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
-             end do                
+             end do
           end if
-       if (is_error) print "(A)", char(head_footer) 
-       if (severe) print "(A)", char(head_footer) 
+       if (is_error) print "(A)", char(head_footer)
+       if (severe) print "(A)", char(head_footer)
        flush (output_unit)
     end if
     if (present (logfile)) then
        if (.not. logfile)  lu = -1
     end if
     if (logging .and. lu >= 0) then
-       if (severe) write (lu, "(A)") char(head_footer) 
-       if (is_error) write (lu, "(A)") char(head_footer) 
+       if (severe) write (lu, "(A)") char(head_footer)
+       if (is_error) write (lu, "(A)") char(head_footer)
        write (lu, "(A,A,A)")  char(prep_string), trim(msg_buffer), &
                char(app_string)
        if (present (str_arr)) then
           do i = 1, size(str_arr)
              write (lu, "(A,A)") char(aux_string), char(trim(str_arr(i)))
-          end do                
+          end do
        end if
-       if (is_error) write (lu, "(A)") char(head_footer) 
-       if (severe) write (lu, "(A)") char(head_footer) 
+       if (is_error) write (lu, "(A)") char(head_footer)
+       if (severe) write (lu, "(A)") char(head_footer)
        flush (lu)
     end if
     call msg_add (level)
@@ -848,7 +848,7 @@ but this may change.
     call msg_list_clear ()
     if (return_code /= 0) then
        call exit (return_code)
-    else 
+    else
        !!! Should implement WHIZARD exit code (currently only via C)
        ! stop
        call exit (0)
@@ -996,7 +996,7 @@ but this may change.
     character(len=*), intent(in) :: string
     type(terminal_color_t), intent(in), optional :: color
     call msg_debug_none (area, char (string // " = " // value), &
-       color = color)
+         color = color)
   end subroutine msg_debug_string
 
 @ %def msg_debug
@@ -1005,7 +1005,7 @@ but this may change.
   character(len=*), intent(in) :: string
   type(terminal_color_t), intent(in), optional :: color
   call msg_debug_none (area, char (string // " = " // str (value)), &
-     color = color)
+       color = color)
 @
 <<Diagnostics: public>>=
   public :: msg_print_color
@@ -1212,9 +1212,9 @@ to other step sizes with an optional argument.
     call message_print (0, "|        with contributions from Christian Speckner                           |", unit=unit)
     call message_print (0, "|        Contact: <whizard@desy.de>                                           |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
-    call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)   
+    call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)
     call message_print (0, "|        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |", unit=unit)
-    call message_print (0, "|                                          [arXiv: 0708.4233 [hep-ph]]        |", unit=unit)   
+    call message_print (0, "|                                          [arXiv: 0708.4233 [hep-ph]]        |", unit=unit)
     call message_print (0, "|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|=============================================================================|", unit=unit)
@@ -1223,7 +1223,7 @@ to other step sizes with an optional argument.
   end subroutine msg_banner
 
 @ %def msg_banner
-@ 
+@
 \subsection{Logfile}
 All screen output should be duplicated in the logfile, unless
 requested otherwise.
@@ -1287,7 +1287,7 @@ screen, and if [[logfile]] is not set false.
   end function logfile_unit
 
 @ %def logfile_unit
-@ 
+@
 \subsection{Checking values}
 The [[expect]] function does not just check a value for correctness
 (actually, it checks if a logical expression is true); it records its
@@ -1420,8 +1420,8 @@ exit code is nonzero.
 
 @ %def real2fixed real2string real2char
 @ Dito for complex values; we do not use the slightly ugly FORTRAN output form
-here but instead introduce our own. Ifort and Portland seem to have problems 
-with this, therefore temporarily disable it.   
+here but instead introduce our own. Ifort and Portland seem to have problems
+with this, therefore temporarily disable it.
 %
 <<CCC Diagnostics: public>>=
    public :: cmplx2string
@@ -1439,7 +1439,7 @@ with this, therefore temporarily disable it.
      character(len (char (cmplx2string (x)))) :: c
      c = char (cmplx2string (x))
    end function cmplx2char
-   
+
 @ %def cmplx2string cmplx2char
 @
 \subsection{Suppression of numerical noise}
@@ -1450,7 +1450,7 @@ with this, therefore temporarily disable it.
      module procedure pacify_real_default
      module procedure pacify_complex_default
   end interface pacify
-  
+
 @
 <<Diagnostics: procedures>>=
   elemental subroutine pacify_real_default (x, tolerance)
@@ -1458,7 +1458,7 @@ with this, therefore temporarily disable it.
     real(default), intent(in) :: tolerance
     if (abs (x) < tolerance)  x = 0._default
   end subroutine pacify_real_default
-  
+
   elemental subroutine pacify_complex_default (x, tolerance)
     complex(default), intent(inout) :: x
     real(default), intent(in) :: tolerance
@@ -1466,7 +1466,7 @@ with this, therefore temporarily disable it.
          x = cmplx (0._default, aimag (x), kind=default)
     if (abs (aimag (x)) < tolerance)  &
          x = cmplx (real (x), 0._default, kind=default)
-  end subroutine pacify_complex_default  
+  end subroutine pacify_complex_default
 
 @ %def pacify
 @
@@ -1660,7 +1660,7 @@ module os_interface
   use diagnostics
   use system_defs, only: DLERROR_LEN, ENVVAR_LEN
   use system_dependencies
-  
+
 <<Standard module head>>
 
 <<OS interface: public>>
@@ -1693,7 +1693,7 @@ This is a transparent container for storing user-defined path variables.
      type(string_t) :: lhapdfdir
   end type paths_t
 
-@ %def paths_t     
+@ %def paths_t
 <<OS interface: public>>=
   public :: paths_init
 <<OS interface: procedures>>=
@@ -1711,14 +1711,14 @@ This is a transparent container for storing user-defined path variables.
   end subroutine paths_init
 
 @ %def paths_init
-@ 
+@
 \subsection{System dependencies}
 We store all potentially system- and user/run-dependent data in a
 transparent container.  This includes compiler/linker names and flags,
 file extensions, etc. There are actually two different possibilities
 for extensions of shared libraries, depending on whether the Fortran
 compiler or the system linker (usually the C compiler) has been used
-for linking. The default for the Fortran compiler on most systems is 
+for linking. The default for the Fortran compiler on most systems is
 [[.so]].
 <<OS interface: public>>=
   public :: os_data_t
@@ -1833,7 +1833,7 @@ necessary.
     os_data%ldflags_hoppet = DEFAULT_LDFLAGS_HOPPET
     os_data%ldflags_looptools = DEFAULT_LDFLAGS_LOOPTOOLS
     os_data%shrlib_ext     = DEFAULT_SHRLIB_EXT
-    os_data%fc_shrlib_ext  = DEFAULT_FC_SHRLIB_EXT    
+    os_data%fc_shrlib_ext  = DEFAULT_FC_SHRLIB_EXT
     os_data%makeflags      = DEFAULT_MAKEFLAGS
     os_data%prefix      = PREFIX
     os_data%exec_prefix = EXEC_PREFIX
@@ -1869,7 +1869,7 @@ necessary.
     else
        if (os_dir_exist (local_includes)) then
           os_data%whizard_includes = "-I" // local_includes // " "// &
-             WHIZARD_INCLUDES 
+             WHIZARD_INCLUDES
        else
           os_data%whizard_includes = WHIZARD_INCLUDES
        end if
@@ -1914,7 +1914,7 @@ necessary.
     os_data%ninjapath = NINJA_DIR
     os_data%samuraipath = SAMURAI_DIR
   end subroutine os_data_init
-    
+
 @ %def os_data_init
 @ Replace occurences of GNU path variables (such as [[${prefix}]]) by their
 values.  Do this for all strings that could depend on them, and do the
@@ -1951,7 +1951,7 @@ of each other.    %% Fooling Noweb Emacs mode: $
     call expand_paths (os_data%whizard_omega_binpath_local)
     call expand_paths (os_data%pdf_builtin_datapath)
     call expand_paths (os_data%latex)
-    call expand_paths (os_data%mpost)    
+    call expand_paths (os_data%mpost)
     call expand_paths (os_data%gml)
     call expand_paths (os_data%dvips)
     call expand_paths (os_data%ps2pdf)
@@ -1991,11 +1991,11 @@ of each other.    %% Fooling Noweb Emacs mode: $
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
     write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
-    write (u, *) "ldflags_lcio   = ", char (os_data%ldflags_lcio)    
+    write (u, *) "ldflags_lcio   = ", char (os_data%ldflags_lcio)
     write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)
-    write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools) 
+    write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools)
     write (u, *) "shrlib_ext     = ", char (os_data%shrlib_ext)
-    write (u, *) "fc_shrlib_ext  = ", char (os_data%fc_shrlib_ext)    
+    write (u, *) "fc_shrlib_ext  = ", char (os_data%fc_shrlib_ext)
     write (u, *) "makeflags      = ", char (os_data%makeflags)
     write (u, *) "prefix         = ", char (os_data%prefix)
     write (u, *) "exec_prefix    = ", char (os_data%exec_prefix)
@@ -2033,7 +2033,7 @@ of each other.    %% Fooling Noweb Emacs mode: $
     write (u, *) "event_analysis_ps  = ", os_data%event_analysis_ps
     write (u, *) "event_analysis_pdf = ", os_data%event_analysis_pdf
     write (u, *) "latex  = ", char (os_data%latex)
-    write (u, *) "mpost  = ", char (os_data%mpost)    
+    write (u, *) "mpost  = ", char (os_data%mpost)
     write (u, *) "gml    = ", char (os_data%gml)
     write (u, *) "dvips  = ", char (os_data%dvips)
     write (u, *) "ps2pdf = ", char (os_data%ps2pdf)
@@ -2048,6 +2048,49 @@ of each other.    %% Fooling Noweb Emacs mode: $
   end subroutine os_data_write
 
 @ %def os_data_write
+@
+<<OS interface: public>>=
+  public :: os_data_build_latex_file
+<<OS interface: procedures>>=
+  subroutine os_data_build_latex_file (os_data, filename, stat_out)
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: filename
+    integer, intent(out), optional :: stat_out
+    type(string_t) :: setenv_tex, pipe, pipe_dvi
+    integer :: unit_dev, status
+    status = -1
+    if (os_data%event_analysis_ps) then
+       !!! Check if our OS has a /dev/null
+       unit_dev = free_unit ()
+       open (file = "/dev/null", unit = unit_dev, &
+            action = "write", iostat = status) 
+       close (unit_dev)
+       if (status /= 0) then
+          pipe = ""
+          pipe_dvi = ""
+       else
+          pipe = " > /dev/null"
+          pipe_dvi = " 2>/dev/null 1>/dev/null"
+       end if
+       if (os_data%whizard_texpath /= "") then
+          setenv_tex = "TEXINPUTS=" // &
+               os_data%whizard_texpath // ":$TEXINPUTS "
+       else
+          setenv_tex = ""
+       end if
+       call os_system_call (setenv_tex // &
+            os_data%latex // " " // filename // ".tex " // pipe, &
+            verbose = .true., status = status)
+       call os_system_call (os_data%dvips // " -o " // filename // &
+            ".ps " // filename // ".dvi" // pipe_dvi, verbose = .true., &
+            status = status)
+       call os_system_call (os_data%ps2pdf // " " // filename // ".ps", &
+            verbose = .true., status = status)
+    end if
+    if (present (stat_out)) stat_out = status
+  end subroutine os_data_build_latex_file
+
+@ %def os_data_build_latex_file
 @
 \subsection{Dynamic linking}
 We define a type that holds the filehandle for a dynamically linked
@@ -2084,11 +2127,11 @@ library.
        write (unit, "(3x,A)")      "error     = [none]"
     end if
   end subroutine dlaccess_write
-    
+
 @ %def dlaccess_write
 @ The interface to the library functions:
 <<OS interface: interfaces>>=
-  interface 
+  interface
      function dlopen (filename, flag) result (handle) bind(C)
        import
        character(c_char), dimension(*) :: filename
@@ -2105,14 +2148,14 @@ library.
      end function dlclose
   end interface
 
-  interface 
+  interface
      function dlerror () result (str) bind(C)
        import
        type(c_ptr) :: str
      end function dlerror
   end interface
 
-  interface 
+  interface
      function dlsym (handle, symbol) result (fptr) bind(C)
        import
        type(c_ptr), value :: handle
@@ -2238,7 +2281,7 @@ procedure pointer with an appropriate interface.
   end function dlaccess_get_c_funptr
 
 @ %def dlaccess_get_c_funptr
-@ 
+@
 \subsection{Predicates}
 Return true if the library is loaded.  In particular, this is false if
 loading was unsuccessful.
@@ -2252,7 +2295,7 @@ loading was unsuccessful.
   end function dlaccess_is_open
 
 @ %def dlaccess_is_open
-@ 
+@
 \subsection{Shell access}
 This is the standard system call for executing a shell command, such
 as invoking a compiler.
@@ -2357,7 +2400,7 @@ linking.
     end if
     call os_system_call (command_string, status)
   end subroutine os_compile_shared
-   
+
 @ %def os_compile_shared
 @ Link an array of object files to build a shared object library.  In
 the libtool case, we have to specify a [[-rpath]], otherwise only a
@@ -2389,7 +2432,7 @@ installed, this rpath is irrelevant.
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
-            "-o '" // lib // os_data%shrlib_ext // "' " // &
+            "-o '" // lib // "." // os_data%fc_shrlib_ext // "' " // &
             objlist
     end if
     call os_system_call (command_string, status)
@@ -2417,7 +2460,7 @@ installed, this rpath is irrelevant.
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
-            os_data%ldflags_lcio // " " // &            
+            os_data%ldflags_lcio // " " // &
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     else
@@ -2431,7 +2474,7 @@ installed, this rpath is irrelevant.
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
-            os_data%ldflags_lcio // " " // &            
+            os_data%ldflags_lcio // " " // &
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     end if
@@ -2489,7 +2532,7 @@ the library itself.
           dlname = ""
        end if
     else
-       dlname = lib // os_data%shrlib_ext
+       dlname = lib // "." // os_data%fc_shrlib_ext
        inquire (file=char(dlname), exist=exist)
        if (.not. exist) then
           if (required) then
@@ -2550,7 +2593,7 @@ diagnostics.
           if (logging) then
              write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", &
                   n_threads, " threads"
-             call msg_message          
+             call msg_message
           end if
        end if
        if (n_threads > openmp_get_default_max_threads ()) then
@@ -2581,13 +2624,13 @@ Test module, followed by the corresponding implementation module.
 module os_interface_ut
   use unit_tests
   use os_interface_uti
-  
+
 <<Standard module head>>
 
 <<OS interface: public test>>
 
 contains
-  
+
 <<OS interface: test driver>>
 
 end module os_interface_ut
@@ -2662,11 +2705,11 @@ it, and execute the contained function.
     end if
     filename_obj = fname // ext
     libname = fname // '.' // os_data%fc_shrlib_ext
-    
+
     write (u, "(A)")  "* Test output: OS interface"
     write (u, "(A)")  "*   Purpose: check os_interface routines"
-    write (u, "(A)")      
-            
+    write (u, "(A)")
+
     write (u, "(A)")  "* write source file 'so_test.f90'"
     write (u, "(A)")
     unit = free_unit ()
@@ -2737,7 +2780,7 @@ For access to formatted printing (possibly input), we interface the C
 module formats
 
   use, intrinsic :: iso_c_binding
-  
+
 <<Use kinds>>
 <<Use strings>>
   use io_units
@@ -2960,7 +3003,7 @@ input and can allocate the output string.
     intf%input_fmt(fmt_len+1) = c_null_char
     intf%arg = arg
     allocate (intf%output_str (len (fmt) + sprintf_arg_get_length (arg) + 1))
-  end subroutine sprintf_interface_init 
+  end subroutine sprintf_interface_init
 
 @ %def sprintf_interface_init
 <<Formats: procedures>>=
@@ -2978,7 +3021,7 @@ input and can allocate the output string.
     end if
   end subroutine sprintf_interface_write
 
-@ %def sprintf_interface_write    
+@ %def sprintf_interface_write
 @ Return the output string:
 <<Formats: procedures>>=
   function sprintf_interface_get_result (intf) result (string)
@@ -3004,12 +3047,12 @@ input and can allocate the output string.
          (intf%arg, intf%input_fmt, intf%output_str, intf%output_str_len)
   end subroutine sprintf_interface_apply_sprintf
 
-@ %def sprintf_interface_apply_sprintf 
+@ %def sprintf_interface_apply_sprintf
 @ Import the interfaces defined in the previous section:
 <<Formats: interfaces>>=
 <<sprintf interfaces>>
 
-@ 
+@
 \subsubsection{Scan the format string}
 Chop it into pieces that contain one conversion
 specifier each.  The zero-th piece contains the part before the first
@@ -3168,13 +3211,13 @@ Test module, followed by the corresponding implementation module.
 module formats_ut
   use unit_tests
   use formats_uti
-  
+
 <<Standard module head>>
 
 <<Formats: public test>>
 
 contains
-  
+
 <<Formats: test driver>>
 
 end module formats_ut
@@ -3217,9 +3260,9 @@ end module formats_uti
   call test (format_1, "format_1", &
        "check formatting routines", &
        u, results)
-<<Formats: test declarations>>=     
+<<Formats: test declarations>>=
   public :: format_1
-<<Formats: tests>>=     
+<<Formats: tests>>=
   subroutine format_1 (u)
     integer, intent(in) :: u
     write (u, "(A)")  "*** Test 1: a string ***"
@@ -3235,7 +3278,7 @@ end module formats_uti
     call test_run (var_str("%g"), 1, [3], ['3.1415'], u)
     contains
       subroutine test_run (fmt, n_args, type, buffer, unit)
-        type(string_t), intent(in) :: fmt        
+        type(string_t), intent(in) :: fmt
         integer, intent(in) :: n_args, unit
         logical :: lval
         integer :: ival
@@ -3365,7 +3408,7 @@ It is measured in seconds.
        r = 0
     end if
   end subroutine real_assign_time
-    
+
   pure subroutine real_default_assign_time (r, time)
     real(default), intent(out) :: r
     class(time_t), intent(in) :: time
@@ -3375,7 +3418,7 @@ It is measured in seconds.
        r = 0
     end if
   end subroutine real_default_assign_time
-    
+
 @ %def real_assign_time
 @ Assign an integer or (single precision) real value to the time object.
 <<CPU time: time: TBP>>=
@@ -3389,14 +3432,14 @@ It is measured in seconds.
     time%value = ival
     time%known = .true.
   end subroutine time_assign_from_integer
-  
+
   subroutine time_assign_from_real (time, rval)
     class(time_t), intent(out) :: time
     real, intent(in) :: rval
     time%value = rval
     time%known = .true.
   end subroutine time_assign_from_real
-  
+
 @ %def time_assign_from_real
 @ Add times and compute time differences.  If any input value is undefined,
 the result is undefined.
@@ -3414,7 +3457,7 @@ the result is undefined.
        time%value = t_end%value - t_begin%value
     end if
   end function subtract_times
-    
+
   pure function add_times (t1, t2) result (time)
     type(time_t) :: time
     class(time_t), intent(in) :: t1, t2
@@ -3423,7 +3466,7 @@ the result is undefined.
        time%value = t1%value + t2%value
     end if
   end function add_times
-    
+
 @ %def subtract_times
 @ %def add_times
 @ Check if a time is known, so we can use it:
@@ -3435,7 +3478,7 @@ the result is undefined.
     logical :: flag
     flag = time%known
   end function time_is_known
-  
+
 @ %def time_is_known
 @ We define functions for converting the time into ss / mm:ss / hh:mm:ss
 / dd:mm:hh:ss.
@@ -3518,7 +3561,7 @@ the result is undefined.
     class(time_t), intent(in) :: time
     logical, intent(in), optional :: blank
     type(string_t) :: str
-    character(256) :: buffer    
+    character(256) :: buffer
     integer :: s, m
     logical :: x_out
     x_out = .false.
@@ -3568,7 +3611,7 @@ two further times for start and stop time.
    contains
    <<CPU time: timer: TBP>>
   end type timer_t
-  
+
 @ %def timer_t
 @ Output.  If the timer is running, we indicate this, otherwise write
 just the result.
@@ -3598,7 +3641,7 @@ the status.  We forget any previous values.
     call timer%t1%set_current ()
     timer%running = .true.
   end subroutine timer_start
-  
+
 @ %def timer_start
 @ Restart the timer: simply adapt the status, keeping the start time.
 <<CPU time: timer: TBP>>=
@@ -3610,9 +3653,9 @@ the status.  We forget any previous values.
        timer%running = .true.
     else
        call msg_bug ("Timer: restart attempt from wrong status")
-    end if       
+    end if
   end subroutine timer_restart
-  
+
 @ %def timer_start
 @ Stop the timer: store the current time in the second entry, adapt
 the status, and compute the elapsed time.
@@ -3625,7 +3668,7 @@ the status, and compute the elapsed time.
     timer%running = .false.
     call timer%evaluate ()
   end subroutine timer_stop
-  
+
 @ %def timer_stop
 @ Manually set the time (for unit test)
 <<CPU time: timer: TBP>>=
@@ -3637,13 +3680,13 @@ the status, and compute the elapsed time.
     integer, intent(in) :: t
     timer%t1 = t
   end subroutine timer_set_test_time1
-  
+
   subroutine timer_set_test_time2 (timer, t)
     class(timer_t), intent(inout) :: timer
     integer, intent(in) :: t
     timer%t2 = t
   end subroutine timer_set_test_time2
-  
+
 @ %def timer_set_test_time1
 @ %def timer_set_test_time2
 @ This is separate, available for the unit test.
@@ -3654,7 +3697,7 @@ the status, and compute the elapsed time.
     class(timer_t), intent(inout) :: timer
     timer%time_t = timer%t2 - timer%t1
   end subroutine timer_evaluate
-  
+
 @ %def timer_evaluate
 @
 \subsection{Unit tests}
@@ -3665,13 +3708,13 @@ Test module, followed by the corresponding implementation module.
 module cputime_ut
   use unit_tests
   use cputime_uti
-  
+
 <<Standard module head>>
 
 <<CPU time: public test>>
 
 contains
-  
+
 <<CPU time: test driver>>
 
 end module cputime_ut
@@ -3705,7 +3748,7 @@ end module cputime_uti
     type(test_results_t), intent(inout) :: results
   <<CPU time: execute tests>>
   end subroutine cputime_test
-  
+
 @ %def cputime_test
 @
 \subsubsection{Basic tests}
@@ -3728,8 +3771,8 @@ and operations.
 
     write (u, "(A)")  "* Test output: cputime_1"
     write (u, "(A)")  "*   Purpose: check time operations"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)") "* Undefined time"
     write (u, *)
 
@@ -3755,11 +3798,11 @@ and operations.
     write (u, *)
     write (u, "(A)") "* Compute time difference"
     write (u, *)
-    
+
     time1 = 5.33
     time2 = 7.55
     time = time2 - time1
-    
+
     call time1%write (u)
     call time2%write (u)
     call time%write (u)
@@ -3767,9 +3810,9 @@ and operations.
     write (u, *)
     write (u, "(A)") "* Compute time sum"
     write (u, *)
-    
+
     time = time2 + time1
-    
+
     call time1%write (u)
     call time2%write (u)
     call time%write (u)
@@ -3777,10 +3820,10 @@ and operations.
     write (u, *)
     write (u, "(A)") "* Expand time"
     write (u, *)
-    
+
     time1 = ((24 + 1) * 60 + 1) * 60 + 1
     time2 = ((3 * 24 + 23) * 60 + 59) * 60 + 59
-    
+
     call time1%expand (s)
     write (u, 1)  "s =", s
     call time1%expand (m,s)
@@ -3789,7 +3832,7 @@ and operations.
     write (u, 1)  "hms =", h, m, s
     call time1%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
     call time2%expand (s)
     write (u, 1)  "s =", s
     call time2%expand (m,s)
@@ -3798,14 +3841,14 @@ and operations.
     write (u, 1)  "hms =", h, m, s
     call time2%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
     write (u, *)
     write (u, "(A)") "* Expand negative time"
     write (u, *)
-    
+
     time1 = - (((24 + 1) * 60 + 1) * 60 + 1)
     time2 = - (((3 * 24 + 23) * 60 + 59) * 60 + 59)
-    
+
     call time1%expand (s)
     write (u, 1)  "s =", s
     call time1%expand (m,s)
@@ -3814,7 +3857,7 @@ and operations.
     write (u, 1)  "hms =", h, m, s
     call time1%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
     call time2%expand (s)
     write (u, 1)  "s =", s
     call time2%expand (m,s)
@@ -3823,16 +3866,16 @@ and operations.
     write (u, 1)  "hms =", h, m, s
     call time2%expand (d,h,m,s)
     write (u, 1)  "dhms =", d, h, m, s
-    
+
 1   format (1x,A,1x,4(I0,:,':'))
 
     write (u, *)
     write (u, "(A)") "* String from time"
     write (u, *)
-    
+
     time1 = ((24 + 1) * 60 + 1) * 60 + 1
     time2 = ((3 * 24 + 23) * 60 + 59) * 60 + 59
-    
+
     write (u, "(A)")  char (time1%to_string_s ())
     write (u, "(A)")  char (time1%to_string_ms ())
     write (u, "(A)")  char (time1%to_string_hms ())
@@ -3846,17 +3889,17 @@ and operations.
     write (u, "(A)")
     write (u, "(A)")  "* Blanking out the last second entry"
     write (u, "(A)")
-    
+
     write (u, "(A)")  char (time1%to_string_ms ())
     write (u, "(A)")  char (time1%to_string_ms (.true.))
-        
+
     write (u, *)
     write (u, "(A)") "* String from negative time"
     write (u, *)
-    
+
     time1 = -(((24 + 1) * 60 + 1) * 60 + 1)
     time2 = -(((3 * 24 + 23) * 60 + 59) * 60 + 59)
-    
+
     write (u, "(A)")  char (time1%to_string_s ())
     write (u, "(A)")  char (time1%to_string_ms ())
     write (u, "(A)")  char (time1%to_string_hms ())
@@ -3866,12 +3909,12 @@ and operations.
     write (u, "(A)")  char (time2%to_string_ms ())
     write (u, "(A)")  char (time2%to_string_hms ())
     write (u, "(A)")  char (time2%to_string_dhms ())
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: cputime_1"    
+    write (u, "(A)")  "* Test output end: cputime_1"
 
   end subroutine cputime_1
-  
+
 @ %def cputime_1
 @
 \subsubsection{Timer tests}
@@ -3889,8 +3932,8 @@ Check a timer object.
 
     write (u, "(A)")  "* Test output: cputime_2"
     write (u, "(A)")  "*   Purpose: check timer"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)") "* Undefined timer"
     write (u, *)
 
@@ -3930,8 +3973,8 @@ Check a timer object.
     call timer%write (u)
 
     write (u, *)
-    write (u, "(A)")  "* Test output end: cputime_2"    
+    write (u, "(A)")  "* Test output end: cputime_2"
 
   end subroutine cputime_2
-  
+
 @ %def cputime_2

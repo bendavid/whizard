@@ -17,6 +17,20 @@ sqrts =  1.000000000000E+03
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process multi_comp_1_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'multi_comp_1_p1_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'multi_comp_1_p1_i2.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'multi_comp_1_p1_i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'multi_comp_1_p1'
 |   Library name  = 'multi_comp_1_lib'
@@ -26,28 +40,14 @@ sqrts =  1.000000000000E+03
 |     2: 'multi_comp_1_p1_i2':   e-, e+ => t-, t+ [omega]
 |     3: 'multi_comp_1_p1_i3':   e-, e+ => A, A [omega]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
-|   e+  (mass = 0.0000000E+00 GeV)
-|   sqrts = 1.000000000000E+03 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_1_p1_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_1_p1_i2.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_1_p1_i3.phs'
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 1 grove.
 | Phase space: Using 16 equivalences between channels.

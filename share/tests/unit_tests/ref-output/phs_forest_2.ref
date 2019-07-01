@@ -1,0 +1,24 @@
+* Test output: phs_forest_2
+*   Purpose: test PHS forest routines
+
+* Reading model file
+
+* Create phase-space file 'phs_forest_2.phs'
+
+* Read phase-space file 'phs_forest_2.phs'
+
+* Extract resonance history set
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+Resonance history with 2 resonances:
+Resonance contributors: 1 2 f(-24)
+Resonance contributors: 1 2 3 f(23)
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 3 f(25)
+
+* Cleanup
+
+* Test output end: phs_forest_2

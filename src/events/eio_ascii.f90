@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_ascii
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
@@ -79,44 +79,44 @@ module eio_ascii
      procedure :: input_event => eio_ascii_input_event
      procedure :: skip => eio_ascii_skip
   end type eio_ascii_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_ascii_t
   end type eio_ascii_ascii_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_athena_t
   end type eio_ascii_athena_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_debug_t
      logical :: show_process = .true.
      logical :: show_transforms = .true.
      logical :: show_decay = .true.
      logical :: verbose = .true.
   end type eio_ascii_debug_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_hepevt_t
   end type eio_ascii_hepevt_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_hepevt_verb_t
   end type eio_ascii_hepevt_verb_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_lha_t
   end type eio_ascii_lha_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_lha_verb_t
   end type eio_ascii_lha_verb_t
-   
+
   type, extends (eio_ascii_t) :: eio_ascii_long_t
   end type eio_ascii_long_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_mokka_t
   end type eio_ascii_mokka_t
-  
+
   type, extends (eio_ascii_t) :: eio_ascii_short_t
   end type eio_ascii_short_t
-  
+
 
 contains
-  
+
   subroutine eio_ascii_set_parameters (eio, &
        keep_beams, keep_remnants, ensure_order, extension, &
        show_process, show_transforms, show_decay, verbose)
@@ -143,7 +143,7 @@ contains
        type is (eio_ascii_hepevt_t)
           eio%extension = "hepevt"
        type is (eio_ascii_hepevt_verb_t)
-          eio%extension = "hepevt.verb"          
+          eio%extension = "hepevt.verb"
        type is (eio_ascii_lha_t)
           eio%extension = "lha"
        type is (eio_ascii_lha_verb_t)
@@ -164,7 +164,7 @@ contains
        if (present (verbose))  eio%verbose = verbose
     end select
   end subroutine eio_ascii_set_parameters
-  
+
   subroutine eio_ascii_write (object, unit)
     class(eio_ascii_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -207,7 +207,7 @@ contains
        write (u, "(3x,A,L1)")    "Verbose output    = ", object%verbose
     end select
   end subroutine eio_ascii_write
-  
+
   subroutine eio_ascii_final (object)
     class(eio_ascii_t), intent(inout) :: object
     if (object%writing) then
@@ -218,7 +218,7 @@ contains
        object%writing = .false.
     end if
   end subroutine eio_ascii_final
-  
+
   subroutine eio_ascii_init_out (eio, sample, data, success, extension)
     class(eio_ascii_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -248,32 +248,32 @@ contains
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
-            negative_weights = data%negative_weights)           
+            negative_weights = data%negative_weights)
        do i = 1, data%n_proc
           call heprup_set_process_parameters (i = i, &
                process_id = data%proc_num_id(i), &
                cross_section = data%cross_section(i), &
                error = data%error(i))
        end do
-       call heprup_write_ascii (eio%unit)    
+       call heprup_write_ascii (eio%unit)
     type is (eio_ascii_lha_verb_t)
        call heprup_init &
             (data%pdg_beam, &
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
-            negative_weights = data%negative_weights)           
+            negative_weights = data%negative_weights)
        do i = 1, data%n_proc
           call heprup_set_process_parameters (i = i, &
                process_id = data%proc_num_id(i), &
                cross_section = data%cross_section(i), &
                error = data%error(i))
        end do
-       call heprup_write_verbose (eio%unit)        
+       call heprup_write_verbose (eio%unit)
     end select
     if (present (success))  success = .true.
   end subroutine eio_ascii_init_out
-    
+
   subroutine eio_ascii_check_normalization (eio, data)
     class(eio_ascii_t), intent(in) :: eio
     type(event_sample_data_t), intent(in) :: data
@@ -303,7 +303,7 @@ contains
        end select
     end if
   end subroutine eio_ascii_check_normalization
-  
+
   subroutine eio_ascii_init_in (eio, sample, data, success, extension)
     class(eio_ascii_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -313,14 +313,14 @@ contains
     call msg_bug ("ASCII: event input not supported")
     if (present (success))  success = .false.
   end subroutine eio_ascii_init_in
-    
+
   subroutine eio_ascii_switch_inout (eio, success)
     class(eio_ascii_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("ASCII: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_ascii_switch_inout
-  
+
   subroutine eio_ascii_split_out (eio)
     class(eio_ascii_t), intent(inout) :: eio
     if (eio%split) then
@@ -334,13 +334,13 @@ contains
             action = "write", status = "replace")
        select type (eio)
        type is (eio_ascii_lha_t)
-          call heprup_write_ascii (eio%unit)    
+          call heprup_write_ascii (eio%unit)
        type is (eio_ascii_lha_verb_t)
-          call heprup_write_verbose (eio%unit)        
+          call heprup_write_verbose (eio%unit)
        end select
     end if
   end subroutine eio_ascii_split_out
-  
+
   subroutine eio_ascii_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_ascii_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -362,7 +362,7 @@ contains
                process_index = i_prc, &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants)
-          call hepeup_write_verbose (eio%unit)          
+          call hepeup_write_verbose (eio%unit)
        type is (eio_ascii_ascii_t)
           call event%write (eio%unit, &
                show_process = .false., &
@@ -371,11 +371,11 @@ contains
                verbose = .false., testflag = pacify)
        type is (eio_ascii_athena_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &          
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call hepevt_write_athena (eio%unit)                    
+          call hepevt_write_athena (eio%unit)
        type is (eio_ascii_debug_t)
           call event%write (eio%unit, &
                show_process = eio%show_process, &
@@ -385,40 +385,40 @@ contains
                testflag = pacify)
        type is (eio_ascii_hepevt_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &                         
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call hepevt_write_hepevt (eio%unit)                              
+          call hepevt_write_hepevt (eio%unit)
        type is (eio_ascii_hepevt_verb_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &                         
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
           call hepevt_write_verbose (eio%unit)
        type is (eio_ascii_long_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), & 
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call hepevt_write_ascii (eio%unit, .true.)                           
+          call hepevt_write_ascii (eio%unit, .true.)
        type is (eio_ascii_mokka_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &                         
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call hepevt_write_mokka (eio%unit)                              
+          call hepevt_write_mokka (eio%unit)
        type is (eio_ascii_short_t)
           call hepevt_from_event (event, &
-               i_evt = event%get_index (), &  
+               i_evt = event%get_index (), &
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call hepevt_write_ascii (eio%unit, .false.)                    
-       end select       
+          call hepevt_write_ascii (eio%unit, .false.)
+       end select
     else
        call eio%write ()
        call msg_fatal ("ASCII file is not open for writing")

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -54,10 +54,10 @@ module muli_remnant
   integer, parameter :: nq = 60
   integer :: remnant_weight_model = 2
   integer :: gluon_exp = 4
-  
+
 
   public :: pdfnorm_t
-  public :: remnant_weight_model  
+  public :: remnant_weight_model
   public :: muli_parton_t
   public :: proton_remnant_t
   public :: pp_remnant_t
@@ -71,11 +71,11 @@ module muli_remnant
      procedure :: read_from_marker => pdfnorm_read_from_marker
      procedure :: print_to_unit => pdfnorm_print_to_unit
      procedure, nopass :: get_type => pdfnorm_get_type
-     procedure, nopass :: verify_type => pdfnorm_verify_type  
+     procedure, nopass :: verify_type => pdfnorm_verify_type
      procedure :: scan => pdfnorm_scan
-     procedure :: get_norm => pdfnorm_get_norm    
+     procedure :: get_norm => pdfnorm_get_norm
   end type pdfnorm_t
-  
+
   type, extends (ser_class_t) :: muli_parton_t
      private
      integer :: id = -1
@@ -87,13 +87,13 @@ module muli_remnant
      procedure :: write_to_marker => parton_write_to_marker
      procedure :: read_from_marker => parton_read_from_marker
      procedure :: print_to_unit => parton_print_to_unit
-     procedure, nopass :: get_type => parton_get_type  
+     procedure, nopass :: get_type => parton_get_type
      procedure :: unweighted_pdf => twin_unweighted_pdf
      procedure :: deallocate => twin_deallocate
      procedure :: push => parton_push
-     generic :: pop => pop_by_id, pop_by_association  
+     generic :: pop => pop_by_id, pop_by_association
      procedure :: pop_by_id => parton_pop_by_id
-     procedure :: pop_by_association => parton_pop_by_association  
+     procedure :: pop_by_association => parton_pop_by_association
   end type muli_parton_t
 
   type, extends (ser_class_t) :: proton_remnant_t
@@ -107,30 +107,30 @@ module muli_remnant
      type(muli_parton_t) :: twin_partons
      type(muli_parton_t) :: is_partons
      type(muli_parton_t) :: fs_partons
-     !!! These pointers shall not be allocated, deallocated, 
+     !!! These pointers shall not be allocated, deallocated,
      !!!    serialized or deserialized explicitly.
      class(pdfnorm_t), pointer :: pdf_norm => null()
    contains
-     procedure :: remove_valence_quark => proton_remnant_remove_valence_quark  
+     procedure :: remove_valence_quark => proton_remnant_remove_valence_quark
      procedure :: remove_sea_quark => proton_remnant_remove_sea_quark
      procedure :: remove_gluon => proton_remnant_remove_gluon
      procedure :: remove_valence_up_quark => proton_remnant_remove_valence_up_quark
      procedure :: remove_valence_down_quark => &
           proton_remnant_remove_valence_down_quark
-     procedure :: remove_twin => proton_remnant_remove_twin  
+     procedure :: remove_twin => proton_remnant_remove_twin
      procedure :: momentum_twin_pdf => proton_remnant_momentum_twin_pdf
      procedure :: momentum_twin_pdf_array => proton_remnant_momentum_twin_pdf_array
      procedure :: momentum_kind_pdf => proton_remnant_momentum_kind_pdf
      procedure :: momentum_flavor_pdf => proton_remnant_momentum_flavor_pdf
      procedure :: momentum_kind_pdf_array => &
-          proton_remnant_momentum_kind_pdf_array  
+          proton_remnant_momentum_kind_pdf_array
      procedure :: momentum_flavor_pdf_array => proton_remnant_momentum_flavor_pdf_array
      procedure :: parton_twin_pdf => proton_remnant_parton_twin_pdf
      procedure :: parton_twin_pdf_array => proton_remnant_parton_twin_pdf_array
      procedure :: parton_kind_pdf => proton_remnant_parton_kind_pdf
      procedure :: parton_flavor_pdf => proton_remnant_parton_flavor_pdf
      procedure :: parton_kind_pdf_array => proton_remnant_parton_kind_pdf_array
-     procedure :: parton_flavor_pdf_array => proton_remnant_parton_flavor_pdf_array  
+     procedure :: parton_flavor_pdf_array => proton_remnant_parton_flavor_pdf_array
      procedure :: get_pdf_int_weight => proton_remnant_get_pdf_int_weight
      procedure :: get_valence_down_weight => proton_remnant_get_valence_down_weight
      procedure :: get_valence_up_weight => proton_remnant_get_valence_up_weight
@@ -138,8 +138,8 @@ module muli_remnant
      procedure :: get_gluon_weight => proton_remnant_get_gluon_weight
      procedure :: get_sea_weight => proton_remnant_get_sea_weight
      procedure :: get_twin_weight => proton_remnant_get_twin_weight
-     procedure :: get_valence_content => proton_remnant_get_valence_content 
-     procedure :: get_momentum_fraction => proton_remnant_get_momentum_fraction   
+     procedure :: get_valence_content => proton_remnant_get_valence_content
+     procedure :: get_momentum_fraction => proton_remnant_get_momentum_fraction
      procedure :: deallocate => proton_remnant_deallocate
      procedure :: initialize => proton_remnant_initialize
      procedure :: finalize => proton_remnant_finalize
@@ -149,13 +149,13 @@ module muli_remnant
      procedure :: push_is_parton => proton_remnant_push_is_parton
      procedure :: push_twin => proton_remnant_push_twin
      procedure :: calculate_twin_norm => proton_remnant_calculate_twin_norm
-     procedure :: replace_is_parton => proton_remnant_replace_is_parton  
+     procedure :: replace_is_parton => proton_remnant_replace_is_parton
      procedure :: write_to_marker => proton_remnant_write_to_marker
      procedure :: read_from_marker => proton_remnant_read_from_marker
      procedure :: print_to_unit => proton_remnant_print_to_unit
-     procedure, nopass :: get_type => proton_remnant_get_type  
+     procedure, nopass :: get_type => proton_remnant_get_type
      procedure :: gnuplot_momentum_kind_pdf_array => &
-          proton_remnant_gnuplot_momentum_kind_pdf_array    
+          proton_remnant_gnuplot_momentum_kind_pdf_array
   end type proton_remnant_t
 
   type, extends (ser_class_t) :: pp_remnant_t
@@ -168,12 +168,12 @@ module muli_remnant
      procedure :: write_to_marker => pp_remnant_write_to_marker
      procedure :: read_from_marker => pp_remnant_read_from_marker
      procedure :: print_to_unit => pp_remnant_print_to_unit
-     procedure, nopass :: get_type => pp_remnant_get_type  
+     procedure, nopass :: get_type => pp_remnant_get_type
      procedure :: initialize => pp_remnant_initialize
      procedure :: finalize => pp_remnant_finalize
      procedure :: apply_initial_interaction => &
           pp_remnant_apply_initial_interaction
-     procedure :: reset => pp_remnant_reset  
+     procedure :: reset => pp_remnant_reset
      procedure :: replace_parton => pp_remnant_replace_parton
      procedure :: momentum_pdf => pp_remnant_momentum_pdf
      procedure :: parton_pdf => pp_remnant_parton_pdf
@@ -188,17 +188,17 @@ module muli_remnant
           pp_remnant_get_proton_remnant_momentum_fractions
      procedure :: get_proton_remnants => pp_remnant_get_proton_remnants
      procedure :: get_remnant_parton_flavor_pdf_arrays => &
-          pp_remnant_get_remnant_parton_flavor_pdf_arrays     
+          pp_remnant_get_remnant_parton_flavor_pdf_arrays
   end type pp_remnant_t
-  
 
-  interface 
+
+  interface
      subroutine getxmin (mem, xmin)
        integer, intent(in) :: mem
        double precision, intent(out) :: xmin
      end subroutine getxmin
   end interface
-  interface 
+  interface
      subroutine getxmax (mem, xmax)
        integer, intent(in) :: mem
        double precision, intent(out) :: xmax
@@ -216,7 +216,7 @@ module muli_remnant
        double precision, intent(out) :: q2max
      end subroutine getq2max
   end interface
-  
+
 
 contains
 
@@ -232,7 +232,7 @@ contains
     call marker%mark ("pdf_norm", this%pdf_norm)
     call marker%mark_end ("pdfnorm_t")
   end subroutine pdfnorm_write_to_marker
-  
+
   subroutine pdfnorm_read_from_marker (this, marker, status)
     class(pdfnorm_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -246,7 +246,7 @@ contains
     call marker%pick ("pdf_norm", this%pdf_norm, status)
     call marker%pick_end ("pdfnorm_t", status=status)
   end subroutine pdfnorm_read_from_marker
-  
+
   recursive subroutine pdfnorm_print_to_unit &
        (this, unit, parents, components, peers)
     class(pdfnorm_t), intent(in) :: this
@@ -264,17 +264,17 @@ contains
        write(unit, "(3x,A)")  "Skipping pdf_norm"
     end if
   end subroutine pdfnorm_print_to_unit
-  
+
   pure subroutine pdfnorm_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="pdfnorm_t")
   end subroutine pdfnorm_get_type
-  
+
   elemental logical function pdfnorm_verify_type (type) result (match)
     character(*), intent(in) :: type
     match = type == "pdfnorm_t"
   end function pdfnorm_verify_type
-  
+
   subroutine pdfnorm_scan (this)
     class(pdfnorm_t), intent(out) :: this
     integer :: ix, iq
@@ -290,7 +290,7 @@ contains
     this%qmax = sqrt(sqrt(q2max))
     this%dq = (this%qmax - this%qmin) / nq
     xmin = sqrt(xmin)
-    xmax = sqrt(xmax)   
+    xmax = sqrt(xmax)
     dx= (xmax - xmin) / nx
     do iq = 0, nq
        print *, "iq=", iq, "/", nq
@@ -329,7 +329,7 @@ contains
        ! print *, this%pdf_norm(0,iq) - one
     end do
   end subroutine pdfnorm_scan
-  
+
   subroutine pdfnorm_get_norm (this, gev_q, dim, kind, norm)
     class(pdfnorm_t), intent(in) :: this
     real(default), intent(in) :: gev_q
@@ -394,7 +394,7 @@ contains
        end if
     end if
   end subroutine pdfnorm_get_norm
-  
+
   subroutine parton_write_to_marker (this, marker, status)
     class(muli_parton_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -417,7 +417,7 @@ contains
     call marker%pick ("momentum", this%momentum, status)
     call marker%pick_end ("muli_parton_t", status=status)
   end subroutine parton_read_from_marker
-  
+
   recursive subroutine parton_print_to_unit &
        (this, unit, parents, components, peers)
     class(muli_parton_t), intent(in) :: this
@@ -440,7 +440,7 @@ contains
     character(:), allocatable, intent(out) :: type
     allocate (type, source="muli_parton_t")
   end subroutine parton_get_type
-  
+
   pure function twin_unweighted_pdf (this, momentum_fraction) result (pdf)
     !parton pdf
     class(muli_parton_t), intent(in) :: this
@@ -453,7 +453,7 @@ contains
        pdf = zero
     end if
   end function twin_unweighted_pdf
-  
+
   recursive subroutine twin_deallocate (this)
     class(muli_parton_t) :: this
     if (associated (this%next)) then
@@ -461,7 +461,7 @@ contains
        deallocate (this%next)
     end if
   end subroutine twin_deallocate
-  
+
   subroutine parton_push (this, parton)
     class(muli_parton_t), intent(inout) :: this
     class(muli_parton_t), intent(inout), pointer :: parton
@@ -469,12 +469,12 @@ contains
     parton%next => this%next
     this%next => parton
   end subroutine parton_push
-  
+
   subroutine parton_pop_by_id (this, id, parton)
     class(muli_parton_t), target, intent(inout) :: this
     integer, intent(in) :: id
     class(muli_parton_t), intent(out), pointer :: parton
-    class(muli_parton_t), pointer :: tmp_parton    
+    class(muli_parton_t), pointer :: tmp_parton
     tmp_parton => this
     do while (associated (tmp_parton%next))
        if (tmp_parton%next%id == id)  exit
@@ -490,11 +490,11 @@ contains
        print *,"parton_pop ", id, "NULL"
     end if
   end subroutine parton_pop_by_id
-  
+
   subroutine parton_pop_by_association (this, parton)
     class(muli_parton_t), target, intent(inout) :: this
     class(muli_parton_t), intent(inout), target :: parton
-    class(muli_parton_t), pointer :: tmp_parton    
+    class(muli_parton_t), pointer :: tmp_parton
     tmp_parton => this
     do while (associated (tmp_parton%next))
        if (associated (tmp_parton%next, parton))  exit
@@ -508,7 +508,7 @@ contains
        print *, "parton_pop NULL"
     end if
   end subroutine parton_pop_by_association
-  
+
   subroutine proton_remnant_remove_valence_quark &
        (this, id, GeV_scale, momentum_fraction, lha_flavor)
     class(proton_remnant_t), intent(inout) :: this
@@ -534,7 +534,7 @@ contains
             "remove parton ", lha_flavor, ": There are no such valence partons."
     end if
   end subroutine proton_remnant_remove_valence_quark
-    
+
   subroutine proton_remnant_remove_sea_quark &
        (this, id, GeV_scale, momentum_fraction, lha_flavor)
     class(proton_remnant_t), intent(inout) :: this
@@ -548,7 +548,7 @@ contains
        call this%push_twin (id, lha_flavor, momentum_fraction, GeV_scale)
     end if
   end subroutine proton_remnant_remove_sea_quark
-  
+
   subroutine proton_remnant_remove_gluon &
        (this, id, GeV_scale, momentum_fraction)
     class(proton_remnant_t), intent(inout) :: this
@@ -557,7 +557,7 @@ contains
     this%momentum_fraction = this%momentum_fraction * (one - momentum_fraction)
     call this%push_is_parton (id, LHA_FLAVOR_g, momentum_fraction)
   end subroutine proton_remnant_remove_gluon
-  
+
   subroutine proton_remnant_remove_valence_up_quark &
        (this, id, GeV_scale, momentum_fraction)
     class(proton_remnant_t), intent(inout) :: this
@@ -577,7 +577,7 @@ contains
       end if
     end associate
   end subroutine proton_remnant_remove_valence_up_quark
-  
+
   subroutine proton_remnant_remove_valence_down_quark &
        (this, id, GeV_scale, momentum_fraction)
     class(proton_remnant_t), intent(inout) :: this
@@ -597,7 +597,7 @@ contains
          call this%print_all
       end if
     end associate
-  end subroutine proton_remnant_remove_valence_down_quark  
+  end subroutine proton_remnant_remove_valence_down_quark
 
   subroutine proton_remnant_remove_twin (this, id, GeV_scale)
     class(proton_remnant_t), intent(inout) :: this
@@ -610,7 +610,7 @@ contains
     this%n_twins = this%n_twins - 1
     call this%calculate_weight (GeV_scale)
   end subroutine proton_remnant_remove_twin
-  
+
   subroutine proton_remnant_momentum_twin_pdf &
        (this, lha_flavor, momentum_fraction,pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -620,7 +620,7 @@ contains
     call this%parton_twin_pdf (lha_flavor, momentum_fraction, pdf)
     pdf = pdf * momentum_fraction
   end subroutine proton_remnant_momentum_twin_pdf
-  
+
   subroutine proton_remnant_momentum_twin_pdf_array &
        (this, momentum_fraction, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -629,8 +629,8 @@ contains
     call this%parton_twin_pdf_array (momentum_fraction, pdf)
     pdf = pdf * momentum_fraction
   end subroutine proton_remnant_momentum_twin_pdf_array
-  
-  
+
+
   subroutine proton_remnant_momentum_kind_pdf (this, GeV_scale, &
        momentum_fraction, lha_flavor, valence_pdf, sea_pdf, twin_pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -656,7 +656,7 @@ contains
     sea_pdf = sea_pdf * this%get_sea_weight()
     call this%momentum_twin_pdf (lha_flavor, momentum_fraction, twin_pdf)
   end subroutine proton_remnant_momentum_kind_pdf
-  
+
   subroutine proton_remnant_momentum_flavor_pdf (this, GeV_scale, &
        momentum_fraction, lha_flavor, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -668,7 +668,7 @@ contains
          lha_flavor, valence_pdf, sea_pdf, twin_pdf)
     pdf = valence_pdf + sea_pdf + twin_pdf
   end subroutine proton_remnant_momentum_flavor_pdf
-  
+
   subroutine proton_remnant_momentum_kind_pdf_array (this, GeV_scale, &
        momentum_fraction, valence_pdf, sea_pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -685,7 +685,7 @@ contains
     sea_pdf = sea_pdf * this%get_sea_weight()
     !!! no twin yet
   end subroutine proton_remnant_momentum_kind_pdf_array
-  
+
   subroutine proton_remnant_momentum_flavor_pdf_array &
        (this, GeV_scale, momentum_fraction, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -697,7 +697,7 @@ contains
     pdf(1:2) = pdf(1:2) + valence_pdf
     !!! no twin yet
   end subroutine proton_remnant_momentum_flavor_pdf_array
-  
+
   subroutine proton_remnant_parton_twin_pdf &
        (this, lha_flavor, momentum_fraction, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -714,7 +714,7 @@ contains
     end do
     pdf = pdf * this%get_twin_weight ()
   end subroutine proton_remnant_parton_twin_pdf
-  
+
   subroutine proton_remnant_parton_twin_pdf_array &
        (this, momentum_fraction, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -730,7 +730,7 @@ contains
        tmp_twin => tmp_twin%next
     end do
   end subroutine proton_remnant_parton_twin_pdf_array
-  
+
   subroutine proton_remnant_parton_kind_pdf (this, GeV_scale, momentum_fraction, &
        lha_flavor, valence_pdf, sea_pdf, twin_pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -743,7 +743,7 @@ contains
     sea_pdf = sea_pdf / momentum_fraction
     twin_pdf = twin_pdf / momentum_fraction
   end subroutine proton_remnant_parton_kind_pdf
-  
+
   subroutine proton_remnant_parton_flavor_pdf (this, GeV_scale, &
        momentum_fraction, lha_flavor, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -754,7 +754,7 @@ contains
          lha_flavor, pdf)
     pdf = pdf / momentum_fraction
   end subroutine proton_remnant_parton_flavor_pdf
-    
+
   subroutine proton_remnant_parton_kind_pdf_array &
        (this, GeV_scale, momentum_fraction, valence_pdf, sea_pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -771,7 +771,7 @@ contains
     sea_pdf = sea_pdf * this%get_sea_weight()
     !!! no twin yet
   end subroutine proton_remnant_parton_kind_pdf_array
-  
+
   subroutine proton_remnant_parton_flavor_pdf_array &
        (this, GeV_scale, momentum_fraction, pdf)
     class(proton_remnant_t), intent(in) :: this
@@ -781,31 +781,31 @@ contains
     real(double), dimension(-6:6) :: twin_pdf
     call msg_error ("proton_remnant_flavor_pdf_array: Not yet implemented.")
   end subroutine proton_remnant_parton_flavor_pdf_array
-  
+
   pure function proton_remnant_get_pdf_int_weight (this) result(weight)
     class(proton_remnant_t), intent(in) :: this
     real(default), dimension(5) :: weight
     weight = this%pdf_int_weight
   end function proton_remnant_get_pdf_int_weight
-  
+
   elemental function proton_remnant_get_valence_down_weight (this) result (weight)
     class(proton_remnant_t), intent(in) :: this
     real(default) :: weight
     weight = this%pdf_int_weight (PDF_VALENCE_DOWN)
   end function proton_remnant_get_valence_down_weight
-  
+
   elemental function proton_remnant_get_valence_up_weight (this) result (weight)
     class(proton_remnant_t), intent(in) :: this
     real(default) :: weight
     weight = this%pdf_int_weight (PDF_VALENCE_UP)
   end function proton_remnant_get_valence_up_weight
-  
+
   pure function proton_remnant_get_valence_weight (this) result (weight)
     class(proton_remnant_t), intent(in) :: this
     real(default), dimension(2) :: weight
     weight = this%pdf_int_weight(3:4)
   end function proton_remnant_get_valence_weight
-  
+
   elemental function proton_remnant_get_gluon_weight (this) result (weight)
     class(proton_remnant_t), intent(in) :: this
     real(default) :: weight
@@ -817,13 +817,13 @@ contains
     real(default) :: weight
     weight = this%pdf_int_weight (PDF_SEA)
   end function proton_remnant_get_sea_weight
-  
+
   elemental function proton_remnant_get_twin_weight (this) result (weight)
     class(proton_remnant_t), intent(in) :: this
     real(default) :: weight
     weight = this%pdf_int_weight (PDF_TWIN)
   end function proton_remnant_get_twin_weight
-  
+
   pure function proton_remnant_get_valence_content (this) result (valence)
     class(proton_remnant_t), intent(in) :: this
     integer, dimension(2) :: valence
@@ -835,7 +835,7 @@ contains
     real(default) :: momentum
     momentum = this%momentum_fraction
   end function proton_remnant_get_momentum_fraction
-  
+
   subroutine proton_remnant_deallocate (this)
     class(proton_remnant_t), intent(inout) :: this
     call this%is_partons%deallocate
@@ -844,19 +844,19 @@ contains
     this%twin_norm = zero
     this%n_twins = 0
   end subroutine proton_remnant_deallocate
-  
+
   subroutine proton_remnant_initialize (this, pdf_norm)
     class(proton_remnant_t), intent(out) :: this
     class(pdfnorm_t),target, intent(in) :: pdf_norm
     this%pdf_norm => pdf_norm
   end subroutine proton_remnant_initialize
-  
+
   subroutine proton_remnant_finalize (this)
     class(proton_remnant_t), intent(inout) :: this
     call this%deallocate ()
     nullify (this%pdf_norm)
   end subroutine proton_remnant_finalize
-  
+
   subroutine proton_remnant_apply_initial_splitting &
        (this, id, pdg_flavor, x, gev_scale, rnd)
     class(proton_remnant_t), intent(inout) :: this
@@ -887,7 +887,7 @@ contains
     end select
     this%momentum_fraction = (one - x)
   end subroutine proton_remnant_apply_initial_splitting
-  
+
   subroutine proton_remnant_reset (this)
     class(proton_remnant_t), intent(inout) :: this
     call this%deallocate ()
@@ -895,7 +895,7 @@ contains
     this%pdf_int_weight = [one, one, one, one, one]
     this%momentum_fraction = one
   end subroutine proton_remnant_reset
-  
+
   subroutine proton_remnant_calculate_weight (this, GeV_scale)
     class(proton_remnant_t), intent(inout) :: this
     real(default), intent(in) :: GeV_scale
@@ -939,7 +939,7 @@ contains
     !         valence_norm,&
     !         this%twin_norm
   end subroutine proton_remnant_calculate_weight
-  
+
   subroutine proton_remnant_push_is_parton &
        (this, id, lha_flavor, momentum_fraction)
     class(proton_remnant_t), intent(inout) :: this
@@ -952,7 +952,7 @@ contains
     tmp_parton%momentum = momentum_fraction
     call this%is_partons%push (tmp_parton)
   end subroutine proton_remnant_push_is_parton
-  
+
   subroutine proton_remnant_push_twin &
        (this, id, lha_flavor, momentum_fraction, gev_scale)
     class(proton_remnant_t), intent(inout) :: this
@@ -962,7 +962,7 @@ contains
     class(muli_parton_t), pointer :: new_is, new_twin
     real(default) :: norm
     ! print *, "proton_remnant_push_twin", momentum_fraction
-    allocate (new_is)    
+    allocate (new_is)
     allocate (new_twin)
     !!! IS initialization
     new_is%id = id
@@ -981,7 +981,7 @@ contains
     call this%twin_partons%push (new_twin)
     call this%calculate_weight (GeV_scale)
   end subroutine proton_remnant_push_twin
-  
+
   subroutine proton_remnant_calculate_twin_norm (this)
     class(proton_remnant_t), intent(inout) :: this
     class(muli_parton_t), pointer :: twin
@@ -997,7 +997,7 @@ contains
        this%twin_norm = zero
     end if
   end subroutine proton_remnant_calculate_twin_norm
-  
+
   subroutine proton_remnant_replace_is_parton &
        (this, old_id, new_id, pdg_f, x_proton, gev_scale)
     class(proton_remnant_t), intent(inout) :: this
@@ -1021,7 +1021,7 @@ contains
        if (lha_flavor == old_is_parton%lha_flavor) then
           !!! has the old initial state parton been a sea quark?
           if (associated (old_is_parton%twin)) then
-             !!! the connection of the old IS parton with its twin was 
+             !!! the connection of the old IS parton with its twin was
              !!!    provisional. We remove it now
              call this%twin_partons%pop (old_is_parton%twin)
              call this%fs_partons%push (old_is_parton%twin)
@@ -1040,32 +1040,32 @@ contains
              call this%push_is_parton (new_id, lha_flavor, momentum_fraction)
              !!! has the old initial state quark got a twin?
              if (associated (old_is_parton%twin)) then
-                !!! we assume that this twin is the second splitting particle. 
-                !!! so the twin becomes a final state particle now and 
+                !!! we assume that this twin is the second splitting particle.
+                !!! so the twin becomes a final state particle now and
                 !!! must be removed from the is stack.
                 call this%remove_twin (-old_id, GeV_scale)
              else
-                !!! the old initial state quark has been a valence quark. 
-                !!! what should we do now? is this splitting sensible at all? 
+                !!! the old initial state quark has been a valence quark.
+                !!! what should we do now? is this splitting sensible at all?
                 !!! we don't know but allow these splittings. The most trivial
                 !!! treatment is to restore the former valence quark.
                 this%valence_content (old_is_parton%lha_flavor) = &
                      this%valence_content (old_is_parton%lha_flavor) + 1
              end if
           else
-             !!! this is a q->qg splitting. the new initial state quark emits 
-             !!! the preceding initial state gluon. yeah, backward evolution is 
-             !!! confusing! the new initial state quark is not part of the 
-             !!! proton remnant any longer. how do we remove a quark from 
-             !!! the remnant? we add a conjugated twin parton and assume, 
+             !!! this is a q->qg splitting. the new initial state quark emits
+             !!! the preceding initial state gluon. yeah, backward evolution is
+             !!! confusing! the new initial state quark is not part of the
+             !!! proton remnant any longer. how do we remove a quark from
+             !!! the remnant? we add a conjugated twin parton and assume,
              !!! that this twin is created in a not yet resolved g->qqbar splitting.
              call this%push_twin (new_id, lha_flavor, momentum_fraction, gev_scale)
           end if
        end if
-       !!! everything is done. what shall we do with the old initial state 
+       !!! everything is done. what shall we do with the old initial state
        !!! parton? we don't need it any more but we store it anyway.
        call this%fs_partons%push (old_is_parton)
-       !!! the new initial state parton has taken away momentum, so we update 
+       !!! the new initial state parton has taken away momentum, so we update
        !!! the remnant momentum fraction.
        this%momentum_fraction = this%momentum_fraction * (1 - &
             momentum_fraction) / (1 - old_is_parton%momentum)
@@ -1082,7 +1082,7 @@ contains
        stop
     end if
   end subroutine proton_remnant_replace_is_parton
-  
+
   subroutine proton_remnant_write_to_marker (this, marker, status)
     class(proton_remnant_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -1093,7 +1093,7 @@ contains
     call marker%mark ("pdf_int_weight", this%pdf_int_weight)
     call marker%mark_end ("proton_remnant_t")
   end subroutine proton_remnant_write_to_marker
-  
+
 
   subroutine proton_remnant_read_from_marker (this, marker, status)
     class(proton_remnant_t), intent(out) :: this
@@ -1106,7 +1106,7 @@ contains
     call marker%pick ("pdf_int_weight", this%pdf_int_weight, status)
     call marker%pick_end ("proton_remnant_t", status=status)
   end subroutine proton_remnant_read_from_marker
-  
+
   subroutine proton_remnant_print_to_unit (this, unit, parents, components, peers)
     class(proton_remnant_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -1121,12 +1121,12 @@ contains
          this%momentum_fraction
     write (unit, "(1x,A,F7.3)") "Twin Norm:            ", this%twin_norm
   end subroutine proton_remnant_print_to_unit
-  
+
   pure subroutine proton_remnant_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="proton_remnant_t")
   end subroutine proton_remnant_get_type
-  
+
   subroutine proton_remnant_gnuplot_momentum_kind_pdf_array &
        (this, momentum_unit, parton_unit, GeV_scale)
     class(proton_remnant_t), intent(in) :: this
@@ -1150,10 +1150,10 @@ contains
        call this%parton_twin_pdf_array (momentum_fraction, twin_pdf)
        write(parton_unit,fmt=* )momentum_fraction, &
             sum(valence_pdf) + sum(sea_pdf) + sum(twin_pdf), &
-            valence_pdf, sea_pdf, twin_pdf       
+            valence_pdf, sea_pdf, twin_pdf
     end do
   end subroutine proton_remnant_gnuplot_momentum_kind_pdf_array
-  
+
   subroutine pp_remnant_write_to_marker (this, marker, status)
     class(pp_remnant_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
@@ -1165,7 +1165,7 @@ contains
     call this%proton(2)%write_to_marker (marker, status)
     call marker%mark_end ("pp_remnant_t")
   end subroutine pp_remnant_write_to_marker
-  
+
   subroutine pp_remnant_read_from_marker (this, marker, status)
     class(pp_remnant_t), intent(out) :: this
     class(marker_t), intent(inout) :: marker
@@ -1178,7 +1178,7 @@ contains
     call this%proton(2)%read_from_marker (marker, status)
     call marker%pick_end ("pp_remnant_t", status=status)
   end subroutine pp_remnant_read_from_marker
-  
+
   subroutine pp_remnant_print_to_unit (this, unit, parents, components, peers)
     class(pp_remnant_t), intent(in) :: this
     integer, intent(in) :: unit
@@ -1198,12 +1198,12 @@ contains
     ! write (unit, "(1x,A,F7.2)") "Total Momentum Fraction:   ", &
     !    this%momentum_fraction
   end subroutine pp_remnant_print_to_unit
-  
+
   pure subroutine pp_remnant_get_type (type)
     character(:), allocatable, intent(out) :: type
     allocate (type, source="pp_remnant_t")
   end subroutine pp_remnant_get_type
-  
+
   subroutine pp_remnant_initialize (this, muli_dir, &
        lhapdf_dir, lhapdf_file, lhapdf_member)
     class(pp_remnant_t), intent(out) :: this
@@ -1233,14 +1233,14 @@ contains
     this%initialized = .true.
     ! call this%print_all ()
   end subroutine pp_remnant_initialize
-  
+
   subroutine pp_remnant_finalize (this)
     class(pp_remnant_t), intent(inout) :: this
     call this%proton(1)%finalize ()
     call this%proton(2)%finalize ()
     deallocate (this%pdf_norm)
   end subroutine pp_remnant_finalize
-  
+
   subroutine pp_remnant_apply_initial_interaction (this, gev_cme, x1, &
        x2, pdg_f1, pdg_f2, n1, n2, gev_scale, rnd1, rnd2)
     class(pp_remnant_t), intent(inout) :: this
@@ -1259,14 +1259,14 @@ contains
             "initialized, call pp_remnant_initialize first!")
     end if
   end subroutine pp_remnant_apply_initial_interaction
- 
+
   subroutine pp_remnant_reset (this)
     class(pp_remnant_t), intent(inout) :: this
     call this%proton(1)%reset ()
     call this%proton(2)%reset ()
     this%X = one
   end subroutine pp_remnant_reset
-  
+
   subroutine pp_remnant_replace_parton (this, proton_id, old_id, &
        new_id, pdg_f, x_proton, gev_scale)
     class(pp_remnant_t), intent(inout) :: this
@@ -1275,7 +1275,7 @@ contains
     call this%proton(proton_id)%replace_is_parton &
          (old_id, new_id, pdg_f, x_proton, gev_scale)
   end subroutine pp_remnant_replace_parton
-  
+
   subroutine pp_remnant_momentum_pdf &
        (this, x_proton, gev2_scale, n, pdg_f, pdf)
     class(pp_remnant_t), intent(in) :: this
@@ -1303,7 +1303,7 @@ contains
        stop
     end if
   end subroutine pp_remnant_momentum_pdf
-  
+
   subroutine pp_remnant_parton_pdf (this, x_proton, gev2_scale, n, pdg_f, pdf)
     class(pp_remnant_t), intent(in) :: this
     real(default), intent(in) :: x_proton, gev2_scale
@@ -1329,7 +1329,7 @@ contains
        stop
     end if
   end subroutine pp_remnant_parton_pdf
-  
+
   subroutine pp_remnant_apply_interaction (this, qcd_2_2)
     class(pp_remnant_t), intent(inout) :: this
     class(qcd_2_2_class), intent(in) :: qcd_2_2
@@ -1436,7 +1436,7 @@ contains
     real(default), intent(in) :: z
     p = (z**2 + (1-z)**2) / two
   end function remnant_dglap_splitting_gqq
-  
+
   pure function remnant_gluon_pdf_approx (x, p) result (g)
     real(default) :: g
     integer, intent(in) :: p
@@ -1496,7 +1496,7 @@ contains
     qc = remnant_norm (xs, p) * remnant_gluon_pdf_approx (xs + x, p) &
          * remnant_dglap_splitting_gqq (xs / (xs+x)) / (xs+x)
   end function remnant_twin_pdf_p
-  
+
   elemental function remnant_twin_momentum_4 (xs) result (p)
     real(default) :: p
     real(default), intent(in) :: xs
@@ -1555,9 +1555,9 @@ contains
        valence_momentum_pdf_sum = [0D0,0D0]
        valence_parton_pdf_sum = [0D0,0D0]
        sea_momentum_pdf_sum = &
-            [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]    
+            [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]
        sea_parton_pdf_sum = &
-            [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]    
+            [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]
        x = xmin + dx / 2D0
        do n = 1, x_grid
           call this%parton_kind_pdf_array (Q, x, valence_pdf, sea_pdf)
@@ -1592,7 +1592,7 @@ contains
        q = q + dq
     end do
   end subroutine gnuplot_integrated_pdf
-    
+
 
 end module muli_remnant
 

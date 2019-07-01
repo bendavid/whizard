@@ -167,13 +167,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process models_ccww_2hdm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_2hdm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'models_ccww_2hdm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -182,6 +175,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_2hdm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_2hdm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'models_ccww_2hdm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -206,13 +206,6 @@ seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process models_ccww_2hdm_ckm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_2hdm_ckm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'models_ccww_2hdm_ckm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -221,6 +214,13 @@ seed = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_2hdm_ckm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_2hdm_ckm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'models_ccww_2hdm_ckm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -245,13 +245,6 @@ seed = 2
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process models_ccww_grav_test:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_grav_test'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'models_ccww_grav_test_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -260,6 +253,13 @@ seed = 2
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_grav_test_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_grav_test'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'models_ccww_grav_test_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -284,13 +284,6 @@ seed = 3
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process models_ccww_hsext:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_hsext'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'models_ccww_hsext_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -299,6 +292,13 @@ seed = 3
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_hsext_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_hsext'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'models_ccww_hsext_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -323,13 +323,6 @@ seed = 4
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process models_ccww_littlest:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_littlest'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 5
-|   Process components:
-|     1: 'models_ccww_littlest_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -338,6 +331,13 @@ seed = 4
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_littlest_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_littlest'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 5
+|   Process components:
+|     1: 'models_ccww_littlest_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -362,13 +362,6 @@ seed = 5
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process models_ccww_littlest_eta:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_littlest_eta'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 6
-|   Process components:
-|     1: 'models_ccww_littlest_eta_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -377,6 +370,13 @@ seed = 5
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_littlest_eta_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_littlest_eta'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 6
+|   Process components:
+|     1: 'models_ccww_littlest_eta_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -401,13 +401,6 @@ seed = 6
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 6
 | Initializing integration for process models_ccww_littlest_tpar:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_littlest_tpar'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 7
-|   Process components:
-|     1: 'models_ccww_littlest_tpar_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -416,6 +409,13 @@ seed = 6
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_littlest_tpar_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_littlest_tpar'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 7
+|   Process components:
+|     1: 'models_ccww_littlest_tpar_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -440,13 +440,6 @@ seed = 7
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 7
 | Initializing integration for process models_ccww_mssm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_mssm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 8
-|   Process components:
-|     1: 'models_ccww_mssm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -455,6 +448,13 @@ seed = 7
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_mssm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_mssm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 8
+|   Process components:
+|     1: 'models_ccww_mssm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -479,13 +479,6 @@ seed = 8
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 8
 | Initializing integration for process models_ccww_mssm_ckm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_mssm_ckm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 9
-|   Process components:
-|     1: 'models_ccww_mssm_ckm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -494,6 +487,13 @@ seed = 8
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_mssm_ckm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_mssm_ckm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 9
+|   Process components:
+|     1: 'models_ccww_mssm_ckm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -518,13 +518,6 @@ seed = 9
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 9
 | Initializing integration for process models_ccww_mssm_grav:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_mssm_grav'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 10
-|   Process components:
-|     1: 'models_ccww_mssm_grav_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -533,6 +526,13 @@ seed = 9
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_mssm_grav_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_mssm_grav'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 10
+|   Process components:
+|     1: 'models_ccww_mssm_grav_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -557,13 +557,6 @@ seed = 10
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 10
 | Initializing integration for process models_ccww_nmssm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_nmssm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 12
-|   Process components:
-|     1: 'models_ccww_nmssm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -572,6 +565,13 @@ seed = 10
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_nmssm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_nmssm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 12
+|   Process components:
+|     1: 'models_ccww_nmssm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -596,13 +596,6 @@ seed = 11
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 11
 | Initializing integration for process models_ccww_nmssm_ckm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_nmssm_ckm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 13
-|   Process components:
-|     1: 'models_ccww_nmssm_ckm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -611,6 +604,13 @@ seed = 11
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_nmssm_ckm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_nmssm_ckm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 13
+|   Process components:
+|     1: 'models_ccww_nmssm_ckm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -635,13 +635,6 @@ seed = 12
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 12
 | Initializing integration for process models_ccww_nmssm_hgg:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_nmssm_hgg'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 14
-|   Process components:
-|     1: 'models_ccww_nmssm_hgg_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -650,6 +643,13 @@ seed = 12
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_nmssm_hgg_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_nmssm_hgg'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 14
+|   Process components:
+|     1: 'models_ccww_nmssm_hgg_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -674,13 +674,6 @@ seed = 13
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 13
 | Initializing integration for process models_ccww_psssm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_psssm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 15
-|   Process components:
-|     1: 'models_ccww_psssm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -689,6 +682,13 @@ seed = 13
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_psssm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_psssm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 15
+|   Process components:
+|     1: 'models_ccww_psssm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -713,13 +713,6 @@ seed = 14
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 14
 | Initializing integration for process models_uudd_qcd:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_uudd_qcd'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 16
-|   Process components:
-|     1: 'models_uudd_qcd_i1':   u, ubar => d, dbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   u     (mass = 0.0000000E+00 GeV)
@@ -728,6 +721,13 @@ seed = 14
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_uudd_qcd_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_uudd_qcd'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 16
+|   Process components:
+|     1: 'models_uudd_qcd_i1':   u, ubar => d, dbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -752,13 +752,6 @@ seed = 15
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 15
 | Initializing integration for process models_eemm_qed:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_eemm_qed'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 17
-|   Process components:
-|     1: 'models_eemm_qed_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1100000E-04 GeV)
@@ -767,6 +760,13 @@ seed = 15
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_eemm_qed_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_eemm_qed'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 17
+|   Process components:
+|     1: 'models_eemm_qed_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -791,13 +791,6 @@ seed = 16
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 16
 | Initializing integration for process models_ccww_sm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 18
-|   Process components:
-|     1: 'models_ccww_sm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -806,6 +799,13 @@ seed = 16
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 18
+|   Process components:
+|     1: 'models_ccww_sm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -830,13 +830,6 @@ seed = 17
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 17
 | Initializing integration for process models_ccww_sm_ckm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_ckm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 19
-|   Process components:
-|     1: 'models_ccww_sm_ckm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -845,6 +838,13 @@ seed = 17
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_ckm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_ckm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 19
+|   Process components:
+|     1: 'models_ccww_sm_ckm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -869,13 +869,6 @@ seed = 18
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 18
 | Initializing integration for process models_ccww_sm_ac:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_ac'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 20
-|   Process components:
-|     1: 'models_ccww_sm_ac_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -884,6 +877,13 @@ seed = 18
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_ac_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_ac'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 20
+|   Process components:
+|     1: 'models_ccww_sm_ac_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -908,13 +908,6 @@ seed = 19
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 19
 | Initializing integration for process models_ccww_sm_ac_ckm:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_ac_ckm'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 21
-|   Process components:
-|     1: 'models_ccww_sm_ac_ckm_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -923,6 +916,13 @@ seed = 19
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_ac_ckm_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_ac_ckm'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 21
+|   Process components:
+|     1: 'models_ccww_sm_ac_ckm_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -947,13 +947,6 @@ seed = 20
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 20
 | Initializing integration for process models_ccww_sm_dim6:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_dim6'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 22
-|   Process components:
-|     1: 'models_ccww_sm_dim6_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -962,6 +955,13 @@ seed = 20
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_dim6_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_dim6'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 22
+|   Process components:
+|     1: 'models_ccww_sm_dim6_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -986,13 +986,6 @@ seed = 21
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 21
 | Initializing integration for process models_wwww_sm_rx:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_sm_rx'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 23
-|   Process components:
-|     1: 'models_wwww_sm_rx_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1001,6 +994,13 @@ seed = 21
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_sm_rx_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_sm_rx'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 23
+|   Process components:
+|     1: 'models_wwww_sm_rx_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 2 groves.
 | Phase space: Using 4 equivalences between channels.
@@ -1025,13 +1025,6 @@ seed = 22
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 22
 | Initializing integration for process models_wwww_sm_ul:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_sm_ul'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 24
-|   Process components:
-|     1: 'models_wwww_sm_ul_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1040,6 +1033,13 @@ seed = 22
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_sm_ul_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_sm_ul'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 24
+|   Process components:
+|     1: 'models_wwww_sm_ul_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 4 channels, 2 dimensions
 | Phase space: found 4 channels, collected in 2 groves.
 | Phase space: Using 4 equivalences between channels.
@@ -1064,13 +1064,6 @@ seed = 23
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 23
 | Initializing integration for process models_wwww_noh_rx:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_noh_rx'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 25
-|   Process components:
-|     1: 'models_wwww_noh_rx_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1079,6 +1072,13 @@ seed = 23
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_noh_rx_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_noh_rx'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 25
+|   Process components:
+|     1: 'models_wwww_noh_rx_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -1103,13 +1103,6 @@ seed = 24
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 24
 | Initializing integration for process models_ccww_sm_top:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_top'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 26
-|   Process components:
-|     1: 'models_ccww_sm_top_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1118,6 +1111,13 @@ seed = 24
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_top_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_top'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 26
+|   Process components:
+|     1: 'models_ccww_sm_top_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1142,13 +1142,6 @@ seed = 25
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 25
 | Initializing integration for process models_ccww_sm_top_anom:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_top_anom'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 27
-|   Process components:
-|     1: 'models_ccww_sm_top_anom_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1157,6 +1150,13 @@ seed = 25
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_top_anom_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_top_anom'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 27
+|   Process components:
+|     1: 'models_ccww_sm_top_anom_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1181,13 +1181,6 @@ seed = 26
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 26
 | Initializing integration for process models_ccww_sm_higgs:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_higgs'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 28
-|   Process components:
-|     1: 'models_ccww_sm_higgs_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1196,6 +1189,13 @@ seed = 26
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_higgs_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_higgs'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 28
+|   Process components:
+|     1: 'models_ccww_sm_higgs_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1221,13 +1221,6 @@ seed = 27
 | RNG: Setting seed for random-number generator to 27
 | Initializing integration for process models_ccww_sm_tt_thresh:
 | TESTING ONLY: Skip threshold initialization and use tree-level SM.
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_sm_tt_thresh'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 29
-|   Process components:
-|     1: 'models_ccww_sm_tt_thresh_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1236,6 +1229,13 @@ seed = 27
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_sm_tt_thresh_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_tt_thresh'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 29
+|   Process components:
+|     1: 'models_ccww_sm_tt_thresh_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1260,13 +1260,6 @@ seed = 28
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 28
 | Initializing integration for process models_ccww_simplest:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_simplest'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 30
-|   Process components:
-|     1: 'models_ccww_simplest_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -1275,6 +1268,13 @@ seed = 28
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_simplest_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_simplest'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 30
+|   Process components:
+|     1: 'models_ccww_simplest_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1299,13 +1299,6 @@ seed = 29
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 29
 | Initializing integration for process models_ccww_simplest_univ:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_simplest_univ'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 31
-|   Process components:
-|     1: 'models_ccww_simplest_univ_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -1314,6 +1307,13 @@ seed = 29
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_simplest_univ_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_simplest_univ'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 31
+|   Process components:
+|     1: 'models_ccww_simplest_univ_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1338,13 +1338,6 @@ seed = 30
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 30
 | Initializing integration for process models_ccww_template:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_template'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 32
-|   Process components:
-|     1: 'models_ccww_template_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1353,6 +1346,13 @@ seed = 30
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_template_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_template'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 32
+|   Process components:
+|     1: 'models_ccww_template_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1377,13 +1377,6 @@ seed = 31
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 31
 | Initializing integration for process models_ccww_threeshl:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_threeshl'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 33
-|   Process components:
-|     1: 'models_ccww_threeshl_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -1392,6 +1385,13 @@ seed = 31
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_threeshl_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_threeshl'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 33
+|   Process components:
+|     1: 'models_ccww_threeshl_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 3 groves.
 | Phase space: Using 5 equivalences between channels.
@@ -1416,13 +1416,6 @@ seed = 32
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 32
 | Initializing integration for process models_ccww_threeshl_nohf:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_threeshl_nohf'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 34
-|   Process components:
-|     1: 'models_ccww_threeshl_nohf_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -1431,6 +1424,13 @@ seed = 32
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_threeshl_nohf_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_threeshl_nohf'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 34
+|   Process components:
+|     1: 'models_ccww_threeshl_nohf_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1455,13 +1455,6 @@ seed = 33
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 33
 | Initializing integration for process models_ccww_ued:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_ued'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 35
-|   Process components:
-|     1: 'models_ccww_ued_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2500000E+00 GeV)
@@ -1470,6 +1463,13 @@ seed = 33
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_ued_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_ued'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 35
+|   Process components:
+|     1: 'models_ccww_ued_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1494,13 +1494,6 @@ seed = 34
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 34
 | Initializing integration for process models_wwww_ssc:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_ssc'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 36
-|   Process components:
-|     1: 'models_wwww_ssc_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1509,6 +1502,13 @@ seed = 34
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_ssc_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_ssc'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 36
+|   Process components:
+|     1: 'models_wwww_ssc_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 6 channels, 2 dimensions
 | Phase space: found 6 channels, collected in 2 groves.
 | Phase space: Using 10 equivalences between channels.
@@ -1533,13 +1533,6 @@ seed = 35
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 35
 | Initializing integration for process models_wwww_ssc_2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_ssc_2'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 37
-|   Process components:
-|     1: 'models_wwww_ssc_2_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1548,6 +1541,13 @@ seed = 35
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_ssc_2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_ssc_2'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 37
+|   Process components:
+|     1: 'models_wwww_ssc_2_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 6 channels, 2 dimensions
 | Phase space: found 6 channels, collected in 2 groves.
 | Phase space: Using 10 equivalences between channels.
@@ -1572,13 +1572,6 @@ seed = 36
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 36
 | Initializing integration for process models_wwww_ssc_altt:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_ssc_altt'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 38
-|   Process components:
-|     1: 'models_wwww_ssc_altt_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1587,6 +1580,13 @@ seed = 36
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_ssc_altt_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_ssc_altt'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 38
+|   Process components:
+|     1: 'models_wwww_ssc_altt_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 6 channels, 2 dimensions
 | Phase space: found 6 channels, collected in 2 groves.
 | Phase space: Using 10 equivalences between channels.
@@ -1611,13 +1611,6 @@ seed = 37
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 37
 | Initializing integration for process models_wwww_alth:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_wwww_alth'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 39
-|   Process components:
-|     1: 'models_wwww_alth_i1':   W+, W- => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   W+  (mass = 8.0419000E+01 GeV)
@@ -1626,6 +1619,13 @@ seed = 37
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_wwww_alth_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_wwww_alth'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 39
+|   Process components:
+|     1: 'models_wwww_alth_i1':   W+, W- => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 6 channels, 2 dimensions
 | Phase space: found 6 channels, collected in 2 groves.
 | Phase space: Using 10 equivalences between channels.
@@ -1650,13 +1650,6 @@ seed = 38
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 38
 | Initializing integration for process models_ccww_xdim:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_xdim'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 40
-|   Process components:
-|     1: 'models_ccww_xdim_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1665,6 +1658,13 @@ seed = 38
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_xdim_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_xdim'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 40
+|   Process components:
+|     1: 'models_ccww_xdim_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1689,13 +1689,6 @@ seed = 39
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 39
 | Initializing integration for process models_ccww_wzw:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_wzw'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 41
-|   Process components:
-|     1: 'models_ccww_wzw_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1704,6 +1697,13 @@ seed = 39
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_wzw_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_wzw'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 41
+|   Process components:
+|     1: 'models_ccww_wzw_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -1728,13 +1728,6 @@ seed = 40
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 40
 | Initializing integration for process models_ccww_zprime:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_zprime'
-|   Library name  = 'model_test_1_lib'
-|   Process index = 42
-|   Process components:
-|     1: 'models_ccww_zprime_i1':   c, cbar => W+, W- [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -1743,6 +1736,13 @@ seed = 40
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'models_ccww_zprime_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_zprime'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 42
+|   Process components:
+|     1: 'models_ccww_zprime_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.

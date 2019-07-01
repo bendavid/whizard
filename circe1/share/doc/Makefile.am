@@ -2,7 +2,7 @@
 # $Id: Makefile.am 317 2010-04-18 00:31:03Z ohl $
 ########################################################################
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -73,7 +73,7 @@ if NOWEB_AVAILABLE
 circe1.tex: $(WEBS)
 	$(NOWEAVE) -filter ./tex-comments -delay -index \
 	    `for i in  $^; do case $$i in *.nw) echo $$i;; esac done` \
-	  | $(CPIF) $@
+	  > $@
 
 circe1.tex: tex-comments
 

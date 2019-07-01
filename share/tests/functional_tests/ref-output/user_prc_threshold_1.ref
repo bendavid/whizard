@@ -56,13 +56,6 @@ $restrictions = "3+5~t && 4+6~tbar"
 |  33.3%
 |  66.7%
 | 100.0%
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p1'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'user_prc_threshold_1_p1_i1':   e-, e+ => W+, W-, b, bbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -71,23 +64,30 @@ $restrictions = "3+5~t && 4+6~tbar"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_p1'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_prc_threshold_1_p1_i1':   e-, e+ => W+, W-, b, bbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
-| Phase space: found 15 channels, collected in 5 groves.
+| Phase space: found 15 channels, collected in 6 groves.
 | Phase space: Using 15 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p1'
 | Integrate: iterations = 1:1000
-| Integrator: 5 chains, 15 channels, 8 dimensions
+| Integrator: 6 chains, 15 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.693E+02   6.86E+01    8.92    2.81    10.6
+   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
 |-----------------------------------------------------------------------------|
-   1        990     7.693E+02   6.86E+01    8.92    2.81    10.6
+   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
 |=============================================================================|
 seed = 0
 | Process library 'user_prc_threshold_1_lib': unloading
@@ -120,13 +120,6 @@ seed = 0
 | 
 | Opening grid file: SM_tt_threshold.grid
 | Threshold setup unchanged: reusing existing threshold grid.
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p2'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'user_prc_threshold_1_p2_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -135,6 +128,13 @@ seed = 0
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_p2'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'user_prc_threshold_1_p2_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -173,13 +173,6 @@ error_threshold =  1.00000E-04
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process user_prc_threshold_1_p3:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p3'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'user_prc_threshold_1_p3_i1':   e-, e+ => mu-, mu+ [dummy]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -188,6 +181,13 @@ error_threshold =  1.00000E-04
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p3_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_p3'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'user_prc_threshold_1_p3_i1':   e-, e+ => mu-, mu+ [dummy]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -240,13 +240,6 @@ $method = "threshold"
 | 
 | Opening grid file: SM_tt_threshold.grid
 | Threshold setup unchanged: reusing existing threshold grid.
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p4'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'user_prc_threshold_1_p4_i1':   e-, e+ => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -255,23 +248,30 @@ $method = "threshold"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p4_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_p4'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'user_prc_threshold_1_p4_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+| ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
-| Phase space: found 15 channels, collected in 5 groves.
+| Phase space: found 15 channels, collected in 6 groves.
 | Phase space: Using 15 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p4'
 | Integrate: iterations = 1:1000
-| Integrator: 5 chains, 15 channels, 8 dimensions
+| Integrator: 6 chains, 15 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.693E+02   6.86E+01    8.92    2.81    10.6
+   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
 |-----------------------------------------------------------------------------|
-   1        990     7.693E+02   6.86E+01    8.92    2.81    10.6
+   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
 |=============================================================================|
 tolerance =  1.00000E-04
 | expect: success
@@ -309,13 +309,6 @@ $method = "threshold"
 | 
 | Opening grid file: SM_tt_threshold.grid
 | Threshold setup unchanged: reusing existing threshold grid.
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p5'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 5
-|   Process components:
-|     1: 'user_prc_threshold_1_p5_i1':   e-, e+ => t, tbar [threshold]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -324,6 +317,13 @@ $method = "threshold"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p5_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_p5'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 5
+|   Process components:
+|     1: 'user_prc_threshold_1_p5_i1':   e-, e+ => t, tbar [threshold]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -380,13 +380,6 @@ $born_me_method = "threshold"
 | 
 | Opening grid file: SM_tt_threshold.grid
 | Threshold setup unchanged: reusing existing threshold grid.
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p6'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 6
-|   Process components:
-|     1: 'user_prc_threshold_1_p6_i1':   e-, e+ => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -395,23 +388,30 @@ $born_me_method = "threshold"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p6_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_p6'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 6
+|   Process components:
+|     1: 'user_prc_threshold_1_p6_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+| ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
-| Phase space: found 15 channels, collected in 5 groves.
+| Phase space: found 15 channels, collected in 6 groves.
 | Phase space: Using 15 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p6'
 | Integrate: iterations = 1:1000
-| Integrator: 5 chains, 15 channels, 8 dimensions
+| Integrator: 6 chains, 15 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 1000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.693E+02   6.86E+01    8.92    2.81    10.6
+   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
 |-----------------------------------------------------------------------------|
-   1        990     7.693E+02   6.86E+01    8.92    2.81    10.6
+   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
 |=============================================================================|
 tolerance =  1.00000E-04
 | expect: success

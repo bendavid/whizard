@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module eio_lcio
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use string_utils
@@ -54,6 +54,7 @@ module eio_lcio
   type, extends (eio_t) :: eio_lcio_t
      logical :: writing = .false.
      logical :: reading = .false.
+     type(event_sample_data_t) :: data
      logical :: recover_beams = .false.
      logical :: use_alpha_s_from_file = .false.
      logical :: use_scale_from_file = .false.
@@ -76,18 +77,18 @@ module eio_lcio
      procedure :: input_event => eio_lcio_input_event
      procedure :: skip => eio_lcio_skip
   end type eio_lcio_t
-  
+
 
 contains
-  
+
   subroutine eio_lcio_set_parameters &
        (eio, recover_beams, use_alpha_s_from_file, use_scale_from_file, &
        extension)
     class(eio_lcio_t), intent(inout) :: eio
-    logical, intent(in), optional :: recover_beams 
+    logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
-    type(string_t), intent(in), optional :: extension    
+    type(string_t), intent(in), optional :: extension
     if (present (recover_beams))  eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
          eio%use_alpha_s_from_file = use_alpha_s_from_file
@@ -99,7 +100,7 @@ contains
        eio%extension = "slcio"
     end if
   end subroutine eio_lcio_set_parameters
-  
+
   subroutine eio_lcio_write (object, unit)
     class(eio_lcio_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -125,9 +126,9 @@ contains
        do i = 1, size (object%proc_num_id)
           write (u, "(5x,I0,': ',I0)")  i, object%proc_num_id(i)
        end do
-    end if    
+    end if
   end subroutine eio_lcio_write
-  
+
   subroutine eio_lcio_final (object)
     class(eio_lcio_t), intent(inout) :: object
     if (allocated (object%proc_num_id))  deallocate (object%proc_num_id)
@@ -145,7 +146,7 @@ contains
        object%reading = .false.
     end if
   end subroutine eio_lcio_final
-  
+
   subroutine eio_lcio_split_out (eio)
     class(eio_lcio_t), intent(inout) :: eio
     if (eio%split) then
@@ -155,10 +156,10 @@ contains
             char (eio%filename), "'"
        call msg_message ()
        call lcio_writer_close (eio%lcio_writer)
-       call lcio_writer_open_out (eio%lcio_writer, eio%filename)       
+       call lcio_writer_open_out (eio%lcio_writer, eio%filename)
     end if
   end subroutine eio_lcio_split_out
-  
+
   subroutine eio_lcio_common_init (eio, sample, data, extension)
     class(eio_lcio_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -166,8 +167,9 @@ contains
     type(event_sample_data_t), intent(in), optional :: data
     if (.not. present (data)) &
          call msg_bug ("LCIO initialization: missing data")
+    eio%data = data
     if (data%n_beam /= 2) &
-         call msg_fatal ("LCIO: defined for scattering processes only")    
+         call msg_fatal ("LCIO: defined for scattering processes only")
     if (data%unweighted) then
        select case (data%norm_mode)
        case (NORM_UNIT)
@@ -175,23 +177,23 @@ contains
             ("LCIO: normalization for unweighted events must be '1'")
        end select
     else
-       call msg_fatal ("LCIO: events must be unweighted")    
+       call msg_fatal ("LCIO: events must be unweighted")
     end if
-    eio%sample = sample    
+    eio%sample = sample
     if (present (extension)) then
        eio%extension = extension
     end if
     call eio%set_filename ()
     allocate (eio%proc_num_id (data%n_proc), source = data%proc_num_id)
   end subroutine eio_lcio_common_init
-  
+
   subroutine eio_lcio_init_out (eio, sample, data, success, extension)
     class(eio_lcio_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
     type(string_t), intent(in), optional :: extension
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
-    call eio%set_splitting (data)    
+    call eio%set_splitting (data)
     call eio%common_init (sample, data, extension)
     write (msg_buffer, "(A,A,A)")  "Events: writing to LCIO file '", &
          char (eio%filename), "'"
@@ -202,7 +204,7 @@ contains
     call lcio_run_header_write (eio%lcio_writer, eio%lcio_run_hdr)
     if (present (success))  success = .true.
   end subroutine eio_lcio_init_out
-    
+
   subroutine eio_lcio_init_in (eio, sample, data, success, extension)
     class(eio_lcio_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -221,14 +223,14 @@ contains
     call lcio_open_file (eio%lcio_reader, eio%filename)
     if (present (success))  success = .true.
   end subroutine eio_lcio_init_in
-    
+
   subroutine eio_lcio_switch_inout (eio, success)
     class(eio_lcio_t), intent(inout) :: eio
     logical, intent(out), optional :: success
     call msg_bug ("LCIO: in-out switch not supported")
     if (present (success))  success = .false.
   end subroutine eio_lcio_switch_inout
-  
+
   subroutine eio_lcio_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_lcio_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -244,8 +246,17 @@ contains
              proc_id = eio%proc_num_id (i_prc), &
              event_id = event%get_index ())
        call lcio_event_from_particle_set (eio%lcio_event, pset_ptr)
+       call lcio_event_set_sqrts (eio%lcio_event, event%get_sqrts ())
        call lcio_event_set_scale (eio%lcio_event, event%get_fac_scale ())
        call lcio_event_set_alpha_qcd (eio%lcio_event, event%get_alpha_s ())
+       call lcio_event_set_xsec (eio%lcio_event, eio%data%cross_section(i_prc), &
+            eio%data%error(i_prc))
+       call lcio_event_set_polarization (eio%lcio_event, &
+            event%get_polarization ())
+       call lcio_event_set_beam_file (eio%lcio_event, &
+            event%get_beam_file ())
+       call lcio_event_set_process_name (eio%lcio_event, &
+            event%get_process_name ())
        call lcio_event_write (eio%lcio_writer, eio%lcio_event)
        call lcio_event_final (eio%lcio_event)
     else
@@ -262,11 +273,11 @@ contains
     integer :: i, proc_num_id
     iostat = 0
     call lcio_read_event (eio%lcio_reader, eio%lcio_event, ok)
-    if (.not. ok) then 
-       iostat = -1 
+    if (.not. ok) then
+       iostat = -1
        return
     end if
-    proc_num_id = lcio_event_get_process_id (eio%lcio_event)    
+    proc_num_id = lcio_event_get_process_id (eio%lcio_event)
     i_prc = 0
     FIND_I_PRC: do i = 1, size (eio%proc_num_id)
        if (eio%proc_num_id(i) == proc_num_id) then
@@ -293,7 +304,7 @@ contains
     call lcio_to_event (event, eio%lcio_event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
-         use_scale = eio%use_scale_from_file) 
+         use_scale = eio%use_scale_from_file)
     call lcio_event_final (eio%lcio_event)
   end subroutine eio_lcio_input_event
 

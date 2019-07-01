@@ -168,6 +168,9 @@ AmplitudeType            Tree
 AmplitudeType            ccTree
  11 -11 ->  24 -24   5  -5
 
+AmplitudeType            sctree_polvect
+ 11 -11 ->  24 -24   5  -5
+
 ------------------------------------------------------------------------
 OLP-File content for real matrix elements
 ------------------------------------------------------------------------

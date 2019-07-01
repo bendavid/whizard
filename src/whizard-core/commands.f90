@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -38,7 +38,7 @@ module commands
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use string_utils, only: lower_case
+  use string_utils, only: lower_case, split_string
   use format_utils, only: write_indent
   use format_defs, only: FMT_14, FMT_19
   use diagnostics
@@ -140,7 +140,7 @@ module commands
 
   type, extends (command_t) :: cmd_nlo_t
     private
-    type(parse_node_p), dimension(3) :: pn_components
+    integer, dimension(:), allocatable :: nlo_component
   contains
       procedure :: write => cmd_nlo_write
       procedure :: compile => cmd_nlo_compile
@@ -1054,41 +1054,30 @@ contains
     integer, dimension(:), allocatable :: i_term
     integer :: i, j, n_in, n_out, n_terms, n_components
     logical :: nlo_fixed_order
+    logical :: qcd_corr, qed_corr
     type(string_t), dimension(:), allocatable :: prt_in_nlo, prt_out_nlo
     type(radiation_generator_t) :: radiation_generator
-    type(pdg_list_t) :: pl_in, pl_out
+    type(pdg_list_t) :: pl_in, pl_out, pl_excluded_gauge_splittings
     type(string_t) :: born_me_method
     type(string_t) :: real_tree_me_method
     type(string_t) :: loop_me_method
     type(string_t) :: correlation_me_method
+    type(string_t) :: soft_mismatch_me_method
+    type(string_t) :: dglap_me_method
     integer, dimension(:), allocatable :: i_list
-    logical :: powheg_use_damping
+    logical :: use_real_finite
     logical :: gks_active
     logical :: initial_state_colored
     logical :: has_structure_functions
-    logical :: requires_pdf
     integer :: n_components_extra
     integer :: gks_multiplicity
     integer :: n_emitters
     integer, dimension(:), allocatable :: emitters
     integer :: n_components_init
     integer :: alpha_power, alphas_power
-    logical :: requires_soft_mismatch
+    logical :: requires_soft_mismatch, requires_dglap_remnants
     call msg_debug (D_CORE, "cmd_process_execute")
     var_list => cmd%local%get_var_list_ptr ()
-
-    nlo_fixed_order = cmd%local%nlo_fixed_order
-    powheg_use_damping = &
-       var_list%get_lval (var_str ('?powheg_use_damping'))
-    gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
-    gks_active = gks_multiplicity > 2
-    born_me_method = var_list%get_sval (var_str ("$born_me_method"))
-    real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-    loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
-    correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-    call check_nlo_options (cmd%local)
-    if (any (cmd%local%selected_nlo_parts))  &
-       call override_local_me_method (born_me_method)
 
     n_in = size (cmd%pn_pdg_in)
     allocate (prt_in (n_in), prt_spec_in (n_in))
@@ -1102,8 +1091,27 @@ contains
          (prt_expr_out, cmd%pn_out, var_list, cmd%local%model)
     call prt_expr_out%expand ()
     call scan_components ()
+
+    nlo_fixed_order = cmd%local%nlo_fixed_order
+    gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
+    gks_active = gks_multiplicity > 2
+    call check_for_nlo_corrections ()
+
+    born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+    use_real_finite = var_list%get_lval (var_str ('?nlo_use_real_partition'))
+    if (nlo_fixed_order) then
+       real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+       loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
+       correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
+       soft_mismatch_me_method = var_list%get_sval (var_str ("$soft_mismatch_me_method"))
+       dglap_me_method = var_list%get_sval (var_str ("$dglap_me_method"))
+       call check_nlo_options (cmd%local)
+    end if
+    if (any (cmd%local%selected_nlo_parts))  &
+         call override_local_me_method (born_me_method)
+
     call determine_needed_components ()
-    call prc_config%init (cmd%id, n_in, n_components_init, cmd%local)
+    call prc_config%init (cmd%id, n_in, n_components_init, cmd%local, nlo_fixed_order)
 
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
@@ -1119,31 +1127,104 @@ contains
       call var_list%set_string (var_str ("$method"), me_method, is_known=.true.)
     end subroutine override_local_me_method
 
+    elemental function is_threshold (method)
+      logical :: is_threshold
+      type(string_t), intent(in) :: method
+      is_threshold = method == var_str ("threshold")
+    end function is_threshold
+
+    subroutine check_threshold_consistency ()
+      if (nlo_fixed_order .and. is_threshold (born_me_method)) then
+         if (.not. (is_threshold (real_tree_me_method) .and. is_threshold (loop_me_method) &
+              .and. is_threshold (correlation_me_method))) then
+              print *, 'born: ', char (born_me_method)
+              print *, 'real: ', char (real_tree_me_method)
+              print *, 'loop: ', char (loop_me_method)
+              print *, 'correlation: ', char (correlation_me_method)
+              call msg_fatal ("Inconsistent methods: All components need to be threshold")
+         end if
+      end if
+    end subroutine check_threshold_consistency
+
+    subroutine check_for_nlo_corrections ()
+      type(string_t) :: nlo_correction_type
+      if (nlo_fixed_order .or. gks_active) then
+         nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
+         select case (char(nlo_correction_type))
+         case ("QCD")
+            qcd_corr = .true.; qed_corr = .false.
+         case ("QED")
+            qcd_corr = .false.; qed_corr = .true.
+         case ("Full")
+            qcd_corr =.true.; qed_corr = .true.
+         case default
+            call msg_fatal ("Invalid NLO correction type! Valid inputs are: QCD, QED, Full (default: QCD)")
+         end select
+         call check_for_excluded_gauge_boson_splitting_partners ()
+         call setup_radiation_generator ()
+      end if
+      if (nlo_fixed_order) then
+         call radiation_generator%find_splittings ()
+         nlo_fixed_order = radiation_generator%contains_emissions ()
+         if (.not. nlo_fixed_order) call msg_warning &
+              (arr = [var_str ("No NLO corrections found for process ") // cmd%id // var_str("."), &
+              var_str ("Proceed with usual leading-order integration and simulation")])
+      end if
+    end subroutine check_for_nlo_corrections
+
+    subroutine check_for_excluded_gauge_boson_splitting_partners ()
+      type(string_t) :: str_excluded_partners
+      type(string_t), dimension(:), allocatable :: excluded_partners
+      type(pdg_list_t) :: pl_tmp, pl_anti
+      integer :: i, n_anti
+      str_excluded_partners = var_list%get_sval &
+           (var_str ("$exclude_gauge_splittings"))
+      if (str_excluded_partners == "") then
+         return
+      else
+         call split_string (str_excluded_partners, &
+              var_str (":"), excluded_partners)
+         call pl_tmp%init (size (excluded_partners))
+         do i = 1, size (excluded_partners)
+            call pl_tmp%set (i, &
+                 cmd%local%model%get_pdg (excluded_partners(i), .true.))
+         end do
+         call pl_tmp%create_antiparticles (pl_anti, n_anti)
+         call pl_excluded_gauge_splittings%init (pl_tmp%get_size () + n_anti)
+         do i = 1, pl_tmp%get_size ()
+            call pl_excluded_gauge_splittings%set (i, pl_tmp%get(i))
+         end do
+         do i = 1, n_anti
+            j = i + pl_tmp%get_size ()
+            call pl_excluded_gauge_splittings%set (j, pl_anti%get(i))
+         end do
+      end if
+    end subroutine check_for_excluded_gauge_boson_splitting_partners
+
     subroutine determine_needed_components ()
       type(string_t) :: fks_method
-      if (nlo_fixed_order .or. gks_active) &
-           call setup_radiation_generator ()
 
-      if (powheg_use_damping) then
+      if (use_real_finite) then
          call radiation_generator%get_emitter_indices (emitters)
          n_emitters = size (emitters)
       end if
 
       if (nlo_fixed_order) then
          fks_method = var_list%get_sval (var_str ('$fks_mapping_type'))
+         call check_threshold_consistency ()
          requires_soft_mismatch = fks_method == var_str ('resonances')
          n_components_extra = needed_extra_components (initial_state_colored, &
               has_structure_functions, requires_soft_mismatch, &
-              powheg_use_damping, n_emitters)
+              use_real_finite, n_emitters)
          allocate (i_list (n_components_extra))
       else if (gks_active) then
-         call radiation_generator%generate_multiple (gks_multiplicity)
+         call radiation_generator%generate_multiple (gks_multiplicity, cmd%local%model)
          n_components_extra = radiation_generator%get_n_gks_states ()
       end if
 
-      if (nlo_fixed_order .and. .not. powheg_use_damping) then
+      if (nlo_fixed_order .and. .not. use_real_finite) then
          n_components_init = n_components * n_components_extra
-      else if (nlo_fixed_order .and. powheg_use_damping) then
+      else if (nlo_fixed_order .and. use_real_finite) then
          n_components_init = n_components * n_components_extra
       else if (gks_active) then
          n_components_init = n_components * (n_components_extra + 1)
@@ -1155,15 +1236,15 @@ contains
     subroutine setup_radiation_generator ()
       call split_prt (prt_spec_in, n_in, pl_in)
       call split_prt (prt_spec_out, n_out, pl_out)
-      call radiation_generator%init (pl_in, pl_out, qcd = .true., qed = .false.)
+      call radiation_generator%init (pl_in, pl_out, &
+           pl_excluded_gauge_splittings, qcd = qcd_corr, qed = qed_corr)
       call radiation_generator%set_n (n_in, n_out, 0)
       initial_state_colored = pdg_in%has_colored_particles()
       has_structure_functions = global%beam_structure%get_n_record () > 0
-      requires_pdf = initial_state_colored .and. has_structure_functions
-      if (requires_pdf)  call radiation_generator%set_initial_state_emissions ()
+      requires_dglap_remnants = initial_state_colored .and. has_structure_functions
+      if (requires_dglap_remnants)  call radiation_generator%set_initial_state_emissions ()
       call radiation_generator%set_constraints (.false., .false., .true., .true.)
-      call radiation_generator%set_radiation_model (cmd%local%radiation_model)
-      call radiation_generator%setup_if_table ()
+      call radiation_generator%setup_if_table (cmd%local%model)
     end subroutine setup_radiation_generator
 
     subroutine scan_components ()
@@ -1231,8 +1312,8 @@ contains
          if (nlo_fixed_order) then
             associate (selected_nlo_parts => cmd%local%selected_nlo_parts)
                call set_component_list (i_list, i, n_components, &
-                    requires_pdf, requires_soft_mismatch, &
-                    powheg_use_damping, n_emitters)
+                    requires_dglap_remnants, requires_soft_mismatch, &
+                    use_real_finite, n_emitters)
 
                call override_local_me_method (born_me_method)
                i_comp = i
@@ -1242,7 +1323,8 @@ contains
                     cmd%local%model, var_list, BORN, &
                     can_be_integrated = selected_nlo_parts (BORN))
 
-               call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
+               call radiation_generator%generate_real_particle_strings &
+                    (prt_in_nlo, prt_out_nlo)
                call override_local_me_method (real_tree_me_method)
                i_comp = n_components + i
                call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
@@ -1267,7 +1349,7 @@ contains
                     cmd%local%model, var_list, NLO_SUBTRACTION, &
                     can_be_integrated = selected_nlo_parts (NLO_SUBTRACTION))
 
-               if (powheg_use_damping) then
+               if (use_real_finite) then
                   call override_local_me_method (real_tree_me_method)
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
@@ -1277,9 +1359,8 @@ contains
                        can_be_integrated = selected_nlo_parts (NLO_REAL))
                end if
 
-               if (requires_pdf) then
-                  ! TODO: (bcn 2016-01-26) why only omega here?
-                  call override_local_me_method (var_str ("omega"))
+               if (requires_dglap_remnants) then
+                  call override_local_me_method (dglap_me_method)
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                   call prc_config%setup_component (i_comp, &
@@ -1289,19 +1370,17 @@ contains
                end if
 
                if (requires_soft_mismatch) then
-                  ! TODO: (bcn 2016-01-26) why only omega here?
-                  call override_local_me_method (var_str ("omega"))
+                  call override_local_me_method (soft_mismatch_me_method)
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                   call prc_config%setup_component (i_comp, &
-                     !new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
                      prt_spec_in, prt_spec_out, &
                      cmd%local%model, var_list, NLO_MISMATCH, &
                      can_be_integrated = selected_nlo_parts (NLO_MISMATCH))
                end if
 
                call prc_config%set_component_associations (i_list, &
-                    requires_pdf, powheg_use_damping, requires_soft_mismatch)
+                    requires_dglap_remnants, use_real_finite, requires_soft_mismatch)
             end associate
          else if (gks_active) then
             call override_local_me_method (var_str ("omega"))
@@ -1365,27 +1444,27 @@ contains
   end subroutine check_nlo_options
 
   pure subroutine set_component_list (i_list, i, n_components, &
-                  requires_pdf, requires_soft_mismatch, &
-             powheg_use_damping, n_emitters)
+         requires_dglap_remnants, requires_soft_mismatch, &
+         use_real_finite, n_emitters)
     integer, dimension(:), intent(out) :: i_list
     integer, intent(in) :: i, n_components, n_emitters
-    logical, intent(in) :: requires_pdf, powheg_use_damping, &
-         requires_soft_mismatch
+    logical, intent(in) :: requires_dglap_remnants
+    logical, intent(in) :: use_real_finite, requires_soft_mismatch
     i_list(1) = i
     i_list(2) = i + n_components
     i_list(3) = i + 2 * n_components
     i_list(4) = i + 3 * n_components
-    if (requires_pdf .or. requires_soft_mismatch .or. powheg_use_damping) then
+    if (requires_dglap_remnants .or. requires_soft_mismatch .or. use_real_finite) then
        i_list(5) = i + 4 * n_components
     end if
   end subroutine set_component_list
 
   pure function needed_extra_components (initial_state_colored, &
-            has_structure_functions, requires_soft_mismatch, &
-            powheg_use_damping, n_emitters) result (n)
+         has_structure_functions, requires_soft_mismatch, &
+         use_real_finite, n_emitters) result (n)
     integer :: n
     logical, intent(in) :: initial_state_colored, &
-         has_structure_functions, powheg_use_damping, &
+         has_structure_functions, use_real_finite, &
          requires_soft_mismatch
     integer, intent(in) :: n_emitters
     if (initial_state_colored) then
@@ -1394,7 +1473,7 @@ contains
        else
           n = 4
        end if
-    else if (powheg_use_damping) then
+    else if (use_real_finite) then
        n = 5
     else if (requires_soft_mismatch) then
        n = 5
@@ -1500,20 +1579,22 @@ contains
     class(cmd_nlo_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_arg, pn_comp
-    integer :: i
+    integer :: i, n_comp
     pn_arg => parse_node_get_sub_ptr (cmd%pn, 3)
-    cmd%pn_components(1)%ptr => parse_node_get_sub_ptr (pn_arg)
-    pn_comp => parse_node_get_next_ptr (cmd%pn_components(1)%ptr)
-    i = 2
-    do
-      if (associated (pn_comp)) then
-         cmd%pn_components(i)%ptr => pn_comp
-         pn_comp => parse_node_get_next_ptr (cmd%pn_components(i)%ptr)
-         i = i + 1
-      else
-         exit
-      end if
-    end do
+    if (associated (pn_arg)) then
+       n_comp = parse_node_get_n_sub (pn_arg)
+    else
+       n_comp = 0
+    end if
+    if (n_comp > 0) then
+       pn_comp => parse_node_get_sub_ptr (pn_arg)
+       allocate (cmd%nlo_component (n_comp))
+       do i = 1, n_comp
+          cmd%nlo_component(i) = component_status &
+               (eval_string (pn_comp, global%var_list))
+          pn_comp => parse_node_get_next_ptr (pn_comp)
+       end do
+    end if    
   end subroutine cmd_nlo_compile
 
   subroutine cmd_nlo_execute (cmd, global)
@@ -1522,18 +1603,18 @@ contains
     type(parse_node_t), pointer :: current_component
     type(string_t) :: component_type
     type(string_t) :: string
-    integer :: i, comp, j
+    integer :: n, i, j
     logical, dimension(0:5) :: selected_nlo_parts
     selected_nlo_parts = .false.
-
-    current_component => cmd%pn_components(1)%ptr
-    i = 2 !!! i = 1 is Born, which is skipped
-    do while (associated (current_component))
-       component_type = eval_string (current_component, global%var_list)
-       comp = component_status (component_type)
-       select case (comp)
+    if (allocated (cmd%nlo_component)) then
+       n = size (cmd%nlo_component)
+    else
+       n = 0
+    end if
+    do i = 1, n
+       select case (cmd%nlo_component (i))
        case (BORN, NLO_VIRTUAL, NLO_MISMATCH, NLO_DGLAP, NLO_REAL)
-          selected_nlo_parts(comp) = .true.
+          selected_nlo_parts(cmd%nlo_component (i)) = .true.
        case (NLO_FULL)
           selected_nlo_parts = .true.
           selected_nlo_parts (NLO_SUBTRACTION) = .false.
@@ -1543,11 +1624,9 @@ contains
              string = string // component_status (j) // ", "
           end do
           string = string // component_status (NLO_FULL)
-          call msg_fatal (char("Invalid NLO mode! Valid inputs are: " // string))
+          call msg_fatal ("Invalid NLO mode. Valid modes are: " // &
+               char (string))
        end select
-       if (i >= 5) exit
-       current_component => cmd%pn_components(i)%ptr
-       i = i + 1
     end do
     global%nlo_fixed_order = any (selected_nlo_parts(1:5))
     global%selected_nlo_parts = selected_nlo_parts
@@ -5979,7 +6058,7 @@ contains
     call ifile_append (ifile, "ALT strfun_id = " &
           // "none | lhapdf | lhapdf_photon | pdf_builtin | pdf_builtin_photon | " &
           // "isr | epa | ewa | circe1 | circe2 | energy_scan | " &
-          // "gaussian | beam_events | user_sf_spec")
+          // "gaussian | beam_events")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
     call ifile_append (ifile, "KEY lhapdf_photon")
@@ -5993,8 +6072,6 @@ contains
     call ifile_append (ifile, "KEY energy_scan")
     call ifile_append (ifile, "KEY gaussian")
     call ifile_append (ifile, "KEY beam_events")
-    call ifile_append (ifile, "SEQ user_sf_spec = user_strfun user_arg")
-    call ifile_append (ifile, "KEY user_strfun")
     call ifile_append (ifile, "SEQ cmd_integrate = " &
          // "integrate proc_arg options?")
     call ifile_append (ifile, "KEY integrate")
@@ -6154,7 +6231,7 @@ contains
     call ifile_append (ifile, "SEQ cmd_nlo = " &
                        // "nlo_calculation '=' nlo_calculation_list")
     call ifile_append (ifile, "KEY nlo_calculation")
-    call ifile_append (ifile, "LIS nlo_calculation_list = sexpr ',' sexpr ',' sexpr")
+    call ifile_append (ifile, "LIS nlo_calculation_list = sexpr+")
     call define_expr_syntax (ifile, particles=.true., analysis=.true.)
   end subroutine define_cmd_list_syntax
 

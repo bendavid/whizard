@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -41,6 +41,7 @@ module phs_trees
   use io_units
   use constants, only: twopi, twopi2, twopi5
   use format_defs, only: FMT_19
+  use numeric_utils, only: vanishes
   use diagnostics
   use lorentz
   use permutations, only: permutation_t, permutation_size
@@ -48,6 +49,7 @@ module phs_trees
   use permutations, only: tc_decay_level, tc_permute
   use model_data
   use flavors
+  use resonances, only: resonance_history_t, resonance_info_t
   use mappings
 
   implicit none
@@ -123,6 +125,16 @@ module phs_trees
      real(default), dimension(:), allocatable :: effective_width
      logical :: real_phsp = .false.
      integer, dimension(:), allocatable :: momentum_link
+   contains
+     procedure :: init => phs_tree_init
+     procedure :: final => phs_tree_final
+     procedure :: write => phs_tree_write
+     procedure :: from_array => phs_tree_from_array
+     procedure :: init_mapping => phs_tree_init_mapping
+     procedure :: set_mapping_parameters => phs_tree_set_mapping_parameters
+     procedure :: set_mass_sum => phs_tree_set_mass_sum
+     procedure :: set_effective_masses => phs_tree_set_effective_masses
+     procedure :: extract_resonance_history => phs_tree_extract_resonance_history
   end type phs_tree_t
 
 
@@ -198,7 +210,7 @@ contains
   end subroutine phs_prt_check
 
   elemental subroutine phs_tree_init (tree, n_in, n_out, n_masses, n_angles)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     integer, intent(in) :: n_in, n_out, n_masses, n_angles
     integer(TC) :: i
     tree%n_externals = n_in + n_out
@@ -225,7 +237,7 @@ contains
   end subroutine phs_tree_init
 
   elemental subroutine phs_tree_final (tree)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     deallocate (tree%branch)
     deallocate (tree%mapping)
     deallocate (tree%mass_sum)
@@ -234,7 +246,7 @@ contains
   end subroutine phs_tree_final
 
   subroutine phs_tree_write (tree, unit)
-    type(phs_tree_t), intent(in) :: tree
+    class(phs_tree_t), intent(in) :: tree
     integer, intent(in), optional :: unit
     integer :: u
     integer(TC) :: k
@@ -316,7 +328,7 @@ contains
   end subroutine phs_branch_write
 
   subroutine phs_tree_from_array (tree, a)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     integer(TC), dimension(:), intent(in) :: a
     integer :: i
     integer(TC) :: k
@@ -457,7 +469,7 @@ contains
   end subroutine phs_tree_canonicalize
 
   subroutine phs_tree_init_mapping (tree, k, type, pdg, model)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     integer(TC), intent(in) :: k
     type(string_t), intent(in) :: type
     integer, intent(in) :: pdg
@@ -469,7 +481,7 @@ contains
 
   subroutine phs_tree_set_mapping_parameters &
        (tree, mapping_defaults, variable_limits)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     type(mapping_defaults_t), intent(in) :: mapping_defaults
     logical, intent(in) :: variable_limits
     integer(TC) :: k
@@ -486,7 +498,7 @@ contains
   end subroutine phs_tree_assign_s_mapping
 
   subroutine phs_tree_set_mass_sum (tree, flv)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     type(flavor_t), dimension(:), intent(in) :: flv
     integer(TC) :: k
     integer :: i
@@ -507,7 +519,7 @@ contains
   end subroutine phs_tree_set_mass_sum
 
   subroutine phs_tree_set_effective_masses (tree)
-    type(phs_tree_t), intent(inout) :: tree
+    class(phs_tree_t), intent(inout) :: tree
     tree%effective_mass = 0
     tree%effective_width = 0
     call set_masses_x (tree%mask_out)
@@ -591,6 +603,24 @@ contains
       end if
     end subroutine set_step_mappings_x
   end subroutine phs_tree_set_step_mappings
+
+  subroutine phs_tree_extract_resonance_history (tree, res_history)
+    class(phs_tree_t), intent(in) :: tree
+    type(resonance_history_t), intent(out) :: res_history
+    type(resonance_info_t) :: res_info
+    integer :: i
+    if (allocated (tree%mapping)) then
+       do i = 1, size (tree%mapping)
+          associate (mapping => tree%mapping(i))
+             if (mapping%is_s_channel ()) then
+                call res_info%init (mapping%get_bincode (), mapping%get_flv (), &
+                     n_out = tree%n_externals - tree%n_in)
+                call res_history%add_resonance (res_info)
+             end if
+          end associate
+       end do
+    end if
+  end subroutine phs_tree_extract_resonance_history
 
   function phs_tree_equivalent (t1, t2, perm) result (is_equal)
     type(phs_tree_t), intent(in) :: t1, t2
@@ -1074,7 +1104,7 @@ contains
          else
             axis = axis_from_p_b3 (pf, -bg)
             LL = rotation_to_2nd (axis, vector3_canonical(3))
-            if (bg /= 0)  LL = LL * boost(-bg, 3)
+            if (.not. vanishes (bg))  LL = LL * boost(-bg, 3)
          end if
          n = space_part (LL * p1)
       else if (present (phi0)) then

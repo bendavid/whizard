@@ -19,13 +19,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process shower_err_1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'shower_err_1'
-|   Library name  = 'shower_err_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'shower_err_1_i1':   e-, e+ => u, ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -34,6 +27,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'shower_err_1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'shower_err_1'
+|   Library name  = 'shower_err_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'shower_err_1_i1':   e-, e+ => u, ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

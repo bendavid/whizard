@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -78,7 +78,7 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
 
     call data%init (1)
@@ -94,11 +94,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_1"
- 
+
     allocate (eio_ascii_ascii_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -124,14 +124,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_ascii_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_ascii_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -140,14 +140,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_1"
-    
+
   end subroutine eio_ascii_1
-  
+
   subroutine eio_ascii_2 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -163,9 +163,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -179,11 +179,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_2"
- 
+
     allocate (eio_ascii_athena_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -209,14 +209,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_athena_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_athena_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -225,14 +225,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_2"
-    
+
   end subroutine eio_ascii_2
-  
+
   subroutine eio_ascii_3 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -248,9 +248,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -264,11 +264,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_3"
- 
+
     allocate (eio_ascii_debug_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -294,14 +294,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_debug_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_debug_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -310,14 +310,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_3"
-    
+
   end subroutine eio_ascii_3
-  
+
   subroutine eio_ascii_4 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -333,9 +333,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -349,11 +349,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_4"
- 
+
     allocate (eio_ascii_hepevt_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -379,14 +379,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_hepevt_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_hepevt_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -395,14 +395,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_4"
-    
+
   end subroutine eio_ascii_4
-  
+
   subroutine eio_ascii_5 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -418,9 +418,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -434,11 +434,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_5"
- 
+
     allocate (eio_ascii_lha_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -464,14 +464,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_lha_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_lha_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -480,14 +480,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_5"
-    
+
   end subroutine eio_ascii_5
-  
+
   subroutine eio_ascii_6 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -503,9 +503,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -519,11 +519,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_6"
- 
+
     allocate (eio_ascii_long_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -549,14 +549,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_long_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_long_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -565,14 +565,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_6"
-    
+
   end subroutine eio_ascii_6
-  
+
   subroutine eio_ascii_7 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -588,9 +588,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -604,11 +604,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_7"
- 
+
     allocate (eio_ascii_mokka_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -634,14 +634,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_mokka_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_mokka_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -655,9 +655,9 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_7"
-    
+
   end subroutine eio_ascii_7
-  
+
   subroutine eio_ascii_8 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -673,9 +673,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -689,11 +689,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_8"
- 
+
     allocate (eio_ascii_short_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -719,14 +719,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_short_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_short_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -735,14 +735,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_8"
-    
+
   end subroutine eio_ascii_8
-  
+
   subroutine eio_ascii_9 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -758,9 +758,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -774,11 +774,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_9"
- 
+
     allocate (eio_ascii_lha_verb_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -804,14 +804,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_lha_verb_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_lha_verb_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -820,14 +820,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_9"
-    
+
   end subroutine eio_ascii_9
-  
+
   subroutine eio_ascii_10 (u)
     integer, intent(in) :: u
     class(generic_event_t), pointer :: event
@@ -843,9 +843,9 @@ contains
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call eio_prepare_test (event, unweighted = .false.)
-    
+
     call data%init (1)
     data%n_evt = 1
     data%n_beam = 2
@@ -859,11 +859,11 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_ascii_10"
- 
+
     allocate (eio_ascii_hepevt_verb_t :: eio)
-    
+
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
@@ -889,14 +889,14 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset data"
     write (u, "(A)")
- 
+
     deallocate (eio)
     allocate (eio_ascii_hepevt_verb_t :: eio)
-    
+
     select type (eio)
     type is (eio_ascii_hepevt_verb_t)
        call eio%set_parameters (keep_beams = .true.)
@@ -905,13 +905,13 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio_cleanup_test (event)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_10"
-    
+
   end subroutine eio_ascii_10
-  
+
 
 end module eio_ascii_uti

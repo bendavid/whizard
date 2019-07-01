@@ -26,13 +26,6 @@ $sample = "reweight_4a"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process reweight_4_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'reweight_4_p1'
-|   Library name  = 'reweight_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'reweight_4_p1_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -42,6 +35,13 @@ $sample = "reweight_4a"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'reweight_4_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'reweight_4_p1'
+|   Library name  = 'reweight_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'reweight_4_p1_i1':   gl, gl => u, ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.
@@ -81,13 +81,6 @@ $pdf_builtin_set = "CT10"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process reweight_4_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'reweight_4_p2'
-|   Library name  = 'reweight_4_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'reweight_4_p2_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -96,6 +89,13 @@ $pdf_builtin_set = "CT10"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'reweight_4_p2_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'reweight_4_p2'
+|   Library name  = 'reweight_4_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'reweight_4_p2_i1':   gl, gl => u, ubar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.

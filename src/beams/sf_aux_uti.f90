@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -57,7 +57,7 @@ contains
     real(default) :: E, mk, mp, mq
     real(default) :: x, r1, r2, r1o, r2o
     real(default) :: k2, q0_2, q1_2, q2_2
-    
+
     write (u, "(A)")  "* Test output: sf_aux_1"
     write (u, "(A)")  "*   Purpose: compute momentum splitting"
     write (u, "(A)")  "             (massless radiated particle)"
@@ -74,7 +74,7 @@ contains
     x = 0.6_default
     r1 = 0.5_default
     r2 = 0.125_default
-    
+
     write (u, "(A)")  "* (1) Non-collinear setup"
     write (u, "(A)")
 
@@ -84,7 +84,7 @@ contains
     call sd%sample_phi (r2)
 
     call sd%write (u)
-    
+
     q = sd%split_momentum (k)
     q1_2 = q(1) ** 2;  call pacify (q1_2, 1e-10_default)
     q2_2 = q(2) ** 2;  call pacify (q2_2, 1e-10_default)
@@ -105,19 +105,19 @@ contains
 
     write (u, "(A)")  "Compare: s"
     write (u, "(2(1x,F11.8))")  sd%s, k2
-    
+
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  sd%t, q2_2
-    
+
     write (u, "(A)")  "Compare: u"
     write (u, "(2(1x,F11.8))")  sd%u, q1_2
-    
+
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  sd%x, energy (q(2)) / energy (k)
-    
+
     write (u, "(A)")  "Compare: 1-x"
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
@@ -142,7 +142,7 @@ contains
     q0_2 = q0(2) ** 2;  call pacify (q0_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q0_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -153,15 +153,15 @@ contains
     write (u, "(2(1x,F11.8))")  x, sd%x
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  q2_2, sd%t
-    
+
 
     call sd%inverse_t (r1o)
-    
+
     write (u, "(A)")  "Compare: r1"
     write (u, "(2(1x,F11.8))")  r1, r1o
 
     call sd%inverse_phi (r2o)
-    
+
     write (u, "(A)")  "Compare: r2"
     write (u, "(2(1x,F11.8))")  r2, r2o
 
@@ -192,7 +192,7 @@ contains
     q0_2 = q0(2) ** 2;  call pacify (q0_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q0_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -225,7 +225,7 @@ contains
     call sd%set_t_bounds (x, 1 - x)
 
     call sd%write (u)
-    
+
     q = sd%split_momentum (k)
     q1_2 = q(1) ** 2;  call pacify (q1_2, 1e-10_default)
     q2_2 = q(2) ** 2;  call pacify (q2_2, 1e-10_default)
@@ -246,19 +246,19 @@ contains
 
     write (u, "(A)")  "Compare: s"
     write (u, "(2(1x,F11.8))")  sd%s, k2
-    
+
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  sd%t, q2_2
-    
+
     write (u, "(A)")  "Compare: u"
     write (u, "(2(1x,F11.8))")  sd%u, q1_2
-    
+
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  sd%x, energy (q(2)) / energy (k)
-    
+
     write (u, "(A)")  "Compare: 1-x"
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
@@ -283,7 +283,7 @@ contains
     q0_2 = q0(2) ** 2;  call pacify (q0_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q0_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -322,7 +322,7 @@ contains
     q0_2 = q0(2) ** 2;  call pacify (q0_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q0_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -341,7 +341,7 @@ contains
     write (u, "(A)")  "* Test output end: sf_aux_1"
 
   end subroutine sf_aux_1
-  
+
   subroutine sf_aux_2 (u)
     integer, intent(in) :: u
     type(splitting_data_t) :: sd
@@ -350,7 +350,7 @@ contains
     real(default) :: E, mk, mp, mq
     real(default) :: x, r1, r2, r1o, r2o
     real(default) :: k2, q02_2, q1_2, q2_2
-    
+
     write (u, "(A)")  "* Test output: sf_aux_2"
     write (u, "(A)")  "*   Purpose: compute momentum splitting"
     write (u, "(A)")  "             (massless outgoing particle)"
@@ -367,7 +367,7 @@ contains
     x = 0.6_default
     r1 = 0.5_default
     r2 = 0.125_default
-    
+
     write (u, "(A)")  "* (1) Non-collinear setup"
     write (u, "(A)")
 
@@ -377,7 +377,7 @@ contains
     call sd%sample_phi (r2)
 
     call sd%write (u)
-    
+
     q = sd%split_momentum (k)
     q1_2 = q(1) ** 2;  call pacify (q1_2, 1e-10_default)
     q2_2 = q(2) ** 2;  call pacify (q2_2, 1e-10_default)
@@ -398,19 +398,19 @@ contains
 
     write (u, "(A)")  "Compare: s"
     write (u, "(2(1x,F11.8))")  sd%s, k2
-    
+
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  sd%t, q2_2
-    
+
     write (u, "(A)")  "Compare: u"
     write (u, "(2(1x,F11.8))")  sd%u, q1_2
-    
+
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  sd%x, energy (q(2)) / energy (k)
-    
+
     write (u, "(A)")  "Compare: 1-x"
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
@@ -435,7 +435,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -447,15 +447,15 @@ contains
     write (u, "(2(1x,F11.8))")  x, sd%x
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  q2_2, sd%t
-    
+
 
     call sd%inverse_t (r1o)
-    
+
     write (u, "(A)")  "Compare: r1"
     write (u, "(2(1x,F11.8))")  r1, r1o
 
     call sd%inverse_phi (r2o)
-    
+
     write (u, "(A)")  "Compare: r2"
     write (u, "(2(1x,F11.8))")  r2, r2o
 
@@ -486,7 +486,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -520,7 +520,7 @@ contains
     call sd%set_t_bounds (x, 1 - x)
 
     call sd%write (u)
-    
+
     q = sd%split_momentum (k)
     q1_2 = q(1) ** 2;  call pacify (q1_2, 1e-10_default)
     q2_2 = q(2) ** 2;  call pacify (q2_2, 1e-10_default)
@@ -541,19 +541,19 @@ contains
 
     write (u, "(A)")  "Compare: s"
     write (u, "(2(1x,F11.8))")  sd%s, k2
-    
+
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  sd%t, q2_2
-    
+
     write (u, "(A)")  "Compare: u"
     write (u, "(2(1x,F11.8))")  sd%u, q1_2
-    
+
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  sd%x, energy (q(2)) / energy (k)
-    
+
     write (u, "(A)")  "Compare: 1-x"
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
@@ -578,7 +578,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -618,7 +618,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -638,7 +638,7 @@ contains
     write (u, "(A)")  "* Test output end: sf_aux_2"
 
   end subroutine sf_aux_2
-  
+
   subroutine sf_aux_3 (u)
     integer, intent(in) :: u
     type(splitting_data_t) :: sd
@@ -647,7 +647,7 @@ contains
     real(default) :: E, mk, mp, mq, qmin, qmax
     real(default) :: x, r1, r2, r1o, r2o
     real(default) :: k2, q02_2, q1_2, q2_2
-    
+
     write (u, "(A)")  "* Test output: sf_aux_3"
     write (u, "(A)")  "*   Purpose: compute momentum splitting"
     write (u, "(A)")  "             (all massless, q cuts)"
@@ -666,7 +666,7 @@ contains
     x = 0.6_default
     r1 = 0.5_default
     r2 = 0.125_default
-    
+
     write (u, "(A)")  "* (1) Non-collinear setup"
     write (u, "(A)")
 
@@ -676,7 +676,7 @@ contains
     call sd%sample_phi (r2)
 
     call sd%write (u)
-    
+
     q = sd%split_momentum (k)
     q1_2 = q(1) ** 2;  call pacify (q1_2, 1e-10_default)
     q2_2 = q(2) ** 2;  call pacify (q2_2, 1e-10_default)
@@ -697,19 +697,19 @@ contains
 
     write (u, "(A)")  "Compare: s"
     write (u, "(2(1x,F11.8))")  sd%s, k2
-    
+
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  sd%t, q2_2
-    
+
     write (u, "(A)")  "Compare: u"
     write (u, "(2(1x,F11.8))")  sd%u, q1_2
-    
+
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  sd%x, energy (q(2)) / energy (k)
-    
+
     write (u, "(A)")  "Compare: 1-x"
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
@@ -734,7 +734,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -746,15 +746,15 @@ contains
     write (u, "(2(1x,F11.8))")  x, sd%x
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  q2_2, sd%t
-    
+
 
     call sd%inverse_t (r1o, t1 = - qmin ** 2, t0 = - qmax **2)
-    
+
     write (u, "(A)")  "Compare: r1"
     write (u, "(2(1x,F11.8))")  r1, r1o
 
     call sd%inverse_phi (r2o)
-    
+
     write (u, "(A)")  "Compare: r2"
     write (u, "(2(1x,F11.8))")  r2, r2o
 
@@ -785,7 +785,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -819,7 +819,7 @@ contains
     call sd%set_t_bounds (x, 1 - x)
 
     call sd%write (u)
-    
+
     q = sd%split_momentum (k)
     q1_2 = q(1) ** 2;  call pacify (q1_2, 1e-10_default)
     q2_2 = q(2) ** 2;  call pacify (q2_2, 1e-10_default)
@@ -840,19 +840,19 @@ contains
 
     write (u, "(A)")  "Compare: s"
     write (u, "(2(1x,F11.8))")  sd%s, k2
-    
+
     write (u, "(A)")  "Compare: t"
     write (u, "(2(1x,F11.8))")  sd%t, q2_2
-    
+
     write (u, "(A)")  "Compare: u"
     write (u, "(2(1x,F11.8))")  sd%u, q1_2
-    
+
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  sd%x, energy (q(2)) / energy (k)
-    
+
     write (u, "(A)")  "Compare: 1-x"
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
@@ -877,7 +877,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -917,7 +917,7 @@ contains
     q02_2 = q0(2) ** 2;  call pacify (q02_2, 1e-10_default)
     write (u, "(2(1x,F11.8))")  sd%m2, q02_2
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Recover parameters from outgoing momentum"
     write (u, "(A)")
 
@@ -937,6 +937,6 @@ contains
     write (u, "(A)")  "* Test output end: sf_aux_3"
 
   end subroutine sf_aux_3
-  
+
 
 end module sf_aux_uti

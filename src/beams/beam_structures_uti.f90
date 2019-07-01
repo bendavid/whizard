@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -55,24 +55,24 @@ contains
   subroutine beam_structures_1 (u)
     integer, intent(in) :: u
     type(beam_structure_t) :: beam_structure
-    
+
     write (u, "(A)")  "* Test output: beam_structures_1"
     write (u, "(A)")  "*   Purpose: display empty beam structure record"
     write (u, "(A)")
 
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: beam_structures_1"
-    
+
   end subroutine beam_structures_1
-  
+
   subroutine beam_structures_2 (u)
     integer, intent(in) :: u
     type(beam_structure_t) :: beam_structure
     integer, dimension(0) :: empty_array
     type(string_t) :: s
-    
+
     write (u, "(A)")  "* Test output: beam_structures_2"
     write (u, "(A)")  "*   Purpose: setup beam structure records"
     write (u, "(A)")
@@ -81,20 +81,20 @@ contains
 
     call beam_structure%init_sf ([s], empty_array)
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
 
     call beam_structure%init_sf ([s, s], [1])
     call beam_structure%set_sf (1, 1, var_str ("a"))
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
 
     call beam_structure%init_sf ([s, s], [2])
     call beam_structure%set_sf (1, 1, var_str ("a"))
     call beam_structure%set_sf (1, 2, var_str ("b"))
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
 
     call beam_structure%init_sf ([s, s], [2, 1])
@@ -105,14 +105,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: beam_structures_2"
-    
+
   end subroutine beam_structures_2
-  
+
   subroutine beam_structures_3 (u)
     integer, intent(in) :: u
     type(beam_structure_t) :: beam_structure
     type(string_t) :: s
-    
+
     write (u, "(A)")  "* Test output: beam_structures_3"
     write (u, "(A)")  "*   Purpose: expand beam structure records"
     write (u, "(A)")
@@ -130,7 +130,7 @@ contains
 
     call beam_structure%expand (test_strfun_mode)
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure function pair (expand)"
     write (u, "(A)")
@@ -144,7 +144,7 @@ contains
 
     call beam_structure%expand (test_strfun_mode)
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Structure function (separate and expand)"
     write (u, "(A)")
@@ -157,7 +157,7 @@ contains
 
     call beam_structure%expand (test_strfun_mode)
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Combination"
     write (u, "(A)")
@@ -171,19 +171,19 @@ contains
 
     call beam_structure%expand (test_strfun_mode)
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: beam_structures_3"
-    
+
   end subroutine beam_structures_3
-  
+
   subroutine beam_structures_4 (u)
     integer, intent(in) :: u
     type(beam_structure_t) :: beam_structure
     type(string_t) :: s
     type(string_t), dimension(2) :: prt
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: beam_structures_4"
     write (u, "(A)")  "*   Purpose: check the API"
     write (u, "(A)")
@@ -203,7 +203,7 @@ contains
     write (u, "(1x,A,I0)")  "n_beam = ", beam_structure%get_n_beam ()
     prt = beam_structure%get_prt ()
     write (u, "(1x,A,2(1x,A))")  "prt =", char (prt(1)), char (prt(2))
-    
+
     write (u, *)
     write (u, "(1x,A,I0)")  "n_record = ", beam_structure%get_n_record ()
 
@@ -214,18 +214,18 @@ contains
        write (u, "(1x,A,I0,A,2(1x,I0))")  "i_entry(", i, ") =", &
             beam_structure%get_i_entry (i)
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: beam_structures_4"
-    
+
   end subroutine beam_structures_4
-  
+
   subroutine beam_structures_5 (u)
     integer, intent(in) :: u
     type(beam_structure_t) :: beam_structure
     integer, dimension(0) :: empty_array
     type(string_t) :: s
-    
+
     write (u, "(A)")  "* Test output: beam_structures_5"
     write (u, "(A)")  "*   Purpose: setup polarization in beam structure records"
     write (u, "(A)")
@@ -238,8 +238,8 @@ contains
     call beam_structure%set_sentry (1, 1, [0,0], (1._default, 0._default))
     call beam_structure%set_pol_f ([0.5_default])
     call beam_structure%write (u)
-    
-    
+
+
     write (u, "(A)")
     call beam_structure%final_sf ()
     call beam_structure%final_pol ()
@@ -252,18 +252,18 @@ contains
     call beam_structure%set_sentry (1, 2, [ 1,1], (1._default, 0._default))
     call beam_structure%init_smatrix (2, 0)
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: beam_structures_5"
-    
+
   end subroutine beam_structures_5
-  
+
   subroutine beam_structures_6 (u)
     integer, intent(in) :: u
     type(beam_structure_t) :: beam_structure
     integer, dimension(0) :: empty_array
     type(string_t) :: s
-    
+
     write (u, "(A)")  "* Test output: beam_structures_6"
     write (u, "(A)")  "*   Purpose: setup momenta in beam structure records"
     write (u, "(A)")
@@ -273,8 +273,8 @@ contains
     call beam_structure%init_sf ([s], empty_array)
     call beam_structure%set_momentum ([500._default])
     call beam_structure%write (u)
-    
-    
+
+
     write (u, "(A)")
     call beam_structure%final_sf ()
     call beam_structure%final_mom ()
@@ -284,12 +284,12 @@ contains
     call beam_structure%set_theta ([0._default, 0.1_default])
     call beam_structure%set_phi ([0._default, 1.51_default])
     call beam_structure%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: beam_structures_6"
-    
+
   end subroutine beam_structures_6
-  
+
 
   function test_strfun_mode (name) result (n)
     type(string_t), intent(in) :: name

@@ -26,13 +26,6 @@ openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_13_1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_13_1'
-|   Library name  = 'smtest_13_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'smtest_13_1_i1':   e-, e+ => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -41,6 +34,13 @@ openmp_num_threads = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_13_1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_13_1'
+|   Library name  = 'smtest_13_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_13_1_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -72,13 +72,13 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process smtest_13_2:
 | Process component 'smtest_13_2_i1': matrix element vanishes
+Warning: Process 'smtest_13_2': matrix element vanishes
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_13_2'
 |   Library name  = 'smtest_13_lib'
 |   Process index = 2
 |   Process components: [none]
 | ------------------------------------------------------------------------
-Warning: Process 'smtest_13_2': matrix element vanishes
 Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -88,13 +88,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process smtest_13_3:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'smtest_13_3'
-|   Library name  = 'smtest_13_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'smtest_13_3_i1':   e-, e+ => tau-, tau+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 0.0000000E+00 GeV)
@@ -103,6 +96,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'smtest_13_3_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_13_3'
+|   Library name  = 'smtest_13_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'smtest_13_3_i1':   e-, e+ => tau-, tau+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

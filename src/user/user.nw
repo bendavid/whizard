@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: user plugins for cuts and structure functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{User Plugin Support}
@@ -48,7 +48,7 @@ end module user_code_interface
 @ %def user_code_interface
 @
 \subsection{User Code Management}
-@ 
+@
 This data structure globally holds the filehandle of the user-code
 library:
 <<User Code: public>>=
@@ -59,7 +59,7 @@ library:
   type(string_t), save :: user
 
 @ %def user_lib_handle has_user_lib user
-@ 
+@
 Compile, link and load user code files.  Dlopen all user-provided
 libraries, included the one just compiled (if any).
 
@@ -70,7 +70,7 @@ In detail: First, compile all sources explicitly specified on the
 command line.  Then collect all libraries specified on the command
 line, including [[user.so]] if it was generated.  If there is still no
 code, check for an existing [[user.f90]] and compile this.  Link
-everything into a [[user.la]] libtool library.  When 
+everything into a [[user.la]] libtool library.  When
 done, dlopen all libraries that we have so far.
 <<User Code: public>>=
   public :: user_code_init
@@ -210,7 +210,7 @@ libraries.  If a procedure is not found, do nothing.
     if (.not. c_associated (fptr)) then
        if (has_user_lib) then
           fptr = dlaccess_get_c_funptr (user_lib_handle, name)
-          if (.not. c_associated (fptr)) then      
+          if (.not. c_associated (fptr)) then
              call msg_fatal ("User procedure '" // char (name) // "' not found")
           end if
        else
@@ -221,7 +221,7 @@ libraries.  If a procedure is not found, do nothing.
   end function user_code_find_proc
 
 @  %def user_code_find_proc
-@ 
+@
 \subsection{Interfaces for user-defined functions}
 The following functions represent user-defined real observables.  There may
 be one or two particles as argument, the result is a real value.
@@ -306,7 +306,7 @@ logical value (nonzero=true).
   end interface
 
 @ %def user_event_shape_fun
-@ 
+@
 \subsection{Interfaces for user-defined interactions}
 The following procedure interfaces pertain to user-defined
 interactions, e.g., spectra or structure functions.
@@ -378,7 +378,7 @@ anyway.
 @ %def user_int_state
 @ This subroutine takes an array of particle objects
 with array length [[n_in]] and an array of input parameters between 0 and 1
-with array length [[n_dim]].  It returns an array of particle objects 
+with array length [[n_dim]].  It returns an array of particle objects
 with array length [[n_out]].  In addition, it returns an array of
 internal variables (e.g., momentum fractions, Jacobian) with array
 length [[n_var]] that is used by the
@@ -450,7 +450,7 @@ module sf_user
   use interactions
   use sf_aux
   use sf_base
-  
+
 <<Standard module head>>
 
 <<SF user: public>>
@@ -463,8 +463,8 @@ contains
 
 end module sf_user
 @ %def sf_user
-@  
-\subsection{The user structure function data block} 
+@
+\subsection{The user structure function data block}
 The data block holds the procedure pointers that are used for retrieving
 static information, as well as the actual evaluation.
 <<SF user: public>>=
@@ -488,12 +488,12 @@ static information, as well as the actual evaluation.
      procedure(user_int_kinematics), nopass, pointer :: kinematics => null ()
      procedure(user_int_evaluate), nopass, pointer :: evaluate => null ()
    contains
-   <<SF user: user data: TBP>>  
+   <<SF user: user data: TBP>>
   end type user_data_t
 
 @ %def user_data_t
 @ Assign procedure pointers from a dynamically loaded library, given the
-specified [[name]].  
+specified [[name]].
 
 We have to distinguish three cases: (1) Both beams are affected, and
 the user spectrum implements both beams.  There is a single data
@@ -545,10 +545,10 @@ different objects.  (3) A single beam is affected.
 <<SF user: user data: TBP>>=
   procedure :: write => user_data_write
 <<SF user: procedures>>=
-  subroutine user_data_write (data, unit, verbose) 
+  subroutine user_data_write (data, unit, verbose)
     class(user_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose        
+    logical, intent(in), optional :: verbose
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A,A)") "User structure function: ", char (data%name)
@@ -635,7 +635,7 @@ the particle objects.
     integer :: i, s
     integer(c_int) :: i_prt, i_state
     select type (data)
-    type is (user_data_t)   
+    type is (user_data_t)
        allocate (mask (data%n_tot))
        allocate (hel_lock (data%n_tot))
        allocate (qn (data%n_tot))
@@ -654,7 +654,7 @@ the particle objects.
        !      hel_lock = hel_lock)
        call sf_int%basic_init &
             (data%n_in, 0, data%n_out, mask=mask, &
-            hel_lock=hel_lock, set_relations=.true.)       
+            hel_lock=hel_lock, set_relations=.true.)
        do s = 1, data%n_states
           i_state = s
           do i = 1, data%n_tot
@@ -691,7 +691,7 @@ the particle objects.
   end subroutine user_init
 
 @ %def user_init
-@ 
+@
 @ Allocate the interaction record.
 <<SF user: user data: TBP>>=
   procedure :: allocate_sf_int => user_data_allocate_sf_int
@@ -701,8 +701,8 @@ the particle objects.
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (user_t :: sf_int)
   end subroutine user_data_allocate_sf_int
-  
-@ %def user_data_allocate_sf_int 
+
+@ %def user_data_allocate_sf_int
 @ The number of parameters is one.  We do not generate transverse momentum.
 <<SF user: user data: TBP>>=
   procedure :: get_n_par => user_data_get_n_par
@@ -712,9 +712,9 @@ the particle objects.
     integer :: n
     n = data%n_var
   end function user_data_get_n_par
-  
+
 @ %def user_data_get_n_par
-@ 
+@
 @ Return the outgoing particle PDG codes. This has to be inferred from
 the states (right?). JRR: WK please check.
 <<SF user: user data: TBP>>=
@@ -731,7 +731,7 @@ the states (right?). JRR: WK please check.
     !!! pdg_out(1:n) = pack ([(i, i = -6, 6)], data%mask)
     !!! if (np == 1)  pdg_out(n+np) = PHOTON
   end subroutine user_data_get_pdg_out
-  
+
 @ %def user_data_get_pdg_out
 \subsection{The user structure function}
 For maximal flexibility, user structure functions separate kinematics from
@@ -744,7 +744,7 @@ needed for matrix element evaluation.  If known, we use the mass
 squared computed above.
 !!! JRR: WK please check (\#529)
 I don't know actually whether this really fits into the setup done by
-WK. 
+WK.
 <<SF user: types>>=
   !!! JRR: WK please check (#529)
   type, extends (sf_int_t) :: user_t
@@ -753,8 +753,8 @@ WK.
      real(default) :: q = 0
    contains
    <<SF user: user: TBP>>
-  end type user_t 
-  
+  end type user_t
+
 @ %def user_t
 @ Type string: display the name of the user structure function.
 <<SF user: user: TBP>>=
@@ -769,7 +769,7 @@ WK.
        string = "User structure function: [undefined]"
     end if
   end function user_type_string
-  
+
 @ %def user_type_string
 @ Output.  Call the interaction routine after displaying the configuration.
 <<SF user: user: TBP>>=
@@ -797,7 +797,7 @@ WK.
        write (u, "(1x,A)")  "User structure function data: [undefined]"
     end if
   end subroutine user_write
-    
+
 @ %def user_write
 @
 \subsection{Kinematics}
@@ -811,7 +811,7 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
 <<SF user: procedures>>=
   subroutine user_complete_kinematics (sf_int, x, f, r, rb, map)
     !!! JRR: WK please check (#529)
-    !!! This cannot be correct, as the CIRCE1 structure function has 
+    !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -846,7 +846,7 @@ can set momenta by the same formula as for normal kinematics.
 <<SF user: procedures>>=
   subroutine user_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
     !!! JRR: WK please check (#529)
-    !!! This cannot be correct, as the CIRCE1 structure function has 
+    !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -910,7 +910,7 @@ the matrix elements.
 <<SF user: user: TBP>>=
   procedure :: apply => user_apply
 <<SF user: procedures>>=
-  subroutine user_apply (sf_int, scale) !, x, data)    
+  subroutine user_apply (sf_int, scale) !, x, data)
     !!! JRR: WK please check (#529)
     class(user_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale

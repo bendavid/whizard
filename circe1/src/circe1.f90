@@ -1,7 +1,7 @@
 ! circe1.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 7444 2016-02-17 15:37:20Z jr_reuter $
+! $Id: circe1.nw 7783 2017-01-03 09:28:52Z jr_reuter $
 ! 
-! Copyright (C) 1999-2016 by 
+! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -821,7 +821,7 @@ contains
                if (xchat .ne. 0) then
                   call circem ('MESSAGE', 'starting up ...')
                   call circem ('MESSAGE', & 
-                     '$Id: circe1.nw 7444 2016-02-17 15:37:20Z jr_reuter $')
+                     '$Id: circe1.nw 7783 2017-01-03 09:28:52Z jr_reuter $')
                endif
       end if
         if ((xchat .ge. 0) .and. (xchat .ne. circe1_params%chat)) then

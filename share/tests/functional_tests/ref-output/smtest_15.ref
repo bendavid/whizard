@@ -26,13 +26,13 @@ openmp_num_threads = 1
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process smtest_15_1:
 | Process component 'smtest_15_1_i1': matrix element vanishes
+Warning: Process 'smtest_15_1': matrix element vanishes
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_15_1'
 |   Library name  = 'smtest_15_lib'
 |   Process index = 1
 |   Process components: [none]
 | ------------------------------------------------------------------------
-Warning: Process 'smtest_15_1': matrix element vanishes
 Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |

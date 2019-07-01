@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -38,7 +38,7 @@ module sf_lhapdf_uti
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use system_dependencies, only: LHAPDF5_AVAILABLE
-  use system_dependencies, only: LHAPDF6_AVAILABLE  
+  use system_dependencies, only: LHAPDF6_AVAILABLE
   use os_interface
   use physics_defs, only: PROTON
   use sm_qcd
@@ -67,12 +67,12 @@ contains
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
     class(sf_data_t), allocatable :: data
-    
+
     write (u, "(A)")  "* Test output: sf_lhapdf_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &test structure function data"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
@@ -101,7 +101,7 @@ contains
     write (u, "(2x,99(1x,I0))")  pdg1
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_lhapdf_1"
 
@@ -119,12 +119,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f
-    
+
     write (u, "(A)")  "* Test output: sf_lhapdf_2"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &test structure function object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -132,22 +132,22 @@ contains
     call flv%init (PROTON, model)
     pdg_in = PROTON
     call lhapdf_global_reset ()
-    
+
     call reset_interaction_counter ()
-    
+
     allocate (lhapdf_data_t :: data)
     select type (data)
     type is (lhapdf_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1])
-    
+
     call sf_int%write (u)
 
     write (u, "(A)")
@@ -197,7 +197,7 @@ contains
     write (u, "(A)")  "* Evaluate for Q = 100 GeV"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.) 
+    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
     call sf_int%apply (scale = 100._default)
     call sf_int%write (u, testflag = .true.)
 
@@ -207,7 +207,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_lhapdf_2"
 
@@ -218,11 +218,11 @@ contains
     type(qcd_t) :: qcd
     type(string_t) :: name, path
     integer :: member
-    
+
     write (u, "(A)")  "* Test output: sf_lhapdf_3"
     write (u, "(A)")  "*   Purpose: initialize and evaluate alpha_s"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -237,10 +237,10 @@ contains
        member = 1
        path = ""
     end if
-       
+
     write (u, "(A)")  "* Initialize qcd object"
     write (u, "(A)")
-    
+
     allocate (alpha_qcd_lhapdf_t :: qcd%alpha)
     select type (alpha => qcd%alpha)
     type is (alpha_qcd_lhapdf_t)
@@ -251,7 +251,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate for Q = 100"
     write (u, "(A)")
-    
+
     write (u, "(1x,A,F8.5)")  "alpha = ", qcd%alpha%get (100._default)
 
     write (u, "(A)")

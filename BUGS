@@ -2,7 +2,7 @@ General:
 
 * WHIZARD 2.4 currently runs only with the NAGFOR 6.0 (or newer) and 
   gfortran 4.8.5 (or newer) Fortran compilers as well as Intel ifort
-  16.0.0 (or newer). Intel ifort 17.0.0/1 has a serious regression and
+  16.0.0 (or newer). Intel ifort 17.0.0/1/2 has a serious regression and
   does not work, however.
 
   [After compiler bugs are fixed, it should also run with PGF

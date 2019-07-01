@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -63,15 +63,15 @@ contains
     type(color_t) :: col
     type(polarization_t) :: pol
     type(field_data_t), target :: photon_data
-    character(220) :: buffer    
+    character(220) :: buffer
 
     write (u, "(A)")  "* Test output: LCIO interface"
     write (u, "(A)")  "*   Purpose: test LCIO interface"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization"
     write (u, "(A)")
-    
+
     ! Initialize a photon flavor object and some polarization
     call photon_data%init (var_str ("PHOTON"), 22)
     call photon_data%set (spin_type=VECTOR)
@@ -85,7 +85,7 @@ contains
 
     write (u, "(A)")  "* p -> q splitting"
     write (u, "(A)")
-            
+
     ! $p\to q$ splittings
     call particle_init (prt1, &
          0._default, 0._default, 7000._default, 7000._default, &
@@ -107,10 +107,10 @@ contains
     call lcio_particle_set_color (prt4, col)
     call lcio_particle_set_parent (prt4, prt1)
     call lcio_particle_set_parent (prt4, prt2)
-    
+
     write (u, "(A)")  "* Hard interaction"
     write (u, "(A)")
-        
+
     ! Hard interaction
     call particle_init (prt6, &
          -3.813_default, 0.113_default, -1.833_default, 4.233_default, &
@@ -122,9 +122,9 @@ contains
     call lcio_particle_set_parent (prt5, prt3)
     call lcio_particle_set_parent (prt5, prt4)
     call lcio_particle_set_parent (prt6, prt3)
-    call lcio_particle_set_parent (prt6, prt4)    
-    
-    ! $W^-$ decay    
+    call lcio_particle_set_parent (prt6, prt4)
+
+    ! $W^-$ decay
     call particle_init (prt7, &
          -2.445_default, 28.816_default, 6.082_default, 29.552_default, &
          1, -1._default/3._default, 1)
@@ -132,7 +132,7 @@ contains
          3.962_default, -49.498_default, -26.687_default, 56.373_default, &
          -2, -2._default/3._default, 1)
     call lcio_particle_set_t (prt7, 0.12_default)
-    call lcio_particle_set_t (prt8, 0.12_default)    
+    call lcio_particle_set_t (prt8, 0.12_default)
     call lcio_particle_set_vtx &
          (prt7, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
     call lcio_particle_set_vtx &
@@ -146,21 +146,21 @@ contains
     call lcio_particle_add_to_evt_coll (prt5, evt)
     call lcio_particle_add_to_evt_coll (prt6, evt)
     call lcio_particle_add_to_evt_coll (prt7, evt)
-    call lcio_particle_add_to_evt_coll (prt8, evt)    
+    call lcio_particle_add_to_evt_coll (prt8, evt)
     call lcio_event_add_coll (evt)
-    
+
     ! Event output
     write (u, "(A)")  "Writing in ASCII form to file 'lcio_test.slcio'"
     write (u, "(A)")
-    
+
     call write_lcio_event (evt, var_str ("lcio_test.slcio"))
-    
+
     write (u, "(A)")  "Writing completed"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* File contents:"
     write (u, "(A)")
-    
+
     u_file = free_unit ()
     open (u_file, file = "lcio_test.slcio", &
          action = "read", status = "old")
@@ -173,18 +173,18 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-        
+
     ! Wrapup
     ! call pol%final ()
     call lcio_event_final (evt)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: lcio_interface_1"
-    
+
   contains
 
     subroutine particle_init &

@@ -1,4 +1,15 @@
 model = SM
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
 
 $loop_me_method = "openloops"
 iterations = 1:100

@@ -21,13 +21,6 @@ seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -36,6 +29,13 @@ seed = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -60,13 +60,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -80,6 +73,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -103,13 +103,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -123,6 +116,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -147,13 +147,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -167,6 +160,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -190,13 +190,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -210,6 +203,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -236,13 +236,6 @@ seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => isr
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -254,6 +247,13 @@ seed = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -280,13 +280,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -303,6 +296,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -328,13 +328,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -351,6 +344,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -377,13 +377,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 7
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => isr
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -400,6 +393,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -425,13 +425,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 9
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => circe1 => isr
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -448,6 +441,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -475,13 +475,6 @@ seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -490,6 +483,13 @@ seed = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -518,13 +518,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -538,6 +531,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -565,13 +565,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -585,6 +578,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -613,13 +613,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -633,6 +626,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
@@ -660,13 +660,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Initializing integration for process beam_setup_5p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'beam_setup_5p'
-|   Library name  = 'beam_setup_5_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: e-, e+ => beam_events => isr
 |   polarization (beam 1):
 |     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
@@ -680,6 +673,13 @@ Warning: No cuts have been defined.
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'beam_setup_5p'
+|   Library name  = 'beam_setup_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'beam_setup_5p_i1':   e-, e+ => t, tbar [omega]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.

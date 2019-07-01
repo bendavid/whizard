@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -49,7 +49,7 @@ module sf_escan
   use state_matrices
   use polarizations
   use sf_base
-  
+
   implicit none
   private
 
@@ -65,7 +65,7 @@ module sf_escan
      procedure :: write => escan_data_write
      procedure :: get_n_par => escan_data_get_n_par
      procedure :: get_pdg_out => escan_data_get_pdg_out
-     procedure :: allocate_sf_int => escan_data_allocate_sf_int  
+     procedure :: allocate_sf_int => escan_data_allocate_sf_int
   end type escan_data_t
 
   type, extends (sf_int_t) :: escan_t
@@ -78,8 +78,8 @@ module sf_escan
      procedure :: recover_x => escan_recover_x
      procedure :: inverse_kinematics => escan_inverse_kinematics
      procedure :: apply => escan_apply
-  end type escan_t 
-  
+  end type escan_t
+
 
 contains
 
@@ -106,7 +106,7 @@ contains
     if (present (norm))  data%norm = norm
   end subroutine escan_data_init
 
-  subroutine escan_data_write (data, unit, verbose) 
+  subroutine escan_data_write (data, unit, verbose)
     class(escan_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -130,7 +130,7 @@ contains
     integer :: n
     n = 1
   end function escan_data_get_n_par
-  
+
   subroutine escan_data_get_pdg_out (data, pdg_out)
     class(escan_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -140,23 +140,23 @@ contains
        pdg_out(i) = data%flv_in(1:data%n_flv(i),i)%get_pdg ()
     end do
   end subroutine escan_data_get_pdg_out
-  
+
   subroutine escan_data_allocate_sf_int (data, sf_int)
     class(escan_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (escan_t :: sf_int)
   end subroutine escan_data_allocate_sf_int
-  
+
   function escan_type_string (object) result (string)
     class(escan_t), intent(in) :: object
     type(string_t) :: string
     if (associated (object%data)) then
-       string = "Escan: energy scan" 
+       string = "Escan: energy scan"
     else
        string = "Escan: [undefined]"
     end if
   end function escan_type_string
-  
+
   subroutine escan_write (object, unit, testflag)
     class(escan_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -170,7 +170,7 @@ contains
        write (u, "(1x,A)")  "Energy scan data: [undefined]"
     end if
   end subroutine escan_write
-    
+
   subroutine escan_init (sf_int, data)
     class(escan_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -187,7 +187,7 @@ contains
        hel_lock = [3, 4, 1, 2]
        m2 = data%flv_in(1,:)%get_mass ()
        call sf_int%base_init (mask, m2, mr2, m2, hel_lock = hel_lock)
-       sf_int%data => data       
+       sf_int%data => data
        do j1 = 1, data%n_flv(1)
           call qn_fc(1)%init ( &
                flv = data%flv_in(j1,1), &
@@ -228,7 +228,7 @@ contains
        sf_int%status = SF_INITIAL
     end select
   end subroutine escan_init
-    
+
   subroutine escan_complete_kinematics (sf_int, x, f, r, rb, map)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -257,7 +257,7 @@ contains
     call sf_int%base_recover_x (xi, x_free)
     x = product (xi)
   end subroutine escan_recover_x
-  
+
   subroutine escan_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -291,7 +291,7 @@ contains
     associate (data => sf_int%data)
       f = data%norm
     end associate
-    call sf_int%set_matrix_element (cmplx (f, kind=default))    
+    call sf_int%set_matrix_element (cmplx (f, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine escan_apply
 

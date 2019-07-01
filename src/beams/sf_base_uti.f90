@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -93,7 +93,7 @@ module sf_base_uti
      procedure :: get_pdg_out => sf_test_data_get_pdg_out
      procedure :: allocate_sf_int => sf_test_data_allocate_sf_int
   end type sf_test_data_t
-  
+
   type, extends (sf_int_t) :: sf_test_t
      type(sf_test_data_t), pointer :: data => null ()
      real(default) :: x = 0
@@ -105,7 +105,7 @@ module sf_base_uti
      procedure :: inverse_kinematics => sf_test_inverse_kinematics
      procedure :: apply => sf_test_apply
   end type sf_test_t
-  
+
   type, extends (sf_data_t) :: sf_test_spectrum_data_t
      class(model_data_t), pointer :: model => null ()
      type(flavor_t) :: flv_in
@@ -121,7 +121,7 @@ module sf_base_uti
      procedure :: allocate_sf_int => &
           sf_test_spectrum_data_allocate_sf_int
   end type sf_test_spectrum_data_t
-  
+
   type, extends (sf_int_t) :: sf_test_spectrum_t
      type(sf_test_spectrum_data_t), pointer :: data => null ()
    contains
@@ -132,7 +132,7 @@ module sf_base_uti
      procedure :: inverse_kinematics => sf_test_spectrum_inverse_kinematics
      procedure :: apply => sf_test_spectrum_apply
   end type sf_test_spectrum_t
-  
+
   type, extends (sf_data_t) :: sf_test_generator_data_t
      class(model_data_t), pointer :: model => null ()
      type(flavor_t) :: flv_in
@@ -148,7 +148,7 @@ module sf_base_uti
      procedure :: allocate_sf_int => &
           sf_test_generator_data_allocate_sf_int
   end type sf_test_generator_data_t
-  
+
   type, extends (sf_int_t) :: sf_test_generator_t
      type(sf_test_generator_data_t), pointer :: data => null ()
    contains
@@ -162,7 +162,7 @@ module sf_base_uti
      procedure :: inverse_kinematics => sf_test_generator_inverse_kinematics
      procedure :: apply => sf_test_generator_apply
   end type sf_test_generator_t
-  
+
 
 contains
 
@@ -173,12 +173,12 @@ contains
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
     class(sf_data_t), allocatable :: data
-    
+
     write (u, "(A)")  "* Test output: sf_base_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &test structure function data"
     write (u, "(A)")
-    
+
     call model%init_test ()
     pdg_in = 25
 
@@ -187,18 +187,18 @@ contains
     type is (sf_test_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     call data%write (u)
 
-    write (u, "(A)") 
+    write (u, "(A)")
 
     write (u, "(1x,A)")  "Outgoing particle code:"
     call data%get_pdg_out (pdg_out)
     pdg1 = pdg_out(1)
     write (u, "(2x,99(1x,I0))")  pdg1
-    
+
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_1"
 
@@ -216,12 +216,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f
-    
+
     write (u, "(A)")  "* Test output: sf_base_2"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &test structure function object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -230,20 +230,20 @@ contains
     call flv%init (25, model)
 
     call reset_interaction_counter ()
-    
+
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
     call sf_int%set_beam_index ([1])
-    
+
     call sf_int%write (u)
 
     write (u, "(A)")
@@ -346,7 +346,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_2"
 
@@ -363,13 +363,13 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f
-    
+
     write (u, "(A)")  "* Test output: sf_base_3"
     write (u, "(A)")  "*   Purpose: check various kinematical setups"
     write (u, "(A)")  "*            for collinear structure-function splitting."
     write (u, "(A)")  "             (two masses equal, one zero)"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -378,19 +378,19 @@ contains
     call flv%init (25, model)
 
     call reset_interaction_counter ()
-    
+
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
-    
+
     call sf_int%write (u)
 
     allocate (r (data%get_n_par ()))
@@ -409,7 +409,7 @@ contains
 
     sf_int%mr2 = 0
     sf_int%mo2 = sf_int%mi2
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping energy"
     write (u, "(A)")
@@ -428,7 +428,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
     write (u, "(A)")
@@ -447,13 +447,13 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set outgoing mass to zero"
 
     sf_int%mr2 = sf_int%mi2
     sf_int%mo2 = 0
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping energy"
     write (u, "(A)")
@@ -472,7 +472,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
     write (u, "(A)")
@@ -491,7 +491,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming mass to zero"
 
@@ -501,7 +501,7 @@ contains
     sf_int%mr2 = sf_int%mi2
     sf_int%mo2 = sf_int%mi2
     sf_int%mi2 = 0
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping energy"
     write (u, "(A)")
@@ -520,7 +520,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
     write (u, "(A)")
@@ -539,14 +539,14 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set all masses to zero"
 
     sf_int%mr2 = 0
     sf_int%mo2 = 0
     sf_int%mi2 = 0
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping energy"
     write (u, "(A)")
@@ -565,7 +565,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
     write (u, "(A)")
@@ -584,13 +584,13 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_3"
 
@@ -607,13 +607,13 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f
-    
+
     write (u, "(A)")  "* Test output: sf_base_4"
     write (u, "(A)")  "*   Purpose: check various kinematical setups"
     write (u, "(A)")  "*            for free structure-function splitting."
     write (u, "(A)")  "             (two masses equal, one zero)"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -622,19 +622,19 @@ contains
     call flv%init (25, model)
 
     call reset_interaction_counter ()
-    
+
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
        call data%init (model, pdg_in, collinear=.false.)
     end select
-       
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
-    
+
     call sf_int%write (u)
 
     allocate (r (data%get_n_par ()))
@@ -653,7 +653,7 @@ contains
 
     sf_int%mr2 = 0
     sf_int%mo2 = sf_int%mi2
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping energy"
     write (u, "(A)")
@@ -672,7 +672,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
     write (u, "(A)")
@@ -691,13 +691,13 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set outgoing mass to zero"
 
     sf_int%mr2 = sf_int%mi2
     sf_int%mo2 = 0
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping energy"
     write (u, "(A)")
@@ -716,7 +716,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
     write (u, "(A)")
@@ -735,7 +735,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming mass to zero"
 
@@ -745,7 +745,7 @@ contains
     sf_int%mr2 = sf_int%mi2
     sf_int%mo2 = sf_int%mi2
     sf_int%mi2 = 0
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping energy"
     write (u, "(A)")
@@ -764,7 +764,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
     write (u, "(A)")
@@ -783,25 +783,25 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set all masses to zero"
 
     sf_int%mr2 = 0
     sf_int%mo2 = 0
     sf_int%mi2 = 0
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-Initialize structure-function object with Q bounds"
-    
+
     call reset_interaction_counter ()
-    
+
     select type (data)
     type is (sf_test_data_t)
        call data%init (model, pdg_in, collinear=.false., &
             qbounds = [1._default, 100._default])
     end select
-       
+
     call sf_int%init (data)
     call sf_int%seed_kinematics ([k])
 
@@ -823,7 +823,7 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
     write (u, "(A)")
@@ -842,13 +842,13 @@ contains
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "r =", r
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_4"
 
@@ -868,12 +868,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f
-    
+
     write (u, "(A)")  "* Test output: sf_base_5"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &a pair spectrum object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -882,26 +882,26 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     allocate (sf_test_spectrum_data_t :: data)
     select type (data)
     type is (sf_test_spectrum_data_t)
        call data%init (model, pdg_in, with_radiation=.true.)
     end select
-       
+
     write (u, "(1x,A)")  "Outgoing particle codes:"
     call data%get_pdg_out (pdg_out)
     pdg1 = pdg_out(1)
     pdg2 = pdg_out(2)
     write (u, "(2x,99(1x,I0))")  pdg1, pdg2
-    
-    write (u, "(A)") 
+
+    write (u, "(A)")
     write (u, "(A)")  "* Initialize spectrum object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
-    
+
     call sf_int%write (u)
 
     write (u, "(A)")
@@ -978,7 +978,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_5"
 
@@ -996,12 +996,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f
-    
+
     write (u, "(A)")  "* Test output: sf_base_6"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &a pair spectrum object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1010,19 +1010,19 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     allocate (sf_test_spectrum_data_t :: data)
     select type (data)
     type is (sf_test_spectrum_data_t)
        call data%init (model, pdg_in, with_radiation=.false.)
     end select
-       
+
     write (u, "(A)")  "* Initialize spectrum object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
-    
+
     write (u, "(A)")  "* Initialize incoming momenta with sqrts=1000"
 
     E = 500
@@ -1083,7 +1083,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_6"
 
@@ -1097,11 +1097,11 @@ contains
     class(sf_data_t), allocatable, target :: data
     class(sf_int_t), allocatable :: sf_int
     real(default), dimension(:), allocatable :: value
-    
+
     write (u, "(A)")  "* Test output: sf_base_7"
     write (u, "(A)")  "*   Purpose: check direct access method"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1110,22 +1110,22 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     write (u, "(A)")  "* Initialize structure-function object"
     write (u, "(A)")
-    
+
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
 
     write (u, "(A)")  "* Probe structure function: states"
     write (u, "(A)")
-    
+
     write (u, "(A,I0)")  "n_states = ", sf_int%get_n_states ()
     write (u, "(A,I0)")  "n_in     = ", sf_int%get_n_in ()
     write (u, "(A,I0)")  "n_rad    = ", sf_int%get_n_rad ()
@@ -1134,7 +1134,7 @@ contains
     write (u, "(A)", advance="no")  "state(1)  = "
     call quantum_numbers_write (sf_int%get_state (1), u)
     write (u, *)
-    
+
     allocate (value (sf_int%get_n_states ()))
     call sf_int%compute_values (value, &
          E=[500._default], x=[0.5_default], xb=[0.5_default], scale=0._default)
@@ -1154,24 +1154,24 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Initialize spectrum object"
     write (u, "(A)")
-    
+
     deallocate (value)
     call sf_int%final ()
     deallocate (sf_int)
     deallocate (data)
-    
+
     allocate (sf_test_spectrum_data_t :: data)
     select type (data)
     type is (sf_test_spectrum_data_t)
        call data%init (model, pdg_in, with_radiation=.false.)
     end select
-       
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
 
     write (u, "(A)")  "* Probe spectrum: states"
     write (u, "(A)")
-    
+
     write (u, "(A,I0)")  "n_states = ", sf_int%get_n_states ()
     write (u, "(A,I0)")  "n_in     = ", sf_int%get_n_in ()
     write (u, "(A,I0)")  "n_rad    = ", sf_int%get_n_rad ()
@@ -1180,7 +1180,7 @@ contains
     write (u, "(A)", advance="no")  "state(1)  = "
     call quantum_numbers_write (sf_int%get_state (1), u)
     write (u, *)
-    
+
     allocate (value (sf_int%get_n_states ()))
     call sf_int%compute_value (1, value(1), &
          E = [500._default, 500._default], &
@@ -1197,7 +1197,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_7"
 
@@ -1213,11 +1213,11 @@ contains
     class(sf_data_t), allocatable, target :: data_spectrum
     type(sf_config_t), dimension(:), allocatable :: sf_config
     type(sf_chain_t) :: sf_chain
-    
+
     write (u, "(A)")  "* Test output: sf_base_8"
     write (u, "(A)")  "*   Purpose: set up a structure-function chain"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1226,7 +1226,7 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
@@ -1234,26 +1234,26 @@ contains
     type is (sf_test_data_t)
        call data_strfun%init (model, pdg_in)
     end select
-       
+
     allocate (sf_test_spectrum_data_t :: data_spectrum)
     select type (data_spectrum)
     type is (sf_test_spectrum_data_t)
        call data_spectrum%init (model, pdg_in, with_radiation=.true.)
     end select
-       
+
     write (u, "(A)")  "* Set up chain with beams only"
     write (u, "(A)")
-    
+
     call sf_chain%init (beam_data)
     call write_separator (u, 2)
     call sf_chain%write (u)
     call write_separator (u, 2)
     call sf_chain%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set up chain with structure function"
     write (u, "(A)")
-    
+
     allocate (sf_config (1))
     call sf_config(1)%init ([1], data_strfun)
     call sf_chain%init (beam_data, sf_config)
@@ -1266,7 +1266,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set up chain with spectrum and structure function"
     write (u, "(A)")
-    
+
     deallocate (sf_config)
     allocate (sf_config (2))
     call sf_config(1)%init ([1,2], data_spectrum)
@@ -1282,7 +1282,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_8"
 
@@ -1302,13 +1302,13 @@ contains
     type(sf_channel_t), dimension(2) :: sf_channel
     type(vector4_t), dimension(2) :: p
     integer :: j
-    
+
     write (u, "(A)")  "* Test output: sf_base_9"
     write (u, "(A)")  "*   Purpose: set up a structure-function chain &
          &and create an instance"
     write (u, "(A)")  "*            compute kinematics"
     write (u, "(A)")
-   
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1317,7 +1317,7 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
@@ -1325,16 +1325,16 @@ contains
     type is (sf_test_data_t)
        call data_strfun%init (model, pdg_in)
     end select
-       
+
     allocate (sf_test_spectrum_data_t :: data_spectrum)
     select type (data_spectrum)
     type is (sf_test_spectrum_data_t)
        call data_spectrum%init (model, pdg_in, with_radiation=.true.)
     end select
-       
+
     write (u, "(A)")  "* Set up chain with beams only"
     write (u, "(A)")
-    
+
     call sf_chain%init (beam_data)
 
     call sf_chain_instance%init (sf_chain, n_channel = 1)
@@ -1350,28 +1350,28 @@ contains
     call write_separator (u, 2)
 
     call sf_chain_instance%get_out_momenta (p)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Outgoing momenta:"
-    
+
     do j = 1, 2
        write (u, "(A)")
        call vector4_write (p(j), u)
     end do
-  
+
     call sf_chain_instance%final ()
     call sf_chain%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Set up chain with structure function"
     write (u, "(A)")
-    
+
     allocate (sf_config (1))
     call sf_config(1)%init ([1], data_strfun)
     call sf_chain%init (beam_data, sf_config)
 
     call sf_chain_instance%init (sf_chain, n_channel = 1)
-    
+
     call sf_channel(1)%init (1)
     call sf_channel(1)%activate_mapping ([1])
     call sf_chain_instance%set_channel (1, sf_channel(1))
@@ -1379,7 +1379,7 @@ contains
     call sf_chain_instance%link_interactions ()
     sf_chain_instance%status = SF_DONE_CONNECTIONS
     call sf_chain_instance%compute_kinematics (1, [0.8_default])
-    
+
     call write_separator (u, 2)
     call sf_chain%write (u)
     call write_separator (u, 2)
@@ -1387,22 +1387,22 @@ contains
     call write_separator (u, 2)
 
     call sf_chain_instance%get_out_momenta (p)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Outgoing momenta:"
-    
+
     do j = 1, 2
        write (u, "(A)")
        call vector4_write (p(j), u)
     end do
-    
+
     call sf_chain_instance%final ()
     call sf_chain%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set up chain with spectrum and structure function"
     write (u, "(A)")
-    
+
     deallocate (sf_config)
     allocate (sf_config (2))
     call sf_config(1)%init ([1,2], data_spectrum)
@@ -1410,7 +1410,7 @@ contains
     call sf_chain%init (beam_data, sf_config)
 
     call sf_chain_instance%init (sf_chain, n_channel = 1)
-    
+
     call sf_channel(2)%init (2)
     call sf_channel(2)%activate_mapping ([2])
     call sf_chain_instance%set_channel (1, sf_channel(2))
@@ -1419,7 +1419,7 @@ contains
     sf_chain_instance%status = SF_DONE_CONNECTIONS
     call sf_chain_instance%compute_kinematics &
          (1, [0.5_default, 0.6_default, 0.8_default])
-    
+
     call write_separator (u, 2)
     call sf_chain%write (u)
     call write_separator (u, 2)
@@ -1427,15 +1427,15 @@ contains
     call write_separator (u, 2)
 
     call sf_chain_instance%get_out_momenta (p)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Outgoing momenta:"
-    
+
     do j = 1, 2
        write (u, "(A)")
        call vector4_write (p(j), u)
     end do
-    
+
     call sf_chain_instance%final ()
     call sf_chain%final ()
 
@@ -1443,7 +1443,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_9"
 
@@ -1461,12 +1461,12 @@ contains
     type(sf_chain_instance_t), target :: sf_chain_instance
     type(sf_channel_t), dimension(2) :: sf_channel
     real(default), dimension(2) :: x_saved
-    
+
     write (u, "(A)")  "* Test output: sf_base_10"
     write (u, "(A)")  "*   Purpose: set up a structure-function chain"
     write (u, "(A)")  "*            and check mappings"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1475,7 +1475,7 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
@@ -1483,11 +1483,11 @@ contains
     type is (sf_test_data_t)
        call data_strfun%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Set up chain with structure function pair &
          &and standard mapping"
     write (u, "(A)")
-    
+
     allocate (sf_config (2))
     call sf_config(1)%init ([1], data_strfun)
     call sf_config(2)%init ([2], data_strfun)
@@ -1502,7 +1502,7 @@ contains
     call sf_chain_instance%link_interactions ()
     sf_chain_instance%status = SF_DONE_CONNECTIONS
     call sf_chain_instance%compute_kinematics (1, [0.8_default, 0.6_default])
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1522,20 +1522,20 @@ contains
     call sf_chain_instance%link_interactions ()
     sf_chain_instance%status = SF_DONE_CONNECTIONS
     call sf_chain_instance%inverse_kinematics (x_saved)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
 
-    
+
     call sf_chain_instance%final ()
     call sf_chain%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_10"
 
@@ -1556,12 +1556,12 @@ contains
     type(particle_set_t) :: pset
     type(interaction_t), pointer :: int
     logical :: ok
-    
+
     write (u, "(A)")  "* Test output: sf_base_11"
     write (u, "(A)")  "*   Purpose: set up a structure-function chain"
     write (u, "(A)")  "*            create an instance and evaluate"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1570,7 +1570,7 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
@@ -1578,23 +1578,23 @@ contains
     type is (sf_test_data_t)
        call data_strfun%init (model, pdg_in)
     end select
-       
+
     allocate (sf_test_spectrum_data_t :: data_spectrum)
     select type (data_spectrum)
     type is (sf_test_spectrum_data_t)
        call data_spectrum%init (model, pdg_in, with_radiation=.true.)
     end select
-       
+
     write (u, "(A)")  "* Set up chain with beams only"
     write (u, "(A)")
-    
+
     call sf_chain%init (beam_data)
 
     call sf_chain_instance%init (sf_chain, n_channel = 1)
     call sf_chain_instance%link_interactions ()
     call sf_chain_instance%exchange_mask ()
     call sf_chain_instance%init_evaluators ()
-    
+
     call sf_chain_instance%compute_kinematics (1, [real(default) ::])
     call sf_chain_instance%evaluate (scale=0._default)
 
@@ -1618,7 +1618,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Recover chain:"
     write (u, "(A)")
-    
+
     call sf_chain_instance%init (sf_chain, n_channel = 1)
     call sf_chain_instance%link_interactions ()
     call sf_chain_instance%exchange_mask ()
@@ -1643,7 +1643,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set up chain with structure function"
     write (u, "(A)")
-    
+
     allocate (sf_config (1))
     call sf_config(1)%init ([1], data_strfun)
     call sf_chain%init (beam_data, sf_config)
@@ -1658,7 +1658,7 @@ contains
 
     call sf_chain_instance%compute_kinematics (1, [0.8_default])
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1679,7 +1679,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Recover chain:"
     write (u, "(A)")
-    
+
     call sf_chain_instance%init (sf_chain, n_channel = 1)
     call sf_channel(1)%init (1)
     call sf_channel(1)%activate_mapping ([1])
@@ -1707,13 +1707,13 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set up chain with spectrum and structure function"
     write (u, "(A)")
-    
+
     deallocate (sf_config)
     allocate (sf_config (2))
     call sf_config(1)%init ([1,2], data_spectrum)
     call sf_config(2)%init ([2], data_strfun)
     call sf_chain%init (beam_data, sf_config)
-    
+
     call sf_chain_instance%init (sf_chain, n_channel = 1)
     call sf_channel(2)%init (2)
     call sf_channel(2)%activate_mapping ([2])
@@ -1725,7 +1725,7 @@ contains
     call sf_chain_instance%compute_kinematics &
          (1, [0.5_default, 0.6_default, 0.8_default])
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1746,7 +1746,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Recover chain:"
     write (u, "(A)")
-    
+
     call sf_chain_instance%init (sf_chain, n_channel = 1)
     call sf_channel(2)%init (2)
     call sf_channel(2)%activate_mapping ([2])
@@ -1773,7 +1773,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_11"
 
@@ -1792,12 +1792,12 @@ contains
     real(default), dimension(2) :: x_saved
     real(default), dimension(2,3) :: p_saved
     type(sf_channel_t), dimension(:), allocatable :: sf_channel
-    
+
     write (u, "(A)")  "* Test output: sf_base_12"
     write (u, "(A)")  "*   Purpose: set up and evaluate a multi-channel &
          &structure-function chain"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1806,7 +1806,7 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data)
@@ -1814,14 +1814,14 @@ contains
     type is (sf_test_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Set up chain with structure function pair &
          &and three different mappings"
     write (u, "(A)")
-    
+
     allocate (sf_config (2))
     call sf_config(1)%init ([1], data)
-    call sf_config(2)%init ([2], data) 
+    call sf_config(2)%init ([2], data)
     call sf_chain%init (beam_data, sf_config)
 
     call sf_chain_instance%init (sf_chain, n_channel = 3)
@@ -1835,7 +1835,7 @@ contains
     call sf_channel(2)%activate_mapping ([1,2])
     ! call sf_chain_instance%activate_mapping (2, [1,2])
     call sf_chain_instance%set_channel (2, sf_channel(2))
-   
+
     ! channel 3: two-particle mapping
     call sf_channel(3)%set_s_mapping ([1,2])
     ! call sf_chain_instance%set_s_mapping (3, [1, 2])
@@ -1850,7 +1850,7 @@ contains
 
     call sf_chain_instance%compute_kinematics (1, [0.8_default, 0.6_default])
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1863,7 +1863,7 @@ contains
 
     call sf_chain_instance%inverse_kinematics (x_saved)
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1876,7 +1876,7 @@ contains
 
     call sf_chain_instance%compute_kinematics (2, p_saved(:,2))
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1887,7 +1887,7 @@ contains
 
     call sf_chain_instance%compute_kinematics (3, p_saved(:,3))
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
@@ -1899,7 +1899,7 @@ contains
     call sf_chain%final ()
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_12"
 
@@ -1917,12 +1917,12 @@ contains
     real(default) :: E
     real(default), dimension(:), allocatable :: r, rb, x
     real(default) :: f, x_free
-    
+
     write (u, "(A)")  "* Test output: sf_base_13"
     write (u, "(A)")  "*   Purpose: initialize and fill &
          &a pair generator object"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -1931,23 +1931,23 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     allocate (sf_test_generator_data_t :: data)
     select type (data)
     type is (sf_test_generator_data_t)
        call data%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Initialize generator object"
     write (u, "(A)")
-    
+
     call data%allocate_sf_int (sf_int)
     call sf_int%init (data)
 
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
-    
+
     write (u, "(A)")  "* Generate free r values"
     write (u, "(A)")
 
@@ -2010,7 +2010,7 @@ contains
 
     call sf_int%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_13"
 
@@ -2028,12 +2028,12 @@ contains
     real(default), dimension(:), allocatable :: p_in
     type(sf_chain_t), target :: sf_chain
     type(sf_chain_instance_t), target :: sf_chain_instance
-    
+
     write (u, "(A)")  "* Test output: sf_base_14"
     write (u, "(A)")  "*   Purpose: set up a structure-function chain"
     write (u, "(A)")  "*            create an instance and evaluate"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
@@ -2042,7 +2042,7 @@ contains
     pdg_in = 25
 
     call reset_interaction_counter ()
-    
+
     call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
@@ -2050,21 +2050,21 @@ contains
     type is (sf_test_data_t)
        call data_strfun%init (model, pdg_in)
     end select
-       
+
     allocate (sf_test_generator_data_t :: data_generator)
     select type (data_generator)
     type is (sf_test_generator_data_t)
        call data_generator%init (model, pdg_in)
     end select
-       
+
     write (u, "(A)")  "* Set up chain with generator and structure function"
     write (u, "(A)")
-    
+
     allocate (sf_config (2))
     call sf_config(1)%init ([1,2], data_generator)
     call sf_config(2)%init ([2], data_strfun)
     call sf_chain%init (beam_data, sf_config)
-    
+
     call sf_chain_instance%init (sf_chain, n_channel = 1)
     call sf_chain_instance%link_interactions ()
     call sf_chain_instance%exchange_mask ()
@@ -2075,14 +2075,14 @@ contains
 
     allocate (p_in (sf_chain%get_n_bound ()), source = 0.9_default)
     write (u, "(A,9(1x,F10.7))")  "p_in =", p_in
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate"
     write (u, "(A)")
 
     call sf_chain_instance%compute_kinematics (1, p_in)
     call sf_chain_instance%evaluate (scale=0._default)
-    
+
     call sf_chain_instance%write (u)
 
     write (u, "(A)")
@@ -2091,7 +2091,7 @@ contains
 
     call sf_chain_instance%get_mcpar (1, p_in)
     write (u, "(A,9(1x,F10.7))")  "p_in =", p_in
-    
+
     call sf_chain_instance%final ()
     call sf_chain%final ()
 
@@ -2099,7 +2099,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_base_14"
 
@@ -2127,7 +2127,7 @@ contains
        write (u, "(3x,A," // FMT_19 // ")")  "qmax      = ", data%qbounds(2)
     end if
   end subroutine sf_test_data_write
-    
+
   subroutine sf_test_data_init (data, model, pdg_in, collinear, qbounds, mode)
     class(sf_test_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
@@ -2150,7 +2150,7 @@ contains
        data%qbounds = qbounds
     end if
   end subroutine sf_test_data_init
-  
+
   function sf_test_data_get_n_par (data) result (n)
     class(sf_test_data_t), intent(in) :: data
     integer :: n
@@ -2160,26 +2160,26 @@ contains
        n = 3
     end if
   end function sf_test_data_get_n_par
-  
+
   subroutine sf_test_data_get_pdg_out (data, pdg_out)
     class(sf_test_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
     pdg_out(1) = 25
   end subroutine sf_test_data_get_pdg_out
-  
+
   subroutine sf_test_data_allocate_sf_int (data, sf_int)
     class(sf_test_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     if (allocated (sf_int)) deallocate (sf_int)
     allocate (sf_test_t :: sf_int)
   end subroutine sf_test_data_allocate_sf_int
-    
+
   function sf_test_type_string (object) result (string)
     class(sf_test_t), intent(in) :: object
     type(string_t) :: string
     string = "Test"
   end function sf_test_type_string
-  
+
   subroutine sf_test_write (object, unit, testflag)
     class(sf_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -2193,7 +2193,7 @@ contains
        write (u, "(1x,A)")  "SF test data: [undefined]"
     end if
   end subroutine sf_test_write
-    
+
   subroutine sf_test_init (sf_int, data)
     class(sf_test_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -2311,7 +2311,7 @@ contains
     call data%flv_rad%write (u);  write (u, *)
     write (u, "(3x,A," // FMT_19 // ")")  "mass      = ", data%m
   end subroutine sf_test_spectrum_data_write
-    
+
   subroutine sf_test_spectrum_data_init (data, model, pdg_in, with_radiation)
     class(sf_test_spectrum_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
@@ -2329,32 +2329,32 @@ contains
        call data%flv_rad%init (25, model)
     end if
   end subroutine sf_test_spectrum_data_init
-  
+
   function sf_test_spectrum_data_get_n_par (data) result (n)
     class(sf_test_spectrum_data_t), intent(in) :: data
     integer :: n
     n = 2
   end function sf_test_spectrum_data_get_n_par
-  
+
   subroutine sf_test_spectrum_data_get_pdg_out (data, pdg_out)
     class(sf_test_spectrum_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
     pdg_out(1) = 25
     pdg_out(2) = 25
   end subroutine sf_test_spectrum_data_get_pdg_out
-  
+
   subroutine sf_test_spectrum_data_allocate_sf_int (data, sf_int)
     class(sf_test_spectrum_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (sf_test_spectrum_t :: sf_int)
   end subroutine sf_test_spectrum_data_allocate_sf_int
-    
+
   function sf_test_spectrum_type_string (object) result (string)
     class(sf_test_spectrum_t), intent(in) :: object
     type(string_t) :: string
     string = "Test Spectrum"
   end function sf_test_spectrum_type_string
-  
+
   subroutine sf_test_spectrum_write (object, unit, testflag)
     class(sf_test_spectrum_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -2368,7 +2368,7 @@ contains
        write (u, "(1x,A)")  "SF test spectrum data: [undefined]"
     end if
   end subroutine sf_test_spectrum_write
-    
+
   subroutine sf_test_spectrum_init (sf_int, data)
     class(sf_test_spectrum_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -2499,7 +2499,7 @@ contains
     call data%flv_out%write (u);  write (u, *)
     write (u, "(3x,A," // FMT_19 // ")")  "mass      = ", data%m
   end subroutine sf_test_generator_data_write
-    
+
   subroutine sf_test_generator_data_init (data, model, pdg_in)
     class(sf_test_generator_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
@@ -2512,38 +2512,38 @@ contains
     data%m = data%flv_in%get_mass ()
     call data%flv_out%init (25, model)
   end subroutine sf_test_generator_data_init
-  
+
   function sf_test_generator_data_is_generator (data) result (flag)
     class(sf_test_generator_data_t), intent(in) :: data
     logical :: flag
     flag = .true.
   end function sf_test_generator_data_is_generator
-  
+
   function sf_test_generator_data_get_n_par (data) result (n)
     class(sf_test_generator_data_t), intent(in) :: data
     integer :: n
     n = 2
   end function sf_test_generator_data_get_n_par
-  
+
   subroutine sf_test_generator_data_get_pdg_out (data, pdg_out)
     class(sf_test_generator_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
     pdg_out(1) = 25
     pdg_out(2) = 25
   end subroutine sf_test_generator_data_get_pdg_out
-  
+
   subroutine sf_test_generator_data_allocate_sf_int (data, sf_int)
     class(sf_test_generator_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (sf_test_generator_t :: sf_int)
   end subroutine sf_test_generator_data_allocate_sf_int
-    
+
   function sf_test_generator_type_string (object) result (string)
     class(sf_test_generator_t), intent(in) :: object
     type(string_t) :: string
     string = "Test Generator"
   end function sf_test_generator_type_string
-  
+
   subroutine sf_test_generator_write (object, unit, testflag)
     class(sf_test_generator_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -2557,7 +2557,7 @@ contains
        write (u, "(1x,A)")  "SF test generator data: [undefined]"
     end if
   end subroutine sf_test_generator_write
-    
+
   subroutine sf_test_generator_init (sf_int, data)
     class(sf_test_generator_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -2592,7 +2592,7 @@ contains
     logical :: flag
     flag = sf_int%data%is_generator ()
   end function sf_test_generator_is_generator
-  
+
   subroutine sf_test_generator_generate_free (sf_int, r, rb,  x_free)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
@@ -2601,7 +2601,7 @@ contains
     rb= 1 - r
     x_free = x_free * product (r)
   end subroutine sf_test_generator_generate_free
-    
+
   subroutine sf_test_generator_recover_x (sf_int, x, x_free)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -2609,7 +2609,7 @@ contains
     call sf_int%base_recover_x (x)
     if (present (x_free))  x_free = x_free * product (x)
   end subroutine sf_test_generator_recover_x
-  
+
   subroutine sf_test_generator_complete_kinematics (sf_int, x, f, r, rb, map)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x

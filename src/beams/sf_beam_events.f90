@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -73,6 +73,7 @@ module sf_beam_events
      procedure :: write => beam_events_data_write
      procedure :: open => beam_events_data_open
      procedure :: close => beam_events_data_close
+     procedure :: get_beam_file => beam_events_data_get_beam_file
   end type beam_events_data_t
 
   type, extends (sf_int_t) :: beam_events_t
@@ -88,8 +89,8 @@ module sf_beam_events
      procedure :: complete_kinematics => beam_events_complete_kinematics
      procedure :: inverse_kinematics => beam_events_inverse_kinematics
      procedure :: apply => beam_events_apply
-  end type beam_events_t 
-  
+  end type beam_events_t
+
 
   type(file_registry_t), save :: beam_file_registry
 
@@ -118,13 +119,13 @@ contains
     logical :: flag
     flag = .true.
   end function beam_events_data_is_generator
-  
+
   function beam_events_data_get_n_par (data) result (n)
     class(beam_events_data_t), intent(in) :: data
     integer :: n
     n = 2
   end function beam_events_data_get_n_par
-  
+
   subroutine beam_events_data_get_pdg_out (data, pdg_out)
     class(beam_events_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -134,23 +135,23 @@ contains
        pdg_out(i) = data%flv_in(i)%get_pdg ()
     end do
   end subroutine beam_events_data_get_pdg_out
-  
+
   subroutine beam_events_data_allocate_sf_int (data, sf_int)
     class(beam_events_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (beam_events_t :: sf_int)
   end subroutine beam_events_data_allocate_sf_int
-  
-  subroutine beam_events_data_write (data, unit, verbose) 
+
+  subroutine beam_events_data_write (data, unit, verbose)
     class(beam_events_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose        
+    logical, intent(in), optional :: verbose
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "Beam-event file data:"
     write (u, "(3x,A,A,A,A)") "prt_in = ", &
          char (data%flv_in(1)%get_name ()), &
-         ", ", char (data%flv_in(2)%get_name ())    
+         ", ", char (data%flv_in(2)%get_name ())
     write (u, "(3x,A,A,A)") "file   = '", char (data%file), "'"
     write (u, "(3x,A,I0)")  "unit   = ", data%unit
     write (u, "(3x,A,L1)")  "warn   = ", data%warn_eof
@@ -193,16 +194,22 @@ contains
     end if
   end subroutine beam_events_data_close
 
+  function beam_events_data_get_beam_file (data) result (file)
+    class(beam_events_data_t), intent(in) :: data
+    type(string_t) :: file
+    file = "Beam events: " // data%file
+  end function beam_events_data_get_beam_file
+
   function beam_events_type_string (object) result (string)
     class(beam_events_t), intent(in) :: object
     type(string_t) :: string
     if (associated (object%data)) then
-       string = "Beam events: " // object%data%file 
+       string = "Beam events: " // object%data%file
     else
        string = "Beam events: [undefined]"
     end if
   end function beam_events_type_string
-  
+
   subroutine beam_events_write (object, unit, testflag)
     class(beam_events_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -216,7 +223,7 @@ contains
        write (u, "(1x,A)")  "Beam events data: [undefined]"
     end if
   end subroutine beam_events_write
-    
+
   subroutine beam_events_init (sf_int, data)
     class(beam_events_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -268,7 +275,7 @@ contains
        sf_int%status = SF_INITIAL
     end select
   end subroutine beam_events_init
-    
+
   subroutine sf_beam_events_final (object)
     class(beam_events_t), intent(inout) :: object
     call object%data%close ()
@@ -280,7 +287,7 @@ contains
     logical :: flag
     flag = sf_int%data%is_generator ()
   end function beam_events_is_generator
-  
+
   recursive subroutine beam_events_generate_free (sf_int, r, rb,  x_free)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
@@ -316,7 +323,7 @@ contains
       end if
     end associate
   end subroutine beam_events_generate_free
-    
+
   subroutine beam_events_complete_kinematics (sf_int, x, f, r, rb, map)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -361,7 +368,7 @@ contains
     real(default), intent(in) :: scale
     real(default) :: f
     f = 1
-    call sf_int%set_matrix_element (cmplx (f, kind=default))        
+    call sf_int%set_matrix_element (cmplx (f, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine beam_events_apply
 

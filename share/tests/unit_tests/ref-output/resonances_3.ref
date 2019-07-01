@@ -1,0 +1,73 @@
+* Test output: resonances_3
+*   Purpose: test resonance history set
+
+* Read model file
+
+* Initialize resonance history set
+
+* Add resonance histories, one at a time
+
+Resonance history with 0 resonances:
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+Resonance history with 2 resonances:
+Resonance contributors: 1 2 f(-24)
+Resonance contributors: 1 2 3 f(23)
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 3 f(23)
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+* Result
+
+Resonance history set:
+* Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+* Resonance history with 2 resonances:
+Resonance contributors: 1 2 f(-24)
+Resonance contributors: 1 2 3 f(23)
+* Resonance history with 1 resonances:
+Resonance contributors: 1 2 3 f(23)
+
+* Result in array form
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+Resonance history with 2 resonances:
+Resonance contributors: 1 2 f(-24)
+Resonance contributors: 1 2 3 f(23)
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 3 f(23)
+
+* Re-initialize resonance history set with filter n=2
+
+* Add resonance histories, one at a time
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+Resonance history with 2 resonances:
+Resonance contributors: 1 2 f(-24)
+Resonance contributors: 1 2 3 f(23)
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 3 f(23)
+
+Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+* Result
+
+Resonance history set:
+* Resonance history with 1 resonances:
+Resonance contributors: 1 2 f(-24)
+
+* Cleanup
+
+* Test output end: resonances_3

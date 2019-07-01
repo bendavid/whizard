@@ -32,17 +32,13 @@ parameter nrqcd_order  = 1            # NRQCD order (0: LL, 1: NLL)
 parameter sh     = 1.0          # hard scale: mu_h = m1S * sh
 parameter sf     = 1.0          # soft scale: mu_s = m1s * sh * sf * v*(sqrts)
 
-# -3: matched expanded
-# -2: p0-constant resummed FF with switchoff function multiplied to all alpha_s
-# -1: "matched" FF
-#  0: p0-dependent resummed FF
-#  1: p0-constant resummed FF
-#  3: p0-dependent nonrelativistic O(alphas^1) expanded FF
-#  4: p0-constant nonrelativistic O(alphas^1) expanded FF, hard scale
-#  5: p0-constant nonrelativistic O(alphas^1) expanded FF, soft scale
-#  6: p0-constant nonrelativistic O(alphas^1) expanded FF, soft scale with switchoff to treelevel
-#  7: p0-dependent analytic resummed LL
-#  8: p0-constant nonrelativistic O(alphas^1) expanded FF, switch from soft to hard scale
+# -2: resummed FF with switchoff function multiplied to all alpha_s
+# -1: matched FF, intended to be added to NLO result
+#  1: resummed FF
+#  4: nonrelativistic O(alphas^1) expanded FF, hard scale
+#  5: nonrelativistic O(alphas^1) expanded FF, soft scale
+#  6: nonrelativistic O(alphas^1) expanded FF, soft scale with switchoff to treelevel
+#  8: nonrelativistic O(alphas^1) expanded FF, not so hard scale
 #  9: Set FF=1 to get the tree-level result from the signal component
 # >9: Set FF=0, signal component = 0
 parameter FF     =  1           # form factor type:
@@ -50,60 +46,63 @@ parameter FF     =  1           # form factor type:
 #  build the sum of
 #  1st bit enables   NLO width and decay (disabled is LO): 1/0 * 1
 #
+#  ALL OF THE PARAMETERS BELOW ARE ONLY RELEVANT WHEN `$method = "threshold"
+#
 #  2nd bit enables   factorization (disabled uses signal diagram): 1/0 * 2
-#      (only relevant if method = "threshold")
 #
 #  3rd bit enables   interference with background diagrams: 1/0 * 4
-#      (only relevant if method = "threshold" otherwise its always 1)
 #
 #  4th bit enables   on-shell projection of momenta: 1/0 * 8
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on)
 #
 #  5th bit enforces  LO width in propagators in signal component: 1/0 * 16
-#      (only relevant if method = "threshold" otherwise its always 0)
 #
 #  6th bit enables   helicity approximation: 1/0 * 32
-#      (only relevant if method = "threshold" otherwise its always 0)
 #
 #  7th bit allows to activate on-shell projection of momenta in
 #   production only even if 4th bit is off: 1/0 * 64
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on, if on-shell projection is off)
 #
 #  8th bit allows to activate on-shell projection of momenta in
 #   decay only even if 4th bit is off: 1/0 * 128
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on, if on-shell projection is off)
 #
 #  9th bit allows to compute the width in the propagator with off-shell momenta: 1/0 * 256
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (highly unrecommended, only for testing, not physical)
 #
 # 10th bit allows to boost the momenta of the decay to the collision system: 1/0 * 512
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on)
 #      (only relevant if projection for decay is on via 8th or 4th bit)
 #
 # 11th bit enables   extra helicity approximation: 1/0 * 1024
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on)
 #
 # 12th bit enforces to subtract -1 from the form factor: 1/0 * 2048
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on)
 #      (only for cross checking and debugging)
 #
 # 13th bit flips the sign of the amplitude containing the form factor: 1/0 * 4096
-#      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization and interference is on)
 #      (only for cross checking and debugging)
 #
-# 14th bit enforces to use the factorized amplitude even in the interference: 1/0 * 8192
-#      (only relevant if method = "threshold" otherwise its always 0)
+# 14th bit does nothing
+#
+# 15th bit computes only the interference term and nothing else: 1/0 * 16384
 #      (only relevant if factorization and interference is on)
 #
+# 16th bit disables the Z propagator and uses only the photon: 1/0 * 32768
+#      (only for cross checking and debugging)
+#
 parameter offshell_strategy = 0
+
+# Binary encoding of all four top helicity configurations
+# Bit = 0 -> -1, Bit = 1 -> + 1
+# 0 -> (-,-)
+# 1 -> (-,+)
+# 2 -> (+,-)
+# 3 -> (+,+)
+parameter top_helicity_selection = -1
+
 
 parameter v1     = 0.1          # for switch-off function f
 parameter v2     = 0.3          # for switch-off function f

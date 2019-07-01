@@ -28,13 +28,6 @@ n_events = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process lhapdf6_1_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lhapdf6_1_p'
-|   Library name  = 'lhapdf6_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lhapdf6_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: u, ubar
 | Beam data (collision):
 |   u     (mass = 0.0000000E+00 GeV)
@@ -43,6 +36,13 @@ n_events = 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'lhapdf6_1_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'lhapdf6_1_p'
+|   Library name  = 'lhapdf6_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'lhapdf6_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -86,13 +86,6 @@ $lhef_version = "1.0"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process lhapdf6_1_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lhapdf6_1_p'
-|   Library name  = 'lhapdf6_1_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lhapdf6_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
-| ------------------------------------------------------------------------
 | Beam structure: p, p => lhapdf
 | Beam data (collision):
 |   p  (mass = 0.0000000E+00 GeV)
@@ -101,6 +94,13 @@ $lhef_version = "1.0"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'lhapdf6_1_p_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'lhapdf6_1_p'
+|   Library name  = 'lhapdf6_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'lhapdf6_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

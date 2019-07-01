@@ -44,4 +44,4 @@ sample_format = debug
 ?negative_weights = true
 ?unweighted = false
 
-simulate (fks_res_2_p1) 
+simulate (fks_res_2_p1)

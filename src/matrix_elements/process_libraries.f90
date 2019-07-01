@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -36,7 +36,7 @@
 module process_libraries
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
@@ -136,7 +136,7 @@ module process_libraries
      procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
      procedure :: get_coupling_powers => process_component_def_get_coupling_powers
   end type process_component_def_t
-  
+
   type :: process_def_t
      private
      type(string_t) :: id
@@ -161,19 +161,20 @@ module process_libraries
      procedure :: set_fixed_emitter => process_def_set_fixed_emitter
      procedure :: set_coupling_powers => process_def_set_coupling_powers
      procedure :: set_associated_components => &
-                      process_def_set_associated_components
+          process_def_set_associated_components
      procedure :: compute_md5sum => process_def_compute_md5sum
      procedure :: get_md5sum => process_def_get_md5sum
      procedure :: get_core_def_ptr => process_def_get_core_def_ptr
      procedure :: needs_code => process_def_needs_code
      procedure :: get_pdg_in_1 => process_def_get_pdg_in_1
+     procedure :: get_nlo_type => process_def_get_nlo_type
   end type process_def_t
 
   type, extends (process_def_t) :: process_def_entry_t
      private
      type(process_def_entry_t), pointer :: next => null ()
   end type process_def_entry_t
-  
+
   type :: process_def_list_t
      private
      type(process_def_entry_t), pointer :: first => null ()
@@ -223,6 +224,7 @@ module process_libraries
      logical :: static = .false.
      logical :: driver_exists = .false.
      logical :: makefile_exists = .false.
+     integer :: update_counter = 0
      type(process_library_entry_t), dimension(:), allocatable :: entry
      class(prclib_driver_t), allocatable :: driver
      character(32) :: md5sum = ""
@@ -249,11 +251,13 @@ module process_libraries
      procedure :: get_name => process_library_get_name
      procedure :: is_active => process_library_is_active
      procedure :: get_status => process_library_get_status
+     procedure :: get_update_counter => process_library_get_update_counter
      procedure :: set_status => process_library_set_status
      procedure :: is_loaded => process_library_is_loaded
      procedure :: fill_constants => process_library_fill_constants
      procedure :: connect_process => process_library_connect_process
      procedure :: test_transfer_md5sum => process_library_test_transfer_md5sum
+     procedure :: get_nlo_type => process_library_get_nlo_type
      procedure :: get_modellibs_ldflags => process_library_get_modellibs_ldflags
      procedure :: get_static_modelname => process_library_get_static_modelname
   end type process_library_t
@@ -268,7 +272,7 @@ contains
     call split (string, prefix, "=")
     buffer = string
   end subroutine strip_equation_lhs
-    
+
   subroutine process_component_def_write (object, unit)
     class(process_component_def_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -306,7 +310,7 @@ contains
     end if
     write (u, "(3x,A,A,A)") "MD5 sum (def)       = '", object%md5sum, "'"
   end subroutine process_component_def_write
-    
+
   subroutine process_component_def_read (component, unit, core_def_templates)
     class(process_component_def_t), intent(out) :: component
     integer, intent(in) :: unit
@@ -314,19 +318,19 @@ contains
     character(80) :: buffer
     type(string_t) :: var_buffer, prefix, in_state, out_state
     type(string_t) :: variant_type
-    
+
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     component%basename = trim (adjustl (buffer))
-    
+
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     read (buffer, *)  component%initial
-    
+
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     read (buffer, *)  component%n_in, component%n_out, component%n_tot
-    
+
     call get (unit, var_buffer)
     call split (var_buffer, prefix, "=")   ! keeps 'in => out'
     call split (var_buffer, prefix, "=")   ! actually: separator is '=>'
@@ -340,13 +344,13 @@ contains
     if (component%n_out > 0) then
        call prt_spec_read (component%prt_out, out_state)
     end if
-    
+
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     component%method = trim (adjustl (buffer))
     if (component%method == "[undefined]") &
          component%method = ""
-    
+
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     variant_type = trim (adjustl (buffer))
@@ -359,9 +363,9 @@ contains
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     read (buffer(3:34), "(A32)")  component%md5sum
-    
+
   end subroutine process_component_def_read
-    
+
   subroutine process_component_def_show (object, unit)
     class(process_component_def_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -388,7 +392,7 @@ contains
        write (u, *)
     end if
   end subroutine process_component_def_show
-    
+
   subroutine process_component_def_compute_md5sum (component, model)
     class(process_component_def_t), intent(inout) :: component
     class(model_data_t), intent(in), optional, target :: model
@@ -419,19 +423,19 @@ contains
        call component%core_def%allocate_driver (driver, component%basename)
     end if
   end subroutine process_component_def_allocate_driver
-    
+
   function process_component_def_needs_code (component) result (flag)
     class(process_component_def_t), intent(in) :: component
     logical :: flag
     flag = component%core_def%needs_code ()
   end function process_component_def_needs_code
-  
+
   function process_component_def_get_writer_ptr (component) result (writer)
     class(process_component_def_t), intent(in), target :: component
     class(prc_writer_t), pointer :: writer
     writer => component%core_def%writer
   end function process_component_def_get_writer_ptr
-  
+
   function process_component_def_get_features (component) result (features)
     class(process_component_def_t), intent(in) :: component
     type(string_t), dimension(:), allocatable :: features
@@ -457,25 +461,25 @@ contains
     class(prc_core_def_t), pointer :: ptr
     ptr => component%core_def
   end function process_component_get_core_def_ptr
-  
+
   function process_component_def_get_n_in (component) result (n_in)
     class(process_component_def_t), intent(in) :: component
     integer :: n_in
     n_in = component%n_in
   end function process_component_def_get_n_in
-  
+
   function process_component_def_get_n_out (component) result (n_out)
     class(process_component_def_t), intent(in) :: component
     integer :: n_out
     n_out = component%n_out
   end function process_component_def_get_n_out
-  
+
   function process_component_def_get_n_tot (component) result (n_tot)
     class(process_component_def_t), intent(in) :: component
     integer :: n_tot
     n_tot = component%n_tot
   end function process_component_def_get_n_tot
-  
+
   subroutine process_component_def_get_prt_in (component, prt)
     class(process_component_def_t), intent(in) :: component
     type(string_t), dimension(:), intent(out), allocatable :: prt
@@ -485,7 +489,7 @@ contains
        prt(i) = component%prt_in(i)%to_string ()
     end do
   end subroutine process_component_def_get_prt_in
-  
+
   subroutine process_component_def_get_prt_out (component, prt)
     class(process_component_def_t), intent(in) :: component
     type(string_t), dimension(:), intent(out), allocatable :: prt
@@ -495,7 +499,7 @@ contains
        prt(i) = component%prt_out(i)%to_string ()
     end do
   end subroutine process_component_def_get_prt_out
-  
+
   subroutine process_component_def_get_pdg_in (component, model, pdg)
     class(process_component_def_t), intent(in) :: component
     class(model_data_t), intent(in), target :: model
@@ -505,13 +509,13 @@ contains
        pdg(i) = model%get_pdg (component%prt_in(i)%to_string ())
     end do
   end subroutine process_component_def_get_pdg_in
-    
+
   pure function process_component_def_get_md5sum (component) result (md5sum)
     class(process_component_def_t), intent(in) :: component
     character(32) :: md5sum
     md5sum = component%md5sum
   end function process_component_def_get_md5sum
-  
+
   elemental function process_component_def_get_nlo_type (component) result (nlo_type)
     integer :: nlo_type
     class(process_component_def_t), intent(in) :: component
@@ -535,7 +539,7 @@ contains
     class(process_component_def_t), intent(in) :: component
     i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
   end function process_component_def_get_associated_real_sing
-  
+
   elemental function process_component_def_get_associated_subtraction (component) result (i_sub)
     integer :: i_sub
     class(process_component_def_t), intent(in) :: component
@@ -586,7 +590,7 @@ contains
      class(process_component_def_t), intent(in) :: component
      emitter = component%fixed_emitter
   end function process_component_def_get_fixed_emitter
-     
+
   pure subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
     class(process_component_def_t), intent(in) :: component
     integer, intent(out) :: alpha_power, alphas_power
@@ -631,7 +635,7 @@ contains
        end do
     end if
   end subroutine process_def_write
-    
+
   subroutine process_def_read (object, unit, core_def_templates)
     class(process_def_t), intent(out) :: object
     integer, intent(in) :: unit
@@ -660,7 +664,7 @@ contains
     call strip_equation_lhs (buffer)
     object%model_name = trim (adjustl (buffer))
     if (object%model_name == "[undefined]")  object%model_name = ""
-          
+
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     read (buffer, *)  object%n_initial
@@ -672,7 +676,7 @@ contains
     read (unit, "(A)")  buffer
     call strip_equation_lhs (buffer)
     read (buffer(3:34), "(A32)")  object%md5sum
-    
+
     if (object%n_initial > 0) then
        allocate (object%initial (object%n_initial))
        do i = 1, object%n_initial
@@ -682,9 +686,9 @@ contains
           call object%initial(i)%read (unit, core_def_templates)
        end do
     end if
-    
+
   end subroutine process_def_read
-    
+
   subroutine process_def_show (object, unit)
     class(process_def_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -751,13 +755,13 @@ contains
     end do
     def%initial%description = ""
   end subroutine process_def_init
-  
+
   subroutine process_def_set_model_name (def, model_name)
     class(process_def_t), intent(inout) :: def
     type(string_t), intent(in) :: model_name
     def%model_name = model_name
   end subroutine process_def_set_model_name
-  
+
   subroutine process_def_import_component (def, &
        i, n_out, prt_in, prt_out, method, variant, &
        nlo_type, can_be_integrated)
@@ -839,7 +843,7 @@ contains
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i, emitter
     def%initial(i)%fixed_emitter = emitter
-  end subroutine process_def_set_fixed_emitter 
+  end subroutine process_def_set_fixed_emitter
 
   subroutine process_def_set_coupling_powers (def, alpha_power, alphas_power)
     class(process_def_t), intent(inout) :: def
@@ -849,8 +853,7 @@ contains
   end subroutine process_def_set_coupling_powers
 
   subroutine process_def_set_associated_components (def, i, &
-                     i_born, i_real, i_virt, i_sub, &
-                     i_pdf, i_rfin)
+         i_born, i_real, i_virt, i_sub, i_pdf, i_rfin)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i
     integer, intent(in) :: i_born, i_real
@@ -884,7 +887,7 @@ contains
     end do
     def%md5sum = md5sum (char (buffer))
   end subroutine process_def_compute_md5sum
-    
+
   function process_def_get_md5sum (def, i_component) result (md5sum)
     class(process_def_t), intent(in) :: def
     integer, intent(in), optional :: i_component
@@ -895,27 +898,34 @@ contains
        md5sum = def%md5sum
     end if
   end function process_def_get_md5sum
-  
+
   function process_def_get_core_def_ptr (def, i_component) result (ptr)
     class(process_def_t), intent(in), target :: def
     integer, intent(in) :: i_component
     class(prc_core_def_t), pointer :: ptr
     ptr => def%initial(i_component)%get_core_def_ptr ()
   end function process_def_get_core_def_ptr
-    
+
   function process_def_needs_code (def, i_component) result (flag)
     class(process_def_t), intent(in) :: def
     integer, intent(in) :: i_component
     logical :: flag
     flag = def%initial(i_component)%needs_code ()
   end function process_def_needs_code
-  
+
   subroutine process_def_get_pdg_in_1 (def, pdg)
     class(process_def_t), intent(in), target :: def
     integer, dimension(:), intent(out) :: pdg
     call def%initial(1)%get_pdg_in (def%model, pdg)
   end subroutine process_def_get_pdg_in_1
-    
+
+  elemental function process_def_get_nlo_type (def, i_component) result (nlo_type)
+    integer :: nlo_type
+    class(process_def_t), intent(in) :: def
+    integer, intent(in) :: i_component
+    nlo_type = def%initial(i_component)%nlo_type
+  end function process_def_get_nlo_type
+
   subroutine process_def_list_final (list)
     class(process_def_list_t), intent(inout) :: list
     type(process_def_entry_t), pointer :: current
@@ -926,7 +936,7 @@ contains
        deallocate (current)
     end do
   end subroutine process_def_list_final
-  
+
   subroutine process_def_list_write (object, unit, libpath)
     class(process_def_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -975,7 +985,7 @@ contains
     character(80) :: buffer, ref
     integer :: i
     read (unit, "(A)")  buffer
-    write (ref, "(1x,A)")  "Process definition list: [empty]"  
+    write (ref, "(1x,A)")  "Process definition list: [empty]"
     if (buffer == ref)  return         ! OK: empty library
     backspace (unit)
     READ_ENTRIES: do i = 1, huge (0)
@@ -1006,7 +1016,7 @@ contains
     list%last => entry
     entry => null ()
   end subroutine process_def_list_append
-  
+
   function process_def_list_get_n_processes (list) result (n)
     integer :: n
     class(process_def_list_t), intent(in) :: list
@@ -1018,7 +1028,7 @@ contains
        current => current%next
     end do
   end function process_def_list_get_n_processes
-  
+
   subroutine process_def_list_get_process_id_list (list, id)
     class(process_def_list_t), intent(in) :: list
     type(string_t), dimension(:), allocatable, intent(out) :: id
@@ -1033,7 +1043,7 @@ contains
        current => current%next
     end do
   end subroutine process_def_list_get_process_id_list
-  
+
   function process_def_list_contains (list, id) result (flag)
     logical :: flag
     class(process_def_list_t), intent(in) :: list
@@ -1065,7 +1075,7 @@ contains
     end do
     n = 0
   end function process_def_list_get_entry_index
-    
+
   function process_def_list_get_num_id (list, id) result (num_id)
     integer :: num_id
     class(process_def_list_t), intent(in) :: list
@@ -1081,7 +1091,7 @@ contains
     end do
     num_id = 0
   end function process_def_list_get_num_id
-    
+
   function process_def_list_get_model_name (list, id) result (model_name)
     type(string_t) :: model_name
     class(process_def_list_t), intent(in) :: list
@@ -1097,7 +1107,7 @@ contains
     end do
     model_name = ""
   end function process_def_list_get_model_name
-  
+
   function process_def_list_get_n_in (list, id) result (n)
     integer :: n
     class(process_def_list_t), intent(in) :: list
@@ -1112,7 +1122,7 @@ contains
        current => current%next
     end do
   end function process_def_list_get_n_in
-  
+
   subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -1127,7 +1137,7 @@ contains
        current => current%next
     end do
   end subroutine process_def_list_get_pdg_in_1
-  
+
   function process_def_list_get_n_components (list, id) result (n)
     integer :: n
     class(process_def_list_t), intent(in) :: list
@@ -1142,7 +1152,7 @@ contains
        current => current%next
     end do
   end function process_def_list_get_n_components
-  
+
   function process_def_list_get_component_def_ptr (list, id, i) result (ptr)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -1163,7 +1173,7 @@ contains
        current => current%next
     end do
   end function process_def_list_get_component_def_ptr
-  
+
   subroutine process_def_list_get_component_list (list, id, cid)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -1186,7 +1196,7 @@ contains
        current => current%next
     end do
   end subroutine process_def_list_get_component_list
-  
+
   subroutine process_def_list_get_component_description_list &
        (list, id, description)
     class(process_def_list_t), intent(in) :: list
@@ -1210,7 +1220,7 @@ contains
        current => current%next
     end do
   end subroutine process_def_list_get_component_description_list
-  
+
   function process_def_list_get_nlo_process (list, id) result (nlo)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -1249,7 +1259,7 @@ contains
        end if
     end select
   end function process_library_entry_to_string
-  
+
   subroutine process_library_entry_init (object, &
        status, def, i_component, i_external, driver_template)
     class(process_library_entry_t), intent(out) :: object
@@ -1267,7 +1277,7 @@ contains
        call move_alloc (driver_template, object%driver)
     end if
   end subroutine process_library_entry_init
-  
+
   subroutine process_library_entry_connect (entry, lib_driver, i)
     class(process_library_entry_t), intent(inout) :: entry
     class(prclib_driver_t), intent(in) :: lib_driver
@@ -1304,7 +1314,7 @@ contains
     end if
     call object%process_def_list_t%write (u)
   end subroutine process_library_write
-         
+
   subroutine process_library_show (object, unit)
     class(process_library_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -1330,7 +1340,7 @@ contains
     end select
     call object%process_def_list_t%show (u)
   end subroutine process_library_show
-         
+
   subroutine process_library_init (lib, basename)
     class(process_library_t), intent(out) :: lib
     type(string_t), intent(in) :: basename
@@ -1339,7 +1349,7 @@ contains
     call msg_message ("Process library '" // char (basename) &
          // "': initialized")
   end subroutine process_library_init
-  
+
   subroutine process_library_init_static (lib, basename)
     class(process_library_t), intent(out) :: lib
     type(string_t), intent(in) :: basename
@@ -1349,7 +1359,7 @@ contains
     call msg_message ("Static process library '" // char (basename) &
          // "': initialized")
   end subroutine process_library_init_static
-  
+
   subroutine process_library_configure (lib, os_data)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -1361,7 +1371,7 @@ contains
     n_entries = 0
     n_external = 0
     if (allocated (lib%entry))  deallocate (lib%entry)
-    
+
     def_entry => lib%first
     do while (associated (def_entry))
        do i_component = 1, def_entry%n_initial
@@ -1414,7 +1424,7 @@ contains
          end associate
        end associate
     end do
-    
+
     if (lib%static) then
        if (lib%n_entries /= 0)  lib%entry%status = STAT_LINKED
        lib%status = STAT_LINKED
@@ -1428,14 +1438,14 @@ contains
        lib%status = STAT_LINKED
     end if
   end subroutine process_library_configure
-  
+
   subroutine process_library_allocate_entries (lib, n_entries)
     class(process_library_t), intent(inout) :: lib
     integer, intent(in) :: n_entries
     lib%n_entries = n_entries
     allocate (lib%entry (n_entries))
   end subroutine process_library_allocate_entries
-  
+
   subroutine process_library_init_entry (lib, i, &
        status, def, i_component, i_external, driver_template)
     class(process_library_t), intent(inout) :: lib
@@ -1449,7 +1459,7 @@ contains
     call lib%entry(i)%init (status, def, i_component, i_external, &
          driver_template)
   end subroutine process_library_init_entry
-  
+
   subroutine process_library_compute_md5sum (lib, model)
     class(process_library_t), intent(inout) :: lib
     class(model_data_t), intent(in), optional, target :: model
@@ -1465,7 +1475,7 @@ contains
     lib%md5sum = md5sum (char (buffer))
     call lib%driver%set_md5sum (lib%md5sum)
   end subroutine process_library_compute_md5sum
-  
+
   subroutine process_library_write_makefile (lib, os_data, force, testflag)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -1496,7 +1506,7 @@ contains
        lib%makefile_exists = .true.
     end if
   end subroutine process_library_write_makefile
-  
+
   subroutine process_library_write_driver (lib, force)
     class(process_library_t), intent(inout) :: lib
     logical, intent(in) :: force
@@ -1628,7 +1638,7 @@ contains
        end select
     end if
   end subroutine process_library_make_source
-  
+
   subroutine process_library_make_compile (lib, os_data, keep_old_source)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -1652,7 +1662,7 @@ contains
        end select
     end if
   end subroutine process_library_make_compile
-  
+
   subroutine process_library_make_link (lib, os_data, keep_old_source)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -1673,7 +1683,7 @@ contains
        end select
     end if
   end subroutine process_library_make_link
-  
+
   subroutine process_library_load (lib, os_data, keep_old_source)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -1695,7 +1705,7 @@ contains
        lib%status = STAT_ACTIVE
     end select
   end subroutine process_library_load
-  
+
   subroutine process_library_load_entries (lib)
     class(process_library_t), intent(inout) :: lib
     integer :: i
@@ -1747,7 +1757,7 @@ contains
        lib%status = STAT_LINKED
     end if
   end subroutine process_library_clean
-  
+
   subroutine process_library_open (lib)
     class(process_library_t), intent(inout) :: lib
     select case (lib%status)
@@ -1757,6 +1767,7 @@ contains
        if (.not. lib%static) then
           lib%entry%status = STAT_OPEN
           lib%status = STAT_OPEN
+          if (lib%external)  lib%update_counter = lib%update_counter + 1
           call msg_message ("Process library '" // char (lib%basename) &
                // "': open")
        else
@@ -1765,19 +1776,19 @@ contains
        end if
     end select
   end subroutine process_library_open
-  
+
   function process_library_get_name (lib) result (name)
     class(process_library_t), intent(in) :: lib
     type(string_t) :: name
     name = lib%basename
   end function process_library_get_name
-  
+
   function process_library_is_active (lib) result (flag)
     logical :: flag
     class(process_library_t), intent(in) :: lib
     flag = lib%status == STAT_ACTIVE
   end function process_library_is_active
-  
+
   function process_library_get_status (lib, i) result (status)
     class(process_library_t), intent(in) :: lib
     integer, intent(in), optional :: i
@@ -1788,7 +1799,13 @@ contains
        status = lib%status
     end if
   end function process_library_get_status
-  
+
+  function process_library_get_update_counter (lib) result (counter)
+    class(process_library_t), intent(in) :: lib
+    integer :: counter
+    counter = lib%update_counter
+  end function process_library_get_update_counter
+
   subroutine process_library_set_status (lib, status, entries)
     class(process_library_t), intent(inout) :: lib
     integer, intent(in) :: status
@@ -1798,13 +1815,13 @@ contains
        if (entries)  lib%entry%status = status
     end if
   end subroutine process_library_set_status
-  
+
   function process_library_is_loaded (lib) result (flag)
     class(process_library_t), intent(in) :: lib
     logical :: flag
     flag = lib%driver%loaded
   end function process_library_is_loaded
-  
+
   subroutine process_library_entry_fill_constants (entry, driver, data)
     class(process_library_entry_t), intent(in) :: entry
     class(prclib_driver_t), intent(in) :: driver
@@ -1834,7 +1851,7 @@ contains
        end select
     end if
   end subroutine process_library_entry_fill_constants
-  
+
   subroutine process_library_fill_constants (lib, id, i_component, data)
     class(process_library_t), intent(in) :: lib
     type(string_t), intent(in) :: id
@@ -1846,7 +1863,7 @@ contains
           if (entry%def%id == id .and. entry%i_component == i_component) then
              call entry%fill_constants (lib%driver, data)
              return
-          end if 
+          end if
        end associate
     end do
   end subroutine process_library_fill_constants
@@ -1879,6 +1896,20 @@ contains
        writer%md5sum = lib%entry(e)%def%get_md5sum (c)
     end associate
   end subroutine process_library_test_transfer_md5sum
+
+  function process_library_get_nlo_type (lib, id, i_component) result (nlo_type)
+    integer :: nlo_type
+    class(process_library_t), intent(in) :: lib
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i_component
+    integer :: i
+    do i = 1, size (lib%entry)
+       if (lib%entry(i)%def%id == id .and. lib%entry(i)%i_component == i_component) then
+          nlo_type = lib%entry(i)%def%get_nlo_type (i_component)
+          exit
+       end if
+    end do
+  end function process_library_get_nlo_type
 
   function process_library_get_modellibs_ldflags (prc_lib, os_data) result (flags)
     class(process_library_t), intent(in) :: prc_lib
@@ -1916,7 +1947,7 @@ contains
              modellib = "libparameters_" // modelname // ".la"
           else
              modellib = "libparameters_" // modelname // ".a"
-          end if          
+          end if
           exist = .false.
           if (.not. os_data%use_testfiles) then
              modellib_full = os_data%whizard_models_libpath_local &

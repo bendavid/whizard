@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -65,15 +65,15 @@ contains
     type(color_t) :: col
     type(polarization_t) :: pol
     type(field_data_t), target :: photon_data
-    character(80) :: buffer    
+    character(80) :: buffer
 
     write (u, "(A)")  "* Test output: HepMC interface"
     write (u, "(A)")  "*   Purpose: test HepMC interface"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Initialization"
     write (u, "(A)")
-    
+
     ! Initialize a photon flavor object and some polarization
     call photon_data%init (var_str ("PHOTON"), 22)
     call photon_data%set (spin_type=VECTOR)
@@ -87,7 +87,7 @@ contains
 
     write (u, "(A)")  "* p -> q splitting"
     write (u, "(A)")
-            
+
     ! $p\to q$ splittings
     call hepmc_vertex_init (v1)
     call hepmc_event_add_vertex (evt, v1)
@@ -116,7 +116,7 @@ contains
 
     write (u, "(A)")  "* Hard interaction"
     write (u, "(A)")
-        
+
     ! Hard interaction
     call hepmc_vertex_init (v3)
     call hepmc_event_add_vertex (evt, v3)
@@ -132,7 +132,7 @@ contains
          -24, 3)
     call hepmc_vertex_add_particle_out (v3, prt5)
     call hepmc_event_set_signal_process_vertex (evt, v3)
-    
+
     ! $W^-$ decay
     call vertex_init_pos (v4, &
          0.12_default, -0.3_default, 0.05_default, 0.004_default)
@@ -146,18 +146,18 @@ contains
          3.962_default, -49.498_default, -26.687_default, 56.373_default, &
          -2, 1)
     call hepmc_vertex_add_particle_out (v4, prt8)
-    
+
     ! Event output
     call hepmc_event_print (evt)
     write (u, "(A)")  "Writing to file 'hepmc_test.hepmc'"
     write (u, "(A)")
-    
+
     call hepmc_iostream_open_out (iostream , var_str ("hepmc_test.hepmc"))
     call hepmc_iostream_write_event (iostream, evt)
     call hepmc_iostream_close (iostream)
 
     write (u, "(A)")  "Writing completed"
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* File contents:"
     write (u, "(A)")
@@ -172,18 +172,18 @@ contains
        write (u, "(A)") trim (buffer)
     end do
     close (u_file)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-        
+
     ! Wrapup
     ! call pol%final ()
     call hepmc_event_final (evt)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: hepmc_interface_1"        
-    
+    write (u, "(A)")  "* Test output end: hepmc_interface_1"
+
   contains
 
     subroutine vertex_init_pos (v, x, y, z, t)

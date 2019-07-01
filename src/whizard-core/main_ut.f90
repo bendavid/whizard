@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -76,6 +76,8 @@ program main_ut
   use blha_ut, only: blha_test
   use evaluators_ut, only: evaluator_test
   use eval_trees_ut, only: expressions_test
+  use resonances_ut, only: resonances_test
+  use phs_trees_ut, only: phs_trees_test
   use phs_forests_ut, only: phs_forests_test
   use beams_ut, only: beams_test
   use su_algebra_ut, only: su_algebra_test
@@ -100,13 +102,18 @@ program main_ut
   use phs_wood_ut, only: phs_wood_vis_test
   use phs_fks_ut, only: phs_fks_generator_test
   use fks_regions_ut, only: fks_regions_test
+  use prc_recola_ut, only: prc_recola_test
   use nlo_color_data_ut, only: nlo_color_data_test
   use rng_base_ut, only: rng_base_test
   use rng_tao_ut, only: rng_tao_test
+  use rng_stream_ut, only: rng_stream_test
   use selectors_ut, only: selectors_test
+  use vegas_ut, only: vegas_test
+  use vamp2_ut, only: vamp2_test
   use mci_base_ut, only: mci_base_test
   use mci_midpoint_ut, only: mci_midpoint_test
   use mci_vamp_ut, only: mci_vamp_test
+  use mci_vamp2_ut, only: mci_vamp2_test
   use prclib_interfaces_ut, only: prclib_interfaces_test
   use particle_specifiers_ut, only: particle_specifiers_test
   use process_libraries_ut, only: process_libraries_test
@@ -298,7 +305,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
-    print "(A)", "Copyright (C) 1999-2016 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2017 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -483,6 +490,10 @@ contains
        call evaluator_test (u, results)
     case ("expressions")
        call expressions_test (u, results)
+    case ("resonances")
+       call resonances_test (u, results)
+    case ("phs_trees")
+       call phs_trees_test (u, results)
     case ("phs_forests")
        call phs_forests_test (u, results)
     case ("beams")
@@ -531,20 +542,30 @@ contains
        call phs_fks_generator_test (u, results)
     case ("fks_regions")
        call fks_regions_test (u, results)
+    case ("prc_recola")
+       call prc_recola_test (u, results)
     case ("nlo_color_data")
        call nlo_color_data_test (u, results)
     case ("rng_base")
        call rng_base_test (u, results)
     case ("rng_tao")
        call rng_tao_test (u, results)
+    case ("rng_stream")
+       call rng_stream_test (u, results)
     case ("selectors")
        call selectors_test (u, results)
+    case ("vegas")
+       call vegas_test (u, results)
+    case ("vamp2")
+       call vamp2_test (u, results)
     case ("mci_base")
        call mci_base_test (u, results)
     case ("mci_midpoint")
        call mci_midpoint_test (u, results)
     case ("mci_vamp")
        call mci_vamp_test (u, results)
+    case ("mci_vamp2")
+       call mci_vamp2_test (u, results)
     case ("prclib_interfaces")
        call prclib_interfaces_test (u, results)
     case ("particle_specifiers")
@@ -674,6 +695,8 @@ contains
        call blha_test (u, results)
        call evaluator_test (u, results)
        call expressions_test (u, results)
+       call resonances_test (u, results)
+       call phs_trees_test (u, results)
        call phs_forests_test (u, results)
        call beams_test (u, results)
        call su_algebra_test (u, results)
@@ -698,10 +721,14 @@ contains
        call phs_wood_vis_test (u, results)
        call phs_fks_generator_test (u, results)
        call fks_regions_test (u, results)
+       call prc_recola_test (u, results)
        call nlo_color_data_test (u, results)
        call rng_base_test (u, results)
        call rng_tao_test (u, results)
+       call rng_stream_test (u, results)
        call selectors_test (u, results)
+       call vegas_test (u, results)
+       call vamp2_test (u, results)
        call mci_base_test (u, results)
        call mci_midpoint_test (u, results)
        call mci_vamp_test (u, results)

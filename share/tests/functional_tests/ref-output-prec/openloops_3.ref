@@ -2,6 +2,9 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
+$born_me_method = "openloops"
+$real_tree_me_method = "openloops"
+$correlation_me_method = "openloops"
 $loop_me_method = "openloops"
 openmp_num_threads = 1
 ?use_vamp_equivalences = false
@@ -36,13 +39,6 @@ SM.wtop =>  0.00000E+00
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2222
 | Initializing integration for process openloops_3_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'openloops_3_p1'
-|   Library name  = 'openloops_3_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'openloops_3_p1_i1':   e+, e- => t, tbar [omega]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e+  (mass = 5.1099700E-04 GeV)
@@ -51,6 +47,17 @@ SM.wtop =>  0.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'openloops_3_p1_i1.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_3_p1'
+|   Library name  = 'openloops_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'openloops_3_p1_i1':   e+, e- => t, tbar [openloops]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -64,9 +71,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.476E+02   5.34E-01    0.10    0.03    48.2
+   1        800     5.475E+02   5.34E-01    0.10    0.03    48.2
 |-----------------------------------------------------------------------------|
-   1        800     5.476E+02   5.34E-01    0.10    0.03    48.2
+   1        800     5.475E+02   5.34E-01    0.10    0.03    48.2
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'openloops_3_p1'
@@ -99,16 +106,6 @@ seed = 3333
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3333
 | Initializing integration for process openloops_3_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'openloops_3_p2'
-|   Library name  = 'openloops_3_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'openloops_3_p2_i1':   e+, e- => t, tbar [inactive]
-|     2: 'openloops_3_p2_i2':   e+, e- => t, tbar, gl [omega], [Real]
-|     3: 'openloops_3_p2_i3':   e+, e- => t, tbar [inactive], [Virtual]
-|     4: 'openloops_3_p2_i4':   e+, e- => t, tbar [inactive], [Subtraction]
-| ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e+  (mass = 5.1099700E-04 GeV)
@@ -117,6 +114,27 @@ seed = 3333
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'openloops_3_p2_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_3_p2_i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'openloops_3_p2'
+|   Library name  = 'openloops_3_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'openloops_3_p2_i1':   e+, e- => t, tbar [inactive]
+|     2: 'openloops_3_p2_i2':   e+, e- => t, tbar, gl [openloops], [Real]
+|     3: 'openloops_3_p2_i3':   e+, e- => t, tbar [inactive], [Virtual]
+|     4: 'openloops_3_p2_i4':   e+, e- => t, tbar [inactive], [Subtraction]
+| ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -125,9 +143,6 @@ seed = 3333
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p2_i3.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -141,12 +156,26 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000    -7.303E+01   1.38E+00    1.89    0.60    38.3
+   1       1000    -7.302E+01   1.38E+00    1.89    0.60    38.3
 |-----------------------------------------------------------------------------|
-   1       1000    -7.303E+01   1.38E+00    1.89    0.60    38.3
+   1       1000    -7.302E+01   1.38E+00    1.89    0.60    38.3
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0    -7.302E+01   1.38E+00    1.89    0.00     0.0
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'openloops_3_p2'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | Simulate: using integration grids from file 'openloops_3_p2_m2.vg'
 | Simuate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
@@ -176,6 +205,25 @@ seed = 4444
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4444
 | Initializing integration for process openloops_3_p3:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_3_p3_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_3_p3_i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | ------------------------------------------------------------------------
 | Process [scattering]: 'openloops_3_p3'
 |   Library name  = 'openloops_3_lib'
@@ -186,14 +234,6 @@ seed = 4444
 |     3: 'openloops_3_p3_i3':   e+, e- => t, tbar [openloops], [Virtual]
 |     4: 'openloops_3_p3_i4':   e+, e- => t, tbar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e+  (mass = 5.1099700E-04 GeV)
-|   e-  (mass = 5.1099700E-04 GeV)
-|   sqrts = 5.000000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p3_i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
@@ -202,18 +242,11 @@ seed = 4444
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p3_i3.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| One-Loop-Provider: Using OpenLoops
-| Loading library: [...]
-| One-Loop-Provider: Using OpenLoops
-| Loading library: [...]
 | Starting integration for process 'openloops_3_p3' part 'Virtual'
 | Integrate: iterations = 1:1000:"gw"
 | Integrator: 1 chains, 1 channels, 2 dimensions
@@ -226,8 +259,18 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1        800     1.432E+02   1.42E-01    0.10    0.03    46.1
 |=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     1.432E+02   1.42E-01    0.10    0.00    46.1
+|=============================================================================|
 n_events = 1
 | Starting simulation for process 'openloops_3_p3'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -253,10 +296,10 @@ n_events = 1
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  2.38992E-02
-   Squared matrix el. (prc) =  2.38992E-02
-   Event weight (ref)       =  5.34024E+02
-   Event weight (prc)       =  5.34024E+02
+   Squared matrix el. (ref) =  2.38965E-02
+   Squared matrix el. (prc) =  2.38965E-02
+   Event weight (ref)       =  5.33963E+02
+   Event weight (prc)       =  5.33963E+02
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
@@ -286,12 +329,12 @@ n_events = 1
  P =   0.000000E+00  0.000000E+00 -2.500000E+02
  T =   2.611179340E-07
  Children: 3 4
- Particle 3 [o] f(6)c(1 )
+ Particle 3 [o] f(6)
  E =   2.500000E+02
  P =  -8.866348E+01 -1.557406E+02 -1.963155E+01
  T =   2.999824000E+04
  Parents:  1 2
- Particle 4 [o] f(-6)c(-1 )
+ Particle 4 [o] f(-6)
  E =   2.500000E+02
  P =   8.866348E+01  1.557406E+02  1.963155E+01
  T =   2.999824000E+04
@@ -307,11 +350,11 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "openloops_3_p1"
 process_num_id* => [unknown integer]
-sqme* =>  2.38992E-02
-sqme_ref* =>  2.38992E-02
+sqme* =>  2.38965E-02
+sqme_ref* =>  2.38965E-02
 event_index* => 1
-event_weight* =>  5.34024E+02
-event_weight_ref* =>  5.34024E+02
+event_weight* =>  5.33963E+02
+event_weight_ref* =>  5.33963E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
@@ -328,10 +371,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) = -6.19513E-03
-   Squared matrix el. (prc) = -2.22368E-02
-   Event weight (ref)       = -1.38429E+02
-   Event weight (prc)       = -4.96878E+02
+   Squared matrix el. (ref) = -6.19431E-03
+   Squared matrix el. (prc) = -2.22339E-02
+   Event weight (ref)       = -1.38411E+02
+   Event weight (prc)       = -4.96812E+02
 ------------------------------------------------------------------------
    Selected MCI group = 2
    Selected term      = 4
@@ -361,12 +404,12 @@ event_excess* =>  0.00000E+00
  P =   0.000000E+00  0.000000E+00 -2.500000E+02
  T =   2.611179340E-07
  Children: 3 4
- Particle 3 [o] f(6)c(1 )
+ Particle 3 [o] f(6)
  E =   2.500000E+02
  P =   1.105312E+01 -4.433896E+01 -1.743951E+02
  T =   2.999824000E+04
  Parents:  1 2
- Particle 4 [o] f(-6)c(-1 )
+ Particle 4 [o] f(-6)
  E =   2.500000E+02
  P =  -1.105312E+01  4.433896E+01  1.743951E+02
  T =   2.999824000E+04
@@ -382,11 +425,11 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "openloops_3_p2"
 process_num_id* => [unknown integer]
-sqme* => -2.22368E-02
-sqme_ref* => -6.19513E-03
+sqme* => -2.22339E-02
+sqme_ref* => -6.19431E-03
 event_index* => 1
-event_weight* => -4.96878E+02
-event_weight_ref* => -1.38429E+02
+event_weight* => -4.96812E+02
+event_weight_ref* => -1.38411E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
@@ -403,10 +446,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) = -6.19513E-03
-   Squared matrix el. (prc) =  1.86044E-03
-   Event weight (ref)       = -1.38429E+02
-   Event weight (prc)       =  4.15712E+01
+   Squared matrix el. (ref) = -6.19431E-03
+   Squared matrix el. (prc) =  1.86019E-03
+   Event weight (ref)       = -1.38411E+02
+   Event weight (prc)       =  4.15656E+01
 ------------------------------------------------------------------------
    Selected MCI group = 2
    Selected term      = 4
@@ -436,12 +479,12 @@ event_excess* =>  0.00000E+00
  P =   0.000000E+00  0.000000E+00 -2.500000E+02
  T =   2.611179340E-07
  Children: 3 4
- Particle 3 [o] f(6)c(1 )
+ Particle 3 [o] f(6)
  E =   2.500000E+02
  P =   1.105312E+01 -4.433896E+01 -1.743951E+02
  T =   2.999824000E+04
  Parents:  1 2
- Particle 4 [o] f(-6)c(-1 )
+ Particle 4 [o] f(-6)
  E =   2.500000E+02
  P =  -1.105312E+01  4.433896E+01  1.743951E+02
  T =   2.999824000E+04
@@ -457,11 +500,11 @@ n_out* => 3
 n_tot* => 5
 $process_id* => "openloops_3_p2"
 process_num_id* => [unknown integer]
-sqme* =>  1.86044E-03
-sqme_ref* => -6.19513E-03
+sqme* =>  1.86019E-03
+sqme_ref* => -6.19431E-03
 event_index* => 1
-event_weight* =>  4.15712E+01
-event_weight_ref* => -1.38429E+02
+event_weight* =>  4.15656E+01
+event_weight_ref* => -1.38411E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
@@ -479,10 +522,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) = -6.19513E-03
-   Squared matrix el. (prc) =  1.79099E-03
-   Event weight (ref)       = -1.38429E+02
-   Event weight (prc)       =  4.00194E+01
+   Squared matrix el. (ref) = -6.19431E-03
+   Squared matrix el. (prc) =  1.79075E-03
+   Event weight (ref)       = -1.38411E+02
+   Event weight (prc)       =  4.00140E+01
 ------------------------------------------------------------------------
    Selected MCI group = 2
    Selected term      = 4
@@ -512,12 +555,12 @@ event_excess* =>  0.00000E+00
  P =   0.000000E+00  0.000000E+00 -2.500000E+02
  T =   2.611179340E-07
  Children: 3 4
- Particle 3 [o] f(6)c(1 )
+ Particle 3 [o] f(6)
  E =   2.500000E+02
  P =   1.105312E+01 -4.433896E+01 -1.743951E+02
  T =   2.999824000E+04
  Parents:  1 2
- Particle 4 [o] f(-6)c(-1 )
+ Particle 4 [o] f(-6)
  E =   2.500000E+02
  P =  -1.105312E+01  4.433896E+01  1.743951E+02
  T =   2.999824000E+04
@@ -533,11 +576,11 @@ n_out* => 3
 n_tot* => 5
 $process_id* => "openloops_3_p2"
 process_num_id* => [unknown integer]
-sqme* =>  1.79099E-03
-sqme_ref* => -6.19513E-03
+sqme* =>  1.79075E-03
+sqme_ref* => -6.19431E-03
 event_index* => 1
-event_weight* =>  4.00194E+01
-event_weight_ref* => -1.38429E+02
+event_weight* =>  4.00140E+01
+event_weight_ref* => -1.38411E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
@@ -555,10 +598,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  1.29521E-02
-   Squared matrix el. (prc) =  1.29521E-02
-   Event weight (ref)       =  2.89412E+02
-   Event weight (prc)       =  2.89412E+02
+   Squared matrix el. (ref) =  1.29525E-02
+   Squared matrix el. (prc) =  1.29525E-02
+   Event weight (ref)       =  2.89421E+02
+   Event weight (prc)       =  2.89421E+02
 ------------------------------------------------------------------------
    Selected MCI group = 3
    Selected term      = 5
@@ -609,11 +652,11 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "openloops_3_p3"
 process_num_id* => [unknown integer]
-sqme* =>  1.29521E-02
-sqme_ref* =>  1.29521E-02
+sqme* =>  1.29525E-02
+sqme_ref* =>  1.29525E-02
 event_index* => 1
-event_weight* =>  2.89412E+02
-event_weight_ref* =>  2.89412E+02
+event_weight* =>  2.89421E+02
+event_weight_ref* =>  2.89421E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:

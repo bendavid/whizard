@@ -1,4 +1,4 @@
-! WHIZARD 2.4.0 Nov 28 2016
+! WHIZARD 2.4.1 Mar 24 2017
 
 ! TOPPIK code by M. Jezabek, T. Teubner (v1.1, 1992), T. Teubner (1998)
 !
@@ -96,7 +96,7 @@ c                 ``zeroth order'' G_0(p) in the LS-equation:
 c                 0 : no correction, means  G = G_0 + G_0 int V G
 c                      with G_0=1/[E+iGamma_t-p^2/m_t]*(1+xkincm)+xkinca
 c                 1 : apply the correction in the LS equation as
-c                      G = G_0 + xkincv*p^2/m_t^2/[E+iGamma_t-p^2/m_t] + 
+c                      G = G_0 + xkincv*p^2/m_t^2/[E+iGamma_t-p^2/m_t] +
 c                          G_0 int V G
 c                     and correct the integral over Im[G(p)] to get sigma_tot
 c                     from the optical theorem by the same factor.
@@ -162,7 +162,7 @@ c
 c
 c Number of points to evaluate on the integral equation
 c  (<=400 and n mod 3 = 0 !!):
-c          n=66 
+c          n=66
            n=360
            np=n
 c
@@ -216,7 +216,7 @@ c
 c Not needed for the fixed order potentials:
            alamb5=0.2d0
 c
-c      WRITE(*,*) 'INPUT TGAMMA=',TGAMMA           
+c      WRITE(*,*) 'INPUT TGAMMA=',TGAMMA
 c Needed in subroutine GAMMAT:
            GFERMI=1.16637d-5
 c           CALL GAMMAT
@@ -321,7 +321,7 @@ c  is done already.)
               zvfct(i)=bb(i)
               gg(i) = bb(i)*g0c(pp(i))
 cc            gg(i) = (1.d0 + bb(i))*g0c(pp(i))
-cc Urspruenglich anderes (Minus) VZ hier, dafuer kein Minus mehr bei der 
+cc Urspruenglich anderes (Minus) VZ hier, dafuer kein Minus mehr bei der
 cc  Definition des WQs ueber Im G, 2.6.1998, tt.
 cc            gg(i) = - (1.d0 + bb(i))*g0c(pp(i))
 50         continue
@@ -405,7 +405,7 @@ c Normalisation on R:
            sig1  = sig1 / (2.d0*pi**2) * const
            sig2  = sig2 / (2.d0*pi**2) * const
 c
-c The results from the momentum space approach finally are: 
+c The results from the momentum space approach finally are:
 cc Jetzt Minus hier, 2.6.98, tt.
            xim=-sig1
            xdi=sig2
@@ -574,7 +574,7 @@ c Not better:
 c                call adqua(xb1,xb2,fretil1,xerg,eps)
 c                a3=xerg
 c Also not better:
-c                a1=adglg1(fretil1, buf, xb2, eps)               
+c                a1=adglg1(fretil1, buf, xb2, eps)
 c
                  a4=adglg2(fimtil1,xb1,xb2,eps)
 c                a5 = adglg2(fretil1, xb2, ddcut, eps)
@@ -915,7 +915,7 @@ C
 !       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
 !      $ WMASS,WGAMMA,BMASS,GFERMI
 ! c           common/phcons/ TM,tgamma,zmass,alphas,alamb5,
-! c     u                    wmass,wgamma,bmass 
+! c     u                    wmass,wgamma,bmass
 !          common/ovalco/ pi, energy, vzero, eps, npot
 !       DIMENSION W(12),X(12)
 !       data pi/3.1415926535897930d0/
@@ -1259,7 +1259,7 @@ cc alpha_s(M_t) corresponding to alpha_s(M_Z)=0.118:
 cc      alphas=0.107443d0
 cc      write(*,*) 'alphas=',alphas
 c Usage of alpha_s as given as input for the potential.. better use
-c alpha_s at a scale close to m_t.. 
+c alpha_s at a scale close to m_t..
       TGAMMA= GFERMI*TMASS**3/(8*SQRT(2D0)*PI)*(1-Y)**2*(1+2*Y)*
      $(1- 2D0/3*ALPHAS/PI*F(Y))
       END
@@ -2729,7 +2729,7 @@ c
       real*8 cof(6),re1
       integer i
       data cof/76.18009173d0,-86.50532033d0,24.01409822d0,
-     .    -1.231739516d0,.120858003d-2,-.536382d-5/      
+     .    -1.231739516d0,.120858003d-2,-.536382d-5/
       save
       zz=z
       off0=cmplx(0.d0,0.d0,kind=kind(0d0))

@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -38,6 +38,7 @@ module shower_pythia6
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
   use constants
+  use numeric_utils, only: vanishes
   use io_units
   use physics_defs
   use diagnostics
@@ -468,9 +469,9 @@ contains
                       real (V(i_py,1), kind=default), &
                       real (V(i_py,2), kind=default), &
                       real (V(i_py,3), kind=default)]
-            if (lifetime /= 0) &
+            if (.not. vanishes(lifetime)) &
                  call particles(n_tot_old+i_whz)%set_lifetime (lifetime)
-            if (any (V(i_py,1:4) /= 0)) &
+            if (any (.not. vanishes(real(V(i_py,1:4), kind = default)))) &
                  call particles(n_tot_old+i_whz)%set_vertex (vertex)
             !!! Set tau helicity set by TAUOLA
             if (abs (pdg) == 15) then

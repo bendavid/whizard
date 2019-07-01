@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -163,12 +163,12 @@ module quantum_numbers
   end interface
   interface assignment(=)
      module procedure quantum_numbers_assign
-  end interface 
+  end interface
 
   interface make_color_map
      module procedure quantum_numbers_make_color_map
   end interface make_color_map
-  
+
   interface quantum_numbers_translate_color
      module procedure quantum_numbers_translate_color0
      module procedure quantum_numbers_translate_color1
@@ -428,7 +428,7 @@ contains
     class(quantum_numbers_t), intent(inout) :: qn
     call qn%f%tag_radiated ()
   end subroutine quantum_numbers_tag_radiated
-  
+
   elemental subroutine quantum_numbers_set_subtraction_index (qn, i)
     class(quantum_numbers_t), intent(inout) :: qn
     integer, intent(in) :: i
@@ -574,7 +574,7 @@ contains
     integer, intent(in), optional :: offset
     call color_translate (qn%c, map, offset)
   end subroutine quantum_numbers_translate_color0
-  
+
   subroutine quantum_numbers_translate_color1 (qn, map, offset)
     type(quantum_numbers_t), dimension(:), intent(inout) :: qn
     integer, dimension(:,:), intent(in) :: map
@@ -587,19 +587,19 @@ contains
     type(quantum_numbers_t), intent(in) :: qn
     cmax = color_get_max_value (qn%c)
   end function quantum_numbers_get_max_color_value0
-    
+
   pure function quantum_numbers_get_max_color_value1 (qn) result (cmax)
     integer :: cmax
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     cmax = color_get_max_value (qn%c)
   end function quantum_numbers_get_max_color_value1
-    
+
   pure function quantum_numbers_get_max_color_value2 (qn) result (cmax)
     integer :: cmax
     type(quantum_numbers_t), dimension(:,:), intent(in) :: qn
     cmax = color_get_max_value (qn%c)
   end function quantum_numbers_get_max_color_value2
-    
+
   elemental subroutine quantum_numbers_add_color_offset (qn, offset)
     class(quantum_numbers_t), intent(inout) :: qn
     integer, intent(in) :: offset
@@ -828,6 +828,7 @@ contains
           call qn%h%diagonalize ()
        end if
     end if
+    if (mask%sub > 0) qn%sub = 0
   end subroutine quantum_numbers_undefine
 
   function quantum_numbers_undefined0 (qn, mask) result (qn_new)

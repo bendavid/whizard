@@ -21,7 +21,7 @@ signal failure and write the output to a file.
 module unit_tests
 
 <<Use kinds>>
-  use constants, only: zero, tiny_10, tiny_13
+  use constants, only: zero
 <<Use strings>>
   use format_defs
   use io_units

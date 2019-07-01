@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -107,7 +107,7 @@ module mci_base
      procedure :: get_time => mci_get_time
      procedure :: get_md5sum => mci_get_md5sum
   end type mci_t
-  
+
   type, abstract :: mci_instance_t
      logical :: valid = .false.
      real(default), dimension(:), allocatable :: w
@@ -135,7 +135,7 @@ module mci_base
      procedure :: store => mci_instance_store
      procedure :: recall => mci_instance_recall
   end type mci_instance_t
-  
+
   type :: mci_state_t
      integer :: selected_channel = 0
      real(default), dimension(:), allocatable :: x_in
@@ -143,7 +143,7 @@ module mci_base
    contains
      procedure :: write => mci_state_write
   end type mci_state_t
-  
+
   type, abstract :: mci_sampler_t
    contains
      procedure (mci_sampler_write), deferred :: write
@@ -158,7 +158,7 @@ module mci_base
      procedure (mci_results_write), deferred :: write
      procedure (mci_results_record), deferred :: record
   end type mci_results_t
-  
+
 
   abstract interface
      subroutine mci_write_log_entry (mci, u)
@@ -167,7 +167,7 @@ module mci_base
        integer, intent(in) :: u
      end subroutine mci_write_log_entry
   end interface
-       
+
   abstract interface
      subroutine mci_compute_md5sum (mci, pacify)
        import
@@ -183,7 +183,7 @@ module mci_base
        integer, dimension(:), intent(in) :: dim_flat
      end subroutine mci_declare_flat_dimensions
   end interface
-  
+
   abstract interface
      subroutine mci_declare_equivalences (mci, channel, dim_offset)
        import
@@ -192,7 +192,7 @@ module mci_base
        integer, intent(in) :: dim_offset
      end subroutine mci_declare_equivalences
   end interface
-  
+
   abstract interface
      subroutine mci_allocate_instance (mci, mci_instance)
        import
@@ -200,28 +200,28 @@ module mci_base
        class(mci_instance_t), intent(out), pointer :: mci_instance
      end subroutine mci_allocate_instance
   end interface
-       
+
   abstract interface
      subroutine mci_integrate (mci, instance, sampler, &
           n_it, n_calls, results, pacify)
        import
        class(mci_t), intent(inout) :: mci
-       class(mci_instance_t), intent(inout) :: instance
-       class(mci_sampler_t), intent(inout) :: sampler
+       class(mci_instance_t), intent(inout), target :: instance
+       class(mci_sampler_t), intent(inout), target :: sampler
        integer, intent(in) :: n_it
        integer, intent(in) :: n_calls
        logical, intent(in), optional :: pacify
        class(mci_results_t), intent(inout), optional :: results
      end subroutine mci_integrate
   end interface
-  
+
   abstract interface
      subroutine mci_prepare_simulation (mci)
        import
        class(mci_t), intent(inout) :: mci
      end subroutine mci_prepare_simulation
   end interface
-  
+
   abstract interface
      subroutine mci_generate (mci, instance, sampler)
        import
@@ -230,7 +230,7 @@ module mci_base
        class(mci_sampler_t), intent(inout), target :: sampler
      end subroutine mci_generate
   end interface
-  
+
   abstract interface
      subroutine mci_rebuild (mci, instance, sampler, state)
        import
@@ -240,7 +240,7 @@ module mci_base
        class(mci_state_t), intent(in) :: state
      end subroutine mci_rebuild
   end interface
-  
+
   abstract interface
      subroutine mci_instance_write (object, unit, pacify)
        import
@@ -249,14 +249,14 @@ module mci_base
        logical, intent(in), optional :: pacify
      end subroutine mci_instance_write
   end interface
-    
+
   abstract interface
      subroutine mci_instance_final (object)
        import
        class(mci_instance_t), intent(inout) :: object
      end subroutine mci_instance_final
   end interface
-  
+
   abstract interface
      subroutine mci_instance_compute_weight (mci, c)
        import
@@ -264,7 +264,7 @@ module mci_base
        integer, intent(in) :: c
      end subroutine mci_instance_compute_weight
   end interface
-    
+
   abstract interface
      subroutine mci_instance_record_integrand (mci, integrand)
        import
@@ -272,7 +272,7 @@ module mci_base
        real(default), intent(in) :: integrand
      end subroutine mci_instance_record_integrand
   end interface
-  
+
   abstract interface
      subroutine mci_instance_init_simulation (instance, safety_factor)
        import
@@ -280,14 +280,14 @@ module mci_base
        real(default), intent(in), optional :: safety_factor
      end subroutine mci_instance_init_simulation
   end interface
-  
+
   abstract interface
      subroutine mci_instance_final_simulation (instance)
        import
        class(mci_instance_t), intent(inout) :: instance
      end subroutine mci_instance_final_simulation
   end interface
-  
+
   abstract interface
      function mci_instance_get_event_excess (mci) result (excess)
        import
@@ -295,7 +295,7 @@ module mci_base
        real(default) :: excess
      end function mci_instance_get_event_excess
   end interface
-  
+
   abstract interface
      subroutine mci_sampler_write (object, unit, testflag)
        import
@@ -304,7 +304,7 @@ module mci_base
        logical, intent(in), optional :: testflag
      end subroutine mci_sampler_write
   end interface
-  
+
   abstract interface
      subroutine mci_sampler_evaluate (sampler, c, x_in, val, x, f)
        import
@@ -336,7 +336,7 @@ module mci_base
        real(default), dimension(:), intent(out) :: f
      end subroutine mci_sampler_rebuild
   end interface
-  
+
   abstract interface
      subroutine mci_sampler_fetch (sampler, val, x, f)
        import
@@ -346,7 +346,7 @@ module mci_base
        real(default), dimension(:), intent(out) :: f
      end subroutine mci_sampler_fetch
   end interface
-  
+
   abstract interface
      subroutine mci_results_write (object, unit, verbose, suppress)
        import
@@ -355,7 +355,7 @@ module mci_base
        logical, intent(in), optional :: verbose, suppress
      end subroutine mci_results_write
   end interface
-  
+
   abstract interface
      subroutine mci_results_record (object, n_it, &
           n_calls, integral, error, efficiency, chain_weights, suppress)
@@ -373,7 +373,7 @@ module mci_base
 
 
 contains
-  
+
   subroutine mci_final (object)
     class(mci_t), intent(inout) :: object
     if (allocated (object%rng))  call object%rng%final ()
@@ -386,7 +386,7 @@ contains
     logical, intent(in), optional :: md5sum_version
     logical :: md5sum_ver
     integer :: u, i, j
-    character(len=7) :: fmt 
+    character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
     u = given_output_unit (unit)
     md5sum_ver = .false.
@@ -452,7 +452,7 @@ contains
     mci%n_dim = n_dim
     mci%n_channel = n_channel
   end subroutine mci_set_dimensions
-  
+
   subroutine mci_declare_chains (mci, chain)
     class(mci_t), intent(inout) :: mci
     integer, dimension(:), intent(in) :: chain
@@ -461,7 +461,7 @@ contains
     allocate (mci%chain_weights (mci%n_chain), source = 0._default)
     mci%chain = chain
   end subroutine mci_declare_chains
-  
+
   subroutine mci_collect_chain_weights (mci, weight)
     class(mci_t), intent(inout) :: mci
     real(default), dimension(:), intent(in) :: weight
@@ -474,7 +474,7 @@ contains
        end do
     end if
   end subroutine mci_collect_chain_weights
-    
+
   function mci_has_chains (mci) result (flag)
     class(mci_t), intent(in) :: mci
     logical :: flag
@@ -501,42 +501,42 @@ contains
        end do
     end if
   end subroutine mci_write_chain_weights
-  
+
   subroutine mci_set_md5sum (mci, md5sum)
     class(mci_t), intent(inout) :: mci
     character(32), intent(in) :: md5sum
     mci%md5sum = md5sum
   end subroutine mci_set_md5sum
-  
+
   subroutine mci_add_pass (mci, adapt_grids, adapt_weights, final_pass)
     class(mci_t), intent(inout) :: mci
     logical, intent(in), optional :: adapt_grids
     logical, intent(in), optional :: adapt_weights
     logical, intent(in), optional :: final_pass
   end subroutine mci_add_pass
-    
+
   subroutine mci_import_rng (mci, rng)
     class(mci_t), intent(inout) :: mci
     class(rng_t), intent(inout), allocatable :: rng
     call move_alloc (rng, mci%rng)
   end subroutine mci_import_rng
-  
+
   subroutine mci_set_timer (mci, active)
     class(mci_t), intent(inout) :: mci
     logical, intent(in) :: active
     mci%use_timer = active
   end subroutine mci_set_timer
-    
+
   subroutine mci_start_timer (mci)
     class(mci_t), intent(inout) :: mci
     if (mci%use_timer)  call mci%timer%start ()
   end subroutine mci_start_timer
-  
+
   subroutine mci_stop_timer (mci)
     class(mci_t), intent(inout) :: mci
     if (mci%use_timer)  call mci%timer%stop ()
   end subroutine mci_stop_timer
-  
+
   subroutine mci_sampler_test (mci, sampler, n_calls)
     class(mci_t), intent(inout) :: mci
     class(mci_sampler_t), intent(inout), target :: sampler
@@ -554,12 +554,12 @@ contains
        call sampler%evaluate (c, x_in, val, x_out, f)
     end do
   end subroutine mci_sampler_test
-  
+
   subroutine mci_pacify (object, efficiency_reset, error_reset)
     class(mci_t), intent(inout) :: object
     logical, intent(in), optional :: efficiency_reset, error_reset
   end subroutine mci_pacify
-    
+
   function mci_get_integral (mci) result (integral)
     class(mci_t), intent(in) :: mci
     real(default) :: integral
@@ -570,7 +570,7 @@ contains
             "WHIZARD bug.")
     end if
   end function mci_get_integral
-  
+
   function mci_get_error (mci) result (error)
     class(mci_t), intent(in) :: mci
     real(default) :: error
@@ -580,7 +580,7 @@ contains
        error = 0
     end if
   end function mci_get_error
-  
+
   function mci_get_efficiency (mci) result (efficiency)
     class(mci_t), intent(in) :: mci
     real(default) :: efficiency
@@ -590,7 +590,7 @@ contains
        efficiency = 0
     end if
   end function mci_get_efficiency
-  
+
   function mci_get_time (mci) result (time)
     class(mci_t), intent(in) :: mci
     real(default) :: time
@@ -600,13 +600,13 @@ contains
        time = 0
     end if
   end function mci_get_time
-  
+
   pure function mci_get_md5sum (mci) result (md5sum)
     class(mci_t), intent(in) :: mci
     character(32) :: md5sum
     md5sum = mci%md5sum
   end function mci_get_md5sum
-  
+
   subroutine mci_instance_base_init (mci_instance, mci)
     class(mci_instance_t), intent(out) :: mci_instance
     class(mci_t), intent(in), target :: mci
@@ -620,7 +620,7 @@ contains
     mci_instance%f = 0
     mci_instance%x = 0
   end subroutine mci_instance_base_init
-    
+
   subroutine mci_instance_set_channel_weights (mci_instance, weights, sum_non_zero)
     class(mci_instance_t), intent(inout) :: mci_instance
     real(default), dimension(:), intent(in) :: weights
@@ -636,7 +636,7 @@ contains
             & sum of channel weights is zero")
     end if
   end subroutine mci_instance_set_channel_weights
-  
+
   subroutine mci_instance_evaluate (mci, sampler, c, x)
     class(mci_instance_t), intent(inout) :: mci
     class(mci_sampler_t), intent(inout) :: sampler
@@ -650,7 +650,7 @@ contains
        call mci%record_integrand (val)
     end if
   end subroutine mci_instance_evaluate
-    
+
   subroutine mci_instance_fetch (mci, sampler, c)
     class(mci_instance_t), intent(inout) :: mci
     class(mci_sampler_t), intent(in) :: sampler
@@ -684,7 +684,7 @@ contains
     write (u, "(3x,A,999(1x,F12.10))")  "x (in)    =", object%x_in
     write (u, "(3x,A,ES19.12)")  "Integrand = ", object%val
   end subroutine mci_state_write
-  
+
   subroutine mci_instance_store (mci, state)
     class(mci_instance_t), intent(in) :: mci
     class(mci_state_t), intent(out) :: state
@@ -693,7 +693,7 @@ contains
     state%x_in = mci%x(:,mci%selected_channel)
     state%val = mci%integrand
   end subroutine mci_instance_store
-    
+
   subroutine mci_instance_recall (mci, sampler, state)
     class(mci_instance_t), intent(inout) :: mci
     class(mci_sampler_t), intent(inout) :: sampler
@@ -708,6 +708,6 @@ contains
        call msg_fatal ("Recalling event: mismatch in channel or dimension")
     end if
   end subroutine mci_instance_recall
-    
+
 
 end module mci_base

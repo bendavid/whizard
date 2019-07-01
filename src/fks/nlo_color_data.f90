@@ -1,28 +1,28 @@
-! WHIZARD 2.4.0 Nov 28 2016
-! 
-! Copyright (C) 1999-2016 by 
+! WHIZARD 2.4.1 Mar 24 2017
+!
+! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     
+!
 !     with contributions from
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>  
+!     Florian Staub <florian.staub@cern.ch>
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam,
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -209,9 +209,12 @@ contains
     type(ftuple_color_map_t), pointer :: current
     integer :: n_entries
     integer :: i
+    call msg_debug &
+         (D_SUBTRACTION, "inside ftuple_color_map_get_index_array")
     select type (icm)
     type is (ftuple_color_map_t)
     n_entries = icm%get_n_entries ()
+    call msg_debug (D_SUBTRACTION, "n_entries = ", n_entries)
     allocate (iarr(n_entries))
     do i = 1, n_entries
       if (i == 1) then
@@ -220,6 +223,8 @@ contains
         current => current%next
       end if
       iarr(i) = current%color_index
+      if (debug_active (D_SUBTRACTION)) &
+           print *, "i = ", i, "   iarr(i) = ", iarr(i)
     end do
     end select
   end function ftuple_color_map_get_index_array
@@ -267,10 +272,24 @@ contains
     !!!                 2 - g -> qq
     !!!                 3 - g -> gg
     integer :: splitting_type_flv, splitting_type_col
+    if (debug_active (D_SUBTRACTION)) then
+       print *, "CREATING THE COLOR MAP"
+       print *, " ... and the emitter is: ", emitter   
+       do i = 1, size (allreg)
+          call allreg(i)%write ()
+       end do
+    end if
     nreg = size (allreg)
+    call msg_debug (D_SUBTRACTION, "size of all regions = ", nreg)
     n_col_real = size (color_states_real (1,1,:))
+    call msg_debug (D_SUBTRACTION, "number color flows real = ", n_col_real)
     do region = 1, nreg
       call allreg(region)%get (p1, p2)
+      if (debug_active (D_SUBTRACTION)) then
+         print *, "region = ", region
+         print *, "   p1  = ", p1
+         print *, "   p2  = ", p2
+      end if
       if (p1 == emitter .or. p2 == emitter .or. present (p_rad_in)) then
         if (.not. present (p_rad_in)) then
           if (p1 == emitter) then
@@ -283,7 +302,9 @@ contains
         end if
         if (emitter /= 0) then
           flv_em = flst%flst (emitter)
+          call msg_debug (D_SUBTRACTION, "flv(emitter) = ", flv_em)
         else
+           !!! In the 3-jet example ee -> jjj this is never entered
           call icm%create_map &
                (flst, 1, allreg, color_states_born, color_states_real, &
                included_color_structures, p_rad)
@@ -293,16 +314,22 @@ contains
           return
         end if
         flv_rad = flst%flst (p_rad)
+        call msg_debug (D_SUBTRACTION, "flv(radiated) = ", flv_rad)
+        !!! q -> qg or g -> qq
         if (is_quark (flv_em) .and. is_gluon (flv_rad) .or. &
             is_gluon (flv_em) .and. is_quark (flv_rad)) then
            splitting_type_flv = 1
+        !!! q -> gq   
         else if (is_quark (flv_em) .and. flv_em + flv_rad == 0) then
            splitting_type_flv = 2
+        !!! g -> gg   
         else if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
            splitting_type_flv = 3
         else
           splitting_type_flv = 0
         end if
+        call msg_debug &
+             (D_SUBTRACTION, "splitting_type = ", splitting_type_flv)
         do i = 1, n_col_real
            if (.not. (any (i == included_color_structures))) cycle
            col_em = color_states_real(:,emitter,i)
@@ -320,9 +347,13 @@ contains
           else
             splitting_type_col = 0
           end if
+          call msg_debug (D_SUBTRACTION, &
+               "splitting_type_col = ", splitting_type_col)
           if (splitting_type_flv == splitting_type_col .and. &
               splitting_type_flv /= 0) then
-            call icm%append (i)
+             call msg_debug (D_SUBTRACTION, &
+                  "we are appending the color structure to region i = ", i)
+             call icm%append (i)
           end if
         end do
       end if
@@ -349,7 +380,7 @@ contains
     class(nlo_color_data_t), intent(inout) :: color_data
     type(region_data_t), intent(in) :: reg_data
     integer, intent(in), dimension(:) :: flavor_indices, color_indices
-    integer :: i, i_uborn, n_flv
+    integer :: i, i_born, n_flv
     integer, dimension(N_MAX_FLV) :: checked_uborns
     integer, dimension(:), allocatable :: i_flv, i_limit
     type(color_index_list_t), dimension(:), allocatable :: i_col
@@ -357,13 +388,13 @@ contains
     call evaluate_colors (n_flv, i_flv, i_limit, i_col)
     checked_uborns = 0
     do i = 1, size (i_flv)
-       i_uborn = reg_data%get_underlying_born_index (i_flv(i))
-       if (.not. any (checked_uborns == i_uborn)) then
+       i_born = reg_data%map_real_to_born_index (i_flv(i))
+       if (.not. any (checked_uborns == i_born)) then
           if (.not. allocated (color_data%included_color_structures)) then
              allocate (color_data%included_color_structures (size (i_col(i)%col)))
              color_data%included_color_structures = i_col(i)%col
           end if
-          checked_uborns(i) = i_uborn
+          checked_uborns(i) = i_born
        end if
     end do
   contains
@@ -496,6 +527,7 @@ contains
     class(nlo_color_data_t), intent(inout) :: color_data
     type(region_data_t), intent(in) :: reg_data
     integer :: i
+    call msg_debug (D_SUBTRACTION, "nlo_color_data_init_color")
     if (allocated (color_data%color_real))  &
          deallocate (color_data%color_real)
     if (allocated (color_data%icm))  deallocate (color_data%icm)
@@ -511,6 +543,10 @@ contains
     do i = 1, reg_data%n_regions
       call color_data%icm(i)%init
       associate (region => reg_data%regions(i))
+        if (debug_active (D_SUBTRACTION)) then
+           print *, "index i = ", i
+           print *, "creating map"
+        end if
         call color_data%icm(i)%create_map (region%flst_real, region%emitter, &
              region%ftuples, color_data%col_state_born, &
              color_data%col_state_real, color_data%included_color_structures)
@@ -534,6 +570,7 @@ contains
          reg_data%n_legs_born, reg_data%n_flv_born))
     select case (factorization_mode)
     case (NO_FACTORIZATION)
+       call msg_debug (D_SUBTRACTION, "No factorization")
        checked_uborn = .false.
        do alr = 1, reg_data%n_regions
           i_born = reg_data%regions(alr)%uborn_index
@@ -543,6 +580,7 @@ contains
           checked_uborn (i_born) = .true.
        end do
     case (FACTORIZATION_THRESHOLD)
+       call msg_debug (D_SUBTRACTION, "Threshold factorization")
        call color_data%fill_betaij_matrix_threshold ()
     end select
   end subroutine nlo_color_data_compute_betaij
@@ -554,11 +592,23 @@ contains
     type(flv_structure_t), intent(in) :: flst_real
     type(region_data_t), intent(inout) :: reg_data
     integer :: em1, em2
+    if (debug_active (D_SUBTRACTION)) then
+       print *, "FILLING BETA_IJ MATRIX"
+       print *, "n_legs = ", n_legs
+       print *, "uborn_index = ", uborn_index
+    end if
     associate (flv_born => reg_data%flv_born (uborn_index))
        do em1 = 1, n_legs
           do em2 = 1, n_legs
+             if (debug2_active (D_SUBTRACTION)) then
+                print *, "em1 = ", em1, " em2 = ", em2
+                print *, "col1/2 = ", flv_born%colored(em1), flv_born%colored(em2)
+             end if
              if (flv_born%colored(em1) .and. flv_born%colored(em2)) then
                 if (em1 < em2) then
+                   if (debug2_active (D_SUBTRACTION)) then
+                      print *, "calling compute_bij for em1 < em2"
+                   end if
                    color_data%beta_ij (em1, em2, uborn_index) &
                       = color_data%compute_bij &
                       (reg_data, uborn_index, flst_real, em1, em2)
@@ -676,18 +726,32 @@ contains
     integer :: sign
     integer, dimension(:), allocatable :: uborn_group, em1_group, em2_group
     integer, dimension(:), allocatable :: compute_alrs
+    if (debug_active (D_SUBTRACTION)) then
+       call color_data%write (verbose = .true.)       
+       print *, "em1 = ", em1
+       print *, "em2 = ", em2
+    end if
     bij = zero
     color_factor = zero; color_factor_born = zero
     found = .false.
     allocate (uborn_group (reg_data%get_uborn_group_size (uborn_index)))
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "size (uborn_group) = ", size (uborn_group)
     uborn_group = reg_data%get_uborn_group (uborn_index)
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "uborn_group = ", uborn_group
     allocate (em1_group (reg_data%get_emitter_group_size (em1)))
     em1_group = reg_data%get_emitter_group (em1)
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "em1_group = ", em1_group
     allocate (em2_group (reg_data%get_emitter_group_size (em2)))
     em2_group = reg_data%get_emitter_group (em2)
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "em2_group = ", em2_group
     n_alr = 0
     do i = 1, size (uborn_group)
-       n_alr = n_alr + count (uborn_group(i) == em1_group) + count (uborn_group(i) == em2_group)
+       n_alr = n_alr + count (uborn_group(i) == em1_group) &
+            + count (uborn_group(i) == em2_group)
     end do
     if (n_alr == 0) return
     allocate (compute_alrs (n_alr))
@@ -700,6 +764,8 @@ contains
           color_factor_born = color_factor_born + real (color_data%color_factors_born (i))
     end do
     i1 = 1; i2 = 1
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "Number of color flows in the real = ", color_data%n_col_real
     do i = 1, color_data%n_col_real
        if (any (color_data%included_color_structures == i)) then
           col1 = color_data%col_state_real (:, em1, i)
@@ -715,12 +781,19 @@ contains
           end if
        end if
     end do
+    if (debug_active (D_SUBTRACTION)) then
+       print *, "i1 = ", i1
+       print *, "i2 = ", i2   
+    end if
     allocate (map_em_col1 (i1), map_em_col2 (i2))
     map_em_col1 = map_em_col_tmp (1, 1 : i1 - 1)
     map_em_col2 = map_em_col_tmp (2, 1 : i2 - 1)
 
     i_reg = 1
 
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "Number of regions = ", reg_data%n_regions
+    
     do alr = 1, reg_data%n_regions
         if (.not. any (compute_alrs == alr)) cycle
         if (em1 == reg_data%regions(alr)%emitter .or. &
@@ -740,14 +813,26 @@ contains
        return
     end if
 
+    if (debug_active (D_SUBTRACTION)) &
+         print *, "i_reg = ", i_reg
+    
     do i = 1, i_reg(1) - 1
        do j = 1, i_reg(2) - 1
+          if (debug_active (D_SUBTRACTION)) then
+             print *, "i=", i, " reg(1,i)%alr = ", reg(1,i)%alr
+             print *, "i=", i, " reg(2,i)%alr = ", reg(2,i)%alr
+          end if
           icm1 = color_data%icm (reg(1, i)%alr)
           icm2 = color_data%icm (reg(2, j)%alr)
 
           allocate (iarray1 (size (icm1%get_index_array ())))
           allocate (iarray2 (size (icm2%get_index_array ())))
 
+          if (debug_active (D_SUBTRACTION)) then
+             print *, "iarray1 = ", iarray1
+             print *, "iarray2 = ", iarray2
+          end if
+                  
           iarray1 = icm1%get_index_array ()
           iarray2 = icm2%get_index_array ()
 

@@ -7072,12 +7072,24 @@ func_mode_link ()
 
       -mt|-mthreads|-kthread|-Kthread|-pthread|-pthreads|--thread-safe \
       |-threads|-fopenmp|-openmp|-mp|-xopenmp|-omp|-qsmp=*)
-	func_append compiler_flags " $arg"
+        case $CC in
+	    nagfor*) ;;
+	    *)
+		func_append compiler_flags " $arg"
+		;;
+	esac
 	func_append compile_command " $arg"
 	func_append finalize_command " $arg"
 	case "$new_inherited_linker_flags " in
 	    *" $arg "*) ;;
-	    * ) func_append new_inherited_linker_flags " $arg" ;;
+	    *) 
+		case $CC in 
+		    nagfor*) ;;
+		    *)
+			func_append new_inherited_linker_flags " $arg"
+		    ;;
+		esac
+		;;
 	esac
 	continue
 	;;
