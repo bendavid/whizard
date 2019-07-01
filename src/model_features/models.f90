@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -289,10 +289,10 @@ contains
        if (defs) then
           call par%expr%write (unit)
        else
-          write (u, *)
+          write (u, "(A)")
        end if
     case default
-       write (u, *)
+       write (u, "(A)")
     end select
   end subroutine parameter_write
 
@@ -1647,7 +1647,7 @@ contains
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
        (model_name, model_name // var_str (".mdl"), os_data, test_model)
   end subroutine create_test_model
@@ -1836,7 +1836,7 @@ contains
     type(model_t), intent(in) :: orig
     integer :: n_par, n_prt, n_vtx
     integer :: i
-    n_par = size (orig%par)
+    n_par = orig%get_n_real ()
     n_prt = orig%get_n_field ()
     n_vtx = orig%get_n_vtx ()
     call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
@@ -1848,11 +1848,13 @@ contains
        end if
     end if
     model%md5sum = orig%md5sum
-    do i = 1, n_par
-       call model%copy_parameter (i, orig%par(i))
-    end do
+    if (allocated (orig%par)) then
+       do i = 1, n_par
+          call model%copy_parameter (i, orig%par(i))
+       end do
+    end if
     model%init_external_parameters => orig%init_external_parameters
-    call model%copy_from (orig)
+    call model%model_data_t%copy_from (orig)
     model%max_par_name_length = orig%max_par_name_length
     call model%append_field_vars ()
   end subroutine model_copy

@@ -14,8 +14,8 @@ $integration_method = "vamp"
 sqrts =  1.000000000000E+03
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
-| Phase space: reading configuration from 'testproc_3.phs'
 | Initializing integration for process testproc_3_p1:
+| Phase space: reading configuration from 'testproc_3.phs'
 | Beam structure: [any particles]
 | Beam data (collision):
 |   s  (mass = 1.2500000E+02 GeV)

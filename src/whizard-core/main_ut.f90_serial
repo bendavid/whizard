@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -44,7 +44,7 @@ program main_ut
   use eio_base_ut, only: eio_cleanup_test
   use eio_base_ut, only: eio_prepare_fallback_model
   use eio_base_ut, only: eio_cleanup_fallback_model
-  use dispatch_rng, only: dispatch_rng_factory_extra
+  use dispatch_rng, only: dispatch_rng_factory_fallback
   use dispatch_rng_ut, only: dispatch_rng_factory_test
   use dispatch_beams, only: dispatch_sf_data_extra
   use dispatch_ut, only: dispatch_sf_data_test
@@ -93,6 +93,7 @@ program main_ut
   use phs_base_ut, only: phs_base_test
   use phs_none_ut, only: phs_none_test
   use phs_single_ut, only: phs_single_test
+  use phs_rambo_ut, only: phs_rambo_test
   use phs_wood_ut, only: phs_wood_test
   use phs_wood_ut, only: phs_wood_vis_test
   use phs_fks_ut, only: phs_fks_generator_test
@@ -118,6 +119,8 @@ program main_ut
   use hepmc_interface_ut, only: hepmc_interface_test
   use lcio_interface_ut, only: lcio_interface_test
   use jets_ut, only: jets_test
+  use whizard_lha_ut, only: whizard_lha_test
+  use pythia8_ut, only: pythia8_test
   use pdg_arrays_ut, only: pdg_arrays_test
   use interactions_ut, only: interaction_test
   use slha_interface_ut, only: slha_test
@@ -312,7 +315,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
-    print "(A)", "Copyright (C) 1999-2018 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2019 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -342,7 +345,8 @@ contains
     allocate (proc)
     allocate (process_instance)
 
-    call prepare_test_process (proc, process_instance, model)
+    call prepare_test_process (proc, process_instance, model, &
+         run_id = var_str ("run_test"))
     call process_instance%setup_event_data ()
 
     call model%final ()
@@ -406,8 +410,8 @@ contains
     class(vars_t), pointer, intent(out), optional :: vars
     type(os_data_t) :: os_data
     call syntax_model_file_init ()
-    call os_data_init (os_data)
-    allocate (model_t :: model)
+    call os_data%init ()
+    if (.not. associated (model))  allocate (model_t :: model)
     select type (model)
     type is (model_t)
        call model%read (name // ".mdl", os_data)
@@ -420,9 +424,8 @@ contains
   subroutine cleanup_whizard_model (model)
     use model_data
     use models
-    class(model_data_t), intent(inout), pointer :: model
+    class(model_data_t), intent(inout), target :: model
     call model%final ()
-    deallocate (model)
     call syntax_model_file_final ()
   end subroutine cleanup_whizard_model
 
@@ -437,7 +440,7 @@ contains
     type(test_results_t), intent(inout) :: results
     type(os_data_t) :: os_data
     integer :: u
-    call os_data_init (os_data)
+    call os_data%init ()
     u = free_unit ()
     open (u, file="whizard_check." // char (check) // ".log", &
          action="write", status="replace")
@@ -450,7 +453,7 @@ contains
     cleanup_model => cleanup_whizard_model
     eio_prepare_fallback_model => prepare_fallback_model
     eio_cleanup_fallback_model => cleanup_model
-    dispatch_rng_factory_extra => dispatch_rng_factory_test
+    dispatch_rng_factory_fallback => dispatch_rng_factory_test
     dispatch_sf_data_extra => dispatch_sf_data_test
     select case (char (check))
     case ("formats")
@@ -543,6 +546,8 @@ contains
        call phs_none_test (u, results)
     case ("phs_single")
        call phs_single_test (u, results)
+    case ("phs_rambo")
+       call phs_rambo_test (u, results)
     case ("phs_wood")
        call phs_wood_test (u, results)
     case ("phs_wood_vis")
@@ -593,6 +598,10 @@ contains
        call lcio_interface_test (u, results)
     case ("jets")
        call jets_test (u, results)
+    case ("whizard_lha")
+       call whizard_lha_test (u, results)
+    case ("pythia8")
+       call pythia8_test (u, results)
     case ("pdg_arrays")
        call pdg_arrays_test (u, results)
     case ("interactions")
@@ -747,6 +756,7 @@ contains
        call phs_base_test (u, results)
        call phs_none_test (u, results)
        call phs_single_test (u, results)
+       call phs_rambo_test (u, results)
        call phs_wood_test (u, results)
        call phs_wood_vis_test (u, results)
        call phs_fks_generator_test (u, results)
@@ -772,6 +782,8 @@ contains
        call hepmc_interface_test (u, results)
        call lcio_interface_test (u, results)
        call jets_test (u, results)
+       call whizard_lha_test (u, results)
+       call pythia8_test (u, results)
        call pdg_arrays_test (u, results)
        call interaction_test (u, results)
        call slha_test (u, results)

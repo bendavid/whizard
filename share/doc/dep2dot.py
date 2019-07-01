@@ -7,7 +7,7 @@ import re
 dot_head = '''
 digraph G {
 concentrate=true
-splines=ortho
+splines=true
 node[shape=record,style=filled,fillcolor=white]
 edge[color=gray50]
 '''
@@ -106,4 +106,4 @@ for filename in args.files:
     results += (deps_of_file(filename))
 
 dot_strg = dot_head + ''.join(results) + dot_foot
-print dot_strg
+print(dot_strg)

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -35,18 +35,20 @@ module shower_uti
   use sm_qcd
   use physics_defs, only: BORN
   use model_data
+  use models
   use state_matrices, only: FM_IGNORE_HELICITY
   use process_libraries
   use rng_base
   use rng_tao
+  use dispatch_rng, only: dispatch_rng_factory_fallback
   use mci_base
   use mci_midpoint
   use phs_base
   use phs_single
+  use prc_core_def, only: prc_core_def_t
   use prc_core
   use prc_omega
   use variables
-  use models
   use event_transforms
   use tauola_interface !NODEP!
 
@@ -56,6 +58,8 @@ module shower_uti
   use pdf
   use shower_base
   use shower_core
+
+  use dispatch_rng_ut, only: dispatch_rng_factory_tao
 
   use shower
 
@@ -73,28 +77,24 @@ contains
     type(os_data_t), intent(out) :: os_data
     type(process_library_t), intent(out), target :: lib
     type(model_list_t), intent(out) :: model_list
-    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model
     type(model_t), pointer :: model_tmp
     type(process_t), target, intent(out) :: process
     type(process_instance_t), target, intent(out) :: process_instance
     type(var_list_t), pointer :: model_vars
-    type(string_t) :: model_name, libname, procname, run_id
+    type(string_t) :: model_name, libname, procname
     type(process_def_entry_t), pointer :: entry
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     class(prc_core_t), allocatable :: core_template
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
 
     model_name = "SM"
     libname = prefix // "_lib"
     procname = prefix // "p"
-    run_id = "1"
 
-    call os_data_init (os_data)
-    allocate (rng_tao_factory_t :: rng_factory)
+    call os_data%init ()
+    dispatch_rng_factory_fallback => dispatch_rng_factory_tao
     allocate (model_tmp)
     call model_list%read_model (model_name, model_name // ".mdl", &
          os_data, model_tmp)
@@ -121,30 +121,19 @@ contains
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
 
-    call process%init (procname, run_id, lib, os_data, &
-         qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     allocate (prc_omega_t :: core_template)
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
 
-    model => process%get_model_ptr ()
-
-    select type (core_template)
-    type is (prc_omega_t)
-       call core_template%set_parameters (model = model)
-    end select
-    call process%core_manager_register (BORN, 1, var_str ("omega"))
-    call process%allocate_cm_arrays (1)
-    call process%allocate_core (1, core_template)
-    call process%init_cores ()
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%setup_cores (dispatch_core_omega_test)
+    
+    call process%init_components (phs_config_template)
 
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test_midpoint)
     call process%setup_terms ()
 
     call process_instance%init (process)
@@ -158,6 +147,31 @@ contains
 
   end subroutine setup_testbed
 
+  subroutine dispatch_core_omega_test (core, core_def, model, &
+       helicity_selection, qcd, use_color_factors, has_beam_pol)
+    class(prc_core_t), allocatable, intent(inout) :: core
+    class(prc_core_def_t), intent(in) :: core_def
+    class(model_data_t), intent(in), target, optional :: model
+    type(helicity_selection_t), intent(in), optional :: helicity_selection
+    type(qcd_t), intent(in), optional :: qcd
+    logical, intent(in), optional :: use_color_factors
+    logical, intent(in), optional :: has_beam_pol
+    allocate (prc_omega_t :: core)
+    select type (core)
+    type is (prc_omega_t)
+       call core%set_parameters (model)
+    end select
+  end subroutine dispatch_core_omega_test
+     
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    use variables, only: var_list_t
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
   subroutine shower_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
@@ -183,7 +197,7 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
          os_data, model_hadrons)
@@ -218,7 +232,7 @@ contains
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data, os_data)
        call evt_shower%connect (process_instance, model)
     end select
 
@@ -277,7 +291,7 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
          os_data, model_hadrons)
@@ -314,7 +328,7 @@ contains
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data, os_data)
        call evt_shower%connect (process_instance, model)
     end select
 

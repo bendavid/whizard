@@ -1,6 +1,6 @@
 (* modellib_BSM.ml --
 
-   Copyright (C) 1999-2018 by
+   Copyright (C) 1999-2019 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -440,11 +440,12 @@ module Littlest (Flags : BSM_flags) =
       List.map mgm
       [ ((D (-n), Gl, D n), FBF ((-1), Psibar, V, Psi), Gs);
         ((U (-n), Gl, U n), FBF ((-1), Psibar, V, Psi), Gs)]
-
+	
    let heavy_top_currents = 
      List.map mgm
        ([ ((TopHb, Ga, TopH), FBF (1, Psibar, V, Psi), Q_up);
           ((TopHb, Z, TopH), FBF (1, Psibar, V, Psi), Q_Z_up);
+	  ((TopHb, Gl, TopH), FBF (1, Psibar, V, Psi), Gs);
           ((TopHb, Z, U 3), FBF (1, Psibar, VL, Psi), G_ZTHT);
           ((U (-3), Z, TopH), FBF (1, Psibar, VL, Psi), G_ZTHT);
           ((TopHb, ZH, U 3), FBF (1, Psibar, VL, Psi), G_ZHTHT);
@@ -1134,7 +1135,7 @@ module Littlest (Flags : BSM_flags) =
       | Supp -> "vF" | Supp2 -> "v2F2" 
       | Q_lepton -> "qlep" | Q_up -> "qup" | Q_down -> "qdwn"
       | Q_Z_up -> "qzup" 
-      | G_ZHTHT -> "gzhtht" | G_ZTHT -> "gzhtht"
+      | G_ZHTHT -> "gzhtht" | G_ZTHT -> "gztht"
       | G_AHTHTH -> "gahthth" | G_AHTHT -> "gahtht" | G_AHTT -> "gahtt"
       | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
       | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
@@ -1174,7 +1175,7 @@ module Littlest (Flags : BSM_flags) =
       | G_Psi0cc -> "gpsi0cc" | G_Psi0tautau -> "gpsi0tautau"
       | G_Psi1tt -> "gpsi1tt" | G_Psi1bb -> "gpsi1bb" 
       | G_Psi1cc -> "gpsi1cc" | G_Psi1tautau -> "gpsi1tautau"
-      | G_Psipq3 -> "gpsipq3" | G_Psipq2 -> "gpsipq2" | G_Psipl3 -> "gpsil3"
+      | G_Psipq3 -> "gpsipq3" | G_Psipq2 -> "gpsipq2" | G_Psipl3 -> "gpsipl3"
       | G_Psi0tth -> "gpsi0tth" | G_Psi1tth -> "gpsi1tth"
       | G_Psipbth -> "gpsipbth"
       | G_Ethth -> "gethth" | G_Etht -> "getht"
@@ -1524,11 +1525,16 @@ module Littlest_Tpar (Flags : BSM_flags) =
     let electromagnetic_currents n =
         [ ((L (-n), Ga, L n), FBF (1, Psibar, V, Psi), Q_lepton);
           ((U (-n), Ga, U n), FBF (1, Psibar, V, Psi), Q_up);  
-          ((D (-n), Ga, D n), FBF (1, Psibar, V, Psi), Q_down) ]
+          ((D (-n), Ga, D n), FBF (1, Psibar, V, Psi), Q_down);
+	  ((Lodd (-n), Ga, Lodd n), FBF (1, Psibar, V, Psi), Q_lepton);
+          ((Uodd (-n), Ga, Uodd n), FBF (1, Psibar, V, Psi), Q_up);  
+          ((Dodd (-n), Ga, Dodd n), FBF (1, Psibar, V, Psi), Q_down) ]
 
     let color_currents n =
         [ ((U (-n), Gl, U n), FBF ((-1), Psibar, V, Psi), Gs);  
-          ((D (-n), Gl, D n), FBF ((-1), Psibar, V, Psi), Gs) ]
+          ((D (-n), Gl, D n), FBF ((-1), Psibar, V, Psi), Gs);
+	  ((Uodd (-n), Gl, Uodd n), FBF ((-1), Psibar, V, Psi), Gs);  
+          ((Dodd (-n), Gl, Dodd n), FBF ((-1), Psibar, V, Psi), Gs) ]  
 
     let neutral_currents n =
         [ ((L (-n), Z, L n), FBF (1, Psibar, VA, Psi), G_NC_lepton);
@@ -1555,6 +1561,7 @@ module Littlest_Tpar (Flags : BSM_flags) =
    let heavy_top_currents = 
        ([ ((Toppb, Ga, Topp), FBF (1, Psibar, V, Psi), Q_up);
           ((Toppb, Z, Topp), FBF (1, Psibar, V, Psi), Q_Z_up);
+	  ((Toppb, Gl, Topp), FBF (1, Psibar, V, Psi), Gs);
           ((Toppb, Z, U 3), FBF (1, Psibar, VL, Psi), G_ZTHT);
           ((U (-3), Z, Topp), FBF (1, Psibar, VL, Psi), G_ZTHT);
           ((Toppb, ZH, U 3), FBF (1, Psibar, VL, Psi), G_ZHTHT);
@@ -2243,7 +2250,7 @@ module Littlest_Tpar (Flags : BSM_flags) =
       | Supp -> "vF" | Supp2 -> "v2F2" 
       | Q_lepton -> "qlep" | Q_up -> "qup" | Q_down -> "qdwn"
       | Q_Z_up -> "qzup" 
-      | G_ZHTHT -> "gzhtht" | G_ZTHT -> "gzhtht"
+      | G_ZHTHT -> "gzhtht" | G_ZTHT -> "gztht"
       | G_AHTHTH -> "gahthth" | G_AHTHT -> "gahtht" | G_AHTT -> "gahtt"
       | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
       | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
@@ -2284,7 +2291,7 @@ module Littlest_Tpar (Flags : BSM_flags) =
       | G_Psi0cc -> "gpsi0cc" | G_Psi0tautau -> "gpsi0tautau"
       | G_Psi1tt -> "gpsi1tt" | G_Psi1bb -> "gpsi1bb" 
       | G_Psi1cc -> "gpsi1cc" | G_Psi1tautau -> "gpsi1tautau"
-      | G_Psipq3 -> "gpsipq3" | G_Psipq2 -> "gpsipq2" | G_Psipl3 -> "gpsil3"
+      | G_Psipq3 -> "gpsipq3" | G_Psipq2 -> "gpsipq2" | G_Psipl3 -> "gpsipl3"
       | G_Psi0tth -> "gpsi0tth" | G_Psi1tth -> "gpsi1tth"
       | G_Psipbth -> "gpsipbth"
       | G_Ethth -> "gethth" | G_Etht -> "getht"

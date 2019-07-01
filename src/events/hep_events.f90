@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -515,10 +515,14 @@ contains
     type(lcio_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
     type(lcio_particle_t), dimension(:), allocatable :: lprt
+    type(particle_set_t), target :: pset_filtered
     integer, dimension(:), allocatable :: parent
     integer :: n_tot, i, j, n_beam, n_parents, type, beam_count
-    n_tot = particle_set%n_tot
-    n_beam = count (particle_set%prt%get_status () == PRT_BEAM)
+
+    call particle_set%filter_particles ( pset_filtered, real_parents = .true. , &
+        keep_beams = .true. , keep_virtuals = .false.)
+    n_tot = pset_filtered%n_tot
+    n_beam = count (pset_filtered%prt%get_status () == PRT_BEAM)
     if (n_beam == 0) then
        type = PRT_INCOMING
     else
@@ -527,20 +531,20 @@ contains
     beam_count = 0
     allocate (lprt (n_tot))
     do i = 1, n_tot
-       call particle_to_lcio (particle_set%prt(i), lprt(i))
-       n_parents = particle_set%prt(i)%get_n_parents ()
+       call particle_to_lcio (pset_filtered%prt(i), lprt(i))
+       n_parents = pset_filtered%prt(i)%get_n_parents ()
        if (n_parents /= 0) then
           allocate (parent (n_parents))
-          parent = particle_set%prt(i)%get_parents ()
+          parent = pset_filtered%prt(i)%get_parents ()
           do j = 1, n_parents
-             call lcio_particle_set_parent (lprt(i), lprt(parent(j)))
+             call lcio_particle_set_parent  (lprt(i), lprt(parent(j)))
           end do
           deallocate (parent)
        end if
-       if (particle_set%prt(i)%get_status () == type) then
+       if (pset_filtered%prt(i)%get_status () == type) then
           beam_count = beam_count + 1
           call lcio_event_set_beam &
-               (evt, particle_set%prt(i)%get_pdg (), beam_count)
+               (evt, pset_filtered%prt(i)%get_pdg (), beam_count)
        end if
        call lcio_particle_add_to_evt_coll (lprt(i), evt)
     end do

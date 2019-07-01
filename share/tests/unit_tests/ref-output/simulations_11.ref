@@ -36,11 +36,13 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ------------------------------------------------------------------------
  Current event:
    Process #1: simulation_11_p
    MCI set #1
    Weight    =  1.000000000000E+00
+   Zero-weight events dropped = 0
 ------------------------------------------------------------------------
  TAO random-number generator:
    seed  = 0
@@ -49,7 +51,7 @@
  Process #1:
    Process   = 'simulation_11_p'
    Library   = 'simulation_11_lib'
-   Run       = 'simulation_11'
+   Run       = ''
    is valid  = T
    Integral  =  7.746462203555E+03
    Error     =  0.000000000000E+00
@@ -62,6 +64,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 
  MCI set #1:
    Components:
@@ -76,6 +79,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ========================================================================
 
 ========================================================================
@@ -100,7 +104,7 @@
    Analysis flag      = T
 ========================================================================
  Process instance [scattering]: 'simulation_11_p'
-   Run ID = 'simulation_11'
+   Run ID = ''
    Process components:
    * 1: 'simulation_11_p_i1':   s, s => s, s [test_me]
    status = event complete

@@ -2074,45 +2074,44 @@ contains
 
 end module dispatch_rng
 @ %def dispatch_rng
-Allocate a random-number generator factory according to the variable
-[[$rng_method]], using the current seed in the global record.  We take
+@ Allocate a random-number generator factory according to the variable
+[[$rng_method]], using the current seed in the global record.  (If the
+variable does not exist, the lookup will return the value 0.)  We take
 only the lower 15 bits of the seed, so the actual value fits into a
 positive 16-bit signed integer.
 
 Since we want to guarantee that all random-number generators in a run
 are independent, we increment the global seed by one after creating
-the rng factory.  If the user wants to have identical sequences, he
-can always set the seed manually, before it is used.
+the rng factory and return it to the caller.  If the user wants to have
+identical sequences, he can always set the seed manually, before it is used.
 <<Dispatch rng: public>>=
   public :: dispatch_rng_factory
 <<Dispatch rng: procedures>>=
-  subroutine dispatch_rng_factory (rng_factory, var_list_global, var_list_local)
+  subroutine dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
     class(rng_factory_t), allocatable, intent(inout) :: rng_factory
-    type(var_list_t), intent(inout) :: var_list_global
-    type(var_list_t), intent(in), optional :: var_list_local
+    type(var_list_t), intent(in) :: var_list
+    integer, intent(out) :: next_rng_seed
     type(var_list_t) :: local
     type(string_t) :: rng_method
     integer :: seed
     character(30) :: buffer
     integer(i16) :: s
-    if (present (var_list_local)) then
-       local = var_list_local
-    else
-       local = var_list_global
-    end if
-    rng_method = local%get_sval (var_str ("$rng_method"))
-    seed = local%get_ival (var_str ("seed"))
+    rng_method = var_list%get_sval (var_str ("$rng_method"))
+    seed = var_list%get_ival (var_str ("seed"))
     s = int (mod (seed, 32768), i16)
     select case (char (rng_method))
     case ("tao")
        allocate (rng_tao_factory_t :: rng_factory)
        call msg_message ("RNG: Initializing TAO random-number generator")
+       next_rng_seed = seed + 1
     case ("rng_stream")
        allocate (rng_stream_factory_t :: rng_factory)
        call msg_message ("RNG: Initializing RNG Stream random-number generator")
+       next_rng_seed = seed + 1
     case default
-       if (associated (dispatch_rng_factory_extra)) then
-          call dispatch_rng_factory_extra (rng_factory, var_list_global, var_list_local)
+       if (associated (dispatch_rng_factory_fallback)) then
+          call dispatch_rng_factory_fallback &
+               (rng_factory, var_list, next_rng_seed)
        end if
        if (.not. allocated (rng_factory)) then
           call msg_fatal ("Random-number generator '" &
@@ -2123,20 +2122,32 @@ can always set the seed manually, before it is used.
     call msg_message ("RNG: Setting seed for random-number generator to " &
             // trim (buffer))
     call rng_factory%init (s)
-    call var_list_global%set_int (var_str ("seed"), seed + 1, &
-         is_known = .true.)
   end subroutine dispatch_rng_factory
 
 @ %def dispatch_rng_factory
 @ This is a hook that allows us to inject further handlers for
 RNG factory objects, in particular a test RNG.
 <<Dispatch rng: public>>=
-  public :: dispatch_rng_factory_extra
+  public :: dispatch_rng_factory_fallback
 <<Dispatch rng: variables>>=
   procedure (dispatch_rng_factory), pointer :: &
-       dispatch_rng_factory_extra => null ()
-@ %def dispatch_rng_factory_extra
-@
+       dispatch_rng_factory_fallback => null ()
+@ %def dispatch_rng_factory_fallback
+@ If the RNG factory dispatcher has used up a seed, we should reset it in the
+variable list.  Separate subroutine with optional argument for more
+flexibility.
+<<Dispatch rng: public>>=
+  public :: update_rng_seed_in_var_list
+<<Dispatch rng: procedures>>=
+  subroutine update_rng_seed_in_var_list (var_list, next_rng_seed)
+    type(var_list_t), intent(inout), optional :: var_list
+    integer, intent(in) :: next_rng_seed
+    if (present (var_list)) then 
+       call var_list%set_int (var_str ("seed"), next_rng_seed, is_known=.true.)
+    end if
+  end subroutine update_rng_seed_in_var_list
+  
+@ %def update_rng_seed_in_var_list
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -2196,28 +2207,31 @@ end module dispatch_rng_uti
   end subroutine dispatch_rng_test
 
 @  %def dispatch_rng_test
+@
 \subsubsection{Select type: random number generator}
 This is an extra dispatcher that enables the test RNG.  This procedure
-should be assigned to the [[dispatch_rng_factory_extra]] hook before
+should be assigned to the [[dispatch_rng_factory_fallback]] hook before
 any tests are executed.
+
+The test generator does not use the seed at all, but it does increment it to
+be consistent with the other implementations.
 <<Dispatch rng: public test auxiliary>>=
   public :: dispatch_rng_factory_test
 <<Dispatch rng: test auxiliary>>=
-  subroutine dispatch_rng_factory_test (rng_factory, var_list_global, var_list_local)
+  subroutine dispatch_rng_factory_test (rng_factory, var_list, next_rng_seed)
     use rng_base
     use rng_base_ut, only: rng_test_factory_t
     class(rng_factory_t), allocatable, intent(inout) :: rng_factory
-    type(var_list_t), intent(inout) :: var_list_global
-    type(var_list_t), intent(in), optional :: var_list_local
-    type(var_list_t) :: local
+    type(var_list_t), intent(in) :: var_list
+    integer, intent(out) :: next_rng_seed
     type(string_t) :: rng_method
-    if (present (var_list_local)) then
-       local = var_list_local
+    if (var_list%contains (var_str ("$rng_method"))) then
+       rng_method = var_list%get_sval (var_str ("$rng_method"))
     else
-       local = var_list_global
+       rng_method = "unit_test"
     end if
-    rng_method = &
-         local%get_sval (var_str ("$rng_method"))
+    next_rng_seed = &
+         var_list%get_ival (var_str ("seed")) + 1
     select case (char (rng_method))
     case ("unit_test")
        allocate (rng_test_factory_t :: rng_factory)
@@ -2226,7 +2240,37 @@ any tests are executed.
   end subroutine dispatch_rng_factory_test
 
 @ %def dispatch_rng_factory_test
-@
+@ This is the analog for the TAO RNG, for the unit tests we need a full
+generator.  (The seed is to be zero or a small integer.)
+<<Dispatch rng: public test auxiliary>>=
+  public :: dispatch_rng_factory_tao
+<<Dispatch rng: test auxiliary>>=
+  subroutine dispatch_rng_factory_tao (rng_factory, var_list, next_rng_seed)
+    use kinds, only: i16
+    use rng_base
+    use rng_tao, only: rng_tao_factory_t
+    class(rng_factory_t), allocatable, intent(inout) :: rng_factory
+    type(var_list_t), intent(in) :: var_list
+    integer, intent(out) :: next_rng_seed
+    type(string_t) :: rng_method
+    integer(i16) :: s
+    if (var_list%contains (var_str ("$rng_method"))) then
+       rng_method = var_list%get_sval (var_str ("$rng_method"))
+    else
+       rng_method = "tao"
+    end if
+    s = var_list%get_ival (var_str ("seed"))
+    select case (char (rng_method))
+    case ("tao")
+       allocate (rng_tao_factory_t :: rng_factory)
+       call rng_factory%init (s)
+    end select
+    next_rng_seed = s + 1
+  end subroutine dispatch_rng_factory_tao
+
+@ %def dispatch_rng_factory_tao
+@ Create RNG factories for different algorithms.  Note that the seed is
+updated after each rng factory call. 
 <<Dispatch rng: execute tests>>=
   call test (dispatch_rng_1, "dispatch_rng_1", &
        "random-number generator", &
@@ -2237,6 +2281,7 @@ any tests are executed.
   subroutine dispatch_rng_1 (u)
     integer, intent(in) :: u
     type(var_list_t) :: var_list
+    integer :: next_rng_seed
     class(rng_factory_t), allocatable :: rng_factory
 
     write (u, "(A)")  "* Test output: dispatch_rng_1"
@@ -2253,7 +2298,9 @@ any tests are executed.
          var_str ("unit_test"), is_known = .true.)
     call var_list%set_int (&
          var_str ("seed"), 1, is_known = .true.)
-    call dispatch_rng_factory (rng_factory, var_list)
+
+    call dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+
     call rng_factory%write (u)
     deallocate (rng_factory)
 
@@ -2264,7 +2311,9 @@ any tests are executed.
     call var_list%set_string (&
          var_str ("$rng_method"), &
          var_str ("tao"), is_known = .true.)
-    call dispatch_rng_factory (rng_factory, var_list)
+    call update_rng_seed_in_var_list (var_list, next_rng_seed)
+    call dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+
     call rng_factory%write (u)
     deallocate (rng_factory)
 
@@ -2274,8 +2323,10 @@ any tests are executed.
 
     call var_list%set_string (&
          var_str ("$rng_method"), &
-         var_str ("rng_stream"), is_known = .true.)
-    call dispatch_rng_factory (rng_factory, var_list)
+         var_str ("rng_stream"), is_known = .true.) 
+    call update_rng_seed_in_var_list (var_list, next_rng_seed)
+    call dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+
     call rng_factory%write (u)
     deallocate (rng_factory)
 

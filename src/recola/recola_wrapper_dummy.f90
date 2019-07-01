@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,9 +37,10 @@ module recola_wrapper
   public :: rclwrap_is_active
   public :: get_recola_particle_string
   public :: rclwrap_get_new_recola_id
-  public :: rclwrap_get_n_processes
-  public :: rclwrap_define_process
+  public :: rclwrap_get_current_recola_id
   public :: rclwrap_request_generate_processes
+   public :: rclwrap_add_process
+   public :: rclwrap_define_processes
   public :: rclwrap_generate_processes
   public :: rclwrap_compute_process
   public :: rclwrap_get_amplitude
@@ -125,19 +126,21 @@ contains
     id = 0
   end subroutine rclwrap_get_new_recola_id
     
-  function rclwrap_get_n_processes () result (n)
+  function rclwrap_get_current_recola_id () result (n)
     integer :: n
     n = 0
-  end function rclwrap_get_n_processes
+  end function rclwrap_get_current_recola_id
     
-  subroutine rclwrap_define_process (id, process_string, order)
-    integer, intent(in) :: id
-    type(string_t), intent(in) :: process_string
-    type(string_t), intent(in) :: order
-  end subroutine rclwrap_define_process
-
   subroutine rclwrap_request_generate_processes ()
   end subroutine rclwrap_request_generate_processes
+
+   subroutine rclwrap_add_process (id, process_string, order)
+     integer, intent(in) :: id
+     type(string_t), intent(in) :: process_string, order
+   end subroutine rclwrap_add_process
+ 
+   subroutine rclwrap_define_processes ()
+   end subroutine rclwrap_define_processes
 
   subroutine rclwrap_generate_processes ()
   end subroutine rclwrap_generate_processes
@@ -233,9 +236,9 @@ contains
     real(double), intent(in) :: mu
   end subroutine rclwrap_set_mu_ir
 
-  function rclwrap_get_renormalization_scale () result (mu)
-    real(double) :: mu
-  end function rclwrap_get_renormalization_scale
+  subroutine rclwrap_get_renormalization_scale (mu)
+    real(double), intent(out) :: mu
+  end subroutine rclwrap_get_renormalization_scale
 
   subroutine rclwrap_get_flavor_scheme (nf)
     integer, intent(out) :: nf

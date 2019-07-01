@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,13 +36,17 @@ EXTRA_DIST = \
     cascades2_2.fds \
     functional_tests/structure_2_inc.sin functional_tests/testproc_3.phs \
     functional_tests/user_cuts.f90 \
-    functional_tests/susyhit.in nmssm.slha
+    functional_tests/susyhit.in \
+    ext_tests_nmssm/nmssm.slha
 
 TESTSUITE_MACROS = testsuite.m4
 TESTSUITE_TOOLS = \
     check-debug-output.py \
+    check-debug-output-hadro.py \
     check-hepmc-weights.py \
     compare-integrals.py \
+    compare-integrals-multi.py \
+    compare-methods.py \
     compare-histograms.py
 
 REF_OUTPUT_FILES = \
@@ -225,6 +229,10 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/phs_single_2.ref \
     unit_tests/ref-output/phs_single_3.ref \
     unit_tests/ref-output/phs_single_4.ref \
+    unit_tests/ref-output/phs_rambo_1.ref \
+    unit_tests/ref-output/phs_rambo_2.ref \
+    unit_tests/ref-output/phs_rambo_3.ref \
+    unit_tests/ref-output/phs_rambo_4.ref \
     unit_tests/ref-output/resonances_1.ref \
     unit_tests/ref-output/resonances_2.ref \
     unit_tests/ref-output/resonances_3.ref \
@@ -565,6 +573,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/blha_1.ref \
     unit_tests/ref-output/blha_2.ref \
     unit_tests/ref-output/blha_3.ref \
+    unit_tests/ref-output/whizard_lha_1.ref \
     functional_tests/ref-output/pack_1.ref \
     functional_tests/ref-output/structure_1.ref \
     functional_tests/ref-output/structure_2.ref \
@@ -587,6 +596,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/testproc_9.ref \
     functional_tests/ref-output/testproc_10.ref \
     functional_tests/ref-output/testproc_11.ref \
+    functional_tests/ref-output/testproc_12.ref \
     functional_tests/ref-output/template_me_1.ref \
     functional_tests/ref-output/template_me_2.ref \
     functional_tests/ref-output/susyhit.ref \
@@ -607,6 +617,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/fatal.ref \
     functional_tests/ref-output/model_change_1.ref \
     functional_tests/ref-output/model_change_2.ref \
+    functional_tests/ref-output/model_change_3.ref \
     functional_tests/ref-output/model_scheme_1.ref \
     functional_tests/ref-output/model_test.ref \
     functional_tests/ref-output/cuts.ref \
@@ -648,6 +659,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/analyze_3.ref \
     functional_tests/ref-output/analyze_4.ref \
     functional_tests/ref-output/analyze_5.ref \
+    functional_tests/ref-output/analyze_6.ref \
     functional_tests/ref-output/colors.ref \
     functional_tests/ref-output/colors_hgg.ref \
     functional_tests/ref-output/alphas.ref \
@@ -703,6 +715,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/smtest_13.ref \
     functional_tests/ref-output/smtest_14.ref \
     functional_tests/ref-output/smtest_15.ref \
+    functional_tests/ref-output/smtest_16.ref \
     functional_tests/ref-output/sm_cms_1.ref \
     functional_tests/ref-output/resonances_5.ref \
     functional_tests/ref-output/resonances_6.ref \
@@ -727,6 +740,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/openloops_8.ref \
     functional_tests/ref-output/openloops_9.ref \
     functional_tests/ref-output/openloops_10.ref \
+    functional_tests/ref-output/openloops_11.ref \
     functional_tests/ref-output/recola_1.ref \
     functional_tests/ref-output/recola_2.ref \
     functional_tests/ref-output/recola_3.ref \
@@ -943,6 +957,7 @@ TESTSUITES_M4 = \
 
 TESTSUITES_SIN = \
     $(MISC_TESTS_SIN) \
+    $(EXT_ILC_SIN) \
     $(EXT_MSSM_SIN) \
     $(EXT_NMSSM_SIN) \
     $(EXT_SHOWER_SIN) \
@@ -958,6 +973,7 @@ MISC_TESTS_SIN = \
     functional_tests/cuts.sin \
     functional_tests/model_change_1.sin \
     functional_tests/model_change_2.sin \
+    functional_tests/model_change_3.sin \
     functional_tests/model_scheme_1.sin \
     functional_tests/model_test.sin \
     functional_tests/structure_1.sin \
@@ -981,6 +997,7 @@ MISC_TESTS_SIN = \
     functional_tests/testproc_9.sin \
     functional_tests/testproc_10.sin \
     functional_tests/testproc_11.sin \
+    functional_tests/testproc_12.sin \
     functional_tests/template_me_1.sin \
     functional_tests/template_me_2.sin \
     functional_tests/libraries_1.sin \
@@ -1038,6 +1055,7 @@ MISC_TESTS_SIN = \
     functional_tests/analyze_3.sin \
     functional_tests/analyze_4.sin \
     functional_tests/analyze_5.sin \
+    functional_tests/analyze_6.sin \
     functional_tests/colors.sin \
     functional_tests/colors_2.sin \
     functional_tests/colors_hgg.sin \
@@ -1063,6 +1081,8 @@ MISC_TESTS_SIN = \
     functional_tests/pythia6_2.sin \
     functional_tests/pythia6_3.sin \
     functional_tests/pythia6_4.sin \
+    functional_tests/pythia8_1.sin \
+    functional_tests/pythia8_2.sin \
     functional_tests/hadronize_1.sin \
     functional_tests/tauola_1.sin \
     functional_tests/tauola_2.sin \
@@ -1106,6 +1126,7 @@ MISC_TESTS_SIN = \
     functional_tests/smtest_13.sin \
     functional_tests/smtest_14.sin \
     functional_tests/smtest_15.sin \
+    functional_tests/smtest_16.sin \
     functional_tests/resonances_1.sin \
     functional_tests/resonances_2.sin \
     functional_tests/resonances_3.sin \
@@ -1143,6 +1164,7 @@ MISC_TESTS_SIN = \
     functional_tests/openloops_8.sin \
     functional_tests/openloops_9.sin \
     functional_tests/openloops_10.sin \
+    functional_tests/openloops_11.sin \
     functional_tests/recola_1.sin \
     functional_tests/recola_2.sin \
     functional_tests/recola_3.sin \
@@ -1228,103 +1250,136 @@ MISC_TESTS_SIN = \
     functional_tests/user_cuts.sin \
     functional_tests/user_prc_threshold_1.sin \
     functional_tests/cascades2_phs_1.sin \
-    functional_tests/user_prc_threshold_2.sin \
-    ilc_ext.sin
+    functional_tests/user_prc_threshold_2.sin
 
 EXT_MSSM_M4 = \
-    mssm_ext-ee.m4 mssm_ext-ee2.m4 \
-    mssm_ext-en.m4 mssm_ext-tn.m4 \
-    mssm_ext-uu.m4 mssm_ext-uu2.m4 mssm_ext-uuckm.m4 \
-    mssm_ext-dd.m4 mssm_ext-dd2.m4 mssm_ext-ddckm.m4 \
-    mssm_ext-bb.m4 mssm_ext-bt.m4 mssm_ext-tt.m4 \
-    mssm_ext-ug.m4 mssm_ext-dg.m4 \
-    mssm_ext-aa.m4 mssm_ext-wa.m4 mssm_ext-za.m4 \
-    mssm_ext-ww.m4 mssm_ext-wz.m4 mssm_ext-zz.m4 \
-    mssm_ext-gg.m4 mssm_ext-ga.m4 mssm_ext-gw.m4 mssm_ext-gz.m4
+    ext_tests_mssm/mssm_ext-ee.m4 \
+    ext_tests_mssm/mssm_ext-ee2.m4 \
+    ext_tests_mssm/mssm_ext-en.m4 \
+    ext_tests_mssm/mssm_ext-tn.m4 \
+    ext_tests_mssm/mssm_ext-uu.m4 \
+    ext_tests_mssm/mssm_ext-uu2.m4 \
+    ext_tests_mssm/mssm_ext-uuckm.m4 \
+    ext_tests_mssm/mssm_ext-dd.m4 \
+    ext_tests_mssm/mssm_ext-dd2.m4 \
+    ext_tests_mssm/mssm_ext-ddckm.m4 \
+    ext_tests_mssm/mssm_ext-bb.m4 \
+    ext_tests_mssm/mssm_ext-bt.m4 \
+    ext_tests_mssm/mssm_ext-tt.m4 \
+    ext_tests_mssm/mssm_ext-ug.m4 \
+    ext_tests_mssm/mssm_ext-dg.m4 \
+    ext_tests_mssm/mssm_ext-aa.m4 \
+    ext_tests_mssm/mssm_ext-wa.m4 \
+    ext_tests_mssm/mssm_ext-za.m4 \
+    ext_tests_mssm/mssm_ext-ww.m4 \
+    ext_tests_mssm/mssm_ext-wz.m4 \
+    ext_tests_mssm/mssm_ext-zz.m4 \
+    ext_tests_mssm/mssm_ext-gg.m4 \
+    ext_tests_mssm/mssm_ext-ga.m4 \
+    ext_tests_mssm/mssm_ext-gw.m4 \
+    ext_tests_mssm/mssm_ext-gz.m4
 
 EXT_NMSSM_M4 = \
-    nmssm_ext-aa.m4  nmssm_ext-bb1.m4 nmssm_ext-bb2.m4 \
-    nmssm_ext-bt.m4  nmssm_ext-dd1.m4 \
-    nmssm_ext-dd2.m4 nmssm_ext-ee1.m4 \
-    nmssm_ext-ee2.m4 nmssm_ext-en.m4  \
-    nmssm_ext-ga.m4  nmssm_ext-gg.m4  \
-    nmssm_ext-gw.m4  nmssm_ext-gz.m4  \
-    nmssm_ext-qg.m4  nmssm_ext-tn.m4  \
-    nmssm_ext-tt1.m4 nmssm_ext-tt2.m4 \
-    nmssm_ext-uu1.m4 nmssm_ext-uu2.m4 \
-    nmssm_ext-wa.m4  nmssm_ext-ww1.m4 nmssm_ext-ww2.m4 \
-    nmssm_ext-wz.m4  nmssm_ext-za.m4  \
-    nmssm_ext-zz1.m4 nmssm_ext-zz2.m4
+    ext_tests_nmssm/nmssm_ext-aa.m4  \
+    ext_tests_nmssm/nmssm_ext-bb1.m4 \
+    ext_tests_nmssm/nmssm_ext-bb2.m4 \
+    ext_tests_nmssm/nmssm_ext-bt.m4  \
+    ext_tests_nmssm/nmssm_ext-dd1.m4 \
+    ext_tests_nmssm/nmssm_ext-dd2.m4 \
+    ext_tests_nmssm/nmssm_ext-ee1.m4 \
+    ext_tests_nmssm/nmssm_ext-ee2.m4 \
+    ext_tests_nmssm/nmssm_ext-en.m4  \
+    ext_tests_nmssm/nmssm_ext-ga.m4  \
+    ext_tests_nmssm/nmssm_ext-gg.m4  \
+    ext_tests_nmssm/nmssm_ext-gw.m4  \
+    ext_tests_nmssm/nmssm_ext-gz.m4  \
+    ext_tests_nmssm/nmssm_ext-qg.m4  \
+    ext_tests_nmssm/nmssm_ext-tn.m4  \
+    ext_tests_nmssm/nmssm_ext-tt1.m4 \
+    ext_tests_nmssm/nmssm_ext-tt2.m4 \
+    ext_tests_nmssm/nmssm_ext-uu1.m4 \
+    ext_tests_nmssm/nmssm_ext-uu2.m4 \
+    ext_tests_nmssm/nmssm_ext-wa.m4  \
+    ext_tests_nmssm/nmssm_ext-ww1.m4 \
+    ext_tests_nmssm/nmssm_ext-ww2.m4 \
+    ext_tests_nmssm/nmssm_ext-wz.m4  \
+    ext_tests_nmssm/nmssm_ext-za.m4  \
+    ext_tests_nmssm/nmssm_ext-zz1.m4 \
+    ext_tests_nmssm/nmssm_ext-zz2.m4
 
 EXT_MSSM_SIN = $(EXT_MSSM_M4:.m4=.sin)
 EXT_NMSSM_SIN = $(EXT_NMSSM_M4:.m4=.sin)
 
+EXT_ILC_SIN = \
+    ext_tests_ilc/ilc_ext.sin
+
 EXT_SHOWER_SIN = \
-    shower_1_norad.sin \
-    shower_2_aall.sin \
-    shower_3_bb.sin \
-    shower_3_jj.sin \
-    shower_3_qqqq.sin \
-    shower_3_tt.sin \
-    shower_3_z.sin \
-    shower_3_z_nu.sin \
-    shower_3_z_tau.sin \
-    shower_4_ee.sin \
-    shower_5.sin \
-    shower_6.sin
+    ext_tests_shower/shower_1_norad.sin \
+    ext_tests_shower/shower_2_aall.sin \
+    ext_tests_shower/shower_3_bb.sin \
+    ext_tests_shower/shower_3_jj.sin \
+    ext_tests_shower/shower_3_qqqq.sin \
+    ext_tests_shower/shower_3_tt.sin \
+    ext_tests_shower/shower_3_z_nu.sin \
+    ext_tests_shower/shower_3_z_tau.sin \
+    ext_tests_shower/shower_4_ee.sin \
+    ext_tests_shower/shower_5.sin \
+    ext_tests_shower/shower_6.sin
 
 EXT_NLO_SIN = \
-    nlo_decay_tbw.sin \
-    nlo_tt.sin \
-    nlo_tt_powheg.sin \
-    nlo_tt_powheg_sudakov.sin \
-    nlo_uu.sin \
-    nlo_uu_powheg.sin \
-    nlo_qq_powheg.sin \
-    nlo_threshold.sin \
-    nlo_threshold_factorized.sin \
-    nlo_methods_gosam.sin \
-    nlo_jets.sin \
-    nlo_settings.sin \
-    nlo_eejj.sin \
-    nlo_eejjj.sin \
-    nlo_ee4j.sin \
-    nlo_ee5j.sin \
-    nlo_eebb.sin \
-    nlo_eebbj.sin \
-    nlo_eebbjj.sin \
-    nlo_ee4b.sin \
-    nlo_eett.sin \
-    nlo_eettj.sin \
-    nlo_eettjj.sin \
-    nlo_eettjjj.sin \
-    nlo_eettbb.sin \
-    nlo_eetta.sin \
-    nlo_eettaa.sin \
-    nlo_eettaj.sin \
-    nlo_eettajj.sin \
-    nlo_eettaz.sin \
-    nlo_eettah.sin \
-    nlo_eettz.sin \
-    nlo_eettzj.sin \
-    nlo_eettzjj.sin \
-    nlo_eettzz.sin \
-    nlo_eettww.sin \
-    nlo_eettwmjj.sin \
-    nlo_eettwpjj.sin \
-    nlo_eetth.sin \
-    nlo_eetthj.sin \
-    nlo_eetthjj.sin \
-    nlo_eetthh.sin \
-    nlo_eetthz.sin \
-    nlo_ee4t.sin \
-    nlo_ee4tj.sin
+    ext_tests_nlo/nlo_decay_tbw.sin \
+    ext_tests_nlo/nlo_tt.sin \
+    ext_tests_nlo/nlo_tt_powheg.sin \
+    ext_tests_nlo/nlo_tt_powheg_sudakov.sin \
+    ext_tests_nlo/nlo_uu.sin \
+    ext_tests_nlo/nlo_uu_powheg.sin \
+    ext_tests_nlo/nlo_qq_powheg.sin \
+    ext_tests_nlo/nlo_threshold.sin \
+    ext_tests_nlo/nlo_threshold_factorized.sin \
+    ext_tests_nlo/nlo_methods_gosam.sin \
+    ext_tests_nlo/nlo_jets.sin \
+    ext_tests_nlo/nlo_settings.sin \
+    ext_tests_nlo/nlo_eejj.sin \
+    ext_tests_nlo/nlo_eejjj.sin \
+    ext_tests_nlo/nlo_ee4j.sin \
+    ext_tests_nlo/nlo_ee5j.sin \
+    ext_tests_nlo/nlo_eebb.sin \
+    ext_tests_nlo/nlo_eebbj.sin \
+    ext_tests_nlo/nlo_eebbjj.sin \
+    ext_tests_nlo/nlo_ee4b.sin \
+    ext_tests_nlo/nlo_eett.sin \
+    ext_tests_nlo/nlo_eettj.sin \
+    ext_tests_nlo/nlo_eettjj.sin \
+    ext_tests_nlo/nlo_eettjjj.sin \
+    ext_tests_nlo/nlo_eettbb.sin \
+    ext_tests_nlo/nlo_eetta.sin \
+    ext_tests_nlo/nlo_eettaa.sin \
+    ext_tests_nlo/nlo_eettaj.sin \
+    ext_tests_nlo/nlo_eettajj.sin \
+    ext_tests_nlo/nlo_eettaz.sin \
+    ext_tests_nlo/nlo_eettah.sin \
+    ext_tests_nlo/nlo_eettz.sin \
+    ext_tests_nlo/nlo_eettzj.sin \
+    ext_tests_nlo/nlo_eettzjj.sin \
+    ext_tests_nlo/nlo_eettzz.sin \
+    ext_tests_nlo/nlo_eettwjj.sin \
+    ext_tests_nlo/nlo_eettww.sin \
+    ext_tests_nlo/nlo_eetth.sin \
+    ext_tests_nlo/nlo_eetthj.sin \
+    ext_tests_nlo/nlo_eetthjj.sin \
+    ext_tests_nlo/nlo_eetthh.sin \
+    ext_tests_nlo/nlo_eetthz.sin \
+    ext_tests_nlo/nlo_ee4t.sin \
+    ext_tests_nlo/nlo_ee4tj.sin
 
 all-local: $(TESTSUITES_SIN)
 
 if M4_AVAILABLE
 SUFFIXES = .m4 .sin
 .m4.sin:
+	case "$@" in \
+	*/*) \
+		mkdir -p `sed 's,/.[^/]*$$,,g' <<< "$@"` ;; \
+	esac
 	$(M4) $(srcdir)/$(TESTSUITE_MACROS) $< > $@
 endif M4_AVAILABLE
-

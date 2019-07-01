@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -393,7 +393,9 @@ contains
     if (reduce) then
        beam_int => isolated%sf_chain_eff%get_beam_int_ptr ()
        call undo_qn_hel (beam_int, mask, beam_int%get_n_tot ())
+       call undo_qn_hel (src_int, mask, src_int%get_n_tot ())
        call beam_int%set_matrix_element (cmplx (1, 0, default))
+       call src_int%set_matrix_element (cmplx (1, 0, default))
     end if
 
     state%has_trace = .true.

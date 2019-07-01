@@ -1,6 +1,6 @@
 ! parameters.LittlestTpar.f90
 !
-! Copyright (C) 1999-2018 by 
+! Copyright (C) 1999-2019 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -270,8 +270,8 @@ contains
     mass(38) = par%mpsipp
     width(38) = par%wpsipp
     !!! This choice is responsible for anomaly cancellation:
-    ye = - two / five
-    yu = three / five
+    yu = - two / five
+    ye = three / five
     ttop = four * mass(6)**2 / mass(25)**2
     tbot = four * mass(5)**2 / mass(25)**2
     tch  = four * mass(4)**2 / mass(25)**2
@@ -312,7 +312,7 @@ contains
     end if
     !!!
     lam1 = par%lam1
-    lam2 = (mass(8)/f_vev)**2 * (mass(6)/vev) / lam1    
+    lam2 = mass(8)/f_vev * (mass(6)/vev) / lam1
     xlam = lam1**2 / (lam1**2 + lam2**2)
     !!!
     xh = five*g*gp * sint*cost*sintp*costp * (cos2t*sin2tp + &
@@ -596,7 +596,7 @@ contains
     gnchneu(2) = - gah * (- ye + four/five - cos2tp/two)    
     gnchlep(1) = gah * (two*ye - 9.0_default/five + three/two * cos2tp)
     gnchlep(2) = gah * (one/five - cos2tp/two)    
-    gahtht = gah * mass(6) / vev / five
+    gahtht = gah / five * lam1 * lam2 / sqrt(lam1**2 + lam2**2)
     gahtt(1) = gnchup(1) - gah * xlam / five
     gahtt(2) = gnchup(2) + gah * xlam / five
     gahthth(1) = gah * (two * yu + 14.0_default/15. - four/three * &
@@ -608,7 +608,7 @@ contains
     ghtt = - mass(6) / vev * ( one + (vev/f_vev)**2 * xlam * (one + xlam))
     ghthth = - xlam * (one + xlam) * mass(8) * vev / f_vev**2
     ghtht(1) = - mass(6) / two / f_vev * (one + xlam)
-    ghtht(2) = - mass(8) * xlam / f_vev
+    ghtht(2) = - mass(8) * xlam / two / f_vev
     gpsi0tt = - mass(6)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0bb = - mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0cc = - mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
@@ -622,9 +622,11 @@ contains
     gpsipq3(1) = - mass(4)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipq3(2) = - mass(3)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipl3 = - mass(15)/two/sqrt(two)/vev * (vev/f_vev - two * spsip)
-    gpsi0tth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
+    gpsi0tth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0) &
+         * lam1/lam2
     gpsi1tth = imago * gpsi0tth
-    gpsipbth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - two * spsip) * lam1/lam2
+    gpsipbth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - two * spsip) &
+         * lam1/lam2
     !!!
     ghhtt = two*mass(6)/f_vev**2 * (one - two*f_vev*vevp/vev**2 - xlam/two)
     ghhthth = - lam1**2/mass(8)

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -159,7 +159,7 @@ module powheg_matching
      type(event_deps_t), pointer :: event_deps => null()
      type(powheg_settings_t), pointer :: powheg_settings => null()
      type(phs_fks_generator_t), pointer :: phs_fks_generator => null()
-     type(qcd_t), pointer :: qcd => null()
+     type(qcd_t) :: qcd
      class(rng_t), pointer :: rng => null()
      real(default) :: xi2_max = zero
      real(default) :: norm_max = zero
@@ -567,13 +567,13 @@ contains
     type(process_deps_t), target, intent(in) :: process_deps
     type(event_deps_t), target, intent(in) :: event_deps
     type(powheg_settings_t), target, intent(in) :: powheg_settings
-    type(qcd_t), target, intent(in) :: qcd
+    type(qcd_t), intent(in) :: qcd
     type(phs_fks_generator_t), target, intent(in) :: phs_fks_generator
     class(rng_t), target, intent(in), optional :: rng
     sudakov%process_deps => process_deps
     sudakov%event_deps => event_deps
     sudakov%powheg_settings => powheg_settings
-    sudakov%qcd => qcd
+    sudakov%qcd = qcd
     sudakov%phs_fks_generator => phs_fks_generator
     if (present (rng)) sudakov%rng => rng
   end subroutine sudakov_init
@@ -1109,11 +1109,7 @@ contains
     else
        write (u, "(1X,A)") "RNG not allocated"
     end if
-    if (associated (matching%qcd)) then
-       call matching%qcd%write (u)
-    else
-       write (u, "(1X,A)") "QCD not associated"
-    end if
+    call matching%qcd%write (u)
     call matching%settings%write (u)
     call matching%event_deps%write (u)
     call matching%process_deps%write (u)
@@ -1842,7 +1838,7 @@ contains
      call msg_debug (D_MATCHING, "powheg_matching_hook_init")
      hook%process_name = instance%get_process_name ()
      call hook%powheg%init (var_list, hook%process_name)
-     hook%powheg%qcd => instance%get_qcd_ptr ()
+     hook%powheg%qcd = instance%get_qcd ()
      call hook%powheg%connect (instance)
      hook%powheg%process_deps%cm_frame = &
           hook%powheg%process_instance%is_cm_frame (1)

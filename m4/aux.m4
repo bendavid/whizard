@@ -291,7 +291,7 @@ else
    echo "FastJet (clustering):   no"
 fi
 if test "$PYTHIA8_AVAILABLE_FLAG" = ".true." ; then
-   echo "PYTHIA8 (QCD)       :   yes, v$PYTHIA8_VERSION  @<:@not yet functional@:>@"
+   echo "PYTHIA8 (QCD)       :   yes, v$PYTHIA8_VERSION"
 else
    echo "PYTHIA8 (QCD)       :   no"
 fi

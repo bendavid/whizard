@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,6 +36,7 @@ libphase_space_la_SOURCES = \
   phs_base.f90 \
   phs_none.f90 \
   phs_single.f90 \
+  phs_rambo.f90 \
   resonances.f90 \
   mappings.f90 phs_trees.f90 phs_forests.f90 \
   cascades.f90 \
@@ -49,6 +50,7 @@ libphase_space_ut_la_SOURCES = \
   phs_base_uti.f90 phs_base_ut.f90 \
   phs_none_uti.f90 phs_none_ut.f90 \
   phs_single_uti.f90 phs_single_ut.f90 \
+  phs_rambo_uti.f90 phs_rambo_ut.f90 \
   resonances_uti.f90 resonances_ut.f90 \
   phs_trees_uti.f90 phs_trees_ut.f90 \
   phs_forests_uti.f90 phs_forests_ut.f90 \

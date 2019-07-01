@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -347,6 +347,7 @@ contains
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -413,6 +414,7 @@ contains
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_4"
@@ -475,6 +477,7 @@ contains
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -541,6 +544,7 @@ contains
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_5"
@@ -604,6 +608,7 @@ contains
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -670,6 +675,7 @@ contains
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_6"

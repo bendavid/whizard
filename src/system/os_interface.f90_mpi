@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -44,9 +44,6 @@ module os_interface
   public :: paths_t
   public :: paths_init
   public :: os_data_t
-  public :: os_data_init
-  public :: os_data_write
-  public :: os_data_build_latex_file
   public :: dlaccess_t
   public :: dlaccess_init
   public :: dlaccess_final
@@ -145,6 +142,10 @@ module os_interface
      type(string_t) :: qgrafpath
      type(string_t) :: ninjapath
      type(string_t) :: samuraipath
+   contains
+     procedure :: init => os_data_init
+     procedure :: write => os_data_write
+     procedure :: build_latex_file => os_data_build_latex_file
   end type os_data_t
 
   type :: dlaccess_t
@@ -219,7 +220,7 @@ contains
   end subroutine paths_init
 
   subroutine os_data_init (os_data, paths)
-    type(os_data_t), intent(out) :: os_data
+    class(os_data_t), intent(out) :: os_data
     type(paths_t), intent(in), optional :: paths
     character(len=ENVVAR_LEN) :: home
     type(string_t) :: localprefix, local_includes
@@ -389,7 +390,7 @@ contains
   end subroutine os_data_expand_paths
 
   subroutine os_data_write (os_data, unit)
-    type(os_data_t), intent(in) :: os_data
+    class(os_data_t), intent(in) :: os_data
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
@@ -468,7 +469,7 @@ contains
   end subroutine os_data_write
 
   subroutine os_data_build_latex_file (os_data, filename, stat_out)
-    type(os_data_t), intent(in) :: os_data
+    class(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: filename
     integer, intent(out), optional :: stat_out
     type(string_t) :: setenv_tex, pipe, pipe_dvi
@@ -719,7 +720,7 @@ contains
        command_string = &
             os_data%whizard_libtool // " --mode=link " // &
             os_data%fc // " " // &
-            "-static-libtool-libs " // &
+            "-static " // &
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &

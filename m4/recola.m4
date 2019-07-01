@@ -53,9 +53,9 @@ if test "$enable_recola" = "yes"; then
        AC_MSG_CHECKING([for Recola])
        AC_MSG_RESULT([disabled])
      else
-       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1" || test "$wo_recola_version" = "1.2" || test "$wo_recola_version" = "2.0.0"; then
+       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1" || test "$wo_recola_version" = "1.2" || test "$wo_recola_version" = "2.0.0" || test "$wo_recola_version" = 2.1.0 || test "$wo_recola_version" = 2.1.1; then
          AC_MSG_NOTICE([error: **************************************************])
-         AC_MSG_NOTICE([error: Old RECOLA versions (1.0/1.1/1.2 and 2.0.0)       ])
+         AC_MSG_NOTICE([error: Old RECOLA versions (1.0/1.1/1.2, 2.0.0/2.1.0-1)  ])
          AC_MSG_NOTICE([error: are not supported. RECOLA will be disabled.       ])
          AC_MSG_NOTICE([error: **************************************************])
          AC_MSG_CHECKING([for Recola])

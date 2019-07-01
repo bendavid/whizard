@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -71,6 +71,7 @@ module simulations
 
   use dispatch_beams, only: dispatch_qcd
   use dispatch_rng, only: dispatch_rng_factory
+  use dispatch_rng, only: update_rng_seed_in_var_list
   use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
   use dispatch_transforms, only: dispatch_evt_isr_epa_handler
   use dispatch_transforms, only: dispatch_evt_resonance
@@ -102,6 +103,7 @@ module simulations
      integer :: negative = 0
      integer :: zero = 0
      integer :: excess = 0
+     integer :: dropped = 0
      real(default) :: max_excess = 0
      real(default) :: sum_excess = 0
      logical :: reproduce_xsection = .false.
@@ -111,6 +113,7 @@ module simulations
    contains
      procedure :: write => counter_write
      procedure :: show_excess => counter_show_excess
+     procedure :: show_dropped => counter_show_dropped
      procedure :: show_mean_and_variance => counter_show_mean_and_variance
      procedure :: record => counter_record
      procedure :: record_mean_and_variance => &
@@ -247,6 +250,7 @@ module simulations
      integer :: i_mci = 0
      real(default) :: weight = 0
      real(default) :: excess = 0
+     integer :: n_dropped = 0
    contains
      procedure :: write => simulation_write
      generic :: write_event => write_event_unit
@@ -320,6 +324,7 @@ contains
        write (u, 3)  "max excess      = ", counter%max_excess
        write (u, 3)  "avg excess      = ", counter%sum_excess / counter%total
     end if
+    write (u, 1)  "Events dropped    = ", counter%dropped
   end subroutine counter_write
 
   subroutine counter_show_excess (counter)
@@ -338,6 +343,21 @@ contains
     end if
   end subroutine counter_show_excess
 
+  subroutine counter_show_dropped (counter)
+    class(counter_t), intent(in) :: counter
+    if (counter%dropped > 0) then
+       write (msg_buffer, "(A,1x,I0,1x,'(',A,1x,I0,')')") &
+            "Dropped events (weight zero) =", &
+            counter%dropped, "total", counter%dropped + counter%total
+       call msg_message ()
+       write (msg_buffer, "(A,ES15.8)") &
+            "All event weights must be rescaled by f =", &
+            real (counter%total, default) &
+            / real (counter%dropped + counter%total, default)
+       call msg_warning ()
+    end if
+  end subroutine counter_show_dropped
+  
   subroutine counter_show_mean_and_variance (counter)
     class(counter_t), intent(in) :: counter
     if (counter%reproduce_xsection .and. counter%nlo_weight_counter > 1) then
@@ -346,9 +366,10 @@ contains
     end if
   end subroutine counter_show_mean_and_variance
 
-  subroutine counter_record (counter, weight, excess, from_file)
+  subroutine counter_record (counter, weight, excess, n_dropped, from_file)
     class(counter_t), intent(inout) :: counter
     real(default), intent(in), optional :: weight, excess
+    integer, intent(in), optional :: n_dropped
     logical, intent(in), optional :: from_file
     counter%total = counter%total + 1
     if (present (from_file)) then
@@ -377,6 +398,9 @@ contains
           counter%max_excess = max (counter%max_excess, excess)
           counter%sum_excess = counter%sum_excess + excess
        end if
+    end if
+    if (present (n_dropped)) then
+       counter%dropped = counter%dropped + n_dropped
     end if
   end subroutine counter_record
 
@@ -682,7 +706,9 @@ contains
     call entry%import_process_results (master_process)
     call entry%prepare_expressions (local)
 
-    if (process%is_nlo_calculation ()) call process%init_nlo_settings (global%var_list)
+    if (process%is_nlo_calculation ()) then
+       call process%init_nlo_settings (global%var_list)
+    end if
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
     if (.not. combined_integration &
          .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) &
@@ -799,11 +825,7 @@ contains
                   call pcm%set_radiation_event ()
           end select
        end select
-       if (process%needs_extra_code () .and. present (local)) then
-             call process%create_and_load_extra_libraries &
-                  (local%beam_structure, process%get_var_list_ptr (), &
-                  local%os_data)
-       end if
+       call process%prepare_any_external_code ()
     end if
     call process_instance%setup_event_data (model)
   end subroutine prepare_process_instance
@@ -869,7 +891,7 @@ contains
        if (mode > EVT_NLO_SEPARATE_BORNLIKE) then
           allocate (evt%particle_set_radiated (n_phs + 1))
           evt%event_deps%n_phs = n_phs
-          evt%qcd => entry%qcd
+          evt%qcd = entry%qcd
           do i = 1, n_phs
              allocate (current_entry%next)
              current_entry%next%first => current_entry%first
@@ -1085,9 +1107,11 @@ contains
     integer, intent(in) :: i_mci
     logical, intent(in), optional :: from_file
     real(default) :: weight, excess
+    integer :: n_dropped
     weight = entry%get_weight_prc ()
     excess = entry%get_excess_prc ()
-    call entry%counter%record (weight, excess, from_file)
+    n_dropped = entry%get_n_dropped ()
+    call entry%counter%record (weight, excess, n_dropped, from_file)
     if (i_mci > 0) then
        call entry%mci_sets(i_mci)%counter%record (weight, excess)
     end if
@@ -1153,9 +1177,9 @@ contains
     do while (associated (evt))
        select type (evt)
        type is (evt_shower_t)
-          evt%qcd => entry%qcd
+          evt%qcd = entry%qcd
           if (allocated (evt%matching)) then
-             evt%matching%qcd => entry%qcd
+             evt%matching%qcd = entry%qcd
           end if
        end select
        evt => evt%next
@@ -1403,6 +1427,7 @@ contains
        write (u, "(3x,A," // FMT_19 // ")")  "Weight    = ", object%weight
        if (.not. vanishes (object%excess)) &
             write (u, "(3x,A," // FMT_19 // ")")  "Excess    = ", object%excess
+       write (u, "(3x,A,I0)")  "Zero-weight events dropped = ", object%n_dropped
     else
        write (u, "(1x,A,I0,A,A)")  "Current event: [undefined]"
     end if
@@ -1540,6 +1565,7 @@ contains
     type(rt_data_t), intent(inout), optional, target :: global
     type(rt_data_t), dimension(:), intent(inout), optional, target :: alt_env
     class(rng_factory_t), allocatable :: rng_factory
+    integer :: next_rng_seed
     type(string_t) :: norm_string, version_string
     logical :: use_process
     integer :: i, j
@@ -1673,7 +1699,8 @@ contains
     end if
 !!! if this becomes conditional, some ref files will need update (seed change)
 !    if (generate) then
-       call dispatch_rng_factory (rng_factory, local%var_list)
+       call dispatch_rng_factory (rng_factory, local%var_list, next_rng_seed)
+       call update_rng_seed_in_var_list (local%var_list, next_rng_seed)
        call rng_factory%make (simulation%rng)
 !    end if
     if (all (simulation%entry%has_integral)) then
@@ -1957,12 +1984,13 @@ contains
                call current_entry%evaluate_expressions ()
             end do
             if (signal_is_pending ()) return
+            simulation%n_dropped = entry%get_n_dropped ()
             if (entry%passed_selection ()) then
                simulation%weight = entry%get_weight_ref ()
                simulation%excess = entry%get_excess_prc ()
             end if
             call simulation%counter%record &
-                 (simulation%weight, simulation%excess)
+                 (simulation%weight, simulation%excess, simulation%n_dropped)
             call entry%record (simulation%i_mci)
           end associate
        else
@@ -1973,12 +2001,13 @@ contains
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
+            simulation%n_dropped = entry%get_n_dropped ()
             if (entry%passed_selection ()) then
                simulation%weight = entry%get_weight_ref ()
                simulation%excess = entry%get_excess_prc ()
             end if
             call simulation%counter%record &
-                 (simulation%weight, simulation%excess, from_file=.true.)
+                 (simulation%weight, simulation%excess, simulation%n_dropped, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
        end if
@@ -2007,6 +2036,7 @@ contains
     call msg_message ("        ... event sample complete.")
     if (simulation%unweighted)  call simulation%show_efficiency ()
     call simulation%counter%show_excess ()
+    call simulation%counter%show_dropped ()
     call simulation%counter%show_mean_and_variance ()
   end subroutine simulation_generate
 
@@ -2096,8 +2126,10 @@ contains
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ())  return
+            simulation%n_dropped = entry%get_n_dropped ()
             simulation%weight = entry%get_weight_prc ()
-            call simulation%counter%record (simulation%weight, from_file=.true.)
+            call simulation%counter%record &
+                 (simulation%weight, n_dropped=simulation%n_dropped, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
        else
@@ -2107,8 +2139,10 @@ contains
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ())  return
+            simulation%n_dropped = entry%get_n_dropped ()
             simulation%weight = entry%get_weight_ref ()
-            call simulation%counter%record (simulation%weight, from_file=.true.)
+            call simulation%counter%record &
+                 (simulation%weight, n_dropped=simulation%n_dropped, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
        end if
@@ -2116,6 +2150,7 @@ contains
        if (signal_is_pending ())  return
        call simulation%write_event (es_array)
     end do
+    call simulation%counter%show_dropped ()
     if (simulation%update_sqme .or. simulation%update_weight) then
        call simulation%restore_processes ()
     end if
@@ -2183,10 +2218,10 @@ contains
        current = object%i_prc
     end if
     if (current > 0) then
-       if (object%split_n_evt > 0 &
-            .and. object%counter%total > 1 &
-            .and. mod (object%counter%total, object%split_n_evt) == 1) then
-          call eio%split_out ()
+       if (object%split_n_evt > 0 .and. object%counter%total > 1) then
+          if (mod (object%counter%total, object%split_n_evt) == 1) then
+             call eio%split_out ()
+          end if
        else if (object%split_n_kbytes > 0) then
           call eio%update_split_count (increased)
           if (increased)  call eio%split_out ()

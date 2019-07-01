@@ -20,14 +20,12 @@ ms = 0
 wtop = 0
 mtop = 175 GeV
 
-?logging = true
-?openmp_logging = false
-?vis_history = false
-?integration_timer = false
-?pacify = true
+$method = "recola"
+
+!!! Tests should be run single-threaded
+openmp_num_threads = 1
 
 ?use_vamp_equivalences = false
-$loop_me_method = "recola"
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 ?alphas_from_lambda_qcd = false

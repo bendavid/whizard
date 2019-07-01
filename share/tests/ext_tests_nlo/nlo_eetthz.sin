@@ -1,0 +1,25 @@
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+include("nlo_settings.sin")
+
+alpha_power = 4
+alphas_power = 0
+
+scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+       + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+       + sqrt (eval Pt [extract index 1 [H]]**2 + eval M [extract index 1 [H]]**2)
+       + sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)) / 2
+
+process nlo_eetthz_p1 = e1, E1 => t, T, H, Z { nlo_calculation = full }
+
+#integrate (nlo_eetthz_p1) { iterations = 5:10000:"gw",2:10000 } # validation
+integrate (nlo_eetthz_p1) { iterations = 4:4000:"gw",2:4000 }

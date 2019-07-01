@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -88,7 +88,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("omega1"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
     allocate (prt_in (2), prt_out (2))
@@ -252,9 +252,10 @@ contains
          &(s-channel only, with OpenMP, report progress to file)"
 
     call lib%init (var_str ("omega2"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name, vars)
 
     allocate (prt_in (2), prt_out (2))
@@ -332,7 +333,8 @@ contains
     write (u, "(A)")  "* Constants of omega2_a_i1:"
     write (u, "(A)")
 
-    config => lib%get_component_def_ptr (var_str ("omega2_a"), 1)
+    entry => lib%get_process_def_ptr (var_str ("omega2_a"))
+    config => entry%get_component_def_ptr (1)
     call prc1%init (config%get_core_def_ptr (), &
          lib, var_str ("omega2_a"), 1)
     call prc1%get_constants (data, 1)
@@ -348,7 +350,7 @@ contains
     write (u, "(A)")  "* Constants of omega2_a_i2:"
     write (u, "(A)")
 
-    config => lib%get_component_def_ptr (var_str ("omega2_a"), 2)
+    config => entry%get_component_def_ptr (2)
     call prc2%init (config%get_core_def_ptr (), &
          lib, var_str ("omega2_a"), 2)
     call prc2%get_constants (data, 1)
@@ -459,9 +461,10 @@ contains
     write (u, "(A)")  "* (1) e- e+ -> e- e+   (all diagrams, no OpenMP)"
 
     call lib%init (var_str ("omega3"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name, vars)
 
     allocate (prt_in (2), prt_out (2))
@@ -516,7 +519,8 @@ contains
     write (u, "(A)")  "* Helicity states of omega3_a_i1:"
     write (u, "(A)")
 
-    config => lib%get_component_def_ptr (var_str ("omega3_a"), 1)
+    entry => lib%get_process_def_ptr (var_str ("omega3_a"))
+    config => entry%get_component_def_ptr (1)
     call prc1%init (config%get_core_def_ptr (), &
          lib, var_str ("omega3_a"), 1)
     call prc1%get_constants (data, 1)
@@ -642,7 +646,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("prc_omega_4_lib"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QCD"
     allocate (prt_in (2), prt_out (2))
@@ -776,9 +780,10 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("prc_omega_5_lib"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QCD"
+    model => null ()
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
@@ -836,7 +841,8 @@ contains
     write (u, "(A)")
 
     allocate (prc_omega_t :: core)
-    cdef_ptr => lib%get_component_def_ptr (var_str ("prc_omega_5_p"), 1)
+    entry => lib%get_process_def_ptr (var_str ("prc_omega_5_p"))
+    cdef_ptr => entry%get_component_def_ptr (1)
     def_ptr => cdef_ptr%get_core_def_ptr ()
 
     select type (core)
@@ -919,7 +925,7 @@ contains
     write (u, "(A)")  "*   Purpose: create simple process with OMega / UFO file"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "SM"
     model => null ()
@@ -993,7 +999,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("prc_omega_diags_1_lib"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "SM"
 

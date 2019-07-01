@@ -19,6 +19,9 @@
    ckkw_matching                =  F
  PYTHIA6 specific settings:
    ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
 ------------------------------------------------------------------------
 
 * Switch on ISR/FSR showers, hadronization
@@ -55,6 +58,9 @@
    ckkw_matching                =  F
  PYTHIA6 specific settings:
    ps_PYTHIA_PYGIVE             = 'abcdefgh'
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
 ------------------------------------------------------------------------
 
 * Test output end: shower_base_1

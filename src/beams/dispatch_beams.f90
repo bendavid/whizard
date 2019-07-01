@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,6 +40,7 @@ module dispatch_beams
   use pdg_arrays
   use model_data, only: model_data_t
   use dispatch_rng, only: dispatch_rng_factory
+  use dispatch_rng, only: update_rng_seed_in_var_list
   use flavors, only: flavor_t
   use sm_qcd, only: qcd_t, alpha_qcd_fixed_t, alpha_qcd_from_scale_t
   use sm_qcd, only: alpha_qcd_from_lambda_t
@@ -90,6 +91,7 @@ contains
     type(sf_prop_t), intent(inout) :: sf_prop
     type(var_list_t), intent(in) :: var_list
     type(var_list_t), intent(inout) :: var_list_global
+    integer :: next_rng_seed
     class(model_data_t), target, intent(in) :: model
     type(os_data_t), intent(in) :: os_data
     real(default), intent(in) :: sqrts
@@ -308,7 +310,9 @@ contains
                circe1_chattiness, circe1_with_radiation)
           if (circe1_generate) then
              call msg_message ("CIRCE1: activating generator mode")
-             call dispatch_rng_factory (rng_factory, var_list_global)
+             call dispatch_rng_factory &
+                  (rng_factory, var_list_global, next_rng_seed)
+             call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
              call data%set_generator_mode (rng_factory)
           end if
        end select
@@ -325,7 +329,9 @@ contains
           call data%init (os_data, model, pdg_in, sqrts, &
                circe2_polarized, polarized, circe2_file, circe2_design)
           call msg_message ("CIRCE2: activating generator mode")
-          call dispatch_rng_factory (rng_factory, var_list_global)
+          call dispatch_rng_factory &
+               (rng_factory, var_list_global, next_rng_seed)
+          call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
           call data%set_generator_mode (rng_factory)
        end select
     case ("gaussian")
@@ -335,7 +341,9 @@ contains
           gaussian_spread = &
                [var_list%get_rval (var_str ("gaussian_spread1")), &
                var_list%get_rval (var_str ("gaussian_spread2"))]
-          call dispatch_rng_factory (rng_factory, var_list_global)
+          call dispatch_rng_factory &
+               (rng_factory, var_list_global, next_rng_seed)
+          call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
           call data%init (model, pdg_in, gaussian_spread, rng_factory)
        end select
     case ("beam_events")

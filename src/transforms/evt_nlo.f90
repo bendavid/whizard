@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -77,7 +77,7 @@ module evt_nlo
     integer :: i_evaluation = 0
     integer :: weight_multiplier = 1
     type(particle_set_t), dimension(:), allocatable :: particle_set_radiated
-    type(qcd_t), pointer :: qcd => null ()
+    type(qcd_t) :: qcd
     type(nlo_event_deps_t) :: event_deps
     integer :: mode = EVT_NLO_UNDEFINED
     integer, dimension(:), allocatable :: &

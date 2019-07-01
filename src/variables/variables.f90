@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -4842,6 +4842,17 @@ contains
           'e.g.: \ttt{\$ps\_PYTHIA\_PYGIVE = "MSTJ(41)=1"}.  (cf. also ' // &
           '\newline \ttt{?allow\_shower}, \ttt{?ps\_ ...}, \ttt{\$ps\_ ' // &
           '...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active})'))
+    call var_list%append_string (var_str ("$ps_PYTHIA8_config"), var_str (""), &
+         intrinsic=.true., &
+         description=var_str ('String variable that allows to pass options ' // &
+         'for tunes etc. to the attached \pythia\ttt{8} parton shower or hadronization, ' // &
+         'e.g.: \ttt{\$ps\_PYTHIA8\_config = "PartonLevel:MPI = off"}.  (cf. also ' // &
+         '\newline \ttt{?allow\_shower}, \ttt{?ps\_ ...}, \ttt{\$ps\_ ' // &
+         '...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active})'))
+    call var_list%append_string (var_str ("$ps_PYTHIA8_config_file"), var_str (""), &
+         intrinsic=.true., &
+         description=var_str ('String variable that allows to pass a filename to a ' // & 
+         '\pythia\ttt{8} configuration file.'))
     call var_list%append_real (&
          var_str ("ps_mass_cutoff"), 1._default, intrinsic = .true., &
          description=var_str ('Real value that sets the QCD parton shower ' // &

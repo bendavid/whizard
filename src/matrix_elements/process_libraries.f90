@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -163,7 +163,10 @@ module process_libraries
      procedure :: get_core_def_ptr => process_def_get_core_def_ptr
      procedure :: needs_code => process_def_needs_code
      procedure :: get_pdg_in_1 => process_def_get_pdg_in_1
+     procedure :: is_nlo => process_def_is_nlo
      procedure :: get_nlo_type => process_def_get_nlo_type
+     procedure :: get_n_in => process_def_get_n_in
+     procedure :: get_component_def_ptr => process_def_get_component_def_ptr
   end type process_def_t
 
   type, extends (process_def_t) :: process_def_entry_t
@@ -185,19 +188,17 @@ module process_libraries
      procedure :: get_process_id_list => process_def_list_get_process_id_list
      procedure :: get_process_id_req_resonant => &
           process_def_list_get_process_id_req_resonant
+     procedure :: get_process_def_ptr => process_def_list_get_process_def_ptr
      procedure :: contains => process_def_list_contains
      procedure :: get_entry_index => process_def_list_get_entry_index
      procedure :: get_num_id => process_def_list_get_num_id
      procedure :: get_model_name => process_def_list_get_model_name
      procedure :: get_n_in => process_def_list_get_n_in
      procedure :: get_pdg_in_1 => process_def_list_get_pdg_in_1
-     procedure :: get_n_components => process_def_list_get_n_components
-     procedure :: get_component_def_ptr => process_def_list_get_component_def_ptr
      procedure :: get_component_list => process_def_list_get_component_list
      procedure :: get_component_description_list => &
           process_def_list_get_component_description_list
      procedure :: req_resonant => process_def_list_req_resonant
-     procedure :: get_nlo_process => process_def_list_get_nlo_process
   end type process_def_list_t
 
   type :: process_library_entry_t
@@ -962,12 +963,35 @@ contains
     call def%initial(1)%get_pdg_in (def%model, pdg)
   end subroutine process_def_get_pdg_in_1
 
+  elemental function process_def_is_nlo (def) result (flag)
+    logical :: flag
+    class(process_def_t), intent(in) :: def
+    flag = def%nlo_process
+  end function process_def_is_nlo
+
   elemental function process_def_get_nlo_type (def, i_component) result (nlo_type)
     integer :: nlo_type
     class(process_def_t), intent(in) :: def
     integer, intent(in) :: i_component
     nlo_type = def%initial(i_component)%nlo_type
   end function process_def_get_nlo_type
+
+  function process_def_get_n_in (def) result (n_in)
+    class(process_def_t), intent(in) :: def
+    integer :: n_in
+    n_in = def%n_in
+  end function process_def_get_n_in
+
+  function process_def_get_component_def_ptr (def, i) result (component)
+    type(process_component_def_t), pointer :: component
+    class(process_def_t), intent(in), target :: def
+    integer, intent(in) :: i
+    if (i <= def%n_initial) then
+       component => def%initial(i)
+    else
+       component => null ()
+    end if
+  end function process_def_get_component_def_ptr
 
   subroutine process_def_list_final (list)
     class(process_def_list_t), intent(inout) :: list
@@ -1105,19 +1129,26 @@ contains
     id = id(1:i)
   end subroutine process_def_list_get_process_id_req_resonant
 
-  function process_def_list_contains (list, id) result (flag)
-    logical :: flag
+  function process_def_list_get_process_def_ptr (list, id) result (entry)
+    type(process_def_entry_t), pointer :: entry
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
     current => list%first
     do while (associated (current))
-       if (id == current%id) then
-          flag = .true.;  return
-       end if
+       if (id == current%id)  exit
        current => current%next
     end do
-    flag = .false.
+    entry => current
+  end function process_def_list_get_process_def_ptr
+
+  function process_def_list_contains (list, id) result (flag)
+    logical :: flag
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%get_process_def_ptr (id)
+    flag = associated (current)
   end function process_def_list_contains
 
   function process_def_list_get_entry_index (list, id) result (n)
@@ -1142,15 +1173,12 @@ contains
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          num_id = current%num_id
-          return
-       end if
-       current => current%next
-    end do
-    num_id = 0
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       num_id = current%num_id
+    else
+       num_id = 0
+    end if
   end function process_def_list_get_num_id
 
   function process_def_list_get_model_name (list, id) result (model_name)
@@ -1158,15 +1186,12 @@ contains
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          model_name = current%model_name
-          return
-       end if
-       current => current%next
-    end do
-    model_name = ""
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       model_name = current%model_name
+    else
+       model_name = ""
+    end if
   end function process_def_list_get_model_name
 
   function process_def_list_get_n_in (list, id) result (n)
@@ -1174,14 +1199,12 @@ contains
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          n = current%n_in
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       n = current%n_in
+    else
+       n = 0
+    end if
   end function process_def_list_get_n_in
 
   subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
@@ -1189,51 +1212,13 @@ contains
     type(string_t), intent(in) :: id
     integer, dimension(:), intent(out) :: pdg
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          call current%get_pdg_in_1 (pdg)
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       call current%get_pdg_in_1 (pdg)
+    else
+       pdg = 0
+    end if
   end subroutine process_def_list_get_pdg_in_1
-
-  function process_def_list_get_n_components (list, id) result (n)
-    integer :: n
-    class(process_def_list_t), intent(in) :: list
-    type(string_t), intent(in) :: id
-    type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          n = current%n_initial + current%n_extra
-          return
-       end if
-       current => current%next
-    end do
-  end function process_def_list_get_n_components
-
-  function process_def_list_get_component_def_ptr (list, id, i) result (ptr)
-    class(process_def_list_t), intent(in) :: list
-    type(string_t), intent(in) :: id
-    integer, intent(in) :: i
-    type(process_component_def_t), pointer :: ptr
-    type(process_def_entry_t), pointer :: current
-    ptr => null ()
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          if (i <= current%n_initial) then
-             ptr => current%initial(i)
-          else if (i <= current%n_initial + current%n_extra) then
-             ptr => current%extra(i-current%n_initial)
-          end if
-          return
-       end if
-       current => current%next
-    end do
-  end function process_def_list_get_component_def_ptr
 
   subroutine process_def_list_get_component_list (list, id, cid)
     class(process_def_list_t), intent(in) :: list
@@ -1241,21 +1226,17 @@ contains
     type(string_t), dimension(:), allocatable, intent(out) :: cid
     type(process_def_entry_t), pointer :: current
     integer :: i, n
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          allocate (cid (current%n_initial + current%n_extra))
-          do i = 1, current%n_initial
-             cid(i) = current%initial(i)%basename
-          end do
-          n = current%n_initial
-          do i = 1, current%n_extra
-             cid(n + i) = current%extra(i)%basename
-          end do
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       allocate (cid (current%n_initial + current%n_extra))
+       do i = 1, current%n_initial
+          cid(i) = current%initial(i)%basename
+       end do
+       n = current%n_initial
+       do i = 1, current%n_extra
+          cid(n + i) = current%extra(i)%basename
+       end do
+    end if
   end subroutine process_def_list_get_component_list
 
   subroutine process_def_list_get_component_description_list &
@@ -1265,52 +1246,31 @@ contains
     type(string_t), dimension(:), allocatable, intent(out) :: description
     type(process_def_entry_t), pointer :: current
     integer :: i, n
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          allocate (description (current%n_initial + current%n_extra))
-          do i = 1, current%n_initial
-             description(i) = current%initial(i)%description
-          end do
-          n = current%n_initial
-          do i = 1, current%n_extra
-             description(n + i) = current%extra(i)%description
-          end do
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       allocate (description (current%n_initial + current%n_extra))
+       do i = 1, current%n_initial
+          description(i) = current%initial(i)%description
+       end do
+       n = current%n_initial
+       do i = 1, current%n_extra
+          description(n + i) = current%extra(i)%description
+       end do
+    end if
   end subroutine process_def_list_get_component_description_list
 
-  function process_def_list_req_resonant (list, id) result (nlo)
+  function process_def_list_req_resonant (list, id) result (flag)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
-    logical :: nlo
+    logical :: flag
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-      if (id == current%id) then
-        nlo = current%requires_resonances
-        return
-      end if
-      current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       flag = current%requires_resonances
+    else
+       flag = .false.
+    end if
   end function process_def_list_req_resonant
-
-  function process_def_list_get_nlo_process (list, id) result (nlo)
-    class(process_def_list_t), intent(in) :: list
-    type(string_t), intent(in) :: id
-    logical :: nlo
-    type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-      if (id == current%id) then
-        nlo = current%nlo_process
-        return
-      end if
-      current => current%next
-    end do
-  end function process_def_list_get_nlo_process
 
   function process_library_entry_to_string (object) result (string)
     type(string_t) :: string

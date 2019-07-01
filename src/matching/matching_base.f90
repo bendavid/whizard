@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -52,7 +52,7 @@ module matching_base
 
   type, abstract :: matching_t
     logical :: is_hadron_collision = .false.
-    type(qcd_t), pointer :: qcd => null ()
+    type(qcd_t) :: qcd
     class(shower_base_t), pointer :: shower => null ()
     type(process_instance_t), pointer :: process_instance => null ()
     class(model_data_t), pointer :: model => null ()

@@ -9,10 +9,10 @@ parameter mZ     = 91.1882       # Z-boson mass
 parameter mW     = 80.419        # W-boson mass  
 parameter mH     = 125           # Higgs mass
 parameter meta	 = 100	         # Pseudoaxion mass
-parameter alphas = 0.1178        # Strong coupling constant (Z point)             
+parameter alphas = 0.1178        # Strong coupling constant (Z point)
 parameter me     = 0.000510997   # electron mass                       
 parameter mmu    = 0.105658389   # muon mass                         
-parameter mtau   = 1.77705       # tau-lepton mass                               
+parameter mtau   = 1.77705       # tau-lepton mass
 parameter ms     = 0.095         # s-quark mass                         
 parameter mc     = 1.2           # c-quark mass                         
 parameter mb     = 4.2           # b-quark mass                         
@@ -153,11 +153,6 @@ particle W_BOSON 24  gauge
   tex_name "W^+"
   tex_anti "W^-"
   mass mW  width wW
-particle AH_BOSON 32  gauge
-  spin 1
-  name AH gammaH  
-  tex_name "A_H"
-  mass mah width wah
 particle ZH_BOSON 33  gauge
   spin 1
   name ZH
@@ -252,22 +247,6 @@ vertex TH t Z
 vertex T th Z
 vertex TH t ZH
 vertex T th ZH
-vertex U u AH
-vertex D d AH
-vertex C c AH
-vertex S s AH
-vertex T t AH
-vertex B b AH
-vertex E1 e1 AH
-vertex E2 e2 AH
-vertex E3 e3 AH
-vertex N1 n1 AH
-vertex N2 n2 AH
-vertex N3 n3 AH
-vertex TH th AH
-vertex TH t AH
-vertex T th AH
-
 
 # QCD
 vertex G G G 
@@ -279,6 +258,7 @@ vertex S s G
 vertex C c G 
 vertex B b G 
 vertex T t G 
+vertex TH th G
 
 # Neutral currents
 vertex D d Z 
@@ -338,7 +318,9 @@ vertex e3 N3 WHp
 vertex E1 n1 WHm
 vertex E2 n2 WHm
 vertex E3 n3 WHm
+vertex TH b Wp
 vertex TH b WHp
+vertex th B Wm
 vertex th B WHm
 
 # Yukawa (neutral)
@@ -385,13 +367,11 @@ vertex Wp Wm A A
 # Littlest Higgs additional triple coupligs
 vertex A WHm WHp
 vertex Z WHm WHp
-vertex AH Wm Wp
 vertex ZH Wm Wp
 vertex Z WHm Wp
 vertex Z Wm WHp
 vertex ZH WHm Wp
 vertex ZH Wm WHp
-vertex AH WHm WHp
 vertex ZH WHm WHp
 
 # Higgs - vector boson
@@ -408,9 +388,6 @@ vertex H WHp Wm
 vertex H WHm Wp
 vertex H ZH ZH
 vertex H ZH Z
-vertex H ZH AH
-vertex H AH AH 
-vertex H Z AH
 vertex psi0 WHp WHm
 vertex psi0 Wp Wm
 vertex psi0 WHp Wm
@@ -418,17 +395,14 @@ vertex psi0 Wp WHm
 vertex psi0 Z Z
 vertex psi0 ZH ZH
 vertex psi0 ZH Z
-vertex psi0 AH Z
-vertex psi0 AH ZH
-vertex psi0 AH AH
 vertex psim Wp Z
 vertex psip Wm Z
 vertex psim WHp Z
 vertex psip WHm Z
+vertex psim Wp ZH
+vertex psip Wm ZH
 vertex psim WHp ZH
 vertex psip WHm ZH
-vertex psim WHp AH
-vertex psip WHm AH
 vertex psimm Wp Wp
 vertex psipp Wm Wm
 vertex psimm WHp WHp
@@ -446,17 +420,12 @@ vertex H H H
 vertex H H H H
 
 # Gauge couplings of the Goldstones
-vertex AH H psi1
-vertex AH psi0 psi1
 vertex A psip psim
-vertex AH psip psim
 vertex A psipp psimm 
-vertex AH psipp psimm
 vertex Z H psi1
 vertex ZH H psi1
 vertex Z psi0 psi1
 vertex ZH psi0 psi1
 vertex Z psip psim
-vertex ZH psip psim
 vertex Z psipp psimm
 vertex ZH psipp psimm

@@ -29,19 +29,25 @@ parameter xipm   = 0.000        # R_xi parameter for W-boson
 # General set of parameters for anomalous top-gauge and top-Higgs vertices
 parameter tv_ttA    = 0.000     # vector coeff. of ttA tensor coupling
 parameter ta_ttA    = 0.000     # axial coeff. (*i) of ttA tensor cpl.
-parameter tcv_ttA   = 0.000	# vector coeff. of tcA tensor coupling
-parameter tca_ttA   = 0.000     # axial coeff. (*i) of tcA tensor cpl.
+parameter tcv_tcA   = 0.000	# vector coeff. of tcA tensor coupling
+parameter tca_tcA   = 0.000     # axial coeff. (*i) of tcA tensor cpl.
+parameter tuv_tuA   = 0.000	# vector coeff. of tuA tensor coupling
+parameter tua_tuA   = 0.000     # axial coeff. (*i) of tuA tensor cpl.
 parameter vl_ttZ    = 0.000     # left-handed coeff. of ttZ vector cpl.
                                 # FIXED by gauge inv. !
 parameter vr_ttZ    = 0.000     # right-handed coeff. of ttZ vector cpl.
 parameter vl_tcZ    = 0.000	# left-handed coeff. of tcZ vector cpl.
 parameter vr_tcZ    = 0.000	# right-handed coeff. of tcZ vector cpl.
+parameter vl_tuZ    = 0.000	# left-handed coeff. of tuZ vector cpl.
+parameter vr_tuZ    = 0.000	# right-handed coeff. of tuZ vector cpl.
 parameter tv_ttZ    = 0.000     # vector coeff. of ttZ tensor cpl.
                                 # FIXED by gauge inv. !
 parameter ta_ttZ    = 0.000     # axial coeff. (*i) of ttZ tensor cpl.
                                 # FIXED by gauge inv. !
 parameter tv_tcZ    = 0.000     # vector coeff. of tcZ tensor cpl.
-parameter ta_tcZ    = 0.000     # axial coeff. of tcZ tensor cpl. 
+parameter ta_tcZ    = 0.000     # axial coeff. of tcZ tensor cpl.
+parameter tv_tuZ    = 0.000     # vector coeff. of tuZ tensor cpl.
+parameter ta_tuZ    = 0.000     # axial coeff. of tuZ tensor cpl.
 parameter vl_tbW_Re = 0.000     # left-handed coeff. of tbW vector cpl.
 parameter vl_tbW_Im = 0.000
 parameter vr_tbW_Re = 0.000     # right-handed coeff. of tbW vector cpl.
@@ -52,8 +58,10 @@ parameter tr_tbW_Re = 0.000     # right-handed coeff. of bbarW- tensor cpl.
 parameter tr_tbW_Im = 0.000
 parameter tv_ttG    = 0.000     # vector coeff. of ttg tensor cpl.
 parameter ta_ttG    = 0.000     # axial coeff. (*i) of ttg tensor cpl.
-parameter tcv_ttG   = 0.000     # vector coeff. of tcg tensor cpl.
-parameter tca_ttG   = 0.000     # axial coeff. (*i) of tcg tensor cpl.
+parameter tcv_tcG   = 0.000     # vector coeff. of tcg tensor cpl.
+parameter tca_tcG   = 0.000     # axial coeff. (*i) of tcg tensor cpl.
+parameter tuv_tuG   = 0.000     # vector coeff. of tug tensor cpl.
+parameter tua_tuG   = 0.000     # axial coeff. (*i) of tug tensor cp.l
 parameter s_ttH     = 0.000     # scalar coeff. of ttH cpl.
 parameter p_ttH     = 0.000     # pseudo scalar coeff. of ttH  cpl.
 parameter Lambda    = 2000      # effective energy scale in [GeV]
@@ -295,6 +303,8 @@ vertex B b A
 vertex T t A
 vertex T c A
 vertex C t A
+vertex T u A
+vertex U t A
 
 vertex E1 e1 A 
 vertex E2 e2 A 
@@ -312,6 +322,8 @@ vertex B b G
 vertex T t G
 vertex T c G
 vertex C t G
+vertex T u G
+vertex U t G
 
 # Neutral currents
 vertex D d Z 
@@ -322,6 +334,8 @@ vertex B b Z
 vertex T t Z
 vertex T c Z
 vertex C t Z
+vertex T u Z
+vertex U t Z
 
 vertex E1 e1 Z 
 vertex E2 e2 Z 

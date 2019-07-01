@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -34,6 +34,7 @@ module mci_vamp2
   use format_utils, only: pac_fmt
   use format_utils, only: write_separator, write_indent
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
+  use constants, only: tiny_13
   use diagnostics
   use md5
   use phs_base
@@ -318,6 +319,7 @@ contains
     integer, intent(in) :: unit
     logical, intent(in), optional :: pacify
     integer :: u, i
+    real(default) :: pac_error
     character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
     u = given_output_unit (unit)
@@ -328,9 +330,14 @@ contains
     if (self%integral_defined) then
        write (u, "(3X,A)") "Results:  [it, calls, valid, integral, error, efficiency]"
        do i = 1, self%n_it
+          if (abs (self%error(i)) > tiny_13) then
+             pac_error = self%error(i)
+          else
+             pac_error = 0
+          end if
           write (u, "(5x,I0,2(1x,I0),3(1x," // fmt // "))") &
-               i, self%calls(i), self%calls_valid(i), self%integral(i), self%error(i), &
-               self%efficiency(i)
+               i, self%calls(i), self%calls_valid(i), self%integral(i), &
+               pac_error, self%efficiency(i)
        end do
     else
        write (u, "(3x,A)")  "Results: [undefined]"

@@ -82,11 +82,13 @@ weight = 2
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ------------------------------------------------------------------------
  Current event:
    Process #1: simulation_10p
    MCI set #1
    Weight    =  7.746462203555E+03
+   Zero-weight events dropped = 0
 ------------------------------------------------------------------------
  TAO random-number generator:
    seed  = 131072
@@ -108,6 +110,7 @@ weight = 2
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 
  MCI set #1:
    Components:
@@ -122,6 +125,7 @@ weight = 2
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ========================================================================
 
 * Write the event record for the last event

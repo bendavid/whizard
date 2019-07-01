@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -43,6 +43,7 @@ module dispatch_mci
   private
 
   public :: dispatch_mci_s
+  public :: setup_grid_path
 
   character(*), parameter :: ALLOWED_IN_DIRNAME = &
        "abcdefghijklmnopqrstuvwxyz&
@@ -53,10 +54,10 @@ module dispatch_mci
 contains
 
   subroutine dispatch_mci_s (mci, var_list, process_id, is_nlo)
-    class(mci_t), allocatable, intent(inout) :: mci
-    logical, intent(in), optional :: is_nlo
+    class(mci_t), allocatable, intent(out) :: mci
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
     type(string_t) :: run_id
     type(string_t) :: integration_method
     type(grid_parameters_t) :: grid_par

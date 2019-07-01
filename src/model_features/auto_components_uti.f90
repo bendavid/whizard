@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -58,6 +58,7 @@ contains
 
     write (u, "(A)")  "* Read Standard Model"
 
+    model => null ()
     call prepare_model (model, var_str ("SM"))
 
     prt => model%get_field_ptr (25)
@@ -103,6 +104,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, *)
     write (u, "(A)")  "* Test output end: auto_components_1"
@@ -126,6 +128,7 @@ contains
 
     write (u, "(A)")  "* Read Standard Model"
 
+    model => null ()
     call prepare_model (model, var_str ("SM"))
 
     write (u, *)
@@ -245,6 +248,7 @@ contains
     call fs_table%final ()
 
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, *)
     write (u, "(A)")  "* Test output end: auto_components_2"
@@ -267,6 +271,7 @@ contains
 
     write (u, "(A)")  "* Read Standard Model"
 
+    model => null ()
     call prepare_model (model, var_str ("SM"))
 
     write (u, *)
@@ -382,6 +387,7 @@ contains
     call if_table%final ()
 
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, *)
     write (u, "(A)")  "* Test output end: auto_components_3"

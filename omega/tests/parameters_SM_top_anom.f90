@@ -1,6 +1,6 @@
 ! parameters.SM_top_anom.f90 --
 !
-! Copyright (C) 1999-2018 by 
+! Copyright (C) 1999-2019 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -49,19 +49,19 @@ module parameters_sm_top_anom
        n_tvaa, n_vlrz, n_tvaz, n_vlrw, n_tlrw, n_tvag, n_sph
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn, &
-       tvaa, tvaabb, vlrz, vlrcz, tvaz, tcvaz, tvazbb, tcvaa, &
-       vlrw, tlrw, tvag, tcvag, sph, &
+       tvaa, tvaabb, vlrz, vlrcz, tvaz, tcvaz, tvazbb, tcvaa, tuvaa, &
+       vlrw, tlrw, tvag, tcvag, tuvag, sph, &
        gvlr_qbub, gvlr_qbub_u, gvlr_qbub_d, gvlr_qbub_e, &
        gvlr_qgug, gslr_dbtr
   integer, public :: fun_flag
   logical, public :: bz=.false., bw=.false., ba=.false.
 
   public :: init_parameters, model_update_alpha_s, &
-       gmom, gtva_tta, gtva_tca, &
+       gmom, gtva_tta, gtva_tca, gtva_tua, &
        gvlr_ttz, gvlr_tcz, gtva_ttz, gtva_tcz, gvlr_btw, gvlr_tbw, &
        gtlr_btw, gtrl_tbw, gtlr_btwz, gtrl_tbwz, gtlr_btwa, gtrl_tbwa, &
        gtva_ttww, gtva_bba, gtva_bbz, gtva_bbww, &
-       gtva_ttg, gtva_ttgg, gtva_tcg, gtva_tcgg, gsp_tth
+       gtva_ttg, gtva_ttgg, gtva_tcg, gtva_tug, gtva_tcgg, gtva_tugg, gsp_tth
 
   real(default), parameter :: &
           GF = 1.16639E-5_default   ! Fermi constant
@@ -79,6 +79,8 @@ contains
     tvaa(2)     = 1 * imago
     tcvaa(1)    = 1
     tcvaa(2)    = 1 * imago
+    tuvaa(1)    = 1
+    tuvaa(2)    = 1 * imago
     vlrz(1)     = 1
     vlrz(2)     = 1
     vlrcz(1)    = 1
@@ -95,6 +97,8 @@ contains
     tvag(2)     = 1 * imago
     tcvag(1)    = 1
     tcvag(2)    = 1 * imago
+    tuvag(1)    = 1
+    tuvag(2)    = 1 * imago
     sph(1)      = 0
     sph(2)      = 0
     lambda      = 2000
@@ -332,6 +336,13 @@ contains
     c = - gmom (k2, i, tcvaa, lambda)
   end function gtva_tca
 
+  pure function gtva_tua (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tuvaa, lambda)
+  end function gtva_tua
+
   pure function gtva_bba (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
@@ -486,6 +497,13 @@ contains
     c = - gmom (k2, i, tcvag, lambda)
   end function gtva_tcg
 
+  pure function gtva_tug (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tuvag, lambda)
+  end function gtva_tug
+
   pure function gtva_tcgg (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
@@ -493,6 +511,14 @@ contains
     !!! don't touch this relative factor: fixed by ward identity!
     c = - gtva_tcg(k2, i)
   end function gtva_tcgg
+
+  pure function gtva_tugg (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - gtva_tug(k2, i)
+  end function gtva_tugg
 
   pure function gsp_tth (k2, i) result (c)
     complex(default) :: c

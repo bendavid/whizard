@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -194,7 +194,7 @@ contains
     character(32), parameter :: md5sum = "prclib_interfaces_3_md5sum      "
     class(prc_writer_t), pointer :: test_writer_1, test_writer_2
 
-    call os_data_init (os_data)
+    call os_data%init ()
     os_data%fc = "fortran-compiler"
     os_data%whizard_includes = "-I module-dir"
     os_data%fcflags = "-C=all"
@@ -280,7 +280,7 @@ contains
     write (u, "(A)")  "* Create a prclib driver object (1 process)"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (test_writer_4_t :: test_writer_4)
     call test_writer_4%init_test ()
@@ -432,7 +432,7 @@ contains
     write (u, "(A)")  "* Create a prclib driver object (1 process)"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     allocate (test_writer_5_t :: test_writer_5)
 
     call dispatch_prclib_driver (driver, var_str ("prclib5"), var_str (""))
@@ -555,7 +555,7 @@ contains
     write (u, "(A)")  "* Create a prclib driver object (1 process)"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     allocate (test_writer_6_t :: test_writer_6)
 
     call dispatch_prclib_driver (driver, var_str ("prclib6"), var_str (""))
@@ -663,7 +663,7 @@ contains
 
     allocate (test_writer_4_t :: test_writer_4)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call dispatch_prclib_driver (driver, var_str ("prclib7"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)

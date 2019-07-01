@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -172,6 +172,7 @@ contains
 
     write (u, "(A)")  "* Initialize test process"
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -255,6 +256,7 @@ contains
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_stdhep_2"
@@ -277,6 +279,7 @@ contains
     write (u, "(A)")  "* Write a StdHep data file, HEPEVT block"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
 
@@ -315,10 +318,12 @@ contains
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
     deallocate (eio)
+    deallocate (fallback_model)
 
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -375,6 +380,7 @@ contains
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_stdhep_3"
@@ -397,6 +403,7 @@ contains
     write (u, "(A)")  "* Write a StdHep data file, HEPRUP/HEPEUP block"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
 
@@ -436,10 +443,12 @@ contains
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
     deallocate (eio)
+    deallocate (fallback_model)
 
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -496,6 +505,7 @@ contains
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_stdhep_4"

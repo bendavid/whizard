@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,7 +33,6 @@ check_LTLIBRARIES = libprocess_integration_ut.la
 libprocess_integration_la_SOURCES = \
   subevt_expr.f90 \
   parton_states.f90 \
-  core_manager.f90 \
   pcm_base.f90 \
   pcm.f90 \
   process_counter.f90 \
@@ -146,7 +145,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../lhapdf -I../pdf_builtin -I../fastjet
+AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet
 
 ########################################################################
 ## Default Fortran compiler options

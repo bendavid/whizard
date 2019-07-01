@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -42,7 +42,7 @@ module dispatch_me_methods
   use prc_template_me
   use prc_test
   use prc_omega
-  use prc_user_defined
+  use prc_external
   use prc_gosam
   use prc_openloops
   use prc_recola
@@ -77,7 +77,7 @@ contains
     logical :: report_progress
     logical :: diags, diags_color
     logical :: write_phs_output
-    type(string_t) :: extra_options
+    type(string_t) :: extra_options, correction_type
     integer :: nlo
     integer :: alpha_power
     integer :: alphas_power
@@ -114,6 +114,7 @@ contains
     nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
+    correction_type = var_list%get_sval (var_str ("$nlo_correction_type"))
     call msg_debug2 (D_CORE, "dispatching core method: ", meth)
     select case (char (meth))
     case ("unit_test")
@@ -182,16 +183,16 @@ contains
        select type (core_def)
        type is (recola_def_t)
           if (present (id)) then
-             call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo, alpha_power, alphas_power)
+             call core_def%init (id, model_name, prt_in, prt_out, &
+                  nlo, alpha_power, alphas_power, correction_type)
           else
              call msg_fatal ("Dispatch RECOLA def: No id!")
           end if
        end select
     case ("dummy")
-       allocate (user_defined_test_def_t :: core_def)
+       allocate (prc_external_test_def_t :: core_def)
        select type (core_def)
-       type is (user_defined_test_def_t)
+       type is (prc_external_test_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, prt_out)
           else
@@ -216,13 +217,14 @@ contains
   end subroutine dispatch_core_def
 
   subroutine dispatch_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors)
+       helicity_selection, qcd, use_color_factors, has_beam_pol)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
+    logical, intent(in), optional :: has_beam_pol
     select type (core_def)
     type is (prc_test_def_t)
        allocate (test_t :: core)
@@ -257,10 +259,10 @@ contains
       type is (prc_recola_t)
          call core%set_parameters (qcd, model)
       end select
-    type is (user_defined_test_def_t)
-      if (.not. allocated (core)) allocate (prc_user_defined_test_t :: core)
+    type is (prc_external_test_def_t)
+      if (.not. allocated (core)) allocate (prc_external_test_t :: core)
       select type (core)
-      type is (prc_user_defined_test_t)
+      type is (prc_external_test_t)
          call core%set_parameters (qcd, model)
       end select
     type is (threshold_def_t)
@@ -268,6 +270,7 @@ contains
       select type (core)
       type is (prc_threshold_t)
          call core%set_parameters (qcd, model)
+         call core%set_beam_pol (has_beam_pol)
       end select
     class default
        call msg_bug ("Process core: unexpected process definition type")
@@ -291,7 +294,7 @@ contains
     type is (prc_omega_t)
        call core%set_parameters (model, helicity_selection, qcd)
        call core%activate_parameters ()
-    class is (prc_user_defined_base_t)
+    class is (prc_external_t)
       call msg_message ("Updating user defined cores is not implemented yet.")
     class default
        call msg_bug ("Process core update: unexpected process definition type")

@@ -275,7 +275,7 @@ vertex S s G
 vertex C c G 
 vertex B b G 
 vertex T t G 
-
+vertex TH th G
 
 # Neutral currents
 vertex D d Z 

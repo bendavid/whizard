@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -84,6 +84,8 @@ module shower_base
      logical :: ckkw_matching = .false.
      logical :: powheg_matching = .false.
      type(string_t) :: pythia6_pygive
+     type(string_t) :: pythia8_config
+     type(string_t) :: pythia8_config_file
      real(default) :: min_virtuality = 1._default   ! PARJ(82)^2
      real(default) :: fsr_lambda = 0.29_default     ! PARP(72)
      real(default) :: isr_lambda = 0.29_default     ! PARP(61)
@@ -111,11 +113,14 @@ module shower_base
      type(pdf_data_t) :: pdf_data
      type(shower_settings_t) :: settings
      type(taudec_settings_t) :: taudec_settings
+     type(os_data_t) :: os_data
+     real(default) :: fac_scale
+     real(default) :: alpha_s
    contains
      procedure :: write_msg => shower_base_write_msg
      procedure :: import_rng => shower_base_import_rng
      procedure (shower_base_init), deferred :: init
-     procedure (shower_base_prepare_new_event), deferred :: prepare_new_event
+     procedure :: prepare_new_event => shower_base_prepare_new_event
      procedure (shower_base_import_particle_set), deferred :: import_particle_set
      procedure (shower_base_generate_emissions), deferred :: generate_emissions
      procedure (shower_base_make_particle_set), deferred :: make_particle_set
@@ -125,31 +130,22 @@ module shower_base
 
 
   abstract interface
-    subroutine shower_base_init (shower, settings, taudec_settings, pdf_data)
+    subroutine shower_base_init (shower, settings, taudec_settings, pdf_data, os_data)
       import
       class(shower_base_t), intent(out) :: shower
       type(shower_settings_t), intent(in) :: settings
       type(taudec_settings_t), intent(in) :: taudec_settings
       type(pdf_data_t), intent(in) :: pdf_data
+      type(os_data_t), intent(in) :: os_data
     end subroutine shower_base_init
    end interface
 
   abstract interface
-     subroutine shower_base_prepare_new_event &
-            (shower)
-       import
-       class(shower_base_t), intent(inout) :: shower
-     end subroutine shower_base_prepare_new_event
-  end interface
-
-  abstract interface
      subroutine shower_base_import_particle_set &
-            (shower, particle_set, os_data, scale)
+            (shower, particle_set)
        import
        class(shower_base_t), target, intent(inout) :: shower
        type(particle_set_t), intent(in) :: particle_set
-       type(os_data_t), intent(in) :: os_data
-       real(default), intent(in) :: scale
      end subroutine shower_base_import_particle_set
   end interface
 
@@ -248,6 +244,10 @@ contains
          var_list%get_lval (var_str ("?shower_verbose"))
     settings%pythia6_pygive = &
          var_list%get_sval (var_str ("$ps_PYTHIA_PYGIVE"))
+    settings%pythia8_config = &
+         var_list%get_sval (var_str ("$ps_PYTHIA8_config"))
+    settings%pythia8_config_file = &
+         var_list%get_sval (var_str ("$ps_PYTHIA8_config_file"))
     settings%min_virtuality = &
          (var_list%get_rval (var_str ("ps_mass_cutoff"))**2)
     settings%fsr_lambda = &
@@ -354,6 +354,13 @@ contains
     write (u, "(3x,A,A,A)") &
          "ps_PYTHIA_PYGIVE             = '", &
          char(settings%pythia6_pygive), "'"
+    write (u, "(1x,A)")  "PYTHIA8 specific settings:"
+    write (u, "(3x,A,A,A)") &
+         "ps_PYTHIA8_config            = '", &
+         char (settings%pythia8_config), "'"
+    write (u, "(3x,A,A,A)") &
+         "ps_PYTHIA8_config_file       = '", &
+         char (settings%pythia8_config_file), "'"
   end subroutine shower_settings_write
 
   subroutine shower_base_write_msg (shower)
@@ -366,6 +373,13 @@ contains
     class(rng_t), intent(inout), allocatable :: rng
     call move_alloc (from = rng, to = shower%rng)
   end subroutine shower_base_import_rng
+
+  subroutine shower_base_prepare_new_event (shower, fac_scale, alpha_s)
+    class(shower_base_t), intent(inout) :: shower
+    real(default), intent(in) :: fac_scale, alpha_s
+    shower%fac_scale = fac_scale
+    shower%alpha_s = alpha_s
+  end subroutine shower_base_prepare_new_event
 
   function D_alpha_s_isr (tin, settings) result (alpha_s)
     real(default), intent(in) :: tin

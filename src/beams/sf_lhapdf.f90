@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -102,6 +102,7 @@ module sf_lhapdf
      real(default) :: s = 0
    contains
      procedure :: complete_kinematics => lhapdf_complete_kinematics
+     procedure :: recover_x => lhapdf_recover_x
      procedure :: inverse_kinematics => lhapdf_inverse_kinematics
      procedure :: type_string => lhapdf_type_string
      procedure :: write => lhapdf_write
@@ -341,6 +342,15 @@ contains
     end select
   end subroutine lhapdf_complete_kinematics
 
+  subroutine lhapdf_recover_x (sf_int, x, xb, x_free)
+    class(lhapdf_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(inout), optional :: x_free
+    call sf_int%base_recover_x (x, xb, x_free)
+    sf_int%x  = x(1)
+  end subroutine lhapdf_recover_x
+
   subroutine lhapdf_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -362,11 +372,7 @@ contains
     if (set_mom) then
        call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
-       case (SF_DONE_KINEMATICS)
-          sf_int%x = x(1)
-       case (SF_FAILED_KINEMATICS)
-          sf_int%x = 0
-          f = 0
+       case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
   end subroutine lhapdf_inverse_kinematics

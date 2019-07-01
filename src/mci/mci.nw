@@ -653,6 +653,7 @@ point.
      real(default) :: mci_weight = 0
      real(default) :: integrand  = 0
      logical :: negative_weights = .false.
+     integer :: n_dropped = 0
    contains
    <<MCI base: mci instance: TBP>>
   end type mci_instance_t
@@ -875,6 +876,32 @@ for unweighted events becomes unity).
   end interface
 
 @ %def mci_instance_get_event_excess
+@ Dropped events (i.e., events with zero weight that are not retained)
+are counted within the [[mci_instance]] object.
+<<MCI base: mci instance: TBP>>=
+  procedure :: get_n_event_dropped => mci_instance_get_n_event_dropped
+  procedure :: reset_n_event_dropped => mci_instance_reset_n_event_dropped
+  procedure :: record_event_dropped => mci_instance_record_event_dropped
+<<MCI base: procedures>>=
+  function mci_instance_get_n_event_dropped (mci) result (n_dropped)
+    class(mci_instance_t), intent(in) :: mci
+    integer :: n_dropped
+    n_dropped = mci%n_dropped
+  end function mci_instance_get_n_event_dropped
+  
+  subroutine mci_instance_reset_n_event_dropped (mci)
+    class(mci_instance_t), intent(inout) :: mci
+    mci%n_dropped = 0
+  end subroutine mci_instance_reset_n_event_dropped
+  
+  subroutine mci_instance_record_event_dropped (mci)
+    class(mci_instance_t), intent(inout) :: mci
+    mci%n_dropped = mci%n_dropped + 1
+  end subroutine mci_instance_record_event_dropped
+  
+@ %def mci_instance_get_n_event_dropped
+@ %def mci_instance_reset_n_event_dropped
+@ %def mci_instance_record_event_dropped
 @
 \subsection{MCI state}
 This object can hold the relevant information that allows us to
@@ -11257,6 +11284,7 @@ module mci_vamp2
   use format_utils, only: pac_fmt
   use format_utils, only: write_separator, write_indent
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
+  use constants, only: tiny_13
   use diagnostics
   use md5
   use phs_base
@@ -11531,6 +11559,7 @@ precision for comparing output from file with data.
     integer, intent(in) :: unit
     logical, intent(in), optional :: pacify
     integer :: u, i
+    real(default) :: pac_error
     character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
     u = given_output_unit (unit)
@@ -11541,9 +11570,14 @@ precision for comparing output from file with data.
     if (self%integral_defined) then
        write (u, "(3X,A)") "Results:  [it, calls, valid, integral, error, efficiency]"
        do i = 1, self%n_it
+          if (abs (self%error(i)) > tiny_13) then
+             pac_error = self%error(i)
+          else
+             pac_error = 0
+          end if
           write (u, "(5x,I0,2(1x,I0),3(1x," // fmt // "))") &
-               i, self%calls(i), self%calls_valid(i), self%integral(i), self%error(i), &
-               self%efficiency(i)
+               i, self%calls(i), self%calls_valid(i), self%integral(i), &
+               pac_error, self%efficiency(i)
        end do
     else
        write (u, "(3x,A)")  "Results: [undefined]"
@@ -13652,15 +13686,16 @@ contains
 
 end module dispatch_mci
 @ %def dispatch_mci
+@
 Allocate an integrator according to the variable [[$integration_method]].
 <<Dispatch mci: public>>=
   public :: dispatch_mci_s
 <<Dispatch mci: procedures>>=
   subroutine dispatch_mci_s (mci, var_list, process_id, is_nlo)
-    class(mci_t), allocatable, intent(inout) :: mci
-    logical, intent(in), optional :: is_nlo
+    class(mci_t), allocatable, intent(out) :: mci
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
     type(string_t) :: run_id
     type(string_t) :: integration_method
     type(grid_parameters_t) :: grid_par
@@ -13821,6 +13856,8 @@ used.  Also include a sanity check on the directory name.
        &1234567890&
        &.,_-+="
 @ %def ALLOWED_IN_DIRNAME
+<<Dispatch mci: public>>=
+  public :: setup_grid_path
 <<Dispatch mci: procedures>>=
   subroutine setup_grid_path (grid_path)
     type(string_t), intent(in) :: grid_path

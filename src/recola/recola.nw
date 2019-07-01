@@ -116,8 +116,6 @@ process definition
 
 @ %def get_recola_particle_string
 @
-<<recola wrapper: public>>=
-  public :: rclwrap_define_process
 <<recola wrapper: procedures>>=
   subroutine rclwrap_define_process (id, process_string, order)
     integer, intent(in) :: id
@@ -128,10 +126,72 @@ process definition
   end subroutine rclwrap_define_process
 
 @ %def rclwrap_define_process
+@ This defines a wrapper for the information required to define a RECOLA
+process. It is used to collect the process definitions in an array.
+<<recola wrapper: types>>=
+  type :: rcl_process_t
+     private
+     integer :: id
+     type(string_t) :: process_string
+     type(string_t) :: order
+   contains
+   <<recola wrapper: rcl process: TBP>>
+  end type rcl_process_t
+
+@ %def rcl_process_t
+@ 
+<<recola wrapper: types>>=
+  interface rcl_process_t
+     module procedure new_rcl_process_t
+  end interface
+
+@ %def rcl_process_t
+@ 
+<<recola wrapper: procedures>>=
+  function new_rcl_process_t (id, process_string, order)
+    integer, intent(in) :: id
+    type(string_t), intent(in) :: process_string, order
+    type(rcl_process_t) :: new_rcl_process_t
+    new_rcl_process_t%id = id
+    new_rcl_process_t%process_string = process_string
+    new_rcl_process_t%order = order
+  end function new_rcl_process_t
+
+@ %def new_rcl_process_t
+<<recola wrapper: rcl process: TBP>>=
+  procedure :: get_params => rcl_process_get_params
+<<recola wrapper: procedures>>=
+  subroutine rcl_process_get_params (prc, id, process_string, order)
+    class(rcl_process_t), intent(in) :: prc
+    integer, intent(out) :: id
+    type(string_t), intent(out) :: process_string
+    type(string_t), intent(out) :: order
+    id = prc%id
+    process_string = prc%process_string
+    order = prc%order
+  end subroutine rcl_process_get_params
+
+@ %def rcl_process_get_params
+@ Output.
+<<recola wrapper: rcl process: TBP>>=
+  procedure :: write => rcl_process_write
+<<recola wrapper: procedures>>=
+  subroutine rcl_process_write (object, unit)
+    class(rcl_process_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A,I0,2(1x,A,1x))") "RECOLA process:", &
+         "id=", object%id, "process_string=", char(object%process_string), &
+         "order=", char(object%order)
+  end subroutine rcl_process_write
+
+@ %def rcl_process_write 
 @ This defines a singleton object, located in this module only, that
-controls RECOLA initialization.  When WHIZARD compiles processes, it
-should also run the RECOLA "`controller"', which actually initializes
-RECOLA for integration.  The main complication is that this has to be
+controls RECOLA initialization and process management.  When WHIZARD
+compiles processes, it should also run the RECOLA "`controller"',
+which actually initializes RECOLA for integration and manages process
+information in an array.  The main complication is that this has to be
 done after all processes have been registered, and cannot be redone.
 
 We could work with module variables directly, but the singleton
@@ -143,17 +203,64 @@ Type and object can be private.
   type :: rcl_controller_t
      private
      logical :: active = .false.
+     logical :: defined = .false.
      logical :: done = .false.
      integer :: recola_id = 0
+     type(rcl_process_t), dimension (:), allocatable :: processes
+     integer :: n_processes = 0
    contains
    <<recola wrapper: rcl controller: TBP>>
   end type rcl_controller_t
   
 @ %def rcl_controller_t
 <<recola wrapper: variables>>=
-  type(rcl_controller_t) :: rcl_controller
+  type(rcl_controller_t), target, save :: rcl_controller
   
 @ %def rcl_controller
+@ Add a RECOLA process to the controller. This will make sure that
+processes can be redefined if additional definitions are to be made
+after process generation.
+<<recola wrapper: rcl controller: TBP>>=
+  procedure :: add_process => rcl_controller_add_process
+<<recola wrapper: procedures>>=
+  subroutine rcl_controller_add_process (rcl, process)
+    class(rcl_controller_t), intent(inout) :: rcl
+    type(rcl_process_t), intent(in) :: process
+    type(rcl_process_t), dimension (:), allocatable :: temp
+    if (rcl%n_processes == size(rcl%processes)) then
+      allocate( temp(2 * rcl%n_processes) )
+      temp(:rcl%n_processes) = rcl%processes
+      call move_alloc(temp, rcl%processes) 
+    end if
+    rcl%processes(rcl%n_processes + 1) = process
+    rcl%n_processes = rcl%n_processes + 1
+  end subroutine rcl_controller_add_process
+
+@ %def rcl_controller_add_process
+@ Define all processes added to the controller, and only them.
+If processes have been defined before, RECOLA is reset.
+<<recola wrapper: rcl controller: TBP>>=
+  procedure :: define_processes => rcl_controller_define_processes
+<<recola wrapper: procedures>>=
+  subroutine rcl_controller_define_processes (rcl)
+    class(rcl_controller_t), intent(inout) :: rcl
+    integer :: id, i
+    type(string_t) :: process_string
+    type(string_t) :: order
+    if (rcl%defined) then
+      if (.not. rcl%done) call rclwrap_generate_processes ()
+      call msg_debug2 (D_ME_METHODS, "reset_recola_rcl")
+      call reset_recola_rcl ()
+    end if
+    do i = 1, rcl%n_processes
+      call rcl%processes(i)%get_params(id, process_string, order)
+      call rclwrap_define_process (id, process_string, order)
+    end do
+    rcl%defined = .true.
+    rcl%done = .false.
+  end subroutine rcl_controller_define_processes
+
+@ %def rcl_controller_define_processes
 @ Revert to initial state.  Also, reset RECOLA (only if it has already
 done something).
 <<recola wrapper: rcl controller: TBP>>=
@@ -163,11 +270,14 @@ done something).
     class(rcl_controller_t), intent(inout) :: rcl
     if (rcl%active .or. rcl%done) then
        call msg_debug2 (D_ME_METHODS, "reset_recola_rcl")
+       if (allocated (rcl%processes)) deallocate (rcl%processes)
        call reset_recola_rcl ()
     end if
     rcl%active = .false.
+    rcl%defined = .false.
     rcl%done = .false.
     rcl%recola_id = 0
+    rcl%n_processes = 0
   end subroutine rcl_controller_reset
     
 @ %def rcl_controller_reset
@@ -180,9 +290,9 @@ done something).
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
-    write (u, "(1x,A,2(1x,A,L1),1(1x,A,I0))")  "RECOLA controller:", &
+    write (u, "(1x,A,2(1x,A,L1),2(1x,A,I0))")  "RECOLA controller:", &
          "active=", object%active, "done=", object%done, &
-         "id=", object%recola_id
+         "id=", object%recola_id, "n_processes=", object%n_processes
   end subroutine rcl_controller_write
     
 @ %def rcl_controller_write
@@ -216,11 +326,8 @@ previously.   Otherwise set the flag.
 <<recola wrapper: procedures>>=
   subroutine rcl_controller_activate (rcl)
     class(rcl_controller_t), intent(inout) :: rcl
-    if (rcl_controller%done) then
-       call msg_fatal ("Recola interface: attempt at adding processes after initialization")
-    else
-       rcl_controller%active = .true.
-    end if
+    if ( .not. allocated(rcl%processes) ) allocate ( rcl%processes(10) )
+    rcl_controller%active = .true.
   end subroutine rcl_controller_activate
   
 @ %def rcl_controller_activate
@@ -252,17 +359,17 @@ controller guarantees that the ID is unique.
   end subroutine rclwrap_get_new_recola_id
     
 @ %def rclwrap_get_new_recola_id
-@ Return the number of registered processes, which coincides with the
-current numeric RECOLA process ID.
+@ Return the current numeric RECOLA process ID. This coincides with the amount
+of IDs currently in use.
 <<recola wrapper: public>>=
-  public :: rclwrap_get_n_processes
+  public :: rclwrap_get_current_recola_id
 <<recola wrapper: procedures>>=
-  function rclwrap_get_n_processes () result (n)
+  function rclwrap_get_current_recola_id () result (n)
     integer :: n
     call rcl_controller%get_current_id (n)
-  end function rclwrap_get_n_processes
+  end function rclwrap_get_current_recola_id
     
-@ %def rclwrap_get_n_processes
+@ %def rclwrap_get_current_recola_id
 @ This procedure records the fact that there is a recola process
 pending, so we will have to call [[generate_processes]] before we can
 calculate anything with Recola.
@@ -275,8 +382,32 @@ calculate anything with Recola.
   end subroutine rclwrap_request_generate_processes
 
 @ %def rclwrap_request_generate_processes
-@ We call this after all processes have been registered, so RECOLA can
-initialize itself for integration.
+@ Add a process to be defined later
+<<recola wrapper: public>>=
+  public :: rclwrap_add_process
+<<recola wrapper: procedures>>=
+  subroutine rclwrap_add_process (id, process_string, order)
+    integer, intent(in) :: id
+    type(string_t), intent(in) :: process_string, order
+    type(rcl_process_t) :: prc
+    call msg_debug2 (D_ME_METHODS, "add_process_rcl: id", id)
+    prc = rcl_process_t (id, process_string, order)
+    call rcl_controller%add_process (prc)
+  end subroutine rclwrap_add_process
+
+@ %def rclwrap_add_process
+@ Define all added processes. Reset if processes were already defined.
+<<recola wrapper: public>>=
+  public :: rclwrap_define_processes
+<<recola wrapper: procedures>>=
+  subroutine rclwrap_define_processes ()
+    call msg_debug2 (D_ME_METHODS, "define_processes_rcl")
+    call rcl_controller%define_processes ()
+  end subroutine rclwrap_define_processes
+
+@ %def rclwrap_define_processes
+@ We call this after all processes have been added and defined,
+so RECOLA can initialize itself for integration.
 <<recola wrapper: public>>=
   public :: rclwrap_generate_processes
 <<recola wrapper: procedures>>=
@@ -605,11 +736,11 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: public>>=
   public :: rclwrap_get_renormalization_scale
 <<recola wrapper: procedures>>=
-  function rclwrap_get_renormalization_scale () result (mu)
-    real(double) :: mu
+  subroutine rclwrap_get_renormalization_scale (mu)
+    real(double), intent(out) :: mu
     call msg_debug2 (D_ME_METHODS, "get_renormalization_scale_rcl")
     call get_renormalization_scale_rcl (mu)
-  end function rclwrap_get_renormalization_scale
+  end subroutine rclwrap_get_renormalization_scale
 
 @ %def rclwrap_get_renormalization_scale
 @
@@ -1219,26 +1350,15 @@ end module recola_wrapper
 @ %def rclwrap_get_new_recola_id
 @ 
 <<recola wrapper dummy: public>>=
-  public :: rclwrap_get_n_processes
+  public :: rclwrap_get_current_recola_id
 <<recola wrapper dummy: procedures>>=
-  function rclwrap_get_n_processes () result (n)
+  function rclwrap_get_current_recola_id () result (n)
     integer :: n
     n = 0
-  end function rclwrap_get_n_processes
+  end function rclwrap_get_current_recola_id
     
-@ %def rclwrap_get_n_processes
+@ %def rclwrap_get_current_recola_id
 @
-<<recola wrapper dummy: public>>=
-  public :: rclwrap_define_process
-<<recola wrapper dummy: procedures>>=
-  subroutine rclwrap_define_process (id, process_string, order)
-    integer, intent(in) :: id
-    type(string_t), intent(in) :: process_string
-    type(string_t), intent(in) :: order
-  end subroutine rclwrap_define_process
-
-@ %def rclwrap_define_process
-@ 
 <<recola wrapper dummy: public>>=
   public :: rclwrap_request_generate_processes
 <<recola wrapper dummy: procedures>>=
@@ -1246,6 +1366,24 @@ end module recola_wrapper
   end subroutine rclwrap_request_generate_processes
 
 @ %def rclwrap_request_generate_processes
+@
+<<recola wrapper dummy: public>>=
+   public :: rclwrap_add_process
+<<recola wrapper dummy: procedures>>=
+   subroutine rclwrap_add_process (id, process_string, order)
+     integer, intent(in) :: id
+     type(string_t), intent(in) :: process_string, order
+   end subroutine rclwrap_add_process
+ 
+@ %def rclwrap_add_process
+@
+<<recola wrapper dummy: public>>=
+   public :: rclwrap_define_processes
+<<recola wrapper dummy: procedures>>=
+   subroutine rclwrap_define_processes ()
+   end subroutine rclwrap_define_processes
+
+@ %def rclwrap_define_processes
 @
 <<recola wrapper dummy: public>>=
   public :: rclwrap_generate_processes
@@ -1449,9 +1587,9 @@ end module recola_wrapper
 <<recola wrapper dummy: public>>=
   public :: rclwrap_get_renormalization_scale
 <<recola wrapper dummy: procedures>>=
-  function rclwrap_get_renormalization_scale () result (mu)
-    real(double) :: mu
-  end function rclwrap_get_renormalization_scale
+  subroutine rclwrap_get_renormalization_scale (mu)
+    real(double), intent(out) :: mu
+  end subroutine rclwrap_get_renormalization_scale
 
 @ %def rclwrap_get_renormalization_scale
 @
@@ -1928,7 +2066,7 @@ module prc_recola
 
   use prc_core, only: prc_core_state_t
   use prc_core_def, only: prc_core_driver_t, prc_core_def_t
-  use prc_user_defined
+  use prc_external
   use process_libraries, only: process_library_t
 
 <<Standard module head>>
@@ -1967,15 +2105,22 @@ is used.
 @
 \subsection{Process definition}
 When defining a RECOLA process, we store the process-specific flags
-and parameters.
+and parameters. Correction types are either QCD, QED, or full SM.
+<<prc recola: parameters>>=
+  integer, parameter :: RECOLA_UNDEFINED = 0, RECOLA_QCD = 1, &
+       RECOLA_QED = 2, RECOLA_FULL = 3
+
+@ %def RECOLA_QCD RECOLA_QED RECOLA_FULL
+@
 <<prc recola: public>>=
   public :: recola_def_t
 <<prc recola: types>>=
-  type, extends (user_defined_def_t) :: recola_def_t
+  type, extends (prc_external_def_t) :: recola_def_t
      type(string_t) :: suffix
      type(string_t) :: order
      integer :: alpha_power = 0
      integer :: alphas_power = 0
+     integer :: corr = RECOLA_UNDEFINED
   contains
   <<prc recola: recola def: TBP>>
   end type recola_def_t
@@ -2033,18 +2178,28 @@ The NLO flag is true only for virtual matrix elements.
   procedure :: init => recola_def_init
 <<prc recola: procedures>>=
   subroutine recola_def_init (object, basename, model_name, &
-     prt_in, prt_out, nlo_type, alpha_power, alphas_power)
+       prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
+       correction_type)
     class(recola_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
     integer, intent(in) :: alpha_power
     integer, intent(in) :: alphas_power
+    type(string_t), intent(in) :: correction_type
     call msg_debug (D_ME_METHODS, "recola_def_init: " &
          // char (basename) // ", nlo_type", nlo_type)
     object%basename = basename
     object%alpha_power = alpha_power
     object%alphas_power = alphas_power
+    select case (char (correction_type))
+    case ("QCD")
+       object%corr = RECOLA_QCD
+    case ("QED")
+       object%corr = RECOLA_QED
+    case ("Full")
+       object%corr = RECOLA_FULL
+    end select
     allocate (recola_writer_t :: object%writer)
     select case (nlo_type)
     case (BORN)
@@ -2053,6 +2208,8 @@ The NLO flag is true only for virtual matrix elements.
     case (NLO_REAL)
        object%suffix = '_REAL'
        object%order = "LO"
+       if (object%corr == RECOLA_QCD)  object%alphas_power = alphas_power + 1
+       if (object%corr == RECOLA_QED)  object%alpha_power = alpha_power + 1
     case (NLO_VIRTUAL)
        object%suffix = '_LOOP'
        object%order = "NLO"
@@ -2069,7 +2226,7 @@ The NLO flag is true only for virtual matrix elements.
     select type (writer => object%writer)
     class is (recola_writer_t)
        call writer%init (model_name, prt_in, prt_out)
-       call writer%set_id (basename)
+       call writer%set_id (basename // object%suffix)
        call writer%set_order (object%order)
        call writer%set_coupling_powers (object%alpha_power, object%alphas_power)
     end select
@@ -2081,7 +2238,7 @@ The NLO flag is true only for virtual matrix elements.
 The RECOLA writer takes the additional resposibility of transferring process
 information to RECOLA.
 <<prc recola: types>>=
-  type, extends (prc_user_defined_writer_t) :: recola_writer_t
+  type, extends (prc_external_writer_t) :: recola_writer_t
      private
      type(string_t) :: id
      type(string_t) :: order
@@ -2142,7 +2299,7 @@ information to RECOLA.
   
 @ %def recola_writer_set_coupling_powers
 @
-The Makefile code contains all of the code that the [[user_defined]] base
+The Makefile code contains all of the code that the [[prc_external]] base
 method generates, plus an extra clause that extracts a shorthand listing of
 all flavor combinations for the current process.  This list is required by
 [[make source]], so it can be read and used for declaring the RECOLA
@@ -2203,21 +2360,25 @@ processes have been defined.
 <<prc recola: recola writer: TBP>>=
   procedure :: register_processes => prc_recola_register_processes
 <<prc recola: procedures>>=
-  subroutine prc_recola_register_processes (writer)
+  subroutine prc_recola_register_processes (writer, recola_ids)
     class(recola_writer_t), intent(in) :: writer
     integer :: recola_id
+    integer :: i_flv
     integer :: n_tot
     integer :: unit, iostat
+    integer, dimension (:), intent(inout) :: recola_ids
     integer, dimension(:), allocatable :: pdg
     type(string_t), dimension(:), allocatable :: particle_names
     type(string_t) :: process_string
     integer :: i_part
     !!! TODO (cw-2016-08-08): Include helicities
     call msg_message ("Recola: registering processes for '" // char (writer%id) // "'")
+    i_flv = 0
     n_tot = writer%n_in + writer%n_out
     allocate (pdg (n_tot))
     allocate (particle_names (n_tot))
     call open_flv_list (writer%id, unit)
+    call rclwrap_request_generate_processes ()
     SCAN_FLV_LIST: do
        read (unit, *, iostat = iostat)  pdg
        if (iostat < 0) then
@@ -2225,7 +2386,9 @@ processes have been defined.
        else if (iostat > 0) then
           call err_flv_list (writer%id)
        end if
+       i_flv = i_flv + 1
        call rclwrap_get_new_recola_id (recola_id)
+       recola_ids(i_flv) = recola_id
        particle_names(:) = get_recola_particle_string (pdg)
        process_string = var_str ("")
        do i_part = 1, n_tot
@@ -2239,10 +2402,10 @@ processes have been defined.
             // "process #" // char (str (recola_id)) &
             // ": " // char (process_string) &
             // "(" // char (writer%order) // ")")
-       call rclwrap_define_process (recola_id, process_string, writer%order)
+       call rclwrap_add_process (recola_id, process_string, writer%order)
+       call rclwrap_define_processes ()
     end do SCAN_FLV_LIST
     call close_flv_list (unit)
-    call rclwrap_request_generate_processes ()
     call msg_debug (D_ME_METHODS, "RECOLA: processes for '" &
          // char (writer%id) // "' registered")
   end subroutine prc_recola_register_processes
@@ -2287,7 +2450,7 @@ this being created along with the \oMega\ call.
 A core driver is required by design. However, we are not going to
 load any external dynamical libraries, so this is a dummy.
 <<prc recola: types>>=
-  type, extends (user_defined_driver_t) :: recola_driver_t
+  type, extends (prc_external_driver_t) :: recola_driver_t
   contains
   <<prc recola: recola driver: TBP>>
   end type recola_driver_t
@@ -2318,15 +2481,15 @@ load any external dynamical libraries, so this is a dummy.
 @ %def recola_driver_type_name
 @
 \subsection{Process object}
-We create [[prc_recola_t]] as an extension of the [[prc_user_defined_base_t]],
+We create [[prc_recola_t]] as an extension of the [[prc_external_t]],
 which in turn inherits from [[prc_core_t]]. This way, we can use a lot of the
 existing interfaces in the actual code. However, we have to stick to the rules and
 implement the deferred type-bound procedures of [[prc_core_t]].
 <<prc recola: public>>=
   public :: prc_recola_t
 <<prc recola: types>>=
-  type, extends (prc_user_defined_base_t) :: prc_recola_t
-     integer :: recola_id = 0
+  type, extends (prc_external_t) :: prc_recola_t
+     integer, dimension(:), allocatable :: recola_ids
      integer, dimension(:,:), allocatable :: color_state
      integer :: n_f = 0
      logical :: helicity_and_color_arrays_are_replaced = .false.
@@ -2374,7 +2537,7 @@ Not implemented yet.
 \subsection{Accompanying state object}
 This must be implemented, but is unused.
 <<prc recola: types>>=
-  type, extends (user_defined_state_t) :: recola_state_t
+  type, extends (prc_external_state_t) :: recola_state_t
   contains
   <<prc recola: recola state: TBP>>
   end type recola_state_t
@@ -2441,7 +2604,7 @@ obtain it, we need a type cast.
 <<prc recola: procedures>>=
   subroutine prc_recola_compute_alpha_s (object, core_state, ren_scale)
     class(prc_recola_t), intent(in) :: object
-    class(user_defined_state_t), intent(inout) :: core_state
+    class(prc_external_state_t), intent(inout) :: core_state
     real(default), intent(in) :: ren_scale
     core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
   end subroutine prc_recola_compute_alpha_s
@@ -2462,10 +2625,10 @@ obtain it, we need a type cast.
 \subsection{Prepare for process evaluation}
 This has become obsolete and is empty.
 <<prc recola: prc recola: TBP>>=
-  procedure :: create_and_load_extra_libraries => &
-       prc_recola_create_and_load_extra_libraries
+  procedure :: prepare_external_code => &
+       prc_recola_prepare_external_code
 <<prc recola: procedures>>=
-  subroutine prc_recola_create_and_load_extra_libraries &
+  subroutine prc_recola_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
      class(prc_recola_t), intent(inout) :: core
      integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -2475,10 +2638,10 @@ This has become obsolete and is empty.
      type(model_data_t), intent(in), target :: model
      integer, intent(in) :: i_core
      logical, intent(in) :: is_nlo
-     call msg_debug (D_ME_METHODS, "prc_recola_create_and_load_extra_libraries (no-op)")
-  end subroutine prc_recola_create_and_load_extra_libraries
+     call msg_debug (D_ME_METHODS, "prc_recola_prepare_external_code (no-op)")
+  end subroutine prc_recola_prepare_external_code
 
-@ %def prc_recola_create_and_load_extra_libraries
+@ %def prc_recola_prepare_external_code
 @
 Set all Recola parameters to their correct values.  We use the model
 object for masses and such.  Note that the QCD object provides the
@@ -2498,7 +2661,6 @@ the Recola workflow, however.
     call msg_debug (D_ME_METHODS, "RECOLA: set_parameters")
     object%qcd = qcd
     call rclwrap_set_dynamic_settings ()
-
     call rclwrap_set_pole_mass &
          (11, dble(model%get_real (var_str ('me'))), 0._double)
     call rclwrap_set_pole_mass &
@@ -2567,15 +2729,16 @@ should be expanded.
     type(process_library_t), intent(in), target :: lib
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
+    integer :: n_flv
     call msg_debug (D_ME_METHODS, "RECOLA: init process object")
     call object%base_init (def, lib, id, i_component)
-    call rclwrap_reset_recola ()
+    n_flv = object%get_n_flvs (1)
+    allocate (object%recola_ids(n_flv))
     select type (writer => object%def%writer)
     type is (recola_writer_t)
-       call writer%register_processes ()
+       call writer%register_processes (object%recola_ids)
     end select
     call rclwrap_generate_processes ()
-    object%recola_id = rclwrap_get_n_processes ()
     call object%replace_helicity_and_color_arrays ()
   end subroutine prc_recola_init
   
@@ -2587,20 +2750,20 @@ to be in its own format to do so.
        prc_recola_replace_helicity_and_color_arrays
 <<prc recola: procedures>>=
   subroutine prc_recola_replace_helicity_and_color_arrays (object)
+    ! TODO: Adjust routine for multiple recola ids
     class(prc_recola_t), intent(inout) :: object
     integer, dimension(:,:), allocatable :: col_recola
     integer :: i
     call msg_debug (D_ME_METHODS, "RECOLA: replace_helicity_and_color_arrays")
     deallocate (object%data%hel_state)
     call rclwrap_get_helicity_configurations &
-         (object%recola_id, object%data%hel_state)
-    call rclwrap_get_color_configurations (object%recola_id, col_recola)
+         (object%recola_ids(1), object%data%hel_state)
+    call rclwrap_get_color_configurations (object%recola_ids(1), col_recola)
     allocate (object%color_state (object%data%n_in + object%data%n_out, &
            size (col_recola, dim = 2)))
     do i = 1, size (col_recola, dim = 2)
        object%color_state (:, i) = col_recola (:, i)
     end do
-    object%data%n_hel = size (object%data%hel_state, dim = 1)
   end subroutine prc_recola_replace_helicity_and_color_arrays
 
 @ %def prc_recola_replace_helicity_and_color_arrays
@@ -2647,9 +2810,9 @@ implementation can fail due to missing helicity initialization.
        do i = 1, object%data%n_in + object%data%n_out
           p_recola(:, i) = dble(p(i)%p)
        end do
-       call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
+       call rclwrap_compute_process (object%recola_ids(f), p_recola, 'LO')
     end if
-    call rclwrap_get_amplitude (object%recola_id, 0, 'LO', &
+    call rclwrap_get_amplitude (object%recola_ids(f), 0, 'LO', &
          object%color_state (:, c), object%data%hel_state (h, :), amp_dble)
     amp = amp_dble
   end function prc_recola_compute_amplitude
@@ -2678,14 +2841,14 @@ implementation can fail due to missing helicity initialization.
      do i = 1, object%data%n_in + object%data%n_out
         p_recola(:, i) = dble(p(i)%p)
      end do
-     call rclwrap_set_mu_ir (dble (ren_scale))
      alpha_s = object%qcd%alpha%get (ren_scale)
      call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
      call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
      call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
-     call rclwrap_compute_process (i_flv, p_recola, 'LO')
+     call rclwrap_set_mu_ir (dble (ren_scale))
+     call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'LO')
      call rclwrap_get_squared_amplitude &
-             (i_flv, object%get_alphas_power (), 'LO', sqme_dble)
+          (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
      sqme = real(sqme_dble, kind=default)
      bad_point = .false.
   end subroutine prc_recola_compute_sqme
@@ -2718,18 +2881,59 @@ implementation can fail due to missing helicity initialization.
     call rclwrap_set_mu_ir (dble (ren_scale))
     alpha_s = object%qcd%alpha%get (ren_scale)
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
-    call rclwrap_compute_process (object%recola_id, p_recola, 'NLO')
+    call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'NLO')
+    !!! JRR, TODO: generalize for QED corrections
     call rclwrap_get_squared_amplitude &
-         (object%recola_id, object%get_alphas_power () + 1, 'NLO', sqme_dble)
+         (object%recola_ids(i_flv), object%get_alphas_power () + 1, 'NLO', sqme_dble)
     sqme(3) = sqme_dble
     call rclwrap_get_squared_amplitude &
-         (object%recola_id, object%get_alphas_power (), 'LO', sqme_dble)
+         (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
     sqme(4) = sqme_dble
-
     bad_point = .false.
   end subroutine prc_recola_compute_sqme_virt
 
 @ %def prc_recola_compute_sqme_virt
+@ For RECOLA, explicit color factors need to multiplied to the
+off-diagonal elements of the color correlation matrix. The factor 1/2
+from the normalization accoring to the RECOLA manual is covered by the
+fact that we are taking only one half of the symmetric matrix.
+<<prc recola: prc recola: TBP>>=
+  procedure :: compute_sqme_color_c_raw => prc_recola_compute_sqme_color_c_raw
+<<prc recola: procedures>>=
+  subroutine prc_recola_compute_sqme_color_c_raw (object, i_flv, i_hel, &
+       p, ren_scale, sqme_color_c, bad_point)
+    class(prc_recola_t), intent(in) :: object
+    integer, intent(in) :: i_hel, i_flv
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
+         p_recola
+    real(default), intent(in) :: ren_scale
+    real(default), dimension(:), intent(out) :: sqme_color_c
+    logical, intent(out) :: bad_point
+    integer :: i1, i2, i, n_tot
+    real(double) :: sqme_dble
+    do i = 1, object%data%n_in + object%data%n_out
+       p_recola(:, i) = dble(p(i)%p)
+    end do
+    n_tot = object%data%n_in + object%data%n_out
+    i = 0
+    do i1 = 1, n_tot
+       do i2 = 1, i1-1
+          i = i + 1
+          call rclwrap_compute_color_correlation &
+               (object%recola_ids(i_flv), p_recola, i1, i2, sqme_dble)
+          sqme_color_c(i) = real (sqme_dble, kind=default)
+          select case (abs (object%data%flv_state (i1, i_flv)))
+          case (1:6)
+             sqme_color_c(i) = CF * sqme_color_c(i)
+          case (9,21)
+             sqme_color_c(i) = CA * sqme_color_c(i)
+          end select
+       end do
+    end do
+  end subroutine prc_recola_compute_sqme_color_c_raw
+
+@ %def prc_recola_compute_sqme_color_c_raw
 @
 \subsection{Unit tests}
 <<[[prc_recola_ut.f90]]>>=
@@ -2877,10 +3081,11 @@ end module prc_recola_uti
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
     counter  = 1
-    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- at leading order"
-    call rclwrap_define_process (counter, var_str ('e+ e- -> mu+ mu-'), var_str ('LO'))
-    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_request_generate_processes ()
+    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- at leading order"
+    call rclwrap_add_process (counter, var_str ('e+ e- -> mu+ mu-'), var_str ('LO'))
+    call rclwrap_define_processes ()
+    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (1, p, 'LO')
     call rclwrap_get_helicity_configurations (1, helicities)
@@ -2911,7 +3116,7 @@ end module prc_recola_uti
          variant = def)
     call lib%append (entry)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)
@@ -2999,10 +3204,11 @@ end module prc_recola_uti
     call write_separator (u)
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
-    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order"
-    call rclwrap_define_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
-    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_request_generate_processes ()
+    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order"
+    call rclwrap_add_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
+    call rclwrap_define_processes ()
+    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (2, p, 'LO')
     call rclwrap_get_helicity_configurations (2, helicities)
@@ -3035,7 +3241,7 @@ end module prc_recola_uti
          variant = def)
     call lib%append (entry)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)

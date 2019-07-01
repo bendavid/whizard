@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -280,7 +280,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry &
          &(no external code)"
     write (u, "(A)")
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%init (var_str ("proclibs4"))
 
     allocate (prcdef_2_t :: core_def)
@@ -344,7 +344,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("proclibs5"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (prcdef_5_t :: core_def)
     select type (core_def)
@@ -420,7 +420,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("proclibs6"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (prcdef_6_t :: core_def)
     select type (core_def)
@@ -485,8 +485,6 @@ contains
          lib%get_n_in (var_str ("proclibs6_a"))
     write (u, "(1x,A,A)")   "model_name(proclibs6_a)   = ", &
          char (lib%get_model_name (var_str ("proclibs6_a")))
-    write (u, "(1x,A,I0)")  "n_components(proclibs6_a) = ", &
-         lib%get_n_components (var_str ("proclibs6_a"))
     write (u, "(1x,A)", advance="no")  "components(proclibs6_a)   ="
     call lib%get_component_list (var_str ("proclibs6_a"), name_list)
     do i = 1, size (name_list)
@@ -629,7 +627,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("proclibs8"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (prcdef_6_t :: core_def)
     select type (core_def)

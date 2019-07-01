@@ -48,12 +48,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.6.4}
-\def\WhizardDate{Aug 23 2018}
+\def\WhizardVersion{2.7.0}
+\def\WhizardDate{Jan 21 2019}
 <<Version>>=
-2.6.4
+2.7.0
 <<Date>>=
-Aug 23 2018
+Jan 21 2019
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -71,12 +71,12 @@ Aug 23 2018
 \date{Version \WhizardVersion, \WhizardDate \\
  \mbox{}
  with contributions from:
- Fabian Bach, Tim Barklow, Mikael Berggren, Hans-Werner Boschmann,
- Felix Braam, Simon Brass, Bijan Chokouf\'{e} Nejad, Christian Fleper,
- David Gordo Gomez, Akiya Miyamoto, Moritz Prei{\ss}er, Vincent Rothe,
- Sebastian Schmidt, Marco Sekulla, So Young Shim, Christian Speckner,
- Pascal Stienemeier, Manuel Utsch, Christian Weiss, Daniel Wiesler,
- Zhijie Zhao
+ Fabian Bach, Tim Barklow, Vincent Bettaque, Mikael Berggren,
+ Hans-Werner Boschmann, Felix Braam, Simon Brass, Bijan Chokouf\'{e}
+ Nejad, Christian Fleper, David Gordo Gomez, Akiya Miyamoto, Pascal
+ Stienemeier, Moritz Prei{\ss}er, Vincent Rothe, Sebastian Schmidt,
+ Marco Sekulla, So Young Shim, Christian Speckner, Pascal Stienemeier,
+ Manuel Utsch, Christian Weiss, Daniel Wiesler, Zhijie Zhao
  \vspace{1cm}
  \begin{center}
  \includegraphics[width=4cm]{Whizard-Logo}
@@ -121,7 +121,7 @@ The WHIZARD file header:
 <<File header>>=
 ! WHIZARD <<Version>> <<Date>>
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

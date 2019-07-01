@@ -231,11 +231,6 @@ contains
 
 end module fks_regions
 @ %def fks_regions
-@ We need these parameters for various temporary buffers
-<<fks regions: parameters>>=
-  integer, parameter, public :: N_MAX_ALR = 200
-  integer, parameter, public :: N_MAX_FLV = 50
-
 @ There are three fundamental splitting types: $q \rightarrow qg$, $g \rightarrow gg$ and
 $g \rightarrow qq$.
 <<fks regions: parameters>>=
@@ -3075,7 +3070,8 @@ of the present one is increased.
   subroutine region_data_find_emitters (reg_data)
     class(region_data_t), intent(inout) :: reg_data
     integer :: alr, j, n_em, em
-    integer, dimension(N_MAX_ALR) :: em_count
+    integer, dimension(:), allocatable :: em_count
+    allocate (em_count(reg_data%n_regions))
     em_count = -1
     n_em = 0
 
@@ -3547,7 +3543,8 @@ resonances are possible for all ftuples
      if (latex) then
         call reg_data%write_latex (u)
         close (u)
-        call os_data_build_latex_file (os_data, proc_id // "_fks_regions", stat_out = status)
+        call os_data%build_latex_file &
+             (proc_id // "_fks_regions", stat_out = status)
         if (status /= 0) &
              call msg_error (char ("Failed to compile " // filename))
      else
@@ -6053,13 +6050,13 @@ Here, $\xi_{max}$ is implicitly present in the ratios in the logarithms. Using t
   \label{eqn:virt_Q_fsr}
   \begin{split}
     \mathcal{Q} = \sum_{k=n_{in}}^{n_L^{(B)}} \left[\gamma'(\mathcal{I}_k)
-         + \left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max}\right)
+         + 2\left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max}\right)
            \left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max} + \log\frac{Q^2}{s}\right) C(\mathcal{I}_k) \right.\\
          + \left. 2 \log\xi_{max} \left(\log\xi_{max} - \log\frac{Q^2}{k_{res}^2}\right) C(\mathcal{I}_k)
-         + \left(\frac{Q^2}{k_{res}^2} - 2 \log\xi_{max}\right) \gamma(\mathcal{I}_k)\right].
+         + \left(\log\frac{Q^2}{k_{res}^2} - 2 \log\xi_{max}\right) \gamma(\mathcal{I}_k)\right].
   \end{split}
 \end{equation}
-Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substitutions $\xi_{max} \rightarrow \frac{2E_em}{\sqrt{s}}$ and $k_{res}^2 \rightarrow s$.
+Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substitutions $\xi_{max} \rightarrow \frac{2E_{em}}{\sqrt{s}}$ and $k_{res}^2 \rightarrow s$.
 [[virtual_compute_collinear_contribution]] only implements the second one.
 <<virtual: virtual: TBP>>=
   procedure :: compute_collinear_contribution &
@@ -6075,7 +6072,7 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
     real(default), intent(inout), dimension(:) :: QB
     real(default) :: s1, s2, s3, s4, s5
     integer :: alr, em
-    real(default) :: E_em, log_xi_max, E_tot2
+    real(default) :: E_em, xi_max, log_xi_max, E_tot2
     logical, dimension(virt%n_flv, virt%n_legs) :: evaluated
     integer :: i_contr
     type(vector4_t) :: k_res
@@ -6094,12 +6091,16 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
           k_res = get_resonance_momentum (p_born, reg_data%alr_contributors(i_contr)%c)
           E_tot2 = k_res%p(0)**2
           L_to_resonance = inverse (boost (k_res, k_res**1))
-          log_xi_max = log (two * space_part_norm (L_to_resonance * p_born(em)) / k_res%p(0))
+          xi_max = two * space_part_norm (L_to_resonance * p_born(em)) / k_res%p(0)
+          log_xi_max = log (xi_max)
        else
           E_tot2 = sqrts**2
-          log_xi_max = log (two * E_em / sqrts)
+          xi_max = two * E_em / sqrts
+          log_xi_max = log (xi_max)
        end if
        ! TODO sbrass evaluate xi-cut formalism for resonance-aware FKS
+       ! also: check rescaling with xi_max!
+       !associate (xi_cut => xi_max * virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
        associate (xi_cut => virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
          if (virt%settings%virtual_resonance_aware_collinear) then
             if (debug_active (D_VIRTUAL)) &
@@ -7687,6 +7688,7 @@ the corresponding jacobians.
       write (u,'(A,I3)') 'emitter: ', emitter
       write (u,'(A,I3)') 'i_phs: ', i_phs
       write (u,'(A,F6.4)') 'xi_max: ', rsub%real_kinematics%xi_max (i_phs)
+      write (u,'(A,F6.4)') 'xi_cut: ', rsub%real_kinematics%xi_max(i_phs) * rsub%settings%fks_template%xi_cut
       write (u,'(A,F6.4,2X,A,F6.4)') 'xi: ', xi, 'y: ', rsub%real_kinematics%y (i_phs)
       if (yorn) then
          write (u,'(A,ES16.9)')  'sqme_born: ', rsub%sqme_born(i_born)
@@ -7725,7 +7727,7 @@ the corresponding jacobians.
 @ For final state radiation, the subtraction remnant cross section is
 \begin{equation}
   \sigma_{\text{remn}} = \left(\sigma_{\text{soft}} - \sigma_{\text{soft-coll}}\right)
-      \log \frac{\xi_{\text{max}}}{\xi_{\text{cut}}}) \cdot \tilde{\xi}.
+      \log (\xi_{\text{max}}\xi_{\text{cut}})) \cdot \tilde{\xi}.
 \end{equation}
 We use the already computed [[sqme_soft]] and [[sqme_cs]] with a factor of
 $\tilde{\xi}$ which we have to compensate.
@@ -7733,8 +7735,9 @@ $\tilde{\xi}$ which we have to compensate.
   function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde) result (sqme_remn)
     real(default) :: sqme_remn
     real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
+    call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
     sqme_remn = zero
-    sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max / xi_cut) * xi_tilde
+    sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
   end function compute_sqme_remnant_fsr
 
 @ %def compute_sqme_remnant_fsr
@@ -7858,9 +7861,9 @@ $\tilde{\xi}$ which we have to compensate.
        xi_max_minus = real_kinematics%xi_max (i_phs)
     end select
     xi_tilde = real_kinematics%xi_tilde
-    sqme_remn = log(xi_max / xi_cut) * xi_tilde * sqme_soft
-    sqme_remn = sqme_remn - log (xi_max_plus / xi_cut) * xi_tilde * sqme_cs_plus &
-                          - log (xi_max_minus / xi_cut) * xi_tilde * sqme_cs_minus
+    sqme_remn = log(xi_max * xi_cut) * xi_tilde * sqme_soft
+    sqme_remn = sqme_remn - log (xi_max_plus * xi_cut) * xi_tilde * sqme_cs_plus &
+                          - log (xi_max_minus * xi_cut) * xi_tilde * sqme_cs_minus
   end function compute_sqme_remnant_isr
 
 @ %def compute_sqme_remnant_isr
@@ -7875,20 +7878,21 @@ $\tilde{\xi}$ which we have to compensate.
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft, sqme_coll, sqme_cs
+    call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_subtraction_terms_fsr")
     sqme_soft = zero; sqme_coll = zero; sqme_cs = zero
-    associate (xi => rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs), &
+    associate (xi_tilde => rsub%real_kinematics%xi_tilde, &
          y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
-      if (template%xi_cut > xi) &
+      if (template%xi_cut > xi_tilde) &
            sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
       if (y - 1 + template%delta_zero > 0) &
            sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
-      if (template%xi_cut > xi .and. y - 1 + template%delta_zero > 0) &
+      if (template%xi_cut > xi_tilde .and. y - 1 + template%delta_zero > 0) &
            sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, i_phs, alpha_coupling)
       if (debug2_active (D_SUBTRACTION)) then
          print *, "FSR Cutoff:"
-         print *, "sub_soft: ", template%xi_cut > xi, "(ME: ", sqme_soft, ")"
+         print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
          print *, "sub_coll: ", (y - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi .and. (y - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (y - 1 + template%delta_zero) > 0, &
               "(ME: ", sqme_cs, ")"
       end if
     end associate
@@ -8012,29 +8016,29 @@ $\tilde{\xi}$ which we have to compensate.
     real(default), intent(out) :: sqme_cs_plus, sqme_cs_minus
     sqme_coll_plus = zero; sqme_cs_plus = zero
     sqme_coll_minus = zero; sqme_cs_minus = zero
-    associate (xi => rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs), &
+    associate (xi_tilde => rsub%real_kinematics%xi_tilde, &
          y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
-      if (template%xi_cut > xi) &
+      if (template%xi_cut > xi_tilde) &
            sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
       if (emitter /= 2) then
          ! Cut symmetrically for the limits y = +1 or y = -1
          if (abs (y) - 1 + template%delta_i > 0) &
               sqme_coll_plus = rsub%compute_sub_coll (alr, 1, i_phs, alpha_coupling)
-         if (template%xi_cut > xi .and. abs (y) - 1 + template%delta_i > 0) &
+         if (template%xi_cut > xi_tilde .and. abs (y) - 1 + template%delta_i > 0) &
               sqme_cs_plus = rsub%compute_sub_coll_soft (alr, 1, i_phs, alpha_coupling)
       end if
       if (emitter /= 1) then
          ! Cut symmetrically for the limits y = +1 or y = -1
          if (abs (y) - 1 + template%delta_i > 0) &
               sqme_coll_minus = rsub%compute_sub_coll (alr, 2, i_phs, alpha_coupling)
-         if (template%xi_cut > xi .and. abs (y) - 1 + template%delta_i > 0) &
+         if (template%xi_cut > xi_tilde .and. abs (y) - 1 + template%delta_i > 0) &
               sqme_cs_minus = rsub%compute_sub_coll_soft (alr, 2, i_phs, alpha_coupling)
       end if
       if (debug2_active (D_SUBTRACTION)) then
          print *, "ISR Cutoff:"
-         print *, "sub_soft: ", template%xi_cut > xi, "(ME: ", sqme_soft, ")"
+         print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
          print *, "sub_coll: ", (abs (y) - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi .and. (abs (y) - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (abs (y) - 1 + template%delta_zero) > 0, &
               "(ME: ", sqme_cs_plus, sqme_cs_minus, ")"
       end if
     end associate
@@ -9034,7 +9038,7 @@ where $\Gamma$ are the DGLAP evolution kernels for an $a \to d$ splitting,
   \label{eqn:dglap}
   \Gamma_a^{(d)} = \delta_{ad}\delta(1-x) - \frac{\alpha_s}{2\pi} \left(\frac{1}{\epsilon} P_{ad}(x,0) - K_{ad}(x)\right) + \mathcal{O}(\alpha_s).
 \end{equation}
-$K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\bar{MS}$. 
+$K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\bar{MS}$.
 Let the leading-order hadronic cross section be given by
 \begin{equation}
   \label{eqn:xsec_hadro_lo}
@@ -9266,6 +9270,7 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
             factor = log (sb * template%delta_i / z / fac_scale2) / onemz + two * log (onemz) / onemz
             factor_soft = log (sb * template%delta_i / fac_scale2) / onemz + two * log (onemz) / onemz
             xb = dglap%isr_kinematics%x(emitter)
+            ! TODO sbrass rescale xi_cut to [0, xi_max]
             plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / fac_scale2) &
                  + (log (one - xb)**2 - log (template%xi_cut)**2)
             if (is_gluon(dglap%flv_in(emitter, i_flv))) then
@@ -9596,7 +9601,7 @@ end module dispatch_fks
        call split_string (exclude_from_resonance, var_str (":"), &
        fks_template%excluded_resonances)
     call fks_template%set_parameters ( &
-         exp1 = fks_dij_exp1, exp2 = fks_dij_exp2, & 
+         exp1 = fks_dij_exp1, exp2 = fks_dij_exp2, &
          xi_min = var_list%get_rval (var_str ("fks_xi_min")), &
          y_max = var_list%get_rval (var_str ("fks_y_max")), &
          xi_cut = var_list%get_rval (var_str ("fks_xi_cut")), &

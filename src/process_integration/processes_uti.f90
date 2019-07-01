@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,6 +38,7 @@ module processes_uti
   use lorentz
   use pdg_arrays
   use model_data
+  use models
   use var_base, only: vars_t
   use variables, only: var_list_t
   use model_testbed, only: prepare_model
@@ -130,11 +131,8 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable :: process
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
@@ -148,27 +146,24 @@ contains
 
     libname = "processes2"
     procname = libname
-    run_id = "run2"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
-    call prc_test_create_library (libname, lib)
 
+    call os_data%init ()
+    call prc_test_create_library (libname, lib)
+    
     write (u, "(A)")  "* Initialize a process object"
     write (u, "(A)")
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
+    call process%set_run_id (var_str ("run_2"))
     call process%setup_test_cores ()
 
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     call process%write (.false., u)
 
@@ -177,6 +172,8 @@ contains
 
     call process%final ()
     deallocate (process)
+
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_2"
@@ -188,13 +185,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(process_constants_t) :: data
     type(vector4_t), dimension(:), allocatable :: p
@@ -209,28 +202,19 @@ contains
 
     libname = "processes3"
     procname = libname
-    run_id = "run3"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
     call process%setup_test_cores ()
 
-    allocate (mci_test_t :: mci_template)
-    select type (mci_template)
-    type is (mci_test_t)
-       call mci_template%set_dimensions (2, 2)
-       call mci_template%set_divisions (100)
-    end select
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
+    call process%setup_mci (dispatch_mci_test3)
 
     write (u, "(A)")  "* Return the number of process components"
     write (u, "(A)")
@@ -272,6 +256,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_3"
 
@@ -282,13 +268,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -304,24 +286,20 @@ contains
 
     libname = "processes4"
     procname = libname
-    run_id = "run4"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -329,7 +307,7 @@ contains
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
@@ -417,6 +395,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_4"
 
@@ -427,13 +407,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(pdg_array_t) :: pdg_in
@@ -451,22 +427,18 @@ contains
 
     libname = "processes7"
     procname = libname
-    run_id = "run7"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Set beam, structure functions, and mappings"
     write (u, "(A)")
@@ -479,8 +451,7 @@ contains
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
-       model => process%get_model_ptr ()
-       call data%init (model, pdg_in)
+       call data%init (process%get_model_ptr (), pdg_in)
     end select
 
     allocate (sf_config (2))
@@ -499,7 +470,7 @@ contains
     call sf_channel(2)%set_s_mapping ([1,2])
     call process%set_sf_channel (3, sf_channel(2))
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     call process%write (.false., u)
 
@@ -508,6 +479,8 @@ contains
 
     call process%final ()
     deallocate (process)
+
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_7"
@@ -519,13 +492,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -545,24 +514,20 @@ contains
 
     libname = "processes8"
     procname = libname
-    run_id = "run8"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Set beam, structure functions, and mappings"
     write (u, "(A)")
@@ -574,8 +539,7 @@ contains
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
-       model => process%get_model_ptr ()
-       call data%init (model, pdg_in)
+       call data%init (process%get_model_ptr (), pdg_in)
     end select
 
     allocate (sf_config (2))
@@ -595,7 +559,7 @@ contains
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
     call process%setup_terms ()
 
     call process%write (.false., u)
@@ -653,6 +617,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_8"
 
@@ -663,13 +629,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -691,24 +653,20 @@ contains
 
     libname = "processes9"
     procname = libname
-    run_id = "run9"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Set beam, structure functions, and mappings"
     write (u, "(A)")
@@ -720,8 +678,7 @@ contains
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
-       model => process%get_model_ptr ()
-       call data%init (model, pdg_in)
+       call data%init (process%get_model_ptr (), pdg_in)
     end select
 
     allocate (sf_config (2))
@@ -746,7 +703,7 @@ contains
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
     call process%setup_terms ()
 
     call process%write (.false., u)
@@ -815,6 +772,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_9"
 
@@ -825,13 +784,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(mci_t), pointer :: mci
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
@@ -848,28 +803,20 @@ contains
 
     libname = "processes10"
     procname = libname
-    run_id = "run10"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
-    allocate (mci_test_t :: mci_template)
-    select type (mci_template)
-    type is (mci_test_t);  call mci_template%set_divisions (100)
-    end select
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -878,7 +825,7 @@ contains
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test10)
 
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
@@ -932,6 +879,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_10"
 
@@ -942,11 +891,8 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
@@ -964,29 +910,21 @@ contains
 
     libname = "processes11"
     procname = libname
-    run_id = "run11"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
-    allocate (mci_test_t :: mci_template)
-    select type (mci_template)
-    type is (mci_test_t)
-       call mci_template%set_divisions (100)
-    end select
+
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -995,7 +933,7 @@ contains
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test10)
 
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
@@ -1032,6 +970,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_11"
 
@@ -1056,7 +996,8 @@ contains
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, &
+         run_id = var_str ("run_12"))
     call process_instance%setup_event_data (i_core = 1)
 
     call process%prepare_simulation (1)
@@ -1121,10 +1062,9 @@ contains
     write (u, "(A)")  "* Set up a process constants block"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_sm_test ()
-!    call model_list%read_model (var_str ("QCD"), var_str ("QCD.mdl"), &
-!         os_data, model)
+
     allocate (test_t :: core)
 
     associate (data => term%data)
@@ -1173,13 +1113,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(pdg_array_t) :: pdg_in
@@ -1198,23 +1134,19 @@ contains
 
     libname = "processes7"
     procname = libname
-    run_id = "run7"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
     call lib%compute_md5sum ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Set beam, structure functions, and mappings"
     write (u, "(A)")
@@ -1227,8 +1159,7 @@ contains
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
-       model => process%get_model_ptr ()
-       call data%init (model, pdg_in)
+       call data%init (process%get_model_ptr (), pdg_in)
     end select
 
     call process%test_allocate_sf_channels (3)
@@ -1250,7 +1181,7 @@ contains
     call sf_channel(3)%set_s_mapping ([1,2])
     call process%set_sf_channel (3, sf_channel(3))
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     call process%compute_md5sum ()
 
@@ -1262,6 +1193,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_14"
 
@@ -1272,13 +1205,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: pset
@@ -1292,13 +1221,11 @@ contains
 
     libname = "processes15"
     procname = libname
-    run_id = "run15"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib, scattering = .false., &
          decay = .true.)
 
-    allocate (model)
     call model%init_test ()
     call model%set_par (var_str ("ff"), 0.4_default)
     call model%set_par (var_str ("mf"), &
@@ -1308,20 +1235,18 @@ contains
     write (u, "(A)")
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_single_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
 
     call process%setup_beams_decay (i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
@@ -1399,6 +1324,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_15"
 
@@ -1409,13 +1336,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(process_instance_t), allocatable, target :: process_instance
 
@@ -1430,29 +1353,24 @@ contains
 
     libname = "processes16"
     procname = libname
-    run_id = "run16"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib, scattering = .false., &
          decay = .true.)
 
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
     call model%set_par (var_str ("ff"), 0.4_default)
     call model%set_par (var_str ("mf"), &
          model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -1460,7 +1378,7 @@ contains
     call process%setup_beams_decay (i_core = 1)
     call process%configure_phs ()
 
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test_midpoint)
 
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
@@ -1497,6 +1415,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_16"
 
@@ -1507,13 +1427,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: pset
@@ -1529,9 +1445,8 @@ contains
 
     libname = "processes17"
     procname = libname
-    run_id = "run17"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
 
     call prc_test_create_library (libname, lib, scattering = .false., &
          decay = .true.)
@@ -1539,27 +1454,24 @@ contains
     write (u, "(A)")  "* Initialize a process object"
     write (u, "(A)")
 
-    allocate (model)
     call model%init_test ()
     call model%set_par (var_str ("ff"), 0.4_default)
     call model%set_par (var_str ("mf"), &
          model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     call process%setup_test_cores ()
     allocate (phs_single_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
 
     call process%setup_beams_decay (rest_frame = .false., i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization"
     write (u, "(A)")
@@ -1584,8 +1496,7 @@ contains
     call process_instance%choose_mci (1)
     call process_instance%set_mcpar ([0._default, 0._default])
 
-    model => process%get_model_ptr ()
-    call flv_beam%init (25, model)
+    call flv_beam%init (25, process%get_model_ptr ())
     m = flv_beam%get_mass ()
     p = 3 * m / 4
     E = sqrt (m**2 + p**2)
@@ -1646,6 +1557,8 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_17"
 
@@ -1674,23 +1587,30 @@ contains
     libname = "processes_18_lib"
     procname = "processes_18_p"
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call syntax_phs_forest_init ()
 
     model_name = "SM"
+    model => null ()
     call prepare_model (model, model_name, vars)
 
     write (u, "(A)")  "* Initialize a process library with one process"
     write (u, "(A)")
 
-    call prepare_resonance_test_library (lib, libname, procname, model, os_data, u)
+    select type (model)
+    class is (model_t)
+       call prepare_resonance_test_library (lib, libname, procname, model, os_data, u)
+    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize a process object with phase space"
 
     allocate (process)
-    call prepare_resonance_test_process (process, lib, procname, model, os_data)
+    select type (model)
+    class is (model_t)
+       call prepare_resonance_test_process (process, lib, procname, model, os_data)
+    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Extract resonance history set"
@@ -1705,6 +1625,9 @@ contains
     call process%final ()
     deallocate (process)
 
+    call model%final ()
+    deallocate (model)
+
     call syntax_phs_forest_final ()
 
     write (u, "(A)")
@@ -1717,13 +1640,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t) :: process_instance
@@ -1779,27 +1698,55 @@ contains
   end subroutine processes_19
 
 
-  subroutine prepare_test_process (process, process_instance, model)
+  subroutine dispatch_mci_empty (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+  end subroutine dispatch_mci_empty
+ 
+  subroutine dispatch_mci_test3 (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_test_t :: mci)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_dimensions (2, 2)
+       call mci%set_divisions (100)
+    end select
+  end subroutine dispatch_mci_test3
+ 
+  subroutine dispatch_mci_test10 (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_test_t :: mci)
+    select type (mci)
+    type is (mci_test_t);  call mci%set_divisions (100)
+    end select
+  end subroutine dispatch_mci_test10
+ 
+  subroutine prepare_test_process &
+       (process, process_instance, model, var_list, run_id)
     type(process_t), intent(out), target :: process
     type(process_instance_t), intent(out), target :: process_instance
     class(model_data_t), intent(in), target :: model
+    type(var_list_t), intent(inout), optional :: var_list
+    type(string_t), intent(in), optional :: run_id
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    class(model_data_t), pointer :: process_model
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(mci_t), allocatable :: mci_template
+    type(model_t), allocatable, target :: process_model
     class(mci_t), pointer :: mci
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     libname = "processes_test"
     procname = libname
-    run_id = "run_test"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
     call reset_interaction_counter ()
     allocate (process_model)
@@ -1809,20 +1756,15 @@ contains
          model%get_n_field (), &
          model%get_n_vtx ())
     call process_model%copy_from (model)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, process_model)
+    call process%init (procname, lib, os_data, process_model, var_list)
+    if (present (run_id))  call process%set_run_id (run_id)
     call process%setup_test_cores ()
-    allocate (mci_test_t :: mci_template)
-    select type (mci_template)
-    type is (mci_test_t);  call mci_template%set_divisions (100)
-    end select
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test10)
     call process%setup_terms ()
     call process_instance%init (process)
     call process%test_get_mci_ptr (mci)
@@ -1834,7 +1776,8 @@ contains
        call mci%set_max_factor (conv * twopi4 &
             / (2 * sqrt (lambda (sqrts **2, 125._default**2, 125._default**2))))
     end select
-    call process%nullify_library_pointer ()  ! avoid dangling pointer
+    call process%reset_library_ptr ()  ! avoid dangling pointer
+    call process_model%final ()
   end subroutine prepare_test_process
 
   subroutine cleanup_test_process (process, process_instance)
@@ -1844,12 +1787,20 @@ contains
     call process%final ()
   end subroutine cleanup_test_process
 
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
   subroutine prepare_resonance_test_library &
        (lib, libname, procname, model, os_data, u)
     type(process_library_t), target, intent(out) :: lib
     type(string_t), intent(in) :: libname
     type(string_t), intent(in) :: procname
-    class(model_data_t), intent(in), pointer :: model
+    type(model_t), intent(in), target :: model
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: u
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
@@ -1893,35 +1844,35 @@ contains
     class(process_t), intent(out), target :: process
     type(process_library_t), intent(in), target :: lib
     type(string_t), intent(in) :: procname
-    class(model_data_t), intent(inout), pointer :: model
+    type(model_t), intent(in), target :: model
     type(os_data_t), intent(in) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
 
-    allocate (rng_test_factory_t :: rng_factory)
-
-    call process%init (procname, var_str (""), &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     allocate (phs_wood_config_t :: phs_config_template)
-    allocate (mci_none_t :: mci_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     call process%setup_test_cores (type_string = var_str ("template"))
 
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_none)
 
     call process%setup_terms ()
 
   end subroutine prepare_resonance_test_process
 
+  subroutine dispatch_mci_none (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_none_t :: mci)
+  end subroutine dispatch_mci_none
+ 
   subroutine process_instance_hook_test_init (hook, var_list, instance)
     class(process_instance_hook_test_t), intent(inout), target :: hook
     type(var_list_t), intent(in) :: var_list

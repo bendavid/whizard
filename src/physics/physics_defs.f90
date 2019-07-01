@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,6 +37,8 @@ module physics_defs
 
   real(default), parameter, public :: &
        conv = 0.38937966e12_default
+  real(default), parameter, public :: &
+       ns_per_mm = 1.e6_default / 299792458._default
   real(default), parameter, public :: &
        pb_per_fb = 1.e-3_default
   character(*), parameter, public :: &

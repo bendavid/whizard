@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -49,7 +49,7 @@ module prc_threshold
   use process_libraries
   use prc_core_def
   use prc_core
-  use prc_user_defined
+  use prc_external
 
   implicit none
   private
@@ -111,7 +111,7 @@ module prc_threshold
   end interface
 
 
-  type, extends (prc_user_defined_writer_t) :: threshold_writer_t
+  type, extends (prc_external_writer_t) :: threshold_writer_t
      integer :: nlo_type
   contains
     procedure :: write_makefile_extra => threshold_writer_write_makefile_extra
@@ -119,7 +119,7 @@ module prc_threshold
     procedure, nopass :: type_name => threshold_writer_type_name
   end type threshold_writer_t
 
-  type, extends (user_defined_driver_t) :: threshold_driver_t
+  type, extends (prc_external_driver_t) :: threshold_driver_t
     procedure(threshold_olp_eval2), nopass, pointer :: &
          olp_eval2 => null ()
     procedure(threshold_set_process_mode), nopass, pointer :: &
@@ -137,7 +137,7 @@ module prc_threshold
     procedure :: load => threshold_driver_load
   end type threshold_driver_t
 
-  type, extends (user_defined_def_t) :: threshold_def_t
+  type, extends (prc_external_def_t) :: threshold_def_t
      integer :: nlo_type
   contains
     procedure :: init => threshold_def_init
@@ -148,12 +148,12 @@ module prc_threshold
     procedure :: connect => threshold_def_connect
   end type threshold_def_t
 
-  type, extends (user_defined_state_t) :: threshold_state_t
+  type, extends (prc_external_state_t) :: threshold_state_t
   contains
     procedure :: write => threshold_state_write
   end type threshold_state_t
 
-  type, extends (prc_user_defined_base_t) :: prc_threshold_t
+  type, extends (prc_external_t) :: prc_threshold_t
      real(default), dimension(:,:), allocatable :: parray_ofs
      real(default), dimension(:,:), allocatable :: parray_ons
      integer :: leg
@@ -161,6 +161,7 @@ module prc_threshold
   contains
     procedure :: write => prc_threshold_write
     procedure :: write_name => prc_threshold_write_name
+    procedure :: set_beam_pol => prc_threshold_set_beam_pol
     procedure :: compute_amplitude => prc_threshold_compute_amplitude
     procedure :: allocate_workspace => prc_threshold_allocate_workspace
     procedure :: set_offshell_momenta => prc_threshold_set_offshell_momenta
@@ -171,8 +172,8 @@ module prc_threshold
     procedure :: compute_sqme_virt => prc_threshold_compute_sqme_virt
     procedure :: init => prc_threshold_init
     procedure :: activate_parameters => prc_threshold_activate_parameters
-    procedure :: create_and_load_extra_libraries => &
-         prc_threshold_create_and_load_extra_libraries
+    procedure :: prepare_external_code => &
+         prc_threshold_prepare_external_code
     procedure :: includes_polarization => prc_threshold_includes_polarization
   end type prc_threshold_t
 
@@ -367,6 +368,14 @@ contains
     write (u,"(1x,A)") "Core: Threshold"
   end subroutine prc_threshold_write_name
 
+  subroutine prc_threshold_set_beam_pol (object, has_beam_pol)
+    class(prc_threshold_t), intent(inout) :: object
+    logical, intent(in), optional :: has_beam_pol
+    if (present (has_beam_pol)) then
+       object%has_beam_pol = has_beam_pol
+    end if
+  end subroutine prc_threshold_set_beam_pol
+  
   function prc_threshold_compute_amplitude &
        (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
        core_state)  result (amp)
@@ -379,7 +388,7 @@ contains
     class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     complex(default) :: amp
     select type (core_state)
-    class is (user_defined_test_state_t)
+    class is (prc_external_test_state_t)
        core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
     end select
     amp = 0
@@ -535,7 +544,7 @@ contains
     end if
   end subroutine prc_threshold_activate_parameters
 
-  subroutine prc_threshold_create_and_load_extra_libraries &
+  subroutine prc_threshold_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_threshold_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -546,17 +555,17 @@ contains
     integer, intent(in) :: i_core
     logical, intent(in) :: is_nlo
     call msg_debug (D_ME_METHODS, &
-         "prc_threshold_create_and_load_extra_libraries")
+         "prc_threshold_prepare_external_code")
     if (allocated (core%driver)) then
        select type (driver => core%driver)
        type is (threshold_driver_t)
           if (driver%nlo_type == NLO_VIRTUAL) call driver%start_openloops ()
        end select
     else
-       call msg_bug ("prc_threshold_create_and_load_extra_libraries: " &
+       call msg_bug ("prc_threshold_prepare_external_code: " &
             // "driver is not allocated")
     end if
-  end subroutine prc_threshold_create_and_load_extra_libraries
+  end subroutine prc_threshold_prepare_external_code
 
   function prc_threshold_includes_polarization (object) result (polarized)
     logical :: polarized

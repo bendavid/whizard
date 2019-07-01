@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -675,7 +675,8 @@ contains
           call event%set ( &
                sqme_prc = event%instance%get_sqme (), &
                weight_prc = event%instance%get_weight (), &
-               excess_prc = event%instance%get_excess () &
+               excess_prc = event%instance%get_excess (), &
+               n_dropped = event%instance%get_n_dropped () &
                )
        end if
     end if

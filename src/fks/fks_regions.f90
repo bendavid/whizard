@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -65,9 +65,6 @@ module fks_regions
   public :: assignment(=)
   public :: create_resonance_histories_for_threshold
   public :: setup_region_data_for_test
-
-  integer, parameter, public :: N_MAX_ALR = 200
-  integer, parameter, public :: N_MAX_FLV = 50
 
   integer, parameter :: UNDEFINED_SPLITTING = 0
   integer, parameter :: F_TO_FV = 1
@@ -2527,7 +2524,8 @@ contains
   subroutine region_data_find_emitters (reg_data)
     class(region_data_t), intent(inout) :: reg_data
     integer :: alr, j, n_em, em
-    integer, dimension(N_MAX_ALR) :: em_count
+    integer, dimension(:), allocatable :: em_count
+    allocate (em_count(reg_data%n_regions))
     em_count = -1
     n_em = 0
 
@@ -2932,7 +2930,8 @@ contains
      if (latex) then
         call reg_data%write_latex (u)
         close (u)
-        call os_data_build_latex_file (os_data, proc_id // "_fks_regions", stat_out = status)
+        call os_data%build_latex_file &
+             (proc_id // "_fks_regions", stat_out = status)
         if (status /= 0) &
              call msg_error (char ("Failed to compile " // filename))
      else

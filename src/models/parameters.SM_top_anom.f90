@@ -1,6 +1,6 @@
 ! parameters.SM_top_anom.f90
 !
-! Copyright (C) 1999-2018 by 
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -8,13 +8,13 @@
 !     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -24,7 +24,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module parameters_sm_top_anom
   use kinds
-  use constants 
+  use constants
   use sm_physics !NODEP!
   implicit none
   private
@@ -40,7 +40,7 @@ module parameters_sm_top_anom
   real(default), public :: ltop, lbot, lc, ltau, lw
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
-       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 		
+       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, &
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww, &
        gvl_qbub_n, gvl_qw, gvl_qw_u, gvl_qw_d, &
        gsl_dttr, gsr_dttr, gsl_dttl, gsl_dbtl, &
@@ -49,24 +49,24 @@ module parameters_sm_top_anom
        n_tvaa, n_vlrz, n_tvaz, n_vlrw, n_tlrw, n_tvag, n_sph
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn, &
-       tvaa, tvaabb, vlrz, vlrcz, tvaz, tcvaz, tvazbb, tcvaa, &
-       vlrw, tlrw, tvag, tcvag, sph, &
+       tvaa, tvaabb, vlrz, vlrcz, vlruz, tvaz, tcvaz, tuvaz, tvazbb, tcvaa, tuvaa, &
+       vlrw, tlrw, tvag, tcvag, tuvag, sph, &
        gvlr_qbub, gvlr_qbub_u, gvlr_qbub_d, gvlr_qbub_e, &
        gvlr_qgug, gslr_dbtr
   integer, public :: fun_flag
   logical, public :: bz=.false., bw=.false., ba=.false.
 
   public :: import_from_whizard, model_update_alpha_s, &
-       gmom, gtva_tta, gtva_tca, &
-       gvlr_ttz, gvlr_tcz, gtva_ttz, gtva_tcz, gvlr_btw, gvlr_tbw, &
+       gmom, gtva_tta, gtva_tca, gtva_tua, gvlr_ttz, gvlr_tcz, gvlr_tuz, &
+       gtva_ttz, gtva_tcz, gtva_tuz, gvlr_btw, gvlr_tbw, &
        gtlr_btw, gtrl_tbw, gtlr_btwz, gtrl_tbwz, gtlr_btwa, gtrl_tbwa, &
        gtva_ttww, gtva_bba, gtva_bbz, gtva_bbww, &
-       gtva_ttg, gtva_ttgg, gtva_tcg, gtva_tcgg, gsp_tth
+       gtva_ttg, gtva_ttgg, gtva_tcg, gtva_tug, gtva_tcgg, gtva_tugg, gsp_tth
 
 contains
 
   subroutine import_from_whizard (par_array, scheme)
-    real(default), dimension(65), intent(in) :: par_array
+    real(default), dimension(73), intent(in) :: par_array
     integer, intent(in) :: scheme
     type :: parameter_set
        real(default) :: gf
@@ -94,14 +94,20 @@ contains
        real(default) :: taA
        real(default) :: tcvA
        real(default) :: tcaA
+       real(default) :: tuvA
+       real(default) :: tuaA
        real(default) :: vlZ
        real(default) :: vrZ
        real(default) :: vlcZ
        real(default) :: vrcZ
+       real(default) :: vluZ
+       real(default) :: vruZ
        real(default) :: tvZ
        real(default) :: taZ
        real(default) :: tcvZ
        real(default) :: tcaZ
+       real(default) :: tuvZ
+       real(default) :: tuaZ
        real(default) :: vlWRe
        real(default) :: vlWIm
        real(default) :: vrWRe
@@ -114,6 +120,8 @@ contains
        real(default) :: taG
        real(default) :: tcvG
        real(default) :: tcaG
+       real(default) :: tuvG
+       real(default) :: tuaG
        real(default) :: sH
        real(default) :: pH
        real(default) :: lam
@@ -165,46 +173,54 @@ contains
     par%taA    = par_array(23)
     par%tcvA   = par_array(24)
     par%tcaA   = par_array(25)
-    par%vlZ    = par_array(26)
-    par%vrZ    = par_array(27)
-    par%vlcZ   = par_array(28)
-    par%vrcZ   = par_array(29)
-    par%tvZ    = par_array(30)
-    par%taZ    = par_array(31)
-    par%tcvZ   = par_array(32)
-    par%tcaZ   = par_array(33)
-    par%vlWRe  = par_array(34)
-    par%vlWIm  = par_array(35)
-    par%vrWRe  = par_array(36)
-    par%vrWIm  = par_array(37)
-    par%tlWRe  = par_array(38)
-    par%tlWIm  = par_array(39)
-    par%trWRe  = par_array(40)
-    par%trWIm  = par_array(41)
-    par%tvG    = par_array(42)
-    par%taG    = par_array(43)
-    par%tcvG   = par_array(44)
-    par%tcaG   = par_array(45)
-    par%sH     = par_array(46)
-    par%pH     = par_array(47)
-    par%lam    = par_array(48)
-    par%fun    = par_array(49)
-    par%nrm    = par_array(50)
-    par%gi     = par_array(51)
-    par%re_CqW = par_array(52)
-    par%re_Cquqd1_1 = par_array(53)
-    par%im_Cquqd1_1 = par_array(54)
-    par%re_Cquqd1_2 = par_array(55)
-    par%im_Cquqd1_2 = par_array(56)
-    par%re_Cquqd8_1 = par_array(57)
-    par%im_Cquqd8_1 = par_array(58)
-    par%re_Cquqd8_2 = par_array(59)
-    par%im_Cquqd8_2 = par_array(60)
-    par%Rt     = par_array(61)
-    par%v      = par_array(62)
-    par%cw     = par_array(63)
-    par%sw     = par_array(64)
-    par%ee     = par_array(65)
+    par%tuvA   = par_array(26)
+    par%tuaA   = par_array(27)
+    par%vlZ    = par_array(28)
+    par%vrZ    = par_array(29)
+    par%vlcZ   = par_array(30)
+    par%vrcZ   = par_array(31)
+    par%vluZ   = par_array(32)
+    par%vruZ   = par_array(33)
+    par%tvZ    = par_array(34)
+    par%taZ    = par_array(35)
+    par%tcvZ   = par_array(36)
+    par%tcaZ   = par_array(37)
+    par%tuvZ   = par_array(38)
+    par%tuaZ   = par_array(39)
+    par%vlWRe  = par_array(40)
+    par%vlWIm  = par_array(41)
+    par%vrWRe  = par_array(42)
+    par%vrWIm  = par_array(43)
+    par%tlWRe  = par_array(44)
+    par%tlWIm  = par_array(45)
+    par%trWRe  = par_array(46)
+    par%trWIm  = par_array(47)
+    par%tvG    = par_array(48)
+    par%taG    = par_array(49)
+    par%tcvG   = par_array(50)
+    par%tcaG   = par_array(51)
+    par%tuvG   = par_array(52)
+    par%tuaG   = par_array(53)
+    par%sH     = par_array(54)
+    par%pH     = par_array(55)
+    par%lam    = par_array(56)
+    par%fun    = par_array(57)
+    par%nrm    = par_array(58)
+    par%gi     = par_array(59)
+    par%re_CqW = par_array(60)
+    par%re_Cquqd1_1 = par_array(61)
+    par%im_Cquqd1_1 = par_array(62)
+    par%re_Cquqd1_2 = par_array(63)
+    par%im_Cquqd1_2 = par_array(64)
+    par%re_Cquqd8_1 = par_array(65)
+    par%im_Cquqd8_1 = par_array(66)
+    par%re_Cquqd8_2 = par_array(67)
+    par%im_Cquqd8_2 = par_array(68)
+    par%Rt     = par_array(69)
+    par%v      = par_array(70)
+    par%cw     = par_array(71)
+    par%sw     = par_array(72)
+    par%ee     = par_array(73)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -229,9 +245,9 @@ contains
     tbot = 4.0_default * mass(5)**2 / mass(25)**2
     tch  = 4.0_default * mass(4)**2 / mass(25)**2
     ttau = 4.0_default * mass(15)**2 / mass(25)**2
-    tw   = 4.0_default * mass(24)**2 / mass(25)**2  
+    tw   = 4.0_default * mass(24)**2 / mass(25)**2
     ltop = 4.0_default * mass(6)**2 / mass(23)**2
-    lbot = 4.0_default * mass(5)**2 / mass(23)**2  
+    lbot = 4.0_default * mass(5)**2 / mass(23)**2
     lc   = 4.0_default * mass(4)**2 / mass(23)**2
     ltau = 4.0_default * mass(15)**2 / mass(23)**2
     lw   = 4.0_default * mass(24)**2 / mass(23)**2
@@ -311,14 +327,20 @@ contains
     tvaa(2)  = n_tvaa * par%taA * imago
     tcvaa(1) = n_tvaa * par%tcvA
     tcvaa(2) = n_tvaa * par%tcaA * imago
+    tuvaa(1) = n_tvaa * par%tuvA
+    tuvaa(2) = n_tvaa * par%tuaA * imago
     vlrz(1)  = n_vlrz * par%vlZ
     vlrz(2)  = n_vlrz * par%vrZ
     vlrcz(1) = n_vlrz * par%vlcZ
     vlrcz(2) = n_vlrz * par%vrcZ
+    vlruz(1) = n_vlrz * par%vluZ
+    vlruz(2) = n_vlrz * par%vruZ
     tvaz(1)  = n_tvaz * par%tvZ
     tvaz(2)  = n_tvaz * par%taZ * imago
     tcvaz(1) = n_tvaz * par%tcvZ
     tcvaz(2) = n_tvaz * par%tcaZ * imago
+    tuvaz(1) = n_tvaz * par%tuvZ
+    tuvaz(2) = n_tvaz * par%tuaZ * imago
     vlrw(1)  = n_vlrw * ( par%vlWRe + par%vlWIm * imago )
     vlrw(2)  = n_vlrw * ( par%vrWRe + par%vrWIm * imago )
     tlrw(1)  = n_tlrw * ( par%tlWRe + par%tlWIm * imago )
@@ -327,6 +349,8 @@ contains
     tvag(2)  = n_tvag * par%taG * imago
     tcvag(1) = n_tvag * par%tcvG
     tcvag(2) = n_tvag * par%tcaG * imago
+    tuvag(1) = n_tvag * par%tuvG
+    tuvag(2) = n_tvag * par%tuaG * imago
     sph(1)   = n_sph  * par%sH
     sph(2)   = n_sph  * par%pH  * imago
     tvaabb(1) = 0.0_default
@@ -448,7 +472,7 @@ contains
   subroutine model_update_alpha_s (alpha_s)
     real(default), intent(in) :: alpha_s
     gs = sqrt(2.0_default*PI*alpha_s)
-    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs     
+    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
   end subroutine model_update_alpha_s
 
   pure function gmom (k2, i, coeff, lam) result (c)
@@ -483,6 +507,13 @@ contains
     c = - gmom (k2, i, tcvaa, lambda)
   end function gtva_tca
 
+  pure function gtva_tua (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tuvaa, lambda)
+  end function gtva_tua
+
   pure function gtva_bba (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
@@ -504,6 +535,13 @@ contains
     c = - gmom (k2, i, vlrcz, lambda)
   end function gvlr_tcz
 
+  pure function gvlr_tuz (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, vlruz, lambda)
+  end function gvlr_tuz
+
   pure function gtva_ttz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
@@ -517,6 +555,13 @@ contains
     integer, intent(in) :: i
     c = - gmom (k2, i, tcvaz, lambda)
   end function gtva_tcz
+
+  pure function gtva_tuz (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tuvaz, lambda)
+  end function gtva_tuz
 
   pure function gtva_bbz (k2, i) result (c)
     complex(default) :: c
@@ -633,6 +678,13 @@ contains
     c = - gmom (k2, i, tcvag, lambda)
   end function gtva_tcg
 
+  pure function gtva_tug (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tuvag, lambda)
+  end function gtva_tug
+
   pure function gtva_tcgg (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
@@ -640,6 +692,14 @@ contains
     !!! don't touch this relative factor: fixed by ward identity!
     c = - gtva_tcg(k2, i)
   end function gtva_tcgg
+
+  pure function gtva_tugg (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - gtva_tug(k2, i)
+  end function gtva_tugg
 
   pure function gsp_tth (k2, i) result (c)
     complex(default) :: c

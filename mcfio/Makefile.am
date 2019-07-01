@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by 
+# Copyright (C) 1999-2019 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -28,8 +28,9 @@
 ########################################################################
 
 ## The files in this directory end up in an auxiliary libtool library.
-AM_FCFLAGS=
-AM_FFLAGS=
+AM_FCFLAGS =
+AM_FFLAGS =
+AM_CFLAGS = $(RPC_CFLAGS)
 
 noinst_LTLIBRARIES = libwo_mcfio.la
 

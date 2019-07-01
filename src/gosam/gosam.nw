@@ -501,10 +501,10 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 @ %def prc_gosam_prepare_library
 @
 <<prc gosam: prc gosam: TBP>>=
-  procedure :: create_and_load_extra_libraries => &
-       prc_gosam_create_and_load_extra_libraries
+  procedure :: prepare_external_code => &
+       prc_gosam_prepare_external_code
 <<prc gosam: procedures>>=
-  subroutine prc_gosam_create_and_load_extra_libraries &
+  subroutine prc_gosam_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_gosam_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -521,9 +521,9 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call core%set_particle_properties (model)
     call core%set_electroweak_parameters (model)
     call core%print_parameter_file (i_core)
-  end subroutine prc_gosam_create_and_load_extra_libraries
+  end subroutine prc_gosam_prepare_external_code
 
-@ %def prc_gosam_create_and_load_extra_libraries
+@ %def prc_gosam_prepare_external_code
 @
 <<prc gosam: prc gosam: TBP>>=
   procedure :: write_makefile => prc_gosam_write_makefile
@@ -707,7 +707,7 @@ in the addition of 1.
     integer :: pos_real, pos_imag
     real(double) :: acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_spin_c(i_flv, i_hel) > 0) then
+    if (object%i_spin_c(i_flv, i_hel) >= 0) then
        me_sc = cmplx (zero ,zero, kind=default)
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &

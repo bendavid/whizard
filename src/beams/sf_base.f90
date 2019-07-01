@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -315,8 +315,7 @@ module sf_base
   end interface
 
   abstract interface
-     subroutine sf_int_inverse_kinematics (sf_int, x, xb, f, r, rb, map, &
-          set_momenta)
+     subroutine sf_int_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), dimension(:), intent(in) :: x
@@ -1553,7 +1552,8 @@ contains
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), &
+                          set_momenta = c==1)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -1613,7 +1613,8 @@ contains
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), &
+                          set_momenta = .false.)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)

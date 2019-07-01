@@ -34,6 +34,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ------------------------------------------------------------------------
  Current event: [undefined]
 ------------------------------------------------------------------------
@@ -57,6 +58,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 
  MCI set #1:
    Components:
@@ -71,6 +73,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ========================================================================
 
 * Initialize raw event file
@@ -110,6 +113,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ------------------------------------------------------------------------
  Current event: [undefined]
 ------------------------------------------------------------------------
@@ -133,6 +137,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 
  MCI set #1:
    Components:
@@ -147,6 +152,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ------------------------------------------------------------------------
  Process #2:
    Process   = 'simulation_9p'
@@ -164,6 +170,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 
  MCI set #1:
    Components:
@@ -178,6 +185,7 @@
      negative weight = 0
      zero weight     = 0
      excess weight   = 0
+   Events dropped    = 0
 ========================================================================
 
 * Attempt to re-read the events (should fail)

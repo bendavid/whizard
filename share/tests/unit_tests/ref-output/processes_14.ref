@@ -8,7 +8,7 @@
 
 ========================================================================
  Process [scattering]: 'processes7'
-   Run ID        = 'run7'
+   Run ID        = ''
    Library name  = 'processes7'
    Process index = 1
    Process components:
@@ -23,12 +23,13 @@
    Number of MCI configurations = 1
    Model = Test
    QCD parameters (coupling undefined)
-   RNG factory: test (1)
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
 ------------------------------------------------------------------------
-   MD5 sum (config)  = '810F88AFCD3DF5A704EE97EB57BCBFA4'
+   MD5 sum (config)  = 'E2FA37AD38C2FD6DB9F6076D8C7DFCED'
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------
@@ -101,7 +102,7 @@
    MC input parameters   = 4
    MC parameters (SF)    = 2
    MC parameters (PHS)   = 2
-   MD5 sum (components)  = 'ED4C9005CF385101C22D36D8743BEA19'
+   MD5 sum (components)  = 'A00F41FC394814680916C1C93D1B3403'
  Call statistics (current run): [no calls]
 ========================================================================
 

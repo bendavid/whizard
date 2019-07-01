@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -53,7 +53,7 @@ module blha_olp_interfaces
   use prc_core_def
   use prc_core
 
-  use prc_user_defined
+  use prc_external
 
   use blha_config
 
@@ -107,6 +107,7 @@ module blha_olp_interfaces
     integer :: ew_scheme
   contains
     procedure :: write => blha_template_write
+    procedure :: get_n_hel => blha_template_get_n_hel
     procedure :: init => blha_template_init
     procedure :: set_born => blha_template_set_born
     procedure :: set_real_trees => blha_template_set_real_trees
@@ -126,7 +127,7 @@ module blha_olp_interfaces
     procedure :: reset => blha_template_reset
   end type blha_template_t
 
-  type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
+  type, abstract, extends (prc_external_t) :: prc_blha_t
     integer :: n_particles
     integer :: n_hel
     integer :: n_proc
@@ -136,6 +137,7 @@ module blha_olp_interfaces
     logical, dimension(3) :: ew_parameter_mask
     integer :: sqme_tree_pos
   contains
+    procedure, nopass :: uses_blha => prc_blha_uses_blha
     procedure :: create_momentum_array => prc_blha_create_momentum_array
     procedure :: set_alpha_qed => prc_blha_set_alpha_qed
     procedure :: set_GF => prc_blha_set_GF
@@ -162,7 +164,7 @@ module blha_olp_interfaces
         init_driver
   end type prc_blha_t
 
-  type, abstract, extends (user_defined_driver_t) :: blha_driver_t
+  type, abstract, extends (prc_external_driver_t) :: blha_driver_t
     type(string_t) :: contract_file
     type(string_t) :: nlo_suffix
     logical :: include_polarizations = .false.
@@ -203,7 +205,7 @@ module blha_olp_interfaces
     procedure :: read_contract_file => blha_driver_read_contract_file
   end type blha_driver_t
 
-  type, abstract, extends (prc_user_defined_writer_t) :: prc_blha_writer_t
+  type, abstract, extends (prc_external_writer_t) :: prc_blha_writer_t
     type(blha_configuration_t) :: blha_cfg
   contains
     procedure :: write => prc_blha_writer_write
@@ -211,13 +213,13 @@ module blha_olp_interfaces
     procedure :: get_n_proc => prc_blha_writer_get_n_proc
   end type prc_blha_writer_t
 
-  type, abstract, extends (user_defined_def_t) :: blha_def_t
+  type, abstract, extends (prc_external_def_t) :: blha_def_t
     type(string_t) :: suffix
   contains
   
   end type blha_def_t
 
-  type, abstract, extends (user_defined_state_t) :: blha_state_t
+  type, abstract, extends (prc_external_state_t) :: blha_state_t
   contains
     procedure :: reset_new_kinematics => blha_state_reset_new_kinematics
   end type blha_state_t
@@ -380,6 +382,27 @@ contains
        blha_template%use_internal_color_correlations
   end subroutine blha_template_write
 
+  function blha_template_get_n_hel (blha_template, pdg, model) result (n_hel)
+    class(blha_template_t), intent(in) :: blha_template
+    integer, dimension(:), intent(in) :: pdg
+    class(model_data_t), intent(in), target :: model
+    integer :: n_hel
+    type(flavor_t) :: flv
+    integer :: f
+    n_hel = 1
+    if (blha_template%include_polarizations) then
+       do f = 1, size (pdg)
+          call flv%init (pdg(f), model)
+          n_hel = n_hel * flv%get_multiplicity ()
+       end do
+    end if
+  end function blha_template_get_n_hel
+  
+  function prc_blha_uses_blha () result (flag)
+    logical :: flag
+    flag = .true.
+  end function prc_blha_uses_blha
+  
   subroutine blha_state_reset_new_kinematics (object)
     class(blha_state_t), intent(inout) :: object
     object%new_kinematics = .true.
@@ -1093,8 +1116,8 @@ contains
        else
           allocate (object%i_virt (n_flv, 1), object%i_color_c (n_flv, 1))
        end if
-       object%i_virt = 0
-       object%i_color_c = 0
+       object%i_virt = -1
+       object%i_color_c = -1
     else if (blha_template%compute_subtraction ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_tree (n_flv, n_hel), &
@@ -1106,9 +1129,9 @@ contains
           allocate (object%i_tree (n_flv, 1), object%i_color_c (n_flv, 1) , &
                object%i_spin_c (n_flv, 1))
        end if
-       object%i_tree = 0
-       object%i_color_c = 0
-       object%i_spin_c = 0
+       object%i_tree = -1
+       object%i_color_c = -1
+       object%i_spin_c = -1
     else if (blha_template%compute_real_trees () .or. blha_template%compute_born () &
            .or. blha_template%compute_dglap ()) then
        if (blha_template%include_polarizations) then
@@ -1118,7 +1141,7 @@ contains
        else
           allocate (object%i_tree (n_flv, 1))
        end if
-       object%i_tree = 0
+       object%i_tree = -1
     end if
 
     call object%init_ew_parameters (blha_template%ew_scheme)
@@ -1202,7 +1225,7 @@ contains
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
-    if (object%i_virt(i_flv, i_hel) > 0) then
+    if (object%i_virt(i_flv, i_hel) >= 0) then
        allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
        call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
        call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
@@ -1243,7 +1266,7 @@ contains
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
     real(double) :: mu_dble, acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_tree(i_flv, i_hel) > 0) then
+    if (object%i_tree(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
             call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
@@ -1317,7 +1340,7 @@ contains
     real(double), dimension(size(rr)) :: r
     real(default) :: alpha_s, acc
     real(double) :: mu_dble, acc_dble
-    if (object%i_color_c(i_flv, i_hel) > 0) then
+    if (object%i_color_c(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
           call msg_fatal ("prc_blha_compute_sqme_color_c: ren_scale vanishes")

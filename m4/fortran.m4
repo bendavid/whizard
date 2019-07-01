@@ -133,13 +133,20 @@ esac
 FC_VERSION="$wo_cv_fc_version"
 AC_SUBST([FC_VERSION])
 
-### Catch insufficient object-orientation in gfortran 4.5/4.6
-if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.4"; then
-FC_IS_GFORTRAN_4567="yes"
+### Veto old versions of gfortran 4.5/4.6/4.7/4.8/4.9
+if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.0"  || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.1"  || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.5" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.4"; then
+FC_IS_GFORTRAN_4="yes"
   else
-FC_IS_GFORTRAN_4567="no"
+FC_IS_GFORTRAN_4="no"
 fi
-AC_SUBST([FC_IS_GFORTRAN_4567])
+### Veto buggy version of gfortran 6.5
+if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "6.5.0"; then
+FC_IS_GFORTRAN_65="yes"
+  else
+FC_IS_GFORTRAN_65="no"
+fi
+AC_SUBST([FC_IS_GFORTRAN_4])
+AC_SUBST([FC_IS_GFORTRAN_65])
 AC_SUBST([FC_IS_NAG])
 
 ### Catch old ifort version 15.0.0/1/2/3 and 16.0/1/2/3
@@ -158,6 +165,14 @@ FC_IS_IFORT170123="no"
 fi
 AC_SUBST([FC_IS_IFORT170123])
 
+### Catch buggy ifort version 19.0.0
+if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.0"; then
+FC_IS_IFORT1900="yes"
+  else
+FC_IS_IFORT1900="no"
+fi
+AC_SUBST([FC_IS_IFORT1900])
+
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
 [wo_cv_fc_major_version=[`echo $wo_cv_fc_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
@@ -168,12 +183,21 @@ AC_SUBST([FC_MAJOR_VERSION])
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
 
-AC_DEFUN([WO_FC_VETO_GFORTRAN_4567],
+AC_DEFUN([WO_FC_VETO_GFORTRAN_4],
 [dnl
-if test "$FC_IS_GFORTRAN_4567" = "yes"; then
-AC_MSG_NOTICE([error: ***************************************************************])
-AC_MSG_NOTICE([error: gfortran 4.5/4.6/4.7 object orientation support insufficient.])
-AC_MSG_ERROR([***************************************************************])
+if test "$FC_IS_GFORTRAN_4" = "yes"; then
+AC_MSG_NOTICE([error: ****************************************])
+AC_MSG_NOTICE([error: gfortran 4.X is too old, please upgrade.])
+AC_MSG_ERROR([****************************************])
+fi 
+])
+
+AC_DEFUN([WO_FC_VETO_GFORTRAN_65],
+[dnl
+if test "$FC_IS_GFORTRAN_65" = "yes"; then
+AC_MSG_NOTICE([error: ******************************************************])
+AC_MSG_NOTICE([error: gfortran 6.5 is buggy, please use a different version.])
+AC_MSG_ERROR([******************************************************])
 fi 
 ])
 
@@ -192,6 +216,15 @@ if test "$FC_IS_IFORT170123" = "yes"; then
 AC_MSG_NOTICE([error: ***************************************************************])
 AC_MSG_NOTICE([error: ifort v17.0.01/2/3 suffers from severe compiler bugs, disabled.])
 AC_MSG_ERROR([***************************************************************])
+fi 
+])
+
+AC_DEFUN([WO_FC_VETO_IFORT_1900],
+[dnl
+if test "$FC_IS_IFORT1900" = "yes"; then
+AC_MSG_NOTICE([error: **********************************************************])
+AC_MSG_NOTICE([error: ifort v19.0.0 suffers from severe compiler bugs, disabled.])
+AC_MSG_ERROR([**********************************************************])
 fi 
 ])
 

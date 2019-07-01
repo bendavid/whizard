@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -139,6 +139,7 @@ contains
             factor = log (sb * template%delta_i / z / fac_scale2) / onemz + two * log (onemz) / onemz
             factor_soft = log (sb * template%delta_i / fac_scale2) / onemz + two * log (onemz) / onemz
             xb = dglap%isr_kinematics%x(emitter)
+            ! TODO sbrass rescale xi_cut to [0, xi_max]
             plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / fac_scale2) &
                  + (log (one - xb)**2 - log (template%xi_cut)**2)
             if (is_gluon(dglap%flv_in(emitter, i_flv))) then

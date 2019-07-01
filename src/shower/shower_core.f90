@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -132,21 +132,24 @@ module shower_core
 
 contains
 
-  subroutine shower_init (shower, settings, taudec_settings, pdf_data)
+  subroutine shower_init (shower, settings, taudec_settings, pdf_data, os_data)
     class(shower_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
     type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
+    type(os_data_t), intent(in) :: os_data
     call msg_debug (D_SHOWER, "shower_init")
     shower%settings = settings
     shower%taudec_settings = taudec_settings
+    shower%os_data = os_data
     call shower%pdf_data%init (pdf_data)
     shower%name = "WHIZARD internal"
     call shower%write_msg ()
   end subroutine shower_init
 
-  subroutine shower_prepare_new_event (shower)
+  subroutine shower_prepare_new_event (shower, fac_scale, alpha_s)
     class(shower_t), intent(inout) :: shower
+    real(default), intent(in) :: fac_scale, alpha_s
     call shower%cleanup ()
     shower%next_free_nr = 1
     shower%next_color_nr = 1
@@ -165,9 +168,8 @@ contains
     shower%valid = .true.
   end subroutine shower_prepare_new_event
 
-  subroutine shower_activate_multiple_interactions (shower, os_data)
+  subroutine shower_activate_multiple_interactions (shower)
     class(shower_t), intent(inout) :: shower
-    type(os_data_t), intent(in) :: os_data
     if (shower%mi%is_initialized ()) then
        call shower%mi%restart ()
     else
@@ -175,7 +177,7 @@ contains
             GeV2_scale_cutoff=shower%settings%min_virtuality, &
             GeV2_s=shower_interaction_get_s &
             (shower%interactions(1)%i), &
-            muli_dir=char(os_data%whizard_mulipath))
+            muli_dir=char(shower%os_data%whizard_mulipath))
     end if
     call shower%mi%apply_initial_interaction ( &
          GeV2_s=shower_interaction_get_s(shower%interactions(1)%i), &
@@ -187,11 +189,9 @@ contains
          n2=shower%interactions(1)%i%partons(2)%p%parent%nr)
   end subroutine shower_activate_multiple_interactions
 
-  subroutine shower_import_particle_set (shower, particle_set, os_data, scale)
+  subroutine shower_import_particle_set (shower, particle_set)
     class(shower_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
-    type(os_data_t), intent(in) :: os_data
-    real(default), intent(in) :: scale
     !integer, dimension(:), allocatable :: connections
     type(parton_t), dimension(:), allocatable, target, save :: partons, hadrons
     type(parton_pointer_t), dimension(:), allocatable :: &
@@ -205,7 +205,7 @@ contains
     call shower%update_max_color_nr (1 + max_color_nr)
     call shower%add_interaction_2ton (parton_pointers)
     if (shower%settings%muli_active) then
-       call shower%activate_multiple_interactions (os_data)
+       call shower%activate_multiple_interactions ()
     end if
     call msg_debug2 (D_SHOWER, 'shower%write() after shower_import_particle_set')
     if (debug2_active (D_SHOWER)) then

@@ -2,7 +2,52 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.6.4
+	Version 2.7.0
+
+2019-01-21
+	RELEASE: version 2.7.0
+
+2018-12-18
+	Support RECOLA for integrated und unintegrated subtractions
+
+2018-12-11
+	FCNC top-up sector in model SM_top_anom
+
+2018-12-05
+	Use libtirpc instead of SunRPC on Arch Linux etc.
+
+2018-11-30
+	Display rescaling factor for weighted event samples with cuts
+
+2018-11-29
+	Reintroduce check against different masses in flavor sums
+	Bug fix for wrong couplings in the Littlest Higgs model(s)
+
+2018-11-22
+	Bug fix for rescanning events with beam structure
+
+2018-11-09
+	Major refactoring of internal process data
+
+2018-11-02
+	PYTHIA8 interface
+
+2018-10-29
+        Flat phase space parametrization with RAMBO (on diet) implemented
+
+2018-10-17
+	Revise extended test suite
+
+2018-09-27
+	Process container for RECOLA processes
+
+2018-09-15
+	Fixes by M. Berggren for PYTHIA6 interface
+
+2018-09-14
+	First fixes after HepForge modernization
+
+##################################################################
 
 2018-08-23
 	RELEASE: version 2.6.4
@@ -37,7 +82,7 @@ Use svn log to see detailed changes.
 	Extended QCD NLO test suite
 
 2018-04-09
-	Bugfix for Higgs Singlet Extension model
+	Bug fix for Higgs Singlet Extension model
 
 2018-04-06
 	Workspace subdirectory for process generation and compilation
@@ -471,7 +516,7 @@ Use svn log to see detailed changes.
 
 2015-08-11
 	RELEASE: version 2.2.7
-	
+
 2015-08-10
 	Infrastructure for damped POWHEG
 	Massive emitters in POWHEG
@@ -487,25 +532,25 @@ Use svn log to see detailed changes.
 	Revalidation of ILC WHIZARD-PYTHIA event chain
 	Extended test suite for showered events
 	Alpha version of massive FSR for POWHEG
-	
+
 2015-06-09
 	Fix memory leak in interaction for long cascades
 	Catch mismatch between beam definition and CIRCE2 spectrum
-	
+
 2015-06-08
 	Automated POWHEG matching: beta version
 	Infrastructure for GKS matching
 	Alpha version of fixed-order NLO events
 	CIRCE2 polarization averaged spectra with
 	   explicitly polarized beams
-	
+
 2015-05-12
 	Abstract matching type: OO structure for matching/merging
-	
+
 2015-05-07
 	Bug fix in event record WHIZARD-PYTHIA6 transferral
 	Gaussian beam spectra for lepton colliders
-	
+
 ##################################################################
 
 2015-05-02
@@ -513,24 +558,24 @@ Use svn log to see detailed changes.
 
 2015-05-01
 	Models for (unitarized) tensor resonances in VBS
-	
+
 2015-04-28
 	Bug fix in channel weights for event generation.
-	
+
 2015-04-18
 	Improved event record transfer WHIZARD/PYTHIA6
 
 2015-03-19
 	POWHEG matching: alpha version
-	
+
 ##################################################################
-	
+
 2015-02-27
 	RELEASE: version 2.2.5
 
 2015-02-26
 	Abstract types for quantum numbers
-	
+
 2015-02-25
 	Read-in of StdHEP events, self-tests
 	

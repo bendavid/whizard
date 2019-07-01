@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -88,7 +88,6 @@ module beams
      procedure :: init_momenta => beam_data_init_momenta
      procedure :: compute_md5sum => beam_data_compute_md5sum
      procedure :: init_decay => beam_data_init_decay
-     procedure :: masses_are_consistent => beam_data_masses_are_consistent
   end type beam_data_t
 
   type :: beam_t
@@ -462,12 +461,6 @@ contains
     end if
     if (present (rest_frame))  beam_data%lab_is_cm_frame = rest_frame
   end subroutine beam_data_init_decay
-
-  function beam_data_masses_are_consistent (beam_data) result (flag)
-    logical :: flag
-    class(beam_data_t), intent(in) :: beam_data
-    flag = all (nearly_equal (beam_data%mass, beam_data%flv%get_mass ()))
-  end function beam_data_masses_are_consistent
 
   subroutine beam_init (beam, beam_data)
     type(beam_t), intent(out) :: beam

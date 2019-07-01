@@ -53,18 +53,21 @@ with open(filename, 'r') as infile:
   for region in regions:
     mean = sum_weights[region] / NN[region]
     print 'region', region
-    print 'NN', NN[region]
-    print 'sum_weights', sum_weights[region]
-    print 'mean', mean
+    print 'NN:', NN[region]
+    print 'sum_weights:', sum_weights[region]
+    print 'mean:', mean
     print 50 * '-'
   print 'Overall'
   mean = sum(sum_weights) / sum(NN)
-  print 'mean', mean
-  print 'abs(mean - xsec)', abs(mean-xsec)
+  print 'mean:', mean
+  print 'abs(mean - xsec):', abs(mean-xsec)
+  print 'error:', error
   pull = abs(mean-xsec) / error
-  print 'pull', pull
+  print 'pull:', pull
   valid = pull < 3
+  print 'valid:', valid
   print 'End file ' + filename
 
 returncode = 0 if valid else 1
+print 'returncode:', returncode
 sys.exit(returncode)

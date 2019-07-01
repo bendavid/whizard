@@ -50,7 +50,6 @@ WHIZARD:
 
 -- PYTHIA8 for hadronization and showering. It is available
    from http://home.thep.lu.se/~torbjorn/Pythia.html
-   [not yet functional]
 
 -- LHAPDF for proton, pion and photon structure functions. 
    You can get it from: http://projects.hepforge.org/lhapdf

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -105,7 +105,8 @@ contains
   real(default) function vamp2_test_func_2_evaluate_func (self, x) result (f)
     class(vamp2_test_func_2_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
-    f = 4. * sin(pi * self%xi(1, 1))**2 * sin(pi * self%xi(2, 1))**2 + 2. * sin(pi * self%xi(2, 2))**2
+    f = 4. * sin(pi * self%xi(1, 1))**2 * sin(pi * self%xi(2, 1))**2 &
+         + 2. * sin(pi * self%xi(2, 2))**2
   end function vamp2_test_func_2_evaluate_func
 
   subroutine vamp2_test_func_3_evaluate_maps (self, x)

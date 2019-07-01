@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -63,10 +63,11 @@ module instances
   use phs_fks
   use blha_olp_interfaces, only: prc_blha_t
   use blha_config, only: BLHA_AMP_COLOR_C
-  use prc_user_defined, only: prc_user_defined_base_t, user_defined_state_t
+  use prc_external, only: prc_external_t, prc_external_state_t
   use prc_threshold, only: prc_threshold_t
   use blha_olp_interfaces, only: blha_result_array_size
   use prc_openloops, only: prc_openloops_t, openloops_state_t
+  use prc_recola, only: prc_recola_t
   use blha_olp_interfaces, only: blha_color_c_fill_offdiag, blha_color_c_fill_diag
 
   use ttv_formfactors, only: m1s_to_mpole
@@ -75,7 +76,6 @@ module instances
   use process_counter
   use pcm_base
   use pcm
-  use core_manager
   use process_config
   use process_mci
   use process
@@ -193,6 +193,7 @@ module instances
      real(default) :: sqme = 0
      real(default) :: weight = 0
      real(default) :: excess = 0
+     integer :: n_dropped = 0
      integer :: i_mci = 0
      integer :: selected_channel = 0
      type(sf_chain_t) :: sf_chain
@@ -276,11 +277,12 @@ module instances
      procedure :: get_sqme => process_instance_get_sqme
      procedure :: get_weight => process_instance_get_weight
      procedure :: get_excess => process_instance_get_excess
+     procedure :: get_n_dropped => process_instance_get_n_dropped
      procedure :: get_channel => process_instance_get_channel
      procedure :: set_fac_scale => process_instance_set_fac_scale
      procedure :: get_fac_scale => process_instance_get_fac_scale
      procedure :: get_alpha_s => process_instance_get_alpha_s
-     procedure :: get_qcd_ptr => process_instance_get_qcd_ptr
+     procedure :: get_qcd => process_instance_get_qcd
      procedure :: reset_counter => process_instance_reset_counter
      procedure :: record_call => process_instance_record_call
      procedure :: get_counter => process_instance_get_counter
@@ -430,16 +432,14 @@ contains
     logical :: me_already_squared, keep_fs_flavors
     logical :: decrease_n_tot
     logical :: requires_extended_sf
-
     me_already_squared = .false.
     keep_fs_flavors = .false.
-
     term%config => process%get_term_ptr (i_term)
     term%int_hard = term%config%int
     core => process%get_core_term (i_term)
     call core%allocate_workspace (term%core_state)
     select type (core)
-    class is (prc_user_defined_base_t)
+    class is (prc_external_t)
        call reduce_interaction (term%int_hard, &
             core%includes_polarization (), .true., .false.)
        me_already_squared = .true.
@@ -551,7 +551,7 @@ contains
          (process%get_var_list_ptr (), beam_config%data)
 
     select type (core)
-    class is (prc_user_defined_base_t)
+    class is (prc_external_t)
        select type (pcm_instance => term%pcm_instance)
        type is (pcm_instance_nlo_t)
           associate (is_born => .not. (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction ()))
@@ -576,7 +576,7 @@ contains
      class(prc_core_t), intent(in) :: core
      logical, intent(in) :: me_squared
      select type (core)
-     class is (prc_user_defined_base_t)
+     class is (prc_external_t)
         val = me_squared .and. .not. core%includes_polarization ()
      class default
         val = .false.
@@ -609,7 +609,7 @@ contains
      mask_h (n_in + 1 : ) = .true.
      call qn_mask%init (mask_f, mask_c, mask_h)
      call int%reduce_state_matrix (qn_mask, keep_order = .true.)
-   end subroutine
+   end subroutine reduce_interaction
 
   subroutine setup_qn_index (qn_index, int, pcm_instance, n_sub, is_born, is_polarized)
     type(qn_index_map_t), intent(out) :: qn_index
@@ -1610,7 +1610,7 @@ contains
          "term_instance_evaluate_interaction")
     term%p_hard = term%int_hard%get_momenta ()
     select type (core)
-    class is (prc_user_defined_base_t)
+    class is (prc_external_t)
        call term%evaluate_interaction_userdef (core)
     class default
        call term%evaluate_interaction_default (core)
@@ -1647,9 +1647,9 @@ contains
           if (allocated (core_state%threshold_data)) &
                call evaluate_threshold_parameters (core_state, core, term%k_term%phs%get_sqrts ())
        end select
-    class is (user_defined_state_t)
+    class is (prc_external_state_t)
        select type (core)
-       class is (prc_user_defined_base_t)
+       class is (prc_external_t)
           call core%compute_alpha_s (core_state, term%ren_scale)
        end select
     end select
@@ -1727,8 +1727,8 @@ contains
     do i_flv = 1, n_flv
        do i_hel = 1, n_hel
           select type (core)
-          class is (prc_user_defined_base_t)
-             call core%update_alpha_s (term%core_state, term%fac_scale)
+          class is (prc_external_t)
+             call core%update_alpha_s (term%core_state, term%ren_scale)
              call core%compute_sqme (i_flv, i_hel, term%p_hard, term%ren_scale, &
                   sqme, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
@@ -1750,12 +1750,17 @@ contains
              sqme_color_c = zero
              select type (core)
              class is (prc_blha_t)
-                call core%compute_sqme_color_c_raw (i_flv, i_hel, term%p_hard, term%ren_scale, &
-                     sqme_color_c, bad_point)
+                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                     term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                call term%pcm_instance%set_bad_point (bad_point)
+             class is (prc_recola_t)
+                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                     term%p_hard, term%ren_scale, sqme_color_c, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
              end select
              do i_sub = 1, n_sub_color
-                i_color_c = term%hard_qn_index%get_index (i_flv, i_hel, i_sub + n_pdf_off)
+                i_color_c = term%hard_qn_index%get_index &
+                     (i_flv, i_hel, i_sub + n_pdf_off)
                 term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
              end do
              if (n_sub_spin > 0) then
@@ -1768,8 +1773,14 @@ contains
                       do i_emitter = 1, config%region_data%n_emitters
                          emitter = config%region_data%emitters(i_emitter)
                          if (emitter > 0) then
-                            call core%compute_sqme_spin_c (i_flv, i_hel, emitter, &
-                                 term%p_hard, term%ren_scale, sqme_spin_c_tmp, bp)
+                            call core%compute_sqme_spin_c &
+                                 (i_flv, &
+                                 i_hel, &
+                                 emitter, &
+                                 term%p_hard, &
+                                 term%ren_scale, &
+                                 sqme_spin_c_tmp, &
+                                 bp)
                             sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
                             bad_point = bad_point .or. bp
                          end if
@@ -1778,7 +1789,8 @@ contains
                    do i_sub = 1, n_sub_spin
                       i_spin_c = term%hard_qn_index%get_index (i_flv, i_hel, &
                            i_sub + n_pdf_off + n_sub_color)
-                      term%amp(i_spin_c) = cmplx (sqme_spin_c(i_sub), 0, default)
+                      term%amp(i_spin_c) = cmplx &
+                           (sqme_spin_c(i_sub), 0, default)
                    end do
                 end select
                 deallocate (sqme_spin_c)
@@ -1807,7 +1819,7 @@ contains
     do i_flv = 1, n_flv
        do i_hel = 1, n_hel
           select type (core)
-          class is (prc_user_defined_base_t)
+          class is (prc_external_t)
              call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
                   term%ren_scale, sqme_virt, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
@@ -1821,13 +1833,27 @@ contains
           type is (pcm_nlo_t)
              select type (core)
              class is (prc_blha_t)
-                call core%compute_sqme_color_c_raw (i_flv, i_hel, term%p_hard, term%ren_scale, &
+                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                     term%p_hard, term%ren_scale, &
                      sqme_color_c, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
                 do i_sub = 1 + i_virt, n_sub
-                   i_color_c = term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = i_sub)
+                   i_color_c = term%hard_qn_index%get_index &
+                        (i_flv, i_hel = i_hel, i_sub = i_sub)
                    ! Index shift: i_sub - i_virt
-                   term%amp(i_color_c) = cmplx (sqme_color_c(i_sub - i_virt), 0, default)
+                   term%amp(i_color_c) = &
+                        cmplx (sqme_color_c(i_sub - i_virt), 0, default)
+                end do
+             type is (prc_recola_t)
+                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                     term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                call term%pcm_instance%set_bad_point (bad_point)
+                do i_sub = 1 + i_virt, n_sub
+                   i_color_c = term%hard_qn_index%get_index &
+                        (i_flv, i_hel = i_hel, i_sub = i_sub)
+                   ! Index shift: i_sub - i_virt
+                   term%amp(i_color_c) = &
+                        cmplx (sqme_color_c(i_sub - i_virt), 0, default)
                 end do
              end select
           end select
@@ -2077,6 +2103,7 @@ contains
     integer :: i
     class(pcm_t), pointer :: pcm
     type(process_term_t) :: term
+    type(var_list_t), pointer :: var_list
     integer :: i_born, i_real, i_real_fin
     call msg_debug (D_PROCESS_INTEGRATION, "process_instance_init")
     instance%process => process
@@ -2097,15 +2124,17 @@ contains
        !!! but set up the pcm_instance each time.
        i_real_fin = process%get_associated_real_fin (1)
        if (.not. pcm%initialized) then
-          i_born = process%get_i_core_nlo_type (BORN)
-          i_real = process%get_i_core_nlo_type (NLO_REAL, include_sub = .false.)
+!          i_born = pcm%get_i_core_nlo_type (BORN)
+          i_born = pcm%get_i_core (pcm%i_born)
+!          i_real = pcm%get_i_core_nlo_type (NLO_REAL, include_sub = .false.)
+!          i_real = pcm%get_i_core_nlo_type (NLO_REAL)
+          i_real = pcm%get_i_core (pcm%i_real)
           term = process%get_term_ptr (process%get_i_term (i_real))
           call pcm%init_qn (process%get_model_ptr ())
           if (i_real_fin > 0) call pcm%allocate_ps_matching ()
-          associate (var_list => process%get_var_list_ptr ())
-             if (var_list%get_sval (var_str ("$dalitz_plot")) /= var_str ('')) &
-                  call pcm%activate_dalitz_plot (var_list%get_sval (var_str ("$dalitz_plot")))
-          end associate
+          var_list => process%get_var_list_ptr ()
+          if (var_list%get_sval (var_str ("$dalitz_plot")) /= var_str ('')) &
+               call pcm%activate_dalitz_plot (var_list%get_sval (var_str ("$dalitz_plot")))
        end if
        pcm%initialized = .true.
        select type (pcm_instance => instance%pcm)
@@ -2702,7 +2731,7 @@ contains
   subroutine process_instance_evaluate_trace (instance)
     class(process_instance_t), intent(inout) :: instance
     class(prc_core_t), pointer :: core => null ()
-    integer :: i, i_real_fin
+    integer :: i, i_real_fin, i_core
     real(default) :: alpha_s, alpha_qed
     class(prc_core_t), pointer :: core_sub => null ()
     class(model_data_t), pointer :: model => null ()
@@ -2714,8 +2743,13 @@ contains
           associate (term => instance%term(i))
             if (term%active .and. term%passed) then
                core => instance%process%get_core_term (i)
-               if (instance%pcm%config%is_nlo ()) &
-                    core_sub => instance%process%get_subtraction_core ()
+               select type (pcm => instance%process%get_pcm_ptr ())
+               class is (pcm_nlo_t)
+                  i_core = pcm%get_i_core (pcm%i_sub)
+                  core_sub => instance%process%get_core_ptr (i_core)
+               end select
+!                if (instance%pcm%config%is_nlo ()) &
+!                     core_sub => instance%process%get_subtraction_core ()
                call term%evaluate_interaction (core)
                call term%evaluate_trace ()
                i_real_fin = instance%process%get_associated_real_fin (1)
@@ -2873,6 +2907,8 @@ contains
           instance%excess = &
                instance%mci_work(instance%i_mci)%mci%get_event_excess ()
        end if
+       instance%n_dropped = &
+            instance%mci_work(instance%i_mci)%mci%get_n_event_dropped ()
        instance%evaluation_status = STAT_EVENT_COMPLETE
     else
        !!! failed kinematics etc.: set weight to zero
@@ -3241,6 +3277,16 @@ contains
     end if
   end function process_instance_get_excess
 
+  function process_instance_get_n_dropped (instance) result (n_dropped)
+    integer :: n_dropped
+    class(process_instance_t), intent(in) :: instance
+    if (instance%evaluation_status >= STAT_EVENT_COMPLETE) then
+       n_dropped = instance%n_dropped
+    else
+       n_dropped = 0
+    end if
+  end function process_instance_get_n_dropped
+
   function process_instance_get_channel (instance) result (channel)
     integer :: channel
     class(process_instance_t), intent(in) :: instance
@@ -3272,11 +3318,11 @@ contains
     core => null ()
   end function process_instance_get_alpha_s
 
-  function process_instance_get_qcd_ptr (process_instance) result (qcd)
-    type(qcd_t), pointer :: qcd
-    class(process_instance_t), intent(in), target :: process_instance
-    qcd => process_instance%process%get_qcd_ptr ()
-  end function process_instance_get_qcd_ptr
+  function process_instance_get_qcd (process_instance) result (qcd)
+    type(qcd_t) :: qcd
+    class(process_instance_t), intent(in) :: process_instance
+    qcd = process_instance%process%get_qcd ()
+  end function process_instance_get_qcd
 
   subroutine process_instance_reset_counter (process_instance)
     class(process_instance_t), intent(inout) :: process_instance

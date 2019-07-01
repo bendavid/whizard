@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -160,6 +160,7 @@ module_lists = \
   ../particles/Modules \
   ../beams/Modules \
   ../me_methods/Modules \
+  ../pythia8/Modules \
   ../events/Modules \
   ../phase_space/Modules \
   ../mci/Modules \
@@ -230,7 +231,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qed_pdf -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../vegas  -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola -I../recola
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qed_pdf -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../vegas  -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../pythia8 -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola -I../recola
 ########################################################################
 ## Default Fortran compiler options
 

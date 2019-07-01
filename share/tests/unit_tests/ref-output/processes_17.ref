@@ -11,7 +11,7 @@
 
 ========================================================================
  Process [decay]: 'processes17'
-   Run ID        = 'run17'
+   Run ID        = ''
    Library name  = 'processes17'
    Process index = 1
    Process components:
@@ -26,10 +26,11 @@
    Number of MCI configurations = 1
    Model = Test
    QCD parameters (coupling undefined)
-   RNG factory: test (1)
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------
@@ -113,7 +114,7 @@
 
 ========================================================================
  Process instance [decay]: 'processes17'
-   Run ID = 'run17'
+   Run ID = ''
    Process components:
      1: 'processes17_i1':   s => f, fbar [test_decay]
    status = initialized
@@ -123,7 +124,7 @@
 
 ========================================================================
  Process instance [decay]: 'processes17'
-   Run ID = 'run17'
+   Run ID = ''
    Process components:
    * 1: 'processes17_i1':   s => f, fbar [test_decay]
    status = beam momenta set
@@ -155,7 +156,7 @@
 
 ========================================================================
  Process instance [decay]: 'processes17'
-   Run ID = 'run17'
+   Run ID = ''
    Process components:
    * 1: 'processes17_i1':   s => f, fbar [test_decay]
    status = evaluated trace
@@ -378,7 +379,7 @@ n_tot* => 3
 
 ========================================================================
  Process instance [decay]: 'processes17'
-   Run ID = 'run17'
+   Run ID = ''
    Process components:
    * 1: 'processes17_i1':   s => f, fbar [test_decay]
    status = evaluated trace

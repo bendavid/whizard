@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -96,7 +96,7 @@ contains
     call syntax_pexpr_init ()
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%read (var_str ("Test.mdl"), os_data)
 
     write (u, "(A)")  "* Expression texts"
@@ -259,7 +259,7 @@ contains
     call syntax_pexpr_init ()
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%read (var_str ("Test.mdl"), os_data)
 
     write (u, "(A)")  "* Expression texts"
@@ -380,15 +380,11 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     type(model_t), pointer :: model_tmp
-    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model
     type(var_list_t), target :: var_list
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -412,9 +408,8 @@ contains
 
     libname = "processes5"
     procname = libname
-    run_id = "run5"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call syntax_model_file_init ()
@@ -425,18 +420,18 @@ contains
 
     call reset_interaction_counter ()
 
-    allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
-
     call var_list%append_real (var_str ("tolerance"), 0._default)
-    call process%set_var_list (var_list)
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
+
+    allocate (process)
+    call process%init (procname, lib, os_data, model, var_list)
+
     call var_list%final ()
 
     allocate (phs_test_config_t :: phs_config_template)
     call process%setup_test_cores ()
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -444,7 +439,7 @@ contains
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization and set cuts"
     write (u, "(A)")
@@ -452,7 +447,8 @@ contains
     call process%setup_terms ()
     call expr_factory%init (parse_tree%get_root_ptr ())
     call process%set_cuts (expr_factory)
-    call process%write (.false., u, show_var_list=.true., show_expressions=.true.)
+    call process%write (.false., u, &
+         show_var_list=.true., show_expressions=.true., show_os_data=.false.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Create a process instance"
@@ -545,15 +541,11 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     type(model_t), pointer :: model_tmp
-    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model
     type(var_list_t), target :: var_list
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -609,9 +601,8 @@ contains
 
     libname = "processes4"
     procname = libname
-    run_id = "run4"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call syntax_model_file_init ()
@@ -620,19 +611,19 @@ contains
     call var_list%init_snapshot (model_tmp%get_var_list_ptr ())
     model => model_tmp
 
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
+
     call reset_interaction_counter ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model, var_list)
 
-    call process%set_var_list (var_list)
     call var_list%final ()
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -640,7 +631,7 @@ contains
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization and set cuts"
     write (u, "(A)")
@@ -742,18 +733,20 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Initialize test process event"
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call syntax_model_file_init ()
     allocate (model)
     call model%read (var_str ("Test.mdl"), os_data)
     call var_list%init_snapshot (model%get_var_list_ptr ())
 
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
+
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, var_list)
 
-    call process%set_var_list (var_list)
     call var_list%final ()
 
     call process_instance%setup_event_data ()
@@ -806,6 +799,14 @@ contains
 
   end subroutine events_3
 
+
+  subroutine dispatch_mci_empty (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+  end subroutine dispatch_mci_empty
+ 
 
 end module expr_tests_uti
 

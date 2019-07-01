@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -76,7 +76,7 @@ module eio_base_uti
   abstract interface
      subroutine eio_cleanup_model (model)
        import
-       class(model_data_t), intent(inout), pointer :: model
+       class(model_data_t), intent(inout), target :: model
      end subroutine eio_cleanup_model
   end interface
 

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -30,22 +30,31 @@ module hadrons
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
-  use io_units
-  use format_utils, only: write_separator
+
+  use constants
   use diagnostics
-  use sm_qcd
+  use event_transforms
+  use format_utils, only: write_separator
+  use helicities
+  use hep_common
+  use io_units
   use lorentz
-  use subevents, only: PRT_OUTGOING
-  use particles
-  use variables
   use model_data
   use models
-  use rng_base
-  use hep_common
-  use event_transforms
+  use numeric_utils, only: vanishes
+  use particles
+  use physics_defs
+  use process, only: process_t
+  use instances, only: process_instance_t
+  use process_stacks
+  use pythia8
+  use rng_base, only: rng_t
   use shower_base
   use shower_pythia6
-  use process
+  use sm_qcd
+  use subevents
+  use variables
+  use whizard_lha
 
   implicit none
   private
@@ -148,9 +157,17 @@ module hadrons
      procedure :: make_particle_set => hadrons_pythia6_make_particle_set
   end type hadrons_pythia6_t
 
-  type,extends (hadrons_t) :: hadrons_pythia8_t
+  type, extends (hadrons_t) :: hadrons_pythia8_t
+     type(pythia8_t) :: pythia
+     type(whizard_lha_t) :: lhaup
+     logical :: user_process_set = .false.
+     logical :: pythia_initialized = .false., &
+          lhaup_initialized = .false.
   contains
      procedure :: init => hadrons_pythia8_init
+     procedure, private :: transfer_settings => hadrons_pythia8_transfer_settings
+     procedure, private :: set_user_process => hadrons_pythia8_set_user_process
+     procedure, private :: import_particle_set => hadrons_pythia8_import_particle_set
      procedure :: hadronize => hadrons_pythia8_hadronize
      procedure :: make_particle_set => hadrons_pythia8_make_particle_set
   end type hadrons_pythia8_t
@@ -158,7 +175,7 @@ module hadrons
   type, extends (evt_t) :: evt_hadrons_t
      class(hadrons_t), allocatable :: hadrons
      type(model_t), pointer :: model_hadrons => null()
-     type(qcd_t), pointer :: qcd_t => null()
+     type(qcd_t) :: qcd
      logical :: is_first_event
    contains
      procedure :: init => evt_hadrons_init
@@ -167,6 +184,7 @@ module hadrons
      procedure :: first_event => evt_hadrons_first_event
      procedure :: generate_weighted => evt_hadrons_generate_weighted
      procedure :: make_particle_set => evt_hadrons_make_particle_set
+     procedure :: connect => evt_hadrons_connect
      procedure :: make_rng => evt_hadrons_make_rng
      procedure :: prepare_new_event => evt_hadrons_prepare_new_event
   end type evt_hadrons_t
@@ -441,26 +459,83 @@ contains
     type(shower_settings_t), intent(in) :: shower_settings
     type(hadron_settings_t), intent(in) :: hadron_settings
     type(model_t), intent(in), target :: model_hadrons
-    logical :: options_not_set_by_shower
+    hadrons%model => model_hadrons
     hadrons%shower_settings = shower_settings
     hadrons%hadron_settings = hadron_settings
-    options_not_set_by_shower = .not. (shower_settings%method == PS_PYTHIA8 &
-         .and. (shower_settings%isr_active .or. shower_settings%fsr_active))
-    if (options_not_set_by_shower) then
-       !call pythia8_set_verbose (settings%verbose)
-       !call pythia8_set_config (settings%pythia8_config)
-       !call pythia8_set_config_file (settings%pythia8_config_file)
-    end if
     call msg_message &
-         ("Using Pythia8 interface for hadronization and decays")
+         ("Hadronization: Using PYTHIA8 interface for hadronization and decays.")
+    ! TODO sbrass which verbose?
+    call hadrons%pythia%init (verbose = shower_settings%verbose)
+    call hadrons%lhaup%init ()
   end subroutine hadrons_pythia8_init
+
+  subroutine hadrons_pythia8_transfer_settings (hadrons)
+    class(hadrons_pythia8_t), intent(inout), target :: hadrons
+    real(default) :: r
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_transfer_settings")
+    call msg_debug2 (D_TRANSFORMS, "pythia_initialized", hadrons%pythia_initialized)
+    if (hadrons%pythia_initialized) return
+    call hadrons%pythia%import_rng (hadrons%rng)
+    call hadrons%pythia%parse_and_set_config (hadrons%shower_settings%pythia8_config)
+    if (len (hadrons%shower_settings%pythia8_config_file) > 0) &
+         call hadrons%pythia%read_file (hadrons%shower_settings%pythia8_config_file)
+    call hadrons%pythia%read_string (var_str ("Beams:frameType = 5"))
+    call hadrons%pythia%read_string (var_str ("ProcessLevel:all = off"))
+    if (.not. hadrons%shower_settings%verbose) then
+       call hadrons%pythia%read_string (var_str ("Print:quiet = on"))
+    end if
+    call hadrons%pythia%set_lhaup_ptr (hadrons%lhaup)
+    call hadrons%pythia%init_pythia ()
+    hadrons%pythia_initialized = .true.
+  end subroutine hadrons_pythia8_transfer_settings
+
+  subroutine hadrons_pythia8_set_user_process (hadrons, pset)
+    class(hadrons_pythia8_t), intent(inout) :: hadrons
+    type(particle_set_t), intent(in) :: pset
+    integer, dimension(2) :: beam_pdg
+    real(default), dimension(2) :: beam_energy
+    integer, parameter :: process_id = 0, n_processes = 0
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_set_user_process")
+    beam_pdg = [pset%prt(1)%get_pdg (), pset%prt(2)%get_pdg ()]
+    beam_energy = [energy(pset%prt(1)%p), energy(pset%prt(2)%p)]
+    call hadrons%lhaup%set_init (beam_pdg, beam_energy, &
+         n_processes, unweighted = .false., negative_weights = .false.)
+    call hadrons%lhaup%set_process_parameters (process_id = process_id, &
+         cross_section = one, error = one)
+  end subroutine hadrons_pythia8_set_user_process
+
+  subroutine hadrons_pythia8_import_particle_set (hadrons, particle_set)
+    class(hadrons_pythia8_t), target, intent(inout) :: hadrons
+    type(particle_set_t), intent(in) :: particle_set
+    type(particle_set_t) :: pset_reduced
+    integer, parameter :: PROCESS_ID = 1
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")
+    if (.not. hadrons%user_process_set) then
+       call hadrons%set_user_process (particle_set)
+       hadrons%user_process_set = .true.
+    end if
+    call hadrons%lhaup%set_event_process (process_id = PROCESS_ID, scale = -one, &
+         alpha_qcd = -one, alpha_qed = -one, weight = -one)
+    call hadrons%lhaup%set_event (process_id = PROCESS_ID, particle_set = particle_set, &
+         polarization = .true.)
+    if (debug_active (D_TRANSFORMS)) then
+       call hadrons%lhaup%list_init ()
+    end if
+  end subroutine hadrons_pythia8_import_particle_set
 
   subroutine hadrons_pythia8_hadronize (hadrons, particle_set, valid)
     class(hadrons_pythia8_t), intent(inout) :: hadrons
     type(particle_set_t), intent(in) :: particle_set
     logical, intent(out) :: valid
-    ! call pythia8_hadronize
-    valid = .true.
+    if (signal_is_pending ()) return
+    call hadrons%import_particle_set (particle_set)
+    if (.not. hadrons%pythia_initialized) &
+         call hadrons%transfer_settings ()
+    call hadrons%pythia%next (valid)
+    if (debug_active (D_TRANSFORMS)) then
+       call hadrons%pythia%list_event ()
+       call particle_set%write (summary=.true., compressed=.true.)
+    end if
   end subroutine hadrons_pythia8_hadronize
 
   subroutine hadrons_pythia8_make_particle_set &
@@ -469,7 +544,26 @@ contains
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
     logical, intent(out) :: valid
-    ! call pythia8_combine_particle_set
+    type(particle_t), dimension(:), allocatable :: beam
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_make_particle_set")
+    if (signal_is_pending ()) return
+    associate (settings => hadrons%shower_settings)
+      if (debug_active (D_TRANSFORMS)) then
+         call msg_debug (D_TRANSFORMS, 'Combine PYTHIA8 with particle set')
+         call msg_debug (D_TRANSFORMS, 'Particle set before replacing')
+         call particle_set%write (summary=.true., compressed=.true.)
+         call hadrons%pythia%list_event ()
+         call msg_debug (D_TRANSFORMS, string = "settings%hadron_collision", &
+              value = settings%hadron_collision)
+      end if
+      call hadrons%pythia%get_hadron_particles (&
+           model, hadrons%model, particle_set, &
+           helicity = PRT_DEFINITE_HELICITY)
+    end associate
+    if (debug_active (D_TRANSFORMS)) then
+       print *, 'Particle set after replacing'
+       call particle_set%write (summary=.true., compressed=.true.)
+    end if
     valid = .true.
   end subroutine hadrons_pythia8_make_particle_set
 
@@ -556,6 +650,16 @@ contains
     call evt%hadrons%make_particle_set (evt%particle_set, evt%model, valid)
     evt%particle_set_exists = evt%particle_set_exists .and. valid
   end subroutine evt_hadrons_make_particle_set
+
+  subroutine evt_hadrons_connect &
+       (evt, process_instance, model, process_stack)
+    class(evt_hadrons_t), intent(inout), target :: evt
+    type(process_instance_t), intent(in), target :: process_instance
+    class(model_data_t), intent(in), target :: model
+    type(process_stack_t), intent(in), optional :: process_stack
+    call evt%base_connect (process_instance, model, process_stack)
+    call evt%make_rng (evt%process)
+  end subroutine evt_hadrons_connect
 
   subroutine evt_hadrons_make_rng (evt, process)
     class(evt_hadrons_t), intent(inout) :: evt

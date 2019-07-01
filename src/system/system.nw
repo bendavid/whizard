@@ -1876,6 +1876,8 @@ for linking. The default for the Fortran compiler on most systems is
      type(string_t) :: qgrafpath
      type(string_t) :: ninjapath
      type(string_t) :: samuraipath
+   contains
+   <<OS interface: os data: TBP>>
   end type os_data_t
 
 @ %def os_data_t
@@ -1884,11 +1886,11 @@ necessary.
 <<System defs: public parameters>>=
   integer, parameter, public :: ENVVAR_LEN = 1000
 @ %def ENVVAR_LEN
-<<OS interface: public>>=
-  public :: os_data_init
+<<OS interface: os data: TBP>>=
+  procedure :: init => os_data_init
 <<OS interface: procedures>>=
   subroutine os_data_init (os_data, paths)
-    type(os_data_t), intent(out) :: os_data
+    class(os_data_t), intent(out) :: os_data
     type(paths_t), intent(in), optional :: paths
     character(len=ENVVAR_LEN) :: home
     type(string_t) :: localprefix, local_includes
@@ -2065,11 +2067,11 @@ of each other.    %% Fooling Noweb Emacs mode: $
 
 @ %def os_data_update_paths
 @ Write contents
-<<OS interface: public>>=
-  public :: os_data_write
+<<OS interface: os data: TBP>>=
+  procedure :: write => os_data_write
 <<OS interface: procedures>>=
   subroutine os_data_write (os_data, unit)
-    type(os_data_t), intent(in) :: os_data
+    class(os_data_t), intent(in) :: os_data
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
@@ -2149,11 +2151,11 @@ of each other.    %% Fooling Noweb Emacs mode: $
 
 @ %def os_data_write
 @
-<<OS interface: public>>=
-  public :: os_data_build_latex_file
+<<OS interface: os data: TBP>>=
+  procedure :: build_latex_file => os_data_build_latex_file
 <<OS interface: procedures>>=
   subroutine os_data_build_latex_file (os_data, filename, stat_out)
-    type(os_data_t), intent(in) :: os_data
+    class(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: filename
     integer, intent(out), optional :: stat_out
     type(string_t) :: setenv_tex, pipe, pipe_dvi
@@ -2582,7 +2584,7 @@ installed, this rpath is irrelevant.
        command_string = &
             os_data%whizard_libtool // " --mode=link " // &
             os_data%fc // " " // &
-            "-static-libtool-libs " // &
+            "-static " // &
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
@@ -2878,7 +2880,7 @@ it, and execute the contained function.
     type(c_funptr) :: c_fptr
     integer :: unit
     integer(c_int) :: i
-    call os_data_init (os_data)
+    call os_data%init ()
     fname = "so_test"
     filename_src = fname // os_data%fc_src_ext
     if (os_data%use_libtool) then

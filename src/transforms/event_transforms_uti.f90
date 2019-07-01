@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,7 +33,7 @@ module event_transforms_uti
   use format_utils, only: write_separator
   use os_interface
   use sm_qcd
-  use model_data
+  use models
   use state_matrices, only: FM_IGNORE_HELICITY
   use interactions, only: reset_interaction_counter
   use process_libraries
@@ -62,12 +62,9 @@ contains
   subroutine event_transforms_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_library_t), target :: lib
-    type(string_t) :: libname, procname1, run_id
-    class(mci_t), allocatable :: mci_template
+    type(string_t) :: libname, procname1
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_t), allocatable, target :: process
@@ -83,34 +80,28 @@ contains
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+    call os_data%init ()
 
     libname = "event_transforms_1_lib"
     procname1 = "event_transforms_1_p"
-    run_id = "event_transforms_1"
 
     call prc_test_create_library (libname, lib, &
          scattering = .true., procname1 = procname1)
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname1, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname1, lib, os_data, model)
     call process%setup_test_cores ()
 
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test_midpoint)
     call process%setup_terms ()
 
     allocate (process_instance)
@@ -129,8 +120,7 @@ contains
     write (u, "(A)")
 
     allocate (evt_trivial_t :: evt)
-    model => process%get_model_ptr ()
-    call evt%connect (process_instance, model)
+    call evt%connect (process_instance, process%get_model_ptr ())
 
     write (u, "(A)")  "* Generate event and subsequent transform"
     write (u, "(A)")
@@ -170,6 +160,16 @@ contains
 
   end subroutine event_transforms_1
 
+
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    use variables, only: var_list_t
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
 
 end module event_transforms_uti
 

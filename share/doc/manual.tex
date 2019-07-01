@@ -278,7 +278,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.6.4}
+\newcommand{\thisversion}{2.7.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -287,9 +287,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.6 \\
+%HEVEA WHIZARD 2.7 \\
 %BEGIN LATEX
- \ttt{\huge WHIZARD 2.6} \\[\baselineskip]
+ \ttt{\huge WHIZARD 2.7} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -678,6 +678,10 @@ of \whizard:
   2.6.4. & 08/2018 & Gridpack functionality; Bug fixes: color flows,
   HSExt model, MPI setup
   \\\hline
+  2.7.0 & 01/2019 & PYTHIA8 interface, process setup refactoring,
+  RAMBO PS option; \\
+  & & \quad gfortran 5.0+ necessary
+  \\\hline
 \end{tabular}
 \end{center}
 
@@ -886,10 +890,15 @@ need:
 \end{itemize}
 To start, go to a directory of your choice and execute
 \begin{interaction}
-  your-src-directory> svn checkout https://whizard.hepforge.org/svn/trunk/ .
+  your-src-directory> svn checkout
+  svn+ssh://vcs@phab.hepforge.org/source/whizardsvn/trunk \;\; .
 \end{interaction}
-The SVN source tree will appear in the current directory.  To update
-later, you just have to execute
+Note that for the time being after the HepForge system modernization
+early September 2018, a HepForge account with a local ssl key is
+necessary to checkout the subversion repository. This is enforced by
+the phabricator framework of HepForge, and will hopefully be relaxed
+in the future. The SVN source tree will appear in the current
+directory.  To update later, you just have to execute
 \begin{interaction}
   your-src-directory> svn update
 \end{interaction}
@@ -912,18 +921,22 @@ subset of the \fortranOThree\ standard.  At the time of this writing,
 this subset is supported by, at least, the following compilers:
 \begin{itemize}
 \item
-  \ttt{gfortran} (GNU, Open Source).  You will need version 4.8.0
+  \ttt{gfortran} (GNU, Open Source).  You will need version 5.1.0
   or higher\footnote{Note that \whizard\ versions 2.0.0 until 2.3.1 compiled
   with \ttt{gfortran} 4.7.4, but the object-oriented
-  refactoring of the \whizard\ code from 2.4 on made a switch to
-  \ttt{gfortran} 4.8.0 or higher necessary.}. We recommend to use at
-  least version 4.8.4 or 4.9.4, as especially the the early version of
-  4.8.X and 4.9.X experience some severe bugs.
+  refactoring of the \whizard\ code from 2.4.0 on until version 2.6.5
+  made a switch to \ttt{gfortran} 4.8.4 or higher necessary. In the
+  same way, since version 2.7.0, \ttt{gfortran} 5.1.0 or newer is
+  needed}. We recommend to use at least version 5.4 or higher, as
+  especially the the early version of the \texttt{gfortran} experience
+  some bugs. \ttt{gfortran} 6.5.0 has a severe regression and cannot
+  be used.
 \item
-  \ttt{nagfor} (NAG).  You will need version 6.0 or higher.
+  \ttt{nagfor} (NAG).  You will need version 6.1 or higher.
 \item
   \ttt{ifort} (Intel). You will need version 17.0.4 or
-  higher.
+  higher. Version 19.0.0 unfortunately has a severe regression and
+  cannot be used.
 \end{itemize}
 
 %%%%%
@@ -980,11 +993,11 @@ output (for \lhapdf\ version 6 or newer),
    configure:
    checking for lhapdf... /usr/local/bin/lhapdf
    checking for lhapdf-config... /usr/local/bin/lhapdf-config
-   checking the LHAPDF version... 6.1.6
+   checking the LHAPDF version... 6.2.1
    checking the major version... 6
    checking the LHAPDF pdfsets path... /usr/local/share/LHAPDF
    checking the standard PDF sets...  all standard PDF sets installed
-   checking if LHAPDF is functional (may take a while)... yes
+   checking if LHAPDF is functional... yes
    checking LHAPDF... yes
    configure: --------------------------------------------------------------
 \end{verbatim}
@@ -1082,6 +1095,7 @@ configure: --- HOPPET ---
 configure:
 checking for hoppet-config... /usr/local/bin/hoppet-config
 checking for hoppetAssign in -lhoppet_v1... yes
+checking the HOPPET version... 1.2.0
 configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
@@ -1142,6 +1156,10 @@ A \whizard\ configuration for HepMC looks like this:
    configure: --------------------------------------------------------------
    configure: --- HepMC ---
    configure:
+   checking for HepMC-config... no
+   checking HepMC3 or newer... no
+   configure: HepMC3 not found, incompatible, or HepMC-config not found
+   configure: looking for HepMC2 instead ...
    checking the HepMC version... 2.06.09
    checking for GenEvent class in -lHepMC... yes
    configure: --------------------------------------------------------------
@@ -1208,8 +1226,6 @@ configure: --------------------------------------------------------------
 \subsection{FastJet}
 \label{sec:fastjet}
 
-\emph{NOTE: This is an experimental feature.}
-
 \fastjet\ is a \ttt{C++} class library for handling jet clustering.
 If you want to use this feature, you should link \whizard\ with \fastjet,
 otherwise you can skip this section.
@@ -1243,6 +1259,7 @@ configure:
 checking for fastjet-config... /usr/local/bin/fastjet-config
 checking if FastJet is functional... yes
 checking FastJet... yes
+checking the FastJet version... 3.3.0
 configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
@@ -1277,6 +1294,10 @@ configure output notifies you that \stdhep\ is always included:
 configure: --------------------------------------------------------------
 configure: --- STDHEP ---
 configure:
+checking for pkg-config... /opt/local/bin/pkg-config
+checking pkg-config is at least version 0.9.0... yes
+checking for libtirpc... no
+configure: for StdHEP legacy code: using SunRPC headers and library
 configure: StdHEP v5.06.01 is included internally
 configure: --------------------------------------------------------------
 \end{verbatim}
@@ -1313,7 +1334,7 @@ A \whizard\ configuration for \lcio\ looks like this:
    configure: --------------------------------------------------------------
    configure: --- LCIO ---
    configure:
-   checking the LCIO version... 2.7.1
+   checking the LCIO version... 2.12.1
    checking for LCEventImpl class in -llcio... yes
    configure: --------------------------------------------------------------
   \end{verbatim}
@@ -1710,7 +1731,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 2.6.4
+    |                               WHIZARD 2.7.0
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -1741,7 +1762,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.6.4
+|                               WHIZARD 2.7.0
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -1800,7 +1821,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.6.4
+ |                               WHIZARD 2.7.0
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -2055,13 +2076,36 @@ where the number of parallel tasks can be set by \ttt{-np} and a hostfile can be
 given by \ttt{--hostfile}. It is recommended to use \ttt{--output-filename} which
 lets mpirun redirect the standard (error) output to a file, for each worker separatly.
 
-Some caveats exist regarding MPI which are mostly based on output operations.
-Following are known issues,
-\begin{itemize}
-\item runIDs are not supported,
-\item event generation must not be run with MPI.
-\end{itemize}
-The latter can be trivially parallelized by hand.
+\subsubsection{Notes on Parallelization with MPI}
+
+The parallelization of \whizard\ requires that all instances of the
+parallel run be able to write and read all files by produced
+\whizard\ in a network file system as the current implementation does
+not handle parallel I/O. Usually, high-performance clusters have
+support for at least one network filesystem. 
+
+Furthermore, not all functions of \whizard\ are currently supported or
+are only supported in a limited way in parallel mode. Currently the
+\verb|?rebuild_<flags>| for the phase space and the matrix element
+library are not yet available, as well as the calculation of matrix 
+elements with resonance history. 
+
+Some features that have been missing in the very first implementation
+of the parallelized integration have now been made available, like
+the support of run IDs and the parallelization of the event generation.
+
+A final remark on the stability of the numerical results in terms of
+the number of workers involved. Under certain circumstances, results
+between different numbers of workers but using otherwise an identical
+\sindarin\ file can lead to slightly numerically different (but
+statistically compatible) results for integration or event generation 
+This is related to the execution of the computational operations in
+MPI, which we use to reduce results from all workers. If the order of
+the numbers in the arithmetical operations changes, for example, by
+different setups of the workers, then the numerical results change
+slightly, which in turn is amplified under the influence of the
+adaptation. Nevertheless, the results are all statistically
+consistent. 
 
 \subsection{Stopping and Resuming WHIZARD Jobs}
 
@@ -4045,8 +4089,7 @@ particles.
 
 
 \subsubsection{cluster}
-\emph{NOTE: This is an experimental feature, available from version
-  2.2.1 on.}
+
 \begin{quote}
 \begin{footnotesize}
   \ttt{cluster [\textit{particles}]} \\
@@ -8582,7 +8625,7 @@ has to be set via \ttt{--with-openloops=<openloops\_dir>}.
 
 \openloops\ can be checked out with
 \begin{code}
-   svn co https://openloops.hepforge.org/svn/OpenLoops/branches/public
+  git clone https://gitlab.com/openloops/OpenLoops.git
 \end{code}
 The program can be build by running \ttt{scons} or \ttt{./scons}, a
 local version that is included in the \openloops\ directory.  This
@@ -8946,7 +8989,7 @@ selected by setting the \sindarin\ option
 \begin{code}
   $rng_method = "rng_tao"
 \end{code}
-Altough, \whizard{} sets a default seed, it is adviced to use a different one
+Although, \whizard{} sets a default seed, it is adviced to use a different one
 \begin{code}
   seed = 175368842
 \end{code}
@@ -9118,6 +9161,24 @@ phase space algorithm, called \ttt{fast\_wood},
 cf. Sec.~\ref{sec:fast_wood}, whose implementation differs technically
 and which therefore solves certain technical flaws of the \ttt{wood}
 implementation.
+Additionally, \whizard\ supports single-channel, flat phase-space using RAMBO
+(on diet).
+
+\section{The flat method: \ttt{rambo}}
+\label{sec:rambo}
+
+The \ttt{RAMBO} algorithm produces a flat phase-space with constant volume for
+massless particles. \ttt{RAMBO} was originally published in
+\cite{Kleiss:1985gy}. We use the slim version, called \ttt{RAMBO} on diet,
+published in \cite{Platzer:2013esa}.
+The overall weighting efficiency of the algorithm is unity for massless
+final-state particles. For the massive case, the weighting efficiency of unity will
+decrease rendering the algorithm less efficient. But in most cases, the
+invariants are in regions of phase space where they are much larger than the
+masses of the final-state particles.
+
+We provide the \ttt{RAMBO} mainly for cross checking our implementation and do
+not recommend it for real world application, even though it can be used as one.
 
 \section{The default method: \ttt{wood}}
 \label{sec:wood}
@@ -10956,6 +11017,34 @@ number of excess weights is a finite number of percent, you should
 inspect the phase-space setup and try to improve its settings to get a
 better adaptation.
 
+Generating \emph{weighted} events is, of course, much faster if the
+same number of events is requested.  Each event carries a weight
+factor which is taken into account for any internal analysis
+(histograms), and written to file if an external file format has been
+selected.  The file format must support event weights.
+
+In a weighted event sample, there is typically a fraction of events
+which effectively have weight zero, namely those that have been
+created by the phase-space sampler but do not pass the requested
+cuts.  In the default setup, those events are silently dropped, such
+that the events written to file or available for analysis all have
+nonzero weight.  However, dropping such events affects the overall
+normalization.  If this has happened, the program will issue a warning
+of the form
+\begin{code}
+| Dropped events (weight zero) = 1142 (total 2142)
+Warning: All event weights must be rescaled by f = 4.66853408E-01
+\end{code}
+This factor has to be applied by hand to any external event files (and
+to internally generated histograms).  The program cannot include the
+factor in the event records, because it is known only after all events
+have been generated.  To avoid this problem, there is the logical flag
+\ttt{?keep\_failed\_events} which tells \whizard\ not to drop events with
+weight zero.  The normalization will be correct, but the event sample
+will include invalid events which have to be vetoed by their zero
+weight, before any operations on the event record are performed.
+
+
 %%%%%%%%%
 
 \section{Choice on event normalizations}
@@ -11358,7 +11447,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.6.4</generator_version>
+  <generator_version>2.7.0</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -17153,8 +17242,31 @@ respectively.
 \bibitem{L_Ecuyer:2002}
   P.~L\'{e}Ecuyer, R.~Simard, E.~J.~Chen, and W.~D.~Kelton,
   {\em An Object-Oriented Random-Number Package with Many Long Streams and
-    Substreams}
+    Substreams},
   Operations Research, vol. 50, no. 6, pp. 1073-1075, Dec. 2002.
+
+ %\cite{Platzer:2013esa}
+\bibitem{Platzer:2013esa}
+  S.~Plätzer,
+  {\em RAMBO on diet},
+  [arXiv:1308.2922 [hep-ph]].
+  %% CITATION = ARXIV:1308.2922;%%
+
+%\cite{Kleiss:1991rn}
+\bibitem{Kleiss:1991rn}
+  R.~Kleiss and W.~J.~Stirling,
+  {\em Massive multiplicities and Monte Carlo},
+  Nucl.\ Phys.\ B {\bf 385}, 413 (1992).
+  doi:10.1016/0550-3213(92)90107-M
+  %%CITATION = doi:10.1016/0550-3213(92)90107-M;%%
+
+%\cite{Kleiss:1985gy}
+\bibitem{Kleiss:1985gy}
+  R.~Kleiss, W.~J.~Stirling and S.~D.~Ellis,
+  {\em A New Monte Carlo Treatment of Multiparticle Phase Space at High-energies},
+  Comput.\ Phys.\ Commun.\  {\bf 40} (1986) 359.
+  doi:10.1016/0010-4655(86)90119-0
+  %% CITATION = doi:10.1016/0010-4655(86)90119-0;%%
 
 \end{thebibliography}
 

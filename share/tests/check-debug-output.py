@@ -37,4 +37,5 @@ with open(filename, 'r') as infile:
         valid = False
 print 'End file ' + filename
 returncode = 0 if valid else 1
+print 'returncode:', returncode
 sys.exit(returncode)

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -31,8 +31,11 @@ module prc_core
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
+  use os_interface, only: os_data_t
   use lorentz
   use interactions
+  use variables, only: var_list_t
+  use model_data, only: model_data_t
 
   use process_constants
   use prc_core_def
@@ -59,6 +62,10 @@ module prc_core
      procedure :: init => prc_core_init
      procedure :: base_init => prc_core_init
      procedure :: has_matrix_element => prc_core_has_matrix_element
+     procedure, nopass :: needs_external_code => prc_core_needs_external_code
+     procedure :: prepare_external_code => &
+          prc_core_prepare_external_code
+     procedure, nopass :: uses_blha => prc_core_uses_blha
      procedure(prc_core_is_allowed), deferred :: is_allowed
      procedure :: get_constants => prc_core_get_constants
      procedure :: get_alpha_s => prc_core_get_alpha_s
@@ -186,6 +193,31 @@ contains
     flag = object%data%n_flv /= 0
   end function prc_core_has_matrix_element
 
+  function prc_core_needs_external_code () result (flag)
+    logical :: flag
+    flag = .false.
+  end function prc_core_needs_external_code
+
+  subroutine prc_core_prepare_external_code &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
+    class(prc_core_t), intent(inout) :: core
+    integer, intent(in), dimension(:,:), allocatable :: flv_states
+    type(var_list_t), intent(in) :: var_list
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
+    call core%write ()
+    call msg_bug ("prc_core_prepare_external_code called &
+         &but not overridden")
+  end subroutine prc_core_prepare_external_code
+
+  function prc_core_uses_blha () result (flag)
+    logical :: flag
+    flag = .false.
+  end function prc_core_uses_blha
+  
   subroutine prc_core_get_constants (object, data, i_term)
     class(prc_core_t), intent(in) :: object
     type(process_constants_t), intent(out) :: data

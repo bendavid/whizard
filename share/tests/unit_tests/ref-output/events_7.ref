@@ -7,7 +7,7 @@
 
 ========================================================================
  Process instance [decay]: 'events_7_d'
-   Run ID = 'events_7'
+   Run ID = ''
    Process components:
    * 1: 'events_7_d_i1':   s => f, fbar [test_decay]
    status = evaluated trace
@@ -348,7 +348,7 @@ n_tot* => 3
 
 ========================================================================
  Process instance [decay]: 'events_7_d'
-   Run ID = 'events_7'
+   Run ID = ''
    Process components:
    * 1: 'events_7_d_i1':   s => f, fbar [test_decay]
    status = evaluated trace
@@ -689,7 +689,7 @@ n_tot* => 3
 
 ========================================================================
  Process instance [decay]: 'events_7_d'
-   Run ID = 'events_7'
+   Run ID = ''
    Process components:
    * 1: 'events_7_d_i1':   s => f, fbar [test_decay]
    status = evaluated trace

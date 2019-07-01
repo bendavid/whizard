@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -30,7 +30,7 @@
 SUBDIRS = \
   noweb-frame \
   basics \
-  hepmc lcio lhapdf lhapdf5 looptools pythia8 xdr \
+  hepmc lcio lhapdf lhapdf5 looptools xdr \
   expr_base utilities \
   system \
   combinatorics pdf_builtin testing \
@@ -40,7 +40,7 @@ SUBDIRS = \
   models particles matrix_elements variables \
   events prebuilt rng \
   beams tauola \
-  me_methods shower user \
+  me_methods pythia8 shower user \
   blha model_features \
   gosam openloops \
   recola phase_space \
@@ -160,6 +160,8 @@ else
 libwhizard_la_LIBADD += looptools/liblooptools_dummy.la
 endif
 
+libwhizard_la_LIBADD += $(PYTHIA8_LIBS) pythia8/libwo_pythia8.la
+
 if IS_IFORT_DARWIN
 libwhizard_la_LIBADD += $(FCLIBS)
 endif
@@ -184,6 +186,7 @@ libwhizard_test_la_LIBADD = \
   model_features/libmodel_features_ut.la \
   vegas/libvegas_ut.la mci/libmci_ut.la \
   phase_space/libphase_space_ut.la \
+  pythia8/libwo_pythia8_ut.la \
   events/libevents_ut.la \
   beams/libbeams_ut.la \
   particles/libparticles_ut.la \
@@ -230,6 +233,7 @@ whizard_LDADD  = whizard-core/libwhizard_main.la
 whizard_LDADD += ./libwhizard.la
 whizard_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_LDADD += $(CXXLIBS)
+whizard_LDADD += $(RPC_CFLAGS)
 whizard_LDADD += $(LDFLAGS_LHAPDF)
 whizard_LDADD += $(LDFLAGS_HEPMC)
 whizard_LDADD += $(LDFLAGS_LCIO)
@@ -257,6 +261,7 @@ whizard_ut_LDADD += ./libwhizard_test.la
 whizard_ut_LDADD += ./libwhizard.la
 whizard_ut_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_ut_LDADD += $(CXXLIBS)
+whizard_ut_LDADD += $(RPC_CFLAGS)
 whizard_ut_LDADD += $(LDFLAGS_LHAPDF)
 whizard_ut_LDADD += $(LDFLAGS_HEPMC)
 whizard_ut_LDADD += $(LDFLAGS_LCIO)

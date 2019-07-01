@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -66,7 +66,7 @@ module shower
      class(shower_base_t), allocatable :: shower
      class(matching_t), allocatable :: matching
      type(model_t), pointer :: model_hadrons => null ()
-     type(qcd_t), pointer :: qcd => null()
+     type(qcd_t) :: qcd
      type(pdf_data_t) :: pdf_data
      type(os_data_t) :: os_data
      logical :: is_first_event
@@ -150,8 +150,11 @@ contains
   subroutine evt_shower_prepare_new_event (evt, i_mci, i_term)
     class(evt_shower_t), intent(inout) :: evt
     integer, intent(in) :: i_mci, i_term
+    real(default) :: fac_scale, alpha_s
+    fac_scale = evt%process_instance%get_fac_scale (i_term)
+    alpha_s = evt%process_instance%get_alpha_s (i_term)
     call evt%reset ()
-    call evt%shower%prepare_new_event ()
+    call evt%shower%prepare_new_event (fac_scale, alpha_s)
   end subroutine evt_shower_prepare_new_event
 
   subroutine evt_shower_first_event (evt)
@@ -203,17 +206,12 @@ contains
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid, vetoed
-    integer :: i_term
-    real(default) :: fac_scale
     call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
-    i_term = 1
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
-    fac_scale = evt%process_instance%get_fac_scale (i_term)
     if (evt%is_first_event)  call evt%first_event ()
-    call evt%shower%import_particle_set &
-         (evt%particle_set, evt%os_data, fac_scale)
+    call evt%shower%import_particle_set (evt%particle_set)
     if (allocated (evt%matching)) then
        call evt%matching%before_shower (evt%particle_set, vetoed)
        if (msg_level(D_TRANSFORMS) >= DEBUG) then

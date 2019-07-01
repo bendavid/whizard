@@ -1,0 +1,41 @@
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+include("nlo_settings.sin")
+
+alpha_power = 3
+alphas_power = 1
+
+cuts = let subevt @clustered_jets = cluster [jet] in
+       let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+       let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+       count [@eta_selected] >= 1
+
+$exclude_gauge_splittings = "t:T"
+
+scale = let int njet = count [jet] in
+        if njet == 1 then
+           (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+           +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+           +  sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
+           + eval Pt [extract index 1 [jet]]) / 2
+        else
+           (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+           +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+           +  sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
+           + eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]) / 2
+        endif
+
+process nlo_eettzj_p1 = e1, E1 => t, T, Z, jet { nlo_calculation = full }
+
+mult_call_real = 5
+#integrate (nlo_eettzj_p1) { iterations = 12:50000:"gw",2:50000 } # validation
+integrate (nlo_eettzj_p1) { iterations = 3:3000:"gw",2:3000 }

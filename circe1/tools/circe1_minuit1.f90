@@ -1,6 +1,6 @@
 ! circe1_minuit1.f90 -- fitting for circe
 ! 
-! Copyright (C) 1999-2018 by 
+! Copyright (C) 1999-2019 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

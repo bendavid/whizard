@@ -270,6 +270,9 @@ Sum of outgoing momenta: p(0:3) =          988.923        0.000        0.000    
    ckkw_matching                =  F
  PYTHIA6 specific settings:
    ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
@@ -466,6 +469,9 @@ Sum of outgoing momenta: p(0:3) =          991.749        0.000        0.000    
    ckkw_matching                =  F
  PYTHIA6 specific settings:
    ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
 ========================================================================
 ========================================================================
  Event transform: hadronization
@@ -613,6 +619,9 @@ Sum of outgoing momenta: p(0:3) =          991.749        0.000        0.000    
    ckkw_matching                =  F
  PYTHIA6 specific settings:
    ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
 ------------------------------------------------------------------------
  Hadronization settings:
 ------------------------------------------------------------------------

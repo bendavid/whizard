@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -136,6 +136,8 @@ contains
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
+    type(process_t), allocatable, target :: process2
+    type(process_instance_t), allocatable, target :: process2_instance
     type(particle_set_t) :: particle_set
     type(particle_set_t), pointer :: particle_set_ptr
     type(model_data_t), target :: model
@@ -165,26 +167,23 @@ contains
 
     particle_set_ptr => event%get_particle_set_ptr ()
     particle_set = particle_set_ptr
+    ! NB: 'particle_set' contains pointers to the model within 'process'
 
     call event%final ()
     deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover event from particle set"
     write (u, "(A)")
 
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
+    allocate (process2)
+    allocate (process2_instance)
+    call prepare_test_process (process2, process2_instance, model)
+    call process2_instance%setup_event_data ()
 
     allocate (event)
     call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
+    call event%connect (process2_instance, process2%get_model_ptr ())
 
     call event%select (1, 1, 1)
     call event%set_hard_particle_set (particle_set)
@@ -219,6 +218,10 @@ contains
     call event%final ()
     deallocate (event)
 
+    call cleanup_test_process (process2, process2_instance)
+    deallocate (process2_instance)
+    deallocate (process2)
+
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
@@ -236,6 +239,8 @@ contains
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
+    type(process_t), allocatable, target :: process2
+    type(process_instance_t), allocatable, target :: process2_instance
     type(particle_set_t) :: particle_set
     type(particle_set_t), pointer :: particle_set_ptr
     real(default) :: sqme, weight
@@ -272,22 +277,18 @@ contains
     call event%final ()
     deallocate (event)
 
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-
     write (u, "(A)")
     write (u, "(A)")  "* Recover event from particle set"
     write (u, "(A)")
 
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
+    allocate (process2)
+    allocate (process2_instance)
+    call prepare_test_process (process2, process2_instance, model)
+    call process2_instance%setup_event_data ()
 
     allocate (event)
     call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
+    call event%connect (process2_instance, process2%get_model_ptr ())
 
     call event%select (1, 1, 1)
     call event%set_hard_particle_set (particle_set)
@@ -312,6 +313,10 @@ contains
 
     call event%final ()
     deallocate (event)
+
+    call cleanup_test_process (process2, process2_instance)
+    deallocate (process2_instance)
+    deallocate (process2)
 
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
@@ -343,7 +348,7 @@ contains
     write (u, "(A)")  "* Generate test process and decay"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "events_6"
     procname1 = prefix // "_p"
@@ -422,7 +427,7 @@ contains
     write (u, "(A)")  "* Prepare test process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "events_7"
     procname2 = prefix // "_d"

@@ -63,7 +63,6 @@
  foobar has index          = 0
  n_in(proclibs6_a)         = 1
  model_name(proclibs6_a)   = Test_model
- n_components(proclibs6_a) = 1
  components(proclibs6_a)   = proclibs6_a_i1
 
 * Constants of proclibs6_a_i1:

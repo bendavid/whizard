@@ -45,7 +45,7 @@ intended for the backup [[model_hadrons]].
 <<Matching base: types>>=
   type, abstract :: matching_t
     logical :: is_hadron_collision = .false.
-    type(qcd_t), pointer :: qcd => null ()
+    type(qcd_t) :: qcd
     class(shower_base_t), pointer :: shower => null ()
     type(process_instance_t), pointer :: process_instance => null ()
     class(model_data_t), pointer :: model => null ()
@@ -481,6 +481,7 @@ jet momenta.
     call matching%fill_P_PS (particle_set)
     !!! MLM stage 3 -> reconstruct and possibly reject
     call matching%apply (vetoed)
+    if (debug_active (D_MATCHING)) call matching%write ()
     if (allocated (matching%P_ME))  deallocate (matching%P_ME)
     if (allocated (matching%P_PS))  deallocate (matching%P_PS)
     if (allocated (matching%JETS_ME))  deallocate (matching%JETS_ME)
@@ -1768,7 +1769,7 @@ This contains the pieces that depend on the radiation region $\alpha_r$
      type(event_deps_t), pointer :: event_deps => null()
      type(powheg_settings_t), pointer :: powheg_settings => null()
      type(phs_fks_generator_t), pointer :: phs_fks_generator => null()
-     type(qcd_t), pointer :: qcd => null()
+     type(qcd_t) :: qcd
      class(rng_t), pointer :: rng => null()
      real(default) :: xi2_max = zero
      real(default) :: norm_max = zero
@@ -1819,13 +1820,13 @@ This contains the pieces that depend on the radiation region $\alpha_r$
     type(process_deps_t), target, intent(in) :: process_deps
     type(event_deps_t), target, intent(in) :: event_deps
     type(powheg_settings_t), target, intent(in) :: powheg_settings
-    type(qcd_t), target, intent(in) :: qcd
+    type(qcd_t), intent(in) :: qcd
     type(phs_fks_generator_t), target, intent(in) :: phs_fks_generator
     class(rng_t), target, intent(in), optional :: rng
     sudakov%process_deps => process_deps
     sudakov%event_deps => event_deps
     sudakov%powheg_settings => powheg_settings
-    sudakov%qcd => qcd
+    sudakov%qcd = qcd
     sudakov%phs_fks_generator => phs_fks_generator
     if (present (rng)) sudakov%rng => rng
   end subroutine sudakov_init
@@ -2803,11 +2804,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     else
        write (u, "(1X,A)") "RNG not allocated"
     end if
-    if (associated (matching%qcd)) then
-       call matching%qcd%write (u)
-    else
-       write (u, "(1X,A)") "QCD not associated"
-    end if
+    call matching%qcd%write (u)
     call matching%settings%write (u)
     call matching%event_deps%write (u)
     call matching%process_deps%write (u)
@@ -3748,7 +3745,7 @@ in [[xi]] and [[y]].
      call msg_debug (D_MATCHING, "powheg_matching_hook_init")
      hook%process_name = instance%get_process_name ()
      call hook%powheg%init (var_list, hook%process_name)
-     hook%powheg%qcd => instance%get_qcd_ptr ()
+     hook%powheg%qcd = instance%get_qcd ()
      call hook%powheg%connect (instance)
      hook%powheg%process_deps%cm_frame = &
           hook%powheg%process_instance%is_cm_frame (1)

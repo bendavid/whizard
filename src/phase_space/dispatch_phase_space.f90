@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -44,6 +44,7 @@ module dispatch_phase_space
   use phs_base
   use phs_none
   use phs_single
+  use phs_rambo
   use phs_wood
   use phs_fks
 
@@ -93,6 +94,11 @@ contains
           call msg_warning ("Visualizing phase space channels not " // &
                "available for method 'single'.")
        end if
+    case ("rambo")
+       allocate (phs_rambo_config_t :: phs)
+       if (vis_channels) &
+          call msg_warning ("Visualizing phase space channels not " // &
+              "available for method 'rambo'.")
     case ("fks")
       allocate (phs_fks_config_t :: phs)
     case ("wood", "default", "fast_wood")
@@ -156,7 +162,6 @@ contains
     real(default) :: circe1_mapping_slope, endpoint_mapping_slope
     real(default) :: power_mapping_eps
     beam_structure_tmp = beam_structure
-    call beam_structure_tmp%write ()
     call beam_structure_tmp%expand (strfun_mode)
     n_strfun = beam_structure_tmp%get_n_record ()
     sf_string = beam_structure_tmp%to_string (sf_only = .true.)

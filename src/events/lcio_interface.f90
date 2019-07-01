@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,6 +33,7 @@ module lcio_interface
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use constants, only: PI
+  use physics_defs, only: ns_per_mm
   use diagnostics
   use lorentz
   use flavors
@@ -329,7 +330,7 @@ module lcio_interface
      end function lcio_vtx_z
   end interface
   interface
-     real(c_double) function lcio_prt_time (prt) bind(C)
+     real(c_float) function lcio_prt_time (prt) bind(C)
        import
        type(c_ptr), value :: prt
      end function lcio_prt_time
@@ -378,7 +379,7 @@ module lcio_interface
      subroutine lcio_particle_set_time (prt_obj, t) bind(C)
        import
        type(c_ptr), value :: prt_obj
-       real(c_double), value :: t
+       real(c_float), value :: t
      end subroutine lcio_particle_set_time
   end interface
 
@@ -521,7 +522,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.6.4")
+         "WHIZARD version:" // "2.7.0")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -710,6 +711,7 @@ contains
     real(default) :: time
     type(lcio_particle_t), intent(in) :: prt
     time = lcio_prt_time (prt%obj)
+    time = time / ns_per_mm
   end function lcio_particle_get_time
 
   subroutine lcio_polarization_init_pol (prt, pol)
@@ -782,7 +784,9 @@ contains
   subroutine lcio_particle_set_t (prt, t)
     type(lcio_particle_t), intent(inout) :: prt
     real(default), intent(in) :: t
-    call lcio_particle_set_time (prt%obj, real(t, c_double))
+    real(default) :: ns_from_t_mm
+    ns_from_t_mm = ns_per_mm * t
+    call lcio_particle_set_time (prt%obj, real(ns_from_t_mm, c_float))
   end subroutine lcio_particle_set_t
 
   subroutine lcio_particle_set_parent (daughter, parent)

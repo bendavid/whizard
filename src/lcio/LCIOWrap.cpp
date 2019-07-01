@@ -460,7 +460,7 @@ extern "C" double lcio_vtx_z (MCParticleImpl* mcp) {
   return mcp->getVertex()[2];
 }
 
-extern "C" double lcio_prt_time (MCParticleImpl* mcp) {
+extern "C" float lcio_prt_time (MCParticleImpl* mcp) {
   return mcp->getTime();
 }
 

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -63,6 +63,7 @@ module dispatch_transforms
   use shower_core
   use shower
   use shower_pythia6
+  use shower_pythia8
   use hadrons
   use mlm_matching
   use powheg_matching
@@ -247,12 +248,14 @@ contains
           allocate (shower_t :: evt%shower)
        case (PS_PYTHIA6)
           allocate (shower_pythia6_t :: evt%shower)
+       case (PS_PYTHIA8)
+          allocate (shower_pythia8_t :: evt%shower)
        case default
           call msg_fatal ('Shower: Method ' // &
             char (var_list%get_sval (var_str ("$shower_method"))) // &
             'not implemented!')
        end select
-       call evt%shower%init (settings, taudec_settings, evt%pdf_data)
+       call evt%shower%init (settings, taudec_settings, evt%pdf_data, os_data)
     end select
     call dispatch_matching (evt, settings, var_list, process_name)
   end subroutine dispatch_evt_shower

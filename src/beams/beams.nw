@@ -1697,20 +1697,6 @@ c.m.\ momentum coincide.
 
 @ %def beam_data_init_decay
 @
-\subsection{Sanity check}
-After the beams have been set, the initial-particle masses may have
-been modified.  This can be checked here.
-<<Beams: beam data: TBP>>=
-  procedure :: masses_are_consistent => beam_data_masses_are_consistent
-<<Beams: procedures>>=
-  function beam_data_masses_are_consistent (beam_data) result (flag)
-    logical :: flag
-    class(beam_data_t), intent(in) :: beam_data
-    flag = all (nearly_equal (beam_data%mass, beam_data%flv%get_mass ()))
-  end function beam_data_masses_are_consistent
-
-@ %def beam_data_masses_are_consistent
-@
 \subsection{The beams type}
 Beam objects are interaction objects that contain the actual beam
 data including polarization and density matrix.  For collisions, the
@@ -9013,7 +8999,8 @@ convenient mapping from $r$ to $x$ with Jacobian $f$.
 
 In the [[inverse_kinematics]] variant, we exchange the intent of [[x]]
 and [[r]].  The momenta are calculated only if the optional flag
-[[set_momenta]] is present and set.
+[[set_momenta]] is present and set.  Internal parameters of [[sf_int]]
+are calculated only if the optional flag [[set_x]] is present and set.
 
 Update 2018-08-22: Throughout this algorithm, we now carry
 [[xb]]=$1-x$ together with [[x]] values, as we did for [[r]] before.
@@ -9039,8 +9026,7 @@ it might be most sensible to apply the extension with [[xb]] everywhere.
   end interface
 
   abstract interface
-     subroutine sf_int_inverse_kinematics (sf_int, x, xb, f, r, rb, map, &
-          set_momenta)
+     subroutine sf_int_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), dimension(:), intent(in) :: x
@@ -10452,7 +10438,8 @@ inverts mappings.  See below [[recover_kinematics]].
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), &
+                          set_momenta = c==1)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -10528,7 +10515,8 @@ independent of this.
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), &
+                          set_momenta = .false.)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -15824,6 +15812,27 @@ also output [[xb]], which is $\bar x=1-x$.
   end subroutine epa_complete_kinematics
 
 @ %def epa_complete_kinematics
+@ Overriding the default method: we compute the [[x]] array from the
+momentum configuration.  In the specific case of EPA, we also set the
+internally stored $x$ and $\bar x$ values, so they can be used in the
+following routine.
+
+Note: the extraction of $\bar x$ is not numerically safe, but it cannot
+be as long as the base [[recover_x]] is not.
+<<SF epa: epa: TBP>>=
+  procedure :: recover_x => sf_epa_recover_x
+<<SF epa: procedures>>=
+  subroutine sf_epa_recover_x (sf_int, x, xb, x_free)
+    class(epa_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(inout), optional :: x_free
+    call sf_int%base_recover_x (x, xb, x_free)
+    sf_int%x  = x(1)
+    sf_int%xb = xb(1)
+  end subroutine sf_epa_recover_x
+
+@ %def sf_epa_recover_x
 @ Compute inverse kinematics.  Here, we start with the $x$ array and
 compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
@@ -15868,39 +15877,13 @@ can set momenta by the same formula as for normal kinematics.
     if (set_mom) then
        call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
-       case (SF_DONE_KINEMATICS)
-          sf_int%x  = x(1)
-          sf_int%xb = xb(1)
-          sf_int%E  = energy (sf_int%get_momentum (1))
-       case (SF_FAILED_KINEMATICS)
-          sf_int%x = 0
-          f = 0
+       case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
+    sf_int%E  = energy (sf_int%get_momentum (1))
   end subroutine epa_inverse_kinematics
 
 @ %def epa_inverse_kinematics
-@ Overriding the default method: we compute the [[x]] array from the
-momentum configuration.  In the specific case of EPA, we also set the
-internally stored $x$ and $\bar x$ values, so they can be used in the
-following routine.
-
-Note: the extraction of $\bar x$ is not numerically safe, but it can't
-be as long as the base [[recover_x]] isn't.
-<<SF epa: epa: TBP>>=
-  procedure :: recover_x => sf_epa_recover_x
-<<SF epa: procedures>>=
-  subroutine sf_epa_recover_x (sf_int, x, xb, x_free)
-    class(epa_t), intent(inout) :: sf_int
-    real(default), dimension(:), intent(out) :: x
-    real(default), dimension(:), intent(out) :: xb
-    real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x, xb, x_free)
-    sf_int%x  = x(1)
-    sf_int%xb = xb(1)
-  end subroutine sf_epa_recover_x
-
-@ %def sf_epa_recover_x
 @
 \subsection{EPA application}
 For EPA, we can in principle compute kinematics and function value in
@@ -17277,6 +17260,24 @@ discussed above is applied.
   end subroutine ewa_complete_kinematics
 
 @ %def ewa_complete_kinematics
+@ Overriding the default method: we compute the [[x]] array from the
+momentum configuration.  In the specific case of EWA, we also set the
+internally stored $x$ and $\bar x$ values, so they can be used in the
+following routine.
+<<SF ewa: ewa: TBP>>=
+  procedure :: recover_x => sf_ewa_recover_x
+<<SF ewa: procedures>>=
+  subroutine sf_ewa_recover_x (sf_int, x, xb, x_free)
+    class(ewa_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(inout), optional :: x_free
+    call sf_int%base_recover_x (x, xb, x_free)
+    sf_int%x  = x(1)
+    sf_int%xb = xb(1)
+  end subroutine sf_ewa_recover_x
+
+@ %def sf_ewa_recover_x
 @ Compute inverse kinematics.  Here, we start with the $x$ array and
 compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
@@ -17330,13 +17331,7 @@ can set momenta by the same formula as for normal kinematics.
     if (set_mom) then
        call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
-       case (SF_DONE_KINEMATICS)
-          sf_int%x = x(1)
-          sf_int%xb= xb(1)
-       case (SF_FAILED_KINEMATICS)
-          sf_int%x = 0
-          sf_int%xb= 0
-          f = 0
+       case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
   end subroutine ewa_inverse_kinematics
@@ -21854,7 +21849,7 @@ Construct and display a test structure function data object.
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_qed_test ()
     pdg_in(1) = PHOTON
     pdg_in(2) = PHOTON
@@ -21946,7 +21941,7 @@ Construct and evaluate a structure function object in generator mode.
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_qed_test ()
     call flv(1)%init (PHOTON, model)
     call flv(2)%init (PHOTON, model)
@@ -22059,7 +22054,7 @@ Construct and evaluate a structure function object in generator mode.
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_qed_test ()
     call flv(1)%init (PHOTON, model)
     call flv(2)%init (PHOTON, model)
@@ -22577,6 +22572,23 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
   end subroutine pdf_builtin_complete_kinematics
 
 @ %def pdf_builtin_complete_kinematics
+@ Overriding the default method: we compute the [[x]] value from the
+momentum configuration.  In this specific case, we also set the
+internally stored $x$ value, so it can be used in the
+following routine.
+<<SF pdf builtin: pdf builtin: TBP>>=
+  procedure :: recover_x => pdf_builtin_recover_x
+<<SF pdf builtin: procedures>>=
+  subroutine pdf_builtin_recover_x (sf_int, x, xb, x_free)
+    class(pdf_builtin_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(inout), optional :: x_free
+    call sf_int%base_recover_x (x, xb, x_free)
+    sf_int%x  = x(1)
+  end subroutine pdf_builtin_recover_x
+
+@ %def sf_pdf_builtin_recover_x
 @ Compute inverse kinematics.  Here, we start with the $x$ array and
 compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
@@ -22604,11 +22616,7 @@ can set momenta by the same formula as for normal kinematics.
     if (set_mom) then
        call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
-       case (SF_DONE_KINEMATICS)
-          sf_int%x = x(1)
-       case (SF_FAILED_KINEMATICS)
-          sf_int%x = 0
-          f = 0
+       case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
   end subroutine pdf_builtin_inverse_kinematics
@@ -22866,7 +22874,7 @@ Construct and display a test structure function data object.
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call model%init_sm_test ()
     pdg_in = PROTON
@@ -22937,7 +22945,7 @@ structure function.
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_sm_test ()
     call flv%init (PROTON, model)
     pdg_in = PROTON
@@ -23053,7 +23061,7 @@ type.
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     name = "CTEQ6L"
 
@@ -23449,7 +23457,23 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
   end subroutine lhapdf_complete_kinematics
 
 @ %def lhapdf_complete_kinematics
-@
+@ Overriding the default method: we compute the [[x]] value from the
+momentum configuration.  In this specific case, we also set the
+internally stored $x$ value, so it can be used in the
+following routine.
+<<SF lhapdf: lhapdf: TBP>>=
+  procedure :: recover_x => lhapdf_recover_x
+<<SF lhapdf: procedures>>=
+  subroutine lhapdf_recover_x (sf_int, x, xb, x_free)
+    class(lhapdf_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(inout), optional :: x_free
+    call sf_int%base_recover_x (x, xb, x_free)
+    sf_int%x  = x(1)
+  end subroutine lhapdf_recover_x
+
+@ %def lhapdf_recover_x
 @ Compute inverse kinematics.  Here, we start with the $x$ array and
 compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
@@ -23477,11 +23501,7 @@ can set momenta by the same formula as for normal kinematics.
     if (set_mom) then
        call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
-       case (SF_DONE_KINEMATICS)
-          sf_int%x = x(1)
-       case (SF_FAILED_KINEMATICS)
-          sf_int%x = 0
-          f = 0
+       case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
   end subroutine lhapdf_inverse_kinematics
@@ -24592,6 +24612,7 @@ module dispatch_beams
   use pdg_arrays
   use model_data, only: model_data_t
   use dispatch_rng, only: dispatch_rng_factory
+  use dispatch_rng, only: update_rng_seed_in_var_list
   use flavors, only: flavor_t
   use sm_qcd, only: qcd_t, alpha_qcd_fixed_t, alpha_qcd_from_scale_t
   use sm_qcd, only: alpha_qcd_from_lambda_t
@@ -24644,7 +24665,8 @@ The [[sf_prop]] object can be used to transfer structure-function
 specific data up and to the [[dispatch_sf_channels]] subroutine below,
 so they can be used for particular mappings.
 
-The [[var_list]] object is intent(inout) because the RNG generator seed
+The [[var_list_global]] object is used for the RNG generator seed.
+It is intent(inout) because the RNG generator seed
 may change during initialization.
 
 The [[pdg_in]] array is the array of incoming flavors, corresponding
@@ -24666,6 +24688,7 @@ flavors (beam index, component index) for the hard process.
     type(sf_prop_t), intent(inout) :: sf_prop
     type(var_list_t), intent(in) :: var_list
     type(var_list_t), intent(inout) :: var_list_global
+    integer :: next_rng_seed
     class(model_data_t), target, intent(in) :: model
     type(os_data_t), intent(in) :: os_data
     real(default), intent(in) :: sqrts
@@ -24884,7 +24907,9 @@ flavors (beam index, component index) for the hard process.
                circe1_chattiness, circe1_with_radiation)
           if (circe1_generate) then
              call msg_message ("CIRCE1: activating generator mode")
-             call dispatch_rng_factory (rng_factory, var_list_global)
+             call dispatch_rng_factory &
+                  (rng_factory, var_list_global, next_rng_seed)
+             call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
              call data%set_generator_mode (rng_factory)
           end if
        end select
@@ -24901,7 +24926,9 @@ flavors (beam index, component index) for the hard process.
           call data%init (os_data, model, pdg_in, sqrts, &
                circe2_polarized, polarized, circe2_file, circe2_design)
           call msg_message ("CIRCE2: activating generator mode")
-          call dispatch_rng_factory (rng_factory, var_list_global)
+          call dispatch_rng_factory &
+               (rng_factory, var_list_global, next_rng_seed)
+          call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
           call data%set_generator_mode (rng_factory)
        end select
     case ("gaussian")
@@ -24911,7 +24938,9 @@ flavors (beam index, component index) for the hard process.
           gaussian_spread = &
                [var_list%get_rval (var_str ("gaussian_spread1")), &
                var_list%get_rval (var_str ("gaussian_spread2"))]
-          call dispatch_rng_factory (rng_factory, var_list_global)
+          call dispatch_rng_factory &
+               (rng_factory, var_list_global, next_rng_seed)
+          call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
           call data%init (model, pdg_in, gaussian_spread, rng_factory)
        end select
     case ("beam_events")

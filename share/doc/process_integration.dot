@@ -1,34 +1,34 @@
 
 digraph G {
 concentrate=true
-splines=ortho
+splines=true
 node[shape=record,style=filled,fillcolor=white]
 edge[color=gray50]
-process -> parton_states
+pcm -> process_mci
 process -> process_config
-parton_states -> subevt_expr
 instances -> pcm
 process -> pcm
 process -> process_mci
 process -> process_counter
 kinematics -> process_mci
-process_config -> pcm_base
-process_config -> pcm
+parton_states -> subevt_expr
+kinematics -> process_config
 instances -> pcm_base
+pcm_base -> process_mci
 instances -> parton_states
-instances -> core_manager
+process -> parton_states
 instances -> kinematics
 instances -> process_mci
-process -> core_manager
 process_mci -> process_config
 instances -> process_config
+pcm -> process_config
 instances -> process_counter
 pcm -> pcm_base
 process_stacks -> process
 process -> pcm_base
 kinematics -> pcm
 instances -> process
-kinematics -> process_config
+pcm_base -> process_config
 process_mci -> process_counter
  }
 

@@ -21,9 +21,10 @@ sqrts =  5.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process recola_6_p1:
-| Recola: registering processes for 'recola_6_p1'
+| Recola: registering processes for 'recola_6_p1_BORN'
 | Recola: process #1: e+ e- -> u u~ (LO)
 | Recola: process #2: e+ e- -> d d~ (LO)
+| Recola: preparing processes for integration
 | Recola: preparing processes for integration
 | Beam structure: [any particles]
 | Beam data (collision):

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -224,10 +224,10 @@ contains
        if (i /= es_array%i_in) then
           associate (eio => es_array%entry(i)%eio)
             if (eio%split) then
-               if (eio%split_n_evt > 0 &
-                    .and. event_index > 1 &
-                    .and. mod (event_index, eio%split_n_evt) == 1) then
-                  call eio%split_out ()
+               if (eio%split_n_evt > 0 .and. event_index > 1) then
+                  if (mod (event_index, eio%split_n_evt) == 1) then
+                     call eio%split_out ()
+                  end if
                else if (eio%split_n_kbytes > 0) then
                   call eio%update_split_count (increased)
                   if (increased)  call eio%split_out ()

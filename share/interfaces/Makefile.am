@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,6 +33,7 @@ c_example_SOURCES = c_test.c c_test.h
 c_example_LDADD  = $(top_builddir)/src/libwhizard.la
 c_example_LDADD += $(top_builddir)/src/prebuilt/libwhizard_prebuilt.la
 c_example_LDADD += $(CXXLIBS)
+c_example_LDADD += $(RPC_CFLAGS)
 c_example_LDADD += $(LDFLAGS_LHAPDF)
 c_example_LDADD += $(LDFLAGS_STDHEP)
 c_example_LDADD += $(LDFLAGS_HEPMC)
@@ -45,6 +46,7 @@ cpp_example_SOURCES = cpp_whizard.cc cpp_test.cc cpp_whizard.h
 cpp_example_LDADD  = $(top_builddir)/src/libwhizard.la
 cpp_example_LDADD += $(top_builddir)/src/prebuilt/libwhizard_prebuilt.la
 cpp_example_LDADD += $(CXXLIBS)
+cpp_example_LDADD += $(RPC_CFLAGS)
 cpp_example_LDADD += $(LDFLAGS_LHAPDF)
 cpp_example_LDADD += $(LDFLAGS_STDHEP)
 cpp_example_LDADD += $(LDFLAGS_HEPMC)

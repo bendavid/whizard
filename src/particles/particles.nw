@@ -5249,7 +5249,7 @@ and anticolor line indices for a single particle.
        call pset%prt(i)%set_color (col)
     end if
   end subroutine particle_set_recover_color
-       
+
 @ %def particle_set_recover_color
 @
 \subsection{Extract/modify contents}

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -1106,7 +1106,7 @@ contains
        call pset%prt(i)%set_color (col)
     end if
   end subroutine particle_set_recover_color
-       
+
   function particle_set_get_color_all (particle_set) result (col)
     class(particle_set_t), intent(in) :: particle_set
     type(color_t), dimension(:), allocatable :: col

@@ -13,13 +13,9 @@ SM.mc =>  0.00000E+00
 SM.ms =>  0.00000E+00
 SM.wtop =>  0.00000E+00
 SM.mtop =>  1.75000E+02
-?logging => true
-?openmp_logging = false
-?vis_history = false
-?integration_timer = false
-?pacify = true
+$method = "recola"
+openmp_num_threads = 1
 ?use_vamp_equivalences = false
-$loop_me_method = "recola"
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 ?alphas_from_lambda_qcd = false
@@ -43,8 +39,17 @@ sqrts =  5.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 7777
 | Initializing integration for process recola_7_p1:
-| Recola: registering processes for 'recola_7_p1'
-| Recola: process #1: e+ e- -> t t~ (NLO)
+| Recola: registering processes for 'recola_7_p1_BORN'
+| Recola: process #1: e+ e- -> t t~ (LO)
+| Recola: preparing processes for integration
+| Recola: registering processes for 'recola_7_p1_REAL'
+| Recola: process #2: e+ e- -> t t~ g (LO)
+| Recola: preparing processes for integration
+| Recola: registering processes for 'recola_7_p1_LOOP'
+| Recola: process #3: e+ e- -> t t~ (NLO)
+| Recola: preparing processes for integration
+| Recola: registering processes for 'recola_7_p1_SUB'
+| Recola: process #4: e+ e- -> t t~ (LO)
 | Recola: preparing processes for integration
 | Beam structure: [any particles]
 | Beam data (collision):
@@ -62,8 +67,8 @@ sqrts =  5.00000E+02
 |   Library name  = 'recola_7_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'recola_7_p1_i1':   e+, e- => t, tbar [omega]
-|     2: 'recola_7_p1_i2':   e+, e- => t, tbar, gl [omega], [real]
+|     1: 'recola_7_p1_i1':   e+, e- => t, tbar [recola]
+|     2: 'recola_7_p1_i2':   e+, e- => t, tbar, gl [recola], [real]
 |     3: 'recola_7_p1_i3':   e+, e- => t, tbar [recola], [virtual]
 |     4: 'recola_7_p1_i4':   e+, e- => t, tbar [inactive], [subtraction]
 | ------------------------------------------------------------------------
@@ -88,9 +93,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        100     5.072E+02   2.64E+01    5.21    0.52    45.6
+   1        100     5.071E+02   2.64E+01    5.21    0.52    45.6
 |-----------------------------------------------------------------------------|
-   1        100     5.072E+02   2.64E+01    5.21    0.52    45.6
+   1        100     5.071E+02   2.64E+01    5.21    0.52    45.6
 |=============================================================================|
 | Starting integration for process 'recola_7_p1' part 'real'
 | Integrate: iterations = 1:100
@@ -122,7 +127,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
    1          0     5.683E+02   2.78E+01    4.90    0.00    40.1
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  ( 12.0614 +-   1.82153 ) %
+|  ( 12.0634 +-   1.82163 ) %
 |=============================================================================|
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

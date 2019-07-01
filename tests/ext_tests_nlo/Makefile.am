@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by 
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -12,13 +12,13 @@
 #     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -31,51 +31,64 @@ WHIZARD_DRIVER = run_whizard.sh
 
 TESTS_EXTENDED = \
 	nlo_decay_tbw.run \
-	nlo_tt.run \
-	nlo_tt_powheg.run \
-	nlo_tt_powheg_sudakov.run \
-	nlo_uu.run \
-	nlo_uu_powheg.run \
-	nlo_qq_powheg.run \
-	nlo_methods_gosam.run \
-	nlo_threshold_factorized.run \
-	nlo_threshold.run \
-	nlo_jets.run \
-	nlo_eejj.run \
-	nlo_eejjj.run \
+	nlo_ee4b.run \
 	nlo_ee4j.run \
+	nlo_ee4t.run \
+	nlo_ee4tj.run \
 	nlo_ee5j.run \
 	nlo_eebb.run \
 	nlo_eebbj.run \
 	nlo_eebbjj.run \
-	nlo_ee4b.run \
+	nlo_eejj.run \
+	nlo_eejjj.run \
 	nlo_eett.run \
-	nlo_eettj.run \
-	nlo_eettjj.run \
-	nlo_eettjjj.run \
-	nlo_eettbb.run \
 	nlo_eetta.run \
 	nlo_eettaa.run \
+	nlo_eettah.run \
 	nlo_eettaj.run \
 	nlo_eettajj.run \
 	nlo_eettaz.run \
-	nlo_eettah.run \
+	nlo_eettbb.run \
+	nlo_eetth.run \
+	nlo_eetthh.run \
+	nlo_eetthj.run \
+	nlo_eetthjj.run \
+	nlo_eetthz.run \
+	nlo_eettj.run \
+	nlo_eettjj.run \
+	nlo_eettjjj.run \
+	nlo_eettwjj.run \
+	nlo_eettww.run \
 	nlo_eettz.run \
 	nlo_eettzj.run \
 	nlo_eettzjj.run \
 	nlo_eettzz.run \
-	nlo_eettww.run \
-	nlo_eettwmjj.run \
-	nlo_eettwpjj.run \
-	nlo_eetth.run \
-	nlo_eetthj.run \
-	nlo_eetthjj.run \
-	nlo_eetthh.run \
-	nlo_eetthz.run \
-	nlo_ee4t.run \
-	nlo_ee4tj.run
+	nlo_jets.run \
+	nlo_methods_gosam.run \
+	nlo_qq_powheg.run \
+	nlo_threshold_factorized.run \
+	nlo_threshold.run \
+	nlo_tt_powheg_sudakov.run \
+	nlo_tt_powheg.run \
+	nlo_tt.run \
+	nlo_uu_powheg.run \
+	nlo_uu.run
 
-XFAIL_TESTS_EXTENDED =
+XFAIL_TESTS_EXTENDED = \
+	nlo_ee4b.run \
+	nlo_ee4j.run \
+	nlo_ee4tj.run \
+	nlo_ee5j.run \
+	nlo_eebbj.run \
+	nlo_eebbjj.run \
+	nlo_eejjj.run \
+	nlo_eettaj.run \
+	nlo_eettajj.run \
+	nlo_eettbb.run \
+	nlo_eetthjj.run \
+	nlo_eettjj.run \
+	nlo_eettjjj.run \
+	nlo_eettzjj.run
 
 TESTS_REQ_GAMELAN = \
 	nlo_tt_powheg.run \
@@ -101,13 +114,13 @@ SUFFIXES = .sh .run
 
 .sh.run:
 	@rm -f $@
-	@if test -f $(top_builddir)/share/tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_builddir)/share/tests/$*|g' $< > $@; \
-	elif test -f $(top_srcdir)/share/tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_srcdir)/share/tests/$*|g' $< > $@; \
+	@if test -f $(top_builddir)/share/tests/ext_tests_nlo/$*.sin; then \
+	  $(SED) 's|@script@|$(top_builddir)/share/tests/ext_tests_nlo/$*|g' $< > $@; \
+	elif test -f $(top_srcdir)/share/tests/ext_tests_nlo/$*.sin; then \
+	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_nlo/$*|g' $< > $@; \
 	fi
-	$(SED) -i 's|@python_bin@|$(PYTHON_BIN)|g' $@
-	$(SED) -i 's|@share_dir@|$(top_srcdir)/share/tests/|g' $@
+	$(SED) 's|@python_bin@|$(PYTHON_BIN)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
+	$(SED) 's|@share_dir@|$(top_srcdir)/share/tests|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	@chmod +x $@
 
 nlo_eejj.run: nlo_settings.sin
@@ -133,9 +146,8 @@ nlo_eettz.run: nlo_settings.sin
 nlo_eettzj.run: nlo_settings.sin
 nlo_eettzjj.run: nlo_settings.sin
 nlo_eettzz.run: nlo_settings.sin
+nlo_eettwjj.run: nlo_settings.sin
 nlo_eettww.run: nlo_settings.sin
-nlo_eettwmjj.run: nlo_settings.sin
-nlo_eettwpjj.run: nlo_settings.sin
 nlo_eetth.run: nlo_settings.sin
 nlo_eetthj.run: nlo_settings.sin
 nlo_eetthjj.run: nlo_settings.sin
@@ -143,11 +155,9 @@ nlo_eetthh.run: nlo_settings.sin
 nlo_eetthz.run: nlo_settings.sin
 nlo_ee4t.run: nlo_settings.sin
 nlo_ee4tj.run: nlo_settings.sin
-nlo_settings.sin: $(top_builddir)/share/tests/functional_tests/nlo_settings.sin
+nlo_settings.sin: $(top_builddir)/share/tests/ext_tests_nlo/nlo_settings.sin
 	cp $< $@
 
-#$(SED) -i 's|@python_bin@|$(PYTHON_BIN)|g' $@
-#$(SED) -i 's|@share_dir@|$(top_srcdir)/share/tests/|g' $@
 if MPOST_AVAILABLE
 $(TESTS_REQ_GAMELAN): gamelan.sty
 $(UNIT_TESTS_REQ_GAMELAN): gamelan.sty
@@ -247,7 +257,7 @@ if STATIC_AVAILABLE
 endif
 
 # The reference output files are in the source directory.  Copy them here.
-ref-output: $(top_srcdir)/share/tests/ref-output 
+ref-output: $(top_srcdir)/share/tests/ext_tests_nlo/ref-output
 	mkdir -p ref-output
 	for f in $</*.ref; do cp $$f $@; done
 
@@ -259,7 +269,7 @@ notestflag:
 
 ## Remove generated files
 clean-local:
-	rm -f gamelan.sty  
+	rm -f gamelan.sty
 	rm -f TESTFLAG
 	rm -f *_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
@@ -268,15 +278,15 @@ clean-local:
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la *.f90.in
 	rm -f *.makefile
 	rm -rf ref-output
-	rm -f *.sin *.hbc 
-	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
+	rm -f *.sin *.hbc
+	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
-	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]
+	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9]
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
-	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
-	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
+	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f slhaspectrum.in suspect2.out suspect2_lha.out
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -f *.olc *.olp *.olp_parameters
 	rm -rf stability_log
@@ -284,6 +294,8 @@ clean-local:
 	rm -rf Generated_Loops
 	rm -rf include lib golem.in
 	rm -f SM_tt_threshold.grid
+	rm -f *fks_regions.out
+	rm -f *_powheg_*.pg
 if FC_SUBMODULES
 	rm -f *.smod
 endif

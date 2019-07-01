@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -96,6 +96,7 @@ module_lists = \
   ../model_features/Modules \
   ../events/Modules \
   ../shower/Modules \
+  ../pythia8/Modules \
   ../expr_base/Modules \
   ../variables/Modules \
   ../beams/Modules \
@@ -149,8 +150,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../matching -I../model_features -I../events -I../tauola -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../threshold -I../fks -I../openloops -I../gosam -I../recola -I../fastjet -I../lhapdf -I../pdf_builtin -I../../vamp/src -I../user
-
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../matching -I../model_features -I../events -I../tauola -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../threshold -I../fks -I../openloops -I../gosam -I../recola -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src -I../user -I../pythia8
 
 ########################################################################
 ## Default Fortran compiler options

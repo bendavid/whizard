@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -1056,7 +1056,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
        else
-          write (u, "(A)") "# BLHA order written by WHIZARD 2.6.4"
+          write (u, "(A)") "# BLHA order written by WHIZARD 2.7.0"
        end if
        write (u, "(A)")
     end if
@@ -1158,8 +1158,11 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        if (cfg%openloops_stability_log > 0) &
           write (u, '(A25,I1)') "extra stability_log " // pad, &
           cfg%openloops_stability_log
-       if (cfg%openloops_use_collier) &
+       if (cfg%openloops_use_collier) then
           write (u, '(A25,I1)') "extra preset " // pad, 2
+       else
+          write (u, '(A25,I1)') "extra preset " // pad, 1
+       end if
     end select
     if (full) then
        write (u, "(A)")

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -79,9 +79,10 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("template_me1"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
@@ -203,6 +204,7 @@ contains
 
     call lib%final ()
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_1"
@@ -238,9 +240,10 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("template_me2"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
@@ -362,6 +365,7 @@ contains
 
     call lib%final ()
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_2"

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -68,6 +68,8 @@ module event_base
      real(default) :: weight_prc = 0
      logical :: excess_prc_known = .false.
      real(default) :: excess_prc = 0
+     logical :: n_dropped_known = .false.
+     integer :: n_dropped = 0
      integer :: n_alt = 0
      logical :: sqme_alt_known = .false.
      real(default), dimension(:), allocatable :: sqme_alt
@@ -100,6 +102,7 @@ module event_base
           generic_event_get_weight_alt_0, generic_event_get_weight_alt_1
      procedure :: generic_event_get_weight_alt_0
      procedure :: generic_event_get_weight_alt_1
+     procedure :: get_n_dropped => generic_event_get_n_dropped
      procedure :: get_excess_prc => generic_event_get_excess_prc
      procedure :: set_sqme_prc => generic_event_set_sqme_prc
      procedure :: set_sqme_ref => generic_event_set_sqme_ref
@@ -108,6 +111,7 @@ module event_base
      procedure :: set_weight_ref => generic_event_set_weight_ref
      procedure :: set_weight_alt => generic_event_set_weight_alt
      procedure :: set_excess_prc => generic_event_set_excess_prc
+     procedure :: set_n_dropped => generic_event_set_n_dropped
      procedure :: set => generic_event_set
      procedure (generic_event_write), deferred :: write
      procedure (generic_event_generate), deferred :: generate
@@ -493,6 +497,16 @@ contains
     end if
   end function generic_event_get_excess_prc
 
+  function generic_event_get_n_dropped (event) result (n_dropped)
+    class(generic_event_t), intent(in) :: event
+    integer :: n_dropped
+    if (event%n_dropped_known) then
+       n_dropped = event%n_dropped
+    else
+       n_dropped = 0
+    end if
+  end function generic_event_get_n_dropped
+
   subroutine generic_event_set_sqme_prc (event, sqme)
     class(generic_event_t), intent(inout) :: event
     real(default), intent(in) :: sqme
@@ -541,16 +555,24 @@ contains
     event%excess_prc = excess
     event%excess_prc_known = .true.
   end subroutine generic_event_set_excess_prc
+  
+  subroutine generic_event_set_n_dropped (event, n_dropped)
+    class(generic_event_t), intent(inout) :: event
+    integer, intent(in) :: n_dropped
+    event%n_dropped = n_dropped
+    event%n_dropped_known = .true.
+  end subroutine generic_event_set_n_dropped
 
   subroutine generic_event_set (event, &
        weight_ref, weight_prc, weight_alt, &
-       excess_prc, &
+       excess_prc, n_dropped, &
        sqme_ref, sqme_prc, sqme_alt)
     class(generic_event_t), intent(inout) :: event
     real(default), intent(in), optional :: weight_ref, weight_prc
     real(default), intent(in), optional :: sqme_ref, sqme_prc
     real(default), dimension(:), intent(in), optional :: sqme_alt, weight_alt
     real(default), intent(in), optional :: excess_prc
+    integer, intent(in), optional :: n_dropped
     if (present (sqme_prc)) then
        call event%set_sqme_prc (sqme_prc)
     end if
@@ -571,6 +593,9 @@ contains
     end if
     if (present (excess_prc)) then
        call event%set_excess_prc (excess_prc)
+    end if
+    if (present (n_dropped)) then
+       call event%set_n_dropped (n_dropped)
     end if
   end subroutine generic_event_set
 

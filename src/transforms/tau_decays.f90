@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -43,7 +43,7 @@ module tau_decays
 
   type, extends (evt_t) :: evt_tau_decays_t
      type(model_t), pointer :: model_hadrons => null()
-     type(qcd_t), pointer :: qcd_t => null()
+     type(qcd_t) :: qcd
    contains
      procedure :: write_name => evt_tau_decays_write_name
      procedure :: write => evt_tau_decays_write

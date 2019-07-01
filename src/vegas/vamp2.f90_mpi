@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,7 +33,7 @@ module vamp2
   use io_units
   use format_utils, only: pac_fmt
   use format_utils, only: write_separator, write_indent
-  use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
+  use format_defs, only: FMT_17
   use diagnostics
   use rng_base
   use rng_stream, only: rng_stream_t
@@ -58,9 +58,9 @@ integer, parameter, public :: &
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X," // FMT_17 // ")", &
-     double_array_fmt =  "(1X,I18,1X," // FMT_17 // ")", &
-     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_17 // ")"
+     double_fmt =        "(1X,A18,1X,E16.8E4)", &
+     double_array_fmt =  "(1X,I18,1X,E16.8E4)", &
+     double_array2_fmt = "(1X,2(1X,I8),1X,E16.8E4)"
 
   type, abstract, extends(vegas_func_t) :: vamp2_func_t
      integer :: current_channel = 0
@@ -263,8 +263,10 @@ contains
     self%g = 1
     if (self%valid_x) then
        call self%evaluate_weight ()
-       f = self%evaluate_func (x) / self%g
-       self%n_calls = self%n_calls + 1
+       if (self%g /= 0) then
+          f = self%evaluate_func (x) / self%g
+          self%n_calls = self%n_calls + 1
+       end if
     end if
   end function vamp2_func_evaluate
 
@@ -850,7 +852,7 @@ contains
          cumulative_std = sqrt (1. / result%sum_wgts)
          call calculate_efficiency ()
          if (verbose) then
-            write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
+            write (msg_buffer, "(I0,1x,I0,1x, 4(E16.8E4,1x))") &
                  & it, self%config%n_calls, cumulative_int, cumulative_std, &
                  & self%result%chi2, self%result%efficiency
             call msg_message ()
@@ -860,7 +862,7 @@ contains
           call self%adapt_weights ()
        end if
        if (refine_grid) then
-          if (self%config%equivalences) then
+          if (self%config%equivalences .and. self%equivalences%is_allocated ()) then
              call self%apply_equivalences ()
           end if
           do ch = 1, self%config%n_channel

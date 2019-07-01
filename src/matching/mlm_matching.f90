@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -228,6 +228,7 @@ contains
     call matching%fill_P_PS (particle_set)
     !!! MLM stage 3 -> reconstruct and possibly reject
     call matching%apply (vetoed)
+    if (debug_active (D_MATCHING)) call matching%write ()
     if (allocated (matching%P_ME))  deallocate (matching%P_ME)
     if (allocated (matching%P_PS))  deallocate (matching%P_PS)
     if (allocated (matching%JETS_ME))  deallocate (matching%JETS_ME)

@@ -1,7 +1,7 @@
 
 digraph G {
 concentrate=true
-splines=ortho
+splines=true
 node[shape=record,style=filled,fillcolor=white]
 edge[color=gray50]
 subgraph cluster0 {
@@ -67,15 +67,14 @@ subgraph cluster0 {
  style=filled 
  color=gray95 
 edge[color=springgreen]
-fks -> beams
+fks -> model_features
 fks -> utilities
-fks -> blha
+fks -> beams
 fks -> threshold
 fks -> matrix_elements
 fks -> physics
 fks -> system
 fks -> variables
-fks -> model_features
 fks -> phase_space
 fks -> types
 fks -> basics
@@ -221,8 +220,7 @@ subgraph cluster0 {
  style=filled 
  color=gray95 
 edge[color=aquamarine2]
-phase_space -> system
-phase_space -> physics
+phase_space -> model_features
 phase_space -> utilities
 phase_space -> types
 phase_space -> parsing
@@ -232,8 +230,9 @@ phase_space -> threshold
 phase_space -> matrix_elements
 phase_space -> beams
 phase_space -> qft
-phase_space -> model_features
+phase_space -> system
 phase_space -> combinatorics
+phase_space -> physics
 }
 subgraph cluster0 {
  style=filled 
@@ -258,7 +257,7 @@ subgraph cluster0 {
 edge[color=chartreuse2]
 process_integration -> beams
 process_integration -> model_features
-process_integration -> fks
+process_integration -> blha
 process_integration -> recola
 process_integration -> threshold
 process_integration -> expr_base
@@ -269,13 +268,13 @@ process_integration -> mci
 process_integration -> variables
 process_integration -> phase_space
 process_integration -> types
+process_integration -> fks
 process_integration -> particles
 process_integration -> openloops
 process_integration -> matrix_elements
 process_integration -> basics
 process_integration -> qft
 process_integration -> rng
-process_integration -> blha
 process_integration -> combinatorics
 }
 subgraph cluster0 {
@@ -283,7 +282,6 @@ subgraph cluster0 {
  color=gray95 
 edge[color=chocolate1]
 qft -> system
-qft -> types
 qft -> basics
 qft -> physics
 qft -> expr_base
@@ -303,6 +301,7 @@ subgraph cluster0 {
  style=filled 
  color=gray95 
 edge[color=lightcyan]
+shower -> pythia8
 shower -> beams
 shower -> variables
 shower -> rng
@@ -348,13 +347,14 @@ transforms -> beams
 transforms -> variables
 transforms -> shower
 transforms -> phase_space
-transforms -> expr_base
+transforms -> pythia8
 transforms -> fks
 transforms -> matching
 transforms -> utilities
 transforms -> system
 transforms -> model_features
 transforms -> particles
+transforms -> expr_base
 transforms -> physics
 transforms -> events
 transforms -> types

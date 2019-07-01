@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -136,8 +136,8 @@ module prc_openloops
     procedure :: set_n_external => prc_openloops_set_n_external
     procedure :: reset_parameters => prc_openloops_reset_parameters
     procedure :: set_verbosity => prc_openloops_set_verbosity
-    procedure :: create_and_load_extra_libraries => &
-         prc_openloops_create_and_load_extra_libraries
+    procedure :: prepare_external_code => &
+         prc_openloops_prepare_external_code
     procedure :: compute_sqme_spin_c => prc_openloops_compute_sqme_spin_c
   end type prc_openloops_t
 
@@ -469,7 +469,7 @@ contains
     end select
   end subroutine prc_openloops_set_verbosity
 
-  subroutine prc_openloops_create_and_load_extra_libraries &
+  subroutine prc_openloops_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_openloops_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -485,7 +485,7 @@ contains
     call core%start ()
     call core%read_contract_file (flv_states)
     call core%print_parameter_file (i_core)
-  end subroutine prc_openloops_create_and_load_extra_libraries
+  end subroutine prc_openloops_prepare_external_code
 
   subroutine prc_openloops_compute_sqme_spin_c (object, &
        i_flv, i_hel, em, p, ren_scale, sqme_spin_c, bad_point)
@@ -500,7 +500,7 @@ contains
     real(double) :: res
     real(double), dimension(16) :: res_munu
     real(default) :: alpha_s
-    if (object%i_spin_c(i_flv, i_hel) > 0) then
+    if (object%i_spin_c(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) call msg_fatal &
             ("prc_openloops_compute_sqme_spin_c: ren_scale vanishes")

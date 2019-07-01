@@ -59,6 +59,11 @@ Conversion from energy units to cross-section units.
   real(default), parameter, public :: &
        conv = 0.38937966e12_default
 @
+Conversion from millimeter to nanoseconds for lifetimes.
+<<Physics defs: public parameters>>=
+  real(default), parameter, public :: &
+       ns_per_mm = 1.e6_default / 299792458._default
+@ 
 Rescaling factor.
 <<Physics defs: public parameters>>=
   real(default), parameter, public :: &

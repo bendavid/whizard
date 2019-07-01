@@ -188,7 +188,7 @@ save_CXXFLAGS="$CXXFLAGS"
 save_LIBS="$LIBS"
 CXXFLAGS="${CXXFLAGS} `${LHAPDF_CONFIG} --cxxflags`"
 LIBS="${LIBS} `${LHAPDF_CONFIG} --ldflags`"
-AC_MSG_CHECKING([if LHAPDF is functional (may take a while)])
+AC_MSG_CHECKING([if LHAPDF is functional])
 AC_LANG_PUSH([C++])
 AC_LINK_IFELSE(dnl
   [AC_LANG_PROGRAM([[#include "LHAPDF/LHAPDF.h"]], 

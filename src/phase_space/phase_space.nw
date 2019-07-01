@@ -3256,6 +3256,857 @@ time, implement a decay process.
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Flat RAMBO phase space}
+
+This module implements the flat \texttt{RAMBO} phase space for massless and massive particles using the minimal d.o.f $3n - 4$ in a straightforward parameterization with a single channel.
+We generate $n$ mass systems $M_i$ with $M_0 = \sqrt{s}$ and $M_{n} = 0$.
+We let each mass system decay $1 \rightarrow 2$ in a four-momentum conserving way.
+The four-momenta of the two particles are generated back-to-back where we map the d.o.f. to energy, azimuthal and polar angle.
+The particle momenta are then boosted to CMS by an appriopriate boost using the kinematics of the parent mass system.
+
+<<[[phs_rambo.f90]]>>=
+<<File header>>
+
+module phs_rambo
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use constants
+  use numeric_utils
+  use format_defs, only: FMT_19
+  use permutations, only: factorial
+  use diagnostics
+  use os_interface
+  use lorentz
+  use physics_defs
+  use model_data
+  use flavors
+  use process_constants
+  use phs_base
+
+<<Standard module head>>
+
+<<PHS rambo: parameters>>
+
+<<PHS rambo: types>>
+
+<<PHS rambo: public>>
+
+contains
+
+<<PHS rambo: procedures>>
+
+end module phs_rambo
+@ %def phs_rambo
+@
+\subsection{Configuration}
+<<PHS rambo: public>>=
+  public :: phs_rambo_config_t
+<<PHS rambo: types>>=
+  type, extends (phs_config_t) :: phs_rambo_config_t
+  contains
+  <<PHS rambo: phs rambo config: TBP>>
+  end type phs_rambo_config_t
+
+@ %def phs_rambo_config_t
+@ The finalizer is empty.
+<<PHS rambo: phs rambo config: TBP>>=
+  procedure :: final => phs_rambo_config_final
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_config_final (object)
+    class(phs_rambo_config_t), intent(inout) :: object
+  end subroutine phs_rambo_config_final
+
+@ %def phs_rambo_final
+@ Output.
+<<PHS rambo: phs rambo config: TBP>>=
+  procedure :: write => phs_rambo_config_write
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_config_write (object, unit, include_id)
+    class(phs_rambo_config_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: include_id
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Partonic, flat phase-space configuration (RAMBO):"
+    call object%base_write (unit)
+  end subroutine phs_rambo_config_write
+
+@ %def phs_rambo_config_write
+@ Configuration: there is only one channel and $3n - 4$ parameters.
+<<PHS rambo: phs rambo config: TBP>>=
+  procedure :: configure => phs_rambo_config_configure
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_config_configure (phs_config, sqrts, &
+       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       nlo_type, subdir)
+    class(phs_rambo_config_t), intent(inout) :: phs_config
+    real(default), intent(in) :: sqrts
+    logical, intent(in), optional :: sqrts_fixed
+    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: azimuthal_dependence
+    logical, intent(in), optional :: rebuild
+    logical, intent(in), optional :: ignore_mismatch
+    integer, intent(in), optional :: nlo_type
+    type(string_t), intent(in), optional :: subdir
+    if (.not. present (nlo_type)) &
+      phs_config%nlo_type = BORN
+    if (phs_config%n_out < 2) then
+       call msg_fatal ("RAMBO phase space requires n_out >= 2")
+    end if
+    phs_config%n_channel = 1
+    phs_config%n_par = 3 * phs_config%n_out - 4
+    phs_config%sqrts = sqrts
+    if (present (sqrts_fixed))  phs_config%sqrts_fixed = sqrts_fixed
+    if (present (cm_frame))  phs_config%cm_frame = cm_frame
+    if (allocated (phs_config%channel))  deallocate (phs_config%channel)
+    allocate (phs_config%channel (1))
+    call phs_config%compute_md5sum ()
+  end subroutine phs_rambo_config_configure
+
+@ %def phs_rambo_config_configure
+@ Startup message, after configuration is complete.
+<<PHS rambo: phs rambo config: TBP>>=
+  procedure :: startup_message => phs_rambo_config_startup_message
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_config_startup_message (phs_config, unit)
+    class(phs_rambo_config_t), intent(in) :: phs_config
+    integer, intent(in), optional :: unit
+    call phs_config%base_startup_message (unit)
+    write (msg_buffer, "(A,2(1x,I0,1x,A))") &
+         "Phase space: flat (RAMBO)"
+    call msg_message (unit = unit)
+  end subroutine phs_rambo_config_startup_message
+
+@ %def phs_rambo_config_startup_message
+@ Allocate an instance: the actual phase-space object.
+<<PHS rambo: phs rambo config: TBP>>=
+  procedure, nopass :: allocate_instance => phs_rambo_config_allocate_instance
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_config_allocate_instance (phs)
+    class(phs_t), intent(inout), pointer :: phs
+    allocate (phs_rambo_t :: phs)
+  end subroutine phs_rambo_config_allocate_instance
+
+@ %def phs_rambo_config_allocate_instance
+@
+\subsection{Kinematics implementation}
+
+We generate $n - 2$ mass systems $M_i$ with $M_0 = \sqrt{s}$ and $M_n = 0$...
+
+Note: The incoming momenta must be in the c.m. system.
+<<PHS rambo: public>>=
+  public :: phs_rambo_t
+<<PHS rambo: types>>=
+  type, extends (phs_t) :: phs_rambo_t
+     real(default), dimension(:), allocatable :: k
+     real(default), dimension(:), allocatable :: m
+   contains
+   <<PHS rambo: phs rambo: TBP>>
+  end type phs_rambo_t
+
+@ %def phs_rambo_t
+@ Output.
+<<PHS rambo: phs rambo: TBP>>=
+procedure :: write => phs_rambo_write
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_write (object, unit, verbose)
+    class(phs_rambo_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
+    integer :: u
+    u = given_output_unit (unit)
+    call object%base_write (u)
+    write (u, "(1X,A)") "Intermediate masses (massless):"
+    write (u, "(3X,999(" // FMT_19 // "))") object%k
+    write (u, "(1X,A)") "Intermediate masses (massive):"
+    write (u, "(3X,999(" // FMT_19 // "))") object%m
+  end subroutine phs_rambo_write
+
+@ %def phs_rambo_write
+@ The finalizer is empty.
+<<PHS rambo: phs rambo: TBP>>=
+  procedure :: final => phs_rambo_final
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_final (object)
+    class(phs_rambo_t), intent(inout) :: object
+  end subroutine phs_rambo_final
+
+@ %def phs_rambo_final
+@ Initialization.  We allocate arrays ([[base_init]]) and adjust the
+phase-space volume.
+The energy dependent factor of $s^{n - 2}$ is applied later.
+<<PHS rambo: phs rambo: TBP>>=
+  procedure :: init => phs_rambo_init
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_init (phs, phs_config)
+    class(phs_rambo_t), intent(out) :: phs
+    class(phs_config_t), intent(in), target :: phs_config
+    call phs%base_init (phs_config)
+    associate (n => phs%config%n_out)
+      select case (n)
+      case (1)
+         if (sum (phs%m_out) > phs%m_in (1)) then
+            print *, "m_in = ", phs%m_in
+            print *, "m_out = ", phs%m_out
+            call msg_fatal ("[phs_rambo_init] Decay is kinematically forbidden.")
+         end if
+      end select
+      allocate (phs%k(n), source = 0._default)
+      allocate (phs%m(n), source = 0._default)
+      phs%volume = 1. / (twopi)**(3 * n) &
+           * (pi / 2.)**(n - 1) / (factorial(n - 1) * factorial(n - 2))
+    end associate
+  end subroutine phs_rambo_init
+
+@ %def phs_rambo_init
+@ Evaluation. There is only one channel for RAMBO, so the second subroutine does nothing.
+
+Note: the current implementation works for elastic scattering only.
+<<PHS rambo: phs rambo: TBP>>=
+  procedure :: evaluate_selected_channel => phs_rambo_evaluate_selected_channel
+  procedure :: evaluate_other_channels => phs_rambo_evaluate_other_channels
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_evaluate_selected_channel (phs, c_in, r_in)
+    class(phs_rambo_t), intent(inout) :: phs
+    integer, intent(in) :: c_in
+    real(default), intent(in), dimension(:) :: r_in
+    type(vector4_t), dimension(2) :: p_rest, p_boosted
+    type(vector4_t) :: q
+    real(default), dimension(2) :: r_angle
+    integer :: i
+    if (.not. phs%p_defined) return
+    call phs%select_channel (c_in)
+    phs%r(:,c_in) = r_in
+    associate (n => phs%config%n_out, m => phs%m)
+      call phs%generate_intermediates (r_in(:n - 2))
+      q = sum (phs%p)
+      do i = 2, n
+         r_angle(1) = r_in(n - 5 + 2 * i)
+         r_angle(2) = r_in(n - 4 + 2 * i)
+         call phs%decay_intermediate (i, r_angle, p_rest)
+         p_boosted = boost(q, m(i - 1)) * p_rest
+         q = p_boosted(1)
+         phs%q(i - 1)  = p_boosted(2)
+      end do
+      phs%q(n) = q
+    end associate
+    phs%q_defined = .true.
+    phs%r_defined = .true.
+  end subroutine phs_rambo_evaluate_selected_channel
+
+  subroutine phs_rambo_evaluate_other_channels (phs, c_in)
+    class(phs_rambo_t), intent(inout) :: phs
+    integer, intent(in) :: c_in
+  end subroutine phs_rambo_evaluate_other_channels
+
+@ %def phs_rambo_evaluate_selected_channel
+@ %def phs_rambo_evaluate_other_channels
+@ Decay intermediate mass system $M_{i - 1}$ into a on-shell particle with mass
+$m_{i - 1}$ and subsequent intermediate mass system with fixed $M_i$.
+<<PHS rambo: phs rambo: TBP>>=
+  procedure, private :: decay_intermediate => phs_rambo_decay_intermediate
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_decay_intermediate (phs, i, r_angle, p)
+    class(phs_rambo_t), intent(in) :: phs
+    integer, intent(in) :: i
+    real(default), dimension(2), intent(in) :: r_angle
+    type(vector4_t), dimension(2), intent(out) :: p
+    real(default) :: k_abs, cos_theta, phi
+    type(vector3_t):: k
+    real(default), dimension(2) :: E
+    cos_theta = 2. * r_angle(1) - 1.
+    phi = twopi * r_angle(2)
+    if (phi > pi) phi = phi - twopi
+    k_abs = sqrt (lambda (phs%m(i - 1)**2, phs%m(i)**2, phs%m_out(i - 1)**2)) &
+         / (2. * phs%m(i - 1))
+    k = k_abs * [cos(phi) * sqrt(1. - cos_theta**2), &
+         sin(phi) * sqrt(1. - cos_theta**2), cos_theta]
+    E(1) = sqrt (phs%m(i)**2 + k_abs**2)
+    E(2) = sqrt (phs%m_out(i - 1)**2 + k_abs**2)
+    p(1) = vector4_moving (E(1), -k)
+    p(2) = vector4_moving (E(2), k)
+  end subroutine phs_rambo_decay_intermediate
+
+@ %def phs_rambo_decay_intermediate
+@ Generate intermediate masses.
+<<PHS rambo: parameters>>=
+  integer, parameter :: BISECT_MAX_ITERATIONS = 1000
+  real(default), parameter :: BISECT_MIN_PRECISION = tiny_10
+<<PHS rambo: phs rambo: TBP>>=
+  procedure, private :: generate_intermediates => phs_rambo_generate_intermediates
+  procedure, private :: invert_intermediates => phs_rambo_invert_intermediates
+<<PHS rambo: procedures>>=
+ subroutine phs_rambo_generate_intermediates (phs, r)
+    class(phs_rambo_t), intent(inout) :: phs
+    real(default), dimension(:), intent(in) :: r
+    integer :: i, j
+    associate (n => phs%config%n_out, k => phs%k, m => phs%m)
+      m(1) = invariant_mass (sum (phs%p))
+      m(n) = phs%m_out (n)
+      call calculate_k (r)
+      do i = 2, n - 1
+         m(i) = k(i) + sum (phs%m_out (i:n))
+      end do
+      ! Massless volume times reweighting for massive volume
+      phs%f(1) = k(1)**(2 * n - 4) &
+           * 8. * rho(m(n - 1), phs%m_out(n), phs%m_out(n - 1))
+      do i = 2, n - 1
+         phs%f(1) = phs%f(1) * &
+              rho(m(i - 1), m(i), phs%m_out(i - 1)) / &
+              rho(k(i - 1), k(i), 0._default) * &
+              M(i) / K(i)
+      end do
+    end associate
+  contains
+    subroutine calculate_k (r)
+      real(default), dimension(:), intent(in) :: r
+      real(default), dimension(:), allocatable :: u
+      integer :: i
+      associate (n => phs%config%n_out, k => phs%k, m => phs%m)
+        k = 0
+        k(1) = m(1) - sum(phs%m_out(1:n))
+        allocate (u(2:n - 1), source=0._default)
+        call solve_for_u (r, u)
+        do i = 2, n - 1
+           k(i) = sqrt (u(i) * k(i - 1)**2)
+        end do
+      end associate
+    end subroutine calculate_k
+
+    subroutine solve_for_u (r, u)
+      real(default), dimension(phs%config%n_out - 2), intent(in) :: r
+      real(default), dimension(2:phs%config%n_out - 1), intent(out) :: u
+      integer :: i, j
+      real(default) :: f, f_mid, xl, xr, xmid
+      associate (n => phs%config%n_out)
+        do i = 2, n - 1
+           xl = 0
+           xr = 1
+           if (r(i - 1) == 1 .or. r(i - 1) == 0) then
+              u(i) = r(i - 1)
+           else
+              do j = 1, BISECT_MAX_ITERATIONS
+                 xmid = (xl + xr) / 2.
+                 f = f_rambo (xl, n - i) - r(i - 1)
+                 f_mid = f_rambo (xmid, n - i) - r(i - 1)
+                 if (f * f_mid > 0) then
+                    xl = xmid
+                 else
+                    xr = xmid
+                 end if
+                 if (abs(xl - xr) < BISECT_MIN_PRECISION) exit
+              end do
+              u(i) = xmid
+           end if
+        end do
+      end associate
+    end subroutine solve_for_u
+
+    real(default) function f_rambo(u, n)
+      real(default), intent(in) :: u
+      integer, intent(in) :: n
+      f_rambo = (n + 1) * u**n - n * u**(n + 1)
+    end function f_rambo
+
+    real(default) function rho (M1, M2, m)
+      real(default), intent(in) :: M1, M2, m
+      real(default) :: MP, MM
+      rho = sqrt ((M1**2 - (M2 + m)**2) * (M1**2 - (M2 - m)**2))
+      ! MP = (M1 - (M2 + m)) * (M1 + (M2 + m))
+      ! MM = (M1 - (M2 - m)) * (M1 + (M2 - m))
+      ! rho = sqrt (MP) * sqrt (MM)
+      rho = rho / (8._default * M1**2)
+    end function rho
+
+  end subroutine phs_rambo_generate_intermediates
+
+  subroutine phs_rambo_invert_intermediates (phs)
+    class(phs_rambo_t), intent(inout) :: phs
+    real(default) :: u
+    integer :: i
+    associate (n => phs%config%n_out, k => phs%k, m => phs%m)
+      k = m
+      do i = 1, n - 1
+         k(i) = k(i) - sum (phs%m_out(i:n))
+      end do
+      do i = 2, n - 1
+         u = (k(i) / k(i - 1))**2
+         phs%r(i - 1, 1) = (n + 1 - i) * u**(n - i) &
+              - (n - i) * u**(n + 1 - i)
+      end do
+    end associate
+  end subroutine phs_rambo_invert_intermediates
+@ %def phs_rambo_generate_intermediates
+@ Inverse evaluation.
+<<PHS rambo: phs rambo: TBP>>=
+  procedure :: inverse => phs_rambo_inverse
+<<PHS rambo: procedures>>=
+  subroutine phs_rambo_inverse (phs)
+    class(phs_rambo_t), intent(inout) :: phs
+    type(vector4_t), dimension(:), allocatable :: q
+    type(vector4_t) :: p
+    type(lorentz_transformation_t) :: L
+    real(default) :: phi, cos_theta
+    integer :: i
+    if (.not. (phs%p_defined .and. phs%q_defined)) return
+    call phs%select_channel ()
+    associate (n => phs%config%n_out, m => phs%m)
+      allocate(q(n))
+      m(1) = invariant_mass (sum (phs%p))
+      q(1) = vector4_at_rest (m(1))
+      q(n) = phs%q(n)
+      do i = 2, n - 1
+         q(i) = q(i) + sum (phs%q(i:n))
+         m(i) = invariant_mass (q(i))
+      end do
+      call phs%invert_intermediates ()
+      do i = 2, n
+         L = inverse (boost (q(i - 1), m(i - 1)))
+         p = L * phs%q(i - 1)
+         phi = azimuthal_angle (p); cos_theta = polar_angle_ct (p)
+         phs%r(n - 5 + 2 * i, 1) = (cos_theta + 1.) / 2.
+         phs%r(n - 4 + 2 * i, 1) = phi / twopi
+      end do
+    end associate
+       phs%r_defined = .true.
+  end subroutine phs_rambo_inverse
+
+@ %def phs_rambo_inverse
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[phs_rambo_ut.f90]]>>=
+<<File header>>
+
+module phs_rambo_ut
+  use unit_tests
+  use phs_rambo_uti
+
+<<Standard module head>>
+
+<<PHS rambo: public test>>
+
+contains
+
+<<PHS rambo: test driver>>
+
+end module phs_rambo_ut
+@ %def phs_rambo_ut
+@
+<<[[phs_rambo_uti.f90]]>>=
+<<File header>>
+
+module phs_rambo_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use flavors
+  use lorentz
+  use model_data
+  use process_constants
+  use phs_base
+
+  use phs_rambo
+
+  use phs_base_ut, only: init_test_process_data, init_test_decay_data
+
+<<Standard module head>>
+
+<<PHS rambo: test declarations>>
+
+contains
+
+<<PHS rambo: tests>>
+
+end module phs_rambo_uti
+@ %def phs_rambo_ut
+@ API: driver for the unit tests below.
+<<PHS rambo: public test>>=
+  public :: phs_rambo_test
+<<PHS rambo: test driver>>=
+  subroutine phs_rambo_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<PHS rambo: execute tests>>
+  end subroutine phs_rambo_test
+
+@ %def phs_rambo_test
+@
+\subsubsection{Phase-space configuration data}
+Construct and display a test phase-space configuration object.  Also
+check the [[azimuthal_dependence]] flag.
+<<PHS rambo: execute tests>>=
+  call test (phs_rambo_1, "phs_rambo_1", &
+       "phase-space configuration", &
+       u, results)
+<<PHS rambo: test declarations>>=
+  public :: phs_rambo_1
+<<PHS rambo: tests>>=
+  subroutine phs_rambo_1 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(process_constants_t) :: process_data
+    class(phs_config_t), allocatable :: phs_data
+    real(default) :: sqrts
+
+    write (u, "(A)")  "* Test output: phs_rambo_1"
+    write (u, "(A)")  "*   Purpose: initialize and display &
+         &phase-space configuration data"
+    write (u, "(A)")
+
+    call model%init_test ()
+
+    write (u, "(A)")  "* Initialize a process and a matching &
+         &phase-space configuration"
+    write (u, "(A)")
+
+    call init_test_process_data (var_str ("phs_rambo_1"), process_data)
+
+    allocate (phs_rambo_config_t :: phs_data)
+    call phs_data%init (process_data, model)
+
+    sqrts = 1000._default
+    call phs_data%configure (sqrts)
+
+    call phs_data%write (u)
+
+    call phs_data%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_rambo_1"
+
+  end subroutine phs_rambo_1
+
+@ %def phs_rambo_1
+@
+\subsubsection{Phase space evaluation}
+Compute kinematics for given parameters, also invert the calculation.
+<<PHS rambo: execute tests>>=
+  call test (phs_rambo_2, "phs_rambo_2", &
+       "phase-space evaluation", &
+       u, results)
+<<PHS rambo: test declarations>>=
+  public :: phs_rambo_2
+<<PHS rambo: tests>>=
+  subroutine phs_rambo_2 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(process_constants_t) :: process_data
+    real(default) :: sqrts, E
+    class(phs_config_t), allocatable, target :: phs_data
+    class(phs_t), pointer :: phs => null ()
+    type(vector4_t), dimension(2) :: p, q
+
+    write (u, "(A)")  "* Test output: phs_rambo_2"
+    write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
+    write (u, "(A)")
+
+    call model%init_test ()
+    call flv%init (25, model)
+
+    write (u, "(A)")  "* Initialize a process and a matching &
+         &phase-space configuration"
+    write (u, "(A)")
+
+    call init_test_process_data (var_str ("phs_rambo_2"), process_data)
+
+    allocate (phs_rambo_config_t :: phs_data)
+    call phs_data%init (process_data, model)
+
+    sqrts = 1000._default
+    call phs_data%configure (sqrts)
+
+    call phs_data%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize the phase-space instance"
+    write (u, "(A)")
+
+    call phs_data%allocate_instance (phs)
+    call phs%init (phs_data)
+
+    call phs%write (u, verbose=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set incoming momenta"
+    write (u, "(A)")
+
+    E = sqrts / 2
+    p(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    p(2) = vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
+
+    call phs%set_incoming_momenta (p)
+    call phs%compute_flux ()
+    call phs%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute phase-space point &
+         &for x = 0.5, 0.125"
+    write (u, "(A)")
+
+    call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
+    call phs%evaluate_other_channels (1)
+    call phs%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Inverse kinematics"
+    write (u, "(A)")
+
+    call phs%get_outgoing_momenta (q)
+    deallocate (phs)
+    call phs_data%allocate_instance (phs)
+    call phs%init (phs_data)
+
+    sqrts = 1000._default
+    call phs_data%configure (sqrts)
+
+    call phs%set_incoming_momenta (p)
+    call phs%compute_flux ()
+    call phs%set_outgoing_momenta (q)
+
+    call phs%inverse ()
+    call phs%write (u)
+
+    call phs%final ()
+    deallocate (phs)
+
+    call phs_data%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_rambo_2"
+
+  end subroutine phs_rambo_2
+
+@ %def phs_rambo_2
+@
+\subsubsection{Phase space for non-c.m. system}
+Compute kinematics for given parameters, also invert the calculation.
+Since this will involve cancellations, we call [[pacify]] to eliminate
+numerical noise.
+<<PHS rambo: execute tests>>=
+  call test (phs_rambo_3, "phs_rambo_3", &
+       "phase-space evaluation in lab frame", &
+       u, results)
+<<PHS rambo: test declarations>>=
+  public :: phs_rambo_3
+<<PHS rambo: tests>>=
+  subroutine phs_rambo_3 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(process_constants_t) :: process_data
+    real(default) :: sqrts, E
+    class(phs_config_t), allocatable, target :: phs_data
+    class(phs_t), pointer :: phs => null ()
+    type(vector4_t), dimension(2) :: p, q
+    type(lorentz_transformation_t) :: lt
+
+    write (u, "(A)")  "* Test output: phs_rambo_3"
+    write (u, "(A)")  "*   Purpose: phase-space evaluation in lab frame"
+    write (u, "(A)")
+
+    call model%init_test ()
+    call flv%init (25, model)
+
+    write (u, "(A)")  "* Initialize a process and a matching &
+         &phase-space configuration"
+    write (u, "(A)")
+
+    call init_test_process_data (var_str ("phs_rambo_3"), process_data)
+
+    allocate (phs_rambo_config_t :: phs_data)
+    call phs_data%init (process_data, model)
+
+    sqrts = 1000._default
+    call phs_data%configure (sqrts, cm_frame=.false., sqrts_fixed=.false.)
+
+    call phs_data%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize the phase-space instance"
+    write (u, "(A)")
+
+    call phs_data%allocate_instance (phs)
+    call phs%init (phs_data)
+
+    call phs%write (u, verbose=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set incoming momenta in lab system"
+    write (u, "(A)")
+
+    lt = boost (0.1_default, 1) * boost (0.3_default, 3)
+
+    E = sqrts / 2
+    p(1) = lt * vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    p(2) = lt * vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
+
+    call vector4_write (p(1), u)
+    call vector4_write (p(2), u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute phase-space point &
+         &for x = 0.5, 0.125"
+    write (u, "(A)")
+
+    call phs%set_incoming_momenta (p)
+    call phs%compute_flux ()
+
+    call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
+    call phs%evaluate_other_channels (1)
+    call pacify (phs)
+    call phs%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract outgoing momenta in lab system"
+    write (u, "(A)")
+
+    call phs%get_outgoing_momenta (q)
+    call vector4_write (q(1), u)
+    call vector4_write (q(2), u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Inverse kinematics"
+    write (u, "(A)")
+
+    deallocate (phs)
+    call phs_data%allocate_instance (phs)
+    call phs%init (phs_data)
+
+    sqrts = 1000._default
+    call phs_data%configure (sqrts)
+
+    call phs%set_incoming_momenta (p)
+    call phs%compute_flux ()
+    call phs%set_outgoing_momenta (q)
+
+    call phs%inverse ()
+    call pacify (phs)
+    call phs%write (u)
+
+    call phs%final ()
+    deallocate (phs)
+
+    call phs_data%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_rambo_3"
+
+  end subroutine phs_rambo_3
+
+@ %def phs_rambo_3
+@
+\subsubsection{Decay Phase space evaluation}
+Compute kinematics for given parameters, also invert the calculation.  This
+time, implement a decay process.
+<<PHS rambo: execute tests>>=
+  call test (phs_rambo_4, "phs_rambo_4", &
+       "decay phase-space evaluation", &
+       u, results)
+<<PHS rambo: test declarations>>=
+  public :: phs_rambo_4
+<<PHS rambo: tests>>=
+  subroutine phs_rambo_4 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(process_constants_t) :: process_data
+    class(phs_config_t), allocatable, target :: phs_data
+    class(phs_t), pointer :: phs => null ()
+    type(vector4_t), dimension(1) :: p
+    type(vector4_t), dimension(2) :: q
+
+    write (u, "(A)")  "* Test output: phs_rambo_4"
+    write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
+    write (u, "(A)")
+
+    call model%init_test ()
+
+    call model%set_par (var_str ("ff"), 0.4_default)
+    call model%set_par (var_str ("mf"), &
+         model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
+    call flv%init (25, model)
+
+    write (u, "(A)")  "* Initialize a decay and a matching &
+         &phase-space configuration"
+    write (u, "(A)")
+
+    call init_test_decay_data (var_str ("phs_rambo_4"), process_data)
+
+    allocate (phs_rambo_config_t :: phs_data)
+    call phs_data%init (process_data, model)
+
+    call phs_data%configure (flv%get_mass ())
+
+    call phs_data%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize the phase-space instance"
+    write (u, "(A)")
+
+    call phs_data%allocate_instance (phs)
+    call phs%init (phs_data)
+
+    call phs%write (u, verbose=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set incoming momenta"
+    write (u, "(A)")
+
+    p(1) = vector4_at_rest (flv%get_mass ())
+
+    call phs%set_incoming_momenta (p)
+    call phs%compute_flux ()
+    call phs%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute phase-space point &
+         &for x = 0.5, 0.125"
+    write (u, "(A)")
+
+    call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
+    call phs%evaluate_other_channels (1)
+    call phs%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Inverse kinematics"
+    write (u, "(A)")
+
+    call phs%get_outgoing_momenta (q)
+    deallocate (phs)
+    call phs_data%allocate_instance (phs)
+    call phs%init (phs_data)
+
+    call phs_data%configure (flv%get_mass ())
+
+    call phs%set_incoming_momenta (p)
+    call phs%compute_flux ()
+    call phs%set_outgoing_momenta (q)
+
+    call phs%inverse ()
+    call phs%write (u)
+
+    call phs%final ()
+    deallocate (phs)
+
+    call phs_data%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_rambo_4"
+
+  end subroutine phs_rambo_4
+
+@ %def phs_rambo_4
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Resonance Handler}
 For various purposes (e.g., shower histories), we should extract the set of
 resonances and resonant channels from a phase-space tree set.  A few methods
@@ -8352,15 +9203,17 @@ the $t$-quark always massive.
      integer :: off_shell = 1
      integer :: t_channel = 2
      logical :: keep_nonresonant = .true.
+   contains
+   <<PHS forests: phs parameters: TBP>>
   end type phs_parameters_t
 
 @ %def phs_parameters_t
 @ Write phase-space parameters to file.
-<<PHS forests: public>>=
-  public :: phs_parameters_write
+<<PHS forests: phs parameters: TBP>>=
+  procedure :: write => phs_parameters_write 
 <<PHS forests: procedures>>=
   subroutine phs_parameters_write (phs_par, unit)
-    type(phs_parameters_t), intent(in) :: phs_par
+    class(phs_parameters_t), intent(in) :: phs_par
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
@@ -13161,7 +14014,7 @@ not standard input/output.)
          "Partonic phase-space configuration (phase-space forest):"
     call object%base_write (unit)
     write (u, "(1x,A)")    "Phase-space configuration parameters:"
-    call phs_parameters_write (object%par, u)
+    call object%par%write (u)
     call object%mapping_defaults%write (u)
     write (u, "(3x,A,A,A)")  "Run ID: '", char (object%run_id), "'"
   end subroutine phs_wood_config_write
@@ -13331,7 +14184,7 @@ phase-space file to the stored (or explicitly specified) I/O unit.
             '"', phs_config%md5sum_model_par, '"'
        write (u, "(3x,A,A,A32,A)") "md5sum_phs_config = ", &
             '"', phs_config%md5sum_phs_config, '"'
-       call phs_parameters_write (phs_config%par, u)
+       call phs_config%par%write (u)
        if (phs_config%use_cascades2) then
           call feyngraph_set_write_file_format (phs_config%feyngraph_set, u)
        else
@@ -14853,7 +15706,7 @@ parameter change.
          &phase-space configuration"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_test ()
 
     call syntax_phs_forest_init ()
@@ -19383,6 +20236,7 @@ module dispatch_phase_space
   use phs_base
   use phs_none
   use phs_single
+  use phs_rambo
   use phs_wood
   use phs_fks
 
@@ -19438,6 +20292,11 @@ Allocate a phase-space object according to the variable [[$phs_method]].
           call msg_warning ("Visualizing phase space channels not " // &
                "available for method 'single'.")
        end if
+    case ("rambo")
+       allocate (phs_rambo_config_t :: phs)
+       if (vis_channels) &
+          call msg_warning ("Visualizing phase space channels not " // &
+              "available for method 'rambo'.")
     case ("fks")
       allocate (phs_fks_config_t :: phs)
     case ("wood", "default", "fast_wood")
@@ -19520,7 +20379,6 @@ structure-function chain.
     real(default) :: circe1_mapping_slope, endpoint_mapping_slope
     real(default) :: power_mapping_eps
     beam_structure_tmp = beam_structure
-    call beam_structure_tmp%write ()
     call beam_structure_tmp%expand (strfun_mode)
     n_strfun = beam_structure_tmp%get_n_record ()
     sf_string = beam_structure_tmp%to_string (sf_only = .true.)
@@ -19894,7 +20752,7 @@ module dispatch_phs_uti
 <<Use strings>>
   use variables
   use io_units, only: free_unit
-  use os_interface, only: os_data_t, os_data_init
+  use os_interface, only: os_data_t
   use process_constants
   use model_data
   use models
@@ -20048,7 +20906,7 @@ end module dispatch_phs_uti
     write (u, "(A)")
 
     call var_list%init_defaults (0)
-    call os_data_init (os_data)
+    call os_data%init () 
     call syntax_model_file_init ()
     call model_list%read_model &
          (var_str ("Test"), var_str ("Test.mdl"), os_data, model)

@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,7 +36,8 @@ libshower_la_SOURCES = \
   shower_base.f90 \
   shower_partons.f90 \
   shower_core.f90 \
-  shower_pythia6.f90
+  shower_pythia6.f90 \
+  shower_pythia8.f90
 
 libshower_ut_la_SOURCES = \
   shower_base_uti.f90 shower_base_ut.f90
@@ -48,13 +49,13 @@ dist_noinst_DATA = shower.nw
 libshower_Modules = ${libshower_la_SOURCES:.f90=} ${libshower_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libshower_Modules); do \
-          echo $$module >> $@.new; \
-        done
+		echo $$module >> $@.new; \
+	done
 	@if diff $@ $@.new -q >/dev/null; then \
-          rm $@.new; \
+		rm $@.new; \
 	else \
-          mv $@.new $@; echo "Modules updated"; \
-        fi
+		mv $@.new $@; echo "Modules updated"; \
+	fi
 BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
@@ -77,7 +78,8 @@ module_lists = \
   ../muli/Modules \
   ../events/Modules \
   ../beams/Modules \
-  ../tauola/Modules
+  ../tauola/Modules \
+  ../pythia8/Modules
 
 include_modules_bare = ${module_lists:/Modules=}
 include_modules = ${include_modules_bare:../%=-I../%}
@@ -124,7 +126,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../fastjet -I../lhapdf -I ../pdf_builtin -I../tauola -I../../pythia6
+AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../fastjet -I../lhapdf -I ../pdf_builtin -I../tauola -I../../pythia6 -I../pythia8
 AM_FFLAGS =
 
 ########################################################################

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,13 +38,11 @@ module restricted_subprocesses_uti
   use resonances, only: resonance_info_t
   use resonances, only: resonance_history_t
   use resonances, only: resonance_history_set_t
-  use sm_qcd, only: qcd_t
   use state_matrices, only: FM_IGNORE_HELICITY
   use particles, only: particle_set_t
   use model_data, only: model_data_t
   use models, only: syntax_model_file_init, syntax_model_file_final
   use models, only: model_t
-  use rng_base, only: rng_factory_t
   use rng_base_ut, only: rng_test_factory_t
   use mci_base, only: mci_t
   use mci_none, only: mci_none_t

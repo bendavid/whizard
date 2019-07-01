@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -40,10 +40,11 @@ module recola_wrapper
   private
 
   public :: get_recola_particle_string
-  public :: rclwrap_define_process
   public :: rclwrap_get_new_recola_id
-  public :: rclwrap_get_n_processes
+  public :: rclwrap_get_current_recola_id
   public :: rclwrap_request_generate_processes
+  public :: rclwrap_add_process
+  public :: rclwrap_define_processes
   public :: rclwrap_generate_processes
   public :: rclwrap_compute_process
   public :: rclwrap_get_amplitude
@@ -117,12 +118,31 @@ module recola_wrapper
   logical, parameter :: rclwrap_is_active = .true.
 
 
+  type :: rcl_process_t
+     private
+     integer :: id
+     type(string_t) :: process_string
+     type(string_t) :: order
+   contains
+     procedure :: get_params => rcl_process_get_params
+     procedure :: write => rcl_process_write
+  end type rcl_process_t
+
+  interface rcl_process_t
+     module procedure new_rcl_process_t
+  end interface
+
   type :: rcl_controller_t
      private
      logical :: active = .false.
+     logical :: defined = .false.
      logical :: done = .false.
      integer :: recola_id = 0
+     type(rcl_process_t), dimension (:), allocatable :: processes
+     integer :: n_processes = 0
    contains
+     procedure :: add_process => rcl_controller_add_process
+     procedure :: define_processes => rcl_controller_define_processes
      procedure :: reset => rcl_controller_reset
      procedure :: write => rcl_controller_write
      procedure :: get_new_id => rcl_controller_get_new_id
@@ -132,7 +152,7 @@ module recola_wrapper
   end type rcl_controller_t
   
 
-  type(rcl_controller_t) :: rcl_controller
+  type(rcl_controller_t), target, save :: rcl_controller
   
 
 contains
@@ -212,15 +232,78 @@ contains
     call define_process_rcl (id, char (process_string), char (order))
   end subroutine rclwrap_define_process
 
+  function new_rcl_process_t (id, process_string, order)
+    integer, intent(in) :: id
+    type(string_t), intent(in) :: process_string, order
+    type(rcl_process_t) :: new_rcl_process_t
+    new_rcl_process_t%id = id
+    new_rcl_process_t%process_string = process_string
+    new_rcl_process_t%order = order
+  end function new_rcl_process_t
+
+  subroutine rcl_process_get_params (prc, id, process_string, order)
+    class(rcl_process_t), intent(in) :: prc
+    integer, intent(out) :: id
+    type(string_t), intent(out) :: process_string
+    type(string_t), intent(out) :: order
+    id = prc%id
+    process_string = prc%process_string
+    order = prc%order
+  end subroutine rcl_process_get_params
+
+  subroutine rcl_process_write (object, unit)
+    class(rcl_process_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A,I0,2(1x,A,1x))") "RECOLA process:", &
+         "id=", object%id, "process_string=", char(object%process_string), &
+         "order=", char(object%order)
+  end subroutine rcl_process_write
+
+  subroutine rcl_controller_add_process (rcl, process)
+    class(rcl_controller_t), intent(inout) :: rcl
+    type(rcl_process_t), intent(in) :: process
+    type(rcl_process_t), dimension (:), allocatable :: temp
+    if (rcl%n_processes == size(rcl%processes)) then
+      allocate( temp(2 * rcl%n_processes) )
+      temp(:rcl%n_processes) = rcl%processes
+      call move_alloc(temp, rcl%processes) 
+    end if
+    rcl%processes(rcl%n_processes + 1) = process
+    rcl%n_processes = rcl%n_processes + 1
+  end subroutine rcl_controller_add_process
+
+  subroutine rcl_controller_define_processes (rcl)
+    class(rcl_controller_t), intent(inout) :: rcl
+    integer :: id, i
+    type(string_t) :: process_string
+    type(string_t) :: order
+    if (rcl%defined) then
+      if (.not. rcl%done) call rclwrap_generate_processes ()
+      call msg_debug2 (D_ME_METHODS, "reset_recola_rcl")
+      call reset_recola_rcl ()
+    end if
+    do i = 1, rcl%n_processes
+      call rcl%processes(i)%get_params(id, process_string, order)
+      call rclwrap_define_process (id, process_string, order)
+    end do
+    rcl%defined = .true.
+    rcl%done = .false.
+  end subroutine rcl_controller_define_processes
+
   subroutine rcl_controller_reset (rcl)
     class(rcl_controller_t), intent(inout) :: rcl
     if (rcl%active .or. rcl%done) then
        call msg_debug2 (D_ME_METHODS, "reset_recola_rcl")
+       if (allocated (rcl%processes)) deallocate (rcl%processes)
        call reset_recola_rcl ()
     end if
     rcl%active = .false.
+    rcl%defined = .false.
     rcl%done = .false.
     rcl%recola_id = 0
+    rcl%n_processes = 0
   end subroutine rcl_controller_reset
     
   subroutine rcl_controller_write (object, unit)
@@ -228,9 +311,9 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
-    write (u, "(1x,A,2(1x,A,L1),1(1x,A,I0))")  "RECOLA controller:", &
+    write (u, "(1x,A,2(1x,A,L1),2(1x,A,I0))")  "RECOLA controller:", &
          "active=", object%active, "done=", object%done, &
-         "id=", object%recola_id
+         "id=", object%recola_id, "n_processes=", object%n_processes
   end subroutine rcl_controller_write
     
   subroutine rcl_controller_get_new_id (object, id)
@@ -248,11 +331,8 @@ contains
     
   subroutine rcl_controller_activate (rcl)
     class(rcl_controller_t), intent(inout) :: rcl
-    if (rcl_controller%done) then
-       call msg_fatal ("Recola interface: attempt at adding processes after initialization")
-    else
-       rcl_controller%active = .true.
-    end if
+    if ( .not. allocated(rcl%processes) ) allocate ( rcl%processes(10) )
+    rcl_controller%active = .true.
   end subroutine rcl_controller_activate
   
   subroutine rcl_controller_generate_processes (rcl)
@@ -271,15 +351,29 @@ contains
     call rcl_controller%get_new_id (id)
   end subroutine rclwrap_get_new_recola_id
     
-  function rclwrap_get_n_processes () result (n)
+  function rclwrap_get_current_recola_id () result (n)
     integer :: n
     call rcl_controller%get_current_id (n)
-  end function rclwrap_get_n_processes
+  end function rclwrap_get_current_recola_id
     
   subroutine rclwrap_request_generate_processes ()
     call msg_debug2 (D_ME_METHODS, "request_generate_processes_rcl")
     call rcl_controller%activate ()
   end subroutine rclwrap_request_generate_processes
+
+  subroutine rclwrap_add_process (id, process_string, order)
+    integer, intent(in) :: id
+    type(string_t), intent(in) :: process_string, order
+    type(rcl_process_t) :: prc
+    call msg_debug2 (D_ME_METHODS, "add_process_rcl: id", id)
+    prc = rcl_process_t (id, process_string, order)
+    call rcl_controller%add_process (prc)
+  end subroutine rclwrap_add_process
+
+  subroutine rclwrap_define_processes ()
+    call msg_debug2 (D_ME_METHODS, "define_processes_rcl")
+    call rcl_controller%define_processes ()
+  end subroutine rclwrap_define_processes
 
   subroutine rclwrap_generate_processes ()
     call msg_debug2 (D_ME_METHODS, "generate_processes_rcl")
@@ -500,11 +594,11 @@ contains
     call set_mu_ir_rcl (mu)
   end subroutine rclwrap_set_mu_ir
 
-  function rclwrap_get_renormalization_scale () result (mu)
-    real(double) :: mu
+  subroutine rclwrap_get_renormalization_scale (mu)
+    real(double), intent(out) :: mu
     call msg_debug2 (D_ME_METHODS, "get_renormalization_scale_rcl")
     call get_renormalization_scale_rcl (mu)
-  end function rclwrap_get_renormalization_scale
+  end subroutine rclwrap_get_renormalization_scale
 
   subroutine rclwrap_get_flavor_scheme (nf)
     integer, intent(out) :: nf

@@ -1,7 +1,7 @@
 
 digraph G {
 concentrate=true
-splines=ortho
+splines=true
 node[shape=record,style=filled,fillcolor=white]
 edge[color=gray50]
 quantum_numbers -> helicities
@@ -19,7 +19,6 @@ quantum_numbers -> flavors
 state_matrices -> flavors
 state_matrices -> colors
 evaluators -> interactions
-evaluators -> model_data
 evaluators -> quantum_numbers
 flavors -> colors
 interactions -> quantum_numbers

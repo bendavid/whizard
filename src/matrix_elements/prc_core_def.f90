@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -43,7 +43,6 @@ module prc_core_def
   public :: allocate_core_def
   public :: prc_core_driver_t
   public :: process_driver_internal_t
-  public :: prc_user_defined_base_driver_t
 
   type, abstract :: prc_core_def_t
      class(prc_writer_t), allocatable :: writer
@@ -72,9 +71,6 @@ module prc_core_def
    contains
      procedure(process_driver_fill_constants), deferred :: fill_constants
   end type process_driver_internal_t
-
-  type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t
-  end type prc_user_defined_base_driver_t
 
 
   abstract interface

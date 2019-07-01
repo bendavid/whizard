@@ -1346,7 +1346,7 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
        end associate
        call calculate_efficiency ()
        if (verbose) then
-          write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
+          write (msg_buffer, "(I0,1x,I0,1x, 4(E16.8E4,1x))") &
                & it, self%config%n_calls, cumulative_int, cumulative_std, &
                & self%result%chi2, self%result%efficiency
           call msg_message ()
@@ -1732,9 +1732,9 @@ the maximum weight, we update the maximum, accordingly.
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X," // FMT_17 // ")", &
-     double_array_fmt =  "(1X,I18,1X," // FMT_17 // ")", &
-     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_17 // ")"
+     double_fmt =        "(1X,A18,1X,E16.8E4)", &
+     double_array_fmt =  "(1X,I18,1X,E16.8E4)", &
+     double_array2_fmt =  "(1X,2(1X,I8),1X,E16.8E4)"
 
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
@@ -2565,7 +2565,7 @@ module vamp2
   use io_units
   use format_utils, only: pac_fmt
   use format_utils, only: write_separator, write_indent
-  use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
+  use format_defs, only: FMT_17
   use diagnostics
   use rng_base
   use rng_stream, only: rng_stream_t
@@ -2695,7 +2695,10 @@ mapped, or is restricted otherwise.
  end interface
 
 @ %def vamp2_evaluate_func
-@ Evaluate channel weights.
+@ Evaluate channel weights. 
+
+The calling procedure must handle the case of a vanishing overall probability
+density where either a channel weight or a channel probability vanishes.
 <<vamp2: vamp2 func: TBP>>=
   procedure, private :: evaluate_weight => vamp2_func_evaluate_weight
 <<vamp2: procedures>>=
@@ -2747,8 +2750,10 @@ mapped, or is restricted otherwise.
     self%g = 1
     if (self%valid_x) then
        call self%evaluate_weight ()
-       f = self%evaluate_func (x) / self%g
-       self%n_calls = self%n_calls + 1
+       if (self%g /= 0) then
+          f = self%evaluate_func (x) / self%g
+          self%n_calls = self%n_calls + 1
+       end if
     end if
   end function vamp2_func_evaluate
 
@@ -3613,7 +3618,7 @@ in [[vegas_integrate]].
          cumulative_std = sqrt (1. / result%sum_wgts)
          call calculate_efficiency ()
          if (verbose) then
-            write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
+            write (msg_buffer, "(I0,1x,I0,1x, 4(E16.8E4,1x))") &
                  & it, self%config%n_calls, cumulative_int, cumulative_std, &
                  & self%result%chi2, self%result%efficiency
             call msg_message ()
@@ -3623,7 +3628,7 @@ in [[vegas_integrate]].
           call self%adapt_weights ()
        end if
        if (refine_grid) then
-          if (self%config%equivalences) then
+          if (self%config%equivalences .and. self%equivalences%is_allocated ()) then
              call self%apply_equivalences ()
           end if
           do ch = 1, self%config%n_channel
@@ -3932,9 +3937,9 @@ to one and therefore the overall normalization cancels.
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X," // FMT_17 // ")", &
-     double_array_fmt =  "(1X,I18,1X," // FMT_17 // ")", &
-     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_17 // ")"
+     double_fmt =        "(1X,A18,1X,E16.8E4)", &
+     double_array_fmt =  "(1X,I18,1X,E16.8E4)", &
+     double_array2_fmt = "(1X,2(1X,I8),1X,E16.8E4)"
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
 <<vamp2: vamp2: TBP>>=
@@ -4204,20 +4209,22 @@ The jacobian is $\frac{\partial (x, y)}{\partial (u, v)}$.
   real(default) function vamp2_test_func_2_evaluate_func (self, x) result (f)
     class(vamp2_test_func_2_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
-    f = 4. * sin(pi * self%xi(1, 1))**2 * sin(pi * self%xi(2, 1))**2 + 2. * sin(pi * self%xi(2, 2))**2
+    f = 4. * sin(pi * self%xi(1, 1))**2 * sin(pi * self%xi(2, 1))**2 &
+         + 2. * sin(pi * self%xi(2, 2))**2
   end function vamp2_test_func_2_evaluate_func
 
 @ %def vamp2_test_func_2_evaluate_func
-@@ The third test function implements
+@ The third test function implements
 \begin{equation}
   f(\vec{x}) = 5 x_{1}^4 + 5 (1 - x_{1})^4,
 \end{equation}
 where
-\begin{align}
-  x_1 = u^{1 / 5} & ∨ x_1 =  1 - v^{1 / 5} \\
-\end{align}
-The jacobians are $\frac{\partial x_1}{\partial u} = \frac{1}{5} u^{-\frac{4}{5}}$
-and $\frac{\partial x_1}{\partial v} = \frac{1}{5} v^{-\frac{4}{5}}$.
+\begin{equation}
+  x_1 = u^{1 / 5} \quad \vee \quad  x_1 =  1 - v^{1 / 5}
+\end{equation}
+The jacobians are $\frac{\partial x_1}{\partial u} = \frac{1}{5}
+u^{-\frac{4}{5}}$ and $\frac{\partial x_1}{\partial v} = \frac{1}{5}
+v^{-\frac{4}{5}}$.
 <<vamp2: test types>>=
   type, extends(vamp2_func_t) :: vamp2_test_func_3_t
      !

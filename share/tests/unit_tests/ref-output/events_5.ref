@@ -25,7 +25,7 @@
    Analysis flag      = T
 ========================================================================
  Process instance [scattering]: 'processes_test'
-   Run ID = 'run_test'
+   Run ID = ''
    Process components:
    * 1: 'processes_test_i1':   s, s => s, s [test_me]
    status = event complete
@@ -121,7 +121,7 @@ event_excess* =>  0.000000000000E+00
    Selected channel   = 1
 ========================================================================
  Process instance [scattering]: 'processes_test'
-   Run ID = 'run_test'
+   Run ID = ''
    Process components:
    * 1: 'processes_test_i1':   s, s => s, s [test_me]
    status = passed cuts
@@ -196,7 +196,7 @@ event_excess* =>  0.000000000000E+00
    Analysis flag      = T
 ========================================================================
  Process instance [scattering]: 'processes_test'
-   Run ID = 'run_test'
+   Run ID = ''
    Process components:
    * 1: 'processes_test_i1':   s, s => s, s [test_me]
    status = passed cuts

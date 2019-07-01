@@ -1,10 +1,10 @@
 WHIZARD Core
-* 2.6
+* 2.8
   - EWA implementation (some progress in 2.2.0-2)
   - integration of multiple observables (cf. VAMP)
   - reenabling underlying event 
   
-* 2.7
+* 2.9
   - Mathematica interface
   - Parton shower matching (MLM done, CKKW pending)
   - GUI extension (partially done)
@@ -14,28 +14,28 @@ WHIZARD Core
   - Tau decay module
 
 O'Mega
-* 2.6
+* 2.8
   - arbitrary Lorentz structure
   - flavor sums
   - model files unification
   - helicity optimization (numerically done/analytically pending)
 
-* 2.6
+* 2.8
   - W-gamma couplings to resonances
   - W'
 
 VAMP
-* 2.6
+* 2.8
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
-* 2.7
+* 2.9
   - integration of multiple observables
 
 Misc
-* Release 2.6
+* Release 2.8
   - Manual + O'Mega Paper (partially done)
 
-* 2.6
+* 2.8
   - review gamelan (partially done, esp. docu)
 
 

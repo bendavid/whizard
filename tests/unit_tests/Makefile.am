@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by 
+# Copyright (C) 1999-2019 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -74,6 +74,7 @@ UNIT_TESTS = \
     phs_base.run \
     phs_none.run \
     phs_single.run \
+    phs_rambo.run \
     resonances.run \
     phs_trees.run \
     phs_forests.run \
@@ -117,6 +118,8 @@ UNIT_TESTS = \
     shower_base.run \
     events.run \
     hep_events.run \
+    whizard_lha.run \
+    pythia8.run \
     eio_data.run \
     eio_base.run \
     eio_direct.run \
@@ -286,6 +289,7 @@ BUILT_SOURCES = \
     OCAML_FLAG \
     RECOLA_FLAG \
     PYTHIA6_FLAG \
+    PYTHIA8_FLAG \
     STATIC_FLAG \
     ref-output \
     err-output
@@ -341,6 +345,11 @@ if PYTHIA6_AVAILABLE
 	touch $@
 endif
 
+PYTHIA8_FLAG:
+if PYTHIA8_AVAILABLE
+	touch $@
+endif
+
 EVENT_ANALYSIS_FLAG:
 if EVENT_ANALYSIS_AVAILABLE
 	touch $@
@@ -379,7 +388,7 @@ clean-local: clean-macosx
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG 
 	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG RECOLA_FLAG
-	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
+	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* 

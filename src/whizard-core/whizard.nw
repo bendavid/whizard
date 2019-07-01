@@ -873,7 +873,7 @@ so the latter is always available (and kept global).
     type(paths_t), intent(in), optional :: paths
     type(string_t), intent(in), optional :: logfile
     integer :: seed
-    call os_data_init (global%os_data, paths)
+    call global%os_data%init (paths)
     if (present (logfile)) then
        global%logfile = logfile
     else
@@ -1365,7 +1365,9 @@ variable list to the model variable list.
 
 @ %def rt_data_select_model
 @
-Remove the model link and unset the model name variable.
+Remove the model link.  Do not unset the model name variable, because
+this may unset the variable in a parent [[rt_data]] object (via linked
+var lists).
 <<RT data: rt data: TBP>>=
   procedure :: unselect_model => rt_data_unselect_model
 <<RT data: procedures>>=
@@ -1374,8 +1376,6 @@ Remove the model link and unset the model name variable.
     if (associated (global%model)) then
        global%model => null ()
        global%model_is_copy = .false.
-       call global%var_list%set_string (var_str ("$model_name"), &
-            var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_unselect_model
 
@@ -3056,7 +3056,7 @@ module dispatch_me_methods
   use prc_template_me
   use prc_test
   use prc_omega
-  use prc_user_defined
+  use prc_external
   use prc_gosam
   use prc_openloops
   use prc_recola
@@ -3072,6 +3072,7 @@ contains
 
 end module dispatch_me_methods
 @ %def dispatch_me_methods
+@
 \subsection{Process Core Definition}
 The [[prc_core_def_t]] abstract type can be instantiated by providing a
 [[$method]] string variable.
@@ -3100,7 +3101,7 @@ intent(out).
     logical :: report_progress
     logical :: diags, diags_color
     logical :: write_phs_output
-    type(string_t) :: extra_options
+    type(string_t) :: extra_options, correction_type
     integer :: nlo
     integer :: alpha_power
     integer :: alphas_power
@@ -3137,6 +3138,7 @@ intent(out).
     nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
+    correction_type = var_list%get_sval (var_str ("$nlo_correction_type"))
     call msg_debug2 (D_CORE, "dispatching core method: ", meth)
     select case (char (meth))
     case ("unit_test")
@@ -3205,16 +3207,16 @@ intent(out).
        select type (core_def)
        type is (recola_def_t)
           if (present (id)) then
-             call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo, alpha_power, alphas_power)
+             call core_def%init (id, model_name, prt_in, prt_out, &
+                  nlo, alpha_power, alphas_power, correction_type)
           else
              call msg_fatal ("Dispatch RECOLA def: No id!")
           end if
        end select
     case ("dummy")
-       allocate (user_defined_test_def_t :: core_def)
+       allocate (prc_external_test_def_t :: core_def)
        select type (core_def)
-       type is (user_defined_test_def_t)
+       type is (prc_external_test_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, prt_out)
           else
@@ -3249,13 +3251,14 @@ grab it from the model.
   public :: dispatch_core
 <<Dispatch me methods: procedures>>=
   subroutine dispatch_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors)
+       helicity_selection, qcd, use_color_factors, has_beam_pol)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
+    logical, intent(in), optional :: has_beam_pol
     select type (core_def)
     type is (prc_test_def_t)
        allocate (test_t :: core)
@@ -3290,10 +3293,10 @@ grab it from the model.
       type is (prc_recola_t)
          call core%set_parameters (qcd, model)
       end select
-    type is (user_defined_test_def_t)
-      if (.not. allocated (core)) allocate (prc_user_defined_test_t :: core)
+    type is (prc_external_test_def_t)
+      if (.not. allocated (core)) allocate (prc_external_test_t :: core)
       select type (core)
-      type is (prc_user_defined_test_t)
+      type is (prc_external_test_t)
          call core%set_parameters (qcd, model)
       end select
     type is (threshold_def_t)
@@ -3301,6 +3304,7 @@ grab it from the model.
       select type (core)
       type is (prc_threshold_t)
          call core%set_parameters (qcd, model)
+         call core%set_beam_pol (has_beam_pol)
       end select
     class default
        call msg_bug ("Process core: unexpected process definition type")
@@ -3337,7 +3341,7 @@ second routine restores the original from the save.
     type is (prc_omega_t)
        call core%set_parameters (model, helicity_selection, qcd)
        call core%activate_parameters ()
-    class is (prc_user_defined_base_t)
+    class is (prc_external_t)
       call msg_message ("Updating user defined cores is not implemented yet.")
     class default
        call msg_bug ("Process core update: unexpected process definition type")
@@ -3389,7 +3393,7 @@ end module dispatch_ut
 module dispatch_uti
 <<Use kinds>>
 <<Use strings>>
-  use os_interface, only: os_data_t, os_data_init
+  use os_interface, only: os_data_t
   use physics_defs, only: ELECTRON, PROTON
   use sm_qcd, only: qcd_t
   use flavors, only: flavor_t
@@ -3647,7 +3651,7 @@ functions.  This procedure should be assigned to the
 
     call global%global_init ()
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
     call global%select_model (var_str ("QCD"))
 
@@ -3736,7 +3740,7 @@ The actual test. We can't move this to [[beams]] as it depends on
 
     call global%global_init ()
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
     call global%select_model (var_str ("QCD"))
 
@@ -3925,8 +3929,8 @@ We can't move this to [[beams]] as it depends on
   subroutine dispatch_11 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    type(qcd_t) :: qcd
     type(var_list_t), pointer :: model_vars
+    type(qcd_t) :: qcd
 
     write (u, "(A)")  "* Test output: dispatch_11"
     write (u, "(A)")  "*   Purpose: select QCD coupling formula"
@@ -4030,7 +4034,7 @@ module process_configurations
   use variables, only: var_list_t
 
   use dispatch_me_methods, only: dispatch_core_def
-  use prc_user_defined, only: user_defined_def_t
+  use prc_external, only: prc_external_def_t
 
 <<Standard module head>>
 
@@ -4197,7 +4201,7 @@ polarization flag and names of decay processes, where applicable.
     call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
          model, var_list, config%id, nlo_type, method)
     select type (core_def)
-    class is (user_defined_def_t)
+    class is (prc_external_def_t)
        if (present (can_be_integrated)) then
           call core_def%set_active_writer (can_be_integrated)
        else
@@ -4232,7 +4236,8 @@ polarization flag and names of decay processes, where applicable.
 <<Process configurations: process configuration: TBP>>=
   procedure :: set_coupling_powers => process_configuration_set_coupling_powers
 <<Process configurations: procedures>>=
-  subroutine process_configuration_set_coupling_powers (config, alpha_power, alphas_power)
+  subroutine process_configuration_set_coupling_powers &
+       (config, alpha_power, alphas_power)
     class(process_configuration_t), intent(inout) :: config
     integer, intent(in) :: alpha_power, alphas_power
     call config%entry%set_coupling_powers (alpha_power, alphas_power)
@@ -5031,7 +5036,7 @@ write a subroutine which returns the names of the compiled libraries.
     if (.not. verbose) then
        write (u, "(A)")  TAB // '@echo  "  FCLD     " $@'
     end if
-    write (u, "(A)") TAB // "$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \"
+    write (u, "(A)") TAB // "$(LINK) $(FC) -static $(FCFLAGS) \"
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \"
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
     write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \"
@@ -5577,8 +5582,6 @@ module integrations
   use sf_mappings
   use sf_base
   use phs_base
-  use mappings
-  use phs_forests, only: phs_parameters_t
   use rng_base
   use mci_base
   use process_libraries
@@ -5594,18 +5597,16 @@ module integrations
   use iterations
   use rt_data
 
-  use dispatch_rng, only: dispatch_rng_factory
   use dispatch_me_methods, only: dispatch_core
   use dispatch_beams, only: dispatch_qcd, sf_prop_t, dispatch_sf_config
   use dispatch_phase_space, only: dispatch_sf_channels
   use dispatch_phase_space, only: dispatch_phs
-  use dispatch_mci, only: dispatch_mci_s
+  use dispatch_mci, only: dispatch_mci_s, setup_grid_path
   use dispatch_transforms, only: dispatch_evt_shower_hook
 
   use compilations, only: compile_library
 
   use dispatch_fks, only: dispatch_fks_s
-  use blha_olp_interfaces
   use nlo_data
 <<Use mpi f08>>
 
@@ -5634,8 +5635,6 @@ applies to a single process.
     type(string_t) :: process_id
     type(string_t) :: run_id
     type(process_t), pointer :: process => null ()
-    type(var_list_t), pointer :: model_vars => null ()
-    type(qcd_t) :: qcd
     logical :: rebuild_phs = .false.
     logical :: ignore_phs_mismatch = .false.
     logical :: phs_only = .false.
@@ -5644,6 +5643,9 @@ applies to a single process.
     logical :: vis_history = .true.
     type(string_t) :: history_filename
     type(string_t) :: log_filename
+    type(helicity_selection_t) :: helicity_selection
+    logical :: use_color_factors = .false.
+    logical :: has_beam_pol = .false.
     logical :: combined_integration = .false.
     type(iteration_multipliers_t) :: iteration_multipliers
     type(nlo_settings_t) :: nlo_settings
@@ -5674,7 +5676,6 @@ Push it on the stack if the [[global]] environment is supplied.
     else
        allocate (process_t :: intg%process)
     end if
-    intg%model_vars => null ()
   end subroutine integration_create_process
 
 @ %def integration_create_process
@@ -5703,31 +5704,27 @@ local changes to currently inactive models.
     type(string_t) :: model_name
     type(model_t), pointer :: model
     class(model_data_t), pointer :: model_instance
-    class(rng_factory_t), allocatable :: rng_factory
+    type(var_list_t), pointer :: var_list
     call msg_debug (D_CORE, "integration_init_process")
     if (.not. local%prclib%contains (intg%process_id)) then
        call msg_fatal ("Process '" // char (intg%process_id) // "' not found" &
             // " in library '" // char (local%prclib%get_name ()) // "'")
        return
     end if
-    intg%run_id = local%var_list%get_sval (var_str ("$run_id"))
-    call dispatch_qcd (intg%qcd, local%get_var_list_ptr (), local%os_data)
-    call dispatch_rng_factory (rng_factory, local%var_list)
     model_name = local%prclib%get_model_name (intg%process_id)
     if (local%get_sval (var_str ("$model_name")) == model_name) then
        model => local%model
     else
        model => local%model_list%get_model_ptr (model_name)
     end if
-    allocate (model_t :: model_instance)
-    select type (model_instance)
-    type is (model_t)
-       call model_instance%init_instance (model)
-       intg%model_vars => model_instance%get_var_list_ptr ()
-    end select
-    call intg%process%init (intg%process_id, intg%run_id, &
+    var_list => local%get_var_list_ptr ()
+    call intg%process%init (intg%process_id, &
          local%prclib, &
-         local%os_data, intg%qcd, rng_factory, model_instance)
+         local%os_data, &
+         model, &
+         var_list, &
+         local%beam_structure)
+    intg%run_id = intg%process%get_run_id ()
   end subroutine integration_init_process
 
 @ %def integration_init_process
@@ -5740,234 +5737,106 @@ local changes to currently inactive models.
     type(rt_data_t), intent(inout), target :: local
     logical, intent(in), optional :: verbose
     logical, intent(in), optional :: init_only
+
     type(var_list_t), pointer :: var_list
-    class(prc_core_t), allocatable :: core_template
-    class(prc_core_t), pointer :: core => null ()
-    class(phs_config_t), allocatable :: phs_config_template
-    type(phs_parameters_t) :: phs_par
-    type(mapping_defaults_t) :: mapping_defs
     class(mci_t), allocatable :: mci_template
-    integer :: n_components, i_component
-    type(process_component_def_t), pointer :: config
-    type(helicity_selection_t) :: helicity_selection
-    logical :: use_color_factors
     type(sf_config_t), dimension(:), allocatable :: sf_config
     type(sf_prop_t) :: sf_prop
     type(sf_channel_t), dimension(:), allocatable :: sf_channel
     type(phs_channel_collection_t) :: phs_channel_collection
     logical :: sf_trace
     logical :: verb, initialize_only
-    type(blha_template_t) :: blha_template
-    type(fks_template_t) :: fks_template
     type(string_t) :: sf_string
-    class(phs_config_t), allocatable :: phs_config_template_other
     type(string_t) :: workspace
-    integer :: i_real
-    integer :: i_core
-    integer :: i_core_born, i_core_real
-    logical :: first_real_component, has_pdfs
-    integer :: nlo_type_fetched
-    class(pcm_t), pointer :: pcm => null ()
-    i_real = 0
-    verb = .true.; if (present (verbose))  verb = verbose
-    initialize_only = .false.;  if (present (init_only))  initialize_only = init_only
-    call intg%process%set_var_list (local%get_var_list_ptr ())
-    var_list => intg%process%get_var_list_ptr ()
 
-    call setup_phase_space ()
+    verb = .true.;  if (present (verbose))  verb = verbose
 
-    intg%n_calls_test = &
-         var_list%get_ival (var_str ("n_calls_test"))
-
-    call setup_log_and_history ()
-
-    call dispatch_mci_s (mci_template, local%get_var_list_ptr (), &
-         intg%process_id, &
-         intg%process%is_nlo_calculation ())
-
+    initialize_only = .false.
+    if (present (init_only))  initialize_only = init_only
+    
     call display_init_message (verb)
 
-    n_components = intg%process%get_n_components ()
+    var_list => local%get_var_list_ptr ()
+    call setup_log_and_history ()
 
-    intg%combined_integration = var_list%get_lval &
-       (var_str ('?combined_nlo_integration')) .and. &
-        intg%process%is_nlo_calculation ()
+    associate (process => intg%process)
+      call set_intg_parameters (process)
 
-    helicity_selection = local%get_helicity_selection ()
-    use_color_factors = var_list%get_lval &
-         (var_str ("?read_color_factors"))
-    do i_component = 1, n_components
-       config => intg%process%get_component_def_ptr (i_component)
-       call intg%process%core_manager_register &
-            (config%get_nlo_type (), i_component, &
-            config%get_def_type_string ())
-    end do
-    call intg%process%allocate_cm_arrays (n_components)
-    do i_core = 1, intg%process%get_n_cores ()
-       i_component = intg%process%get_core_manager_index (i_core)
-       config => intg%process%get_component_def_ptr (i_component)
-       call dispatch_core (core_template, config%get_core_def_ptr (), &
-            intg%process%get_model_ptr (), &
-            helicity_selection, intg%qcd, &
-            use_color_factors)
-       call intg%process%allocate_core (i_core, core_template)
-       deallocate (core_template)
-    end do
+      call process%setup_cores (dispatch_core, &
+           intg%helicity_selection, intg%use_color_factors, intg%has_beam_pol)
 
-    call intg%process%init_cores ()
-    first_real_component = .true.
+      call process%init_phs_config ()
+      call process%init_components ()
 
-    pcm => intg%process%get_pcm_ptr ()
-    pcm%has_pdfs = local%beam_structure%has_pdf ()
+      call process%record_inactive_components ()
+      intg%process_has_me = process%has_matrix_element ()
+      if (.not. intg%process_has_me) then
+         call msg_warning ("Process '" &
+              // char (intg%process_id) // "': matrix element vanishes")
+      end if
 
-    do i_component = 1, n_components
-       config => intg%process%get_component_def_ptr (i_component)
-       nlo_type_fetched = config%get_nlo_type ()
-       if (nlo_type_fetched == NLO_MISMATCH)  nlo_type_fetched = NLO_SUBTRACTION
-       core => intg%process%get_core_from_md5sum ( &
-            intg%process%get_md5sum_constants (i_component, &
-            config%get_def_type_string (), nlo_type_fetched))
-       select case (config%get_nlo_type ())
-       case (NLO_VIRTUAL)
-          call setup_virtual_component ()
-       case (NLO_REAL)
-          call setup_real_component ()
-          if (intg%process%get_component_type (i_component) /= COMP_REAL_FIN) &
-               i_real = i_component
-       case (NLO_MISMATCH)
-          call setup_mismatch_component ()
-       case (NLO_DGLAP)
-          call setup_dglap_component ()
-       case (BORN)
-          call setup_born_component ()
-       case (NLO_SUBTRACTION)
-          call setup_subtraction_component ()
-       case (GKS)
-          call intg%process%init_component (i_component, &
-               core%has_matrix_element (), mci_template, &
-               phs_config_template)
-       case default
-          call msg_fatal ("setup_process: NLO type not implemented!")
-       end select
-       if (allocated (phs_config_template_other)) &
-            deallocate (phs_config_template_other)
-    end do
+      call setup_beams ()
+      call setup_structure_functions ()
 
-    intg%process_has_me = intg%process%has_matrix_element ()
-    if (.not. intg%process_has_me) then
-       call msg_warning ("Process '" &
-            // char (intg%process_id) // "': matrix element vanishes")
-    end if
+      workspace = var_list%get_sval (var_str ("$integrate_workspace"))
+      if (workspace == "") then
+         call process%configure_phs &
+              (intg%rebuild_phs, &
+              intg%ignore_phs_mismatch, &
+              intg%combined_integration)
+      else
+         call setup_grid_path (workspace)
+         call process%configure_phs &
+              (intg%rebuild_phs, &
+              intg%ignore_phs_mismatch, &
+              intg%combined_integration, &
+              workspace)
+      end if
 
-    call setup_beams ()
-    call setup_structure_functions ()
+      call process%complete_pcm_setup ()
 
-    workspace = var_list%get_sval (var_str ("$integrate_workspace"))
-    if (workspace == "") then
-       call intg%process%configure_phs &
-            (intg%rebuild_phs, intg%ignore_phs_mismatch, &
-            combined_integration = intg%combined_integration)
-    else
-       call intg%process%configure_phs &
-            (intg%rebuild_phs, intg%ignore_phs_mismatch, &
-            combined_integration = intg%combined_integration, &
-            subdir = workspace)
-    end if
+      call process%prepare_blha_cores ()
+      call process%create_blha_interface ()
+      call process%prepare_any_external_code ()
 
-    if (intg%process%is_nlo_calculation ()) then
-       call dispatch_fks_s (fks_template, local%var_list)
-       call intg%process%init_nlo_settings (var_list, fks_template)
-       call intg%process%check_if_threshold_method ()
-       i_core_real = intg%process%get_i_core_nlo_type (NLO_REAL)
-       i_core_born = intg%process%get_i_core_nlo_type (BORN)
-       call intg%process%setup_region_data (i_real, &
-            intg%process%get_constants(i_core_born), &
-            intg%process%get_constants(i_core_real))
-       if (var_list%get_lval (var_str ("?nlo_use_real_partition"))) then
-          call intg%process%setup_real_partition &
-               (var_list%get_rval (var_str ("real_partition_scale")))
-       end if
-    end if
+      call process%setup_terms (with_beams = intg%has_beam_pol)
+      call process%check_masses ()
 
-    if (intg%process%needs_extra_code ()) then
-       call blha_template%init (local%beam_structure%has_polarized_beams(), &
-            var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
-            var_list%get_rval (var_str ("blha_top_yukawa")), &
-            var_list%get_sval (var_str ("$blha_ew_scheme")))
-       call intg%process%init_blha_cores (blha_template, var_list)
-       call intg%process%create_and_load_extra_libraries &
-            (local%beam_structure, var_list, local%os_data)
-    end if
+      if (verb) then
+         call process%write (screen = .true.)
+         call process%print_phs_startup_message ()
+      end if
 
-    call intg%process%setup_terms (with_beams = local%beam_structure%has_polarized_beams ())
+      if (intg%process_has_me) then
+         if (size (sf_config) > 0) then
+            call process%collect_channels (phs_channel_collection)
+         else if (.not. initialize_only &
+              .and. process%contains_trivial_component ()) then
+            call msg_fatal ("Integrate: 2 -> 1 process can't be handled &
+                 &with fixed-energy beams")
+         end if
+         call dispatch_sf_channels &
+              (sf_channel, sf_string, sf_prop, phs_channel_collection, &
+              local%var_list, local%get_sqrts(), local%beam_structure)
+         if (allocated (sf_channel)) then
+            if (size (sf_channel) > 0) then
+               call process%set_sf_channel (sf_channel)
+            end if
+         end if
+         call phs_channel_collection%final ()
+         if (verb)  call process%sf_startup_message (sf_string)
+      end if
 
-    if (verb) then
-       call intg%process%write (screen = .true.)
-       call intg%process%print_phs_startup_message ()
-    end if
+      call process%setup_mci (dispatch_mci_s)
 
-    if (intg%process_has_me) then
-       if (size (sf_config) > 0) then
-          call intg%process%collect_channels (phs_channel_collection)
-       else if (.not. initialize_only &
-            .and. intg%process%contains_trivial_component ()) then
-          call msg_fatal ("Integrate: 2 -> 1 process can't be handled &
-               &with fixed-energy beams")
-       end if
-       call dispatch_sf_channels &
-            (sf_channel, sf_string, sf_prop, phs_channel_collection, &
-            local%var_list, local%get_sqrts(), local%beam_structure)
-       if (allocated (sf_channel)) then
-          if (size (sf_channel) > 0) then
-             call intg%process%set_sf_channel (sf_channel)
-          end if
-       end if
-       call phs_channel_collection%final ()
-       if (verb)  call intg%process%sf_startup_message (sf_string)
-    end if
+      call setup_expressions ()
 
-    call intg%setup_process_mci ()
+      call process%compute_md5sum ()
+    end associate
 
-    call setup_expressions ()
-
-    call intg%process%compute_md5sum ()
   contains
-    subroutine setup_phase_space ()
-      intg%rebuild_phs = &
-           var_list%get_lval (var_str ("?rebuild_phase_space"))
-      intg%ignore_phs_mismatch = &
-           .not. var_list%get_lval (var_str ("?check_phs_file"))
-      intg%phs_only = &
-           var_list%get_lval (var_str ("?phs_only"))
-      phs_par%m_threshold_s = &
-           var_list%get_rval (var_str ("phs_threshold_s"))
-      phs_par%m_threshold_t = &
-           var_list%get_rval (var_str ("phs_threshold_t"))
-      phs_par%off_shell = &
-           var_list%get_ival (var_str ("phs_off_shell"))
-      phs_par%keep_nonresonant = &
-           var_list%get_lval (var_str ("?phs_keep_nonresonant"))
-      phs_par%t_channel = &
-           var_list%get_ival (var_str ("phs_t_channel"))
-      mapping_defs%energy_scale = &
-           var_list%get_rval (var_str ("phs_e_scale"))
-      mapping_defs%invariant_mass_scale = &
-           var_list%get_rval (var_str ("phs_m_scale"))
-      mapping_defs%momentum_transfer_scale = &
-           var_list%get_rval (var_str ("phs_q_scale"))
-      mapping_defs%step_mapping = &
-           var_list%get_lval (var_str ("?phs_step_mapping"))
-      mapping_defs%step_mapping_exp = &
-           var_list%get_lval (var_str ("?phs_step_mapping_exp"))
-      mapping_defs%enable_s_mapping = &
-           var_list%get_lval (var_str ("?phs_s_mapping"))
-
-      call dispatch_phs (phs_config_template, local%var_list, &
-           local%os_data, intg%process_id, mapping_defs, phs_par)
-    end subroutine setup_phase_space
 
     subroutine setup_log_and_history ()
-       !!! We avoid two dots in the filename due to a bug in certain MetaPost versions.
        if (intg%run_id /= "") then
           intg%history_filename = intg%process_id // "." // intg%run_id &
                // ".history"
@@ -5980,6 +5849,27 @@ local changes to currently inactive models.
           var_list%get_lval (var_str ("?vis_history"))
     end subroutine setup_log_and_history
 
+    subroutine set_intg_parameters (process)
+      type(process_t), intent(in) :: process
+      intg%n_calls_test = &
+           var_list%get_ival (var_str ("n_calls_test"))
+      intg%combined_integration = &
+           var_list%get_lval (var_str ('?combined_nlo_integration')) &
+           .and. process%is_nlo_calculation ()
+      intg%use_color_factors = &
+           var_list%get_lval (var_str ("?read_color_factors"))
+      intg%has_beam_pol = &
+           local%beam_structure%has_polarized_beams ()
+      intg%helicity_selection = &
+           local%get_helicity_selection ()
+      intg%rebuild_phs = &
+           var_list%get_lval (var_str ("?rebuild_phase_space"))
+      intg%ignore_phs_mismatch = &
+         .not. var_list%get_lval (var_str ("?check_phs_file"))
+      intg%phs_only = &
+           var_list%get_lval (var_str ("?phs_only"))
+    end subroutine set_intg_parameters
+
     subroutine display_init_message (verb)
       logical, intent(in) :: verb
       if (verb) then
@@ -5989,69 +5879,6 @@ local changes to currently inactive models.
               call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
       end if
     end subroutine display_init_message
-
-    subroutine setup_born_component ()
-      call intg%process%init_component (i_component, &
-           core%has_matrix_element (), mci_template, phs_config_template)
-      call intg%process%set_component_type (i_component, COMP_MASTER)
-    end subroutine setup_born_component
-
-    subroutine setup_virtual_component ()
-      call intg%process%init_component (i_component, &
-           core%has_matrix_element (), mci_template, phs_config_template)
-      call intg%process%set_component_type (i_component, COMP_VIRT)
-    end subroutine setup_virtual_component
-
-    subroutine setup_real_component ()
-      logical :: use_finite_real
-      use_finite_real = var_list%get_lval (var_str ("?nlo_use_real_partition"))
-      if (first_real_component) then
-         call dispatch_phs (phs_config_template_other, local%var_list, &
-              local%os_data, intg%process_id, mapping_defs, phs_par, &
-              var_str ('fks'))
-      else
-         call dispatch_phs (phs_config_template_other, local%var_list, &
-              local%os_data, intg%process_id, mapping_defs, phs_par, &
-              var_str ('wood'))
-      end if
-      call intg%process%init_component (i_component, &
-           core%has_matrix_element (), mci_template, phs_config_template_other)
-      if (use_finite_real) then
-         if (first_real_component) then
-            call intg%process%set_component_type (i_component, COMP_REAL_SING)
-            first_real_component = .false.
-         else
-            call intg%process%set_component_type (i_component, COMP_REAL_FIN)
-         end if
-      else
-         call intg%process%set_component_type (i_component, COMP_REAL)
-      end if
-    end subroutine setup_real_component
-
-    subroutine setup_mismatch_component ()
-      call dispatch_phs (phs_config_template_other, local%var_list, &
-           local%os_data, intg%process_id, mapping_defs, phs_par, var_str ('fks'))
-      call intg%process%init_component (i_component, &
-           core%has_matrix_element (), mci_template, phs_config_template_other)
-      if (intg%combined_integration) &
-           call intg%process%set_component_type (i_component, COMP_MISMATCH)
-    end subroutine setup_mismatch_component
-
-    subroutine setup_dglap_component ()
-      call dispatch_phs (phs_config_template_other, local%var_list, local%os_data, &
-           intg%process_id, mapping_defs, phs_par, var_str ('fks'))
-      call intg%process%init_component (i_component, &
-           core%has_matrix_element (), mci_template, phs_config_template_other)
-      if (intg%combined_integration) &
-           call intg%process%set_component_type (i_component, COMP_PDF)
-    end subroutine setup_dglap_component
-
-    subroutine setup_subtraction_component ()
-      call intg%process%init_component (i_component, .false., &
-           mci_template, phs_config_template)
-      if (intg%combined_integration) &
-           call intg%process%set_component_type (i_component, COMP_SUB)
-    end subroutine setup_subtraction_component
 
     subroutine setup_beams ()
       real(default) :: sqrts
@@ -6063,7 +5890,6 @@ local changes to currently inactive models.
          call intg%process%setup_beams_beam_structure &
               (local%beam_structure, sqrts, decay_rest_frame)
       end if
-      call intg%process%check_masses ()
       if (verb .and. intg%process_has_me) then
          call intg%process%beams_startup_message &
               (beam_structure = local%beam_structure)
@@ -6078,7 +5904,7 @@ local changes to currently inactive models.
          call intg%process%get_pdg_in (pdg_prc)
       else
          n_in = intg%process%get_n_in ()
-         allocate (pdg_prc (n_in, n_components))
+         allocate (pdg_prc (n_in, intg%process%get_n_components ()))
          pdg_prc = 0
       end if
       call dispatch_sf_config (sf_config, sf_prop, local%beam_structure, &
@@ -6407,16 +6233,6 @@ of the integration history.
   end subroutine integration_integrate
 
 @ %def integration_integrate
-@
-<<Integrations: integration: TBP>>=
-  procedure :: setup_process_mci => integration_setup_process_mci
-<<Integrations: procedures>>=
-  subroutine integration_setup_process_mci (intg)
-    class(integration_t), intent(inout) :: intg
-    call intg%process%setup_mci (intg%combined_integration)
-  end subroutine integration_setup_process_mci
-
-@ %def integration_setup_process_mci@
 @ Do a dummy integration for a process which could not be initialized (e.g.,
 has no matrix element).  The result is zero.
 <<Integrations: integration: TBP>>=
@@ -7915,10 +7731,10 @@ If there is no output stream, do nothing.
        if (i /= es_array%i_in) then
           associate (eio => es_array%entry(i)%eio)
             if (eio%split) then
-               if (eio%split_n_evt > 0 &
-                    .and. event_index > 1 &
-                    .and. mod (event_index, eio%split_n_evt) == 1) then
-                  call eio%split_out ()
+               if (eio%split_n_evt > 0 .and. event_index > 1) then
+                  if (mod (event_index, eio%split_n_evt) == 1) then
+                     call eio%split_out ()
+                  end if
                else if (eio%split_n_kbytes > 0) then
                   call eio%update_split_count (increased)
                   if (increased)  call eio%split_out ()
@@ -8137,7 +7953,8 @@ the stream array.
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, &
+         run_id = var_str ("run_test"))
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -8232,7 +8049,8 @@ reading when the file is exhausted.
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, &
+         run_id = var_str ("run_test"))
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -9233,13 +9051,11 @@ module restricted_subprocesses_uti
   use resonances, only: resonance_info_t
   use resonances, only: resonance_history_t
   use resonances, only: resonance_history_set_t
-  use sm_qcd, only: qcd_t
   use state_matrices, only: FM_IGNORE_HELICITY
   use particles, only: particle_set_t
   use model_data, only: model_data_t
   use models, only: syntax_model_file_init, syntax_model_file_final
   use models, only: model_t
-  use rng_base, only: rng_factory_t
   use rng_base_ut, only: rng_test_factory_t
   use mci_base, only: mci_t
   use mci_none, only: mci_none_t
@@ -10518,6 +10334,7 @@ module simulations
 
   use dispatch_beams, only: dispatch_qcd
   use dispatch_rng, only: dispatch_rng_factory
+  use dispatch_rng, only: update_rng_seed_in_var_list
   use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
   use dispatch_transforms, only: dispatch_evt_isr_epa_handler
   use dispatch_transforms, only: dispatch_evt_resonance
@@ -10562,6 +10379,7 @@ sample or sub-sample.
      integer :: negative = 0
      integer :: zero = 0
      integer :: excess = 0
+     integer :: dropped = 0
      real(default) :: max_excess = 0
      real(default) :: sum_excess = 0
      logical :: reproduce_xsection = .false.
@@ -10596,6 +10414,7 @@ sample or sub-sample.
        write (u, 3)  "max excess      = ", counter%max_excess
        write (u, 3)  "avg excess      = ", counter%sum_excess / counter%total
     end if
+    write (u, 1)  "Events dropped    = ", counter%dropped
   end subroutine counter_write
 
 @ %def counter_write
@@ -10620,6 +10439,27 @@ sample or sub-sample.
   end subroutine counter_show_excess
 
 @ %def counter_show_excess
+@ If events have been dropped during simulation of weighted events,
+issue a message here.
+<<Simulations: counter: TBP>>=
+  procedure :: show_dropped => counter_show_dropped
+<<Simulations: procedures>>=
+  subroutine counter_show_dropped (counter)
+    class(counter_t), intent(in) :: counter
+    if (counter%dropped > 0) then
+       write (msg_buffer, "(A,1x,I0,1x,'(',A,1x,I0,')')") &
+            "Dropped events (weight zero) =", &
+            counter%dropped, "total", counter%dropped + counter%total
+       call msg_message ()
+       write (msg_buffer, "(A,ES15.8)") &
+            "All event weights must be rescaled by f =", &
+            real (counter%total, default) &
+            / real (counter%dropped + counter%total, default)
+       call msg_warning ()
+    end if
+  end subroutine counter_show_dropped
+  
+@ %def counter_show_dropped
 @
 <<Simulations: counter: TBP>>=
   procedure :: show_mean_and_variance => counter_show_mean_and_variance
@@ -10636,12 +10476,19 @@ sample or sub-sample.
 @ Count an event.  The weight and event source are optional; by
 default we assume that the event has been generated and has positive
 weight.
+
+The optional integer [[n_dropped]] counts weighted events with weight
+zero that were encountered while generating the current event, but
+dropped (because of their zero weight).  Accumulating this number
+allows for renormalizing event weight sums in histograms, after the
+generation step has been completed.
 <<Simulations: counter: TBP>>=
   procedure :: record => counter_record
 <<Simulations: procedures>>=
-  subroutine counter_record (counter, weight, excess, from_file)
+  subroutine counter_record (counter, weight, excess, n_dropped, from_file)
     class(counter_t), intent(inout) :: counter
     real(default), intent(in), optional :: weight, excess
+    integer, intent(in), optional :: n_dropped
     logical, intent(in), optional :: from_file
     counter%total = counter%total + 1
     if (present (from_file)) then
@@ -10670,6 +10517,9 @@ weight.
           counter%max_excess = max (counter%max_excess, excess)
           counter%sum_excess = counter%sum_excess + excess
        end if
+    end if
+    if (present (n_dropped)) then
+       counter%dropped = counter%dropped + n_dropped
     end if
   end subroutine counter_record
 
@@ -11063,6 +10913,10 @@ method is OMega, and the phase-space method is 'wood'.
 
 When done, we assign the [[instance]] and [[process]] pointers of the
 base type by the [[connect]] method, so we can reference them later.
+
+TODO: In case of NLO event generation, copying the configuration from the
+master process is rather intransparent.  For instance, we override the process
+var list by the global var list.
 <<Simulations: entry: TBP>>=
   procedure :: init => entry_init
 <<Simulations: procedures>>=
@@ -11140,7 +10994,9 @@ base type by the [[connect]] method, so we can reference them later.
     call entry%import_process_results (master_process)
     call entry%prepare_expressions (local)
 
-    if (process%is_nlo_calculation ()) call process%init_nlo_settings (global%var_list)
+    if (process%is_nlo_calculation ()) then
+       call process%init_nlo_settings (global%var_list)
+    end if
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
     if (.not. combined_integration &
          .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) &
@@ -11274,11 +11130,7 @@ does not affect parameters.
                   call pcm%set_radiation_event ()
           end select
        end select
-       if (process%needs_extra_code () .and. present (local)) then
-             call process%create_and_load_extra_libraries &
-                  (local%beam_structure, process%get_var_list_ptr (), &
-                  local%os_data)
-       end if
+       call process%prepare_any_external_code ()
     end if
     call process_instance%setup_event_data (model)
   end subroutine prepare_process_instance
@@ -11379,7 +11231,7 @@ information about how many entries to associate from [[region_data]].
        if (mode > EVT_NLO_SEPARATE_BORNLIKE) then
           allocate (evt%particle_set_radiated (n_phs + 1))
           evt%event_deps%n_phs = n_phs
-          evt%qcd => entry%qcd
+          evt%qcd = entry%qcd
           do i = 1, n_phs
              allocate (current_entry%next)
              current_entry%next%first => current_entry%first
@@ -11649,9 +11501,11 @@ the normalization procedure for the process components.
     integer, intent(in) :: i_mci
     logical, intent(in), optional :: from_file
     real(default) :: weight, excess
+    integer :: n_dropped
     weight = entry%get_weight_prc ()
     excess = entry%get_excess_prc ()
-    call entry%counter%record (weight, excess, from_file)
+    n_dropped = entry%get_n_dropped ()
+    call entry%counter%record (weight, excess, n_dropped, from_file)
     if (i_mci > 0) then
        call entry%mci_sets(i_mci)%counter%record (weight, excess)
     end if
@@ -11731,9 +11585,9 @@ parameters stored in the process object.
     do while (associated (evt))
        select type (evt)
        type is (evt_shower_t)
-          evt%qcd => entry%qcd
+          evt%qcd = entry%qcd
           if (allocated (evt%matching)) then
-             evt%matching%qcd => entry%qcd
+             evt%matching%qcd = entry%qcd
           end if
        end select
        evt => evt%next
@@ -12063,6 +11917,7 @@ event file version. It can be
      integer :: i_mci = 0
      real(default) :: weight = 0
      real(default) :: excess = 0
+     integer :: n_dropped = 0
    contains
    <<Simulations: simulation: TBP>>
   end type simulation_t
@@ -12146,6 +12001,7 @@ writes the current event and process instance, depending on options.
        write (u, "(3x,A," // FMT_19 // ")")  "Weight    = ", object%weight
        if (.not. vanishes (object%excess)) &
             write (u, "(3x,A," // FMT_19 // ")")  "Excess    = ", object%excess
+       write (u, "(3x,A,I0)")  "Zero-weight events dropped = ", object%n_dropped
     else
        write (u, "(1x,A,I0,A,A)")  "Current event: [undefined]"
     end if
@@ -12339,6 +12195,7 @@ we may only read and rescan events.
     type(rt_data_t), intent(inout), optional, target :: global
     type(rt_data_t), dimension(:), intent(inout), optional, target :: alt_env
     class(rng_factory_t), allocatable :: rng_factory
+    integer :: next_rng_seed
     type(string_t) :: norm_string, version_string
     logical :: use_process
     integer :: i, j
@@ -12469,7 +12326,8 @@ we may only read and rescan events.
     end if
 !!! if this becomes conditional, some ref files will need update (seed change)
 !    if (generate) then
-       call dispatch_rng_factory (rng_factory, local%var_list)
+       call dispatch_rng_factory (rng_factory, local%var_list, next_rng_seed)
+       call update_rng_seed_in_var_list (local%var_list, next_rng_seed)
        call rng_factory%make (simulation%rng)
 !    end if
     if (all (simulation%entry%has_integral)) then
@@ -12820,12 +12678,13 @@ process instance will not be complete.  This should be fixed.
                call current_entry%evaluate_expressions ()
             end do
             if (signal_is_pending ()) return
+            simulation%n_dropped = entry%get_n_dropped ()
             if (entry%passed_selection ()) then
                simulation%weight = entry%get_weight_ref ()
                simulation%excess = entry%get_excess_prc ()
             end if
             call simulation%counter%record &
-                 (simulation%weight, simulation%excess)
+                 (simulation%weight, simulation%excess, simulation%n_dropped)
             call entry%record (simulation%i_mci)
           end associate
        else
@@ -12836,12 +12695,13 @@ process instance will not be complete.  This should be fixed.
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
+            simulation%n_dropped = entry%get_n_dropped ()
             if (entry%passed_selection ()) then
                simulation%weight = entry%get_weight_ref ()
                simulation%excess = entry%get_excess_prc ()
             end if
             call simulation%counter%record &
-                 (simulation%weight, simulation%excess, from_file=.true.)
+                 (simulation%weight, simulation%excess, simulation%n_dropped, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
        end if
@@ -12861,6 +12721,7 @@ process instance will not be complete.  This should be fixed.
     call msg_message ("        ... event sample complete.")
     if (simulation%unweighted)  call simulation%show_efficiency ()
     call simulation%counter%show_excess ()
+    call simulation%counter%show_dropped ()
     call simulation%counter%show_mean_and_variance ()
   end subroutine simulation_generate
 
@@ -13026,8 +12887,10 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ())  return
+            simulation%n_dropped = entry%get_n_dropped ()
             simulation%weight = entry%get_weight_prc ()
-            call simulation%counter%record (simulation%weight, from_file=.true.)
+            call simulation%counter%record &
+                 (simulation%weight, n_dropped=simulation%n_dropped, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
        else
@@ -13037,8 +12900,10 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ())  return
+            simulation%n_dropped = entry%get_n_dropped ()
             simulation%weight = entry%get_weight_ref ()
-            call simulation%counter%record (simulation%weight, from_file=.true.)
+            call simulation%counter%record &
+                 (simulation%weight, n_dropped=simulation%n_dropped, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
        end if
@@ -13046,6 +12911,7 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
        if (signal_is_pending ())  return
        call simulation%write_event (es_array)
     end do
+    call simulation%counter%show_dropped ()
     if (simulation%update_sqme .or. simulation%update_weight) then
        call simulation%restore_processes ()
     end if
@@ -13156,10 +13022,10 @@ must be selected, or the current index must be available.
        current = object%i_prc
     end if
     if (current > 0) then
-       if (object%split_n_evt > 0 &
-            .and. object%counter%total > 1 &
-            .and. mod (object%counter%total, object%split_n_evt) == 1) then
-          call eio%split_out ()
+       if (object%split_n_evt > 0 .and. object%counter%total > 1) then
+          if (mod (object%counter%total, object%split_n_evt) == 1) then
+             call eio%split_out ()
+          end if
        else if (object%split_n_kbytes > 0) then
           call eio%update_split_count (increased)
           if (increased)  call eio%split_out ()
@@ -15838,6 +15704,8 @@ contains
 
 <<Expr tests: tests>>
 
+<<Expr tests: test auxiliary>>
+
 end module expr_tests_uti
 
 @ %def expr_tests_uti
@@ -15890,7 +15758,7 @@ end subroutine subevt_expr_test
     call syntax_pexpr_init ()
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%read (var_str ("Test.mdl"), os_data)
 
     write (u, "(A)")  "* Expression texts"
@@ -16063,7 +15931,7 @@ end subroutine subevt_expr_test
     call syntax_pexpr_init ()
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%read (var_str ("Test.mdl"), os_data)
 
     write (u, "(A)")  "* Expression texts"
@@ -16200,15 +16068,11 @@ functionality.
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     type(model_t), pointer :: model_tmp
-    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model
     type(var_list_t), target :: var_list
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -16232,9 +16096,8 @@ functionality.
 
     libname = "processes5"
     procname = libname
-    run_id = "run5"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call syntax_model_file_init ()
@@ -16245,18 +16108,18 @@ functionality.
 
     call reset_interaction_counter ()
 
-    allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
-
     call var_list%append_real (var_str ("tolerance"), 0._default)
-    call process%set_var_list (var_list)
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
+
+    allocate (process)
+    call process%init (procname, lib, os_data, model, var_list)
+
     call var_list%final ()
 
     allocate (phs_test_config_t :: phs_config_template)
     call process%setup_test_cores ()
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -16264,7 +16127,7 @@ functionality.
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization and set cuts"
     write (u, "(A)")
@@ -16272,7 +16135,8 @@ functionality.
     call process%setup_terms ()
     call expr_factory%init (parse_tree%get_root_ptr ())
     call process%set_cuts (expr_factory)
-    call process%write (.false., u, show_var_list=.true., show_expressions=.true.)
+    call process%write (.false., u, &
+         show_var_list=.true., show_expressions=.true., show_os_data=.false.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Create a process instance"
@@ -16357,6 +16221,16 @@ functionality.
   end subroutine processes_5
 
 @ %def processes_5
+@ Trivial for testing: do not allocate the MCI record.
+<<Expr tests: test auxiliary>>=
+  subroutine dispatch_mci_empty (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+  end subroutine dispatch_mci_empty
+ 
+@ %def dispatch_mci_empty
 @
 \subsubsection{Processes: scales and such}
 Initialize a process and process instance, choose a sampling point and
@@ -16381,15 +16255,11 @@ functionality.
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     type(model_t), pointer :: model_tmp
-    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model
     type(var_list_t), target :: var_list
     type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
@@ -16445,9 +16315,8 @@ functionality.
 
     libname = "processes4"
     procname = libname
-    run_id = "run4"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
     call syntax_model_file_init ()
@@ -16456,19 +16325,19 @@ functionality.
     call var_list%init_snapshot (model_tmp%get_var_list_ptr ())
     model => model_tmp
 
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
+
     call reset_interaction_counter ()
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model, var_list)
 
-    call process%set_var_list (var_list)
     call var_list%final ()
 
     call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
@@ -16476,7 +16345,7 @@ functionality.
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_empty)
 
     write (u, "(A)")  "* Complete process initialization and set cuts"
     write (u, "(A)")
@@ -16590,18 +16459,20 @@ selection, reweighting, and analysis.
     write (u, "(A)")
     write (u, "(A)")  "* Initialize test process event"
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call syntax_model_file_init ()
     allocate (model)
     call model%read (var_str ("Test.mdl"), os_data)
     call var_list%init_snapshot (model%get_var_list_ptr ())
 
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
+
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, var_list)
 
-    call process%set_var_list (var_list)
     call var_list%final ()
 
     call process_instance%setup_event_data ()
@@ -29373,7 +29244,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION
-    print "(A)", "Copyright (C) 1999-2018 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2019 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -29613,7 +29484,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
-    print "(A)", "Copyright (C) 1999-2018 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2019 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -29702,7 +29573,8 @@ delete the objects in a separate procedure.
     allocate (proc)
     allocate (process_instance)
 
-    call prepare_test_process (proc, process_instance, model)
+    call prepare_test_process (proc, process_instance, model, &
+         run_id = var_str ("run_test"))
     call process_instance%setup_event_data ()
 
     call model%final ()
@@ -29770,7 +29642,9 @@ delete the objects in a separate procedure.
 @
 \subsubsection{Any Model}
 This procedure reads any model from file and, optionally, assigns a
-var-list pointer.
+var-list pointer.  If the model pointer is still null, we allocate the model
+object first, with concrete type [[model_t]].  This is a service for modules
+which do just have access to the [[model_data_t]] base type.
 <<Main: tests>>=
   subroutine prepare_whizard_model (model, name, vars)
   <<Use strings>>
@@ -29783,8 +29657,8 @@ var-list pointer.
     class(vars_t), pointer, intent(out), optional :: vars
     type(os_data_t) :: os_data
     call syntax_model_file_init ()
-    call os_data_init (os_data)
-    allocate (model_t :: model)
+    call os_data%init ()
+    if (.not. associated (model))  allocate (model_t :: model)
     select type (model)
     type is (model_t)
        call model%read (name // ".mdl", os_data)
@@ -29800,9 +29674,8 @@ var-list pointer.
   subroutine cleanup_whizard_model (model)
     use model_data
     use models
-    class(model_data_t), intent(inout), pointer :: model
+    class(model_data_t), intent(inout), target :: model
     call model%final ()
-    deallocate (model)
     call syntax_model_file_final ()
   end subroutine cleanup_whizard_model
 
@@ -29840,10 +29713,10 @@ This generator is not normally available for the dispatcher.  We assign an
 additional dispatch routine to the hook in the [[dispatch]] module
 which will be checked before the default rule.
 <<Main: use tests>>=
-  use dispatch_rng, only: dispatch_rng_factory_extra
+  use dispatch_rng, only: dispatch_rng_factory_fallback
   use dispatch_rng_ut, only: dispatch_rng_factory_test
 <<Main: prepare testbed>>=
-  dispatch_rng_factory_extra => dispatch_rng_factory_test
+  dispatch_rng_factory_fallback => dispatch_rng_factory_test
 @
 \subsubsection{Access to the test structure functions}
 These are not normally available for the dispatcher.  We assign an
@@ -29863,7 +29736,7 @@ This is for developers only, but needs a well-defined interface.
     type(test_results_t), intent(inout) :: results
     type(os_data_t) :: os_data
     integer :: u
-    call os_data_init (os_data)
+    call os_data%init ()
     u = free_unit ()
     open (u, file="whizard_check." // char (check) // ".log", &
          action="write", status="replace")
@@ -30289,6 +30162,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call phs_single_test (u, results)
 @
+\subsubsection{PHS Rambo}
+<<Main: use tests>>=
+  use phs_rambo_ut, only: phs_rambo_test
+<<Main: test cases>>=
+  case ("phs_rambo")
+     call phs_rambo_test (u, results)
+<<Main: all tests>>=
+  call phs_rambo_test (u, results)
+@
 \subsubsection{PHS Wood}
 <<Main: use tests>>=
   use phs_wood_ut, only: phs_wood_test
@@ -30508,6 +30390,24 @@ This is for developers only, but needs a well-defined interface.
      call jets_test (u, results)
 <<Main: all tests>>=
   call jets_test (u, results)
+@
+\subsection{LHA User Process WHIZARD}
+<<Main: use tests>>=
+  use whizard_lha_ut, only: whizard_lha_test
+<<Main: test cases>>=
+  case ("whizard_lha")
+     call whizard_lha_test (u, results)
+<<Main: all tests>>=
+  call whizard_lha_test (u, results)
+@
+\subsection{Pythia8}
+<<Main: use tests>>=
+  use pythia8_ut, only: pythia8_test
+<<Main: test cases>>=
+  case ("pythia8")
+     call pythia8_test (u, results)
+<<Main: all tests>>=
+  call pythia8_test (u, results)
 @
 \subsubsection{PDG Arrays}
 <<Main: use tests>>=

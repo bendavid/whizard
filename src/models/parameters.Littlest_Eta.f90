@@ -1,6 +1,6 @@
 ! parameters.Littlest_Eta.f90
 !
-! Copyright (C) 1999-2018 by 
+! Copyright (C) 1999-2019 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -85,12 +85,9 @@ module parameters_littlest_eta
       qzup, gcch, gcctop, gccw, gccwh, &
       gnch, gztht, gzhtht, gah 
   complex(default), dimension(2), save, public :: &
-      gnchup, gnchdwn, gnchneu, gnchlep, gahtt, &
-      gahthth, ghtht, gpsipq2, gpsipq3, &
-      ghhtht 
+      ghtht, gpsipq2, gpsipq3, ghhtht 
   complex(default), save, public :: &
-      gahtht, ghthth, &
-      gpsi0tt, gpsi0bb, gpsi0cc, gpsi0tautau, &
+      ghthth, gpsi0tt, gpsi0bb, gpsi0cc, gpsi0tautau, &
       gpsipl3, gpsi0tth, gpsi1tth, gpsipbth, &
       ghhtt, ghhthth, gpsi1tt, gpsi1bb, gpsi1cc, &
       gpsi1tautau
@@ -109,7 +106,6 @@ module parameters_littlest_eta
   real(default), public :: t_fac, tp_fac, ttp_fac, c4s4
   real(default), public :: xzbp, xzwp, xh, xlam
   real(default), public :: f_vev, lam1, lam2
-  real(default), public :: ye, yu
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
@@ -270,9 +266,6 @@ contains
     width(37) = par%wpsip
     mass(38) = par%mpsipp
     width(38) = par%wpsipp
-    !!! This choice is responsible for anomaly cancellation:
-    ye = - two / five
-    yu = three / five
     ttop = four * mass(6)**2 / mass(25)**2
     tbot = four * mass(5)**2 / mass(25)**2
     tch  = four * mass(4)**2 / mass(25)**2
@@ -308,7 +301,7 @@ contains
     costp = sqrt(cos2tp)
     !!!
     lam1 = par%lam1
-    lam2 = (mass(8)/f_vev)**2 * (mass(6)/vev) / lam1    
+    lam2 = (mass(8)/f_vev) * (mass(6)/vev) / lam1
     xlam = lam1**2 / (lam1**2 + lam2**2)
     !!!
     xh = five*g*gp * sint*cost*sintp*costp * (cos2t*sin2tp + &
@@ -447,7 +440,6 @@ contains
     !!!
     gpsihah = imago / two * gp * tp_fac * (spsi1 - two * spsi0)
     gpsi0ah = - imago * gp * tp_fac
-    gahpsip = gp * tp_fac
     gpsi1hz = - imago * g / 2 / costhw * (spsi1 - two * spsi0)
     gpsi1hzh = imago * g / two * t_fac * (spsi1 - two * spsi0)
     gpsi01z = imago * g / costhw
@@ -581,28 +573,13 @@ contains
     ! mass(33) = sqrt((f_vev*g/two/sint/cost)**2 - (g*vev/two)**2 - &
     !            (gp*vev/two/sintp/costp)**2 * xh)
     ! mass(34) = sqrt((f_vev*g/two/sint/cost)**2 - (g*vev/two)**2)
-    gah = gp / two / sintp / costp
-    gnchup(1) = gah * (two*yu + 17.0_default/15. - five/6. * cos2tp)
-    gnchup(2) = - gah * (one/five - cos2tp/two)
-    gnchdwn(1) = gah * (two*yu + 11.0_default/15. + one/6. * cos2tp)
-    gnchdwn(2) = gah * (one/five - cos2tp/two)    
-    gnchneu(1) = gah * (ye - four/five + one/two * cos2tp)
-    gnchneu(2) = - gah * (- ye + four/five - cos2tp/two)    
-    gnchlep(1) = gah * (two*ye - 9.0_default/five + three/two * cos2tp)
-    gnchlep(2) = gah * (one/five - cos2tp/two)    
-    gahtht = gah * mass(6) / vev / five
-    gahtt(1) = gnchup(1) - gah * xlam / five
-    gahtt(2) = gnchup(2) + gah * xlam / five
-    gahthth(1) = gah * (two * yu + 14.0_default/15. - four/three * &
-         cos2tp + xlam / five)
-    gahthth(2) = - gah * xlam / five
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! Littlest Higgs Yukawa couplings
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghtt = - mass(6) / vev * ( one + (vev/f_vev)**2 * xlam * (one + xlam))
     ghthth = - xlam * (one + xlam) * mass(8) * vev / f_vev**2
     ghtht(1) = - mass(6) / two / f_vev * (one + xlam)
-    ghtht(2) = - mass(8) * xlam / f_vev
+    ghtht(2) = - mass(8) * xlam / two / f_vev
     gpsi0tt = - mass(6)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0bb = - mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0cc = - mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
@@ -616,9 +593,11 @@ contains
     gpsipq3(1) = - mass(4)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipq3(2) = - mass(3)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipl3 = - mass(15)/two/sqrt(two)/vev * (vev/f_vev - two * spsip)
-    gpsi0tth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
+    gpsi0tth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0) &
+         * lam1/lam2
     gpsi1tth = imago * gpsi0tth
-    gpsipbth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - two * spsip) * lam1/lam2
+    gpsipbth = - mass(6)/two/sqrt(two)/vev * (vev/f_vev - two * spsip) &
+         * lam1/lam2
     !!!
     ghhtt = two*mass(6)/f_vev**2 * (one - two*f_vev*vevp/vev**2 - xlam/two)
     ghhthth = - lam1**2/mass(8)

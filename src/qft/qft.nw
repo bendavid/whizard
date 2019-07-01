@@ -1124,13 +1124,15 @@ extract the sign separately.
     class(model_data_t), pointer, intent(out) :: model
     integer, intent(in) :: PDG
     class(model_data_t), intent(in), target :: model_A, model_B
-    character(len=5) :: buffer
+    character(len=10) :: buffer
     if (model_A%test_field (PDG)) then
        model => model_A
     else if (model_B%test_field (PDG)) then
        model => model_B
     else
-       write (buffer, "(I5)") PDG
+       call model_A%write ()
+       call model_B%write ()
+       write (buffer, "(I10)") PDG
        call msg_fatal ("Parton " // buffer // &
             " not found in the given model files")
     end if
@@ -2722,8 +2724,8 @@ end module model_testbed
 @ %def model_testbed
 @
 \subsection{Abstract Model Handlers}
-Both routines take a polymorphic model (data) pointer, which
-is allocated/deallocated inside the subroutine.  The model constructor
+Both routines take a polymorphic model (data) target, which
+is not allocated/deallocated inside the subroutine.  The model constructor
 [[prepare_model]] requires the model name as input.  It can, optionally,
 return a link to the variable list of the model.
 <<Model testbed: public>>=
@@ -2736,7 +2738,7 @@ return a link to the variable list of the model.
   abstract interface
      subroutine prepare_model_proc (model, name, vars)
        import
-       class(model_data_t), pointer, intent(inout) :: model
+       class(model_data_t), intent(inout), pointer :: model
        type(string_t), intent(in) :: name
        class(vars_t), pointer, intent(out), optional :: vars
      end subroutine prepare_model_proc
@@ -2745,7 +2747,7 @@ return a link to the variable list of the model.
   abstract interface
      subroutine cleanup_model_proc (model)
        import
-       class(model_data_t), pointer, intent(inout) :: model
+       class(model_data_t), intent(inout), target :: model
      end subroutine cleanup_model_proc
   end interface
 

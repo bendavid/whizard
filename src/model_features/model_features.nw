@@ -863,7 +863,7 @@ the output, and we write an arrow if [[n_in]] is present.
        if (object%loops) then
           write (u, "(2x,'[',I0,',',I0,']')")  entry%n_loop, entry%n_rad
        else
-          write (u, *)
+          write (u, "(A)")
        end if
        entry => entry%next
     end do
@@ -1572,6 +1572,7 @@ using default parameter values.
 
     write (u, "(A)")  "* Read Standard Model"
 
+    model => null ()
     call prepare_model (model, var_str ("SM"))
 
     prt => model%get_field_ptr (25)
@@ -1617,6 +1618,7 @@ using default parameter values.
     write (u, "(A)")  "* Cleanup"
 
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, *)
     write (u, "(A)")  "* Test output end: auto_components_1"
@@ -1652,6 +1654,7 @@ of particles that is allowed to occur in the generated final states.
 
     write (u, "(A)")  "* Read Standard Model"
 
+    model => null ()
     call prepare_model (model, var_str ("SM"))
 
     write (u, *)
@@ -1771,6 +1774,7 @@ of particles that is allowed to occur in the generated final states.
     call fs_table%final ()
 
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, *)
     write (u, "(A)")  "* Test output end: auto_components_2"
@@ -1805,6 +1809,7 @@ of particles that is allowed to occur in the generated final states.
 
     write (u, "(A)")  "* Read Standard Model"
 
+    model => null ()
     call prepare_model (model, var_str ("SM"))
 
     write (u, *)
@@ -1920,6 +1925,7 @@ of particles that is allowed to occur in the generated final states.
     call if_table%final ()
 
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, *)
     write (u, "(A)")  "* Test output end: auto_components_3"
@@ -3324,7 +3330,7 @@ end module radiation_generator_uti
     write (u, "(A)") "* Loading radiation model: SM.mdl"
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -3455,7 +3461,7 @@ end module radiation_generator_uti
     write (u, "(A)") "* Loading radiation model: SM.mdl"
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
        (var_str ("SM"), var_str ("SM.mdl"), &
         os_data, model)
@@ -3524,7 +3530,7 @@ end module radiation_generator_uti
     write (u, "(A)") "* Loading radiation model: SM.mdl"
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -3674,7 +3680,7 @@ end module radiation_generator_uti
     write (u, "(A)") "* Loading radiation model: SM.mdl"
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
        (var_str ("SM"), var_str ("SM.mdl"), &
         os_data, model)
@@ -12304,10 +12310,10 @@ suitable for input and output!]
        if (defs) then
           call par%expr%write (unit)
        else
-          write (u, *)
+          write (u, "(A)")
        end if
     case default
-       write (u, *)
+       write (u, "(A)")
     end select
   end subroutine parameter_write
 
@@ -14025,7 +14031,7 @@ the field content.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
        (model_name, model_name // var_str (".mdl"), os_data, test_model)
   end subroutine create_test_model
@@ -14313,6 +14319,8 @@ Parameters: the [[copy_parameter]] method essentially copies the parameter
 decorations (parse node, expression etc.).  The current parameter values are
 part of the [[model_data_t]] base type and are copied afterwards via its
 [[copy_from]] method.
+
+Note: the parameter set is initialized for real parameters only.
 <<Models: model: TBP>>=
   procedure :: init_instance => model_copy
 <<Models: procedures>>=
@@ -14321,7 +14329,7 @@ part of the [[model_data_t]] base type and are copied afterwards via its
     type(model_t), intent(in) :: orig
     integer :: n_par, n_prt, n_vtx
     integer :: i
-    n_par = size (orig%par)
+    n_par = orig%get_n_real ()
     n_prt = orig%get_n_field ()
     n_vtx = orig%get_n_vtx ()
     call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
@@ -14333,11 +14341,13 @@ part of the [[model_data_t]] base type and are copied afterwards via its
        end if
     end if
     model%md5sum = orig%md5sum
-    do i = 1, n_par
-       call model%copy_parameter (i, orig%par(i))
-    end do
+    if (allocated (orig%par)) then
+       do i = 1, n_par
+          call model%copy_parameter (i, orig%par(i))
+       end do
+    end if
     model%init_external_parameters => orig%init_external_parameters
-    call model%copy_from (orig)
+    call model%model_data_t%copy_from (orig)
     model%max_par_name_length = orig%max_par_name_length
     call model%append_field_vars ()
   end subroutine model_copy
@@ -14494,7 +14504,7 @@ Read a predefined model from file.
     write (u, *)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
          os_data, model)
@@ -14542,7 +14552,7 @@ Read a predefined model from file and create an instance.
     write (u, *)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
          os_data, model)
@@ -14595,7 +14605,7 @@ Read a predefined model from file and define decays and polarization.
     write (u, *)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     write (u, "(A)")  "* Read model from file"
 
@@ -14688,7 +14698,7 @@ Note that the MD5 sum is not modified by this.
     write (u, *)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     write (u, "(A)")  "* Read model from file"
 
@@ -14784,7 +14794,7 @@ parameters is non-canonical.
     close (um)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call model_list%read_model (var_str ("Test6"), var_str ("Test6.mdl"), &
          os_data, model)
@@ -14864,7 +14874,7 @@ parameter list.
     close (um)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     write (u, *)
     write (u, "(A)")  "* Model output, default scheme (= foo)"
@@ -14972,7 +14982,7 @@ UFO models.  Compare this to an equivalent non-UFO model.
     write (u, "(A)")  "*   Purpose: distinguish models marked as UFO-derived"
     write (u, *)
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     call show_model_list_status ()
     model_name = "models_8_M"
@@ -15012,7 +15022,7 @@ UFO models.  Compare this to an equivalent non-UFO model.
     close (um)
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
 
     write (u, *)
     write (u, "(A)")  "* Read WHIZARD model"
@@ -15103,7 +15113,7 @@ UFO model.  The model file is deleted explicitly at the end of this test.
     write (u, "(A)")  "*   Purpose: enable the UFO Standard Model (test version)"
     write (u, *)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
 
     os_data%whizard_modelpath_ufo = "../models/UFO"
@@ -16534,7 +16544,7 @@ end module slha_interface_uti
 
     allocate (os_data)
     allocate (parse_tree)
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
     call model_list%read_model &
          (var_str("MSSM"), var_str("MSSM.mdl"), os_data, model)

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -44,7 +44,7 @@ module model_testbed
   abstract interface
      subroutine prepare_model_proc (model, name, vars)
        import
-       class(model_data_t), pointer, intent(inout) :: model
+       class(model_data_t), intent(inout), pointer :: model
        type(string_t), intent(in) :: name
        class(vars_t), pointer, intent(out), optional :: vars
      end subroutine prepare_model_proc
@@ -53,7 +53,7 @@ module model_testbed
   abstract interface
      subroutine cleanup_model_proc (model)
        import
-       class(model_data_t), pointer, intent(inout) :: model
+       class(model_data_t), intent(inout), target :: model
      end subroutine cleanup_model_proc
   end interface
 

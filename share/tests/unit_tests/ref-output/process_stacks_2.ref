@@ -21,10 +21,13 @@
    Number of process terms      = 0
    Number of MCI configurations = 0
    Model = Test
-   QCD parameters (coupling undefined)
+   QCD parameters (fixed coupling):
+     alpha =  1.17800E-01
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+ RNG factory: test (3)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------
@@ -52,11 +55,13 @@
    Number of process terms      = 0
    Number of MCI configurations = 0
    Model = Test
-   QCD parameters (coupling undefined)
-   RNG factory: test (1)
+   QCD parameters (fixed coupling):
+     alpha =  1.17800E-01
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------

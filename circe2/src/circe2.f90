@@ -1,5 +1,5 @@
 ! circe2.f90 -- correlated beam spectra for linear colliders
-! Copyright (C) 2001-2018 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+! Copyright (C) 2001-2019 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !
 ! Circe2 is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -372,7 +372,7 @@ contains
        return
     end if
     if (ierror .gt. 0) then
-       write (*, '(2A)') 'circe2_load: ', 'Version 2.6.4'                         
+       write (*, '(2A)') 'circe2_load: ', 'Version 2.7.0'                         
     end if
     prefix = index (design, '*') - 1
     do

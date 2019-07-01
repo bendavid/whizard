@@ -1,17 +1,12 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2018 by 
+! Copyright (C) 1999-2019 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
+!
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     Marco Sekulla <marco.sekulla@kit.edu>
-!     Christian Weiss <christian.weiss@desy.de>
-!     Felix Braam, Sebastian Schmidt,
-!     Hans-Werner Boschmann, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -520,7 +515,7 @@ real(c_double) function lcio_vtx_z (prt_obj) bind (C)
 end function lcio_vtx_z
 
 ! extern "C" double lcio_prt_time (MCParticleImpl* mcp) {
-real(c_double) function lcio_prt_time (prt_obj) bind(C)
+real(c_float) function lcio_prt_time (prt_obj) bind(C)
   use iso_c_binding
   type(c_ptr), value :: prt_obj
   lcio_prt_time = 0

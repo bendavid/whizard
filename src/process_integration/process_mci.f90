@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -78,11 +78,9 @@ module process_mci
    contains
      procedure :: final => process_mci_entry_final
      procedure :: write => process_mci_entry_write
-     procedure :: init => process_mci_entry_init
+     procedure :: configure => process_mci_entry_configure
      procedure :: create_component_list => &
         process_mci_entry_create_component_list
-     procedure :: set_combined_integration => &
-          process_mci_entry_set_combined_integration
      procedure :: set_associated_real_component &
          => process_mci_entry_set_associated_real_component
      procedure :: set_parameters => process_mci_entry_set_parameters
@@ -112,6 +110,7 @@ module process_mci
      class(mci_instance_t), pointer :: mci => null ()
      type(process_counter_t) :: counter
      logical :: keep_failed_events = .false.
+     integer :: n_event_dropped = 0
    contains
      procedure :: write => mci_work_write
      procedure :: final => mci_work_final
@@ -165,10 +164,11 @@ contains
     end if
   end subroutine process_mci_entry_write
 
-  subroutine process_mci_entry_init (mci_entry, &
+  subroutine process_mci_entry_configure (mci_entry, mci_template, &
        process_type, i_mci, i_component, component, &
        n_sfpar, rng_factory)
     class(process_mci_entry_t), intent(inout) :: mci_entry
+    class(mci_t), intent(in), allocatable :: mci_template
     integer, intent(in) :: process_type
     integer, intent(in) :: i_mci
     integer, intent(in) :: i_component
@@ -183,8 +183,8 @@ contains
       mci_entry%n_par_phs = phs_config%get_n_par ()
       mci_entry%n_par = mci_entry%n_par_sf + mci_entry%n_par_phs
       mci_entry%process_type = process_type
-      if (component%has_mci_template ()) then
-         allocate (mci_entry%mci, source=component%extract_mci_template ())
+      if (allocated (mci_template)) then
+         allocate (mci_entry%mci, source = mci_template)
          call mci_entry%mci%record_index (mci_entry%i_mci)
          call mci_entry%mci%set_dimensions &
               (mci_entry%n_par, phs_config%get_n_channel ())
@@ -202,7 +202,7 @@ contains
       end if
       call mci_entry%results%init (process_type)
     end associate
-  end subroutine process_mci_entry_init
+  end subroutine process_mci_entry_configure
 
   subroutine process_mci_entry_create_component_list (mci_entry, &
      i_component, component_config)
@@ -251,13 +251,6 @@ contains
       call msg_debug (D_PROCESS_INTEGRATION, "n_components", n_components)
     end function get_n_components
   end subroutine process_mci_entry_create_component_list
-
-  subroutine process_mci_entry_set_combined_integration (mci_entry, value)
-    class(process_mci_entry_t), intent(inout) :: mci_entry
-    logical, intent(in), optional :: value
-    if (present (value)) &
-       mci_entry%combined_integration = value
-  end subroutine process_mci_entry_set_combined_integration
 
   subroutine process_mci_entry_set_associated_real_component (mci_entry, i)
      class(process_mci_entry_t), intent(inout) :: mci_entry
@@ -390,6 +383,7 @@ contains
     logical, intent(in) :: keep_failed
     logical :: generate_new
     generate_new = .true.
+    call mci_instance%reset_n_event_dropped ()
     REJECTION: do while (generate_new)
        call mci_entry%mci%generate_weighted_event (mci_instance, mci_sampler)
        if (signal_is_pending ())  return
@@ -397,6 +391,7 @@ contains
           if (keep_failed) then
              generate_new = .false.
           else
+             call mci_instance%record_event_dropped ()
              generate_new = .true.
           end if
        else

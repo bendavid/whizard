@@ -89,7 +89,7 @@
 
 ========================================================================
  Process instance [scattering]: 'decays_5_p'
-   Run ID = 'decays_5'
+   Run ID = ''
    Process components:
    * 1: 'decays_5_p_i1':   s, s => s, s [test_me]
    status = event complete
@@ -508,7 +508,7 @@ n_tot* => 4
 ========================================================================
 ========================================================================
  Process instance [decay]: 'decays_5_d'
-   Run ID = 'decays_5'
+   Run ID = ''
    Process components:
    * 1: 'decays_5_d_i1':   s => f, fbar [test_decay]
    status = event complete
@@ -870,7 +870,7 @@ n_tot* => 3
 ========================================================================
 ========================================================================
  Process instance [decay]: 'decays_5_d'
-   Run ID = 'decays_5'
+   Run ID = ''
    Process components:
    * 1: 'decays_5_d_i1':   s => f, fbar [test_decay]
    status = event complete

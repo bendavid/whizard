@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by 
+# Copyright (C) 1999-2019 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -76,9 +76,10 @@ libwo_stdhep_la_SOURCES = \
    stdver.inc
 
 ## The include files are not automatically found (by certain Fortran compilers)
+## RPC flags need to be included if SunRPC is absent
 AM_FCFLAGS = -I$(top_srcdir)/stdhep
 AM_FFLAGS = -I$(top_srcdir)/stdhep
-AM_CFLAGS = -I$(top_srcdir)/mcfio
+AM_CFLAGS = $(RPC_CFLAGS) -I$(top_srcdir)/mcfio 
 
 ########################################################################
 ## Default Fortran compiler options

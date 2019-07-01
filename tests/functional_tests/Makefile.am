@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -53,6 +53,7 @@ TESTS_DEFAULT = \
     testproc_9.run \
     testproc_10.run \
     testproc_11.run \
+    testproc_12.run \
     template_me_1.run \
     template_me_2.run \
     model_scheme_1.run \
@@ -80,6 +81,7 @@ TESTS_REQ_OCAML = \
     cuts.run \
     model_change_1.run \
     model_change_2.run \
+    model_change_3.run \
     model_test.run \
     job_id_2.run \
     job_id_3.run \
@@ -124,6 +126,7 @@ TESTS_REQ_OCAML = \
     analyze_1.run \
     analyze_2.run \
     analyze_5.run \
+    analyze_6.run \
     colors.run \
     colors_2.run \
     colors_hgg.run \
@@ -164,6 +167,7 @@ TESTS_REQ_OCAML = \
     smtest_13.run \
     smtest_14.run \
     smtest_15.run \
+    smtest_16.run \
     resonances_1.run \
     resonances_2.run \
     resonances_3.run \
@@ -204,6 +208,7 @@ TESTS_REQ_OCAML = \
     openloops_8.run \
     openloops_9.run \
     openloops_10.run \
+    openloops_11.run \
     recola_1.run \
     recola_2.run \
     recola_3.run \
@@ -335,6 +340,11 @@ TESTS_REQ_PYTHIA6 = \
     mlm_matching_isr.run
 XFAIL_TESTS_REQ_PYTHIA6 =
 
+TESTS_REQ_PYTHIA8 =
+#    pythia8_1.run \
+#    pythia8_2.run
+XFAIL_TESTS_REQ_PYTHIA8 =
+
 TESTS_REQ_EV_ANA = \
     analyze_3.run
 XFAIL_TESTS_REQ_EV_ANA =
@@ -385,6 +395,9 @@ XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF6)
 
 TESTS += $(TESTS_REQ_PYTHIA6)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_PYTHIA6)
+
+TESTS += $(TESTS_REQ_PYTHIA8)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_PYTHIA8)
 
 TESTS += $(TESTS_REQ_EV_ANA)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_EV_ANA)
@@ -525,6 +538,10 @@ noinst_PROGRAMS += isr_epa_1_count
 isr_epa_1_count_SOURCES = isr_epa_1_count.f90
 isr_epa_1.run: isr_epa_1_count
 
+noinst_PROGRAMS += analyze_6_check
+analyze_6_check_SOURCES = analyze_6_check.f90
+analyze_6.run: analyze_6_check
+
 endif
 
 if HEPMC_AVAILABLE
@@ -577,6 +594,7 @@ BUILT_SOURCES = \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
     PYTHIA6_FLAG \
+    PYTHIA8_FLAG \
     OPENLOOPS_FLAG \
     RECOLA_FLAG \
     GZIP_FLAG \
@@ -631,6 +649,11 @@ endif
 
 PYTHIA6_FLAG:
 if PYTHIA6_AVAILABLE
+	touch $@
+endif
+
+PYTHIA8_FLAG:
+if PYTHIA8_AVAILABLE
 	touch $@
 endif
 
@@ -700,10 +723,10 @@ clean-local: clean-macosx
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG MPI_FLAG RECOLA_FLAG
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
-	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
+	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG 
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
-	rm -f *.run *.log slha_test.out
+	rm -f *.run *.log slha_test.out *_check.out
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *_count.out

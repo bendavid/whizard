@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -110,6 +110,7 @@ module mci_base
      real(default) :: mci_weight = 0
      real(default) :: integrand  = 0
      logical :: negative_weights = .false.
+     integer :: n_dropped = 0
    contains
      procedure (mci_instance_write), deferred :: write
      procedure (mci_instance_final), deferred :: final
@@ -125,6 +126,9 @@ module mci_base
      procedure :: get_value => mci_instance_get_value
      procedure :: get_event_weight => mci_instance_get_value
      procedure (mci_instance_get_event_excess), deferred :: get_event_excess
+     procedure :: get_n_event_dropped => mci_instance_get_n_event_dropped
+     procedure :: reset_n_event_dropped => mci_instance_reset_n_event_dropped
+     procedure :: record_event_dropped => mci_instance_record_event_dropped
      procedure :: store => mci_instance_store
      procedure :: recall => mci_instance_recall
   end type mci_instance_t
@@ -693,6 +697,22 @@ contains
     end if
   end function mci_instance_get_value
 
+  function mci_instance_get_n_event_dropped (mci) result (n_dropped)
+    class(mci_instance_t), intent(in) :: mci
+    integer :: n_dropped
+    n_dropped = mci%n_dropped
+  end function mci_instance_get_n_event_dropped
+  
+  subroutine mci_instance_reset_n_event_dropped (mci)
+    class(mci_instance_t), intent(inout) :: mci
+    mci%n_dropped = 0
+  end subroutine mci_instance_reset_n_event_dropped
+  
+  subroutine mci_instance_record_event_dropped (mci)
+    class(mci_instance_t), intent(inout) :: mci
+    mci%n_dropped = mci%n_dropped + 1
+  end subroutine mci_instance_record_event_dropped
+  
   subroutine mci_state_write (object, unit)
     class(mci_state_t), intent(in) :: object
     integer, intent(in), optional :: unit

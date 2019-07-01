@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -31,7 +31,9 @@ module process_stacks_uti
   use iso_varying_string, string_t => varying_string
   use os_interface
   use sm_qcd
+  use models
   use model_data
+  use variables, only: var_list_t
   use process_libraries
   use rng_base
   use prc_test, only: prc_test_create_library
@@ -74,11 +76,9 @@ contains
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
+    type(var_list_t) :: var_list
     type(process_entry_t), pointer :: process => null ()
 
     write (u, "(A)")  "* Test output: process_stacks_2"
@@ -90,26 +90,27 @@ contains
 
     libname = "process_stacks2"
     procname = libname
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+    
+    call os_data%init ()
     call prc_test_create_library (libname, lib)
 
-    allocate (model)
     call model%init_test ()
+    call var_list%append_string (var_str ("$run_id"))
+    call var_list%append_log (var_str ("?alphas_is_fixed"), .true.)
+    call var_list%append_int (var_str ("seed"), 0)
 
     allocate (process)
-    run_id = "run1"
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+
+    call var_list%set_string &
+         (var_str ("$run_id"), var_str ("run1"), is_known=.true.)
+    call process%init (procname, lib, os_data, model, var_list)
     call stack%push (process)
 
-    allocate (model)
-    call model%init_test ()
-
     allocate (process)
-    run_id = "run2"
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+
+    call var_list%set_string &
+         (var_str ("$run_id"), var_str ("run2"), is_known=.true.)
+    call process%init (procname, lib, os_data, model, var_list)
     call stack%push (process)
 
     call stack%write (u)
@@ -118,6 +119,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call stack%final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_2"
@@ -127,7 +129,7 @@ contains
   subroutine process_stacks_3 (u)
     integer, intent(in) :: u
     type(process_stack_t) :: stack
-    type(model_data_t), target :: model
+    type(model_t), target :: model
     type(string_t) :: procname
     type(process_entry_t), pointer :: process => null ()
     type(process_instance_t), target :: process_instance
@@ -170,7 +172,6 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call stack%final ()
-
     call model%final ()
 
     write (u, "(A)")
@@ -182,13 +183,10 @@ contains
     integer, intent(in) :: u
     type(process_library_t), target :: lib
     type(process_stack_t), target :: stack1, stack2
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(string_t) :: libname
-    type(string_t) :: procname
-    type(string_t) :: run_id
+    type(string_t) :: procname1, procname2
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     type(process_entry_t), pointer :: process => null ()
 
     write (u, "(A)")  "* Test output: process_stacks_4"
@@ -199,23 +197,20 @@ contains
     write (u, "(A)")
 
     libname = "process_stacks_4_lib"
-    procname = "process_stacks_4a"
+    procname1 = "process_stacks_4a"
+    procname2 = "process_stacks_4b"
 
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+    call os_data%init ()
 
     write (u, "(A)")  "* Initialize first process"
     write (u, "(A)")
 
-    call prc_test_create_library (procname, lib)
+    call prc_test_create_library (procname1, lib)
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    run_id = "run1"
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname1, lib, os_data, model)
     call stack1%push (process)
 
     write (u, "(A)")  "* Initialize second process"
@@ -223,16 +218,11 @@ contains
 
     call stack2%link (stack1)
 
-    procname = "process_stacks_4b"
-    call prc_test_create_library (procname, lib)
-
-    allocate (model)
-    call model%init_test ()
+    call prc_test_create_library (procname2, lib)
 
     allocate (process)
-    run_id = "run2"
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+
+    call process%init (procname2, lib, os_data, model)
     call stack2%push (process)
 
     write (u, "(A)")  "* Show linked stacks"
@@ -245,6 +235,7 @@ contains
 
     call stack2%final ()
     call stack1%final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_4"

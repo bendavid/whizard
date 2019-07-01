@@ -117,6 +117,8 @@ end module event_base
      real(default) :: weight_prc = 0
      logical :: excess_prc_known = .false.
      real(default) :: excess_prc = 0
+     logical :: n_dropped_known = .false.
+     integer :: n_dropped = 0
      integer :: n_alt = 0
      logical :: sqme_alt_known = .false.
      real(default), dimension(:), allocatable :: sqme_alt
@@ -283,6 +285,7 @@ alternate values.
        generic_event_get_weight_alt_0, generic_event_get_weight_alt_1
   procedure :: generic_event_get_weight_alt_0
   procedure :: generic_event_get_weight_alt_1
+  procedure :: get_n_dropped => generic_event_get_n_dropped
   procedure :: get_excess_prc => generic_event_get_excess_prc
 <<Event base: procedures>>=
   function generic_event_get_sqme_prc (event) result (sqme)
@@ -369,12 +372,23 @@ alternate values.
     end if
   end function generic_event_get_excess_prc
 
+  function generic_event_get_n_dropped (event) result (n_dropped)
+    class(generic_event_t), intent(in) :: event
+    integer :: n_dropped
+    if (event%n_dropped_known) then
+       n_dropped = event%n_dropped
+    else
+       n_dropped = 0
+    end if
+  end function generic_event_get_n_dropped
+
 @ %def generic_event_get_sqme_prc
 @ %def generic_event_get_sqme_ref
 @ %def generic_event_get_sqme_alt
 @ %def generic_event_get_weight_prc
 @ %def generic_event_get_weight_ref
 @ %def generic_event_get_weight_alt
+@ %def generic_event_get_n_dropped
 @ %def generic_event_get_excess_prc
 @
 <<Event base: generic event: TBP>>=
@@ -385,6 +399,7 @@ alternate values.
   procedure :: set_weight_ref => generic_event_set_weight_ref
   procedure :: set_weight_alt => generic_event_set_weight_alt
   procedure :: set_excess_prc => generic_event_set_excess_prc
+  procedure :: set_n_dropped => generic_event_set_n_dropped
 <<Event base: procedures>>=
   subroutine generic_event_set_sqme_prc (event, sqme)
     class(generic_event_t), intent(inout) :: event
@@ -434,6 +449,13 @@ alternate values.
     event%excess_prc = excess
     event%excess_prc_known = .true.
   end subroutine generic_event_set_excess_prc
+  
+  subroutine generic_event_set_n_dropped (event, n_dropped)
+    class(generic_event_t), intent(inout) :: event
+    integer, intent(in) :: n_dropped
+    event%n_dropped = n_dropped
+    event%n_dropped_known = .true.
+  end subroutine generic_event_set_n_dropped
 
 @ %def generic_event_set_sqme_prc
 @ %def generic_event_set_sqme_ref
@@ -441,7 +463,7 @@ alternate values.
 @ %def generic_event_set_weight_prc
 @ %def generic_event_set_weight_ref
 @ %def generic_event_set_weight_alt
-@ %def generic_event_set_excess_prc
+@ %def generic_event_set_n_dropped
 @
 Set the appropriate entry directly.
 <<Event base: generic event: TBP>>=
@@ -449,13 +471,14 @@ Set the appropriate entry directly.
 <<Event base: procedures>>=
   subroutine generic_event_set (event, &
        weight_ref, weight_prc, weight_alt, &
-       excess_prc, &
+       excess_prc, n_dropped, &
        sqme_ref, sqme_prc, sqme_alt)
     class(generic_event_t), intent(inout) :: event
     real(default), intent(in), optional :: weight_ref, weight_prc
     real(default), intent(in), optional :: sqme_ref, sqme_prc
     real(default), dimension(:), intent(in), optional :: sqme_alt, weight_alt
     real(default), intent(in), optional :: excess_prc
+    integer, intent(in), optional :: n_dropped
     if (present (sqme_prc)) then
        call event%set_sqme_prc (sqme_prc)
     end if
@@ -476,6 +499,9 @@ Set the appropriate entry directly.
     end if
     if (present (excess_prc)) then
        call event%set_excess_prc (excess_prc)
+    end if
+    if (present (n_dropped)) then
+       call event%set_n_dropped (n_dropped)
     end if
   end subroutine generic_event_set
 
@@ -1734,7 +1760,7 @@ allow for extra arguments.
   abstract interface
      subroutine eio_cleanup_model (model)
        import
-       class(model_data_t), intent(inout), pointer :: model
+       class(model_data_t), intent(inout), target :: model
      end subroutine eio_cleanup_model
   end interface
 
@@ -9582,6 +9608,7 @@ module lcio_interface
 <<Use kinds>>
 <<Use strings>>
   use constants, only: PI
+  use physics_defs, only: ns_per_mm
   use diagnostics
   use lorentz
   use flavors
@@ -10204,13 +10231,15 @@ stores the signed invariant mass (no squaring).
      end function lcio_vtx_z
   end interface
   interface
-     real(c_double) function lcio_prt_time (prt) bind(C)
+     real(c_float) function lcio_prt_time (prt) bind(C)
        import
        type(c_ptr), value :: prt
      end function lcio_prt_time
   end interface
 @
 @
+(Decay) times in LCIO are in nanoseconds, so they need to get
+converted to mm for the internal format.
 <<LCIO interface: public>>=
   public :: lcio_particle_get_vertex
   public :: lcio_particle_get_time
@@ -10229,6 +10258,7 @@ stores the signed invariant mass (no squaring).
     real(default) :: time
     type(lcio_particle_t), intent(in) :: prt
     time = lcio_prt_time (prt%obj)
+    time = time / ns_per_mm
   end function lcio_particle_get_time
 
 @ %def lcio_particle_get_vertex lcio_particle_get_time
@@ -10374,7 +10404,7 @@ $\cos\theta$ is relevant, mapped to positive/negative helicity.
      subroutine lcio_particle_set_time (prt_obj, t) bind(C)
        import
        type(c_ptr), value :: prt_obj
-       real(c_double), value :: t
+       real(c_float), value :: t
      end subroutine lcio_particle_set_time
   end interface
 
@@ -10392,13 +10422,16 @@ $\cos\theta$ is relevant, mapped to positive/negative helicity.
 
 @ %def lcio_particle_set_vtx
 @
+Times in LCIO are in nanoseconds, not in mm, so need to be converted.
 <<LCIO interface: public>>=
   public :: lcio_particle_set_t
 <<LCIO interface: procedures>>=
   subroutine lcio_particle_set_t (prt, t)
     type(lcio_particle_t), intent(inout) :: prt
     real(default), intent(in) :: t
-    call lcio_particle_set_time (prt%obj, real(t, c_double))
+    real(default) :: ns_from_t_mm
+    ns_from_t_mm = ns_per_mm * t
+    call lcio_particle_set_time (prt%obj, real(ns_from_t_mm, c_float))
   end subroutine lcio_particle_set_t
 
 @ %def lcio_particle_set_t
@@ -11641,10 +11674,14 @@ necessary for making a fully qualified flavor component.
     type(lcio_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
     type(lcio_particle_t), dimension(:), allocatable :: lprt
+    type(particle_set_t), target :: pset_filtered
     integer, dimension(:), allocatable :: parent
     integer :: n_tot, i, j, n_beam, n_parents, type, beam_count
-    n_tot = particle_set%n_tot
-    n_beam = count (particle_set%prt%get_status () == PRT_BEAM)
+
+    call particle_set%filter_particles ( pset_filtered, real_parents = .true. , &
+        keep_beams = .true. , keep_virtuals = .false.)
+    n_tot = pset_filtered%n_tot
+    n_beam = count (pset_filtered%prt%get_status () == PRT_BEAM)
     if (n_beam == 0) then
        type = PRT_INCOMING
     else
@@ -11653,20 +11690,20 @@ necessary for making a fully qualified flavor component.
     beam_count = 0
     allocate (lprt (n_tot))
     do i = 1, n_tot
-       call particle_to_lcio (particle_set%prt(i), lprt(i))
-       n_parents = particle_set%prt(i)%get_n_parents ()
+       call particle_to_lcio (pset_filtered%prt(i), lprt(i))
+       n_parents = pset_filtered%prt(i)%get_n_parents ()
        if (n_parents /= 0) then
           allocate (parent (n_parents))
-          parent = particle_set%prt(i)%get_parents ()
+          parent = pset_filtered%prt(i)%get_parents ()
           do j = 1, n_parents
-             call lcio_particle_set_parent (lprt(i), lprt(parent(j)))
+             call lcio_particle_set_parent  (lprt(i), lprt(parent(j)))
           end do
           deallocate (parent)
        end if
-       if (particle_set%prt(i)%get_status () == type) then
+       if (pset_filtered%prt(i)%get_status () == type) then
           beam_count = beam_count + 1
           call lcio_event_set_beam &
-               (evt, particle_set%prt(i)%get_pdg (), beam_count)
+               (evt, pset_filtered%prt(i)%get_pdg (), beam_count)
        end if
        call lcio_particle_add_to_evt_coll (lprt(i), evt)
     end do
@@ -13609,6 +13646,7 @@ Check input of a version-1.0 conforming LHEF file.
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -13675,6 +13713,7 @@ Check input of a version-1.0 conforming LHEF file.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_4"
@@ -13748,6 +13787,7 @@ Check input of a version-2.0 conforming LHEF file.
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -13814,6 +13854,7 @@ Check input of a version-2.0 conforming LHEF file.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_5"
@@ -13888,6 +13929,7 @@ Check input of a version-3.0 conforming LHEF file.
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -13954,6 +13996,7 @@ Check input of a version-3.0 conforming LHEF file.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_6"
@@ -14674,6 +14717,7 @@ We test the implementation of the STDHEP HEPEUP I/O method:
 
     write (u, "(A)")  "* Initialize test process"
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -14757,6 +14801,7 @@ We test the implementation of the STDHEP HEPEUP I/O method:
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_stdhep_2"
@@ -14789,6 +14834,7 @@ Check input from a StdHep file, HEPEVT block.
     write (u, "(A)")  "* Write a StdHep data file, HEPEVT block"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
 
@@ -14827,10 +14873,12 @@ Check input from a StdHep file, HEPEVT block.
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
     deallocate (eio)
+    deallocate (fallback_model)
 
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -14887,6 +14935,7 @@ Check input from a StdHep file, HEPEVT block.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_stdhep_3"
@@ -14919,6 +14968,7 @@ Check input from a StdHep file, HEPEVT block.
     write (u, "(A)")  "* Write a StdHep data file, HEPRUP/HEPEUP block"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
 
@@ -14958,10 +15008,12 @@ Check input from a StdHep file, HEPEVT block.
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
     deallocate (eio)
+    deallocate (fallback_model)
 
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted = .false.)
 
@@ -15018,6 +15070,7 @@ Check input from a StdHep file, HEPEVT block.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_stdhep_4"
@@ -15627,6 +15680,7 @@ We test the implementation of all I/O methods.
     write (u, "(A)")  "* Initialize test process"
     write (u, "(A)")
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event, unweighted=.false.)
 
@@ -15683,6 +15737,7 @@ We test the implementation of all I/O methods.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_hepmc_2"
@@ -16254,6 +16309,7 @@ We test the implementation of all I/O methods.
 
     write (u, "(A)")  "* Initialize test process"
 
+    allocate (fallback_model)
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
 
@@ -16351,6 +16407,7 @@ We test the implementation of all I/O methods.
 
     call eio_cleanup_test (event)
     call eio_cleanup_fallback_model (fallback_model)
+    deallocate (fallback_model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lcio_2"

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,10 +37,13 @@ module process_config
   use diagnostics
   use sf_base
   use sf_mappings
+  use mappings, only: mapping_defaults_t
+  use phs_forests, only: phs_parameters_t
   use sm_qcd
   use physics_defs
   use integration_results
   use model_data
+  use models
   use interactions
   use quantum_numbers
   use flavors
@@ -51,24 +54,27 @@ module process_config
   use process_libraries
   use process_constants
   use prc_core
-  use prc_user_defined
+  use prc_external
   use prc_openloops, only: prc_openloops_t
   use prc_threshold, only: prc_threshold_t
   use beams
+  use dispatch_beams, only: dispatch_qcd
   use mci_base
   use beam_structures
   use phs_base
   use variables
   use expr_base
-
-  use pcm_base, only: pcm_t
-  use pcm, only: pcm_nlo_t
+  use blha_olp_interfaces, only: prc_blha_t
 
   implicit none
   private
 
+  public :: flagged
+  public :: set_flag 
   public :: process_config_data_t
+  public :: process_environment_t
   public :: process_metadata_t
+  public :: process_phs_config_t
   public :: process_beam_config_t
   public :: process_component_t
   public :: process_term_t
@@ -84,14 +90,22 @@ module process_config
   integer, parameter, public :: COMP_SUB = 8
   integer, parameter, public :: COMP_RESUM = 9
 
+  integer, parameter, public :: F_PACIFY = 1
+  integer, parameter, public :: F_SHOW_VAR_LIST = 11
+  integer, parameter, public :: F_SHOW_EXPRESSIONS = 12
+  integer, parameter, public :: F_SHOW_LIB = 13
+  integer, parameter, public :: F_SHOW_MODEL = 14
+  integer, parameter, public :: F_SHOW_QCD = 15
+  integer, parameter, public :: F_SHOW_OS_DATA = 16
+  integer, parameter, public :: F_SHOW_RNG = 17
+  integer, parameter, public :: F_SHOW_BEAMS = 18
 
   type :: process_config_data_t
+     class(process_def_t), pointer :: process_def => null ()
      integer :: n_in = 0
      integer :: n_components = 0
      integer :: n_terms = 0
      integer :: n_mci = 0
-     type(os_data_t) :: os_data
-     class(rng_factory_t), allocatable :: rng_factory
      type(string_t) :: model_name
      class(model_data_t), pointer :: model => null ()
      type(qcd_t) :: qcd
@@ -105,17 +119,45 @@ module process_config
      procedure :: write => process_config_data_write
      procedure :: init => process_config_data_init
      procedure :: final => process_config_data_final
+     procedure :: get_qcd => process_config_data_get_qcd
      procedure :: compute_md5sum => process_config_data_compute_md5sum
      procedure :: get_md5sum => process_config_data_get_md5sum
   end type process_config_data_t
 
+  type :: process_environment_t
+     private
+     type(model_t), pointer :: model => null ()
+     type(var_list_t), pointer :: var_list => null ()
+     logical :: var_list_is_set = .false.
+     type(process_library_t), pointer :: lib => null ()
+     type(beam_structure_t) :: beam_structure
+     type(os_data_t) :: os_data
+   contains
+     procedure :: final => process_environment_final
+     procedure :: write => process_environment_write
+     procedure :: write_formatted => process_environment_write_formatted
+     ! generic :: write (formatted) => write_formatted
+     procedure :: init => process_environment_init
+     procedure :: got_var_list => process_environment_got_var_list
+     procedure :: get_var_list_ptr => process_environment_get_var_list_ptr
+     procedure :: get_model_ptr => process_environment_get_model_ptr
+     procedure :: get_lib_ptr => process_environment_get_lib_ptr
+     procedure :: reset_lib_ptr => process_environment_reset_lib_ptr
+     procedure :: check_lib_sanity => process_environment_check_lib_sanity
+     procedure :: fill_process_constants => &
+          process_environment_fill_process_constants
+     procedure :: get_beam_structure => process_environment_get_beam_structure
+     procedure :: has_pdfs => process_environment_has_pdfs
+     procedure :: has_polarized_beams => process_environment_has_polarized_beams
+     procedure :: get_os_data => process_environment_get_os_data
+  end type process_environment_t
+  
   type :: process_metadata_t
      integer :: type = PRC_UNKNOWN
      type(string_t) :: id
      integer :: num_id = 0
      type(string_t) :: run_id
-     type(var_list_t) :: var_list
-     type(process_library_t), pointer :: lib => null ()
+     type(string_t), allocatable :: lib_name
      integer :: lib_update_counter = 0
      integer :: lib_index = 0
      integer :: n_components = 0
@@ -123,13 +165,22 @@ module process_config
      type(string_t), dimension(:), allocatable :: component_description
      logical, dimension(:), allocatable :: active
    contains
-     procedure :: final => process_metadata_final
      procedure :: write => process_metadata_write
      procedure :: show => process_metadata_show
      procedure :: init => process_metadata_init
      procedure :: deactivate_component => process_metadata_deactivate_component
   end type process_metadata_t
 
+  type :: process_phs_config_t
+     type(phs_parameters_t) :: phs_par
+     type(mapping_defaults_t) :: mapping_defs
+     class(phs_config_t), allocatable :: phs_config
+   contains
+     procedure :: write => process_phs_config_write
+     procedure :: write_formatted => process_phs_config_write_formatted
+     ! generic :: write (formatted) => write_formatted
+  end type process_phs_config_t
+     
   type :: process_beam_config_t
      type(beam_data_t) :: data
      integer :: n_strfun = 0
@@ -164,7 +215,6 @@ module process_config
      type(process_component_def_t), pointer :: config => null ()
      integer :: index = 0
      logical :: active = .false.
-     class(mci_t), allocatable :: mci_template
      integer, dimension(:), allocatable :: i_term
      integer :: i_mci = 0
      class(phs_config_t), allocatable :: phs_config
@@ -175,8 +225,6 @@ module process_config
      procedure :: write => process_component_write
      procedure :: init => process_component_init
      procedure :: is_active => process_component_is_active
-     procedure :: has_mci_template => process_component_has_mci_template
-     procedure :: extract_mci_template => process_component_extract_mci_template
      procedure :: configure_phs => process_component_configure_phs
      procedure :: compute_md5sum => process_component_compute_md5sum
      procedure :: collect_channels => process_component_collect_channels
@@ -202,7 +250,6 @@ module process_config
      integer :: n_sub, n_sub_color, n_sub_spin
      type(interaction_t) :: int
      type(interaction_t), pointer :: int_eff => null ()
-     class(pcm_t), pointer :: pcm => null ()
    contains
      procedure :: write => process_term_write
      procedure :: write_state_summary => process_term_write_state_summary
@@ -215,13 +262,37 @@ module process_config
 
 contains
 
-  subroutine process_config_data_write (config, u, &
-       counters, os_data, rng_factory, model, expressions)
+  function flagged (v_list, id, def) result (flag)
+    logical :: flag
+    integer, dimension(:), intent(in) :: v_list
+    integer, intent(in) :: id
+    logical, intent(in), optional :: def
+    logical :: default_result
+    default_result = .false.;  if (present (def))  default_result = def
+    if (default_result) then
+       flag = all (v_list /= -id)
+    else
+       flag = all (v_list /= -id) .and. any (v_list == id)
+    end if
+  end function flagged
+  
+  subroutine set_flag (v_list, value, flag)
+    integer, dimension(:), intent(inout), allocatable :: v_list
+    integer, intent(in) :: value
+    logical, intent(in), optional :: flag
+    if (present (flag)) then
+       if (flag) then
+          v_list = [v_list, value]
+       else
+          v_list = [v_list, -value]
+       end if
+    end if
+  end subroutine set_flag
+    
+  subroutine process_config_data_write (config, u, counters, model, expressions)
     class(process_config_data_t), intent(in) :: config
     integer, intent(in) :: u
     logical, intent(in) :: counters
-    logical, intent(in) :: os_data
-    logical, intent(in) :: rng_factory
     logical, intent(in) :: model
     logical, intent(in) :: expressions
     write (u, "(1x,A)") "Configuration data:"
@@ -235,9 +306,6 @@ contains
        write (u, "(3x,A,I0)") "Number of MCI configurations = ", &
             config%n_mci
     end if
-    if (os_data) then
-       call os_data_write (config%os_data, u)
-    end if
     if (associated (config%model)) then
        write (u, "(3x,A,A)")  "Model = ", char (config%model_name)
        if (model) then
@@ -250,12 +318,6 @@ contains
             " [not associated]"
     end if
     call config%qcd%write (u, show_md5sum = .false.)
-    if (rng_factory) then
-       if (allocated (config%rng_factory)) then
-          write (u, "(2x)", advance = "no")
-          call config%rng_factory%write (u)
-       end if
-    end if
     call write_separator (u)
     if (expressions) then
        if (allocated (config%ef_cuts)) then
@@ -293,40 +355,39 @@ contains
     end if
   end subroutine process_config_data_write
 
-  subroutine process_config_data_init &
-       (config, meta, os_data, qcd, rng_factory, model)
+  subroutine process_config_data_init (config, meta, env)
     class(process_config_data_t), intent(out) :: config
     type(process_metadata_t), intent(in) :: meta
-    type(os_data_t), intent(in) :: os_data
-    type(qcd_t), intent(in) :: qcd
-    class(rng_factory_t), intent(inout), allocatable :: rng_factory
-    class(model_data_t), intent(inout), pointer :: model
-    config%n_in = meta%lib%get_n_in (meta%id)
+    type(process_environment_t), intent(in) :: env
+    config%process_def => env%lib%get_process_def_ptr (meta%id)
+    config%n_in = config%process_def%get_n_in ()
     config%n_components = size (meta%component_id)
-    config%os_data = os_data
-    config%qcd = qcd
-    call move_alloc (from = rng_factory, to = config%rng_factory)
-    config%model_name = model%get_name ()
-    config%model => model
-    model => null ()
+    config%model => env%get_model_ptr ()
+    config%model_name = config%model%get_name ()
+    if (env%got_var_list ()) then
+       call dispatch_qcd &
+            (config%qcd, env%get_var_list_ptr (), env%get_os_data ())
+    end if
   end subroutine process_config_data_init
 
   subroutine process_config_data_final (config)
     class(process_config_data_t), intent(inout) :: config
-    if (associated (config%model)) then
-       call config%model%final ()
-       deallocate (config%model)
-    end if
   end subroutine process_config_data_final
 
+  function process_config_data_get_qcd (config) result (qcd)
+    class(process_config_data_t), intent(in) :: config
+    type(qcd_t) :: qcd
+    qcd = config%qcd
+  end function process_config_data_get_qcd
+    
   subroutine process_config_data_compute_md5sum (config)
     class(process_config_data_t), intent(inout) :: config
     integer :: u
     if (config%md5sum == "") then
        u = free_unit ()
        open (u, status = "scratch", action = "readwrite")
-       call config%write (u, counters = .false., os_data = .false., &
-            rng_factory = .false., model = .true., expressions = .true.)
+       call config%write (u, counters = .false., &
+            model = .true., expressions = .true.)
        rewind (u)
        config%md5sum = md5sum (u)
        close (u)
@@ -339,15 +400,190 @@ contains
     md5 = config%md5sum
   end function process_config_data_get_md5sum
 
-  subroutine process_metadata_final (meta)
-    class(process_metadata_t), intent(inout) :: meta
-    call meta%var_list%final (follow_link=.true.)
-  end subroutine process_metadata_final
+  subroutine process_environment_final (env)
+    class(process_environment_t), intent(inout) :: env
+    if (associated (env%model)) then
+       call env%model%final ()
+       deallocate (env%model)
+    end if
+    if (associated (env%var_list)) then
+       call env%var_list%final (follow_link=.true.)
+       deallocate (env%var_list)
+    end if
+  end subroutine process_environment_final
 
-  subroutine process_metadata_write (meta, u, var_list, screen)
+  subroutine process_environment_write (env, unit, &
+       show_var_list, show_model, show_lib, show_beams, show_os_data)
+    class(process_environment_t), intent(in) :: env
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_var_list
+    logical, intent(in), optional :: show_model
+    logical, intent(in), optional :: show_lib
+    logical, intent(in), optional :: show_beams
+    logical, intent(in), optional :: show_os_data
+    integer :: u, iostat
+    integer, dimension(:), allocatable :: v_list
+    character(0) :: iomsg
+    u = given_output_unit (unit)
+    allocate (v_list (0))
+    call set_flag (v_list, F_SHOW_VAR_LIST, show_var_list)
+    call set_flag (v_list, F_SHOW_MODEL, show_model)
+    call set_flag (v_list, F_SHOW_LIB, show_lib)
+    call set_flag (v_list, F_SHOW_BEAMS, show_beams)
+    call set_flag (v_list, F_SHOW_OS_DATA, show_os_data)
+    call env%write_formatted (u, "LISTDIRECTED", v_list, iostat, iomsg)
+  end subroutine process_environment_write
+  
+  subroutine process_environment_write_formatted &
+       (dtv, unit, iotype, v_list, iostat, iomsg)
+    class(process_environment_t), intent(in) :: dtv
+    integer, intent(in) :: unit
+    character(*), intent(in) :: iotype
+    integer, dimension(:), intent(in) :: v_list
+    integer, intent(out) :: iostat
+    character(*), intent(inout) :: iomsg
+    associate (env => dtv)
+      if (flagged (v_list, F_SHOW_VAR_LIST, .true.)) then
+         write (unit, "(1x,A)")  "Variable list:"
+         if (associated (env%var_list)) then
+            call write_separator (unit)
+            call env%var_list%write (unit)
+         else
+            write (unit, "(3x,A)")  "[not allocated]"
+         end if
+         call write_separator (unit)
+      end if
+      if (flagged (v_list, F_SHOW_MODEL, .true.)) then
+         write (unit, "(1x,A)")  "Model:"
+         if (associated (env%model)) then
+            call write_separator (unit)
+            call env%model%write (unit)
+         else
+            write (unit, "(3x,A)")  "[not allocated]"
+         end if
+         call write_separator (unit)
+      end if
+      if (flagged (v_list, F_SHOW_LIB, .true.)) then
+         write (unit, "(1x,A)")  "Process library:"
+         if (associated (env%lib)) then
+            call write_separator (unit)
+            call env%lib%write (unit)
+         else
+            write (unit, "(3x,A)")  "[not allocated]"
+         end if
+      end if
+      if (flagged (v_list, F_SHOW_BEAMS, .true.)) then
+         call write_separator (unit)
+         call env%beam_structure%write (unit)
+      end if
+      if (flagged (v_list, F_SHOW_OS_DATA, .true.)) then
+         write (unit, "(1x,A)")  "Operating-system data:"
+         call write_separator (unit)
+         call env%os_data%write (unit)
+      end if
+    end associate
+    iostat = 0
+  end subroutine process_environment_write_formatted
+  
+  subroutine process_environment_init &
+       (env, model, lib, os_data, var_list, beam_structure)
+    class(process_environment_t), intent(out) :: env
+    type(model_t), intent(in), target :: model
+    type(process_library_t), intent(in), target :: lib
+    type(os_data_t), intent(in) :: os_data
+    type(var_list_t), intent(in), target, optional :: var_list
+    type(beam_structure_t), intent(in), optional :: beam_structure
+    allocate (env%model)
+    call env%model%init_instance (model)
+    env%lib => lib
+    env%os_data = os_data
+    allocate (env%var_list)
+    if (present (var_list)) then
+       call env%var_list%init_snapshot (var_list, follow_link=.true.)
+       env%var_list_is_set = .true.
+    end if
+    if (present (beam_structure)) then
+       env%beam_structure = beam_structure
+    end if
+  end subroutine process_environment_init
+
+  function process_environment_got_var_list (env) result (flag)
+    class(process_environment_t), intent(in) :: env
+    logical :: flag
+    flag = env%var_list_is_set
+  end function process_environment_got_var_list
+    
+  function process_environment_get_var_list_ptr (env) result (var_list)
+    class(process_environment_t), intent(in) :: env
+    type(var_list_t), pointer :: var_list
+    var_list => env%var_list
+  end function process_environment_get_var_list_ptr
+    
+  function process_environment_get_model_ptr (env) result (model)
+    class(process_environment_t), intent(in) :: env
+    type(model_t), pointer :: model
+    model => env%model
+  end function process_environment_get_model_ptr
+    
+  function process_environment_get_lib_ptr (env) result (lib)
+    class(process_environment_t), intent(inout) :: env
+    type(process_library_t), pointer :: lib
+    lib => env%lib
+  end function process_environment_get_lib_ptr
+    
+  subroutine process_environment_reset_lib_ptr (env)
+    class(process_environment_t), intent(inout) :: env
+    env%lib => null ()
+  end subroutine process_environment_reset_lib_ptr
+    
+  subroutine process_environment_check_lib_sanity (env, meta)
+    class(process_environment_t), intent(in) :: env
+    type(process_metadata_t), intent(in) :: meta
+    if (associated (env%lib)) then
+       if (env%lib%get_update_counter () /= meta%lib_update_counter) then
+          call msg_fatal ("Process '" // char (meta%id) &
+               // "': library has been recompiled after integration")
+       end if
+    end if
+  end subroutine process_environment_check_lib_sanity
+    
+  subroutine process_environment_fill_process_constants &
+       (env, id, i_component, data)
+    class(process_environment_t), intent(in) :: env
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i_component
+    type(process_constants_t), intent(out) :: data
+    call env%lib%fill_constants (id, i_component, data)
+  end subroutine process_environment_fill_process_constants
+
+  function process_environment_get_beam_structure (env) result (beam_structure)
+    class(process_environment_t), intent(in) :: env
+    type(beam_structure_t) :: beam_structure
+    beam_structure = env%beam_structure
+  end function process_environment_get_beam_structure
+  
+  function process_environment_has_pdfs (env) result (flag)
+    class(process_environment_t), intent(in) :: env
+    logical :: flag
+    flag = env%beam_structure%has_pdf ()
+  end function process_environment_has_pdfs
+    
+  function process_environment_has_polarized_beams (env) result (flag)
+    class(process_environment_t), intent(in) :: env
+    logical :: flag
+    flag = env%beam_structure%has_polarized_beams ()
+  end function process_environment_has_polarized_beams
+    
+  function process_environment_get_os_data (env) result (os_data)
+    class(process_environment_t), intent(in) :: env
+    type(os_data_t) :: os_data
+    os_data = env%os_data
+  end function process_environment_get_os_data
+    
+  subroutine process_metadata_write (meta, u, screen)
     class(process_metadata_t), intent(in) :: meta
     integer, intent(in) :: u
-    logical, intent(in) :: var_list, screen
+    logical, intent(in) :: screen
     integer :: i
     select case (meta%type)
     case (PRC_UNKNOWN)
@@ -396,14 +632,14 @@ contains
     else
        write (u, "(3x,A,A,A)") "Run ID        = '", char (meta%run_id), "'"
     end if
-    if (associated (meta%lib)) then
+    if (allocated (meta%lib_name)) then
        if (screen) then
           write (msg_buffer, "(2x,A,A,A)")  "Library name  = '", &
-               char (meta%lib%get_name ()), "'"
+               char (meta%lib_name), "'"
           call msg_message ()
        else
           write (u, "(3x,A,A,A)")  "Library name  = '", &
-               char (meta%lib%get_name ()), "'"
+               char (meta%lib_name), "'"
        end if
     else
        if (screen) then
@@ -450,14 +686,6 @@ contains
     else
        call write_separator (u)
     end if
-    if (screen)  return
-    if (var_list) then
-       write (u, "(1x,A)")  "Variable list:"
-       call write_separator (u)
-       call var_list_write (meta%var_list, u)
-    else
-       write (u, "(1x,A)")  "Variable list: [not shown]"
-    end if
   end subroutine process_metadata_write
 
   subroutine process_metadata_show (meta, u, model_name)
@@ -494,11 +722,11 @@ contains
     end if
   end subroutine process_metadata_show
 
-  subroutine process_metadata_init (meta, id, run_id, lib)
+  subroutine process_metadata_init (meta, id, lib, var_list)
     class(process_metadata_t), intent(out) :: meta
     type(string_t), intent(in) :: id
-    type(string_t), intent(in) :: run_id
     type(process_library_t), intent(in), target :: lib
+    type(var_list_t), intent(in) :: var_list
     select case (lib%get_n_in (id))
     case (1);  meta%type = PRC_DECAY
     case (2);  meta%type = PRC_SCATTERING
@@ -506,15 +734,25 @@ contains
        call msg_bug ("Process '" // char (id) // "': impossible n_in")
     end select
     meta%id = id
-    meta%run_id = run_id
-    meta%lib => lib
+    meta%run_id = var_list%get_sval (var_str ("$run_id"))
+    allocate (meta%lib_name)
+    meta%lib_name = lib%get_name ()
     meta%lib_update_counter = lib%get_update_counter ()
-    meta%lib_index = lib%get_entry_index (id)
-    meta%num_id = lib%get_num_id (id)
-    call lib%get_component_list (id, meta%component_id)
-    meta%n_components = size (meta%component_id)
-    call lib%get_component_description_list (id, meta%component_description)
-    allocate (meta%active (meta%n_components), source = .true.)
+    if (lib%contains (id)) then
+       meta%lib_index = lib%get_entry_index (id)
+       meta%num_id = lib%get_num_id (id)
+       call lib%get_component_list (id, meta%component_id)
+       meta%n_components = size (meta%component_id)
+       call lib%get_component_description_list &
+            (id, meta%component_description)
+       allocate (meta%active (meta%n_components), source = .true.)
+    else
+       call msg_fatal ("Process library doesn't contain process '" &
+            // char (id) // "'")
+    end if
+    if (.not. lib%is_active ()) then
+       call msg_bug ("Process init: inactive library not handled yet")
+    end if
   end subroutine process_metadata_init
 
   subroutine process_metadata_deactivate_component (meta, i)
@@ -525,6 +763,33 @@ contains
     meta%active(i) = .false.
   end subroutine process_metadata_deactivate_component
 
+  subroutine process_phs_config_write (phs_config, unit)
+    class(process_phs_config_t), intent(in) :: phs_config
+    integer, intent(in), optional :: unit
+    integer :: u, iostat
+    integer, dimension(:), allocatable :: v_list
+    character(0) :: iomsg
+    u = given_output_unit (unit)
+    allocate (v_list (0))
+    call phs_config%write_formatted (u, "LISTDIRECTED", v_list, iostat, iomsg)
+  end subroutine process_phs_config_write
+  
+  subroutine process_phs_config_write_formatted &
+       (dtv, unit, iotype, v_list, iostat, iomsg)
+    class(process_phs_config_t), intent(in) :: dtv
+    integer, intent(in) :: unit
+    character(*), intent(in) :: iotype
+    integer, dimension(:), intent(in) :: v_list
+    integer, intent(out) :: iostat
+    character(*), intent(inout) :: iomsg
+    associate (phs_config => dtv)
+      write (unit, "(1x, A)")  "Phase-space configuration entry:"
+      call phs_config%phs_par%write (unit)
+      call phs_config%mapping_defs%write (unit)
+    end associate
+    iostat = 0
+  end subroutine process_phs_config_write_formatted
+  
   subroutine process_beam_config_write (object, unit, verbose)
     class(process_beam_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -743,9 +1008,6 @@ contains
 
   subroutine process_component_final (object)
     class(process_component_t), intent(inout) :: object
-    if (allocated (object%mci_template)) then
-       call object%mci_template%final ()
-    end if
     if (allocated (object%phs_config)) then
        call object%phs_config%final ()
     end if
@@ -788,28 +1050,28 @@ contains
   end subroutine process_component_write
 
   subroutine process_component_init (component, &
-       i_component, meta, config, &
-       active, data, &
-       mci_template, phs_config_template)
+       i_component, env, meta, config, &
+       active, &
+       phs_config_template)
     class(process_component_t), intent(out) :: component
     integer, intent(in) :: i_component
-    type(process_metadata_t), intent(in), target :: meta
+    type(process_environment_t), intent(in) :: env
+    type(process_metadata_t), intent(in) :: meta
     type(process_config_data_t), intent(in) :: config
     logical, intent(in) :: active
-    type(process_constants_t), intent(in) :: data
-    class(mci_t), intent(in), allocatable :: mci_template
     class(phs_config_t), intent(in), allocatable :: phs_config_template
 
+    type(process_constants_t) :: data
+
     component%index = i_component
-    component%config => meta%lib%get_component_def_ptr (meta%id, i_component)
+    component%config => &
+         config%process_def%get_component_def_ptr (i_component)
 
     component%active = active
     if (component%active) then
-       if (allocated (mci_template)) &
-          allocate (component%mci_template, source = mci_template)
        allocate (component%phs_config, source = phs_config_template)
+       call env%fill_process_constants (meta%id, i_component, data)
        call component%phs_config%init (data, config%model)
-       !!! call component%phs_config%set_component_index (component%index)
     end if
   end subroutine process_component_init
 
@@ -818,21 +1080,6 @@ contains
     class(process_component_t), intent(in) :: component
     active = component%active
   end function process_component_is_active
-
-  pure function process_component_has_mci_template (component) &
-         result (is_allocated)
-    logical :: is_allocated
-    class(process_component_t), intent(in) :: component
-    is_allocated = allocated (component%mci_template)
-  end function process_component_has_mci_template
-
-  function process_component_extract_mci_template (component) &
-         result (mci_template)
-    class(mci_t), allocatable :: mci_template
-    class(process_component_t), intent(in) :: component
-    if (allocated (component%mci_template)) &
-       allocate (mci_template, source = component%mci_template)
-  end function process_component_extract_mci_template
 
   subroutine process_component_configure_phs &
        (component, sqrts, beam_config, rebuild, &
@@ -969,7 +1216,8 @@ contains
 
   subroutine process_term_init &
        (term, i_term_global, i_component, i_term, core, model, &
-        nlo_type, use_beam_pol, subtraction_method)
+        nlo_type, use_beam_pol, subtraction_method, &
+        has_pdfs, n_emitters)
     class(process_term_t), intent(inout), target :: term
     integer, intent(in) :: i_term_global
     integer, intent(in) :: i_component
@@ -979,6 +1227,8 @@ contains
     integer, intent(in), optional :: nlo_type
     logical, intent(in), optional :: use_beam_pol
     type(string_t), intent(in), optional :: subtraction_method
+    logical, intent(in), optional :: has_pdfs
+    integer, intent(in), optional :: n_emitters
     class(modelpar_data_t), pointer :: alpha_s_ptr
     logical :: use_internal_color
     term%i_term_global = i_term_global
@@ -996,17 +1246,20 @@ contains
          use_internal_color = (char (subtraction_method) == 'omega') &
          .or. (char (subtraction_method) == 'threshold')
     call term%setup_interaction (core, model, nlo_type = nlo_type, &
-         pol_beams = use_beam_pol, use_internal_color = use_internal_color)
+         pol_beams = use_beam_pol, use_internal_color = use_internal_color, &
+         has_pdfs = has_pdfs, n_emitters = n_emitters)
   end subroutine process_term_init
 
   subroutine process_term_setup_interaction (term, core, model, &
-     nlo_type, pol_beams, use_internal_color)
+     nlo_type, pol_beams, has_pdfs, use_internal_color, n_emitters)
     class(process_term_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
     class(model_data_t), intent(in), target :: model
     logical, intent(in), optional :: pol_beams
+    logical, intent(in), optional :: has_pdfs
     integer, intent(in), optional :: nlo_type
     logical, intent(in), optional :: use_internal_color
+    integer, intent(in), optional :: n_emitters
     integer :: n, n_tot
     type(flavor_t), dimension(:), allocatable :: flv
     type(color_t), dimension(:), allocatable :: col
@@ -1019,17 +1272,17 @@ contains
     n_tot = term%data%n_in + term%data%n_out
     call count_number_of_states ()
     term%n_allowed = n
-    call compute_n_sub ()
+    call compute_n_sub (n_emitters, has_pdfs)
     call fill_quantum_numbers ()
     call term%int%basic_init &
          (term%data%n_in, 0, term%data%n_out, set_relations = .true.)
     select type (core)
-    type is (prc_openloops_t)
-       call setup_states_openloops ()
+    class is (prc_blha_t)
+       call setup_states_blha_olp ()
     type is (prc_threshold_t)
        call setup_states_threshold ()
-    class is (prc_user_defined_base_t)
-       call setup_states_other_user_defined ()
+    class is (prc_external_t)
+       call setup_states_other_prc_external ()
     class default
        call setup_states_omega ()
     end select
@@ -1039,7 +1292,7 @@ contains
       integer :: f, h, c
       n = 0
       select type (core)
-      class is (prc_user_defined_base_t)
+      class is (prc_external_t)
          do f = 1, term%data%n_flv
             do h = 1, term%data%n_hel
                do c = 1, term%data%n_col
@@ -1058,7 +1311,9 @@ contains
       end select
     end subroutine count_number_of_states
 
-    subroutine compute_n_sub ()
+    subroutine compute_n_sub (n_emitters, has_pdfs)
+      integer, intent(in), optional :: n_emitters
+      logical, intent(in), optional :: has_pdfs
       logical :: can_have_sub
       integer :: n_sub_color, n_sub_spin
       use_color = .false.; if (present (use_internal_color)) &
@@ -1070,20 +1325,21 @@ contains
       if (can_have_sub) then
          if (.not. use_color) n_sub_color = n_tot * (n_tot - 1) / 2
          if (nlo_t == NLO_REAL) then
-            select type (pcm_nlo => term%pcm)
-            class is (pcm_nlo_t)
-               if (pcm_nlo%region_data%requires_spin_correlations ()) &
-                    n_sub_spin = 16 * pcm_nlo%region_data%n_emitters
-            end select
+            if (present (n_emitters)) then
+               n_sub_spin = 16 * n_emitters
+            end if
          end if
       end if
       n_sub = n_sub_color + n_sub_spin
       !!! For the virtual subtraction we also need the finite virtual contribution
       !!! corresponding to the $\epsilon^0$-pole
       if (nlo_t == NLO_VIRTUAL)  n_sub = n_sub + 1
-      if (associated (term%pcm)) then
-         if (term%pcm%has_pdfs .and. ((nlo_t == NLO_REAL .and. can_have_sub) &
-              .or. nlo_t == NLO_DGLAP)) n_sub = n_sub + n_beam_structure_int
+      if (present (has_pdfs)) then
+         if (has_pdfs &
+              .and. ((nlo_t == NLO_REAL .and. can_have_sub) &
+              .or. nlo_t == NLO_DGLAP)) then
+            n_sub = n_sub + n_beam_structure_int
+         end if
       end if
       term%n_sub = n_sub
       term%n_sub_color = n_sub_color
@@ -1094,7 +1350,7 @@ contains
       integer :: nn
       logical :: can_have_sub
       select type (core)
-      class is (prc_user_defined_base_t)
+      class is (prc_external_t)
          can_have_sub = nlo_t == NLO_VIRTUAL .or. &
               (nlo_t == NLO_REAL .and. term%i_term_global == term%i_sub) .or. &
               nlo_t == NLO_MISMATCH .or. nlo_t == NLO_DGLAP
@@ -1111,7 +1367,7 @@ contains
       allocate (qn (n_tot))
     end subroutine fill_quantum_numbers
 
-    subroutine setup_states_openloops ()
+    subroutine setup_states_blha_olp ()
       integer :: s, f, c, h, i
       i = 0
       associate (data => term%data)
@@ -1129,8 +1385,13 @@ contains
                            data%col_state(:,:,c), data%ghost_flag(:,c))
                       call col(1:data%n_in)%invert ()
                       if (is_pol) then
-                         call hel%init (data%hel_state (:,h))
-                         call qn%init (flv, hel, col, s)
+                         select type (core)
+                         type is (prc_openloops_t)
+                            call hel%init (data%hel_state (:,h))
+                            call qn%init (flv, hel, col, s)
+                         class default
+                            call msg_fatal ("Polarized beams only supported by OpenLoops")
+                         end select
                       else
                          call qn%init (flv, col, s)
                       end if
@@ -1141,7 +1402,7 @@ contains
              end do
          end do
       end associate
-    end subroutine setup_states_openloops
+    end subroutine setup_states_blha_olp
 
     subroutine setup_states_threshold ()
       integer :: s, f, c, h, i
@@ -1173,26 +1434,35 @@ contains
       end associate
     end subroutine setup_states_threshold
 
-    subroutine setup_states_other_user_defined ()
-      integer :: s, f, i
-      integer :: n_sub
+    subroutine setup_states_other_prc_external ()
+      integer :: s, f, i, c, h
       if (is_pol) &
          call msg_fatal ("Polarized beams only supported by OpenLoops")
       i = 0
-      n_sub = 0; if (nlo_t == NLO_VIRTUAL) n_sub = 1
-      do s = 0, n_sub
-         do f = 1, term%data%n_flv
-            i = i + 1
-            term%flv(i) = f
-            term%hel(i) = 1
-            term%col(i) = 1
-            call flv%init (term%data%flv_state (:,f), model)
-            call qn%init (flv, s)
-            call qn%tag_hard_process ()
-            call term%int%add_state (qn)
-         end do
-      end do
-    end subroutine setup_states_other_user_defined
+      !!! n_sub = 0; if (nlo_t == NLO_VIRTUAL) n_sub = 1
+      associate (data => term%data)
+        do s = 0, n_sub
+           do f = 1, data%n_flv
+              do h = 1, data%n_hel
+                 do c = 1, data%n_col
+                    i = i + 1
+                    term%flv(i) = f
+                    term%hel(i) = h
+                    !!! Dummy-initialization of color
+                    term%col(i) = c
+                    call flv%init (data%flv_state (:,f), model)
+                    call color_init_from_array (col, &
+                         data%col_state(:,:,c), data%ghost_flag(:,c))
+                    call col(1:data%n_in)%invert ()
+                    call qn%init (flv, col, s)
+                    call qn%tag_hard_process ()
+                    call term%int%add_state (qn)
+                 end do
+              end do
+           end do
+        end do
+      end associate
+    end subroutine setup_states_other_prc_external
 
     subroutine setup_states_omega ()
       integer :: f, h, c, i

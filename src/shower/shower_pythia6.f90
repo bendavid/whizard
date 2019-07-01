@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -66,7 +66,6 @@ module shower_pythia6
      logical :: warning_given = .false.
    contains
        procedure :: init => shower_pythia6_init
-       procedure :: prepare_new_event => shower_pythia6_prepare_new_event
        procedure :: import_particle_set => shower_pythia6_import_particle_set
        procedure :: generate_emissions => shower_pythia6_generate_emissions
        procedure :: make_particle_set => shower_pythia6_make_particle_set
@@ -79,30 +78,26 @@ module shower_pythia6
 
 contains
 
-  subroutine shower_pythia6_init (shower, settings, taudec_settings, pdf_data)
+  subroutine shower_pythia6_init (shower, settings, taudec_settings, pdf_data, os_data)
     class(shower_pythia6_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
     type(taudec_settings_t), intent(in) :: taudec_settings
     type(pdf_data_t), intent(in) :: pdf_data
+    type(os_data_t), intent(in) :: os_data
     call msg_debug (D_SHOWER, "shower_pythia6_init")
     shower%settings = settings
     shower%taudec_settings = taudec_settings
+    shower%os_data = os_data
     call pythia6_set_verbose (settings%verbose)
     call shower%pdf_data%init (pdf_data)
     shower%name = "PYTHIA6"
     call shower%write_msg ()
   end subroutine shower_pythia6_init
 
-  subroutine shower_pythia6_prepare_new_event (shower)
-    class(shower_pythia6_t), intent(inout) :: shower
-  end subroutine shower_pythia6_prepare_new_event
-
   subroutine shower_pythia6_import_particle_set &
-         (shower, particle_set, os_data, scale)
+         (shower, particle_set)
     class(shower_pythia6_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
-    type(os_data_t), intent(in) :: os_data
-    real(default), intent(in) :: scale
     type(particle_set_t) :: pset_reduced
     call msg_debug (D_SHOWER, "shower_pythia6_import_particle_set")
     if (debug_active (D_SHOWER)) then
@@ -119,7 +114,7 @@ contains
     end if
     call hepeup_from_particle_set (pset_reduced, tauola_convention=.true.)
     call hepeup_set_event_parameters (proc_id = 1)
-    call hepeup_set_event_parameters (scale = scale)
+    call hepeup_set_event_parameters (scale = shower%fac_scale)
   end subroutine shower_pythia6_import_particle_set
 
   subroutine shower_pythia6_generate_emissions &
@@ -618,15 +613,14 @@ contains
          parent2 = parent1
          if (JMOHEP(2,py_index(i_whz)) > 0) then
             parent2 = JMOHEP(2,py_index(i_whz))
-         else
-            if (IDHEP(py_index(i_whz)) == 94) then
-               lastmother: do jsearch =  parent1+1, py_index(i_whz)
-                  if (JDAHEP(1,jsearch) /= py_index(i_whz)) then
-                     exit lastmother
-                  end if
-                  parent2 = jsearch
-               end do lastmother
-            endif
+         end if
+         if (IDHEP(py_index(i_whz)) == 94) then
+             lastmother: do jsearch =  parent1+1, py_index(i_whz)
+                if (JDAHEP(1,jsearch) /= py_index(i_whz)) then
+                   exit lastmother
+                end if
+                parent2 = jsearch
+             end do lastmother
          end if
          
          allocate (parents(parent2-parent1+1))

@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2018 by
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,7 +37,7 @@ libme_methods_la_SOURCES = \
   prc_test_core.f90 \
   prc_template_me.f90 \
   prc_omega.f90 \
-  prc_user_defined.f90 \
+  prc_external.f90 \
   prc_threshold.f90
 
 libme_methods_ut_la_SOURCES = \

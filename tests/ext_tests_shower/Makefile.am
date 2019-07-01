@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by 
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -12,13 +12,13 @@
 #     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -36,7 +36,6 @@ TESTS_EXTENDED = \
 	shower_3_jj.run \
 	shower_3_qqqq.run \
 	shower_3_tt.run \
-	shower_3_z.run \
 	shower_3_z_nu.run \
 	shower_3_z_tau.run \
 	shower_4_ee.run \
@@ -46,7 +45,7 @@ TESTS_EXTENDED = \
 XFAIL_TESTS_EXTENDED =
 
 TESTS_REQ_GAMELAN = \
-	shower_2.run
+	shower_2_aall.run
 
 TESTS_REQ_SLHA = \
 	shower_6.run
@@ -71,17 +70,17 @@ SUFFIXES = .sh .run
 
 .sh.run:
 	@rm -f $@
-	@if test -f $(top_builddir)/share/tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_builddir)/share/tests/$*|g' $< > $@; \
-	elif test -f $(top_srcdir)/share/tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_srcdir)/share/tests/$*|g' $< > $@; \
+	@if test -f $(top_builddir)/share/tests/ext_tests_shower/$*.sin; then \
+	  $(SED) 's|@script@|$(top_builddir)/share/tests/ext_tests_shower/$*|g' $< > $@; \
+	elif test -f $(top_srcdir)/share/tests/ext_tests_shower/$*.sin; then \
+	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_shower/$*|g' $< > $@; \
 	fi
-	$(SED) -i 's|@python_bin@|$(PYTHON_BIN)|g' $@
-	$(SED) -i 's|@share_dir@|$(top_srcdir)/share/tests/|g' $@
+	$(SED) 's|@python_bin@|$(PYTHON_BIN)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
+	$(SED) 's|@share_dir@|$(top_srcdir)/share/tests|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	@chmod +x $@
 
 $(TESTS_REQ_SLHA): nmssm.slha
-nmssm.slha: $(top_srcdir)/share/tests/nmssm.slha
+nmssm.slha: $(top_srcdir)/share/tests/ext_tests_nmssm/nmssm.slha
 	cp $< $@
 
 if MPOST_AVAILABLE
@@ -170,7 +169,7 @@ if STATIC_AVAILABLE
 endif
 
 # The reference output files are in the source directory.  Copy them here.
-ref-output: $(top_srcdir)/share/tests/ref-output 
+ref-output: $(top_srcdir)/share/tests/ext_tests_shower/ref-output
 	mkdir -p ref-output
 	for f in $</*.ref; do cp $$f $@; done
 
@@ -183,8 +182,8 @@ notestflag:
 ## Remove generated files
 clean-local:
 	rm -f gamelan.sty
-	rm -f TESTFLAG GAMELAN_FLAG 
-	rm -f OCAML_FLAG PYTHON_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
+	rm -f TESTFLAG GAMELAN_FLAG
+	rm -f OCAML_FLAG PYTHON_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
@@ -193,15 +192,15 @@ clean-local:
 	rm -f *.makefile
 	rm -rf err-output
 	rm -rf ref-output
-	rm -f *.sin *.hbc 
-	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
+	rm -f *.sin *.hbc
+	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
-	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]
+	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9]
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
-	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
-	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
+	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f slhaspectrum.in suspect2.out suspect2_lha.out
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -f nmssm.slha
 if FC_SUBMODULES

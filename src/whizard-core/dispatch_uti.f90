@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -29,7 +29,7 @@
 module dispatch_uti
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
-  use os_interface, only: os_data_t, os_data_init
+  use os_interface, only: os_data_t
   use physics_defs, only: ELECTRON, PROTON
   use sm_qcd, only: qcd_t
   use flavors, only: flavor_t
@@ -209,7 +209,7 @@ contains
 
     call global%global_init ()
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
     call global%select_model (var_str ("QCD"))
 
@@ -286,7 +286,7 @@ contains
 
     call global%global_init ()
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
     call global%select_model (var_str ("QCD"))
 
@@ -448,8 +448,8 @@ contains
   subroutine dispatch_11 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    type(qcd_t) :: qcd
     type(var_list_t), pointer :: model_vars
+    type(qcd_t) :: qcd
 
     write (u, "(A)")  "* Test output: dispatch_11"
     write (u, "(A)")  "*   Purpose: select QCD coupling formula"

@@ -1,6 +1,6 @@
 (* modellib_SM.ml --
 
-   Copyright (C) 1999-2018 by
+   Copyright (C) 1999-2019 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -689,7 +689,7 @@ module SM (Flags : SM_flags) =
         "use complex mass scheme"  ]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW 
-		     | TCGG  (*i top auxiliary field "flavors" i*)
+		     | TCGG  | TUGG (*i top auxiliary field "flavors" i*)
                      | QGUG | QBUB | QW | DL | DR 
                      | QUQD1L | QUQD1R | QUQD8L | QUQD8R
 
@@ -740,7 +740,7 @@ module SM (Flags : SM_flags) =
     let flavors () = List.append
       ( ThoList.flatmap snd (external_flavors ()) )
       ( ThoList.flatmap aux_top_flavors
-         [ (TTGG,2,1,1); (TCGG,2,1,1); (TBWA,2,0,2); (TBWZ,2,0,2); 
+         [ (TTGG,2,1,1); (TCGG,2,1,1); (TUGG,2,1,1); (TBWA,2,0,2); (TBWZ,2,0,2); 
 	   (TTWW,2,0,1); (BBWW,2,0,1);
            (QGUG,1,1,1); (QBUB,1,0,1); (QW,1,0,3); (DL,0,0,3); (DR,0,0,3);
            (QUQD1L,0,0,3); (QUQD1R,0,0,3); (QUQD8L,0,1,3); (QUQD8R,0,1,3) ] )
@@ -938,16 +938,17 @@ module SM (Flags : SM_flags) =
       | Sinthw | Costhw | E | G_weak | I_G_weak | Vev
       | Q_lepton | Q_up | Q_down | G_CC | G_CCQ of int*int
       | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down 
-      | G_TVA_ttA | G_TVA_bbA | G_TVA_tcA | G_TVA_tcZ 
-      | G_VLR_ttZ | G_TVA_ttZ | G_VLR_tcZ | G_TVA_bbZ 
+      | G_TVA_ttA | G_TVA_bbA | G_TVA_tuA
+      | G_TVA_tcA | G_TVA_tcZ | G_TVA_tuZ | G_TVA_bbZ 
+      | G_VLR_ttZ | G_TVA_ttZ | G_VLR_tcZ | G_VLR_tuZ 
       | VA_ILC_ttA | VA_ILC_ttZ
       | G_VLR_btW | G_VLR_tbW
       | G_TLR_btW | G_TRL_tbW
       | G_TLR_btWZ | G_TRL_tbWZ
       | G_TLR_btWA | G_TRL_tbWA
       | G_TVA_ttWW | G_TVA_bbWW
-      | G_TVA_ttG | G_TVA_ttGG | G_TVA_tcG | G_TVA_tcGG
-      | G_SP_ttH
+      | G_TVA_ttG | G_TVA_ttGG | G_TVA_tcG | G_TVA_tcGG 
+      | G_TVA_tuG | G_TVA_tuGG | G_SP_ttH
       | G_VLR_qGuG | G_VLR_qBuB
       | G_VLR_qBuB_u | G_VLR_qBuB_d | G_VLR_qBuB_e | G_VL_qBuB_n
       | G_VL_qW | G_VL_qW_u | G_VL_qW_d
@@ -1026,9 +1027,9 @@ module SM (Flags : SM_flags) =
       | I_G1_minus_kappa_minus_G4_ZWW | I_kappa5_AWW 
       | I_kappa5_ZWW | G5_AWW | G5_ZWW 
       | I_lambda_AWW | I_lambda_ZWW | I_lambda5_AWW 
-      | I_lambda5_ZWW | G_TVA_ttA | G_TVA_bbA | G_TVA_tcA
+      | I_lambda5_ZWW | G_TVA_ttA | G_TVA_bbA | G_TVA_tcA | G_TVA_tuA
       | G_VLR_ttZ | G_TVA_ttZ | G_VLR_tcZ | G_TVA_tcZ | G_TVA_bbZ 
-      | VA_ILC_ttA | VA_ILC_ttZ
+      | VA_ILC_ttA | VA_ILC_ttZ | G_VLR_tuZ | G_TVA_tuZ
       | G_VLR_btW | G_VLR_tbW | G_TLR_btW | G_TRL_tbW
       | G_TLR_btWA | G_TRL_tbWA | G_TLR_btWZ | G_TRL_tbWZ	
       | G_VLR_qBuB | G_VLR_qBuB_u | G_VLR_qBuB_d
@@ -1064,7 +1065,7 @@ module SM (Flags : SM_flags) =
       | D_Alpha_ZZWW0_T | D_Alpha_ZZWW1_S | D_Alpha_ZZWW1_T
       | D_Alpha_ZZWW1_U | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T -> (0,2)
       | Gs | I_Gs | G_TVA_ttG | G_TVA_ttGG | G_TVA_tcG | G_TVA_tcGG
-      | G_VLR_qGuG 
+      | G_TVA_tuG | G_TVA_tuGG | G_VLR_qGuG 
       | C_quqd1R_bt | C_quqd1R_tb | C_quqd1L_bt | C_quqd1L_tb
       | C_quqd8R_bt | C_quqd8R_tb | C_quqd8L_bt | C_quqd8L_tb -> (1,0)
       | G2 | G_Hgg -> (2,0)
@@ -1840,7 +1841,9 @@ i*)
       if Flags.top_anom then
         [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttA);
 	  ((M (U (-3)), G Ga, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcA);
-	  ((M (U (-2)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcA) ]
+	  ((M (U (-2)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcA);
+	  ((M (U (-3)), G Ga, M (U 1)), FBF (1, Psibar, TVAM, Psi), G_TVA_tuA);
+	  ((M (U (-1)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tuA)]
       else
         []
 
@@ -1880,7 +1883,9 @@ i*)
       if Flags.top_anom then
         [ ((M (U (-3)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttG);
 	  ((M (U (-3)), G Gl, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcG);
-	  ((M (U (-2)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcG) ]
+	  ((M (U (-2)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcG);
+	  ((M (U (-3)), G Gl, M (U 1)), FBF (1, Psibar, TVAM, Psi), G_TVA_tuG);
+	  ((M (U (-1)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tuG)]
       else
         []
 
@@ -1905,9 +1910,13 @@ i*)
         [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_ttZ);
 	  ((M (U (-3)), G Z, M (U 2)), FBF (1, Psibar, VLRM, Psi), G_VLR_tcZ);
 	  ((M (U (-2)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tcZ);
+	  ((M (U (-3)), G Z, M (U 1)), FBF (1, Psibar, VLRM, Psi), G_VLR_tuZ);
+	  ((M (U (-1)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tuZ);          
           ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ);
 	  ((M (U (-2)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcZ);
-	  ((M (U (-3)), G Z, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcZ) ]
+	  ((M (U (-3)), G Z, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcZ);
+	  ((M (U (-1)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tuZ);
+	  ((M (U (-3)), G Z, M (U 1)), FBF (1, Psibar, TVAM, Psi), G_TVA_tuZ)]
       else
         []
 
@@ -1983,11 +1992,17 @@ effective operators:
 	  ((M (U (-3)), O (Aux_top (2,1,0,true,TCGG)), M (U 2)), 
 	      FBF (1, Psibar, TVA, Psi), G_TVA_tcGG);
 	  ((M (U (-2)), O (Aux_top (2,1,0,true,TCGG)), M (U 3)), 
-	      FBF (1, Psibar, TVA, Psi), G_TVA_tcGG);
+	   FBF (1, Psibar, TVA, Psi), G_TVA_tcGG);
+	  ((M (U (-3)), O (Aux_top (2,1,0,true,TUGG)), M (U 1)), 
+	      FBF (1, Psibar, TVA, Psi), G_TVA_tuGG);
+	  ((M (U (-1)), O (Aux_top (2,1,0,true,TUGG)), M (U 3)), 
+	      FBF (1, Psibar, TVA, Psi), G_TVA_tuGG);          
           ((O (Aux_top (2,1,0,false,TTGG)), G Gl, G Gl), 
 	      Aux_Gauge_Gauge 1, I_Gs);
           ((O (Aux_top (2,1,0,false,TCGG)), G Gl, G Gl), 
-	      Aux_Gauge_Gauge 1, I_Gs) ]
+	   Aux_Gauge_Gauge 1, I_Gs);
+          ((O (Aux_top (2,1,0,false,TUGG)), G Gl, G Gl),
+	      Aux_Gauge_Gauge 1, I_Gs)]
       else
         []
 
@@ -2309,7 +2324,7 @@ effective operators:
           | Aux_top (_,_,ch,n,v) -> "Aux_" ^ (if n then "t_" else "") ^ (
               begin match v with
               | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
-              | TTWW -> "ttWW" | BBWW -> "bbWW" | TCGG -> "tcgg"
+              | TTWW -> "ttWW" | BBWW -> "bbWW" | TCGG -> "tcgg" | TUGG -> "tugg"
               | QGUG -> "qGuG" | QBUB -> "qBuB"
               | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
               | QUQD1L -> "quqd1L" | QUQD1R -> "quqd1R"
@@ -2355,7 +2370,7 @@ effective operators:
 	       "\\textnormal{Aux_" ^ (if n then "t_" else "") ^ (
 		 begin match v with
 		 | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
-		 | TTWW -> "ttWW" | BBWW -> "bbWW" | TCGG -> "tcgg"
+		 | TTWW -> "ttWW" | BBWW -> "bbWW" | TCGG -> "tcgg" | TUGG -> "tugg"
 		 | QGUG -> "qGuG" | QBUB -> "qBuB"
 		 | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
 		 | QUQD1L -> "quqd1L" | QUQD1R -> "quqd1R"
@@ -2390,7 +2405,7 @@ effective operators:
           | Aux_top (_,_,ch,n,v) -> "aux_" ^ (if n then "t_" else "") ^ (
               begin match v with
               | TTGG -> "ttgg" | TBWA -> "tbwa" | TBWZ -> "tbwz"
-              | TTWW -> "ttww" | BBWW -> "bbww" | TCGG -> "tcgg"
+              | TTWW -> "ttww" | BBWW -> "bbww" | TCGG -> "tcgg" | TUGG -> "tugg"
               | QGUG -> "qgug" | QBUB -> "qbub"
               | QW   -> "qw"   | DL   -> "dl"   | DR   -> "dr"
               | QUQD1L -> "quqd1l" | QUQD1R -> "quqd1r"
@@ -2451,7 +2466,9 @@ effective operators:
       | G_TVA_ttA -> "gtva_tta" | G_TVA_bbA -> "gtva_bba" 
       | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz" 
       | G_VLR_tcZ -> "gvlr_tcz" | G_TVA_tcZ -> "gtva_tcz"
+      | G_VLR_tuZ -> "gvlr_tuz" | G_TVA_tuZ -> "gtva_tuz"
       | G_TVA_bbZ -> "gtva_bbz" | G_TVA_tcA -> "gtva_tca"
+      | G_TVA_tuA -> "gtva_tua"
       | VA_ILC_ttA -> "va_ilc_tta" | VA_ILC_ttZ -> "va_ilc_ttz"
       | G_VLR_btW -> "gvlr_btw" | G_VLR_tbW -> "gvlr_tbw"
       | G_TLR_btW -> "gtlr_btw" | G_TRL_tbW -> "gtrl_tbw"
@@ -2460,6 +2477,7 @@ effective operators:
       | G_TVA_ttWW -> "gtva_ttww" | G_TVA_bbWW -> "gtva_bbww"
       | G_TVA_ttG -> "gtva_ttg" | G_TVA_ttGG -> "gtva_ttgg"
       | G_TVA_tcG -> "gtva_tcg" | G_TVA_tcGG -> "gtva_tcgg"
+      | G_TVA_tuG -> "gtva_tug" | G_TVA_tuGG -> "gtva_tugg"
       | G_SP_ttH -> "gsp_tth"
       | G_VLR_qGuG -> "gvlr_qgug"
       | G_VLR_qBuB -> "gvlr_qbub"

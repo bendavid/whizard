@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2018 by 
+# Copyright (C) 1999-2019 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -12,13 +12,13 @@
 #     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -49,7 +49,7 @@ TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
 
 ########################################################################
 
-TESTS = 
+TESTS =
 XFAIL_TESTS =
 TESTS_SRC =
 
@@ -86,14 +86,14 @@ EXTRA_DIST = $(TEST_DRIVERS_SH) \
 
 VPATH = $(srcdir)
 
-SUFFIXES = .sh .run 
+SUFFIXES = .sh .run
 
 .sh.run:
 	@rm -f $@
-	@if test -f $(top_builddir)/share/tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_builddir)/share/tests/$*|g' $< > $@; \
-	elif test -f $(top_srcdir)/share/tests/$*.sin; then \
-	  $(SED) 's|@script@|$(top_srcdir)/share/tests/$*|g' $< > $@; \
+	@if test -f $(top_builddir)/share/tests/ext_tests_nmssm/$*.sin; then \
+	  $(SED) 's|@script@|$(top_builddir)/share/tests/ext_tests_nmssm/$*|g' $< > $@; \
+	elif test -f $(top_srcdir)/share/tests/ext_tests_nmssm/$*.sin; then \
+	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_nmssm/$*|g' $< > $@; \
 	fi
 	@chmod +x $@
 
@@ -118,7 +118,7 @@ BUILT_SOURCES = \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
     PYTHIA6_FLAG \
-    STATIC_FLAG 
+    STATIC_FLAG
 
 # If this file is found in the working directory, WHIZARD
 # will use the paths for the uninstalled version (source/build tree),
@@ -185,23 +185,23 @@ notestflag:
 ## Remove generated files
 clean-local:
 	rm -f gamelan.sty
-	rm -f TESTFLAG GAMELAN_FLAG 
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
+	rm -f TESTFLAG GAMELAN_FLAG
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *.makefile
-	rm -f *.sin *.hbc 
-	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
+	rm -f *.sin *.hbc
+	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
-	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]
+	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9]
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
-	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
-	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
+	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f slhaspectrum.in suspect2.out suspect2_lha.out
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 if FC_SUBMODULES
 	rm -f *.smod
@@ -211,6 +211,3 @@ endif
 maintainer-clean-local: maintainer-clean-fc
 	-rm -f *~
 .PHONY: maintainer-clean-local
-
-
-

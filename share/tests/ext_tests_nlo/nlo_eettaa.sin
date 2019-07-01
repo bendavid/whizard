@@ -1,0 +1,28 @@
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+include("nlo_settings.sin")
+
+alpha_power = 4
+alphas_power = 0
+
+!!! No jets -> No photon isolation. Just use the Pt and Eta cuts on the photon
+cuts = all abs(Pt) > 20 GeV [A] and all abs(Eta) < 2 [A]
+
+scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+      +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+      + eval Pt [extract index 1 [A]] + eval Pt [extract index 2 [A]]) / 2
+
+process nlo_eettaa_p1 = e1, E1 => t, T, A, A { nlo_calculation = full }
+
+# integrate (nlo_eettaa_p1) { iterations = 10:20000:"gw",2:10000 } # validation
+mult_call_real = 2
+integrate (nlo_eettaa_p1) { iterations = 4:5000:"gw",2:5000 }

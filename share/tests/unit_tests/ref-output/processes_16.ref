@@ -10,7 +10,7 @@
 
 ========================================================================
  Process [decay]: 'processes16'
-   Run ID        = 'run16'
+   Run ID        = ''
    Library name  = 'processes16'
    Process index = 1
    Process components:
@@ -25,10 +25,11 @@
    Number of MCI configurations = 1
    Model = Test
    QCD parameters (coupling undefined)
-   RNG factory: test (1)
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------
@@ -120,7 +121,7 @@
 
 ========================================================================
  Process [decay]: 'processes16'
-   Run ID        = 'run16'
+   Run ID        = ''
    Library name  = 'processes16'
    Process index = 1
    Process components:
@@ -135,10 +136,11 @@
    Number of MCI configurations = 1
    Model = Test
    QCD parameters (coupling undefined)
-   RNG factory: test (1)
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------

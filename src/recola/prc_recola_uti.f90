@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -123,10 +123,11 @@ contains
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
     counter  = 1
-    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- at leading order"
-    call rclwrap_define_process (counter, var_str ('e+ e- -> mu+ mu-'), var_str ('LO'))
-    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_request_generate_processes ()
+    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- at leading order"
+    call rclwrap_add_process (counter, var_str ('e+ e- -> mu+ mu-'), var_str ('LO'))
+    call rclwrap_define_processes ()
+    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (1, p, 'LO')
     call rclwrap_get_helicity_configurations (1, helicities)
@@ -157,7 +158,7 @@ contains
          variant = def)
     call lib%append (entry)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)
@@ -235,10 +236,11 @@ contains
     call write_separator (u)
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
-    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order"
-    call rclwrap_define_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
-    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_request_generate_processes ()
+    write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order"
+    call rclwrap_add_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
+    call rclwrap_define_processes ()
+    write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (2, p, 'LO')
     call rclwrap_get_helicity_configurations (2, helicities)
@@ -271,7 +273,7 @@ contains
          variant = def)
     call lib%append (entry)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true., verbose = .false.)
     call lib%clean (os_data, distclean = .false.)

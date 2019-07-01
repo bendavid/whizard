@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -436,7 +436,7 @@ contains
     real(default), intent(inout), dimension(:) :: QB
     real(default) :: s1, s2, s3, s4, s5
     integer :: alr, em
-    real(default) :: E_em, log_xi_max, E_tot2
+    real(default) :: E_em, xi_max, log_xi_max, E_tot2
     logical, dimension(virt%n_flv, virt%n_legs) :: evaluated
     integer :: i_contr
     type(vector4_t) :: k_res
@@ -455,12 +455,16 @@ contains
           k_res = get_resonance_momentum (p_born, reg_data%alr_contributors(i_contr)%c)
           E_tot2 = k_res%p(0)**2
           L_to_resonance = inverse (boost (k_res, k_res**1))
-          log_xi_max = log (two * space_part_norm (L_to_resonance * p_born(em)) / k_res%p(0))
+          xi_max = two * space_part_norm (L_to_resonance * p_born(em)) / k_res%p(0)
+          log_xi_max = log (xi_max)
        else
           E_tot2 = sqrts**2
-          log_xi_max = log (two * E_em / sqrts)
+          xi_max = two * E_em / sqrts
+          log_xi_max = log (xi_max)
        end if
        ! TODO sbrass evaluate xi-cut formalism for resonance-aware FKS
+       ! also: check rescaling with xi_max!
+       !associate (xi_cut => xi_max * virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
        associate (xi_cut => virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
          if (virt%settings%virtual_resonance_aware_collinear) then
             if (debug_active (D_VIRTUAL)) &

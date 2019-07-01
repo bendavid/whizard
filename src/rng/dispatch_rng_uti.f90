@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,6 +38,7 @@ module dispatch_rng_uti
   private
 
   public :: dispatch_rng_factory_test
+  public :: dispatch_rng_factory_tao
 
   public :: dispatch_rng_1
 
@@ -46,6 +47,7 @@ contains
   subroutine dispatch_rng_1 (u)
     integer, intent(in) :: u
     type(var_list_t) :: var_list
+    integer :: next_rng_seed
     class(rng_factory_t), allocatable :: rng_factory
 
     write (u, "(A)")  "* Test output: dispatch_rng_1"
@@ -62,7 +64,9 @@ contains
          var_str ("unit_test"), is_known = .true.)
     call var_list%set_int (&
          var_str ("seed"), 1, is_known = .true.)
-    call dispatch_rng_factory (rng_factory, var_list)
+
+    call dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+
     call rng_factory%write (u)
     deallocate (rng_factory)
 
@@ -73,7 +77,9 @@ contains
     call var_list%set_string (&
          var_str ("$rng_method"), &
          var_str ("tao"), is_known = .true.)
-    call dispatch_rng_factory (rng_factory, var_list)
+    call update_rng_seed_in_var_list (var_list, next_rng_seed)
+    call dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+
     call rng_factory%write (u)
     deallocate (rng_factory)
 
@@ -83,8 +89,10 @@ contains
 
     call var_list%set_string (&
          var_str ("$rng_method"), &
-         var_str ("rng_stream"), is_known = .true.)
-    call dispatch_rng_factory (rng_factory, var_list)
+         var_str ("rng_stream"), is_known = .true.) 
+    call update_rng_seed_in_var_list (var_list, next_rng_seed)
+    call dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+
     call rng_factory%write (u)
     deallocate (rng_factory)
 
@@ -96,27 +104,49 @@ contains
   end subroutine dispatch_rng_1
 
 
-  subroutine dispatch_rng_factory_test (rng_factory, var_list_global, var_list_local)
+  subroutine dispatch_rng_factory_test (rng_factory, var_list, next_rng_seed)
     use rng_base
     use rng_base_ut, only: rng_test_factory_t
     class(rng_factory_t), allocatable, intent(inout) :: rng_factory
-    type(var_list_t), intent(inout) :: var_list_global
-    type(var_list_t), intent(in), optional :: var_list_local
-    type(var_list_t) :: local
+    type(var_list_t), intent(in) :: var_list
+    integer, intent(out) :: next_rng_seed
     type(string_t) :: rng_method
-    if (present (var_list_local)) then
-       local = var_list_local
+    if (var_list%contains (var_str ("$rng_method"))) then
+       rng_method = var_list%get_sval (var_str ("$rng_method"))
     else
-       local = var_list_global
+       rng_method = "unit_test"
     end if
-    rng_method = &
-         local%get_sval (var_str ("$rng_method"))
+    next_rng_seed = &
+         var_list%get_ival (var_str ("seed")) + 1
     select case (char (rng_method))
     case ("unit_test")
        allocate (rng_test_factory_t :: rng_factory)
        call msg_message ("RNG: Initializing Test random-number generator")
     end select
   end subroutine dispatch_rng_factory_test
+
+  subroutine dispatch_rng_factory_tao (rng_factory, var_list, next_rng_seed)
+    use kinds, only: i16
+    use rng_base
+    use rng_tao, only: rng_tao_factory_t
+    class(rng_factory_t), allocatable, intent(inout) :: rng_factory
+    type(var_list_t), intent(in) :: var_list
+    integer, intent(out) :: next_rng_seed
+    type(string_t) :: rng_method
+    integer(i16) :: s
+    if (var_list%contains (var_str ("$rng_method"))) then
+       rng_method = var_list%get_sval (var_str ("$rng_method"))
+    else
+       rng_method = "tao"
+    end if
+    s = var_list%get_ival (var_str ("seed"))
+    select case (char (rng_method))
+    case ("tao")
+       allocate (rng_tao_factory_t :: rng_factory)
+       call rng_factory%init (s)
+    end select
+    next_rng_seed = s + 1
+  end subroutine dispatch_rng_factory_tao
 
 
 end module dispatch_rng_uti

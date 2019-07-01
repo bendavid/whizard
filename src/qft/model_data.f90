@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -1087,13 +1087,15 @@ contains
     class(model_data_t), pointer, intent(out) :: model
     integer, intent(in) :: PDG
     class(model_data_t), intent(in), target :: model_A, model_B
-    character(len=5) :: buffer
+    character(len=10) :: buffer
     if (model_A%test_field (PDG)) then
        model => model_A
     else if (model_B%test_field (PDG)) then
        model => model_B
     else
-       write (buffer, "(I5)") PDG
+       call model_A%write ()
+       call model_B%write ()
+       write (buffer, "(I10)") PDG
        call msg_fatal ("Parton " // buffer // &
             " not found in the given model files")
     end if

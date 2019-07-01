@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,6 +33,7 @@ module decays_uti
   use os_interface
   use sm_qcd
   use model_data
+  use models
   use state_matrices, only: FM_IGNORE_HELICITY
   use interactions, only: reset_interaction_counter
   use flavors
@@ -81,7 +82,7 @@ contains
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_sm_test ()
 
     call flv_h%init (25, model)
@@ -130,7 +131,7 @@ contains
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_sm_test ()
 
     call model%set_unstable (25, [var_str ("h_ww")])
@@ -186,7 +187,7 @@ contains
     write (u, "(A)")  "* Initialize environment and integrate process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_3"
     call prepare_testbed &
@@ -249,7 +250,7 @@ contains
          &and decay configuration"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_4"
     call prepare_testbed &
@@ -317,7 +318,7 @@ contains
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_5"
     procname1 = prefix // "_p"
@@ -400,7 +401,6 @@ contains
     call process_instance%final ()
     deallocate (process_instance)
 
-    call process%final ()
     call process_stack%final ()
 
     write (u, "(A)")
@@ -428,7 +428,7 @@ contains
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_6"
     procname1 = prefix // "_p"
@@ -497,14 +497,11 @@ contains
     logical, intent(in) :: scattering, decay
     logical, intent(in), optional :: decay_rest_frame
 
-    type(model_data_t), target :: model
-    class(model_data_t), pointer :: model_copy
-    type(string_t) :: libname, procname1, procname2, run_id
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
+    type(model_t), target :: model
+    type(model_t), target :: model_copy
+    type(string_t) :: libname, procname1, procname2
     type(process_entry_t), pointer :: process
     type(process_instance_t), allocatable, target :: process_instance
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(field_data_t), pointer :: field_data
     real(default) :: sqrts
@@ -512,7 +509,6 @@ contains
     libname = prefix // "_lib"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
-    run_id = prefix
 
     call model%init_test ()
     call model%set_par (var_str ("ff"), 0.4_default)
@@ -530,13 +526,10 @@ contains
 
     call reset_interaction_counter ()
 
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
 
     if (scattering) then
 
-       allocate (rng_test_factory_t :: rng_factory)
-       allocate (model_copy)
        call model_copy%init (model%get_name (), &
             model%get_n_real (), &
             model%get_n_complex (), &
@@ -545,15 +538,13 @@ contains
        call model_copy%copy_from (model)
 
        allocate (process)
-       call process%init (procname1, &
-            run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%init (procname1, lib, os_data, model_copy)
        call process%setup_test_cores ()
-       call process%init_component &
-          (1, .true., mci_template, phs_config_template)
+       call process%init_components (phs_config_template)
        sqrts = 1000
        call process%setup_beams_sqrts (sqrts, i_core = 1)
        call process%configure_phs ()
-       call process%setup_mci ()
+       call process%setup_mci (dispatch_mci_test_midpoint)
        call process%setup_terms ()
 
        allocate (process_instance)
@@ -568,8 +559,6 @@ contains
     end if
 
     if (decay) then
-       allocate (rng_test_factory_t :: rng_factory)
-       allocate (model_copy)
        call model_copy%init (model%get_name (), &
             model%get_n_real (), &
             model%get_n_complex (), &
@@ -578,18 +567,16 @@ contains
        call model_copy%copy_from (model)
 
        allocate (process)
-       call process%init (procname2, &
-            run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%init (procname2, lib, os_data, model_copy)
        call process%setup_test_cores ()
-       call process%init_component &
-          (1, .true., mci_template, phs_config_template)
+       call process%init_components (phs_config_template)
        if (present (decay_rest_frame)) then
           call process%setup_beams_decay (rest_frame = decay_rest_frame, i_core = 1)
        else
           call process%setup_beams_decay (rest_frame = .not. scattering, i_core = 1)
        end if
        call process%configure_phs ()
-       call process%setup_mci ()
+       call process%setup_mci (dispatch_mci_test_midpoint)
        call process%setup_terms ()
 
        allocate (process_instance)
@@ -604,9 +591,19 @@ contains
     end if
 
     call model%final ()
+    call model_copy%final ()
 
   end subroutine prepare_testbed
 
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    use variables, only: var_list_t
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
 
 end module decays_uti
 

@@ -5,7 +5,7 @@
 
 ========================================================================
  Process instance [scattering]: 'processes_test'
-   Run ID = 'run_test'
+   Run ID = 'run_12'
    Process components:
    * 1: 'processes_test_i1':   s, s => s, s [test_me]
    status = event complete
@@ -437,7 +437,7 @@ n_tot* => 4
 
 ========================================================================
  Process instance [scattering]: 'processes_test'
-   Run ID = 'run_test'
+   Run ID = 'run_12'
    Process components:
    * 1: 'processes_test_i1':   s, s => s, s [test_me]
    status = event complete

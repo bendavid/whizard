@@ -55,7 +55,7 @@ module blha_olp_interfaces
   use prc_core_def
   use prc_core
 
-  use prc_user_defined
+  use prc_external
 
   use blha_config
 
@@ -119,6 +119,29 @@ end module blha_olp_interfaces
   end subroutine blha_template_write
 
 @ %def blha_template_write
+@ Compute the total number of used helicity states for the given particle PDG
+codes, given a model.  Applies only if polarization is supported.  This
+yields the [[n_hel]] value as required below.
+<<BLHA OLP interfaces: blha template: TBP>>=
+  procedure :: get_n_hel => blha_template_get_n_hel
+<<BLHA OLP interfaces: procedures>>=
+  function blha_template_get_n_hel (blha_template, pdg, model) result (n_hel)
+    class(blha_template_t), intent(in) :: blha_template
+    integer, dimension(:), intent(in) :: pdg
+    class(model_data_t), intent(in), target :: model
+    integer :: n_hel
+    type(flavor_t) :: flv
+    integer :: f
+    n_hel = 1
+    if (blha_template%include_polarizations) then
+       do f = 1, size (pdg)
+          call flv%init (pdg(f), model)
+          n_hel = n_hel * flv%get_multiplicity ()
+       end do
+    end if
+  end function blha_template_get_n_hel
+  
+@ %def blha_template_get_n_hel
 @
 <<BLHA OLP interfaces: parameters>>=
   integer, parameter :: I_ALPHA = 1
@@ -128,7 +151,7 @@ end module blha_olp_interfaces
 <<BLHA OLP interfaces: public>>=
   public :: prc_blha_t
 <<BLHA OLP interfaces: types>>=
-  type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
+  type, abstract, extends (prc_external_t) :: prc_blha_t
     integer :: n_particles
     integer :: n_hel
     integer :: n_proc
@@ -141,12 +164,23 @@ end module blha_olp_interfaces
   <<BLHA OLP interfaces: prc blha: TBP>>
   end type prc_blha_t
 
-@
 @ %def prc_blha_t
+@
+Obviously, this process-core type uses the BLHA interface.
+<<BLHA OLP interfaces: prc blha: TBP>>=
+  procedure, nopass :: uses_blha => prc_blha_uses_blha
+<<BLHA OLP interfaces: procedures>>=
+  function prc_blha_uses_blha () result (flag)
+    logical :: flag
+    flag = .true.
+  end function prc_blha_uses_blha
+  
+@ %def prc_blha_uses_blha
+@ 
 <<BLHA OLP interfaces: public>>=
   public :: blha_driver_t
 <<BLHA OLP interfaces: types>>=
-  type, abstract, extends (user_defined_driver_t) :: blha_driver_t
+  type, abstract, extends (prc_external_driver_t) :: blha_driver_t
     type(string_t) :: contract_file
     type(string_t) :: nlo_suffix
     logical :: include_polarizations = .false.
@@ -179,7 +213,7 @@ end module blha_olp_interfaces
 <<BLHA OLP interfaces: public>>=
   public :: prc_blha_writer_t
 <<BLHA OLP interfaces: types>>=
-  type, abstract, extends (prc_user_defined_writer_t) :: prc_blha_writer_t
+  type, abstract, extends (prc_external_writer_t) :: prc_blha_writer_t
     type(blha_configuration_t) :: blha_cfg
   contains
   <<BLHA OLP interfaces: blha writer: TBP>>
@@ -190,7 +224,7 @@ end module blha_olp_interfaces
 <<BLHA OLP interfaces: public>>=
   public :: blha_def_t
 <<BLHA OLP interfaces: types>>=
-  type, abstract, extends (user_defined_def_t) :: blha_def_t
+  type, abstract, extends (prc_external_def_t) :: blha_def_t
     type(string_t) :: suffix
   contains
   <<BLHA OLP interfaces: blha def: TBP>>
@@ -201,7 +235,7 @@ end module blha_olp_interfaces
 <<BLHA OLP interfaces: public>>=
   public :: blha_state_t
 <<BLHA OLP interfaces: types>>=
-  type, abstract, extends (user_defined_state_t) :: blha_state_t
+  type, abstract, extends (prc_external_state_t) :: blha_state_t
   contains
   <<BLHA OLP interfaces: blha state: TBP>>
   end type blha_state_t
@@ -1274,8 +1308,8 @@ end module blha_olp_interfaces
        else
           allocate (object%i_virt (n_flv, 1), object%i_color_c (n_flv, 1))
        end if
-       object%i_virt = 0
-       object%i_color_c = 0
+       object%i_virt = -1
+       object%i_color_c = -1
     else if (blha_template%compute_subtraction ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_tree (n_flv, n_hel), &
@@ -1287,9 +1321,9 @@ end module blha_olp_interfaces
           allocate (object%i_tree (n_flv, 1), object%i_color_c (n_flv, 1) , &
                object%i_spin_c (n_flv, 1))
        end if
-       object%i_tree = 0
-       object%i_color_c = 0
-       object%i_spin_c = 0
+       object%i_tree = -1
+       object%i_color_c = -1
+       object%i_spin_c = -1
     else if (blha_template%compute_real_trees () .or. blha_template%compute_born () &
            .or. blha_template%compute_dglap ()) then
        if (blha_template%include_polarizations) then
@@ -1299,7 +1333,7 @@ end module blha_olp_interfaces
        else
           allocate (object%i_tree (n_flv, 1))
        end if
-       object%i_tree = 0
+       object%i_tree = -1
     end if
 
     call object%init_ew_parameters (blha_template%ew_scheme)
@@ -1413,7 +1447,7 @@ are requested (GoSam does not support polarized matrix elements).
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
-    if (object%i_virt(i_flv, i_hel) > 0) then
+    if (object%i_virt(i_flv, i_hel) >= 0) then
        allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
        call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
        call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
@@ -1464,7 +1498,7 @@ are requested (GoSam does not support polarized matrix elements).
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
     real(double) :: mu_dble, acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_tree(i_flv, i_hel) > 0) then
+    if (object%i_tree(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
             call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
@@ -1558,7 +1592,7 @@ are requested (GoSam does not support polarized matrix elements).
     real(double), dimension(size(rr)) :: r
     real(default) :: alpha_s, acc
     real(double) :: mu_dble, acc_dble
-    if (object%i_color_c(i_flv, i_hel) > 0) then
+    if (object%i_color_c(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
           call msg_fatal ("prc_blha_compute_sqme_color_c: ren_scale vanishes")
@@ -3024,8 +3058,11 @@ Write the BLHA file. Internal mode is intented for md5summing only.
        if (cfg%openloops_stability_log > 0) &
           write (u, '(A25,I1)') "extra stability_log " // pad, &
           cfg%openloops_stability_log
-       if (cfg%openloops_use_collier) &
+       if (cfg%openloops_use_collier) then
           write (u, '(A25,I1)') "extra preset " // pad, 2
+       else
+          write (u, '(A25,I1)') "extra preset " // pad, 1
+       end if
     end select
     if (full) then
        write (u, "(A)")
@@ -3188,7 +3225,7 @@ end module blha_uti
     proc_id = var_str ("BLHA_Test")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
        (var_str ("SM"), var_str ("SM.mdl"), os_data, model)
 

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -160,7 +160,7 @@ contains
          "Partonic phase-space configuration (phase-space forest):"
     call object%base_write (unit)
     write (u, "(1x,A)")    "Phase-space configuration parameters:"
-    call phs_parameters_write (object%par, u)
+    call object%par%write (u)
     call object%mapping_defaults%write (u)
     write (u, "(3x,A,A,A)")  "Run ID: '", char (object%run_id), "'"
   end subroutine phs_wood_config_write
@@ -288,7 +288,7 @@ contains
             '"', phs_config%md5sum_model_par, '"'
        write (u, "(3x,A,A,A32,A)") "md5sum_phs_config = ", &
             '"', phs_config%md5sum_phs_config, '"'
-       call phs_parameters_write (phs_config%par, u)
+       call phs_config%par%write (u)
        if (phs_config%use_cascades2) then
           call feyngraph_set_write_file_format (phs_config%feyngraph_set, u)
        else

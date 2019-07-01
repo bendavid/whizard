@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -959,8 +959,9 @@ contains
     function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde) result (sqme_remn)
       real(default) :: sqme_remn
       real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
+      call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
       sqme_remn = zero
-      sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max / xi_cut) * xi_tilde
+      sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
     end function compute_sqme_remnant_fsr
 
     subroutine register_debug_sqme ()
@@ -1047,6 +1048,7 @@ contains
       write (u,'(A,I3)') 'emitter: ', emitter
       write (u,'(A,I3)') 'i_phs: ', i_phs
       write (u,'(A,F6.4)') 'xi_max: ', rsub%real_kinematics%xi_max (i_phs)
+      write (u,'(A,F6.4)') 'xi_cut: ', rsub%real_kinematics%xi_max(i_phs) * rsub%settings%fks_template%xi_cut
       write (u,'(A,F6.4,2X,A,F6.4)') 'xi: ', xi, 'y: ', rsub%real_kinematics%y (i_phs)
       if (yorn) then
          write (u,'(A,ES16.9)')  'sqme_born: ', rsub%sqme_born(i_born)
@@ -1191,9 +1193,9 @@ contains
          xi_max_minus = real_kinematics%xi_max (i_phs)
       end select
       xi_tilde = real_kinematics%xi_tilde
-      sqme_remn = log(xi_max / xi_cut) * xi_tilde * sqme_soft
-      sqme_remn = sqme_remn - log (xi_max_plus / xi_cut) * xi_tilde * sqme_cs_plus &
-                            - log (xi_max_minus / xi_cut) * xi_tilde * sqme_cs_minus
+      sqme_remn = log(xi_max * xi_cut) * xi_tilde * sqme_soft
+      sqme_remn = sqme_remn - log (xi_max_plus * xi_cut) * xi_tilde * sqme_cs_plus &
+                            - log (xi_max_minus * xi_cut) * xi_tilde * sqme_cs_minus
     end function compute_sqme_remnant_isr
 
   end function real_subtraction_evaluate_region_isr
@@ -1204,20 +1206,21 @@ contains
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft, sqme_coll, sqme_cs
+    call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_subtraction_terms_fsr")
     sqme_soft = zero; sqme_coll = zero; sqme_cs = zero
-    associate (xi => rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs), &
+    associate (xi_tilde => rsub%real_kinematics%xi_tilde, &
          y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
-      if (template%xi_cut > xi) &
+      if (template%xi_cut > xi_tilde) &
            sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
       if (y - 1 + template%delta_zero > 0) &
            sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
-      if (template%xi_cut > xi .and. y - 1 + template%delta_zero > 0) &
+      if (template%xi_cut > xi_tilde .and. y - 1 + template%delta_zero > 0) &
            sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, i_phs, alpha_coupling)
       if (debug2_active (D_SUBTRACTION)) then
          print *, "FSR Cutoff:"
-         print *, "sub_soft: ", template%xi_cut > xi, "(ME: ", sqme_soft, ")"
+         print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
          print *, "sub_coll: ", (y - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi .and. (y - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (y - 1 + template%delta_zero) > 0, &
               "(ME: ", sqme_cs, ")"
       end if
     end associate
@@ -1323,29 +1326,29 @@ contains
     real(default), intent(out) :: sqme_cs_plus, sqme_cs_minus
     sqme_coll_plus = zero; sqme_cs_plus = zero
     sqme_coll_minus = zero; sqme_cs_minus = zero
-    associate (xi => rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs), &
+    associate (xi_tilde => rsub%real_kinematics%xi_tilde, &
          y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
-      if (template%xi_cut > xi) &
+      if (template%xi_cut > xi_tilde) &
            sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
       if (emitter /= 2) then
          ! Cut symmetrically for the limits y = +1 or y = -1
          if (abs (y) - 1 + template%delta_i > 0) &
               sqme_coll_plus = rsub%compute_sub_coll (alr, 1, i_phs, alpha_coupling)
-         if (template%xi_cut > xi .and. abs (y) - 1 + template%delta_i > 0) &
+         if (template%xi_cut > xi_tilde .and. abs (y) - 1 + template%delta_i > 0) &
               sqme_cs_plus = rsub%compute_sub_coll_soft (alr, 1, i_phs, alpha_coupling)
       end if
       if (emitter /= 1) then
          ! Cut symmetrically for the limits y = +1 or y = -1
          if (abs (y) - 1 + template%delta_i > 0) &
               sqme_coll_minus = rsub%compute_sub_coll (alr, 2, i_phs, alpha_coupling)
-         if (template%xi_cut > xi .and. abs (y) - 1 + template%delta_i > 0) &
+         if (template%xi_cut > xi_tilde .and. abs (y) - 1 + template%delta_i > 0) &
               sqme_cs_minus = rsub%compute_sub_coll_soft (alr, 2, i_phs, alpha_coupling)
       end if
       if (debug2_active (D_SUBTRACTION)) then
          print *, "ISR Cutoff:"
-         print *, "sub_soft: ", template%xi_cut > xi, "(ME: ", sqme_soft, ")"
+         print *, "sub_soft: ", template%xi_cut > xi_tilde, "(ME: ", sqme_soft, ")"
          print *, "sub_coll: ", (abs (y) - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
-         print *, "sub_coll_soft: ", template%xi_cut > xi .and. (abs (y) - 1 + template%delta_zero) > 0, &
+         print *, "sub_coll_soft: ", template%xi_cut > xi_tilde .and. (abs (y) - 1 + template%delta_zero) > 0, &
               "(ME: ", sqme_cs_plus, sqme_cs_minus, ")"
       end if
     end associate

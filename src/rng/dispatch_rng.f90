@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,40 +41,39 @@ module dispatch_rng
   private
 
   public :: dispatch_rng_factory
-  public :: dispatch_rng_factory_extra
+  public :: dispatch_rng_factory_fallback
+  public :: update_rng_seed_in_var_list
 
   procedure (dispatch_rng_factory), pointer :: &
-       dispatch_rng_factory_extra => null ()
+       dispatch_rng_factory_fallback => null ()
 
 contains
 
-  subroutine dispatch_rng_factory (rng_factory, var_list_global, var_list_local)
+  subroutine dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
     class(rng_factory_t), allocatable, intent(inout) :: rng_factory
-    type(var_list_t), intent(inout) :: var_list_global
-    type(var_list_t), intent(in), optional :: var_list_local
+    type(var_list_t), intent(in) :: var_list
+    integer, intent(out) :: next_rng_seed
     type(var_list_t) :: local
     type(string_t) :: rng_method
     integer :: seed
     character(30) :: buffer
     integer(i16) :: s
-    if (present (var_list_local)) then
-       local = var_list_local
-    else
-       local = var_list_global
-    end if
-    rng_method = local%get_sval (var_str ("$rng_method"))
-    seed = local%get_ival (var_str ("seed"))
+    rng_method = var_list%get_sval (var_str ("$rng_method"))
+    seed = var_list%get_ival (var_str ("seed"))
     s = int (mod (seed, 32768), i16)
     select case (char (rng_method))
     case ("tao")
        allocate (rng_tao_factory_t :: rng_factory)
        call msg_message ("RNG: Initializing TAO random-number generator")
+       next_rng_seed = seed + 1
     case ("rng_stream")
        allocate (rng_stream_factory_t :: rng_factory)
        call msg_message ("RNG: Initializing RNG Stream random-number generator")
+       next_rng_seed = seed + 1
     case default
-       if (associated (dispatch_rng_factory_extra)) then
-          call dispatch_rng_factory_extra (rng_factory, var_list_global, var_list_local)
+       if (associated (dispatch_rng_factory_fallback)) then
+          call dispatch_rng_factory_fallback &
+               (rng_factory, var_list, next_rng_seed)
        end if
        if (.not. allocated (rng_factory)) then
           call msg_fatal ("Random-number generator '" &
@@ -85,9 +84,15 @@ contains
     call msg_message ("RNG: Setting seed for random-number generator to " &
             // trim (buffer))
     call rng_factory%init (s)
-    call var_list_global%set_int (var_str ("seed"), seed + 1, &
-         is_known = .true.)
   end subroutine dispatch_rng_factory
 
+  subroutine update_rng_seed_in_var_list (var_list, next_rng_seed)
+    type(var_list_t), intent(inout), optional :: var_list
+    integer, intent(in) :: next_rng_seed
+    if (present (var_list)) then 
+       call var_list%set_int (var_str ("seed"), next_rng_seed, is_known=.true.)
+    end if
+  end subroutine update_rng_seed_in_var_list
+  
 
 end module dispatch_rng

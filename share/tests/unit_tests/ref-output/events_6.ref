@@ -18,7 +18,7 @@
    Keep correlations  = F
 ========================================================================
  Process instance [scattering]: 'events_6_p'
-   Run ID = 'events_6'
+   Run ID = ''
    Process components:
      1: 'events_6_p_i1':   s, s => s, s [test_me]
    status = initialized
@@ -67,7 +67,7 @@
    Analysis flag      = T
 ========================================================================
  Process instance [scattering]: 'events_6_p'
-   Run ID = 'events_6'
+   Run ID = ''
    Process components:
    * 1: 'events_6_p_i1':   s, s => s, s [test_me]
    status = event complete

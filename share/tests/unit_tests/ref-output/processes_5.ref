@@ -11,7 +11,7 @@
 
 ========================================================================
  Process [scattering]: 'processes5'
-   Run ID        = 'run5'
+   Run ID        = ''
    Library name  = 'processes5'
    Process index = 1
    Process components:
@@ -34,6 +34,11 @@ charged = PDG(6, -6)
 neutral = PDG(25)
 colored = PDG(6, -6)
 [user variable] tolerance =  0.000000000000E+00
+[user variable] ?alphas_is_fixed = true
+[user variable] seed = 0
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+ Beam structure: [any particles]
 ------------------------------------------------------------------------
  Configuration data:
    Number of incoming particles = 2
@@ -41,8 +46,8 @@ colored = PDG(6, -6)
    Number of process terms      = 1
    Number of MCI configurations = 1
    Model = Test
-   QCD parameters (coupling undefined)
-   RNG factory: test (1)
+   QCD parameters (fixed coupling):
+     alpha =  1.17800E-01
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Cut expression:
@@ -73,6 +78,8 @@ colored = PDG(6, -6)
 |  |  |  |  |  |  |  +  SEQUENCE    <unspecified_prt>  =  <cexpr>
 |  |  |  |  |  |  |  |  +  SEQUENCE    <cexpr>  =  <variable>
 |  |  |  |  |  |  |  |  |  +  IDENTIFIER  <variable>  = s
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------
@@ -167,7 +174,7 @@ colored = PDG(6, -6)
 
 ========================================================================
  Process instance [scattering]: 'processes5'
-   Run ID = 'run5'
+   Run ID = ''
    Process components:
    * 1: 'processes5_i1':   s, s => s, s [test_me]
    status = failed cuts
@@ -414,7 +421,7 @@ o [all] = false
 
 ========================================================================
  Process instance [scattering]: 'processes5'
-   Run ID = 'run5'
+   Run ID = ''
    Process components:
    * 1: 'processes5_i1':   s, s => s, s [test_me]
    status = evaluated trace
@@ -667,7 +674,7 @@ o [all] = true
 
 ========================================================================
  Process instance [scattering]: 'processes5'
-   Run ID = 'run5'
+   Run ID = ''
    Process components:
    * 1: 'processes5_i1':   s, s => s, s [test_me]
    status = failed cuts
@@ -680,7 +687,7 @@ o [all] = true
 
 ========================================================================
  Process instance [scattering]: 'processes5'
-   Run ID = 'run5'
+   Run ID = ''
    Process components:
    * 1: 'processes5_i1':   s, s => s, s [test_me]
    status = evaluated trace

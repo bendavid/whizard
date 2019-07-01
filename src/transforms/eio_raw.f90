@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -288,6 +288,7 @@ contains
              write (eio%unit)  event%get_channel ()
              write (eio%unit)  event%expr%weight_prc
              write (eio%unit)  event%expr%excess_prc
+             write (eio%unit)  event%get_n_dropped ()
              write (eio%unit)  event%expr%sqme_prc
              do i = 1, eio%n_alt
                 write (eio%unit)  event%expr%weight_alt(i)
@@ -338,6 +339,7 @@ contains
     integer, intent(out) :: iostat
     integer :: event_index, i_mci, i_term, channel, i
     real(default) :: weight, excess, sqme
+    integer :: n_dropped
     real(default), dimension(:), allocatable :: weight_alt, sqme_alt
     logical :: has_transform
     type(particle_set_t), pointer :: pset
@@ -357,6 +359,8 @@ contains
           if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  excess
           if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  n_dropped
+          if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  sqme
           if (iostat /= 0)  return
           call event%reset_contents ()
@@ -369,7 +373,8 @@ contains
                   eio%sigma, eio%n, event%get_norm_mode (), eio%norm_mode)
           end if
           call event%set (sqme_ref = sqme, weight_ref = weight, &
-               excess_prc = excess)
+               excess_prc = excess, &
+               n_dropped = n_dropped)
           if (eio%n_alt /= 0) then
              allocate (sqme_alt (eio%n_alt), weight_alt (eio%n_alt))
              do i = 1, eio%n_alt

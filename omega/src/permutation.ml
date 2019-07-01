@@ -1,6 +1,6 @@
 (* permutation.ml --
 
-   Copyright (C) 1999-2018 by
+   Copyright (C) 1999-2019 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -128,7 +128,14 @@ module Using_Arrays : T =
 
 module Default = Using_Arrays
 
-(* To shuffle an array a of n elements (indices 0..n-1):
+(*
+  This is the Fisher-Yates shuffle, cf. D. Knuth, {\em Seminumerical
+  algorithms.  The Art of Computer Programming. 2}. Reading, MA:
+  Addison–Wesley. pp. 139-140.
+ *)
+
+(*i
+  To shuffle an array a of n elements (indices 0..n-1):
 
      for i from n − 1 downto 1 do
           j ← random integer with 0 ≤ j ≤ i
@@ -141,7 +148,8 @@ module Default = Using_Arrays
      for i from 1 to n − 1 do
          j ← random integer with 0 ≤ j ≤ i
          a[i] ← a[j]
-         a[j] ← source[i] *)
+         a[j] ← source[i]
+i*)
 
 let shuffle l =
   let a = Array.of_list l in

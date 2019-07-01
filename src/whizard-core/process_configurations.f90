@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -41,7 +41,7 @@ module process_configurations
   use variables, only: var_list_t
 
   use dispatch_me_methods, only: dispatch_core_def
-  use prc_user_defined, only: user_defined_def_t
+  use prc_external, only: prc_external_def_t
 
   implicit none
   private
@@ -183,7 +183,7 @@ contains
     call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
          model, var_list, config%id, nlo_type, method)
     select type (core_def)
-    class is (user_defined_def_t)
+    class is (prc_external_def_t)
        if (present (can_be_integrated)) then
           call core_def%set_active_writer (can_be_integrated)
        else
@@ -208,7 +208,8 @@ contains
      call config%entry%set_fixed_emitter (i, emitter)
   end subroutine process_configuration_set_fixed_emitter
 
-  subroutine process_configuration_set_coupling_powers (config, alpha_power, alphas_power)
+  subroutine process_configuration_set_coupling_powers &
+       (config, alpha_power, alphas_power)
     class(process_configuration_t), intent(inout) :: config
     integer, intent(in) :: alpha_power, alphas_power
     call config%entry%set_coupling_powers (alpha_power, alphas_power)

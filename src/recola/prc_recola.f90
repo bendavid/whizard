@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -47,7 +47,7 @@ module prc_recola
 
   use prc_core, only: prc_core_state_t
   use prc_core_def, only: prc_core_driver_t, prc_core_def_t
-  use prc_user_defined
+  use prc_external
   use process_libraries, only: process_library_t
 
   implicit none
@@ -57,13 +57,16 @@ module prc_recola
   public :: recola_def_t
   public :: prc_recola_t
 
+  integer, parameter :: RECOLA_UNDEFINED = 0, RECOLA_QCD = 1, &
+       RECOLA_QED = 2, RECOLA_FULL = 3
 
 
-  type, extends (user_defined_def_t) :: recola_def_t
+  type, extends (prc_external_def_t) :: recola_def_t
      type(string_t) :: suffix
      type(string_t) :: order
      integer :: alpha_power = 0
      integer :: alphas_power = 0
+     integer :: corr = RECOLA_UNDEFINED
   contains
     procedure, nopass :: type_string => recola_def_type_string
     procedure :: write => recola_def_write
@@ -72,7 +75,7 @@ module prc_recola
     procedure :: allocate_driver => recola_def_allocate_driver
   end type recola_def_t
 
-  type, extends (prc_user_defined_writer_t) :: recola_writer_t
+  type, extends (prc_external_writer_t) :: recola_writer_t
      private
      type(string_t) :: id
      type(string_t) :: order
@@ -87,13 +90,13 @@ module prc_recola
     procedure :: register_processes => prc_recola_register_processes
   end type recola_writer_t
 
-  type, extends (user_defined_driver_t) :: recola_driver_t
+  type, extends (prc_external_driver_t) :: recola_driver_t
   contains
     procedure, nopass :: type_name => recola_driver_type_name
   end type recola_driver_t
 
-  type, extends (prc_user_defined_base_t) :: prc_recola_t
-     integer :: recola_id = 0
+  type, extends (prc_external_t) :: prc_recola_t
+     integer, dimension(:), allocatable :: recola_ids
      integer, dimension(:,:), allocatable :: color_state
      integer :: n_f = 0
      logical :: helicity_and_color_arrays_are_replaced = .false.
@@ -106,8 +109,8 @@ module prc_recola
     procedure :: get_alphas_power => prc_recola_get_alphas_power
     procedure :: compute_alpha_s => prc_recola_compute_alpha_s
     procedure :: includes_polarization => prc_recola_includes_polarization
-    procedure :: create_and_load_extra_libraries => &
-         prc_recola_create_and_load_extra_libraries
+    procedure :: prepare_external_code => &
+         prc_recola_prepare_external_code
     procedure :: set_parameters => prc_recola_set_parameters
     procedure :: init => prc_recola_init
     procedure :: replace_helicity_and_color_arrays => &
@@ -115,9 +118,10 @@ module prc_recola
     procedure :: compute_amplitude => prc_recola_compute_amplitude
     procedure :: compute_sqme => prc_recola_compute_sqme
     procedure :: compute_sqme_virt => prc_recola_compute_sqme_virt
+    procedure :: compute_sqme_color_c_raw => prc_recola_compute_sqme_color_c_raw
   end type prc_recola_t
 
-  type, extends (user_defined_state_t) :: recola_state_t
+  type, extends (prc_external_state_t) :: recola_state_t
   contains
     procedure :: write => recola_state_write
   end type recola_state_t
@@ -152,18 +156,28 @@ contains
   end subroutine recola_def_read
 
   subroutine recola_def_init (object, basename, model_name, &
-     prt_in, prt_out, nlo_type, alpha_power, alphas_power)
+       prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
+       correction_type)
     class(recola_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
     integer, intent(in) :: alpha_power
     integer, intent(in) :: alphas_power
+    type(string_t), intent(in) :: correction_type
     call msg_debug (D_ME_METHODS, "recola_def_init: " &
          // char (basename) // ", nlo_type", nlo_type)
     object%basename = basename
     object%alpha_power = alpha_power
     object%alphas_power = alphas_power
+    select case (char (correction_type))
+    case ("QCD")
+       object%corr = RECOLA_QCD
+    case ("QED")
+       object%corr = RECOLA_QED
+    case ("Full")
+       object%corr = RECOLA_FULL
+    end select
     allocate (recola_writer_t :: object%writer)
     select case (nlo_type)
     case (BORN)
@@ -172,6 +186,8 @@ contains
     case (NLO_REAL)
        object%suffix = '_REAL'
        object%order = "LO"
+       if (object%corr == RECOLA_QCD)  object%alphas_power = alphas_power + 1
+       if (object%corr == RECOLA_QED)  object%alpha_power = alpha_power + 1
     case (NLO_VIRTUAL)
        object%suffix = '_LOOP'
        object%order = "NLO"
@@ -188,7 +204,7 @@ contains
     select type (writer => object%writer)
     class is (recola_writer_t)
        call writer%init (model_name, prt_in, prt_out)
-       call writer%set_id (basename)
+       call writer%set_id (basename // object%suffix)
        call writer%set_order (object%order)
        call writer%set_coupling_powers (object%alpha_power, object%alphas_power)
     end select
@@ -258,21 +274,25 @@ contains
     write (unit, "(5A)")  "CLEAN_SOURCES += ", char (flv_file)
   end subroutine recola_writer_write_makefile_code
 
-  subroutine prc_recola_register_processes (writer)
+  subroutine prc_recola_register_processes (writer, recola_ids)
     class(recola_writer_t), intent(in) :: writer
     integer :: recola_id
+    integer :: i_flv
     integer :: n_tot
     integer :: unit, iostat
+    integer, dimension (:), intent(inout) :: recola_ids
     integer, dimension(:), allocatable :: pdg
     type(string_t), dimension(:), allocatable :: particle_names
     type(string_t) :: process_string
     integer :: i_part
     !!! TODO (cw-2016-08-08): Include helicities
     call msg_message ("Recola: registering processes for '" // char (writer%id) // "'")
+    i_flv = 0
     n_tot = writer%n_in + writer%n_out
     allocate (pdg (n_tot))
     allocate (particle_names (n_tot))
     call open_flv_list (writer%id, unit)
+    call rclwrap_request_generate_processes ()
     SCAN_FLV_LIST: do
        read (unit, *, iostat = iostat)  pdg
        if (iostat < 0) then
@@ -280,7 +300,9 @@ contains
        else if (iostat > 0) then
           call err_flv_list (writer%id)
        end if
+       i_flv = i_flv + 1
        call rclwrap_get_new_recola_id (recola_id)
+       recola_ids(i_flv) = recola_id
        particle_names(:) = get_recola_particle_string (pdg)
        process_string = var_str ("")
        do i_part = 1, n_tot
@@ -294,10 +316,10 @@ contains
             // "process #" // char (str (recola_id)) &
             // ": " // char (process_string) &
             // "(" // char (writer%order) // ")")
-       call rclwrap_define_process (recola_id, process_string, writer%order)
+       call rclwrap_add_process (recola_id, process_string, writer%order)
+       call rclwrap_define_processes ()
     end do SCAN_FLV_LIST
     call close_flv_list (unit)
-    call rclwrap_request_generate_processes ()
     call msg_debug (D_ME_METHODS, "RECOLA: processes for '" &
          // char (writer%id) // "' registered")
   end subroutine prc_recola_register_processes
@@ -399,7 +421,7 @@ contains
   
   subroutine prc_recola_compute_alpha_s (object, core_state, ren_scale)
     class(prc_recola_t), intent(in) :: object
-    class(user_defined_state_t), intent(inout) :: core_state
+    class(prc_external_state_t), intent(inout) :: core_state
     real(default), intent(in) :: ren_scale
     core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
   end subroutine prc_recola_compute_alpha_s
@@ -410,7 +432,7 @@ contains
     polarized = .false.
   end function prc_recola_includes_polarization
 
-  subroutine prc_recola_create_and_load_extra_libraries &
+  subroutine prc_recola_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
      class(prc_recola_t), intent(inout) :: core
      integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -420,8 +442,8 @@ contains
      type(model_data_t), intent(in), target :: model
      integer, intent(in) :: i_core
      logical, intent(in) :: is_nlo
-     call msg_debug (D_ME_METHODS, "prc_recola_create_and_load_extra_libraries (no-op)")
-  end subroutine prc_recola_create_and_load_extra_libraries
+     call msg_debug (D_ME_METHODS, "prc_recola_prepare_external_code (no-op)")
+  end subroutine prc_recola_prepare_external_code
 
   subroutine prc_recola_set_parameters (object, qcd, model)
     class(prc_recola_t), intent(inout) :: object
@@ -431,7 +453,6 @@ contains
     call msg_debug (D_ME_METHODS, "RECOLA: set_parameters")
     object%qcd = qcd
     call rclwrap_set_dynamic_settings ()
-
     call rclwrap_set_pole_mass &
          (11, dble(model%get_real (var_str ('me'))), 0._double)
     call rclwrap_set_pole_mass &
@@ -466,33 +487,34 @@ contains
     type(process_library_t), intent(in), target :: lib
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
+    integer :: n_flv
     call msg_debug (D_ME_METHODS, "RECOLA: init process object")
     call object%base_init (def, lib, id, i_component)
-    call rclwrap_reset_recola ()
+    n_flv = object%get_n_flvs (1)
+    allocate (object%recola_ids(n_flv))
     select type (writer => object%def%writer)
     type is (recola_writer_t)
-       call writer%register_processes ()
+       call writer%register_processes (object%recola_ids)
     end select
     call rclwrap_generate_processes ()
-    object%recola_id = rclwrap_get_n_processes ()
     call object%replace_helicity_and_color_arrays ()
   end subroutine prc_recola_init
   
   subroutine prc_recola_replace_helicity_and_color_arrays (object)
+    ! TODO: Adjust routine for multiple recola ids
     class(prc_recola_t), intent(inout) :: object
     integer, dimension(:,:), allocatable :: col_recola
     integer :: i
     call msg_debug (D_ME_METHODS, "RECOLA: replace_helicity_and_color_arrays")
     deallocate (object%data%hel_state)
     call rclwrap_get_helicity_configurations &
-         (object%recola_id, object%data%hel_state)
-    call rclwrap_get_color_configurations (object%recola_id, col_recola)
+         (object%recola_ids(1), object%data%hel_state)
+    call rclwrap_get_color_configurations (object%recola_ids(1), col_recola)
     allocate (object%color_state (object%data%n_in + object%data%n_out, &
            size (col_recola, dim = 2)))
     do i = 1, size (col_recola, dim = 2)
        object%color_state (:, i) = col_recola (:, i)
     end do
-    object%data%n_hel = size (object%data%hel_state, dim = 1)
   end subroutine prc_recola_replace_helicity_and_color_arrays
 
   function prc_recola_compute_amplitude &
@@ -527,9 +549,9 @@ contains
        do i = 1, object%data%n_in + object%data%n_out
           p_recola(:, i) = dble(p(i)%p)
        end do
-       call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
+       call rclwrap_compute_process (object%recola_ids(f), p_recola, 'LO')
     end if
-    call rclwrap_get_amplitude (object%recola_id, 0, 'LO', &
+    call rclwrap_get_amplitude (object%recola_ids(f), 0, 'LO', &
          object%color_state (:, c), object%data%hel_state (h, :), amp_dble)
     amp = amp_dble
   end function prc_recola_compute_amplitude
@@ -553,14 +575,14 @@ contains
      do i = 1, object%data%n_in + object%data%n_out
         p_recola(:, i) = dble(p(i)%p)
      end do
-     call rclwrap_set_mu_ir (dble (ren_scale))
      alpha_s = object%qcd%alpha%get (ren_scale)
      call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
      call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
      call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
-     call rclwrap_compute_process (i_flv, p_recola, 'LO')
+     call rclwrap_set_mu_ir (dble (ren_scale))
+     call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'LO')
      call rclwrap_get_squared_amplitude &
-             (i_flv, object%get_alphas_power (), 'LO', sqme_dble)
+          (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
      sqme = real(sqme_dble, kind=default)
      bad_point = .false.
   end subroutine prc_recola_compute_sqme
@@ -588,16 +610,49 @@ contains
     call rclwrap_set_mu_ir (dble (ren_scale))
     alpha_s = object%qcd%alpha%get (ren_scale)
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
-    call rclwrap_compute_process (object%recola_id, p_recola, 'NLO')
+    call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'NLO')
+    !!! JRR, TODO: generalize for QED corrections
     call rclwrap_get_squared_amplitude &
-         (object%recola_id, object%get_alphas_power () + 1, 'NLO', sqme_dble)
+         (object%recola_ids(i_flv), object%get_alphas_power () + 1, 'NLO', sqme_dble)
     sqme(3) = sqme_dble
     call rclwrap_get_squared_amplitude &
-         (object%recola_id, object%get_alphas_power (), 'LO', sqme_dble)
+         (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
     sqme(4) = sqme_dble
-
     bad_point = .false.
   end subroutine prc_recola_compute_sqme_virt
+
+  subroutine prc_recola_compute_sqme_color_c_raw (object, i_flv, i_hel, &
+       p, ren_scale, sqme_color_c, bad_point)
+    class(prc_recola_t), intent(in) :: object
+    integer, intent(in) :: i_hel, i_flv
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
+         p_recola
+    real(default), intent(in) :: ren_scale
+    real(default), dimension(:), intent(out) :: sqme_color_c
+    logical, intent(out) :: bad_point
+    integer :: i1, i2, i, n_tot
+    real(double) :: sqme_dble
+    do i = 1, object%data%n_in + object%data%n_out
+       p_recola(:, i) = dble(p(i)%p)
+    end do
+    n_tot = object%data%n_in + object%data%n_out
+    i = 0
+    do i1 = 1, n_tot
+       do i2 = 1, i1-1
+          i = i + 1
+          call rclwrap_compute_color_correlation &
+               (object%recola_ids(i_flv), p_recola, i1, i2, sqme_dble)
+          sqme_color_c(i) = real (sqme_dble, kind=default)
+          select case (abs (object%data%flv_state (i1, i_flv)))
+          case (1:6)
+             sqme_color_c(i) = CF * sqme_color_c(i)
+          case (9,21)
+             sqme_color_c(i) = CA * sqme_color_c(i)
+          end select
+       end do
+    end do
+  end subroutine prc_recola_compute_sqme_color_c_raw
 
 
 end module prc_recola

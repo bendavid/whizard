@@ -116,10 +116,7 @@ Pythia8::Pythia* pythia=new Pythia8::Pythia;
     PYTHIA8_VERSION=$wo_pythia8_version    
     AC_SUBST([PYTHIA8_VERSION])   
 
-fi   
-
-
-AC_MSG_WARN([PYTHIA8 configure is for testing purposes at the moment.])
+fi
 ])
 
 dnl CHECK PYTHIA8 END

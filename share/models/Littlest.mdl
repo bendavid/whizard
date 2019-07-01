@@ -9,7 +9,7 @@ parameter mZ     = 91.1882      # Z-boson mass
 parameter mW     = 80.419       # W-boson mass  
 parameter mH     = 125          # Higgs mass
 parameter meta	 = 100	        # Pseudoaxion mass
-parameter alphas = 0.1178       # Strong coupling constant (Z point)             
+parameter alphas = 0.1178       # Strong coupling constant (Z point)
 parameter me     = 0.000510997  # electron mass                       
 parameter mmu    = 0.105658389  # muon mass                         
 parameter mtau   = 1.77705      # tau-lepton mass                               
@@ -277,7 +277,7 @@ vertex S s G
 vertex C c G 
 vertex B b G 
 vertex T t G 
-
+vertex TH th G
 
 # Neutral currents
 vertex D d Z 
@@ -337,7 +337,9 @@ vertex e3 N3 WHp
 vertex E1 n1 WHm
 vertex E2 n2 WHm
 vertex E3 n3 WHm
+vertex TH b Wp
 vertex TH b WHp
+vertex th B Wm
 vertex th B WHm
 
 # Yukawa (neutral)
@@ -392,6 +394,8 @@ vertex Z Wm WHp
 vertex ZH WHm Wp
 vertex ZH Wm WHp
 vertex AH WHm WHp
+vertex AH Wm WHp
+vertex AH Wp WHm
 vertex ZH WHm WHp
 
 # Higgs - vector boson
@@ -425,8 +429,12 @@ vertex psim Wp Z
 vertex psip Wm Z
 vertex psim WHp Z
 vertex psip WHm Z
+vertex psim Wp ZH
+vertex psip Wm ZH
 vertex psim WHp ZH
 vertex psip WHm ZH
+vertex psim Wp AH
+vertex psip Wm AH
 vertex psim WHp AH
 vertex psip WHm AH
 vertex psimm Wp Wp
@@ -458,6 +466,5 @@ vertex ZH H psi1
 vertex Z psi0 psi1
 vertex ZH psi0 psi1
 vertex Z psip psim
-vertex ZH psip psim
 vertex Z psipp psimm
 vertex ZH psipp psimm

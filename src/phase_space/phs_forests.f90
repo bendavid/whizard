@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -56,7 +56,6 @@ module phs_forests
   private
 
   public :: phs_parameters_t
-  public :: phs_parameters_write
   public :: phs_parameters_read
   public :: phs_forest_t
   public :: phs_forest_init
@@ -97,6 +96,8 @@ module phs_forests
      integer :: off_shell = 1
      integer :: t_channel = 2
      logical :: keep_nonresonant = .true.
+   contains
+     procedure :: write => phs_parameters_write 
   end type phs_parameters_t
 
   type :: equivalence_t
@@ -180,7 +181,7 @@ module phs_forests
 contains
 
   subroutine phs_parameters_write (phs_par, unit)
-    type(phs_parameters_t), intent(in) :: phs_par
+    class(phs_parameters_t), intent(in) :: phs_par
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)

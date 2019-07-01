@@ -5,7 +5,7 @@
 
 ========================================================================
  Process [decay]: 'decays_3_d'
-   Run ID        = 'decays_3'
+   Run ID        = ''
    Library name  = 'decays_3_lib'
    Process index = 2
    Process components:
@@ -20,10 +20,11 @@
    Number of MCI configurations = 1
    Model = Test
    QCD parameters (coupling undefined)
-   RNG factory: test (1)
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
    Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+ RNG factory: test (1)
 ========================================================================
  Process component configuration:
 ------------------------------------------------------------------------

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -62,7 +62,7 @@ contains
        call split_string (exclude_from_resonance, var_str (":"), &
        fks_template%excluded_resonances)
     call fks_template%set_parameters ( &
-         exp1 = fks_dij_exp1, exp2 = fks_dij_exp2, & 
+         exp1 = fks_dij_exp1, exp2 = fks_dij_exp2, &
          xi_min = var_list%get_rval (var_str ("fks_xi_min")), &
          y_max = var_list%get_rval (var_str ("fks_y_max")), &
          xi_cut = var_list%get_rval (var_str ("fks_xi_cut")), &

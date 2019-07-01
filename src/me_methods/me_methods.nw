@@ -25,10 +25,21 @@ These are the implementations:
 \item[prc\_omega]
   Matrix elements calculated by \oMega\ are the default for WHIZARD.
   Here, we provide all necessary support.
+\item[prc\_external]
+  Matrix elements provided or using external (not \oMega) code or libraries.
+  This is an abstract type, with concrete extensions below:
+\item[prc\_external\_test]
+  Concrete implementation of the external-code type, actually using some
+  pre-defined test matrix elements.
 \item[prc\_gosam]
+  Interface for matrix elements computed using \gosam.
 \item[prc\_openloops]
-\item[prc\_user\_defined\_test]
+  Interface for matrix elements computed using OpenLoops.
+\item[prc\_recola]
+  Interface for matrix elements computed using Recola.
 \item[prc\_threshold]
+  Interface for matrix elements for the top-pair threshold, that use external
+  libraries.
 \end{description}
 
 
@@ -67,8 +78,11 @@ module prc_core
 <<Use strings>>
   use io_units
   use diagnostics
+  use os_interface, only: os_data_t
   use lorentz
   use interactions
+  use variables, only: var_list_t
+  use model_data, only: model_data_t
 
   use process_constants
   use prc_core_def
@@ -171,6 +185,54 @@ nonzero.
   end function prc_core_has_matrix_element
 
 @ %def prc_core_has_matrix_element
+@
+Return true if this process-core type needs extra code that has to be compiled
+and/or linked, beyond the default \oMega\ framework.  This depends only on the
+concrete type, and the default is no.
+<<Prc core: process core: TBP>>=
+  procedure, nopass :: needs_external_code => prc_core_needs_external_code
+<<Prc core: procedures>>=
+  function prc_core_needs_external_code () result (flag)
+    logical :: flag
+    flag = .false.
+  end function prc_core_needs_external_code
+
+@ %def prc_core_needs_external_code
+@ The corresponding procedure to create and load extra libraries.  The base
+procedure must not be called but has to be overridden, if extra code is
+required.
+<<Prc core: process core: TBP>>=
+  procedure :: prepare_external_code => &
+       prc_core_prepare_external_code
+<<Prc core: procedures>>=
+  subroutine prc_core_prepare_external_code &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
+    class(prc_core_t), intent(inout) :: core
+    integer, intent(in), dimension(:,:), allocatable :: flv_states
+    type(var_list_t), intent(in) :: var_list
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
+    call core%write ()
+    call msg_bug ("prc_core_prepare_external_code called &
+         &but not overridden")
+  end subroutine prc_core_prepare_external_code
+
+@ %def prc_core_prepare_external_code
+@
+Return true if this process-core type uses the BLHA interface.  This depends
+only on the concrete type, and the default is no.
+<<Prc core: process core: TBP>>=
+  procedure, nopass :: uses_blha => prc_core_uses_blha
+<<Prc core: procedures>>=
+  function prc_core_uses_blha () result (flag)
+    logical :: flag
+    flag = .false.
+  end function prc_core_uses_blha
+  
+@ %def prc_core_uses_blha
 @
 Tell whether a particular combination of flavor/helicity/color state
 is allowed for the matrix element.
@@ -1944,9 +2006,10 @@ parallel make.
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("template_me1"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
@@ -2068,6 +2131,7 @@ parallel make.
 
     call lib%final ()
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_1"
@@ -2112,9 +2176,10 @@ parallel make.
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("template_me2"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
@@ -2236,6 +2301,7 @@ parallel make.
 
     call lib%final ()
     call cleanup_model (model)
+    deallocate (model)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_2"
@@ -3799,7 +3865,7 @@ parallel make.
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("omega1"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
     allocate (prt_in (2), prt_out (2))
@@ -3982,9 +4048,10 @@ parallel make.
          &(s-channel only, with OpenMP, report progress to file)"
 
     call lib%init (var_str ("omega2"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name, vars)
 
     allocate (prt_in (2), prt_out (2))
@@ -4062,7 +4129,8 @@ parallel make.
     write (u, "(A)")  "* Constants of omega2_a_i1:"
     write (u, "(A)")
 
-    config => lib%get_component_def_ptr (var_str ("omega2_a"), 1)
+    entry => lib%get_process_def_ptr (var_str ("omega2_a"))
+    config => entry%get_component_def_ptr (1)
     call prc1%init (config%get_core_def_ptr (), &
          lib, var_str ("omega2_a"), 1)
     call prc1%get_constants (data, 1)
@@ -4078,7 +4146,7 @@ parallel make.
     write (u, "(A)")  "* Constants of omega2_a_i2:"
     write (u, "(A)")
 
-    config => lib%get_component_def_ptr (var_str ("omega2_a"), 2)
+    config => entry%get_component_def_ptr (2)
     call prc2%init (config%get_core_def_ptr (), &
          lib, var_str ("omega2_a"), 2)
     call prc2%get_constants (data, 1)
@@ -4202,9 +4270,10 @@ irrelevant helicities.
     write (u, "(A)")  "* (1) e- e+ -> e- e+   (all diagrams, no OpenMP)"
 
     call lib%init (var_str ("omega3"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QED"
+    model => null ()
     call prepare_model (model, model_name, vars)
 
     allocate (prt_in (2), prt_out (2))
@@ -4259,7 +4328,8 @@ irrelevant helicities.
     write (u, "(A)")  "* Helicity states of omega3_a_i1:"
     write (u, "(A)")
 
-    config => lib%get_component_def_ptr (var_str ("omega3_a"), 1)
+    entry => lib%get_process_def_ptr (var_str ("omega3_a"))
+    config => entry%get_component_def_ptr (1)
     call prc1%init (config%get_core_def_ptr (), &
          lib, var_str ("omega3_a"), 1)
     call prc1%get_constants (data, 1)
@@ -4402,7 +4472,7 @@ parallel make.
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("prc_omega_4_lib"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QCD"
     allocate (prt_in (2), prt_out (2))
@@ -4549,9 +4619,10 @@ method [[compute_amplitude]].
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("prc_omega_5_lib"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "QCD"
+    model => null ()
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
@@ -4609,7 +4680,8 @@ method [[compute_amplitude]].
     write (u, "(A)")
 
     allocate (prc_omega_t :: core)
-    cdef_ptr => lib%get_component_def_ptr (var_str ("prc_omega_5_p"), 1)
+    entry => lib%get_process_def_ptr (var_str ("prc_omega_5_p"))
+    cdef_ptr => entry%get_component_def_ptr (1)
     def_ptr => cdef_ptr%get_core_def_ptr ()
 
     select type (core)
@@ -4712,7 +4784,7 @@ parallel make.
     write (u, "(A)")  "*   Purpose: create simple process with OMega / UFO file"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "SM"
     model => null ()
@@ -4800,7 +4872,7 @@ possible.
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("prc_omega_diags_1_lib"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     model_name = "SM"
 
@@ -4886,14 +4958,20 @@ possible.
 @ %def prc_omega_diags_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{User-defined matrix elements squared}
-For certain applications, only the squared matrix elements instead of
-the pure amplitude can be obtained, e.g. for BLHA One-Loop providers or
-for the QCD-resummed top-threshold calculation.  This is enabled by the
-[[prc_user_defined_base_t]]-type.
-<<[[prc_user_defined.f90]]>>=
+\section{External matrix elements (squared)}
+This defines an abstract framework that can handle matrix elements which are
+computed outside of \whizard.  Such matrix elements typically (i) require
+extra code or libraries to be configured linked at execution time, and (ii)
+provide only plain or correlated squared matrix elements instead of
+amplitudes.  
+
+In particular, matrix-element libraries that conform to the BLHA standard
+belong to this class.  They have their own (also abstract) extension of the
+abstract [[prc_external_t]] type introduced here.
+[[prc_external_t]]-type.
+<<[[prc_external.f90]]>>=
 <<File header>>
-module prc_user_defined
+module prc_external
 
   use, intrinsic :: iso_c_binding !NODEP!
 
@@ -4923,42 +5001,42 @@ module prc_user_defined
 
 <<Standard module head>>
 
-<<Prc User: public>>
+<<Prc external: public>>
 
-<<Prc User: parameters>>
+<<Prc external: parameters>>
 
-<<Prc User: types>>
+<<Prc external: types>>
 
-<<Prc User: interfaces>>
+<<Prc external: interfaces>>
 
 contains
 
-<<Prc User: procedures>>
+<<Prc external: procedures>>
 
-end module prc_user_defined
-@ %def prc_user_defined
+end module prc_external
+@ %def prc_external
 @
 \subsection{Handling of structure functions}
-User-defined matrix elements do not have access to the structure functions
+External matrix elements do not have access to the structure functions
 stored in the evaluators. The current solution to this problem is to
 just apply them explicitly after the computation of the matrix element.
-<<Prc User: parameters>>=
+<<Prc external: parameters>>=
   integer, parameter :: LEPTONS = 1
   integer, parameter :: HADRONS = 2
-<<Prc User: types>>=
+<<Prc external: types>>=
   type :: sf_handler_t
      integer :: initial_state_type = 0
      integer :: n_sf = -1
      real(default) :: val = one
   contains
-  <<Prc User: sf handler: TBP>>
+  <<Prc external: sf handler: TBP>>
   end type sf_handler_t
 
 @ %def sf_handler_t
 @
-<<Prc User: sf handler: TBP>>=
+<<Prc external: sf handler: TBP>>=
   procedure :: init => sf_handler_init
-<<Prc User: procedures>>=
+<<Prc external: procedures>>=
   subroutine sf_handler_init (sf_handler, sf_chain)
     class(sf_handler_t), intent(out) :: sf_handler
     type(sf_chain_instance_t), intent(in) :: sf_chain
@@ -4982,9 +5060,9 @@ just apply them explicitly after the computation of the matrix element.
 
 @ %def sf_handler_init
 @
-<<Prc User: sf handler: TBP>>=
+<<Prc external: sf handler: TBP>>=
   procedure :: init_dummy => sf_handler_init_dummy
-<<Prc User: procedures>>=
+<<Prc external: procedures>>=
   subroutine sf_handler_init_dummy (sf_handler)
     class(sf_handler_t), intent(out) :: sf_handler
     sf_handler%n_sf = 0
@@ -4993,9 +5071,9 @@ just apply them explicitly after the computation of the matrix element.
 
 @ %def sf_handler_init_dummy
 @
-<<Prc User: sf handler: TBP>>=
+<<Prc external: sf handler: TBP>>=
   procedure :: apply_structure_functions => sf_handler_apply_structure_functions
-<<Prc User: procedures>>=
+<<Prc external: procedures>>=
   subroutine sf_handler_apply_structure_functions (sf_handler, sf_chain, flavors)
      class(sf_handler_t), intent(inout) :: sf_handler
      type(sf_chain_instance_t), intent(in) :: sf_chain
@@ -5019,9 +5097,9 @@ just apply them explicitly after the computation of the matrix element.
 
 @ %def sf_handler_apply_structure_functions
 @
-<<Prc User: sf handler: TBP>>=
+<<Prc external: sf handler: TBP>>=
   procedure :: get_pdf => sf_handler_get_pdf
-<<Prc User: procedures>>=
+<<Prc external: procedures>>=
   function sf_handler_get_pdf (sf_handler, sf_chain, i, flavor) result (f)
      real(default) :: f
      class(sf_handler_t), intent(in) :: sf_handler
@@ -5046,70 +5124,69 @@ just apply them explicitly after the computation of the matrix element.
 
 @ %def sf_handler_get_pdf
 @
-\subsection{Abstract user defined processes}
-This process class allows us to factor out common necessities of user
-defined processes.
+\subsection{Abstract interface to external matrix elements}
+This process class allows us to factor out common necessities of processes
+that involve external code or libraries.
+
 \subsubsection{Workspace}
-This is the workspace that is available for user defined processes.
-<<Prc User: public>>=
-  public :: user_defined_state_t
-<<Prc User: types>>=
-  type, abstract, extends (prc_core_state_t) :: user_defined_state_t
+This is the workspace that is available for external matrix elements.
+<<Prc external: public>>=
+  public :: prc_external_state_t
+<<Prc external: types>>=
+  type, abstract, extends (prc_core_state_t) :: prc_external_state_t
     logical :: new_kinematics = .true.
     real(default) :: alpha_qcd = -1
   contains
-  <<Prc User: user defined state: TBP>>
-  end type user_defined_state_t
+  <<Prc external: external state: TBP>>
+  end type prc_external_state_t
 
-@ %def user_defined_state_t
+@ %def prc_external_state_t
 @
-<<Prc User: user defined state: TBP>>=
-  procedure :: reset_new_kinematics => user_defined_state_reset_new_kinematics
-<<Prc User: procedures>>=
-  subroutine user_defined_state_reset_new_kinematics (object)
-    class(user_defined_state_t), intent(inout) :: object
+<<Prc external: external state: TBP>>=
+  procedure :: reset_new_kinematics => prc_external_state_reset_new_kinematics
+<<Prc external: procedures>>=
+  subroutine prc_external_state_reset_new_kinematics (object)
+    class(prc_external_state_t), intent(inout) :: object
     object%new_kinematics = .true.
-  end subroutine user_defined_state_reset_new_kinematics
+  end subroutine prc_external_state_reset_new_kinematics
 
-@ %def user_defined_state_reset_new_kinematics
+@ %def prc_external_state_reset_new_kinematics
 @
-<<Prc User: user defined state: TBP>>=
-  procedure :: get_alpha_qcd => user_defined_state_get_alpha_qcd
-<<Prc User: procedures>>=
-  function user_defined_state_get_alpha_qcd (object) result (alpha_qcd)
+<<Prc external: external state: TBP>>=
+  procedure :: get_alpha_qcd => prc_external_state_get_alpha_qcd
+<<Prc external: procedures>>=
+  function prc_external_state_get_alpha_qcd (object) result (alpha_qcd)
     real(default) :: alpha_qcd
-    class(user_defined_state_t), intent(in) :: object
+    class(prc_external_state_t), intent(in) :: object
     alpha_qcd = object%alpha_qcd
-  end function user_defined_state_get_alpha_qcd
+  end function prc_external_state_get_alpha_qcd
 
-@ %def user_defined_state_get_alpha_qcd
+@ %def prc_external_state_get_alpha_qcd
 @
 \subsubsection{Driver}
-@ We have to add two O'Mega-routines to the user-defined driver to
+We have to add two O'Mega-routines to the external matrix-element driver to
 ensure proper process setup.  The problem is that during the setup of
 the real component, the particle and flavor data are taken from the Born
 component to set up the subtraction terms.  However, the Born component
 expects this data to be obtained from the Omega code, accessed by the
 driver.
-<<Prc User: public>>=
-  public :: user_defined_driver_t
-<<Prc User: types>>=
-  type, abstract, extends (prc_core_driver_t) :: user_defined_driver_t
+<<Prc external: public>>=
+  public :: prc_external_driver_t
+<<Prc external: types>>=
+  type, abstract, extends (prc_core_driver_t) :: prc_external_driver_t
      procedure(omega_update_alpha_s), nopass, pointer :: &
               update_alpha_s => null ()
      procedure(omega_is_allowed), nopass, pointer :: &
               is_allowed => null ()
-  !contains
-  !<Prc User: user defined driver: TBP>>
-  end type user_defined_driver_t
+  end type prc_external_driver_t
 
-@ %def user_defined_driver_t
+@ %def prc_external_driver_t
 @
 \subsubsection{Core}
-<<Prc User: public>>=
-  public :: prc_user_defined_base_t
-<<Prc User: types>>=
-  type, abstract, extends (prc_core_t) :: prc_user_defined_base_t
+<<Prc external: public>>=
+  public :: prc_external_t
+<<Prc external: types>>=
+  type, abstract, extends (prc_core_t) :: prc_external_t
     type(qcd_t) :: qcd
     integer :: n_flv = 1
     real(default), dimension(:), allocatable :: par
@@ -5117,43 +5194,54 @@ driver.
     type(sf_handler_t) :: sf_handler
     real(default) :: maximum_accuracy = 10000.0
   contains
-  <<Prc User: prc user defined base: TBP>>
-  end type prc_user_defined_base_t
+  <<Prc external: prc external: TBP>>
+  end type prc_external_t
 
-@ %def prc_user_defined_base_t
+@ %def prc_external_t
+@ By definition, this class of process-core types require extra code.
+<<Prc external: prc external: TBP>>=
+  procedure, nopass :: needs_external_code => &
+       prc_external_needs_external_code
+<<Prc external: procedures>>=
+  function prc_external_needs_external_code () result (flag)
+    logical :: flag
+    flag = .true.
+  end function prc_external_needs_external_code
+
+@ %def prc_external_needs_external_code
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: get_n_flvs => prc_user_defined_base_get_n_flvs
-<<Prc User: procedures>>=
-  pure function prc_user_defined_base_get_n_flvs (object, i_flv) result (n)
+<<Prc external: prc external: TBP>>=
+  procedure :: get_n_flvs => prc_external_get_n_flvs
+<<Prc external: procedures>>=
+  pure function prc_external_get_n_flvs (object, i_flv) result (n)
     integer :: n
-    class(prc_user_defined_base_t), intent(in) :: object
+    class(prc_external_t), intent(in) :: object
     integer, intent(in) :: i_flv
     n = size (object%data%flv_state (:,i_flv))
-  end function prc_user_defined_base_get_n_flvs
+  end function prc_external_get_n_flvs
 
-@ %def prc_user_defined_base_get_n_flvs
+@ %def prc_external_get_n_flvs
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: get_flv_state => prc_user_defined_base_get_flv_state
-<<Prc User: procedures>>=
-  function prc_user_defined_base_get_flv_state (object, i_flv) result (flv)
+<<Prc external: prc external: TBP>>=
+  procedure :: get_flv_state => prc_external_get_flv_state
+<<Prc external: procedures>>=
+  function prc_external_get_flv_state (object, i_flv) result (flv)
     integer, dimension(:), allocatable :: flv
-    class(prc_user_defined_base_t), intent(in) :: object
+    class(prc_external_t), intent(in) :: object
     integer, intent(in) :: i_flv
     allocate (flv (size (object%data%flv_state (:,i_flv))))
     flv = object%data%flv_state (:,i_flv)
-  end function prc_user_defined_base_get_flv_state
+  end function prc_external_get_flv_state
 
-@ %def prc_user_defined_base_get_flv_state
+@ %def prc_external_get_flv_state
 @ Return one single squared test matrix element. It is fixed to 1,
 therefore the integration output will be the phase space volume.
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_sqme => prc_user_defined_base_compute_sqme
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme (object, i_flv, i_hel, p, &
+<<Prc external: prc external: TBP>>=
+  procedure :: compute_sqme => prc_external_compute_sqme
+<<Prc external: procedures>>=
+  subroutine prc_external_compute_sqme (object, i_flv, i_hel, p, &
          ren_scale, sqme, bad_point)
-     class(prc_user_defined_base_t), intent(in) :: object
+     class(prc_external_t), intent(in) :: object
      integer, intent(in) :: i_flv, i_hel
      type(vector4_t), dimension(:), intent(in) :: p
      real(default), intent(in) :: ren_scale
@@ -5161,49 +5249,49 @@ therefore the integration output will be the phase space volume.
      logical, intent(out) :: bad_point
      sqme = one
      bad_point = .false.
-  end subroutine prc_user_defined_base_compute_sqme
+  end subroutine prc_external_compute_sqme
 
-@ %def prc_user_defined_base_compute_sqme
+@ %def prc_external_compute_sqme
 @ Return an array of 4 numbers corresponding to the BLHA output convention.
 Used for testing.
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_sqme_virt => prc_user_defined_base_compute_sqme_virt
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme_virt (object, i_flv, i_hel, &
+<<Prc external: prc external: TBP>>=
+  procedure :: compute_sqme_virt => prc_external_compute_sqme_virt
+<<Prc external: procedures>>=
+  subroutine prc_external_compute_sqme_virt (object, i_flv, i_hel, &
      p, ren_scale, sqme, bad_point)
-    class(prc_user_defined_base_t), intent(in) :: object
+    class(prc_external_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     logical, intent(out) :: bad_point
     real(default), dimension(4), intent(out) :: sqme
-    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_virt")
+    call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_virt")
     sqme(1) = 0.001_default
     sqme(2) = 0.001_default
     sqme(3) = 0.001_default
     sqme(4) = 0.0015_default
     bad_point = .false.
-  end subroutine prc_user_defined_base_compute_sqme_virt
+  end subroutine prc_external_compute_sqme_virt
 
-@ %def prc_user_defined_base_compute_sqme_virt
+@ %def prc_external_compute_sqme_virt
 @ Also return test output for color-correlated matrix elements. We only
   give a sensible result for the processes used in the functional tests,
   which have 2 -> 2 topology. All other processes will obtain a vanishing
   dummy color-correlation. This effectively switches off the subtraction
   contributions, reproducing the real phase-space volume.
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_sqme_color_c => prc_user_defined_base_compute_sqme_color_c
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme_color_c (object, i_flv, i_hel, p, &
+<<Prc external: prc external: TBP>>=
+  procedure :: compute_sqme_color_c => prc_external_compute_sqme_color_c
+<<Prc external: procedures>>=
+  subroutine prc_external_compute_sqme_color_c (object, i_flv, i_hel, p, &
      ren_scale, born_color_c, bad_point, born_out)
-    class(prc_user_defined_base_t), intent(inout) :: object
+    class(prc_external_t), intent(inout) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(inout), dimension(:,:) :: born_color_c
     logical, intent(out) :: bad_point
     real(default), intent(out), optional :: born_out
-    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_color_c")
+    call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_color_c")
     if (size (p) == 4) then
        if (present (born_out)) then
           born_out = 0.0015_default
@@ -5218,33 +5306,33 @@ Used for testing.
        if (present (born_out)) born_out = zero
        born_color_c = zero
     end if
-  end subroutine prc_user_defined_base_compute_sqme_color_c
+  end subroutine prc_external_compute_sqme_color_c
 
-@ %def prc_user_defined_base_compute_sqme_color_c
+@ %def prc_external_compute_sqme_color_c
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_alpha_s => prc_user_defined_base_compute_alpha_s
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_alpha_s &
+<<Prc external: prc external: TBP>>=
+  procedure :: compute_alpha_s => prc_external_compute_alpha_s
+<<Prc external: procedures>>=
+  subroutine prc_external_compute_alpha_s &
        (object, core_state, ren_scale)
-    class(prc_user_defined_base_t), intent(in) :: object
-    class(user_defined_state_t), intent(inout) :: core_state
+    class(prc_external_t), intent(in) :: object
+    class(prc_external_state_t), intent(inout) :: core_state
     real(default), intent(in) :: ren_scale
     core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
-  end subroutine prc_user_defined_base_compute_alpha_s
+  end subroutine prc_external_compute_alpha_s
 
-@ %def prc_user_defined_base_compute_alpha_s
+@ %def prc_external_compute_alpha_s
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: get_alpha_s => prc_user_defined_base_get_alpha_s
-<<Prc User: procedures>>=
-  function prc_user_defined_base_get_alpha_s (object, core_state) result (alpha)
-    class(prc_user_defined_base_t), intent(in) :: object
+<<Prc external: prc external: TBP>>=
+  procedure :: get_alpha_s => prc_external_get_alpha_s
+<<Prc external: procedures>>=
+  function prc_external_get_alpha_s (object, core_state) result (alpha)
+    class(prc_external_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha
     if (allocated (core_state)) then
       select type (core_state)
-      class is (user_defined_state_t)
+      class is (prc_external_state_t)
          alpha = core_state%alpha_qcd
       type is (omega_state_t)
          alpha = core_state%alpha_qcd
@@ -5254,47 +5342,47 @@ Used for testing.
     else
        alpha = zero
     end if
-  end function prc_user_defined_base_get_alpha_s
+  end function prc_external_get_alpha_s
 
-@ %def prc_user_defined_base_get_alpha_s
+@ %def prc_external_get_alpha_s
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: is_allowed => prc_user_defined_base_is_allowed
-<<Prc User: procedures>>=
-  function prc_user_defined_base_is_allowed (object, i_term, f, h, c) result (flag)
-    class(prc_user_defined_base_t), intent(in) :: object
+<<Prc external: prc external: TBP>>=
+  procedure :: is_allowed => prc_external_is_allowed
+<<Prc external: procedures>>=
+  function prc_external_is_allowed (object, i_term, f, h, c) result (flag)
+    class(prc_external_t), intent(in) :: object
     integer, intent(in) :: i_term, f, h, c
     logical :: flag
     logical(c_bool) :: cflag
     select type (driver => object%driver)
-    class is (user_defined_driver_t)
+    class is (prc_external_driver_t)
        call driver%is_allowed (f, h, c, cflag)
        flag = cflag
     class default
        call msg_fatal &
-          ("Driver does not fit to user_defined_base_t")
+          ("Driver does not fit to prc_external_t")
     end select
-  end function prc_user_defined_base_is_allowed
+  end function prc_external_is_allowed
 
 @
-@ %def prc_user_defined_base_is_allowed
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: get_nflv => prc_user_defined_base_get_nflv
-<<Prc User: procedures>>=
-  function prc_user_defined_base_get_nflv (object) result (n_flv)
-    class(prc_user_defined_base_t), intent(in) :: object
+@ %def prc_external_is_allowed
+<<Prc external: prc external: TBP>>=
+  procedure :: get_nflv => prc_external_get_nflv
+<<Prc external: procedures>>=
+  function prc_external_get_nflv (object) result (n_flv)
+    class(prc_external_t), intent(in) :: object
     integer :: n_flv
     n_flv = object%n_flv
-  end function prc_user_defined_base_get_nflv
+  end function prc_external_get_nflv
 
-@ %def prc_user_defined_base_get_nflv
+@ %def prc_external_get_nflv
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_hard_kinematics => prc_user_defined_base_compute_hard_kinematics
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_hard_kinematics &
+<<Prc external: prc external: TBP>>=
+  procedure :: compute_hard_kinematics => prc_external_compute_hard_kinematics
+<<Prc external: procedures>>=
+  subroutine prc_external_compute_hard_kinematics &
        (object, p_seed, i_term, int_hard, core_state)
-    class(prc_user_defined_base_t), intent(in) :: object
+    class(prc_external_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
@@ -5302,33 +5390,33 @@ Used for testing.
     call int_hard%set_momenta (p_seed)
     if (allocated (core_state)) then
       select type (core_state)
-      class is (user_defined_state_t); core_state%new_kinematics = .true.
+      class is (prc_external_state_t); core_state%new_kinematics = .true.
       end select
     end if
-  end subroutine prc_user_defined_base_compute_hard_kinematics
+  end subroutine prc_external_compute_hard_kinematics
 
 @
-@ %def prc_user_defined_base_compute_hard_kinematics
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_eff_kinematics => prc_user_defined_base_compute_eff_kinematics
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_eff_kinematics &
+@ %def prc_external_compute_hard_kinematics
+<<Prc external: prc external: TBP>>=
+  procedure :: compute_eff_kinematics => prc_external_compute_eff_kinematics
+<<Prc external: procedures>>=
+  subroutine prc_external_compute_eff_kinematics &
        (object, i_term, int_hard, int_eff, core_state)
-    class(prc_user_defined_base_t), intent(in) :: object
+    class(prc_external_t), intent(in) :: object
     integer, intent(in) :: i_term
     type(interaction_t), intent(in) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
     class(prc_core_state_t), intent(inout), allocatable :: core_state
-  end subroutine prc_user_defined_base_compute_eff_kinematics
+  end subroutine prc_external_compute_eff_kinematics
 
 @
-@ %def prc_user_defined_base_compute_eff_kinematics
+@ %def prc_external_compute_eff_kinematics
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: set_parameters => prc_user_defined_base_set_parameters
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_set_parameters (object, qcd, model)
-    class(prc_user_defined_base_t), intent(inout) :: object
+<<Prc external: prc external: TBP>>=
+  procedure :: set_parameters => prc_external_set_parameters
+<<Prc external: procedures>>=
+  subroutine prc_external_set_parameters (object, qcd, model)
+    class(prc_external_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
     class(model_data_t), intent(in), target, optional :: model
     object%qcd = qcd
@@ -5338,149 +5426,128 @@ Used for testing.
        call model%real_parameters_to_array (object%par)
        object%scheme = model%get_scheme_num ()
     end if
-  end subroutine prc_user_defined_base_set_parameters
+  end subroutine prc_external_set_parameters
 
-@ %def prc_user_defined_base_set_parameters
+@ %def prc_external_set_parameters
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: update_alpha_s => prc_user_defined_base_update_alpha_s
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_update_alpha_s (object, core_state, fac_scale)
-    class(prc_user_defined_base_t), intent(in) :: object
+<<Prc external: prc external: TBP>>=
+  procedure :: update_alpha_s => prc_external_update_alpha_s
+<<Prc external: procedures>>=
+  subroutine prc_external_update_alpha_s (object, core_state, fac_scale)
+    class(prc_external_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     real(default), intent(in) :: fac_scale
     real(default) :: alpha_qcd
     if (allocated (object%qcd%alpha)) then
        alpha_qcd = object%qcd%alpha%get (fac_scale)
        select type (driver => object%driver)
-       class is (user_defined_driver_t)
+       class is (prc_external_driver_t)
           call driver%update_alpha_s (alpha_qcd)
        end select
        select type (core_state)
-       class is (user_defined_state_t)
+       class is (prc_external_state_t)
           core_state%alpha_qcd = alpha_qcd
        type is (omega_state_t)
           core_state%alpha_qcd = alpha_qcd
        end select
     end if
-  end subroutine prc_user_defined_base_update_alpha_s
+  end subroutine prc_external_update_alpha_s
 
-@ %def prc_user_defined_base_update_alpha_s
+@ %def prc_external_update_alpha_s
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: init_sf_handler => prc_user_defined_base_init_sf_handler
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_init_sf_handler (core, sf_chain)
-     class(prc_user_defined_base_t), intent(inout) :: core
+<<Prc external: prc external: TBP>>=
+  procedure :: init_sf_handler => prc_external_init_sf_handler
+<<Prc external: procedures>>=
+  subroutine prc_external_init_sf_handler (core, sf_chain)
+     class(prc_external_t), intent(inout) :: core
      type(sf_chain_instance_t), intent(in) :: sf_chain
      if (allocated (sf_chain%sf)) then
         call core%sf_handler%init (sf_chain)
      else
         call core%sf_handler%init_dummy ()
      end if
-  end subroutine prc_user_defined_base_init_sf_handler
+  end subroutine prc_external_init_sf_handler
 
-@ %def prc_user_defined_base_init_sf_handler
+@ %def prc_external_init_sf_handler
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: init_sf_handler_dummy => prc_user_defined_base_init_sf_handler_dummy
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_init_sf_handler_dummy (core)
-     class(prc_user_defined_base_t), intent(inout) :: core
+<<Prc external: prc external: TBP>>=
+  procedure :: init_sf_handler_dummy => prc_external_init_sf_handler_dummy
+<<Prc external: procedures>>=
+  subroutine prc_external_init_sf_handler_dummy (core)
+     class(prc_external_t), intent(inout) :: core
      call core%sf_handler%init_dummy ()
-  end subroutine prc_user_defined_base_init_sf_handler_dummy
+  end subroutine prc_external_init_sf_handler_dummy
 
-@ %def prc_user_defined_base_init_sf_handler_dummy
+@ %def prc_external_init_sf_handler_dummy
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: apply_structure_functions => prc_user_defined_base_apply_structure_functions
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_apply_structure_functions (core, sf_chain, flavors)
-    class(prc_user_defined_base_t), intent(inout) :: core
+<<Prc external: prc external: TBP>>=
+  procedure :: apply_structure_functions => prc_external_apply_structure_functions
+<<Prc external: procedures>>=
+  subroutine prc_external_apply_structure_functions (core, sf_chain, flavors)
+    class(prc_external_t), intent(inout) :: core
     type(sf_chain_instance_t), intent(in) :: sf_chain
     integer, dimension(2), intent(in) :: flavors
     call core%sf_handler%apply_structure_functions (sf_chain, flavors)
-  end subroutine prc_user_defined_base_apply_structure_functions
+  end subroutine prc_external_apply_structure_functions
 
-@ %def prc_user_defined_base_apply_structure_functions
+@ %def prc_external_apply_structure_functions
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: get_sf_value => prc_user_defined_base_get_sf_value
-<<Prc User: procedures>>=
-  function prc_user_defined_base_get_sf_value (core) result (val)
+<<Prc external: prc external: TBP>>=
+  procedure :: get_sf_value => prc_external_get_sf_value
+<<Prc external: procedures>>=
+  function prc_external_get_sf_value (core) result (val)
     real(default) :: val
-    class(prc_user_defined_base_t), intent(in) :: core
+    class(prc_external_t), intent(in) :: core
     val = core%sf_handler%val
-  end function prc_user_defined_base_get_sf_value
+  end function prc_external_get_sf_value
 
-@ %def prc_user_defined_base_get_sf_value
+@ %def prc_external_get_sf_value
 @
-<<Prc User: prc user defined base: TBP>>=
-  procedure(prc_user_defined_base_includes_polarization), deferred :: &
+<<Prc external: prc external: TBP>>=
+  procedure(prc_external_includes_polarization), deferred :: &
     includes_polarization
-<<Prc User: interfaces>>=
+<<Prc external: interfaces>>=
   abstract interface
-    function prc_user_defined_base_includes_polarization (object) result (polarized)
+    function prc_external_includes_polarization (object) result (polarized)
       import
       logical :: polarized
-      class(prc_user_defined_base_t), intent(in) :: object
-    end function prc_user_defined_base_includes_polarization
+      class(prc_external_t), intent(in) :: object
+    end function prc_external_includes_polarization
   end interface
 
-@ %def prc_user_defined_base_includes_polarization
-@
-<<Prc User: prc user defined base: TBP>>=
-  procedure(prc_user_defined_base_create_and_load_extra_libraries), &
-       deferred :: create_and_load_extra_libraries
-<<Prc User: interfaces>>=
-  abstract interface
-    subroutine prc_user_defined_base_create_and_load_extra_libraries &
-         (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
-      import
-      class(prc_user_defined_base_t), intent(inout) :: core
-      integer, intent(in), dimension(:,:), allocatable :: flv_states
-      type(var_list_t), intent(in) :: var_list
-      type(os_data_t), intent(in) :: os_data
-      type(string_t), intent(in) :: libname
-      type(model_data_t), intent(in), target :: model
-      integer, intent(in) :: i_core
-      logical, intent(in) :: is_nlo
-    end subroutine prc_user_defined_base_create_and_load_extra_libraries
-  end interface
-
-@ %def prc_user_defined_base_create_and_load_extra_libraries
+@ %def prc_external_includes_polarization
 @
 \subsubsection{Configuration}
-This is the abstract user defined process definition
-<<Prc User: public>>=
-  public :: user_defined_def_t
-<<Prc User: types>>=
-  type, abstract, extends (prc_core_def_t) :: user_defined_def_t
+This is the abstract external matrix-element interface.
+<<Prc external: public>>=
+  public :: prc_external_def_t
+<<Prc external: types>>=
+  type, abstract, extends (prc_core_def_t) :: prc_external_def_t
     type(string_t) :: basename
   contains
-  <<Prc User: user def: TBP>>
-  end type user_defined_def_t
+  <<Prc external: external def: TBP>>
+  end type prc_external_def_t
 
-@ %def user_defined_def_t
+@ %def prc_external_def_t
 @
-<<Prc User: user def: TBP>>=
-  procedure :: set_active_writer => user_defined_def_set_active_writer
-<<Prc User: procedures>>=
-  subroutine user_defined_def_set_active_writer (def, active)
-    class(user_defined_def_t), intent(inout) :: def
+<<Prc external: external def: TBP>>=
+  procedure :: set_active_writer => prc_external_def_set_active_writer
+<<Prc external: procedures>>=
+  subroutine prc_external_def_set_active_writer (def, active)
+    class(prc_external_def_t), intent(inout) :: def
     logical, intent(in) :: active
     select type (writer => def%writer)
-    class is (prc_user_defined_writer_t)
+    class is (prc_external_writer_t)
        writer%active = active
     end select
-  end subroutine user_defined_def_set_active_writer
+  end subroutine prc_external_def_set_active_writer
 
-@ %def_user_defined_def_set_active_writer
+@ %def_prc_external_def_set_active_writer
 @
-<<Prc User: user def: TBP>>=
-  procedure, nopass :: get_features => user_defined_def_get_features
-<<Prc User: procedures>>=
-  subroutine user_defined_def_get_features (features)
+<<Prc external: external def: TBP>>=
+  procedure, nopass :: get_features => prc_external_def_get_features
+<<Prc external: procedures>>=
+  subroutine prc_external_def_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (6))
     features = [ &
@@ -5490,23 +5557,23 @@ This is the abstract user defined process definition
          var_str ("is_allowed"), &
          var_str ("new_event"), &
          var_str ("get_amplitude")]
-  end subroutine user_defined_def_get_features
+  end subroutine prc_external_def_get_features
 
 @
-@ %def user_defined_def_get_features
-<<Prc User: user def: TBP>>=
-  procedure :: connect => user_defined_def_connect
-  procedure :: omega_connect => user_defined_def_connect
-<<Prc User: procedures>>=
-  subroutine user_defined_def_connect (def, lib_driver, i, proc_driver)
-    class(user_defined_def_t), intent(in) :: def
+@ %def prc_external_def_get_features
+<<Prc external: external def: TBP>>=
+  procedure :: connect => prc_external_def_connect
+  procedure :: omega_connect => prc_external_def_connect
+<<Prc external: procedures>>=
+  subroutine prc_external_def_connect (def, lib_driver, i, proc_driver)
+    class(prc_external_def_t), intent(in) :: def
     class(prclib_driver_t), intent(in) :: lib_driver
     integer, intent(in) :: i
     class(prc_core_driver_t), intent(inout) :: proc_driver
     integer :: pid, fid
     type(c_funptr) :: fptr
     select type (proc_driver)
-    class is (user_defined_driver_t)
+    class is (prc_external_driver_t)
        pid = i
        fid = 2
        call lib_driver%get_fptr (pid, fid, fptr)
@@ -5515,21 +5582,21 @@ This is the abstract user defined process definition
        call lib_driver%get_fptr (pid, fid, fptr)
        call c_f_procpointer (fptr, proc_driver%is_allowed)
     end select
-  end subroutine user_defined_def_connect
+  end subroutine prc_external_def_connect
 
-@ %def user_defined_def_connect
+@ %def prc_external_def_connect
 @
-<<Prc User: user def: TBP>>=
-  procedure, nopass :: needs_code => user_def_needs_code
-<<Prc User: procedures>>=
-  function user_def_needs_code () result (flag)
+<<Prc external: external def: TBP>>=
+  procedure, nopass :: needs_code => prc_external_def_needs_code
+<<Prc external: procedures>>=
+  function prc_external_def_needs_code () result (flag)
     logical :: flag
     flag = .true.
-  end function user_def_needs_code
+  end function prc_external_def_needs_code
 
-@  %def user_def_needs_code
+@  %def prc_external_def_needs_code
 @
-<<Prc User: interfaces>>=
+<<Prc external: interfaces>>=
   abstract interface
      subroutine omega_update_alpha_s (alpha_s) bind(C)
        import
@@ -5548,10 +5615,10 @@ This is the abstract user defined process definition
 @ %def omega-interfaces
 @
 \subsubsection{Writer}
-<<Prc User: public>>=
-  public :: prc_user_defined_writer_t
-<<Prc User: types>>=
-  type, abstract, extends (prc_writer_f_module_t) :: prc_user_defined_writer_t
+<<Prc external: public>>=
+  public :: prc_external_writer_t
+<<Prc external: types>>=
+  type, abstract, extends (prc_writer_f_module_t) :: prc_external_writer_t
     type(string_t) :: model_name
     type(string_t) :: process_mode
     type(string_t) :: process_string
@@ -5560,18 +5627,18 @@ This is the abstract user defined process definition
     integer :: n_out = 0
     logical :: active = .true.
   contains
-  <<Prc User: user defined writer: TBP>>
-  end type prc_user_defined_writer_t
+  <<Prc external: external writer: TBP>>
+  end type prc_external_writer_t
 
-@ %def prc_user_defined_writer_t
+@ %def prc_external_writer_t
 @
-<<Prc User: user defined writer: TBP>>=
-  procedure :: init => user_defined_writer_init
-  procedure :: base_init => user_defined_writer_init
-<<Prc User: procedures>>=
-  pure subroutine user_defined_writer_init &
+<<Prc external: external writer: TBP>>=
+  procedure :: init => prc_external_writer_init
+  procedure :: base_init => prc_external_writer_init
+<<Prc external: procedures>>=
+  pure subroutine prc_external_writer_init &
        (writer, model_name, prt_in, prt_out, restrictions)
-    class(prc_user_defined_writer_t), intent(inout) :: writer
+    class(prc_external_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     type(string_t), intent(in), optional :: restrictions
@@ -5600,26 +5667,26 @@ This is the abstract user defined process definition
       end do
       s = s // "'"
     end associate
-  end subroutine user_defined_writer_init
+  end subroutine prc_external_writer_init
 
-@ %def user_defined_writer_init
+@ %def prc_external_writer_init
 @
-<<Prc User: user defined writer: TBP>>=
-  procedure, nopass :: get_module_name => prc_user_defined_writer_get_module_name
-<<Prc User: procedures>>=
-  function prc_user_defined_writer_get_module_name (id) result (name)
+<<Prc external: external writer: TBP>>=
+  procedure, nopass :: get_module_name => prc_external_writer_get_module_name
+<<Prc external: procedures>>=
+  function prc_external_writer_get_module_name (id) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: id
     name = "opr_" // id
-  end function prc_user_defined_writer_get_module_name
+  end function prc_external_writer_get_module_name
 
-@ %def prc_user_defined_writer_get_module_name
+@ %def prc_external_writer_get_module_name
 @
-<<Prc User: user defined writer: TBP>>=
-  procedure :: write_wrapper => prc_user_defined_writer_write_wrapper
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_writer_write_wrapper (writer, unit, id, feature)
-    class(prc_user_defined_writer_t), intent(in) :: writer
+<<Prc external: external writer: TBP>>=
+  procedure :: write_wrapper => prc_external_writer_write_wrapper
+<<Prc external: procedures>>=
+  subroutine prc_external_writer_write_wrapper (writer, unit, id, feature)
+    class(prc_external_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id, feature
     type(string_t) :: name
@@ -5700,15 +5767,15 @@ This is the abstract user defined process definition
        write (unit, "(9A)")  "end subroutine ", char (name)
     end select
 
-  end subroutine prc_user_defined_writer_write_wrapper
+  end subroutine prc_external_writer_write_wrapper
 
 @
-@ %def user_defined_writer_write_wrapper
-<<Prc User: user defined writer: TBP>>=
-  procedure :: write_interface => prc_user_defined_writer_write_interface
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_writer_write_interface (writer, unit, id, feature)
-    class(prc_user_defined_writer_t), intent(in) :: writer
+@ %def prc_external_writer_write_wrapper
+<<Prc external: external writer: TBP>>=
+  procedure :: write_interface => prc_external_writer_write_interface
+<<Prc external: procedures>>=
+  subroutine prc_external_writer_write_interface (writer, unit, id, feature)
+    class(prc_external_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(string_t), intent(in) :: feature
@@ -5759,54 +5826,54 @@ This is the abstract user defined process definition
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     end select
     write (unit, "(2x,9A)")  "end interface"
-  end subroutine prc_user_defined_writer_write_interface
+  end subroutine prc_external_writer_write_interface
 
-@ %def prc_user_defined_writer_write_interface
+@ %def prc_external_writer_write_interface
 @ Empty, but can be overridden.
-<<Prc User: user defined writer: TBP>>=
-  procedure :: write_source_code => prc_user_defined_writer_write_source_code
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_writer_write_source_code (writer, id)
-    class(prc_user_defined_writer_t), intent(in) :: writer
+<<Prc external: external writer: TBP>>=
+  procedure :: write_source_code => prc_external_writer_write_source_code
+<<Prc external: procedures>>=
+  subroutine prc_external_writer_write_source_code (writer, id)
+    class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
     call msg_debug (D_ME_METHODS, &
-         "prc_user_defined_writer_write_source_code (no-op)")
+         "prc_external_writer_write_source_code (no-op)")
     !!! This is a dummy
-  end subroutine prc_user_defined_writer_write_source_code
+  end subroutine prc_external_writer_write_source_code
 
-@ %def prc_user_defined_writer_write_source_code
+@ %def prc_external_writer_write_source_code
 @ Empty, but can be overridden.
-<<Prc User: user defined writer: TBP>>=
-  procedure :: before_compile => prc_user_defined_writer_before_compile
-  procedure :: after_compile => prc_user_defined_writer_after_compile
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_writer_before_compile (writer, id)
-    class(prc_user_defined_writer_t), intent(in) :: writer
+<<Prc external: external writer: TBP>>=
+  procedure :: before_compile => prc_external_writer_before_compile
+  procedure :: after_compile => prc_external_writer_after_compile
+<<Prc external: procedures>>=
+  subroutine prc_external_writer_before_compile (writer, id)
+    class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
     call msg_debug (D_ME_METHODS, &
-         "prc_user_defined_writer_before_compile (no-op)")
+         "prc_external_writer_before_compile (no-op)")
     !!! This is a dummy
-  end subroutine prc_user_defined_writer_before_compile
+  end subroutine prc_external_writer_before_compile
   
-  subroutine prc_user_defined_writer_after_compile (writer, id)
-    class(prc_user_defined_writer_t), intent(in) :: writer
+  subroutine prc_external_writer_after_compile (writer, id)
+    class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
     call msg_debug (D_ME_METHODS, &
-         "prc_user_defined_writer_after_compile (no-op)")
+         "prc_external_writer_after_compile (no-op)")
     !!! This is a dummy
-  end subroutine prc_user_defined_writer_after_compile
+  end subroutine prc_external_writer_after_compile
   
-@ %def prc_user_defined_writer_before_compile
-@ %def prc_user_defined_writer_after_compile
+@ %def prc_external_writer_before_compile
+@ %def prc_external_writer_after_compile
 @ Standard Makefile, set up to call \oMega.  Additionally, the \oMega\ output
 can be exploited for its data-management parts.
-<<Prc User: user defined writer: TBP>>=
-  procedure :: write_makefile_code => prc_user_defined_writer_write_makefile_code
-  procedure :: base_write_makefile_code => prc_user_defined_writer_write_makefile_code
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_writer_write_makefile_code &
+<<Prc external: external writer: TBP>>=
+  procedure :: write_makefile_code => prc_external_writer_write_makefile_code
+  procedure :: base_write_makefile_code => prc_external_writer_write_makefile_code
+<<Prc external: procedures>>=
+  subroutine prc_external_writer_write_makefile_code &
        (writer, unit, id, os_data, verbose, testflag)
-    class(prc_user_defined_writer_t), intent(in) :: writer
+    class(prc_external_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
     type(os_data_t), intent(in) :: os_data
@@ -5848,14 +5915,14 @@ can be exploited for its data-management parts.
     end if    
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
 
-  end subroutine prc_user_defined_writer_write_makefile_code
+  end subroutine prc_external_writer_write_makefile_code
 
-@ %def prc_user_defined_writer_write_makefile_code
+@ %def prc_external_writer_write_makefile_code
 @
-<<Prc User: user defined writer: TBP>>=
-  procedure, nopass:: get_procname => prc_user_defined_writer_writer_get_procname
-<<Prc User: procedures>>=
-  function prc_user_defined_writer_writer_get_procname (feature) result (name)
+<<Prc external: external writer: TBP>>=
+  procedure, nopass:: get_procname => prc_external_writer_writer_get_procname
+<<Prc external: procedures>>=
+  function prc_external_writer_writer_get_procname (feature) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: feature
     select case (char (feature))
@@ -5872,192 +5939,192 @@ can be exploited for its data-management parts.
     case default
        name = feature
     end select
-  end function prc_user_defined_writer_writer_get_procname
+  end function prc_external_writer_writer_get_procname
 
-@ %def prc_user_defined_writer_writer_get_procname
+@ %def prc_external_writer_writer_get_procname
 @
-\subsection{User defined test}
+\subsection{external test}
 \subsubsection{Writer}
-<<Prc User: public>>=
-  public :: user_defined_test_writer_t
-<<Prc User: types>>=
-  type, extends (prc_user_defined_writer_t) :: user_defined_test_writer_t
+<<Prc external: public>>=
+  public :: prc_external_test_writer_t
+<<Prc external: types>>=
+  type, extends (prc_external_writer_t) :: prc_external_test_writer_t
   contains
-  <<Prc User: user test writer: TBP>>
-  end type user_defined_test_writer_t
+  <<Prc external: external test writer: TBP>>
+  end type prc_external_test_writer_t
 
-@ %def user_defined_test_writer_t
+@ %def prc_external_test_writer_t
 @
-<<Prc User: user test writer: TBP>>=
-  procedure, nopass :: type_name => user_defined_test_writer_type_name
-<<Prc User: procedures>>=
-  function user_defined_test_writer_type_name () result (string)
+<<Prc external: external test writer: TBP>>=
+  procedure, nopass :: type_name => prc_external_test_writer_type_name
+<<Prc external: procedures>>=
+  function prc_external_test_writer_type_name () result (string)
     type(string_t) :: string
-    string = "User-defined dummy"
-  end function user_defined_test_writer_type_name
+    string = "External matrix element dummy"
+  end function prc_external_test_writer_type_name
 
-@ %def user_defined_test_writer_type_name
+@ %def prc_external_test_writer_type_name
 @
 \subsubsection{Workspace}
-This looks pretty useless. Why don't we make [[user_defined_state_t]]
+This looks pretty useless. Why don't we make [[prc_external_state_t]]
 nonabstract and remove this?
-<<Prc User: public>>=
-  public :: user_defined_test_state_t
-<<Prc User: types>>=
-  type, extends (user_defined_state_t) :: user_defined_test_state_t
+<<Prc external: public>>=
+  public :: prc_external_test_state_t
+<<Prc external: types>>=
+  type, extends (prc_external_state_t) :: prc_external_test_state_t
   contains
-  <<Prc User: user defined test state: TBP>>
-  end type user_defined_test_state_t
+  <<Prc external: external test state: TBP>>
+  end type prc_external_test_state_t
 
-@ %def user_defined_test_state_t
+@ %def prc_external_test_state_t
 @
-<<Prc User: user defined test state: TBP>>=
-  procedure :: write => user_defined_test_state_write
-<<Prc User: procedures>>=
-  subroutine user_defined_test_state_write (object, unit)
-    class(user_defined_test_state_t), intent(in) :: object
+<<Prc external: external test state: TBP>>=
+  procedure :: write => prc_external_test_state_write
+<<Prc external: procedures>>=
+  subroutine prc_external_test_state_write (object, unit)
+    class(prc_external_test_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
-  end subroutine user_defined_test_state_write
+  end subroutine prc_external_test_state_write
 
-@ %def user_defined_test_state_write
+@ %def prc_external_test_state_write
 @
 \subsubsection{Driver}
-<<Prc User: public>>=
-  public :: user_defined_test_driver_t
-<<Prc User: types>>=
-  type, extends (user_defined_driver_t) :: user_defined_test_driver_t
+<<Prc external: public>>=
+  public :: prc_external_test_driver_t
+<<Prc external: types>>=
+  type, extends (prc_external_driver_t) :: prc_external_test_driver_t
   contains
-  <<Prc User: user test driver: TBP>>
-  end type user_defined_test_driver_t
+  <<Prc external: external test driver: TBP>>
+  end type prc_external_test_driver_t
 
-@ %def user_defined_test_driver_t
+@ %def prc_external_test_driver_t
 @
-<<Prc User: user test driver: TBP>>=
-  procedure, nopass :: type_name => user_defined_test_driver_type_name
-<<Prc User: procedures>>=
-  function user_defined_test_driver_type_name () result (type)
+<<Prc external: external test driver: TBP>>=
+  procedure, nopass :: type_name => prc_external_test_driver_type_name
+<<Prc external: procedures>>=
+  function prc_external_test_driver_type_name () result (type)
     type(string_t) :: type
-    type = "User-defined dummy"
-  end function user_defined_test_driver_type_name
+    type = "External matrix element dummy"
+  end function prc_external_test_driver_type_name
 
-@ %def user_defined_test_driver_type_name
+@ %def prc_external_test_driver_type_name
 @
 \subsubsection{Configuration}
-A user defined test definition.
-<<Prc User: public>>=
-  public :: user_defined_test_def_t
-<<Prc User: types>>=
-  type, extends (user_defined_def_t) :: user_defined_test_def_t
+A external test definition.
+<<Prc external: public>>=
+  public :: prc_external_test_def_t
+<<Prc external: types>>=
+  type, extends (prc_external_def_t) :: prc_external_test_def_t
   contains
-  <<Prc User: user test def: TBP>>
-  end type user_defined_test_def_t
+  <<Prc external: external test def: TBP>>
+  end type prc_external_test_def_t
 
-@ %def user_defined_test_def_t
+@ %def prc_external_test_def_t
 @
-<<Prc User: user test def: TBP>>=
-  procedure :: init => user_defined_test_def_init
-<<Prc User: procedures>>=
-  subroutine user_defined_test_def_init (object, basename, model_name, &
+<<Prc external: external test def: TBP>>=
+  procedure :: init => prc_external_test_def_init
+<<Prc external: procedures>>=
+  subroutine prc_external_test_def_init (object, basename, model_name, &
        prt_in, prt_out)
-    class(user_defined_test_def_t), intent(inout) :: object
+    class(prc_external_test_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     object%basename = basename
-    allocate (user_defined_test_writer_t :: object%writer)
+    allocate (prc_external_test_writer_t :: object%writer)
     select type (writer => object%writer)
-    type is (user_defined_test_writer_t)
+    type is (prc_external_test_writer_t)
        call writer%init (model_name, prt_in, prt_out)
     end select
-  end subroutine user_defined_test_def_init
+  end subroutine prc_external_test_def_init
 
-@ %def user_defined_test_def_init
+@ %def prc_external_test_def_init
 @
-<<Prc User: user test def: TBP>>=
-  procedure, nopass :: type_string => user_defined_test_def_type_string
-<<Prc User: procedures>>=
-  function user_defined_test_def_type_string () result (string)
+<<Prc external: external test def: TBP>>=
+  procedure, nopass :: type_string => prc_external_test_def_type_string
+<<Prc external: procedures>>=
+  function prc_external_test_def_type_string () result (string)
     type(string_t) :: string
-    string = "user test dummy"
-  end function user_defined_test_def_type_string
+    string = "external test dummy"
+  end function prc_external_test_def_type_string
 
-@ %def user_defined_def_type_string
+@ %def prc_external_def_type_string
 @
-<<Prc User: user test def: TBP>>=
-  procedure :: write => user_defined_test_def_write
-<<Prc User: procedures>>=
-  subroutine user_defined_test_def_write (object, unit)
-    class(user_defined_test_def_t), intent(in) :: object
+<<Prc external: external test def: TBP>>=
+  procedure :: write => prc_external_test_def_write
+<<Prc external: procedures>>=
+  subroutine prc_external_test_def_write (object, unit)
+    class(prc_external_test_def_t), intent(in) :: object
     integer, intent(in) :: unit
-  end subroutine user_defined_test_def_write
+  end subroutine prc_external_test_def_write
 
-@ %def user_defined_test_def_write
+@ %def prc_external_test_def_write
 @
-<<Prc User: user test def: TBP>>=
-  procedure :: read => user_defined_test_def_read
-<<Prc User: procedures>>=
-  subroutine user_defined_test_def_read (object, unit)
-    class(user_defined_test_def_t), intent(out) :: object
+<<Prc external: external test def: TBP>>=
+  procedure :: read => prc_external_test_def_read
+<<Prc external: procedures>>=
+  subroutine prc_external_test_def_read (object, unit)
+    class(prc_external_test_def_t), intent(out) :: object
     integer, intent(in) :: unit
-  end subroutine user_defined_test_def_read
+  end subroutine prc_external_test_def_read
 
-@ %def user_defined_test_def_read
+@ %def prc_external_test_def_read
 @
-<<Prc User: user test def: TBP>>=
-  procedure :: allocate_driver => user_defined_test_def_allocate_driver
-<<Prc User: procedures>>=
-  subroutine user_defined_test_def_allocate_driver (object, driver, basename)
-    class(user_defined_test_def_t), intent(in) :: object
+<<Prc external: external test def: TBP>>=
+  procedure :: allocate_driver => prc_external_test_def_allocate_driver
+<<Prc external: procedures>>=
+  subroutine prc_external_test_def_allocate_driver (object, driver, basename)
+    class(prc_external_test_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
-    if (.not. allocated (driver)) allocate (user_defined_test_driver_t :: driver)
-  end subroutine user_defined_test_def_allocate_driver
+    if (.not. allocated (driver)) allocate (prc_external_test_driver_t :: driver)
+  end subroutine prc_external_test_def_allocate_driver
 
-@ %def user_defined_test_def_allocate_driver
+@ %def prc_external_test_def_allocate_driver
 @
 \subsubsection{Core}
-This user defined test just returns $|\mathcal{M}|^2=1$ and thus the
+This external test just returns $|\mathcal{M}|^2=1$ and thus the
 result of the integration is the n-particle-phase-space volume.
-<<Prc User: public>>=
-  public :: prc_user_defined_test_t
-<<Prc User: types>>=
-  type, extends (prc_user_defined_base_t) :: prc_user_defined_test_t
+<<Prc external: public>>=
+  public :: prc_external_test_t
+<<Prc external: types>>=
+  type, extends (prc_external_t) :: prc_external_test_t
   contains
-  <<Prc User: prc test: TBP>>
-  end type prc_user_defined_test_t
+  <<Prc external: prc test: TBP>>
+  end type prc_external_test_t
 
-@ %def prc_user_defined_test_t
+@ %def prc_external_test_t
 @
-<<Prc User: prc test: TBP>>=
-  procedure :: write => prc_user_defined_test_write
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_test_write (object, unit)
-    class(prc_user_defined_test_t), intent(in) :: object
+<<Prc external: prc test: TBP>>=
+  procedure :: write => prc_external_test_write
+<<Prc external: procedures>>=
+  subroutine prc_external_test_write (object, unit)
+    class(prc_external_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    call msg_message ("Test user-defined matrix elements")
-  end subroutine prc_user_defined_test_write
+    call msg_message ("Test external matrix elements")
+  end subroutine prc_external_test_write
 
-@ %def prc_user_defined_write
+@ %def prc_external_write
 @
-<<Prc User: prc test: TBP>>=
-  procedure :: write_name => prc_user_defined_test_write_name
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_test_write_name (object, unit)
-    class(prc_user_defined_test_t), intent(in) :: object
+<<Prc external: prc test: TBP>>=
+  procedure :: write_name => prc_external_test_write_name
+<<Prc external: procedures>>=
+  subroutine prc_external_test_write_name (object, unit)
+    class(prc_external_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
-    write (u,"(1x,A)") "Core: user defined test"
-  end subroutine prc_user_defined_test_write_name
+    write (u,"(1x,A)") "Core: external test"
+  end subroutine prc_external_test_write_name
 
-@ %def prc_user_defined_test_write_name
+@ %def prc_external_test_write_name
 @
-<<Prc User: prc test: TBP>>=
-  procedure :: compute_amplitude => prc_user_defined_test_compute_amplitude
-<<Prc User: procedures>>=
-  function prc_user_defined_test_compute_amplitude &
+<<Prc external: prc test: TBP>>=
+  procedure :: compute_amplitude => prc_external_test_compute_amplitude
+<<Prc external: procedures>>=
+  function prc_external_test_compute_amplitude &
        (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
        core_state)  result (amp)
-    class(prc_user_defined_test_t), intent(in) :: object
+    class(prc_external_test_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
@@ -6066,43 +6133,43 @@ result of the integration is the n-particle-phase-space volume.
     class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     complex(default) :: amp
     select type (core_state)
-    class is (user_defined_test_state_t)
+    class is (prc_external_test_state_t)
        core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
     end select
     amp = 0.0
-  end function prc_user_defined_test_compute_amplitude
+  end function prc_external_test_compute_amplitude
 
-@ %def prc_user_defined_test_compute_amplitude
+@ %def prc_external_test_compute_amplitude
 @
-<<Prc User: prc test: TBP>>=
-  procedure :: allocate_workspace => prc_user_defined_test_allocate_workspace
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_test_allocate_workspace (object, core_state)
-    class(prc_user_defined_test_t), intent(in) :: object
+<<Prc external: prc test: TBP>>=
+  procedure :: allocate_workspace => prc_external_test_allocate_workspace
+<<Prc external: procedures>>=
+  subroutine prc_external_test_allocate_workspace (object, core_state)
+    class(prc_external_test_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
-    allocate (user_defined_test_state_t :: core_state)
-  end subroutine prc_user_defined_test_allocate_workspace
+    allocate (prc_external_test_state_t :: core_state)
+  end subroutine prc_external_test_allocate_workspace
 
-@ %def prc_user_defined_test_allocate_workspace
+@ %def prc_external_test_allocate_workspace
 @
-<<Prc User: prc test: TBP>>=
-  procedure :: includes_polarization => prc_user_defined_test_includes_polarization
-<<Prc User: procedures>>=
-  function prc_user_defined_test_includes_polarization (object) result (polarized)
+<<Prc external: prc test: TBP>>=
+  procedure :: includes_polarization => prc_external_test_includes_polarization
+<<Prc external: procedures>>=
+  function prc_external_test_includes_polarization (object) result (polarized)
     logical :: polarized
-    class(prc_user_defined_test_t), intent(in) :: object
+    class(prc_external_test_t), intent(in) :: object
     polarized = .false.
-  end function prc_user_defined_test_includes_polarization
+  end function prc_external_test_includes_polarization
 
-@ %def prc_user_defined_test_includes_polarization
+@ %def prc_external_test_includes_polarization
 @
-<<Prc User: prc test: TBP>>=
-  procedure :: create_and_load_extra_libraries => &
-       prc_user_defined_test_create_and_load_extra_libraries
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_test_create_and_load_extra_libraries &
+<<Prc external: prc test: TBP>>=
+  procedure :: prepare_external_code => &
+       prc_external_test_prepare_external_code
+<<Prc external: procedures>>=
+  subroutine prc_external_test_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
-    class(prc_user_defined_test_t), intent(inout) :: core
+    class(prc_external_test_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
     type(os_data_t), intent(in) :: os_data
@@ -6110,9 +6177,9 @@ result of the integration is the n-particle-phase-space volume.
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
     logical, intent(in) :: is_nlo
-  end subroutine prc_user_defined_test_create_and_load_extra_libraries
+  end subroutine prc_external_test_prepare_external_code
 
-@ %def prc_user_defined_test_create_and_load_extra_libraries
+@ %def prc_external_test_prepare_external_code
 @
 \subsection{Threshold}
 <<[[prc_threshold.f90]]>>=
@@ -6141,7 +6208,7 @@ module prc_threshold
   use process_libraries
   use prc_core_def
   use prc_core
-  use prc_user_defined
+  use prc_external
 
 <<Standard module head>>
 
@@ -6162,7 +6229,7 @@ end module prc_threshold
 <<Prc Threshold: public>>=
   public :: threshold_writer_t
 <<Prc Threshold: types>>=
-  type, extends (prc_user_defined_writer_t) :: threshold_writer_t
+  type, extends (prc_external_writer_t) :: threshold_writer_t
      integer :: nlo_type
   contains
   <<Prc Threshold: threshold writer: TBP>>
@@ -6318,7 +6385,7 @@ end module prc_threshold
 <<Prc Threshold: public>>=
   public :: threshold_driver_t
 <<Prc Threshold: types>>=
-  type, extends (user_defined_driver_t) :: threshold_driver_t
+  type, extends (prc_external_driver_t) :: threshold_driver_t
     procedure(threshold_olp_eval2), nopass, pointer :: &
          olp_eval2 => null ()
     procedure(threshold_set_process_mode), nopass, pointer :: &
@@ -6392,7 +6459,7 @@ end module prc_threshold
 <<Prc Threshold: public>>=
   public :: threshold_def_t
 <<Prc Threshold: types>>=
-  type, extends (user_defined_def_t) :: threshold_def_t
+  type, extends (prc_external_def_t) :: threshold_def_t
      integer :: nlo_type
   contains
   <<Prc Threshold: threshold def: TBP>>
@@ -6431,7 +6498,7 @@ end module prc_threshold
     string = "threshold computation"
   end function threshold_def_type_string
 
-@ %def user_defined_def_type_string
+@ %def prc_external_def_type_string
 @ [[write]] and [[read]] could be put in the abstract version
 <<Prc Threshold: threshold def: TBP>>=
   procedure :: write => threshold_def_write
@@ -6503,7 +6570,7 @@ end module prc_threshold
 <<Prc Threshold: public>>=
   public :: threshold_state_t
 <<Prc Threshold: types>>=
-  type, extends (user_defined_state_t) :: threshold_state_t
+  type, extends (prc_external_state_t) :: threshold_state_t
   contains
   <<Prc Threshold: threshold state: TBP>>
   end type threshold_state_t
@@ -6524,7 +6591,7 @@ end module prc_threshold
 <<Prc Threshold: public>>=
   public :: prc_threshold_t
 <<Prc Threshold: types>>=
-  type, extends (prc_user_defined_base_t) :: prc_threshold_t
+  type, extends (prc_external_t) :: prc_threshold_t
      real(default), dimension(:,:), allocatable :: parray_ofs
      real(default), dimension(:,:), allocatable :: parray_ons
      integer :: leg
@@ -6544,7 +6611,7 @@ end module prc_threshold
     call msg_message ("Supply amplitudes squared for threshold computation")
   end subroutine prc_threshold_write
 
-@ %def prc_user_defined_write
+@ %def prc_external_write
 @
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: write_name => prc_threshold_write_name
@@ -6558,6 +6625,20 @@ end module prc_threshold
   end subroutine prc_threshold_write_name
 
 @ %def prc_threshold_write_name
+@
+This core type has the beam polarization as an extra parameter.
+<<Prc Threshold: prc threshold: TBP>>=
+  procedure :: set_beam_pol => prc_threshold_set_beam_pol
+<<Prc Threshold: procedures>>=
+  subroutine prc_threshold_set_beam_pol (object, has_beam_pol)
+    class(prc_threshold_t), intent(inout) :: object
+    logical, intent(in), optional :: has_beam_pol
+    if (present (has_beam_pol)) then
+       object%has_beam_pol = has_beam_pol
+    end if
+  end subroutine prc_threshold_set_beam_pol
+  
+@ %def prc_threshold_set_beam_pol
 @
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: compute_amplitude => prc_threshold_compute_amplitude
@@ -6574,7 +6655,7 @@ end module prc_threshold
     class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     complex(default) :: amp
     select type (core_state)
-    class is (user_defined_test_state_t)
+    class is (prc_external_test_state_t)
        core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
     end select
     amp = 0
@@ -6779,10 +6860,10 @@ matrix element.
 @ %def prc_threshold_activate_parameters
 @
 <<Prc Threshold: prc threshold: TBP>>=
-  procedure :: create_and_load_extra_libraries => &
-       prc_threshold_create_and_load_extra_libraries
+  procedure :: prepare_external_code => &
+       prc_threshold_prepare_external_code
 <<Prc Threshold: procedures>>=
-  subroutine prc_threshold_create_and_load_extra_libraries &
+  subroutine prc_threshold_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_threshold_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -6793,19 +6874,19 @@ matrix element.
     integer, intent(in) :: i_core
     logical, intent(in) :: is_nlo
     call msg_debug (D_ME_METHODS, &
-         "prc_threshold_create_and_load_extra_libraries")
+         "prc_threshold_prepare_external_code")
     if (allocated (core%driver)) then
        select type (driver => core%driver)
        type is (threshold_driver_t)
           if (driver%nlo_type == NLO_VIRTUAL) call driver%start_openloops ()
        end select
     else
-       call msg_bug ("prc_threshold_create_and_load_extra_libraries: " &
+       call msg_bug ("prc_threshold_prepare_external_code: " &
             // "driver is not allocated")
     end if
-  end subroutine prc_threshold_create_and_load_extra_libraries
+  end subroutine prc_threshold_prepare_external_code
 
-@ %def prc_threshold_create_and_load_extra_libraries
+@ %def prc_threshold_prepare_external_code
 @
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: includes_polarization => prc_threshold_includes_polarization

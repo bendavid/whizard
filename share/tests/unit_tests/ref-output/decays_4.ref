@@ -24,7 +24,7 @@
 
 ========================================================================
  Process instance [decay]: 'decays_4_d'
-   Run ID = 'decays_4'
+   Run ID = ''
    Process components:
    * 1: 'decays_4_d_i1':   s => f, fbar [test_decay]
    status = event complete

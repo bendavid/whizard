@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -437,7 +437,7 @@ contains
     type(paths_t), intent(in), optional :: paths
     type(string_t), intent(in), optional :: logfile
     integer :: seed
-    call os_data_init (global%os_data, paths)
+    call global%os_data%init (paths)
     if (present (logfile)) then
        global%logfile = logfile
     else
@@ -776,8 +776,6 @@ contains
     if (associated (global%model)) then
        global%model => null ()
        global%model_is_copy = .false.
-       call global%var_list%set_string (var_str ("$model_name"), &
-            var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_unselect_model
 

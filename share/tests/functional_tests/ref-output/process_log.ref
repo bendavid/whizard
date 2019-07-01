@@ -6,7 +6,6 @@
    Process components:
      1: 'process_log_1_p1_i1':   e-, e+ => m-, m+ [omega]
 ------------------------------------------------------------------------
- Variable list: [not shown]
 ###############################################################################
    Integral   =  8.3556567814E+03
    Error      =  3.2359019246E+00
@@ -116,7 +115,8 @@
    15  [f(11) h(1) / f(-11) h(1) / f(13) h(1) / f(-13) h(-1)]
    16  [f(11) h(1) / f(-11) h(1) / f(13) h(1) / f(-13) h(1)]
 ###############################################################################
-Variable list:
+ Variable list:
+------------------------------------------------------------------------
 ee =  3.000000000000E-01
 me =  0.000000000000E+00
 mmu =  1.000000000000E+01
@@ -207,7 +207,7 @@ gaussian_spread2 =  0.000000000000E+00
 ?logging = true
 [undefined] $job_id = [unknown string]
 [undefined] $compile_workspace = [unknown string]
-seed = 1
+seed = 0
 $model_name = "QED"
 [undefined] process_num_id = [unknown integer]
 $method = "omega"
@@ -413,6 +413,8 @@ $extension_lha_verb = "lha.verb"
 $shower_method = "WHIZARD"
 ?shower_verbose = false
 $ps_PYTHIA_PYGIVE = ""
+$ps_PYTHIA8_config = ""
+$ps_PYTHIA8_config_file = ""
 ps_mass_cutoff =  1.000000000000E+00
 ps_fsr_lambda =  2.900000000000E-01
 ps_isr_lambda =  2.900000000000E-01
@@ -536,4 +538,7 @@ $fcflags = Fortran-flags
 [undefined] num_id(process_log_1_p1) = [unknown integer]
 [undefined] integral(process_log_1_p1) = [unknown real]
 [undefined] error(process_log_1_p1) = [unknown real]
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+ Beam structure: [any particles]
 ###############################################################################

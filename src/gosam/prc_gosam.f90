@@ -1,6 +1,6 @@
-! WHIZARD 2.6.4 Aug 23 2018
+! WHIZARD 2.7.0 Jan 21 2019
 !
-! Copyright (C) 1999-2018 by
+! Copyright (C) 1999-2019 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -120,8 +120,8 @@ module prc_gosam
     logical :: initialized = .false.
   contains
     procedure :: prepare_library => prc_gosam_prepare_library
-    procedure :: create_and_load_extra_libraries => &
-         prc_gosam_create_and_load_extra_libraries
+    procedure :: prepare_external_code => &
+         prc_gosam_prepare_external_code
     procedure :: write_makefile => prc_gosam_write_makefile
     procedure :: execute_makefile => prc_gosam_execute_makefile
     procedure :: create_olp_library => prc_gosam_create_olp_library
@@ -411,7 +411,7 @@ contains
     call object%load_driver (os_data)
   end subroutine prc_gosam_prepare_library
 
-  subroutine prc_gosam_create_and_load_extra_libraries &
+  subroutine prc_gosam_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_gosam_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -428,7 +428,7 @@ contains
     call core%set_particle_properties (model)
     call core%set_electroweak_parameters (model)
     call core%print_parameter_file (i_core)
-  end subroutine prc_gosam_create_and_load_extra_libraries
+  end subroutine prc_gosam_prepare_external_code
 
   subroutine prc_gosam_write_makefile (object, unit, libname)
     class(prc_gosam_t), intent(in) :: object
@@ -548,7 +548,7 @@ contains
     integer :: pos_real, pos_imag
     real(double) :: acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_spin_c(i_flv, i_hel) > 0) then
+    if (object%i_spin_c(i_flv, i_hel) >= 0) then
        me_sc = cmplx (zero ,zero, kind=default)
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &

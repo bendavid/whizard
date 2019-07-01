@@ -22,7 +22,6 @@ $run_id = "8001.1"
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
-| Integrator: preparing VAMP grid directory 'job_id_4_x.8001'
 | Initializing integration for process job_id_4_x:
 | Run ID = "8001.1"
 | Beam structure: [any particles]
@@ -30,6 +29,7 @@ $run_id = "8001.1"
 |   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
 |   sqrts = 1.000000000000E+02 GeV
+| Integrator: preparing VAMP grid directory 'job_id_4_x.8001'
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'job_id_4_x.8001/job_id_4_x.8001.1.i1.phs'
@@ -45,6 +45,7 @@ $run_id = "8001.1"
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 1 equivalence between channels.
 | Phase space: wood
+| Integrator: preparing VAMP grid directory 'job_id_4_x.8001'
 Warning: No cuts have been defined.
 | Starting integration for process 'job_id_4_x'
 | Integrate: iterations = 1:1000

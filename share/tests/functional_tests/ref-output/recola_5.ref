@@ -22,7 +22,7 @@ sqrts =  1.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process recola_5_p1:
-| Recola: registering processes for 'recola_5_p1'
+| Recola: registering processes for 'recola_5_p1_BORN'
 | Recola: process #1: e+ e- -> mu+ mu- (LO)
 | Recola: preparing processes for integration
 | Beam structure: [any particles]
@@ -61,8 +61,8 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process recola_5_p2:
-| Recola: registering processes for 'recola_5_p2'
-| Recola: process #1: e+ e- -> tau+ tau- (LO)
+| Recola: registering processes for 'recola_5_p2_BORN'
+| Recola: process #2: e+ e- -> tau+ tau- (LO)
 | Recola: preparing processes for integration
 | Beam structure: [any particles]
 | Beam data (collision):

@@ -530,7 +530,7 @@ module event_transforms_uti
   use format_utils, only: write_separator
   use os_interface
   use sm_qcd
-  use model_data
+  use models
   use state_matrices, only: FM_IGNORE_HELICITY
   use interactions, only: reset_interaction_counter
   use process_libraries
@@ -556,6 +556,8 @@ module event_transforms_uti
 contains
 
 <<Event transforms: tests>>
+
+<<Event transforms: test auxiliary>>
 
 end module event_transforms_uti
 
@@ -585,12 +587,9 @@ nothing but to trigger event generation for an elementary process.
   subroutine event_transforms_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
+    type(model_t), target :: model
     type(process_library_t), target :: lib
-    type(string_t) :: libname, procname1, run_id
-    class(mci_t), allocatable :: mci_template
+    type(string_t) :: libname, procname1
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_t), allocatable, target :: process
@@ -606,34 +605,28 @@ nothing but to trigger event generation for an elementary process.
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
+    call os_data%init ()
 
     libname = "event_transforms_1_lib"
     procname1 = "event_transforms_1_p"
-    run_id = "event_transforms_1"
 
     call prc_test_create_library (libname, lib, &
          scattering = .true., procname1 = procname1)
     call reset_interaction_counter ()
 
-    allocate (model)
     call model%init_test ()
 
     allocate (process)
-    call process%init (procname1, run_id, &
-         lib, os_data, qcd, rng_factory, model)
+    call process%init (procname1, lib, os_data, model)
     call process%setup_test_cores ()
 
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%init_components (phs_config_template)
 
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test_midpoint)
     call process%setup_terms ()
 
     allocate (process_instance)
@@ -652,8 +645,7 @@ nothing but to trigger event generation for an elementary process.
     write (u, "(A)")
 
     allocate (evt_trivial_t :: evt)
-    model => process%get_model_ptr ()
-    call evt%connect (process_instance, model)
+    call evt%connect (process_instance, process%get_model_ptr ())
 
     write (u, "(A)")  "* Generate event and subsequent transform"
     write (u, "(A)")
@@ -694,6 +686,18 @@ nothing but to trigger event generation for an elementary process.
   end subroutine event_transforms_1
 
 @ %def event_transforms_1
+@ MCI record prepared for midpoint integrator.
+<<Event transforms: test auxiliary>>=
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    use variables, only: var_list_t
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
+@ %def dispatch_mci_test_midpoint
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hadronization interface}
@@ -704,22 +708,31 @@ module hadrons
 
 <<Use kinds with double>>
 <<Use strings>>
-  use io_units
-  use format_utils, only: write_separator
+
+  use constants
   use diagnostics
-  use sm_qcd
+  use event_transforms
+  use format_utils, only: write_separator
+  use helicities
+  use hep_common
+  use io_units
   use lorentz
-  use subevents, only: PRT_OUTGOING
-  use particles
-  use variables
   use model_data
   use models
-  use rng_base
-  use hep_common
-  use event_transforms
+  use numeric_utils, only: vanishes
+  use particles
+  use physics_defs
+  use process, only: process_t
+  use instances, only: process_instance_t
+  use process_stacks
+  use pythia8
+  use rng_base, only: rng_t
   use shower_base
   use shower_pythia6
-  use process
+  use sm_qcd
+  use subevents
+  use variables
+  use whizard_lha
 
 <<Standard module head>>
 
@@ -1200,11 +1213,17 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
 
 @ %def hadrons_pythia6_make_particle_set
 @
-\subsection{[[Pythia8]] Hadronization Type}
+\subsection{[[PYTHIA8]] Hadronization}
+@
 <<Hadrons: public>>=
   public :: hadrons_pythia8_t
 <<Hadrons: types>>=
-  type,extends (hadrons_t) :: hadrons_pythia8_t
+  type, extends (hadrons_t) :: hadrons_pythia8_t
+     type(pythia8_t) :: pythia
+     type(whizard_lha_t) :: lhaup
+     logical :: user_process_set = .false.
+     logical :: pythia_initialized = .false., &
+          lhaup_initialized = .false.
   contains
    <<Hadrons: hadrons pythia8: TBP>>
   end type hadrons_pythia8_t
@@ -1220,21 +1239,86 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     type(shower_settings_t), intent(in) :: shower_settings
     type(hadron_settings_t), intent(in) :: hadron_settings
     type(model_t), intent(in), target :: model_hadrons
-    logical :: options_not_set_by_shower
+    hadrons%model => model_hadrons
     hadrons%shower_settings = shower_settings
     hadrons%hadron_settings = hadron_settings
-    options_not_set_by_shower = .not. (shower_settings%method == PS_PYTHIA8 &
-         .and. (shower_settings%isr_active .or. shower_settings%fsr_active))
-    if (options_not_set_by_shower) then
-       !call pythia8_set_verbose (settings%verbose)
-       !call pythia8_set_config (settings%pythia8_config)
-       !call pythia8_set_config_file (settings%pythia8_config_file)
-    end if
     call msg_message &
-         ("Using Pythia8 interface for hadronization and decays")
+         ("Hadronization: Using PYTHIA8 interface for hadronization and decays.")
+    ! TODO sbrass which verbose?
+    call hadrons%pythia%init (verbose = shower_settings%verbose)
+    call hadrons%lhaup%init ()
   end subroutine hadrons_pythia8_init
 
 @ %def hadrons_pythia8_init
+@ Transfer hadron settings to [[PYTHIA8]].
+<<Hadrons: hadrons pythia8: TBP>>=
+  procedure, private :: transfer_settings => hadrons_pythia8_transfer_settings
+<<Hadrons: procedures>>=
+  subroutine hadrons_pythia8_transfer_settings (hadrons)
+    class(hadrons_pythia8_t), intent(inout), target :: hadrons
+    real(default) :: r
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_transfer_settings")
+    call msg_debug2 (D_TRANSFORMS, "pythia_initialized", hadrons%pythia_initialized)
+    if (hadrons%pythia_initialized) return
+    call hadrons%pythia%import_rng (hadrons%rng)
+    call hadrons%pythia%parse_and_set_config (hadrons%shower_settings%pythia8_config)
+    if (len (hadrons%shower_settings%pythia8_config_file) > 0) &
+         call hadrons%pythia%read_file (hadrons%shower_settings%pythia8_config_file)
+    call hadrons%pythia%read_string (var_str ("Beams:frameType = 5"))
+    call hadrons%pythia%read_string (var_str ("ProcessLevel:all = off"))
+    if (.not. hadrons%shower_settings%verbose) then
+       call hadrons%pythia%read_string (var_str ("Print:quiet = on"))
+    end if
+    call hadrons%pythia%set_lhaup_ptr (hadrons%lhaup)
+    call hadrons%pythia%init_pythia ()
+    hadrons%pythia_initialized = .true.
+  end subroutine hadrons_pythia8_transfer_settings
+
+@ %def hadrons_pythia8_transfer_settings
+@ Set user process for the LHA interface.
+<<Hadrons: hadrons pythia8: TBP>>=
+  procedure, private :: set_user_process => hadrons_pythia8_set_user_process
+<<Hadrons: procedures>>=
+  subroutine hadrons_pythia8_set_user_process (hadrons, pset)
+    class(hadrons_pythia8_t), intent(inout) :: hadrons
+    type(particle_set_t), intent(in) :: pset
+    integer, dimension(2) :: beam_pdg
+    real(default), dimension(2) :: beam_energy
+    integer, parameter :: process_id = 0, n_processes = 0
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_set_user_process")
+    beam_pdg = [pset%prt(1)%get_pdg (), pset%prt(2)%get_pdg ()]
+    beam_energy = [energy(pset%prt(1)%p), energy(pset%prt(2)%p)]
+    call hadrons%lhaup%set_init (beam_pdg, beam_energy, &
+         n_processes, unweighted = .false., negative_weights = .false.)
+    call hadrons%lhaup%set_process_parameters (process_id = process_id, &
+         cross_section = one, error = one)
+  end subroutine hadrons_pythia8_set_user_process
+
+@ %def hadrons_pythia8_set_user_process
+@ Import particle set.
+<<Hadrons: hadrons pythia8: TBP>>=
+  procedure, private :: import_particle_set => hadrons_pythia8_import_particle_set
+<<Hadrons: procedures>>=
+  subroutine hadrons_pythia8_import_particle_set (hadrons, particle_set)
+    class(hadrons_pythia8_t), target, intent(inout) :: hadrons
+    type(particle_set_t), intent(in) :: particle_set
+    type(particle_set_t) :: pset_reduced
+    integer, parameter :: PROCESS_ID = 1
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")
+    if (.not. hadrons%user_process_set) then
+       call hadrons%set_user_process (particle_set)
+       hadrons%user_process_set = .true.
+    end if
+    call hadrons%lhaup%set_event_process (process_id = PROCESS_ID, scale = -one, &
+         alpha_qcd = -one, alpha_qed = -one, weight = -one)
+    call hadrons%lhaup%set_event (process_id = PROCESS_ID, particle_set = particle_set, &
+         polarization = .true.)
+    if (debug_active (D_TRANSFORMS)) then
+       call hadrons%lhaup%list_init ()
+    end if
+  end subroutine hadrons_pythia8_import_particle_set
+
+@ %def hadrons_pythia8_import_particle_set
 @
 <<Hadrons: hadrons pythia8: TBP>>=
   procedure :: hadronize => hadrons_pythia8_hadronize
@@ -1243,8 +1327,15 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     class(hadrons_pythia8_t), intent(inout) :: hadrons
     type(particle_set_t), intent(in) :: particle_set
     logical, intent(out) :: valid
-    ! call pythia8_hadronize
-    valid = .true.
+    if (signal_is_pending ()) return
+    call hadrons%import_particle_set (particle_set)
+    if (.not. hadrons%pythia_initialized) &
+         call hadrons%transfer_settings ()
+    call hadrons%pythia%next (valid)
+    if (debug_active (D_TRANSFORMS)) then
+       call hadrons%pythia%list_event ()
+       call particle_set%write (summary=.true., compressed=.true.)
+    end if
   end subroutine hadrons_pythia8_hadronize
 
 @ %def hadrons_pythia8_hadronize
@@ -1258,7 +1349,26 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
     logical, intent(out) :: valid
-    ! call pythia8_combine_particle_set
+    type(particle_t), dimension(:), allocatable :: beam
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia8_make_particle_set")
+    if (signal_is_pending ()) return
+    associate (settings => hadrons%shower_settings)
+      if (debug_active (D_TRANSFORMS)) then
+         call msg_debug (D_TRANSFORMS, 'Combine PYTHIA8 with particle set')
+         call msg_debug (D_TRANSFORMS, 'Particle set before replacing')
+         call particle_set%write (summary=.true., compressed=.true.)
+         call hadrons%pythia%list_event ()
+         call msg_debug (D_TRANSFORMS, string = "settings%hadron_collision", &
+              value = settings%hadron_collision)
+      end if
+      call hadrons%pythia%get_hadron_particles (&
+           model, hadrons%model, particle_set, &
+           helicity = PRT_DEFINITE_HELICITY)
+    end associate
+    if (debug_active (D_TRANSFORMS)) then
+       print *, 'Particle set after replacing'
+       call particle_set%write (summary=.true., compressed=.true.)
+    end if
     valid = .true.
   end subroutine hadrons_pythia8_make_particle_set
 
@@ -1274,7 +1384,7 @@ depend on the specific hadronization implementation of
   type, extends (evt_t) :: evt_hadrons_t
      class(hadrons_t), allocatable :: hadrons
      type(model_t), pointer :: model_hadrons => null()
-     type(qcd_t), pointer :: qcd_t => null()
+     type(qcd_t) :: qcd
      logical :: is_first_event
    contains
    <<Hadrons: evt hadrons: TBP>>
@@ -1402,6 +1512,21 @@ invalid.
   end subroutine evt_hadrons_make_particle_set
 
 @ %def event_hadrons_make_particle_set
+@ Connect the process with the hadrons object.
+<<Hadrons: evt hadrons: TBP>>=
+  procedure :: connect => evt_hadrons_connect
+<<Hadrons: procedures>>=
+  subroutine evt_hadrons_connect &
+       (evt, process_instance, model, process_stack)
+    class(evt_hadrons_t), intent(inout), target :: evt
+    type(process_instance_t), intent(in), target :: process_instance
+    class(model_data_t), intent(in), target :: model
+    type(process_stack_t), intent(in), optional :: process_stack
+    call evt%base_connect (process_instance, model, process_stack)
+    call evt%make_rng (evt%process)
+  end subroutine evt_hadrons_connect
+
+@ %def evt_hadrons_connect
 @ Create RNG instances, spawned by the process object.
 <<Hadrons: evt hadrons: TBP>>=
   procedure :: make_rng => evt_hadrons_make_rng
@@ -2234,7 +2359,7 @@ Insert a resonance (W boson) into an event with momentum assignment.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -2387,7 +2512,7 @@ because of color mismatch: W boson is color-neutral.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -2524,7 +2649,7 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -2669,7 +2794,7 @@ using the selector component.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -2791,7 +2916,7 @@ resonance.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -2894,7 +3019,7 @@ particles.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -5016,7 +5141,7 @@ trivial case where the event is kept collinear.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -5118,7 +5243,7 @@ is conserved, and all outgoing photons and partons are on-shell
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -5231,7 +5356,7 @@ are not in their c.m.\ frame (but collinear).
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -5369,7 +5494,7 @@ trivial case where the event is kept collinear.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -5473,7 +5598,7 @@ is conserved, and all outgoing beam remnants and photons are on-shell
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -5586,7 +5711,7 @@ before EPA are not in their c.m.\ frame (but collinear).
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
@@ -7876,6 +8001,7 @@ module decays_uti
   use os_interface
   use sm_qcd
   use model_data
+  use models
   use state_matrices, only: FM_IGNORE_HELICITY
   use interactions, only: reset_interaction_counter
   use flavors
@@ -7940,14 +8066,11 @@ generation.
     logical, intent(in) :: scattering, decay
     logical, intent(in), optional :: decay_rest_frame
 
-    type(model_data_t), target :: model
-    class(model_data_t), pointer :: model_copy
-    type(string_t) :: libname, procname1, procname2, run_id
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
+    type(model_t), target :: model
+    type(model_t), target :: model_copy
+    type(string_t) :: libname, procname1, procname2
     type(process_entry_t), pointer :: process
     type(process_instance_t), allocatable, target :: process_instance
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(field_data_t), pointer :: field_data
     real(default) :: sqrts
@@ -7955,7 +8078,6 @@ generation.
     libname = prefix // "_lib"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
-    run_id = prefix
 
     call model%init_test ()
     call model%set_par (var_str ("ff"), 0.4_default)
@@ -7973,13 +8095,10 @@ generation.
 
     call reset_interaction_counter ()
 
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
 
     if (scattering) then
 
-       allocate (rng_test_factory_t :: rng_factory)
-       allocate (model_copy)
        call model_copy%init (model%get_name (), &
             model%get_n_real (), &
             model%get_n_complex (), &
@@ -7988,15 +8107,13 @@ generation.
        call model_copy%copy_from (model)
 
        allocate (process)
-       call process%init (procname1, &
-            run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%init (procname1, lib, os_data, model_copy)
        call process%setup_test_cores ()
-       call process%init_component &
-          (1, .true., mci_template, phs_config_template)
+       call process%init_components (phs_config_template)
        sqrts = 1000
        call process%setup_beams_sqrts (sqrts, i_core = 1)
        call process%configure_phs ()
-       call process%setup_mci ()
+       call process%setup_mci (dispatch_mci_test_midpoint)
        call process%setup_terms ()
 
        allocate (process_instance)
@@ -8011,8 +8128,6 @@ generation.
     end if
 
     if (decay) then
-       allocate (rng_test_factory_t :: rng_factory)
-       allocate (model_copy)
        call model_copy%init (model%get_name (), &
             model%get_n_real (), &
             model%get_n_complex (), &
@@ -8021,18 +8136,16 @@ generation.
        call model_copy%copy_from (model)
 
        allocate (process)
-       call process%init (procname2, &
-            run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%init (procname2, lib, os_data, model_copy)
        call process%setup_test_cores ()
-       call process%init_component &
-          (1, .true., mci_template, phs_config_template)
+       call process%init_components (phs_config_template)
        if (present (decay_rest_frame)) then
           call process%setup_beams_decay (rest_frame = decay_rest_frame, i_core = 1)
        else
           call process%setup_beams_decay (rest_frame = .not. scattering, i_core = 1)
        end if
        call process%configure_phs ()
-       call process%setup_mci ()
+       call process%setup_mci (dispatch_mci_test_midpoint)
        call process%setup_terms ()
 
        allocate (process_instance)
@@ -8047,10 +8160,23 @@ generation.
     end if
 
     call model%final ()
+    call model_copy%final ()
 
   end subroutine prepare_testbed
 
 @ %def prepare_testbed
+@ MCI record prepared for midpoint integrator.
+<<Decays: test auxiliary>>=
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    use variables, only: var_list_t
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
+@ %def dispatch_mci_test_midpoint
 @
 \subsubsection{Simple decay configuration}
 We define a branching configuration with two decay modes.  We set the
@@ -8077,7 +8203,7 @@ integral values by hand, so we do not need to evaluate processes, yet.
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_sm_test ()
 
     call flv_h%init (25, model)
@@ -8138,7 +8264,7 @@ by another branching.
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call model%init_sm_test ()
 
     call model%set_unstable (25, [var_str ("h_ww")])
@@ -8206,7 +8332,7 @@ with an actual process object.
     write (u, "(A)")  "* Initialize environment and integrate process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_3"
     call prepare_testbed &
@@ -8281,7 +8407,7 @@ decay event.
          &and decay configuration"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_4"
     call prepare_testbed &
@@ -8361,7 +8487,7 @@ f$.
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_5"
     procname1 = prefix // "_p"
@@ -8444,7 +8570,6 @@ f$.
     call process_instance%final ()
     deallocate (process_instance)
 
-    call process%final ()
     call process_stack%final ()
 
     write (u, "(A)")
@@ -8484,7 +8609,7 @@ $s\to f\bar f$.
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "decays_6"
     procname1 = prefix // "_p"
@@ -8578,7 +8703,7 @@ This is the type for the tau decay event transform.
 <<Tau decays: types>>=
   type, extends (evt_t) :: evt_tau_decays_t
      type(model_t), pointer :: model_hadrons => null()
-     type(qcd_t), pointer :: qcd_t => null()
+     type(qcd_t) :: qcd
    contains
    <<Tau decays: evt tau decays: TBP>>
   end type evt_tau_decays_t
@@ -8734,7 +8859,7 @@ hadrons that can be generated in the shower.
      class(shower_base_t), allocatable :: shower
      class(matching_t), allocatable :: matching
      type(model_t), pointer :: model_hadrons => null ()
-     type(qcd_t), pointer :: qcd => null()
+     type(qcd_t) :: qcd
      type(pdf_data_t) :: pdf_data
      type(os_data_t) :: os_data
      logical :: is_first_event
@@ -8836,8 +8961,11 @@ transformation chain is evaluated.
   subroutine evt_shower_prepare_new_event (evt, i_mci, i_term)
     class(evt_shower_t), intent(inout) :: evt
     integer, intent(in) :: i_mci, i_term
+    real(default) :: fac_scale, alpha_s
+    fac_scale = evt%process_instance%get_fac_scale (i_term)
+    alpha_s = evt%process_instance%get_alpha_s (i_term)
     call evt%reset ()
-    call evt%shower%prepare_new_event ()
+    call evt%shower%prepare_new_event (fac_scale, alpha_s)
   end subroutine evt_shower_prepare_new_event
 
 @ %def evt_shower_prepare_new_event
@@ -8907,17 +9035,12 @@ we mark the particle set as invalid. This procedure directly takes the
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
     logical :: valid, vetoed
-    integer :: i_term
-    real(default) :: fac_scale
     call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
-    i_term = 1
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
-    fac_scale = evt%process_instance%get_fac_scale (i_term)
     if (evt%is_first_event)  call evt%first_event ()
-    call evt%shower%import_particle_set &
-         (evt%particle_set, evt%os_data, fac_scale)
+    call evt%shower%import_particle_set (evt%particle_set)
     if (allocated (evt%matching)) then
        call evt%matching%before_shower (evt%particle_set, vetoed)
        if (msg_level(D_TRANSFORMS) >= DEBUG) then
@@ -9071,18 +9194,20 @@ module shower_uti
   use sm_qcd
   use physics_defs, only: BORN
   use model_data
+  use models
   use state_matrices, only: FM_IGNORE_HELICITY
   use process_libraries
   use rng_base
   use rng_tao
+  use dispatch_rng, only: dispatch_rng_factory_fallback
   use mci_base
   use mci_midpoint
   use phs_base
   use phs_single
+  use prc_core_def, only: prc_core_def_t
   use prc_core
   use prc_omega
   use variables
-  use models
   use event_transforms
   use tauola_interface !NODEP!
 
@@ -9092,6 +9217,8 @@ module shower_uti
   use pdf
   use shower_base
   use shower_core
+
+  use dispatch_rng_ut, only: dispatch_rng_factory_tao
 
   use shower
 
@@ -9130,28 +9257,24 @@ This sequence sets up a two-jet process, ready for generating events.
     type(os_data_t), intent(out) :: os_data
     type(process_library_t), intent(out), target :: lib
     type(model_list_t), intent(out) :: model_list
-    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model
     type(model_t), pointer :: model_tmp
     type(process_t), target, intent(out) :: process
     type(process_instance_t), target, intent(out) :: process_instance
     type(var_list_t), pointer :: model_vars
-    type(string_t) :: model_name, libname, procname, run_id
+    type(string_t) :: model_name, libname, procname
     type(process_def_entry_t), pointer :: entry
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     class(prc_core_t), allocatable :: core_template
-    class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
 
     model_name = "SM"
     libname = prefix // "_lib"
     procname = prefix // "p"
-    run_id = "1"
 
-    call os_data_init (os_data)
-    allocate (rng_tao_factory_t :: rng_factory)
+    call os_data%init ()
+    dispatch_rng_factory_fallback => dispatch_rng_factory_tao
     allocate (model_tmp)
     call model_list%read_model (model_name, model_name // ".mdl", &
          os_data, model_tmp)
@@ -9178,30 +9301,19 @@ This sequence sets up a two-jet process, ready for generating events.
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
 
-    call process%init (procname, run_id, lib, os_data, &
-         qcd, rng_factory, model)
+    call process%init (procname, lib, os_data, model)
 
     allocate (prc_omega_t :: core_template)
-    allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
 
-    model => process%get_model_ptr ()
-
-    select type (core_template)
-    type is (prc_omega_t)
-       call core_template%set_parameters (model = model)
-    end select
-    call process%core_manager_register (BORN, 1, var_str ("omega"))
-    call process%allocate_cm_arrays (1)
-    call process%allocate_core (1, core_template)
-    call process%init_cores ()
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
+    call process%setup_cores (dispatch_core_omega_test)
+    
+    call process%init_components (phs_config_template)
 
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
-    call process%setup_mci ()
+    call process%setup_mci (dispatch_mci_test_midpoint)
     call process%setup_terms ()
 
     call process_instance%init (process)
@@ -9216,6 +9328,37 @@ This sequence sets up a two-jet process, ready for generating events.
   end subroutine setup_testbed
 
 @ %def setup_testbed
+@ A minimal dispatcher version that allocates the core object for testing.
+<<setup testbed>>=
+  subroutine dispatch_core_omega_test (core, core_def, model, &
+       helicity_selection, qcd, use_color_factors, has_beam_pol)
+    class(prc_core_t), allocatable, intent(inout) :: core
+    class(prc_core_def_t), intent(in) :: core_def
+    class(model_data_t), intent(in), target, optional :: model
+    type(helicity_selection_t), intent(in), optional :: helicity_selection
+    type(qcd_t), intent(in), optional :: qcd
+    logical, intent(in), optional :: use_color_factors
+    logical, intent(in), optional :: has_beam_pol
+    allocate (prc_omega_t :: core)
+    select type (core)
+    type is (prc_omega_t)
+       call core%set_parameters (model)
+    end select
+  end subroutine dispatch_core_omega_test
+     
+@ %def dispatch_core_omega_test
+@ MCI record prepared for midpoint integrator.
+<<setup testbed>>=
+  subroutine dispatch_mci_test_midpoint (mci, var_list, process_id, is_nlo)
+    use variables, only: var_list_t
+    class(mci_t), allocatable, intent(out) :: mci
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    logical, intent(in), optional :: is_nlo
+    allocate (mci_midpoint_t :: mci)
+  end subroutine dispatch_mci_test_midpoint
+ 
+@ %def dispatch_mci_test_midpoint
 @
 \subsubsection{Trivial Test}
 We generate a two-jet event and shower it using default settings, i.e.
@@ -9252,7 +9395,7 @@ in disabled mode.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
          os_data, model_hadrons)
@@ -9287,7 +9430,7 @@ in disabled mode.
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data, os_data)
        call evt_shower%connect (process_instance, model)
     end select
 
@@ -9357,7 +9500,7 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     write (u, "(A)")
 
     call syntax_model_file_init ()
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
          os_data, model_hadrons)
@@ -9394,7 +9537,7 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     type is (evt_shower_t)
        call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (settings, taudec_settings, pdf_data)
+       call evt_shower%shower%init (settings, taudec_settings, pdf_data, os_data)
        call evt_shower%connect (process_instance, model)
     end select
 
@@ -9529,7 +9672,7 @@ it would be unretrievable if the usual particle set of the event object was used
     integer :: i_evaluation = 0
     integer :: weight_multiplier = 1
     type(particle_set_t), dimension(:), allocatable :: particle_set_radiated
-    type(qcd_t), pointer :: qcd => null ()
+    type(qcd_t) :: qcd
     type(nlo_event_deps_t) :: event_deps
     integer :: mode = EVT_NLO_UNDEFINED
     integer, dimension(:), allocatable :: &
@@ -11020,7 +11163,8 @@ event record header.
           call event%set ( &
                sqme_prc = event%instance%get_sqme (), &
                weight_prc = event%instance%get_weight (), &
-               excess_prc = event%instance%get_excess () &
+               excess_prc = event%instance%get_excess (), &
+               n_dropped = event%instance%get_n_dropped () &
                )
        end if
     end if
@@ -11750,6 +11894,8 @@ memory corruption in gfortran 4.7.
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
+    type(process_t), allocatable, target :: process2
+    type(process_instance_t), allocatable, target :: process2_instance
     type(particle_set_t) :: particle_set
     type(particle_set_t), pointer :: particle_set_ptr
     type(model_data_t), target :: model
@@ -11779,26 +11925,23 @@ memory corruption in gfortran 4.7.
 
     particle_set_ptr => event%get_particle_set_ptr ()
     particle_set = particle_set_ptr
+    ! NB: 'particle_set' contains pointers to the model within 'process'
 
     call event%final ()
     deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover event from particle set"
     write (u, "(A)")
 
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
+    allocate (process2)
+    allocate (process2_instance)
+    call prepare_test_process (process2, process2_instance, model)
+    call process2_instance%setup_event_data ()
 
     allocate (event)
     call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
+    call event%connect (process2_instance, process2%get_model_ptr ())
 
     call event%select (1, 1, 1)
     call event%set_hard_particle_set (particle_set)
@@ -11833,6 +11976,10 @@ memory corruption in gfortran 4.7.
     call event%final ()
     deallocate (event)
 
+    call cleanup_test_process (process2, process2_instance)
+    deallocate (process2_instance)
+    deallocate (process2)
+
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
@@ -11863,6 +12010,8 @@ without recomputing the squared matrix element.
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
+    type(process_t), allocatable, target :: process2
+    type(process_instance_t), allocatable, target :: process2_instance
     type(particle_set_t) :: particle_set
     type(particle_set_t), pointer :: particle_set_ptr
     real(default) :: sqme, weight
@@ -11899,22 +12048,18 @@ without recomputing the squared matrix element.
     call event%final ()
     deallocate (event)
 
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-
     write (u, "(A)")
     write (u, "(A)")  "* Recover event from particle set"
     write (u, "(A)")
 
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
+    allocate (process2)
+    allocate (process2_instance)
+    call prepare_test_process (process2, process2_instance, model)
+    call process2_instance%setup_event_data ()
 
     allocate (event)
     call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
+    call event%connect (process2_instance, process2%get_model_ptr ())
 
     call event%select (1, 1, 1)
     call event%set_hard_particle_set (particle_set)
@@ -11939,6 +12084,10 @@ without recomputing the squared matrix element.
 
     call event%final ()
     deallocate (event)
+
+    call cleanup_test_process (process2, process2_instance)
+    deallocate (process2_instance)
+    deallocate (process2)
 
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
@@ -11981,7 +12130,7 @@ Generate an event with subsequent decays.
     write (u, "(A)")  "* Generate test process and decay"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "events_6"
     procname1 = prefix // "_p"
@@ -12071,7 +12220,7 @@ Generate a decay event with varying options.
     write (u, "(A)")  "* Prepare test process"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     prefix = "events_7"
     procname2 = prefix // "_d"
@@ -12494,6 +12643,7 @@ selection criteria upon rereading.
              write (eio%unit)  event%get_channel ()
              write (eio%unit)  event%expr%weight_prc
              write (eio%unit)  event%expr%excess_prc
+             write (eio%unit)  event%get_n_dropped ()
              write (eio%unit)  event%expr%sqme_prc
              do i = 1, eio%n_alt
                 write (eio%unit)  event%expr%weight_alt(i)
@@ -12554,6 +12704,7 @@ a different version of [[event%set_hard_particle_set]].
     integer, intent(out) :: iostat
     integer :: event_index, i_mci, i_term, channel, i
     real(default) :: weight, excess, sqme
+    integer :: n_dropped
     real(default), dimension(:), allocatable :: weight_alt, sqme_alt
     logical :: has_transform
     type(particle_set_t), pointer :: pset
@@ -12573,6 +12724,8 @@ a different version of [[event%set_hard_particle_set]].
           if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  excess
           if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  n_dropped
+          if (iostat /= 0)  return
           read (eio%unit, iostat = iostat)  sqme
           if (iostat /= 0)  return
           call event%reset_contents ()
@@ -12585,7 +12738,8 @@ a different version of [[event%set_hard_particle_set]].
                   eio%sigma, eio%n, event%get_norm_mode (), eio%norm_mode)
           end if
           call event%set (sqme_ref = sqme, weight_ref = weight, &
-               excess_prc = excess)
+               excess_prc = excess, &
+               n_dropped = n_dropped)
           if (eio%n_alt /= 0) then
              allocate (sqme_alt (eio%n_alt), weight_alt (eio%n_alt))
              do i = 1, eio%n_alt
@@ -12739,7 +12893,8 @@ We test the implementation of all I/O methods.
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, &
+         run_id = var_str ("run_test"))
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -12896,7 +13051,8 @@ We test the implementation of all I/O methods.
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (process, process_instance, model, &
+         run_id = var_str ("run_test"))
     call process_instance%setup_event_data ()
 
     call data%init (n_proc = 1, n_alt = 2)
@@ -13033,6 +13189,7 @@ module dispatch_transforms
   use shower_core
   use shower
   use shower_pythia6
+  use shower_pythia8
   use hadrons
   use mlm_matching
   use powheg_matching
@@ -13240,12 +13397,14 @@ implementation requires the handler modes of ISR and EPA to coincide.
           allocate (shower_t :: evt%shower)
        case (PS_PYTHIA6)
           allocate (shower_pythia6_t :: evt%shower)
+       case (PS_PYTHIA8)
+          allocate (shower_pythia8_t :: evt%shower)
        case default
           call msg_fatal ('Shower: Method ' // &
             char (var_list%get_sval (var_str ("$shower_method"))) // &
             'not implemented!')
        end select
-       call evt%shower%init (settings, taudec_settings, evt%pdf_data)
+       call evt%shower%init (settings, taudec_settings, evt%pdf_data, os_data)
     end select
     call dispatch_matching (evt, settings, var_list, process_name)
   end subroutine dispatch_evt_shower
@@ -13666,7 +13825,7 @@ module dispatch_transforms_uti
   use resonances, only: resonance_history_set_t
   use beam_structures, only: beam_structure_t
   use eio_base, only: eio_t
-  use os_interface, only: os_data_t, os_data_init
+  use os_interface, only: os_data_t
   use event_transforms, only: evt_t
   use dispatch_transforms
 
@@ -13714,7 +13873,7 @@ end module dispatch_transforms_uti
     write (u, "(A)")
 
     call var_list%init_defaults (0)
-    call os_data_init (os_data)
+    call os_data%init ()
     call syntax_model_file_init ()
     call model_list%read_model (var_str ("SM_hadrons"), &
          var_str ("SM_hadrons.mdl"), os_data, model)
@@ -13830,7 +13989,7 @@ This test dispatches [[evt]] (event transform) objects.
 
     call syntax_model_file_init ()
     call var_list%init_defaults (0)
-    call os_data_init (os_data)
+    call os_data%init ()
     call model_list%read_model (var_str ("SM_hadrons"), &
          var_str ("SM_hadrons.mdl"), os_data, model)
 

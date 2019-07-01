@@ -3566,7 +3566,7 @@ components of [[os_data]] to known values.
     character(32), parameter :: md5sum = "prclib_interfaces_3_md5sum      "
     class(prc_writer_t), pointer :: test_writer_1, test_writer_2
 
-    call os_data_init (os_data)
+    call os_data%init ()
     os_data%fc = "fortran-compiler"
     os_data%whizard_includes = "-I module-dir"
     os_data%fcflags = "-C=all"
@@ -3668,7 +3668,7 @@ the featured procedure.
     write (u, "(A)")  "* Create a prclib driver object (1 process)"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (test_writer_4_t :: test_writer_4)
     call test_writer_4%init_test ()
@@ -4084,7 +4084,7 @@ These procedures are bind(C).
     write (u, "(A)")  "* Create a prclib driver object (1 process)"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     allocate (test_writer_5_t :: test_writer_5)
 
     call dispatch_prclib_driver (driver, var_str ("prclib5"), var_str (""))
@@ -4458,7 +4458,7 @@ These procedures should match the Fortran bind(C) interface.
     write (u, "(A)")  "* Create a prclib driver object (1 process)"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call os_data%init ()
     allocate (test_writer_6_t :: test_writer_6)
 
     call dispatch_prclib_driver (driver, var_str ("prclib6"), var_str (""))
@@ -4747,7 +4747,7 @@ driver) and properly clean up all generated files.
 
     allocate (test_writer_4_t :: test_writer_4)
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call dispatch_prclib_driver (driver, var_str ("prclib7"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
@@ -5123,18 +5123,6 @@ performed by the external library driver instead.
   end interface
 
 @ %def process_driver_fill_constants
-@
-\subsection{Process driver for user-defined processes}
-This is another abstract extension of the driver type. It links user-defined
-matrix element methods like BLHA, which also allow the dircet calculation of
-squared matrix elements.
-<<Prc core def: public>>=
-  public :: prc_user_defined_base_driver_t
-<<Prc core def: types>>=
-  type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t
-  end type prc_user_defined_base_driver_t
-
-@ %def prc_user_defined_base_driver_t
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Process library access}
@@ -6277,6 +6265,17 @@ this process.
 @ %def process_def_get_pdg_in_1
 @
 <<Process libraries: process def: TBP>>=
+  procedure :: is_nlo => process_def_is_nlo
+<<Process libraries: procedures>>=
+  elemental function process_def_is_nlo (def) result (flag)
+    logical :: flag
+    class(process_def_t), intent(in) :: def
+    flag = def%nlo_process
+  end function process_def_is_nlo
+
+@ %def process_def_is_nlo
+@
+<<Process libraries: process def: TBP>>=
   procedure :: get_nlo_type => process_def_get_nlo_type
 <<Process libraries: procedures>>=
   elemental function process_def_get_nlo_type (def, i_component) result (nlo_type)
@@ -6287,6 +6286,33 @@ this process.
   end function process_def_get_nlo_type
 
 @ %def process_def_get_nlo_type
+@ Number of incoming particles, common to all components.
+<<Process libraries: process def: TBP>>=
+  procedure :: get_n_in => process_def_get_n_in
+<<Process libraries: procedures>>=
+  function process_def_get_n_in (def) result (n_in)
+    class(process_def_t), intent(in) :: def
+    integer :: n_in
+    n_in = def%n_in
+  end function process_def_get_n_in
+
+@ %def process_def_get_n_in
+@ Pointer to a particular component definition record.
+<<Process libraries: process def: TBP>>=
+  procedure :: get_component_def_ptr => process_def_get_component_def_ptr
+<<Process libraries: procedures>>=
+  function process_def_get_component_def_ptr (def, i) result (component)
+    type(process_component_def_t), pointer :: component
+    class(process_def_t), intent(in), target :: def
+    integer, intent(in) :: i
+    if (i <= def%n_initial) then
+       component => def%initial(i)
+    else
+       component => null ()
+    end if
+  end function process_def_get_component_def_ptr
+
+@ %def process_def_get_component_def_ptr
 @
 \subsubsection{Process definition list}
 A list of process definitions is the starting point for creating a
@@ -6506,6 +6532,24 @@ Return the number of processes supported by the library.
   end subroutine process_def_list_get_process_id_req_resonant
 
 @ %def process_def_list_get_process_id_list
+@ Return a pointer to a particular process entry.
+<<Process libraries: process def list: TBP>>=
+  procedure :: get_process_def_ptr => process_def_list_get_process_def_ptr
+<<Process libraries: procedures>>=
+  function process_def_list_get_process_def_ptr (list, id) result (entry)
+    type(process_def_entry_t), pointer :: entry
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id)  exit
+       current => current%next
+    end do
+    entry => current
+  end function process_def_list_get_process_def_ptr
+
+@ %def process_def_list_get_process_def_ptr  
 @ Return true if a given process is in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: contains => process_def_list_contains
@@ -6515,14 +6559,8 @@ Return the number of processes supported by the library.
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          flag = .true.;  return
-       end if
-       current => current%next
-    end do
-    flag = .false.
+    current => list%get_process_def_ptr (id)
+    flag = associated (current)
   end function process_def_list_contains
 
 @ %def process_def_list_contains
@@ -6557,15 +6595,12 @@ Return the number of processes supported by the library.
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          num_id = current%num_id
-          return
-       end if
-       current => current%next
-    end do
-    num_id = 0
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       num_id = current%num_id
+    else
+       num_id = 0
+    end if
   end function process_def_list_get_num_id
 
 @ %def process_def_list_get_num_id
@@ -6578,15 +6613,12 @@ Return the number of processes supported by the library.
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          model_name = current%model_name
-          return
-       end if
-       current => current%next
-    end do
-    model_name = ""
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       model_name = current%model_name
+    else
+       model_name = ""
+    end if
   end function process_def_list_get_model_name
 
 @ %def process_def_list_get_model_name
@@ -6600,14 +6632,12 @@ This tells us whether the process is a decay or a scattering.
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          n = current%n_in
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       n = current%n_in
+    else
+       n = 0
+    end if
   end function process_def_list_get_n_in
 
 @ %def process_def_list_get_n_in
@@ -6623,63 +6653,15 @@ for (re)constructing beam properties.
     type(string_t), intent(in) :: id
     integer, dimension(:), intent(out) :: pdg
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          call current%get_pdg_in_1 (pdg)
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       call current%get_pdg_in_1 (pdg)
+    else
+       pdg = 0
+    end if
   end subroutine process_def_list_get_pdg_in_1
 
 @ %def process_def_list_get_pdg_in_1
-@ Return the number of components of a given process in the library.
-<<Process libraries: process def list: TBP>>=
-  procedure :: get_n_components => process_def_list_get_n_components
-<<Process libraries: procedures>>=
-  function process_def_list_get_n_components (list, id) result (n)
-    integer :: n
-    class(process_def_list_t), intent(in) :: list
-    type(string_t), intent(in) :: id
-    type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          n = current%n_initial + current%n_extra
-          return
-       end if
-       current => current%next
-    end do
-  end function process_def_list_get_n_components
-
-@ %def process_def_list_get_n_components
-@ Return a pointer to a specific process component definition.
-<<Process libraries: process def list: TBP>>=
-  procedure :: get_component_def_ptr => process_def_list_get_component_def_ptr
-<<Process libraries: procedures>>=
-  function process_def_list_get_component_def_ptr (list, id, i) result (ptr)
-    class(process_def_list_t), intent(in) :: list
-    type(string_t), intent(in) :: id
-    integer, intent(in) :: i
-    type(process_component_def_t), pointer :: ptr
-    type(process_def_entry_t), pointer :: current
-    ptr => null ()
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          if (i <= current%n_initial) then
-             ptr => current%initial(i)
-          else if (i <= current%n_initial + current%n_extra) then
-             ptr => current%extra(i-current%n_initial)
-          end if
-          return
-       end if
-       current => current%next
-    end do
-  end function process_def_list_get_component_def_ptr
-
-@ %def process_def_list_get_component_def_ptr
 @ Return the list of component IDs of a given process in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_component_list => process_def_list_get_component_list
@@ -6690,21 +6672,17 @@ for (re)constructing beam properties.
     type(string_t), dimension(:), allocatable, intent(out) :: cid
     type(process_def_entry_t), pointer :: current
     integer :: i, n
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          allocate (cid (current%n_initial + current%n_extra))
-          do i = 1, current%n_initial
-             cid(i) = current%initial(i)%basename
-          end do
-          n = current%n_initial
-          do i = 1, current%n_extra
-             cid(n + i) = current%extra(i)%basename
-          end do
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       allocate (cid (current%n_initial + current%n_extra))
+       do i = 1, current%n_initial
+          cid(i) = current%initial(i)%basename
+       end do
+       n = current%n_initial
+       do i = 1, current%n_extra
+          cid(n + i) = current%extra(i)%basename
+       end do
+    end if
   end subroutine process_def_list_get_component_list
 
 @ %def process_def_list_get_component_list
@@ -6721,21 +6699,17 @@ in the library.
     type(string_t), dimension(:), allocatable, intent(out) :: description
     type(process_def_entry_t), pointer :: current
     integer :: i, n
-    current => list%first
-    do while (associated (current))
-       if (id == current%id) then
-          allocate (description (current%n_initial + current%n_extra))
-          do i = 1, current%n_initial
-             description(i) = current%initial(i)%description
-          end do
-          n = current%n_initial
-          do i = 1, current%n_extra
-             description(n + i) = current%extra(i)%description
-          end do
-          return
-       end if
-       current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       allocate (description (current%n_initial + current%n_extra))
+       do i = 1, current%n_initial
+          description(i) = current%initial(i)%description
+       end do
+       n = current%n_initial
+       do i = 1, current%n_extra
+          description(n + i) = current%extra(i)%description
+       end do
+    end if
   end subroutine process_def_list_get_component_description_list
 
 @ %def process_def_list_get_component_description_list
@@ -6744,42 +6718,20 @@ subprocess set.
 <<Process libraries: process def list: TBP>>=
   procedure :: req_resonant => process_def_list_req_resonant
 <<Process libraries: procedures>>=
-  function process_def_list_req_resonant (list, id) result (nlo)
+  function process_def_list_req_resonant (list, id) result (flag)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
-    logical :: nlo
+    logical :: flag
     type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-      if (id == current%id) then
-        nlo = current%requires_resonances
-        return
-      end if
-      current => current%next
-    end do
+    current => list%get_process_def_ptr (id)
+    if (associated (current)) then
+       flag = current%requires_resonances
+    else
+       flag = .false.
+    end if
   end function process_def_list_req_resonant
 
 @ %def process_def_list_req_resonant
-@ Return whether the entry corresponds to an NLO-process
-<<Process libraries: process def list: TBP>>=
-  procedure :: get_nlo_process => process_def_list_get_nlo_process
-<<Process libraries: procedures>>=
-  function process_def_list_get_nlo_process (list, id) result (nlo)
-    class(process_def_list_t), intent(in) :: list
-    type(string_t), intent(in) :: id
-    logical :: nlo
-    type(process_def_entry_t), pointer :: current
-    current => list%first
-    do while (associated (current))
-      if (id == current%id) then
-        nlo = current%nlo_process
-        return
-      end if
-      current => current%next
-    end do
-  end function process_def_list_get_nlo_process
-
-@ %def process_def_list_get_nlo_process
 @
 \subsection{Process library}
 The process library object is the interface between the process
@@ -8382,7 +8334,7 @@ with a test matrix element type that needs no code written on file.
     write (u, "(A)")  "* Initialize a process library with one entry &
          &(no external code)"
     write (u, "(A)")
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%init (var_str ("proclibs4"))
 
     allocate (prcdef_2_t :: core_def)
@@ -8572,7 +8524,7 @@ Here is the actual test:
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("proclibs5"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (prcdef_5_t :: core_def)
     select type (core_def)
@@ -8796,7 +8748,7 @@ Here is the actual test:
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("proclibs6"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (prcdef_6_t :: core_def)
     select type (core_def)
@@ -8861,8 +8813,6 @@ Here is the actual test:
          lib%get_n_in (var_str ("proclibs6_a"))
     write (u, "(1x,A,A)")   "model_name(proclibs6_a)   = ", &
          char (lib%get_model_name (var_str ("proclibs6_a")))
-    write (u, "(1x,A,I0)")  "n_components(proclibs6_a) = ", &
-         lib%get_n_components (var_str ("proclibs6_a"))
     write (u, "(1x,A)", advance="no")  "components(proclibs6_a)   ="
     call lib%get_component_list (var_str ("proclibs6_a"), name_list)
     do i = 1, size (name_list)
@@ -9026,7 +8976,7 @@ Here is the actual test:
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
     call lib%init (var_str ("proclibs8"))
-    call os_data_init (os_data)
+    call os_data%init ()
 
     allocate (prcdef_6_t :: core_def)
     select type (core_def)
@@ -9765,7 +9715,7 @@ the driver.
     sca = .true.;   if (present (scattering))  sca = scattering
     dec = .false.;  if (present (decay))       dec = decay
 
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%init (libname)
     model_name = "Test"
 
@@ -9917,7 +9867,7 @@ independent of angle.)  The matrix element is equal to unity.
 
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%init (var_str ("prc_test1"))
 
     model_name = "Test"
@@ -10102,7 +10052,7 @@ independent of angle.)  The matrix element is equal to unity.
 
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
-    call os_data_init (os_data)
+    call os_data%init ()
     call lib%init (var_str ("prc_test3"))
 
     model_name = "Test"

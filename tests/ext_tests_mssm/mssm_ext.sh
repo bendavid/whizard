@@ -1,4 +1,5 @@
 #!/bin/sh
+# time ~ 4.5 h
 ### Numerically check WHIZARD/O'Mega with a set of MSSM processes
 echo "Running script $0"
 exec ./mssm_ext-aa.run

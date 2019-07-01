@@ -80,7 +80,7 @@ $(DISP).lo: $(DISP).f90 $(LIBRARIES)
 
 # Executable
 $(EXE): $(DISP).lo $(LIBRARIES)
-	$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \
+	$(LINK) $(FC) -static $(FCFLAGS) \
 	   $(LDWHIZARD) $(LDFLAGS) \
 	   -o $(EXE) $^ \
 	   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \
