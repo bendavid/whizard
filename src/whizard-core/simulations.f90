@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -49,6 +49,7 @@ module simulations
   use rt_data
   use integrations
   use event_files
+  use os_interface
   use shower_interface
 
   implicit none
@@ -63,6 +64,15 @@ module simulations
   public :: simulation_get_i_evt
   public :: simulation_event
   public :: simulation_final
+  public :: checkpointing_msg_start
+  public :: simulation_read_event_raw
+  public :: simulation_read_event_hepmc
+  public :: simulation_recover_process
+  public :: simulation_recalculate
+  public :: simulation_decay
+  public :: simulation_select_process
+  public :: simulation_handle_event
+  public :: simulation_final_event
 
   integer, parameter :: NORM_UNDEFINED = 0
   integer, parameter :: NORM_UNIT = 1
@@ -95,7 +105,7 @@ module simulations
   end type checkpointing_t
 
   type :: simulation_t
-    private
+    ! not private anymore as required by the whizard-c-interface
     integer :: n_proc = 0
     type(string_t), dimension(:), allocatable :: process_id
     type(process_p), dimension(:), allocatable :: prc_array
@@ -984,11 +994,12 @@ contains
     if (sim%update_weight)  call event_update_weight (sim%event)
   end subroutine simulation_recalculate
 
-  subroutine simulation_generate_event (sim, rng, process, proc)
+  subroutine simulation_generate_event (sim, rng, process, proc, os_data)
     type(simulation_t), intent(inout), target :: sim
     type(tao_random_state), intent(inout) :: rng
     type(process_t), intent(in), target :: process
     integer, intent(in) :: proc
+    type(os_data_t), intent(in) :: os_data
     integer :: factorization_mode, try
     if (sim%allow_decays) then
        call event_init (sim%event, process, &
@@ -1012,7 +1023,7 @@ contains
             (sim%event, rng, sim%spar%unweighted, &
              factorization_mode, &
              keep_correlations=.false., &
-             keep_virtual=.true., &
+             keep_virtual=.true., os_data=os_data, &
              shower_settings = sim%spar%shower_settings)
        if(event_is_vetoed(sim%event).and. &
             (.not.sim%n_events_set)) then
@@ -1256,10 +1267,11 @@ contains
     i_evt = sim%i_evt
   end function simulation_get_i_evt
 
-  subroutine simulation_event (sim, rng, ok, verbose)
+  subroutine simulation_event (sim, rng, ok, os_data, verbose)
     type(simulation_t), intent(inout), target :: sim
     type(tao_random_state), intent(inout) :: rng
     logical, intent(out) :: ok
+    type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: verbose
     type(process_t), pointer :: process
     integer :: proc
@@ -1278,7 +1290,7 @@ contains
           call checkpointing_msg_start (sim%checkpointing, sim%n_events, &
                sim%i_evt)
        call simulation_select_process (sim, rng, process, proc)
-       call simulation_generate_event (sim, rng, process, proc)
+       call simulation_generate_event (sim, rng, process, proc, os_data)
     end if
     call simulation_handle_event (sim)
     call simulation_final_event (sim)

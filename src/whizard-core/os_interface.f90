@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -106,6 +106,7 @@ module os_interface
      type(string_t) :: whizard_omega_binpath_local
      type(string_t) :: whizard_circe2path
      type(string_t) :: whizard_beamsimpath
+     type(string_t) :: whizard_mulipath
      type(string_t) :: pdf_builtin_datapath
      logical :: event_analysis = .false.
      logical :: event_analysis_ps  = .false.
@@ -244,6 +245,7 @@ contains
        os_data%whizard_testdatapath   = WHIZARD_TEST_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_TEST_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_TEST_BEAMSIMPATH
+       os_data%whizard_mulipath       = WHIZARD_TEST_MULIPATH
        os_data%pdf_builtin_datapath   = PDF_BUILTIN_TEST_DATAPATH
     else
        if (os_dir_exist (local_includes)) then
@@ -267,6 +269,7 @@ contains
        os_data%whizard_testdatapath   = WHIZARD_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_BEAMSIMPATH
+       os_data%whizard_mulipath       = WHIZARD_MULIPATH
        os_data%pdf_builtin_datapath   = PDF_BUILTIN_DATAPATH
     end if
     os_data%event_analysis     = EVENT_ANALYSIS     == "yes"
@@ -304,6 +307,7 @@ contains
     call expand_paths (os_data%whizard_testdatapath)
     call expand_paths (os_data%whizard_circe2path)
     call expand_paths (os_data%whizard_beamsimpath)
+    call expand_paths (os_data%whizard_mulipath)
     call expand_paths (os_data%whizard_models_libpath_local)
     call expand_paths (os_data%whizard_modelpath_local)
     call expand_paths (os_data%whizard_omega_binpath_local)
@@ -363,6 +367,7 @@ contains
     write (u, *) "whizard_texpath        = ", char (os_data%whizard_texpath)
     write (u, *) "whizard_circe2path     = ", char (os_data%whizard_circe2path)
     write (u, *) "whizard_beamsimpath    = ", char (os_data%whizard_beamsimpath)
+    write (u, *) "whizard_mulipath    = ", char (os_data%whizard_mulipath)
     write (u, *) "whizard_testdatapath  = ", &
          char (os_data%whizard_testdatapath)
     write (u, *) "whizard_modelpath_local      = ", &

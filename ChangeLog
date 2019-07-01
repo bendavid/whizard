@@ -2,8 +2,30 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.1.0
+	Version 2.1.1
 
+	
+2012-09-18
+	RELEASE: version 2.1.1
+
+2012-09-11
+	Model MSSM_Hgg with Hgg and HAA vertices
+	
+2012-09-10
+	First version of implementation of multiple
+	   interactions in WHIZARD
+	
+2012-09-05
+	Infrastructure for internal CKKW matching
+	
+2012-09-02
+	C, C++, Python API
+	
+2012-07-19
+	Fixing particle numbering in HepMC format
+	
+##################################################################
+	
 2012-06-15
 	RELEASE: version 2.1.0
 

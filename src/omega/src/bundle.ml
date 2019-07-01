@@ -1,4 +1,4 @@
-(* $Id: bundle.ml 3750 2012-03-13 12:08:00Z sschmidt $
+(* $Id: bundle.ml 3930 2012-09-09 18:48:11Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 

@@ -25,7 +25,7 @@
 ########################################################################
 
 ## Subdirectories to configure
-SUBDIRS = doc susy models cuts beam-sim test examples
+SUBDIRS = doc susy models cuts beam-sim test examples muli
 
 ## Data files needed for running WHIZARD
 ## to be installed with the 'models' prefix kept
@@ -36,9 +36,10 @@ dist_models_DATA = \
   models/Littlest_Eta.mdl \
   models/Littlest_Tpar.mdl \
   models/Littlest.mdl \
+  models/MSSM.mdl \
   models/MSSM_CKM.mdl \
   models/MSSM_Grav.mdl \
-  models/MSSM.mdl \
+  models/MSSM_Hgg.mdl \
   models/NMSSM.mdl \
   models/NMSSM_CKM.mdl \
   models/NMSSM_Hgg.mdl \
@@ -124,3 +125,10 @@ dist_pdf_DATA = \
 	pdf_builtin/mstw2008nlo.00.dat \
 	pdf_builtin/mstw2008nnlo.00.dat \
 	pdf_builtin/ct10.00.pds
+
+## Files containing precompiled cross sections for muli
+## to be installed with the 'muli' prefix kept
+mulidir = $(pkgdatadir)/muli
+dist_muli_DATA = \
+  muli/dsigma_cteq6ll.LHpdf.xml \
+  muli/pdf_norm_cteq6ll.LHpdf.xml

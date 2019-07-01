@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -39,6 +39,8 @@ module event_formats
   use quantum_numbers
   use polarizations
   use stdhep_interface
+  use diagnostics !NODEP!
+  use iso_varying_string, string_t => varying_string !NODEP!
 
   implicit none
   private
@@ -147,7 +149,7 @@ contains
     write (u, '(A)') '<LesHouchesEvents version="1.0">'
     write (u, '(A)') '<header>'
     write (u, '(A)') '  <generator_name>WHIZARD</generator_name>'
-    write (u, '(A)') '  <generator_version>2.1.0</generator_version>'
+    write (u, '(A)') '  <generator_version>2.1.1</generator_version>'
     write (u, '(A)') '</header>'
   end subroutine les_houches_events_write_header
 
@@ -280,6 +282,16 @@ contains
     type(vector4_t), intent(in) :: p
     integer, dimension(2), intent(in) :: col
     real(default), intent(in) :: m2
+    if (i > MAXNUP) then
+       call msg_error (arr=(/ &
+var_str ("Too many particles in HEPEUP common block. If this happened "), &
+var_str ("during event output, your events will be invalid; please consider "), &
+var_str ("switching to a modern event format like HEPMC. If you are not "), &
+var_str ("using an old, HEPEUP based format and nevertheless get this error,"), &
+var_str ("please notify the WHIZARD developers,") &
+       /))
+       return
+    end if
     IDUP(i) = pdg
     select case (status)
     case (PRT_BEAM);         ISTUP(i) = -9

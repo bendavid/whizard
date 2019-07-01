@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,7 +31,9 @@ module shower_interface
   use shower_basics_module !NODEP!
   use shower_module !NODEP!
   use shower_topythia_module !NODEP!
+  use muli, muli_output_unit => output_unit !NODEP!
   use mlm_matching_module !NODEP!
+  use ckkw_matching_module !NODEP!
   use tao_random_numbers !NODEP!
   use flavors
   use colors
@@ -62,28 +64,36 @@ module shower_interface
      logical :: ps_use_PYTHIA_shower = .false.
      logical :: hadronization_active = .false.
      logical :: mlm_matching = .false.
+     logical :: ckkw_matching = .false.
+     logical :: muli_active = .false.
+
      logical :: ps_PYTHIA_verbose = .false.
      type(string_t) :: ps_PYTHIA_PYGIVE
 
-     ! values present in PYTHIA and WHIZARDs PS, comments denote corresponding PYTHIA values
+     !!! values present in PYTHIA and WHIZARDs PS, 
+     !!! comments denote corresponding PYTHIA values
      real(default) :: ps_mass_cutoff = 1._default      ! PARJ(82)
      real(default) :: ps_fsr_lambda = 0.29_default     ! PARP(72)
      real(default) :: ps_isr_lambda = 0.29_default     ! PARP(61)
-     integer :: ps_max_n_flavors = 5            ! MSTJ(45)
-     logical :: ps_isr_alpha_s_running = .true.           ! MSTP(64)
-     logical :: ps_fsr_alpha_s_running = .true.           ! MSTJ(44)
+     integer :: ps_max_n_flavors = 5                   ! MSTJ(45)
+     logical :: ps_isr_alpha_s_running = .true.        ! MSTP(64)
+     logical :: ps_fsr_alpha_s_running = .true.        ! MSTJ(44)
      real(default) :: ps_fixed_alpha_s = 0._default    ! PARU(111)
      logical :: ps_isr_pt_ordered = .false.
-     logical :: ps_isr_angular_ordered = .true.           ! MSTP(62)
+     logical :: ps_isr_angular_ordered = .true.        ! MSTP(62)
      real(default) :: ps_isr_primordial_kt_width = 0._default  ! PARP(91)
      real(default) :: ps_isr_primordial_kt_cutoff = 5._default ! PARP(93)
      real(default) :: ps_isr_z_cutoff = 0.999_default  ! 1-PARP(66)
-     real(default) :: ps_isr_minenergy = 2._default            ! PARP(65)
+     real(default) :: ps_isr_minenergy = 2._default    ! PARP(65)
      real(default) :: ps_isr_tscalefactor = 1._default
-     logical :: ps_isr_only_onshell_emitted_partons = .true.  ! MSTP(63)
+     logical :: ps_isr_only_onshell_emitted_partons = .true.   ! MSTP(63)
 
-     ! MLM settings
+     !!! MLM settings
      type(mlm_matching_settings_t) :: ms
+
+     !!! CKKW Matching
+     type(ckkw_matching_settings_t) :: ckkw_settings
+     type(ckkw_pseudo_shower_weights_t) :: ckkw_weights
   end type shower_settings_t
 
 
@@ -93,36 +103,62 @@ contains
     type(shower_settings_t), intent(out) :: shower_settings
     type(var_list_t), intent(in) :: var_list
 
-    shower_settings%ps_isr_active =  var_list_get_lval(var_list, var_str("?ps_isr_active"))
-    shower_settings%ps_fsr_active =  var_list_get_lval(var_list, var_str("?ps_fsr_active"))
-    shower_settings%hadronization_active =  var_list_get_lval(var_list, var_str("?hadronization_active"))
-    shower_settings%mlm_matching =  var_list_get_lval(var_list, var_str("?mlm_matching"))
+    shower_settings%ps_isr_active = &
+         var_list_get_lval(var_list, var_str("?ps_isr_active"))
+    shower_settings%ps_fsr_active = &
+         var_list_get_lval(var_list, var_str("?ps_fsr_active"))
+    shower_settings%hadronization_active = &
+         var_list_get_lval(var_list, var_str("?hadronization_active"))
+    shower_settings%mlm_matching = &
+         var_list_get_lval(var_list, var_str("?mlm_matching"))
+    shower_settings%ckkw_matching = & 
+         var_list_get_lval(var_list, var_str("?ckkw_matching"))
+    shower_settings%muli_active = &
+         var_list_get_lval(var_list, var_str("?muli_active"))
 
 !    if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
 !         .and.(shower_settings%hadronization_active.eqv..false.).and.(shower_settings%mlm_matching.eqv..false.) ) then
 !       return
 !    end if
 
-    shower_settings%ps_use_PYTHIA_shower = var_list_get_lval(var_list, var_str("?ps_use_PYTHIA_shower"))
-    shower_settings%ps_PYTHIA_verbose = var_list_get_lval(var_list, var_str("?ps_PYTHIA_verbose"))
-    shower_settings%ps_PYTHIA_PYGIVE = var_list_get_sval(var_list, var_str("$ps_PYTHIA_PYGIVE"))
-    shower_settings%ps_mass_cutoff = var_list_get_rval(var_list, var_str("ps_mass_cutoff"))
-    shower_settings%ps_fsr_lambda = var_list_get_rval(var_list, var_str("ps_fsr_lambda"))
-    shower_settings%ps_isr_lambda = var_list_get_rval(var_list, var_str("ps_isr_lambda"))
-    shower_settings%ps_max_n_flavors = var_list_get_ival(var_list, var_str("ps_max_n_flavors"))
-    shower_settings%ps_isr_alpha_s_running = var_list_get_lval(var_list, var_str("?ps_isr_alpha_s_running"))
-    shower_settings%ps_fsr_alpha_s_running = var_list_get_lval(var_list, var_str("?ps_fsr_alpha_s_running"))
-    shower_settings%ps_fixed_alpha_s = var_list_get_rval(var_list, var_str("ps_fixed_alpha_s"))
-    shower_settings%ps_isr_pt_ordered = var_list_get_lval(var_list, var_str("?ps_isr_pt_ordered"))
-    shower_settings%ps_isr_angular_ordered = var_list_get_lval(var_list, var_str("?ps_isr_angular_ordered"))
-    shower_settings%ps_isr_primordial_kt_width = var_list_get_rval(var_list, var_str("ps_isr_primordial_kt_width"))
-    shower_settings%ps_isr_primordial_kt_cutoff = var_list_get_rval(var_list, var_str("ps_isr_primordial_kt_cutoff"))
-    shower_settings%ps_isr_z_cutoff = var_list_get_rval(var_list, var_str("ps_isr_z_cutoff"))
-    shower_settings%ps_isr_minenergy = var_list_get_rval(var_list, var_str("ps_isr_minenergy"))
-    shower_settings%ps_isr_tscalefactor = var_list_get_rval(var_list, var_str("ps_isr_tscalefactor"))
+    shower_settings%ps_use_PYTHIA_shower = &
+         var_list_get_lval(var_list, var_str("?ps_use_PYTHIA_shower"))
+    shower_settings%ps_PYTHIA_verbose = &
+         var_list_get_lval(var_list, var_str("?ps_PYTHIA_verbose"))
+    shower_settings%ps_PYTHIA_PYGIVE = &
+         var_list_get_sval(var_list, var_str("$ps_PYTHIA_PYGIVE"))
+    shower_settings%ps_mass_cutoff = &
+         var_list_get_rval(var_list, var_str("ps_mass_cutoff"))
+    shower_settings%ps_fsr_lambda = &
+         var_list_get_rval(var_list, var_str("ps_fsr_lambda"))
+    shower_settings%ps_isr_lambda = &
+         var_list_get_rval(var_list, var_str("ps_isr_lambda"))
+    shower_settings%ps_max_n_flavors = &
+         var_list_get_ival(var_list, var_str("ps_max_n_flavors"))
+    shower_settings%ps_isr_alpha_s_running = &
+         var_list_get_lval(var_list, var_str("?ps_isr_alpha_s_running"))
+    shower_settings%ps_fsr_alpha_s_running = &
+         var_list_get_lval(var_list, var_str("?ps_fsr_alpha_s_running"))
+    shower_settings%ps_fixed_alpha_s = &
+         var_list_get_rval(var_list, var_str("ps_fixed_alpha_s"))
+    shower_settings%ps_isr_pt_ordered = &
+         var_list_get_lval(var_list, var_str("?ps_isr_pt_ordered"))
+    shower_settings%ps_isr_angular_ordered = &
+         var_list_get_lval(var_list, var_str("?ps_isr_angular_ordered"))
+    shower_settings%ps_isr_primordial_kt_width = &
+         var_list_get_rval(var_list, var_str("ps_isr_primordial_kt_width"))
+    shower_settings%ps_isr_primordial_kt_cutoff = &
+         var_list_get_rval(var_list, var_str("ps_isr_primordial_kt_cutoff"))
+    shower_settings%ps_isr_z_cutoff = &
+         var_list_get_rval(var_list, var_str("ps_isr_z_cutoff"))
+    shower_settings%ps_isr_minenergy = &
+         var_list_get_rval(var_list, var_str("ps_isr_minenergy"))
+    shower_settings%ps_isr_tscalefactor = &
+         var_list_get_rval(var_list, var_str("ps_isr_tscalefactor"))
     shower_settings%ps_isr_only_onshell_emitted_partons = &
                 var_list_get_lval(var_list, var_str("?ps_isr_only_onshell_emitted_partons"))
 
+    !!! MLM matching
     shower_settings%ms%mlm_Qcut_ME =  var_list_get_rval(var_list, var_str("mlm_Qcut_ME"))
     shower_settings%ms%mlm_Qcut_PS =  var_list_get_rval(var_list, var_str("mlm_Qcut_PS"))
     shower_settings%ms%mlm_ptmin =  var_list_get_rval(var_list, var_str("mlm_ptmin"))
@@ -136,6 +172,9 @@ contains
     shower_settings%ms%mlm_etaclusfactor = var_list_get_rval(var_list, var_str("mlm_etaclusfactor"))
     shower_settings%ms%mlm_Rclusfactor = var_list_get_rval(var_list, var_str("mlm_Rclusfactor"))
     shower_settings%ms%mlm_Eclusfactor = var_list_get_rval(var_list, var_str("mlm_Eclusfactor"))
+
+    !!! CKKW matching
+    ! TODO
   end subroutine shower_settings_init
 
   subroutine shower_settings_write(shower_settings, unit)
@@ -146,12 +185,12 @@ contains
     write (u, "(A)")  "Shower Settings:"
     write (u, *) "ps_isr_active                = ", shower_settings%ps_isr_active
     write (u, *) "ps_fsr_active                = ", shower_settings%ps_fsr_active
-    if(shower_settings%ps_isr_active .or. shower_settings%ps_fsr_active) then
+    if (shower_settings%ps_isr_active .or. shower_settings%ps_fsr_active) then
        write (u, *) "ps_use_PYTHIA_shower        = ", shower_settings%ps_use_PYTHIA_shower
        write (u, *) "ps_mass_cutoff              = ", shower_settings%ps_mass_cutoff
        write (u, *) "ps_max_n_flavors            = ", shower_settings%ps_max_n_flavors
     end if
-    if(shower_settings%ps_isr_active) then
+    if (shower_settings%ps_isr_active) then
        write (u, "(A)")  "  ISR Settings:"
        write (u, *) "ps_isr_pt_ordered           = ", shower_settings%ps_isr_pt_ordered
        write (u, *) "ps_isr_lambda               = ", shower_settings%ps_isr_lambda
@@ -162,7 +201,7 @@ contains
        write (u, *) "ps_isr_minenergy            = ", shower_settings%ps_isr_minenergy
        write (u, *) "ps_isr_tscalefactor         = ", shower_settings%ps_isr_tscalefactor
     end if
-    if(shower_settings%ps_fsr_active) then
+    if (shower_settings%ps_fsr_active) then
        write (u, "(A)")  "  FSR Settings:"
        write (u, *) "ps_fsr_lambda               = ", shower_settings%ps_fsr_lambda
        write (u, *) "ps_fsr_alpha_s_running      = ", shower_settings%ps_fsr_alpha_s_running
@@ -171,18 +210,24 @@ contains
     write (u, *) "hadronization_active         = ", shower_settings%hadronization_active
     write (u, "(A)")  "Matching Settings:"
     write (u, *) "mlm_matching          = ", shower_settings%mlm_matching
-    if(shower_settings%mlm_matching) then
+    if (shower_settings%mlm_matching) then
        call mlm_matching_settings_write(shower_settings%ms, u)
     end if
+    write (u, *) "ckkw_matching          = ", shower_settings%ckkw_matching
+    if (shower_settings%ckkw_matching) then
+       ! TODO ckkw settings etc.
+    end if
+    write (u, *)
     write (u, *) "ps_PYTHIA_verbose           = ", shower_settings%ps_PYTHIA_verbose
     write (u, *) "ps_PYTHIA_PYGIVE            = ", char(shower_settings%ps_PYTHIA_PYGIVE)
   end subroutine shower_settings_write
 
   subroutine apply_shower_particle_set(particle_set, shower_settings,  model, &
-       pdf_type, pdf_set, valid, vetoed)
+       os_data, pdf_type, pdf_set, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
     type(model_t), pointer, intent(in) :: model
+    type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: pdf_type
     integer, intent(in) :: pdf_set
     logical, intent(inout) :: valid
@@ -192,37 +237,52 @@ contains
     type(mlm_matching_data_t) :: mlm_matching_data
     logical, save :: matching_disabled=.false.
     procedure(shower_pdf), pointer :: pdf_func => null()
-    external :: evolvePDFM
 
-    if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
-         .and.(shower_settings%hadronization_active.eqv..false.).and.(shower_settings%mlm_matching.eqv..false.) ) then
+    interface
+       subroutine evolvePDFM (set, x, q, ff)
+         integer, intent(in) :: set
+         double precision, intent(in) :: x, q
+         double precision, dimension(-6:6), intent(out) :: ff
+       end subroutine evolvePDFM
+    end interface
+
+    if ((shower_settings%ps_fsr_active .eqv. .false.) .and. &
+         (shower_settings%ps_isr_active.eqv..false.) .and. &
+         (shower_settings%hadronization_active.eqv..false.) .and. &
+         (shower_settings%mlm_matching.eqv..false.) ) then
        ! return if nothing to do
        return
     end if
 
     ! return if already invalid or vetoed
-    if((.not.valid).or.vetoed) then
+    if ((.not.valid) .or. vetoed) then
        return
     end if
     ! ensure that lhapdf is initialized
-    if(pdf_type .eq. STRF_LHAPDF) then
-       if(shower_settings%ps_isr_active .and.(abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
-            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000)) then
-          call GetQ2max(0,pdftest)
-          if(pdftest .eq. 0._double) then
-             call msg_fatal(" ISR enabled, but LHAPDF not initialized," // &
+    if (pdf_type .eq. STRF_LHAPDF) then
+       if (shower_settings%ps_isr_active .and. &
+            (abs (particle_get_pdg (particle_set_get_particle (particle_set, 1))).ge.1000) .and. &
+            (abs (particle_get_pdg (particle_set_get_particle (particle_set, 2))).ge.1000)) then
+          call GetQ2max (0,pdftest)
+          if (pdftest .eq. 0._double) then
+             call msg_fatal (" ISR enabled, but LHAPDF not initialized," // &
                   char(10) // "     aborting simulation")
              return
           end if
        end if
        pdf_func => evolvePDFM
-    else if(pdf_type.eq. STRF_PDF_BUILTIN) then
-       if(shower_settings%ps_use_PYTHIA_shower) then
-          call msg_fatal(" builtin-pdfs can not be used for PYTHIA showers," // &
+    else if (pdf_type.eq. STRF_PDF_BUILTIN) then
+       if (shower_settings%ps_use_PYTHIA_shower) then
+          call msg_fatal (" builtin-pdfs can not be used for PYTHIA showers," // &
                char(10) // "     aborting simulation")
           return
        end if
        pdf_func => pdf_evolve_LHAPDF
+    end if
+    if (shower_settings%mlm_matching .and. shower_settings%ckkw_matching) then
+       call msg_fatal (" both MLM and CKKW matching activated," // &
+            char(10) // "     aborting simulation")
+       return      
     end if
 
 !    call shower_settings_write(shower_settings)
@@ -237,14 +297,14 @@ contains
 
     if(matching_disabled.eqv..false.) then
        !!! Check if the beams are hadrons
-       if(  (abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).le.18).and.&
-            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).le.18)) then
+       if ((abs (particle_get_pdg(particle_set_get_particle (particle_set, 1))).le.18) .and. &
+           (abs (particle_get_pdg(particle_set_get_particle (particle_set, 2))).le.18)) then
           mlm_matching_data%is_hadron_collision = .false.
-       else if( (abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
-            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000) ) then
+       else if ((abs(particle_get_pdg (particle_set_get_particle (particle_set, 1))).ge.1000) .and. &
+                (abs(particle_get_pdg (particle_set_get_particle (particle_set, 2))).ge.1000)) then
           mlm_matching_data%is_hadron_collision = .true.
        else 
-          call msg_error(" Matching didn't recognize beams setup," // &
+          call msg_error (" Matching didn't recognize beams setup," // &
                char(10) // "     disabling matching")
           matching_disabled = .true.
           return
@@ -252,14 +312,15 @@ contains
     end if
     
 !!! SHOWER
-    if(shower_settings%ps_use_PYTHIA_shower.or. &
-         ((.not.shower_settings%ps_fsr_active).and.(.not.shower_settings%ps_isr_active) &
+    if (shower_settings%ps_use_PYTHIA_shower .or. &
+         ((.not.shower_settings%ps_fsr_active) .and. (.not.shower_settings%ps_isr_active) &
          .and.(shower_settings%hadronization_active))) then
-       call apply_PYTHIAshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, valid)
+       call apply_PYTHIAshower_particle_set (particle_set, shower_settings, mlm_matching_data%P_ME, model, valid)
        !       call pylist(2)
     else
-       call apply_WHIZARDshower_particle_set(particle_set, shower_settings, mlm_matching_data%P_ME, model, &
-       pdf_func, pdf_set, valid)
+       call apply_WHIZARDshower_particle_set (particle_set, shower_settings, mlm_matching_data%P_ME, model, &
+            os_data, pdf_func, pdf_set, valid, vetoed)
+            if(vetoed) return
     end if
     !call particle_set_write(particle_set)
     !print *, " after SHOWER"
@@ -267,29 +328,29 @@ contains
        
     if(shower_settings%mlm_matching.and.(matching_disabled.eqv..false.)) then
 !!! MLM stage 2 -> PS jets and momenta
-       call matching_transfer_PS(mlm_matching_data, particle_set, shower_settings)
+       call matching_transfer_PS (mlm_matching_data, particle_set, shower_settings)
 !!! MLM stage 3 -> reconstruct and possible reject
-       call mlm_matching(mlm_matching_data, shower_settings%ms, vetoed)
-       if(vetoed) then
-          call mlm_matching_data_final(mlm_matching_data)
+       call mlm_matching (mlm_matching_data, shower_settings%ms, vetoed)
+       if (vetoed) then
+          call mlm_matching_data_final (mlm_matching_data)
           return
        end if
     endif
 
 !!! HADRONIZATION
-    if(shower_settings%hadronization_active) then
+    if (shower_settings%hadronization_active) then
        !! Assume that the event record is still in the PYTHIA COMMON BLOCKS
        !! transferred there by one of the shower routines
-       if(valid) then
-          call apply_PYTHIAhadronization(particle_set, shower_settings, model, valid)
+       if (valid) then
+          call apply_PYTHIAhadronization (particle_set, shower_settings, model, valid)
        end if
     end if
 !!! FINAL
 
-    call mlm_matching_data_final(mlm_matching_data)
+    call mlm_matching_data_final (mlm_matching_data)
 !    print *, "SHOWER+HAD+MATCHING finished"
   contains
-    function shower_get_PYTHIA_error(mstu23in) result(mstu23)
+    function shower_get_PYTHIA_error (mstu23in) result (mstu23)
       ! PYTHIA common blocks
       IMPLICIT DOUBLE PRECISION(A-H, O-Z)
       IMPLICIT INTEGER(I-N)
@@ -299,13 +360,13 @@ contains
       integer, intent(in), optional :: mstu23in
       integer :: mstu23
 
-      if(present(mstu23in)) then
-         MSTU(23)=mstu23in
+      if (present (mstu23in)) then
+         MSTU(23) = mstu23in
       end if
       mstu23 = MSTU(23)
     end function shower_get_PYTHIA_error
 
-    subroutine apply_PYTHIAshower_particle_set(particle_set, shower_settings, JETS_ME, model, valid)
+    subroutine apply_PYTHIAshower_particle_set (particle_set, shower_settings, JETS_ME, model, valid)
   integer, parameter :: MAXPUP = 100
   integer, parameter :: MAXNUP = 500
   integer, dimension(2) :: IDBMUP
@@ -389,114 +450,115 @@ contains
       character*10 buffer
 
       ! check if the beam particles are quarks
-      if( (abs(IDBMUP(1)).le.8).or.(abs(IDBMUP(2)).le.8) ) then
+      if ((abs(IDBMUP(1)).le.8).or.(abs(IDBMUP(2)).le.8)) then
          ! PYTHIA doesn't support these settings
-         if(pythia_warning_given.eqv..false.) then
-            call msg_error("PYTHIA doesn't support quarks as beam particles," // &
+         if (pythia_warning_given.eqv..false.) then
+            call msg_error ("PYTHIA doesn't support quarks as beam particles," // &
                  char(10) // "     negelecting ISR, FSR and hadronization")
             pythia_warning_given = .true.
          end if
          return
       end if
       
-      call particle_set_reduce(particle_set, pset_reduced)
-      call particle_set_fill_hepeup(pset_reduced)
-      call hepeup_set_event_parameters(proc_id=1)
+      call particle_set_reduce (particle_set, pset_reduced)
+      call particle_set_fill_hepeup (pset_reduced)
+      call hepeup_set_event_parameters (proc_id=1)
 
       u_W2P = free_unit()
-      !open(unit=u_W2P, status="replace", file="whizardout1.lhe", action="readwrite")  ! only for debugging purposes
-      open(unit=u_W2P, status="scratch", action="readwrite")
+      ! only for debugging purposes
+      ! open (unit=u_W2P, status="replace", file="whizardout1.lhe", action="readwrite")  
+      open (unit=u_W2P, status="scratch", action="readwrite")
       call les_houches_events_write_header (u_W2P)
-      call heprup_write_lhef(u_W2P)
-      call hepeup_write_lhef(u_W2P)
+      call heprup_write_lhef (u_W2P)
+      call hepeup_write_lhef (u_W2P)
       call les_houches_events_write_footer (u_W2P)
-      rewind(u_W2P)
+      rewind (u_W2P)
       write (buffer, "(I10)")  u_W2P
       call pygive ("MSTP(161)="//buffer)
       call pygive ("MSTP(162)="//buffer)
-      if(shower_settings%ps_isr_active.eqv..false.) then
+      if (shower_settings%ps_isr_active.eqv..false.) then
          call pygive ("MSTP(61)=0")  ! switch off ISR
       else
-         call pygive("MSTP(61)=1")
+         call pygive ("MSTP(61)=1")
       end if
-      if(shower_settings%ps_fsr_active.eqv..false.) then
+      if (shower_settings%ps_fsr_active.eqv..false.) then
          call pygive ("MSTP(71)=0")  ! switch off FSR
       else
          call pygive ("MSTP(71)=1")
       end if
       call pygive ("MSTP(111)=0") ! switch off hadronization
 
-      if(pythia_initialized_for_NPRUP .ge. NPRUP) then
+      if (pythia_initialized_for_NPRUP .ge. NPRUP) then
          call upinit
       else
-         write(buffer, "(F10.5)") shower_settings%ps_mass_cutoff
-         call pygive("PARJ(82)="//buffer)
-         write(buffer, "(F10.5)") shower_settings%ps_isr_tscalefactor
-         call pygive("PARP(71)="//buffer)    
+         write (buffer, "(F10.5)") shower_settings%ps_mass_cutoff
+         call pygive ("PARJ(82)="//buffer)
+         write (buffer, "(F10.5)") shower_settings%ps_isr_tscalefactor
+         call pygive ("PARP(71)="//buffer)    
 
-         write(buffer, "(F10.5)") shower_settings%ps_fsr_lambda
-         call pygive("PARP(72)="//buffer)
+         write (buffer, "(F10.5)") shower_settings%ps_fsr_lambda
+         call pygive ("PARP(72)="//buffer)
          write(buffer, "(F10.5)") shower_settings%ps_isr_lambda
-         call pygive("PARP(61)="//buffer)
-         write(buffer, "(I10)") shower_settings%ps_max_n_flavors
-         call pygive("MSTJ(45)="//buffer)
-         if(shower_settings%ps_isr_alpha_s_running) then
+         call pygive ("PARP(61)="//buffer)
+         write (buffer, "(I10)") shower_settings%ps_max_n_flavors
+         call pygive ("MSTJ(45)="//buffer)
+         if (shower_settings%ps_isr_alpha_s_running) then
             call pygive ("MSTP(64)=2")
          else
             call pygive ("MSTP(64)=0")
          end if
-         if(shower_settings%ps_fsr_alpha_s_running) then
+         if (shower_settings%ps_fsr_alpha_s_running) then
             call pygive ("MSTJ(44)=2")
          else
             call pygive ("MSTJ(44)=0")
          end if
-         write(buffer, "(F10.5)") shower_settings%ps_fixed_alpha_s
-         call pygive("PARU(111)="//buffer)
-         write(buffer, "(F10.5)") shower_settings%ps_isr_primordial_kt_width
-         call pygive("PARP(91)="//buffer)
-         write(buffer, "(F10.5)") shower_settings%ps_isr_primordial_kt_cutoff
-         call pygive("PARP(93)="//buffer)
-         write(buffer, "(F10.5)") 1._double - shower_settings%ps_isr_z_cutoff
-         call pygive("PARP(66)="//buffer)
-         write(buffer, "(F10.5)") shower_settings%ps_isr_minenergy
-         call pygive("PARP(65)="//buffer)
-         if(shower_settings%ps_isr_only_onshell_emitted_partons) then
+         write (buffer, "(F10.5)") shower_settings%ps_fixed_alpha_s
+         call pygive ("PARU(111)="//buffer)
+         write (buffer, "(F10.5)") shower_settings%ps_isr_primordial_kt_width
+         call pygive ("PARP(91)="//buffer)
+         write (buffer, "(F10.5)") shower_settings%ps_isr_primordial_kt_cutoff
+         call pygive ("PARP(93)="//buffer)
+         write (buffer, "(F10.5)") 1._double - shower_settings%ps_isr_z_cutoff
+         call pygive ("PARP(66)="//buffer)
+         write (buffer, "(F10.5)") shower_settings%ps_isr_minenergy
+         call pygive ("PARP(65)="//buffer)
+         if (shower_settings%ps_isr_only_onshell_emitted_partons) then
             call pygive ("MSTP(63)=0")
          else
             call pygive ("MSTP(63)=2")
          end if
-         if(shower_settings%mlm_matching) then
+         if (shower_settings%mlm_matching) then
             CALL PYGIVE('MSTP(62)=2')
             CALL PYGIVE('MSTP(67)=0')
          end if
-         call pyinit("USER", "", "", 0D0)
+         call pyinit ("USER", "", "", 0D0)
 
-         call tao_random_number(rand)
-         write(buffer, "(I10)") floor(rand*900000000)
-         call pygive("MRPY(1)="//buffer)
-         call pygive("MRPY(2)=0")
+         call tao_random_number (rand)
+         write (buffer, "(I10)") floor (rand*900000000)
+         call pygive ("MRPY(1)="//buffer)
+         call pygive ("MRPY(2)=0")
 
-         if(len(shower_settings%ps_PYTHIA_PYGIVE)>0) then
+         if (len(shower_settings%ps_PYTHIA_PYGIVE)>0) then
             remaining_PYGIVE = shower_settings%ps_PYTHIA_PYGIVE
-            do while(len(remaining_PYGIVE)>0)
-               call split(remaining_PYGIVE, partial_PYGIVE, ";")
-               call PYGIVE(char(partial_PYGIVE))
+            do while (len (remaining_PYGIVE)>0)
+               call split (remaining_PYGIVE, partial_PYGIVE, ";")
+               call PYGIVE (char (partial_PYGIVE))
             end do
-            if(shower_get_PYTHIA_error().ne.0) then
-               call msg_fatal(" PYTHIA didn't recognize ps_PYTHIA_PYGIVE setting")
+            if (shower_get_PYTHIA_error().ne.0) then
+               call msg_fatal (" PYTHIA didn't recognize ps_PYTHIA_PYGIVE setting")
             end if
          end if
 
          pythia_initialized_for_NPRUP = NPRUP
       end if
 
-      if(.not.msg_written) then
-         call msg_message("Using PYTHIA interface for parton showers")
+      if (.not.msg_written) then
+         call msg_message ("Using PYTHIA interface for parton showers")
          msg_written = .true.
       end if
-      call pyevnt()
+      call pyevnt ()
 
-      u_P2W = free_unit()
+      u_P2W = free_unit ()
       write (buffer, "(I10)")  u_P2W
       call pygive ("MSTP(163)="//buffer)
       !open(unit=u_P2W, file="pythiaout.lhe", status="replace", action="readwrite")  ! only for debugging purposes
@@ -504,7 +566,7 @@ contains
       ! convert pythia /PYJETS/ to lhef given in MSTU(163)=u_P2W
       call pylheo
       ! read and add lhef from u_P2W
-      call shower_add_lhef_to_particle_set(particle_set, u_P2W, model)
+      call shower_add_lhef_to_particle_set(particle_set, u_P2W, model, os_data)
       close(unit=u_P2W)
       
       if(shower_settings%mlm_matching) then
@@ -515,22 +577,27 @@ contains
       valid = (shower_get_PYTHIA_error().eq.0)
     end subroutine apply_PYTHIAshower_particle_set
     subroutine apply_WHIZARDshower_particle_set(particle_set, shower_settings, JETS_ME, model_in, &
-         pdf_func, pdf_set, valid)
+         os_data, pdf_func, pdf_set, valid, vetoed)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
       type(model_t), pointer, intent(in) :: model_in
+      type(os_data_t), intent(in) :: os_data
       procedure(shower_pdf), pointer, intent(in) :: pdf_func
       integer, intent(in) :: pdf_set
       logical, intent(inout) :: valid
+      logical, intent(out) :: vetoed
 
+      type(muli_type),save :: mi
       type(shower_t) :: shower
-      type(parton_t), dimension(:), allocatable, target :: partons
+      type(parton_t), dimension(:), allocatable, target :: partons, hadrons
       type(parton_pointer_t), dimension(:), allocatable :: parton_pointers, final_ME_partons
+      real(kind=default) :: mi_scale, ps_scale, shat, phi
       type(parton_pointer_t) :: temppp
       integer, dimension(:), allocatable :: connections
-      integer :: n_loop, i, j
+      integer :: n_loop, i, j, k
       integer :: n_hadrons, n_in, n_out
+      integer :: n_interactions
       integer :: max_color_nr
       integer, dimension(2) :: col_array
       integer, dimension(1) :: parent
@@ -540,114 +607,123 @@ contains
       type(model_t), target, save :: model_SM_hadrons
       logical, save :: model_SM_hadrons_associated = .false.
       logical, save :: msg_written = .false.
-      type(os_data_t) :: os_data 
       logical :: exist_SM_hadrons
       type(string_t) :: filename
+      integer,dimension(2,4)::color_corr
+      integer :: colori, colorj
       character*5 buffer
       integer :: u_S2W
 
-      ! transfer settings from shower_settings to shower
-      call shower_set_D_Min_t(shower_settings%ps_mass_cutoff**2)
-      call shower_set_D_Lambda_fsr(shower_settings%ps_fsr_lambda)
-      call shower_set_D_Lambda_isr(shower_settings%ps_isr_lambda)
-      call shower_set_D_Nf(shower_settings%ps_max_n_flavors)
-      call shower_set_D_running_alpha_s_fsr(shower_settings%ps_fsr_alpha_s_running)
-      call shower_set_D_running_alpha_s_isr(shower_settings%ps_isr_alpha_s_running)
-      call shower_set_D_constantalpha_s(shower_settings%ps_fixed_alpha_s)
-      call shower_set_isr_pt_ordered(shower_settings%ps_isr_pt_ordered)
-      call shower_set_isr_angular_ordered(shower_settings%ps_isr_angular_ordered)
-      Call shower_set_primordial_kt_width(shower_settings%ps_isr_primordial_kt_width)
-      call shower_set_primordial_kt_cutoff(shower_settings%ps_isr_primordial_kt_cutoff)
-      call shower_set_maxz_isr(shower_settings%ps_isr_z_cutoff)
-      call shower_set_minenergy_timelike(shower_settings%ps_isr_minenergy)
-      call shower_set_tscalefactor_isr(shower_settings%ps_isr_tscalefactor)
-      call shower_set_isr_only_onshell_emitted_partons( &
-           shower_settings%ps_isr_only_onshell_emitted_partons)
-      call shower_set_pdf_set(pdf_set)
-      call shower_set_pdf_func(pdf_func)
+      vetoed = .false.
 
-      if(.not.msg_written) then
-         call msg_message("Using WHIZARD's internal showering")
+      ! transfer settings from shower_settings to shower
+      call shower_set_D_Min_t (shower_settings%ps_mass_cutoff**2)
+      call shower_set_D_Lambda_fsr (shower_settings%ps_fsr_lambda)
+      call shower_set_D_Lambda_isr (shower_settings%ps_isr_lambda)
+      call shower_set_D_Nf (shower_settings%ps_max_n_flavors)
+      call shower_set_D_running_alpha_s_fsr (shower_settings%ps_fsr_alpha_s_running)
+      call shower_set_D_running_alpha_s_isr (shower_settings%ps_isr_alpha_s_running)
+      call shower_set_D_constantalpha_s (shower_settings%ps_fixed_alpha_s)
+      call shower_set_isr_pt_ordered (shower_settings%ps_isr_pt_ordered)
+      call shower_set_isr_angular_ordered (shower_settings%ps_isr_angular_ordered)
+      Call shower_set_primordial_kt_width (shower_settings%ps_isr_primordial_kt_width)
+      call shower_set_primordial_kt_cutoff (shower_settings%ps_isr_primordial_kt_cutoff)
+      call shower_set_maxz_isr (shower_settings%ps_isr_z_cutoff)
+      call shower_set_minenergy_timelike (shower_settings%ps_isr_minenergy)
+      call shower_set_tscalefactor_isr (shower_settings%ps_isr_tscalefactor)
+      call shower_set_isr_only_onshell_emitted_partons &
+           (shower_settings%ps_isr_only_onshell_emitted_partons)
+      call shower_set_pdf_set (pdf_set)
+      call shower_set_pdf_func (pdf_func)
+
+      if (.not.msg_written) then
+         call msg_message ("Using WHIZARD's internal showering")
          msg_written = .true.
       end if
 
       n_loop = 0
       try_shower: do ! just a loop to be able to discard events
          n_loop = n_loop + 1
-         if(n_loop .gt. 1000) STOP "BUG: too many loops (try_shower)"
-         call shower_create(shower)
+         if (n_loop .gt. 1000) STOP "BUG: too many loops (try_shower)"
+         call shower_create (shower)
          max_color_nr = 0
 
          n_hadrons = 0
          n_in = 0
          n_out = 0
-         do i=1, particle_set_get_n_tot(particle_set)
-            if(particle_get_status(particle_set_get_particle(particle_set, i))==PRT_BEAM) n_hadrons = n_hadrons+1
-            if(particle_get_status(particle_set_get_particle(particle_set, i))==PRT_INCOMING) n_in = n_in+1
-            if(particle_get_status(particle_set_get_particle(particle_set, i))==PRT_OUTGOING) n_out = n_out+1
+         do i = 1, particle_set_get_n_tot (particle_set)
+            if (particle_get_status (particle_set_get_particle (particle_set, i)) == PRT_BEAM) &
+                 n_hadrons = n_hadrons+1
+            if (particle_get_status (particle_set_get_particle (particle_set, i)) == PRT_INCOMING) &
+                 n_in = n_in+1
+            if (particle_get_status (particle_set_get_particle (particle_set, i)) == PRT_OUTGOING) &
+                 n_out = n_out+1
          end do
 
-         allocate(connections(1:particle_set_get_n_tot(particle_set)))
+         allocate (connections (1:particle_set_get_n_tot (particle_set)))
          connections = 0
 
-         allocate(partons(1:n_hadrons+n_in+n_out))
-         allocate(parton_pointers(1:n_in+n_out))
+         allocate (hadrons (1:2))
+         allocate (partons (1:n_in+n_out))
+         allocate (parton_pointers (1:n_in+n_out))
 
          j=0
-         if(n_hadrons > 0) then
+         if (n_hadrons > 0) then
             ! Transfer hadrons
-            do i=1,particle_set_get_n_tot(particle_set)
-               if(particle_get_status(particle_set_get_particle(particle_set, i))==PRT_BEAM) then
-                  j=j+1
-                  partons(j)%nr = shower_get_next_free_nr(shower)
-                  partons(j)%momentum = particle_get_momentum(particle_set_get_particle(particle_set, i))
-                  partons(j)%t = partons(j)%momentum**2
-                  partons(j)%typ = particle_get_pdg(particle_set_get_particle(particle_set, i))
-                  col_array=particle_get_color(particle_set_get_particle(particle_set, i))
-                  partons(j)%c1 = col_array(1)
-                  partons(j)%c2 = col_array(2)
-                  partons(j)%interactionnr = 1
-                  max_color_nr = max(max_color_nr, abs(partons(j)%c1), abs(partons(j)%c2))
+            do i = 1, particle_set_get_n_tot (particle_set)
+               if (particle_get_status (particle_set_get_particle (particle_set, i)) == PRT_BEAM) then
+                  j = j+1
+                  hadrons(j)%nr = shower_get_next_free_nr (shower)
+                  hadrons(j)%momentum = particle_get_momentum (particle_set_get_particle (particle_set, i))
+                  hadrons(j)%t = hadrons(j)%momentum**2
+                  hadrons(j)%typ = particle_get_pdg (particle_set_get_particle (particle_set, i))
+                  col_array=particle_get_color (particle_set_get_particle (particle_set, i))
+                  hadrons(j)%c1 = col_array(1)
+                  hadrons(j)%c2 = col_array(2)
+                  max_color_nr = max (max_color_nr, abs(hadrons(j)%c1), abs(hadrons(j)%c2))
+                  hadrons(j)%interactionnr = 1
                   connections(i)=j
                end if
             end do
          end if
 
          ! transfer incoming partons
-         do i=1,particle_set_get_n_tot(particle_set)
-            if(particle_get_status(particle_set_get_particle(particle_set, i))==PRT_INCOMING) then
-               j=j+1
-               partons(j)%nr = shower_get_next_free_nr(shower)
-               partons(j)%momentum = particle_get_momentum(particle_set_get_particle(particle_set, i))
+         j = 0
+         do i = 1, particle_set_get_n_tot (particle_set)
+            if (particle_get_status (particle_set_get_particle (particle_set, i)) == PRT_INCOMING) then
+               j = j+1
+               partons(j)%nr = shower_get_next_free_nr (shower)
+               partons(j)%momentum = particle_get_momentum (particle_set_get_particle (particle_set, i))
                partons(j)%t = partons(j)%momentum**2
-               partons(j)%typ = particle_get_pdg(particle_set_get_particle(particle_set, i))
-               col_array=particle_get_color(particle_set_get_particle(particle_set, i))
-               partons(j)%c1 = col_array(1)
-               partons(j)%c2 = col_array(2)
-               parton_pointers(j-n_hadrons)%p => partons(j)
-               max_color_nr = max(max_color_nr, abs(partons(j)%c1), abs(partons(j)%c2))
+               partons(j)%typ = particle_get_pdg (particle_set_get_particle (particle_set, i))
+               col_array=particle_get_color (particle_set_get_particle (particle_set, i))
+               partons(j)%c1 = col_array (1)
+               partons(j)%c2 = col_array (2)
+               parton_pointers(j)%p => partons(j)
+               max_color_nr = max (max_color_nr, abs (partons(j)%c1), abs (partons(j)%c2))
                connections(i)=j
-               ! insert dependences on hadrons -> TODO
-               if(particle_get_n_parents(particle_set_get_particle(particle_set, i))==1) then
-                  parent = particle_get_parents(particle_set_get_particle(particle_set, i))
-                  partons(j)%initial => partons(connections(parent(1)))
-                  partons(j)%x = space_part_norm(partons(j)%momentum) / space_part_norm(partons(j)%initial%momentum)
+               ! insert dependences on hadrons
+               if (particle_get_n_parents (particle_set_get_particle (particle_set, i))==1) then
+                  parent = particle_get_parents (particle_set_get_particle (particle_set, i))
+                  partons(j)%initial => hadrons (connections (parent(1)))
+                  partons(j)%x = space_part_norm (partons(j)%momentum) / &
+                                 space_part_norm (partons(j)%initial%momentum)
                end if
             end if
          end do
          ! transfer outgoing partons
-         do i=1,particle_set_get_n_tot(particle_set)
-            if(particle_get_status(particle_set_get_particle(particle_set, i))==PRT_OUTGOING) then
-               j=j+1
-               partons(j)%nr = shower_get_next_free_nr(shower)
-               partons(j)%momentum = particle_get_momentum(particle_set_get_particle(particle_set, i))
+         do i = 1, particle_set_get_n_tot (particle_set)
+            if (particle_get_status (particle_set_get_particle (particle_set, i)) == PRT_OUTGOING) then
+               j = j+1
+               partons(j)%nr = shower_get_next_free_nr (shower)
+               partons(j)%momentum = particle_get_momentum (particle_set_get_particle (particle_set, i))
                partons(j)%t = partons(j)%momentum**2
-               partons(j)%typ = particle_get_pdg(particle_set_get_particle(particle_set, i))
-               col_array=particle_get_color(particle_set_get_particle(particle_set, i))
+               partons(j)%typ = particle_get_pdg (particle_set_get_particle (particle_set, i))
+               col_array=particle_get_color (particle_set_get_particle (particle_set, i))
                partons(j)%c1 = col_array(1)
                partons(j)%c2 = col_array(2)
-               parton_pointers(j-n_hadrons)%p => partons(j)
-               max_color_nr = max(max_color_nr, abs(partons(j)%c1), abs(partons(j)%c2))
+               parton_pointers(j)%p => partons(j)
+               max_color_nr = max (max_color_nr, abs (partons(j)%c1), abs (partons(j)%c2))
                connections(i)=j
             end if
          end do
@@ -655,26 +731,143 @@ contains
          deallocate(connections)
 
          ! insert these partons in shower
-         call shower_set_next_color_nr(shower, 1+max_color_nr)
-         call shower_add_interaction2ton(shower, parton_pointers)
+         call shower_set_next_color_nr (shower, 1+max_color_nr)
+         call shower_add_interaction2tonCKKW (shower, parton_pointers, shower_settings%ckkw_weights)
 
-         if(shower_settings%ps_isr_active) then
-            i=0
+         
+         if (shower_settings%muli_active) then
+            ! Initialize muli pdf sets, unless initialized
+            if (mi%is_initialized ()) then
+               call mi%restart ()
+            else
+!!$               call shower_print(shower)
+!!$               print *, "---------------"
+!!$               call interaction_print(shower%interactions(i)%i)
+!!$               print *, "---------------"
+!!$               call vector4_write(shower%interactions(1)%i%partons(1)%p%momentum)
+!!$               call vector4_write(shower%interactions(1)%i%partons(2)%p%momentum)
+!!$               print *, "---------------"
+               call mi%initialize (&
+                    GeV2_scale_cutoff=D_Min_t, &
+                    GeV2_s=shower_interaction_get_s (shower%interactions(1)%i), &
+                    muli_dir=char(os_data%whizard_mulipath))
+            end if
+
+            ! initial interaction
+            call mi%apply_initial_interaction(&
+                 GeV2_s=shower_interaction_get_s(shower%interactions(1)%i), &
+                 x1=shower%interactions(1)%i%partons(1)%p%parent%x, &
+                 x2=shower%interactions(1)%i%partons(2)%p%parent%x, &
+                 pdg_f1=shower%interactions(1)%i%partons(1)%p%parent%typ, &
+                 pdg_f2=shower%interactions(1)%i%partons(2)%p%parent%typ, &
+                 n1=shower%interactions(1)%i%partons(1)%p%parent%nr, &
+                 n2=shower%interactions(1)%i%partons(2)%p%parent%nr)
+         end if
+
+         if (shower_settings%ckkw_matching) then
+            ! CKKW Matching
+            call ckkw_matching (shower, shower_settings%ckkw_settings, shower_settings%ckkw_weights, vetoed)
+            if (vetoed) then
+               return
+            end if
+         end if
+
+         if (shower_settings%ps_isr_active) then
+            i = 0
             branchings: do
-               i=i+1
-               ! shower_generate_next_isr_branching returns a pointer to the parton with the next ISR-branching, this parton's scale is the scale of the next branching
-!               temppp=shower_generate_next_isr_branching_veto(shower)
-               temppp=shower_generate_next_isr_branching(shower)
+               i = i+1
+               if (shower_settings%muli_active) then
+                  call mi%generate_gev2_pt2 (shower_get_ISR_scale(shower), mi_scale)
+               else
+                  mi_scale = 0.0
+               end if
 
-               if(.not. associated(temppp%p)) then
+               ! shower_generate_next_isr_branching returns a pointer to the parton with the next ISR-branching, this parton's scale is the scale of the next branching
+               !               temppp=shower_generate_next_isr_branching_veto(shower)
+               temppp=shower_generate_next_isr_branching(shower)
+                  
+               if((.not. associated(temppp%p)).and.(mi_scale.lt.D_Min_t)) then
                   exit branchings
                end if
-               ! execute the next branching 'found' in the previous step
-               call shower_execute_next_isr_branching(shower, temppp)
-!               call shower_print(shower)
-!               pause
-            end do branchings
+               ! check if branching or interaction occurs next
+               if(associated(temppp%p)) then
+                  ps_scale = abs(temppp%p%t)
+               else
+                  ps_scale = 0._default
+               end if
+               if(mi_scale .gt. ps_scale) then
+                  ! discard branching evolution lower than mi_scale
+                  call shower_set_max_ISR_scale(shower, mi_scale)
+                  if(associated(temppp%p)) call parton_set_simulated(temppp%p, .false.)
+                 
+                  ! execute new interaction
+                  deallocate(partons)
+                  deallocate(parton_pointers)
+                  allocate(partons(1:4))
+                  allocate(parton_pointers(1:4))
+                  do j=1,4
+                     partons(j)%nr = shower_get_next_free_nr(shower)
+                     partons(j)%belongstointeraction = .true.
+                     parton_pointers(j)%p => partons(j)
+                  end do
+                  call mi%generate_partons(partons(1)%nr, partons(2)%nr, &
+                       partons(1)%x, partons(2)%x, &
+                       partons(1)%typ, partons(2)%typ, &
+                       partons(3)%typ, partons(4)%typ)
+                  ! calculate momenta
+                  shat = partons(1)%x*partons(2)%x*shower_interaction_get_s(shower%interactions(1)%i)
+                  call parton_set_momentum(partons(1), 0.5_default*sqrt(shat), 0._default, 0._default, 0.5_default*sqrt(shat))
+                  call parton_set_momentum(partons(2), 0.5_default*sqrt(shat), 0._default, 0._default, -0.5_default*sqrt(shat))
+                  call parton_set_initial(partons(1), shower%interactions(1)%i%partons(1)%p%initial)
+                  call parton_set_initial(partons(2), shower%interactions(1)%i%partons(2)%p%initial)
+                  partons(1)%belongstoFSR=.false.
+                  partons(2)%belongstoFSR=.false.
+                  ! calculate color connections
+                  call mi%get_color_correlations(shower_get_next_color_nr(shower),max_color_nr,color_corr)
+                  call shower_set_next_color_nr(shower, max_color_nr)
 
+                  partons(1)%c1 = color_corr(1,1)
+                  partons(1)%c2 = color_corr(2,1)
+                  partons(2)%c1 = color_corr(1,2)
+                  partons(2)%c2 = color_corr(2,2)
+                  partons(3)%c1 = color_corr(1,3)
+                  partons(3)%c2 = color_corr(2,3)
+                  partons(4)%c1 = color_corr(1,4)
+                  partons(4)%c2 = color_corr(2,4)
+
+                  call tao_random_number(phi)
+                  phi = 2*pi*phi
+                  call parton_set_momentum(partons(3), 0.5_default*sqrt(shat), sqrt(mi_scale)*cos(phi), &
+                       sqrt(mi_scale)*sin(phi), sqrt(0.25_default*shat - mi_scale))
+                  call parton_set_momentum(partons(4), 0.5_default*sqrt(shat), -sqrt(mi_scale)*cos(phi), &
+                       -sqrt(mi_scale)*sin(phi), -sqrt(0.25_default*shat - mi_scale))
+                  partons(3)%belongstoFSR=.true.
+                  partons(4)%belongstoFSR=.true.
+
+                  call shower_add_interaction2ton(shower, parton_pointers)
+                  n_interactions = size(shower%interactions)
+                  do k=1,2
+                     call mi%replace_parton(shower%interactions(n_interactions)%i%partons(k)%p%initial%nr, &
+                          shower%interactions(n_interactions)%i%partons(k)%p%nr, &
+                          shower%interactions(n_interactions)%i%partons(k)%p%parent%nr, &
+                          shower%interactions(n_interactions)%i%partons(k)%p%typ, &
+                          shower%interactions(n_interactions)%i%partons(k)%p%x, &
+                          mi_scale)
+                  end do
+                  call shower_print(shower)
+!                  pause
+               else
+                  ! execute the next branching 'found' in the previous step
+                  call shower_execute_next_isr_branching(shower, temppp)
+                  if(shower_settings%muli_active) then
+                     call mi%replace_parton(temppp%p%initial%nr, temppp%p%child1%nr, temppp%p%nr, &
+                          temppp%p%typ, temppp%p%x, ps_scale)
+                  end if
+               !               call shower_print(shower)
+               !               pause
+               end if
+            end do branchings
+               
             call shower_generate_fsr_for_partons_emitted_in_ISR(shower)
             !     call shower_print(shower)
          else
@@ -685,6 +878,8 @@ contains
          call shower_boost_to_labframe(shower)
          call shower_generate_primordial_kt(shower)
          call shower_update_beamremnants(shower)
+         ! clean-up muli: we should finalize the muli pdf sets when all runs are done. 
+         ! call mi%finalize()
 
          if(shower_settings%ps_fsr_active) then
             ! FSR
@@ -694,9 +889,9 @@ contains
          else
             call shower_simulate_no_fsr_shower(shower)
          end if
-!         call shower_print(shower)
-!         print *, "SHOWER_FINISHED"
-
+         !         call shower_print(shower)
+         !         print *, "SHOWER_FINISHED"
+            
          if(shower_settings%mlm_matching) then
             ! transfer momenta of the partons in the final state of the hard initeraction
             if(allocated(JETS_ME)) deallocate(JETS_ME)
@@ -716,7 +911,7 @@ contains
          ! open(unit=u_S2W, file="showerout.lhe", status="replace", action="readwrite")  
          open(unit=u_S2W, status="scratch", action="readwrite")
          call shower_write_lhef(shower, u_S2W)
-         call shower_add_lhef_to_particle_set(particle_set, u_S2W, model_in)
+         call shower_add_lhef_to_particle_set(particle_set, u_S2W, model_in, os_data)
          close(u_S2W)
          
          ! move the particle data to the PYTHIA COMMON BLOCKS in case 
@@ -724,6 +919,7 @@ contains
          if(shower_settings%hadronization_active) then
             call shower_converttopythia(shower)
          end if
+!         deallocate(hadrons)   ! hadrons are deallocated by shower_final
          deallocate(partons)
          deallocate(parton_pointers)
          exit try_shower
@@ -732,7 +928,14 @@ contains
 !      print *, "----------------------apply_shower_particle_set------------------"
 !      print *, "-----------------------------------------------------------------"
 
+!      if(size(shower%interactions).ge.2) then
+!         call shower_print(shower)
+!         pause
+!      end if
+
       call shower_final(shower)
+      ! clean-up muli: we should finalize the muli pdf sets when all runs are done. 
+      ! call mi%finalize()
       return
     end subroutine apply_WHIZARDshower_particle_set
 
@@ -908,21 +1111,21 @@ contains
          ! convert pythia /PYJETS/ to lhef given in MSTU(163)=u1
          call pylheo
          ! read and add lhef from u_P2W
-         call shower_add_lhef_to_particle_set(particle_set, u_P2W, model)
+         call shower_add_lhef_to_particle_set(particle_set, u_P2W, model, os_data)
          close(u_W2P)
          close(u_P2W)
          valid = .true.
       end if
     end subroutine apply_PYTHIAhadronization
   end subroutine apply_shower_particle_set
-  subroutine shower_add_lhef_to_particle_set (particle_set, u, model_in)
+  subroutine shower_add_lhef_to_particle_set (particle_set, u, model_in, os_data)
     type(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: u
     type(model_t), intent(in), pointer :: model_in
     type(model_t), target, save :: model_SM_hadrons
     type(model_t), pointer :: model
     logical, save :: model_SM_hadrons_associated = .false.
-    type(os_data_t) :: os_data 
+    type(os_data_t), intent(in) :: os_data 
     logical :: exist_SM_hadrons
     type(string_t) :: filename
     type(flavor_t) :: flv
@@ -968,46 +1171,48 @@ contains
        exit
     end do
     ! Read first line of event info -> number of entries
-    READ(u,*,END=503,ERR=504) NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP
-    newsize=oldsize+NUP-2
-    allocate(temp_prt(1:newsize))
+    read (u, *, END=503, ERR=504) NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
+    newsize = oldsize + NUP - 2
+    allocate (temp_prt (1:newsize))
 
-    allocate(available_parents(1:oldsize))
+    allocate (available_parents (1:oldsize))
     available_parents = 0
-    do i=1, particle_set_get_n_tot(particle_set)
-       temp_prt(i) = particle_set_get_particle(particle_set, i)
-       if(particle_get_status(temp_prt(i)) == PRT_OUTGOING .or. particle_get_status(temp_prt(i))==PRT_BEAM_REMNANT) then
-          call particle_reset_status(temp_prt(i), PRT_VIRTUAL)
-          available_parents(i)=i
+    do i=1, particle_set_get_n_tot (particle_set)
+       temp_prt (i) = particle_set_get_particle (particle_set, i)
+       if (particle_get_status (temp_prt (i)) == PRT_OUTGOING .or. &
+            particle_get_status (temp_prt (i)) == PRT_BEAM_REMNANT) then
+          call particle_reset_status (temp_prt (i), PRT_VIRTUAL)
+          available_parents (i) = i
        end if
     end do
 
-    allocate(available_children(1:newsize))
-    allocate(direct_child(1:newsize))
+    allocate (available_children (1:newsize))
+    allocate (direct_child (1:newsize))
     available_children = 0
     direct_child = .false.
 
     ! transfer particles from lhef to particle_set
 !...Read NUP subsequent lines with information on each particle.
-    DO I=1,NUP
-       READ(u,*,END=200,ERR=505) IDUP,ISTUP,MOTHUP(1),MOTHUP(2),ICOLUP(1),ICOLUP(2), (PUP(J),J=1,5),VTIMUP,SPINUP
-       if((I.eq.1).or.(I.eq.2)) cycle
+    DO I = 1, NUP
+       READ (u,*,END=200,ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
+            ICOLUP(1), ICOLUP(2), (PUP (J),J=1,5), VTIMUP, SPINUP
+       if ((I.eq.1).or.(I.eq.2)) cycle
 
-       call particle_reset_status(temp_prt(oldsize+i-2), PRT_OUTGOING)
+       call particle_reset_status (temp_prt(oldsize+i-2), PRT_OUTGOING)
        ! particle_set%prt(oldsize+i-2)%polarization=0 ! =PRT_UNPOLARIZED !??
-       if(model_test_particle(model_in, IDUP)) then
+       if (model_test_particle (model_in, IDUP)) then
           model => model_in
        else 
           ! prepare model_SM_hadrons for hadrons created in the hadronization
           ! and not present in the model file
-          if(.not. model_SM_hadrons_associated) then
-             call os_data_init(os_data)
+          if (.not. model_SM_hadrons_associated) then
+!             call os_data_init(os_data)
              filename = "SM_hadrons.mdl"
-             call model_read(model_SM_hadrons, filename, os_data, & 
+             call model_read (model_SM_hadrons, filename, os_data, & 
                   exist_SM_hadrons)
              model_SM_hadrons_associated = .true.
           end if
-          if(model_test_particle(model_SM_hadrons, IDUP)) then
+          if (model_test_particle (model_SM_hadrons, IDUP)) then
              model => model_SM_hadrons
           else
              write (buffer, "(I5)") IDUP
@@ -1016,61 +1221,61 @@ contains
              return
           end if
        end if
-       call flavor_init(flv, IDUP, model)
-       call particle_set_flavor(temp_prt(oldsize+i-2), flv)
+       call flavor_init (flv, IDUP, model)
+       call particle_set_flavor (temp_prt (oldsize+i-2), flv)
        
        if(IABS(IDUP).eq.2212 .or. IABS(IDUP).eq.2112) then
           ! PYTHIA sometimes sets color indices for protons and neutrons (?)
-          ICOLUP(1) = 0
-          ICOLUP(2) = 0
+          ICOLUP (1) = 0
+          ICOLUP (2) = 0
        end if
-       call color_init_col_acl(col, ICOLUP(1), ICOLUP(2))
-       call particle_set_color(temp_prt(oldsize+i-2),col)
+       call color_init_col_acl (col, ICOLUP (1), ICOLUP (2))
+       call particle_set_color (temp_prt (oldsize+i-2), col)
        !particle_set%prt(oldsize+i-2)%hel=??
        !particle_set%prt(oldsize+i-2)%pol=??
        pup_dum = PUP
-       call particle_set_momentum(temp_prt(oldsize+i-2), vector4_moving(pup_dum(4), &
-            vector3_moving( (/pup_dum(1),pup_dum(2),pup_dum(3)/) ) ) )
+       call particle_set_momentum (temp_prt (oldsize+i-2), vector4_moving (pup_dum (4), &
+            vector3_moving ((/ pup_dum (1), pup_dum (2), pup_dum (3)/))))
 
-       available_children(oldsize+i-2) = oldsize+i-2
+       available_children (oldsize+i-2) = oldsize+i-2
        !! search for an existing particle with the same momentum -> treat these as mother and daughter
-       do j=1, size(available_parents)
-          if(available_parents(j) .eq. 0) cycle
-          diffmomentum = particle_get_momentum(temp_prt(available_parents(j))) - &
-               particle_get_momentum(temp_prt(oldsize+i-2))
+       do j=1, size (available_parents)
+          if (available_parents (j) .eq. 0) cycle
+          diffmomentum = particle_get_momentum (temp_prt (available_parents (j))) - &
+               particle_get_momentum (temp_prt(oldsize+i-2))
           if(abs(diffmomentum**2) < 1D-10 .and. &
-               particle_get_pdg(temp_prt(available_parents(j))).eq. &
-               particle_get_pdg(temp_prt(oldsize+i-2))) then
-             direct_child(available_parents(j)) = .true.
-             direct_child(oldsize+i-2) = .true.
-             call particle_set_parents(temp_prt(oldsize+i-2), (/ available_parents(j) /) )
-             call particle_set_children(temp_prt(available_parents(j)), (/ oldsize+i-2 /) )
-             available_parents(j) = 0
-             available_children(oldsize+i-2) = 0
+               particle_get_pdg (temp_prt (available_parents (j))).eq. &
+               particle_get_pdg (temp_prt (oldsize+i-2))) then
+             direct_child (available_parents (j)) = .true.
+             direct_child (oldsize+i-2) = .true.
+             call particle_set_parents (temp_prt (oldsize+i-2), (/ available_parents(j) /) )
+             call particle_set_children (temp_prt (available_parents(j)), (/ oldsize+i-2 /) )
+             available_parents (j) = 0
+             available_children (oldsize+i-2) = 0
           end if
        end do
     end do
 
     ! remove zeros in available parents and available children
-    available_parents  = pack(available_parents , available_parents  /= 0)
-    available_children = pack(available_children, available_children /= 0)
+    available_parents  = pack (available_parents , available_parents  /= 0)
+    available_children = pack (available_children, available_children /= 0)
 
     do i=1, size(available_parents) 
-      if(direct_child(available_parents(i))) cycle
-      call particle_set_children(temp_prt(available_parents(i)), available_children)
+      if (direct_child (available_parents (i))) cycle
+      call particle_set_children (temp_prt (available_parents (i)), available_children)
     end do
-    do i=oldsize+1, newsize
-       if(direct_child(i)) cycle
+    do i = oldsize+1, newsize
+       if (direct_child (i)) cycle
        call particle_set_parents(temp_prt(i), available_parents)
     end do
 
     ! transfer to particle_set
-    call particle_set_replace(particle_set, temp_prt)
-    if(allocated(available_children)) deallocate(available_children)
-    if(allocated(available_parents))  deallocate(available_parents)
-    deallocate(direct_child)
-    deallocate(temp_prt)
-    call model_final(model_SM_hadrons)
+    call particle_set_replace (particle_set, temp_prt)
+    if (allocated (available_children)) deallocate (available_children)
+    if (allocated (available_parents))  deallocate (available_parents)
+    deallocate (direct_child)
+    deallocate (temp_prt)
+    call model_final (model_SM_hadrons)
 
 200 continue
     return

@@ -26,6 +26,7 @@ module shower_module
   use constants, only: pi, twopi !NODEP!
   use shower_basics_module
   use shower_parton_module
+  use ckkw_pseudo_weights_module
   use lorentz !NODEP!
   use file_utils !NODEP!
 
@@ -59,6 +60,7 @@ module shower_module
   public :: shower_final
   public :: shower_print
   public :: shower_add_interaction2ton
+  public :: shower_add_interaction2tonCKKW
   public :: shower_interaction_generate_fsr2ton
   public :: shower_get_next_free_nr
   public :: shower_get_next_color_nr
@@ -70,8 +72,8 @@ module shower_module
   public :: shower_simulate_no_fsr_shower
   public :: shower_write_lhef
 
-  public :: interaction_get_shat
-  public :: interaction_get_s
+  public :: shower_interaction_get_shat
+  public :: shower_interaction_get_s
 
 !  real(default), parameter :: alphasmax = 1._default
 !  real(default), parameter :: xpdfmax = 10._default
@@ -82,10 +84,21 @@ contains
     subroutine shower_add_interaction2ton(shower, partons)
       type(shower_t), intent(inout) :: shower
       type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
+      type(ckkw_pseudo_shower_weights_t) :: ckkw_pseudo_weights
+
+      call shower_add_interaction2tonCKKW(shower, partons, ckkw_pseudo_weights)
+    end subroutine shower_add_interaction2ton
+
+    subroutine shower_add_interaction2tonCKKW(shower, partons, ckkw_pseudo_weights)
+      type(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
+      type(ckkw_pseudo_shower_weights_t), intent(in) :: ckkw_pseudo_weights
 
       integer :: n_partons, n_out, n_partons_shower
       integer :: i,j, imin, jmin
       real(default) :: y, ymin ! the jet measure
+      real(default) :: w, wmax ! weights
+      real(default) :: rand, sum
 !      real(default) :: s ! s of the interaction
       type(parton_pointer_t), dimension(:), allocatable :: new_partons
       type(parton_t), pointer :: prt
@@ -126,7 +139,7 @@ contains
          end if
       end if
 
-      ! add a new interaction to shower%itneractions
+      ! add a new interaction to shower%interactions
       if(allocated(shower%interactions)) then
          n_interactions=size(shower%interactions)+1
       else
@@ -168,7 +181,11 @@ contains
          ! ensure that partons are marked as belonging to the hard interaction
          shower%interactions(n_interactions)%i%partons(i)%p%belongstointeraction = .true.
          ! ensure that incoming partons are marked as belonging to ISR
-         if(i.le.2) shower%interactions(n_interactions)%i%partons(i)%p%belongstoFSR = .false.
+         shower%interactions(n_interactions)%i%partons(i)%p%belongstoFSR = (i.gt.2)
+         
+         shower%interactions(n_interactions)%i%partons(i)%p%interactionnr=n_interactions
+         ! include a 2^(i-1) number as a label for the ckkw clustering
+         shower%interactions(n_interactions)%i%partons(i)%p%ckkwlabel = 2**(i-1)
       end do
 
       ! Add partons to shower%partons
@@ -215,59 +232,130 @@ contains
       end do
       imin=0
       jmin=0
-      clustering: do
-         ! search for the partons to be clustered together
-         ymin=0._default
-         outer: do i = 1, size(new_partons)
-            inner: do j = i+1, size(new_partons)
-               ! calculate the jet measure
-               if(.not.associated(new_partons(i)%p)) cycle
-               if(.not.associated(new_partons(j)%p)) cycle
-               if(.not. shower_clustering_allowed(shower, new_partons, i,j)) cycle inner
-               ! Durham jet-measure ! don't care about constants
-               y = min(parton_get_energy(new_partons(i)%p),&
-                    parton_get_energy(new_partons(j)%p))* &
-                    (1._default -enclosed_angle_ct(new_partons(i)%p%momentum,&
-                    new_partons(j)%p%momentum))
-               if(y<ymin .or. ymin==0._default) then
-                  ymin = y
-                  imin = i
-                  jmin = j
+
+      if(allocated(ckkw_pseudo_weights%weights)) then
+         !! perform clustering using the ckkw weights
+         ckkw_clustering: do
+            ! search for the combination with the highest weight
+            wmax=0._default
+            ckkw_outer: do i = 1, size(new_partons)
+               ckkw_inner: do j = i+1, size(new_partons)
+                  if(.not.associated(new_partons(i)%p)) cycle
+                  if(.not.associated(new_partons(j)%p)) cycle
+                  w = ckkw_pseudo_weights%weights(new_partons(i)%p%ckkwlabel+new_partons(j)%p%ckkwlabel)
+                  if(w>wmax .or. wmax==0._default) then
+                     wmax = w
+                     imin = i
+                     jmin = j
+                  end if
+               end do ckkw_inner
+            end do ckkw_outer
+            if(wmax.gt.0._default) then
+               call shower_add_parent(shower, new_partons(imin)%p)
+               call parton_set_child(new_partons(imin)%p%parent, new_partons(jmin)%p, 2)
+               call parton_set_parent(new_partons(jmin)%p, new_partons(imin)%p%parent)
+               prt=>new_partons(imin)%p%parent
+               prt%nr = shower_get_next_free_nr(shower)
+               prt%typ = 94                 ! something for internal use needed, 81-100 should be reserved for internal purposes
+               
+               prt%momentum = new_partons(imin)%p%momentum + new_partons(jmin)%p%momentum
+               prt%t = prt%momentum**2
+
+               ! auxilliary values for the ckkw matching
+               ! for now, randomly choose the type of the intermediate
+               prt%ckkwlabel = new_partons(imin)%p%ckkwlabel + new_partons(jmin)%p%ckkwlabel
+               sum = 0.0
+               call tao_random_number(rand)
+               ckkw_type: do i=0, 4
+                  if(sum + ckkw_pseudo_weights%weights_by_type(prt%ckkwlabel, i) > &
+                       rand * ckkw_pseudo_weights%weights(prt%ckkwlabel) ) then
+                     prt%ckkwtype = i
+                     exit ckkw_type
+                  end if
+                  sum = sum + ckkw_pseudo_weights%weights_by_type(prt%ckkwlabel, i)
+               end do ckkw_type
+
+               ! TODO -> calculate costheta and store it for later use in generate_ps
+               
+               if(space_part_norm(prt%momentum) > 1D-10) then
+                  prtmomentum = prt%momentum
+                  childmomentum = prt%child1%momentum
+                  prtmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), & 
+                       space_part(prt%momentum)/space_part_norm(prt%momentum)) * prtmomentum 
+                  childmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), &
+                       space_part(prt%momentum)/space_part_norm(prt%momentum)) * childmomentum
+                  prt%costheta = enclosed_angle_ct(prtmomentum, childmomentum)
+               else
+                  prt%costheta=-1._default
                end if
-            end do inner
-         end do outer
-         if(ymin.gt.0._default) then
-            call shower_add_parent(shower, new_partons(imin)%p)
-            call parton_set_child(new_partons(imin)%p%parent, new_partons(jmin)%p, 2)
-            call parton_set_parent(new_partons(jmin)%p, new_partons(imin)%p%parent)
-            prt=>new_partons(imin)%p%parent
-            prt%nr = shower_get_next_free_nr(shower)
-            prt%typ = 94                 ! something for internal use needed, 81-100 should be reserved for internal purposes
+               
+               prt%belongstointeraction = .true.
+               prt%belongstoFSR = (new_partons(imin)%p%belongstoFSR.and.new_partons(jmin)%p%belongstoFSR)
 
-            prt%momentum = new_partons(imin)%p%momentum + new_partons(jmin)%p%momentum
-            prt%t = prt%momentum**2
-            ! TODO -> calculate costheta and store it for later use in generate_ps
-
-            if(space_part_norm(prt%momentum) > 1D-10) then
-               prtmomentum = prt%momentum
-               childmomentum = prt%child1%momentum
-               prtmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), & 
-                    space_part(prt%momentum)/space_part_norm(prt%momentum)) * prtmomentum 
-               childmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), &
-                    space_part(prt%momentum)/space_part_norm(prt%momentum)) * childmomentum
-               prt%costheta = enclosed_angle_ct(prtmomentum, childmomentum)
+               nullify(new_partons(imin)%p)
+               nullify(new_partons(jmin)%p)
+               new_partons(imin)%p => prt
             else
-               prt%costheta=-1._default
+               exit ckkw_clustering
             end if
-            
-            prt%belongstointeraction = .true.
-            nullify(new_partons(imin)%p)
-            nullify(new_partons(jmin)%p)
-            new_partons(imin)%p => prt
-         else
-            exit clustering
-         end if
-      end do clustering
+
+         end do ckkw_clustering
+      else
+         !! perform clustering in the usual way
+         clustering: do
+            ! search for the partons to be clustered together
+            ymin=0._default
+            outer: do i = 1, size(new_partons)
+               inner: do j = i+1, size(new_partons)
+                  ! calculate the jet measure
+                  if(.not.associated(new_partons(i)%p)) cycle
+                  if(.not.associated(new_partons(j)%p)) cycle
+                  if(.not. shower_clustering_allowed(shower, new_partons, i,j)) cycle inner
+                  ! Durham jet-measure ! don't care about constants
+                  y = min(parton_get_energy(new_partons(i)%p),&
+                       parton_get_energy(new_partons(j)%p))* &
+                       (1._default -enclosed_angle_ct(new_partons(i)%p%momentum,&
+                       new_partons(j)%p%momentum))
+                  if(y<ymin .or. ymin==0._default) then
+                     ymin = y
+                     imin = i
+                     jmin = j
+                  end if
+               end do inner
+            end do outer
+            if(ymin.gt.0._default) then
+               call shower_add_parent(shower, new_partons(imin)%p)
+               call parton_set_child(new_partons(imin)%p%parent, new_partons(jmin)%p, 2)
+               call parton_set_parent(new_partons(jmin)%p, new_partons(imin)%p%parent)
+               prt=>new_partons(imin)%p%parent
+               prt%nr = shower_get_next_free_nr(shower)
+               prt%typ = 94                 ! something for internal use needed, 81-100 should be reserved for internal purposes
+               
+               prt%momentum = new_partons(imin)%p%momentum + new_partons(jmin)%p%momentum
+               prt%t = prt%momentum**2
+               ! TODO -> calculate costheta and store it for later use in generate_ps
+               
+               if(space_part_norm(prt%momentum) > 1D-10) then
+                  prtmomentum = prt%momentum
+                  childmomentum = prt%child1%momentum
+                  prtmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), & 
+                       space_part(prt%momentum)/space_part_norm(prt%momentum)) * prtmomentum 
+                  childmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), &
+                       space_part(prt%momentum)/space_part_norm(prt%momentum)) * childmomentum
+                  prt%costheta = enclosed_angle_ct(prtmomentum, childmomentum)
+               else
+                  prt%costheta=-1._default
+               end if
+               
+               prt%belongstointeraction = .true.
+               nullify(new_partons(imin)%p)
+               nullify(new_partons(jmin)%p)
+               new_partons(imin)%p => prt
+            else
+               exit clustering
+            end if
+         end do clustering
+      end if
       
       ! add all partons to the shower
       n_partons_shower=0
@@ -351,7 +439,7 @@ contains
            call set_starting_scale(prt%child2, scale)
         end if
       end subroutine set_starting_scale
-    end subroutine shower_add_interaction2ton
+    end subroutine shower_add_interaction2tonCKKW
 
     subroutine shower_simulate_no_isr_shower(shower)
       type(shower_t), intent(inout) :: shower
@@ -550,7 +638,7 @@ contains
       if(allocated(shower%partons)) then
          STOP "Bug: creating new shower while old one still associated (partons)"
       end if
-      treat_light_quarks_massless = .false.
+      treat_light_quarks_massless = .true.
       treat_duscb_quarks_massless = .false.
       shower%valid = .true.
     end subroutine shower_create
@@ -664,6 +752,8 @@ contains
       end if
       newprt%p%parent=>prt
 
+      newprt%p%interactionnr = prt%interactionnr
+
       ! add new parton to shower%partons list
       if(associated(shower%partons(size(shower%partons))%p)) then
          call shower_enlarge_partons_array(shower, 10)
@@ -697,6 +787,8 @@ contains
       ! add new parton as parent
       newprt%p%child1=>prt
       prt%parent=>newprt%p
+
+      newprt%p%interactionnr = prt%interactionnr
 
       ! add new parton to shower%partons list
       if(.not. allocated(shower%partons)) then
@@ -912,21 +1004,21 @@ contains
       end do
     end function interaction_fsr_is_finished
 
-    function interaction_get_shat(interaction) result(shat)
+    function shower_interaction_get_shat(interaction) result(shat)
       type(shower_interaction_t), intent(in) :: interaction
       real(kind=default) :: shat
 
       shat = (interaction%partons(1)%p%momentum + &
               interaction%partons(2)%p%momentum)**2
-    end function interaction_get_shat
+    end function shower_interaction_get_shat
 
-    function interaction_get_s(interaction) result(s)
+    function shower_interaction_get_s(interaction) result(s)
       type(shower_interaction_t), intent(in) :: interaction
       real(kind=default) :: s
 
       s = (interaction%partons(1)%p%initial%momentum + &
            interaction%partons(2)%p%initial%momentum)**2
-    end function interaction_get_s
+    end function shower_interaction_get_s
 
     function shower_fsr_is_finished(shower) result(finished)
       type(shower_t), intent(in) :: shower
@@ -1430,11 +1522,9 @@ contains
       integer :: i
 
       if(associated(interaction%partons(1)%p)) then
-         call parton_print(interaction%partons(1)%p)
          if(associated(interaction%partons(1)%p%initial)) call parton_print(interaction%partons(1)%p%initial)
       end if
       if(associated(interaction%partons(2)%p)) then
-         call parton_print(interaction%partons(2)%p)
          if(associated(interaction%partons(2)%p%initial)) call parton_print(interaction%partons(2)%p%initial)
       end if
       if(allocated(interaction%partons)) then
@@ -2687,7 +2777,7 @@ contains
 
     function shower_find_recoiler(shower, prt) result(recoiler)
       type(shower_t), intent(inout) :: shower
-      type(parton_t), intent(in), target :: prt
+      type(parton_t), intent(inout), target :: prt
       type(parton_t), pointer :: recoiler
 
       type(parton_t), pointer :: otherprt1, otherprt2
@@ -2700,26 +2790,39 @@ contains
       do_interactions: do n_int=1, size(shower%interactions)
          otherprt1=>shower%interactions(n_int)%i%partons(1)%p
          otherprt2=>shower%interactions(n_int)%i%partons(2)%p
-         do
-            goon=.false.
+         parton1: do
             if(associated(otherprt1%parent)) then
                if((parton_is_hadron(otherprt1%parent).eqv. .false.).and.(parton_is_simulated(otherprt1%parent))) then
-!               if(parton_is_hadron(otherprt1%parent).eqv. .false.) then
                   otherprt1=>otherprt1%parent
-                  goon=.true.
+                  if(associated(otherprt1, prt)) then
+                     exit parton1
+                  end if
+               else
+                  exit parton1
                end if
+            else
+               exit parton1
             end if
+         end do parton1
+         parton2: do
             if(associated(otherprt2%parent)) then
                if((parton_is_hadron(otherprt2%parent).eqv. .false.).and.(parton_is_simulated(otherprt2%parent))) then
-!               if(parton_is_hadron(otherprt2%parent).eqv. .false.) then
-
                   otherprt2=>otherprt2%parent
-                  goon=.true.
+                  if(associated(otherprt2, prt)) then
+                     exit parton2
+                  end if
+               else
+                  exit parton2
                end if
+            else
+               exit parton2
             end if
-            if(goon.eqv..false.) exit
-         end do
-         if(associated(otherprt1, prt).or. associated(otherprt2, prt)) then
+         end do parton2
+
+         if((associated(otherprt1, prt)).or.(associated(otherprt2, prt))) then
+            exit do_interactions
+         end if
+         if((associated(otherprt1%parent, prt)).or.(associated(otherprt2%parent, prt))) then
             exit do_interactions
          end if
       end do do_interactions
@@ -2892,7 +2995,12 @@ contains
            prt%z=z+0.5_default*zstep
            s3=shat/prt%z+abs(otherprt%t)+abs(prt%t)
            r3=sqrt(s3**2-4._default*abs(otherprt%t*prt%t))
-           prt%child2%t=min((s1*s3-r1*r3)/(2._default*abs(otherprt%t))-abs(prt%child1%t)-abs(prt%t),abs(prt%child1%t))
+           !! TODO: WHY is this if needed?
+           if(otherprt%t.ne.0._default) then
+              prt%child2%t=min((s1*s3-r1*r3)/(2._default*abs(otherprt%t))-abs(prt%child1%t)-abs(prt%t),abs(prt%child1%t))
+           else
+              prt%child2%t=abs(prt%child1%t)
+           end if
            do
               call parton_set_energy(prt%child2, sqrt(abs(prt%child2%t)))
               if(isr_only_onshell_emitted_partons) then
@@ -3265,6 +3373,35 @@ contains
 !      print *, " shower_remove_parents for parton finished"
     end subroutine shower_remove_parents_and_stuff
 
+   ! MERGIND: not sure which function is the right one
+!!$    function shower_get_ISR_scale(shower) result (scale)
+!!$      type(shower_t), intent(in) :: shower
+!!$      real(kind=default) :: scale
+!!$
+!!$      type(parton_t), pointer :: prt1, prt2
+!!$      integer :: i
+!!$
+!!$      scale = (10._default)**10
+!!$      do i=1, size(shower%interactions)
+!!$         call interaction_find_partons_nearest_to_hadron(shower%interactions(i)%i, &
+!!$              prt1, prt2)
+!!$         call shower_print(shower)
+!!$         call parton_print(prt1)
+!!$         call parton_print(prt2)
+!!$
+!!$         if(isr_pt_ordered) then
+!!$            if((parton_is_hadron(prt1%parent).eqv..false.).and.(abs(prt1%parent%scale).gt.scale)) scale = abs(prt1%parent%scale)
+!!$            if((parton_is_hadron(prt1%parent).eqv..false.).and.(abs(prt2%parent%scale).gt.scale)) scale = abs(prt2%parent%scale)
+!!$         else
+!!$            if((parton_is_simulated(prt1)).and.(abs(prt1%t).lt.scale)) scale = abs(prt1%t)
+!!$            if((parton_is_simulated(prt2)).and.(abs(prt2%t).lt.scale)) scale = abs(prt2%t)
+!!$!            if((parton_is_hadron(prt1%parent).eqv..false.).and.(abs(prt2%parent%t).gt.scale)) scale = abs(prt2%parent%t)
+!!$         end if
+!!$      end do
+!!$      print *, "returning: ", scale
+!!$!      pause
+!!$    end function shower_get_ISR_scale
+
     function shower_get_ISR_scale(shower) result (scale)
       type(shower_t), intent(in) :: shower
       real(kind=default) :: scale
@@ -3294,14 +3431,15 @@ contains
       
       integer :: i,j
 
-!      print *, "shower_set_max_ISR_scale"
+      print *, "shower_set_max_ISR_scale", newscale
+      call shower_print(shower)
+
 
       if(isr_pt_ordered) then
          scale = newscale
       else 
          scale = -abs(newscale)
       end if
-
 
       interactions: do i=1, size(shower%interactions)
          partons: do j=1,2
@@ -3341,7 +3479,9 @@ contains
          end do partons
       end do interactions
 
-!      print *, "shower_set_max_ISR_scale finished"
+      call shower_print(shower)
+      print *, "shower_set_max_ISR_scale finished"
+!      pause
     end subroutine shower_set_max_ISR_scale
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3391,7 +3531,8 @@ contains
          return
       end if
       if(parton_is_simulated(prt%child1) .or. parton_is_simulated(prt%child2)) then
-         print *, " error in shower_parton_generate_fsr: children already simulated for parton ", prt%nr
+!         print *, " error in shower_parton_generate_fsr: children already simulated for parton ", prt%nr
+!         call shower_print(shower)
          return
       end if
       
@@ -3536,11 +3677,11 @@ contains
              call shower_pdf_func(shower_pdf_set, DBLE(x),sqrt(abs(DBLE(Q2))),f)
           end if
           if (abs(daughter)>=1 .and. abs(daughter)<=6) then
-             pdf=f(daughter*sign(1,mother))/x
+             pdf=max(f(daughter*sign(1,mother)), 1D-10)/x
           else if(daughter==21) then
-             pdf=f(0)/x
+             pdf=max(f(0), 1D-10)/x
           else
-             print *, "error in pdf"
+             print *, "error in pdf, unknown daughter", daughter
              pdf=0._default
           end if
        else
@@ -3571,11 +3712,11 @@ contains
              call shower_pdf_func(shower_pdf_set, DBLE(x),sqrt(abs(DBLE(Q2))),f)
           end if
           if (abs(daughter)>=1 .and. abs(daughter)<=6) then
-             pdf=f(daughter*sign(1,mother))
+             pdf=max(f(daughter*sign(1,mother)), 1D-10)
           else if(daughter==21) then
-             pdf=f(0)
+             pdf=max(f(0), 1D-10)
           else
-             print *, "error in pdf"
+             print *, "error in pdf, unknown daughter", daughter
              pdf=0._default
           end if
        else

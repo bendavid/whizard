@@ -59,8 +59,45 @@ contains
   end function pyp
 end module pythia_dummy
 
+
+module ckkw_pseudo_weights_module
+  use kinds, only: default, double !NODEP!
+
+  implicit none
+
+  public :: ckkw_pseudo_shower_weights_t
+  public :: ckkw_pseudo_shower_weights_print
+  public :: ckkw_pseudo_shower_weights_init
+
+  type :: ckkw_pseudo_shower_weights_t
+     real(kind=default), dimension(:), allocatable :: weights
+     real(kind=default), dimension(:,:), allocatable :: weights_by_type
+  end type ckkw_pseudo_shower_weights_t
+
+contains
+
+  subroutine ckkw_pseudo_shower_weights_init(ckkw_pseudo_shower_weights)
+    type(ckkw_pseudo_shower_weights_t), intent(out) :: ckkw_pseudo_shower_weights
+    write (0, "(A)")  "****************************************************************"
+    write (0, "(A)")  "*** Error: Matching has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "****************************************************************"
+    stop      
+  end subroutine ckkw_pseudo_shower_weights_init
+
+  subroutine ckkw_pseudo_shower_weights_print(ckkw_pseudo_shower_weights)
+    type(ckkw_pseudo_shower_weights_t), intent(in) :: ckkw_pseudo_shower_weights
+    write (0, "(A)")  "****************************************************************"
+    write (0, "(A)")  "*** Error: Matching has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "****************************************************************"
+    stop      
+  end subroutine ckkw_pseudo_shower_weights_print
+
+end module ckkw_pseudo_weights_module
+
+
 module shower_basics_module
-  use kinds, only: default
+  use kinds, only: default !NODEP!
+  use constants, only: pi !NODEP!
   public :: shower_set_minenergy_timelike  
   public :: shower_set_d_min_t
   public :: shower_set_d_nf
@@ -79,6 +116,8 @@ module shower_basics_module
   public :: shower_set_pdf_func
   public :: shower_set_pdf_set
   public :: shower_pdf
+
+  real(kind=default), public :: D_Min_t = 1.0_default
 
   interface 
      subroutine shower_pdf (set, x, q, ff)
@@ -214,6 +253,9 @@ module shower_parton_module
   use kinds, only: default
   use lorentz !NODEP!
   public :: parton_t, parton_pointer_t
+  public :: parton_set_simulated
+  public :: parton_set_momentum
+  public :: parton_set_initial
   type :: parton_t
 !     private
      integer :: nr=0 
@@ -238,14 +280,42 @@ module shower_parton_module
   type :: parton_pointer_t
      type(parton_t), pointer :: p => null ()
   end type parton_pointer_t
+contains
+  subroutine parton_set_simulated(prt, sim)
+    type(parton_t), intent(inout) :: prt
+    logical, intent(in), optional :: sim
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine parton_set_simulated
+  subroutine parton_set_momentum(prt, EE, ppx, ppy, ppz)
+    type(parton_t), intent(inout) :: prt
+    real(default), intent(in) :: EE, ppx, ppy, ppz
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine parton_set_momentum
+  subroutine parton_set_initial(prt, initial)
+    type(parton_t), intent(inout) :: prt
+    type(parton_t), intent(in) , target :: initial
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine parton_set_initial
 end module shower_parton_module
 
 module shower_module
   use kinds, only: default
   use shower_basics_module
   use shower_parton_module
+  use ckkw_pseudo_weights_module
   use pythia_dummy
   public :: shower_t
+  public :: shower_interaction_t
+  public :: shower_interaction_pointer_t
   public :: shower_get_next_free_nr
   public :: shower_generate_next_isr_branching
   public :: shower_generate_next_isr_branching_veto
@@ -257,6 +327,7 @@ module shower_module
   public :: shower_execute_next_isr_branching
   public :: shower_update_beamremnants
   public :: shower_add_interaction2ton
+  public :: shower_add_interaction2tonCKKW
   public :: shower_simulate_no_isr_shower
   public :: shower_simulate_no_fsr_shower
   public :: shower_boost_to_labframe
@@ -265,18 +336,22 @@ module shower_module
   public :: shower_create
   Public :: shower_final
   public :: shower_write_lhef
-  type :: my_interaction_t
-     type(parton_pointer_t) :: in1, in2
+  public :: shower_interaction_get_s
+  public :: shower_get_ISR_scale
+  public :: shower_set_max_ISR_scale
+  public :: shower_get_next_color_nr
+  type :: shower_interaction_t
      type(parton_pointer_t), dimension(:), allocatable :: partons
-  end type my_interaction_t
-  type :: interaction_pointer_t
-     type(my_interaction_t), pointer :: i => null()
-  end type interaction_pointer_t
+  end type shower_interaction_t
+  type :: shower_interaction_pointer_t
+     type(shower_interaction_t), pointer :: i => null()
+  end type shower_interaction_pointer_t
   type :: shower_t
-     type(interaction_pointer_t), dimension(:), allocatable :: interactions
+     type(shower_interaction_pointer_t), dimension(:), allocatable :: interactions
      type(parton_pointer_t), dimension(:), allocatable :: partons
      integer :: next_free_nr
      integer :: next_color_nr
+     logical :: valid
   end type shower_t
 contains
     function shower_get_next_free_nr(shower) result(next_number)
@@ -311,7 +386,7 @@ contains
       stop      
     end subroutine shower_generate_fsr_for_partons_emitted_in_isr
     subroutine interaction_generate_primordial_kt (interaction)
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       write (0, "(A)")  "**************************************************************"
       write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
       write (0, "(A)")  "**************************************************************"
@@ -326,7 +401,7 @@ contains
     end subroutine shower_generate_primordial_kt
     subroutine shower_interaction_generate_fsr2ton (shower, interaction)
       type(shower_t), intent(inout) :: shower
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       write (0, "(A)")  "**************************************************************"
       write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
       write (0, "(A)")  "**************************************************************"
@@ -379,6 +454,15 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop      
     end subroutine shower_add_interaction2ton
+    subroutine shower_add_interaction2tonCKKW (shower, partons, ckkw_pseudo_weights)
+      type(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
+      type(ckkw_pseudo_shower_weights_t), intent(in) :: ckkw_pseudo_weights
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop            
+    end subroutine shower_add_interaction2tonCKKW
     subroutine shower_simulate_no_isr_shower (shower)
       type(shower_t), intent(inout) :: shower
       write (0, "(A)")  "**************************************************************"
@@ -430,6 +514,38 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop      
     end subroutine shower_write_lhef
+    function shower_interaction_get_s(interaction) result(s)
+      type(shower_interaction_t), intent(in) :: interaction
+      real(kind=default) :: s
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end function shower_interaction_get_s
+    function shower_get_ISR_scale(shower) result (scale)
+      type(shower_t), intent(in) :: shower
+      real(kind=default) :: scale
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end function shower_get_ISR_scale
+    function shower_get_next_color_nr(shower) result(next_color)
+      type(shower_t), intent(inout) :: shower
+      integer :: next_color
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end function shower_get_next_color_nr
+    subroutine shower_set_max_ISR_scale(shower, newscale)
+      type(shower_t), intent(inout) :: shower
+      real(default), intent(in) :: newscale
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_set_max_ISR_scale
 end module shower_module
 
 module shower_topythia_module
@@ -510,3 +626,34 @@ subroutine mlm_matching(mlm_matching_data, mlm_matching_settings, vetoed)
     stop      
   end subroutine mlm_matching
 end module mlm_matching_module
+
+
+
+module ckkw_matching_module
+  use kinds, only: default, double !NODEP!
+  use shower_module
+  use ckkw_pseudo_weights_module
+
+  implicit none
+
+  type :: ckkw_matching_settings_t
+     real(kind=default) :: alphaS
+     real(kind=default) :: Qmin = 1.0_default
+     integer :: n_max_jets = 0
+  end type ckkw_matching_settings_t
+
+contains
+
+  subroutine ckkw_matching(shower, ckkw_matching_settings, ckkw_matching_weights, veto)
+    type(shower_t), intent(inout) :: shower
+    type(ckkw_matching_settings_t), intent(in) :: ckkw_matching_settings
+    type(ckkw_pseudo_shower_weights_t), intent(in) :: ckkw_matching_weights
+    logical, intent(out) :: veto
+    veto = .false.
+    write (0, "(A)")  "****************************************************************"
+    write (0, "(A)")  "*** Error: Matching has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "****************************************************************"
+    stop      
+  end subroutine ckkw_matching
+
+end module ckkw_matching_module

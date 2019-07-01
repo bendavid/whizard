@@ -7,7 +7,7 @@ model "Zprime"
 parameter GF     = 1.16639E-5   # Fermi constant
 parameter mZ     = 91.1882      # Z-boson mass  
 parameter mW     = 80.419       # W-boson mass  
-parameter mH     = 200          # Higgs mass
+parameter mH     = 125          # Higgs mass
 parameter alphas = 0.1178       # Strong coupling constant (Z point)             
 parameter me     = 0.0005109997 # electron mass                       
 parameter mmu    = 0.105658389  # muon mass                         
@@ -21,7 +21,7 @@ parameter mZH  	 = 1200         # Z-boson mass
 parameter wZ     = 2.443        # Z-boson width
 parameter wW     = 2.049        # W-boson width
 parameter wZH    = 100          # Z-heavy width
-parameter wH     = 1.419        # Higgs width  
+parameter wH     = 0.004143     # Higgs width  
 parameter v_lep  = 1.0	        # Multiply the Z lepton V coupling
 parameter v_neu  = 1.0	        # Multiply the Z neutrino V coupling
 parameter v_up   = 1.0	        # Multiply the Z up V coupling

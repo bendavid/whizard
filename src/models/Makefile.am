@@ -42,6 +42,7 @@ libmodels_la_SOURCES = \
   parameters.MSSM.f90 \
   parameters.MSSM_CKM.f90 \
   parameters.MSSM_Grav.f90 \
+  parameters.MSSM_Hgg.f90 \
   parameters.NMSSM.f90 \
   parameters.NMSSM_CKM.f90 \
   parameters.NMSSM_Hgg.f90 \
@@ -78,6 +79,7 @@ nodist_execmod_HEADERS = \
   parameters_littlest_tpar.$(FC_MODULE_EXT) \
   parameters_mssm.$(FC_MODULE_EXT) \
   parameters_mssm_ckm.$(FC_MODULE_EXT) \
+  parameters_mssm_hgg.$(FC_MODULE_EXT) \
   parameters_mssm_grav.$(FC_MODULE_EXT) \
   parameters_nmssm.$(FC_MODULE_EXT) \
   parameters_nmssm_ckm.$(FC_MODULE_EXT) \
@@ -169,6 +171,9 @@ parameters_mssm_ckm.$(FC_MODULE_EXT): parameters.MSSM_CKM.lo
 	@:
 
 parameters_mssm_grav.$(FC_MODULE_EXT): parameters.MSSM_Grav.lo
+	@:
+
+parameters_mssm_hgg.$(FC_MODULE_EXT): parameters.MSSM_Hgg.lo
 	@:
 
 parameters_nmssm.$(FC_MODULE_EXT): parameters.NMSSM.lo

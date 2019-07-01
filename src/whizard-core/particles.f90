@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -324,8 +324,15 @@ contains
        hepmc_status = 0
     case (PRT_OUTGOING)
        hepmc_status = 1
+    case (PRT_BEAM)
+       hepmc_status = 4
     case (PRT_RESONANT)
-       hepmc_status = 2
+       if(abs(particle_get_pdg(prt)) == 13 .or. &
+            abs(particle_get_pdg(prt)) == 15) then
+          hepmc_status = 2
+       else
+          hepmc_status = 11
+       end if
     case default
        hepmc_status = 3
     end select

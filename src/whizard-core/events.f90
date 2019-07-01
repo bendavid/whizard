@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -60,6 +60,8 @@ module events
   use lorentz !NODEP!
   use shower_interface
   use lorentz !NODEP!
+  use ckkw_pseudo_weights_module !NODEP!
+  use ckkw_matching_module !NODEP!
 
   implicit none
   private
@@ -69,6 +71,7 @@ module events
   public :: event_final
   public :: event_write
   public :: event_generate
+  public :: ckkw_fake_pseudo_shower_weights
   public :: event_decay
   public :: event_factorize_process
   public :: event_recover_process
@@ -181,14 +184,18 @@ contains
   end subroutine event_write
 
   subroutine event_generate (event, rng, unweighted, &
-       factorization_mode, keep_correlations, keep_virtual, &
+       factorization_mode, keep_correlations, keep_virtual, os_data, &
        shower_settings)
     type(event_t), intent(inout), target :: event
     type(tao_random_state), intent(inout) :: rng
     logical, intent(in) :: unweighted
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations, keep_virtual
-    type(shower_settings_t), intent(in), optional :: shower_settings
+    type(os_data_t), intent(in) :: os_data
+!!! shower_settings should be intent(in), but the calls to ckkw_pseudo_shower_weights_init
+!!! and ckkw_fake_pseudo_shower_weights force it to be declared as intent(inout)
+!    type(shower_settings_t), intent(in), optional :: shower_settings
+    type(shower_settings_t), intent(inout), optional :: shower_settings
     integer :: u
 
     event%is_vetoed = .false.
@@ -215,15 +222,64 @@ contains
          factorization_mode, keep_correlations, keep_virtual)
     if(event%particle_set_exists.and.present (shower_settings)) then
        call event_assure_heprup(event)
+
+       if(shower_settings%ckkw_matching) then
+          call ckkw_pseudo_shower_weights_init(shower_settings%ckkw_weights)
+          call ckkw_fake_pseudo_shower_weights(shower_settings%ckkw_settings, &
+               shower_settings%ckkw_weights, event%particle_set)
+       end if
+      
        call apply_shower_particle_set(event%particle_set, & 
             shower_settings, &
             process_get_model_ptr(event%process), &
+            os_data, &
             process_get_strfun_type(event%process), &
             process_get_strfun_set(event%process), &
             event%is_valid, event%is_vetoed)
     end if
   end subroutine event_generate
 
+  subroutine ckkw_fake_pseudo_shower_weights(ckkw_pseudo_shower_settings, &
+       ckkw_pseudo_shower_weights, particle_set)
+    type(ckkw_matching_settings_t), intent(inout) :: ckkw_pseudo_shower_settings
+    type(ckkw_pseudo_shower_weights_t), intent(inout) :: ckkw_pseudo_shower_weights
+    type(particle_set_t), intent(in) :: particle_set
+    integer :: i, j, k
+    integer :: n
+    type(vector4_t) :: momentum
+
+    ckkw_pseudo_shower_settings%alphaS = 1.0_default
+    ckkw_pseudo_shower_settings%Qmin = 1.0_default
+    ckkw_pseudo_shower_settings%n_max_jets = 3
+
+    n = 2**particle_set_get_n_tot(particle_set)
+    if(allocated(ckkw_pseudo_shower_weights%weights)) then 
+      deallocate(ckkw_pseudo_shower_weights%weights)
+    end if
+    allocate(ckkw_pseudo_shower_weights%weights(1:n))
+    do i=1,n
+       momentum = vector4_null
+       do j=1, particle_set_get_n_tot(particle_set)
+          if(btest(i,j-1)) then
+             momentum = momentum + particle_get_momentum(particle_set_get_particle(particle_set, j))
+          end if
+       end do
+       if(momentum**1 > 0.0) then
+          ckkw_pseudo_shower_weights%weights(i) = 1.0 / (momentum**2)
+       end if
+    end do
+
+    ! equally distribute the weights by type
+    if(allocated(ckkw_pseudo_shower_weights%weights_by_type)) then
+       deallocate(ckkw_pseudo_shower_weights%weights_by_type)
+    end if
+    allocate(ckkw_pseudo_shower_weights%weights_by_type(1:n, 0:4))
+    do i=1,n
+       do j=0,4
+          ckkw_pseudo_shower_weights%weights_by_type(i,j) = 0.2 * ckkw_pseudo_shower_weights%weights(i)
+       end do
+    end do
+  end subroutine ckkw_fake_pseudo_shower_weights
   subroutine event_decay (event, rng, decay_tree)
     type(event_t), intent(inout) :: event
     type(tao_random_state), intent(inout) :: rng
@@ -819,9 +875,9 @@ contains
   subroutine event_test1 (prc_lib, model, os_data, var_list)
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
+    type(os_data_t), intent(in) :: os_data
     type(var_list_t), target :: var_list
     type(process_t), pointer :: process
-    type(os_data_t), intent(in) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
@@ -892,12 +948,12 @@ contains
     print *
     print *, "* Weighted event"
     call event_generate &
-         (event, rng, .false., FM_IGNORE_HELICITY, .false., .false.)
+         (event, rng, .false., FM_IGNORE_HELICITY, .false., .false., os_data)
     call event_write (event)
     print *
     print *, "* Unweighted event"
     call event_generate &
-         (event, rng, .true., FM_SELECT_HELICITY, .false., .true.)
+         (event, rng, .true., FM_SELECT_HELICITY, .false., .true., os_data)
     call event_write (event)
     print *, "  Process data written to fort.81"
     call process_write (process, 81)

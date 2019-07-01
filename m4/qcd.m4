@@ -1,4 +1,4 @@
-dnl qcd.m4 -- checks for qcd setup (shower, PYTHIA)
+dnl qcd.m4 -- checks for qcd setup (shower, PYTHIA, MPI)
 dnl
 
 include('aux.m4')
@@ -38,4 +38,27 @@ AM_CONDITIONAL([SHOWER_AVAILABLE],
    [test "$wo_cv_showering" = "yes"])
 AM_CONDITIONAL([PYTHIA_AVAILABLE], 
    [test "$PYTHIA_AVAILABLE_FLAG" = ".true."])
+
+AC_ARG_ENABLE([MPI],
+  [AS_HELP_STRING([--enable-mpi],
+    [enable multi-parton interactions [[no]]])])
+
+AC_CACHE_CHECK([whether we want to enable MPI], 
+[wo_cv_mpi],
+[dnl
+if test "$wo_cv_showering" = "yes" -a "$enable_mpi" = "yes"; then
+  wo_cv_mpi=yes
+elif test "$wo_cv_showering" = "no" -a "$enable_mpi" = "yes"; then
+AC_MSG_NOTICE([no])
+AC_MSG_NOTICE([error: **************************************])
+AC_MSG_NOTICE([error: Multiple interactions work only with  ])
+AC_MSG_NOTICE([error:    shower enabled.                    ])
+AC_MSG_ERROR([**************************************])
+else
+  wo_cv_mpi=no
+fi])
+
+AM_CONDITIONAL([MPI_AVAILABLE], 
+   [test "$wo_cv_mpi" = "yes"])
 ])
+

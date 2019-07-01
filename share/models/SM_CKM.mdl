@@ -7,7 +7,7 @@ model "SM_CKM"
 parameter GF     = 1.16639E-5   # Fermi constant
 parameter mZ     = 91.1882      # Z-boson mass  
 parameter mW     = 80.419       # W-boson mass  
-parameter mH     = 200          # Higgs mass
+parameter mH     = 125          # Higgs mass
 parameter alphas = 0.1178       # Strong coupling constant (Z point)             
 parameter me     = 0.000510997  # electron mass                       
 parameter mmu    = 0.105658389  # muon mass                         
@@ -19,7 +19,7 @@ parameter mtop   = 170.9        # t-quark mass
 parameter wtop   = 1.523        # t-quark width
 parameter wZ     = 2.443        # Z-boson width
 parameter wW     = 2.049        # W-boson width
-parameter wH     = 1.419        # Higgs width  
+parameter wH     = 0.004143     # Higgs width  
 # Here are the values from PDG 2006
 parameter vckm11 = 0.97383      # Vud
 parameter vckm12 = 0.2272       # Vus

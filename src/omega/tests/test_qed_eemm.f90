@@ -1,4 +1,4 @@
-! $Id: test_qed_eemm.f90 3750 2012-03-13 12:08:00Z sschmidt $
+! $Id: test_qed_eemm.f90 3930 2012-09-09 18:48:11Z jr_reuter $
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

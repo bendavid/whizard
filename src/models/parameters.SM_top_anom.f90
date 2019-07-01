@@ -313,17 +313,24 @@ contains
         print *, "  inconsistent values set!"
 
         vlrz(1) = real(vlrw(1)) * sqrt(2.0_default) / costhw
+
+        print *, "  vl_ttZ = ", real(vlrz(1))/n_vlrz
       end if
 
       if ( ( abs(par%tlWRe) > 0. ).or.( abs(par%tlWIm) > 0. ) ) then
         print *, "WARNING: anomalous tbW tensor couplings are related to anomalous"
         print *, "  bbZ and bbA tensor couplings by gauge invariance:"
-        print *, "  Inferring bottom couplings from tl_tbW... parameters"
+        print *, "  Inferring bottom couplings from tl_tbW"
 
-        tvaabb(1) = real(tlrw(1))  * sinthw / sqrt(2.0_default)
-        tvaabb(2) = aimag(tlrw(1)) * sinthw / sqrt(2.0_default)
-        tvazbb(1) = real(tlrw(1))  * costhw / sqrt(2.0_default)
-        tvazbb(2) = aimag(tlrw(1)) * costhw / sqrt(2.0_default)
+        tvaabb(1) = real(tlrw(1))        * sinthw / sqrt(2.0_default)
+        tvaabb(2) = aimag(tlrw(1))*(0,1) * sinthw / sqrt(2.0_default)
+        tvazbb(1) = real(tlrw(1))        * costhw / sqrt(2.0_default)
+        tvazbb(2) = aimag(tlrw(1))*(0,1) * costhw / sqrt(2.0_default)
+
+        print *, "  tv_bbA = ", real(tvaabb(1))/n_tvaa
+        print *, "  ta_bbA = ", aimag(tvaabb(2))/n_tvaa
+        print *, "  tv_bbZ = ", real(tvazbb(1))/n_tvaz
+        print *, "  ta_bbZ = ", aimag(tvazbb(2))/n_tvaz
       end if
 
       if ( ( abs(par%tvZ) > 0. ).or.( abs(par%taZ) > 0. ) ) then
@@ -337,7 +344,7 @@ contains
       end if
 
       if ( bz.or.bw.or.ba ) then
-        print *, "WARNING: anomalous top tensor couplings to W, A and Z"
+        print *, "WARNING: top anomalous tensor couplings to W, A and Z"
         print *, "  are interrelated by gauge invariance:"
         print *, "  Inferring Z couplings from W/A couplings according to"
         print *, "  the relation in the model file and IGNORING any inconsistent"
@@ -345,15 +352,20 @@ contains
         print *, "  tr_tbW ~ tv_ttZ + i*ta_ttZ and tX_ttA = 0)"
 
         if ( ( bw.and.bz ).and..not.ba ) then
-          tvaa(1) = ( real(tlrw(2))  - sqrt(2.0_default)*costhw*tvaz(1) ) / ( 2.0_default*sinthw )
-          tvaa(2) = ( aimag(tlrw(2)) - sqrt(2.0_default)*costhw*tvaz(2) ) / ( 2.0_default*sinthw )
+          tvaa(1) = ( real(tlrw(2))        - sqrt(2.0_default)*costhw*tvaz(1) ) / ( 2.0_default*sinthw )
+          tvaa(2) = ( aimag(tlrw(2))*(0,1) - sqrt(2.0_default)*costhw*tvaz(2) ) / ( 2.0_default*sinthw )
         else if ( bz.and..not.bw ) then
-          tlrw(2) = ( sqrt(2.0_default)*costhw*tvaz(1) + 2.0_default*sinthw*tvaa(1) ) &
-                   +( sqrt(2.0_default)*costhw*tvaz(2) + 2.0_default*sinthw*tvaa(2) ) * (0,1)
+          tlrw(2) = sqrt(2.0_default)*costhw*( tvaz(1) + tvaz(2) ) + 2.0_default*sinthw*( tvaa(1) + tvaa(2) )
         else
-          tvaz(1) = ( real(tlrw(2))  - 2.0_default*sinthw*tvaa(1) ) / ( sqrt(2.0_default)*costhw )
-          tvaz(2) = ( aimag(tlrw(2)) - 2.0_default*sinthw*tvaa(2) ) / ( sqrt(2.0_default)*costhw )
+          tvaz(1) = ( real(tlrw(2))        - 2.0_default*sinthw*tvaa(1) ) / ( sqrt(2.0_default)*costhw )
+          tvaz(2) = ( aimag(tlrw(2))*(0,1) - 2.0_default*sinthw*tvaa(2) ) / ( sqrt(2.0_default)*costhw )
         end if
+
+        print *, "  tv_ttA = ", real(tvaa(1))/n_tvaa
+        print *, "  ta_ttA = ", aimag(tvaa(2))/n_tvaa
+        print *, "  tv_ttZ = ", real(tvaz(1))/n_tvaz
+        print *, "  ta_ttZ = ", aimag(tvaz(2))/n_tvaz
+        print *, "  tr_tbW = ", real(tlrw(2))/n_tlrw, " + ", aimag(tlrw(2))/n_tlrw, "I"
       end if
     end if
 

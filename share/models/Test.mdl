@@ -5,7 +5,7 @@ model "Test"
 # Independent parameters
 ### DO NOT CHANGE THE ORDER OF THESE PARAMETERS
 parameter  gy	= 1  	    # Yukawa coupling
-parameter  ms	= 115 GeV   # Scalar mass
+parameter  ms	= 125 GeV   # Scalar mass
 
 external   mf	      	    # Fermion mass computed by external module
 

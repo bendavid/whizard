@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -662,7 +662,7 @@ contains
     select case (char (model_name))
       case ("MSSM")
          select case (char (model_get_name (model)))
-           case ("MSSM","MSSM_CKM","MSSM_Grav")
+           case ("MSSM","MSSM_CKM","MSSM_Grav","MSSM_Hgg")
               model_name = model_get_name (model)
            case default
               call msg_fatal (" User-defined model and model in SLHA input file do not match.") 

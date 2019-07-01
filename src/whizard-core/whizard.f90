@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -78,6 +78,7 @@ module whizard
   public :: whizard_process_file
   public :: whizard_shell
   public :: whizard_check
+  public :: global
 
   type(rt_data_t), target :: global
 

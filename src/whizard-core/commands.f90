@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -90,6 +90,10 @@ module commands
   public :: syntax_cmd_list_write
   public :: lexer_init_cmd_list
   public :: command_test
+  public :: command_t 
+  public :: cmd_simulate_t
+  public :: command_execute
+  public :: command_final
 
   integer, parameter :: CMD_NONE = 0
   integer, parameter :: CMD_PROCESS = 1
@@ -162,7 +166,7 @@ module commands
   integer, parameter :: STEP_COMP_MUL = 13
 
   type :: command_t
-     private
+     ! not private anymore as required by the whizard-c-interface
      integer :: type = CMD_NONE
      type(cmd_model_t), pointer :: model => null ()
      type(cmd_library_t), pointer :: library => null ()
@@ -568,7 +572,7 @@ module commands
   end type cmd_sample_format_t
 
   type :: cmd_simulate_t
-     private
+     ! not private anymore as required by the whizard-c-interface
      integer :: n_evt = 0
      integer :: n_proc = 0
      type(string_t), dimension(:), allocatable :: process_id
@@ -637,7 +641,7 @@ module commands
   end type cmd_quit_t
 
   type :: command_list_t
-     private
+     ! not private anymore as required by the whizard-c-interface
      type(command_t), pointer :: first => null ()
      type(command_t), pointer :: last => null ()
   end type command_list_t
@@ -5163,7 +5167,7 @@ contains
 !          if (.not. ok)  exit
 !       end do
        do while( simulation_get_i_evt(sim) .lt.simulation_get_n_events(sim))
-          call simulation_event (sim, simulate%local%rng, ok, verbose=.true.)
+          call simulation_event (sim, simulate%local%rng, ok, global%os_data, verbose=.true.)
           if (.not. ok)  exit
        end do
        call simulation_final (sim, verbose=.true.)
@@ -5237,7 +5241,7 @@ contains
        call simulation_setup_analysis &
             (sim, rescan%local%pn_analysis_lexpr, verbose=.true.)
        do i_evt = 1, simulation_get_n_events (sim)
-          call simulation_event (sim, rescan%local%rng, ok, verbose=.true.)
+          call simulation_event (sim, rescan%local%rng, ok, global%os_data, verbose=.true.)
           if (.not. ok)  exit
        end do
        call simulation_final (sim, verbose=.true.)

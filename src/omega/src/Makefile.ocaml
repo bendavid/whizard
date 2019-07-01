@@ -1,5 +1,5 @@
 # Makefile.am -- O'Caml rules for O'Mega Makefiles
-# $Id: Makefile.ocaml 3750 2012-03-13 12:08:00Z sschmidt $
+# $Id: Makefile.ocaml 3930 2012-09-09 18:48:11Z jr_reuter $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##

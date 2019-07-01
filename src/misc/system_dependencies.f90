@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.1.0"
-  character(*), parameter :: WHIZARD_DATE = "Jun 15 2012"
+  character(*), parameter :: WHIZARD_VERSION = "2.1.1"
+  character(*), parameter :: WHIZARD_DATE = "Sep 18 2012"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -74,6 +74,8 @@ module system_dependencies
        "/Users/reuter/local/packages/whizard/trunk/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
        "/Users/reuter/local/packages/whizard/trunk/share/beam-sim"
+  character(*), parameter :: WHIZARD_TEST_MULIPATH = &
+       "/Users/reuter/local/packages/whizard/trunk/share/muli"
   character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
        "/Users/reuter/local/packages/whizard/trunk/share/pdf_builtin"
 
@@ -146,6 +148,8 @@ module system_dependencies
        PKGCIRCE2DIR // "/data"
   character(*), parameter :: WHIZARD_BEAMSIMPATH = &
        PKGDATADIR // "/beam-sim"
+  character(*), parameter :: WHIZARD_MULIPATH = &
+       PKGDATADIR // "/muli"
   character(*), parameter :: PDF_BUILTIN_DATAPATH = &
        PKGDATADIR // "/pdf_builtin"
 

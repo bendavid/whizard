@@ -27,7 +27,7 @@
 ## Subdirectories to configure
 SUBDIRS = \
   pythia hepmc lhapdf stdhep circe1 circe2 misc pdf_builtin vamp \
-  shower whizard-core prebuilt omega models 
+  shower muli whizard-core prebuilt omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif
@@ -57,6 +57,13 @@ libwhizard_la_LIBADD += \
 else 
 libwhizard_la_LIBADD += \
   shower/libshower_dummy.la
+endif 
+if MPI_AVAILABLE
+libwhizard_la_LIBADD += \
+  muli/libmuli.la 
+else 
+libwhizard_la_LIBADD += \
+  muli/libmuli_dummy.la
 endif 
 
 if HEPMC_AVAILABLE

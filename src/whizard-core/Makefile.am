@@ -61,6 +61,9 @@ libwhizard_core_la_SOURCES = \
   rt_data.f90 \
   compilations.f90 integrations.f90 simulations.f90 \
   commands.f90 whizard.f90
+# Adds the whizard-c-interface
+EXTRA_libwhizard_core_la_SOURCES = whizard-c-interface.f90
+libwhizard_core_la_LIBADD = whizard-c-interface.lo
 
 ## This C file has no dependencies
 sprintf_interface.c:
@@ -79,7 +82,7 @@ dist_noinst_DATA = whizard.nw
 # but in a portable fashion (depending on automake's AM_MAKE_INCLUDE
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
-Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES)
+Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES) $(EXTRA_libwhizard_core_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -114,7 +117,8 @@ $(libwhizard_core_la_OBJECTS): \
   ../shower/shower_module.$(FC_MODULE_EXT) \
   ../shower/shower_particle.$(FC_MODULE_EXT) \
   ../shower/shower_basics.$(FC_MODULE_EXT) \
-  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT)
+  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
+  ../muli/muli.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
@@ -122,7 +126,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin -I../circe1/src -I../circe2/src
+AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin -I../muli -I../circe1/src -I../circe2/src
 
 ########################################################################
 ## Default Fortran compiler options
@@ -151,7 +155,7 @@ nodist_execmod_HEADERS = \
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-WHIZARD_SRC = $(libwhizard_core_la_SOURCES) main.f90
+WHIZARD_SRC = $(libwhizard_core_la_SOURCES) $(EXTRA_libwhizard_core_la_SOURCES) main.f90
 
 whizard.stamp: $(srcdir)/whizard.nw
 	@rm -f whizard.tmp

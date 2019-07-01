@@ -48,6 +48,9 @@ module shower_parton_module
      type(parton_t), pointer :: initial => null ()
      integer :: c1 = 0, c2 = 0
      integer :: aux_pt = 0                 ! auxiliary value for pt-ordered isr
+     integer :: ckkwlabel = 0              ! auxiliary value for the clustering using ckkw pseudo weights
+     real(kind=default) :: ckkwscale = 0.0 ! auxiliary value for the ckkw matching
+     integer :: ckkwtype = -1
      integer :: interactionnr = 0
   end type parton_t
 
@@ -82,7 +85,7 @@ contains
     prt2%aux_pt = prt1%aux_pt
   end subroutine parton_copy
 
-  function parton_get_costheta(prt) result(costheta)		! returns the angle between the daughters assuming them to be massless
+  function parton_get_costheta(prt) result(costheta)    ! returns the angle between the daughters assuming them to be massless
     type(parton_t), intent(in) :: prt
     real(default) :: costheta
 
@@ -226,11 +229,9 @@ contains
     else
        write(*,115, ADVANCE="NO") "F", prt%interactionnr
     end if
-113 format(A4)
-114 format(I4)
-    write(*, 113, ADVANCE = "NO") " CPP: "
-    print *, "CI:", prt%c1, prt%c2
-!    write(*,*)
+113 format(A3, I4, I4)
+    write(*, 113, ADVANCE = "NO") " CI: ", prt%c1, prt%c2
+    write(*,*)
   end  subroutine parton_print
 
   function parton_is_final(prt) result(is_final)

@@ -39,16 +39,16 @@ module shower_basics_module
   end interface
 
   ! technical constants
-  logical, parameter :: D_print=.false.	   ! decides whether to print out additional information
+  logical, parameter :: D_print=.false.     ! decides whether to print out additional information
 
   ! physical parameters
-  real(default) :: D_Min_t=1._default 	! cut-off scale t_cut, given in GeV^2  !! PARJ(82)
-  real(default) :: D_min_scale=0.5_default 	! Cut-Off Scale For Pt^2 Ordered Shower, Given In Gev^2
+  real(default), public :: D_Min_t=1._default                ! cut-off scale t_cut, given in GeV^2  !! PARJ(82)
+  real(default) :: D_min_scale=0.5_default           ! cut-off scale for Pt^2 ordered shower, given In GeV^2
   real(default) :: D_Lambda_fsr=0.29_default         !! PARP(72)
   real(default) :: D_Lambda_isr=0.29_default         !! PARP(61)
 
   ! settings
-  integer :: D_Nf=5	           ! maximum number of flavours in gluon decay to quarks  !! MSTJ(45)
+  integer :: D_Nf=5                 ! maximum number of flavours in gluon decay to quarks  !! MSTJ(45)
   ! decides whether to use constant or running alpha_s -> see function D_alpha_s(t) !! MSTJ(44) + MSTP(64)
   logical ::  D_running_alpha_s_fsr=.true.
   ! decides whether to use constant or running alpha_s -> see function D_alpha_s(t) !! MSTJ(44) + MSTP(64)
@@ -58,7 +58,7 @@ module shower_basics_module
   !! set emitted timelike partons in spacelike shower on shell, true corresponds to MSTP(63)=0
   logical :: isr_only_onshell_emitted_partons = .true.
   logical :: isr_angular_ordered = .true.       ! whether isr is angular ordered, MSTP(62)
-  logical :: treat_light_quarks_massless = .false.   ! treat d and u quarks as massless
+  logical :: treat_light_quarks_massless = .true.   ! treat d and u quarks as massless
   logical :: treat_duscb_quarks_massless = .false.     ! treat all quarks except t as massless
 
   ! varying parameters
@@ -231,7 +231,7 @@ contains
     end select
   end function mass_squared_typ
 
-  function number_of_flavors(t) result(nr)		! number of flavours allowed in an actual g->qq decay
+  function number_of_flavors(t) result(nr)          ! number of flavours allowed in an actual g->qq decay
     real(default), intent(in) :: t
     integer :: nr
 

@@ -183,6 +183,9 @@ Optional Features:
                           available, which is for distribution testing
                           purposes only. The default never has any effect.
                           [[no]]
+  --disable-iso_fortran_env                                                   
+                          disable use of iso_fortran_env, even if the compiler
+                          supports it   
   --enable-fc-quadruple   use quadruple precision in Fortran code [[no]]
   --enable-fc-openmp      use OpenMP for the Fortran code [[no]]
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
@@ -193,6 +196,7 @@ Optional Features:
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-stdhep	  enable STDHEP for binary event files [[yes]]
   --enable-shower         enable parton showers [[yes]]
+  --enable-mpi            enable multi-parton interactions [[no]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file
 			  [[no]]

@@ -1,4 +1,4 @@
-! $Id: compare_lib.f90 3750 2012-03-13 12:08:00Z sschmidt $
+! $Id: compare_lib.f90 3930 2012-09-09 18:48:11Z jr_reuter $
 ! compare_lib.f90 -- compare two O'Mega versions
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

@@ -1,4 +1,4 @@
-(* $Id: modellib_MSSM.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: modellib_MSSM.ml 3939 2012-09-10 13:20:50Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 
@@ -21,11 +21,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* $Id: modellib_MSSM.ml 3670 2012-01-21 19:33:07Z jr_reuter $ *)
+(* $Id: modellib_MSSM.ml 3939 2012-09-10 13:20:50Z jr_reuter $ *)
 
 let rcs_file = RCS.parse "Modellib_MSSM" ["MSSM"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 3939 $";
+      RCS.date = "$Date: 2012-09-10 15:20:50 +0200 (Mon, 10 Sep 2012) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_MSSM.ml $" }
@@ -38,6 +38,7 @@ module type MSSM_flags =
     val include_four      : bool
     val ckm_present       : bool
     val gravitino         : bool
+    val higgs_triangle    : bool
   end
 
 module MSSM_no_goldstone : MSSM_flags =
@@ -46,6 +47,7 @@ module MSSM_no_goldstone : MSSM_flags =
     let include_four      = true
     let ckm_present       = false
     let gravitino         = false
+    let higgs_triangle    = false
   end
 
 module MSSM_goldstone : MSSM_flags =
@@ -54,6 +56,7 @@ module MSSM_goldstone : MSSM_flags =
     let include_four      = true
     let ckm_present       = false
     let gravitino         = false
+    let higgs_triangle    = false    
   end
 
 module MSSM_no_4 : MSSM_flags = 
@@ -62,6 +65,7 @@ module MSSM_no_4 : MSSM_flags =
     let include_four      = false
     let ckm_present       = false
     let gravitino         = false
+    let higgs_triangle    = false
   end
 
 module MSSM_no_4_ckm : MSSM_flags = 
@@ -70,6 +74,7 @@ module MSSM_no_4_ckm : MSSM_flags =
     let include_four      = false
     let ckm_present       = true
     let gravitino         = false
+    let higgs_triangle    = false
   end
 
 module MSSM_Grav : MSSM_flags = 
@@ -78,6 +83,16 @@ module MSSM_Grav : MSSM_flags =
     let include_four      = false
     let ckm_present       = false
     let gravitino         = true
+    let higgs_triangle    = false
+  end
+
+module MSSM_Hgg : MSSM_flags = 
+  struct 
+    let include_goldstone = false
+    let include_four      = false
+    let ckm_present       = false
+    let gravitino         = false
+    let higgs_triangle    = true
   end
 
 
@@ -432,6 +447,7 @@ module MSSM (Flags : MSSM_flags) =
       | G_CICIH1 of neu*neu | G_CICIH2 of neu*neu | G_CICIA of neu*neu
       | G_CICIG of neu*neu 
       | G_GH of int | G_GHGo of int
+      | G_GLGLH | G_GLGLHH | G_GLGLA | G_PPH | G_PPHH | G_PPA
       | G_WWSFSF of sff*int*sfm*sfm 
       | G_WPSLSN of vc*int*sfm
       | G_H3 of int | G_H4 of int
@@ -1068,8 +1084,17 @@ generalization to complex parameters is obvious. *)
         ((H_Heavy, Z, Z), Scalar_Vector_Vector 1, G_GH 9);
         ((H_Light, Z, Z), Scalar_Vector_Vector 1, G_GH 8);
         ((Z, Hp, Hm), Vector_Scalar_Scalar 1, G_GH 10);
-        ((Ga, Hp, Hm), Vector_Scalar_Scalar 1, G_GH 11) ]
-        
+        ((Ga, Hp, Hm), Vector_Scalar_Scalar 1, G_GH 11) ] @
+      (if Flags.higgs_triangle then
+       [((H_Light, Gl, Gl), Dim5_Scalar_Gauge2 1, G_GLGLH);
+        ((H_Heavy, Gl, Gl), Dim5_Scalar_Gauge2 1, G_GLGLHH);
+        ((A, Gl, Gl), Dim5_Scalar_Gauge2_Skew 1, G_GLGLA);
+        ((H_Light, Ga, Ga), Dim5_Scalar_Gauge2 1, G_PPH);
+        ((H_Heavy, Ga, Ga), Dim5_Scalar_Gauge2 1, G_PPHH);
+        ((A, Ga, Ga), Dim5_Scalar_Gauge2 1, G_PPA)]
+       else
+         [])        
+
 (*** REVISED: Compatible with CD+ and GS+. ***)
     let gauge_higgs_gold =
       [ ((Wp, Phi0, Phim), Vector_Scalar_Scalar 1, G_GH 1);
@@ -2300,6 +2325,9 @@ generalization to complex parameters is obvious. *)
       | G_GH 8 -> "gh1zz" | G_GH 9 -> "gh2zz" 
       | G_GH 10 -> "ghhz" | G_GH 11 -> "ghhp"            
       | G_GH _ ->  failwith "this G_GH coupling is not available"
+      | G_GLGLH -> "gglglh" | G_GLGLHH -> "gglglhh" 
+      | G_GLGLA -> "gglgla" | G_PPH -> "gpph"
+      | G_PPHH -> "gpphh" | G_PPA -> "gppa"
       | G_GHGo n -> "g_hgh(" ^ string_of_int n ^ ")"  
       | G_GH4 1 -> "gaazz" | G_GH4 2 -> "gh1h1zz" | G_GH4 3 -> "gh2h2zz"
       | G_GH4 4 -> "ghphmzz" | G_GH4 5 -> "ghphmpp" | G_GH4 6 -> "ghphmpz"

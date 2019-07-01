@@ -1,4 +1,4 @@
-(* $Id: modellib_MSSM.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: modellib_MSSM.mli 3924 2012-09-05 17:06:41Z jr_reuter $
 
    Copyright (C) 1999-2012 by
 
@@ -29,6 +29,7 @@ module type MSSM_flags =
     val include_four      : bool
     val ckm_present       : bool
     val gravitino         : bool
+    val higgs_triangle    : bool
   end
 
 module MSSM_no_goldstone : MSSM_flags
@@ -36,6 +37,7 @@ module MSSM_goldstone : MSSM_flags
 module MSSM_no_4 : MSSM_flags
 module MSSM_no_4_ckm : MSSM_flags
 module MSSM_Grav : MSSM_flags
+module MSSM_Hgg : MSSM_flags
 module MSSM : functor (F: MSSM_flags) -> Model.T with module Ch = Charges.QQ
 
 (*i

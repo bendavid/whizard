@@ -46,8 +46,8 @@ parameter Ae_33  = 0            # Ae soft breaking parameter (3rd gen.)
 parameter Au_33  = 0            # Au soft breaking parameter (3rd gen.)
 parameter Ad_33  = 0            # Ad soft breaking parameter (3rd gen.)
 
-parameter mh0_1  = 115        # scalar Higgs 1 mass   
-parameter wh0_1  = 3.228E-3   # scalar Higgs 1 width     
+parameter mh0_1  = 125        # scalar Higgs 1 mass   
+parameter wh0_1  = 4.143E-3   # scalar Higgs 1 width     
 parameter mh0_2  = 1000       # scalar Higgs 2 mass   
 parameter wh0_2  = 0          # scalar Higgs 2 width     
 parameter mh0_3  = 400        # scalar Higgs 3 mass   

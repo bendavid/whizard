@@ -74,6 +74,8 @@ module system_dependencies
        "@SRCDIR@/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
        "@SRCDIR@/share/beam-sim"
+  character(*), parameter :: WHIZARD_TEST_MULIPATH = &
+       "@SRCDIR@/share/muli"
   character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
        "@SRCDIR@/share/pdf_builtin"
 
@@ -146,6 +148,8 @@ module system_dependencies
        PKGCIRCE2DIR // "/data"
   character(*), parameter :: WHIZARD_BEAMSIMPATH = &
        PKGDATADIR // "/beam-sim"
+  character(*), parameter :: WHIZARD_MULIPATH = &
+       PKGDATADIR // "/muli"
   character(*), parameter :: PDF_BUILTIN_DATAPATH = &
        PKGDATADIR // "/pdf_builtin"
 

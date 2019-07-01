@@ -118,8 +118,8 @@ contains
     real(kind=double) :: ycut
     real(kind=double), dimension(:, :), allocatable :: PP
     real(kind=double), dimension(:), allocatable :: Y
-    real(kind=default), dimension(:,:), allocatable :: P_JETS
-    real(kind=default), dimension(:,:), allocatable :: P_ME
+    real(kind=double), dimension(:,:), allocatable :: P_JETS
+    real(kind=double), dimension(:,:), allocatable :: P_ME
     integer, dimension(:), allocatable :: JET
     integer :: NJET, NSUB
     integer :: imode
@@ -172,14 +172,15 @@ contains
 
        call KTCLUR(imode, PP, n_jets_ME, dble (mlm_matching_settings%mlm_Rmin), &
             ECUT, y, *999)
-       call ktreco(1, PP,n_jets_me,ECUT,ycut,ycut,dble(P_ME),JET,NJET,NSUB,*999)
+       call ktreco(1, PP,n_jets_me,ECUT,ycut,ycut,P_ME,JET,NJET,NSUB,*999)
 
        n_jets_ME = NJET
        if(NJET>0) then
           allocate(mlm_matching_data%JETS_ME(1:NJET))
           do i=1, NJET
-             mlm_matching_data%JETS_ME(i) = vector4_moving (P_ME(4,i), & 
-                  vector3_moving ((/P_ME(1,i),P_ME(2,i),P_ME(3,i)/))) 
+             mlm_matching_data%JETS_ME(i) = vector4_moving (REAL(P_ME(4,i), default), & 
+                  vector3_moving((/REAL(P_ME(1,i), default),REAL(P_ME(2,i), default), &
+                  REAL(P_ME(3,i), default)/))) 
           end do
        end if
        deallocate (P_ME)
@@ -214,12 +215,12 @@ contains
        call KTCLUR(imode, PP, n_jets_ps, &
             dble (mlm_matching_settings%mlm_Rclusfactor*mlm_matching_settings%mlm_Rmin), &
             ECUT, y, *999)
-       call ktreco(1, PP,n_jets_ps,ECUT,ycut,ycut,dble(P_JETS),JET,NJET,NSUB,*999)
+       call ktreco(1, PP,n_jets_ps,ECUT,ycut,ycut,P_JETS,JET,NJET,NSUB,*999)
        n_jets_PS_atycut = NJET
        if((n_jets_ME.eq.mlm_matching_settings%mlm_nmaxMEjets).and.(NJET.gt.0)) then
 !          print *, " resetting ycut to ", y(mlm_matching_settings%mlm_nmaxMEjets)
           ycut = y(mlm_matching_settings%mlm_nmaxMEjets)
-          call ktreco(1, PP,n_jets_ps,ECUT,ycut,ycut,dble(P_JETS),JET,NJET,NSUB,*999)
+          call ktreco(1, PP,n_jets_ps,ECUT,ycut,ycut,P_JETS,JET,NJET,NSUB,*999)
 !!! else -> y(1) ???
        end if
 
@@ -233,8 +234,9 @@ contains
        if(NJET>0) then
           allocate(mlm_matching_data%JETS_PS(1:NJET))
           do i=1, NJET
-             mlm_matching_data%JETS_PS(i) = vector4_moving(P_JETS(4,i), &
-                  vector3_moving((/P_JETS(1,i),P_JETS(2,i),P_JETS(3,i)/)))
+             mlm_matching_data%JETS_PS(i) = vector4_moving(REAL(P_JETS(4,i), default), &
+                  vector3_moving((/REAL(P_JETS(1,i), default),REAL(P_JETS(2,i), default), &
+                  REAL(P_JETS(3,i), default)/)))
           end do
        end if
 

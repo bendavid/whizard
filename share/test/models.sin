@@ -26,6 +26,10 @@ model = MSSM_Grav
 read_slha ("sps1ap_decays.slha")
 process models_ccww_mssm_grav	   =    c, C	=>	Wp, Wm
 
+model = MSSM_Hgg
+read_slha ("sps1ap_decays.slha")
+process models_ccww_mssm_hgg	   =    c, C	=>	Wp, Wm
+
 model = NMSSM 
 read_slha ("nmssm.slha")
 process models_ccww_nmssm	   =    c, C	=>	Wp, Wm

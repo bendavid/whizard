@@ -29,12 +29,13 @@ AC_ARG_ENABLE([ocaml],
         OCAMLVERSION=`$OCAMLC -v | sed -n -e 's|.*version* *\(.*\)$|\1|p'`
         #####
         # JR inserted this ocamlintegerversion for version checking
+        # [tho] made it rubust for OCaml 4.00
         #####
         AC_CACHE_VAL([wo_ocaml_cv_integer_version],
-          [wo_ocaml_cv_integer_version="`$OCAMLC -v | \
-            $AWK 'NR==1 && [$]5 ~ /version/ {
+          [wo_ocaml_cv_integer_version="`echo "$OCAMLVERSION" | \
+            $AWK 'NR==1 {
               changequote(<<,>>)dnl
-                split (<<$>>6, version, "[.+]+");
+                split (<<$>>1, version, "[.+]+");
                 printf ("%d%02d%03d", version[1], version[2], version[3])}'`"
               changequote([,])])
         OCAMLINTEGERVERSION=$wo_ocaml_cv_integer_version

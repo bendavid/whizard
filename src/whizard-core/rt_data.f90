@@ -1,4 +1,4 @@
-! WHIZARD 2.1.0 June 15 2012
+! WHIZARD 2.1.1 September 18 2012
 ! 
 ! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -705,7 +705,7 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?hadronization_active"), .false., &
             intrinsic=.true.)
-    ! setting for my matching
+    ! setting for mlm matching
     call var_list_append_log &
          (global%var_list, var_str ("?mlm_matching"), .false., &
             intrinsic=.true.)
@@ -734,6 +734,12 @@ contains
          1._default, intrinsic = .true.)
     call var_list_append_real (global%var_list, var_str ("mlm_Eclusfactor"), &
          1._default, intrinsic = .true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?ckkw_matching"), .false., &
+            intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?muli_active"), .false., &
+            intrinsic=.true.)
 
     call var_list_append_string (global%var_list, var_str ("$datafile"), &
           intrinsic=.true.)

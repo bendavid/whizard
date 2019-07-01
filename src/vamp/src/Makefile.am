@@ -81,16 +81,16 @@ NOWEB_FILES = \
     application.nw sample.nw
 
 moduleexecincludedir = $(pkgincludedir)
-if MPI
+if FC_MPI
 lib_LTLIBRARIES = libvamp.la libvampi.la
 libvamp_la_SOURCES = $(SOURCE_FILES)
 libvampi_la_SOURCES = mpi90.f90 vampi.f90
 nodist_moduleexecinclude_DATA = $(MODULE_FILES) # mpi90.$(FC_MODULE_EXT) vampi.$(FC_MODULE_EXT)
-else !MPI
+else !FC_MPI
 lib_LTLIBRARIES = libvamp.la
 libvamp_la_SOURCES = $(SOURCE_FILES)
 nodist_moduleexecinclude_DATA = $(MODULE_FILES)
-endif !MPI
+endif !FC_MPI
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) f90.m4 f95.m4 iso_fortran_env_stub.f90
 

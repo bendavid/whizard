@@ -1,16 +1,14 @@
 WHIZARD Core
-* Release 2.1.0
+* Release 2.1.2
   - 2->1 processes ?
-  - Library API (bind(C))
   - large event numbers (still a problem??)
 
 * 2.2
-  - EWA implementation
+  - EWA implementation (some progress in 2.1.1)
   - reconsider structure function mappings for optimization
   - integration of multiple observables
   - jet finder
-  - parton shower (Sebastian, verification)
-  - underlying event (Hans)
+  - reenabling underlying event 
   - process collections
   
 * 2.3
@@ -36,7 +34,7 @@ O'Mega
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.1.0
+* Release 2.1.2
   - more self-checks (trivial processes + all kinds of commands)
   - Tests for 7, 8 fermions ... 
 
@@ -45,7 +43,7 @@ Models
   - W'
 
 VAMP
-* 2.1.0
+* 2.1.2
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
 * 2.2
@@ -56,7 +54,7 @@ configure
   - Windows support?
 
 Misc
-* Release 2.1.0
+* Release 2.1.2
   - ATLAS/CMS software environment
   - Manual + O'Mega Paper (partially done)
 

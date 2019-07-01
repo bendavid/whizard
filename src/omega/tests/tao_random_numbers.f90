@@ -1,4 +1,4 @@
-! $Id: tao_random_numbers.f90 3750 2012-03-13 12:08:00Z sschmidt $
+! $Id: tao_random_numbers.f90 3930 2012-09-09 18:48:11Z jr_reuter $
 !
 !  Copyright (C) 1999-2012 by 
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -145,7 +145,7 @@ module tao_random_numbers
      integer :: buffer_end, last
   end type tao_random_state
   character(len=*), public, parameter :: TAO_RANDOM_NUMBERS_RCS_ID = &
-       "$Id: tao_random_numbers.f90 3750 2012-03-13 12:08:00Z sschmidt $"
+       "$Id: tao_random_numbers.f90 3930 2012-09-09 18:48:11Z jr_reuter $"
 contains
   subroutine seed_static (seed)
     integer, optional, intent(in) :: seed
