@@ -47,6 +47,10 @@ val embedding2 : 'a compressed2 -> int array
 val compress2 : 'a array array -> 'a compressed2
 val uncompress2 : 'a compressed2 -> 'a array array
 
+(* [compare cmp a1 a2] compare two arrays [a1] and [a2] according to
+   [cmp].  [cmp] defaults to the polymorphic [Pervasives.compare].  *)
+val compare : ?cmp:('a -> 'a -> int) -> 'a array -> 'a array -> int
+
 (* Searching arrays *)
 
 val find_first : ('a -> bool) -> 'a array -> int
@@ -57,6 +61,7 @@ val match_all : 'a -> 'a array -> int list
 val num_rows : 'a array array -> int
 val num_columns : 'a array array -> int
 
+                                      
 module Test : sig val suite : OUnit.test end
 
 (*i

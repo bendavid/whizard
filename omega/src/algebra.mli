@@ -68,6 +68,34 @@ module type Rational =
    \end{dubious} *)
 
 module Small_Rational : Rational
+module Q : Rational
+
+(* \thocwmodulesection{Rational Complex Numbers} *)
+
+module type QComplex =
+  sig
+
+    type q
+    type t
+
+    val make : q -> q -> t
+    val null : t
+    val one : t
+
+    val real : t -> q
+    val imag : t -> q
+
+    val conj : t -> t
+    val neg : t -> t
+
+    val add : t -> t -> t
+    val sub : t -> t -> t
+    val mul : t -> t -> t
+
+  end
+
+module QComplex : functor (Q' : Rational) -> QComplex with type q = Q'.t
+module QC : QComplex with type q = Q.t
 
 (* \thocwmodulesection{Expressions: Terms, Rings and Linear Combinations} *)
 

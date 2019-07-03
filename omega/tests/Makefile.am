@@ -28,6 +28,7 @@
 ########################################################################
 
 SUBDIRS = UFO
+DIST_SUBDIRS = UFO
 
 # OMEGA_SPLIT = -target:single_function
   OMEGA_SPLIT = -target:split_function 10
@@ -358,8 +359,13 @@ compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 
 ########################################################################
 
+# At quadruple or extended precision, these tests take waaaaaayyyy too long!
+if FC_PREC
+else
+
 TESTS += compare_amplitude_UFO
 # XFAIL_TESTS += compare_amplitude_UFO
+
 EXTRA_PROGRAMS += compare_amplitude_UFO
 EXTRA_DIST += compare_driver_UFO.sh
 EXTRA_DIST += comparisons_UFO.list
@@ -372,8 +378,9 @@ compare_amplitude_UFO.f90: comparisons_UFO.list compare_driver_UFO.sh $(OMEGA_UF
 	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER_UFO"; fi
 	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_UFO.sh UFO \
 	  "$(OMEGA_XXX) -model:constant_width" \
-	  "$(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/%%%/ -model:exec " \
+	  "$(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/%%%/ -model:exec" \
 		< $< > $@
+# -model:long_flavors
 
 parameters_SM_UFO.f90: $(OMEGA_UFO)
 	$(OMEGA_UFO) \
@@ -387,6 +394,52 @@ compare_amplitude_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.l
 parameters_SM_from_UFO.o: parameters_SM_UFO.o
 compare_amplitude_UFO.o: parameters_SM_UFO.o parameters_SM_from_UFO.o
 compare_amplitude_UFO.o: $(COMPARE_LIB_O)
+
+endif
+
+########################################################################
+
+# At quadruple or extended precision, these tests take waaaaaayyyy too long!
+if FC_PREC
+else
+
+TESTS += ward_UFO
+
+# We need more work on the parameters to pass the tests
+# at quadruple or extended precision.
+if FC_PREC
+XFAIL_TESTS += ward_UFO
+endif
+
+EXTRA_PROGRAMS += ward_UFO
+EXTRA_DIST += ward_driver_UFO.sh
+EXTRA_DIST += ward_identities_UFO.list
+
+WARD_UFO_SUPPORT_F90 = \
+	omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90
+
+WARD_UFO_SUPPORT_O = $(WARD_UFO_SUPPORT_F90:.f90=.o)
+ward_UFO_lib.o: $(WARD_SUPPORT_O)
+
+WARD_UFO_LIB_F90 = ward_lib.f90 $(WARD_UFO_SUPPORT_F90)
+WARD_UFO_LIB_O = $(WARD_UFO_LIB_F90:.f90=.o)
+
+run_ward_UFO: ward_UFO
+	./ward_UFO
+
+ward_UFO.f90: ward_identities_UFO.list ward_driver_UFO.sh $(OMEGA_UFO)
+	@if $(AM_V_P); then :; else echo "  WARD_UFO_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/ward_driver_UFO.sh \
+	  $(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ \
+	  $(OMEGA_SPLIT) < $< > $@
+
+ward_UFO_SOURCES = $(WARD_UFO_LIB_F90)
+nodist_ward_UFO_SOURCES = ward_UFO.f90 parameters_SM_UFO.f90
+ward_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+ward_UFO.o: $(WARD_UFO_LIB_O)
+
+endif
 
 ########################################################################
 
@@ -563,6 +616,8 @@ vertex_unit.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 
 endif
 
+########################################################################
+
 if OCAML_AVAILABLE
 
 TESTS += ufo_unit
@@ -577,6 +632,51 @@ ufo_unit: $(OMEGA_CORE) ufo_unit.cmx
 ufo_unit.cmx: ufo_unit.ml
 
 ufo_unit.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+
+endif
+
+########################################################################
+
+if RECOLA_AVAILABLE
+
+TESTS += compare_amplitude_recola
+
+# We need more work on the parameters to pass the tests
+# at quadruple or extended precision
+if FC_PREC
+XFAIL_TESTS += compare_amplitude_recola
+endif
+
+EXTRA_PROGRAMS += compare_amplitude_recola
+AM_FCFLAGS += $(RECOLA_INCLUDES)
+
+compare_amplitude_recola_SOURCES = \
+	parameters_SM_Higgs_recola.f90 \
+	omega_interface.f90 compare_lib.f90 compare_lib_recola.f90 \
+	omega_testtools.f90 tao_random_numbers.f90
+
+nodist_compare_amplitude_recola_SOURCES = compare_amplitude_recola.f90
+
+compare_amplitude_recola.f90: comparisons_recola.list compare_driver_recola.sh
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER_RECOLA"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_recola.sh \
+	  "$(OMEGA_XXX) -model:constant_width" < $< > $@
+
+compare_amplitude_recola.o: \
+	omega_testtools.f90 compare_lib.o compare_lib_recola.o \
+	tao_random_numbers.o \
+	parameters_SM_Higgs_recola.o
+
+compare_lib_recola.o:  \
+	omega_testtools.f90 compare_lib.o tao_random_numbers.o \
+	parameters_SM_Higgs_recola.o
+
+compare_amplitude_recola_LDADD = \
+	$(LDFLAGS_RECOLA) \
+	$(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+run_compare_recola: compare_amplitude_recola
+	./compare_amplitude_recola
 
 endif
 
@@ -613,10 +713,13 @@ clean-macosx:
 clean-local: clean-macosx
 	rm -f a.out gmon.out *.$(FC_MODULE_EXT) \
 		*.o *.cmi *.cmo *.cmx amplitude_*.f90 \
-		$(EXTRA_PROGRAMS) ects.f90 ward.f90 compare_*.f90 \
-		parameters_SM_UFO.f90 \
+		$(EXTRA_PROGRAMS) ects.f90 ward.f90 ward_UFO.f90 compare_*.f90 \
+		parameters_SM_UFO.f90 keystones_omegalib.f90 keystones_UFO.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
-		*.hbc *wrappers.f90 cascade phase_space
+		*.hbc *wrappers.f90 cascade phase_space \
+		output.rcl recola.log
+	rm -fr  output_cll
+
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

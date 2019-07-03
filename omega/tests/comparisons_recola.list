@@ -1,0 +1,38 @@
+### comparisons_recola.list --
+#!
+### --------------------------------------------------------------------
+###        thr   abs    n roots model    mode    process ...
+### --------------------------------------------------------------------
+### QED
+eeee     0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> e+ e-
+eemm     0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> mu+ mu-
+eeaa     0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> A A
+eeaaa    0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> A A A
+eeaaaa   0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> A A A A
+### --------------------------------------------------------------------
+### NC
+eezz     0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> Z Z
+### --------------------------------------------------------------------
+### CC
+eeww     0.25  1E-30 1000  1000 SM_Higgs scatter e+ e- -> W+ W-
+### VBS
+#wwww    0.25  1E-30 1000  1000 SM_Higgs scatter W+ W- -> W+ W-
+#zzww    0.25  1E-30 1000  1000 SM_Higgs scatter Z Z -> W+ W-
+### --------------------------------------------------------------------
+### QCD
+#gggg    0.25  1E-30 1000  1000 SM_Higgs scatter g g -> g g
+### --------------------------------------------------------------------
+### Misc
+wwhh     0.10  1E-30  100 10000 SM_Higgs scatter mu+ e- -> numubar nue H H | mu+ e- -> nu_mu~ nu_e H H
+wwhhh    0.05  1E-30  100 10000 SM_Higgs scatter mu+ e- -> numubar nue H H H | mu+ e- -> nu_mu~ nu_e H H H
+### --------------------------------------------------------------------
+### recola particles
+### scalars:       'H', 'p0', 'p+', 'p-'
+### vector bosons: 'g', 'A', 'Z', 'W+', 'W-'
+### leptons:       'nu_e', 'nu_e~', 'e-', 'e+', 
+###                'nu_mu', 'nu_mu~', 'mu-', 'mu+', 
+###                'nu_tau', 'nu_tau~', 'tau-', 'tau+'
+### quarks:        'u', 'u~', 'd', 'd~', 
+###                'c', 'c~', 's', 's~',
+###                't', 't~', 'b', 'b~'
+### ----------------------------------------------------------------------

@@ -1508,7 +1508,8 @@ module Test (M : Model.T) : Test =
           List.iter
             (Printf.printf "  type(momentum), intent(in) :: %s\n")
             momenta;
-          let [rhs1; rhs2] = rhs in
+          let rhs1 = List.hd rhs
+          and rhs2 = List.hd (List.tl rhs) in
           begin match M.lorentz (M.flavor_of_string lhs) with
           | Coupling.Vector ->
               begin

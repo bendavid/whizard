@@ -1,0 +1,25 @@
+#! /bin/sh
+# makejournal --
+
+fmfemp () {
+  latex $1-pics
+  mpost $1-picseps
+  TEX=latex mpost $1-pics
+  latex $1-pics
+  sh ./$1-pics.sh
+}
+
+fmfemp omega-paper-1
+tar czf omega-paper-1.tar.gz \
+  omega-paper-1.tex thophys.sty modules.pdf modules.eps \
+  omega-paper-1-pics-*.pdf omega-paper-1-pics-*.eps
+
+tgz=`pwd`/omega-paper-1.tar.gz
+
+mkdir /tmp/test
+cd /tmp/test
+tar xzf $tgz
+pdflatex omega-paper-1
+pdflatex omega-paper-1
+
+

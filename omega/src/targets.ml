@@ -1261,6 +1261,15 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
           | Dim6_WWZ_D _ ->
               failwith "print_current: V3: not implemented"
 
+          | Aux_Gauge_Gauge _ ->
+              failwith "print_current: V3 (Aux_Gauge_Gauge): not implemented"
+
+          | UFO3 (c, v, s, Color.Trivial3) ->
+              failwith "print_current: V3 (UFO3): not implemented yet"
+
+          | UFO3 (c, v, s, _) ->
+              failwith "print_current: V3 (UFO3): unexpected color"
+
    end
 
 (* Flip the sign in [c] to account for the~$\mathrm{i}^2$ relative to diagrams
@@ -1343,39 +1352,46 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
           | DScalar2_Vector2 _ ->
               failwith "print_current: V4: DScalars not implemented"
           | Dim6_H4_P2 _ ->  
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_AHWW_DPB _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_AHWW_DPW _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_AHWW_DW _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_Vector4_DW _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_Vector4_W _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_Scalar2_Vector2_D _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_Scalar2_Vector2_DP _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_HWWZ_DW _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_HWWZ_DPB _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_HWWZ_DDPW _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_HWWZ_DPW _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_AHHZ_D _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_AHHZ_DP _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_AHHZ_PB _ ->
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_Scalar2_Vector2_PB _ ->           
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
           | Dim6_HHZZ_T _ ->   
-              failwith "print_current: V3: not implemented"
+              failwith "print_current: V4: not implemented"
+
+          | UFO4 (c, v, s, Color.Trivial4) ->
+              failwith "print_current: V4 (UFO4): not implemented yet"
+
+          | UFO4 (c, v, s, _) ->
+              failwith "print_current: V4 (UFO4): unexpected color"
+
           end
 
       | Vn (_, _, _) -> invalid_arg "Targets.print_current: n-ary fusion."
@@ -2095,6 +2111,7 @@ module Make_Fortran (Fermions : Fermions)
     let output_mode = ref (Single_Module 10)
     let use_modules = ref []
     let whizard = ref false
+    let amp_triv = ref false
     let parameter_module = ref ""
     let md5sum = ref None
     let no_write = ref false
@@ -2129,6 +2146,7 @@ module Make_Fortran (Fermions : Fermions)
         "md5sum", Arg.String (fun s -> md5sum := Some s),
         "transfer MD5 checksum";
         "whizard", Arg.Set whizard, "include WHIZARD interface";
+	"amp_triv", Arg.Set amp_triv, "only print trivial amplitude";
         "no_write", Arg.Set no_write, "no 'write' statements";
         "kmatrix_write", Arg.Set km_2_write, "write K matrix functions";
         "kmatrix_2_write", Arg.Set km_write, "write K matrix 2 functions";
@@ -2137,56 +2155,7 @@ module Make_Fortran (Fermions : Fermions)
         "openmp", Arg.Set openmp, "activate OpenMP support in generated code"]
 
 (* Fortran style line continuation: *)
-
-(* Default function to output spaces (copied from \texttt{format.ml}). *)
-    let blank_line = String.make 80 ' '
-    let rec display_blanks oc n =
-      if n > 0 then
-        if n <= 80 then
-          output oc blank_line 0 n
-        else begin
-          output oc blank_line 0 80;
-          display_blanks oc (n - 80)
-        end
-
-(* Default function to output new lines (copied from \texttt{format.ml}). *)
-    let display_newline oc () =
-      output oc "\n" 0  1
-
-(* [current_continuation_line]
-   \begin{itemize}
-     \item $\le0$: not continuing: print a straight newline,
-     \item $>0$: continuing: append [" &"] until we run up to [!continuation_lines].
-       NB: [!continuation_lines < 0] means \emph{unlimited} continuation lines.
-   \end{itemize} *)
-
-    let current_continuation_line = ref 1
-    exception Continuation_Lines of int
-
-    let fortran_newline oc () =
-      if !current_continuation_line > 0 then begin
-        if !continuation_lines >= 0 && !current_continuation_line > !continuation_lines then
-          raise (Continuation_Lines !current_continuation_line)
-        else begin
-          output oc " &" 0 2;
-          incr current_continuation_line
-        end
-      end;
-      display_newline oc ()
-
-    let nl () =
-      current_continuation_line := 0;
-      print_newline ();
-      current_continuation_line := 1
-
-(* Make a formatter with default functions to output spaces and new lines. *)
-    let setup_fortran_formatter width oc =
-      set_all_formatter_output_functions
-        ~out:(output oc)
-        ~flush:(fun () -> flush oc)
-        ~newline:(fortran_newline oc)
-        ~spaces:(display_blanks oc);
-      set_margin (width - 2)
+    let nl = Format_Fortran.newline
 
     let print_list = function
       | [] -> ()
@@ -2241,21 +2210,21 @@ module Make_Fortran (Fermions : Fermions)
     let spin wf = "s(" ^ string_of_int (ext_momentum wf) ^ ")"
 
     let format_multiple_variable ?(decl = false) wf i =
-      variable ~decl:decl wf ^ "_X" ^ string_of_int i
+      variable ~decl wf ^ "_X" ^ string_of_int i
 
     let multiple_variable ?(decl = false) amplitude dictionary wf =
       try
-        format_multiple_variable ~decl:decl wf (dictionary amplitude wf)
+        format_multiple_variable ~decl wf (dictionary amplitude wf)
       with
       | Not_found -> variable wf
 
     let multiple_variables ?(decl = false) multiplicity wf =
       try
         List.map
-          (format_multiple_variable ~decl:decl wf)
+          (format_multiple_variable ~decl wf)
           (ThoList.range 1 (multiplicity wf))
       with
-      | Not_found -> [variable ~decl:decl wf]
+      | Not_found -> [variable ~decl wf]
 
     let declaration_chunk_size = 64
 
@@ -2433,6 +2402,9 @@ i*)
           printf "@, (1.0_%s / " !kind; eval_parameter' x; printf ")"
       | Pow (x, n) ->
           printf "@,("; eval_parameter' x; printf "**%d" n; printf ")"
+      | PowX (x, y) ->
+          printf "@,("; eval_parameter' x;
+           printf "**"; eval_parameter' y; printf ")"
       | Sqrt x -> printf "@,sqrt ("; eval_parameter' x; printf ")"
       | Sin x -> printf "@,sin ("; eval_parameter' x; printf ")"
       | Cos x -> printf "@,cos ("; eval_parameter' x; printf ")"
@@ -2440,6 +2412,7 @@ i*)
       | Cot x -> printf "@,cot ("; eval_parameter' x; printf ")"
       | Atan2 (y, x) -> printf "@,atan2 ("; eval_parameter' y;
           printf ",@ "; eval_parameter' x; printf ")"
+      | Exp x -> printf "@,exp ("; eval_parameter' x; printf ")"
       | Conj x -> printf "@,conjg ("; eval_parameter' x; printf ")"
 
     let strip_single_tag = function
@@ -2493,11 +2466,11 @@ i*)
       | Atom name -> List.mem (CM.constant_symbol name) params
       | Sum es | Prod es ->
          List.exists (depends_on params) es
-      | Diff (e1, e2) | Quot (e1, e2) ->
+      | Diff (e1, e2) | Quot (e1, e2) | PowX (e1, e2) ->
          depends_on params e1 || depends_on params e2
       | Neg e | Rec e | Pow (e, _) ->
          depends_on params e
-      | Sqrt e | Sin e | Cos e | Tan e | Cot e | Conj e ->
+      | Sqrt e | Sin e | Cos e | Tan e | Cot e | Conj e | Exp e ->
          depends_on params e
       | Atan2 (e1, e2) ->
          depends_on params e1 || depends_on params e2
@@ -2534,7 +2507,7 @@ i*)
         []
 
     let parameters_to_fortran oc params =
-      setup_fortran_formatter !line_length oc;
+      Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       let declarations = classify_parameters params in
       printf "module %s" !parameter_module; nl ();
       printf "  use kinds"; nl ();
@@ -2714,43 +2687,45 @@ i*)
     let print_variable_declarations amplitudes =
       let multiplicity = CF.multiplicity amplitudes
       and processes = CF.processes amplitudes in
-      declare_momenta
-        (PSet.elements
-           (List.fold_left
-              (fun set a ->
-                PSet.union set (List.fold_right
-                                  (fun wf -> PSet.add (F.momentum_list wf))
-                                  (F.externals a) PSet.empty))
-              PSet.empty processes));
-      declare_momenta
-        (PSet.elements
-           (List.fold_left
-              (fun set a ->
-                PSet.union set (List.fold_right
-                                  (fun wf -> PSet.add (F.momentum_list wf))
-                                  (F.variables a) PSet.empty))
-              PSet.empty processes));
-      if !openmp then begin
-         printf "  type %s@[<2>" openmp_tld_type;
-         nl ();
-      end ;
-      declare_wavefunctions multiplicity
-        (WFSet.elements
-           (List.fold_left
-              (fun set a ->
-                WFSet.union set (List.fold_right WFSet.add (F.externals a) WFSet.empty))
-              WFSet.empty processes));
-      declare_wavefunctions multiplicity
-        (WFSet.elements
-           (List.fold_left
-              (fun set a ->
-                WFSet.union set (List.fold_right WFSet.add (F.variables a) WFSet.empty))
-              WFSet.empty processes));
-      declare_brakets processes;
-      if !openmp then begin
-         printf "@]  end type %s\n" openmp_tld_type;
-         printf "  type(%s) :: %s" openmp_tld_type openmp_tld;
-         nl ();
+      if not !amp_triv then begin
+	declare_momenta
+          (PSet.elements
+             (List.fold_left
+		(fun set a ->
+                  PSet.union set (List.fold_right
+                                    (fun wf -> PSet.add (F.momentum_list wf))
+                                    (F.externals a) PSet.empty))
+		PSet.empty processes));
+	declare_momenta
+          (PSet.elements
+             (List.fold_left
+		(fun set a ->
+                  PSet.union set (List.fold_right
+                                    (fun wf -> PSet.add (F.momentum_list wf))
+                                    (F.variables a) PSet.empty))
+		PSet.empty processes));
+	if !openmp then begin
+          printf "  type %s@[<2>" openmp_tld_type;
+          nl ();
+	end ;
+	declare_wavefunctions multiplicity
+          (WFSet.elements
+             (List.fold_left
+		(fun set a ->
+                  WFSet.union set (List.fold_right WFSet.add (F.externals a) WFSet.empty))
+		WFSet.empty processes));
+	declare_wavefunctions multiplicity
+          (WFSet.elements
+             (List.fold_left
+		(fun set a ->
+                  WFSet.union set (List.fold_right WFSet.add (F.variables a) WFSet.empty))
+		WFSet.empty processes));
+	declare_brakets processes;
+	if !openmp then begin
+          printf "@]  end type %s\n" openmp_tld_type;
+          printf "  type(%s) :: %s" openmp_tld_type openmp_tld;
+          nl ();
+	end;
       end
 
 (* [print_current] is the most important function that has to match the functions
@@ -3508,6 +3483,12 @@ i*)
           let c = CM.constant_symbol constant in
           printf "@, %s " (if (F.sign rhs) < 0 then "-" else "+");
           begin match vertex with
+          | UFO3 (c', v, s, Color.Legacy3)
+          | UFO3 (c', v, s, Color.Trivial3) ->
+             UFO.Targets.Fortran.fusion2 c' v s c wf1 p1 wf2 p2 fusion
+
+          | UFO3 (c', v, s, _) ->
+             failwith "print_current: nontrivial color structure"
 
 (* Fermionic currents $\bar\psi\fmslash{A}\psi$ and $\bar\psi\phi\psi$
    are handled by the [Fermions] module, since they depend on the
@@ -4088,6 +4069,7 @@ i*)
               | F12 -> printf "z_ww_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
               | F21 -> printf "z_ww_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
               end
+
 (*i
           | Dim6_Glu_Glu_Glu coeff ->
               let c = format_coupling coeff c in
@@ -4115,6 +4097,13 @@ i*)
           and p3 = momentum ch3 in
           printf "@, %s " (if (F.sign rhs) < 0 then "+" else "-");
           begin match vertex with
+          | UFO4 (c', v, s, Color.Legacy4)
+          | UFO4 (c', v, s, Color.Trivial4) ->
+             UFO.Targets.Fortran.fusion3 c' v s c wf1 p1 wf2 p2 wf3 p3 fusion
+
+          | UFO4 (c', v, s, _) ->
+             failwith "print_current: nontrivial color structure"
+
           | Scalar4 coeff ->
               printf "(%s*%s*%s*%s)" (format_coupling coeff c) wf1 wf2 wf3
           | Scalar2_Vector2 coeff ->
@@ -5720,46 +5709,6 @@ i*)
                   | F321  ->
                       printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
                           c wf3 p3 wf2 p2 wf1 p1
-                  end
-          | Dim6_Scalar2_Vector2_PB coeff ->
-              let c = format_coupling coeff c in
-                  begin match fusion with
-                  | F234 | F134 -> 
-                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf1 p1 wf2 p2 wf3 p3
-                  | F342 | F341  ->
-                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf3 p3 wf1 p1 wf2 p2
-                  | F423 | F413  ->
-                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf2 p2 wf3 p3 wf1 p1
-                  | F243 | F143  ->
-                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf1 p1 wf3 p3 wf2 p2
-                  | F324 | F314  ->
-                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf2 p2 wf1 p1 wf3 p3
-                  | F432 | F431  ->
-                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf3 p3 wf2 p2 wf1 p1
-                  | F123 | F124 -> 
-                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf1 p1 wf2 p2 wf3 p3
-                  | F231 | F241->
-                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf3 p3 wf1 p1 wf2 p2
-                  | F312 | F412 ->
-                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf2 p2 wf3 p3 wf1 p1
-                  | F132 | F142->
-                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf1 p1 wf3 p3 wf2 p2
-                  | F213 | F214 ->
-                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf2 p2 wf1 p1 wf3 p3
-                  | F321 | F421 ->
-                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
-                          c wf3 p3 wf2 p2 wf1 p1
                   end  
 
 (* \begin{dubious}
@@ -5789,10 +5738,19 @@ i*)
                                c wf1 wf2 wf3 p1 p2 p3 p123 fusion) tail;
                   printf ")"
               end
+
           end
 
-      | Vn (_, _, _) ->
-          invalid_arg "Targets.print_current: n-ary fusion"
+      | Vn (UFOn (c, v, s, Color.Legacy), fusion, constant)
+      | Vn (UFOn (c, v, s, Color.Trivial), fusion, constant) ->
+         let g = CM.constant_symbol constant
+         and chn = F.children rhs in
+         let wfs = List.map (multiple_variable amplitude dictionary) chn
+         and ps = List.map momentum chn in
+         UFO.Targets.Fortran.fusionn c v s g wfs ps fusion
+
+      | Vn (UFOn (c, v, s, _), fusion, constant) ->
+         failwith "print_current: nontrivial color structure"
 
     let print_propagator f p m gamma =
       let minus_third = "(-1.0_" ^ !kind ^ "/3.0_" ^ !kind ^ ")" in
@@ -6873,28 +6831,32 @@ i*)
         1 (CF.flavors amplitudes);
       printf "!"; nl ();
       printf "!   color flows:"; nl ();
-      printf "!"; nl ();
-      ThoList.iteri
-        (fun i cflow ->
-          printf "!     %3d: %s" i (cflow_to_string cflow); nl ())
-        1 (CF.color_flows amplitudes);
-      printf "!"; nl ();
-      printf "!     NB: i.g. not all color flows contribute to all flavor"; nl ();
-      printf "!     combinations.  Consult the array FLV_COL_IS_ALLOWED"; nl ();
-      printf "!     below for the allowed combinations."; nl ();
+      if not !amp_triv then begin
+	printf "!"; nl ();
+	ThoList.iteri
+          (fun i cflow ->
+            printf "!     %3d: %s" i (cflow_to_string cflow); nl ())
+          1 (CF.color_flows amplitudes);
+	printf "!"; nl ();
+	printf "!     NB: i.g. not all color flows contribute to all flavor"; nl ();
+	printf "!     combinations.  Consult the array FLV_COL_IS_ALLOWED"; nl ();
+	printf "!     below for the allowed combinations."; nl ();
+      end;
       printf "!"; nl ();
       printf "!   Color Factors:"; nl ();
       printf "!"; nl ();
-      let cfactors = CF.color_factors amplitudes in
-      for c1 = 0 to pred (Array.length cfactors) do
-        for c2 = 0 to c1 do
-          match cfactors.(c1).(c2) with
-          | [] -> ()
-          | cfactor ->
-              printf "!     (%3d,%3d): %s"
-                (succ c1) (succ c2) (format_powers_of_nc cfactor); nl ()
-        done
-      done;
+      if not !amp_triv then begin
+	let cfactors = CF.color_factors amplitudes in
+	for c1 = 0 to pred (Array.length cfactors) do
+          for c2 = 0 to c1 do
+            match cfactors.(c1).(c2) with
+            | [] -> ()
+            | cfactor ->
+               printf "!     (%3d,%3d): %s"
+                 (succ c1) (succ c2) (format_powers_of_nc cfactor); nl ()
+          done
+	done;
+      end;
       printf "!"; nl ();
       printf "!   vanishing or redundant flavor combinations:"; nl ();
       printf "!"; nl ();
@@ -7012,7 +6974,7 @@ i*)
       output_string oc (m.module_name ^ "\n");
       let filename = m.module_name ^ ".f90" in
       let channel = open_out filename in
-      setup_fortran_formatter line_length channel;
+      Format_Fortran.set_formatter_out_channel ~width:line_length channel;
       prelude ();
       print_modules [m];
       close_out channel
@@ -7047,24 +7009,28 @@ i*)
        ThoList.enumerate 1 (ThoList.chopn num_brakets (CF.processes amplitudes)))
 
     let print_compute_fusions1 dictionary (n, fusions) =
-      if !openmp then begin
-        printf "  subroutine compute_fusions_%04d (%s)" n openmp_tld; nl ();
-        printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
-      end else begin
-        printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
-      end;
-      print_fusions dictionary fusions;
-      printf "  end subroutine compute_fusions_%04d" n; nl ()
+      if not !amp_triv then begin
+	if !openmp then begin
+          printf "  subroutine compute_fusions_%04d (%s)" n openmp_tld; nl ();
+          printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+	end else begin
+          printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
+	end;
+	print_fusions dictionary fusions;
+	printf "  end subroutine compute_fusions_%04d" n; nl ();
+      end
 
     and print_compute_brakets1 dictionary (n, processes) =
-      if !openmp then begin
-        printf "  subroutine compute_brakets_%04d (%s)" n openmp_tld; nl ();
-        printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
-      end else begin
-        printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
-      end;
-      List.iter (print_brakets dictionary) processes;
-      printf "  end subroutine compute_brakets_%04d" n; nl ()
+      if not !amp_triv then begin
+	if !openmp then begin
+          printf "  subroutine compute_brakets_%04d (%s)" n openmp_tld; nl ();
+          printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+	end else begin
+          printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
+	end;
+	List.iter (print_brakets dictionary) processes;
+	printf "  end subroutine compute_brakets_%04d" n; nl ();
+      end
 
 (* \thocwmodulesubsection{Common Stuff} *)
 
@@ -7084,10 +7050,13 @@ i*)
     let used_modules () =
       [Full "kinds";
        Full Fermions.use_module;
+       Full (!module_name ^ "_ufo");
        Full_Aliased ("omega_color", ["omega_color_factor", omega_color_factor_abbrev])] @
       List.map
         (fun m -> Full m)
-        (match !parameter_module with "" -> !use_modules | pm -> pm :: !use_modules)
+        (match !parameter_module with
+         | "" -> !use_modules
+         | pm -> pm :: !use_modules)
 
     let public_symbols () =
       if !whizard then
@@ -7149,10 +7118,11 @@ i*)
       print_color_factors ();
       print_dispatch_functions ();
       nl ();
-      current_continuation_line := 0;
+      (* Is this really necessary? *)
+      Format_Fortran.switch_line_continuation false;
       if !km_write || !km_pure then (Targets_Kmatrix.Fortran.print !km_pure);
       if !km_2_write || !km_2_pure then (Targets_Kmatrix_2.Fortran.print !km_2_pure);
-      current_continuation_line := 1;
+      Format_Fortran.switch_line_continuation true;
       nl ()
 
     let print_calculate_amplitudes declarations computations amplitudes =
@@ -7163,46 +7133,50 @@ i*)
       printf "    integer, dimension(n_prt) :: s"; nl ();
       printf "    integer :: h, hi"; nl ();
       declarations ();
-      begin match CF.processes amplitudes with
-      | p :: _ -> print_external_momenta p
-      |  _ -> ()
+      if not !amp_triv then begin
+	begin match CF.processes amplitudes with
+	| p :: _ -> print_external_momenta p
+	|  _ -> ()
+	end;
+	ignore (List.fold_left print_momenta PSet.empty (CF.processes amplitudes));
       end;
-      ignore (List.fold_left print_momenta PSet.empty (CF.processes amplitudes));
       printf "    amp = 0"; nl ();
-      if num_helicities amplitudes > 0 then begin
-        printf "    if (hel_finite == 0) return"; nl ();
-        if !openmp then begin
-          printf "!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(s, h, %s) SCHEDULE(STATIC)" openmp_tld; nl ();
-        end;
-        printf "    do hi = 1, hel_finite"; nl ();
-        printf "      h = hel_map(hi)"; nl ();
-        printf "      s = table_spin_states(:,h)"; nl ();
-        ignore (List.fold_left print_externals WFSet.empty (CF.processes amplitudes));
-        computations ();
-        List.iter print_fudge_factor (CF.processes amplitudes);
+      if not !amp_triv then begin
+	if num_helicities amplitudes > 0 then begin
+          printf "    if (hel_finite == 0) return"; nl ();
+          if !openmp then begin
+            printf "!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(s, h, %s) SCHEDULE(STATIC)" openmp_tld; nl ();
+          end;
+          printf "    do hi = 1, hel_finite"; nl ();
+          printf "      h = hel_map(hi)"; nl ();
+          printf "      s = table_spin_states(:,h)"; nl ();
+          ignore (List.fold_left print_externals WFSet.empty (CF.processes amplitudes));
+          computations ();
+          List.iter print_fudge_factor (CF.processes amplitudes);
         (* This sorting should slightly improve cache locality. *)
-        let triple_snd = fun (_,  x, _) -> x
-        in let triple_fst = fun (x, _, _) -> x
-        in let rec builder1 flvi flowi flows = match flows with
-          | (Some a) :: tl -> (flvi, flowi, flavors_symbol (flavors a)) :: (builder1 flvi (flowi + 1) tl)
-          | None :: tl -> builder1 flvi (flowi + 1) tl
-          | [] -> []
-        in let rec builder2 flvi flvs = match flvs with
-          | flv :: tl -> (builder1 flvi 1 flv) @ (builder2 (flvi + 1) tl)
-          | [] -> []
-        in let unsorted = builder2 1 (List.map Array.to_list (Array.to_list (CF.process_table amplitudes)))
-        in let sorted = List.sort (fun a b ->
-            if (triple_snd a != triple_snd b) then triple_snd a - triple_snd b else (triple_fst a - triple_fst b))
-          unsorted
-        in List.iter (fun (flvi, flowi, flv) ->
-          (printf "      amp(%d,%d,h) = %s" flvi flowi flv; nl ();)) sorted;
+          let triple_snd = fun (_,  x, _) -> x
+          in let triple_fst = fun (x, _, _) -> x
+             in let rec builder1 flvi flowi flows = match flows with
+             | (Some a) :: tl -> (flvi, flowi, flavors_symbol (flavors a)) :: (builder1 flvi (flowi + 1) tl)
+             | None :: tl -> builder1 flvi (flowi + 1) tl
+             | [] -> []
+		in let rec builder2 flvi flvs = match flvs with
+		| flv :: tl -> (builder1 flvi 1 flv) @ (builder2 (flvi + 1) tl)
+		| [] -> []
+		   in let unsorted = builder2 1 (List.map Array.to_list (Array.to_list (CF.process_table amplitudes)))
+		      in let sorted = List.sort (fun a b ->
+			if (triple_snd a != triple_snd b) then triple_snd a - triple_snd b else (triple_fst a - triple_fst b))
+			   unsorted
+			 in List.iter (fun (flvi, flowi, flv) ->
+			   (printf "      amp(%d,%d,h) = %s" flvi flowi flv; nl ();)) sorted;
 
-(*i     printf "     else"; nl ();
-        printf "      amp(:,h,:) = 0"; nl (); i*)
-        printf "    end do"; nl ();
-        if !openmp then begin
-          printf "!$OMP END PARALLEL DO"; nl ();
-        end;
+	(*i     printf "     else"; nl ();
+          printf "      amp(:,h,:) = 0"; nl (); i*)
+			 printf "    end do"; nl ();
+			 if !openmp then begin
+			   printf "!$OMP END PARALLEL DO"; nl ();
+			 end;
+	end;
       end;
       printf "  end subroutine calculate_amplitudes"; nl ()
 
@@ -7215,6 +7189,35 @@ i*)
         (fun (i, _) -> printf "      call compute_brakets_%04d (%s)" i
            (if !openmp then openmp_tld else ""); nl ())
         chopped_brakets
+
+    (* \thocwmodulesubsection{UFO Fusions} *)
+
+    module VSet =
+      Set.Make (struct type t = F.constant Coupling.t let compare = compare end)
+
+    (* FIXME: can be retired starting from O'Caml 4.02.0! *)
+    let vset_of_list list =
+      List.fold_right VSet.add list VSet.empty
+
+    let ufo_fusions_used amplitudes =
+      let couplings =
+        List.fold_left
+          (fun acc p ->
+            let fusions = ThoList.flatmap F.rhs (F.fusions p)
+            and brakets = ThoList.flatmap F.ket (F.brakets p) in
+            let couplings =
+              vset_of_list (List.map F.coupling (fusions @ brakets)) in
+            VSet.union acc couplings)
+          VSet.empty (CF.processes amplitudes) in
+      VSet.fold
+        (fun v acc ->
+          match v with
+          | Coupling.V3 (Coupling.UFO3 (_, v, _, _), _, _)
+          | Coupling.V4 (Coupling.UFO4 (_, v, _, _), _, _)
+          | Coupling.Vn (Coupling.UFOn (_, v, _, _), _, _) ->
+             Sets.String.add v acc
+          | _ -> acc)
+        couplings Sets.String.empty
 
 (* \thocwmodulesubsection{Single Function} *)
 
@@ -7242,7 +7245,7 @@ i*)
           print_declarations = [print_declarations];
           print_implementations = [print_implementations] } in
 
-      setup_fortran_formatter !line_length oc;
+      Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       print_description cmdline amplitudes ();
       print_modules [fortran_module]
 
@@ -7285,7 +7288,7 @@ i*)
                                    print_compute_fusions;
                                    print_compute_brakets] } in
 
-      setup_fortran_formatter !line_length oc;
+      Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       print_description cmdline amplitudes ();
       print_modules [fortran_module]
 
@@ -7319,24 +7322,28 @@ i*)
       let dictionary = CF.dictionary amplitudes in
 
       let print_compute_fusions (n, fusions) () =
-        if !openmp then begin
-          printf "  subroutine compute_fusions_%04d (%s)" n openmp_tld; nl ();
-          printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
-        end else begin
-          printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
-        end;
-        print_fusions dictionary fusions;
-        printf "  end subroutine compute_fusions_%04d" n; nl () in
+	if not !amp_triv then begin
+          if !openmp then begin
+            printf "  subroutine compute_fusions_%04d (%s)" n openmp_tld; nl ();
+            printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+          end else begin
+            printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
+          end;
+          print_fusions dictionary fusions;
+          printf "  end subroutine compute_fusions_%04d" n; nl ();
+	end in
 
       let print_compute_brakets (n, processes) () =
-        if !openmp then begin
-          printf "  subroutine compute_brakets_%04d (%s)" n openmp_tld; nl ();
-          printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
-        end else begin
-          printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
-        end;
-        List.iter (print_brakets dictionary) processes;
-        printf "  end subroutine compute_brakets_%04d" n; nl () in
+	if not !amp_triv then begin
+          if !openmp then begin
+            printf "  subroutine compute_brakets_%04d (%s)" n openmp_tld; nl ();
+            printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+          end else begin
+            printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
+          end;
+          List.iter (print_brakets dictionary) processes;
+          printf "  end subroutine compute_brakets_%04d" n; nl ();
+	end in
 
       let fusions_module (n, _ as fusions) =
         let tag = Printf.sprintf "_fusions_%04d" n in
@@ -7389,14 +7396,14 @@ i*)
           print_declarations = [];
           print_implementations = [print_implementations] }
       and private_modules =
-        [constants_module; variables_module] @ fusions_modules @ brakets_modules in
-
+        [constants_module; variables_module] @
+          fusions_modules @ brakets_modules in
       (public_module, private_modules)
 
     let amplitudes_to_channel_single_file cmdline oc size amplitudes =
       let public_module, private_modules =
         modules_of_amplitudes cmdline oc size amplitudes in
-      setup_fortran_formatter !line_length oc;
+      Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       print_description cmdline amplitudes ();
       print_modules (private_modules @ [public_module])
 
@@ -7411,6 +7418,10 @@ i*)
 
     let amplitudes_to_channel cmdline oc diagnostics amplitudes =
       parse_diagnostics diagnostics;
+      UFO.Targets.Fortran.lorentz_module
+        ~only:(ufo_fusions_used amplitudes)
+        ~name:(!module_name ^ "_ufo")
+        (Format_Fortran.formatter_of_out_channel oc) ();
       match !output_mode with
       | Single_Function ->
           amplitudes_to_channel_single_function cmdline oc amplitudes

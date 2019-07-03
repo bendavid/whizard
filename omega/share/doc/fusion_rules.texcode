@@ -1,0 +1,49 @@
+  \documentclass[a4paper]{article}  
+  \usepackage{thophys,thohacks}
+  \usepackage[T1]{fontenc}
+  \usepackage[latin1]{inputenc}
+  \usepackage{pstricks,shadow}
+  \usepackage{graphicx,array,amsmath,amssymb,feynmp}
+  \setlength{\unitlength}{1mm}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+ \begin{align*}
+ \label{fusionrules}
+ \quad 
+ \parbox{26mm}{
+ \begin{pspicture}(0,0)(2.4,3.4)%  \psset{xunit=.8cm,yunit=.8cm}
+         \psline(0.2,0.5)(1.2,1.5)       \psline(2.2,0.5)(1.2,1.5)
+         \psline[linestyle=dashed](1.2,1.5)(1.2,2.5)
+         \pscurve[linestyle=dotted]{->}(2.4,0.9)(1.6,1.7)(0.8,1.7)(0.0,0.9)
+         \rput(.2,.2){$a\,,\,l_a$}
+         \rput(2.2,.2){$b\,,\,l_b$}
+         \rput(0,2.2){$\underline{\;\;} \, , \,  \left\{ a, b \right\}
+         \cup l_a \cup l_b \quad$} 
+         \rput(1.2,3.1){$\boxed{\phi = \Psi_a^T \mathcal{C} \Gamma^{(\prime)} \Psi_b}$}
+ \end{pspicture}} \qquad \quad
+ \parbox{26mm}{
+ \begin{pspicture}(0,0)(2.4,3.4)%  \psset{xunit=.8cm,yunit=.8cm}
+         \psline[linestyle=dashed](0.2,0.5)(1.2,1.5)     \psline(2.2,0.5)(1.2,1.5)
+         \psline(1.2,1.5)(1.2,2.5)
+         \pscurve[linestyle=dotted]{->}(2.4,0.9)(1.7,1.6)(1.6,1.7)(1.5,2.4)
+         \rput(.2,.2){$\underline{\;\;} \,,\,l_a$}
+         \rput(2.2,.2){$b\,,\,l_b$}
+         \rput(.4,2.2){$b \, , \,  l_a \cup l_b \quad$} 
+         \rput(1.2,3.1){$\boxed{\Psi'_b = \phi \Gamma^{(\prime)} \Psi_b}$}
+ \end{pspicture}} \qquad \quad 
+ \parbox{26mm}{
+ \begin{pspicture}(0,0)(2.4,3.4)%  \psset{xunit=.8cm,yunit=.8cm}
+         \psline(0.2,0.5)(1.2,1.5)       \psline[linestyle=dashed](2.2,0.5)(1.2,1.5)
+         \psline(1.2,1.5)(1.2,2.5)
+         \pscurve[linestyle=dotted]{->}(0.0,0.9)(0.7,1.6)(0.8,1.7)(0.9,2.4)
+         \rput(.2,.2){$a\,,\,l_a$}
+         \rput(2.2,.2){$\underline{\;\;} \,,\,l_b$}
+         \rput(0,2.2){$a \, , \, l_a \cup l_b \quad$} 
+         \rput(1.2,3.1){$\boxed{\Psi'_a = \phi \Gamma^{(\prime)} \Psi_a}$}
+ \end{pspicture}} \notag\\ 
+ \end{align*}
+
+\end{document} 

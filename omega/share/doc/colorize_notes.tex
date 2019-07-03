@@ -1,0 +1,662 @@
+% colorize_notes.tex --
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt,a4paper]{article}
+\usepackage{graphicx}
+ \DeclareGraphicsRule{*}{mps}{*}{}
+\usepackage{feynmp}
+\usepackage{amsmath}
+\allowdisplaybreaks
+\DeclareMathOperator{\tr}{tr}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\ee}{\mathrm{e}}
+\begin{document}
+\setlength{\unitlength}{1mm}
+\begin{fmffile}{\jobname pics}
+\fmfset{arrow_ang}{10}
+\fmfset{curly_len}{2mm}
+\fmfset{wiggly_len}{3mm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fmfcmd{%
+  numeric joindiameter;
+  joindiameter := 7thick;}
+\fmfcmd{%
+  vardef sideways_at (expr d, p, frac) =
+    save len; len = length p;
+    (point frac*len of p) shifted ((d,0) rotated (90 + angle direction frac*len of p))
+  enddef;
+  secondarydef p sideways d =
+    for frac = 0 step 0.01 until 0.99:
+      sideways_at (d, p, frac) ..
+    endfor
+    sideways_at (d, p, 1)
+  enddef;
+  secondarydef p choptail d =
+   subpath (ypart (fullcircle scaled d shifted (point 0 of p) intersectiontimes p), infinity) of p
+  enddef;
+  secondarydef p choptip d =
+   reverse ((reverse p) choptail d)
+  enddef;
+  secondarydef p pointtail d =
+    fullcircle scaled d shifted (point 0 of p) intersectionpoint p
+  enddef;
+  secondarydef p pointtip d =
+    (reverse p) pointtail d
+  enddef;
+  secondarydef pa join pb =
+    pa choptip joindiameter .. pb choptail joindiameter
+  enddef;
+  vardef cyclejoin (expr p) =
+    subpath (0.5*length p, infinity) of p join subpath (0, 0.5*length p) of p .. cycle
+  enddef;}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fmfcmd{%
+  style_def double_line_arrow expr p =
+    save pi, po; 
+    path pi, po;
+    pi = reverse (p sideways thick);
+    po = p sideways -thick;
+    cdraw pi;
+    cdraw po;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+\fmfcmd{%
+  style_def double_line_arrow_beg expr p =
+    save pi, po, pc; 
+    path pi, po, pc;
+    pc = p choptail 7thick;
+    pi = reverse (pc sideways thick);
+    po = pc sideways -thick;
+    cdraw pi .. p pointtail 5thick .. po;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+\fmfcmd{%
+  style_def double_line_arrow_end expr p =
+    save pi, po, pc; 
+    path pi, po, pc;
+    pc = p choptip 7thick;
+    pi = reverse (pc sideways thick);
+    po = pc sideways -thick;
+    cdraw po .. p pointtip 5thick .. pi;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+\fmfcmd{%
+  style_def double_line_arrow_both expr p =
+    save pi, po, pc; 
+    path pi, po, pc;
+    pc = p choptip 7thick choptail 7thick;
+    pi = reverse (pc sideways thick);
+    po = pc sideways -thick;
+    cdraw po .. p pointtip 5thick .. pi .. p pointtail 5thick .. cycle;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fmfcmd{vardef middir (expr p, ang) =
+    dir (angle direction length(p)/2 of p + ang)
+  enddef;}
+\fmfcmd{style_def arrow_left expr p =
+    shrink (.7);
+      cfill (arrow p shifted (4thick * middir (p, 90)));
+    endshrink
+  enddef;}
+\fmfcmd{style_def arrow_right expr p =
+    shrink (.7);
+      cfill (arrow p shifted (4thick * middir (p, -90)));
+    endshrink
+  enddef;}
+\fmfcmd{style_def warrow_left expr p =
+    shrink (.7);
+      cfill (arrow p shifted (8thick * middir (p, 90)));
+    endshrink
+  enddef;}
+\fmfcmd{style_def warrow_right expr p =
+    shrink (.7);
+      cfill (arrow p shifted (8thick * middir (p, -90)));
+    endshrink
+  enddef;}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Group Theory Factors}
+Using the completeness relation
+\begin{equation}
+   T_a^{ij} T_a^{kl} = \delta^{il}\delta^{jk} - \frac{1}{N_C}\delta^{ij}\delta^{kl}
+\end{equation}
+we find
+\begin{subequations}
+\begin{multline}
+  \tr\left(T_{a_1}T_{a_2}\right)T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+  = T_{a_1}^{k_1k_2}T_{a_1}^{i_1j_1} T_{a_2}^{k_2k_1}T_{a_2}^{i_2j_2} \\
+  = \left(\delta^{k_1j_1}\delta^{k_2i_1} - \frac{1}{N_C}\delta^{k_1k_2}\delta^{i_1j_1}\right)
+    \left(\delta^{k_2j_2}\delta^{k_1i_2} - \frac{1}{N_C}\delta^{k_2k_1}\delta^{i_2j_2}\right)\\
+  =                \delta^{k_1j_1}\delta^{k_2i_1} \delta^{k_2j_2}\delta^{k_1i_2}
+  - \frac{1}{N_C}  \left(  \delta^{k_1j_1}\delta^{k_2i_1} \delta^{k_2k_1}\delta^{i_2j_2}
+                         + \delta^{k_2j_2}\delta^{k_1i_2} \delta^{k_1k_2}\delta^{i_1j_1}\right)\\
+  + \frac{1}{N_C^2}\left(\delta^{k_1k_2}\delta^{i_1j_1} \delta^{k_2k_1}\delta^{i_2j_2}\right)\\
+  =                    \delta^{i_1j_2}\delta^{i_2j_1}
+  - \frac{1}{N_C}  \left(  \delta^{i_1j_1}\delta^{i_2j_2}
+                         + \delta^{i_1j_1}\delta^{i_2j_2} \right)
+  + \frac{N_C}{N_C^2}  \delta^{i_1j_1}\delta^{i_2j_2} \\
+  =                    \delta^{i_1j_2}\delta^{i_2j_1}
+  - \frac{1}{N_C}      \delta^{i_1j_1}\delta^{i_2j_2}
+\end{multline}
+and
+\begin{multline}
+  \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+      T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
+  = \left(T_{a_1}^{k_1k_2}T_{a_2}^{k_2k_3}T_{a_3}^{k_3k_1}\right)
+      T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3} \\
+  = T_{a_1}^{k_1k_2}T_{a_1}^{i_1j_1}
+    T_{a_2}^{k_2k_3}T_{a_2}^{i_2j_2}
+    T_{a_3}^{k_3k_1}T_{a_3}^{i_3j_3}
+  = \left(\delta^{k_1j_1}\delta^{k_2i_1} - \frac{1}{N_C}\delta^{k_1k_2}\delta^{i_1j_1}\right)\\
+  \cdot
+    \left(\delta^{k_2j_2}\delta^{k_3i_2} - \frac{1}{N_C}\delta^{k_2k_3}\delta^{i_2j_2}\right)
+    \left(\delta^{k_3i_3}\delta^{k_1i_3} - \frac{1}{N_C}\delta^{k_3k_1}\delta^{i_3j_3}\right)\\
+  = \delta^{k_1j_1}\delta^{k_2i_1} \delta^{k_2j_2}\delta^{k_3i_2} \delta^{k_3j_3}\delta^{k_1i_3}
+  - \frac{1}{N_C}
+    \delta^{k_1j_1}\delta^{k_2i_1} \delta^{k_2j_2}\delta^{k_3i_2} \delta^{k_3k_1}\delta^{i_3j_3}\\
+  - \frac{1}{N_C}
+    \delta^{k_1j_1}\delta^{k_2i_1} \delta^{k_2k_3}\delta^{i_2j_2} \delta^{k_3j_3}\delta^{k_1i_3}
+  - \frac{1}{N_C}
+    \delta^{k_1k_2}\delta^{i_1j_1} \delta^{k_2j_2}\delta^{k_3i_2} \delta^{k_3j_3}\delta^{k_1i_3}\\
+  + \frac{1}{N_C^2}
+    \delta^{k_1j_1}\delta^{k_2i_1} \delta^{k_2k_3}\delta^{i_2j_2} \delta^{k_3k_1}\delta^{i_3j_3}
+  + \frac{1}{N_C^2}
+    \delta^{k_1k_2}\delta^{i_1j_1} \delta^{k_2j_2}\delta^{k_3i_2} \delta^{k_3k_1}\delta^{i_3j_3}\\
+  + \frac{1}{N_C^2}
+    \delta^{k_1k_2}\delta^{i_1j_1} \delta^{k_2k_3}\delta^{i_2j_2} \delta^{k_3j_3}\delta^{k_1i_3}
+  - \frac{1}{N_C^3}
+    \delta^{k_1k_2}\delta^{i_1j_1} \delta^{k_2k_3}\delta^{i_2j_2} \delta^{k_3k_1}\delta^{i_3j_3}\\
+  = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+  - \frac{1}{N_C} \left(   \delta^{i_1j_2} \delta^{i_2j_1} \delta^{i_3j_3}
+                         + \delta^{i_1j_3} \delta^{i_2j_2} \delta^{i_3j_1} 
+                         + \delta^{i_1j_1} \delta^{i_2j_3} \delta^{i_3j_2} \right) \\
+  + \frac{1}{N_C^2} \left(   \delta^{i_1j_1} \delta^{i_2j_2} \delta^{i_3j_3}
+                           + \delta^{i_1j_1} \delta^{i_2j_2} \delta^{i_3j_3}
+                           + \delta^{i_1j_1} \delta^{i_2j_2} \delta^{i_3j_3} \right)
+  - \frac{N_C}{N_C^3} \delta^{i_1j_1} \delta^{i_2j_2} \delta^{i_3j_3}\\
+  = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+  - \frac{1}{N_C} \left(   \delta^{i_1j_2} \delta^{i_2j_1} \delta^{i_3j_3}
+                         + \delta^{i_1j_3} \delta^{i_2j_2} \delta^{i_3j_1} 
+                         + \delta^{i_1j_1} \delta^{i_2j_3} \delta^{i_3j_2} \right)\\
+  + \frac{2}{N_C^2} \delta^{i_1j_1} \delta^{i_2j_2} \delta^{i_3j_3}\,,
+\end{multline}
+\end{subequations}
+i.\,e.
+\begin{equation}
+  \tr\left(T_{a_1}T_{a_2}\right)T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+  =                    \delta^{i_1j_2}\delta^{i_2j_1}
+  - \frac{1}{N_C}      \delta^{i_1j_1}\delta^{i_2j_2}
+\end{equation}
+and
+\begin{multline}
+\label{eq:3T}
+  \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+      T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
+  = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1} \\
+  - \frac{1}{N_C} \left(   \delta^{i_1j_2} \delta^{i_2j_1} \delta^{i_3j_3}
+                         + \delta^{i_1j_3} \delta^{i_2j_2} \delta^{i_3j_1} 
+                         + \delta^{i_1j_1} \delta^{i_2j_3} \delta^{i_3j_2} \right)
+  + \frac{2}{N_C^2} \delta^{i_1j_1} \delta^{i_2j_2} \delta^{i_3j_3}\,.
+\end{multline}
+From this, we can observe the general pattern
+\begin{multline}
+  \tr\left(\prod_{k=1}^N T_{a_k}\right)\prod_{l=1}^N T_{a_l}^{i_lj_l} = \\
+      \delta^{i_1j_2}\delta^{i_2j_3}\cdots\delta^{i_Nj_1}
+    - \frac{1}{N_C} \sum_{k=1}^N
+        \delta^{i_1j_2}\delta^{i_2j_3}\cdots\delta^{i_{k-1}j_{k+1}}\cdots\delta^{i_Nj_1}
+        \delta^{i_kj_k}\\
+    + \frac{1}{N_C^2} \sum_{\substack{k,l=1\\k\not=l}}^N
+          \delta^{i_1j_2}\delta^{i_2j_3}\cdots\delta^{i_{k-1}j_{k+1}}\cdots
+          \delta^{i_{l-1}j_{l+1}}\cdots\delta^{i_Nj_1}
+          \delta^{i_kj_k}\delta^{i_lj_l} \\
+    - \cdots + \left(\frac{-1}{N_C}\right)^{N-1} \prod_{l=1}^N \delta^{i_lj_l}
+\end{multline}
+e.\,g.
+\begin{multline}
+  \tr\left(T_{a_1}T_{a_2}T_{a_3}T_{a_4}\right)
+    T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} T_{a_3}^{i_3j_3} T_{a_4}^{i_4j_4}
+  = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1} \\
+  - \frac{1}{N_C} \left(  \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}\delta^{i_4j_4}
+                        + \delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_1j_1}
+                        + \delta^{i_3j_4}\delta^{i_4j_1}\delta^{i_1j_3}\delta^{i_2j_2}
+                        + \delta^{i_4j_1}\delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_3} \right)\\
+  + \frac{1}{N_C^2} \bigl(  \delta^{i_1j_2}\delta^{i_2j_1}\delta^{i_3j_3}\delta^{i_4j_4}
+                          + \delta^{i_1j_3}\delta^{i_3j_1}\delta^{i_2j_2}\delta^{i_4j_4}
+                          + \delta^{i_2j_3}\delta^{i_3j_2}\delta^{i_1j_1}\delta^{i_4j_4} \qquad\\
+   \qquad\qquad           + \delta^{i_1j_4}\delta^{i_4j_1}\delta^{i_2j_2}\delta^{i_3j_3}
+                          + \delta^{i_2j_4}\delta^{i_4j_2}\delta^{i_1j_1}\delta^{i_3j_3}
+                          + \delta^{i_3j_4}\delta^{i_4j_3}\delta^{i_1j_1}\delta^{i_2j_2} \bigr)\\
+  - \frac{3}{N_C^3} \delta^{i_1j_1} \delta^{i_2j_2}\delta^{i_3j_3}\delta^{i_4j_4}\,.
+\end{multline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Feynman Rules}
+\subsection{Triple Gauge Vertex}
+In the adjoint representation
+\begin{subequations}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3}
+    \fmf{gluon}{v,e1}
+    \fmf{gluon}{v,e2}
+    \fmf{gluon}{v,e3}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmfdot{v}
+    \fmffreeze
+    \fmf{warrow_right}{v,e1}
+    \fmf{warrow_right}{v,e2}
+    \fmf{warrow_right}{v,e3}
+  \end{fmfgraph*}}} \,= 
+  %begin{split}
+    g f_{a_1a_2a_3} C^{\mu_1\mu_2\mu_3} (k_1,k_2,k_3)
+  %end{split}
+\end{equation}
+with
+\begin{multline}
+\label{eq:C123}
+  C^{\mu_1\mu_2\mu_3}(k_1,k_2,k_3) = \\
+          (   g^{\mu_1\mu_2} (k_1^{\mu_3}-k_2^{\mu_3})
+            + g^{\mu_2\mu_3} (k_2^{\mu_1}-k_3^{\mu_1})
+            + g^{\mu_3\mu_1} (k_3^{\mu_2}-k_1^{\mu_2}) )
+\end{multline}
+\end{subequations}
+while in the color flow basis find from
+\begin{equation}
+  \ii f_{a_1a_2a_3}
+    = \tr\left(T_{a_1}\left[T_{a_2},T_{a_3}\right]\right)
+    = \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+    - \tr\left(T_{a_1}T_{a_3}T_{a_2}\right)
+\end{equation}
+the decomposition
+\begin{equation}
+    \ii f_{a_1a_2a_3} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
+  = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+  - \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_2j_1}
+\end{equation}
+because the subleading terms in~$1/N_C$ in~(\ref{eq:3T}) are
+symmetrical in the interchanges $1\leftrightarrow2$,
+$2\leftrightarrow3$ and $1\leftrightarrow3$.  The resulting Feynman
+rule is
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3}
+    \fmf{phantom}{v,e1}
+    \fmf{phantom}{v,e2}
+    \fmf{phantom}{v,e3}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmffreeze
+    \fmfi{phantom_arrow}{(reverse vpath (__e1, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e2, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(reverse vpath (__e2, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e3, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(reverse vpath (__e3, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e1, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e1, __v) sideways -thick)
+      join (        vpath (__e2, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e2, __v) sideways -thick)
+      join (        vpath (__e3, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e3, __v) sideways -thick)
+      join (        vpath (__e1, __v) sideways -thick)}
+  \end{fmfgraph*}}} \,= 
+      \ii g
+      \left(   \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_2} 
+             - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1} \right)
+      C^{\mu_1\mu_2\mu_3} (k_1,k_2,k_3)
+\end{equation}
+
+\subsection{Quadruple Gauge Vertex}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3,d4,e4}
+    \fmf{gluon}{v,e1}
+    \fmf{gluon}{v,e2}
+    \fmf{gluon}{v,e3}
+    \fmf{gluon}{v,e4}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmflabel{4}{e4}
+    \fmfdot{v}
+    \fmffreeze
+    \fmf{warrow_right}{v,e1}
+    \fmf{warrow_right}{v,e2}
+    \fmf{warrow_right}{v,e3}
+    \fmf{warrow_right}{v,e4}
+  \end{fmfgraph*}}} \,= 
+  \begin{aligned}
+      \mbox{} - & \ii g^2 f_{a_1a_2b} f_{a_3a_4b}
+                  (g_{\mu_1\mu_3} g_{\mu_4\mu_2} - g_{\mu_1\mu_4} g_{\mu_2\mu_3}) \\
+      \mbox{} - & \ii g^2 f_{a_1a_3b} f_{a_4a_2b}
+                  (g_{\mu_1\mu_4} g_{\mu_2\mu_3} - g_{\mu_1\mu_2} g_{\mu_3\mu_4}) \\
+      \mbox{} - & \ii g^2 f_{a_1a_4b} f_{a_2a_3b}
+                  (g_{\mu_1\mu_2} g_{\mu_3\mu_4} - g_{\mu_1\mu_3} g_{\mu_4\mu_2})
+  \end{aligned}
+\end{equation}
+while in the color flow basis find from
+\begin{multline}
+   f_{a_1a_2b}f_{a_3a_4b}
+    = - \tr\left(\left[T_{a_1},T_{a_2}\right]T_{b}\right)
+        \tr\left(T_{b}\left[T_{a_3},T_{a_4}\right]\right) \\
+    = - \tr\left(T_{a_1}T_{a_2}T_{b}\right)
+        \tr\left(T_{b}T_{a_3}T_{a_4}\right)
+      + \tr\left(T_{a_2}T_{a_1}T_{b}\right)
+        \tr\left(T_{b}T_{a_3}T_{a_4}\right) \\
+      + \tr\left(T_{a_1}T_{a_2}T_{b}\right)
+        \tr\left(T_{b}T_{a_4}T_{a_3}\right)
+      - \tr\left(T_{a_2}T_{a_1}T_{b}\right)
+        \tr\left(T_{b}T_{a_4}T_{a_3}\right)
+\end{multline}
+and
+\begin{equation}
+     \tr\left(T_{a_1}T_{a_2}T_{b}\right) \tr\left(T_{b}T_{a_3}T_{a_4}\right)
+   = \tr\left(T_{a_1}T_{a_2}T_{a_3}T_{a_4}\right)
+      -  \frac{1}{N_C} \tr\left(T_{a_1}T_{a_2}\right) \tr\left(T_{a_3}T_{a_4}\right)\,.
+\end{equation}
+Since
+\begin{equation}
+  \tr\left(T_{a_1}T_{a_2}\right) = \tr\left(T_{a_2}T_{a_1}\right)
+\end{equation}
+the second term can't contribute to the commutators.  The first term
+yields
+\begin{multline}
+   f_{a_1a_2b}f_{a_3a_4b}
+    T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} T_{a_3}^{i_3j_3} T_{a_4}^{i_4j_4}
+  = - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1} \\
+    + \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_4}\delta^{i_4j_2}
+    + \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_1}\delta^{i_4j_3}
+    - \delta^{i_1j_4}\delta^{i_2j_1}\delta^{i_3j_2}\delta^{i_4j_3}
+\end{multline}
+where the subleading terms cancel again due to symmetry.
+Therefore
+\begin{multline}
+   \Bigl(  f_{a_1a_2b} f_{a_3a_4b}
+           (g_{\mu_1\mu_3} g_{\mu_4\mu_2} - g_{\mu_1\mu_4} g_{\mu_2\mu_3})\\
+         + f_{a_1a_3b} f_{a_4a_2b}
+           (g_{\mu_1\mu_4} g_{\mu_2\mu_3} - g_{\mu_1\mu_2} g_{\mu_3\mu_4})
+          \qquad\qquad\qquad\qquad\qquad\qquad\\
+         + f_{a_1a_4b} f_{a_2a_3b}
+           (g_{\mu_1\mu_2} g_{\mu_3\mu_4} - g_{\mu_1\mu_3} g_{\mu_4\mu_2}) \Bigr)
+     T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} T_{a_3}^{i_3j_3} T_{a_4}^{i_4j_4} \\
+  = (g_{\mu_1\mu_3} g_{\mu_4\mu_2} - g_{\mu_1\mu_4} g_{\mu_2\mu_3})
+      \bigl( - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1} \\
+             + \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_4}\delta^{i_4j_2}
+             + \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_1}\delta^{i_4j_3}
+             - \delta^{i_1j_4}\delta^{i_2j_1}\delta^{i_3j_2}\delta^{i_4j_3} \bigr)\\
+  + (g_{\mu_1\mu_4} g_{\mu_2\mu_3} - g_{\mu_1\mu_2} g_{\mu_3\mu_4})
+      \bigl( - \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_2j_1} \\
+             + \delta^{i_1j_4}\delta^{i_3j_1}\delta^{i_4j_2}\delta^{i_2j_3}
+             + \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_4j_1}\delta^{i_2j_4}
+             - \delta^{i_1j_2}\delta^{i_3j_1}\delta^{i_4j_3}\delta^{i_2j_4} \bigr)\\
+  + (g_{\mu_1\mu_2} g_{\mu_3\mu_4} - g_{\mu_1\mu_3} g_{\mu_4\mu_2})
+      \bigl( - \delta^{i_1j_4}\delta^{i_4j_2}\delta^{i_2j_3}\delta^{i_3j_1} \\
+             + \delta^{i_1j_2}\delta^{i_4j_1}\delta^{i_2j_3}\delta^{i_3j_4}
+             + \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_2j_1}\delta^{i_3j_2}
+             - \delta^{i_1j_3}\delta^{i_4j_1}\delta^{i_2j_4}\delta^{i_3j_2} \bigr) = \\
+  - g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}
+  + g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_4}\delta^{i_4j_2}
+  + g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_1}\delta^{i_4j_3}\\
+  - g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_4}\delta^{i_2j_1}\delta^{i_3j_2}\delta^{i_4j_3}
+  + g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}
+  - g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_4}\delta^{i_4j_2}\\
+  - g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_1}\delta^{i_4j_3}
+  + g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_4}\delta^{i_2j_1}\delta^{i_3j_2}\delta^{i_4j_3}
+  - g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_2j_1}\\
+  + g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_4}\delta^{i_3j_1}\delta^{i_4j_2}\delta^{i_2j_3}
+  + g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_4j_1}\delta^{i_2j_4}
+  - g_{\mu_1\mu_4} g_{\mu_2\mu_3} \delta^{i_1j_2}\delta^{i_3j_1}\delta^{i_4j_3}\delta^{i_2j_4}\\
+  + g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_2j_1}
+  - g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_4}\delta^{i_3j_1}\delta^{i_4j_2}\delta^{i_2j_3}
+  - g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_4j_1}\delta^{i_2j_4}\\
+  + g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_2}\delta^{i_3j_1}\delta^{i_4j_3}\delta^{i_2j_4}
+  - g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_4}\delta^{i_4j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+  + g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_2}\delta^{i_4j_1}\delta^{i_2j_3}\delta^{i_3j_4}\\
+  + g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_2j_1}\delta^{i_3j_2}
+  - g_{\mu_1\mu_2} g_{\mu_3\mu_4} \delta^{i_1j_3}\delta^{i_4j_1}\delta^{i_2j_4}\delta^{i_3j_2}
+  + g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_4}\delta^{i_4j_2}\delta^{i_2j_3}\delta^{i_3j_1}\\
+  - g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_2}\delta^{i_4j_1}\delta^{i_2j_3}\delta^{i_3j_4}
+  - g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_2j_1}\delta^{i_3j_2}
+  + g_{\mu_1\mu_3} g_{\mu_4\mu_2} \delta^{i_1j_3}\delta^{i_4j_1}\delta^{i_2j_4}\delta^{i_3j_2}\\
+  = - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}
+          \left(   2g_{\mu_1\mu_3} g_{\mu_4\mu_2}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}\right) \\
+    - \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_1}\delta^{i_4j_3}
+          \left(   2g_{\mu_1\mu_4} g_{\mu_2\mu_3}
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}\right)\\
+    - \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_4}\delta^{i_4j_2}
+          \left(   2g_{\mu_1\mu_4} g_{\mu_2\mu_3} 
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}\right)\\
+    - \delta^{i_1j_3}\delta^{i_2j_4}\delta^{i_3j_2}\delta^{i_4j_1}
+          \left(   2g_{\mu_1\mu_2} g_{\mu_3\mu_4} 
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}\right)\\
+    - \delta^{i_1j_4}\delta^{i_2j_3}\delta^{i_3j_1}\delta^{i_4j_2}
+          \left(   2g_{\mu_1\mu_2} g_{\mu_3\mu_4} 
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}\right)\\
+    - \delta^{i_1j_4}\delta^{i_2j_1}\delta^{i_3j_2}\delta^{i_4j_3}
+          \left(   2g_{\mu_1\mu_3} g_{\mu_4\mu_2} 
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}\right)\\
+  = - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}
+          \left(   2g_{\mu_1\mu_3} g_{\mu_4\mu_2}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}\right) \\
+    - \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_4j_3}\delta^{i_3j_1}
+          \left(   2g_{\mu_1\mu_4} g_{\mu_2\mu_3}
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}\right)\\
+    - \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_2j_1}
+          \left(   2g_{\mu_1\mu_4} g_{\mu_2\mu_3} 
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}\right)\\
+    - \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_2j_4}\delta^{i_4j_1}
+          \left(   2g_{\mu_1\mu_2} g_{\mu_3\mu_4} 
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}\right)\\
+    - \delta^{i_1j_4}\delta^{i_4j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+          \left(   2g_{\mu_1\mu_2} g_{\mu_3\mu_4} 
+                 -  g_{\mu_1\mu_3} g_{\mu_4\mu_2}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}\right)\\
+    - \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_3j_2}\delta^{i_2j_1}
+          \left(   2g_{\mu_1\mu_3} g_{\mu_4\mu_2} 
+                 -  g_{\mu_1\mu_2} g_{\mu_3\mu_4}
+                 -  g_{\mu_1\mu_4} g_{\mu_2\mu_3}\right)\\
+  = - \sum_{\{\alpha_k\}_{k=1,2,3,4}\in\mathcal{P}_4}
+      \delta^{i_{\alpha_1}j_{\alpha_2}}\delta^{i_{\alpha_2}j_{\alpha_3}}
+      \delta^{i_{\alpha_3}j_{\alpha_4}}\delta^{i_{\alpha_4}j_{\alpha_1}} \\
+          \left(   2g_{\mu_{\alpha_1}\mu_{\alpha_3}} g_{\mu_{\alpha_4}\mu_{\alpha_2}}
+                 -  g_{\mu_{\alpha_1}\mu_{\alpha_4}} g_{\mu_{\alpha_2}\mu_{\alpha_3}}
+                 -  g_{\mu_{\alpha_1}\mu_{\alpha_2}} g_{\mu_{\alpha_3}\mu_{\alpha_4}}\right) 
+\end{multline}
+with
+\begin{equation}
+  \mathcal{P}_4 = \left\{\{1,2,3,4\},\{1,3,4,2\},\{1,4,2,3\},
+                         \{1,2,4,3\},\{1,4,3,2\},\{1,3,2,4\}\right\}
+\end{equation}
+i.\,e.
+\begin{multline}
+   \Bigl(  f_{a_1a_2b} f_{a_3a_4b}
+           (g_{\mu_1\mu_3} g_{\mu_4\mu_2} - g_{\mu_1\mu_4} g_{\mu_2\mu_3})\\
+         + f_{a_1a_3b} f_{a_4a_2b}
+           (g_{\mu_1\mu_4} g_{\mu_2\mu_3} - g_{\mu_1\mu_2} g_{\mu_3\mu_4})
+          \qquad\qquad\qquad\qquad\qquad\qquad\\
+         + f_{a_1a_4b} f_{a_2a_3b}
+           (g_{\mu_1\mu_2} g_{\mu_3\mu_4} - g_{\mu_1\mu_3} g_{\mu_4\mu_2}) \Bigr)
+     T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} T_{a_3}^{i_3j_3} T_{a_4}^{i_4j_4} \\
+  = - \sum_{\{\alpha_k\}_{k=1,2,3,4}\in\mathcal{P}_4}
+      \delta^{i_{\alpha_1}j_{\alpha_2}}\delta^{i_{\alpha_2}j_{\alpha_3}}
+      \delta^{i_{\alpha_3}j_{\alpha_4}}\delta^{i_{\alpha_4}j_{\alpha_1}}\\
+          \left(   2g_{\mu_{\alpha_1}\mu_{\alpha_3}} g_{\mu_{\alpha_4}\mu_{\alpha_2}}
+                 -  g_{\mu_{\alpha_1}\mu_{\alpha_4}} g_{\mu_{\alpha_2}\mu_{\alpha_3}}
+                 -  g_{\mu_{\alpha_1}\mu_{\alpha_2}} g_{\mu_{\alpha_3}\mu_{\alpha_4}}\right) 
+\end{multline}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3,d4,e4}
+    \fmf{phantom}{v,e1}
+    \fmf{phantom}{v,e2}
+    \fmf{phantom}{v,e3}
+    \fmf{phantom}{v,e4}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmflabel{4}{e4}
+    \fmffreeze
+    \fmfi{phantom_arrow}{(reverse vpath (__e1, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e2, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(reverse vpath (__e2, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e3, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(reverse vpath (__e3, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e4, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(reverse vpath (__e4, __v) sideways -thick)}
+    \fmfi{phantom_arrow}{(        vpath (__e1, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e1, __v) sideways -thick)
+      join (        vpath (__e2, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e2, __v) sideways -thick)
+      join (        vpath (__e3, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e3, __v) sideways -thick)
+      join (        vpath (__e4, __v) sideways -thick)}
+    \fmfi{plain}{%
+           (reverse vpath (__e4, __v) sideways -thick)
+      join (        vpath (__e1, __v) sideways -thick)}
+  \end{fmfgraph*}}} \,=
+  \begin{aligned}
+   \ii g^2 \sum_{\{\alpha_k\}_{k=1,2,3,4}\in\mathcal{P}_4}
+      \delta^{i_{\alpha_1}j_{\alpha_2}}\delta^{i_{\alpha_2}j_{\alpha_3}}
+      \delta^{i_{\alpha_3}j_{\alpha_4}}\delta^{i_{\alpha_4}j_{\alpha_1}}\qquad\qquad\\
+          \left(   2g_{\mu_{\alpha_1}\mu_{\alpha_3}} g_{\mu_{\alpha_4}\mu_{\alpha_2}}
+                 -  g_{\mu_{\alpha_1}\mu_{\alpha_4}} g_{\mu_{\alpha_2}\mu_{\alpha_3}}
+                 -  g_{\mu_{\alpha_1}\mu_{\alpha_2}} g_{\mu_{\alpha_3}\mu_{\alpha_4}}\right) 
+  \end{aligned}
+\end{equation}
+
+\subsection{Spinor Current}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3}
+    \fmf{fermion}{e1,v}
+    \fmf{fermion}{v,e2}
+    \fmf{gluon}{v,e3}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmfdot{v}
+    \fmffreeze
+    \fmf{warrow_right}{v,e3}
+  \end{fmfgraph*}}} \,= 
+\end{equation}
+\begin{equation}
+  \bar\psi\Gamma T_a \psi T_a^{ij}
+    = \bar\psi_k\Gamma T_a^{kl} \psi_l T_a^{ij}
+    = \bar\psi_j\Gamma \psi_i - \frac{1}{N_C} \bar\psi_k\Gamma \psi_k \delta^{ij}
+\end{equation}
+where the~$1/N_C$ is absorbed by the ghost propagator.
+
+\subsection{Scalar Current}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3}
+    \fmf{scalar}{e1,v}
+    \fmf{scalar}{v,e2}
+    \fmf{gluon}{v,e3}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmfdot{v}
+    \fmffreeze
+    \fmf{warrow_right}{v,e3}
+  \end{fmfgraph*}}} \,= 
+\end{equation}
+\begin{equation}
+  \phi^\dagger T_a \phi T_a^{ij}
+    = \bar\phi^\dagger_k T_a^{kl} \phi_l T_a^{ij}
+    = \bar\phi^\dagger_j \psi_i - \frac{1}{N_C}\phi^\dagger_k \phi_k \delta^{ij}
+\end{equation}
+
+\subsection{Seagull Term}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3,d4,e4}
+    \fmf{scalar}{e1,v}
+    \fmf{scalar}{v,e2}
+    \fmf{gluon}{v,e3}
+    \fmf{gluon}{v,e4}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmflabel{4}{e4}
+    \fmfdot{v}
+    \fmffreeze
+    \fmf{warrow_right}{v,e3}
+    \fmf{warrow_right}{v,e4}
+  \end{fmfgraph*}}} \,= 
+\end{equation}
+\begin{equation}
+  \phi^\dagger [T_{a_1},T_{a_2}]_+ \phi T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+    = \bar\phi^\dagger_k T_{a_1}^{km} T_{a_2}^{ml}\phi_l T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+    + \bar\phi^\dagger_k T_{a_2}^{km} T_{a_1}^{ml}\phi_l T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+\end{equation}
+\begin{multline}
+  \phi^\dagger T_{a_1}T_{a_2} \phi T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+    = \bar\phi^\dagger_k \phi_l
+       \left(\delta^{kj_1}\delta^{i_1m} - \frac{1}{N_C}\delta^{km}\delta^{i_1j_1}\right)
+       \left(\delta^{mj_2}\delta^{i_2l} - \frac{1}{N_C}\delta^{ml}\delta^{i_2j_2}\right)\\
+%%% = \bar\phi^\dagger_k \phi_l \left(
+%%%                           \delta^{kj_1}\delta^{i_1m}\delta^{mj_2}\delta^{i_2l}
+%%%   - \frac{1}{N_C}  \left( \delta^{kj_1}\delta^{i_1m}\delta^{ml}\delta^{i_2j_2}
+%%%                          +\delta^{mj_2}\delta^{i_2l}\delta^{km}\delta^{i_1j_1} \right)
+%%%   + \frac{1}{N_C^2}\left( \delta^{km}\delta^{i_1j_1}\delta^{ml}\delta^{i_2j_2} \right) \right)\\
+    = \bar\phi^\dagger_k \phi_l \left(
+                                \delta^{kj_1}\delta^{i_1j_2}\delta^{i_2l}
+        - \frac{1}{N_C}  \left( \delta^{kj_1}\delta^{i_2j_2}\delta^{i_1l}
+                               +\delta^{kj_2}\delta^{i_1j_1}\delta^{i_2l} \right)
+        + \frac{1}{N_C^2}\left( \delta^{kl}\delta^{i_1j_1}\delta^{i_2j_2} \right) \right)
+\end{multline}
+\begin{multline}
+  \phi^\dagger [T_{a_1},T_{a_2}]_+ \phi T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2} \\
+    = \bar\phi^\dagger_k \phi_l \left(
+                                \delta^{kj_1}\delta^{i_1j_2}\delta^{i_2l}
+        +                       \delta^{kj_2}\delta^{i_2j_1}\delta^{i_1l}
+        - \frac{2}{N_C}  \left( \delta^{kj_1}\delta^{i_1l}\delta^{i_2j_2}
+                               +\delta^{i_1j_1}\delta^{kj_2}\delta^{i_2l} \right)
+        + \frac{2}{N_C^2}\left( \delta^{kl}\delta^{i_1j_1}\delta^{i_2j_2} \right) \right)
+\end{multline}
+\subsection{Gluino Current}
+\begin{equation}
+  \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
+    \fmfsurround{d1,e1,d2,e2,d3,e3}
+    \fmf{gluon}{v,e1}
+    \fmf{gluon}{v,e2}
+    \fmf{gluon}{v,e3}
+    \fmflabel{1}{e1}
+    \fmflabel{2}{e2}
+    \fmflabel{3}{e3}
+    \fmfdot{v}
+    \fmffreeze
+    \fmf{plain}{v,e1}
+    \fmf{plain}{v,e2}
+    \fmf{warrow_right}{v,e1}
+    \fmf{warrow_right}{v,e2}
+    \fmf{warrow_right}{v,e3}
+  \end{fmfgraph*}}} \,= 
+\end{equation}
+
+\end{fmffile}
+\end{document}

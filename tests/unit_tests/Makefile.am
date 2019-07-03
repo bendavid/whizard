@@ -140,9 +140,7 @@ UNIT_TESTS = \
     process_configurations.run \
     event_streams.run \
     integrations.run \
-    ttv_formfactors.run \
-    restricted_subprocesses.run \
-    simulations.run
+    ttv_formfactors.run
 
 XFAIL_UNIT_TESTS =
 
@@ -168,7 +166,9 @@ UNIT_TESTS_REQ_LCIO = \
 UNIT_TESTS_REQ_OCAML = \
     prc_omega.run \
     compilations.run \
-    compilations_static.run
+    compilations_static.run \
+    restricted_subprocesses.run \
+    simulations.run
 
 UNIT_TESTS_REQ_RECOLA = \
    prc_recola.run

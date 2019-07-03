@@ -1,4 +1,4 @@
-! $Id: threeshl_bundle.f90 8224 2019-01-01 23:37:54Z jr_reuter $
+! $Id: threeshl_bundle.f90 7444 2016-02-17 15:37:20Z jr_reuter $
 !
 ! Copyright (C) 1999-2019 by
 !    Wolfgang Kilian <kilian@physik.uni-siegen.de>

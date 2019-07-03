@@ -1,0 +1,1609 @@
+% hgg-notes.tex --
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt,a4paper]{article}
+\usepackage{graphicx}
+ \DeclareGraphicsRule{*}{mps}{*}{}
+\usepackage{feynmp}
+\usepackage{amsmath}
+\allowdisplaybreaks
+\begin{document}
+\setlength{\unitlength}{1mm}
+\begin{fmffile}{\jobname pics}
+\fmfset{arrow_ang}{10}
+\fmfset{curly_len}{2mm}
+\fmfset{wiggly_len}{3mm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\setupggH}{%
+  \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+  \fmfipath{loop}
+  \fmfiset{loop}{fullcircle scaled 0.5w shifted c}
+  \fmfipath{projt,projb}
+  \fmfipair{Hl,Hr}
+  \fmfiset{projt}{subpath ((0/2,1/2)*length loop) of loop}
+  \fmfiset{projb}{subpath ((1/2,2/2)*length loop) of loop}
+  \fmfiset{Hr}{point (0/2*length loop) of loop}
+  \fmfiset{Hl}{point (1/2*length loop) of loop}}
+\newcommand{\setupggHamp}{%
+  \fmfipath{loop}
+  \fmfiset{loop}{halfcircle rotated -90 scaled w shifted (0,w)}
+  \fmfipath{projt,projb}
+  \fmfipair{H}
+  \fmfiset{projt}{subpath ((1/2,2/2)*length loop) of loop}
+  \fmfiset{projb}{subpath ((0/2,1/2)*length loop) of loop}
+  \fmfiset{H}{point (1/2*length loop) of loop}}
+\newcommand{\setupggHH}{%
+  \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+  \fmfipath{loop}
+  \fmfiset{loop}{fullcircle rotated 45 scaled 0.5w shifted c}
+  \fmfipath{propl,propr,projt,projb}
+  \fmfipair{Hlt,Hlb,Hrt,Hrb}
+  \fmfiset{projt}{subpath ((0/4,1/4)*length loop) of loop}
+  \fmfiset{propl}{subpath ((1/4,2/4)*length loop) of loop}
+  \fmfiset{projb}{subpath ((2/4,3/4)*length loop) of loop}
+  \fmfiset{propr}{subpath ((3/4,4/4)*length loop) of loop}
+  \fmfiset{Hrt}{point (0/4*length loop) of loop}
+  \fmfiset{Hlt}{point (1/4*length loop) of loop}
+  \fmfiset{Hlb}{point (2/4*length loop) of loop}
+  \fmfiset{Hrb}{point (3/4*length loop) of loop}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fmfcmd{%
+  numeric joindiameter;
+  joindiameter := 7thick;}
+\fmfcmd{%
+  vardef sideways_at (expr d, p, frac) =
+    save len; len = length p;
+    (point frac*len of p) shifted ((d,0) rotated (90 + angle direction frac*len of p))
+  enddef;
+  secondarydef p sideways d =
+    for frac = 0 step 0.01 until 0.99:
+      sideways_at (d, p, frac) ..
+    endfor
+    sideways_at (d, p, 1)
+  enddef;
+  secondarydef p choptail d =
+   subpath (ypart (fullcircle scaled d shifted (point 0 of p) intersectiontimes p), infinity) of p
+  enddef;
+  secondarydef p choptip d =
+   reverse ((reverse p) choptail d)
+  enddef;
+  secondarydef p pointtail d =
+    fullcircle scaled d shifted (point 0 of p) intersectionpoint p
+  enddef;
+  secondarydef p pointtip d =
+    (reverse p) pointtail d
+  enddef;
+  secondarydef pa join pb =
+    pa choptip joindiameter .. pb choptail joindiameter
+  enddef;
+  vardef cyclejoin (expr p) =
+    subpath (0.5*length p, infinity) of p join subpath (0, 0.5*length p) of p .. cycle
+  enddef;}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fmfcmd{%
+  style_def double_line_arrow expr p =
+    save pi, po; 
+    path pi, po;
+    pi = reverse (p sideways thick);
+    po = p sideways -thick;
+    cdraw pi;
+    cdraw po;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+\fmfcmd{%
+  style_def double_line_arrow_beg expr p =
+    save pi, po, pc; 
+    path pi, po, pc;
+    pc = p choptail 7thick;
+    pi = reverse (pc sideways thick);
+    po = pc sideways -thick;
+    cdraw pi .. p pointtail 5thick .. po;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+\fmfcmd{%
+  style_def double_line_arrow_end expr p =
+    save pi, po, pc; 
+    path pi, po, pc;
+    pc = p choptip 7thick;
+    pi = reverse (pc sideways thick);
+    po = pc sideways -thick;
+    cdraw po .. p pointtip 5thick .. pi;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+\fmfcmd{%
+  style_def double_line_arrow_both expr p =
+    save pi, po, pc; 
+    path pi, po, pc;
+    pc = p choptip 7thick choptail 7thick;
+    pi = reverse (pc sideways thick);
+    po = pc sideways -thick;
+    cdraw po .. p pointtip 5thick .. pi .. p pointtail 5thick .. cycle;
+    cfill (arrow pi);
+    cfill (arrow po);
+  enddef;}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\G}[1]{%
+  \fmfi{dots,label=\footnotesize$\frac{-1}{N_C}$,label.dist=4thick}{#1}}
+\newcommand{\A}[1]{%
+  \fmfi{dbl_dots,label=\footnotesize$N_C$,label.dist=4thick}{#1}}
+\newcommand{\C}[1]{%
+  \fmfi{double_line_arrow_both,label=\footnotesize$N_C$,label.dist=5thick}{#1}}
+\newcommand{\g}[2]{\fmfi{#1}{#2}}
+\newcommand{\Hgg}[1]{\fmfiv{d.shape=circle,d.size=3thick,d.filled=full}{#1}}
+\newcommand{\HGG}[1]{%
+  \fmfiv{d.shape=circle,d.size=3thick,d.filled=full,%
+         label=\footnotesize$N_C$,label.dist=2thick}{#1}}
+\newcommand{\HCA}[1]{%
+  \fmfiv{d.shape=circle,d.size=3thick,d.filled=full,%
+         label=\footnotesize$\frac{1}{N_C}$,label.dist=2thick}{#1}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Naive Feynman Rules}
+From the color flows in the triangle diagram\par\hfil
+\begin{multline}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$kl$}{g2}
+    \fmf{gluon}{v1,g1}
+    \fmf{gluon}{g2,v2}
+    \fmf{fermion,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmfdot{v1,v2,vH}
+  \end{fmfgraph*}} \Longleftrightarrow
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom}{g2,v2}
+    \fmf{phantom}{v1,g1}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v1) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v1)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v2) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v2)) sideways -thick}
+    \fmfi{plain}{%
+           vpath (__g2, __v2) sideways -thick
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join vpath (__v1, __g1) sideways -thick}
+    \fmfi{plain}{%
+           (reverse vpath (__v1, __g1)) sideways -thick
+      join vpath (__v2, __v1)
+      join (reverse vpath (__v2, __g2)) sideways -thick}
+    \fmfdot{vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ii$}{g1}
+    \fmf{phantom}{v1,g1}
+    \fmf{dots}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v2,vH,v1,v2}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v1) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v1)) sideways -thick}
+    \fmfi{plain}{%
+            (reverse vpath (__v1, __g1)) sideways -thick
+       join vpath (__v1, __v2)
+       join vpath (__v2, __vH)
+       join vpath (__vH, __v1)
+       join vpath (__v1, __g1) sideways -thick}
+    \fmfdot{v2,vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ii$}{g2}
+    \fmf{dots}{g1,v1}
+    \fmf{phantom}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g2, __v2) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v2)) sideways -thick}
+    \fmfi{plain}{%
+           vpath (__g2, __v2) sideways -thick
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join vpath (__v1, __v2)
+      join (reverse vpath (__v2, __g2)) sideways -thick}
+    \fmfdot{v1,vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v1}
+    \fmf{dots}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{plain}{%
+      cyclejoin (      vpath (__v2, __vH)
+                  join vpath (__vH, __v1)
+                  join vpath (__v1, __v2))}
+    \fmfdot{v1,v2,vH}
+  \end{fmfgraph*}}
+\end{multline}
+\hfil\\
+it appears that we can derive a set of equivalent Feynman rules\par\hfil
+\begin{multline}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$kl$}{g2}
+    \fmf{gluon}{v,g1}
+    \fmf{gluon}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}} \Longleftrightarrow
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom}{v,g1}
+    \fmf{phantom}{g2,v}
+    \fmf{plain}{v,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways -thick}
+    \fmfi{plain}{%
+      (vpath (__g2, __v) join vpath (__v, __g1)) sideways -thick}
+    \fmfi{plain}{%
+      (vpath (__g2, __v) join vpath (__v, __g1)) sideways thick}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ii$}{g1}
+    \fmf{double_line_arrow_end}{g1,v}
+    \fmf{dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v}
+    \fmflabel{$ii$}{g2}
+    \fmf{double_line_arrow_end}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v}
+    \fmf{dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfv{d.shape=circle,d.size=3thick,d.filled=full,
+         label=\footnotesize$N_C$,label.dist=2thick,label.ang=60}{v}
+  \end{fmfgraph*}}
+\end{multline}
+with \emph{both} $i\not=j$ and $i=j$!  However, there's no\par\hfil
+\begin{equation}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ii$}{g1}
+    \fmflabel{$jj$}{g2}
+    \fmf{double_line_arrow_end}{g1,v}
+    \fmf{double_line_arrow_end}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\end{equation}
+with $i\not=j$.
+
+
+\subsection{$gg\to H$}
+\begin{multline}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+    \fmftop{g1}
+    \fmfbottom{g2}
+    \fmfleft{Hl}
+    \fmfright{Hr}
+    \fmf{gluon}{vr1,g1}
+    \fmf{gluon}{g2,vr2}
+    \fmf{gluon}{g1,vl1}
+    \fmf{gluon}{vl2,g2}
+    \fmf{fermion}{vr1,vr2,Hr,vr1}
+    \fmf{fermion}{vl1,vl2,Hl,vl1}
+    \fmfdot{vr1,vr2,Hr}
+    \fmfdot{vl1,vl2,Hl}
+  \end{fmfgraph*}} = 
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+    \fmftop{g1}
+    \fmfbottom{g2}
+    \fmfleft{Hl}
+    \fmfright{Hr}
+    \fmf{phantom}{vr1,g1}
+    \fmf{phantom}{g2,vr2}
+    \fmf{phantom}{g1,vl1}
+    \fmf{phantom}{vl2,g2}
+    \fmf{phantom_arrow}{vr1,vr2,Hr,vr1}
+    \fmf{phantom_arrow}{vl1,vl2,Hl,vl1}
+    \fmfdot{vr1,vr2,Hr}
+    \fmfdot{vl1,vl2,Hl}
+  \end{fmfgraph*}} +
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+    \fmftop{g1}
+    \fmfbottom{g2}
+    \fmfleft{Hl}
+    \fmfright{Hr}
+    \fmf{dots}{vr1,g1}
+    \fmf{phantom}{g2,vr2}
+    \fmf{dots}{g1,vl1}
+    \fmf{phantom}{vl2,g2}
+    \fmf{phantom_arrow}{vr1,vr2,Hr,vr1}
+    \fmf{phantom_arrow}{vl1,vl2,Hl,vl1}
+    \fmfdot{vr1,vr2,Hr}
+    \fmfdot{vl1,vl2,Hl}
+  \end{fmfgraph*}} +
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+    \fmftop{g1}
+    \fmfbottom{g2}
+    \fmfleft{Hl}
+    \fmfright{Hr}
+    \fmf{phantom}{vr1,g1}
+    \fmf{dots}{g2,vr2}
+    \fmf{phantom}{g1,vl1}
+    \fmf{dots}{vl2,g2}
+    \fmf{phantom_arrow}{vr1,vr2,Hr,vr1}
+    \fmf{phantom_arrow}{vl1,vl2,Hl,vl1}
+    \fmfdot{vr1,vr2,Hr}
+    \fmfdot{vl1,vl2,Hl}
+  \end{fmfgraph*}} +
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfi{dashes}{(0.5w,0.1h)--(0.5w,0.9h)}
+    \fmftop{g1}
+    \fmfbottom{g2}
+    \fmfleft{Hl}
+    \fmfright{Hr}
+    \fmf{dots}{vr1,g1}
+    \fmf{dots}{g2,vr2}
+    \fmf{dots}{g1,vl1}
+    \fmf{dots}{vl2,g2}
+    \fmf{phantom_arrow}{vr1,vr2,Hr,vr1}
+    \fmf{phantom_arrow}{vl1,vl2,Hl,vl1}
+    \fmfdot{vr1,vr2,Hr}
+    \fmfdot{vl1,vl2,Hl}
+  \end{fmfgraph*}}
+\end{multline}
+This works
+\begin{equation}
+\parbox{20\unitlength}{%
+  \begin{fmfgraph*}(20,35)
+    \setupggHamp
+    \g{gluon}{projt}
+    \g{gluon}{projb}
+    \Hgg{H}
+  \end{fmfgraph*}} =
+\parbox{20\unitlength}{%
+  \begin{fmfgraph*}(20,35)
+    \setupggHamp
+    \fmfi{double_line_arrow}{projt}
+    \fmfi{double_line_arrow}{projb}
+    \Hgg{H}
+  \end{fmfgraph*}} +
+\parbox{20\unitlength}{%
+  \begin{fmfgraph*}(20,35)
+    \setupggHamp
+    \fmfi{double_line_arrow_beg}{projt}
+    \g{dots}{projb}
+    \Hgg{H}
+  \end{fmfgraph*}} + 
+\parbox{20\unitlength}{%
+  \begin{fmfgraph*}(20,35)
+    \setupggHamp
+    \g{dots}{projt}
+    \fmfi{double_line_arrow_end}{projb}
+    \Hgg{H}
+  \end{fmfgraph*}}  +
+\parbox{20\unitlength}{%
+  \begin{fmfgraph*}(20,35)
+    \setupggHamp
+    \g{dots}{projt}
+    \g{dots}{projb}
+    \HGG{H}
+  \end{fmfgraph*}} 
+\end{equation}
+because there are no interferences at all:
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \g{gluon}{projt}
+    \g{gluon}{projb}
+    \Hgg{Hl}
+    \Hgg{Hr}
+  \end{fmfgraph*}} =
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \g{double_line_arrow,label=\footnotesize$N_C^2$,label.dist=5thick}{projt}
+    \g{double_line_arrow}{projb}
+    \Hgg{Hl}
+    \Hgg{Hr}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \G{projt}
+    \C{projb}
+    \Hgg{Hl}
+    \Hgg{Hr}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \C{projt}
+    \G{projb}
+    \Hgg{Hl}
+    \Hgg{Hr}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \G{projt}
+    \G{projb}
+    \HGG{Hl}
+    \HGG{Hr}
+  \end{fmfgraph*}} \\ =
+  N_C^2 - \frac{N_C}{N_C} - \frac{N_C}{N_C} + \frac{N_C^2}{N_C^2} = N_C^2 - 1
+\end{multline}
+
+%%% \subsubsection{Potential Problem Child}
+%%% \begin{equation}
+%%% \parbox{35\unitlength}{%
+%%%   \begin{fmfgraph*}(35,35)
+%%%     \setupggH
+%%%     \C{projt}
+%%%     \C{projb}
+%%%     \Hgg{Hl}
+%%%     \Hgg{Hr}
+%%%   \end{fmfgraph*}}
+%%% \end{equation}
+%%% will not be generated, if each color flow index crosses the cut twice
+%%% (NB: $i=j$ in the vertices).
+
+\subsection{$gg\to HH$}
+This almost works, but can't be implemented easily (see below):
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{gluon}{projt}
+    \g{gluon}{propl}
+    \g{gluon}{projb}
+    \g{gluon}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} =
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow,label=\footnotesize$N_C^2$,label.dist=5thick}{projt}
+    \g{double_line_arrow}{propl}
+    \g{double_line_arrow}{projb}
+    \g{double_line_arrow}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_end}{projt}
+    \G{propl}
+    \g{double_line_arrow_beg}{projb}
+    \g{double_line_arrow,label=\footnotesize$N_C$}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_beg}{projt}
+    \g{double_line_arrow,label=\footnotesize$N_C$}{propl}
+    \g{double_line_arrow_end}{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projt}
+    \G{propl}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow,label=\footnotesize$N_C$}{projt}
+    \g{double_line_arrow_end}{propl}
+    \G{projb}
+    \g{double_line_arrow_beg}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_end}{projt}
+    \G{propl}
+    \G{projb}
+    \g{double_line_arrow_beg,label=\footnotesize$N_C$}{propr}
+    \Hgg{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_beg,label=\footnotesize$N_C$}{projt}
+    \g{double_line_arrow_end}{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projt}
+    \G{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \g{double_line_arrow_beg}{propl}
+    \g{double_line_arrow,label=\footnotesize$N_C$,label.dist=5thick}{projb}
+    \g{double_line_arrow_end}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \g{double_line_arrow_beg,label=\footnotesize$N_C$}{projb}
+    \g{double_line_arrow_end}{propr}
+    \HGG{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \g{double_line_arrow_beg,label=\footnotesize$N_C$}{propl}
+    \g{double_line_arrow_end}{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projb}
+    \G{propr}
+    \HGG{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propl}
+    \G{projb}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \G{projb}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propr}
+    \HGG{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \G{projb}
+    \G{propr}
+    \HGG{Hlt}
+    \HGG{Hlb}
+    \HGG{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} \\ =
+     N_C^2
+   - 2 \frac{N_C}{N_C} +   \frac{N_C^2}{N_C^2}
+   + 2 \left(
+   -   \frac{N_C}{N_C} + 2 \frac{N_C^2}{N_C^2} -   \frac{N_C^3}{N_C^3}
+       \right)
+                       +   \frac{N_C^2}{N_C^2} - 2 \frac{N_C^3}{N_C^3} + \frac{N_C^4}{N_C^4}  \\
+  = N_C^2 - 1 + 2\dot0 + 0 = N_C^2 - 1
+\end{multline}
+
+\subsubsection{Problem Children}
+In
+\begin{equation}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_end}{projt}
+    \G{propl}
+    \g{double_line_arrow_beg}{projb}
+    \g{double_line_arrow,label=\footnotesize$N_C$}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_beg}{projt}
+    \g{double_line_arrow,label=\footnotesize$N_C$}{propl}
+    \g{double_line_arrow_end}{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}}
+\end{equation}
+the \emph{same} color flow index crosses the cut \emph{four} times!
+In
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \G{projb}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propr}
+    \HGG{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propl}
+    \G{projb}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}}
+\end{multline}
+we have to let the ``diagonal gluons'' propagate (there's one for each
+color flow index \ldots) and we need the factors~$N_C$ (would be
+trivial), otherwise we're missing
+\begin{equation}
+  - \frac{N_C^3}{N_C^3} - \frac{N_C^3}{N_C^3} + \frac{N_C^2}{N_C^2} = -1
+\end{equation}
+
+\subsubsection{Brute Force}
+Dropping all $i=j$ propagators misses the mark:
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{gluon}{projt}
+    \g{gluon}{propl}
+    \g{gluon}{projb}
+    \g{gluon}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} =
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow,label=\footnotesize$N_C^2$,label.dist=5thick}{projt}
+    \g{double_line_arrow}{propl}
+    \g{double_line_arrow}{projb}
+    \g{double_line_arrow}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projt}
+    \G{propl}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projt}
+    \G{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projb}
+    \G{propr}
+    \HGG{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \G{projb}
+    \G{propr}
+    \HGG{Hlt}
+    \HGG{Hlb}
+    \HGG{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} \\ =
+     N_C^2
+   + \frac{N_C^2}{N_C^2}
+   - 2 \frac{N_C^3}{N_C^3}
+   + \frac{N_C^4}{N_C^4} 
+  = N_C^2 + 1 - 2 + 1 = N_C^2
+\end{multline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Improved Feynman Rules (Attempted Ad Hoc Solution)}
+New particle with propagator residue~$N_C$ and coupling~$1/N_C$,
+but \emph{no sources}, while the diagonal ghost's don't propagate
+anymore:
+\begin{multline}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$kl$}{g2}
+    \fmf{gluon}{v,g1}
+    \fmf{gluon}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}} \Longleftrightarrow
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom}{v,g1}
+    \fmf{phantom}{g2,v}
+    \fmf{plain}{v,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways -thick}
+    \fmfi{plain}{%
+      (vpath (__g2, __v) join vpath (__v, __g1)) sideways -thick}
+    \fmfi{plain}{%
+      (vpath (__g2, __v) join vpath (__v, __g1)) sideways thick}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ii$}{g1}
+    \fmf{double_line_arrow_end}{g1,v}
+    \fmf{dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v}
+    \fmflabel{$ii$}{g2}
+    \fmf{double_line_arrow_end}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v}
+    \fmf{dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfv{d.shape=circle,d.size=3thick,d.filled=full,
+         label=\footnotesize$N_C$,label.dist=2thick,label.ang=60}{v}
+  \end{fmfgraph*}} \\
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dbl_dots}{g1,v}
+    \fmf{dbl_dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfv{d.shape=circle,d.size=3thick,d.filled=full,
+         label=\footnotesize$\frac{1}{N_C}$,label.dist=2thick,label.ang=60}{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ii$}{g1}
+    \fmf{double_line_arrow_end}{g1,v}
+    \fmf{dbl_dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfv{d.shape=circle,d.size=3thick,d.filled=full,
+         label=\footnotesize$\frac{1}{N_C}$,label.dist=2thick,label.ang=60}{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dbl_dots}{g1,v}
+    \fmflabel{$ii$}{g2}
+    \fmf{double_line_arrow_end}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfv{d.shape=circle,d.size=3thick,d.filled=full,
+         label=\footnotesize$\frac{1}{N_C}$,label.dist=2thick,label.ang=60}{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v}
+    \fmf{dbl_dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dbl_dots}{g1,v}
+    \fmf{dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\end{multline}
+
+\subsection{$gg\to H$}
+No changes.
+
+\subsection{$gg\to HH$}
+\begin{quote}
+  \textit{Verify that these are all diagrams and that the factors are correct!}
+\end{quote}
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{gluon}{projt}
+    \g{gluon}{propl}
+    \g{gluon}{projb}
+    \g{gluon}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} =
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow,label=\footnotesize$N_C$,label.dist=5thick}{projt}
+    \g{double_line_arrow}{propl}
+    \g{double_line_arrow}{projb}
+    \g{double_line_arrow}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \G{propl}
+    \C{projb}
+    \A{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \HCA{Hrt}
+    \HCA{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \A{propl}
+    \C{projb}
+    \G{propr}
+    \HCA{Hlt}
+    \HCA{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \G{propl}
+    \C{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \A{propl}
+    \G{projb}
+    \A{propr}
+    \HCA{Hlt}
+    \Hgg{Hlb}
+    \HCA{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \G{propl}
+    \G{projb}
+    \A{propr}
+    \Hgg{Hlt}
+    \HGG{Hlb}
+    \HCA{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \A{propl}
+    \G{projb}
+    \G{propr}
+    \HCA{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projt}
+    \G{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \A{propl}
+    \C{projb}
+    \A{propr}
+    \Hgg{Hlt}
+    \HCA{Hlb}
+    \Hgg{Hrt}
+    \HCA{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \C{projb}
+    \A{propr}
+    \HGG{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \HCA{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \A{propl}
+    \C{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \HCA{Hlb}
+    \HGG{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \g{double_line_arrow_both,label=\footnotesize$N_C$}{projb}
+    \G{propr}
+    \HGG{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} \\ +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \A{propl}
+    \G{projb}
+    \A{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \G{projb}
+    \A{propr}
+    \HGG{Hlt}
+    \HGG{Hlb}
+    \Hgg{Hrt}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \A{propl}
+    \G{projb}
+    \G{propr}
+    \Hgg{Hlt}
+    \Hgg{Hlb}
+    \HGG{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{propl}
+    \G{projb}
+    \G{propr}
+    \HGG{Hlt}
+    \HGG{Hlb}
+    \HGG{Hrt}
+    \HGG{Hrb}
+  \end{fmfgraph*}} \\ =
+     N_C^2
+   - 2 \frac{N_C^3}{N_C^3} +   \frac{N_C^2}{N_C^2}
+   + 2 ( -1 + 2 - 1) \frac{N_C^3}{N_C^3}
+   +   \frac{N_C^2}{N_C^2} - 2 \frac{N_C^3}{N_C^3} + \frac{N_C^4}{N_C^4}  \\
+  = N_C^2 - 2 + 1 - 2\cdot0 + 1 - 2 + 1 = N_C^2 - 1
+\end{multline}
+
+\subsubsection{More Problem Children}
+The diagram
+\begin{equation}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \C{projt}
+    \A{propl}
+    \C{projb}
+    \A{propr}
+    \HCA{Hlt}
+    \HCA{Hlb}
+    \HCA{Hrt}
+    \HCA{Hrb}
+  \end{fmfgraph*}}
+\end{equation}
+should be included, but spoils the party \ldots
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Derivation Using Effective Field Theory}
+Suppressing Lorentz indices:
+\begin{equation}
+  \mathcal{L}_{\text{Maltoni et al.}}
+    =   \frac{1}{2} \partial_\mu A_{ij} \partial^\mu A_{ij}
+      - \frac{N_C}{2} \partial_\mu \phi \partial^\mu \phi
+      + j_A^{ij} A_{ij} + j_{\phi} \phi
+\end{equation}
+where $i\not=j$ is understood.  Naively adding a Higgs:
+\begin{equation}
+  \mathcal{L}_{Hgg}
+    =  g H A_{ij} A_{ij} + g H N_C \phi^2
+\end{equation}
+\begin{quote}
+  \textit{t.\,b.\,c.\,\ldots}
+\end{quote}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Christian S's Proposal}
+In the squared amplitudes, recognize gluons that pass through by the
+matching color flow index pairs and apply a factor
+\begin{equation}
+   \frac{N_C^2 - 2}{N_C^2}
+\end{equation}
+
+\begin{equation}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$kl$}{g2}
+    \fmf{gluon}{v,g1}
+    \fmf{gluon}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{v}
+  \end{fmfgraph*}} \Longleftrightarrow
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmflabel{$ij$}{g1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom}{v,g1}
+    \fmf{phantom}{g2,v}
+    \fmf{plain}{v,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways -thick}
+    \fmfi{plain}{%
+      (vpath (__g2, __v) join vpath (__v, __g1)) sideways -thick}
+    \fmfi{plain}{%
+      (vpath (__g2, __v) join vpath (__v, __g1)) sideways thick}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,g1}
+    \fmfright{H}
+    \fmf{dots}{g1,v}
+    \fmf{dots}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfv{d.shape=circle,d.size=3thick,d.filled=full,
+         label=\footnotesize$N_C$,label.dist=2thick,label.ang=60}{v}
+  \end{fmfgraph*}}
+\end{equation}
+
+\subsection{$gg\to H$}
+This works
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \g{gluon}{projt}
+    \g{gluon}{projb}
+    \Hgg{Hl}
+    \Hgg{Hr}
+  \end{fmfgraph*}} = \frac{N_C^2 - 2}{N_C^2} \cdot
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \g{double_line_arrow,label=\footnotesize$N_C^2$,label.dist=5thick}{projt}
+    \g{double_line_arrow}{projb}
+    \Hgg{Hl}
+    \Hgg{Hr}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggH
+    \G{projt}
+    \G{projb}
+    \HGG{Hl}
+    \HGG{Hr}
+  \end{fmfgraph*}} \\ =
+  \frac{N_C^2 - 2}{N_C^2} \cdot N_C^2 + \frac{N_C^2}{N_C^2}
+   = N_C^2 - 2 + 1 = N_C^2 - 1 
+\end{multline}
+
+\subsection{$gg\to HH$}
+This works
+\begin{multline}
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{gluon}{projt}
+    \g{gluon}{projb}
+    \g{gluon}{propl}
+    \g{gluon}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hrt}
+    \Hgg{Hlb}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} = \frac{N_C^2 - 2}{N_C^2} \cdot
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \g{double_line_arrow,label=\footnotesize$N_C^2$,label.dist=5thick}{projt}
+    \g{double_line_arrow}{projb}
+    \g{double_line_arrow}{propl}
+    \g{double_line_arrow}{propr}
+    \Hgg{Hlt}
+    \Hgg{Hrt}
+    \Hgg{Hlb}
+    \Hgg{Hrb}
+  \end{fmfgraph*}} +
+\parbox{35\unitlength}{%
+  \begin{fmfgraph*}(35,35)
+    \setupggHH
+    \G{projt}
+    \G{projb}
+    \G{propl}
+    \G{propr}
+    \HGG{Hlt}
+    \HGG{Hrt}
+    \HGG{Hlb}
+    \HGG{Hrb}
+  \end{fmfgraph*}} \\ =
+  \frac{N_C^2 - 2}{N_C^2} \cdot N_C^2 + \frac{N_C^4}{N_C^4}
+   = N_C^2 - 2 + 1 = N_C^2 - 1 
+\end{multline}
+
+\subsection{$qg\to q H$ and $qq\to qq H$}
+\begin{quote}
+\textit{Does it work for internal lines?}
+\end{quote}
+
+\begin{multline}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmf{fermion}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{gluon}{v1,g1}
+    \fmf{gluon}{g2,v2}
+    \fmf{fermion,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmfdot{g1,v1,v2,vH}
+  \end{fmfgraph*}} \Longleftrightarrow 
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom_arrow}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{phantom}{v1,g1}
+    \fmf{phantom}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v1) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v1)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v2) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v2)) sideways -thick}
+    \fmfi{plain}{%
+           (vpath (__g2, __v2) sideways -thick)
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join (vpath (__v1, __g1) sideways -thick)
+      join vpath (__g1, __qq1)}
+    \fmfi{plain}{%
+           vpath (__q1, __g1)
+      join ((reverse vpath (__v1, __g1)) sideways -thick)
+      join vpath (__v2, __v1)
+      join ((reverse vpath (__v2, __g2)) sideways -thick)}
+    \fmfdot{vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom_arrow}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{phantom}{v1,g1}
+    \fmf{dots}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v1) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v1)) sideways -thick}
+    \fmfi{plain}{%
+           vpath (__q1, __g1)
+      join ((reverse vpath (__v1, __g1)) sideways -thick)
+      join vpath (__v1, __v2)
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join (vpath (__v1, __g1) sideways -thick)
+      join vpath (__g1, __qq1)}
+    \fmfdot{v2,vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{fermion}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{dots}{v1,g1}
+    \fmf{phantom}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g2, __v2) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v2)) sideways -thick}
+    \fmfi{plain}{%
+           vpath (__g2, __v2) sideways -thick
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join vpath (__v1, __v2)
+      join (reverse vpath (__v2, __g2)) sideways -thick}
+    \fmfdot{g1,v1,vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{fermion}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{dots}{v1,g1}
+    \fmf{dots}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{plain}{%
+      cyclejoin (      vpath (__v2, __vH)
+                  join vpath (__vH, __v1)
+                  join vpath (__v1, __v2))}
+    \fmfdot{g1,v1,v2,vH}
+  \end{fmfgraph*}}
+\end{multline}
+\hfil\\
+vs.\\
+\hfil
+\begin{equation}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmf{fermion}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{gluon}{v,g1}
+    \fmf{gluon}{g2,v}
+    \fmf{plain}{v,H}
+    \fmfdot{g1,v}
+  \end{fmfgraph*}} \Longleftrightarrow 
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmf{phantom_arrow}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{phantom}{v,g1}
+    \fmf{phantom}{g2,v}
+    \fmf{plain}{v,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways -thick}
+    \fmfi{plain}{%
+      ((vpath (__g2, __v) join vpath (__v, __g1)) sideways -thick) join vpath (__g1, __qq1)}
+    \fmfi{plain}{%
+      vpath (__q1, __g1) join reverse ((vpath (__g2, __v) join vpath (__v, __g1)) sideways thick)}
+    \fmfdot{v}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{fermion}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{dots}{v1,g1}
+    \fmf{dots}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{plain}{%
+      cyclejoin (      vpath (__v2, __vH)
+                  join vpath (__vH, __v1)
+                  join vpath (__v1, __v2))}
+    \fmfdot{g1,v1,v2,vH}
+  \end{fmfgraph*}}
+\end{equation}
+
+\subsubsection{Problem Children}
+\begin{equation}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{phantom_arrow}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{phantom}{v1,g1}
+    \fmf{dots}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g1, __v1) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v1)) sideways -thick}
+    \fmfi{plain}{%
+           vpath (__q1, __g1)
+      join ((reverse vpath (__v1, __g1)) sideways -thick)
+      join vpath (__v1, __v2)
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join (vpath (__v1, __g1) sideways -thick)
+      join vpath (__g1, __qq1)}
+    \fmfdot{v2,vH}
+  \end{fmfgraph*}}
+\parbox{25\unitlength}{%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g2,q1}
+    \fmfright{H,qq1}
+    \fmflabel{$ij$}{g2}
+    \fmf{fermion}{q1,g1,qq1}
+    \fmf{phantom}{q1,g1}
+    \fmf{dots}{v1,g1}
+    \fmf{phantom}{g2,v2}
+    \fmf{phantom_arrow,tension=0.5}{v1,v2,vH,v1}
+    \fmf{plain}{vH,H}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__g2, __v2) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v2)) sideways -thick}
+    \fmfi{plain}{%
+           vpath (__g2, __v2) sideways -thick
+      join vpath (__v2, __vH)
+      join vpath (__vH, __v1)
+      join vpath (__v1, __v2)
+      join (reverse vpath (__v2, __g2)) sideways -thick}
+    \fmfdot{g1,v1,vH}
+  \end{fmfgraph*}}
+\end{equation}
+
+%%% \begin{equation}
+%%% \parbox{25\unitlength}{%
+%%%   \begin{fmfgraph*}(25,25)
+%%%     \fmfleft{q2,q1}
+%%%     \fmfright{qq2,H,qq1}
+%%%     \fmf{fermion}{q1,g1,qq1}
+%%%     \fmf{fermion}{q2,g2,qq2}
+%%%     \fmf{phantom}{q1,g1}
+%%%     \fmf{phantom}{q2,g2}
+%%%     \fmf{gluon}{v1,g1}
+%%%     \fmf{gluon}{g2,v2}
+%%%     \fmf{fermion,tension=0.5}{v1,v2,vH,v1}
+%%%     \fmf{plain}{vH,H}
+%%%     \fmfdot{g1,g2,v1,v2,vH}
+%%%   \end{fmfgraph*}} \Longleftrightarrow \ldots
+%%% \end{equation}
+
+\end{fmffile}
+\end{document}

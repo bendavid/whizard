@@ -1,0 +1,1110 @@
+% $Id: preview2.tex 314 2010-04-17 20:32:33Z ohl $
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\iffalse %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+To: hep-ph@xxx.lanl.gov
+Subject: put
+
+\\
+Title: Yet Another Approach to Small and Medium Scale
+  Parallelization of Adaptive Monte Carlo Integration
+Author: Thorsten Ohl (TU Darmstadt)
+Comments: ?? pages, LaTeX (using amsmath.sty)
+Report-no: IKDA 98/??
+\\
+...
+\\
+\fi %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NeedsTeXFormat{LaTeX2e}
+\newif\ifPDFLaTeX
+\expandafter\ifx\csname pdfoutput\endcsname\relax
+  \PDFLaTeXfalse
+\else
+  \PDFLaTeXtrue
+\fi
+
+\ifPDFLaTeX
+  \documentclass[12pt,a4paper]{article}
+  \usepackage{type1cm}
+  \usepackage{amsmath,amssymb,amscd}
+  \allowdisplaybreaks
+  \usepackage{feynmp}
+  \setlength{\unitlength}{1mm}
+  \usepackage{emp}
+  \empaddtoprelude{input graph;}
+  \setlength{\unitlength}{1mm}
+  \DeclareGraphicsRule{*}{mps}{*}{}
+  \usepackage[colorlinks]{hyperref}
+  \def\pdffit{fit}
+\else %%% `normal' LaTeX2e
+  \documentclass[12pt,a4paper]{article}
+  \usepackage{amsmath,amssymb,amscd}
+  \allowdisplaybreaks
+  \usepackage{feynmp}
+  \setlength{\unitlength}{1mm}
+  \usepackage{emp}
+  \empaddtoprelude{input graph;}
+\fi
+\usepackage{verbatim}
+\makeatletter
+\def\verbatimcmd{%
+  \small
+  \@verbatim \catcode`\\=0 \catcode`\{=1 \catcode`\}=2 % \catcode`\$=3
+  \frenchspacing\@vobeyspaces\verbatim@start}
+\def\endverbatimcmd{%
+  \let\par\relax
+  \def\verbatim@{\endtrivlist\endgroup}%
+  \begingroup}
+\makeatother
+\newcommand{\verbatimesc}[1]{%
+  \textit{$\langle\langle$\ #1\ $\rangle\rangle$}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\DeclareMathOperator{\Vol}{Vol}
+\DeclareMathOperator{\atan}{atan}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeindex
+\begin{document}
+\title{%
+  Yet~Another~Approach to Small~and~Medium~Scale~Parallelization
+  of Adaptive~Monte~Carlo~Integration}
+\author{%
+  Thorsten Ohl%
+    \thanks{e-mail: \texttt{ohl@hep.tu-darmstadt.de}}
+  {}\thanks{Supported by Bundesministerium f\"ur Bildung,
+       Wissenschaft, Forschung und Technologie, Germany.}\\
+  \hfil \\
+  Darmstadt University of Technology  \\
+  Schlo\ss gartenstr.~9 \\
+  D-64289 Darmstadt \\
+  Germany}
+\date{%
+  IKDA 98/??\\
+  hep-ph/yymmnnn\\
+  July 1998}
+\maketitle
+\begin{abstract}
+  \ldots
+\end{abstract}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{empfile}
+\begin{fmffile}{\jobname pics}
+\fmfset{curly_len}{2mm}
+\fmfset{wiggly_len}{3mm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% (Ab)use FeynMF for drawing portable commutative diagrams
+\fmfcmd{%
+  style_def isomorphism expr p =
+    cdraw (subpath (0, 1 - arrow_len/pixlen(p,10)) of p);
+    cfill (harrow (p, 1))
+  enddef;
+  style_def morphism expr p =
+    draw_dots (subpath (0, 1 - arrow_len/pixlen(p,10)) of p);
+    cfill (harrow (p, 1))
+  enddef;}
+\def\fmfcd(#1,#2){%
+  \begin{minipage}{#1\unitlength}%
+    \vspace*{.5\baselineskip}%
+    \begin{fmfgraph*}(#1,#2)%
+    \fmfset{arrow_len}{3mm}%
+    \fmfset{arrow_ang}{10}%
+    \fmfstraight}
+\def\endfmfcd{%
+    \end{fmfgraph*}%
+    \vspace*{.5\baselineskip}%
+  \end{minipage}}
+\newcommand{\fmfcdmorphism}[4]{%
+  \fmf{#1,label.side=#2,label.dist=3pt,label={\small $#4$}}{#3}}
+\newcommand{\fmfcdisomorph}[3][left]{%
+  \fmfcdmorphism{isomorphism}{#1}{#2}{#3}}
+\newcommand{\fmfcdmorph}[3][left]{%
+  \fmfcdmorphism{morphism}{#1}{#2}{#3}}
+\newcommand{\fmfcdeq}[1]{\fmf{double}{#1}}
+\def\fmfcdsetaux[#1]#2{%
+  \fmfv{decor.shape=circle,decor.size=18pt,foreground=white,
+        label.dist=0,label=$#1$}{#2}}
+\makeatletter
+  \def\fmfcdset{\@dblarg{\fmfcdsetaux}}
+\makeatother
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{empcmds}
+  numeric pi;
+  pi = 180;
+  vardef adap_fct_one (expr x) =
+    (x + sind(2*x*pi)/8)
+  enddef;
+  vardef adap_fct_two (expr x) =
+    (x + sind(4*x*pi)/16)
+  enddef;
+  vardef adap_fct (expr x) =
+     adap_fct_two (x)
+  enddef;
+  vardef drawbar expr p =
+    draw ((0,-.5)--(0,.5)) scaled 1mm shifted p
+  enddef;
+\end{empcmds}
+
+\begin{empcmds}
+  vardef pseudo (expr xlo, xhi, ylo, yhi, 
+                      equ_lo, equ_hi, equ_div,
+                      adap_lo, adap_hi, adap_div,
+                      r, do_labels, do_arrow) =
+    pair equ_grid.lo, equ_grid.hi, adap_grid[]lo, adap_grid[]hi;
+    ypart (equ_grid.lo) = ypart (equ_grid.hi);
+    ypart (adap_grid[1]lo) = ypart (adap_grid[1]hi);
+    ypart (adap_grid[2]lo) = ypart (adap_grid[2]hi);
+    xpart (equ_grid.lo) = xpart (adap_grid[1]lo) = xpart (adap_grid[2]lo);
+    xpart (equ_grid.hi) = xpart (adap_grid[1]hi) = xpart (adap_grid[2]hi);
+    equ_grid.hi = (xhi, yhi);
+    adap_grid[1]lo = .5[equ_grid.lo,adap_grid[2]lo];
+    adap_grid[2]lo = (xlo, ylo);
+    numeric rp, rm;
+    rp = ceiling r;
+    rm = floor r;
+    pickup pencircle scaled .5pt;
+    for i = adap_lo upto adap_hi:
+        draw (i/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+               -- (adap_fct(i/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+             withcolor 0.7white;
+    endfor
+    if do_arrow:
+      fill (rm/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+             -- (rp/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+             -- (adap_fct(rp/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+             -- (adap_fct(rm/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+             -- cycle withcolor 0.7white;
+    fi
+    if do_labels:
+      label.lft (btex \texttt{0} etex, equ_grid.lo);
+      label.rt (btex \texttt{d\%ng} etex, equ_grid.hi);
+    fi
+    draw (equ_lo/equ_div)[equ_grid.lo,equ_grid.hi]
+          -- (equ_hi/equ_div)[equ_grid.lo,equ_grid.hi];
+    for i = equ_lo upto equ_hi:
+      drawbar (i/equ_div)[equ_grid.lo,equ_grid.hi];
+    endfor
+    if do_labels:
+      label.lft (btex $\xi$, \texttt{i: 0} etex, adap_grid[1]lo);
+      label.rt (btex \texttt{ubound(d\%x)} etex, adap_grid[1]hi);
+      label.lft (btex \texttt{d\%x: 0} etex, adap_grid[2]lo);
+      label.rt (btex \texttt{1} etex, adap_grid[2]hi);
+    fi
+    draw (adap_lo/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+          -- (adap_hi/adap_div)[adap_grid[1]lo,adap_grid[1]hi];
+    draw (adap_fct(adap_lo/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+          -- (adap_fct(adap_hi/adap_div))[adap_grid[2]lo,adap_grid[2]hi];
+    for i = adap_lo upto adap_hi:
+      drawbar (i/adap_div)[adap_grid[1]lo,adap_grid[1]hi];
+      drawbar (adap_fct(i/adap_div))[adap_grid[2]lo,adap_grid[2]hi];
+    endfor
+    if do_arrow:
+      pickup pencircle scaled 1pt;
+      pair cell, ia, grid;
+      ia = (r/adap_div)[adap_grid[1]lo,adap_grid[1]hi];
+      cell = ia shifted (equ_grid.hi - adap_grid[1]hi);
+      grid = (adap_fct(r/adap_div))[adap_grid[2]lo,adap_grid[2]hi];
+      if do_labels:
+        label.top (btex \texttt{cell - r} etex, cell);
+      fi
+      drawarrow cell -- ia;
+      drawarrow ia -- grid;
+      if do_labels:
+        label.bot (btex \texttt{x} etex, grid);
+      fi
+    fi
+  enddef;
+\end{empcmds}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+The problem of the parallelization of adaptive Monte Carlo integration
+algorithms has gained some attention
+recently~\cite{Krecker:1997:Parallel-Vegas,Veseli:1998:Parallel-Vegas}.
+Both authors present parallel versions of the Vegas
+algorithm~\cite{Lepage:1978:vegas}.
+
+The implementations start from the classic implementation of Vegas and
+add synchronization barriers, either mutexes for threads accessing
+shared memory or explicit message passing.  This approach results in
+compact code and achieves high performance, but the implementations of
+threads bases parallelism on one hand and message passing on the other
+are very different.  Therefore, a close coupling of parallelization
+and of the integration algorithm sacrifices flexibility.  Even the
+move from one message passing library to another is a non trivial
+exercise with many subtle failure modes.  The same is true for any
+improvement of the integration algorithm.
+
+Instead, we suggest a \emph{mathematical} model of parallelism for
+adaptive Monte Carlo integration that is independend both of a
+concrete paradigm for parallelism and of the programming language used
+for an implementation.  We decompose the algorithm and prove that
+certain parts can be executed in \emph{any} order without changing the
+result.  As a corollary, we know that they can be executed in
+parallel.
+
+The algorithms presented below have been implemented successfully in
+the library VAMP~\cite{Ohl:1998:VAMP}, along with other, independent,
+improvements of Vegas~\cite{Ohl:1998:VAMP-preview}. 
+
+In section~\ref{sec:vegas} we discuss the features of Vegas, that are
+important for our model.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Vegas}
+\label{sec:vegas}
+
+In this section we discuss the features of Vegas, that are important
+for building a model of parallelism, but are not discussed
+in~\cite{Lepage:1978:vegas}.
+
+Vegas uses two \emph{grids}: an adaptive grid~$G^A$, which is used to adapt
+the distribution of the sampling points and a stratification
+grid~$G^S$ for stratified sampling.  The latter is static and depends
+only on the number of dimensions and on the number of sampling points.
+Both grids factorize into \emph{divisions}~$d_{A,S}^i$
+\begin{subequations}
+\begin{align}
+  G^A &= d^A_1 \otimes d^A_2 \otimes \cdots \otimes d^A_n \\
+  G^S &= d^S_1 \otimes d^S_2 \otimes \cdots \otimes d^S_n \,.
+\end{align}
+\end{subequations}
+The divisions come in three kinds
+\begin{subequations}
+\begin{align}
+\label{eq:importance}
+   d^S_i &= \emptyset        &&\text{(importance sampling)} \\
+\label{eq:stratified}
+   d^A_i &= d^S_i/m     &&\text{(stratified sampling)} \\
+\label{eq:pseudo}
+   d^A_i &\not= d^S_i/m &&\text{(pseudo-stratified sampling)}\,.
+\end{align}
+\end{subequations}
+In the classic implementation of Vegas~\cite{Lepage:1978:vegas},
+\emph{all} divisions are of the same type.  In a more general
+implementation~\cite{Ohl:1998:VAMP}, this is not required and it can
+be useful to use stratification only in a few dimensions.
+
+\begin{empcmds}
+  vardef layout =
+    pair ul, ur, ll, lr;
+    ypart (ul) = ypart (ur); ypart (ll) = ypart (lr);
+    xpart (ul) = xpart (ll); xpart (ur) = xpart (lr);
+    numeric weight_width, weight_dist;
+    weight_width = 0.1w; weight_dist = 0.05w;
+    ll = (.1w,.1w);
+    ur = (w-weight_width-weight_dist,h-weight_width-weight_dist);
+    numeric equ_div, adap_div, rx, ry, rxp, rxm, ryp, rym;
+    equ_div = 3;  adap_div = 8;
+    rx = 5.2; ry = 3.6;
+    rxp = ceiling rx; rxm = floor rx;
+    ryp = ceiling ry; rym = floor ry;
+    numeric pi; pi = 180;
+    vardef adap_fct_x (expr x) = (x + sind(2*x*pi)/8) enddef;
+    vardef weight_x (expr x) = (1 + 2*sind(1*x*pi)**2) / 3 enddef;
+    vardef adap_fct_y (expr x) = (x + sind(4*x*pi)/16) enddef;
+    vardef weight_y (expr x) = (1 + 2*sind(2*x*pi)**2) / 3 enddef;
+    vardef grid_pos (expr i, j) =
+      (adap_fct_y(j/adap_div))[(adap_fct_x(i/adap_div))[ll,lr],
+                               (adap_fct_x(i/adap_div))[ul,ur]]
+    enddef;
+    vardef grid_square (expr i, j) =
+      grid_pos (i,j) -- grid_pos (i+1,j) -- grid_pos (i+1,j+1)
+        -- grid_pos (i,j+1) -- cycle
+    enddef;
+  enddef;
+  vardef decoration =
+    fill (lr shifted (weight_y(0)*(weight_width,0))
+             for y = .1 step .1 until 1.01:
+               .. y[lr,ur] shifted (weight_y(y)*(weight_width,0))
+             endfor
+             -- ur -- lr -- cycle) shifted (weight_dist,0) withcolor 0.7white;
+    fill (ul shifted (weight_x(0)*(0,weight_width))
+             for x = .1 step .1 until 1.01:
+               .. x[ul,ur] shifted (weight_x(x)*(0,weight_width))
+             endfor
+             -- ur -- ul -- cycle) shifted (0,weight_dist) withcolor 0.7white;
+    picture px, py;
+    px = btex $p_1(x_1)$ etex; py = btex $p_2(x_2)$ etex;
+    label.top (image (unfill bbox px; draw px),
+                .5[ul,ur] shifted (0,weight_dist));
+    label.rt (image (unfill bbox py; draw py),
+                .75[lr,ur] shifted (weight_dist,0));
+    label.lrt (btex $\mathcal{D}_{1,1}$ etex, ll);
+    label.bot (btex $x_1$ etex, .5[ll,lr]);
+    label.bot (btex $\mathcal{D}_{2,1}$ etex, lr);
+    label.ulft (btex $\mathcal{D}_{1,2}$ etex, ll);
+    label.lft (btex $x_2$ etex, .5[ll,ul]);
+    label.lft (btex $\mathcal{D}_{2,2}$ etex, ul);
+  enddef;
+\end{empcmds}
+\begin{figure}
+  \begin{center}
+    \begin{emp}(55,50)
+      layout;
+      fill grid_square (rxm,rym) withcolor 0.7white;
+      pickup pencircle scaled .7pt;
+      for i = 0 upto adap_div:
+        draw grid_pos(i,0) -- grid_pos(i,adap_div);
+        draw grid_pos(0,i) -- grid_pos(adap_div,i);
+      endfor
+      pickup pencircle scaled 2pt;
+      drawdot grid_pos(rx,ry);
+      decoration;
+    \end{emp}
+    \begin{emp}(55,50)
+      layout;
+      vardef grid_sub_pos (expr i, di, j, dj) =
+        (dj/equ_div)[(di/equ_div)[grid_pos(i,j),grid_pos(i+1,j)],
+                     (di/equ_div)[grid_pos(i,j+1),grid_pos(i+1,j+1)]]
+      enddef;
+      vardef grid_sub_square (expr i, di, j, dj) =
+        grid_sub_pos (i,di,j,dj)
+          -- grid_sub_pos (i,di+1,j,dj)
+          -- grid_sub_pos (i,di+1,j,dj+1)
+          -- grid_sub_pos (i,di,j,dj+1)
+          -- cycle
+      enddef;
+      fill grid_square (rxm,rym) withcolor 0.8white;
+      fill grid_sub_square (rxm,0,rym,1) withcolor 0.6white;
+      pickup pencircle scaled .7pt;
+      for i = 0 upto adap_div:
+        draw grid_pos(i,0) -- grid_pos(i,adap_div);
+        draw grid_pos(0,i) -- grid_pos(adap_div,i);
+      endfor
+      pickup pencircle scaled .5pt;
+      for i = 0 upto (adap_div-1):
+        for j = 1 upto (equ_div-1):
+          draw grid_sub_pos(i,j,0,0)
+                 -- grid_sub_pos(i,j,adap_div,0) dashed evenly;
+          draw grid_sub_pos(0,0,i,j)
+                 -- grid_sub_pos(adap_div,0,i,j) dashed evenly;
+        endfor
+      endfor
+      pickup pencircle scaled 2pt;
+      drawdot grid_pos(rx,ry);
+      decoration;
+    \end{emp}
+  \end{center}
+  \caption{\label{fig:nonstrat/strat}%
+    Vegas grid structure for importance sampling~(\ref{eq:importance})
+    on the left and for genuinely stratified
+    sampling~(\ref{eq:stratified}) on the right. The latter is used in
+    low dimensions only.}
+\end{figure}
+
+Two-dimensional grids for the cases~(\ref{eq:importance})
+and~(\ref{eq:stratified}) are illustrated in
+figure~\ref{fig:nonstrat/strat}.  In case~(\ref{eq:importance}), there
+is no stratification grid and the points are picked at random in the
+whole region according to~$G_A$.  In case~(\ref{eq:stratified}), the
+adaptive grid~$G_A$ is a regular subgrid of the stratification
+grid~$G_S$ and an equal number of points are picked at random in each
+cell of~$G_S$.  Since~$d^A_i = d^S_i/m$, the points will be
+distributed according to~$G_A$ as well.
+
+\begin{empcmds}
+  numeric pi;
+  pi = 180;
+  vardef adap_fct_one (expr x) =
+    (x + sind(2*x*pi)/8)
+  enddef;
+  vardef adap_fct_two (expr x) =
+    (x + sind(4*x*pi)/16)
+  enddef;
+  vardef adap_fct (expr x) =
+     adap_fct_two (x)
+  enddef;
+  vardef drawbar expr p =
+    draw ((0,-.5)--(0,.5)) scaled 1mm shifted p
+  enddef;
+\end{empcmds}
+
+\begin{empcmds}
+  vardef pseudo (expr xlo, xhi, ylo, yhi, 
+                      equ_lo, equ_hi, equ_div,
+                      adap_lo, adap_hi, adap_div,
+                      r, do_labels, do_arrow) =
+    pair equ_grid.lo, equ_grid.hi, adap_grid[]lo, adap_grid[]hi;
+    ypart (equ_grid.lo) = ypart (equ_grid.hi);
+    ypart (adap_grid[1]lo) = ypart (adap_grid[1]hi);
+    ypart (adap_grid[2]lo) = ypart (adap_grid[2]hi);
+    xpart (equ_grid.lo) = xpart (adap_grid[1]lo) = xpart (adap_grid[2]lo);
+    xpart (equ_grid.hi) = xpart (adap_grid[1]hi) = xpart (adap_grid[2]hi);
+    equ_grid.hi = (xhi, yhi);
+    adap_grid[1]lo = .5[equ_grid.lo,adap_grid[2]lo];
+    adap_grid[2]lo = (xlo, ylo);
+    numeric rp, rm;
+    rp = ceiling r;
+    rm = floor r;
+    pickup pencircle scaled .5pt;
+    for i = adap_lo upto adap_hi:
+        draw (i/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+               -- (adap_fct(i/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+             withcolor 0.7white;
+    endfor
+    if do_arrow:
+      fill (rm/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+             -- (rp/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+             -- (adap_fct(rp/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+             -- (adap_fct(rm/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+             -- cycle withcolor 0.7white;
+    fi
+    if do_labels:
+      label.lft (btex \texttt{0} etex, equ_grid.lo);
+      label.rt (btex \texttt{d\%ng} etex, equ_grid.hi);
+    fi
+    draw (equ_lo/equ_div)[equ_grid.lo,equ_grid.hi]
+          -- (equ_hi/equ_div)[equ_grid.lo,equ_grid.hi];
+    for i = equ_lo upto equ_hi:
+      drawbar (i/equ_div)[equ_grid.lo,equ_grid.hi];
+    endfor
+    if do_labels:
+      label.lft (btex $\xi$, \texttt{i: 0} etex, adap_grid[1]lo);
+      label.rt (btex \texttt{ubound(d\%x)} etex, adap_grid[1]hi);
+      label.lft (btex \texttt{d\%x: 0} etex, adap_grid[2]lo);
+      label.rt (btex \texttt{1} etex, adap_grid[2]hi);
+    fi
+    draw (adap_lo/adap_div)[adap_grid[1]lo,adap_grid[1]hi]
+          -- (adap_hi/adap_div)[adap_grid[1]lo,adap_grid[1]hi];
+    draw (adap_fct(adap_lo/adap_div))[adap_grid[2]lo,adap_grid[2]hi]
+          -- (adap_fct(adap_hi/adap_div))[adap_grid[2]lo,adap_grid[2]hi];
+    for i = adap_lo upto adap_hi:
+      drawbar (i/adap_div)[adap_grid[1]lo,adap_grid[1]hi];
+      drawbar (adap_fct(i/adap_div))[adap_grid[2]lo,adap_grid[2]hi];
+    endfor
+    if do_arrow:
+      pickup pencircle scaled 1pt;
+      pair cell, ia, grid;
+      ia = (r/adap_div)[adap_grid[1]lo,adap_grid[1]hi];
+      cell = ia shifted (equ_grid.hi - adap_grid[1]hi);
+      grid = (adap_fct(r/adap_div))[adap_grid[2]lo,adap_grid[2]hi];
+      if do_labels:
+        label.top (btex \texttt{cell - r} etex, cell);
+      fi
+      drawarrow cell -- ia;
+      drawarrow ia -- grid;
+      if do_labels:
+        label.bot (btex \texttt{x} etex, grid);
+      fi
+    fi
+  enddef;
+\end{empcmds}
+
+\begin{figure}
+  \begin{center}
+    \begin{emp}(120,30)
+      pseudo (.3w, .8w, .1h, .8h, 0, 8, 8,  0, 12, 12, 5.2,   true, true);
+    \end{emp}
+  \end{center}
+  \caption{\label{fig:pseudo}%
+    One-dimensional illustration of the \texttt{vegas} grid structure
+    for pseudo stratified sampling, which is used in high dimensions.}
+\end{figure}
+
+A one-dimensional illustration of~(\ref{eq:pseudo}) is shown in
+figure~(\ref{fig:pseudo}).
+The case~(\ref{eq:pseudo}) is the most complicated.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parallelization}
+\label{sec:parallelization}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Formalization of Adaptive Sampling}
+\label{sec:adaptive-sampling}
+
+In order to discuss the problems with parallelizing adaptive
+integration algorithms and to present solutions, it helps to introduce
+some mathematical notation.  A sampling~$S$ is a map from the
+space~$\pi$ of point sets and the space~$F$ of functions to the real
+(or complex) numbers
+\begin{equation*}
+\begin{aligned}
+  S: \pi \times F & \to \mathbf{R} \\
+     (p,f)        & \mapsto I = S(p,f)
+\end{aligned}
+\end{equation*}
+For our purposes, we have to be more specific about the nature of the
+point set.  In general, the point set will be characterized by a 
+sequence of pseudo random numbers~$\rho\in R$ and by one or more
+grids~$G\in\Gamma$ used for importance or stratified sampling.  A
+simple sampling
+\begin{equation}
+\label{eq:S0}
+\begin{aligned}
+  S_0: R \times \Gamma \times A \times F \times\mathbf{R}\times\mathbf{R}
+         & \to R \times \Gamma \times A \times F \times\mathbf{R}\times\mathbf{R}\\
+       (\rho, G, a, f, \mu_1, \mu_2) & \mapsto
+            (\rho', G, a', f, \mu_1', \mu_2')
+                = S_0 (\rho, G, a, f, \mu_1, \mu_2)
+\end{aligned}
+\end{equation}
+estimates the $n$-th moments $\mu_n'\in\mathbf{R}$ of the
+function~$f\in F$.  The integral and its standard deviation can be
+derived easily from the moments
+\begin{subequations}
+\begin{align}
+  I        &= \mu_1 \\
+  \sigma^2 &= \frac{1}{N-1} \left(\mu_2 - \mu_1^2\right)
+\end{align}
+\end{subequations}
+while the latter are more convenient for the following discussion.
+In addition, $S_0$ collects auxiliary information to be used in the
+grid refinement, denoted by~$a\in A$.
+The unchanged arguments~$G$ and~$f$ have been added to the result
+of~$S_0$ in~(\ref{eq:S0}), so that~$S_0$ has identical domain and
+codomain and 
+can therefore be iterated.  Previous estimates~$\mu_n$ may be used
+in the estimation of~$\mu_n'$, but a particular~$S_0$ is free to
+ignore them as well.  Using a little notational freedom, we
+augment~$\mathbf{R}$ and~$A$ with a special value~$\bot$, which will
+always be discarded by~$S_0$.
+
+In an adaptive integration algorithm, there is also a refinement
+operation~$r:\Gamma\times A \to\Gamma$ that can be extended naturally
+to the codomain of~$S_0$
+\begin{equation}
+\begin{aligned}
+  r: R \times \Gamma \times A \times F \times\mathbf{R}\times\mathbf{R}
+       & \to R \times \Gamma \times A \times F \times\mathbf{R}\times\mathbf{R}\\
+     (\rho, G, a, f, \mu_1, \mu_2) & \mapsto
+        (\rho, G', a, f, \mu_1, \mu_2) = r (\rho, G, a, f, \mu_1, \mu_2)
+\end{aligned}
+\end{equation}
+so that~$S=rS_0$ is well defined and we can specify $n$-step adaptive
+sampling as
+\begin{equation}
+\label{eq:Sn}
+  S_n = S_0 (rS_0)^n
+\end{equation}
+Since, in a typical application, only the estimate of the integral and
+the standard deviation are used, a projection can be applied to the
+result of~$S_n$: 
+\begin{equation}
+\label{eq:P}
+\begin{aligned}
+  P: R \times \Gamma \times A \times F \times\mathbf{R}\times\mathbf{R}
+       & \to \mathbf{R}\times\mathbf{R}\\
+       (\rho, G, a, f, \mu_1, \mu_2) & \mapsto (I,\sigma)
+\end{aligned}
+\end{equation}
+Then
+\begin{equation}
+  (I,\sigma) = P S_0 (rS_0)^n (\rho, G_0, \bot, f, \bot, \bot)
+\end{equation}
+and a good refinement prescription~$r$, such as Vegas, will minimize
+the~$\sigma$.
+
+For parallelization, it is crucial to find a division of~$S_n$ or any
+part of it into \emph{independent} pieces that can be evaluated in
+parallel.  In order to be effective, $r$ has to be applied to
+\emph{all} of~$a$ and therefore a sychronization of~$G$ before and
+after~$r$ is appropriately.  Forthermore, $r$ usually uses only a tiny
+fraction of the CPU time and it makes little sense to invest a lot of
+effort into parallelizing it beyond what the Fortran compiler can
+infer from array notation.  On the other hand, $S_0$ can be
+parallelized naturally, because all operations are linear, including
+he computation of~$a$.  We only have to make sure that the cost of
+communicating the results of~$S_0$ and~$r$ back and forth during the
+computation of~$S_n$ do not offset any performance gain from parallel
+processing.
+
+When we construct a decomposition of~$S_0$ and proof that it does not
+change the results, i.e.
+\begin{equation}
+  S_0 = \iota S_0 \phi
+\end{equation}
+where~$\phi$ is a forking operation and~$\iota$ is a joining
+operation, we are faced with the technical problem of a parallel
+random number source~$\rho$.
+\begin{equation}
+  \begin{CD}
+    \bigoplus_{i=1}^N G_i @>{\bigoplus_{i=1}^N S_0}>> \bigoplus_{i=1}^N G_i \\
+    @A{\phi}AA                                        @V{\iota}VV           \\
+    G                     @>S_0>>                     G
+  \end{CD}
+\end{equation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Weakly Commutative Diagrams}
+\label{sec:weak-CD}
+
+As made explicit in~(\ref{eq:S0}, $S_0$ changes the state of the
+random number general~$\rho$, demanding \emph{identical} results
+therefore imposes a strict ordering on the operations and defeats
+parallelization.  It is possible to devise implementations of~$S_0$
+and~$\rho$ that circumvent this problem by distributing subsequences
+of~$\rho$ in such a way among processes that results do not depend on
+the number of parallel processes.
+
+However, a reordering of the random number sequence will only change
+the result by the statistical error, as long as the scale of the
+allowed reorderings is \emph{bounded} and much smaller than the period
+of the random number generator~\footnote{Arbirtrary reorderings on the
+scale of the period of the random number generators could select
+constant sequences and have to be forbidden.}  Below, we will
+therefore use the notation $x\approx y$ for ``equal for an appropriate
+finite reordering of the~$\rho$ used in calculating~$x$ and~$y$''.
+For our porposes, the relation~$x\approx y$ is strong enough and
+allows simple and efficient implementations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Multilinear Structure of the Sampling Algorithm}
+\label{sec:multi-linear}
+
+Since~$S_0$ is essentially a summation, it is natural to expect a
+linear structure 
+\begin{subequations}
+\label{eq:S0-parallel}
+\begin{equation}
+  \bigoplus_i S_0(\rho_i, G_i, a_i, f, \mu_{1,i}, \mu_{2,i})
+     \approx S_0 (\rho, G, a, f, \mu_1, \mu_2)
+\end{equation}
+where
+\begin{align}
+  \rho 	&= \bigoplus_i \rho_i \\
+  G    	&= \bigoplus_i G_i \\
+  a    	&= \bigoplus_i a_i \\
+  \mu_n &= \bigoplus_i \mu_{n,i}
+\end{align}
+\end{subequations}
+for appropriate definitions of ``$\oplus$''. For the moments, we have
+standard addition
+\begin{equation}
+  \mu_{n,1} \oplus \mu_{n,2} = \mu_{n,1} + \mu_{n,2}
+\end{equation}
+and since we only demand equality up to reordering, we only need that
+the~$\rho_i$ are statistically independent.  This leaves us with~$G$
+and~$a$ and we have to discuss importance sampling ans stratified
+sampling separately.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Importance Sampling}
+In the case of naive Monte Carlo and importance sampling the natural
+decomposition of~$G$ is to take~$j$ copies of the same
+grid~$G/j$ which is identical to~$G$, each with one $j$-th of the
+total sampling points.  As long as the~$a$ are linear themselves, we
+can add them up just like the moments
+\begin{equation}
+  a_1 \oplus a_2 = a_1 + a_2
+\end{equation}
+and we have found a decomposition~(\ref{eq:S0-parallel}).  In the
+case of Vegas, the~$a_i$ are sums of function values at the sampling
+points.  Thus they are obviously linear and this approach is
+applicable to Vegas in the importance sampling mode.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Stratified Sampling}
+The situation is more complicated in the case of stratified sampling.
+The first complication is that in pure stratified sampling there are
+only two sampling points per cell.  Splitting the grid in two pieces
+as above provide only a very limited amount of parallelization.  The
+second complication is that the~$a$ are no longer linear, since they
+corrspond to a sampling of the variance per cell and no longer of
+function values themselves.
+
+However, as long as the samplings contribute to disjoint bins only, we
+can still ``add'' the variances by combining bins.  The solution is
+therefore to divide the grid into disjoint bins along the divisions of
+the stratification grid and to assign a set of bins to each processor.
+
+Finer decompositions will incur higher communications costs and other
+resource utilization.  An implementation based on~PVM is described
+in~\cite{Veseli:1998:Parallel-Vegas}, which miminizes the overhead by
+running identical copies of the grid~$G$ on each processor.  Since
+most of the time is usually spent in function evaluations, it makes
+sense to run a full~$S_0$ on each processor, skipping function
+evaluations everywhere but in the region assigned to the processor.
+This is a neat trick, which is unfortunately tied to the computational
+model of message passing systems such as~PVM and~MPI~\cite{MPI}.  More
+general paradigms can not be supported since the separation of the
+state for the processors is not explicit (it is implicit in the
+separated address space of the PVM or MPI processes).
+
+However, it is possible to implement~(\ref{eq:S0-parallel}) directly
+in an efficient manner.  This is based on the observation that the
+grid~$G$ used by Vegas is factorized into divisions~$D^j$ for each
+dimension
+\begin{equation}
+\label{eq:factorize}
+  G = \bigotimes_{j=1}^{n_{\text{dim}}} D^j
+\end{equation}
+and decompositions of the~$D^j$ induce decompositions of~$G$
+\begin{multline}
+\label{eq:decomp}
+  G_1 \oplus G_2
+    = \left(
+        \bigotimes_{j=1}^{i-1} D^j
+          \otimes D^i_1 \otimes \bigotimes_{i=j+1}^{n_{\text{dim}}} D^j
+      \right)
+      \oplus
+      \left(
+        \bigotimes_{j=1}^{i-1} D^j
+          \otimes D^i_2 \otimes \bigotimes_{i=j+1}^{n_{\text{dim}}} D^j
+      \right) \\
+    = \bigotimes_{j=1}^{i-1} D^j
+        \otimes \left( D^i_1 \oplus D^i_2 \right)
+        \otimes \bigotimes_{j=i+1}^{n_{\text{dim}}} D^j
+\end{multline}
+We can translate~(\ref{eq:decomp}) directly to code that performs the
+decomposition~$D^i = D^i_1 \oplus D^i_2$ discussed below and simply
+duplicates the other divisions~$D^{j\not=i}$.  A decomposition along
+multiple dimensions is implemented by a recursive application
+of~(\ref{eq:decomp}).
+
+In Vegas, the auxiliary information~$a$ inherits a factorization
+similar to the grid~$(\ref{eq:factorize})$
+\begin{equation}
+\label{eq:factorize'}
+  a = (d^1,\ldots,d^{n_{\text{dim}}})
+\end{equation}
+but not a multilinear structure.  Instead, \emph{as long as the
+decomposition respects the stratification grid}, we find the in place
+of~(\ref{eq:decomp})
+\begin{equation}
+\label{eq:decomp'}
+  a_1 \oplus a_2
+    = (d^1_1 + d^1_2,\ldots, d^i_1 \oplus d^i_2, \ldots,
+       d^{n_{\text{dim}}}_1 + d^{n_{\text{dim}}}_2)
+\end{equation}
+with ``$+$'' denoting the standard addition of the bin contents and
+``$\oplus$'' denoting the aggregation of disjoint bins.  If the
+decomposition of the division would break up cells of the
+stratification grid~(\ref{eq:decomp'}) would be incorrect, because, as
+discussed above, the variance is not linear.
+
+Now it remains to find a decomposition
+\begin{equation}
+  D^i = D^i_1 \oplus D^i_2
+\end{equation}
+for both the pure stratification mode and the pseudo stratification
+mode of vegas (cf.\ figure~\ref{fig:nonstrat/strat}).  In the pure
+stratification mode, the stratification grid is strictly finer than
+the adaptive grid and we can decompose along either of them
+immediately.  Technically, a decomposition along the coarser of the two
+is straightforward.  Since the adaptive grid already  has more than
+25~bins, a decomposition along the stratification grid makes no
+practical sense and the decomposition along the adaptive grid has been
+implemented.  The sampling algorithm~$S_0$ can be applied
+\emph{unchanged} to the individual grids resulting from the
+decomposition.
+
+\begin{figure}
+  \begin{center}
+    \begin{emp}(120,90)
+       pseudo (.3w, .8w, .7h, .9h, 0, 8, 8,  0, 12, 12, 5.2,   true, true);
+       % lcm (lcm (3, 8) / 3, 12)
+       pseudo (.3w, .8w, .4h, .6h, 0, 8, 8,  0, 24, 24, 5.2*2, false, true);
+       % forks
+       pseudo (.2w, .7w, .1h, .3h, 0, 2, 8,  0,  6, 24, 5.2*2, false, false);
+       pseudo (.3w, .8w, .1h, .3h, 2, 5, 8,  6, 15, 24, 5.2*2, false, true);
+       pseudo (.4w, .9w, .1h, .3h, 5, 8, 8, 15, 24, 24, 5.2*2, false, false);
+       label.urt (btex \texttt{ds(1)} etex, (.2w, 0));
+       label.top (btex \texttt{ds(2)} etex, (.5w, 0));
+       label.ulft (btex \texttt{ds(3)} etex, (.9w, 0));
+    \end{emp}
+  \end{center}
+  \caption{\label{fig:pseudo-fork}%
+    Forking one dimension~\texttt{d} of a grid into three parts
+    \texttt{ds(1)}, \texttt{ds(2)}, and~\texttt{ds(3)}.  The picture
+    illustrates the most complex case of pseudo stratified sampling
+    (cf.~fig.~\ref{fig:pseudo}).}
+\end{figure}
+
+For pseudo stratified sampling (cf.\ figure~\ref{fig:pseudo}), the
+situation is more complicated, because the adaptive and the
+stratification grid do not share bin boundaries.  Since Vegas does
+\emph{not} use the variance in this mode, it would be theoretically
+possible to decompose along the adaptive grid and to mimic the
+incomplete bins of the stratification grid in the sampling algorithm.
+However, this would be a technical complication, destroying the
+universality of~$S_0$.  Therefore, the adaptive grid is subdivided in
+a first step in
+\begin{equation}
+  \mathop{\textrm{lcm}}
+     \left( \frac{\mathop{\textrm{lcm}}(n_f,n_g)}{n_f}, n_x \right)
+\end{equation}
+bins,\footnote{The coarsest grid covering the division of~$n_g$ bins
+into~$n_f$ forks has $n_g / \mathop{\textrm{gcd}}(n_f,n_g) =
+\mathop{\textrm{lcm}}(n_f,n_g) / n_f$ bins per fork.} such that the
+adaptive grid is strictly finer than the stratification grid.  This
+procedure is shown in figure~\ref{fig:pseudo-fork}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{State and Message Passing}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Random Numbers}
+
+In the parallel example sitting on top of MPI~\cite{MPI} takes
+advantage of the ability of Knuth's generator~\cite{Knuth:1997:TAOCP2}
+to generate statistically independent subsequences.  However, since
+the state of the random number generator is explicit in all procedure
+calls, other means of obtaining subsequences can be implemented in a
+trivial wrapper.
+
+The results of the parallel example will depend on the number of
+processors, because this effects the subsequences being used.  Of
+course, the variation will be compatible with the statistical error.
+It must be stressed that the results are deterministic for a given
+number of processors and a given set of random number generator seeds.
+Since parallel computing environments allow to fix the number of
+processors, debugging of exceptional conditions is possible.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Practice}
+In this section we show three implementations of~$S_n$: one serial,
+and two parallel, based on
+HPF~\cite{HPF1.1,HPF2.0} and MPI~\cite{MPI},
+respectively.  From these examples, it should be
+obvious how to adapt VAMP to other parallel computing paradigms.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Serial}
+Here is a bare bones serail version of~$S_n$, for comparison with the
+parallel versions below.  The real implementation of
+\verb|vamp_sample_grid| in the module \verb|vamp| includes some error 
+handling, diagnostics and the projection~$P$ (cf.~(\ref{eq:P})):
+\begin{verbatimcmd}
+subroutine vamp_sample_grid (rng, g, iterations, func)
+  type(tao_random_state), intent(inout) :: rng
+  type(vamp_grid), intent(inout) :: g
+  integer, intent(in) :: iterations
+  \verbatimesc{Interface declaration for \texttt{func}}
+  integer :: iteration
+  iterate: do iteration = 1, iterations
+     call vamp_sample_grid0 (rng, g, func)
+     call vamp_refine_grid (g)
+  end do iterate
+end subroutine vamp_sample_grid
+\end{verbatimcmd}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{HPF}
+The HPF version of~$S_n$ is based on decomposing the grid~\verb|g| as
+described in section~\ref{sec:multi-linear} and lining up the
+components in an array~\verb|gs|.  The elements of~\verb|gs| can then be
+processed im parallel.  This version can be compiled with any Fortran
+compiler and a more complete version of this procedure (including
+error handling, diagnostics and the projection~$P$) is included with
+VAMP as \verb|vamp_sample_grid_parallel| in the module \verb|vamp|.  This
+way, the algorithm can be tested on a serial machine, but there will
+obviously be no performance gain.\par
+Instead of one random number generator state~\verb|rng|, it takes an
+array consisting of one state per processor.  These \verb|rng(:)| are
+assumed to be initialized, such that the resulting sequences are
+statistically independent.  For this purpose, Knuth's random number
+generator~\cite{Knuth:1997:TAOCP2} is most convenient and is included
+with VAMP (see the example on page~\pageref{pg:tao-hpf}).  Before
+each~$S_0$, the procedure \verb|vamp_distribute_work| determines a good
+decomposition of the grid~\verb|d| into \verb|size(rng)| pieces.  This
+decomposition is encoded in the array \verb|d| where \verb|d(1,:)| holds the
+dimensions along which to split the grid and \verb|d(2,:)| holds the
+corrsponding number of divisions.  Using this information, the grid is
+decomposed by \verb|vamp_fork_grid|.  The HPF compiler will then
+distribute the \verb|!hpf$ independent| loop among the
+processors. Finally, \verb|vamp_join_grid| gathers the results.
+\begin{verbatimcmd}
+subroutine vamp_sample_grid_hpf (rng, g, iterations, func)
+  type(tao_random_state), dimension(:), intent(inout) :: rng
+  type(vamp_grid), intent(inout) :: g
+  integer, intent(in) :: iterations
+  \verbatimesc{Interface declaration for \texttt{func}}
+  type(vamp_grid), dimension(:), allocatable :: gs, gx
+  !hpf$ processors p(number_of_processors())
+  !hpf$ distribute gs(cyclic(1)) onto p
+  integer, dimension(:,:), pointer :: d
+  integer :: iteration, num_workers
+  iterate: do iteration = 1, iterations
+     call vamp_distribute_work (size (rng), vamp_rigid_divisions (g), d)
+     num_workers = max (1, product (d(2,:)))
+     if (num_workers > 1) then
+        allocate (gs(num_workers), gx(vamp_fork_grid_joints (d)))
+        call vamp_create_empty_grid (gs)
+        call vamp_fork_grid (g, gs, gx, d)
+        !hpf$ independent
+        do i = 1, num_workers
+           call vamp_sample_grid0 (rng(i), gs(i), func)
+        end do
+        call vamp_join_grid (g, gs, gx, d)
+        call vamp_delete_grid (gs)
+        deallocate (gs, gx)
+     else
+        call vamp_sample_grid0 (rng(1), g, func)
+     end if
+     call vamp_refine_grid (g)
+  end do iterate
+end subroutine vamp_sample_grid_hpf
+\end{verbatimcmd}
+Since \verb|vamp_sample_grid0| performes the bulk of the computation, an
+almost linear speedup with the number of processors can
+be achieved, if \verb|vamp_distribute_work| finds a good decomposition of
+the grid.  The version of \verb|vamp_distribute_work| distributed with
+VAMP does a good job in most cases, but will not be able to use all
+processors if their number is a prime number larger than the number of
+divisions in the stratification grid. Therefore it can be beneficial
+to tune \verb|vamp_distribute_work| to specific hardware.  Furthermore,
+using a finer stratification grid can improve performance.\par
+For definiteness, here is an example of how to set up the array of
+random number generators for HPF.  Note that this simple seeding
+procedure only guarantees statistically independent sequences with
+Knuth's random number generator~\cite{Knuth:1997:TAOCP2} and will fail
+with other approaches.
+\label{pg:tao-hpf}
+\begin{verbatimcmd}
+type(tao_random_state), dimension(:), allocatable :: rngs
+!hpf$ processors p(number_of_processors())
+!hpf$ distribute gs(cyclic(1)) onto p
+integer :: i, seed
+! ...
+allocate (rngs(number_of_processors()))
+seed = 42 !: can be read from a file, of course \ldots
+!hpf$ independent
+do i = 1, size (rngs)
+   call tao_random_create (rngs(i), seed + i)
+end do
+! ...
+call vamp_sample_grid_hpf (rngs, g, 6, func)
+! ...
+\end{verbatimcmd}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{MPI}
+The MPI version is more low level, because we have to keep track of
+message passing ourselves.  Note that we have made this
+synchronization points explicit with three
+\verb|if ... then ... else ... end if| blocks: forking, sampling, and
+joining.  These blocks could be merged (without any performance gain)
+at the expense of readability.  We assume that \verb|rng| has been
+initialized in each process such that the sequences are again
+statistically independent.
+\begin{verbatimcmd}
+subroutine vamp_sample_grid_mpi (rng, g, iterations, func)
+  type(tao_random_state), dimension(:), intent(inout) :: rng
+  type(vamp_grid), intent(inout) :: g
+  integer, intent(in) :: iterations
+  \verbatimesc{Interface declaration for \texttt{func}}
+  type(vamp_grid), dimension(:), allocatable :: gs, gx
+  integer, dimension(:,:), pointer :: d
+  integer :: num_proc, proc_id, iteration, num_workers
+  call mpi90_size (num_proc)
+  call mpi90_rank (proc_id)
+  iterate: do iteration = 1, iterations
+     if (proc_id == 0) then
+        call vamp_distribute_work (num_proc, vamp_rigid_divisions (g), d)
+        num_workers = max (1, product (d(2,:)))
+     end if
+     call mpi90_broadcast (num_workers, 0)
+     if (proc_id == 0) then
+        allocate (gs(num_workers), gx(vamp_fork_grid_joints (d)))
+        call vamp_create_empty_grid (gs)
+        call vamp_fork_grid (g, gs, gx, d)
+        do i = 2, num_workers
+           call vamp_send_grid (gs(i), i-1, 0)
+        end do
+     else if (proc_id < num_workers) then
+        call vamp_receive_grid (g, 0, 0)
+     end if
+     if (proc_id == 0) then
+        if (num_workers > 1) then
+           call vamp_sample_grid0 (rng, gs(1), func)
+        else
+           call vamp_sample_grid0 (rng, g, func)
+        end if
+     else if (proc_id < num_workers) then
+        call vamp_sample_grid0 (rng, g, func)
+     end if
+     if (proc_id == 0) then
+        do i = 2, num_workers
+           call vamp_receive_grid (gs(i), i-1, 0)
+        end do
+        call vamp_join_grid (g, gs, gx, d)
+        call vamp_delete_grid (gs)
+        deallocate (gs, gx)
+        call vamp_refine_grid (g)
+     else if (proc_id < num_workers) then
+        call vamp_send_grid (g, 0, 0)
+     end if
+  end do iterate
+end subroutine vamp_sample_grid_mpi
+\end{verbatimcmd}
+A more complete version of this procedure is included with VAMP as
+well, this time as \verb|vamp_sample_grid| in the MPI support module
+\verb|vampi|.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Performance}
+\label{sec:performance}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions}
+\label{sec:conclusions}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% \bibliography{jpsi}
+\begin{thebibliography}{10}
+\bibitem{Krecker:1997:Parallel-Vegas}
+  R.~Krecker,  Comp.\ Phys.\ Comm.\ \textbf{106}, 258 (1997).
+\bibitem{Veseli:1998:Parallel-Vegas}
+  S.~Veseli,  Comp.\ Phys.\ Comm.\ \textbf{108}, 9 (1998).
+\bibitem{Lepage:1978:vegas}
+  G.~P.~Lepage, J.~Comp.\ Phys.\ \textbf{27}, 192 (1978);
+  G.~P.~Lepage, Cornell Preprint, CLNS-80/447, March 1980.
+\bibitem{Ohl:1998:VAMP}
+  T.~Ohl,
+  \textit{\texttt{VAMP}, Version 1.0: Vegas AMPlified:
+    Anisotropy, Multi-channel sampling and Parallelization},
+  Preprint, Darmstadt University of Technology, 1998 (in preparation).
+\bibitem{Ohl:1998:VAMP-preview}
+  T.~Ohl, \textit{Vegas Revisited: Adaptive Monte Carlo Integration
+  Beyond Factorization}, hep-ph/9806432, Preprint IKDA 98/15,
+  Darmstadt University of Technology, 1998.
+\bibitem{FORTRAN77}
+  American National Standards Institute,
+  \textit{American National Standard Programming Languages FORTRAN,
+    ANSI X3.9-1978,}
+  New York, 1978.
+\bibitem{Fortran90}
+  International Standards Organization,
+  \textit{ISO/IEC 1539:1991, Information technology --- Programming
+    Languages --- Fortran,}
+  Geneva, 1991.
+\bibitem{Fortran95}
+  International Standards Organization,
+  \textit{ISO/IEC 1539:1997, Information technology --- Programming
+    Languages --- Fortran,}
+  Geneva, 1997.
+\bibitem{HPF1.1}
+  High Performance Fortran Forum,
+  \textit{High Performance Fortran Language Specification, Version 1.1},
+  Rice University, Houston, Texas, 1994.
+\bibitem{HPF2.0}
+  High Performance Fortran Forum,
+  \textit{High Performance Fortran Language Specification, Version 2.0},
+  Rice University, Houston, Texas, 1997.
+\bibitem{MPI}
+  Message Passing Interface Forum,
+  \textit{MPI: A Message Passing Interface Standard},
+  Technical Report CS-94230, University of Tennessee,
+  Knoxville, Tennessee, 1994.
+\bibitem{Knuth:1997:TAOCP2}
+  D.~E. Knuth, \textit{Seminumerical Algorithms} (third edition),
+  Vol.~2 of \textit{The Art of Computer Programming}, 
+  (Addison-Wesley, 1997).
+\bibitem{Kleiss/Pittau:1994:multichannel}
+  R.~Kleiss, R.~Pittau,
+  \textit{Weight Optimization in Multichannel Monte Carlo,}
+  Comp.\ Phys.\ Comm.\ \textbf{83}, 141 (1994).
+\bibitem{Marsaglia:1996:CD}
+  George Marsaglia, \textit{The Marsaglia Random Number CD-ROM}, FSU,
+  Dept.~of Statistics and SCRI, 1996.
+\end{thebibliography}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{fmffile}
+\end{empfile}
+\end{document}
+% Local Variables:
+% mode:latex
+% indent-tabs-mode:nil
+% page-delimiter:"^%%%.*\n"
+% End:

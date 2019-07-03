@@ -103,6 +103,19 @@ let enumerate ?(stride=1) n l =
       (n, []) l in
   List.rev l_rev
 
+(* Take the elements of [list] that satisfy [predicate] and
+   form a list of pairs of an offset into the original list
+   and the element with the offsets
+   starting from [offset].  NB: the order of the returned alist
+   is not specified! *)
+let alist_of_list ?(predicate=(fun _ -> true)) ?(offset=0) list =
+  let _, alist =
+    List.fold_left
+      (fun (n, acc) x ->
+	(succ n, if predicate x then (n, x) :: acc else acc))
+      (offset, []) list in
+  alist
+
 (* This is \emph{not} tail recursive! *)
 let rec flatmap f = function
   | [] -> []
@@ -179,6 +192,25 @@ let rec homogeneous = function
       else
         homogeneous rest
           
+let rec pairs' acc = function
+  | [] -> acc
+  | [x] -> invalid_arg "pairs: odd number of elements"
+  | x :: y :: indices ->
+     if x <> y then
+       invalid_arg "pairs: not in pairs"
+     else
+       begin match acc with
+       | [] -> pairs' [x] indices
+       | x' :: _ ->
+          if x = x' then
+            invalid_arg "pairs: more than twice"
+          else
+            pairs' (x :: acc) indices
+       end
+
+let pairs l =
+  pairs' [] (List.sort Pervasives.compare l)
+
 (* If we needed it, we could use a polymorphic version of [Set] to
    speed things up from~$O(n^2)$ to~$O(n\ln n)$.  But not before it
    matters somewhere \ldots *)
@@ -247,28 +279,27 @@ let rec rev_multiply n rl l =
 
 let multiply n l = rev_multiply n (List.rev l) l
 
-module ISet = Set.Make (struct type t = int let compare = Pervasives.compare end)
-
 exception Overlapping_indices
 exception Out_of_bounds
 
 let iset_of_list list =
-  List.fold_right ISet.add list ISet.empty
+  List.fold_right Sets.Int.add list Sets.Int.empty
 
 let iset_list_union list =
-  List.fold_right ISet.union list ISet.empty
+  List.fold_right Sets.Int.union list Sets.Int.empty
 
 let complement_index_sets n index_set_lists =
   let index_sets = List.map iset_of_list index_set_lists in
   let index_set = iset_list_union index_sets in
   let size_index_sets =
-    List.fold_left (fun acc s -> ISet.cardinal s + acc) 0 index_sets in
-  if size_index_sets <> ISet.cardinal index_set then
+    List.fold_left (fun acc s -> Sets.Int.cardinal s + acc) 0 index_sets in
+  if size_index_sets <> Sets.Int.cardinal index_set then
     raise Overlapping_indices
-  else if ISet.exists (fun i -> i < 0 || i >= n) index_set then
+  else if Sets.Int.exists (fun i -> i < 0 || i >= n) index_set then
     raise Overlapping_indices
   else
-    match ISet.elements (ISet.diff (iset_of_list (range 0 (pred n))) index_set) with
+    match Sets.Int.elements
+            (Sets.Int.diff (iset_of_list (range 0 (pred n))) index_set) with
     | [] -> index_set_lists
     | complement -> complement :: index_set_lists
 
@@ -319,11 +350,53 @@ let common l1 l2 =
 	acc)
     [] l1
 
-let complement l1 l2 =
-  if List.for_all (fun x -> List.mem x l1) l2 then
-    List.filter (fun x -> not (List.mem x l2)) l1
-  else
-    invalid_arg "ThoList.complement"
+let complement l1 = function
+  | [] -> l1
+  | l2 ->
+     if List.for_all (fun x -> List.mem x l1) l2 then
+       List.filter (fun x -> not (List.mem x l2)) l1
+     else
+       invalid_arg "ThoList.complement"
+
+
+let to_string a2s alist =
+  "[" ^ String.concat "; " (List.map a2s alist) ^ "]"
+
+
+module Test =
+  struct
+
+    open OUnit
+
+    let suite_alist_of_list =
+      "alist_of_list" >:::
+	[ "simple" >::
+	    (fun () ->
+	      assert_equal
+                [(46, 4); (44, 2); (42, 0)]
+                (alist_of_list
+                   ~predicate:(fun n -> n mod 2 = 0) ~offset:42 [0;1;2;3;4;5])) ]
+
+    let suite_complement =
+      "complement" >:::
+	[ "simple" >::
+	    (fun () ->
+	      assert_equal [2;4] (complement [1;2;3;4] [1; 3]));
+          "empty" >::
+	    (fun () ->
+	      assert_equal [1;2;3;4] (complement [1;2;3;4] []));
+          "failure" >::
+	    (fun () ->
+              assert_raises
+                (Invalid_argument ("ThoList.complement"))
+	        (fun () -> complement (complement [1;2;3;4] [5]))) ]
+
+    let suite =
+      "ThoList" >:::
+	[suite_alist_of_list;
+         suite_complement]
+
+  end
 
 (*i
  *  Local Variables:

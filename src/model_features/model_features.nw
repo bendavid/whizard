@@ -13082,6 +13082,7 @@ in the working directory, then in a hard-coded UFO model directory.
     omega_path = os_data%whizard_omega_binpath // "/omega_UFO.opt"
     call os_system_call (omega_path &
          // " -model:UFO_dir " // ufo_dir &
+         // " -model:exec" &
          // " -model:write_WHIZARD" &
          // " > " // filename)
     inquire (file = char (filename), exist = exist)

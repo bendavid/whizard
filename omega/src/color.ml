@@ -356,3 +356,71 @@ module General_Flow =
       with
       | _ -> rank_default
   end
+
+(* \thocwmodulesection{Color Structure of Vertices } *)
+
+type pair3 =
+  | P3_12 | P3_23 | P3_31
+  | P3_21 | P3_32 | P3_13
+
+type vertex3 =
+  | Legacy3
+  | Trivial3
+  | Delta3 of pair3
+  | Delta8 of pair3
+  | T of pair3
+  | F
+  | Eps
+
+type pair4 =
+  | P4_12
+  | P4_13
+  | P4_14
+  | P4_23
+  | P4_24
+  | P4_34
+
+type triplet4 =
+  | P4_123
+  | P4_234
+  | P4_341
+  | P4_412
+
+type cyclic4 =
+  | C4_234
+  | C4_342
+  | C4_423
+
+type vertex4 =
+  | Legacy4
+  | Trivial4
+  | Delta13 of pair4
+  | Delta18 of pair4
+  | Delta38 of pair4
+  | Delta33 of cyclic4
+  | Delta88 of cyclic4
+  | TT of cyclic4
+  | FF of (int * int) * (int * int)
+  | TF of pair4
+  | T4 of triplet4
+  | F4 of triplet4
+  | Eps4 of triplet4
+
+let signed_order_pair (a, b as p) =
+  if a < b then
+    (1, p)
+  else
+    (-1, (b, a))
+
+(* Use the symmetries of $f_{abe}f_{cde}$ to bring the indices
+   in a canonical oder with $a<c<d$. *)
+let canonicalize_ff (ab, cd) =
+  let eps1, (a, b as ab) = signed_order_pair ab
+  and eps2, (c, d as cd) = signed_order_pair cd in
+  let eps = eps1 * eps2 in
+  (eps1 * eps2, if a < c then (ab, cd) else (cd, ab))
+
+type vertex =
+  | Legacy
+  | Trivial
+

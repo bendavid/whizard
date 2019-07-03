@@ -25,6 +25,10 @@
 val parse_string : string -> UFO_syntax.t
 val parse_file : string -> UFO_syntax.t
 
+(* These are the contents of the Python files after lexical
+   analysis as context-free variable declarations, before
+   any semantic interpretation. *)
+
 module type Files =
   sig
     
@@ -43,12 +47,40 @@ module type Files =
   end
 
 type t
-val parse_directory : string -> t 
-val dump : t -> unit
- 
+
 exception Unhandled of string
 
 module Model : Model.T
+
+val parse_directory : string -> t
+
+module type Fortran_Target =
+  sig
+
+    val fusion2 :
+      Algebra.QC.t -> string -> Coupling.lorentz3 ->
+      string -> string -> string -> string -> string -> Coupling.fuse2 -> unit
+    val fusion3 :
+      Algebra.QC.t -> string -> Coupling.lorentz4 ->
+      string -> string -> string -> string -> string ->
+      string -> string -> Coupling.fuse3 -> unit
+    val fusionn :
+      Algebra.QC.t -> string -> Coupling.lorentzn ->
+      string -> string list -> string list -> Coupling.fusen -> unit
+
+    val lorentz :
+      ?only:Sets.String.t -> Format_Fortran.formatter -> unit -> unit
+
+    val lorentz_module :
+      ?only:Sets.String.t -> ?name:string ->
+      Format_Fortran.formatter -> unit -> unit
+
+  end
+
+module Targets :
+  sig
+    module Fortran : Fortran_Target
+  end
 
 module type Test =
   sig

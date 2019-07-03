@@ -1,0 +1,18 @@
+* Test output: pythia8_2
+*   Purpose: Initialize Pythia8 with a LHA User Process object..
+
+
+* Construct Pythia8 object.
+
+
+* Read string 'Beam:frameType = 5' into Pythia8 allowing for LHA user processes.
+
+
+* Setup LHA User Process object and let Pythia8 point to it.
+
+
+* Initialize Pythia8.
+
+
+* Destruct Pythia8 object.
+

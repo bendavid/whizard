@@ -1,0 +1,8 @@
+dnl Get the runtime libraries for a particular Fortran compiler
+dnl This is not part of the main configure because it messes up variables
+
+AC_INIT(WHIZARD auxiliary,1.0)
+
+AC_FC_LIBRARY_LDFLAGS()
+
+echo $FCLIBS > configure.flibs.out

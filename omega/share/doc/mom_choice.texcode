@@ -1,0 +1,38 @@
+  \documentclass[a4paper]{article}   
+  \usepackage{thophys,thohacks}
+  \usepackage[T1]{fontenc}
+  \usepackage[latin1]{inputenc}
+  \usepackage{pstricks,shadow}
+  \usepackage{color}
+  \usepackage{graphicx,array,amsmath,amssymb,feynmp}
+  \setlength{\unitlength}{1mm}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\begin{equation*}
+\parbox{13mm}{
+\begin{pspicture}(0,0)(1.2,1)%  \psset{xunit=.8cm,yunit=.8cm}
+        \psline(0.1,0)(0.6,0.5) \psline(1.1,0)(0.6,0.5)
+        \psline[linestyle=dashed](0.6,0.5)(0.6,1)
+        \psline[linestyle=dotted]{->}(0.0,0.2)(0.4,0.6)
+        \psline[linestyle=dotted]{->}(1.2,0.2)(0.8,0.6)
+\end{pspicture}} \quad \Longrightarrow \quad 
+\parbox{13mm}{
+\begin{pspicture}(0,0)(1.2,1)%  \psset{xunit=.8cm,yunit=.8cm}
+        \psline(0.1,0)(0.6,0.5) \psline(1.1,0)(0.6,0.5)
+        \psline[linestyle=dashed](0.6,0.5)(0.6,1)
+        \pscurve[linestyle=dotted]{->}(0.0,0.2)(0.4,0.6)(0.8,0.6)(1.2,0.2)
+\end{pspicture}}
+\quad \text{or} \quad
+\fbox{
+\parbox{13mm}{
+\begin{pspicture}(0,0)(1.2,1)%  \psset{xunit=.8cm,yunit=.8cm}
+        \psline(0.1,0)(0.6,0.5) \psline(1.1,0)(0.6,0.5)
+        \psline[linestyle=dashed](0.6,0.5)(0.6,1)
+        \pscurve[linestyle=dotted]{->}(1.2,0.2)(0.8,0.6)(0.4,0.6)(0.0,0.2)
+\end{pspicture}}}
+\end{equation*}
+
+\end{document} 

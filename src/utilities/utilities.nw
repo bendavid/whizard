@@ -1150,32 +1150,25 @@ adaption to specific use cases but have reasonable defaults.
   end function abs2
 
 @ %def abs2
-@ Remove all duplicates from a list of integers.
+@ Remove all duplicates from an array of signed integers and returns an
+unordered array of remaining elements.
 This method does not really fit into this module. It could be part of a
-larger module which deals with list manipulations.
+larger module which deals with array manipulations.
 <<Numeric utils: public>>=
-  public :: remove_duplicates_from_list
+  public :: remove_duplicates_from_int_array
 <<Numeric utils: procedures>>=
-  function remove_duplicates_from_list (list) result (list_clean)
-    integer, dimension(:), allocatable :: list_clean
-    integer, intent(in), dimension(:) :: list
-    integer, parameter :: N_MAX = 20
-    integer, dimension(N_MAX) :: buf
-    integer :: i_buf, i_list, n_buf
-    buf = -1; i_buf = 1
-    if (size (list) > N_MAX) return
-    do i_list = 1, size (list)
-       if (.not. any (list(i_list) == buf)) then
-          buf(i_buf) = list(i_list)
-          i_buf = i_buf + 1
-       end if
+  function remove_duplicates_from_int_array (array) result (array_unique)
+    integer, intent(in), dimension(:) :: array
+    integer, dimension(:), allocatable :: array_unique
+    integer :: i
+    allocate (array_unique(0))
+    do i = 1, size (array)
+       if (any (array_unique == array(i))) cycle
+       array_unique = [array_unique, [array(i)]]
     end do
-    n_buf = count (buf >= 0)
-    allocate (list_clean (n_buf))
-    list_clean = buf (1 : n_buf)
-  end function remove_duplicates_from_list
+  end function remove_duplicates_from_int_array
 
-@ %def remove_duplicates_from_list
+@ %def remove_duplicates_from_int_array
 @
 <<Numeric utils: public>>=
   public :: extend_integer_array

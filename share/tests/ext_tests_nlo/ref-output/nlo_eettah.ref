@@ -1,0 +1,186 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+| Including Sindarin from 'nlo_settings.sin'
+| Switching to model 'SM', scheme 'GF_MW_MZ'
+$blha_ew_scheme = "alpha_qed"
+SM.mZ =>  9.118800000000E+01
+SM.mW =>  8.041900200000E+01
+SM.mH =>  1.250000000000E+02
+SM.GF =>  1.166390000000E-05
+SM.wZ =>  0.000000000000E+00
+SM.wtop =>  0.000000000000E+00
+SM.wW =>  0.000000000000E+00
+SM.wH =>  0.000000000000E+00
+SM.ms =>  0.000000000000E+00
+SM.mc =>  0.000000000000E+00
+SM.mb =>  0.000000000000E+00
+SM.mtop =>  1.732000000000E+02
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
+SM.mtau =>  1.777000000000E+00
+SM.alphas =>  1.180000000000E-01
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
+alphas_nf = 5
+alphas_order = 2
+[user variable] jet = PDG(2, -2, 1, -1, 3, -3, 4, -4, 5, -5, 21)
+$method = "openloops"
+seed = 8131
+sqrts =  1.000000000000E+03
+jet_algorithm = 2
+jet_r =  5.000000000000E-01
+?use_vamp_equivalences = false
+?nlo_use_born_scale = false
+?nlo_cut_all_sqmes = false
+| End of included 'nlo_settings.sin'
+alpha_power = 4
+alphas_power = 0
+[user variable] theta_0 =  7.000000000000E-01
+[user variable] tops = PDG(6, -6)
+| Process library 'nlo_eettah_lib': recorded process 'nlo_eettah_p1'
+| Integrate: current process library needs compilation
+| Process library 'nlo_eettah_lib': compiling ...
+| Process library 'nlo_eettah_lib': writing makefile
+| Process library 'nlo_eettah_lib': removing old files
+| Process library 'nlo_eettah_lib': writing driver
+| Process library 'nlo_eettah_lib': creating source code
+| Process library 'nlo_eettah_lib': compiling sources
+| Process library 'nlo_eettah_lib': linking
+| Process library 'nlo_eettah_lib': loading
+| Process library 'nlo_eettah_lib': ... success.
+| Integrate: compilation done
+| QCD alpha: using a running strong coupling
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 8131
+| Initializing integration for process nlo_eettah_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_eettah_p1.i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_eettah_p1.i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'nlo_eettah_p1'
+|   Library name  = 'nlo_eettah_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'nlo_eettah_p1_i1':   e-, e+ => t, tbar, H, A [openloops]
+|     2: 'nlo_eettah_p1_i2':   e-, e+ => t, tbar, H, A, gl [openloops], [real]
+|     3: 'nlo_eettah_p1_i3':   e-, e+ => t, tbar, H, A [openloops], [virtual]
+|     4: 'nlo_eettah_p1_i4':   e-, e+ => t, tbar, H, A [inactive], [subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 12 channels, 8 dimensions
+| Phase space: found 12 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 12 channels, 11 dimensions
+| Phase space: found 12 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 12 channels, 8 dimensions
+| Phase space: found 12 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Applying user-defined cuts.
+| Using user-defined general scale.
+| Starting integration for process 'nlo_eettah_p1' part 'born'
+| Integrate: iterations = 4:5000:"gw", 3:3000
+| Integrator: 2 chains, 12 channels, 8 dimensions
+| Integrator: 5000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       4992  9.0935267E-02  4.11E-03    4.52    3.19*   2.86
+   2       4986  9.8656204E-02  1.86E-03    1.89    1.33*  10.18
+   3       4980  9.5953441E-02  1.57E-03    1.63    1.15*  13.24
+   4       4974  9.5958323E-02  1.40E-03    1.46    1.03*  15.01
+|-----------------------------------------------------------------------------|
+   4      19932  9.6337533E-02  8.90E-04    0.92    1.30   15.01    1.14   4
+|-----------------------------------------------------------------------------|
+   5       2994  9.8368415E-02  2.07E-03    2.10    1.15   12.07
+   6       2994  9.7963881E-02  1.99E-03    2.03    1.11*  11.02
+   7       2994  9.8061079E-02  1.91E-03    1.95    1.07*  10.49
+|-----------------------------------------------------------------------------|
+   7       8982  9.8123651E-02  1.15E-03    1.17    1.11   10.49    0.01   3
+|=============================================================================|
+| Starting integration for process 'nlo_eettah_p1' part 'real'
+| Integrate: iterations = 4:5000:"gw", 3:3000
+| Integrator: 2 chains, 12 channels, 11 dimensions
+| Integrator: 5000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       4992 -1.8491776E-02  1.02E-03    5.52    3.90*   2.34
+   2       4986 -1.8754982E-02  5.53E-04    2.95    2.08*   5.16
+   3       4980 -1.8382428E-02  3.69E-04    2.01    1.42*   9.84
+   4       4974 -1.9745867E-02  4.06E-04    2.06    1.45    7.51
+|-----------------------------------------------------------------------------|
+   4      19932 -1.8926813E-02  2.38E-04    1.26    1.78    7.51    2.18   4
+|-----------------------------------------------------------------------------|
+   5       2994 -1.9430246E-02  4.98E-04    2.56    1.40*  10.21
+   6       2994 -1.8719668E-02  5.16E-04    2.76    1.51    7.28
+   7       2994 -1.8622458E-02  4.47E-04    2.40    1.31*   7.34
+|-----------------------------------------------------------------------------|
+   7       8982 -1.8905631E-02  2.79E-04    1.48    1.40    7.34    0.82   3
+|=============================================================================|
+| Starting integration for process 'nlo_eettah_p1' part 'virtual'
+| Integrate: iterations = 4:5000:"gw", 3:3000
+| Integrator: 2 chains, 12 channels, 8 dimensions
+| Integrator: 5000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       4992  1.5821915E-02  6.42E-04    4.06    2.87*   3.55
+   2       4986  1.6399422E-02  3.34E-04    2.04    1.44*   9.49
+   3       4980  1.6785167E-02  2.79E-04    1.66    1.17*  12.24
+   4       4974  1.6613581E-02  2.49E-04    1.50    1.06*  14.83
+|-----------------------------------------------------------------------------|
+   4      19932  1.6572963E-02  1.57E-04    0.95    1.34   14.83    0.75   4
+|-----------------------------------------------------------------------------|
+   5       2994  1.6631895E-02  3.13E-04    1.88    1.03*  15.37
+   6       2994  1.6572555E-02  3.24E-04    1.96    1.07   13.92
+   7       2994  1.7279491E-02  3.24E-04    1.87    1.03*  13.72
+|-----------------------------------------------------------------------------|
+   7       8982  1.6823922E-02  1.85E-04    1.10    1.04   13.72    1.48   3
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0  9.6041941E-02  1.19E-03    1.24    0.00*   9.08
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  ( -2.1215 +-   0.34244 ) %
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

@@ -1,0 +1,38 @@
+author { Thorsten Ohl <ohl@physik.uni-wuerzburg.de> }
+version { sample.mdl }
+created { 2003/07/13 tho }
+revised { 2003/07/15 tho }
+revised { 2004/04/28 tho }
+revised { 2004/04/30 tho }
+revised { 2004/05/05 tho }
+
+particle e- e+ : spin=1/2, fermion, pdg=11, tex="e^-", tex.anti="e^+"
+particle nue nuebar : spin=1/2, fermion, pdg=12, tex="\nu_{e}", tex.anti="\bar\nu_{e}"
+particle A : spin=1, boson, pdg=22, tex="\gamma"
+particle Z : spin=1, boson, pdg=23, tex="Z"
+particle W+ W- : spin=1, boson, pdg=24, tex="W^{+}", tex.anti="W^{-}"
+particle H : spin=1, boson, pdg=25, tex="\phi"
+
+coupling e
+coupling g
+coupling gv
+coupling ga
+coupling y
+
+% gauge
+vertex e+, A, e- :   { e * <1|V.e2|3> }
+vertex e+, Z, e- :   { gv * <1|V.e2|3> - ga * <1|A.e2|3> }
+vertex e+, W-, nue : { g * <1|(V-A).e2|3> }
+
+% triple gauge
+vertex W+, Z, W- :   { g * ((k1 - k2).e3*e1.e2 + (k2 - k3).e1*e2.e3 + (k3 - k1).e2*e3.e1) }
+
+% Yukawa
+vertex e+, H, e- :   { y*<1|S|3> }
+vertex W+, H, W- :   { y*e1.e3 }
+
+% NCQED
+vertex e+, A, e- :   {   e * k2.[mu1]*[mu2].k3*<1|V.e2|3>
+                       - e * k2.[mu1]*[mu2].e2*<1|V.k3|3>
+                       - e * e2.[mu1]*[mu2].k3*<1|V.k2|3> }
+

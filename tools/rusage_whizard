@@ -1,0 +1,11 @@
+#! /bin/sh
+
+whizard=/scratch/ohl/whizard/_inst_gfortran/bin/whizard
+rusage=/scratch/ohl/whizard/tools/rusage
+
+for file in "$@"; do
+  tag=`basename $file .sin`
+  $whizard -r $file 1>$tag.stdout 2>$tag.stderr &
+  echo running $file with pid = $!
+  $rusage -quiet -sleep 1 -size -pid $! >$tag.rusage
+done

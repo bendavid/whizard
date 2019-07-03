@@ -1,0 +1,58 @@
+% $Id: logomaker.tex,v 1.1 2000/11/29 21:00:13 kilian Exp $
+% WHIZARD logo, by W. Kilian and T. Ohl
+
+\documentclass{article}
+\newcommand{\magnification}{10}
+\renewcommand{\magnification}{8}
+%\renewcommand{\magnification}{5}
+%\usepackage{eulervm}
+%\usepackage{type1cm}
+\usepackage{euler}
+\usepackage{graphicx}
+\usepackage{color}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\multiply\mag by \magnification
+\newlength{\logoheight}
+\newlength{\logowidth}
+\newcounter{logo}
+\setcounter{logo}{1}
+\newwrite\dvipscmds
+\newcommand{\shiplogo}[1]{%
+  \setbox0\hbox{#1}%
+  \logowidth=\wd0%
+  \logoheight=\ht0%
+  \multiply\logoheight by \magnification%
+  \multiply\logowidth by \magnification%
+  \edef\dvipscmd{dvips -p=\the\value{logo} -n1 %
+     -O -1in,-1in -T \the\logowidth,\the\logoheight\space %
+     -o \jobname-\the\value{logo}.ps \jobname}%
+  \immediate\write\dvipscmds{\dvipscmd}%
+  \shipout\box0%
+  \stepcounter{logo}}
+\newcommand{\logoframe}[5]{%
+  \leavevmode
+  \hbox{\vbox{\vskip#2\par\hbox{\hskip#1#5\hskip#3}\par\vskip#4}}}
+\newenvironment{logos}[1]%
+  {\ignorespaces\immediate\openout\dvipscmds=#1.sh}%
+  {\immediate\closeout\dvipscmds}
+\begin{document}
+\setlength{\parindent}{0pt}
+\setlength{\fboxsep}{0pt}
+%\setlength{\fboxrule}{0pt}
+\let\framebox\relax
+\begin{logos}{\jobname}%
+  \shiplogo{\logoframe{2pt}{2pt}{2pt}{2pt}{%
+    \framebox{\parbox{7em}{%
+      \begin{flushright}%
+        \framebox{\rotatebox[origin=c]{170}{%
+          \framebox{\parbox{6em}{%
+            \begin{center}%
+              \scalebox{7.0}[1.5]{\mbox{{\color{red}$\Omega$}}}\\[-0.5\baselineskip]%
+              \scalebox{2.0}[6.0]{\color{blue}$V$}%
+            \end{center}}}}}\qquad\qquad\qquad%
+          %\\[-0.4\baselineskip]%
+          %\textsf{WHIZARD}%
+        \end{flushright}}}}}%
+\end{logos}
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

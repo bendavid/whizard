@@ -45,6 +45,14 @@ val range : ?stride:int -> int -> int -> int list
 (* [enumerate s n [a1;a2;...] is [(n,a1); (n+s,a2); ...] *)
 val enumerate : ?stride:int -> int -> 'a list -> (int * 'a) list
 
+(* [alist_of_list ~predicate ~offset list] takes the elements of
+   [list] that satisfy [predicate] and forms a list of pairs of
+   an offset into the original [list] and the element with the
+   offsets starting from [offset].  NB: the order of the returned
+   alist is not specified! *)
+val alist_of_list :
+  ?predicate:('a -> bool) -> ?offset:int -> 'a list -> (int * 'a) list
+
 (* Compress identical elements in a sorted list.  Identity
    is determined using the polymorphic equality function
    [Pervasives.(=)]. *)
@@ -55,6 +63,11 @@ val uniq : 'a list -> 'a list
    are equivalent, but the former is more efficient if a mismatch
    comes early). *)
 val homogeneous : 'a list -> bool
+
+(* If all elements of the list [l] appear exactly twice,
+   [pairs l] returns a sorted list with these elements appearing
+   once.  Otherwise [Invalid_argument] is raised. *)
+val pairs : 'a list -> 'a list
 
 (* [compare cmp l1 l2] compare two lists [l1] and [l2] according to
    [cmp].  [cmp] defaults to the polymorphic [Pervasives.compare].  *)
@@ -146,6 +159,10 @@ val common : 'a list -> 'a list -> 'a list
    [Invalid_argument "ThoList.complement"], if a member of [l1] is not
    in [l1]. *)
 val complement : 'a list -> 'a list -> 'a list
+
+val to_string : ('a -> string) -> 'a list -> string
+
+module Test : sig val suite : OUnit.test end
 
 (*i
  *  Local Variables:

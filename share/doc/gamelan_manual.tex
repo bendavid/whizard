@@ -1,0 +1,1353 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Manual for:
+% gamelan:  Graphical Analysis macros for the Metapost Language
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\NeedsTeXFormat{LaTeX2e}
+\documentclass[12pt,a4paper]{report}
+\usepackage{ifpdf}
+\usepackage{graphicx}
+\usepackage[colorlinks,bookmarks,bookmarksnumbered=true]{hyperref}
+\ifpdf
+  \DeclareGraphicsRule{*}{mps}{*}{}
+\fi
+\usepackage{doc,color,gamelan}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Package specific information
+%\listfiles
+\def\examples#1{%
+  \begin{list}{}%
+   {\setlength{\leftmargin}{#1}%
+    \addtolength{\leftmargin}{\marginparsep}%
+    \addtolength{\leftmargin}{-\marginparwidth}%
+    \setlength{\rightmargin}{0mm}%
+    \setlength{\itemindent}{\parindent}%
+    \setlength{\listparindent}{\parindent}}%
+    \item}
+\def\endexamples{\end{list}}
+\def\marginexample#1{\marginpar{\hbox to\marginparwidth{#1\hss}}}
+%\parindent0pt
+\def\manindex#1{\SortIndex{#1}{#1}}
+\OnlyDescription
+\EnableCrossrefs
+\RecordChanges
+\CodelineIndex
+%\DoNotIndex{\def,\gdef,\long,\let,\begin,\end,\if,\ifx,\else,\fi}
+%\DoNotIndex{\immediate,\write,\newwrite,\openout,\closeout,\typeout}
+%\DoNotIndex{\font,\nullfont,\jobname,\documentclass}
+%\DoNotIndex{\batchmode,\errorstopmode,\char,\catcode,\ }
+%\DoNotIndex{\CodelineIndex,\DocInput,\DoNotIndex,\EnableCrossrefs}
+%\DoNotIndex{\filedate,\filename,\fileversion,\logo,\manfnt}
+%\DoNotIndex{\NeedsTeXFormat,\ProvidesPackage,\RecordChanges,\space}
+%\DoNotIndex{\usepackage,\wlog,\@gobble,\@ifundefined,\@namedef,\@spaces}
+%\DoNotIndex{\begingroup,\csname,\edef,\endcsname,\expandafter,\hbox}
+%\DoNotIndex{\hskip,\ifeof,\ignorespaces,\item,\leavevmode,\loop,\makebox}
+%\DoNotIndex{\newcounter,\newif,\newread,\openin,\par,\parindent,\put}
+%\DoNotIndex{\read,\relax,\repeat,\setcounter,\stepcounter,\the}
+%\DoNotIndex{\value,\vbox,\vskip}
+%\DoNotIndex{\@tempa,\@tempb,\advance,\bf,\bfseries,\closein}
+%\DoNotIndex{\CurrentOption,\DeclareOption,\documentstyle,\em,\emph}
+%\DoNotIndex{\endgroup,\epsilon,\global,\hfuzz,\input,\it,\LaTeX,\LaTeXe}
+%\DoNotIndex{\macrocode,\meaning,\OnlyDescription,\PassOptionsToPackage}
+%\DoNotIndex{\ProcessOptions,\RequirePackage,\sf,\string,\textbf,\textit}
+%\DoNotIndex{\textsf,\texttt,\tt,\unitlength}
+\let\origmacrocode\macrocode
+\def\macrocode{\hfuzz 5em\origmacrocode}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Macro section
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeatletter
+\newif\if@preliminary
+\@preliminaryfalse
+\def\preliminary{\@preliminarytrue}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Changes referring to article.cls
+%
+%%% Title page
+\def\preprintno#1{\def\@preprintno{#1}}
+\def\address#1{\def\@address{#1}}
+\def\email#1{\thanks{\tt #1}}
+\def\abstract#1{\def\@abstract{#1}}
+\renewcommand\abstractname{ABSTRACT}
+\newlength\preprintnoskip
+\setlength\preprintnoskip{\textwidth\@plus -1cm}
+\newlength\abstractwidth
+\setlength\abstractwidth{\textwidth\@plus -3cm}
+%
+\@titlepagetrue
+\renewcommand\maketitle{\begin{titlepage}%
+  \let\footnotesize\small
+  \hfill\parbox{\preprintnoskip}{%
+  \begin{flushright}\@preprintno\end{flushright}}\hspace*{1cm}
+  \vskip 60\p@
+  \begin{center}%
+    {\Large\bf\boldmath \@title \par}\vskip 1cm%
+    {\sc\@author \par}\vskip 3mm%
+    {\@address \par}%
+    \if@preliminary
+      \vskip 2cm {\large\sf PRELIMINARY DRAFT \par \@date}%
+    \fi
+  \end{center}\par
+  \@thanks
+  \vfill
+  \begin{center}%
+    \parbox{\abstractwidth}{\centerline{\abstractname}%
+    \vskip 3mm%
+    \@abstract}
+  \end{center}
+  \end{titlepage}%
+  \setcounter{footnote}{0}%
+  \let\thanks\relax\let\maketitle\relax
+  \gdef\@thanks{}\gdef\@author{}\gdef\@address{}%
+  \gdef\@title{}\gdef\@abstract{}\gdef\@preprintno{}
+}%
+%
+%%% New settings of dimensions
+\topmargin -1.5cm
+\textheight 22cm
+\textwidth 13cm
+\oddsidemargin 2cm
+\evensidemargin 2cm
+%
+%%% Captions set in italics
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \sbox\@tempboxa{#1: \emph{#2}}%
+  \ifdim \wd\@tempboxa >\hsize
+    #1: \emph{#2}\par
+  \else
+    \hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+%
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{gmlpreamble}
+\usepackage{amsfonts}
+\end{gmlpreamble}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\Red#1{\textcolor{red}{#1}}
+\def\Green#1{\textcolor{green}{#1}}
+\def\Blue#1{\textcolor{blue}{#1}}
+\def\Cyan#1{\textcolor{cyan}{#1}}
+\def\Magenta#1{\textcolor{magenta}{#1}}
+\def\Yellow#1{\textcolor{yellow}{#1}}
+\def\Black#1{\textcolor{black}{#1}}
+\def\White#1{\textcolor{white}{#1}}
+\definecolor{chartreuse}{rgb}{0.5, 1, 0} 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Abbrevs
+\def\MF{\textsf{META}\-\textsf{FONT}}%
+\def\MP{\textsf{Meta}\-\textsf{Post}}%
+\def\GML{\textsf{gamelan}}%
+\def\FMF{\texttt{feyn}\textsf{MF}}%
+\def\PS{\texttt{PostScript}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Titlepage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\begin{gmlfile}
+\preliminary        % mark on title page
+%\baselineskip20pt   % stretch linespacing in main text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\preprintno{First version: November 1997}
+\title{%
+ \GML:\\[.5\baselineskip]
+ Graphical Analysis macros\\ for the \MP\ Language\\[.5\baselineskip]
+ MANUAL
+}
+\author{%  
+ ORIGINAL MAIN AUTHOR: \\
+ Wolfgang Kilian$^a$%
+ \email{kilian@physik.uni-siegen.de} \\
+ {\it with contributions from} \\
+ Thorsten Ohl$^b$,%
+ \email{ohl@physik.uni-wuerzburg.de}
+ J\"urgen Reuter$^c$%
+ \email{juergen.reuter@desy.de}
+}
+\address{%
+${}^a$\, Universit\"at Siegen, Theoretische Physik 1,\\
+ Walter-Flex-Str. 3, D-57068 Siegen, Germany \\
+${}^b$\, Universit\"at W\"urzburg, Theoretische Physik II\\
+Emil-Hilb-Weg 22, D-97074 W\"urzburg, Germany \\
+${}^c$\, DESY, Theory Group, \\
+Notkestr. 85, D-22607 Hamburg, Germany
+}
+\abstract{%
+\GML\ is a package for data and function plotting within a \LaTeX\
+document.  It is based on macros written in \MP, originally derived
+from John Hobby's `graph.mp` macro package.
+This manual describes the latest version 0.40 incorporated in
+\texttt{WHIZARD}. 
+}
+%
+\maketitle
+\tableofcontents
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\MakeShortVerb{`}
+%
+\chapter{The \LaTeX\ interface}
+\section{Using \GML}
+\GML\ consists of two parts: A \LaTeX\ style file and a \MP\ macro
+package.  The style file implements two environments at top level:
+`gmlpreamble` and `gmlfile`.  The former is part of the \LaTeX\
+preamble; it is used to pass certain macro
+declarations down to \GML.  The `gmlfile` environment is part of the
+main document.  It encloses the actual graphs to be drawn by \GML.
+
+Inside a `gmlfile` environment, four additional environments are
+defined: `gmlcode`, `gmlfigure`, `gmlgraph`, and `gmltex`.  The text
+enclosed by these is not parsed by the \LaTeX\ interpreter, but written
+verbatim to a file.  This file serves as an input file to \GML, which
+\begin{figure}
+  \begin{quote}
+    `\documentclass{article}`\\
+    `\usepackage{gamelan}`\\
+    ` <gmlpreamble>` \\
+    `\begin{document}`\\
+      `\begin{gmlfile}`\\
+        `   [....]` \\
+        `\begin{gmlgraph*}(100,60)[dat]`\\
+          `   <gmlgraphcode>` \\
+        `\end{gmlgraph*}`\\       
+      `   [....]` \\
+      `\end{gmlfile}`\\
+    `\end{document}`
+  \end{quote}
+\caption{\label{fig:document} Schematic structure of a \GML\ document.}
+\end{figure}
+transforms it into `eps` (encapsulated postscript) figures.  The
+figures are automatically inserted into the original document
+in an additional \LaTeX\ run.
+
+The document structure is depicted schematically in
+Fig.\ref{fig:document}.  There is at most one `gmlpreamble`,
+but there may be several `gmlfile` environments, each one producing a
+separate input file for \GML.  Inside a `gmlfile`, the number of
+graphs and figures is unlimited.
+
+To load the style file, put a corresponding `\usepackage` declaration
+in the document header:
+\begin{quote}
+`\usepackage{gamelan}`
+\end{quote}
+Since \GML\ uses the standard `verbatim` and `graphics` packages,
+those two need not be called separately if you need them; they are
+already present.
+
+
+\section{The \texttt{gmlfile} environment}
+\DescribeEnv{gmlfile} The `gmlfile` environment activates \GML's
+functionality by defining the figure-drawing environments, and by
+specifying where \GML\ commands should be written to.  It has an
+optional argument which specifies a filename:
+\begin{quote}
+`\begin{gmlfile}` \qquad or\\
+`\begin{gmlfile}[`\meta{filename}`]`
+\end{quote}
+If the optional argument is omitted, the \meta{filename} is set to the
+filename of the main document, given by `\jobname`.  Any code inside
+the graph-drawing environments will be written to the file with the
+specified name and extension `.mp`.
+
+The `gmlfile` environment should be placed inside the document's
+`\begin{document}` \ldots `\end{document}` body.  Apart from
+\GML\ figures and graphs, there can be arbitrary
+text, figures, sections, chapters, etc., inside it.  In a
+short document where only a single `gmlfile` environment is used, the
+`\begin{gmlfile}` command may immediately follow `\begin{document}`.
+However, in a long document it is more convenient to use several
+`gmlfile`s with different names and to restrict their scope to a
+particular section or figure.
+
+
+\subsection{Writing \GML\ code}
+\GML\ interprets code written in \MP\ language.  This language is not
+intellegible to \LaTeX.  However, the environments described in this
+section provide an interface such that \MP\ code can inserted in a
+\LaTeX\ document.  On the other hand, \GML\ will invoke \LaTeX\ to
+format textual labels.
+
+\DescribeEnv{gmlcode} The simplest environment is `gmlcode`:
+\begin{quote}
+`\begin{gmlcode}`\\
+`  `\meta{\GML\ declarations and commands}\\
+`\end{gmlcode}`
+\end{quote}
+This environment does not produce any graphical output; it encloses
+global declarations and similar things .  For instance, you may wish to
+define global variables and macros:
+\begin{quote}
+`\begin{gmlcode}`\\
+`  scale:= 1000;`\\
+`  vardef foo(expr x) = x + 42 enddef;`\\
+`\end{gmlcode}`
+\end{quote}
+or a dataset is read in, to be used in several distinct
+graphs:
+\begin{quote}
+`\begin{gmlcode}`\\
+`  directory "data/";`\\
+`  fromfile "run1.dat":`\\
+`    table plot(run1)();`\\
+`  endfrom`\\
+`\end{gmlcode}`
+\end{quote}
+The `gmlcode` environment is also a way to try out some of the
+examples in this manual which do not involve graphical output:
+\begin{quote}
+`\begin{gmlcode}`\\
+`  a=4; show 3a;`\\
+`\end{gmlcode}`
+\end{quote}
+The `gmlcode` environment must reside inside a `gmlfile`, so the
+latter example reads:
+\begin{quote}
+`\documentclass{article}`\\
+`\usepackage{gamelan}`\\
+`\begin{document}`\\
+`\begin{gmlfile}`\\
+`\begin{gmlcode}`\\
+`  a=4; show 3a;`\\
+`\end{gmlcode}`\\
+`\end{gmlfile}`\\
+`\end{document}`
+\end{quote}
+If you type this code in your favorite editor, save it into a file
+named, e.g., `foo.tex`, and start \LaTeX\
+\begin{quote}
+`$ latex foo`%$
+\end{quote}
+a file `foo.mp` is created containing, among other stuff, the line
+enclosed between `\begin{gmlcode}` and `\end{gmlcode}`.  Now write
+\begin{quote}
+`$ whizard-gml foo`%$
+\end{quote}
+and \GML\ is started with the input file `foo.mp`, resulting in the
+output
+\begin{quote}
+`This is MetaPost, Version 1.802 (kpathsea version 6.1.1)`\\
+`[....]`\\
+`(./foo.mp`\\
+`Package: 'gamelan' 0.40 <1998/11/02>`\\
+`>> 12 )`\\
+`Transcript written on foo.log.`
+\end{quote}
+The number `12` is the result of the `show 3a;` command.  Clearly,
+neither graphics nor text has been generated.  We will come to real
+figures in a minute.
+
+\subsection{Figures}
+\DescribeMacro{gmlfigure} The `gmlfigure` environment is a
+wrapper for \GML\ code intended to generate graphical output:
+\begin{quote}
+`\begin{gmlfigure}`\\
+`  `\meta{\GML\ code}\\
+`\end{gmlfigure}`
+\end{quote}
+The \GML\ code is written to file, to be executed by the interpreter,
+and the result transformed into an encapsulated Postscript file.  Here
+is an example:
+\begin{quote}
+`\documentclass{article}`\\
+`\usepackage{gamelan}`\\
+`\begin{document}`\\
+`\begin{gmlfile}`\\
+`\begin{gmlfigure}`\\
+`  draw pentagram scaled 2cm;`\\
+`\end{gmlfigure}`\\
+`\end{gmlfile}`\\
+`\end{document}`
+\end{quote}
+This file (named, again, `foo.tex`) should be run through \LaTeX
+\begin{quote}
+`$ latex foo`%$
+\end{quote}
+\LaTeX\ will create a file `foo.mp`, and it will complain that the figure
+`foo.1` has not been found.  To generate this figure, run \GML\ on `foo.mp`
+\begin{quote}
+`$ whizard-gml foo`%$
+\end{quote}
+with the screen output
+\begin{quote}
+`This is MetaPost, Version 1.802 (kpathsea version 6.1.1)`\\
+`[....]`\\
+`(./foo.mp`\\
+`Package: 'gamelan' 0.40 <1998/11/02>`\\
+`[1] )`\\
+`1 output file written: foo.1`\\
+`Transcript written on foo.log.`
+\end{quote}
+Now, in a second \LaTeX\ run the figure `foo.1` is included
+in the document:
+\begin{quote}
+`$ latex foo`%$
+\end{quote}
+and the result shows the desired pentagram
+\begin{quote}
+`$ xdvi foo`\\ \\%$
+``\qquad\qquad\qquad 
+\begin{gmlfigure}
+  draw pentagram scaled 2cm;
+\end{gmlfigure}
+\end{quote}
+
+\subsection{Graphs}
+\DescribeEnv{gmlgraph} Now that we are able to produce graphics, why
+is there a second environment for the same purpose?  The reason is, that
+for the task of visualizing data, you need to specify the dimensions of
+the graph in advance: \GML\ knows the size of `1cm` on paper, but it
+has to be told how to translate a temperature value of $35^\circ$F.
+
+Thus, the `gmlgraph` environment has the same syntax as the familiar
+`picture`: The dimensions of the graph on paper are specified in round
+brackets, in terms of `\unitlength`.  By default, this is equal to
+`1pt` (this is a "point" which is equal to 1/72.27 inch or 0.3515 mm);
+it is usually a good idea to set it explicitly immediately 
+before the graph environment\footnote{Usually, one
+wraps additional \texttt{figure} and \texttt{center} environments,
+or the like, around a graph.  In that case,
+\texttt{$\backslash$unitlength} may be reset and you need the explicit
+declaration if you do not like to think in \texttt{pt}.}
+\begin{quote}
+`\documentclass{article}`\\
+`\usepackage{gamelan}`\\
+`\begin{document}`\\
+`\begin{gmlfile}`\\
+`\unitlength 1mm`\\
+`\begin{gmlgraph}(60,30)`\\
+`  draw plot((#0,#1), (#1,#2), (#2,#6),`\\
+`            (#3,#1), (#4,#2), (#5,#1));`\\
+`\end{gmlgraph}`\\
+`\end{gmlfile}`\\
+`\end{document}`
+\end{quote}
+If you run this example through \LaTeX\ and \GML
+\begin{quote}
+`$ latex foo; whizard-gml foo; latex foo`%$
+\end{quote}
+and try to view the result
+\begin{quote}
+`$ xdvi foo`%$
+\end{quote}
+the \PS\ interpreter inside `xdvi` could possibly crash.  Similarly,
+you will not be able to view or print the EPS file `foo.1` by itself.
+The reason is missing font information: In order keep the size of the
+EPS files small, \MP\ tells the \PS\ interpreter to take its font
+information from the main document, which does not yet exist in \PS\
+format.  This is easily remedied by transforming the main document
+into \PS
+\begin{quote}
+`$ dvips foo`%$
+\end{quote}
+and to display the result as usual
+\begin{quote}
+`$ ghostview foo`\\ \\%$
+``\qquad\qquad\qquad
+\unitlength 1mm
+\begin{gmlgraph}(60,30)
+  draw plot((#0,#1), (#1,#2), (#2,#6), (#3,#1), (#4,#2), (#5,#1));
+\end{gmlgraph}
+\end{quote}
+Now the graph, including axis labels, is visible, and can be printed.
+
+This extra translation step has to be repeated anytime you want to
+have a look at the graphics.  However, with this behavior the `.dvi`
+file is \emph{really} device-independent and can be distributed, to be
+translated into \PS\ on anybody's local machine.  It is guaranteed
+that the fonts inside \GML\ graphs match the text fonts in the same
+document, and are appropriate for the local printer if the local
+`dvips` driver has been set up correctly.  This is not the case for
+self-contained EPS files. Of course, 
+
+
+\subsection{\LaTeX\ embedded in \GML\ figures}
+For typesetting labels, \GML\ calls \LaTeX\ in the background.  This
+is normally invisible to the user (except for some delay in processing
+the input file).  However, since this background process is distinct
+from the \LaTeX\ run which typesets the main document, there must be
+some means to communicate macros and style settings to the
+subprocess.  This is illustrated in the following example:
+\begin{quote}
+`\documentclass{article}`\\
+`\usepackage{gamelan}`\\
+`\begin{gmlpreamble}`\\
+`  \usepackage{amsfonts}`\\
+`\end{gmlpreamble}`\\
+`\begin{document}`\\
+`\begin{gmlfile}`\\
+`\begin{gmltex}\large\end{gmltex}`\\
+`\begin{gmlfigure}`\\
+`  draw (-10,0)--(150,0) witharrow;`\\
+`  draw (0,-10)--(0,50) witharrow;`\\
+`  label(<<$\mathbb{C}$ (the complex plane)>>,`\\
+`        (80,40));`\\
+`\end{gmlfigure}`\\
+`\end{gmlfile}`\\
+`\end{document}`
+\end{quote}
+This has to be processed by \LaTeX\ and \GML, as usual.  \GML\ will
+take care of the embedded \LaTeX\ sequence (the text enclosed between
+`<<` and `>>`):
+\begin{quote}
+`$ latex foo; gml foo; latex foo; dvips foo`\\%$
+`$ ghostview foo`\\[.5\baselineskip]%$
+``\qquad\qquad\qquad
+\begin{gmltex}
+\large
+\end{gmltex}
+\begin{gmlfigure}
+  draw (-10,0)--(150,0) witharrow;
+  draw (0,-10)--(0,50) witharrow;
+  label(btex $\mathbb{C}$ (the complex plane) etex, (80,40));
+\end{gmlfigure}
+\end{quote}
+\DescribeEnv{gmlpreamble} Here, \GML\ has to access the letter C in
+the `amsfonts` package.  This is achieved by wrapping the
+corresponding `\usepackage` command in a `gmlpreamble` environment.
+The code enclosed in this environment is written verbatim to an
+auxiliary file with extension `.ltp` (`foo.ltp` in this case).  This
+file is included at the end of the preamble both by the main document
+and by any \LaTeX\ subprocess which is started by `gamelan`.
+
+Several `gmlpreamble` environments may appear in the preamble of the
+main document.  Their contents are concatenated and the resulting file
+is executed once `\begin{document}` is reached.
+
+\DescribeEnv{gmltex} Finally, \LaTeX\ declarations that do not belong
+to the preamble may be inserted in the current `gmlfile` via a
+`gmltex` environment.  In the previous example, a `\large` declaration
+is inserted in this way which applies to all following labels.
+
+
+\section{Miscellaneous \LaTeX\ commands}
+\label{latex-misc}
+Apart from the environments described in the previous section, there
+are only a few additional \LaTeX\ commands defined by \GML.  They
+provide an interface to certain \GML\ declarations which are
+frequently encountered.  Such declarations must be placed inside a
+`gmlfile` environment, before the `gmlfigure` or `gmlgraph` where
+their effect is needed.
+
+From now on, we do not show the document header in the examples.  It
+is understood that they are part of a \LaTeX\ document, wrapped in an
+appropriate `gmlfile` environment.
+
+\subsection{Function definitions}
+\DescribeMacro{\gmlfunction} The `\gmlfunction` macro has three
+arguments: the function name, a dummy variable, and a \GML\
+floating-point expression which provides the function definition.  The
+following example shows how to plot the function $f(x)=e^{-x/10}\cos
+x$ between $x=0$ and $x=10$:
+\begin{quote}
+`\gmlfunction{f}{x}{exp(neg x over #10) times cos(x)}`\\
+`\begin{gmlgraph}(150,80)`\\
+`  fromfunction f(#0,#10): draw table plot(); endfrom`\\
+`\end{gmlgraph}`\\[.5\baselineskip]
+\end{quote}
+\begin{center}
+\gmlfunction{f}{x}{exp(neg x over #10) times cos(x)}
+\begin{gmlgraph}(150,80)
+  fromfunction f(#0,#10): draw table plot(); endfrom
+\end{gmlgraph}
+\end{center}
+
+\subsection{Default pen scale and color}
+\DescribeMacro{\gmlpenscale} \GML\ draws its lines and shapes with an
+imaginary circular pen of diameter `0.5bp` (`bp` is a "big point"
+which is equal to 1/72 inch or 0.3527 mm). This can be locally reset
+by appropriate declarations or drawing options, but there is also a
+global declaration
+\begin{quote}
+`\gmlpenscale{`\meta{pen diameter}`}`
+\end{quote}
+which is in effect for all following `gmlfigure`s and `gmlgraph`s
+inside the current `gmlfile`.  The pen diameter is usually a number
+(in `bp`, if not specified otherwise), but it may be any \MP\
+expression which evaluates to a number.
+
+\DescribeMacro{\gmlpencolor} Similarly, the default drawing color may
+be specified by `\gmlpencolor`, which has four possible forms:
+\begin{quote}
+`\gmlpencolor{`\meta{R-value}`,`\meta{G-value}`,`\meta{B-value}`}`\\
+`\gmlpencolor{`\meta{color expression}`}`\\
+`\gmlpencolor{"rrr ggg bbb"}`\\
+`\gmlpencolor{"RRGGBB"}`
+\end{quote}
+where the \meta{R-value} etc.\ are numbers between 0 and 1 which make
+up a RGB tripel.  In the second form, \meta{color expression} is
+a \MP\ color expression, allowing for named colors like
+\begin{quote}
+`\gmlpencolor{blue}`
+\end{quote}
+The string `"rrr ggg bbb"` consists of three-digit RGB values between
+0 and 255, separated by single blanks.  Finally, `"RRGGBB"` stands for
+a string of six hexadecimal digits.  Thus, the color
+\textcolor{chartreuse}{`chartreuse`} may be defined as the current
+drawing color by one of these four equivalent commands:
+\begin{quote}
+`\gmlpencolor{0.5, 1, 0}`\\
+`\gmlpencolor{0.5red + green}`\\
+`\gmlpencolor{"127 255 000}`\\
+`\gmlpencolor{"7FFF00"}`
+\end{quote}
+
+
+\subsection{Defining new colors}
+Internally, \GML\ deals with colors by the usual RGB model: each color
+is represented by a tripel of numbers between 0 and 1.  The three
+components represent the red, green, and blue saturation,
+respectively.  Black is represented by `(0,0,0)`, white by `(1,1,1)`.
+Eight basic colors are predefined as variables:
+\begin{quote}
+  `black`, `white`,
+  \Red{`red`}, \Green{`green`}, \Blue{`blue`}, 
+  \Cyan{`cyan`}, \Magenta{`magenta`}, \Yellow{`yellow`}
+\end{quote}
+\DescribeMacro{\gmlcolor} Additional named colors can be defined by
+the `\gmlcolor` declaration.  The syntax is analogous to
+`\gmlpencolor`:
+\begin{quote}
+`\gmlcolor{`\meta{color name}`}{`\meta{R-value}`,`\meta{G-value}%
+`,`\meta{B-value}`}`\\
+`\gmlcolor{`\meta{color name}`}{`\meta{color expression}`}`\\
+`\gmlcolor{`\meta{color name}`}{"rrr ggg bbb"}`\\
+`\gmlcolor{`\meta{color name}`}{"RRGGBB"}`
+\end{quote}
+After a color has been defined, it may be used as the default drawing
+color 
+\begin{quote}
+`\gmlcolor{chartreuse}{0.5, 1, 0}`\\
+`\gmlpencolor{chartreuse}`
+\end{quote}
+or, within a `gmlgraph` or `gmlfigure`, it can be used wherever a
+color is appropriate:
+\begin{quote}
+`\begin{gmlfigure}`\\
+`  fill fullcircle scaled 5mm withcolor chartreuse;`\\
+`\end{gmlfigure}`
+\end{quote}
+\begin{center}
+\gmlcolor{chartreuse}{0.5, 1, 0}
+\begin{gmlfigure}
+  fill fullcircle scaled 5mm withcolor chartreuse;
+\end{gmlfigure}
+\end{center}
+
+
+\subsection{Color databases}
+\GML\ comes with two files containing predefined colors:
+`gmlcolors.tex` and `gmlextracolors.tex`.  These files can be found in
+\texttt{src/gamelan} (or in the corresponding \texttt{build} directory
+for the SVN version). They contain a collection
+of `\gmlcolor` commands, based on the `rgb.txt` color list which is
+distributed as part of the X Window system.  The color definitions may
+be copied into the document, or one may simply include them
+\begin{quote}
+`\input gmlcolors`\\
+`\input gmlextracolors`
+\end{quote}
+Note that these files need to be copied to your current directory, or
+must be present in a known \LaTeX\ path.
+
+
+\subsection{Expanded macros in \GML\ code}
+\DescribeMacro{\gml} The environments discussed so far have one
+particular feature: \LaTeX\ control sequences inside the \GML\ code are
+not expanded when the main document is formatted.  Usually, this is as
+desired, since \LaTeX\ code in embedded labels should not be
+interpreted before \GML\ has called its \LaTeX\ subjob.  However, in
+some cases one would like to expand \LaTeX\ control sequences
+\emph{before} code is written to file.  This is achieved by using the
+`\gml` command.  For example, let us introduce a string in \GML\ which
+contains the current date:
+\begin{quote}
+`\gml{string date; date="Today's date: \today";}`
+\end{quote}
+Now you can write
+\begin{quote}
+`\begin{gmlcode}`\\
+`  message date;`\\
+`\end{gmlcode}`
+\end{quote}
+to display today's date online when the \GML\ job is executed.
+
+
+\subsection{Grouping}
+In \GML, all declarations are global by
+default.  The graph-drawing environments `gmlfigure` and `gmlgraph`
+allow to make enclosed declarations local, if the corresponding
+tokens occur in their optional argument:
+\begin{quote}
+`\begin{gmlfigure}[a,qqw]`\\
+`  `\meta{\GML\ code}\\
+`\end{gmlfigure}`
+\end{quote}
+Here, any macros and variable names whose first token is either `a` or
+`qqw` will be local to this enviroment.  
+
+\DescribeEnv{gmlgroup} Furthermore, there is a
+generic environment
+\begin{quote}
+`\begin{gmlgroup}`\\
+`  `\meta{\LaTeX\ and \GML\ code}\\
+`\begin{gmlgroup}`
+\end{quote}
+which generates a surrounding group for all \GML\ code generated by
+enclosed `gmlfigure`, `gmlgraph`, and `gmlcode` environments \emph{and}
+for all \LaTeX\ text embedded in these graphs.
+
+For an application, consider the `\gmlpenscale` and `\gmlpencolor`
+commands described above: They are automatically local, so if you
+write
+\begin{quote}
+`\begin{gmlgroup}`\\
+`\gmlpencolor{red}`\\
+`\begin{gmlfigure}`\\
+`  `\meta{\GML\ code}\\
+`\end{gmlfigure}`\\
+`\end{gmlgroup}`
+\end{quote}
+the current figure is drawn with a red pen.  After the closing
+`\end{gmlgroup}`, the pen color is black again (or whatever had been
+its previous value).
+
+
+\subsection{Turning \GML\ on and off}
+\DescribeMacro{\gmlon}\DescribeMacro{\gmloff} In a long document
+containing many figures, it is time-consuming to run \GML\ on the
+whole input file if only a few of its figures have been changed.
+Therefore, there are two switches
+\begin{quote}
+`\gmlon` and `\gmloff`
+\end{quote}
+which can be put anywhere inside a `gmlfile` environment.  When
+`\gmloff` is encountered, the \GML\ interpreter is told to skip all
+following `gmlfigure`s and `gmlgraph`s.  The environments `gmlcode`
+and `gmltex` are unaffected.  `\gmlon` turns the interpreter on again.
+The generated EPS files, if present, will be included in any case
+(i.e. figures that have been generated in a previous \LaTeX\ run of
+the same document will be displayed anyhow).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Drawing figures}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Numeric values and variables}
+\subsection{Numeric type}
+\GML\ has a fixed-point number system inherited from \MF and
+\MP\footnote{Note that from version 1.800 of \MP there is a
+  full-fledged floating point numeric implemented in \MP. This has
+  however not yet been implemented into \GML.}.  In this
+scheme, any number is represented as an integer multiple of $1/65536$.
+The range is limited between $-16384$ and $+16384$.  If such numbers
+are to represent physical distances on paper (measured in `bp`), this
+covers ordinary paper sizes with a high accuracy.  However, numerical
+values can represent other quantities as well.  There is no distinct
+integer type since fixed-point numbers are representable exactly.  In
+particular, in places where other programming languages accept integer
+values only --- such as for loop counters and array subscripts ---
+fractional values are allowed in \GML.
+
+Variables may consist of more than one token:
+\begin{quote}
+`numeric a, foo.bar, xx yy zz;`
+\end{quote}
+Tokens (\emph{suffixes}) may be separated by a whitespace and/or a
+single dot.  To declare arrays, use empty square brackets:
+\begin{quote}
+`numeric a[], b[][], c[]dd q[];`\\
+`a3=1; b0[-1]=2; c[3.1]dd=q0;`
+\end{quote}
+Numeric subscripts (which indicate array elements) may be arbitrarily
+mixed with other suffixes.  Subscripts may be negative or even
+fractional.  For a positive subscript the square brackets are
+optional.  (The explicit `numeric` declaration is unnecessary for
+numerical values, but is mandatory for other types.)
+
+\subsection{Equations and assignment}
+Variables of numeric type need not be declared explicitly.
+Nevertheless, an explicit declaration is possible:
+\begin{quote}
+`numeric a, b, x;`\\
+`a=4b; x=3; b=2x;`\\
+`show a,b,x;`\\
+`>> 24`\\
+`>> 6`\\
+`>> 3`
+\end{quote}
+The usual `=` sign may be used to assign variables which do not have a
+value yet.  However, as this example demonstrates, the `=` operator
+implies equality, not assignment.  If necessary, \MP\ automatically
+solves a system of linear equations among variables to determine their
+actual values.  Once this is possible, an additional equation defining
+the same variable would be either redundant or inconsistent:
+\begin{quote}
+`b=b+1; show b;`\\
+`! Inconsistent equation (off by 1).`
+\end{quote}
+To \emph{assign} a variable, i.e., to remove its previous value (if
+any), one has to either redeclare the variable, or use the `:=`
+operator:
+\begin{quote}
+`a:=a+1; show a;`\\
+`>> 25`
+\end{quote}
+The `:=` assignment will remove any previous value, while on the other
+hand an `=`
+assignment (i.e., equation) produces an error if a value is
+accidentally overwritten.  So, in most cases the use of either form is
+partly a matter of taste.  However, if one deals with point locations
+on paper, the implicit equation solver is a powerful tool to describe
+a graph in a rather concise and abstract way.
+
+The equation-solving mechanism requires 
+variables to allow for an \emph{unknown} state.  Variables of
+any type are `unknown` before their value is fully determined (and, if they
+have not been declared otherwise, they are assumed `unknown` `numeric`).  The
+same is true for array elements --- therefore, arrays never have a definite
+`size` or `length`.  
+
+This feature is useful in other places: For instance, the command which
+determines the extension of a graph in data coordinates may be given
+unknown arguments; the appropriate values will then be determined
+automatically:
+\begin{quote}
+`graphrange (#0,#0), (#10,??);`
+\end{quote}
+\DescribeMacro{??} There is one variable which is \emph{always}
+`unknown`.  This is the `??` macro (a.k.a.\ `whatever`) which has been
+used in the example above.
+
+\subsection{Fixed-point arithmetics}
+The basic arithmetic operations as well as some elementary
+transcendental functions are available (see Table~\ref{tab:arith}):
+\begin{quote}
+`show 3+4, 5.3*(2.1-3), 5/2, 6**3, sqrt 2, sind 45;`\\
+`>> 7`\\
+`>> -4.76997`\\
+`>> 2.5`\\
+`>> 216.00002`\\
+`>> 1.41422`\\
+`>> 0.7071`
+\end{quote}
+Clearly, the accuracy of calculations cannot be
+overwhelming, given the fact that $1/65536$ is the smallest unit.
+For the applications \MP\ has originally been designed for, this is
+sufficient.  Unfortunately, for the purpose of data handling, it is
+not.  Therefore, floating numbers have been introduced in the \GML\
+package (see below).
+
+\subsection{Units}
+To describe distances on paper, a number of constants are
+predefined\footnote{To be exact, they are just ordinary variables, but
+it is not a good idea to change their values.  Any named variable may
+serve as a distance unit.}.  
+\begin{quote}
+`bp  pt  in  mm  cm`
+\end{quote}
+So, knowing that a multiplication sign is optional if a number is
+immediately followed by a variable, distances may be expressed in
+standard notation:
+\begin{quote}
+`show 2cm, 1.4mm, 1in;`\\
+`>> 56.6929`\\
+`>> 3.96848`\\
+`>> 72`
+\end{quote}
+The default unit is `1bp`, equal to $1/72$ of an inch.
+
+\subsection{Floating-point numbers}
+The range and accuracy of fixed-point numbers is limited.  However, at
+least the first limitation may be circumvented by doing calculations
+with logarithms instead.  This is the approach introduced in John
+Hobby's `graph.mp` macro package which has been followed by \GML.
+
+Consequently, in \GML floating numbers do not make up a distinct type, 
+but they are \emph{emulated} in this way 
+on top of fixed-point numerics\footnote{A 
+better solution would be to introduce floating-point numerics in the C
+sources of \MP\ itself.  This, however, has not (yet?) been done.}.
+In \GML\ code, a floating-point number is indicated by a preceding
+hashmark:
+\begin{quote}
+`numeric a,b,c,d;`\\
+`a = #3;  b = #.0000005;  c = #6.023e23;`\\
+`showfloat a,b,c;`\\
+`>> "3.00000026E+00"`\\
+`>> "5.00000047E-07"`\\
+`>> "6.02300063E+23"`
+\end{quote}
+\DescribeMacro{showfloat} The output representation of
+a floating-point number is a string.  They are also input as strings
+(otherwise, \MP\ would not be able to parse scientific notation such
+as `#6.023e23`).  Fortunately, you do not have to type quotation marks
+here: A preprocessor will insert them for you.  The `#` sign is mandatory,
+however.
+
+\DescribeMacro{\#} The operator which transforms a fixed-point number
+into a floating-point one is the same `#` sign:
+\begin{quote}
+`numeric a,b;  a = 3;  b = #a;`\\
+`show a;  showfloat b;`\\
+`>> 3`\\
+`>> "3.00000026E+00" )`
+\end{quote}
+\DescribeMacro{\$} \DescribeMacro{\$\#\$} The reverse transformation
+into a number or a string is done by `#$` resp.\ `$#$`.  These two are
+seldom needed.  `$#$` is the operation applied by `showfloat`.  Note
+that `#$` may overflow, because there are floating-point numbers which
+are not representable in the fixed-point system.
+
+Floating-point numbers are distinguishable from fixed-point ones by
+context only.  Therefore, overloading or arithmetic operators is not
+possible, and a completely 
+distinct system of arithmetic operations had to be defined for them.
+The interpreter can't help if the two systems are unintentionally
+mixed.  However, this is not critical as long as three rules are
+obeyed:
+\begin{enumerate}
+\item Every floating-point constant appearing in \GML\ code must be
+preceded by a `#` sign.
+\item For integer/fixed-point numbers and variables use the ordinary
+operators `+`, `-`, `*`, `/`, etc.  For floating-point numbers write
+full operator names instead: `plus`, `minus`, `times`, `over` etc.
+\item For debugging, use `show` to display fixed-point numbers, and
+`showfloat` for floating-point numbers.
+\end{enumerate}
+The necessity of writing long operator names makes calculational code
+less readable.  However, \GML\ should not be used for complicated
+calculations anyway\footnote{Because they are inefficient and
+imprecise.  Nevertheless, anything is possible in principle.}.  The
+complete list of operators is found in Tab.\ref{tab:arith}.
+
+Needless to say, automatically solving linear equations is not
+implemented for floating-point numbers.  If you try it, the result will
+be just garbage.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Other types}
+\subsection{Pair type}
+Two numeric values may be grouped into a pair:
+\begin{quote}
+`pair a; a=(3,2*5);`
+\end{quote}
+Variables of type `pair` must be declared before an assignment can be made.
+Pair arrays can be defined as for numerics (or any other type):
+\begin{quote}
+`pair b[]x[];  b3x[-.22] = 33;`
+\end{quote}
+Locations on paper are described by fixed-point pair values:
+\begin{quote}
+`draw (0,0)--(10cm,5cm);`
+\end{quote}
+To access the components of a pair value, say `p`, use the `xpart` and
+`ypart` operators:
+\begin{quote}
+`pair p; p=(3,2);`\\
+`show xpart p, ypart p;`\\
+`>> 3`\\
+`>> 2`
+\end{quote}
+
+Pair values can mathematically be treated as vectors.  There is scalar
+multiplication and division (with the `*` optional in unambiguous
+cases), addition and subtraction, and a dot product:
+\begin{quote}
+`show 3(2,1), (4,6)/2, (2,1)+(1,-1), (2,1) dotprod (1,-1);`\\
+`>> (6,3)`\\
+`>> (2,3)`\\
+`>> (3,0)`\\
+`>> 1`
+\end{quote}
+The square bracket notation describes a
+location like \emph{one-third on the straight line from `(2,1)` to
+`(1,0)`}:
+\begin{quote}
+`show 1/3[(2,1), (1,0)];`\\
+`>> (1.66667,0.66667)`
+\end{quote}
+Square brackets are also used for selecting array elements.
+However, since the dimensions in a multi-dimensional array are
+\emph{not} separated by commas (instead of `a[3,2]`, you must write
+`a[3][2]` or `a3 2`), there is no ambiguity here.
+
+The arithmetic operations described above are defined for fixed-point
+pairs only.  Floating-point pairs are useful, nevertheless; they represent
+data values: 
+\begin{quote}
+`draw plot((#0,#0), (#10,#5));`
+\end{quote}
+For floating-point pairs vector operations are not implemented:
+calculations must be done on the $x$ and $y$ components separately.
+
+\subsection{Path type}
+An ordered set of points (i.e., pair values) defines a path.  In order
+for \GML\ to know whether line segment are straight, joined smoothly,
+or otherwise, a connection method has to be specified.  For instance,
+one can define a path consisting of straight line segments
+\begin{quote}
+`path p; p = (0,0)--(10,5)--(4,6);`
+\end{quote}
+or B\'ezier curves (cubic splines)
+\begin{quote}
+`path p; p = (0,0)..(10,5)..(4,6);`
+\end{quote}
+The connection is defined by the two-character tokens `--`
+and `..`, respectively.  These connectors can be mixed:
+\begin{quote}
+`path p; p = (0,0)..(10,5)--(4,6);`
+\end{quote}
+Furthermore, we should mention how to declare cyclic paths
+\begin{quote}
+`path q; q = (0,0)--(10,5)--(4,6)--cycle;`
+\end{quote}
+and how to extract the path length and to select a point within a path
+\begin{quote}
+`show length p,  point 1 of p,  point 1.5 of p;`\\
+`>> 2`\\
+`>> (10,5)`\\
+`>> (7,5.50002)`
+\end{quote}
+Point indices count beginning from zero, and they need not be
+integer.  For cyclic paths, they are cyclic, so negative values count
+from the end:
+\begin{quote}
+`show length q,  point -1 of q;`\\
+`>> 3`\\
+`>> (4,6)`
+\end{quote}
+A subpath is selected as follows:
+\begin{quote}
+`tracingonline:=1; show subpath (0, 1.5) of p;`\\
+`>> Path at line 0:`\\
+`(0,0)..controls (3.33333,1.66667) and (6.66667,3.33333)`\\
+` ..(10,5)..controls (9,5.16667) and (8,5.33334)`\\
+` ..(7,5.50002)`
+\end{quote}
+Setting `tracingonline:=1` allows paths to be displayed on screen
+(otherwise, the `show` command would write them to the logfile only).
+Here, the points are listed together with (invisible) B\'ezier
+control points which internally define the path shape.  There are many
+ways to access these explicitly, and to get finer control on the path
+shape; see the \MP\ and \MF\ manuals.
+
+\subsection{Predefined paths}
+The collection of predefined paths is helpful for designing figures and
+symbols.  There are general macros for polygons, star-shaped
+paths, and crosses:
+\begin{quote}
+`polygon` \meta{n},  `polygram` \meta{n}, and `polycross` \meta{n}
+\end{quote}
+where \meta{n} is an integer which specifies the number of edges.  A
+couple of special cases are named
+\begin{quote}
+`triagon` (= `triangle`), `tetragon` (= `diamond`), `pentagon`, `hexagon`\\
+`triagram`, `tetragram`, `pentagram`, `hexagram`\\
+`triacross`, `tetracross` (= `cross`), `pentacross`, `hexacross`
+\end{quote}
+Here, `triagon` is equivalent to `polygon 3`, `tetragon` means
+`polygon 4`, and so on.  Finally, there are the obvious ones
+\begin{quote}
+`circle` and `square`
+\end{quote}
+where a `circle` consists of eight points connected by B\'ezier curves.
+These paths are shown in Table~\ref{tab:paths}.  Transformations
+(e.g., `scaled`, `xscaled`, `yscaled`, `rotated`) and path operations
+turn them into more general path shapes\footnote{For generic oval
+shapes, consider the \texttt{superellipse} command described in the
+\MP\ and \MF\ manuals.}.
+
+\subsection{Pen type}
+\DescribeMacro{penscale} By default, a virtual circular pen
+of diameter `0.5bp` is used for drawing lines.  This can be changed by a
+declaration
+\begin{quote}
+`penscale` \meta{pen-diameter}`;`
+\end{quote}
+\DescribeMacro{withpenscale}
+to any value.  This declaration is local to the current figure.  To
+affect the the current line only, append an option to the
+corresponding drawing command:
+\begin{quote}
+`draw` \meta{object} `withpenscale` \meta{pen-diameter}`;`
+\end{quote}
+\DescribeMacro{withpen}
+However, one can change not only the width, but also the \emph{shape}
+of the virtual pen.  See this example:
+\begin{quote}
+`path p; p=(0,0){right}..(2cm,0.5cm)..(0,1cm)..{right}(2cm,1.5cm);`\\
+`penscale 5mm;`\\
+`draw p;`\\
+`draw p shifted (3cm,0) withpen penrazor scaled 5mm;`\\
+`draw p shifted (6cm,0) withpen penrazor rotated 45 scaled 5mm;`\\
+`draw p shifted (9cm,0) withlinecap butt;`
+\end{quote}
+\begin{center}
+\begin{gmlfigure}
+path p; p=(0,0){right}..(2cm,0.5cm)..(0,1cm)..{right}(2cm,1.5cm);
+penscale 5mm;
+draw p;
+draw p shifted (3cm,0) withpen penrazor scaled 5mm;
+draw p shifted (6cm,0) withpen penrazor rotated 45 scaled 5mm;
+draw p shifted (9cm,0) withlinecap butt;
+\end{gmlfigure}
+\end{center}
+The same path is drawn in four different ways:  First, using a thick,
+but otherwise ordinary, pen.  For the next two images we have used a
+flat pen in two different orientations.  (Note
+that the global `penscale` declaration applies only to the default pen.)
+
+\DescribeMacro{pickup} A global change of pen shape and size is
+achieved by a `pickup` command, which is in effect for the rest of the
+current figure.  The following two commands are equivalent:
+\begin{quote}
+`penscale 5mm;`\\
+`pickup pencircle scale 5mm;`
+\end{quote}
+
+\DescribeMacro{withlinecap} In the last image the virtual pen is
+circular again, but the line ends are cut off by a `withlinecap`
+option.  To enforce this globally, set the `linecap` parameter
+explicitly: `linecap:=butt;` Alternatives are `butt`, `rounded`
+(default), and `squared`.
+
+In fact, a pen is a type of variable which can be generated from any
+closed path.  Let us draw the path again, now using a triangular pen:
+\begin{quote}
+`pen tripen; tripen=makepen(triagon);`\\
+`draw p withpen tripen scaled 5mm;`
+\end{quote}
+\begin{center}
+\begin{gmlfigure}
+pen tripen; tripen=makepen(triagon);
+draw p withpen tripen scaled 5mm;
+\end{gmlfigure}
+\end{center}
+\DescribeMacro{withlinejoin} Finally, the appeareance of sharp edges
+is controlled by the `linejoin` parameter (globally) or the
+`withlinejoin` option (locally):
+\begin{quote}
+`path p; p=(0,0)--(2cm,0.5cm)--(0,1cm);`\\
+`penscale 5mm;`\\
+`draw p withlinejoin mitered;`\\
+`draw p shifted (4cm,0) withlinejoin rounded;`\\
+`draw p shifted (8cm,0) withlinejoin beveled;`
+\end{quote}
+\begin{center}
+\begin{gmlfigure}
+path p; p=(0,0)--(2cm,0.5cm)--(0,1cm);
+penscale 5mm;
+draw p withlinejoin mitered;
+draw p shifted (4cm,0) withlinejoin rounded;
+draw p shifted (8cm,0) withlinejoin beveled;
+\end{gmlfigure}
+\end{center}
+
+
+\subsection{Color type}
+Colors are defined as RGB tripels.  Internally, they are treated
+completely analogous to pair values, and they can be understood as
+points in a three-dimensional space.  Operations that work on pair
+values also apply to colors, including addition, scalar
+multiplication, and even linear interpolation:
+\begin{quote}
+`show red, .5red, red+blue, .5[red,white];`\\
+`>> (1,0,0)`\\
+`>> (0.5,0,0)`\\
+`>> (1,0,1)`\\
+`>> (1,0.5,0.5)`
+\end{quote}
+When rendering colors, negative components are mapped to $0$, and
+component values greater than $1$ are mapped back to $1$.
+
+Color variables are easily defined:
+\begin{quote}
+`color c;  c=(.5,.1,.9);`
+\end{quote}
+\DescribeMacro{withcolor}
+The three components of a color value or variable, say `p`, are
+accessed by
+\begin{quote}
+`redpart p`, `greenpart p`, and `bluepart p`
+\end{quote}
+
+The `withcolor` drawing option allows for any color expression as argument.
+Here, we take a predefined color:
+\begin{quote}
+`fill square scaled 5mm withcolor red;`\\
+`draw square scaled 8mm withpenscale 2 withcolor blue;`
+\end{quote}
+\begin{center}
+\begin{gmlfigure}
+fill square scaled 5mm withcolor red;
+draw square scaled 8mm withpenscale 2 withcolor blue;
+\end{gmlfigure}
+\end{center}
+The predefined colors, as well as the \LaTeX\ interface to \GML\
+colors, have been introduced above in Sec.~\ref{latex-misc}.
+
+
+\subsection{Picture type}
+\DescribeMacro{image} Multiple graph elements can be collected into
+pictures, which by themselves can be stored in variables.
+The `image` macro is a wrapper for defining pictures:
+\begin{quote}
+`path p; p = square scaled 1cm;`\\
+`picture q; q = image(draw p; draw p rotated 45);`
+\end{quote}
+The result may be integrated into the final figure (which,
+incidentally, is a picture variable by itself, called `currentpicture`) by
+another `draw` command:
+\begin{quote}
+`draw q;`
+\end{quote}
+\begin{center}
+\begin{gmlfigure}[a,p,q]
+path p; p = square scaled 1cm;
+picture q; q = image(draw p; draw p rotated 45);
+draw q;
+\end{gmlfigure}
+\end{center}
+\DescribeMacro{nullpicture} Operations that can be done with pictures
+include assignment and junction.  \DescribeMacro{addto} The last line
+in the previous example is equivalent to
+\begin{quote}
+`picture q;  q = nullpicture;`\\
+`addto q also p;  addto q also p rotated 45;`
+\end{quote}
+Transformations such as `rotated` will be discussed below.
+
+
+\subsection{Transform type}
+\GML\ is well prepared to apply affine transformations to any
+graphical object: pairs, paths, and pictures.  These include shifts,
+reflections, rotations, rescalings, and more.
+They may be concatenated:
+\begin{quote}
+`draw circle scaled 3mm;`\\
+`draw circle scaled 5mm shifted (2cm,0);`\\
+`draw square rotated 45;`\\
+`picture p;`\\
+`p=triangle scaled 5mm reflectedabout ((-1,0)--(1,0));`
+\end{quote}
+As a rule, in a drawing command transforms come before any drawing
+options (such as `withcolor`, etc.) since they modify the object
+\emph{before} it is being drawn.  If they are concatenated, they are
+applied from left to right.
+
+Transforms may be stored in variables:
+\begin{quote}
+`transform t; t=identity rotated 45 xscaled 2 yscaled 4;`\\
+`draw q transformed t;`
+\end{quote}
+Here, the trivial transform `identity` serves as a starting point for
+defining the transform variable.  Of course, another transform may act
+on `t` afterwards, and one could apply additional transformations in
+the drawing command.
+
+
+\subsection{String type}
+Strings are not very important in \GML.  Nevertheless, they are
+available, and some operations can be done with them:
+\begin{quote}
+`string s,t,u;  s = "foo";  t = "bar"`\\
+`u := s&t;`\\
+`show u, length u, substring(1,4) of u;`\\
+`>> "foobar"`\\
+`>> 6`\\
+`>> "oob"`
+\end{quote}
+As for paths, indices count beginning with zero.  Think of the
+characters as corresponding to line segments, so substring indices
+correspond to the points in between.
+
+Strings may be used to display messages:
+\begin{quote}
+`message "Hello, world!"`
+\end{quote}
+More important, however, is their use as graph labels
+\begin{quote}
+`label("foobar", (5cm,2cm));`
+\end{quote}
+They are typeset in a particular font `defaultfont` (a string
+variable), which is set to `"cmr10"`, `"cmr11"`, or `"cmr12"`,
+depending on the default font of the enclosing \LaTeX\ document.
+
+\subsection{\LaTeX\ strings}
+\DescribeMacro{<<} \DescribeMacro{>>} The form of labels that can
+be directly represented as strings is very limited, even if the
+character set is extended by additional symbols (such as greek
+letters, square root sign, etc.)  Fortunately, \GML\ has the full
+power of \LaTeX\ at hand: Any text which is enclosed by 
+`<<` and `>>` signs  is processed by \LaTeX\ and transformed into a `picture`
+expression, before \GML\ comes to see it.  
+So, \LaTeX\ labels can be assigned to a picture variable, or directly
+be integrated into the figure.  See this example:
+\begin{quote}
+`picture p;  p = <<$E = mc^2$>>;`\\
+`for x=0 step 1/12 until 1:`\\
+`  draw p colored ((1-x)*white) shifted ((4x, x**2)*5mm);`\\
+`endfor`
+\end{quote}
+\begin{center}
+\begin{gmlfigure}
+picture p;  p = <<$E = mc^2$>>;
+for x=0 step 1/12 until 1:
+  draw p colored ((1-x)*white) shifted ((4x, x**2)*5mm);
+endfor
+\end{gmlfigure}
+\end{center}
+The \LaTeX\ code is translated by a subprocess of \GML, which acts
+as a preprocessor on the input file.  To pass declarations, packages,
+and definitions to this subprocess, use the `gmltex` and `gmlpreamble`
+environments described in the previous chapter.
+\DescribeMacro{<<!} Alternatively, \LaTeX\ code which does not
+produce output may be inserted into the \GML\ text, wrapped into the
+brackets `<<!` and `>>`.
+
+
+\subsection{Boolean type}
+There are two boolean values
+\begin{quote}
+`false` and `true`
+\end{quote}
+and a distinct variable type `boolean` with the usual operators:
+\begin{quote}
+`boolean a,b;  a=true; b=false;`\\
+`show a or b, not a and b;`\\
+`>> true`\\
+`>> false`
+\end{quote}
+The main use of these are control structures (see below).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Drawing commands and options}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Shapes and boxes}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Control structures}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Visualizing data}
+\section{Floating-point numbers}
+\section{Files}
+\section{Functions}
+\section{Datasets}
+\section{Drawing commands for datasets}
+\section{Scanning datasets}
+
+\chapter{Graph appearance}
+\section{Scale}
+\section{Labels}
+\section{Legend}
+\section{Axes}
+\section{Frame}
+
+\end{gmlfile}
+\end{document}
+

@@ -1338,6 +1338,8 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_threshold_factorized.sin \
     ext_tests_nlo/nlo_methods_gosam.sin \
     ext_tests_nlo/nlo_jets.sin \
+    ext_tests_nlo/nlo_fks_delta_o_eejj.sin \
+    ext_tests_nlo/nlo_fks_delta_i_ppee.sin \
     ext_tests_nlo/nlo_settings.sin \
     ext_tests_nlo/nlo_eejj.sin \
     ext_tests_nlo/nlo_eejjj.sin \

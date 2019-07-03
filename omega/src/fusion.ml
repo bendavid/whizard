@@ -2251,7 +2251,7 @@ i*)
 
   end
 
-module Make = Tagged(Order_Tags)
+module Make = Tagged(No_Tags)
 
 module Binary = Make(Tuple.Binary)(Stat_Dirac)(Topology.Binary)
 module Tagged_Binary (T : Tagger) =

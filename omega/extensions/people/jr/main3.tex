@@ -1,0 +1,42 @@
+% main3.tex --
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt]{article}
+\usepackage{ocamlweb}
+\usepackage{amsmath,amssymb,thophys}
+\setlength{\parindent}{0pt}
+\usepackage{feynmp}
+\setlength{\unitlength}{1mm}
+\newcommand{\ii}{\mathrm{i}}       
+\begin{document}
+\begin{fmffile}{main3pics}
+\input{f90_WZ.implementation}
+%%%\begin{figure}
+%%%\def\F#1#2{\fmfi{dots}{.8[vloc(__v),vloc(__#1)] -- .8[vloc(__v),vloc(__#2)]}}
+%%%\def\D#1{\parbox{35mm}{%
+%%% \begin{fmfgraph}(35,35)
+%%%  \fmfleft{s}\fmfrightn{f}{4}
+%%%  \fmfbottomn{b}{4}\fmfforce{c}{v}
+%%%  \fmfv{dec.shape=circle,dec.fill=0,dec.size=.35w}{v}
+%%%  \fmfv{dec.shape=tetragram,dec.fill=1,dec.size=3thick}{f3,f4,b2,b3}
+%%%  \fmf{fermion}{f4,v,f3}
+%%%  \fmf{fermion}{f2,v,f1}
+%%%  \fmf{photon}{b2,v,b3}
+%%%  \fmffreeze #1
+%%%  \F{f1}{f2}\F{f3}{f4}\F{b2}{b3}
+%%% \end{fmfgraph}}}
+%%%\begin{multline}
+%%% \D{\fmf{dashes}{s,v}}\\
+%%% =\D{\fmfi{dashes}{%
+%%%   vloc(__s){vloc(__v)-vloc(__s)}
+%%%    .. .5[vloc(__s),vloc(__f4)] ..
+%%%    {vloc(__f4)-vloc(__v)} vloc(__f4)}}
+%%% +\cdots+\D{\fmfi{dashes}{%
+%%%   vloc(__s){vloc(__v)-vloc(__s)}
+%%%    .. .5[vloc(__s),vloc(__f4)] ..
+%%%    {vloc(__f3)-vloc(__v)} vloc(__f3)}}
+%%%\end{multline}
+%%%  \caption{\label{fig:WI}%
+%%%    Ward identities}
+%%%\end{figure}
+\end{fmffile}
+\end{document}

@@ -1,0 +1,28 @@
+\documentclass[a4paper]{article}        
+  \usepackage{thophys}
+  \usepackage[T1]{fontenc}
+  \usepackage[latin1]{inputenc}
+  \usepackage{pstricks,shadow}
+  \usepackage{graphicx,amsmath,amssymb,amscd,feynmp,emp,acronym,units}
+  \setlength{\unitlength}{1mm}
+
+\begin{document}
+
+\thispagestyle{empty}
+ \begin{equation*}
+ \parbox{26mm}{
+ \begin{pspicture}(0,0)(2.4,2)%  \psset{xunit=.8cm,yunit=.8cm}
+         \psline[linestyle=dashed](0.2,0)(1.2,1) 
+         \psline[linestyle=dashed](2.2,0)(1.2,1)
+         \psline[linestyle=dashed](1.2,1)(1.2,2)
+         \psline{->}(.6,0.8)(0,0.2)
+         \psline{->}(1.8,0.8)(2.4,0.2)
+         \psline{->}(1.5,1.9)(1.5,1.1)
+         \rput(0,0.6){$p_l$}
+         \rput(2.4,0.6){$p_r$}   
+         \rput(2.2,1.5){$p_l + p_r$}
+ \end{pspicture}}
+ \end{equation*}
+
+\end{document} 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

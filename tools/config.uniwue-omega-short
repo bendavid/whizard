@@ -1,0 +1,45 @@
+#! /bin/sh
+# $Id: config.uniwue-omega-short 6004 2014-07-09 15:46:54Z cweiss $
+########################################################################
+
+########################################################################
+# Compiler setup
+########################################################################
+export PATH=/archive/ohl/tools64/bin:$PATH
+export LD_LIBRARY_PATH=/archive/ohl/tools64/lib64:/archive/ohl/tools64/lib
+source /opt/NAG/bin/setup.724
+
+########################################################################
+# Workspace
+########################################################################
+
+BUILD_ROOT=/scratch/ohl/pmcc/sandbox
+LOG_ROOT=/scratch/ohl/pmcc/logs
+
+########################################################################
+# Project Definitions
+########################################################################
+
+MAIL_TO="ohl@physik.uni-wuerzburg.de"
+PROJECT=omega
+SVN_REPO=svn+ssh://svn.hepforge.org/hepforge/svn/whizard/trunk/src/omega
+SVN_REV=HEAD
+
+PMCC_MODE=svn
+
+########################################################################
+# Configurations To Be Tested
+########################################################################
+
+########################################################################
+#### default setups for gfortran and NAG:
+#> gfortran-default     FC=gfortran
+#> nag-default          FC=nagfor FCFLAGS="-f2003 -gline -C=all"
+
+########################################################################
+#### quadruple precision:
+#> gfortran-quad        FC=gfortran --enable-fc-quadruple
+
+########################################################################
+# The End.
+########################################################################

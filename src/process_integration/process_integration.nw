@@ -3745,7 +3745,7 @@ recorded in the [[meta]] block.  Delegate to the [[pcm]].
                  type is (pcm_nlo_t)
                     requires_spin_correlations = &
                          pcm%region_data%requires_spin_correlations ()
-                    n_emitters = pcm%region_data%n_emitters
+                    n_emitters = pcm%region_data%get_n_emitters_sc ()
                  class default
                     requires_spin_correlations = .false.
                     n_emitters = 0

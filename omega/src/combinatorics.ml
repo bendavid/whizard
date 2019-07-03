@@ -361,6 +361,14 @@ let permute_even l =
 let permute_odd l =
   filter_sign (-1) (permute_signed l)
 
+let permute_cyclic l =
+  let rec permute_cyclic' acc l1 = function
+    | [] -> List.rev acc
+    | x :: rest as l2 ->
+       permute_cyclic' ((l2 @ List.rev l1) :: acc) (x :: l1) rest
+  in
+  permute_cyclic' [] [] l
+
 (* \thocwmodulesubsection{Tensor Products of Permutations} *)
 
 let permute_tensor ll =
@@ -418,6 +426,21 @@ module Test =
 
     open OUnit
 
+    let suite_permute =
+      "permute" >:::
+	[ "cyclic []" >::
+	    (fun () -> assert_equal [] (permute_cyclic []));
+          "cyclic [1]" >::
+	    (fun () -> assert_equal [[1]] (permute_cyclic [1]));
+          "cyclic [1;2;3]" >::
+	    (fun () ->
+	      assert_equal [[1;2;3]; [2;3;1]; [3;1;2]] (permute_cyclic [1;2;3]));
+          "cyclic [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal
+                [[1;2;3;4]; [2;3;4;1]; [3;4;1;2]; [4;1;2;3]]
+                (permute_cyclic [1;2;3;4]))]
+
     let sort_signed_not_unique =
       "not unique" >::
 	(fun () ->
@@ -468,7 +491,8 @@ module Test =
 
     let suite =
       "Combinatorics" >:::
-	[suite_sort_signed]
+	[suite_permute;
+         suite_sort_signed]
 
   end
 

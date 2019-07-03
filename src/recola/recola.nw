@@ -2179,7 +2179,7 @@ The NLO flag is true only for virtual matrix elements.
 <<prc recola: procedures>>=
   subroutine recola_def_init (object, basename, model_name, &
        prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
-       correction_type)
+       correction_type, restrictions)
     class(recola_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
@@ -2187,6 +2187,7 @@ The NLO flag is true only for virtual matrix elements.
     integer, intent(in) :: alpha_power
     integer, intent(in) :: alphas_power
     type(string_t), intent(in) :: correction_type
+    type(string_t), intent(in), optional :: restrictions
     if (debug_on) call msg_debug (D_ME_METHODS, "recola_def_init: " &
          // char (basename) // ", nlo_type", nlo_type)
     object%basename = basename
@@ -2225,7 +2226,7 @@ The NLO flag is true only for virtual matrix elements.
     end select
     select type (writer => object%writer)
     class is (recola_writer_t)
-       call writer%init (model_name, prt_in, prt_out)
+       call writer%init (model_name, prt_in, prt_out, restrictions)
        call writer%set_id (basename // object%suffix)
        call writer%set_order (object%order)
        call writer%set_coupling_powers (object%alpha_power, object%alphas_power)

@@ -129,6 +129,68 @@ module Small_Rational : Rational =
         invalid_arg "Algebra.Small_Rational.to_integer"
   end
 
+module Q = Small_Rational
+
+(* \thocwmodulesection{Rational Complex Numbers} *)
+
+module type QComplex =
+  sig
+
+    type q
+    type t
+
+    val make : q -> q -> t 
+    val null : t
+    val one : t
+
+    val real : t -> q
+    val imag : t -> q
+
+    val conj : t -> t
+    val neg : t -> t
+
+    val add : t -> t -> t
+    val sub : t -> t -> t
+    val mul : t -> t -> t
+
+  end
+
+module QComplex (Q : Rational) : QComplex with type q = Q.t =
+  struct
+
+    type q = Q.t
+    type t = { re : q; im : q }
+
+    let make re im = { re; im }
+    let null = { re = Q.null; im = Q.null }
+    let one = { re = Q.unit; im = Q.null }
+
+    let real z = z.re
+    let imag z = z.im
+    let conj z = { re = z.re; im = Q.neg z.im }
+
+    let neg z = { re = Q.neg z.re; im = Q.neg z.im }
+    let add z1 z2 = { re = Q.add z1.re z2.re; im = Q.add z1.im z2.im }
+    let sub z1 z2 = { re = Q.sub z1.re z2.re; im = Q.sub z1.im z2.im }
+
+(* Save one multiplication with respect to the standard formula
+   \begin{equation}
+     (x+iy)(u+iv) = \lbrack xu-yv\rbrack + i\lbrack(x+u)(y+v)-xu-yv\rbrack\,
+   \end{equation}
+   at the expense of one addition and two subtractions. *)
+
+    let mul z1 z2 =
+      let re12 = Q.mul z1.re z2.re
+      and im12 = Q.mul z1.im z2.im in
+      { re = Q.sub re12 im12;
+        im = Q.sub
+               (Q.sub (Q.mul (Q.add z1.re z1.im) (Q.add z2.re z2.im)) re12)
+               im12 }
+
+  end
+
+module QC = QComplex(Q)
+
 (* \thocwmodulesection{Expressions: Terms, Rings and Linear Combinations} *)
 
 (* The tensor algebra will be spanned by an abelian monoid: *)

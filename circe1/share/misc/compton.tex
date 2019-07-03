@@ -1,0 +1,96 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{emp}
+\setlength{\unitlength}{1mm}
+\begin{document}
+\begin{empfile}
+\begin{figure}
+  \begin{center}
+    \begin{emp}(80,60)
+      pair c; c = (.5w,.5h);
+      path k[], p[], a[], b[];
+      p1 = (0,.5h) -- c; p2 = c -- (.4w,h); p0 = c -- (w,.5h);
+      k1 = (w,.7h) -- c; k2 = c -- (w,.2h);
+      pickup pencircle scaled .5pt;
+      draw (0,.5h)--(w,.5h);
+      % a1 = (point .7 of p0){up} .. {direction .5 of k1 rotated 270}(point .3 of k1);
+      % a2 = (point .7 of p0){down} .. {direction .5 of k2 rotated 270}(point .6 of k2);
+      b1 = fullcircle rotated 180 scaled .6w shifted c;
+      b2 = fullcircle rotated 180 scaled .7w shifted c;
+      a1 = subpath (xpart (b1 intersectiontimes k1), xpart (b1 intersectiontimes p0)) of b1;
+      a2 = subpath (xpart (b2 intersectiontimes k2), xpart (b2 intersectiontimes p0)) of b2;
+      draw a1; label.rt (btex $\alpha_0$ etex, point (.5length a1) of a1);
+      draw a2; label.lft (btex $\theta$ etex, point (.5length a2) of a2);
+      pickup pencircle scaled 1.5pt;
+      drawarrow subpath (0,.9) of p1; label.top (btex $p$ etex, point .5 of p1);
+      drawarrow subpath (0,.9) of k1; label.top (btex $k$ etex, point .5 of k1);
+      drawarrow subpath (.1,1) of p2; label.lft (btex $p'$ etex, point .5 of p2);
+      drawarrow subpath (.1,1) of k2; label.bot (btex $k'$ etex, point .5 of k2);
+    \end{emp}
+  \end{center}
+  \caption{\label{sec:kinematics}%
+    Kinematics.}
+\end{figure}
+\begin{subequations}
+\begin{align}
+  k &= (\omega_0; -\omega_0\sin\alpha_0, 0, -\omega_0\cos\alpha_0) \\
+  k' &= (\omega; -\omega\sin\theta, 0, \omega\cos\theta) \\
+  p &= (E; 0, 0, \sqrt{E^2-m_e^2})
+\end{align}
+\end{subequations}
+The kinematics is a little bit hairier than usual,
+because~$\alpha_0\not=0$.  One approach is to boost to the center of
+mass system and back, but it's far easier to use the invariants:
+\begin{subequations}
+\begin{align}
+  s &= (k+p)^2 = m_e^2 + 2\omega_0(E+\sqrt{E^2-m^2}\cos\alpha_0) \\
+  t &= (k'-k)^2 = - 2\omega_0\omega(1+\cos(\alpha_0+\theta)) \\
+  u &= (k'-p)^2 = m_e^2 - 2\omega(E-\sqrt{E^2-m^2}\cos\theta)
+\end{align}
+\end{subequations}
+and the Mandelstam relation
+\begin{equation}
+  s + t + u = 2m_e^2
+\end{equation}
+Then
+\begin{equation}
+ \omega =
+   \frac{\omega_0(E+\sqrt{E^2-m_e^2}\cos\alpha_0)}
+        {E-\sqrt{E^2-m_e^2}\cos\theta+\omega_0(1+\cos(\alpha_0+\theta))}
+\end{equation}
+Expand
+\begin{subequations}
+\begin{align}
+  \cos\theta &= 1 - \frac{1}{2}\theta^2 + O(\theta^4) \\
+  \cos(\alpha_0+\theta) &=
+    \left(1 - \frac{1}{2}\theta^2\right)\cos\alpha_0 - \theta\sin\alpha_0
+       + O(\theta^3) \\
+  \sqrt{E^2-m_e^2} &= E - \frac{m_e^2}{2E} + O(m_e^4)
+\end{align}
+\end{subequations}
+Also
+\begin{equation}
+  \cos\alpha_0 = 2\cos^2\left(\frac{\alpha_0}{2}\right) - 1
+\end{equation}
+and we define
+\begin{equation}
+  \cos^2\left(\frac{\alpha_0}{2}\right) = \frac{xm_e^2}{4E\omega_0}
+\end{equation}
+Then
+\begin{equation}
+ \omega = \frac{xE}{1 + x + \frac{E^2}{m^2}\theta^2}
+\end{equation}
+or
+\begin{equation}
+ \omega = \frac{xE}{1 + x} \frac{1}{1 + \left(\frac{\theta}{\theta_0}\right)^2}
+\end{equation}
+with
+\begin{equation}
+  \theta_0 = \frac{m^2}{E^2}(1+x)
+\end{equation}
+
+\end{empfile}
+\end{document}
+
+
+

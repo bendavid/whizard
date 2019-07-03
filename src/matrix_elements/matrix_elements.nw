@@ -615,7 +615,8 @@ use the process ID, and the feature name.
   end interface
 
   abstract interface
-     subroutine write_code_os (writer, unit, id, os_data, verbose, testflag)
+     subroutine write_code_os &
+          (writer, unit, id, os_data, verbose, testflag)
        import
        class(prc_writer_t), intent(in) :: writer
        integer, intent(in) :: unit
@@ -3351,7 +3352,8 @@ NOTE: temporarily made public.
     string = "test_1"
   end function test_writer_1_type_name
 
-  subroutine test_writer_1_mk (writer, unit, id, os_data, verbose, testflag)
+  subroutine test_writer_1_mk &
+       (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_1_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -3498,7 +3500,8 @@ lines.  Since all procedures are NOPASS, we can reuse two of the TBP.
     string = "test_2"
   end function test_writer_2_type_name
 
-  subroutine test_writer_2_mk (writer, unit, id, os_data, verbose, testflag)
+  subroutine test_writer_2_mk &
+       (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_2_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -3825,7 +3828,8 @@ We will reuse this later, therefore public.
     name = "tpr_" // id
   end function test_writer_4_get_module_name
 
-  subroutine test_writer_4_mk (writer, unit, id, os_data, verbose, testflag)
+  subroutine test_writer_4_mk &
+       (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_4_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -4197,7 +4201,8 @@ so no wrapper is needed.
     string = "test_5"
   end function test_writer_5_type_name
 
-  subroutine test_writer_5_mk (writer, unit, id, os_data, verbose, testflag)
+  subroutine test_writer_5_mk &
+       (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_5_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -4572,7 +4577,8 @@ Makefile writer.
     string = "test_6"
   end function test_writer_6_type_name
 
-  subroutine test_writer_6_mk (writer, unit, id, os_data, verbose, testflag)
+  subroutine test_writer_6_mk &
+       (writer, unit, id, os_data, verbose, testflag)
     class(test_writer_6_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id

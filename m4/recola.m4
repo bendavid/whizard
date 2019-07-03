@@ -31,7 +31,7 @@ if test "$enable_recola" = "yes"; then
      wo_recola_includes="-I${recola_libdir}/../include"
      wo_recola_version=""
      save_LIBS="$LIBS"
-     LIBS="${LIBS} ${wo_recola_libdir} -lrecola -lcollier ${wo_recola_includes}"
+     LIBS="${LIBS} ${wo_recola_ldflags} -lrecola -lcollier ${wo_recola_includes}"
      AC_LINK_IFELSE([dnl
         AC_LANG_PROGRAM([],[[
                 use recola

@@ -42,6 +42,9 @@ module It (M : Model.T) =
     let impossible s =
       invalid_arg ("Colorize.It()." ^ s ^ " can't happen! (but just did ...)")
 
+    let mismatch s =
+      invalid_arg ("Colorize.It()." ^ s ^ " mismatch of representations!")
+
     let su0 s =
       invalid_arg ("Colorize.It()." ^ s ^ ": found SU(0)!")
 
@@ -169,8 +172,6 @@ module It (M : Model.T) =
 
     let parameters = M.parameters
 
-    module ISet = Set.Make (struct type t = int let compare = compare end)
-
     (* We MUST NOT compute [nc] only once because [M.flavors]
        might change in a mutable [Model.Mutable] after loading
        a new model file! *)
@@ -181,10 +182,10 @@ module It (M : Model.T) =
           (fun nc_set f ->
             match M.color f with
             | C.Singlet -> nc_set
-            | C.SUN nc -> ISet.add (abs nc) nc_set
-            | C.AdjSUN nc -> ISet.add (abs nc) nc_set)
-          ISet.empty (M.flavors ()) in
-      match ISet.elements nc_set with
+            | C.SUN nc -> Sets.Int.add (abs nc) nc_set
+            | C.AdjSUN nc -> Sets.Int.add (abs nc) nc_set)
+          Sets.Int.empty (M.flavors ()) in
+      match Sets.Int.elements nc_set with
       | [] -> 0
       | [n] -> n
       | nc_list ->
@@ -273,7 +274,25 @@ module It (M : Model.T) =
 
 (* \thocwmodulesubsection{Auxiliary functions} *)
 
+    module Q = Algebra.Q
+    module QC = Algebra.QC
+
+    let of_int n =
+      QC.make (Q.make n 1) Q.null
+
+    let integer z =
+      if Q.is_null (QC.imag z) then
+        let x = QC.real z in
+        try
+          Some (Q.to_integer x)
+        with
+        | _ -> None
+      else
+        None
+
     let mult_vertex3 x = function
+      | UFO3 (c, v, s, col) ->
+         UFO3 (QC.mul (of_int x) c, v, s, col)
       | FBF (c, fb, coup, f) ->
           FBF ((x * c), fb, coup, f) 
       | PBP (c, fb, coup, f) ->
@@ -399,7 +418,18 @@ module It (M : Model.T) =
       | Dim6_WWZ_D c ->
           Dim6_WWZ_D (x * c)
 
+    let cmult_vertex3 z = function
+      | UFO3 (c, v, s, col) ->
+         UFO3 (QC.mul z c, v, s, col)
+      | v ->
+         begin match integer z with
+         | None -> invalid_arg "cmult_vertex3"
+         | Some x -> mult_vertex3 x v
+         end
+
     let mult_vertex4 x = function
+      | UFO4 (c, v, s, col) ->
+         UFO4 (QC.mul (of_int x) c, v, s, col)
       | Scalar4 c ->
           Scalar4 (x * c) 
       | Scalar2_Vector2 c ->
@@ -499,13 +529,30 @@ module It (M : Model.T) =
       | Dim6_AHHZ_PB c -> 
           Dim6_AHHZ_PB (x * c)
 
+    let cmult_vertex4 z = function
+      | UFO4 (c, v, s, col) ->
+         UFO4 (QC.mul z c, v, s, col)
+      | v ->
+         begin match integer z with
+         | None -> invalid_arg "cmult_vertex4"
+         | Some x -> mult_vertex4 x v
+         end
+
     let mult_vertexn x = function
       | foo -> ignore (incomplete "mult_vertexn"); foo
+
+    let cmult_vertexn z = function
+      | foo -> ignore (incomplete "cmult_vertexn"); foo
 
     let mult_vertex x = function
       | V3 (v, fuse, c) -> V3 (mult_vertex3 x v, fuse, c)
       | V4 (v, fuse, c) -> V4 (mult_vertex4 x v, fuse, c)
       | Vn (v, fuse, c) -> Vn (mult_vertexn x v, fuse, c)
+
+    let cmult_vertex z = function
+      | V3 (v, fuse, c) -> V3 (cmult_vertex3 z v, fuse, c)
+      | V4 (v, fuse, c) -> V4 (cmult_vertex4 z v, fuse, c)
+      | Vn (v, fuse, c) -> Vn (cmult_vertexn z v, fuse, c)
 
 (* Below, we will need to permute Lorentz structures.  The following
    permutes the three possible contractions of four vectors.  We permute
@@ -558,6 +605,10 @@ module It (M : Model.T) =
       List.map (fun (i, c4) -> (i, permute_contract4 perm c4)) ic4_list
 
     let permute_vertex4' perm = function
+      | UFO4 (c, v, s, Color.Trivial4) ->
+          UFO4 (c, v, s, Color.Trivial4)
+      | UFO4 (c, v, s, _) ->
+         failwith "Colorize.permute_vertex4': incomplete"
       | Scalar4 c ->
           Scalar4 c
       | Vector4 ic4_list ->
@@ -677,7 +728,7 @@ module It (M : Model.T) =
      (\url{http://pauillac.inria.fr/~maranget/papers/opat/}).
    \end{dubious} *)
 
-    let colorize_fusion2 f1 f2 (f, v) =
+    let colorize_fusion2_legacy f1 f2 (f, v) =
       match M.color f with
 
       | C.Singlet ->
@@ -818,6 +869,7 @@ module It (M : Model.T) =
    \end{subequations}
    while in the color flow basis find from
    \begin{equation}
+   \label{eq:f=tr(TTT)}
      \ii f_{a_1a_2a_3}
        = \tr\left(T_{a_1}\left\lbrack T_{a_2},T_{a_3}\right\rbrack\right)
        = \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
@@ -825,6 +877,7 @@ module It (M : Model.T) =
    \end{equation}
    the decomposition
    \begin{equation}
+   \label{eq:fTTT}
        \ii f_{a_1a_2a_3} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
      = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}
      - \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_2j_1}\,.
@@ -880,28 +933,33 @@ module It (M : Model.T) =
    \end{dubious} *)
 
           | CF_io (f1, c1, c1'), CF_io (f2, c2, c2') ->
-              let sign =
+              let phase =
                 begin match v with
                 | V3 (Gauge_Gauge_Gauge _, _, _)
                 | V3 (I_Gauge_Gauge_Gauge _, _, _)
-                | V3 (Aux_Gauge_Gauge _, _, _) -> 1
+                | V3 (Aux_Gauge_Gauge _, _, _) -> of_int 1
                 | V3 (FBF (_, _, _, _), fuse2, _) ->
                     begin match fuse2 with
-                    | F12 ->  1 (* works, but needs theoretical underpinning *)
-                    | F21 -> -1 (* dto. *)
-                    | F31 ->  1 (* dto. *)
-                    | F32 -> -1 (* transposition of [F12] (no testcase) *)
-                    | F23 ->  1 (* transposition of [F21] (no testcase) *)
-                    | F13 -> -1 (* transposition of [F12] (no testcase) *)
+                    | F12 -> of_int   1  (* works, needs underpinning *)
+                    | F21 -> of_int (-1) (* dto. *)
+                    | F31 -> of_int   1  (* dto. *)
+                    | F32 -> of_int (-1) (* transposition of [F12] *)
+                    | F23 -> of_int   1  (* transposition of [F21] *)
+                    | F13 -> of_int (-1) (* transposition of [F12] *)
+                    end
+                | V3 (UFO3 (_, _, _, Color.Legacy3), fuse2, _) ->
+                    begin match fuse2 with
+                    | F12 | F23 | F31 -> QC.make Q.null Q.unit
+                    | F21 | F32 | F13 -> QC.make Q.null (Q.neg Q.unit)
                     end
                 | V3 _ -> incomplete "colorize_fusion2 (V3 _)"
                 | V4 _ -> impossible "colorize_fusion2 (V4 _)"
                 | Vn _ -> impossible "colorize_fusion2 (Vn _)"
                 end in
               if c1' = c2 then
-                [CF_io (f, c1, c2'), mult_vertex (-sign) v]
+                [CF_io (f, c1, c2'), cmult_vertex (QC.neg phase) v]
               else if c2' = c1 then
-                [CF_io (f, c2, c1'), mult_vertex ( sign) v]
+                [CF_io (f, c2, c1'), cmult_vertex (       phase) v]
               else
                 []
 
@@ -918,9 +976,137 @@ module It (M : Model.T) =
 
           end
 
+(* \thocwmodulesubsection{Cubic Vertices, UFO Version} *)
+
+(* In order to match the \emph{correct} positions of the fields
+   in the vertices, we have to undo the permutation effected by
+   the fusion according to [Coupling.fuse2]. *)
+
+(* Eventually, the type [Coupling.fuse2] will be retired in
+   favor of [int * int * int] or even [int list].  This is why we
+   have code that is more general than required here. *)
+
+    module PosMap =
+      Partial.Make (struct type t = int let compare = compare end)
+
+    (* Note that we obtain the inverse of the ``permutation'' [l']
+       here, e.\,g., [Permutation.Default.list [2;0;1]]
+       applied to [[1;2;3]] gives [[2;3;1]],
+       i.\,e.~the ``inverse'' of [[3;1;2]]. *)
+    let partial_map_undoing_permutation l l' =
+      let module P = Permutation.Default in
+      let p = P.of_list (List.map pred l') in
+      PosMap.of_lists l (P.list p l)
+
+    let fuse2_to_list = function
+      | F12 -> [3;1;2]
+      | F21 -> [3;2;1]
+      | F23 -> [1;2;3]
+      | F32 -> [1;3;2]
+      | F31 -> [2;3;1]
+      | F13 -> [2;1;3]
+
+    let partial_map_undoing_fuse2 fuse2 =
+      partial_map_undoing_permutation [1;2;3] (fuse2_to_list fuse2)
+
+    (* Compute the partial maps once, not everytime anew! *)
+    let undo_F12 = partial_map_undoing_fuse2 F12
+    let undo_F21 = partial_map_undoing_fuse2 F21
+    let undo_F23 = partial_map_undoing_fuse2 F23
+    let undo_F32 = partial_map_undoing_fuse2 F32
+    let undo_F31 = partial_map_undoing_fuse2 F31
+    let undo_F13 = partial_map_undoing_fuse2 F13
+
+    let undo_permutation_of_fuse2 fuse2 =
+      let fail _ = invalid_arg "permutation_of_fuse2" in
+      match fuse2 with
+      | F12 -> PosMap.apply_with_fallback fail undo_F12
+      | F21 -> PosMap.apply_with_fallback fail undo_F21
+      | F23 -> PosMap.apply_with_fallback fail undo_F23
+      | F32 -> PosMap.apply_with_fallback fail undo_F32
+      | F31 -> PosMap.apply_with_fallback fail undo_F31
+      | F13 -> PosMap.apply_with_fallback fail undo_F13
+
+    (* The same can be expressed more concisely. *)
+    let undo_permutation_of_fuse2' fuse2 =
+      let fail () = invalid_arg "permutation_of_fuse2" in
+      match fuse2 with
+      | F12 -> (function 1 -> 2 | 2 -> 3 | 3 -> 1 | _ -> fail ())
+      | F21 -> (function 1 -> 3 | 2 -> 2 | 3 -> 1 | _ -> fail ())
+      | F23 -> (function 1 -> 1 | 2 -> 2 | 3 -> 3 | _ -> fail ())
+      | F32 -> (function 1 -> 1 | 2 -> 3 | 3 -> 2 | _ -> fail ())
+      | F31 -> (function 1 -> 3 | 2 -> 1 | 3 -> 2 | _ -> fail ())
+      | F13 -> (function 1 -> 2 | 2 -> 1 | 3 -> 3 | _ -> fail ())
+
+    let pair3_to_ints = function
+      | C.P3_12 -> (1, 2)
+      | C.P3_23 -> (2, 3)
+      | C.P3_31 -> (3, 1)
+      | C.P3_21 -> (2, 1)
+      | C.P3_32 -> (3, 2)
+      | C.P3_13 -> (1, 3)
+
+    let apply_fuse2 fuse2 pair3 =
+      let p = undo_permutation_of_fuse2 fuse2
+      and i, j = pair3_to_ints pair3 in
+      (p i, p j)
+
+    let colorize_fusion2_ufo f1 f2 f c v spins color fuse xtra =
+      let open Color in
+      let v = V3 (UFO3 (c, v, spins, Trivial3), fuse, xtra) in
+      match color with
+      | Trivial3 ->
+         begin match f1, f2 with
+         | White _, White _ -> [White f, v]
+         | _ -> mismatch "colorize_fusion2 Color.Trivial3"
+         end
+      | Delta3 perm ->
+         let i, j = apply_fuse2 fuse perm in
+         begin match i, j, f1, f2 with
+         | 1, 3, White _, CF_out (_, cf)
+         | 1, 2, CF_out (_, cf), White _ ->
+            [CF_out (f, cf), v]
+         | 3, 1, White _, CF_in (_, cf)
+         | 2, 1, CF_in (_, cf), White _ ->
+            [CF_in (f, cf), v]
+         | 2, 3, CF_in (_, cf2), CF_out (_, cf1)
+         | 3, 2, CF_out (_, cf1), CF_in (_, cf2) ->
+            if cf1 = cf2 then
+              [White f, v]
+            else
+              []
+         | _ -> mismatch "colorize_fusion2 Color.Delta3"
+         end
+
+      | F ->
+         begin match f1, f2 with
+         | CF_io (f1, c1, c1'), CF_io (f2, c2, c2') ->
+            let i = QC.make Q.null Q.unit in
+            if c1' = c2 then
+              [CF_io (f, c1, c2'), cmult_vertex (QC.neg i) v]
+            else if c2' = c1 then
+              [CF_io (f, c2, c1'), cmult_vertex (       i) v]
+            else
+              []
+         | (CF_io _ | CF_aux _), (CF_io _ | CF_aux _) -> []
+         | _ -> mismatch "colorize_fusion2 Color.F"
+         end
+
+      | _ ->
+         incomplete "Colorize.colorize_fusion2_ufo"
+
+    let colorize_fusion2 f1 f2 (f, v) =
+      match v with
+      | V3 (UFO3 (_, _, _, C.Legacy3), _, _) ->
+         colorize_fusion2_legacy f1 f2 (f, v)
+      | V3 (UFO3 (c, v, spins, color), fuse, xtra) ->
+         colorize_fusion2_ufo f1 f2 f c v spins color fuse xtra
+      | V3 _ -> colorize_fusion2_legacy f1 f2 (f, v)
+      | _ -> invalid_arg "Colorize.colorize_fusion2"
+
 (* \thocwmodulesubsection{Quartic Vertices} *)
 
-    let colorize_fusion3 f1 f2 f3 (f, v) =
+    let colorize_fusion3_legacy f1 f2 f3 (f, v) =
       match M.color f with
 
       | C.Singlet ->
@@ -1260,12 +1446,14 @@ module It (M : Model.T) =
 
 (* Using
    \begin{equation}
+   \label{eq:P4}
      \mathcal{P}_4 = \left\{\{1,2,3,4\},\{1,3,4,2\},\{1,4,2,3\},
                             \{1,2,4,3\},\{1,4,3,2\},\{1,3,2,4\}\right\}
    \end{equation}
    as the set of permutations of~$\{1,2,3,4\}$ with the cyclic permutations
    factored out, we have:
    \begin{equation}
+   \label{eq:4GV}
      \parbox{28mm}{\fmfframe(2,2)(2,1){\begin{fmfgraph*}(24,24)
        \fmfsurround{d1,e1,d2,e2,d3,e3,d4,e4}
        \fmf{phantom}{v,e1}
@@ -1406,6 +1594,401 @@ module It (M : Model.T) =
               colored_vertex "colorize_fusion3"
 
           end
+
+(* \thocwmodulesubsection{Quartic Vertices, UFO Version} *)
+
+(* Using again the normalization~$\tr(T_{a}T_{b}) = \delta_{ab}$
+   with~\eqref{eq:f=tr(TTT)} and~\eqref{fTTT},
+   we find the decomposition
+   \begin{equation}
+       \ii f_{a_1a_2a_3} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
+     = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+     - \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_2j_1}
+   \end{equation}
+   and from this
+   \begin{multline}
+       f_{a_1a_2a} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}
+       f_{a_3a_4a} T_{a_3}^{i_3j_3}T_{a_4}^{i_4j_4}
+     = f_{a_1a_2a} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a}^{ij}
+       f_{a_3a_4b} T_{a_3}^{i_3j_3}T_{a_4}^{i_4j_4}T_{b}^{ji} \\
+     = - \left(   \delta^{i_1j_2}\delta^{i_2j}\delta^{ij_1}
+                - \delta^{i_1j}\delta^{ij_2}\delta^{i_2j_1}\right)
+         \left(   \delta^{i_3j_4}\delta^{i_4i}\delta^{jj_3}
+                - \delta^{i_3i}\delta^{jj_4}\delta^{i_4j_3}\right)
+%%% \\
+%%%  = - \delta^{i_1j_2}\delta^{i_2j}\delta^{ij_1}
+%%%      \delta^{i_3j_4}\delta^{i_4i}\delta^{jj_3}
+%%%    + \delta^{i_1j_2}\delta^{i_2j}\delta^{ij_1}
+%%%      \delta^{i_3i}\delta^{jj_4}\delta^{i_4j_3} \qquad\qquad\\\qquad\qquad
+%%%    + \delta^{i_1j}\delta^{ij_2}\delta^{i_2j_1}
+%%%      \delta^{i_3j_4}\delta^{i_4i}\delta^{jj_3}
+%%%    - \delta^{i_1j}\delta^{ij_2}\delta^{i_2j_1}
+%%%      \delta^{i_3i}\delta^{jj_4}\delta^{i_4j_3} \\
+     = \\
+       - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}
+       + \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_3j_1}\delta^{i_4j_3}
+       + \delta^{i_1j_3}\delta^{i_2j_1}\delta^{i_3j_4}\delta^{i_4j_2}
+       - \delta^{i_1j_4}\delta^{i_2j_1}\delta^{i_3j_2}\delta^{i_4j_3}
+%%% \\
+%%%  = - \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}
+%%%    + \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_4j_3}\delta^{i_3j_1}
+%%%    + \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_2j_1}
+%%%    - \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_3j_2}\delta^{i_2j_1} \\
+%%%  = - \delta^{i_1j_2} \left(   \delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1} 
+%%%               - \delta^{i_2j_4}\delta^{i_4j_3}\delta^{i_3j_1} \right)
+%%%    + \delta^{i_2j_1} \left(   \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}
+%%%               - \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_3j_2} \right)\\
+%%%  = - \left(   \delta^{i_4j_1}\delta^{i_1j_2}\delta^{i_2j_3}
+%%%       - \delta^{i_4j_2}\delta^{i_2j_1}\delta^{i_1j_3} \right)\delta^{i_3j_4}
+%%%    + \left(   \delta^{i_3j_1}\delta^{i_1j_2}\delta^{i_2j_4}
+%%%       - \delta^{i_3j_2}\delta^{i_2j_1}\delta^{i_1j_4} \right)\delta^{i_4j_3}
+   \end{multline} *)
+
+(*
+\fmfset{arrow_ang}{10}
+\fmfcmd{%
+  numeric joindiameter;
+  joindiameter := 7thick;}
+\fmfcmd{%
+  vardef sideways_at (expr d, p, frac) =
+    save len; len = length p;
+    (point frac*len of p) shifted ((d,0) rotated (90 + angle direction frac*len of p))
+  enddef;
+  secondarydef p sideways d =
+    for frac = 0 step 0.01 until 0.99:
+      sideways_at (d, p, frac) ..
+    endfor
+    sideways_at (d, p, 1)
+  enddef;
+  secondarydef p choptail d =
+   subpath (ypart (fullcircle scaled d shifted (point 0 of p) intersectiontimes p), infinity) of p
+  enddef;
+  secondarydef p choptip d =
+   reverse ((reverse p) choptail d)
+  enddef;
+  secondarydef pa join pb =
+    pa choptip joindiameter .. pb choptail joindiameter
+  enddef;}
+\begin{multline}
+\parbox{20\unitlength}{%
+  \fmfframe(0,4)(0,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{g1,g2}
+    \fmfright{g3,g4}
+    \fmfv{label=$1$}{g1}
+    \fmfv{label=$2$}{g2}
+    \fmfv{label=$3$}{g3}
+    \fmfv{label=$4$}{g4}
+    \fmf{gluon}{g1,v}
+    \fmf{gluon}{g2,v}
+    \fmf{gluon}{g3,v}
+    \fmf{gluon}{g4,v}
+    \fmfv{label=$g^2 f_{a_1a_2b}f_{a_3a_4b}$,label.d=10thick}{v}
+    \fmfdot{v}
+  \end{fmfgraph*}}}
+\qquad\qquad\qquad\Longleftrightarrow\\
+\parbox{20\unitlength}{%
+  \fmfframe(0,4)(0,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{g1,g2}
+    \fmfright{g4,g3}
+    \fmfv{label=$1$}{g1}
+    \fmfv{label=$2$}{g2}
+    \fmfv{label=$3$}{g3}
+    \fmfv{label=$4$}{g4}
+    \fmf{phantom}{g1,v}
+    \fmf{phantom}{g2,v}
+    \fmf{phantom}{g3,v}
+    \fmf{phantom}{g4,v}
+    \fmffreeze
+    \fmfi{plain}{(vpath(__g1,__v) join (reverse vpath(__g2,__v))) 
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g2,__v) join (reverse vpath(__g3,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g3,__v) join (reverse vpath(__g4,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g4,__v) join (reverse vpath(__g1,__v)))
+                 sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g3, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g4, __v) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g3, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g4, __v)) sideways thick}
+    \fmfv{label=$-\frac{g^2}{2}
+                  \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}\delta^{i_4j_1}$, 
+          label.d=10thick}{v}
+  \end{fmfgraph*}}}
+\qquad\qquad\qquad\qquad\qquad
+\parbox{20\unitlength}{%
+  \fmfframe(0,4)(0,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{g1,g2}
+    \fmfright{g4,g3}
+    \fmfv{label=$1$}{g1}
+    \fmfv{label=$2$}{g2}
+    \fmfv{label=$3$}{g3}
+    \fmfv{label=$4$}{g4}
+    \fmf{phantom}{g1,v}
+    \fmf{phantom}{g2,v}
+    \fmf{phantom}{g3,v}
+    \fmf{phantom}{g4,v}
+    \fmffreeze
+    \fmfi{plain}{(vpath(__g1,__v) join (reverse vpath(__g4,__v))) 
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g2,__v) join (reverse vpath(__g1,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g3,__v) join (reverse vpath(__g2,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g4,__v) join (reverse vpath(__g3,__v)))
+                 sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g3, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g4, __v) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g3, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g4, __v)) sideways thick}
+    \fmfv{label=$-\frac{g^2}{2}
+                  \delta^{i_1j_4}\delta^{i_4j_3}\delta^{i_3j_2}\delta^{i_2j_1}$, 
+          label.d=10thick}{v}
+  \end{fmfgraph*}}}\\
+\parbox{20\unitlength}{%
+  \fmfframe(0,4)(0,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{g1,g2}
+    \fmfright{g4,g3}
+    \fmfv{label=$1$}{g1}
+    \fmfv{label=$2$}{g2}
+    \fmfv{label=$3$}{g3}
+    \fmfv{label=$4$}{g4}
+    \fmf{phantom}{g1,v}
+    \fmf{phantom}{g2,v}
+    \fmf{phantom}{g3,v}
+    \fmf{phantom}{g4,v}
+    \fmffreeze
+    \fmfi{plain}{(vpath(__g1,__v) join (reverse vpath(__g2,__v))) 
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g2,__v) join (reverse vpath(__g4,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g3,__v) join (reverse vpath(__g1,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g4,__v) join (reverse vpath(__g3,__v)))
+                 sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g3, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g4, __v) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g3, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g4, __v)) sideways thick}
+    \fmfv{label=$\frac{g^2}{2}
+                 \delta^{i_1j_2}\delta^{i_2j_4}\delta^{i_4j_3}\delta^{i_3j_1}$,
+          label.d=10thick}{v}
+  \end{fmfgraph*}}}
+\qquad\qquad\qquad\qquad\qquad
+\parbox{20\unitlength}{%
+  \fmfframe(0,4)(0,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{g1,g2}
+    \fmfright{g4,g3}
+    \fmfv{label=$1$}{g1}
+    \fmfv{label=$2$}{g2}
+    \fmfv{label=$3$}{g3}
+    \fmfv{label=$4$}{g4}
+    \fmf{phantom}{g1,v}
+    \fmf{phantom}{g2,v}
+    \fmf{phantom}{g3,v}
+    \fmf{phantom}{g4,v}
+    \fmffreeze
+    \fmfi{plain}{(vpath(__g1,__v) join (reverse vpath(__g3,__v))) 
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g2,__v) join (reverse vpath(__g1,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g3,__v) join (reverse vpath(__g4,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g4,__v) join (reverse vpath(__g2,__v)))
+                 sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g3, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g4, __v) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g3, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g4, __v)) sideways thick}
+    \fmfv{label=$\frac{g^2}{2}
+                 \delta^{i_1j_3}\delta^{i_3j_4}\delta^{i_4j_2}\delta^{i_2j_1}$, 
+          label.d=10thick}{v}
+  \end{fmfgraph*}}}\\
+\end{multline} *)
+
+    (* Summing over the the permutations of~$\{2,3,4\}$,
+       i.\,e.~$\mathcal{P}_4$ in~\eqref{eq:P4}, we recover~\eqref{eq:4GV}.
+       However, there is no need to do that and things are
+       actually simpler, because the Lorentz structure remains
+       the same and there is no need for us to touch it. *)
+
+    (* \begin{dubious}
+         FIXME: think deeper!
+         We're probably fooling ourselves here regarding
+         ignoring [fuse], since our testcase is the fully
+         symmetric 4-gluon-vertex.
+       \end{dubious} *)
+
+(* Eventually, the type [Coupling.fuse3] will be retired in
+   favor of [int * int * int * int] or even [int list].  This is why we
+   have code that is more general than required here. *)
+
+    let fuse3_to_list = function
+      | F123 -> [4;1;2;3]
+      | F231 -> [4;2;3;1]
+      | F312 -> [4;3;1;2]
+      | F132 -> [4;1;3;2]
+      | F321 -> [4;3;2;1]
+      | F213 -> [4;2;1;3]
+      | F124 -> [3;1;2;4]
+      | F241 -> [3;2;4;1]
+      | F412 -> [3;4;1;2]
+      | F142 -> [3;1;4;2]
+      | F421 -> [3;4;2;1]
+      | F214 -> [3;2;1;4]
+      | F134 -> [2;1;3;4]
+      | F341 -> [2;3;4;1]
+      | F413 -> [2;4;1;3]
+      | F143 -> [2;1;4;3]
+      | F431 -> [2;4;3;1]
+      | F314 -> [2;3;1;4]
+      | F234 -> [1;2;3;4]
+      | F342 -> [1;3;4;2]
+      | F423 -> [1;4;2;3]
+      | F243 -> [1;2;4;3]
+      | F432 -> [1;4;3;2]
+      | F324 -> [1;3;2;4]
+
+    let partial_map_undoing_fuse3 fuse3 =
+      partial_map_undoing_permutation [1;2;3;4] (fuse3_to_list fuse3)
+
+    (* Compute the partial maps once, not everytime anew! *)
+    let undo_F123 = partial_map_undoing_fuse3 F123
+    let undo_F231 = partial_map_undoing_fuse3 F231
+    let undo_F312 = partial_map_undoing_fuse3 F312
+    let undo_F132 = partial_map_undoing_fuse3 F132
+    let undo_F321 = partial_map_undoing_fuse3 F321
+    let undo_F213 = partial_map_undoing_fuse3 F213
+    let undo_F124 = partial_map_undoing_fuse3 F124
+    let undo_F241 = partial_map_undoing_fuse3 F241
+    let undo_F412 = partial_map_undoing_fuse3 F412
+    let undo_F142 = partial_map_undoing_fuse3 F142
+    let undo_F421 = partial_map_undoing_fuse3 F421
+    let undo_F214 = partial_map_undoing_fuse3 F214
+    let undo_F134 = partial_map_undoing_fuse3 F134
+    let undo_F341 = partial_map_undoing_fuse3 F341
+    let undo_F413 = partial_map_undoing_fuse3 F413
+    let undo_F143 = partial_map_undoing_fuse3 F143
+    let undo_F431 = partial_map_undoing_fuse3 F431
+    let undo_F314 = partial_map_undoing_fuse3 F314
+    let undo_F234 = partial_map_undoing_fuse3 F234
+    let undo_F342 = partial_map_undoing_fuse3 F342
+    let undo_F423 = partial_map_undoing_fuse3 F423
+    let undo_F243 = partial_map_undoing_fuse3 F243
+    let undo_F432 = partial_map_undoing_fuse3 F432
+    let undo_F324 = partial_map_undoing_fuse3 F324
+
+    let undo_permutation_of_fuse3 fuse3 =
+      let fail _ = invalid_arg "permutation_of_fuse3" in
+      match fuse3 with
+      | F123 -> PosMap.apply_with_fallback fail undo_F123
+      | F231 -> PosMap.apply_with_fallback fail undo_F231
+      | F312 -> PosMap.apply_with_fallback fail undo_F312
+      | F132 -> PosMap.apply_with_fallback fail undo_F132
+      | F321 -> PosMap.apply_with_fallback fail undo_F321
+      | F213 -> PosMap.apply_with_fallback fail undo_F213
+      | F124 -> PosMap.apply_with_fallback fail undo_F124
+      | F241 -> PosMap.apply_with_fallback fail undo_F241
+      | F412 -> PosMap.apply_with_fallback fail undo_F412
+      | F142 -> PosMap.apply_with_fallback fail undo_F142
+      | F421 -> PosMap.apply_with_fallback fail undo_F421
+      | F214 -> PosMap.apply_with_fallback fail undo_F214
+      | F134 -> PosMap.apply_with_fallback fail undo_F134
+      | F341 -> PosMap.apply_with_fallback fail undo_F341
+      | F413 -> PosMap.apply_with_fallback fail undo_F413
+      | F143 -> PosMap.apply_with_fallback fail undo_F143
+      | F431 -> PosMap.apply_with_fallback fail undo_F431
+      | F314 -> PosMap.apply_with_fallback fail undo_F314
+      | F234 -> PosMap.apply_with_fallback fail undo_F234
+      | F342 -> PosMap.apply_with_fallback fail undo_F342
+      | F423 -> PosMap.apply_with_fallback fail undo_F423
+      | F243 -> PosMap.apply_with_fallback fail undo_F243
+      | F432 -> PosMap.apply_with_fallback fail undo_F432
+      | F324 -> PosMap.apply_with_fallback fail undo_F324
+
+    let apply_fuse3 fuse3 (a1, a2, a3, a4) =
+      let p = undo_permutation_of_fuse3 fuse3 in
+      (p a1, p a2, p a3, p a4)
+
+    let colorize_fusion3_ufo f1 f2 f3 f c v spins color fuse xtra =
+      let open Color in
+      match color with
+      | Trivial4 ->
+         let v = V4 (UFO4 (c, v, spins, color), fuse, xtra) in
+         colorize_fusion3_legacy f1 f2 f3 (f, v)
+      | FF ((a1, a2), (a3, a4)) ->
+         let v eps =
+           let c' = if eps < 0 then QC.neg c else c in
+           V4 (UFO4 (c', v, spins, Trivial4), fuse, xtra) in
+         let eps, ((a1, a2), (a3, a4))
+           = canonicalize_ff ((a1, a2), (a3, a4)) in
+         begin match a1, a2, a3, a4, f1, f2, f3 with
+         | 1, 2, 3, 4, CF_io (_, i1, j1), CF_io (_, i2, j2), CF_io (_, i3, j3)
+         | 1, 3, 2, 4, CF_io (_, i2, j2), CF_io (_, i3, j3), CF_io (_, i1, j1)
+         | 1, 4, 2, 3, CF_io (_, i3, j3), CF_io (_, i1, j1), CF_io (_, i2, j2) ->
+
+            (* FIXME: hack alert! Better canonicalize to cyclic [a2], [a3],
+               [a4]!!! *)
+            let eps = if a2 = 3 then -eps else eps in
+
+            if      j1 = i2 && j2 = i3 then (* $-\delta^{i_4j_1}\delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_4}$ *)
+              [CF_io (f, i1, j3), v (-eps)]
+            else if j2 = i1 && j1 = i3 then (* $+\delta^{i_4j_2}\delta^{i_2j_1}\delta^{i_1j_3}\delta^{i_3j_4}$ *)
+              [CF_io (f, i2, j3), v ( eps)]
+            else if j3 = i1 && j1 = i2 then (* $+\delta^{i_4j_3}\delta^{i_3j_1}\delta^{i_1j_2}\delta^{i_2j_4}$ *)
+              [CF_io (f, i3, j2), v ( eps)]
+            else if j3 = i2 && j2 = i1 then (* $-\delta^{i_4j_3}\delta^{i_3j_2}\delta^{i_2j_1}\delta^{i_1j_4}$ *)
+              [CF_io (f, i3, j1), v (-eps)]
+            else
+              []
+
+         |  _, _, _, _, CF_io _, CF_io _, CF_io _ ->
+             Printf.eprintf "(%d, %d), (%d, %d) %d\n" a1 a2 a3 a4 eps;
+             failwith "Colorize.colorize_fusion3_ufo: incomplete"
+
+         |  _, _, _, _,
+           (CF_io _ | CF_aux _),
+           (CF_io _ | CF_aux _),
+           (CF_io _ | CF_aux _) ->
+            []
+
+         | _ ->
+            impossible "f_{abe}*f_{cde} for non-adjoints"
+
+         end
+      | _ -> failwith "Colorize.colorize_fusion3_ufo: incomplete"
+
+
+    let colorize_fusion3 f1 f2 f3 (f, v) =
+      match v with
+      | V4 (UFO4 (_, _, _, C.Legacy4), _, _) ->
+         colorize_fusion3_legacy f1 f2 f3 (f, v)
+      | V4 (UFO4 (c, v, spins, color), fuse, xtra) ->
+         colorize_fusion3_ufo f1 f2 f3 f c v spins color fuse xtra
+      | V4 _ -> colorize_fusion3_legacy f1 f2 f3 (f, v)
+      | _ -> invalid_arg "Colorize.colorize_fusion3"
+
 
 (* \thocwmodulesubsection{Quintic and Higher Vertices} *)
 

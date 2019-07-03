@@ -280,15 +280,13 @@ module Make (M : Model.T) =
         (fun (n_list, flavor_set) -> (n_list, FSet.elements flavor_set))
         (List.fold_right merge_overlapping flavor_sums [])
 
-    module ISet = Set.Make (struct type t = int let compare = compare end)
-
     let integer_range n1 n2 =
       let rec integer_range' acc n' =
         if n' < n1 then
           acc
         else
-          integer_range' (ISet.add n' acc) (pred n') in
-      integer_range' ISet.empty n2
+          integer_range' (Sets.Int.add n' acc) (pred n') in
+      integer_range' Sets.Int.empty n2
 
     let coarsest_partition = function
       | [] -> invalid_arg "coarsest_partition: empty process list"
@@ -297,8 +295,8 @@ module Make (M : Model.T) =
           let overlaps =
             List.map fst (overlapping_flavor_sums (flavor_sums (flavors fs_list))) in
           let singletons =
-            ISet.elements
-              (List.fold_right ISet.remove
+            Sets.Int.elements
+              (List.fold_right Sets.Int.remove
                  (List.concat overlaps) (integer_range 0 (pred (List.length fs)))) in
           List.map (fun n -> [n]) singletons @ overlaps
 

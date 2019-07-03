@@ -1,0 +1,66 @@
+# modules.attrib --
+
+### draw bolder
+# 1a\
+# edge [style=bold]; \
+# node [style=bold];
+
+# Library modules as boxes
+1a\
+node [shape=box];
+ 
+# Applications as ellipses
+1a\
+"F90_SM" [shape=ellipse]; \
+"F90_SM" -> "Models":sm; \
+"F90_SM" -> "Targets":f90; \
+"F90_SM" -> "Omega"; \
+"..." [shape=ellipse]; \
+"..." -> "Models"; \
+"..." -> "Targets"; \
+"..." -> "Omega";
+
+# Signatures as diamonds
+1a\
+"Coupling" [shape=diamond]; \
+"Model" [shape=diamond]; \
+"Target" [shape=diamond];
+
+1a\
+"Targets" [shape=record,label="{{<f77>Fortran77|<f90>Fortran|<helas>Helas}|{<c>C|<cpp>C++|<java>Java}|{<ocaml>O'Caml|<form>Form|<latex>LaTeX|...}|Targets}"]; \
+"Models" [shape=record,label="{{<qed>QED|<qcd>QCD|<sm>SM}|{<mssm>MSSM|<user>User def.}|Models}"];
+
+/F90/s/"Targets"/"Targets":f90/
+/Helas/s/"Targets"/"Targets":helas/
+
+/QCD/s/"Models"/Models:qcd/
+/QED/s/"Models"/Models:qed/
+/SM/s/"Models"/Models:sm/
+
+# Hide redundant applications
+/_/d
+
+# Hide regression tests
+/Count/d
+
+# Hide experimental models
+/Models2/d
+
+# Hide trivial dependencies/libraries
+/Models.*ThoList/d
+# /ThoList/d
+# /Options/d
+# /Tree/d
+# /Pmap/d
+
+# ## Abbreviated drawings:
+# /Ogiga/d
+# /Whizard/d
+# /OVM/d
+# /ThoList/d
+# 
+# 1a\
+# "F90_MSSM" [shape=ellipse]; \
+# "F90_MSSM" -> "Models":mssm; \
+# "F90_MSSM" -> "Targets":f90; \
+# "F90_MSSM" -> "Omega"; \

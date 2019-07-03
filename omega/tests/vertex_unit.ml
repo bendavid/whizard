@@ -46,10 +46,7 @@ let _ =
   if not !skip_tests then begin
     let suite =
       OUnit.(>:::) "All" 
-	[Partial.Test.suite;
-	 List_Test.suite;
-	 Array_Test.suite;
-	 Vertex_Test.suite;
+	[Vertex_Test.suite;
 	 Parser_Test.suite;
 	 Model_Test.suite] in
     ignore (OUnit.run_test_tt ~verbose:!verbose suite)

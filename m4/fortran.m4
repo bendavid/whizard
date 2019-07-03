@@ -105,7 +105,7 @@ AC_CACHE_CHECK([the compiler version],
 [dnl
 case $FC_VENDOR in
 gfortran)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[^0-9]*\([0-9]\{1,2\}\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
   ;;
 g95)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*g95 \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
@@ -114,7 +114,7 @@ NAG)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Release \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 Intel)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)[:blank:]]//g;s/[0-9]\{8\}$//g'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*\([0-9]\{2\}\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
   ;;
 Sun)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Fortran 95 \([0-9][0-9]*\.[0-9][0-9]*\) .*/\1/'`]
@@ -165,13 +165,13 @@ FC_IS_IFORT170123="no"
 fi
 AC_SUBST([FC_IS_IFORT170123])
 
-### Catch buggy ifort version 19.0.0
-if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.0"; then
-FC_IS_IFORT1900="yes"
+### Catch buggy ifort version 19.0.0/1/2
+if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.2"; then
+FC_IS_IFORT190012="yes"
   else
-FC_IS_IFORT1900="no"
+FC_IS_IFORT190012="no"
 fi
-AC_SUBST([FC_IS_IFORT1900])
+AC_SUBST([FC_IS_IFORT190012])
 
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
@@ -219,12 +219,12 @@ AC_MSG_ERROR([***************************************************************])
 fi 
 ])
 
-AC_DEFUN([WO_FC_VETO_IFORT_1900],
+AC_DEFUN([WO_FC_VETO_IFORT_190012],
 [dnl
-if test "$FC_IS_IFORT1900" = "yes"; then
-AC_MSG_NOTICE([error: **********************************************************])
-AC_MSG_NOTICE([error: ifort v19.0.0 suffers from severe compiler bugs, disabled.])
-AC_MSG_ERROR([**********************************************************])
+if test "$FC_IS_IFORT190012" = "yes"; then
+AC_MSG_NOTICE([error: *************************************************************])
+AC_MSG_NOTICE([error: ifort v19.0.0/1/2 suffer from severe compiler bugs, disabled.])
+AC_MSG_ERROR([*************************************************************])
 fi 
 ])
 

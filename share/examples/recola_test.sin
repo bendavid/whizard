@@ -1,0 +1,20 @@
+
+model = SM
+
+me = 0
+mb = 0
+
+$loop_me_method = "recola"
+$virtual_selection = "OLP"
+
+show(model)
+
+process nlo_ee = e1, E1 => b, bbar { nlo_calculation = virtual }
+
+compile
+
+sqrts = 200 GeV 
+
+
+seed = 0
+integrate(nlo_ee) { iterations = 1:10001 }

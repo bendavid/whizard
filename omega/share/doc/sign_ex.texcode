@@ -1,0 +1,55 @@
+  \documentclass[a4paper]{article}   
+  \usepackage{thophys,thohacks}
+  \usepackage[T1]{fontenc}
+  \usepackage[latin1]{inputenc}
+  \usepackage{pstricks,shadow}
+  \usepackage{color}
+  \usepackage{graphicx,array,amsmath}
+  \setlength{\unitlength}{1mm}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\begin{figure}
+\resizebox{12cm}{6cm}{
+\begin{pspicture}(0,0)(8.4,5)%  \psset{xunit=.8cm,yunit=.8cm}
+        \psline[linestyle=dashed](0,0)(.4,1)    \psline(.8,0)(.4,1)
+        \psline(1.6,0)(2,1)     \psline(2.4,0)(2,1)
+        \psline[linestyle=dashed](3.2,0)(3.6,1) \psline(4,0)(3.6,1)
+        \psline(7.6,0)(8,1)     \psline(8.4,0)(8,1)
+        \psline[linestyle=dashed](2,1)(2.8,2)   \psline(3.6,1)(2.8,2)
+        \psline[linestyle=dashed](8,1)(7.2,2)   \psline(6.4,0)(7.2,2)   
+        \psline(.4,1)(1.6,3)    \psline(2.8,2)(1.6,3)
+        \psline[linestyle=dashed](5.6,0)(5.2,1)
+        \psline[linestyle=dashed](4.8,0)(5.2,1) 
+        \psline[linestyle=dashed](5.2,1)(6.2,3) \psline(7.2,2)(6.2,3)
+        \psline(6.2,3)(3.9,4)   \psline[linestyle=dashed](1.6,3)(3.9,4)
+        \psline(3.9,4)(3.9,4.5)
+        \rput(0,.4){\begin{scriptsize}1\end{scriptsize}}        
+        \rput(.8,.4){\begin{scriptsize}2\end{scriptsize}}       
+        \rput(1.6,.4){\begin{scriptsize}3\end{scriptsize}}      
+        \rput(2.4,.4){\begin{scriptsize}4\end{scriptsize}}      
+        \rput(3.2,.4){\begin{scriptsize}5\end{scriptsize}}      
+        \rput(4,.4){\begin{scriptsize}6\end{scriptsize}}        
+        \rput(4.8,.4){\begin{scriptsize}7\end{scriptsize}}      
+        \rput(5.6,.4){\begin{scriptsize}8\end{scriptsize}}      
+        \rput(6.75,.4){\begin{scriptsize}9\end{scriptsize}}     
+        \rput(7.55,.4){\begin{scriptsize}10\end{scriptsize}}    
+        \rput(8.4,.4){\begin{scriptsize}11\end{scriptsize}}     
+        \rput(.4,1.4){\begin{scriptsize}12\end{scriptsize}}     
+        \rput(2,1.4){\begin{scriptsize}13\end{scriptsize}}      
+        \rput(3.6,1.4){\begin{scriptsize}14\end{scriptsize}}    
+        \rput(5.15,1.4){\begin{scriptsize}15\end{scriptsize}}   
+        \rput(8,1.4){\begin{scriptsize}16\end{scriptsize}}      
+        \rput(2.8,2.4){\begin{scriptsize}17\end{scriptsize}}
+        \rput(7.2,2.4){\begin{scriptsize}18\end{scriptsize}}     
+        \rput(6.2,3.5){\begin{scriptsize}19\end{scriptsize}}    
+        \rput(1.8,3.5){\begin{scriptsize}20\end{scriptsize}}    
+        \rput(4.1,4.4){\begin{scriptsize}21\end{scriptsize}}    
+\end{pspicture}}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document} 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

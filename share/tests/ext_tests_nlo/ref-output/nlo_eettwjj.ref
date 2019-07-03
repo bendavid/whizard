@@ -1,0 +1,188 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+| Including Sindarin from 'nlo_settings.sin'
+| Switching to model 'SM', scheme 'GF_MW_MZ'
+$blha_ew_scheme = "alpha_qed"
+SM.mZ =>  9.118800000000E+01
+SM.mW =>  8.041900200000E+01
+SM.mH =>  1.250000000000E+02
+SM.GF =>  1.166390000000E-05
+SM.wZ =>  0.000000000000E+00
+SM.wtop =>  0.000000000000E+00
+SM.wW =>  0.000000000000E+00
+SM.wH =>  0.000000000000E+00
+SM.ms =>  0.000000000000E+00
+SM.mc =>  0.000000000000E+00
+SM.mb =>  0.000000000000E+00
+SM.mtop =>  1.732000000000E+02
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
+SM.mtau =>  1.777000000000E+00
+SM.alphas =>  1.180000000000E-01
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
+alphas_nf = 5
+alphas_order = 2
+[user variable] jet = PDG(2, -2, 1, -1, 3, -3, 4, -4, 5, -5, 21)
+$method = "openloops"
+seed = 8131
+sqrts =  1.000000000000E+03
+jet_algorithm = 2
+jet_r =  5.000000000000E-01
+?use_vamp_equivalences = false
+?nlo_use_born_scale = false
+?nlo_cut_all_sqmes = false
+| End of included 'nlo_settings.sin'
+alpha_power = 3
+alphas_power = 2
+[user variable] W = PDG(24, -24)
+| Process library 'nlo_eettwjj_lib': recorded process 'nlo_eettwjj_p1'
+mult_call_real =  3.000000000000E+00
+| Integrate: current process library needs compilation
+| Process library 'nlo_eettwjj_lib': compiling ...
+| Process library 'nlo_eettwjj_lib': writing makefile
+| Process library 'nlo_eettwjj_lib': removing old files
+| Process library 'nlo_eettwjj_lib': writing driver
+| Process library 'nlo_eettwjj_lib': creating source code
+| Process library 'nlo_eettwjj_lib': compiling sources
+| Process library 'nlo_eettwjj_lib': linking
+| Process library 'nlo_eettwjj_lib': loading
+| Process library 'nlo_eettwjj_lib': ... success.
+| Integrate: compilation done
+| QCD alpha: using a running strong coupling
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 8131
+| Initializing integration for process nlo_eettwjj_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+Warning:  Intermediate decay of zero-width particle W+ may be possible.
+Warning:  Intermediate decay of zero-width particle Z may be possible.
+Warning:  Intermediate decay of zero-width particle H may be possible.
+Warning:  Intermediate decay of zero-width particle W- may be possible.
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_eettwjj_p1.i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_eettwjj_p1.i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'nlo_eettwjj_p1'
+|   Library name  = 'nlo_eettwjj_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'nlo_eettwjj_p1_i1':   e-, e+ => t, tbar, W+:W-, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl [openloops]
+|     2: 'nlo_eettwjj_p1_i2':   e-, e+ => t, tbar, W+:W-, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar:gl, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar:gl, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar:gl [openloops], [real]
+|     3: 'nlo_eettwjj_p1_i3':   e-, e+ => t, tbar, W+:W-, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl [openloops], [virtual]
+|     4: 'nlo_eettwjj_p1_i4':   e-, e+ => t, tbar, W+:W-, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl [inactive], [subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 11 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 4 channels, 14 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 4 channels, 11 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Applying user-defined cuts.
+| Using user-defined general scale.
+| Starting integration for process 'nlo_eettwjj_p1' part 'born'
+| Integrate: iterations = 3:8000:"gw", 3:8000
+| Integrator: 1 chains, 4 channels, 11 dimensions
+| Integrator: 8000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       8000  1.8988592E-04  7.15E-05   37.67   33.70*   0.11
+   2       8000  7.4285571E-04  5.45E-04   73.34   65.60    0.07
+   3       8000  2.2138833E-04  2.03E-05    9.16    8.19*   0.48
+|-----------------------------------------------------------------------------|
+   3      24000  2.1971736E-04  1.95E-05    8.87   13.74    0.48    0.55   3
+|-----------------------------------------------------------------------------|
+   4       8000  2.6166698E-04  4.35E-05   16.62   14.87    0.21
+   5       8000  2.2026713E-04  1.87E-05    8.47    7.58*   0.16
+   6       8000  2.5344561E-04  2.79E-05   11.03    9.86    0.16
+|-----------------------------------------------------------------------------|
+   6      24000  2.3402042E-04  1.46E-05    6.25    9.68    0.16    0.72   3
+|=============================================================================|
+| Starting integration for process 'nlo_eettwjj_p1' part 'real'
+| Integrate: iterations = 3:24000:"gw", 3:24000
+| Integrator: 1 chains, 4 channels, 14 dimensions
+| Integrator: 24000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1      24000  2.6007852E-05  1.40E-05   53.65   83.11*   0.04
+   2      24000  1.3391496E-05  6.13E-06   45.80   70.95*   0.13
+   3      24000  1.6707784E-05  3.12E-06   18.68   28.93*   0.33
+|-----------------------------------------------------------------------------|
+   3      72000  1.6407221E-05  2.73E-06   16.62   44.61    0.33    0.36   3
+|-----------------------------------------------------------------------------|
+   4      24000  1.4175798E-05  1.07E-05   75.24  116.57    0.10
+   5      24000  2.4325747E-05  4.89E-06   20.11   31.16*   0.07
+   6      24000  2.3311816E-05  6.76E-06   28.98   44.90    0.07
+|-----------------------------------------------------------------------------|
+   6      72000  2.2788260E-05  3.71E-06   16.30   43.74    0.07    0.38   3
+|=============================================================================|
+| Starting integration for process 'nlo_eettwjj_p1' part 'virtual'
+| Integrate: iterations = 3:8000:"gw", 3:8000
+| Integrator: 1 chains, 4 channels, 11 dimensions
+| Integrator: 8000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       8000  4.2175662E-05  1.45E-05   34.43   30.80*   0.09
+   2       8000  8.9168208E-05  1.43E-05   16.04   14.35*   0.32
+   3       8000  1.4824049E-04  2.76E-05   18.65   16.68    0.19
+|-----------------------------------------------------------------------------|
+   3      24000  7.5860688E-05  9.56E-06   12.61   19.53    0.19    6.55   3
+|-----------------------------------------------------------------------------|
+   4       8000  1.0458991E-04  1.26E-05   12.08   10.80*   0.13
+   5       8000  1.1066412E-04  1.10E-05    9.91    8.87*   0.13
+   6       8000  1.4256992E-04  2.36E-05   16.56   14.81    0.17
+|-----------------------------------------------------------------------------|
+   6      24000  1.1183566E-04  7.82E-06    6.99   10.83    0.17    1.02   3
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0  3.6864435E-04  1.70E-05    4.61    0.00*   0.15
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  ( 57.5266 +-   5.15594 ) %
+|=============================================================================|
+| There were no errors and    4 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

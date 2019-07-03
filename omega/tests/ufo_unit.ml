@@ -20,6 +20,19 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+let lorentz_of_string = function
+  | "Scalar" -> Coupling.Scalar
+  | "Spinor" -> Coupling.Spinor
+  | "ConjSpinor" -> Coupling.ConjSpinor
+  | "Majorana" -> Coupling.Majorana
+  | "Maj_Ghost" -> Coupling.Maj_Ghost
+  | "Vector" -> Coupling.Vector
+  | "Massive_Vector" -> Coupling.Massive_Vector
+  | "Vectorspinor" -> Coupling.Vectorspinor
+  | "Tensor_1" -> Coupling.Tensor_1
+  | "Tensor_2" -> Coupling.Tensor_2
+  | s -> invalid_arg ("lorentz_of_string: " ^ s)
+
 let _ =
   let my_name = Sys.argv.(0) in
   let file = ref None
@@ -27,6 +40,9 @@ let _ =
   and dir = ref None
   and lorentz = ref None
   and color = ref None
+  and targets = ref None
+  and dirac = ref false
+  and spins = ref []
   and skip_tests = ref false
   and skip_example = ref false
   and timing = ref false
@@ -44,6 +60,11 @@ let _ =
 	  "expr UFO Lorentz tensor");
 	 ("-color", Arg.String (fun s -> color := Some s),
 	  "expr UFO color tensor");
+	 ("-targets", Arg.String (fun s -> targets := Some s),
+	  "expr UFO lorentz tensor parsing");
+	 ("-dirac", Arg.Set dirac, " check Dirac matrices");
+	 ("-spin", Arg.String (fun s -> spins := s :: !spins),
+          "name add a lorentz representation");
 	 ("-skip-tests", Arg.Set skip_tests, " skip the tests");
 	 ("-skip-example", Arg.Set skip_example, " skip the example");
 	 ("-timing", Arg.Set timing, " provide timing information");
@@ -80,5 +101,32 @@ let _ =
      print_endline (UFOx.Index.classes_to_string
 		      UFOx.Lorentz.rep_to_string
 		      (UFOx.Lorentz.classify_indices t))
+  end;
+  begin match !targets with
+  | None -> ()
+  | Some s ->
+     let open Format_Fortran in
+     let nl = newline in
+     let t = UFOx.Lorentz.of_string s in
+     let spins = List.rev_map lorentz_of_string !spins in
+     let buffer = Buffer.create 1024 in
+     print_endline (UFOx.Lorentz.to_string t);
+     print_endline
+       (UFO_targets.Lorentz_Fusion.to_string
+          (UFO_targets.Lorentz_Fusion.parse spins t));
+     UFO_targets.Fortran.lorentz
+       (formatter_of_buffer buffer)
+       "foo" (Array.of_list spins) t;
+     printf "module omega_amplitude"; nl ();
+     printf "  use kinds"; nl ();
+     printf "  use omega95"; nl ();
+     printf "  implicit none"; nl ();
+     printf "  private"; nl ();
+     UFO_targets.Fortran.eps4_g4_g44_decl std_formatter ();
+     UFO_targets.Fortran.eps4_g4_g44_init std_formatter ();
+     printf "contains"; nl ();
+     printf "%s" (Buffer.contents buffer);
+     Buffer.reset buffer;
+     printf "end module omega_amplitude"; nl ()
   end;
   exit 0

@@ -1,0 +1,201 @@
+\documentclass[12pt]{article}
+ 
+\usepackage{gamelan}
+\usepackage{amsmath}
+ 
+\begin{document}
+\begin{gmlfile}
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\textbf{\large\texttt{WHIZARD} data analysis}\hfill\today
+\begin{flushleft}
+\textbf{Process:} 
+  \verb|nnbb| ($ e^- e^+ \to \nu_e \bar\nu_e b \bar b$) \\
+\end{flushleft}
+%
+\begin{displaymath}
+  \sqrt{s} =   209.0    \;\textrm{GeV}\qquad
+  \int\mathcal{L} =   100.0    \;\textrm{fb}^{-1}
+\end{displaymath}
+\begin{center} \unitlength 1mm
+\begin{gmlgraph*}(         130 ,           90 )[dat]
+  setup(linear,log); graphrange (#0.00,#.1), (#209.,??);
+  %setup(linear,linear); graphrange (#0.00,#0), (#209.,??);
+  endkey "!";
+  fromfile "whizard-plots.dat":
+    key " histogram";
+    dx := #2.61;
+    for i withinblock:
+      get x,y;
+      plot(dat)(x,y) hbar dx;
+      plot(mmis)(x,y) hbar dx;
+    endfor
+    calculate dat.base(dat)(x,#0);
+  endfrom
+  fill piecewise from(dat, dat.base/\) withcolor .9white outlined;
+  label.ulft(<<\#evt/bin>>, out);
+  label.bot(<< $M_{\rm inv}$ [\textrm{GeV}] of $(   3)$>>, out);
+\end{gmlgraph*}
+\end{center}
+%
+\begin{align*}
+  \sigma_{\rm tot} &=   106.56     \quad \pm  0.605    \;\textrm{fb}
+   \quad [\pm    0.57\;\%]
+ & n_{\rm evt,\ tot} &=        10656
+ \\
+  \sigma_{\rm cut} &=   106.56     \quad \pm   1.03    \;\textrm{fb}
+   \quad [\pm    0.97\;\%]
+ & n_{\rm evt,\ cut} &=        10656  \quad 
+  [  100.00 \;\%]
+\end{align*}
+%
+%
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\textbf{\large\texttt{WHIZARD} data analysis}\hfill\today
+\begin{flushleft}
+\textbf{Process:} 
+  \verb|nnbb| ($ e^- e^+ \to \nu_e \bar\nu_e b \bar b$) \\
+\end{flushleft}
+%
+\begin{displaymath}
+  \sqrt{s} =   209.0    \;\textrm{GeV}\qquad
+  \int\mathcal{L} =   100.0    \;\textrm{fb}^{-1}
+\end{displaymath}
+\begin{center} \unitlength 1mm
+\begin{gmlgraph*}(         130 ,           70 )[dat]
+  setup(linear,log); graphrange (#0.00,#.5), (#209.,#1e4);
+  %setup(linear,linear); graphrange (#0.00,#0), (#209.,??);
+  endkey "!";
+  fromfile "whizard-plots.dat":
+    key " histogram";
+    dx := #2.61;
+    for i withinblock:
+      get x,y;
+      plot(dat)(x,y) hbar dx;
+    endfor
+    calculate dat.base(dat)(x,#0);
+  endfrom
+  fill piecewise from(dat, dat.base/\) withcolor .9white outlined;
+  label.ulft(<<\#evt/bin>>, out);
+  label.bot(<< $M_{\rm inv}$ [\textrm{GeV}] of $(b\bar b)$>>, out);
+  standardgrid.lr();
+  standardgrid.bt(4,20);
+\end{gmlgraph*}
+\end{center}
+%
+\begin{align*}
+  \sigma_{\rm tot} &=   106.56     \quad \pm  0.605    \;\textrm{fb}
+   \quad [\pm    0.57\;\%]
+ & n_{\rm evt,\ tot} &=        10656
+ \\
+  \sigma_{\rm cut} &=   106.56     \quad \pm   1.03    \;\textrm{fb}
+   \quad [\pm    0.97\;\%]
+ & n_{\rm evt,\ cut} &=        10656  \quad 
+  [  100.00 \;\%]
+\end{align*}
+%
+%
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\textbf{\large\texttt{WHIZARD} data analysis}\hfill\today
+\begin{flushleft}
+\textbf{Process:} 
+  \verb|nnbb| ($ e^- e^+ \to \nu_e \bar\nu_e b \bar b$) \\
+\end{flushleft}
+%
+\begin{center}
+\begin{tabular}{l|cc}
+\textbf{Cut} & Lower bound & Upper bound\\
+\hline
+  $M_{\rm inv}$ [\textrm{GeV}]  of $(  12,  12)$     & $  114.00    $ & $  116.00    $\\
+\end{tabular}
+\end{center}
+%
+\begin{displaymath}
+  \sqrt{s} =   209.0    \;\textrm{GeV}\qquad
+  \int\mathcal{L} =   100.0    \;\textrm{fb}^{-1}
+\end{displaymath}
+\begin{center} \unitlength 1mm
+\begin{gmlgraph*}(         130 ,           70 )[dat]
+  setup(linear,log); graphrange (#0.00,#.5), (#209.,#1e4);
+  %setup(linear,linear); graphrange (#0.00,#0), (#209.,??);
+  endkey "!";
+  fromfile "whizard-plots.dat":
+    key " histogram";
+    dx := #2.61;
+    for i withinblock:
+      get x,y;
+      plot(dat)(x,y) hbar dx;
+    endfor
+    calculate dat.base(dat)(x,#0);
+  endfrom
+  fill piecewise from(mmis, dat.base/\) withcolor .9white outlined;
+  fill piecewise from(dat, dat.base/\) withcolor .7white outlined;
+  label.ulft(<<\#evt/bin>>, out);
+  label.bot(<< $M_{\rm inv}$ [\textrm{GeV}] of $(\nu\bar\nu)$>>, out);
+  standardgrid.lr();
+  standardgrid.bt(4,20);
+\end{gmlgraph*}
+\end{center}
+%
+\begin{align*}
+  \sigma_{\rm tot} &=   106.56     \quad \pm  0.605    \;\textrm{fb}
+   \quad [\pm    0.57\;\%]
+ & n_{\rm evt,\ tot} &=        10656
+ \\
+  \sigma_{\rm cut} &=   21.350     \quad \pm  0.462    \;\textrm{fb}
+   \quad [\pm    2.16\;\%]
+ & n_{\rm evt,\ cut} &=         2135  \quad 
+  [   20.04 \;\%]
+\end{align*}
+%
+%
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\textbf{\large\texttt{WHIZARD} data analysis}\hfill\today
+\begin{flushleft}
+\textbf{Process:} 
+  \verb|uubb_qcd| ($ e^- e^+ \to u \bar u b \bar b$) \\
+\end{flushleft}
+%
+\begin{displaymath}
+  \sqrt{s} =   209.0    \;\textrm{GeV}\qquad
+  \int\mathcal{L} =   100.0    \;\textrm{fb}^{-1}
+\end{displaymath}
+\begin{center} \unitlength 1mm
+\begin{gmlgraph*}(         130 ,           70 )[dat]
+  setup(linear,log); graphrange (#0.00,#.5), (#209.,#1e4);
+  %setup(linear,linear); graphrange (#0.00,#0), (#209.,??);
+  endkey "!";
+  fromfile "whizard-plots.dat":
+    key " histogram";
+    dx := #2.61;
+    for i withinblock:
+      get x,y;
+      plot(dat)(x,y) hbar dx;
+    endfor
+    calculate dat.base(dat)(x,#0);
+  endfrom
+  fill piecewise from(dat, dat.base/\) withcolor .9white outlined;
+  label.ulft(<<\#evt/bin>>, out);
+  label.bot(<< $M_{\rm inv}$ [\textrm{GeV}] of $(u\bar u)$>>, out);
+\end{gmlgraph*}
+\end{center}
+%
+\begin{align*}
+  \sigma_{\rm tot} &=   23.776     \quad \pm  0.161    \;\textrm{fb}
+   \quad [\pm    0.68\;\%]
+ & n_{\rm evt,\ tot} &=         2378
+ \\
+  \sigma_{\rm cut} &=   23.776     \quad \pm  0.488    \;\textrm{fb}
+   \quad [\pm    2.05\;\%]
+ & n_{\rm evt,\ cut} &=         2378  \quad 
+  [  100.00 \;\%]
+\end{align*}
+%
+%
+ 
+\end{gmlfile}
+\end{document}
+

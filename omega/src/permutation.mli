@@ -31,6 +31,13 @@ module type T =
     val compose : t -> t -> t
     val list : t -> 'a list -> 'a list
     val array : t -> 'a array -> 'a array
+    val all : int -> t list
+    val even : int -> t list
+    val odd : int -> t list
+    val cyclic : int -> t list
+    val signed : int -> (int * t) list
+    (* Assuming fewer than 10 elements! *)
+    val to_string : t -> string
   end
 
 module Using_Lists : T

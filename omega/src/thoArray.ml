@@ -92,6 +92,28 @@ let uncompress2 a =
   let a2 = uncompress { uniq = a.uniq2; embedding = a.embedding2 } in
   transpose (uncompress { uniq = transpose a2; embedding = a.embedding1 })
 
+(* FIXME: not tail recursive! *)
+let compare ?(cmp=Pervasives.compare) a1 a2 =
+  let l1 = Array.length a1
+  and l2 = Array.length a2 in
+  if l1 < l2 then
+    -1
+  else if l1 > l2 then
+    1
+  else
+    let rec scan i =
+      if i = l1 then
+        0
+      else
+        let c = cmp a1.(i) a2.(i) in
+        if c < 0 then
+          -1
+        else if c > 0 then
+          1
+        else
+          scan (succ i) in
+    scan 0
+
 let find_first f a =
   let l = Array.length a in
   let rec find_first' i =
@@ -131,6 +153,39 @@ module Test =
   struct
 
     open OUnit
+
+    let test_compare_empty =
+      "empty" >::
+	(fun () -> assert_equal   0  (compare [| |] [| |]))
+        
+    let test_compare_shorter =
+      "shorter" >::
+	(fun () -> assert_equal (-1) (compare [|0|] [|0; 1|]))
+        
+    let test_compare_longer =
+      "longer" >::
+	(fun () -> assert_equal ( 1) (compare [|0; 1|] [|0|]))
+        
+    let test_compare_less =
+      "longer" >::
+	(fun () -> assert_equal (-1) (compare [|0; 1|] [|0; 2|]))
+        
+    let test_compare_equal =
+      "equal" >::
+	(fun () -> assert_equal ( 0) (compare [|0; 1|] [|0; 1|]))
+        
+    let test_compare_more =
+      "more" >::
+	(fun () -> assert_equal ( 1) (compare [|0; 2|] [|0; 1|]))
+        
+    let suite_compare =
+      "compare" >:::
+        [test_compare_empty;
+         test_compare_shorter;
+         test_compare_longer;
+         test_compare_less;
+         test_compare_equal;
+         test_compare_more]
 
     let test_find_first_not_found =
       "not found" >::
@@ -227,7 +282,8 @@ module Test =
 
     let suite =
       "ThoArrays" >:::
-	[suite_find_first;
+	[suite_compare;
+         suite_find_first;
          suite_find_all;
          suite_num_columns]
 

@@ -31,6 +31,12 @@ module type T =
     val compose : t -> t -> t
     val list : t -> 'a list -> 'a list
     val array : t -> 'a array -> 'a array
+    val all : int -> t list
+    val even : int -> t list
+    val odd : int -> t list
+    val cyclic : int -> t list
+    val signed : int -> (int * t) list
+    val to_string : t -> string
   end
 
 module Using_Lists : T =
@@ -55,7 +61,7 @@ module Using_Lists : T =
 
     let list p l =
       List.map snd
-	(List.sort compare
+	(List.sort (fun (i, _) (j, _) -> compare i j)
 	   (try
 	      List.rev_map2 (fun i x -> (i, x)) p l
 	    with
@@ -74,6 +80,26 @@ module Using_Lists : T =
 
     let compose p q =
       list (inverse q) p
+
+    let all n =
+      List.map of_list (Combinatorics.permute (ThoList.range 0 (pred n)))
+
+    let even n =
+      List.map of_list (Combinatorics.permute_even (ThoList.range 0 (pred n)))
+
+    let odd n =
+      List.map of_list (Combinatorics.permute_odd (ThoList.range 0 (pred n)))
+
+    let cyclic n =
+      List.map of_list (Combinatorics.permute_cyclic (ThoList.range 0 (pred n)))
+
+    let signed n =
+      List.map
+        (fun (eps, l) -> (eps, of_list l))
+        (Combinatorics.permute_signed (ThoList.range 0 (pred n)))
+
+    let to_string p =
+      String.concat "" (List.map string_of_int p)
 
   end
 
@@ -123,6 +149,26 @@ module Using_Arrays : T =
 
     let compose p q =
       array (inverse q) p
+
+    let all n =
+      List.map of_list (Combinatorics.permute (ThoList.range 0 (pred n)))
+
+    let even n =
+      List.map of_list (Combinatorics.permute_even (ThoList.range 0 (pred n)))
+
+    let odd n =
+      List.map of_list (Combinatorics.permute_odd (ThoList.range 0 (pred n)))
+
+    let cyclic n =
+      List.map of_list (Combinatorics.permute_cyclic (ThoList.range 0 (pred n)))
+
+    let signed n =
+      List.map
+        (fun (eps, l) -> (eps, of_list l))
+        (Combinatorics.permute_signed (ThoList.range 0 (pred n)))
+
+    let to_string p =
+      String.concat "" (List.map string_of_int (Array.to_list p))
 
   end
 

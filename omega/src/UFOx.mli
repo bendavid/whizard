@@ -31,36 +31,68 @@ module Expr :
     val half : string -> t
   end
 
-module Index :
+module type Index =
   sig
+    (* Indices are represented by a pair [int * 'r], where
+       ['r] denotes the representation the index belongs to.  *)
+
+    (* [free indices] returns all free indices in the
+       list [indices], i.\,e.~all positive indices. *)
     val free : (int * 'r) list -> (int * 'r) list
+
+    (* [summation indices] returns all summation indices in the
+       list [indices], i.\,e.~all negative indices.  *)
     val summation : (int * 'r) list -> (int * 'r) list
+
     val classes_to_string : ('r -> string) -> (int * 'r) list -> string
+
   end
 
-module Q : Algebra.Rational
+module Index : Index
 
 module type Tensor =
   sig
+
     type atom
-    type t = (atom list * Q.t) list
+
+    (* A tensor is linear combination of products of [atom]s
+       with rational coefficients. *)
+    type t = (atom list * Algebra.Q.t) list
+
+    (* We might need to replace atoms if the syntax is not
+       context free. *)
+    val map_atoms : (atom -> atom) -> t -> t
+
+    (* We need to rename indices to implement permutations. *)
+    val map_indices : (int -> int) -> t -> t
+
+    (* Parsing and unparsing.  Lists of [string]s are
+       interpreted as sums. *)
     val of_expr : UFOx_syntax.expr -> t
     val of_string : string -> t
     val of_strings : string list -> t
     val to_string : t -> string
+
+    (* The supported representations. *)
     type r
     val classify_indices : t -> (int * r) list 
     val rep_to_string : r -> string
     val rep_of_int : int -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
+
+    (* There is not a 1-to-1 mapping between the representations
+       in the model files and the representations used by O'Mega,
+       e.\,g.~in [Coupling.lorentz].  We might need to use heuristics. *)
     type r_omega
     val omega : r -> r_omega
+
   end
 
 module type Atom =
   sig
     type t
+    val map_indices : (int -> int) -> t -> t
     val of_expr : string -> UFOx_syntax.expr list -> t
     val to_string : t -> string
     type r
@@ -75,17 +107,25 @@ module type Atom =
 
 module type Lorentz_Atom =
   sig
-    type t = private
+
+    type dirac = private
       | C of int * int
-      | Epsilon of int * int * int * int
       | Gamma of int * int * int
       | Gamma5 of int * int
       | Identity of int * int
-      | Metric of int * int
-      | P of int * int
       | ProjP of int * int
       | ProjM of int * int
       | Sigma of int * int * int * int
+
+    type vector = (* private *)
+      | Epsilon of int * int * int * int
+      | Metric of int * int
+      | P of int * int
+
+    type t = private
+      | Dirac of dirac
+      | Vector of vector
+
   end
 
 module Lorentz_Atom : Lorentz_Atom
@@ -95,8 +135,9 @@ module Lorentz : Tensor
 
 module type Color_Atom =
   sig
-    type t = private
+    type t = (* private *)
       | Identity of int * int
+      | Identity8 of int * int
       | T of int * int * int
       | F of int * int * int
       | D of int * int * int

@@ -1,0 +1,6 @@
+% where does the anti-particle fit in here?
+% particle (e+, e-) : spin=1/2, fermion, pdg=1, tex="e^+"
+particle e+ : spin=1/2, fermion, pdg=1, tex="e^+"
+particle g : spin=1, boson, pdg=22
+vertex e+, g, e- : { <1|V|2>.e3 }
+

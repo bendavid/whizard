@@ -2,7 +2,30 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.7.1
+	Version 2.8.0
+
+2019-05-31
+	RELEASE: version 2.8.0
+
+2019-04-18
+	Correctly generate ordered FKS tuples for alpha regions
+	   from all possible underlying Born processes
+
+2019-04-08
+	Extended O'Mega/Recola matrix element test suite
+
+2019-03-29
+	Correct identical particle symmetry factors for FKS subtraction
+
+2019-03-28
+	Correct assertion of spin-correlated matrix
+	   elements for hadron collisions
+
+2019-03-27
+	Bug fix for cut-off parameter delta_i for
+	   collinear plus/minus regions
+
+##################################################################
 
 2019-03-27
 	RELEASE: version 2.7.1

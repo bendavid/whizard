@@ -2709,8 +2709,8 @@ wrappers.
   procedure :: init => omega_writer_init
 <<Omega interface: procedures>>=
   subroutine omega_writer_init (writer, model_name, prt_in, prt_out, &
-       ufo_path, restrictions, cms_scheme, &
-       openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
+       ufo_path, restrictions, cms_scheme, openmp_support, &
+       report_progress, write_phs_output, extra_options, diags, diags_color)
     class(omega_writer_t), intent(out) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -2774,7 +2774,8 @@ diagrams, at least in the testsuite.
 <<Omega interface: omega writer: TBP>>=
   procedure :: write_makefile_code => omega_write_makefile_code
 <<Omega interface: procedures>>=
-  subroutine omega_write_makefile_code (writer, unit, id, os_data, verbose, testflag)
+  subroutine omega_write_makefile_code &
+       (writer, unit, id, os_data, verbose, testflag)
     class(omega_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -5627,6 +5628,7 @@ This is the abstract external matrix-element interface.
     integer :: n_in = 0
     integer :: n_out = 0
     logical :: active = .true.
+    logical :: amp_triv = .true.
   contains
   <<Prc external: external writer: TBP>>
   end type prc_external_writer_t
@@ -5881,7 +5883,7 @@ can be exploited for its data-management parts.
     logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
     type(string_t) :: omega_binary, omega_path
-    type(string_t) :: restrictions_string
+    type(string_t) :: restrictions_string, amp_triv_string
     omega_binary = "omega_" // writer%model_name // ".opt"
     omega_path = os_data%whizard_omega_binpath // "/" // omega_binary
     if (.not. verbose)  omega_path = "@" // omega_path
@@ -5890,6 +5892,8 @@ can be exploited for its data-management parts.
     else
        restrictions_string = ""
     end if
+    amp_triv_string = ""
+    if (writer%amp_triv)  amp_triv_string = " -target:amp_triv"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".f90:"
     if (.not. verbose) then
@@ -5897,7 +5901,7 @@ can be exploited for its data-management parts.
     end if
     write (unit, "(99A)")  TAB, char (omega_path), &
          " -o ", char (id), ".f90", &
-         " -target:whizard", &
+         " -target:whizard", char (amp_triv_string), &
          " -target:parameter_module parameters_", char (writer%model_name), &
          " -target:module opr_", char (id), &
          " -target:md5sum '", writer%md5sum, "'", &
@@ -6240,6 +6244,21 @@ end module prc_threshold
 @ %def threshold_writer_t
 @
 <<Prc Threshold: threshold writer: TBP>>=
+  procedure :: init => threshold_writer_init
+<<Prc Threshold: procedures>>=
+  pure subroutine threshold_writer_init &
+       (writer, model_name, prt_in, prt_out, restrictions)
+    class(threshold_writer_t), intent(inout) :: writer
+    type(string_t), intent(in) :: model_name
+    type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    type(string_t), intent(in), optional :: restrictions
+    call writer%base_init (model_name, prt_in, prt_out, restrictions)
+    writer%amp_triv = .false.
+  end subroutine threshold_writer_init
+
+@ %def threshold_writer_init
+@
+<<Prc Threshold: threshold writer: TBP>>=
   procedure :: write_makefile_extra => threshold_writer_write_makefile_extra
 <<Prc Threshold: procedures>>=
   subroutine threshold_writer_write_makefile_extra &
@@ -6294,8 +6313,10 @@ end module prc_threshold
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: verbose
     logical, intent(in), optional :: testflag
-    if (debug_on) call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_code")
-    call writer%base_write_makefile_code (unit, id, os_data, verbose, testflag)
+    if (debug_on) &
+         call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_code")
+    call writer%base_write_makefile_code &
+         (unit, id, os_data, verbose, testflag = testflag)
     call writer%write_makefile_extra (unit, id, os_data, verbose, BORN)
     if (writer%nlo_type == NLO_VIRTUAL .and. writer%active) &
          call writer%write_makefile_extra (unit, id, os_data, verbose, writer%nlo_type)

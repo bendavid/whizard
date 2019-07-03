@@ -394,7 +394,7 @@ module Make (M : Model.T) (P : Momentum.T) :
 
     let dummy3 = Coupling.Scalar_Scalar_Scalar 1
     let dummy4 = Coupling.Scalar4 1
-    let dummyn = ()
+    let dummyn = Coupling.UFOn (Algebra.QC.one, "dummy", [], Color.Trivial)
 
 (* Translate the vertices in a pair of lists: the first is the list
    of always rejected couplings and the second the remaining

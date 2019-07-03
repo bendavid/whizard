@@ -3186,7 +3186,7 @@ intent(out).
       type is (gosam_def_t)
         if (present (id)) then
            call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo, var_list)
+                prt_out, nlo, restrictions, var_list)
         else
            call msg_fatal ("Dispatch GoSam def: No id!")
         end if
@@ -3197,7 +3197,7 @@ intent(out).
        type is (openloops_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, &
-                  prt_out, nlo, var_list)
+                  prt_out, nlo, restrictions, var_list)
           else
              call msg_fatal ("Dispatch OpenLoops def: No id!")
           end if
@@ -3209,7 +3209,8 @@ intent(out).
        type is (recola_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, prt_out, &
-                  nlo, alpha_power, alphas_power, correction_type)
+                  nlo, alpha_power, alphas_power, correction_type, &
+                  restrictions)
           else
              call msg_fatal ("Dispatch RECOLA def: No id!")
           end if
@@ -4207,7 +4208,7 @@ polarization flag and names of decay processes, where applicable.
        if (present (can_be_integrated)) then
           call core_def%set_active_writer (can_be_integrated)
        else
-          call msg_fatal ("Cannot decide if user-defined core is integrated!")
+          call msg_fatal ("Cannot decide if external core is integrated!")
        end if
     end select
 

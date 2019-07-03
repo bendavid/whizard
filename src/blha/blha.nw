@@ -586,7 +586,7 @@ Obviously, this process-core type uses the BLHA interface.
     s_proc = var_str ("")
   end function prc_blha_writer_get_process_string
 
-@ %def gosam_writer_get_process_string
+@ %def prc_blha_writer_get_process_string
 @
 <<BLHA OLP interfaces: blha writer: TBP>>=
   procedure :: get_n_proc => prc_blha_writer_get_n_proc

@@ -62,6 +62,8 @@ input:
 ;
 
 expr:
+ | MINUS INT %prec UNARY  { X.integer (- $2) }
+ | MINUS FLOAT %prec UNARY{ X.float (-. $2) }
  | INT             	  { X.integer $1 }
  | FLOAT           	  { X.float $1 }
  | ID              	  { X.variable $1 }

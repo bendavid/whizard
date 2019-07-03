@@ -77,9 +77,9 @@ rule token = parse
                       { FLOAT (float_of_string x) }
   | '-'? digit+ as i  { INT (int_of_string i) }
   | char word* as s   { ID s }
-  | '\'' ([^'\'']+ as s) '\''
+  | '\'' ([^'\'']+ ( '\\' '\'' [^'\'']+ )* as s) '\''
                       { STRING s }
-  | '"' ([^'"']+ as s) '"'
+  | '"' ([^'"']+ ( '\\' '"' [^'"']+ )* as s) '"'
                       { STRING s }
   | _ as c            { failwith ("invalid character at `" ^
 				    string_of_char c ^ "'") }

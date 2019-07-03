@@ -96,13 +96,21 @@ let not_positive integers =
 let int_list_to_string is =
   "[" ^ String.concat ", " (List.map string_of_int is) ^ "]"
 	
-module Q = Algebra.Small_Rational
-
 module type Index =
   sig
+    (* Indices are represented by a pair [int * 'r], where
+       ['r] denotes the representation the index belongs to.  *)
+
+    (* [free indices] returns all free indices in the
+       list [indices], i.\,e.~all positive indices. *)
     val free : (int * 'r) list -> (int * 'r) list
+
+    (* [summation indices] returns all summation indices in the
+       list [indices], i.\,e.~all negative indices.  *)
     val summation : (int * 'r) list -> (int * 'r) list
+
     val classes_to_string : ('r -> string) -> (int * 'r) list -> string
+
   end
 
 module Index : Index =
@@ -130,6 +138,7 @@ module Index : Index =
 module type Atom =
   sig
     type t
+    val map_indices : (int -> int) -> t -> t
     val of_expr : string -> UFOx_syntax.expr list -> t
     val to_string : t -> string
     type r
@@ -145,7 +154,9 @@ module type Atom =
 module type Tensor =
   sig
     type atom
-    type t = (atom list * Q.t) list
+    type t = (atom list * Algebra.Q.t) list
+    val map_atoms : (atom -> atom) -> t -> t
+    val map_indices : (int -> int) -> t -> t
     val of_expr : UFOx_syntax.expr -> t
     val of_string : string -> t
     val of_strings : string list -> t
@@ -165,9 +176,16 @@ module Tensor (A : Atom) : Tensor
   struct
 
     module S = UFOx_syntax
+    module Q = Algebra.Q
 
     type atom = A.t
     type t = (atom list * Q.t) list
+
+    let map_atoms f t =
+      List.map (fun (atoms, q) -> (List.map f atoms, q)) t
+
+    let map_indices f t =
+      map_atoms (A.map_indices f) t
 
     let multiply (t1, c1) (t2, c2) =
       (List.sort compare (t1 @ t2), Q.mul c1 c2)
@@ -208,6 +226,11 @@ module Tensor (A : Atom) : Tensor
 	      failwith "UFOx.Tensor.of_expr: rational power"
 	 | [([], q)], _ ->
 	    failwith "UFOx.Tensor.of_expr: non-numeric power"
+	 | t, [([], p)] ->
+            if Q.is_null (Q.sub p (Q.make 2 1)) then
+              Product.list2 multiply t t
+            else
+	      failwith "UFOx.Tensor.of_expr: only 2 as power of tensor allowed"
 	 | _ -> failwith "UFOx.Tensor.of_expr: power of tensor"
 	 end
 
@@ -222,16 +245,16 @@ module Tensor (A : Atom) : Tensor
 	(List.sort compare
 	   (List.map (fun (t, c) -> filter (A.classify_indices t)) tensors))
 
+    (* NB: the number of summation indices is not guarateed to be
+       the same!  Therefore it was foolish to try to check for
+       uniqueness \ldots *)
     let classify_indices tensors =
-      let free_indices = classify_indices' Index.free tensors
-      and summation_indices = classify_indices' Index.summation tensors in
-      match free_indices, summation_indices with
-      | [], _ -> failwith "UFOx.Tensor.classify_indices: can't happen!"
-      | [f], [s] -> f
-      | [_], _ ->
-	 invalid_arg
-	   "UFOx.Tensor.classify_indices: superfluous summation indices!"
-      | _, _ ->
+      match classify_indices' Index.free tensors with
+      | [] ->
+         (* There's always at least an empty list! *)
+         failwith "UFOx.Tensor.classify_indices: can't happen!"
+      | [f] -> f
+      | _ ->
 	 invalid_arg "UFOx.Tensor.classify_indices: incompatible free indices!"
 
     let of_expr e =
@@ -284,32 +307,48 @@ module Tensor (A : Atom) : Tensor
 
 module type Lorentz_Atom =
   sig
-    type t = private
+
+    type dirac = private
       | C of int * int
-      | Epsilon of int * int * int * int
       | Gamma of int * int * int
       | Gamma5 of int * int
       | Identity of int * int
-      | Metric of int * int
-      | P of int * int
       | ProjP of int * int
       | ProjM of int * int
       | Sigma of int * int * int * int
+
+    type vector = (* private *)
+      | Epsilon of int * int * int * int
+      | Metric of int * int
+      | P of int * int
+
+    type t = private
+      | Dirac of dirac
+      | Vector of vector
+
   end
 
 module Lorentz_Atom =
   struct
-    type t =
+
+    type dirac =
       | C of int * int
-      | Epsilon of int * int * int * int
       | Gamma of int * int * int
       | Gamma5 of int * int
       | Identity of int * int
-      | Metric of int * int
-      | P of int * int
       | ProjP of int * int
       | ProjM of int * int
       | Sigma of int * int * int * int
+
+    type vector =
+      | Epsilon of int * int * int * int
+      | Metric of int * int
+      | P of int * int
+
+    type t =
+      | Dirac of dirac
+      | Vector of vector
+
   end
 
 module Lorentz_Atom' : Atom
@@ -320,21 +359,33 @@ module Lorentz_Atom' : Atom
 
     open Lorentz_Atom
     
-    let to_string = function
+    let map_indices_dirac f = function
+      | C (i, j) -> C (f i, f j)
+      | Gamma (mu, i, j) -> Gamma (f mu, f i, f j)
+      | Gamma5 (i, j) -> Gamma5 (f i, f j)
+      | Identity (i, j) -> Identity (f i, f j)
+      | ProjP (i, j) -> ProjP (f i, f j)
+      | ProjM (i, j) -> ProjM (f i, f j)
+      | Sigma (mu, nu, i, j) -> Sigma (f mu, f nu, f i, f j)
+
+    let map_indices_vector f = function
+      | Epsilon (mu, nu, ka, la) -> Epsilon (f mu, f nu, f ka, f la)
+      | Metric (mu, nu) -> Metric (f mu, f nu)
+      | P (mu, n) -> P (f mu, f n)
+
+    let map_indices f = function
+      | Dirac d -> Dirac (map_indices_dirac f d)
+      | Vector v -> Vector (map_indices_vector f v)
+
+    let dirac_to_string = function
       | C (i, j) ->
 	 Printf.sprintf "C(%d,%d)" i j
-      | Epsilon (mu, nu, ka, la) ->
-	 Printf.sprintf "Epsilon(%d,%d,%d,%d)" mu nu ka la
       | Gamma (mu, i, j) ->
 	 Printf.sprintf "Gamma(%d,%d,%d)" mu i j
       | Gamma5 (i, j) ->
 	 Printf.sprintf "Gamma5(%d,%d)" i j
       | Identity (i, j) ->
 	 Printf.sprintf "Identity(%d,%d)" i j
-      | Metric (mu, nu) ->
-	 Printf.sprintf "Metric(%d,%d)" mu nu
-      | P (mu, n) ->
-	 Printf.sprintf "P(%d,%d)" mu n
       | ProjP (i, j) ->
 	 Printf.sprintf "ProjP(%d,%d)" i j
       | ProjM (i, j) ->
@@ -342,41 +393,56 @@ module Lorentz_Atom' : Atom
       | Sigma (mu, nu, i, j) ->
 	 Printf.sprintf "Sigma(%d,%d,%d,%d)" mu nu i j
 
+    let vector_to_string = function
+      | Epsilon (mu, nu, ka, la) ->
+	 Printf.sprintf "Epsilon(%d,%d,%d,%d)" mu nu ka la
+      | Metric (mu, nu) ->
+	 Printf.sprintf "Metric(%d,%d)" mu nu
+      | P (mu, n) ->
+	 Printf.sprintf "P(%d,%d)" mu n
+
+    let to_string = function
+      | Dirac d -> dirac_to_string d
+      | Vector v -> vector_to_string v
+
     module S = UFOx_syntax
 
     let of_expr name args =
       match name, args with
-      | "C", [S.Integer i; S.Integer j] -> C (i, j)
+      | "C", [S.Integer i; S.Integer j] -> Dirac (C (i, j))
       | "C", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to C()"
       | "Epsilon", [S.Integer mu; S.Integer nu; S.Integer ka; S.Integer la] ->
-	 Epsilon (mu, nu, ka, la)
+	 Vector (Epsilon (mu, nu, ka, la))
       | "Epsilon", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Epsilon()"
       | "Gamma", [S.Integer mu; S.Integer i; S.Integer j] ->
-	 Gamma (mu, i, j)
+	 Dirac (Gamma (mu, i, j))
       | "Gamma", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Gamma()"
-      | "Gamma5", [S.Integer i; S.Integer j] -> Gamma5 (i, j)
+      | "Gamma5", [S.Integer i; S.Integer j] -> Dirac (Gamma5 (i, j))
       | "Gamma5", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Gamma5()"
-      | "Identity", [S.Integer i; S.Integer j] -> Identity (i, j)
+      | "Identity", [S.Integer i; S.Integer j] -> Dirac (Identity (i, j))
       | "Identity", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Identity()"
-      | "Metric", [S.Integer mu; S.Integer nu] -> Metric (mu, nu)
+      | "Metric", [S.Integer mu; S.Integer nu] -> Vector (Metric (mu, nu))
       | "Metric", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Metric()"
-      | "P", [S.Integer mu; S.Integer n] -> P (mu, n)
+      | "P", [S.Integer mu; S.Integer n] -> Vector (P (mu, n))
       | "P", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to P()"
-      | "ProjP", [S.Integer i; S.Integer j] -> ProjP (i, j)
+      | "ProjP", [S.Integer i; S.Integer j] -> Dirac (ProjP (i, j))
       | "ProjP", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to ProjP()"
-      | "ProjM", [S.Integer i; S.Integer j] -> ProjM (i, j)
+      | "ProjM", [S.Integer i; S.Integer j] -> Dirac (ProjM (i, j))
       | "ProjM", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to ProjM()"
       | "Sigma", [S.Integer mu; S.Integer nu; S.Integer i; S.Integer j] ->
-	 Sigma (mu, nu, i, j)
+         if mu <> nu then
+	   Dirac (Sigma (mu, nu, i, j))
+         else
+	   invalid_arg "UFOx.Lorentz.of_expr: implausible arguments to Sigma()"
       | "Sigma", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Sigma()"
       | name, _ ->
@@ -409,15 +475,21 @@ module Lorentz_Atom' : Atom
       | CSp -> Sp (* ??? *)
       | Ghost -> Ghost
 
-    let classify_indices1 = function
+    let classify_vector_indices1 = function
+      | Epsilon (mu, nu, ka, la) -> [(mu, V); (nu, V); (ka, V); (la, V)]
+      | Metric (mu, nu) -> [(mu, V); (nu, V)]
+      | P (mu, n) ->  [(mu, V)]
+
+    let classify_dirac_indices1 = function
       | C (i, j) -> [(i, CSp); (j, Sp)] (* ??? *)
       | Gamma5 (i, j) | Identity (i, j)
       | ProjP (i, j) | ProjM (i, j) -> [(i, CSp); (j, Sp)]
-      | Epsilon (mu, nu, ka, la) -> [(mu, V); (nu, V); (ka, V); (la, V)]
       | Gamma (mu, i, j) -> [(mu, V); (i, CSp); (j, Sp)]
-      | Metric (mu, nu) -> [(mu, V); (nu, V)]
-      | P (mu, n) ->  [(mu, V)]
       | Sigma (mu, nu, i, j) -> [(mu, V); (nu, V); (i, CSp); (j, Sp)]
+
+    let classify_indices1 = function
+      | Dirac d -> classify_dirac_indices1 d
+      | Vector v -> classify_vector_indices1 v
 
     let classify_indices tensors =
       List.sort compare
@@ -439,8 +511,9 @@ module Lorentz = Tensor(Lorentz_Atom')
 
 module type Color_Atom =
   sig
-    type t = private
+    type t = (* private *)
       | Identity of int * int
+      | Identity8 of int * int
       | T of int * int * int
       | F of int * int * int
       | D of int * int * int
@@ -455,6 +528,7 @@ module Color_Atom =
   struct
     type t =
       | Identity of int * int
+      | Identity8 of int * int
       | T of int * int * int
       | F of int * int * int
       | D of int * int * int
@@ -474,6 +548,18 @@ module Color_Atom' : Atom
     module S = UFOx_syntax
 
     open Color_Atom
+
+    let map_indices f = function
+      | Identity (i, j) -> Identity (f i, f j)
+      | Identity8 (a, b) -> Identity8 (f a, f b)
+      | T (a, i, j) -> T (f a, f i, f j)
+      | F (a, i, j) -> F (f a, f i, f j)
+      | D (a, i, j) -> D (f a, f i, f j)
+      | Epsilon (i, j, k) -> Epsilon (f i, f j, f k)
+      | EpsilonBar (i, j, k) -> EpsilonBar (f i, f j, f k)
+      | T6 (a, i', j') -> T6 (f a, f i', f j')
+      | K6 (i', j, k) -> K6 (f i', f j, f k)
+      | K6Bar (i', j, k) -> K6Bar (f i', f j, f k)
 
     let of_expr name args =
       match name, args with
@@ -511,6 +597,7 @@ module Color_Atom' : Atom
 	
     let to_string = function
       | Identity (i, j) -> Printf.sprintf "Identity(%d,%d)" i j
+      | Identity8 (a, b) -> Printf.sprintf "Identity8(%d,%d)" a b
       | T (a, i, j) -> Printf.sprintf "T(%d,%d,%d)" a i j
       | F (a, b, c) -> Printf.sprintf "f(%d,%d,%d)" a b c
       | D (a, b, c) -> Printf.sprintf "d(%d,%d,%d)" a b c
@@ -551,6 +638,7 @@ module Color_Atom' : Atom
 
     let classify_indices1 = function
       | Identity (i, j) -> [(i, C); (j, F)]
+      | Identity8 (a, b) -> [(a, A); (b, A)]
       | T (a, i, j) -> [(i, F); (j, C); (a, A)]
       | Color_Atom.F (a, b, c) | D (a, b, c) -> [(a, A); (b, A); (c, A)] 
       | Epsilon (i, j, k) -> [(i, F); (j, F); (k, F)]
@@ -584,23 +672,27 @@ module Value =
   struct
 
     module S = UFOx_syntax
+    module Q = Algebra.Q
 
     type builtin =
       | Sqrt
       | Cos
       | Sin
+      | Exp
       | Conj
 
     let builtin_to_string = function
       | Sqrt -> "sqrt"
       | Cos -> "cos"
       | Sin -> "sin"
+      | Exp -> "exp"
       | Conj -> "conjg"
 
     let builtin_of_string = function
       | "cmath.sqrt" -> Sqrt
       | "cmath.cos" -> Cos
       | "cmath.sin" -> Sin
+      | "cmath.exp" -> Exp
       | "complexconjugate" -> Conj
       | name -> failwith ("UFOx.Value: unsupported function: " ^ name)
 
@@ -683,13 +775,16 @@ module Value =
          Coupling.Quot (to_coupling atom e1, to_coupling atom e2)
       | Power (e1, Integer e2) ->
          Coupling.Pow (to_coupling atom e1, e2)
+      | Power (e1, e2) ->
+         Coupling.PowX (to_coupling atom e1, to_coupling atom e2)
       | Application (Sin, [e]) -> Coupling.Sin (to_coupling atom e)
       | Application (Cos, [e]) -> Coupling.Cos (to_coupling atom e)
+      | Application (Exp, [e]) -> Coupling.Exp (to_coupling atom e)
       | Application (Sqrt, [e]) -> Coupling.Sqrt (to_coupling atom e)
       | Application (Conj, [e]) -> Coupling.Conj (to_coupling atom e)
-      | Power (e1, _) ->
-         invalid_arg "UFOx.Value.to_coupling: non-integer power"
-      | Application (_, _) ->
+      | Application (_, []) ->
+         failwith "UFOx.Value.to_coupling: empty argument list"
+      | Application (_, _::_) ->
          failwith "UFOx.Value.to_coupling: more than one argument list"
 
     let compress terms = terms

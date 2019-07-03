@@ -1,0 +1,229 @@
+% omega-paper-1-pics.tex --
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[a4paper]{article}
+\usepackage{type1cm}
+\usepackage{feynmp,emp}
+\usepackage{amsmath}
+\usepackage{thophys}
+\empaddtoTeX{\usepackage{amsmath,amssymb}}
+\empaddtoTeX{\usepackage{thophys}}
+\setlength{\unitlength}{1mm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\magnification}{1}
+\newlength{\logoheight}
+\newlength{\logowidth}
+\newcounter{logo}
+\setcounter{logo}{1}
+\newwrite\dvipscmds
+\newcommand{\shiplogo}[1]{%
+  \setbox0\hbox{#1}%
+  \logowidth=\wd0%
+  \logoheight=\ht0%
+  \multiply\logoheight by \magnification%
+  \multiply\logowidth by \magnification%
+  \edef\dvipscmd{dvips -E -p=\the\value{logo} -n1 %
+     -O -1in,-1in -T \the\logowidth,\the\logoheight\space %
+     -o \jobname-\the\value{logo}.eps \jobname}%
+  \immediate\write\dvipscmds{\dvipscmd}%
+  \edef\dvipscmd{epstopdf \jobname-\the\value{logo}.eps}%
+  \immediate\write\dvipscmds{\dvipscmd}%
+  \shipout\box0%
+  \stepcounter{logo}}
+\newcommand{\logoframe}[5]{%
+  \leavevmode
+  \hbox{\vbox{\vskip#2\par\hbox{\hskip#1#5\hskip#3}\par\vskip#4}}}
+\newenvironment{logos}[1]%
+  {\ignorespaces\immediate\openout\dvipscmds=#1.sh}%
+  {\immediate\closeout\dvipscmds}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\setlength{\parindent}{0pt}
+\begin{empfile}
+\begin{empcmds}
+  vardef dag_coords =
+    pair node[][]; node[1][1] = (.5w,.h);
+    node[2][1] = (.3w,2/3h); node[2][2] = (.7w,2/3h);
+    node[3][1] = (.2w,1/3h); node[3][2] = (.4w,1/3h);
+    node[3][3] = (.6w,1/3h); node[3][4] = (.8w,1/3h);
+    node[4][1] = (.5w,0/3h); node[4][2] = (.7w,0/3h);
+    % setbounds currentpicture to (0,0)--(w,0)--(w,h)--(0,h)--cycle;
+  enddef;
+  vardef dag_common =
+    dag_coords;
+    pickup pencircle scaled 1pt;
+    label.rt (btex $\times$ etex, node[1][1]);
+    draw node[1][1]--node[2][2];
+    label.rt (btex $+$ etex, node[2][2]);
+    draw node[2][2]--node[3][3];
+    draw node[2][2]--node[3][4];
+    label.rt (btex $\times$ etex, node[3][3]);
+    draw node[3][3]--node[4][1];
+    draw node[3][3]--node[4][2];
+    label.rt (btex $\vphantom{b}c$ etex, node[3][4]);
+    label.rt (btex $\vphantom{b}a$ etex, node[4][1]);
+    label.rt (btex $\vphantom{b}b$ etex, node[4][2]);
+    pickup pencircle scaled 3pt;
+    pickup pencircle scaled 3pt;
+    drawdot node[1][1];
+    drawdot node[2][2];
+    drawdot node[3][3];
+  enddef;
+\end{empcmds}
+\begin{empdef}[dag](38,16)
+  dag_common;
+  pickup pencircle scaled 1pt;
+  draw node[1][1]{(-1,-1)}..{(1,-1)}node[3][3];
+\end{empdef}
+\begin{empdef}[tree](38,16)
+  dag_common;
+  pickup pencircle scaled 1pt;
+  label.rt (btex $\times$ etex, node[2][1]);
+  draw node[1][1]--node[2][1];
+  draw node[2][1]--node[3][1];
+  draw node[2][1]--node[3][2];
+  label.rt (btex $\vphantom{b}a$ etex, node[3][1]);
+  label.rt (btex $\vphantom{b}b$ etex, node[3][2]);
+  pickup pencircle scaled 3pt;
+  drawdot node[2][1];
+\end{empdef}
+\begin{fmffile}{\jobname eps}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fmfset{arrow_ang}{10}
+\fmfset{curly_len}{2mm}
+\fmfset{wiggly_len}{3mm}
+\begin{logos}{\jobname}
+  \shiplogo{%
+    \fmfframe(2,4)(6,5){%
+      \begin{fmfgraph*}(17,15)
+       \fmflabel{$x$}{x}
+       \fmflabel{$p_1$}{l}
+       \fmflabel{$q_1$}{r1}
+       \fmflabel{$q_2$}{r2}
+       \fmftop{x}
+       \fmfleft{l,dl}
+       \fmfright{r1,r2,dr}
+       \fmf{plain}{l,v}
+       \fmf{plain}{r1,v}
+       \fmf{plain}{r2,v}
+       \fmf{plain,tension=3}{x,v}
+       \fmfblob{.4w}{v}
+       \fmfdot{x}
+      \end{fmfgraph*}}}
+  \shiplogo{%
+    \fmfframe(2,4)(6,5){%
+      \begin{fmfgraph*}(17,15)
+       \fmflabel{$x$}{x}
+       \fmflabel{$p_1$}{l}
+       \fmflabel{$q_1$}{r1}
+       \fmflabel{$q_2$}{r2}
+       \fmftop{x}
+       \fmfleft{l,dl}
+       \fmfright{r1,r2,dr}
+       \fmf{plain}{l,v}
+       \fmf{plain}{r1,vr,v}
+       \fmf{plain}{r2,vr}
+       \fmf{plain,tension=5}{x,v}
+       \fmfdot{x}
+      \end{fmfgraph*}}}
+  \shiplogo{%
+    \fmfframe(2,4)(6,5){%
+      \begin{fmfgraph*}(17,15)
+       \fmflabel{$x$}{x}
+       \fmflabel{$p_1$}{l}
+       \fmflabel{$q_1$}{r1}
+       \fmflabel{$q_2$}{r2}
+       \fmftop{x}
+       \fmfleft{l,dl}
+       \fmfright{r1,r2,dr}
+       \fmf{plain}{l,vr,v}
+       \fmf{plain}{r1,vr}
+       \fmf{plain}{r2,v}
+       \fmf{plain,tension=5}{x,v}
+       \fmfdot{x}
+      \end{fmfgraph*}}}
+  \shiplogo{%
+    \fmfframe(2,4)(6,5){%
+      \begin{fmfgraph*}(17,15)
+       \fmflabel{$x$}{x}
+       \fmflabel{$p_1$}{l}
+       \fmflabel{$q_1$}{r1}
+       \fmflabel{$q_2$}{r2}
+       \fmftop{x}
+       \fmfleft{l,dl}
+       \fmfright{r1,r2,dr}
+       \fmf{plain}{l,vr}
+       \fmf{plain,tension=0.5}{vr,v}
+       \fmf{plain}{r1,v}
+       \fmf{plain,rubout,tension=0.5}{r2,vr}
+       \fmf{plain,tension=5}{x,v}
+       \fmfdot{x}
+      \end{fmfgraph*}}}
+  \shiplogo{%
+    \fmfframe(2,3)(2,1){%
+      \begin{fmfgraph*}(17,15)
+       \fmflabel{$x$}{x}
+       \fmftop{x}
+       \fmfbottomn{n}{6}
+       \fmf{plain,tension=6}{x,n}
+       \fmfv{d.sh=circle,d.f=empty,d.si=30pt,l=$n$,l.d=0}{n}
+       \begin{fmffor}{i}{1}{1}{6}
+         \fmf{plain}{n,n[i]}
+       \end{fmffor}
+      \end{fmfgraph*}}}
+  \shiplogo{%
+    \fmfframe(2,3)(2,1){%
+      \begin{fmfgraph*}(27,15)
+       \fmflabel{$x$}{x}
+       \fmftop{x}
+       \fmfbottomn{n}{6}
+       \fmf{plain,tension=8}{x,n}
+       \fmf{plain,tension=4}{n,k}
+       \fmf{plain,tension=4}{n,l}
+       \fmfv{d.sh=circle,d.f=empty,d.si=20pt,l=$k$,l.d=0}{k}
+       \fmfv{d.sh=circle,d.f=empty,d.si=20pt,l=$l$,l.d=0}{l}
+       \fmffixed{(30pt,0pt)}{k,l}
+       \begin{fmffor}{i}{1}{1}{4}
+         \fmf{plain}{k,n[i]}
+       \end{fmffor}
+       \begin{fmffor}{i}{5}{1}{6}
+         \fmf{plain}{l,n[i]}
+       \end{fmffor}
+       \fmfdot{n}
+      \end{fmfgraph*}}}
+  \shiplogo{%
+    \begin{fmfgraph}(25,16)
+      \fmfleftn{l}{3}
+      \fmfrightn{r}{3}
+      \fmf{plain}{l1,v4}
+      \fmf{plain}{l2,v4}
+      \fmf{plain}{l3,v4}
+      \fmf{plain}{r1,v1}
+      \fmf{plain}{r2,v1}
+      \fmf{plain}{v1,v2}
+      \fmf{plain}{r3,v2}
+      \fmf{plain}{v2,v4}
+      \fmfv{d.sh=circle,d.fill=empty,d.si=6thin}{v4}  
+      \fmfdot{v1,v2}
+    \end{fmfgraph}}
+  \shiplogo{%
+    \begin{fmfgraph}(25,16)
+      \fmfleftn{l}{3}
+      \fmfrightn{r}{3}
+      \fmf{plain}{l1,v4}
+      \fmf{plain}{l2,v4}
+      \fmf{plain}{l3,v4}
+      \fmf{plain}{r1,v1}
+      \fmf{plain}{r2,v1}
+      \fmf{plain}{v1,v2}
+      \fmf{plain}{r3,v2}
+      \fmf{plain}{v2,v4}
+      \fmfv{d.sh=circle,d.fill=empty,d.si=6thin}{v2}  
+      \fmfdot{v1,v4}
+    \end{fmfgraph}}
+  \shiplogo{\empuse{tree}}
+  \shiplogo{\empuse{dag}}
+\end{logos}
+\end{fmffile}
+\end{empfile}
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

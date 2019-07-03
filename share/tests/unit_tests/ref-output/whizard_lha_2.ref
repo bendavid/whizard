@@ -1,0 +1,14 @@
+* Test output: whizard_lha_2
+*   Purpose: Setup LHAupWhizard and set event record.
+
+
+* Set initialisation (Beams) and weighting strategy.
+
+
+* Set process parameters for 5 different processes.
+
+
+* Set event record.
+
+
+* Cleanup

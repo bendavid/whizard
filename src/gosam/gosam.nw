@@ -142,12 +142,13 @@ end module prc_gosam
   procedure :: init => gosam_def_init
 <<prc gosam: procedures>>=
   subroutine gosam_def_init (object, basename, model_name, &
-     prt_in, prt_out, nlo_type, var_list)
+     prt_in, prt_out, nlo_type, restrictions, var_list)
     class(gosam_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
+    type(string_t), intent(in), optional :: restrictions
     type(var_list_t), intent(in) :: var_list
     object%basename = basename
     allocate (gosam_writer_t :: object%writer)
@@ -163,7 +164,7 @@ end module prc_gosam
     end select
     select type (writer => object%writer)
     type is (gosam_writer_t)
-      call writer%init (model_name, prt_in, prt_out)
+      call writer%init (model_name, prt_in, prt_out, restrictions)
       writer%filter_lo = var_list%get_sval (var_str ("$gosam_filter_lo"))
       writer%filter_nlo = var_list%get_sval (var_str ("$gosam_filter_nlo"))
       writer%symmetries = &

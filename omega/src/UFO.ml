@@ -81,6 +81,10 @@ let parse_file name =
   close_in ic;
   result
 
+(* These are the contents of the Python files after lexical
+   analysis as context-free variable declarations, before
+   any semantic interpretation. *)
+
 module type Files =
   sig
     
@@ -458,6 +462,7 @@ module type UFO_Coupling =
 
     val of_file : S.t -> t SMap.t
     val to_string : string -> t -> string
+    val to_string_expanded : string -> t -> string
 
   end
 
@@ -477,6 +482,13 @@ module UFO_Coupling : UFO_Coupling =
       Printf.sprintf
 	"coupling: %s => [name = '%s', value = '%s', order = [%s]]"
 	symbol c.name c.value (order_to_string c.order)
+
+    let to_string_expanded symbol c =
+      let expansion =
+        UFOx.Value.to_string (UFOx.Value.of_expr (UFOx.Expr.of_string c.value)) in
+      Printf.sprintf
+	"coupling: %s => [name = '%s', value = '%s', value' = '%s', order = [%s]]"
+	symbol c.name c.value expansion (order_to_string c.order)
 
     let of_file1 map d =
       let symbol = d.S.name in
@@ -540,7 +552,7 @@ module Coupling_Order : Coupling_Order =
       List.fold_left of_file1 SMap.empty coupling_orders
   end
 
-module type Lorentz =
+module type Lorentz_UFO =
   sig
 
     type t = private
@@ -553,7 +565,7 @@ module type Lorentz =
 
   end
 
-module Lorentz : Lorentz =
+module Lorentz_UFO : Lorentz_UFO =
   struct
 
     type t =
@@ -588,18 +600,20 @@ module Lorentz : Lorentz =
 module type Vertex =
   sig
 
+    type lcc = private (* Lorentz-color-coupling *)
+      { lorentz : string;
+	color : UFOx.Color.t;
+	coupling : string }
+
     type t = private
       { name : string;
 	particles : string array;
-	color : UFOx.Color.t array;
-	lorentz : string array;
-	couplings : string option array array }
+	lcc : lcc list }
 
-    val of_file : S.t -> t SMap.t
+    val of_file : Particle.t SMap.t -> S.t -> t SMap.t
     val to_string : string -> t -> string
     val to_string_expanded :
-      Lorentz.t SMap.t -> UFO_Coupling.t SMap.t -> t -> string
-
+      Lorentz_UFO.t SMap.t -> UFO_Coupling.t SMap.t -> t -> string
     val contains : Particle.t SMap.t -> (Particle.t -> bool) -> t -> bool
     val filter : (t -> bool) -> t SMap.t -> t SMap.t
 
@@ -608,63 +622,51 @@ module type Vertex =
 module Vertex : Vertex =
   struct
     
+    type lcc =
+      { lorentz : string;
+	color : UFOx.Color.t;
+	coupling : string }
+
     type t =
       { name : string;
 	particles : string array;
-	color : UFOx.Color.t array;
-	lorentz : string array;
-	couplings : string option array array }
+	lcc : lcc list }
 
     let to_string symbol c =
       Printf.sprintf
 	"vertex: %s => [name = '%s', particles = [%s], \
-                        color = [%s], lorentz = [%s], \
-                        couplings = [%s]]"
+                        lorentz-color-couplings = [%s]]"
 	symbol c.name
-	(String.concat ", " (Array.to_list c.particles))
-	(String.concat ", "
-	   (List.map UFOx.Color.to_string (Array.to_list c.color)))
-	(String.concat ", " (Array.to_list c.lorentz))
-	(String.concat ", "
-	   (List.map
-	      (fun column ->
-		"[" ^ (String.concat ", "
-			 (List.map
-			    (function Some s -> s | None -> "0")
-			    (Array.to_list column))) ^ "]")
-	      (Array.to_list c.couplings)))
-
+	(String.concat
+           ", " (Array.to_list c.particles))
+	(String.concat
+           ", "
+           (List.map
+              (fun lcc ->
+                Printf.sprintf
+                  "%s * %s * %s"
+                  lcc.coupling lcc.lorentz
+                  (UFOx.Color.to_string lcc.color))
+              c.lcc))
         
     let to_string_expanded lorentz couplings c =
       let expand_lorentz s =
         try
-          UFOx.Lorentz.to_string (SMap.find s lorentz).Lorentz.structure
-        with
-        | Not_found -> "?" in
-      let expand_coupling s =
-        try
-          UFOx.Value.to_string
-	    (UFOx.Value.of_expr
-	       (UFOx.Expr.of_string
-                  (SMap.find s couplings).UFO_Coupling.value))
+          UFOx.Lorentz.to_string (SMap.find s lorentz).Lorentz_UFO.structure
         with
         | Not_found -> "?" in
       Printf.sprintf
-	"expanded: [%s] -> { color = [%s], lorentz = [%s], \
-                             couplings = [%s] }"
+	"expanded: [%s] -> { lorentz-color-couplings = [%s] }"
 	(String.concat ", " (Array.to_list c.particles))
-        (String.concat ", "
-	   (List.map UFOx.Color.to_string (Array.to_list c.color)))
-        (String.concat ", "
-	   (List.map expand_lorentz (Array.to_list c.lorentz)))
-	(String.concat ", "
-	   (List.map
-	      (fun column ->
-		"[" ^ (String.concat ", "
-			 (List.map
-			    (function Some s -> expand_coupling s | None -> "0")
-			    (Array.to_list column))) ^ "]")
-	      (Array.to_list c.couplings)))
+        (String.concat
+           ", "
+           (List.map
+              (fun lcc ->
+                Printf.sprintf
+                  "%s * %s * %s"
+                  lcc.coupling (expand_lorentz lcc.lorentz)
+                  (UFOx.Color.to_string lcc.color))
+              c.lcc))
 
     let contains particles predicate v =
       let p = v.particles in
@@ -677,34 +679,116 @@ module Vertex : Vertex =
 	  contains' (pred i) in
       contains' (Array.length p - 1)
       
-    let of_file1 map d =
+    let force_adj_identity1 adj_indices = function
+      | UFOx.Color_Atom.Identity (a, b) as atom ->
+         begin match List.mem a adj_indices, List.mem b adj_indices with
+         | true, true -> UFOx.Color_Atom.Identity8 (a, b)
+         | false, false -> atom
+         | true, false | false, true ->
+            invalid_arg "force_adj_identity: mixed representations!"
+         end
+      | atom -> atom
+
+    let force_adj_identity adj_indices tensor =
+      UFOx.Color.map_atoms (force_adj_identity1 adj_indices) tensor
+
+    let find_adj_indices map particles =
+      let adj_indices = ref [] in
+      Array.iteri
+        (fun i p ->
+          (* We must pattern match against the O'Mega representation,
+             because [UFOx.Color.r] is abstract. *)
+          match UFOx.Color.omega (SMap.find p map).Particle.color with
+          | Color.AdjSUN _ -> adj_indices := succ i :: !adj_indices
+          | _ -> ())
+        particles;
+      !adj_indices
+
+    let classify_color_indices map particles =
+      let fund_indices = ref []
+      and conj_indices = ref []
+      and adj_indices = ref [] in
+      Array.iteri
+        (fun i p ->
+          (* We must pattern match against the O'Mega representation,
+             because [UFOx.Color.r] is abstract. *)
+          match UFOx.Color.omega (SMap.find p map).Particle.color with
+          | Color.SUN n ->
+             if n > 0 then
+               fund_indices := succ i :: !fund_indices
+             else if n < 0 then
+               conj_indices := succ i :: !conj_indices
+             else
+               failwith "classify_color_indices: SU(0)"
+          | Color.AdjSUN n ->
+             if n <> 0 then
+               adj_indices := succ i :: !adj_indices
+             else
+               failwith "classify_color_indices: SU(0)"
+          | _ -> ())
+        particles;
+      (!fund_indices, !conj_indices, !adj_indices)
+
+    (* FIXME: would have expected the opposite order \ldots *)
+    let force_identity1 (fund_indices, conj_indices, adj_indices) = function
+      | UFOx.Color_Atom.Identity (a, b) as atom ->
+         if List.mem a fund_indices then
+           begin
+             if List.mem b conj_indices then
+               UFOx.Color_Atom.Identity (b, a)
+             else
+               invalid_arg "force_adj_identity: mixed representations!"
+           end
+         else if List.mem a conj_indices then
+           begin
+             if List.mem b fund_indices then
+               UFOx.Color_Atom.Identity (a, b)
+             else
+               invalid_arg "force_adj_identity: mixed representations!"
+           end else if List.mem a adj_indices then begin
+             if List.mem b adj_indices then
+               UFOx.Color_Atom.Identity8 (a, b)
+             else
+               invalid_arg "force_adj_identity: mixed representations!"
+           end
+         else
+           atom
+      | atom -> atom
+
+    let force_identity indices tensor =
+      UFOx.Color.map_atoms (force_identity1 indices) tensor
+
+    let of_file1 particle_map map d =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Vertex" ], attribs ->
+         let particles =
+	   Array.of_list (name_list_attrib ~strip:"P" "particles" attribs) in
 	 let color =
+           let indices = classify_color_indices particle_map particles in
 	   Array.of_list
 	     (List.map
-		UFOx.Color.of_string (string_list_attrib "color" attribs))
+                (force_identity indices @@ UFOx.Color.of_string)
+                (string_list_attrib "color" attribs))
 	 and lorentz =
 	   Array.of_list (name_list_attrib ~strip:"L" "lorentz" attribs)
 	 and couplings_alist =
 	   coupling_dictionary_attrib ~strip:"C" "couplings" attribs in
-	 let couplings =
-	   Array.make_matrix (Array.length color) (Array.length lorentz) None in
-	 List.iter
-	   (fun (i, j, c) -> couplings.(i).(j) <- Some c)
-	   couplings_alist;
+	 let lcc =
+	   List.map
+	     (fun (i, j, c) ->
+               { lorentz = lorentz.(j);
+                 color = color.(i);
+                 coupling = c })
+	     couplings_alist in
 	 SMap.add symbol
 	   { name = string_attrib "name" attribs;
-	     particles =
-	       Array.of_list (name_list_attrib ~strip:"P" "particles" attribs);
-	     color = color;
-	     lorentz = lorentz;
-	     couplings = couplings } map
+	     particles;
+	     lcc } map
       | _ -> invalid_arg ("Vertex.of_file: " ^ name_to_string d.S.kind)
 
-    let of_file vertices =
-      List.fold_left of_file1 SMap.empty vertices
+    let of_file particles vertices =
+      List.fold_left (of_file1 particles) SMap.empty vertices
 
     let filter predicate map =
       SMap.filter (fun symbol p -> predicate p) map
@@ -914,41 +998,21 @@ module Decay : Decay =
 
   end
 
-type t =
-  { particles : Particle.t SMap.t;
-    couplings : UFO_Coupling.t SMap.t;
-    coupling_orders : Coupling_Order.t SMap.t;
-    vertices : Vertex.t SMap.t;
-    lorentz : Lorentz.t SMap.t;
-    parameters : Parameter.t SMap.t;
-    propagators : Propagator.t SMap.t;
-    decays : Decay.t SMap.t }
-
-(* Take the elements of [list] that satisfy [predicate] and
-   form a list of pairs of offsets and elements with the offsets
-   starting from [offset]. *)
-let alist_of_list predicate offset list =
-  let _, alist =
-    List.fold_left
-      (fun (n, acc) x ->
-	(succ n, if predicate x then (n, x) :: acc else acc))
-      (offset, []) list in
-  alist
-
-let lorentz_reps_of_vertex model v =
-  alist_of_list (not @@ UFOx.Lorentz.rep_trivial) 1
+let lorentz_reps_of_vertex particles v =
+  ThoList.alist_of_list ~predicate:(not @@ UFOx.Lorentz.rep_trivial) ~offset:1
     (List.map
        (fun p ->
 	 (* Why do we need to conjugate??? *)
 	 UFOx.Lorentz.rep_conjugate
-	   (SMap.find p model.particles).Particle.spin)
+	   (SMap.find p particles).Particle.spin)
        (Array.to_list v.Vertex.particles))
 
-let check_lorentz_reps_of_vertex model v =
-  let reps_particles = List.sort compare (lorentz_reps_of_vertex model v) in
-  Array.iter
-    (fun l ->
-      let l = (SMap.find l model.lorentz).Lorentz.structure in
+let check_lorentz_reps_of_vertex particles lorentz v =
+  let reps_particles =
+    List.sort compare (lorentz_reps_of_vertex particles v) in
+  List.iter
+    (fun lcc ->
+      let l = (SMap.find lcc.Vertex.lorentz lorentz).Lorentz_UFO.structure in
       let reps_vertex = List.sort compare (UFOx.Lorentz.classify_indices l) in
       if reps_vertex <> reps_particles then begin
 	Printf.printf "%s <> %s\n"
@@ -958,41 +1022,214 @@ let check_lorentz_reps_of_vertex model v =
 	     UFOx.Lorentz.rep_to_string reps_vertex);
 	invalid_arg "check_lorentz_reps_of_vertex"
       end)
-    v.Vertex.lorentz
-  
-let color_reps_of_vertex model v =
-  alist_of_list (not @@ UFOx.Color.rep_trivial) 1
+    v.Vertex.lcc
+
+let color_reps_of_vertex particles v =
+  ThoList.alist_of_list ~predicate:(not @@ UFOx.Color.rep_trivial) ~offset:1
     (List.map
-       (fun p -> (SMap.find p model.particles).Particle.color)
+       (fun p -> (SMap.find p particles).Particle.color)
        (Array.to_list v.Vertex.particles))
 
-let check_color_reps_of_vertex model v =
-  let reps_particles = List.sort compare (color_reps_of_vertex model v) in
-  Array.iter
-    (fun c ->
-      let reps_vertex = List.sort compare (UFOx.Color.classify_indices c) in
+let check_color_reps_of_vertex particles v =
+  let reps_particles =
+    List.sort compare (color_reps_of_vertex particles v) in
+  List.iter
+    (fun lcc ->
+      let reps_vertex =
+        List.sort compare (UFOx.Color.classify_indices lcc.Vertex.color) in
       if reps_vertex <> reps_particles then begin
 	Printf.printf "%s <> %s\n"
 	  (UFOx.Index.classes_to_string UFOx.Color.rep_to_string reps_particles)
 	  (UFOx.Index.classes_to_string UFOx.Color.rep_to_string reps_vertex);
 	invalid_arg "check_color_reps_of_vertex"
      end)
-    v.Vertex.color
-  
+    v.Vertex.lcc
+
+module P = Permutation.Default
+
+module type Lorentz =
+  sig
+
+    type spins = private
+      | Unused
+      | Unique of Coupling.lorentz array
+      | Ambiguous of Coupling.lorentz array SMap.t
+
+    type t = private
+      { name : string;
+        n : int;
+	spins : spins;
+	structure : UFOx.Lorentz.t }
+
+    val permute : P.t -> t -> t
+
+    val of_lorentz_UFO :
+      Particle.t SMap.t -> Vertex.t SMap.t ->
+      Lorentz_UFO.t SMap.t -> t SMap.t
+
+    val to_string : string -> t -> string
+
+  end
+
+module Lorentz : Lorentz =
+  struct
+
+    (* Unlike UFO, O'Mega distinguishes bewteen spinors
+       and conjugate spinors.  However, we can inspect
+       the particles in the vertices in which a Lorentz
+       structure is used to determine the correct
+       quantum numbers.
+
+       Most model files in the real world contain unused Lorentz
+       structures.  This is not a problem, we can just ignore them.
+
+       TODO: check if UFO files for models with Majorana
+       fermions need further disambiguation, because the
+       same Lorentz structure is used for Dirac and Majorana
+       fermions. *)
+
+    type spins =
+      | Unused
+      | Unique of Coupling.lorentz array
+      | Ambiguous of Coupling.lorentz array SMap.t
+
+    type t =
+      { name : string;
+        n : int;
+	spins : spins;
+	structure : UFOx.Lorentz.t }
+
+    let permute_spins p = function
+      | Unused -> Unused
+      | Unique s -> Unique (P.array p s)
+      | Ambiguous map -> Ambiguous (SMap.map (P.array p) map)
+
+    (* We must permute only the free indices, of course.
+       Note that we apply the \emph{inverse} permutation to
+       the indices in order to match the permutation of the
+       particles/spins. *)
+    let permute_structure n p l =
+      let permuted = P.array (P.inverse p) (Array.init n succ) in
+      let permute_index i =
+        if i > 0 then
+          permuted.(pred i)
+        else
+          i in
+      UFOx.Lorentz.map_indices permute_index l
+
+    let permute p l =
+      { name = l.name ^ "_p" ^ P.to_string (P.inverse p);
+        n = l.n;
+        spins = permute_spins p l.spins;
+        structure = permute_structure l.n p l.structure }
+
+    let omega_lorentz_reps n alist =
+      let reps = Array.make n Coupling.Scalar in
+      List.iter
+        (fun (i, rep) -> reps.(pred i) <- UFOx.Lorentz.omega rep)
+        alist;
+      reps
+
+    let contained lorentz vertex =
+      List.exists
+        (fun lcc1 -> lcc1.Vertex.lorentz = lorentz.Lorentz_UFO.name)
+        vertex.Vertex.lcc
+
+    (* Find all vertices in with the Lorentz structure [lorentz] is
+       used and build a map from those vertices to the O'Mega
+       Lorentz representations inferred from UFO's Lorentz
+       structure and the [particles] involved.
+       Then scan the bindings and check that we have inferred
+       the same Lorentz representation from all vertices. *)
+    let lorentz_reps_of_structure particles vertices lorentz =
+      let uses =
+        SMap.fold
+          (fun name v acc ->
+            if contained lorentz v then
+              SMap.add
+                name
+                (omega_lorentz_reps
+                   (Array.length v.Vertex.particles)
+                   (lorentz_reps_of_vertex particles v)) acc
+            else
+              acc) vertices SMap.empty in
+      let variants =
+        ThoList.uniq (List.sort compare (List.map snd (SMap.bindings uses))) in
+      match variants with
+      | [] -> Unused
+      | [s] -> Unique s
+      | _ -> Ambiguous uses
+
+    let of_lorentz_UFO particles vertices lorentz_UFO =
+      SMap.map
+        (fun l ->
+          { name = l.Lorentz_UFO.name;
+            n = List.length l.Lorentz_UFO.spins;
+	    spins = lorentz_reps_of_structure particles vertices l;
+	    structure = l.Lorentz_UFO.structure })
+        lorentz_UFO
+
+    let rec lorentz_to_string = function
+      | Coupling.Scalar -> "Scalar"
+      | Coupling.Spinor -> "Spinor"
+      | Coupling.ConjSpinor -> "ConjSpinor"
+      | Coupling.Majorana -> "Majorana"
+      | Coupling.Maj_Ghost -> "Maj_Ghost"
+      | Coupling.Vector -> "Vector"
+      | Coupling.Massive_Vector -> "Massive_Vector"
+      | Coupling.Vectorspinor -> "Vectorspinor"
+      | Coupling.Tensor_1 -> "Tensor_1"
+      | Coupling.Tensor_2 -> "Tensor_2"
+      | Coupling.BRS l -> "BRS(" ^ lorentz_to_string l ^ ")"
+
+    let to_string symbol l =
+      Printf.sprintf
+	"lorentz: %s => [name = '%s', spins = %s, \
+                         structure = %s]"
+	symbol l.name
+	(match l.spins with
+         | Unique s ->
+            "[" ^ String.concat
+                    ", " (List.map lorentz_to_string (Array.to_list s)) ^ "]"
+         | Ambiguous _ -> "AMBIGUOUS!"
+         | Unused -> "UNUSED!")
+	(UFOx.Lorentz.to_string l.structure)
+
+  end
+
+type t =
+  { particles : Particle.t SMap.t;
+    particle_array : Particle.t array; (* for diagnostics *)
+    couplings : UFO_Coupling.t SMap.t;
+    coupling_orders : Coupling_Order.t SMap.t;
+    vertices : Vertex.t SMap.t;
+    lorentz_UFO : Lorentz_UFO.t SMap.t;
+    lorentz : Lorentz.t SMap.t;
+    parameters : Parameter.t SMap.t;
+    propagators : Propagator.t SMap.t;
+    decays : Decay.t SMap.t }
+
 let of_file u =
+  let particles = Particle.of_file u.Files.particles in
+  let particle_array = Array.of_list (values particles) in
+  let vertices = Vertex.of_file particles u.Files.vertices in
+  let lorentz_UFO = Lorentz_UFO.of_file u.Files.lorentz in
+  let lorentz = Lorentz.of_lorentz_UFO particles vertices lorentz_UFO in
   let model =
-    { particles = Particle.of_file u.Files.particles;
+    { particles;
+      particle_array;
       couplings = UFO_Coupling.of_file u.Files.couplings;
       coupling_orders = Coupling_Order.of_file u.Files.coupling_orders;
-      vertices = Vertex.of_file u.Files.vertices;
-      lorentz = Lorentz.of_file u.Files.lorentz;
+      vertices;
+      lorentz_UFO;
+      lorentz;
       parameters = Parameter.of_file u.Files.parameters;
       propagators = Propagator.of_file u.Files.propagators;
       decays = Decay.of_file u.Files.decays } in
   SMap.iter
     (fun _ v ->
-      check_color_reps_of_vertex model v;
-      check_lorentz_reps_of_vertex model v)
+      check_color_reps_of_vertex model.particles v;
+      check_lorentz_reps_of_vertex model.particles model.lorentz_UFO v)
     model.vertices;
   model
 
@@ -1001,32 +1238,22 @@ let parse_directory dir =
 
 let dump model =
   SMap.iter (print_endline @@@ Particle.to_string) model.particles;
-  (* [SMap.iter (print_endline @@@ UFO_Coupling.to_string) model.couplings;] *)
-  SMap.iter
-    (fun symbol c ->
-      (print_endline @@@ UFO_Coupling.to_string) symbol c;
-      print_endline
-	(" ==>> " ^
-	    (UFOx.Value.to_string
-	       (UFOx.Value.of_expr
-		  (UFOx.Expr.of_string c.UFO_Coupling.value)))))
-    model.couplings;
+  SMap.iter (print_endline @@@ UFO_Coupling.to_string_expanded) model.couplings;
   SMap.iter (print_endline @@@ Coupling_Order.to_string) model.coupling_orders;
   (* [SMap.iter (print_endline @@@ Vertex.to_string) model.vertices;] *)
   SMap.iter
     (fun symbol v ->
       (print_endline @@@ Vertex.to_string) symbol v;
-      print_endline (Vertex.to_string_expanded model.lorentz model.couplings v);
-      check_color_reps_of_vertex model v;
-      check_lorentz_reps_of_vertex model v)
+      print_endline
+        (Vertex.to_string_expanded model.lorentz_UFO model.couplings v);
+      check_color_reps_of_vertex model.particles v;
+      check_lorentz_reps_of_vertex model.particles model.lorentz_UFO v)
     model.vertices;
+  SMap.iter (print_endline @@@ Lorentz_UFO.to_string) model.lorentz_UFO;
   SMap.iter (print_endline @@@ Lorentz.to_string) model.lorentz;
   SMap.iter (print_endline @@@ Parameter.to_string) model.parameters;
   SMap.iter (print_endline @@@ Propagator.to_string) model.propagators;
   SMap.iter (print_endline @@@ Decay.to_string) model.decays;
-  SMap.iter
-    (fun symbol c -> ignore (UFOx.Expr.of_string c.UFO_Coupling.value))
-    model.couplings;
   SMap.iter
     (fun symbol d ->
       List.iter (fun (_, w) -> ignore (UFOx.Expr.of_string w)) d.Decay.widths)
@@ -1099,389 +1326,17 @@ module Model =
       let conjugate = conjugate
     end)
 
-    module Q = UFOx.Q
+    module Q = Algebra.Q
+    module QC = Algebra.QC
 
     let dummy_tensor3 = Coupling.Scalar_Scalar_Scalar 1
     let dummy_tensor4 = Coupling.Scalar4 1
 
-    let third i j =
-      match i, j with
-      | 1, 2 | 2, 1 -> 3
-      | 2, 3 | 3, 2 -> 1
-      | 3, 1 | 1, 3 -> 2
-      | _ -> invalid_arg "UFO.third"
-
-    let translate_color_atom c =
-      let open UFOx.Color_Atom in
-      match c with
-      | Identity (i, j) -> 1
-      | T (a, i, j) -> 1
-      | F (a, b, c) -> Combinatorics.sign [a;b;c]
-      | D (a, b, c) -> invalid_arg "d-tensor not supported yet"
-      | Epsilon (i, j, k) -> invalid_arg "epsilon-tensor not supported yet"
-      | EpsilonBar (i, j, k) -> invalid_arg "epsilon-tensor not supported yet"
-      | T6 (a, i, j) -> invalid_arg "T6-tensor not supported yet"
-      | K6 (i, j, k) -> invalid_arg "K6-tensor not supported yet"
-      | K6Bar (i, j, k) -> invalid_arg "K6-tensor not supported yet"
-
-    let translate_color3_1 c =
-      match c with
-      | [ ([], q) ] -> q
-      | [ ([c1], q) ] -> Q.mul q (Q.make (translate_color_atom c1) 1)
-      | [] -> invalid_arg "translate_color3_1: empty"
-      | _ -> invalid_arg "translate_color3_1: sums of tensors not supported yet"
-
-    let translate_color3 = function
-      | [| c |] -> translate_color3_1 c
-      | c ->
-	 invalid_arg
-	   (Printf.sprintf
-	      "translate_color3: #color structures: %d > 1" (Array.length c))
-
-    (* Move the smallest index first, using antisymmetry
-       in $a,b$ and $c,d$ as well as symmetry in $(ab)(cd)$: *)
-    let normalize_quartet a b c d =
-      let a0 = List.hd (List.sort compare [a; b; c; d]) in
-      if a0 = a then
-	(a, b, c, d)
-      else if a0 = b then
-	(b, a, d, c)
-      else if a0 = c then
-	(c, d, a, b)
-      else
-	(d, c, b, a)
-
-    (* [FF_1 (q, a, b, c, d)] represents the tensor $q f_{abe}f_{ecd}$
-       and we assume that [normalize_quartet] has been applied to the
-       indices.  *)
-    type color4_1 =
-      | C3_1 of Q.t
-      | FF_1 of Q.t * int * int * int * int
-
-    (* [FF123 (q1, q2, q3, a, b, c, d)] represents the tensor triple
-       $(q_1 f_{abe}f_{ecd}, q_2 f_{ace}f_{edb}, q_3 f_{ade}f_{ecb})$
-       and [FF132 (q1, q2, q3, a, b, c, d)] the triple
-       $(q_1 f_{abe}f_{ecd}, q_2 f_{ade}f_{ecb}, q_3 f_{ace}f_{edb})$ *)
-
-    type color4 =
-      | C3 of Q.t
-      | FF123 of Q.t * Q.t * Q.t * int * int * int * int
-      | FF132 of Q.t * Q.t * Q.t * int * int * int * int
-
-    let q2s q =
-      match Q.to_ratio q with
-      | n, 1 -> string_of_int n
-      | n, d -> string_of_int n ^ "/" ^ string_of_int d
-
-    let color4_to_string = function
-      | C3 (q) -> q2s q
-      | FF123 (q1, q2, q3, a, b, c, d) ->
-	 Printf.sprintf
-	   "[%s*f(%d,%d,-1)*f(-1,%d,%d); \
-             %s*f(%d,%d,-1)*f(-1,%d,%d); \
-             %s*f(%d,%d,-1)*f(-1,%d,%d)]"
-	   (q2s q1) a b c d
-	   (q2s q2) a c d b
-	   (q2s q3) a d b c
-      | FF132 (q1, q2, q3, a, b, c, d) ->
-	 Printf.sprintf
-	   "[%s*f(%d,%d,-1)*f(-1,%d,%d); \
-             %s*f(%d,%d,-1)*f(-1,%d,%d); \
-             %s*f(%d,%d,-1)*f(-1,%d,%d)]"
-	   (q2s q1) a b c d
-	   (q2s q2) a d b c
-	   (q2s q3) a c d b
-
-    let translate_color4_1_1 c =
-      Q.make (translate_color_atom c) 1
-
-(* Take two lists of three indices each, find exactly one common index,
-   check that it is a summation index (i.\,e. not positive) and return
-   the remaining four indices in normal order (see [normalize_quartet])
-   together with the sign of the permutations. *) 
-    let translate_color4_ff abc abc' =
-      match ThoList.common abc abc' with
-      | [] -> invalid_arg "translate_color4_ff: not summation index"
-      | [s] ->
-	 if s >= 1 then
-	   invalid_arg "translate_color4_ff: invalid summation index"
-	 else
-	   begin match (Combinatorics.sort_signed abc,
-			Combinatorics.sort_signed abc') with
-	   | (eps, [_; b; c]), (eps', [_; b'; c']) ->
-	      let a, b, c, d = normalize_quartet b c b' c' in
-	      FF_1 (Q.make (eps * eps') 1, a, b, c, d)
-	   | _ -> failwith "translate_color4_ff: can't happen"
-	   end
-      | _ ->
-	 invalid_arg "translate_color4_ff: multiple summation indices"
-
-    let translate_color_atom_pair c1 c2 =
-      let open UFOx.Color_Atom in
-      match c1, c2 with
-      | Identity (i, j), Identity (i', l') ->
-	 invalid_arg "quartic 3-3bar-couplings not supported yet"
-      | T (a, i, j), T (a', i', j') ->
-	 invalid_arg "quartic 3-3bar-couplings not supported yet"
-      | F (a, b, c), F (a', b', c') ->
-	 translate_color4_ff [a; b; c] [a'; b'; c']
-      | T (a, i, j), F (a', b', c')
-      | F (a', b', c'), T (a, i, j) ->
-	 invalid_arg "quartic 8-8-3-3bar-couplings not supported yet"
-      | Identity (i, j), T (a', i', l')
-      | T (a', i', l'), Identity (i, j) ->
-	 invalid_arg "open index"
-      | Identity (i, j), F (a', b', c')
-      | F (a', b', c'), Identity (i, j) ->
-	 invalid_arg "open index"
-      | D (a, b, c), _ | _, D (a, b, c) ->
-	 invalid_arg "d-tensor not supported yet"
-      | Epsilon (i, j, k), _ | _, Epsilon (i, j, k)
-      | EpsilonBar (i, j, k), _| _, EpsilonBar (i, j, k) ->
-	 invalid_arg "epsilon-tensor not supported yet"
-      | T6 (a, i, j), _ | _, T6 (a, i, j) ->
-	 invalid_arg "T6-tensor not supported yet"
-      | K6 (i, j, k), _ | _, K6 (i, j, k)
-      | K6Bar (i, j, k), _ | _, K6Bar (i, j, k) ->
-	 invalid_arg "K6-tensor not supported yet"
-
-    let translate_color4_1 c =
-      match c with
-      | [ ([], q) ] -> C3_1 (q)
-      | [ ([c1], q) ] ->
-	 C3_1 (Q.mul q (translate_color4_1_1 c1))
-      | [ ([c1; c2], q) ] ->
-	 begin match translate_color_atom_pair c1 c2 with
-	 | FF_1 (eps, a, b, c, d) -> FF_1 (Q.mul q eps, a, b, c, d)
-	 | C3_1 (eps) -> C3_1 (Q.mul q eps)
-	 end
-      | _ -> invalid_arg "translate_color4_1: too many atoms"
-
-    let l2s f l =
-      "[" ^ String.concat "; " (List.map f l) ^ "]"
-
-    let il2s l = l2s string_of_int l
-      
-    let il2s2 l2 = l2s il2s l2
-
-(*l
-We can not handle color tensors on their own, because UFO
-allows to exchange signs between color and Lorentz tensors.
-
-Indeed, the \texttt{FeynRulesSM} file has
-\begin{verbatim}
-    color = [ 'f(-1,1,2)*f(3,4,-1)',
-              'f(-1,1,3)*f(2,4,-1)',
-              'f(-1,1,4)*f(2,3,-1)' ],
-    lorentz = [ 'Metric(1,4)*Metric(2,3) - Metric(1,3)*Metric(2,4)',
-                'Metric(1,4)*Metric(2,3) - Metric(1,2)*Metric(3,4)',
-                'Metric(1,3)*Metric(2,4) - Metric(1,2)*Metric(3,4)' ],
-    couplings = {(1,1):C.GC_12,(0,0):C.GC_12,(2,2):C.GC_12})
-\end{verbatim}
-i.e.
-\begin{verbatim}
-   f(-1,1,2)*f(3,4,-1) * (Metric(1,4)*Metric(2,3) - Metric(1,3)*Metric(2,4))
- + f(-1,1,3)*f(2,4,-1) * (Metric(1,4)*Metric(2,3) - Metric(1,2)*Metric(3,4))
- + f(-1,1,4)*f(2,3,-1) * (Metric(1,3)*Metric(2,4) - Metric(1,2)*Metric(3,4))
-=
-   f(-1,1,2)*f(3,4,-1) * (Metric(1,4)*Metric(2,3) - Metric(1,3)*Metric(4,2))
- + f(-1,1,3)*f(4,2,-1) * (Metric(1,2)*Metric(3,4) - Metric(1,4)*Metric(3,2))
- + f(-1,1,4)*f(2,3,-1) * (Metric(1,3)*Metric(2,4) - Metric(1,2)*Metric(3,4))
-\end{verbatim}
-*)
-
-    let translate_color4 c =
-      match Array.map translate_color4_1 c with
-      | [| C3_1 (q) |] -> C3 q
-      | [| FF_1 (q1, a1, b1, c1, d1);
-	   FF_1 (q2, a2, b2, c2, d2);
-	   FF_1 (q3, a3, b3, c3, d3) |] ->
-	 if Q.abs q1 = Q.abs q2 && Q.abs q2 = Q.abs q3 then
-	   if a1 = a2 && a2 = a3 then
-	     let bcd1 = [b1; c1; d1]
-	     and bcd2 = [b2; c2; d2]
-	     and bcd3 = [b3; c3; d3] in
-	     let eps1 = Combinatorics.sign bcd1 in
-	     let eps2, bcd2 =
-	       let eps = Combinatorics.sign bcd2 in
-	       if eps = eps1 then
-		 (Q.make eps 1, bcd2)
-	       else
-		 (Q.make eps 1, [b2; d2; c2])
-	     and eps3, bcd3 =
-	       let eps = Combinatorics.sign bcd3 in
-	       if eps = eps1 then
-		 (Q.make eps 1, bcd3)
-	       else
-		 (Q.make eps 1, [b3; d3; c3]) in
-	     if bcd2 = [c1; d1; b1] then
-	       if bcd3 = [d1; b1; c1] then
-		 FF123 (q1, Q.mul eps2 q2, Q.mul eps3 q3, a1, b1, c1, d1)
-	       else
-		 invalid_arg "translate_color4: mismatched indices b, c, d"
-	     else if bcd2 = [d1; b1; c1] then
-	       if bcd3 = [c1; d1; b1] then
-		 FF132 (q1, Q.mul eps2 q2, Q.mul eps3 q3, a1, b1, c1, d1)
-	       else
-		 invalid_arg "translate_color4: mismatched indices b, c, d"
-	     else
-	       invalid_arg "translate_color4: mismatched indices b, c, d"
-	   else
-	     invalid_arg "translate_color4: mismatched indices a"
-	 else
-	   invalid_arg "translate_color4: mismatched couplings"
-      | c ->
-	 invalid_arg
-	   (Printf.sprintf
-	      "translate_color4: #color structures: %d" (Array.length c))
-
-(* The Lorentz part of the three gauge boson vertex is
-   \begin{equation}
-       g_{\mu_1\mu_2} (k^1_{\mu_3} - k^2_{\mu_3})
-     + g_{\mu_2\mu_3} (k^2_{\mu_1} - k^3_{\mu_1})
-     + g_{\mu_3\mu_1} (k^3_{\mu_2} - k^1_{\mu_2})
-   \end{equation}
-*)
-    let normalize_lorentz_gauge_3 l =
-      List.sort
-	(fun (ka1, la1, mu1, i1, q1) (ka2, la2, mu2, i2, q2) ->
-	  ThoList.lexicographic [ka1; la1; mu1; i1] [ka2; la2; mu2; i2])
-	(List.map
-	   (fun (ka, la, mu, i, q) ->
-	     if ka > la then
-	       (la, ka, mu, i, q)
-	     else
-	       (ka, la, mu, i, q))
-	   l)
-
     let triplet p = (p.(0), p.(1), p.(2))
-
-    let translate_lorentz_gauge_3 t c p g kalamuiq =
-      match normalize_lorentz_gauge_3 kalamuiq with
-      | [ (ka1, la1, mu1, i1, q1);
-	  (ka2, la2, mu2, i2, q2);
-	  (ka3, la3, mu3, i3, q3);
-	  (ka4, la4, mu4, i4, q4);
-	  (ka5, la5, mu5, i5, q5);
-	  (ka6, la6, mu6, i6, q6) ] ->
-	 if   ThoList.homogeneous [ ka1; ka2; ka3; ka4; mu5; mu6; i1; i3 ]
-	   && ThoList.homogeneous [ la1; la2; mu3; mu4; ka5; ka6; i2; i5 ]
-	   && ThoList.homogeneous [ mu1; mu2; la3; la4; la5; la6; i4; i6 ]
-	   && ThoList.homogeneous [ q1; Q.neg q2; Q.neg q3; q4; q5; Q.neg q6 ]
-	 then
-           begin match c with
-           | [| [([UFOx.Color_Atom.F (_, _, _)], _)] |] ->
-              (triplet p, Coupling.Gauge_Gauge_Gauge (-1), g, q1)
-(* Here we have three gluons.  The color flow Feynman rules require
-   an additional factor of $+\textrm{i}$ relative to the colorless case
-   below. *)
-(* FIXME: we actually use and need $-\textrm{i}$ to make things work.
-   Explain this!!! *)
-           | [| [([], _)] |] ->
-              (triplet p, Coupling.I_Gauge_Gauge_Gauge (-1), g, q1)
-(* Here we have three vector bosons without color.
-   [I_Gauge_Gauge_Gauge] translates to $+\textrm{i}$ times
-   \verb+g_gg+, i.\,e.~the factor of $-\textrm{i}$ inside
-   \verb+g_gg+ is cancelled and everything is real.
-   Naturally, there is no factor of $+\textrm{i}$
-   from color flow Feynman rules.  Finally, there is a
-   factor of $-1$, because all O'Mega momenta are defined as
-   \emph{outgoing}. *)
-           | _ ->
-              invalid_arg "translate_lorentz_gauge_3: unexpected colors"
-(* We probably never get here.  Or are there models
-   with mixed vectors mixing color representations? *)
-           end
-	 else
-	   invalid_arg "translate_lorentz_gauge_3"
-      | _ -> invalid_arg "translate_lorentz_gauge_3: expected 6 terms"
+    let quartet p = (p.(0), p.(1), p.(2), p.(3))
 
     let half_times q1 q2 =
       Q.mul (Q.make 1 2) (Q.mul q1 q2)
-
-    let translate_coupling3_1 model p t c qc g =
-      let module L = UFOx.Lorentz_Atom in
-      match t with
-      | [ [], qt] ->
-	 [(triplet p, Coupling.Scalar_Scalar_Scalar 1, g, Q.mul qt qc)]
-      | [ [L.Identity(j,i)], qt] ->
-	 [((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	   Coupling.FBF (1, Coupling.Psibar, Coupling.S, Coupling.Psi),
-	   g, Q.mul qt qc)]
-      | [ [L.ProjP(j,i)], qt] ->
-	 [((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	   Coupling.FBF (1, Coupling.Psibar, Coupling.SR, Coupling.Psi),
-	   g, half_times qt qc)]
-      | [ [L.ProjM(j,i)], qt] ->
-	 [((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	   Coupling.FBF (1, Coupling.Psibar, Coupling.SL, Coupling.Psi),
-	   g, half_times qt qc)]
-      | [ ([L.ProjM(j,i)], qm); ([L.ProjP(j',i')], qp)] as t ->
-	 if i = i' && j = j' then
-	   if Q.is_null (Q.add qm qp) then 
-	     [((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	       Coupling.FBF (1, Coupling.Psibar, Coupling.P, Coupling.Psi),
-	       g, half_times qp qc)]
-	   else if Q.is_null (Q.sub qp qp) then 
-	     [((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	       Coupling.FBF (1, Coupling.Psibar, Coupling.S, Coupling.Psi),
-	       g, Q.mul qp qc)]
-	   else
-             unhandled ("colorless 3-vertex: " ^ UFOx.Lorentz.to_string t)
-         else
-           invalid_arg "translate_coupling3_1: mismatched indices"
-      | [ ([L.Gamma(mu,j,-1); L.ProjM(-1,i)], qm);
-          ([L.Gamma(mu',j',-1); L.ProjP(-1,i')], qp)] ->
-	 if i = i' && j = j' && mu = mu' then
-	   [((p.(pred i), p.(pred mu), p.(pred j)),
-	     Coupling.FBF (1, Coupling.Psibar, Coupling.VL, Coupling.Psi),
-	     g, half_times qm qc);
-	    ((p.(pred i), p.(pred mu), p.(pred j)),
-	     Coupling.FBF (1, Coupling.Psibar, Coupling.VR, Coupling.Psi),
-	     g, half_times qp qc)]
-         else
-           invalid_arg "translate_coupling3_1: mismatched indices"
-      | [ [L.Gamma(mu,j,i)], qt] ->
-	 [((p.(pred i), p.(pred mu), p.(pred j)),
-	   Coupling.FBF (1, Coupling.Psibar, Coupling.V, Coupling.Psi),
-	   g, Q.mul qt qc)]
-      | [ [L.Gamma(mu,j,-1); L.ProjP(-1,i)], qt] ->
-	 [((p.(pred i), p.(pred mu), p.(pred j)),
-	   Coupling.FBF (1, Coupling.Psibar, Coupling.VR, Coupling.Psi),
-	   g, half_times qt qc)]
-      | [ [L.Gamma(mu,j,-1); L.ProjM(-1,i)], qt] ->
-	 [((p.(pred i), p.(pred mu), p.(pred j)),
-	   Coupling.FBF (1, Coupling.Psibar, Coupling.VL, Coupling.Psi),
-	   g, half_times qt qc)]
-      | [ [L.Metric(j,i)], qt] ->
-	 [((p.(pred (third i j)), p.(pred i), p.(pred j)),
-	   Coupling.Scalar_Vector_Vector 1,
-	   g, Q.mul qt qc)]
-      | [ ([L.P(mu,i)], q1); ([L.P(mu',j)], q2) ] as t ->
-	 if mu = mu' then
-	   if Q.is_null (Q.add q1 q2) then 
-	     [((p.(pred (third i j)), p.(pred i), p.(pred j)),
-	       Coupling.Vector_Scalar_Scalar 1,
-	       g, Q.mul q1 qc)]
-           else
-             unhandled ("colorless 3-vertex: " ^ UFOx.Lorentz.to_string t)
-         else
-           invalid_arg "translate_coupling3_1: mismatched indices"
-      | [ ([L.Metric(ka1,la1); L.P(mu1,i1)], q1);
-	  ([L.Metric(ka2,la2); L.P(mu2,i2)], q2);
-	  ([L.Metric(ka3,la3); L.P(mu3,i3)], q3);
-	  ([L.Metric(ka4,la4); L.P(mu4,i4)], q4);
-	  ([L.Metric(ka5,la5); L.P(mu5,i5)], q5);
-	  ([L.Metric(ka6,la6); L.P(mu6,i6)], q6)] as t ->
-	 [translate_lorentz_gauge_3 t c p g
-	   [ (ka1, la1, mu1, i1, q1);
-	     (ka2, la2, mu2, i2, q2);
-	     (ka3, la3, mu3, i3, q3);
-	     (ka4, la4, mu4, i4, q4);
-	     (ka5, la5, mu5, i5, q5);
-	     (ka6, la6, mu6, i6, q6) ]]
-      | t ->
-	 unhandled ("3-vertex: " ^ UFOx.Lorentz.to_string t)
 
     let name g =
       g.UFO_Coupling.name
@@ -1497,276 +1352,224 @@ i.e.
       | -1, d -> Printf.sprintf "(-%s/%d)" g d
       |  n, d -> Printf.sprintf "(%d*%s/%d)" n g d
 
-    let translate_chiral_pair c1 c2 =
-      let open Coupling in
-      match c1, c2 with
-      | (p123, FBF (q, Psibar, l, Psi), g, r),
-        (p123',FBF (q', Psibar, l', Psi), g', r') ->
-         if p123 = p123 then
-	   match l, l' with
-	   | P, S | S, P | SL, SR | SR, SL | V, A | A, V | VL, VR | VR, VL ->
-              [(p123, FBF (q, Psibar, l, Psi), fractional_coupling g r);
-               (p123, FBF (q', Psibar, l', Psi), fractional_coupling g' r')]
-	   | _, _ ->
-	      invalid_arg "translate_chiral_pair: incompatible Dirac matrices"
-         else
-	   invalid_arg "translate_chiral_pair: incompatible flavors"
-      | _ -> unhandled "chiral pair"
-
-    let translate_coupling3 model p t c g =
-      match t, translate_color3 c, g with
-      | [| t |], qc, [| [| Some g |] |] ->
-         begin match translate_coupling3_1 model p t c qc g with
-         | [] -> []
-         | [(p123, fbf, g, r)] -> [(p123, fbf, fractional_coupling g r)]
-         | [c1; c2] -> translate_chiral_pair c1 c2
-         | _ -> invalid_arg "translate_coupling3: unexpected list"
-         end
-      | [| t |], qc, _ ->
-	 invalid_arg "translate_coupling3: too many constants"
-      | [| t1; t2 |], qc, [| [| Some g1; Some g2 |] |] ->
-	 begin match (translate_coupling3_1 model p t1 c qc g1,
-		      translate_coupling3_1 model p t2 c qc g2) with
-	 | [c1], [c2] -> translate_chiral_pair c1 c2
-         | c1, c2 ->
-            let c_clist = c1 @ c2 in
-            if ThoList.homogeneous
-                 (List.map (fun (p123, _, _, _) -> p123) c_clist) then
-              (* We're not checking the compatibility of the
-                 $\gamma$-matrices here! *)
-              List.map
-                (fun (p123, fbf, g, r) -> (p123, fbf, fractional_coupling g r))
-                c_clist
-            else
-	      invalid_arg "translate_coupling3: incompatible flavors"
-	 end
-      | [| t1; t2; t3 |], qc, [| [| Some g1; Some g2; Some g3 |] |] ->
-	 begin match (translate_coupling3_1 model p t1 c qc g1,
-		      translate_coupling3_1 model p t2 c qc g2,
-		      translate_coupling3_1 model p t3 c qc g3) with
-         | c1, c2, c3 ->
-            let c_clist = c1 @ c2 @ c3 in
-            if ThoList.homogeneous
-                 (List.map (fun (p123, _, _, _) -> p123) c_clist) then
-              (* We're not checking the compatibility of the
-                 $\gamma$-matrices here! *)
-              List.map
-                (fun (p123, fbf, g, r) -> (p123, fbf, fractional_coupling g r))
-                c_clist
-            else
-	      invalid_arg "translate_coupling3: incompatible flavors"
-	 end
-      | t, qc, g ->
-	 unhandled
-	   ("3-vertex w/multiple Lorentz structures: " ^
-	      (String.concat ", "
-		             (List.map UFOx.Lorentz.to_string (Array.to_list t))))
-
-(* Use the fact that $g_{\mu\nu}g_{\kappa\lambda}$ is symmetric in the
-   interchanges $\mu\leftrightarrow\nu$, $\kappa\leftrightarrow\lambda$
-   and $(\mu\nu)\leftrightarrow(\kappa\lambda)$ to normalize the
-   index positions: *)
-    let normalize_lorentz_4_1 (mu, nu, ka, la) =
-      List.flatten (List.sort ThoList.lexicographic
-		      (List.map (List.sort compare) [[mu; nu]; [ka; la]]))
-
-    let normalize_lorentz_4 contractions =
-      List.sort
-	(fun (c1, q1) (c2, q2) -> ThoList.lexicographic c1 c2)
-	(List.map (fun (c, q) -> (normalize_lorentz_4_1 c, q)) contractions)
-
-(* \begin{dubious}
-     Here we must verify and fix (iff necessary) the signs!
-   \end{dubious} *)
-
-    let translate_lorentz_4 model p t =
-      let open Coupling in
-      let module L = UFOx.Lorentz_Atom in
-      match t with
-      | [ ([L.Metric(mu1,nu1); L.Metric(ka1,la1)], q1);
-	  ([L.Metric(mu2,nu2); L.Metric(ka2,la2)], q2);
-	  ([L.Metric(mu3,nu3); L.Metric(ka3,la3)], q3) ] ->
-	 begin match normalize_lorentz_4 [ ((mu1, nu1, ka1, la1), q1);
-					   ((mu2, nu2, ka2, la2), q2);
-					   ((mu3, nu3, ka3, la3), q3) ] with
-	 | [ ([mu1; nu1; ka1; la1], q1);
-	     ([mu2; nu2; ka2; la2], q2);
-	     ([mu3; nu3; ka3; la3], q3) ] ->
-	    let minus_half q = Q.mul (Q.make (-1) 2) q in
-	    if   ThoList.homogeneous [mu1; mu2; mu3]
-	      && ThoList.homogeneous [nu1; ka2; ka3]
-	      && ThoList.homogeneous [ka1; nu2; la3]
-	      && ThoList.homogeneous [la1; la2; nu3] then begin
-                (* $   q_1 g_{\mu\nu}g_{\kappa\lambda}
-                     + q_2 g_{\mu\kappa}g_{\nu\lambda}
-                     + q_3 g_{\mu\lambda}g_{\nu\kappa} $ a.\,k.\,a.{} *)
-                (* $   q_1 \text{\textit{C\_12\_34}}
-                     + q_2 \text{\textit{C\_13\_24}}
-                     + q_3 \text{\textit{C\_14\_23}} $ *)
-		if ThoList.homogeneous [minus_half q1; q2; q3] then
-		  (p, q2, Vector4 [ (-2, C_12_34); ( 1, C_13_42); ( 1, C_14_23) ])
-		else if ThoList.homogeneous [minus_half q2; q3; q1] then
-		  (p, q3, Vector4 [ ( 1, C_12_34); (-2, C_13_42); ( 1, C_14_23) ])
-		else if ThoList.homogeneous [minus_half q3; q1; q2] then
-		  (p, q1, Vector4 [ ( 1, C_12_34); ( 1, C_13_42); (-2, C_14_23) ])
-		else begin
-		  prerr_endline
-		    ("unexpected 4-gauge-vertex: " ^ UFOx.Lorentz.to_string t);
-		  (p, Q.unit, dummy_tensor4)
-		end
-	      end else begin
- 		prerr_endline
-		  ("expected 4-gauge-vertex: " ^ UFOx.Lorentz.to_string t);
-		invalid_arg "normalize_lorentz_4: unexpected"
-	      end
-	 | _ -> failwith "translate_lorentz_4: unexpected"
-	 end
-      | [ ([L.Metric(mu1,nu1); L.Metric(ka1,la1)], q1);
-	  ([L.Metric(mu2,nu2); L.Metric(ka2,la2)], q2) ] ->
-	 begin match normalize_lorentz_4 [ ((mu1, nu1, ka1, la1), q1);
-					   ((mu2, nu2, ka2, la2), q2) ] with
-	 | [ ([mu1; nu1; ka1; la1], q1);
-	     ([mu2; nu2; ka2; la2], q2) ] ->
-	    (* $ \lbrack 1;2;3;4 \rbrack - \lbrack 1;3;2;4 \rbrack $ and
-	       $ \lbrack 1;2;3;4 \rbrack - \lbrack 1;4;2;3 \rbrack $ and
-	       $ \lbrack 1;3;2;4 \rbrack - \lbrack 1;4;2;3 \rbrack $ *)
-	    if mu1 = mu2 && q2 = Q.neg q1 then
-	      if [nu2; ka2; la2] = [ka1; nu1; la1] then
-		(p, q1, Vector4 [ ( 1, C_12_34); (-1, C_13_42) ])
-	      else if [nu2; ka2; la2] = [la1; nu1; ka1] then
-		(p, q1, Vector4 [ ( 1, C_12_34); (-1, C_14_23) ])
-	      else if [nu2; ka2; la2] = [la1; ka1; nu1] then
-		(p, q1, Vector4 [ ( 1, C_13_42); (-1, C_14_23) ])
-	      else
-		invalid_arg "translate_lorentz_4: inconsistent"
-            else
-	      invalid_arg "translate_lorentz_4: inconsistent"
-	 | _ -> failwith "translate_lorentz_4: unexpected"
-	 end
-      | [ ([L.Metric(mu,nu)], q) ] ->
-	 let mu = pred mu and nu = pred nu in
-	 begin match ThoList.complement [0; 1; 2; 3] [mu; nu] with
-	 | [ka; la] ->
-	    ([|p.(ka); p.(la); p.(mu); p.(nu)|],
-	     Q.unit, Scalar2_Vector2 1)
-	 | _ -> failwith "translate_lorentz_4: impossible"
-	 end
-      | _ -> failwith "translate_lorentz_4"
-
-    let gauge_contraction1 c1 c2 =
-      let open Coupling in
-      match c1, c2 with
-      | (C_13_42, C_14_23) -> 1
-      | (C_14_23, C_13_42) -> -1
-      | _ -> invalid_arg "gauge_contraction1: unexpected"
-
-    let gauge_contraction2 c1 c2 =
-      let open Coupling in
-      match c1, c2 with
-      | (C_12_34, C_14_23) -> 1
-      | (C_14_23, C_12_34) -> -1
-      | _ -> invalid_arg "gauge_contraction2: mismatch"
-
-    let gauge_contraction3 c1 c2 =
-      let open Coupling in
-      match c1, c2 with
-      | (C_12_34, C_13_42) -> 1
-      | (C_13_42, C_12_34) -> -1
-      | _ -> invalid_arg "gauge_contraction3: mismatch"
-
-    let quartet p = (p.(0), p.(1), p.(2), p.(3))
-
-    (* color flow basis: *)
-    let gauge4 eps =
-      let open Coupling in
-      Vector4 [(2*eps, C_13_42); (-1*eps, C_12_34); (-1*eps, C_14_23)]
-
-    let translate_gauge_vertex4 model p t c g =
-      let open Coupling in
-      let g =
-	begin match g with
-	| [| [| Some g1; None; None |];
-	     [| None; Some g2; None |];
-	     [| None; None; Some g3 |] |] ->
-	   if g1 = g2 && g2 = g3 then
-	     g1
-	   else
-	     invalid_arg "translate_gauge_vertex4: non-unital couplings"
-	| _ -> (* NB: [g] can be off-diagonal, if [t] or [c] are reordered! *)
-	   invalid_arg "translate_gauge_vertex4: off diagonal couplings"
-	end in
-      match Array.map (translate_lorentz_4 model p) t with
-      | [| (p1, q1, Vector4 [ (1, contraction11); (-1, contraction12) ]);
-	   (p2, q2, Vector4 [ (1, contraction21); (-1, contraction22) ]);
-	   (p3, q3, Vector4 [ (1, contraction31); (-1, contraction32) ])  |] ->
-	 if p1 = p2 && p2 = p3 then
-           begin match c with
-	   | FF123 (q1', q2', q3', a, b, c, d) ->
-	      let q1 = Q.mul q1 q1'
-	      and q2 = Q.mul q2 q2'
-	      and q3 = Q.mul q3 q3' in
-	      if Q.abs q1 = Q.abs q2 && Q.abs q2 = Q.abs q3 then begin
-		let eps1 = gauge_contraction1 contraction11 contraction12
-		and eps2 = gauge_contraction2 contraction21 contraction22
-		and eps3 = gauge_contraction3 contraction31 contraction32 in
-                if eps1 = eps2 && eps2 = eps3 then
-                  (* FIXME: why not [q1] instead of [Q.unit]??? *)
-		  [(quartet p, gauge4 eps1, fractional_coupling g Q.unit)]
-                else
-		  invalid_arg "translate_gauge_vertex4: unexpected permutations"
-	      end else
-		invalid_arg "translate_gauge_vertex4: different couplings"
-	   | FF132 (q1', q2', q3', a, b, c, d) ->
-	      let q1 = Q.mul q1 q1'
-	      and q2 = Q.mul q2 q2'
-	      and q3 = Q.mul q3 q3' in
-	      if Q.abs q1 = Q.abs q2 && Q.abs q2 = Q.abs q3 then begin
-		let eps1 = gauge_contraction1 contraction11 contraction12
-		and eps2 = gauge_contraction3 contraction21 contraction22
-		and eps3 = gauge_contraction2 contraction31 contraction32 in
-                if eps1 = eps2 && eps2 = eps3 then
-                  (* FIXME: why not [q1] instead of [Q.unit]??? *)
-		  [(quartet p, gauge4 eps1, fractional_coupling g Q.unit)]
-                else
-		  invalid_arg "translate_gauge_vertex4: unexpected permutations"
-	      end else
-		invalid_arg "translate_gauge_vertex4: different couplings"
-	   | _ -> invalid_arg "translate_gauge_vertex4: wrong color"
-	   end
-         else
-	   invalid_arg "translate_gauge_vertex4: different particles"
-      | _ -> invalid_arg "translate_gauge_vertex4: unexpected Lorentz"
-
-    let translate_coupling4 model p t c g =
-      let open Coupling in
-      let module L = UFOx.Lorentz_Atom in
-      match t, translate_color4 c, g with
-      | [| [ [], qt] |], C3 qc, [| [| Some g |] |] ->
-	 [(quartet p, Scalar4 1, fractional_coupling g (Q.mul qt qc))]
-      | [| t |], qc, [| [| Some g |] |] ->
-	 begin match translate_lorentz_4 model p t with
-	 | p, q, t -> [(quartet p, t, fractional_coupling g q)]
-	 end
-      | [| t |], qc, _->
-	 invalid_arg "translate_coupling4: too many constants"
-      | t, qc, g ->
-	 translate_gauge_vertex4 model p t qc g
-
     let lorentz_of_symbol model symbol =
       try
 	SMap.find symbol model.lorentz
       with
       | Not_found -> invalid_arg ("lorentz_of_symbol: " ^ symbol)
 
-    let coupling_of_symbol model = function
-      | None -> None
-      | Some symbol ->
-	 begin
-	   try
-	     Some (SMap.find symbol model.couplings)
-	   with
-	   | Not_found -> invalid_arg ("coupling_of_symbol: " ^ symbol)
-	 end
+    let lorentz_UFO_of_symbol model symbol =
+      try
+	SMap.find symbol model.lorentz_UFO
+      with
+      | Not_found -> invalid_arg ("lorentz_UFO_of_symbol: " ^ symbol)
+
+    let coupling_of_symbol model symbol =
+      try
+	SMap.find symbol model.couplings
+      with
+      | Not_found -> invalid_arg ("coupling_of_symbol: " ^ symbol)
+
+    let spin_triplet model name =
+      match (lorentz_of_symbol model name).Lorentz.spins with
+      | Lorentz.Unique [|s0; s1; s2|] -> (s0, s1, s2)
+      | Lorentz.Unique _ -> invalid_arg "spin_triplet: wrong number of spins"
+      | Lorentz.Unused -> invalid_arg "spin_triplet: Unused"
+      | Lorentz.Ambiguous _ -> invalid_arg "spin_triplet: Ambiguous"
+        
+    let spin_quartet model name =
+      match (lorentz_of_symbol model name).Lorentz.spins with
+      | Lorentz.Unique [|s0; s1; s2; s3|] -> (s0, s1, s2, s3)
+      | Lorentz.Unique _ -> invalid_arg "spin_quartet: wrong number of spins"
+      | Lorentz.Unused -> invalid_arg "spin_quartet: Unused"
+      | Lorentz.Ambiguous _ -> invalid_arg "spin_quartet: Ambiguous"
+        
+    let spin_multiplet model name =
+      match (lorentz_of_symbol model name).Lorentz.spins with
+      | Lorentz.Unique sarray -> sarray
+      | Lorentz.Unused -> invalid_arg "spin_multiplet: Unused"
+      | Lorentz.Ambiguous _ -> invalid_arg "spin_multiplet: Ambiguous"
+
+    let force_integer q =
+      try
+        Q.to_integer q
+      with
+      | _ -> invalid_arg "translate_color?: non-integer coefficient"
+
+    let pair3_of_indices i j =
+      match i, j with
+      | 1, 2 -> Color.P3_12
+      | 2, 3 -> Color.P3_23
+      | 3, 1 -> Color.P3_31
+      | 2, 1 -> Color.P3_21
+      | 3, 2 -> Color.P3_32
+      | 1, 3 -> Color.P3_13
+      | _ ->
+         if i = j then
+           invalid_arg "pair3_of_indices: equal"
+         else
+           invalid_arg "pair3_of_indices: out of range"
+
+    let of_rational q =
+      QC.make q Q.null
+
+    let of_int n =
+      of_rational (Q.make n 1)
+
+    let translate_color_atom3 c =
+      let open UFOx.Color_Atom in
+      match c with
+      | Identity (i, j) -> Color.Delta3 (pair3_of_indices i j)
+      | Identity8 (a, b) -> Color.Delta8 (pair3_of_indices a b)
+      | T (a, i, j) -> Color.T (pair3_of_indices i j)
+      | F (a, b, c) -> Color.F
+      | Epsilon (i, j, k) | EpsilonBar (i, j, k) -> Color.Eps
+      | D (a, b, c) -> invalid_arg "d-tensor not supported yet"
+      | T6 (a, i, j) -> invalid_arg "T6-tensor not supported yet"
+      | K6 (i, j, k) -> invalid_arg "K6-tensor not supported yet"
+      | K6Bar (i, j, k) -> invalid_arg "K6-tensor not supported yet"
+
+    (* TODO: translate [lcc.Vertex.color] to [Color.vertex3], permuting
+       indices, if necessary. *)
+    let trivialize_color3 = function
+      | [ ([], q) ] -> (of_rational q, Color.Trivial3)
+      | color ->
+         Printf.eprintf
+           "translate_color3: trivializing '%s'\n"
+           (UFOx.Color.to_string color);
+         (QC.one, Color.Trivial3)
+
+    let translate_color3_legacy color =
+      (QC.one, Color.Legacy3)
+
+    let translate_color3 = function
+      | [] -> invalid_arg "translate_color3: empty"
+      | [ ([], q) ] -> (of_rational q, Color.Trivial3)
+      | [ ([atom], q) ] -> (of_rational q, translate_color_atom3 atom)
+      | [ (atoms, q) ] as term ->
+         failwith
+           (Printf.sprintf
+              "translate_color3: nonatomic term '%s' not supported yet!"
+              (UFOx.Color.to_string term))
+      | terms ->
+         failwith
+           (Printf.sprintf
+              "translate_color3: sum '%s' not supported yet!"
+              (UFOx.Color.to_string terms))
+
+    let translate_color3_mostly_legacy color =
+      let open UFOx.Color_Atom in
+      match color with
+      | [] -> invalid_arg "translate_color3_mostly_legacy: empty"
+      | [ ([], q) ] -> (of_rational q, Color.Trivial3)
+      | [ ([Identity (i, j)], q) ] ->
+         (of_rational q, Color.Delta3 (pair3_of_indices i j))
+      | [ ([F (a, b, c)], q) ] ->
+         let eps = Combinatorics.sign [a;b;c] in
+         (QC.mul (of_int eps) (of_rational q), Color.F)
+      | _ -> (QC.one, Color.Legacy3)
+
+    (* TODO: translate [lcc.Vertex.color] to [Color.vertex4], permuting
+       indices, if necessary. *)
+    let trivialize_color4 = function
+      | [ ([], q) ] -> (of_rational q, Color.Trivial4)
+      | color ->
+         Printf.eprintf
+           "translate_color4: trivializing '%s'\n"
+           (UFOx.Color.to_string color);
+         (QC.one, Color.Trivial4)
+
+    let translate_color4_legacy color =
+      (QC.one, Color.Legacy4)
+
+    let translate_color4 = function
+      | [] -> invalid_arg "translate_color4: empty"
+      | [ ([], q) ] -> (of_rational q, Color.Trivial4)
+      | [ ([atom], q) ] as term ->
+         failwith
+           (Printf.sprintf
+              "translate_color4: atomic terms '%s' not supported yet!"
+              (UFOx.Color.to_string term))
+      | [ ([atom1; atom2], q) ] as term ->
+         failwith
+           (Printf.sprintf
+              "translate_color4: twoatomic terms '%s' not supported yet!"
+              (UFOx.Color.to_string term))
+      | [ (atoms, q) ] as term ->
+         failwith
+           (Printf.sprintf
+              "translate_color4: multiatomic terms '%s' not supported yet!"
+              (UFOx.Color.to_string term))
+      | terms ->
+         failwith
+           (Printf.sprintf
+              "translate_color4: sum '%s' not supported yet!"
+              (UFOx.Color.to_string terms))
+
+    let cmp_int i j =
+      if i < j then
+        -1
+      else if i = j then
+        0
+      else
+        1
+
+    (* FIXME: verify that this does the right thing! *)
+    (* FIXME: this will need to be generalized for vertices
+       with more than 4 legs! *)
+    let permutation_of_ff indices1 indices2 =
+      let eps1, indices1 = Combinatorics.sort_signed ~cmp:cmp_int indices1
+      and eps2, indices2 = Combinatorics.sort_signed ~cmp:cmp_int indices2 in
+      let eps = eps1 * eps2
+      and indices1, indices2 =
+        if ThoList.lexicographic ~cmp:cmp_int indices1 indices2 < 0 then
+          (indices1, indices2)
+        else
+          (indices2, indices1) in
+      match indices1, indices2 with
+      | [a; a1; a2], [a'; a3; a4] ->
+         if a > 0 || a' > 0 || a <> a' then
+           invalid_arg "permutation_of_ff: no summation index"
+         else if a1 < 1 || a3 < 1 then
+           invalid_arg "permutation_of_ff: to many summation indices"
+         else if eps < 0 then
+           Color.FF ((a1, a2), (a4, a3))
+         else
+           Color.FF ((a1, a2), (a3, a4))
+      | _ -> invalid_arg "permutation_of_ff"
+
+    let translate_color4_legacy_plus_ff color =
+      let open UFOx.Color_Atom in
+      match color with
+      | [ ([F (a, b, c); F (a', b', c')], q) ] as term ->
+         (of_rational q, permutation_of_ff [a;b;c] [a';b';c'])
+      | _ -> (QC.one, Color.Legacy4)
+
+    (* Backstop \ldots *)
+    let translate_color3 = translate_color3_mostly_legacy
+    let translate_color4 = translate_color4_legacy_plus_ff
+
+    let translate_coupling3_1 model p lcc =
+      let p = triplet p
+      and l = lcc.Vertex.lorentz
+      and s = spin_triplet model lcc.Vertex.lorentz
+      and c = name (coupling_of_symbol model lcc.Vertex.coupling)
+      and eps, col = translate_color3 lcc.Vertex.color in
+      (p, Coupling.UFO3 (eps, l, s, col), c)
+
+    let translate_coupling3 model p lcc =
+      List.map (translate_coupling3_1 model p) lcc
+
+    let translate_coupling4_1 model p lcc =
+      let p = quartet p
+      and l = lcc.Vertex.lorentz
+      and s = spin_quartet model lcc.Vertex.lorentz
+      and c = name (coupling_of_symbol model lcc.Vertex.coupling)
+      and eps, col = translate_color4 lcc.Vertex.color in
+      (p, Coupling.UFO4 (eps, l, s, col), c)
+
+    let translate_coupling4 model p lcc =
+      List.map (translate_coupling4_1 model p) lcc
 
     let long_flavors = ref false
 
@@ -1863,18 +1666,19 @@ i.e.
 
       end
 
+    (* \begin{dubious}
+         We appear to need to conjugate all flavors.  Why???
+       \end{dubious} *)
     let translate_vertices model tables =
-      List.fold_left (fun (v3, v4, vn) v ->
-	let p = Array.map tables.Lookup.flavor_of_symbol v.Vertex.particles
-	and g =
-	  Array.map (Array.map (coupling_of_symbol model)) v.Vertex.couplings
-	and t = Array.map (lorentz_of_symbol model) v.Vertex.lorentz
-	and c = v.Vertex.color in
-	let t = Array.map (fun l -> l.Lorentz.structure) t in
-	match Array.length p with
-	| 3 -> (translate_coupling3 model p t c g @ v3, v4, vn)
-	| 4 -> (v3, translate_coupling4 model p t c g @ v4, vn)
-	| _ -> invalid_arg "UFO.Model.init: only 3- and 4-vertices for now!")
+      List.fold_left
+        (fun (v3, v4, vn) v ->
+          let p = Array.map tables.Lookup.flavor_of_symbol v.Vertex.particles
+          and lcc = v.Vertex.lcc in
+          let p = Array.map conjugate p in (* FIXME: why? *)
+          match Array.length p with
+          | 3 -> (translate_coupling3 model p lcc @ v3, v4, vn)
+          | 4 -> (v3, translate_coupling4 model p lcc @ v4, vn)
+          | _ -> invalid_arg "UFO.Model.init: only 3- and 4-vertices for now!")
         ([], [], []) (values model.vertices)
 
     let propagator_of_lorentz = function
@@ -1882,7 +1686,7 @@ i.e.
       | Coupling.Spinor -> Coupling.Prop_Spinor
       | Coupling.ConjSpinor -> Coupling.Prop_ConjSpinor
       | Coupling.Majorana -> Coupling.Prop_Majorana
-      | Coupling.Maj_Ghost -> invalid_arg 
+      | Coupling.Maj_Ghost -> invalid_arg
          "UFO.Model.propagator_of_lorentz: SUSY ghosts do not propagate"
       | Coupling.Vector -> Coupling.Prop_Feynman
       | Coupling.Massive_Vector -> Coupling.Prop_Unitarity
@@ -1898,11 +1702,16 @@ i.e.
     let filter_unphysical model =
       let physical_particles =
 	Particle.filter Particle.is_physical model.particles in
+      let physical_particle_array =
+        Array.of_list (values physical_particles) in
       let physical_vertices =
 	Vertex.filter
 	  (not @@ (Vertex.contains model.particles (not @@ Particle.is_physical)))
 	  model.vertices in
-      { model with particles = physical_particles; vertices = physical_vertices }
+      { model with
+        particles = physical_particles;
+        particle_array = physical_particle_array;
+        vertices = physical_vertices }
 
     let whizard_constants =
       [ "ZERO" ]
@@ -1955,19 +1764,6 @@ i.e.
             List.map translate_coupling_constant couplings;
         Coupling.derived_arrays = [] }
 
-    type state =
-      { directory : string;
-        model : t }
-        
-    let initialized = ref None
-
-    let is_initialized_from dir =
-      match !initialized with
-      | None -> false
-      | Some state -> dir = state.directory
-
-    let dump_raw = ref false
-
     (* UFO requires us to look up the mass parameter to
        distinguish between massless and massive vectors.
 
@@ -1981,6 +1777,19 @@ i.e.
          | _ -> Coupling.Massive_Vector
          end
       | s -> s
+
+    type state =
+      { directory : string;
+        model : t }
+
+    let initialized = ref None
+
+    let is_initialized_from dir =
+      match !initialized with
+      | None -> false
+      | Some state -> dir = state.directory
+
+    let dump_raw = ref false
 
     let init dir =
       let model = filter_unphysical (parse_directory dir) in
@@ -2017,11 +1826,41 @@ i.e.
 
     let ufo_directory = ref Config.default_UFO_dir
 
-    let load_UFO () =
+    let load () =
       if is_initialized_from !ufo_directory then
 	()
       else
 	init !ufo_directory
+
+    let include_all_fusions = ref false
+
+    let fusions_of_model ?only model =
+      let include_fusion =
+        match !include_all_fusions, only with
+        | true, _
+        | false, None -> (fun name -> true)
+        | false, Some names -> (fun name -> Sets.String.mem name names)
+      in
+      SMap.fold
+        (fun name l acc ->
+          if include_fusion name then
+            List.fold_left
+              (fun acc p ->
+                let l' = Lorentz.permute p l in
+                match l'.Lorentz.spins with
+                | Lorentz.Unused -> acc
+                | Lorentz.Unique spins ->
+                   (l'.Lorentz.name, spins, l'.Lorentz.structure) :: acc
+                | Lorentz.Ambiguous _ -> failwith "fusions: Lorentz.Ambiguous")
+              [] (Permutation.Default.cyclic l.Lorentz.n) @ acc
+          else
+            acc)
+        model.lorentz []
+
+    let fusions ?only () =
+      match !initialized with
+      | None -> []
+      | Some { model = model } -> fusions_of_model ?only model
 
     module Whizard : sig val write : unit -> unit end =
       struct
@@ -2099,9 +1938,8 @@ i.e.
           Printf.printf "\n"
 
         let write () =
-          load_UFO ();
           match !initialized with
-          | None -> failwith "UFO.Whizard.write: can't happen"
+          | None -> failwith "UFO.Whizard.write: UFO model not initialized"
           | Some { directory = dir; model = model } ->
              let input_parameters, derived_parameters =
                classify_parameters model in
@@ -2114,7 +1952,8 @@ i.e.
 
       end
 
-    let options = Options.create
+    let options =
+      Options.create
         [ ("UFO_dir", Arg.String (fun name -> ufo_directory := name),
            "UFO model directory (default: " ^ !ufo_directory ^ ")");
           ("write_WHIZARD", Arg.Unit Whizard.write,
@@ -2124,10 +1963,78 @@ i.e.
            "write use the UFO flavor names instead of integers");
           ("dump", Arg.Set dump_raw,
            "dump UFO model for debugging the parser (must come _before_ exec!)");
-          ("exec", Arg.Unit load_UFO,
+          ("all_fusions", Arg.Set include_all_fusions,
+           "include all fusions in the fortran module");
+          ("exec", Arg.Unit load,
            "load the UFO model files (required _before_ using particles names)");
           ("help", Arg.Unit (fun () -> prerr_endline "..."),
            "print information on the model")]
+
+  end
+
+module type Fortran_Target =
+  sig
+
+    val fusion2 :
+      Algebra.QC.t -> string -> Coupling.lorentz3 ->
+      string -> string -> string -> string -> string -> Coupling.fuse2 -> unit
+    val fusion3 :
+      Algebra.QC.t -> string -> Coupling.lorentz4 ->
+      string -> string -> string -> string -> string ->
+      string -> string -> Coupling.fuse3 -> unit
+    val fusionn :
+      Algebra.QC.t -> string -> Coupling.lorentzn ->
+      string -> string list -> string list -> Coupling.fusen -> unit
+
+    val lorentz :
+      ?only:Sets.String.t -> Format_Fortran.formatter -> unit -> unit
+
+    val lorentz_module :
+      ?only:Sets.String.t -> ?name:string ->
+      Format_Fortran.formatter -> unit -> unit
+
+  end
+
+module Targets =
+  struct
+
+    module Fortran : Fortran_Target =
+      struct
+
+        open Format_Fortran
+
+        let fusion2 = UFO_targets.Fortran.fusion2
+        let fusion3 = UFO_targets.Fortran.fusion3
+        let fusionn = UFO_targets.Fortran.fusionn
+
+        let lorentz_functions ff fusions () =
+          List.iter
+            (fun (name, s, l) -> UFO_targets.Fortran.lorentz ff name s l)
+            fusions
+
+        let lorentz ?only ff () =
+          lorentz_functions ff (Model.fusions ?only ()) ()
+
+        let lorentz_module ?only ?(name="omega_amplitude_ufo") ff () =
+          let printf fmt = fprintf ff fmt
+          and nl = pp_newline ff in
+          printf "module %s" name; nl ();
+          printf "  use kinds"; nl ();
+          printf "  use omega95"; nl ();
+          printf "  implicit none"; nl ();
+          printf "  private"; nl ();
+          let fusions = Model.fusions ?only () in
+          List.iter
+            (fun (name, _, _) -> printf "  public :: %s" name; nl ())
+            fusions;
+          UFO_targets.Fortran.eps4_g4_g44_decl ff ();
+          UFO_targets.Fortran.eps4_g4_g44_init ff ();
+          printf "contains"; nl ();
+          lorentz_functions ff (Model.fusions ?only ()) ();
+          printf "end module %s" name; nl ();
+          pp_flush ff ()
+
+      end
 
   end
 
@@ -2137,3 +2044,251 @@ module type Test =
     val suite : OUnit.test
   end
 
+(* \thocwmodulesection{Obsolete}
+   Kept around as a source of ideas. *)
+
+module Unused =
+  struct
+
+    module Q = Algebra.Q
+
+    let translate_color_atom c =
+      let open UFOx.Color_Atom in
+      match c with
+      | Identity (i, j) -> 1
+      | Identity8 (a, b) -> 1
+      | T (a, i, j) -> 1
+      | F (a, b, c) -> Combinatorics.sign [a;b;c]
+      | D (a, b, c) -> invalid_arg "d-tensor not supported yet"
+      | Epsilon (i, j, k) -> invalid_arg "epsilon-tensor not supported yet"
+      | EpsilonBar (i, j, k) -> invalid_arg "epsilon-tensor not supported yet"
+      | T6 (a, i, j) -> invalid_arg "T6-tensor not supported yet"
+      | K6 (i, j, k) -> invalid_arg "K6-tensor not supported yet"
+      | K6Bar (i, j, k) -> invalid_arg "K6-tensor not supported yet"
+
+    let translate_color3_1 c =
+      match c with
+      | [ ([], q) ] -> q
+      | [ ([c1], q) ] -> Q.mul q (Q.make (translate_color_atom c1) 1)
+      | [] -> invalid_arg "translate_color3_1: empty"
+      | _ -> invalid_arg "translate_color3_1: sums of tensors not supported yet"
+
+    let translate_color3 = function
+      | [| c |] -> translate_color3_1 c
+      | c ->
+	 invalid_arg
+	   (Printf.sprintf
+	      "translate_color3: #color structures: %d > 1" (Array.length c))
+
+    let translate_color3 _ =
+      Color.Trivial3
+
+    (* Move the smallest index first, using antisymmetry
+       in $a,b$ and $c,d$ as well as symmetry in $(ab)(cd)$: *)
+    let normalize_quartet a b c d =
+      let a0 = List.hd (List.sort compare [a; b; c; d]) in
+      if a0 = a then
+	(a, b, c, d)
+      else if a0 = b then
+	(b, a, d, c)
+      else if a0 = c then
+	(c, d, a, b)
+      else
+	(d, c, b, a)
+
+    (* [FF_1 (q, a, b, c, d)] represents the tensor $q f_{abe}f_{ecd}$
+       and we assume that [normalize_quartet] has been applied to the
+       indices.  *)
+    type color4_1 =
+      | C3_1 of Q.t
+      | FF_1 of Q.t * int * int * int * int
+
+    (* [FF123 (q1, q2, q3, a, b, c, d)] represents the tensor triple
+       $(q_1 f_{abe}f_{ecd}, q_2 f_{ace}f_{edb}, q_3 f_{ade}f_{ecb})$
+       and [FF132 (q1, q2, q3, a, b, c, d)] the triple
+       $(q_1 f_{abe}f_{ecd}, q_2 f_{ade}f_{ecb}, q_3 f_{ace}f_{edb})$ *)
+
+    type color4 =
+      | C3 of Q.t
+      | FF123 of Q.t * Q.t * Q.t * int * int * int * int
+      | FF132 of Q.t * Q.t * Q.t * int * int * int * int
+
+    let q2s q =
+      match Q.to_ratio q with
+      | n, 1 -> string_of_int n
+      | n, d -> string_of_int n ^ "/" ^ string_of_int d
+
+    let color4_to_string = function
+      | C3 (q) -> q2s q
+      | FF123 (q1, q2, q3, a, b, c, d) ->
+	 Printf.sprintf
+	   "[%s*f(%d,%d,-1)*f(-1,%d,%d); \
+             %s*f(%d,%d,-1)*f(-1,%d,%d); \
+             %s*f(%d,%d,-1)*f(-1,%d,%d)]"
+	   (q2s q1) a b c d
+	   (q2s q2) a c d b
+	   (q2s q3) a d b c
+      | FF132 (q1, q2, q3, a, b, c, d) ->
+	 Printf.sprintf
+	   "[%s*f(%d,%d,-1)*f(-1,%d,%d); \
+             %s*f(%d,%d,-1)*f(-1,%d,%d); \
+             %s*f(%d,%d,-1)*f(-1,%d,%d)]"
+	   (q2s q1) a b c d
+	   (q2s q2) a d b c
+	   (q2s q3) a c d b
+
+    let translate_color4_1_1 c =
+      Q.make (translate_color_atom c) 1
+
+(* Take two lists of three indices each, find exactly one common index,
+   check that it is a summation index (i.\,e. not positive) and return
+   the remaining four indices in normal order (see [normalize_quartet])
+   together with the sign of the permutations. *) 
+    let translate_color4_ff abc abc' =
+      match ThoList.common abc abc' with
+      | [] -> invalid_arg "translate_color4_ff: not summation index"
+      | [s] ->
+	 if s >= 1 then
+	   invalid_arg "translate_color4_ff: invalid summation index"
+	 else
+	   begin match (Combinatorics.sort_signed abc,
+			Combinatorics.sort_signed abc') with
+	   | (eps, [_; b; c]), (eps', [_; b'; c']) ->
+	      let a, b, c, d = normalize_quartet b c b' c' in
+	      FF_1 (Q.make (eps * eps') 1, a, b, c, d)
+	   | _ -> failwith "translate_color4_ff: can't happen"
+	   end
+      | _ ->
+	 invalid_arg "translate_color4_ff: multiple summation indices"
+
+    exception Unsupported_Color_Atom_Pair of string
+    let unsupported_color_atom_pair s =
+      raise (Unsupported_Color_Atom_Pair s)
+
+    let translate_color_atom_pair c1 c2 =
+      let open UFOx.Color_Atom in
+      match c1, c2 with
+      | Identity8 (_, _), _ | _, Identity8 (_, _) ->
+	 unsupported_color_atom_pair "quartic 8-8-couplings"
+      | Identity (i, j), Identity (i', l') ->
+	 unsupported_color_atom_pair "quartic 3-3bar-couplings"
+      | T (a, i, j), T (a', i', j') ->
+	 unsupported_color_atom_pair "quartic 3-3bar-couplings"
+      | F (a, b, c), F (a', b', c') ->
+	 translate_color4_ff [a; b; c] [a'; b'; c']
+      | T (a, i, j), F (a', b', c')
+      | F (a', b', c'), T (a, i, j) ->
+	 unsupported_color_atom_pair "quartic 8-8-3-3bar-couplings"
+      | Identity (i, j), T (a', i', l')
+      | T (a', i', l'), Identity (i, j) ->
+	 invalid_arg "open index"
+      | Identity (i, j), F (a', b', c')
+      | F (a', b', c'), Identity (i, j) ->
+	 invalid_arg "open index"
+      | D (a, b, c), _ | _, D (a, b, c) ->
+	 unsupported_color_atom_pair "d-tensor"
+      | Epsilon (i, j, k), _ | _, Epsilon (i, j, k)
+      | EpsilonBar (i, j, k), _| _, EpsilonBar (i, j, k) ->
+	 unsupported_color_atom_pair "epsilon-tensor"
+      | T6 (a, i, j), _ | _, T6 (a, i, j) ->
+	 unsupported_color_atom_pair "T6-tensor"
+      | K6 (i, j, k), _ | _, K6 (i, j, k)
+      | K6Bar (i, j, k), _ | _, K6Bar (i, j, k) ->
+	 unsupported_color_atom_pair "K6-tensor"
+
+    let translate_color4_1 c =
+      match c with
+      | [ ([], q) ] -> C3_1 (q)
+      | [ ([c1], q) ] ->
+	 C3_1 (Q.mul q (translate_color4_1_1 c1))
+      | [ ([c1; c2], q) ] ->	
+         begin
+           try
+             match translate_color_atom_pair c1 c2 with
+	     | FF_1 (eps, a, b, c, d) -> FF_1 (Q.mul q eps, a, b, c, d)
+	     | C3_1 (eps) -> C3_1 (Q.mul q eps)
+           with
+           | Unsupported_Color_Atom_Pair s ->
+	      prerr_endline
+                ("warning: translate_color4: passed through: " ^
+                   "unsupported color atom pair: " ^ s);
+	      C3_1 Q.unit
+	 end
+      | _ -> invalid_arg "translate_color4_1: too many atoms"
+
+(*l
+We can not handle color tensors on their own, because UFO
+allows to exchange signs between color and Lorentz tensors.
+
+Indeed, the \texttt{FeynRulesSM} file has
+\begin{verbatim}
+    color = [ 'f(-1,1,2)*f(3,4,-1)',
+              'f(-1,1,3)*f(2,4,-1)',
+              'f(-1,1,4)*f(2,3,-1)' ],
+    lorentz = [ 'Metric(1,4)*Metric(2,3) - Metric(1,3)*Metric(2,4)',
+                'Metric(1,4)*Metric(2,3) - Metric(1,2)*Metric(3,4)',
+                'Metric(1,3)*Metric(2,4) - Metric(1,2)*Metric(3,4)' ],
+    couplings = {(1,1):C.GC_12,(0,0):C.GC_12,(2,2):C.GC_12})
+\end{verbatim}
+i.e.
+\begin{verbatim}
+   f(-1,1,2)*f(3,4,-1) * (Metric(1,4)*Metric(2,3) - Metric(1,3)*Metric(2,4))
+ + f(-1,1,3)*f(2,4,-1) * (Metric(1,4)*Metric(2,3) - Metric(1,2)*Metric(3,4))
+ + f(-1,1,4)*f(2,3,-1) * (Metric(1,3)*Metric(2,4) - Metric(1,2)*Metric(3,4))
+=
+   f(-1,1,2)*f(3,4,-1) * (Metric(1,4)*Metric(2,3) - Metric(1,3)*Metric(4,2))
+ + f(-1,1,3)*f(4,2,-1) * (Metric(1,2)*Metric(3,4) - Metric(1,4)*Metric(3,2))
+ + f(-1,1,4)*f(2,3,-1) * (Metric(1,3)*Metric(2,4) - Metric(1,2)*Metric(3,4))
+\end{verbatim}
+*)
+
+    let translate_color4 c =
+      match Array.map translate_color4_1 c with
+      | [| C3_1 (q) |] -> C3 q
+      | [| FF_1 (q1, a1, b1, c1, d1);
+	   FF_1 (q2, a2, b2, c2, d2);
+	   FF_1 (q3, a3, b3, c3, d3) |] ->
+	 if Q.abs q1 = Q.abs q2 && Q.abs q2 = Q.abs q3 then
+	   if a1 = a2 && a2 = a3 then
+	     let bcd1 = [b1; c1; d1]
+	     and bcd2 = [b2; c2; d2]
+	     and bcd3 = [b3; c3; d3] in
+	     let eps1 = Combinatorics.sign bcd1 in
+	     let eps2, bcd2 =
+	       let eps = Combinatorics.sign bcd2 in
+	       if eps = eps1 then
+		 (Q.make eps 1, bcd2)
+	       else
+		 (Q.make eps 1, [b2; d2; c2])
+	     and eps3, bcd3 =
+	       let eps = Combinatorics.sign bcd3 in
+	       if eps = eps1 then
+		 (Q.make eps 1, bcd3)
+	       else
+		 (Q.make eps 1, [b3; d3; c3]) in
+	     if bcd2 = [c1; d1; b1] then
+	       if bcd3 = [d1; b1; c1] then
+		 FF123 (q1, Q.mul eps2 q2, Q.mul eps3 q3, a1, b1, c1, d1)
+	       else
+		 invalid_arg "translate_color4: mismatched indices b, c, d"
+	     else if bcd2 = [d1; b1; c1] then
+	       if bcd3 = [c1; d1; b1] then
+		 FF132 (q1, Q.mul eps2 q2, Q.mul eps3 q3, a1, b1, c1, d1)
+	       else
+		 invalid_arg "translate_color4: mismatched indices b, c, d"
+	     else
+	       invalid_arg "translate_color4: mismatched indices b, c, d"
+	   else
+	     invalid_arg "translate_color4: mismatched indices a"
+	 else
+	   invalid_arg "translate_color4: mismatched couplings"
+      | c ->
+	 (Printf.eprintf
+	    "warning: translate_color4: passed through #color structures: %d\n"
+            (Array.length c));
+         C3 Q.unit
+
+    let translate_color4 _ =
+      Color.Trivial4
+
+  end

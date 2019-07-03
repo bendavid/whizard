@@ -174,16 +174,21 @@ module Permutation_Test_Using_Lists =
 module Permutation_Test_Using_Arrays =
   Permutation.Test(Permutation.Using_Arrays)
 
+module Dirac = UFO_targets.Dirac
+
 let suite = 
   "omega" >:::
     [selftest_suite;
      ThoList_Unit_Tests.suite;
+     ThoList.Test.suite;
      ThoArray.Test.suite;
      Partial.Test.suite;
      Permutation_Test_Using_Lists.suite;
      Permutation_Test_Using_Arrays.suite;
      Combinatorics_Unit_Tests.suite;
-     Combinatorics.Test.suite]
+     Combinatorics.Test.suite;
+     Format_Fortran.Test.suite;
+     Dirac.test_suite]
 
 let _ =
   ignore

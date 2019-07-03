@@ -1,0 +1,238 @@
+#! /bin/sh
+# $Id: pmcc 2388 2010-04-22 10:00:00Z ohl $
+########################################################################
+
+if test $# -eq 1; then
+  configfile="$1"
+else
+  echo "usage: $0 configfile" 1>&2
+  exit 1
+fi
+
+if test -r "$configfile"; then
+  . $configfile
+else
+  echo "$0: FATAL: can't read $configfile" 1>&2
+  exit 1
+fi
+
+########################################################################
+
+for var in BUILD_ROOT LOG_ROOT PROJECT SVN_REPO SVN_REV; do
+  if eval test -z "\$$var"; then
+    echo "$0: FATAL: required variable '$var' not set in $configfile" 1>&2
+    exit 1
+  fi
+done
+    
+########################################################################
+
+tmp_pfx=/tmp/pmcc-$$
+configurations=$tmp_pfx.configurations
+sed -n 's/^[	 ]*#>[	 ]*//p' $configfile >$configurations
+status=$tmp_pfx.status
+
+default_targets="all check install distcheck"
+default_makeflags="-j"
+
+targets=${TARGETS:-$default_targets}
+makeflags=${MAKEFLAGS:-$default_makeflags}
+distmakeflags=${DISTMAKEFLAGS:-$default_makeflags}
+
+date=`date +%F-%H%M`
+svn_dir=$BUILD_ROOT/$PROJECT/src
+work_dir=$BUILD_ROOT/$PROJECT/$date
+log_dir=$LOG_ROOT/$PROJECT/$date
+log_summary=$LOG_ROOT/$PROJECT/$date-summary
+src_dir=$svn_dir
+tarball=$work_dir/$PROJECT-pmcc
+
+echo "`date`: $0 $* started on `hostname -f`" >$log_summary
+
+if test -n "$PMCC_DRYRUN"; then
+  echo "`date`: DRYRUN: no commands are executed!" >>$log_summary
+  maybe=echo
+else
+  maybe=
+fi
+
+if test -z "$PMCC_MODE"; then
+  echo "`date`: PMCC_MODE not set, using default: svn" >>$log_summary
+  PMCC_MODE=svn
+fi
+
+case "$PMCC_MODE" in
+  svn) 
+    echo "`date`: building from SVN tree" >>$log_summary
+    ;;
+  in-tree)
+    echo "`date`: building in source tree from tarball" >>$log_summary
+    ;;
+  out-of-tree)
+    echo "`date`: building out of source tree from tarball" >>$log_summary
+    ;;
+  in-and-out-of-tree)
+    echo "`date`: building in  and out of source tree from tarball" >>$log_summary
+    ;;
+  *)
+    echo "`date`: invalid PMCC_MODE: $PMCC_MODE" >>$log_summary
+    exit 1
+    ;;
+esac
+
+echo FAILED in limbo >$status
+trap "
+  if test -n \"$MAIL_TO\"; then
+    mail -s \"[PMCC] $PROJECT @ `hostname`: \`cat $status\`\" $MAIL_TO <$log_summary
+  fi
+  rm -f $tmp_pfx.*
+  cat $log_summary" 0 1 2 3 15
+
+mkdir -p $svn_dir $log_dir || exit 1
+
+echo svn FAILED >$status
+repository=`svn info $svn_dir | sed -n 's/URL: *//p'`
+if test "$repository" = "$SVN_REPO"; then
+  $maybe svn update $svn_dir
+  echo svn update OK >$status
+else
+  # rm -fr $svn_dir
+  $maybe svn checkout -r $SVN_REV $SVN_REPO $svn_dir
+  echo svn checkout OK >$status
+fi > $log_dir/00-svn 2>&1
+revision=`svn info $svn_dir | sed -n 's/Revision: *//p'`
+author=`svn info $svn_dir | sed -n 's/Last Changed Author: *//p'`
+echo "`date`: $SVN_REPO @ r$revision ($author) checked out" >>$log_summary
+
+cd $svn_dir || exit 1
+$maybe autoreconf > $log_dir/01-autoreconf 2>&1
+if test $? -ne 0; then
+  echo autoreconf FAILED >$status
+  echo "`date`: `cat $status`" >>$log_summary
+  exit 1
+else
+  echo autoreconf OK >$status
+  echo "`date`: `cat $status`" >>$log_summary
+fi
+
+if test "$PMCC_MODE" != "svn"; then
+
+  build_dir=$work_dir/_build
+  log_file=$log_dir/03-tarball
+  mkdir -p $build_dir || exit 1
+  cd $build_dir || exit 1
+
+  $maybe eval "$svn_dir/configure $DISTFLAGS" >$log_file 2>&1
+  if test $? -ne 0; then
+    echo configure $DISTFLAGS FAILED >$status
+    echo "`date`: `cat $status`" >>$log_summary
+    tail -v -n 10 $log_file >>$log_summary
+    break
+  else
+    echo configure $DISTFLAGS OK >$status
+    echo "`date`: `cat $status`" >>$log_summary
+  fi
+
+  $maybe make $distmakeflags distdir=`basename $tarball` dist >$log_file 2>&1
+  if test $? -ne 0; then
+    echo make $distmakeflags distdir=`basename $tarball` FAILED >$status
+    echo "`date`: `cat $status`" >>$log_summary
+    tail -v -n 10 $log_file >>$log_summary
+    break
+  else
+    echo make $distmakeflags distdir=`basename $tarball` OK >$status
+    echo "`date`: `cat $status`" >>$log_summary
+    mv `basename $tarball`.tar.gz $tarball.tar.gz || exit 1
+  fi
+
+  cd $svn_dir || exit 1
+  rm -fr $build_dir
+fi
+
+cat $configurations | while read tag flags ; do
+
+  case "$PMCC_MODE" in
+    svn) 
+      build_dirs=$work_dir/_build_$tag
+      install_dir=$work_dir/_inst_$tag
+      rm -fr $build_dirs $install_dir
+      mkdir -p $build_dirs $log_dir/$tag || exit 1
+      ;;
+    in-tree)
+      src_dir=$tarball
+      build_dirs=$src_dir
+      install_dir=$work_dir/_inst_$tag
+      rm -fr $src_dir $build_dirs $install_dir
+      cd $work_dir || exit 1
+      zcat $tarball.tar.gz | tar xf -
+      mkdir -p $build_dirs $log_dir/$tag || exit 1
+      ;;
+    out-of-tree)
+      src_dir=$tarball
+      build_dirs=$work_dir/_build_$tag
+      install_dir=$work_dir/_inst_$tag
+      rm -fr $src_dir $build_dirs $install_dir
+      cd $work_dir || exit 1
+      zcat $tarball.tar.gz | tar xf -
+      mkdir -p $build_dirs $log_dir/$tag || exit 1
+      ;;
+    in-and-out-of-tree)
+      src_dir=$tarball
+      build_dirs="$work_dir/_build_$tag $src_dir"
+      install_dir=$work_dir/_inst_$tag
+      rm -fr $src_dir $build_dirs $install_dir
+      cd $work_dir || exit 1
+      zcat $tarball.tar.gz | tar xf -
+      mkdir -p $build_dirs $log_dir/$tag || exit 1
+      ;;
+  esac
+
+  for build_dir in $build_dirs; do
+
+    if test "$build_dir" = "$src_dir"; then
+      echo "`date`: building in tree" >>$log_summary
+    else
+      echo "`date`: building out of tree" >>$log_summary
+    fi
+
+    cd $build_dir || break
+
+    n=1
+    log_file=$log_dir/$tag/0$n-configure
+    $maybe eval "$src_dir/configure --prefix=$install_dir $flags" >$log_file 2>&1
+    if test $? -ne 0; then
+      echo $tag: configure $flags FAILED >$status
+      echo "`date`: `cat $status`" >>$log_summary
+      tail -v -n 10 $log_file >>$log_summary
+      break
+    else
+      echo $tag: configure $flags OK >$status
+      echo "`date`: `cat $status`" >>$log_summary
+    fi
+
+    for target in $targets; do
+      cd $build_dir || break
+      n=`expr $n + 1`
+      log_file=$log_dir/$tag/0$n-$target
+      $maybe make $makeflags $target >$log_file  2>&1
+      if test $? -ne 0; then
+        echo $tag: make $makeflags $target FAILED >$status
+        echo "`date`: `cat $status`" >>$log_summary
+        tail -v -n 30 $log_file >>$log_summary
+        break
+      else
+        echo $tag: make $makeflags $target OK >$status
+        echo "`date`: `cat $status`" >>$log_summary
+      fi
+    done
+
+    cd $work_dir || break
+
+    rm -fr $build_dir $install_dir
+    echo "`date`: $tag done." >>$log_summary
+
+  done
+
+done
+
+exit 0

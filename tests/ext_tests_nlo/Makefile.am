@@ -63,6 +63,8 @@ TESTS_EXTENDED = \
 	nlo_eettzj.run \
 	nlo_eettzjj.run \
 	nlo_eettzz.run \
+	nlo_fks_delta_o_eejj.run \
+	nlo_fks_delta_i_ppee.run \
 	nlo_jets.run \
 	nlo_methods_gosam.run \
 	nlo_qq_powheg.run \

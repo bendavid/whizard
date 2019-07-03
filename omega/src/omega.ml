@@ -65,6 +65,13 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
     module W = Whizard.Make(Fusion_Maker)(P)(P_Whizard)(M)
     module C = Cascade.Make(M)(P)
 
+    module VSet =
+      Set.Make (struct type t = F.constant Coupling.t let compare = compare end)
+
+    (* FIXME: can be retired starting from O'Caml 4.02.0! *)
+    let vset_of_list list =
+      List.fold_right VSet.add list VSet.empty;
+
 (* For the phase space, we need asymmetric DAGs.
 
    HACK: since we will not use this to compute amplitudes, there's
@@ -533,6 +540,31 @@ i*)
               Printf.eprintf ", %d diagrams" (F.count_diagrams amplitude);
               Printf.eprintf "\n")
             (CF.processes amplitudes);
+          let couplings =
+            List.fold_left
+              (fun acc p ->
+                let fusions = ThoList.flatmap F.rhs (F.fusions p)
+                and brakets = ThoList.flatmap F.ket (F.brakets p) in
+                let couplings =
+                  vset_of_list (List.map F.coupling (fusions @ brakets)) in
+                VSet.union acc couplings)
+              VSet.empty (CF.processes amplitudes) in
+          Printf.eprintf "SUMMARY: %d vertices\n" (VSet.cardinal couplings);
+          let ufo_couplings =
+            VSet.fold
+              (fun v acc ->
+                match v with
+                | Coupling.V3 (Coupling.UFO3 (_, v, _, _), _, _)
+                | Coupling.V4 (Coupling.UFO4 (_, v, _, _), _, _)
+                | Coupling.Vn (Coupling.UFOn (_, v, _, _), _, _) ->
+                   Sets.String.add v acc
+                | _ -> acc)
+              couplings Sets.String.empty in
+          if not (Sets.String.is_empty ufo_couplings) then
+            Printf.eprintf
+              "SUMMARY: %d UFO vertices: %s\n"
+              (Sets.String.cardinal ufo_couplings)
+              (String.concat ", " (Sets.String.elements ufo_couplings))
         end;
 
         if !poles then begin

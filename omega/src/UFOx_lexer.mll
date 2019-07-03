@@ -60,9 +60,9 @@ rule token = parse
   | '/'        	      { DIV }
   | '+'        	      { PLUS }
   | '-'        	      { MINUS }
-  | ( '-'? digit+ as i ) ( '.' '0'* )?
+  | ( digit+ as i ) ( '.' '0'* )?
                       { INT (int_of_string i) }
-  | '-'? digit* '.' digit+ ( ['E''e'] '-'? digit+ )? as x
+  | digit* '.' digit+ ( ['E''e'] '-'? digit+ )? as x
                       { FLOAT (float_of_string x) }
   | char word* ('.' char word+ )? as s
                       { ID s }

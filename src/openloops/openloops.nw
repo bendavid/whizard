@@ -204,11 +204,12 @@ end module prc_openloops
   procedure :: init => openloops_def_init
 <<prc openloops: procedures>>=
   subroutine openloops_def_init (object, basename, model_name, &
-     prt_in, prt_out, nlo_type, var_list)
+     prt_in, prt_out, nlo_type, restrictions, var_list)
     class(openloops_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
+    type(string_t), intent(in), optional :: restrictions
     type(var_list_t), intent(in) :: var_list
   <<prc openloops: openloops def init: variables>>
     object%basename = basename
@@ -228,7 +229,7 @@ end module prc_openloops
   <<prc openloops: openloops def init: suffix>>
     select type (writer => object%writer)
     class is (prc_blha_writer_t)
-       call writer%init (model_name, prt_in, prt_out)
+       call writer%init (model_name, prt_in, prt_out, restrictions)
     end select
     object%verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
   end subroutine openloops_def_init
