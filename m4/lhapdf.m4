@@ -20,44 +20,55 @@ if test "$enable_lhapdf" = "yes"; then
     wo_lhapdf_config_path=$PATH
   fi
   AC_PATH_PROG([LHAPDF], [lhapdf], [no], 
-    [$wo_lhapdf_config_path])  
+    [$wo_lhapdf_config_path])
 
-  if test "$LHAPDF" != "no"; then
+  if test "$LHAPDF" != "no"; then  
     AC_PATH_PROG([LHAPDF_CONFIG], [lhapdf-config], [no], 
       [$wo_lhapdf_config_path])
 
-    AC_CACHE_CHECK([the LHAPDF version],
-       [wo_cv_lhapdf_version],
-       [dnl,
-          wo_cv_lhapdf_version=[`$LHAPDF --version | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
-    ])
-    LHAPDF_FULL_VERSION="$wo_cv_lhapdf_version"
-    AC_SUBST([LHAPDF_FULL_VERSION])    
+    if test "$LHAPDF_CONFIG" != "no"; then
 
-    AC_CACHE_CHECK([the major version],
-    [wo_cv_lhapdf_major_version],
-    [wo_cv_lhapdf_major_version=[`echo $wo_cv_lhapdf_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
-    ])
-    LHAPDF_MAJOR_VERSION="$wo_cv_lhapdf_major_version"
-    AC_SUBST([LHAPDF_MAJOR_VERSION])
+       AC_CACHE_CHECK([the LHAPDF version],
+          [wo_cv_lhapdf_version],
+          [dnl,
+             wo_cv_lhapdf_version=[`$LHAPDF_CONFIG --version | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
+       ])
+       LHAPDF_FULL_VERSION="$wo_cv_lhapdf_version"
+       AC_SUBST([LHAPDF_FULL_VERSION])
 
-    AC_MSG_CHECKING([the LHAPDF pdfsets path])
-    LHAPDF_PDFSETS_PATH=`$LHAPDF_CONFIG --datadir`
-    AC_MSG_RESULT([$LHAPDF_PDFSETS_PATH])
+       AC_CACHE_CHECK([the major version],
+       [wo_cv_lhapdf_major_version],
+       [wo_cv_lhapdf_major_version=[`echo $wo_cv_lhapdf_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
+       ])
+       LHAPDF_MAJOR_VERSION="$wo_cv_lhapdf_major_version"
+       AC_SUBST([LHAPDF_MAJOR_VERSION])
 
-    AC_MSG_CHECKING([the standard PDF sets])
-    if test -f "$LHAPDF_PDFSETS_PATH/CT10/CT10.info" -a -f "$LHAPDF_PDFSETS_PATH/CT10/CT10_0000.dat" -a -f "$LHAPDF_PDFSETS_PATH/cteq6l1/cteq6l1.info" -a -f "$LHAPDF_PDFSETS_PATH/cteq6l1/cteq6l1_0000.dat"; then
-       AC_MSG_RESULT([ all standard PDF sets installed])
-    else	  
-       AC_MSG_RESULT([ not all standard PDF sets installed])     
-       AC_MSG_NOTICE([error: *************************************************************])
-       AC_MSG_NOTICE([error: LHAPDF standard PDF sets not installed, please install these ])
-       AC_MSG_NOTICE([error:    PDF sets: cteq6l1, CT10.                                  ])
-       AC_MSG_NOTICE([error: *************************************************************])
-       enable_lhapdf="no"
-       AC_MSG_CHECKING([for LHAPDF])
-       AC_MSG_RESULT([(disabled)])
+       AC_MSG_CHECKING([the LHAPDF pdfsets path])
+       LHAPDF_PDFSETS_PATH=`$LHAPDF_CONFIG --datadir`
+       AC_MSG_RESULT([$LHAPDF_PDFSETS_PATH])
+
+       AC_MSG_CHECKING([the standard PDF sets])
+       if test -f "$LHAPDF_PDFSETS_PATH/CT10/CT10.info" -a -f "$LHAPDF_PDFSETS_PATH/CT10/CT10_0000.dat" -a -f "$LHAPDF_PDFSETS_PATH/cteq6l1/cteq6l1.info" -a -f "$LHAPDF_PDFSETS_PATH/cteq6l1/cteq6l1_0000.dat"; then
+          AC_MSG_RESULT([ all standard PDF sets installed])
+       else
+          AC_MSG_RESULT([ not all standard PDF sets installed])
+          AC_MSG_NOTICE([error: *************************************************************])
+          AC_MSG_NOTICE([error: LHAPDF standard PDF sets not installed, please install these ])
+          AC_MSG_NOTICE([error:    PDF sets: cteq6l1, CT10.                                  ])
+          AC_MSG_NOTICE([error: *************************************************************])
+          enable_lhapdf="no"
+          AC_MSG_CHECKING([for LHAPDF])
+          AC_MSG_RESULT([(disabled)])
+       fi
+    else
+          AC_MSG_NOTICE([error: *****************************************************])
+          AC_MSG_NOTICE([error: LHAPDF configure scripts not found or not executable ])
+          AC_MSG_NOTICE([error: *****************************************************])
+          enable_lhapdf="no"
+          AC_MSG_CHECKING([for LHAPDF])
+          AC_MSG_RESULT([(disabled)])
     fi
+
 
   else
 
@@ -73,7 +84,7 @@ if test "$enable_lhapdf" = "yes"; then
 	wo_cv_lhapdf_version=[`$LHAPDF_CONFIG --version | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
     ])
        LHAPDF_FULL_VERSION="$wo_cv_lhapdf_version"
-       AC_SUBST([LHAPDF_FULL_VERSION])    
+       AC_SUBST([LHAPDF_FULL_VERSION])
 
        AC_CACHE_CHECK([the major version],
        [wo_cv_lhapdf_major_version],
@@ -92,8 +103,8 @@ if test "$enable_lhapdf" = "yes"; then
        AC_MSG_CHECKING([the standard PDF sets])
        if test -f "$LHAPDF_PDFSETS_PATH/cteq61.LHpdf" -a -f "$LHAPDF_PDFSETS_PATH/cteq5l.LHgrid" -a -f "$LHAPDF_PDFSETS_PATH/GSG961.LHgrid" -a -f "$LHAPDF_PDFSETS_PATH/cteq6ll.LHpdf"; then
           AC_MSG_RESULT([ all standard PDF sets installed])
-       else	  
-          AC_MSG_RESULT([ not all standard PDF sets installed])     
+       else
+          AC_MSG_RESULT([ not all standard PDF sets installed])
           AC_MSG_NOTICE([error: *************************************************************])
           AC_MSG_NOTICE([error: LHAPDF standard PDF sets not installed, please install these ])
           AC_MSG_NOTICE([error:    PDF sets: cteq61.LHpdf, cteq6ll.LHpdf, cteq5l.LHgrid,     ])
@@ -106,7 +117,7 @@ if test "$enable_lhapdf" = "yes"; then
      else
        enable_lhapdf="no"
      fi
-  fi  
+  fi
    
 else
   AC_MSG_CHECKING([for LHAPDF])

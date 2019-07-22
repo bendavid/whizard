@@ -4,8 +4,12 @@ Use svn log to see detailed changes.
 
 	Version 2.8.0
 
-2019-05-31
+2019-07-31
 	RELEASE: version 2.8.0
+
+2019-07-19
+	Fix version testing for LHAPDF 6.2.3 and newer
+	Minimal required OCaml version is now 4.02.3.
 
 2019-04-18
 	Correctly generate ordered FKS tuples for alpha regions
