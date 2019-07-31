@@ -4,8 +4,6 @@
 !!! time ~1h
 ?use_vamp_equivalences = false
 openmp_num_threads = 1
-?nlo_use_born_scale = false
-?nlo_cut_all_sqmes = false
 
 $method = "openloops"
 alpha_power = 2

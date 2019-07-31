@@ -35,12 +35,11 @@ compile_and_run () {
 }
 
 ### Here we will loop over compiler/library versions
-compile_and_run 3.12.0 ""
-compile_and_run 4.01.0 ""
-compile_and_run 4.02.3 ""
-compile_and_run 4.03.0 ""
-compile_and_run 4.05.0 ""
-compile_and_run 4.06.1 "" -unsafe-string
-compile_and_run 4.07.1 "" -unsafe-string
+compile_and_run 4.02.3 "" -safe-string
+compile_and_run 4.03.0 "" -safe-string
+compile_and_run 4.05.0 "" -safe-string
+compile_and_run 4.06.1 "" -safe-string
+compile_and_run 4.07.1 "" -safe-string
+compile_and_run 4.08.0 "" -safe-string
 
 exit 0

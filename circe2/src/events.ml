@@ -50,13 +50,13 @@ let read_lines ic reader array i2_first i2_last =
    O'Caml's [Genlex] doesn't accept it.  *)
 
 let normalize_ascii_floats orig =
-  let normalized = String.copy orig in
-  for i = 0 to String.length normalized - 1 do
-    let c = normalized.[i] in
+  let normalized = Bytes.of_string orig in
+  for i = 0 to Bytes.length normalized - 1 do
+    let c = Bytes.get normalized i in
     if c = 'd' || c = 'D' then
-      normalized.[i] <- 'E'
+      Bytes.set normalized i 'E'
   done;
-  normalized
+  Bytes.to_string normalized
   
 let lexer = Genlex.make_lexer []
 

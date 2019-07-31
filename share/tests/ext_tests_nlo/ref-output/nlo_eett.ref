@@ -37,8 +37,6 @@ sqrts =  1.000000000000E+03
 jet_algorithm = 2
 jet_r =  5.000000000000E-01
 ?use_vamp_equivalences = false
-?nlo_use_born_scale = false
-?nlo_cut_all_sqmes = false
 | End of included 'nlo_settings.sin'
 alpha_power = 2
 alphas_power = 0

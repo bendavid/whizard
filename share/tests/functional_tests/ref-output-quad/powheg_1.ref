@@ -80,9 +80,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        100     4.673E+02   2.15E+01    4.60    0.46    45.8
+   1        100     4.682E+02   2.15E+01    4.59    0.46    45.9
 |-----------------------------------------------------------------------------|
-   1        100     4.673E+02   2.15E+01    4.60    0.46    45.8
+   1        100     4.682E+02   2.15E+01    4.59    0.46    45.9
 |=============================================================================|
 n_events = 1
 ?debug_decay = false
@@ -99,14 +99,14 @@ n_events = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
-|             corr. to luminosity [fb-1] =   2.1397E-03
+|             corr. to luminosity [fb-1] =   2.1359E-03
 | Events: writing to ASCII file 'powheg_1_p1.debug'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 | POWHEG: using grids from file 'powheg_1_p1_1000.pg'
-| Grid: Mean value of the grid:  1.663322017E-02
-| Grid: Max value of the grid:  3.908545009E-02
-| Grid: Mean/Max value of the grid:  4.255604100E-01
+| Grid: Mean value of the grid:  1.702238737E-02
+| Grid: Max value of the grid:  3.968173851E-02
+| Grid: Mean/Max value of the grid:  4.289728224E-01
 |         ... event sample complete.
 | Events: actual unweighting efficiency =  20.00 %
 | Events: closing ASCII file 'powheg_1_p1.debug'
@@ -120,14 +120,14 @@ n_events = 2
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 2
-|             corr. to luminosity [fb-1] =   4.2795E-03
+|             corr. to luminosity [fb-1] =   4.2717E-03
 | Events: writing to ASCII file 'powheg_1_p1.debug'
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 | POWHEG: using grids from file 'powheg_1_p1_1000.pg'
-| Grid: Mean value of the grid:  1.663322017E-02
-| Grid: Max value of the grid:  3.908545009E-02
-| Grid: Mean/Max value of the grid:  4.255604100E-01
+| Grid: Mean value of the grid:  1.702238737E-02
+| Grid: Max value of the grid:  3.968173851E-02
+| Grid: Mean/Max value of the grid:  4.289728224E-01
 |         ... event sample complete.
 | Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'powheg_1_p1.debug'
@@ -227,7 +227,7 @@ Warning: No cuts have been defined.
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  (  0.0000 +-   0.00000 ) %
 |=============================================================================|
-tolerance =  1.08355E+02
+tolerance =  1.08344E+02
 | expect: success
 | Starting simulation for process 'powheg_1_p2'
 | Simulate: using integration grids from file 'powheg_1_p2.m1.vg'
@@ -239,14 +239,14 @@ tolerance =  1.08355E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Simulation: requested number of events = 2
-|             corr. to luminosity [fb-1] =   4.0177E-03
+|             corr. to luminosity [fb-1] =   4.0174E-03
 | Events: writing to ASCII file 'powheg_1_p2.debug'
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 | POWHEG: using grids from file 'powheg_1_p2_1000.pg'
-| Grid: Mean value of the grid:  1.508219495E-03
-| Grid: Max value of the grid:  1.844004544E-02
-| Grid: Mean/Max value of the grid:  8.179044351E-02
+| Grid: Mean value of the grid:  1.509352289E-03
+| Grid: Max value of the grid:  1.846388060E-02
+| Grid: Mean/Max value of the grid:  8.174621150E-02
 |         ... event sample complete.
 | Events: actual unweighting efficiency =  20.00 %
 | Events: closing ASCII file 'powheg_1_p2.debug'
@@ -264,8 +264,8 @@ Contents of powheg_1_p1.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  2.80466E-02
-   Squared matrix el. (prc) =  2.80466E-02
+   Squared matrix el. (ref) =  2.82009E-02
+   Squared matrix el. (prc) =  2.82009E-02
    Event weight (ref)       =  1.00000E+00
    Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
@@ -323,9 +323,9 @@ Contents of powheg_1_p1.debug:
    2    [i]      e-    0    0               [none]                  3-4      250.000        0.000        0.000     -250.000        0.000
    3    [v]       t    1    0                  1-2                  5-7      250.000       96.085     -123.677      -85.712    30625.000
    4    [v]    tbar    0    1                  1-2                  5-7      250.000      -96.085      123.677       85.712    30625.000
-   5    [o]       t    2    0                  3-4               [none]      160.932      104.618     -121.732       11.639    30625.000
-   6    [o]    tbar    0    1                  3-4               [none]      244.520      -91.910      118.303       81.988    30625.000
-   7    [o]      gl    1    2                  3-4               [none]       94.548      -12.708        3.430      -93.627        0.000
+   5    [o]       t    2    0                  3-4               [none]      160.829      104.543     -121.712       11.079    30625.000
+   6    [o]    tbar    0    1                  3-4               [none]      244.953      -92.243      118.732       82.285    30625.000
+   7    [o]      gl    1    2                  3-4               [none]       94.218      -12.299        2.981      -93.364        0.000
 ------------------------------------------------------------------------
 Sum of incoming momenta: p(0:3) =          500.000        0.000        0.000        0.000 
 Sum of beam remnant momenta: p(0:3) =        0.000        0.000        0.000        0.000 
@@ -359,8 +359,8 @@ n_out* => 3
 n_tot* => 5
 $process_id* => "powheg_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  2.80466E-02
-sqme_ref* =>  2.80466E-02
+sqme* =>  2.82009E-02
+sqme_ref* =>  2.82009E-02
 event_index* => 1
 event_weight* =>  1.00000E+00
 event_weight_ref* =>  1.00000E+00
@@ -369,9 +369,9 @@ event_excess* =>  0.00000E+00
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 1.6093234E+02; 1.0461835E+02,-1.2173226E+02, 1.1639310E+01| 3.0625000E+04| 3)
- 4 prt(o:-6| 2.4451983E+02;-9.1909962E+01, 1.1830264E+02, 8.1987752E+01| 3.0625000E+04| 4)
- 5 prt(o:21| 9.4547831E+01;-1.2708391E+01, 3.4296182E+00,-9.3627062E+01| 0.0000000E+00| 5)
+ 3 prt(o:6| 1.6082874E+02; 1.0454291E+02,-1.2171243E+02, 1.1079156E+01| 3.0625000E+04| 3)
+ 4 prt(o:-6| 2.4495304E+02;-9.2243471E+01, 1.1873192E+02, 8.2285257E+01| 3.0625000E+04| 4)
+ 5 prt(o:21| 9.4218222E+01;-1.2299435E+01, 2.9805095E+00,-9.3364414E+01| 0.0000000E+00| 5)
 ========================================================================
 ========================================================================
  Event #2
@@ -381,8 +381,8 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  2.76791E-02
-   Squared matrix el. (prc) =  2.76791E-02
+   Squared matrix el. (ref) =  2.76793E-02
+   Squared matrix el. (prc) =  2.76793E-02
    Event weight (ref)       =  1.00000E+00
    Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
@@ -473,8 +473,8 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "powheg_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  2.76791E-02
-sqme_ref* =>  2.76791E-02
+sqme* =>  2.76793E-02
+sqme_ref* =>  2.76793E-02
 event_index* => 2
 event_weight* =>  1.00000E+00
 event_weight_ref* =>  1.00000E+00
@@ -723,8 +723,8 @@ event_excess* =>  0.00000E+00
 Contents of powheg_1_p1_1000.pg:
            3
            5            5            2 
- 2.530629306E-02  3.365662356E-02  2.917606728E-02  2.032378341E-02  1.640279341E-02  3.676895126E-02  3.908545009E-02  3.100081429E-02  2.758624989E-02  2.075435308E-02  2.184926020E-02  2.585981001E-02  2.428140005E-02  1.869552869E-02  1.052110830E-02  1.026072927E-02  1.131493579E-02  8.439667002E-03  6.062967308E-03  1.289002281E-03  1.045380067E-03  1.753781377E-03  1.601314412E-03  1.460208346E-03  5.505926972E-04  2.514689998E-02  3.495739832E-02  2.886328584E-02  2.828860676E-02  6.796007631E-03  3.768978983E-02  3.879497593E-02  2.947607204E-02  2.189014635E-02  1.692352080E-02  2.171460101E-02  2.407352156E-02  2.142085942E-02  1.201357659E-02  1.557410030E-02  1.031223753E-02  1.094206930E-02  9.348220246E-03  3.791168954E-03  2.417083375E-03  1.119303556E-03  1.532804571E-03  1.760727600E-03  1.192585495E-03  5.743801359E-04 
+ 2.538608542E-02  3.429290764E-02  2.985682735E-02  2.158620934E-02  1.879672724E-02  3.711365002E-02  3.824738386E-02  3.256181610E-02  2.916147564E-02  1.778642712E-02  2.207065111E-02  2.618969325E-02  2.480054100E-02  1.952907677E-02  1.107019458E-02  1.008267037E-02  1.126668736E-02  8.570798821E-03  6.226314718E-03  1.322539021E-03  1.047000012E-03  1.760766746E-03  1.612181296E-03  1.471505201E-03  5.574795381E-04  2.526311995E-02  3.491503111E-02  2.956011519E-02  2.935705105E-02  8.353648803E-03  3.832503228E-02  3.968173851E-02  3.016864348E-02  2.385263511E-02  1.816910045E-02  2.179073172E-02  2.445580372E-02  2.209286764E-02  1.269047307E-02  1.663232008E-02  1.033479039E-02  1.102169336E-02  9.497682273E-03  3.893309968E-03  2.479970072E-03  1.121038054E-03  1.538909782E-03  1.772676298E-03  1.201811894E-03  5.815645112E-04 
 Contents of powheg_1_p2_1000.pg:
            3
            5            5            2 
- 1.843957322E-02  0.000000000E+00  3.840441758E-04  0.000000000E+00  0.000000000E+00  1.702819008E-02  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  1.628435672E-03  1.957292802E-04  3.584549890E-05  0.000000000E+00  2.651881828E-06  1.844004544E-02  0.000000000E+00  3.796757221E-04  0.000000000E+00  0.000000000E+00  1.703819508E-02  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  1.586894288E-03  2.098735104E-04  3.901739593E-05  0.000000000E+00  2.803502658E-06 
+ 1.845109355E-02  0.000000000E+00  3.846060261E-04  0.000000000E+00  0.000000000E+00  1.703626519E-02  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  1.630346745E-03  1.959255008E-04  3.587899257E-05  0.000000000E+00  2.654262471E-06  1.846388060E-02  0.000000000E+00  3.802522766E-04  0.000000000E+00  0.000000000E+00  1.704601090E-02  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  0.000000000E+00  1.588756609E-03  2.100839106E-04  3.905385338E-05  0.000000000E+00  2.806019414E-06 

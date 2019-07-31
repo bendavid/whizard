@@ -19,8 +19,6 @@ sqrts = 1 TeV
 jet_algorithm = antikt_algorithm
 jet_r = 0.5
 
-?nlo_use_born_scale = false
-?nlo_cut_all_sqmes = false
 ?virtual_collinear_resonance_aware = false ! For some strange reason, this is not default. delta_o is only implemented in the non-RA-FKS terms.
 
 cuts = let subevt @clustered_jets = cluster [jet] in

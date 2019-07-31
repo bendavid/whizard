@@ -27,10 +27,10 @@
 #
 ########################################################################
 
-OCAMLC += $(DBG)
+OCAMLC += $(DBG) -safe-string
 OCAMLCI = $(OCAMLC)
 OCAMLDEBUGFLAGS = -g
-OCAMLOPTFLAGS = -inline 64 $(GPROF)
+OCAMLOPTFLAGS = -inline 64 $(GPROF) -safe-string
 OCAML_NATIVE_EXT = .opt
 OCAML_BYTECODE_EXT = .bin
 

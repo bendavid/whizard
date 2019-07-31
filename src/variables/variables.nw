@@ -6070,13 +6070,13 @@ procedure with type [[V_NONE]].
          'Also, particles included in an \ttt{alias} are not excluded by ' // &
          '\ttt{\$exclude\_gauge\_splittings}!'))
     call var_list%append_log (var_str ("?nlo_use_born_scale"), &
-         .true., intrinsic = .true., &
+         .false., intrinsic = .true., &
          description=var_str ('Flag that decides whether a scale expression ' // &
          'defined for the Born component of an NLO process shall be applied ' // &
          'to all other components as well or not. ' // &
          '(cf. also \ttt{?nlo\_cut\_all\_sqmes})'))
     call var_list%append_log (var_str ("?nlo_cut_all_sqmes"), &
-         .true., intrinsic = .true., &
+         .false., intrinsic = .true., &
          description=var_str ('Flag that decides whether in the case that ' // &
          'some NLO component does not pass a cut, all other components ' // &
          'shall be discarded for that phase space point as well or not. ' // &

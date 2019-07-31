@@ -39,13 +39,13 @@ module Double =
     let little_endian = true
 
     let to_string x =
-      let s = sprintf "%.17E" x in
-      for i = 0 to String.length s - 1 do
-        let c = s.[i] in
+      let s = Bytes.of_string (sprintf "%.17E" x) in
+      for i = 0 to Bytes.length s - 1 do
+        let c = Bytes.get s i in
         if c = 'e' || c = 'E' then
-          s.[i] <- 'D'
+          Bytes.set s i 'D'
       done;
-      s
+      Bytes.to_string s
 
     (* Identity floatingpoint numbers that are indistinguishable from
        integers for more concise printing. *)
