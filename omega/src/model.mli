@@ -32,6 +32,7 @@ module type T =
 
 (* [Color.t] encodes the ($\textrm{SU}(N)$) color representation. *) 
     val color : flavor -> Color.t
+    val nc : unit -> int
 
 (* The set of conserved charges. *)
     module Ch : Charges.T
@@ -138,6 +139,7 @@ module type Mutable =
 
     val setup :
         color:(flavor -> Color.t) ->
+        nc:(unit -> int) ->
         pdg:(flavor -> int) ->
         lorentz:(flavor -> Coupling.lorentz) ->
         propagator:(flavor -> gauge Coupling.propagator) ->
@@ -251,7 +253,6 @@ module type Colorized =
     val flavor_sans_color : flavor -> flavor_sans_color
     val conjugate_sans_color : flavor_sans_color -> flavor_sans_color
 
-    val nc : unit -> int
     val amplitude : flavor_sans_color list -> flavor_sans_color list ->
       (flavor list * flavor list) list
     val flow : flavor list -> flavor list -> Color.Flow.t
@@ -267,7 +268,6 @@ module type Colorized_Gauge =
     val flavor_sans_color : flavor -> flavor_sans_color
     val conjugate_sans_color : flavor_sans_color -> flavor_sans_color
 
-    val nc : unit -> int
     val amplitude : flavor_sans_color list -> flavor_sans_color list ->
       (flavor list * flavor list) list
     val flow : flavor list -> flavor list -> Color.Flow.t

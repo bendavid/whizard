@@ -62,6 +62,30 @@ let list3 op l1 l2 l3 =
 let list op ll =
   fold (fun l c -> op l :: c) ll []
 
+let list2_opt op l1 l2 =
+  fold2
+    (fun x1 x2 c ->
+      match op x1 x2 with
+      | None -> c
+      | Some op_x1_x2 -> op_x1_x2 :: c)
+    l1 l2 []
+
+let list3_opt op l1 l2 l3 =
+  fold3
+    (fun x1 x2 x3 c ->
+      match op x1 x2 x3 with
+      | None -> c
+      | Some op_x1_x2_x3 -> op_x1_x2_x3 :: c)
+    l1 l2 l3 []
+
+let list_opt op ll =
+  fold
+    (fun l c ->
+      match op l with
+      | None -> c
+      | Some op_l -> op_l :: c)
+    ll []
+
 let power n l =
   list (fun x -> x) (ThoList.clone n l)
 

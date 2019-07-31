@@ -27,9 +27,22 @@ val hdn : int -> 'a list -> 'a list
 val tln : int -> 'a list -> 'a list
 val splitn : int -> 'a list -> 'a list * 'a list
 
+(* [split_last (l @ [a]) = (l, a)] *)
+val split_last : 'a list -> 'a list * 'a
+
 (* [chop n l] chops [l] into pieces of size [n] (except for the last
    one, which contains th remainder).  *)
 val chopn : int -> 'a list -> 'a list list
+
+(* [cycle_until a l] finds a member [a] in the list [l] and returns the
+   cyclically permuted list with [a] as head.  Raises [Not_found] if
+   [a] is not in [l]. *)
+val cycle_until : 'a -> 'a list -> 'a list
+
+(* [cycle n l] cyclically permute the list [l] by [n >= 0]
+   positions. Raises [Not_found] [List.length l > n].
+   NB: [cycle n l = tln n l @ hdn n l], but more efficient. *)
+val cycle : int -> 'a list -> 'a list
 
 (* [of_subarray n m a] is $[\ocwlowerid{a.}(\ocwlowerid{n});
    \ocwlowerid{a.}(\ocwlowerid{n}+1);\ldots;

@@ -1,0 +1,12 @@
+(* This is for running O'Mega inside the utop O'Caml
+   toplevel in order to debug some modules. *)
+
+#install_printer Algebra.Laurent.pp;;
+#install_printer Color.Birdtracks.pp;;
+#install_printer Color.SU3.pp;;
+#install_printer Color.U3.pp;;
+module A = Algebra.Laurent;;
+module SU3 = Color.SU3;;
+module U3 = Color.U3;;
+open SU3;;
+open BinOps;;

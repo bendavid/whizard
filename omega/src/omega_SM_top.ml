@@ -122,6 +122,8 @@ module Anomtop (Flags : SM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -159,9 +161,9 @@ module Anomtop (Flags : SM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None

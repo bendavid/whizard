@@ -143,7 +143,7 @@ module N =
     let max_degree = 6
 
     module C = Topology.Count(I)
-    module T = Topology.Nary(struct let max_arity = pred max_degree end)
+    module T = Topology.Nary(struct let max_arity = fun () -> pred max_degree end)
 
     let partition_to_string p =
       "(" ^ String.concat ","

@@ -278,6 +278,8 @@ module MSSM (Flags : MSSM_flags) =
       | Gl | Gluino -> Color.AdjSUN 3
       | _ -> Color.Singlet   
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -334,9 +336,9 @@ module MSSM (Flags : MSSM_flags) =
 *)
 
     let goldstone = function
-      | Wp -> Some (Phip, Coupling.Const 1)
-      | Wm -> Some (Phim, Coupling.Const 1)
-      | Z -> Some (Phi0, Coupling.Const 1)
+      | Wp -> Some (Phip, Coupling.Integer 1)
+      | Wm -> Some (Phim, Coupling.Integer 1)
+      | Z -> Some (Phi0, Coupling.Integer 1)
       | _ -> None
 
     let conjugate = function

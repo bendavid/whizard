@@ -202,6 +202,8 @@ ects_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 ########################################################################
 
 TESTS += cascade
+# if there is some debugging output ...
+# XFAIL_TESTS += cascade
 
 CASCADE_TESTS = \
 	bhabha-s-channel.cascade bhabha-t-channel.cascade bhabha-full.cascade \
@@ -234,6 +236,41 @@ phase_space: phase_space_driver.sh Makefile
 	chmod +x $@
 
 EXTRA_DIST += phase_space_driver.sh $(PHASE_SPACE_TESTS)
+
+########################################################################
+
+TESTS += fermi
+# XFAIL_TESTS += fermi
+
+EXTRA_PROGRAMS += fermi
+EXTRA_DIST += fermi_driver.sh
+EXTRA_DIST += fermi.list
+
+FERMI_SUPPORT_F90 = \
+	omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90 \
+	parameters_QED.f90 parameters_QCD.f90 parameters_SYM.f90 \
+	parameters_SM.f90 parameters_MSSM.f90 parameters_SM_top_anom.f90
+FERMI_SUPPORT_O = $(FERMI_SUPPORT_F90:.f90=.o)
+fermi_lib.o: $(FERMI_SUPPORT_O)
+
+FERMI_LIB_F90 = fermi_lib.f90 $(FERMI_SUPPORT_F90)
+FERMI_LIB_O = $(FERMI_LIB_F90:.f90=.o)
+
+run_fermi: fermi
+	./fermi
+
+fermi.f90: fermi_driver.sh $(OMEGA_QED) $(OMEGA_QCD) $(OMEGA_SYM)
+fermi.f90: $(OMEGA_SM) $(OMEGA_SM_top_anom)
+fermi.f90: fermi.list
+	@if $(AM_V_P); then :; else echo "  FERMI_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/fermi_driver.sh \
+		$(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
+
+fermi_SOURCES = $(FERMI_LIB_F90)
+nodist_fermi_SOURCES = fermi.f90
+fermi_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+fermi.o: $(FERMI_LIB_O)
 
 ########################################################################
 
@@ -394,6 +431,51 @@ compare_amplitude_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.l
 parameters_SM_from_UFO.o: parameters_SM_UFO.o
 compare_amplitude_UFO.o: parameters_SM_UFO.o parameters_SM_from_UFO.o
 compare_amplitude_UFO.o: $(COMPARE_LIB_O)
+
+endif
+
+########################################################################
+
+# At quadruple or extended precision, these tests take waaaaaayyyy too long!
+if FC_PREC
+else
+
+TESTS += fermi_UFO
+# XFAIL_TESTS += fermi_UFO
+
+# We need more work on the parameters to pass the tests
+# at quadruple or extended precision.
+if FC_PREC
+XFAIL_TESTS += fermi_UFO
+endif
+
+EXTRA_PROGRAMS += fermi_UFO
+EXTRA_DIST += fermi_driver_UFO.sh
+EXTRA_DIST += fermi_UFO.list
+
+FERMI_UFO_SUPPORT_F90 = \
+	omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90
+
+FERMI_UFO_SUPPORT_O = $(FERMI_UFO_SUPPORT_F90:.f90=.o)
+fermi_UFO_lib.o: $(FERMI_SUPPORT_O)
+
+FERMI_UFO_LIB_F90 = fermi_lib.f90 $(FERMI_UFO_SUPPORT_F90)
+FERMI_UFO_LIB_O = $(FERMI_UFO_LIB_F90:.f90=.o)
+
+run_fermi_UFO: fermi_UFO
+	./fermi_UFO
+
+fermi_UFO.f90: fermi_UFO.list fermi_driver_UFO.sh $(OMEGA_UFO)
+	@if $(AM_V_P); then :; else echo "  FERMI_UFO_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/fermi_driver_UFO.sh \
+	  $(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ \
+	  $(OMEGA_SPLIT) < $< > $@
+
+fermi_UFO_SOURCES = $(FERMI_UFO_LIB_F90)
+nodist_fermi_UFO_SOURCES = fermi_UFO.f90 parameters_SM_UFO.f90
+fermi_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+fermi_UFO.o: $(FERMI_UFO_LIB_O)
 
 endif
 
@@ -637,6 +719,63 @@ endif
 
 ########################################################################
 
+if OCAML_AVAILABLE
+
+TESTS += keystones_omegalib keystones_UFO
+# XFAIL_TESTS += keystones_UFO
+
+EXTRA_PROGRAMS += keystones_omegalib keystones_UFO
+
+keystones_omegalib_SOURCES = omega_testtools.f90 keystones_tools.f90
+nodist_keystones_omegalib_SOURCES = keystones_omegalib.f90
+keystones_omegalib_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+keystones_UFO_SOURCES = omega_testtools.f90 keystones_tools.f90
+nodist_keystones_UFO_SOURCES = keystones_UFO.f90
+keystones_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+EXTRA_PROGRAMS += keystones_omegalib_generate keystones_UFO_generate
+keystones_omegalib_generate_SOURCES = \
+	keystones.ml keystones.mli keystones_omegalib_generate.ml
+keystones_UFO_generate_SOURCES = \
+	keystones.ml keystones.mli keystones_UFO_generate.ml
+
+keystones_omegalib.f90: keystones_omegalib_generate
+	./keystones_omegalib_generate -cat > $@
+
+keystones_UFO.f90: keystones_UFO_generate
+	./keystones_UFO_generate -cat > $@
+
+keystones_omegalib_generate: $(OMEGA_CORE) keystones_omegalib_generate.cmx
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) \
+		-o keystones_omegalib_generate \
+		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) \
+		keystones.cmx keystones_omegalib_generate.cmx
+
+keystones_UFO_generate: $(OMEGA_CORE) keystones_UFO_generate.cmx
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) \
+		-o keystones_UFO_generate \
+		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) \
+		keystones.cmx keystones_UFO_generate.cmx
+
+keystones_omegalib_generate.cmx: \
+	keystones.cmi keystones.cmx keystones_omegalib_generate.ml
+keystones_omegalib_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+
+keystones_UFO_generate.cmx: \
+	keystones.cmi keystones.cmx keystones_UFO_generate.ml
+keystones_UFO_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+
+keystones.cmx: keystones.ml keystones.cmi
+keystones.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+keystones.cmi: keystones.mli
+
+endif
+
+########################################################################
+
 if RECOLA_AVAILABLE
 
 TESTS += compare_amplitude_recola
@@ -713,7 +852,8 @@ clean-macosx:
 clean-local: clean-macosx
 	rm -f a.out gmon.out *.$(FC_MODULE_EXT) \
 		*.o *.cmi *.cmo *.cmx amplitude_*.f90 \
-		$(EXTRA_PROGRAMS) ects.f90 ward.f90 ward_UFO.f90 compare_*.f90 \
+		$(EXTRA_PROGRAMS) ects.f90 ward.f90 ward_UFO.f90 \
+		fermi.f90 fermi_UFO.f90 compare_*.f90 \
 		parameters_SM_UFO.f90 keystones_omegalib.f90 keystones_UFO.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
 		*.hbc *wrappers.f90 cascade phase_space \

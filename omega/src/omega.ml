@@ -519,6 +519,13 @@ i*)
             CF.amplitudes (include_goldstones !checks) !unphysical_polarization
 	      CF.no_exclusions selectors processes
           with
+          | Fusion.Majorana ->
+             begin
+               Printf.eprintf
+                 "O'Mega: found Majorana fermions: use a supporting binary!\n";
+               flush stderr;
+               CF.empty;
+             end
           | exc ->
               begin 
                 Printf.eprintf
@@ -554,9 +561,7 @@ i*)
             VSet.fold
               (fun v acc ->
                 match v with
-                | Coupling.V3 (Coupling.UFO3 (_, v, _, _), _, _)
-                | Coupling.V4 (Coupling.UFO4 (_, v, _, _), _, _)
-                | Coupling.Vn (Coupling.UFOn (_, v, _, _), _, _) ->
+                | Coupling.Vn (Coupling.UFO (_, v, _, _, _), _, _) ->
                    Sets.String.add v acc
                 | _ -> acc)
               couplings Sets.String.empty in

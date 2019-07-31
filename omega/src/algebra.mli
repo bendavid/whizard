@@ -22,6 +22,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
+
 (* \thocwmodulesection{Coefficients} *)
 
 (* For our algebra, we need coefficient rings. *)
@@ -91,11 +96,44 @@ module type QComplex =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val inv : t -> t
 
   end
 
 module QComplex : functor (Q' : Rational) -> QComplex with type q = Q'.t
 module QC : QComplex with type q = Q.t
+
+(* \thocwmodulesection{Laurent Polynomials} *)
+
+module type Laurent =
+  sig
+    type c
+    type t
+    val null : t
+    val unit : t
+    val is_null : t -> bool
+    val atom : c -> int -> t
+    val const : c -> t
+    val scale : c -> t -> t
+    val add : t -> t -> t
+    val diff : t -> t -> t
+    val sum : t list -> t
+    val mul : t -> t -> t
+    val product : t list -> t
+    val pow : int -> t -> t
+    val eval : c -> t -> c
+    val to_string : string -> t -> string
+    val compare : t -> t -> int
+    val pp : Format.formatter -> t -> unit
+    module Test : Test
+  end
+
+(* \begin{dubious}
+     Could (should?) be functorialized over [QComplex], but
+     wait until we upgrade our O'Caml requirements to 4.02 \ldots
+   \end{dubious} *)
+
+module Laurent : Laurent with type c = QC.t
 
 (* \thocwmodulesection{Expressions: Terms, Rings and Linear Combinations} *)
 

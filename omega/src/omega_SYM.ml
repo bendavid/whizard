@@ -99,6 +99,8 @@ module SYM =
       | G _ | SG _ -> Color.AdjSUN nc
       | Phi -> Color.Singlet
 
+    let nc () = nc
+
     let propagator = function
       | Q i ->
           if i > 0 then

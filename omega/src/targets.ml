@@ -1264,12 +1264,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
           | Aux_Gauge_Gauge _ ->
               failwith "print_current: V3 (Aux_Gauge_Gauge): not implemented"
 
-          | UFO3 (c, v, s, Color.Trivial3) ->
-              failwith "print_current: V3 (UFO3): not implemented yet"
-
-          | UFO3 (c, v, s, _) ->
-              failwith "print_current: V3 (UFO3): unexpected color"
-
    end
 
 (* Flip the sign in [c] to account for the~$\mathrm{i}^2$ relative to diagrams
@@ -1385,12 +1379,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
               failwith "print_current: V4: not implemented"
           | Dim6_HHZZ_T _ ->   
               failwith "print_current: V4: not implemented"
-
-          | UFO4 (c, v, s, Color.Trivial4) ->
-              failwith "print_current: V4 (UFO4): not implemented yet"
-
-          | UFO4 (c, v, s, _) ->
-              failwith "print_current: V4 (UFO4): unexpected color"
 
           end
 
@@ -2369,15 +2357,22 @@ i*)
           nl ()
 
     let format_constant = function
-      | I -> sprintf "cmplx (0.0_%s, 1.0_%s, kind=%s)" !kind !kind !kind
-      | Const c when c < 0 -> sprintf "(%d.0_%s)" c !kind
-      | Const c -> sprintf "%d.0_%s" c !kind
+      | I -> "(0,1)"
+      | Integer c ->
+         if c < 0 then
+           sprintf "(%d.0_%s)" c !kind
+         else
+           sprintf "%d.0_%s" c !kind
+      | Float x ->
+         if x < 0. then
+           sprintf "(%g_%s)" x !kind
+         else
+           sprintf "%g_%s" x !kind
       | _ -> invalid_arg "format_constant"
 
     let rec eval_parameter' = function
-      | I -> printf "cmplx (0.0_%s,@ 1.0_%s,@ kind=%s)" !kind !kind !kind
-      | Const c when c < 0 -> printf "(%d.0_%s)" c !kind
-      | Const c -> printf "%d.0_%s" c !kind
+      | (I | Integer _ | Float _) as c ->
+         printf "%s" (format_constant c)
       | Atom x -> printf "%s" (CM.constant_symbol x)
       | Sum [] -> printf "0.0_%s" !kind
       | Sum [x] -> eval_parameter' x
@@ -2410,10 +2405,12 @@ i*)
       | Cos x -> printf "@,cos ("; eval_parameter' x; printf ")"
       | Tan x -> printf "@,tan ("; eval_parameter' x; printf ")"
       | Cot x -> printf "@,cot ("; eval_parameter' x; printf ")"
+      | Atan x -> printf "@,atan ("; eval_parameter' x; printf ")"
       | Atan2 (y, x) -> printf "@,atan2 ("; eval_parameter' y;
           printf ",@ "; eval_parameter' x; printf ")"
       | Exp x -> printf "@,exp ("; eval_parameter' x; printf ")"
-      | Conj x -> printf "@,conjg ("; eval_parameter' x; printf ")"
+      | Conj (Integer _ | Float _ as x) -> eval_parameter' x
+      | Conj x -> printf "@,cconjg ("; eval_parameter' x; printf ")"
 
     let strip_single_tag = function
       | Real x -> x
@@ -2462,7 +2459,7 @@ i*)
         couplings.input
 
     let rec depends_on params = function
-      | I | Const _ -> false
+      | I | Integer _ | Float _ -> false
       | Atom name -> List.mem (CM.constant_symbol name) params
       | Sum es | Prod es ->
          List.exists (depends_on params) es
@@ -2470,7 +2467,7 @@ i*)
          depends_on params e1 || depends_on params e2
       | Neg e | Rec e | Pow (e, _) ->
          depends_on params e
-      | Sqrt e | Sin e | Cos e | Tan e | Cot e | Conj e | Exp e ->
+      | Sqrt e | Sin e | Cos e | Tan e | Cot e | Conj e | Exp e | Atan e ->
          depends_on params e
       | Atan2 (e1, e2) ->
          depends_on params e1 || depends_on params e2
@@ -2527,8 +2524,22 @@ i*)
       List.iter (declare_parameter_array "real") declarations.real_arrays;
       declare_parameters "complex" (schisma 69 declarations.complex_singles);
       List.iter (declare_parameter_array "complex") declarations.complex_arrays;
+      printf "  interface cconjg"; nl ();
+      printf "    module procedure cconjg_real, cconjg_complex"; nl ();
+      printf "  end interface"; nl ();
+      printf "  private :: cconjg_real, cconjg_complex"; nl ();
       printf "contains"; nl ();
-      printf "    ! derived parameters:"; nl ();
+      printf "  function cconjg_real (x) result (xc)"; nl ();
+      printf "    real(kind=default), intent(in) :: x"; nl ();
+      printf "    real(kind=default) :: xc"; nl ();
+      printf "    xc = x"; nl ();
+      printf "  end function cconjg_real"; nl ();
+      printf "  function cconjg_complex (z) result (zc)"; nl ();
+      printf "    complex(kind=default), intent(in) :: z"; nl ();
+      printf "    complex(kind=default) :: zc"; nl ();
+      printf "    zc = conjg (z)"; nl ();
+      printf "  end function cconjg_complex"; nl ();
+      printf "  ! derived parameters:"; nl ();
       let shredded = schisma_num 1 120 params.derived in
       let shredded_arrays = schisma_num 1 120 params.derived_arrays in
       let num_sub = List.length shredded in
@@ -3483,12 +3494,6 @@ i*)
           let c = CM.constant_symbol constant in
           printf "@, %s " (if (F.sign rhs) < 0 then "-" else "+");
           begin match vertex with
-          | UFO3 (c', v, s, Color.Legacy3)
-          | UFO3 (c', v, s, Color.Trivial3) ->
-             UFO.Targets.Fortran.fusion2 c' v s c wf1 p1 wf2 p2 fusion
-
-          | UFO3 (c', v, s, _) ->
-             failwith "print_current: nontrivial color structure"
 
 (* Fermionic currents $\bar\psi\fmslash{A}\psi$ and $\bar\psi\phi\psi$
    are handled by the [Fermions] module, since they depend on the
@@ -4084,7 +4089,12 @@ i*)
           end
 
 (* Flip the sign to account for the~$\mathrm{i}^2$ relative to diagrams
-   with only cubic couplings.  *)
+   with only cubic couplings.
+   \label{hack:sign(V4)} *)
+(* \begin{dubious}
+     That's an \emph{slightly dangerous} hack!!!  How do we accnount
+     for such signs when treating $n$-ary vertices uniformly?
+   \end{dubious} *)
 
       | V4 (vertex, fusion, constant) ->
           let c = CM.constant_symbol constant
@@ -4097,13 +4107,6 @@ i*)
           and p3 = momentum ch3 in
           printf "@, %s " (if (F.sign rhs) < 0 then "+" else "-");
           begin match vertex with
-          | UFO4 (c', v, s, Color.Legacy4)
-          | UFO4 (c', v, s, Color.Trivial4) ->
-             UFO.Targets.Fortran.fusion3 c' v s c wf1 p1 wf2 p2 wf3 p3 fusion
-
-          | UFO4 (c', v, s, _) ->
-             failwith "print_current: nontrivial color structure"
-
           | Scalar4 coeff ->
               printf "(%s*%s*%s*%s)" (format_coupling coeff c) wf1 wf2 wf3
           | Scalar2_Vector2 coeff ->
@@ -5741,16 +5744,29 @@ i*)
 
           end
 
-      | Vn (UFOn (c, v, s, Color.Legacy), fusion, constant)
-      | Vn (UFOn (c, v, s, Color.Trivial), fusion, constant) ->
-         let g = CM.constant_symbol constant
-         and chn = F.children rhs in
-         let wfs = List.map (multiple_variable amplitude dictionary) chn
-         and ps = List.map momentum chn in
-         UFO.Targets.Fortran.fusionn c v s g wfs ps fusion
-
-      | Vn (UFOn (c, v, s, _), fusion, constant) ->
-         failwith "print_current: nontrivial color structure"
+      (* \begin{dubious}
+           This reproduces the hack on page~\pageref{hack:sign(V4)}
+           and gives the correct results up to quartic vertices.
+           Make sure that it is also correct in light
+           of~\eqref{eq:factors-of-i}, i.\,e.
+           \begin{equation*}
+             \ii T = \ii^{\#\text{vertices}}\ii^{\#\text{propagators}} \cdots
+                   = \ii^{n-2}\ii^{n-3} \cdots
+                   = -\ii(-1)^n \cdots
+           \end{equation*}
+         \end{dubious} *)
+      | Vn (UFO (c, v, s, _, color), fusion, constant) ->
+         if Color.Vertex.trivial color then
+           let g = CM.constant_symbol constant
+           and chn = F.children rhs in
+           let wfs = List.map (multiple_variable amplitude dictionary) chn
+           and ps = List.map momentum chn in
+           let n = List.length fusion in
+           let eps = if n mod 2 = 0 then -1 else 1 in
+           printf "@, %s " (if (eps * F.sign rhs) < 0 then "-" else "+");
+           UFO.Targets.Fortran.fuse c v s g wfs ps fusion
+         else
+           failwith "print_current: nontrivial color structure"
 
     let print_propagator f p m gamma =
       let minus_third = "(-1.0_" ^ !kind ^ "/3.0_" ^ !kind ^ ")" in
@@ -5950,16 +5966,17 @@ i*)
       printf "      @[<2>%s = %s@, + " name name;
       begin match Fermions.reverse_braket (CM.lorentz (F.flavor bra)) with
       | false ->
-          printf "%s*(@," (multiple_variable amplitude dictionary bra);
+          printf "%s*@,(" (multiple_variable amplitude dictionary bra);
           List.iter (print_current amplitude dictionary) ket;
           printf ")"
       | true ->
-          printf "(@,";
+          printf "@,(";
           List.iter (print_current amplitude dictionary) ket;
           printf ")*%s" (multiple_variable amplitude dictionary bra)
       end; nl ()
 
 (* \begin{equation}
+   \label{eq:factors-of-i}
      \ii T = \ii^{\#\text{vertices}}\ii^{\#\text{propagators}} \cdots
            = \ii^{n-2}\ii^{n-3} \cdots
            = -\ii(-1)^n \cdots
@@ -7050,7 +7067,6 @@ i*)
     let used_modules () =
       [Full "kinds";
        Full Fermions.use_module;
-       Full (!module_name ^ "_ufo");
        Full_Aliased ("omega_color", ["omega_color_factor", omega_color_factor_abbrev])] @
       List.map
         (fun m -> Full m)
@@ -7212,9 +7228,7 @@ i*)
       VSet.fold
         (fun v acc ->
           match v with
-          | Coupling.V3 (Coupling.UFO3 (_, v, _, _), _, _)
-          | Coupling.V4 (Coupling.UFO4 (_, v, _, _), _, _)
-          | Coupling.Vn (Coupling.UFOn (_, v, _, _), _, _) ->
+          | Coupling.Vn (Coupling.UFO (_, v, _, _, _), _, _) ->
              Sets.String.add v acc
           | _ -> acc)
         couplings Sets.String.empty
@@ -7418,10 +7432,22 @@ i*)
 
     let amplitudes_to_channel cmdline oc diagnostics amplitudes =
       parse_diagnostics diagnostics;
-      UFO.Targets.Fortran.lorentz_module
-        ~only:(ufo_fusions_used amplitudes)
-        ~name:(!module_name ^ "_ufo")
-        (Format_Fortran.formatter_of_out_channel oc) ();
+      let ufo_fusions =
+        let ufo_fusions_set = ufo_fusions_used amplitudes in
+        if Sets.String.is_empty ufo_fusions_set then
+          None
+        else
+          Some ufo_fusions_set in
+      begin match ufo_fusions with
+      | Some only ->
+         let name = !module_name ^ "_ufo"
+         and fortran_module = Fermions.use_module in
+         use_modules := name :: !use_modules;
+         UFO.Targets.Fortran.lorentz_module
+           ~only ~name ~fortran_module
+           (Format_Fortran.formatter_of_out_channel oc) ()
+      | None -> ()
+      end;
       match !output_mode with
       | Single_Function ->
           amplitudes_to_channel_single_function cmdline oc amplitudes

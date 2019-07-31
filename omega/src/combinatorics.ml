@@ -361,6 +361,13 @@ let permute_even l =
 let permute_odd l =
   filter_sign (-1) (permute_signed l)
 
+(* \begin{dubious}
+     We have a slight inconsistency here:
+     [permute [] = [[]]], while
+     [permute_cyclic [] = []].
+     I don't know if it is worth fixing.
+   \end{dubious} *)
+
 let permute_cyclic l =
   let rec permute_cyclic' acc l1 = function
     | [] -> List.rev acc
@@ -426,18 +433,72 @@ module Test =
 
     open OUnit
 
+    let to_string =
+      ThoList.to_string (ThoList.to_string string_of_int)
+
+    let assert_equal_perms =
+      assert_equal ~printer:to_string
+
+    let count_permutations n =
+      let factorial_n = factorial n
+      and range = ThoList.range 1 n in
+      let sorted = List.sort compare (permute range) in
+      (* Verify the count \ldots *)
+      assert_equal factorial_n (List.length sorted);
+      (* \ldots{} check that they're all different \ldots *)
+      assert_equal factorial_n (List.length (ThoList.uniq sorted));
+      (* \ldots{} make sure that they a all permutations. *)
+      assert_equal_perms
+        [range] (ThoList.uniq (List.map (List.sort compare) sorted))
+
     let suite_permute =
       "permute" >:::
-	[ "cyclic []" >::
-	    (fun () -> assert_equal [] (permute_cyclic []));
+	[ "permute []" >::
+	    (fun () ->
+              assert_equal_perms [[]] (permute []));
+          "permute [1]" >::
+	    (fun () ->
+              assert_equal_perms [[1]] (permute [1]));
+          "permute [1;2;3]" >::
+	    (fun () ->
+              assert_equal_perms
+                [ [2; 3; 1]; [2; 1; 3]; [3; 2; 1];
+                  [1; 3; 2]; [1; 2; 3]; [3; 1; 2] ]
+                (permute [1; 2; 3]));
+          "permute [1;2;3;4]" >::
+	    (fun () ->
+              assert_equal_perms
+                [ [3; 4; 1; 2]; [3; 1; 2; 4]; [3; 1; 4; 2];
+                  [4; 3; 1; 2]; [1; 4; 2; 3]; [1; 2; 3; 4];
+                  [1; 2; 4; 3]; [4; 1; 2; 3]; [1; 4; 3; 2];
+                  [1; 3; 2; 4]; [1; 3; 4; 2]; [4; 1; 3; 2];
+                  [3; 4; 2; 1]; [3; 2; 1; 4]; [3; 2; 4; 1];
+                  [4; 3; 2; 1]; [2; 4; 1; 3]; [2; 1; 3; 4];
+                  [2; 1; 4; 3]; [4; 2; 1; 3]; [2; 4; 3; 1];
+                  [2; 3; 1; 4]; [2; 3; 4; 1]; [4; 2; 3; 1] ]
+                (permute [1; 2; 3; 4]));
+          "count permute 5" >::
+            (fun () -> count_permutations 5);
+          "count permute 6" >::
+            (fun () -> count_permutations 6);
+          "count permute 7" >::
+            (fun () -> count_permutations 7);
+          "count permute 8" >::
+            (fun () -> count_permutations 8);
+          "cyclic []" >::
+	    (fun () ->
+              assert_equal_perms [] (permute_cyclic []));
           "cyclic [1]" >::
-	    (fun () -> assert_equal [[1]] (permute_cyclic [1]));
+	    (fun () ->
+              assert_equal_perms [[1]] (permute_cyclic [1]));
           "cyclic [1;2;3]" >::
 	    (fun () ->
-	      assert_equal [[1;2;3]; [2;3;1]; [3;1;2]] (permute_cyclic [1;2;3]));
+	      assert_equal_perms
+                [[1;2;3]; [2;3;1]; [3;1;2]]
+                (permute_cyclic [1;2;3]));
           "cyclic [1;2;3;4]" >::
 	    (fun () ->
-	      assert_equal
+	      assert_equal_perms
                 [[1;2;3;4]; [2;3;4;1]; [3;4;1;2]; [4;1;2;3]]
                 (permute_cyclic [1;2;3;4]))]
 

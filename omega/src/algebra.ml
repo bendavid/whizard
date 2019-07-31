@@ -22,6 +22,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
+
 (* The terms will be small and there's no need to be fancy and/or efficient.
    It's more important to have a unique representation. *)
 
@@ -152,6 +157,7 @@ module type QComplex =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val inv : t -> t
 
   end
 
@@ -187,9 +193,230 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
                (Q.sub (Q.mul (Q.add z1.re z1.im) (Q.add z2.re z2.im)) re12)
                im12 }
 
+    let inv z =
+      let modulus = Q.add (Q.mul z.re z.re) (Q.mul z.im z.im) in
+      { re = Q.div z.re modulus;
+        im = Q.div (Q.neg z.im) modulus }
+
   end
 
 module QC = QComplex(Q)
+
+(* \thocwmodulesection{Laurent Polynomials} *)
+
+module type Laurent =
+  sig
+    type c
+    type t
+    val null : t
+    val unit : t
+    val is_null : t -> bool
+    val atom : c -> int -> t
+    val const : c -> t
+    val scale : c -> t -> t
+    val add : t -> t -> t
+    val diff : t -> t -> t
+    val sum : t list -> t
+    val mul : t -> t -> t
+    val product : t list -> t
+    val pow : int -> t -> t
+    val eval : c -> t -> c
+    val to_string : string -> t -> string
+    val compare : t -> t -> int
+    val pp : Format.formatter -> t -> unit
+    module Test : Test
+  end
+
+module Laurent : Laurent with type c = QC.t =
+  struct
+
+    module IMap =
+      Map.Make
+        (struct
+          type t = int
+          let compare i1 i2 =
+            Pervasives.compare i2 i1
+        end)
+
+    type c = QC.t
+
+    let qc_minus_one =
+      QC.neg QC.one
+
+    type t = c IMap.t
+
+    let null = IMap.empty
+    let is_null l = IMap.is_empty l
+
+    let atom qc n =
+      if qc = QC.null then
+        null
+      else
+        IMap.singleton n qc
+
+    let const z = atom z 0
+    let unit = const QC.one
+
+    let add1 n qc l =
+      try
+        let qc' = QC.add qc (IMap.find n l) in
+        if qc' = QC.null then
+          IMap.remove n l
+        else
+          IMap.add n qc' l
+      with
+      | Not_found -> IMap.add n qc l
+
+    let add l1 l2 =
+      IMap.fold add1 l1 l2
+
+    let sum = function
+      | [] -> null
+      | [l] -> l
+      | l :: l_list ->
+         List.fold_left add l l_list
+
+    let scale qc l =
+      IMap.map (QC.mul qc) l
+
+    let diff l1 l2 =
+      add l1 (scale qc_minus_one l2)
+
+    (* cf.~[Product.fold2_rev] *)
+    let fold2 f l1 l2 acc =
+      IMap.fold
+        (fun n1 qc1 acc1 ->
+          IMap.fold
+            (fun n2 qc2 acc2 -> f n1 qc1 n2 qc2 acc2)
+            l2 acc1)
+        l1 acc
+
+    let mul l1 l2 =
+      fold2
+        (fun n1 qc1 n2 qc2 acc ->
+          add1 (n1 + n2) (QC.mul qc1 qc2) acc)
+        l1 l2 null
+      
+    let product = function
+      | [] -> unit
+      | [l] -> l
+      | l :: l_list ->
+         List.fold_left mul l l_list
+
+    let poly_pow multiply one inverse n x  =
+      let rec pow' i x' acc =
+        if i < 1 then
+          acc
+        else
+          pow' (pred i) x' (multiply x' acc) in
+      if n < 0 then
+        let x' = inverse x in
+        pow' (pred (-n)) x' x'
+      else if n = 0 then
+        one
+      else
+        pow' (pred n) x x
+
+    let qc_pow n z =
+      poly_pow QC.mul QC.one QC.inv n z
+
+    let pow n l =
+      poly_pow mul unit (fun _ -> invalid_arg "Algebra.Laurent.pow") n l
+
+    let q_to_string q =
+      (if Q.is_positive q then "+" else "-") ^ Q.to_string (Q.abs q)
+
+    let qc_to_string z =
+      let r = QC.real z
+      and i = QC.imag z in
+      if Q.is_null i then
+        q_to_string r
+      else if Q.is_null r then
+        if Q.is_unit i then
+          "+I"
+        else if Q.is_unit (Q.neg i) then
+          "-I"
+        else
+          q_to_string i ^ "*I"
+      else
+        Printf.sprintf "(%s%s*I)" (Q.to_string r) (q_to_string i)
+
+    let to_string1 name (n, qc) =
+      if n = 0 then
+        qc_to_string qc
+      else if n = 1 then
+        if qc = QC.one then
+          name
+        else if qc = qc_minus_one then
+          "-" ^ name
+        else
+          Printf.sprintf "%s*%s" (qc_to_string qc) name
+      else if n = -1 then
+        Printf.sprintf "%s/%s" (qc_to_string qc) name
+      else if n > 1 then
+        if qc = QC.one then
+          Printf.sprintf "%s^%d" name n
+        else if qc = qc_minus_one then
+          Printf.sprintf "-%s^%d" name n
+        else
+          Printf.sprintf "%s*%s^%d" (qc_to_string qc) name n
+      else
+        Printf.sprintf "%s/%s^%d" (qc_to_string qc) name (-n)
+
+    let to_string name l =
+      match IMap.bindings l with
+      | [] -> "0"
+      | l -> String.concat "" (List.map (to_string1 name) l)
+
+    let pp fmt l =
+      Format.fprintf fmt "%s" (to_string "N" l)
+
+    let eval v l =
+      IMap.fold
+        (fun n qc acc -> QC.add (QC.mul qc (qc_pow n v)) acc)
+        l QC.null
+
+    let compare l1 l2 =
+      Pervasives.compare
+        (List.sort Pervasives.compare (IMap.bindings l1))
+        (List.sort Pervasives.compare (IMap.bindings l2))
+
+    let compare l1 l2 =
+      IMap.compare Pervasives.compare l1 l2
+
+    module Test =
+      struct
+        open OUnit
+
+        let equal l1 l2 =
+          compare l1 l2 = 0
+
+        let assert_equal_laurent l1 l2 =
+          assert_equal ~printer:(to_string "N") ~cmp:equal l1 l2
+
+        let suite_mul =
+          "mul" >:::
+
+	    [ "(1+N)(1-N)=1-N^2" >::
+                (fun () ->
+                  assert_equal_laurent
+                    (sum [unit; atom (QC.neg QC.one) 2])
+                    (product [sum [unit; atom QC.one 1];
+                              sum [unit; atom (QC.neg QC.one) 1]]));
+
+              "(1+N)(1-1/N)=N-1/N" >::
+                (fun () ->
+                  assert_equal_laurent
+                    (sum [atom QC.one 1; atom (QC.neg QC.one) (-1)])
+                    (product [sum [unit; atom QC.one 1];
+                              sum [unit; atom (QC.neg QC.one) (-1)]])); ]
+
+        let suite =
+          "Algebra.Laurent" >:::
+	    [suite_mul]
+      end
+
+  end
 
 (* \thocwmodulesection{Expressions: Terms, Rings and Linear Combinations} *)
 

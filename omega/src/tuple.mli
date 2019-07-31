@@ -118,7 +118,8 @@ module type Mono =
     val to_list : 'a t -> 'a list
 
 (* \begin{dubious}
-     The next one is only used for Fermi statistics below, but can not
+     The next one is only used for Fermi statistics in the obsolescent
+     [Fusion_vintage] module below, but can not
      be implemented if there are no binary tuples.  It must be retired
      as soon as possible.
    \end{dubious} *)

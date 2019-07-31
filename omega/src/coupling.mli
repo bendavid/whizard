@@ -52,6 +52,8 @@ type lorentz3 = lorentz * lorentz * lorentz
 type lorentz4 = lorentz * lorentz * lorentz * lorentz
 type lorentzn = lorentz list
 
+type fermion_lines = (int * int) list
+
 (* \begin{table}
      \begin{center}
        \renewcommand{\arraystretch}{2.2}
@@ -219,7 +221,6 @@ type boson2 = S2 | P2 | S2P | S2L | S2R | S2LR
    \end{dubious} *) 
 
 type 'a vertex3 =
-  | UFO3 of Algebra.QC.t * string * lorentz3 * Color.vertex3
   | FBF of int * fermionbar * boson * fermion
   | PBP of int * fermion * boson * fermion
   | BBB of int * fermionbar * boson * fermionbar
@@ -410,7 +411,6 @@ type contract4 = C_12_34 | C_13_42 | C_14_23
    \end{dubious}i*)
 
 type 'a vertex4 =
-  | UFO4 of Algebra.QC.t * string * lorentz4 * Color.vertex4
   | Scalar4 of int 
   | Scalar2_Vector2 of int
   | Vector4 of (int * contract4) list
@@ -689,7 +689,7 @@ type 'a vertex4 =
        H_1H_2(\partial^{\nu}A_{\mu})(\partial^{\mu}Z_{\nu}))$ *)
 
 type 'a vertexn =
-  | UFOn of Algebra.QC.t * string * lorentzn * Color.vertex
+  | UFO of Algebra.QC.t * string * lorentzn * fermion_lines * Color.Vertex.t
 
 (*  An obvious candidate for addition to [boson] is [T], of course. *)
 
@@ -2671,7 +2671,9 @@ type 'a t =
    will be translated directly by [Targets] to the target language.  *)
 
 type 'a expr =
-  | I | Const of int
+  | I
+  | Integer of int
+  | Float of float
   | Atom of 'a
   | Sum of 'a expr list
   | Diff of 'a expr * 'a expr 
@@ -2687,6 +2689,7 @@ type 'a expr =
   | Tan of 'a expr
   | Cot of 'a expr
   | Atan2 of 'a expr * 'a expr
+  | Atan of 'a expr
   | Exp of 'a expr
   | Conj of 'a expr
 

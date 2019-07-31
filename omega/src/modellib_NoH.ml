@@ -155,6 +155,8 @@ module NoH (Flags : NoH_flags) =
       | O (Aux_top (_,co,_,_,_)) -> if co == 0 then Color.Singlet else Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -198,9 +200,9 @@ module NoH (Flags : NoH_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -438,16 +440,16 @@ module NoH (Flags : NoH_flags) =
 
 
     let derived_parameters =
-      [ Real E, Sqrt (Prod [Const 4; Atom Pi; Atom Alpha_QED]);
+      [ Real E, Sqrt (Prod [Integer 4; Atom Pi; Atom Alpha_QED]);
         Real Sinthw, Sqrt (Atom Sin2thw);
-        Real Costhw, Sqrt (Diff (Const 1, Atom Sin2thw));
+        Real Costhw, Sqrt (Diff (Integer 1, Atom Sin2thw));
         Real G_weak, Quot (Atom E, Atom Sinthw);
         Real (Mass (G Wp)), Prod [Atom Costhw; Atom (Mass (G Z))];
-        Real Vev, Quot (Prod [Const 2; Atom (Mass (G Wp))], Atom G_weak);
+        Real Vev, Quot (Prod [Integer 2; Atom (Mass (G Wp))], Atom G_weak);
         Real Q_lepton, Atom E;
-        Real Q_up, Prod [Quot (Const (-2), Const 3); Atom E];
-        Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
-        Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
+        Real Q_up, Prod [Quot (Integer (-2), Integer 3); Atom E];
+        Real Q_down, Prod [Quot (Integer 1, Integer 3); Atom E];
+        Real G_CC, Neg (Quot (Atom G_weak, Prod [Integer 2; Sqrt (Integer 2)]));
         Complex I_Q_W, Prod [I; Atom E];
         Complex I_G_weak, Prod [I; Atom G_weak];
         Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw] ]
@@ -456,7 +458,7 @@ module NoH (Flags : NoH_flags) =
       - \frac{g}{2\cos\theta_w}
    \end{equation} *)
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
 (* \begin{subequations}
      \begin{align}
@@ -468,16 +470,16 @@ module NoH (Flags : NoH_flags) =
    \end{subequations} *)
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -1577,6 +1579,8 @@ module AltH (Flags : NoH_flags) =
       | O (Aux_top (_,co,_,_,_)) -> if co == 0 then Color.Singlet else Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -1624,9 +1628,9 @@ module AltH (Flags : NoH_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -1833,16 +1837,16 @@ module AltH (Flags : NoH_flags) =
    \end{subequations} *)
 
     let derived_parameters =
-      [ Real E, Sqrt (Prod [Const 4; Atom Pi; Atom Alpha_QED]);
+      [ Real E, Sqrt (Prod [Integer 4; Atom Pi; Atom Alpha_QED]);
         Real Sinthw, Sqrt (Atom Sin2thw);
-        Real Costhw, Sqrt (Diff (Const 1, Atom Sin2thw));
+        Real Costhw, Sqrt (Diff (Integer 1, Atom Sin2thw));
         Real G_weak, Quot (Atom E, Atom Sinthw);
         Real (Mass (G Wp)), Prod [Atom Costhw; Atom (Mass (G Z))];
-        Real Vev, Quot (Prod [Const 2; Atom (Mass (G Wp))], Atom G_weak);
+        Real Vev, Quot (Prod [Integer 2; Atom (Mass (G Wp))], Atom G_weak);
         Real Q_lepton, Atom E;
-        Real Q_up, Prod [Quot (Const (-2), Const 3); Atom E];
-        Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
-        Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
+        Real Q_up, Prod [Quot (Integer (-2), Integer 3); Atom E];
+        Real Q_down, Prod [Quot (Integer 1, Integer 3); Atom E];
+        Real G_CC, Neg (Quot (Atom G_weak, Prod [Integer 2; Sqrt (Integer 2)]));
         Complex I_Q_W, Prod [I; Atom E];
         Complex I_G_weak, Prod [I; Atom G_weak];
         Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw] ]
@@ -1851,7 +1855,7 @@ module AltH (Flags : NoH_flags) =
       - \frac{g}{2\cos\theta_w}
    \end{equation} *)
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
 (* \begin{subequations}
      \begin{align}
@@ -1863,16 +1867,16 @@ module AltH (Flags : NoH_flags) =
    \end{subequations} *)
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;

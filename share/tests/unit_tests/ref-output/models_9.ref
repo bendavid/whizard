@@ -173,6 +173,28 @@ model "SM"
      tex_name "H"
      spin 0
      mass MH  width WH
+   particle PROTON 2212
+     name "p" "p+"
+     anti "pbar" "p-"
+     spin 1/2  charge 1
+   particle HADRON_REMNANT 90
+     name "hr"
+     tex_name "had_r"
+     spin -1/2
+   particle HADRON_REMNANT_SINGLET 91
+     name "hr1"
+     tex_name "had_r^{(1)}"
+     spin -1/2
+   particle HADRON_REMNANT_TRIPLET 92
+     name "hr3"
+     anti "hr3bar"
+     tex_name "had_r^{(3)}"
+     tex_anti "had_r^{(\bar 3)}"
+     spin -1/2  color 3
+   particle HADRON_REMNANT_OCTET 93
+     name "hr8"
+     tex_name "had_r^{(8)}"
+     spin -1/2  color 8
 
    vertex "Z" "Z" "H"
    vertex "Z" "Z" "H" "H"

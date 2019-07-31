@@ -99,10 +99,11 @@ let fusions ff module_name vertices =
     (fun v ->
       List.iter
         (fun v' ->
+          let tensor = UFO_Lorentz.parse (Array.to_list v'.spins) v'.tensor in
           printf "  ! %s" (String.make 68 '='); nl ();
-          printf "  ! %s" (UFOx.Lorentz.to_string v'.tensor); nl ();
+          printf "  ! %s" (UFO_Lorentz.to_string tensor); nl ();
           UFO_targets.Fortran.lorentz
-            std_formatter v'.ufo_tag v'.spins v'.tensor)
+            std_formatter v'.ufo_tag v'.spins tensor)
         (vertex_permutations v))
     vertices;
   printf "end module %s" module_name; nl ()
@@ -273,6 +274,42 @@ let gauge_omega =
           name = "(0,1)*g_gg";
           args = [G (0); F (Vector, 1); P (1); F (Vector, 2); P (2)] } ] }
 
+(* Note that $C^{-1}=-C$ for the charge conjugation matrix.*)
+let charge_conjugate_s =
+  equivalent_tensors
+    [| Scalar; ConjSpinor; Spinor |]
+    [ ("gamma1",    "Identity(2,3)");
+      ("gamma1_cc", "C(3,-3)*Identity(-3,-2)*(-C(-2,2))");
+      ("gamma1_cx", "C(3,-1)*(-C(-1,2))") ]
+
+(* $C \gamma_5 C^{-1} = \gamma_5^T$ *)
+let charge_conjugate_p =
+  equivalent_tensors
+    [| Scalar; ConjSpinor; Spinor |]
+    [ ("gamma5",    "Gamma5(2,3)");
+      ("gamma5_cc", "C(3,-3)*Gamma5(-3,-2)*(-C(-2,2))") ]
+
+(* $C \gamma_\mu C^{-1} = - \gamma_\mu^T$ *)
+let charge_conjugate_v =
+  equivalent_tensors
+    [| Vector; ConjSpinor; Spinor |]
+    [ ("gamma_mu",    "Gamma(1,2,3)");
+      ("gamma_mu_cc", "-C(3,-3)*Gamma(1,-3,-2)*(-C(-2,2))") ]
+
+(* $C \gamma_5\gamma_\mu C^{-1} = (\gamma_5\gamma_\mu)^T$ *)
+let charge_conjugate_a =
+  equivalent_tensors
+    [| Vector; ConjSpinor; Spinor |]
+    [ ("gamma_5mu",    "Gamma5(2,-2)*Gamma(1,-2,3)");
+      ("gamma_5mu_cc", "C(3,-3)*Gamma5(-3,-1)*Gamma(1,-1,-2)*(-C(-2,2))") ]
+
+(* $C \sigma_{\mu\nu} C^{-1} = - \sigma_{\mu\nu}^T$ *)
+let charge_conjugate_t =
+  equivalent_tensors
+    [| Vector; Vector; ConjSpinor; Spinor |]
+    [ ("sigma_munu",    "Sigma(1,2,3,4)");
+      ("sigma_munu_cc", "-C(4,-4)*Sigma(1,2,-4,-3)*(-C(-3,3))") ]
+
 let empty = { tag = "empty"; keystones = [ ] }
 
 let vertices =
@@ -290,7 +327,12 @@ let vertices =
     (fermi_va, empty);
     (fermi_av, empty);
     (svv_t, scalar_vector_current "t");
-    (gauge, gauge_omega) ]
+    (gauge, gauge_omega);
+    (charge_conjugate_s, empty);
+    (charge_conjugate_p, empty);
+    (charge_conjugate_v, empty);
+    (charge_conjugate_a, empty);
+    (charge_conjugate_t, empty) ]
 
 let _ =
   generate ~reps:10000 ~threshold:0.70 "fusions" vertices;

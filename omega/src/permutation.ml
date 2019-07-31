@@ -27,8 +27,10 @@ module type T =
     type t
     val of_list : int list -> t
     val of_array : int array -> t
+    val of_lists : 'a list -> 'a list -> t
     val inverse : t -> t
     val compose : t -> t -> t
+    val compose_inv : t -> t -> t
     val list : t -> 'a list -> 'a list
     val array : t -> 'a array -> 'a array
     val all : int -> t list
@@ -38,6 +40,30 @@ module type T =
     val signed : int -> (int * t) list
     val to_string : t -> string
   end
+
+let same_elements l1 l2 =
+  List.sort compare l1 = List.sort compare l2
+
+module PM = Pmap.Tree
+
+let offset_map l =
+  let _, offsets =
+    List.fold_left
+      (fun (i, map) a -> (succ i, PM.add compare a i map))
+      (0, PM.empty) l in
+  offsets
+
+(* TODO: this algorithm fails if the lists contain duplicate elements. *)
+let of_lists_list l l' =
+  if same_elements l l' then
+    let offsets' = offset_map l' in
+    let _, p_rev =
+      List.fold_left
+        (fun (i, acc) a -> (succ i, PM.find compare a offsets' :: acc))
+        (0, []) l in
+    List.rev p_rev
+  else
+    invalid_arg "Permutation.of_lists: incompatible lists"
 
 module Using_Lists : T =
   struct
@@ -57,6 +83,8 @@ module Using_Lists : T =
       | Invalid_argument "Permutation.of_list" ->
 	invalid_arg "Permutation.of_array"
 
+    let of_lists = of_lists_list
+
     let inverse p = snd (ThoList.ariadne_sort p)
 
     let list p l =
@@ -74,6 +102,9 @@ module Using_Lists : T =
       with 
       | Invalid_argument "Permutation.list: length mismatch" ->
 	invalid_arg "Permutation.array: length mismatch"
+
+    let compose_inv p q =
+      list q p
 
 (* Probably not optimal (or really inefficient), but correct by
    associativity. *)
@@ -120,8 +151,11 @@ module Using_Arrays : T =
       with 
       | Invalid_argument "Permutation.of_list" ->
 	invalid_arg "Permutation.of_array"
-      
-      let inverse p =
+
+    let of_lists l l' =
+      Array.of_list (of_lists_list l l')
+
+    let inverse p =
       let len_p = Array.length p in
       let p' = Array.make len_p p.(0) in
       for i = 0 to pred len_p do
@@ -146,6 +180,9 @@ module Using_Arrays : T =
       with 
       | Invalid_argument "Permutation.array: length mismatch" ->
 	invalid_arg "Permutation.list: length mismatch"
+
+    let compose_inv p q =
+      array q p
 
     let compose p q =
       array (inverse q) p
@@ -219,6 +256,10 @@ let print_time msg f x =
   Printf.printf "%s took %10.2f ms\n" msg (seconds *. 1000.);
   f_x
   
+let random_int_list imax n =
+  let imax_plus = succ imax in
+  Array.to_list (Array.init n (fun _ -> Random.int imax_plus))
+
 module Test (P : T) : sig val suite : OUnit.test val time : unit -> unit end =
   struct
 
@@ -250,6 +291,18 @@ module Test (P : T) : sig val suite : OUnit.test val time : unit -> unit end =
 	[of_list_overlap;
 	 of_list_gap;
 	 of_list_ok]
+
+    let suite_of_lists =
+      "of_lists" >:::
+	[ "ok" >::
+	    (fun () ->
+              for i = 1 to 10 do
+	        let l = random_int_list 1000000 100 in
+                let l' = shuffle l in
+	        assert_equal
+                  ~printer:(ThoList.to_string string_of_int)
+                  l' (list (of_lists l l') l)
+              done) ]
 
     let apply_invalid_lengths =
       "invalid/lengths" >::
@@ -308,6 +361,7 @@ module Test (P : T) : sig val suite : OUnit.test val time : unit -> unit end =
     let suite =
       "Permutations" >:::
 	[suite_of_list;
+	 suite_of_lists;
 	 suite_apply;
 	 suite_inverse;
 	 suite_compose]

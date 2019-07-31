@@ -1,4 +1,4 @@
-(* uFO_targets.ml --
+(* UFO_targets.ml --
 
    Copyright (C) 1999-2017 by
 
@@ -25,798 +25,12 @@
 let (@@) f g x =
   f (g x)
 
-(* \thocwmodulesection{Dirac $\gamma$-matrices} *)
-
-module type Dirac =
-  sig
-
-    (* Matrices with complex rational entries. *)
-    type qc = Algebra.QC.t
-    type t = qc array array
-
-    (* Complex rational constants. *)
-    val zero : qc
-    val one : qc
-    val minus_one : qc
-    val i : qc
-    val minus_i : qc
-
-    (* Basic $\gamma$-matrices. *)
-    val unit : t
-    val null : t
-    val gamma0 : t
-    val gamma1 : t
-    val gamma2 : t
-    val gamma3 : t
-    val gamma5 : t
-
-    (* $(\gamma_0,\gamma_1,\gamma_2,\gamma_3)$ *)
-    val gamma : t array
-
-    (* Charge conjugation *)
-    val cc : t
-
-    (* Algebraic operations on $\gamma$-matrices *)
-    val neg : t -> t
-    val add : t -> t -> t
-    val sub : t -> t -> t
-    val mul : t -> t -> t
-    val times : qc -> t -> t
-    val transpose : t -> t
-    val adjoint : t -> t
-    val conj : t -> t
-    val product : t list -> t
-
-    (* Unit tests *)
-    val test_suite : OUnit.test
-  end
-
-(* Chiral representation *)
-module Dirac : Dirac =
-  struct
-
-    module Q = Algebra.Q
-    module QC = Algebra.QC
-
-    type qc = QC.t
-    type t = qc array array
-
-    let zero = QC.null
-    let one = QC.one
-    let minus_one = QC.neg one
-    let i = QC.make Q.null Q.unit
-    let minus_i = QC.conj i
-
-    let null =
-      [| [| zero; zero; zero; zero |];
-         [| zero; zero; zero; zero |];
-         [| zero; zero; zero; zero |];
-         [| zero; zero; zero; zero |] |]
-
-    let unit =
-      [| [| one;  zero; zero; zero |];
-         [| zero; one;  zero; zero |];
-         [| zero; zero; one;  zero |];
-         [| zero; zero; zero; one  |] |]
-
-    let gamma0 =
-      [| [| zero; zero; one;  zero |];
-         [| zero; zero; zero; one  |];
-         [| one;  zero; zero; zero |];
-         [| zero; one;  zero; zero |] |]
-
-    let gamma1 =
-      [| [| zero;      zero;      zero; one  |];
-         [| zero;      zero;      one;  zero |];
-         [| zero;      minus_one; zero; zero |];
-         [| minus_one; zero;      zero; zero |] |]
-
-    let gamma2 =
-      [| [| zero;    zero; zero; minus_i |];
-         [| zero;    zero; i;    zero    |];
-         [| zero;    i;    zero; zero    |];
-         [| minus_i; zero; zero; zero    |] |]
-
-    let gamma3 =
-      [| [| zero;      zero; one;  zero      |];
-         [| zero;      zero; zero; minus_one |];
-         [| minus_one; zero; zero; zero      |];
-         [| zero;      one;  zero; zero      |] |]
-
-    let gamma5 =
-      [| [| minus_one; zero;      zero; zero |];
-         [| zero;      minus_one; zero; zero |];
-         [| zero;      zero;      one;  zero |];
-         [| zero;      zero;      zero; one  |] |]
-
-    let gamma =
-      [| gamma0; gamma1; gamma2; gamma3 |]
-
-    let cc =
-      [| [| zero; minus_one; zero;      zero |];
-         [| one;  zero;      zero;      zero |];
-         [| zero; zero;      zero;      one  |];
-         [| zero; zero;      minus_one; zero |] |]
-
-    let neg g =
-      let g' = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g'.(i).(j) <- QC.neg g.(i).(j)
-        done
-      done;
-      g'
-
-    let add g1 g2 =
-      let g12 = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g12.(i).(j) <- QC.add g1.(i).(j) g2.(i).(j)
-        done
-      done;
-      g12
-
-    let sub g1 g2 =
-      let g12 = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g12.(i).(j) <- QC.sub g1.(i).(j) g2.(i).(j)
-        done
-      done;
-      g12
-
-    let mul g1 g2 =
-      let g12 = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for k = 0 to 3 do
-          for j = 0 to 3 do
-            g12.(i).(k) <- QC.add g12.(i).(k) (QC.mul g1.(i).(j) g2.(j).(k))
-          done
-        done
-      done;
-      g12
-
-    let times q g =
-      let g' = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g'.(i).(j) <- QC.mul q g.(i).(j)
-        done
-      done;
-      g'
-
-    let transpose g =
-      let g' = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g'.(i).(j) <- g.(j).(i)
-        done
-      done;
-      g'
-
-    let adjoint g =
-      let g' = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g'.(i).(j) <- QC.conj g.(j).(i)
-        done
-      done;
-      g'
-
-    let conj g =
-      let g' = Array.make_matrix 4 4 zero in
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          g'.(i).(j) <- QC.conj g.(i).(j)
-        done
-      done;
-      g'
-
-    let product glist =
-      List.fold_right mul glist unit
-
-    open OUnit
-
-    let two = QC.make (Q.make 2 1) Q.null
-    let half = QC.make (Q.make 1 2) Q.null
-    let two_unit = times two unit
-
-    let ac_lhs mu nu =
-      add (mul gamma.(mu) gamma.(nu)) (mul gamma.(nu) gamma.(mu))
-
-    let ac_rhs mu nu =
-      if mu = nu then
-        if mu = 0 then
-          two_unit
-        else
-          neg two_unit
-      else
-        null
-
-    let test_ac mu nu =
-      (ac_lhs mu nu) = (ac_rhs mu nu)
-
-    let ac_lhs_all =
-      let lhs = Array.make_matrix 4 4 null in
-      for mu = 0 to 3 do
-        for nu = 0 to 3 do
-          lhs.(mu).(nu) <- ac_lhs mu nu
-        done
-      done;
-      lhs
-                                                                   
-    let ac_rhs_all =
-      let rhs = Array.make_matrix 4 4 null in
-      for mu = 0 to 3 do
-        for nu = 0 to 3 do
-          rhs.(mu).(nu) <- ac_rhs mu nu
-        done
-      done;
-      rhs
-
-    let dump2 lhs rhs =
-      for i = 0 to 3 do
-        for j = 0 to 3 do
-          Printf.printf
-            "   i = %d, j =%d: %s + %s*I | %s + %s*I\n"
-            i j
-            (Q.to_string (QC.real lhs.(i).(j)))
-            (Q.to_string (QC.imag lhs.(i).(j)))
-            (Q.to_string (QC.real rhs.(i).(j)))
-            (Q.to_string (QC.imag rhs.(i).(j)))
-        done
-      done
-
-    let dump2_all lhs rhs =
-      for mu = 0 to 3 do
-        for nu = 0 to 3 do
-          Printf.printf "mu = %d, nu =%d: \n" mu nu;
-          dump2 lhs.(mu).(nu) rhs.(mu).(nu)
-        done
-      done
-
-    let anticommute =
-      "anticommutation relations" >::
-        (fun () ->
-          assert_bool
-            ""
-            (if ac_lhs_all = ac_rhs_all then
-               true
-             else
-               begin
-                 dump2_all ac_lhs_all ac_rhs_all;
-                 false
-               end))
-
-    let equal_or_dump2 lhs rhs =
-      if lhs = rhs then
-        true
-      else
-        begin
-          dump2 lhs rhs;
-          false
-        end
-
-    let gamma5_def =
-      "gamma5" >::
-        (fun () ->
-          assert_bool
-            "definition"
-            (equal_or_dump2
-               gamma5
-               (times i (product [gamma0; gamma1; gamma2; gamma3]))))
-
-    let self_adjoint =
-      "(anti)selfadjointness" >:::
-        [ "gamma0" >::
-            (fun () ->
-              assert_bool "self" (equal_or_dump2 gamma0 (adjoint gamma0)));
-          "gamma1" >::
-            (fun () ->
-              assert_bool "anti" (equal_or_dump2 gamma1 (neg (adjoint gamma1))));
-          "gamma2" >::
-            (fun () ->
-              assert_bool "anti" (equal_or_dump2 gamma2 (neg (adjoint gamma2))));
-          "gamma3" >::
-            (fun () ->
-              assert_bool "anti" (equal_or_dump2 gamma3 (neg (adjoint gamma3))));
-          "gamma5" >::
-            (fun () ->
-              assert_bool "self" (equal_or_dump2 gamma5 (adjoint gamma5))) ]
-
-    let cc_inv = neg cc
-
-    let cc_gamma g =
-      equal_or_dump2 (neg (transpose g)) (product [cc; g; cc_inv])
-
-    let charge_conjugation =
-      "charge conjugation" >:::
-        [ "inverse" >::
-            (fun () ->
-              assert_bool "" (equal_or_dump2 (mul cc cc_inv) unit));
-          "gamma0" >:: (fun () -> assert_bool "" (cc_gamma gamma0));
-          "gamma1" >:: (fun () -> assert_bool "" (cc_gamma gamma1));
-          "gamma2" >:: (fun () -> assert_bool "" (cc_gamma gamma2));
-          "gamma3" >:: (fun () -> assert_bool "" (cc_gamma gamma3));
-          "gamma5" >::
-            (fun () ->
-              assert_bool "" (equal_or_dump2 (transpose gamma5)
-                                             (product [cc; gamma5; cc_inv])))
-        ]
-
-    let test_suite =
-      "Dirac Matrices" >:::
-        [anticommute;
-         gamma5_def;
-         self_adjoint;
-         charge_conjugation]
-
-  end
-
 (* \thocwmodulesection{Generating Code for UFO Lorentz Structures} *)
 
 (* O'Caml before 4.02 had a module typing bug that forces us to put this
    definition outside [Lorentz_Fusion]. *)
 module Q = Algebra.Q
 module QC = Algebra.QC
-module A = UFOx.Lorentz_Atom
-module D = Dirac
-
-module type Lorentz_Fusion =
-  sig
-
-    (* Just like [UFOx.Lorentz_Atom.dirac], but without the Dirac matrix indices. *)
-    type dirac = private
-               | Gamma5
-               | ProjM
-               | ProjP
-               | Gamma of int
-               | Sigma of int * int
-               | C
-
-    (* A sandwich of a string of $\gamma$-matrices. [bra] and [ket] are
-       positions of fields in the vertex, \emph{not} spinor indices. *)
-    type dirac_string = private
-      { bra : int;
-        ket : int;
-        gammas : dirac list }
-
-    (* The Lorentz indices appearing in a term are either negative
-       internal summation indices or positive external polarization
-       indices.  Note that the external
-       indices are not really indices, but denote the position
-       of the particle in the vertex. *)
-    type 'a term =  (* private *)
-      { indices : int list;
-        atom : 'a }
-
-    (* Split the list of indices into summation and polarization indices. *)
-    val classify_indices : int list -> int list * int list
-
-    (* Replace the atom keeping the associated indices. *)
-    val map_atom : ('a -> 'b) -> 'a term -> 'b term
-
-    (* A contraction consists of a (possibly empty) product of
-       Dirac strings and a (possibly empty) product of Lorentz
-       tensors with a rational coefficient.  The summation
-       indices could be recovered by scanning the [term]s, but
-       we maintain a list for efficiency. *)
-    type contraction = private
-      { coeff : Q.t;
-        dirac : dirac_string term list;
-        vector : UFOx.Lorentz_Atom.vector term list }
-
-    (* A sum. *)
-    type t = contraction list
-
-    (* [parse spins lorentz] uses the [spins] to parse the
-       UFO [lorentz] structure as a list of [contraction]s. *)
-    val parse : Coupling.lorentz list -> UFOx.Lorentz.t -> t
-
-    (* Create a readable representation for debugging and
-       documenting generated code. *)
-    val to_string : t -> string
-
-    (* Punting \ldots *)
-    val dummy : t
-
-    (* More debugging and documenting. *)
-    val dirac_string_to_string : dirac_string -> string
-
-    (* [dirac_string_to_matrix substitute ds] take a string
-       of $\gamma$-matrices [ds], applies [substitute] to
-       the indices and returns the product as a matrix. *)
-    val dirac_string_to_matrix : (int -> int) -> dirac_string -> D.t
-
-  end
-
-module Lorentz_Fusion : Lorentz_Fusion =
-  struct
-
-    (* Take a [A.t list] and return the corresponding pair
-       [A.dirac list * A.vector list], without preserving the
-       order (currently, the order is reversed). *)
-    let split_atoms atoms =
-      List.fold_left
-        (fun (d, v) -> function
-          | A.Vector v' -> (d, v' :: v)
-          | A.Dirac d' -> (d' :: d, v))
-        ([], []) atoms
-
-    (* Just like [UFOx.Lorentz_Atom.dirac], but without the Dirac matrix indices. *)
-    type dirac =
-      | Gamma5
-      | ProjM
-      | ProjP
-      | Gamma of int
-      | Sigma of int * int
-      | C
-
-    (* A sandwich of a string of $\gamma$-matrices. [bra] and [ket] are
-       positions of fields in the vertex. *)
-    type dirac_string =
-      { bra : int;
-        ket : int;
-        gammas : dirac list }
-
-    (* [dirac_string bind ds] applies the mapping [bind] to the indices
-       of $\gamma_\mu$ and~$\sigma_{\mu\nu}$ and multiplies the resulting
-       matrices in order using complex rational arithmetic. *)
-    module type To_Matrix =
-      sig
-        val dirac_string : (int -> int) -> dirac_string -> D.t
-      end
-
-    module To_Matrix : To_Matrix =
-      struct
-
-        let half = QC.make (Q.make 1 2) Q.null
-        let half_i = QC.make Q.null (Q.make 1 2)
-
-        let gamma_L = D.times half (D.sub D.unit D.gamma5)
-        let gamma_R = D.times half (D.add D.unit D.gamma5)
-
-        let sigma = Array.make_matrix 4 4 D.null
-        let () =
-          for mu = 0 to 3 do
-            for nu = 0 to 3 do
-              sigma.(mu).(nu) <-
-                D.times
-                  half_i
-                  (D.sub
-                     (D.mul D.gamma.(mu) D.gamma.(nu))
-                     (D.mul D.gamma.(nu) D.gamma.(mu)))
-            done
-          done
-
-        let dirac bind_indices = function
-          | Gamma5 -> D.gamma5
-          | ProjM -> gamma_L
-          | ProjP -> gamma_R
-          | Gamma (mu) -> D.gamma.(bind_indices mu)
-          | Sigma (mu, nu) -> sigma.(bind_indices mu).(bind_indices nu)
-          | C -> D.cc
-
-        let dirac_string bind_indices ds =
-          D.product (List.map (dirac bind_indices) ds.gammas)
-
-      end
-        
-    let dirac_string_to_matrix = To_Matrix.dirac_string
-
-    (* The Lorentz indices appearing in a term are either negative
-       internal summation indices or positive external polarization
-       indices.  Note that the external
-       indices are not really indices, but denote the position
-       of the particle in the vertex. *)
-    type 'a term =
-      { indices : int list;
-        atom : 'a }
-
-    let map_atom f term =
-      { term with atom = f term.atom }
-
-    (* Return a pair of lists: first the (negative) summation indices,
-       second the (positive) external indices. *)
-    let classify_indices ilist =
-      List.partition
-        (fun i ->
-          if i < 0 then
-            true
-          else if i > 0 then
-            false
-          else
-            invalid_arg "classify_indices")
-        ilist
-
-    (* A contraction consists of a (possibly empty) product of
-       Dirac strings and a (possibly empty) product of Lorentz
-       tensors with a rational coefficient.  The summation
-       indices could be recovered by scanning the [term]s, but
-       we maintain a list for efficiency. *)
-    type contraction =
-      { coeff : Q.t;
-        dirac : dirac_string term list;
-        vector : A.vector term list }
-
-    type t = contraction list
-
-    let dirac_of_atom = function
-      | A.Identity (_, _) -> []
-      | A.C (_, _) -> [C]
-      | A.Gamma5 (_, _) -> [Gamma5]
-      | A.ProjP (_, _) -> [ProjP]
-      | A.ProjM (_, _) -> [ProjM]
-      | A.Gamma (mu, _, _) -> [Gamma mu]
-      | A.Sigma (mu, nu, _, _) -> [Sigma (mu, nu)]
-
-    let dirac_indices = function
-      | A.Identity (i, j) | A.C (i, j)
-        | A.Gamma5 (i, j) | A.ProjP (i, j) | A.ProjM (i, j)
-        | A.Gamma (_, i, j) | A.Sigma (_, _, i, j) -> (i, j)
-
-    let rec scan_for_dirac_string stack = function
-
-      | [] ->
-         (* We're done with this pass.  There must be
-            no leftover atoms on the [stack] of spinor atoms,
-            but we'll check this in the calling function. *)
-         (None, List.rev stack)
-
-      | atom :: atoms ->
-         let i, j = dirac_indices atom in
-         if i > 0 then
-           if j > 0 then
-             (* That's an atomic Dirac string.  Collect
-                all atoms for further processing.  *)
-             (Some { bra = i; ket = j; gammas = dirac_of_atom atom},
-              List.rev_append stack atoms)
-           else
-             (* That's the start of a new Dirac string.  Search
-                for the remaining elements, not forgetting matrices
-                that we might pushed on the [stack] earlier. *)
-             collect_dirac_string
-               i j (dirac_of_atom atom) [] (List.rev_append stack atoms)
-         else
-           (* The interior of a Dirac string.  Push it on the
-              stack until we find the start.  *)
-           scan_for_dirac_string (atom :: stack) atoms
-
-    (* Complete the string starting with [i] and the current summation
-       index [j]. *)
-    and collect_dirac_string i j rev_ds stack = function
-
-      | [] ->
-         (* We have consumed all atoms without finding
-            the end of the string. *)
-         invalid_arg "collect_dirac_string: open string"
-
-      | atom :: atoms ->
-         let i', j' = dirac_indices atom in
-         if i' = j then
-           if j' > 0 then
-             (* Found the conclusion.  Collect
-                all atoms on the [stack] for further processing.  *)
-             (Some { bra = i; ket = j';
-                     gammas = List.rev_append rev_ds (dirac_of_atom atom)},
-              List.rev_append stack atoms)
-           else
-             (* Found the continuation.  Pop the stack of open indices,
-                since we're looking for a new one. *)
-             collect_dirac_string
-               i j' (dirac_of_atom atom @ rev_ds) [] (List.rev_append stack atoms)
-         else
-           (* Either the start of another Dirac string or a
-              non-matching continuation.  Push it on the
-              stack until we're done with the current one. *)
-           collect_dirac_string i j rev_ds (atom :: stack) atoms
-
-    let dirac_string_of_dirac_atoms atoms =
-      scan_for_dirac_string [] atoms
-
-    let rec dirac_strings_of_dirac_atoms' rev_ds atoms =
-      match dirac_string_of_dirac_atoms atoms with
-      | (None, []) -> List.rev rev_ds
-      | (None, _) -> invalid_arg "dirac_string_of_dirac_atoms: leftover atoms"
-      | (Some ds, atoms) -> dirac_strings_of_dirac_atoms' (ds :: rev_ds) atoms
-
-    let dirac_strings_of_dirac_atoms atoms =
-      dirac_strings_of_dirac_atoms' [] atoms
-
-    let indices_of_vector = function
-      | A.Epsilon (mu1, mu2, mu3, mu4) -> [mu1; mu2; mu3; mu4]
-      | A.Metric (mu1, mu2) -> [mu1; mu2]
-      | A.P (mu, n) ->
-         if n > 0 then
-           [mu]
-         else
-           invalid_arg "indices_of_vector: invalid momentum"
-
-    let classify_vector atom =
-      { indices = indices_of_vector atom;
-        atom }
-
-    let indices_of_dirac = function
-      | Gamma5 | ProjM | ProjP | C -> []
-      | Gamma (mu) -> [mu]
-      | Sigma (mu, nu) -> [mu; nu]
-
-    let indices_of_dirac_string ds =
-      ThoList.flatmap indices_of_dirac ds.gammas
-                      
-    let classify_dirac atom =
-      { indices = indices_of_dirac_string atom;
-        atom }
-
-    let contraction_of_lorentz_atoms (atoms, coeff) =
-      let dirac_atoms, vector_atoms = split_atoms atoms in
-      let dirac =
-        List.map classify_dirac (dirac_strings_of_dirac_atoms dirac_atoms)
-      and vector =
-        List.map classify_vector vector_atoms in
-      { coeff; dirac; vector }
-
-    type redundancy =
-      | Trace of int
-      | Replace of int * int
-
-    let rec redundant_metric' rev_atoms = function
-      | [] -> (None, List.rev rev_atoms)
-      | { atom = A.Metric (mu, nu) } as atom :: atoms ->
-         if mu < 1 then
-           if nu = mu then
-             (Some (Trace mu), List.rev_append rev_atoms atoms)
-           else
-             (Some (Replace (mu, nu)), List.rev_append rev_atoms atoms)
-         else if nu < 0 then
-           (Some (Replace (nu, mu)), List.rev_append rev_atoms atoms)
-         else
-           redundant_metric' (atom :: rev_atoms) atoms
-      | { atom = (A.Epsilon (_, _, _, _ ) | A.P (_, _) ) } as atom :: atoms ->
-         redundant_metric' (atom :: rev_atoms) atoms
-
-    let redundant_metric atoms =
-      redundant_metric' [] atoms
-                        
-    (* Substitude any occurance of the index [mu] by the index [nu]: *)
-    let substitute_index_vector1 mu nu = function
-      | A.Epsilon (mu1, mu2, mu3, mu4) as eps ->
-         if mu = mu1 then
-           A.Epsilon (nu, mu2, mu3, mu4)
-         else if mu = mu2 then
-           A.Epsilon (mu1, nu, mu3, mu4)
-         else if mu = mu3 then
-           A.Epsilon (mu1, mu2, nu, mu4)
-         else if mu = mu4 then
-           A.Epsilon (mu1, mu2, mu3, nu)
-         else
-           eps
-      | A.Metric (mu1, mu2) as g ->
-         if mu = mu1 then
-           A.Metric (nu, mu2)
-         else if mu = mu2 then
-           A.Metric (mu1, nu)
-         else
-           g
-      | A.P (mu1, n) as p ->
-         if mu = mu1 then
-           A.P (nu, n)
-         else
-           p
-
-    let remove a alist =
-      List.filter ((<>) a) alist
-
-    let substitute_index1 mu nu mu1 =
-      if mu = mu1 then
-        nu
-      else
-        mu1
-
-    let substitute_index mu nu indices =
-      List.map (substitute_index1 mu nu) indices
-
-    (* This assumes that [mu] is a summation index and
-       [nu] is a polarization index. *)
-    let substitute_index_vector mu nu vectors =
-      List.map
-        (fun v ->
-          { indices = substitute_index mu nu v.indices;
-            atom = substitute_index_vector1 mu nu v.atom })
-        vectors
-
-    (* Substitude any occurance of the index [mu] by the index [nu]: *)
-    let substitute_index_dirac1 mu nu = function
-      | (Gamma5 | ProjM | ProjP | C) as g -> g
-      | Gamma (mu1) as g ->
-         if mu = mu1 then
-           Gamma (nu)
-         else
-           g
-      | Sigma (mu1, mu2) as g ->
-         if mu = mu1 then
-           Sigma (nu, mu2)
-         else if mu = mu2 then
-           Sigma (mu1, nu)
-         else
-           g
-
-    (* This assumes that [mu] is a summation index and
-       [nu] is a polarization index. *)
-    let substitute_index_dirac mu nu dirac_strings =
-      List.map
-        (fun ds ->
-          { indices = substitute_index mu nu ds.indices;
-            atom = { ds.atom with
-                     gammas =
-                       List.map
-                         (substitute_index_dirac1 mu nu)
-                         ds.atom.gammas } } )
-        dirac_strings
-
-    let trace_metric = Q.make 4 1
-
-    (* FIXME: can this be made typesafe by mapping to a
-       type that \emph{only} contains [P] and [Epsilon]? *)
-    let rec compress_metrics c =
-      match redundant_metric c.vector with
-      | None, _ -> c
-      | Some (Trace mu), vector' ->
-         compress_metrics
-           { coeff = Q.mul trace_metric c.coeff;
-             dirac = c.dirac;
-             vector = vector' }
-      | Some (Replace (mu, nu)), vector' ->
-         compress_metrics
-           { coeff = c.coeff;
-             dirac = substitute_index_dirac mu nu c.dirac;
-             vector = substitute_index_vector mu nu vector' }
-
-
-    let dummy = []
-
-    let parse1 spins atom =
-      compress_metrics (contraction_of_lorentz_atoms atom)
-
-    let parse spins l =
-      List.map (parse1 spins) l
-
-    let vector_to_string = function
-      | A.Epsilon (mu, nu, ka, la) ->
-	 Printf.sprintf "Epsilon(%d,%d,%d,%d)" mu nu ka la
-      | A.Metric (mu, nu) ->
-	 Printf.sprintf "Metric(%d,%d)" mu nu
-      | A.P (mu, n) ->
-	 Printf.sprintf "P(%d,%d)" mu n
-
-    let dirac_to_string = function
-      | Gamma5 -> "g5"
-      | ProjM -> "(1-g5)/2"
-      | ProjP -> "(1+g5)/2"
-      | Gamma (mu) -> Printf.sprintf "g(%d)" mu
-      | Sigma (mu, nu) ->  Printf.sprintf "s(%d,%d)" mu nu
-      | C -> "C"
-
-    let dirac_string_to_string ds =
-      match ds.gammas with
-      | [] -> Printf.sprintf "<%d|%d>" ds.bra ds.ket
-      | gammas ->
-         Printf.sprintf
-           "<%d|%s|%d>"
-           ds.bra (String.concat "*" (List.map dirac_to_string gammas)) ds.ket
-
-    let contraction_to_string c =
-      Q.to_string c.coeff ^ " * " ^
-        String.concat
-          " * " (List.map (fun ds -> dirac_string_to_string ds.atom) c.dirac) ^
-          " * " ^
-            String.concat
-              " * " (List.map (fun v -> vector_to_string v.atom) c.vector)
-
-    let to_string contractions =
-      String.concat " + " (List.map contraction_to_string contractions)
-
-  end
 
 module type T =
   sig
@@ -826,16 +40,9 @@ module type T =
        (Fortran) function [name] to [formatter]. *)
     val lorentz :
       Format_Fortran.formatter -> string -> Coupling.lorentz array ->
-      UFOx.Lorentz.t -> unit
+      UFO_Lorentz.t -> unit
 
-    val fusion2 :
-      Algebra.QC.t -> string -> Coupling.lorentz3 ->
-      string -> string -> string -> string -> string -> Coupling.fuse2 -> unit
-    val fusion3 :
-      Algebra.QC.t -> string -> Coupling.lorentz4 ->
-      string -> string -> string -> string -> string ->
-      string -> string -> Coupling.fuse3 -> unit
-    val fusionn :
+    val fuse :
       Algebra.QC.t -> string -> Coupling.lorentzn ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
@@ -920,7 +127,7 @@ module Fortran : T =
             fortran_type = fortran_type spin } )
         spins
 
-    module F = Lorentz_Fusion
+    module L = UFO_Lorentz
 
     let unparse_rational q =
       match Q.to_ratio q with
@@ -951,7 +158,7 @@ module Fortran : T =
       unparse_list "0" "+" unparse_term l
                    
     let unparse fusion =
-      Lorentz_Fusion.to_string fusion
+      L.to_string fusion
 
     (* Format rational ([Q.t]) and complex rational ([QC.t])
        numbers as fortran values. *)
@@ -973,10 +180,10 @@ module Fortran : T =
             format_rational real
         end
       else if Q.is_integer real && Q.is_integer imag then
-        Printf.sprintf "(%d, %d)" (Q.to_integer real) (Q.to_integer imag)
+        Printf.sprintf "(%d,%d)" (Q.to_integer real) (Q.to_integer imag)
       else
         Printf.sprintf
-          "cmplx (%s, %s, kind=default)"
+          "cmplx(%s,%s,kind=default)"
           (format_rational real) (format_rational imag)
 
     (* Optimize the representation if used as a prefactor of
@@ -987,9 +194,9 @@ module Fortran : T =
       else if Q.is_unit (Q.neg q) then
         "-"
       else if Q.is_negative q then
-        "- " ^ format_rational (Q.neg q) ^ " *"
+        "-" ^ format_rational (Q.neg q) ^ "*"
       else
-        "+ " ^ format_rational q ^ " *"
+        "+" ^ format_rational q ^ "*"
 
     let format_complex_rational_factor cq =
       let real = QC.real cq
@@ -1001,15 +208,15 @@ module Fortran : T =
           else if Q.is_unit (Q.neg real) then
             "-"
           else if Q.is_negative real then
-            "- " ^ format_rational (Q.neg real) ^ " *"
+            "-" ^ format_rational (Q.neg real) ^ "*"
           else
-            "+ " ^ format_rational real ^ " *"
+            "+" ^ format_rational real ^ "*"
         end
       else if Q.is_integer real && Q.is_integer imag then
-        Printf.sprintf "+ (%d,%d) *" (Q.to_integer real) (Q.to_integer imag)
+        Printf.sprintf "+(%d,%d)*" (Q.to_integer real) (Q.to_integer imag)
       else
         Printf.sprintf
-          "+ cmplx (%s, %s, kind=default) *"
+          "+cmplx(%s,%s,kind=default)*"
           (format_rational real) (format_rational imag)
 
     (* Append a formatted list of indices to [name]. *)
@@ -1063,7 +270,7 @@ module Fortran : T =
         for j = 0 to 3 do
           if gamma.(i).(j) <> QC.null then
             printf
-              "@ %s %s%%a(%d)"
+              "@,%s%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
               ket.name (succ j)
         done;
@@ -1093,7 +300,7 @@ module Fortran : T =
         for i = 0 to 3 do
           if gamma.(i).(j) <> QC.null then
             printf
-              "@ %s %s%%a(%d)"
+              "@,%s%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
               bra.name (succ i)
         done;
@@ -1123,7 +330,7 @@ module Fortran : T =
         for j = 0 to 3 do
           if gamma.(i).(j) <> QC.null then
             printf
-              "@ %s %s%%a(%d)*%s%%a(%d)"
+              "@,%s%s%%a(%d)*%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
               bra.name (succ i) ket.name (succ j)
         done
@@ -1181,27 +388,27 @@ module Fortran : T =
 
     (* Write the [i]th Dirac string [ds] as Fortran code to [eval], including
        a shorthand representation as a comment.  Return [ds] with
-       [ds.F.atom] replaced by the dirac string variable,
+       [ds.L.atom] replaced by the dirac string variable,
        i,\,e.~[DS dsv] annotated with the internal and external indices.
        In addition write the declaration to [decl].  *)
     let dirac_string_to_fortran ~decl ~eval i wfs ds =
       let printf fmt = fprintf eval fmt
       and nl = pp_newline eval in
-      let bra = ds.F.atom.F.bra
-      and ket = ds.F.atom.F.ket in
+      let bra = ds.L.atom.L.bra
+      and ket = ds.L.atom.L.ket in
       pp_divide ~indent:4 eval ();
-      begin match ds.F.indices with
+      begin match ds.L.indices with
       | [] ->
-         printf "    ! %s" (F.dirac_string_to_string ds.F.atom); nl ();
-         let gamma = F.dirac_string_to_matrix (fun _ -> 0) ds.F.atom in
+         printf "    ! %s" (L.dirac_string_to_string ds.L.atom); nl ();
+         let gamma = L.dirac_string_to_matrix (fun _ -> 0) ds.L.atom in
          dirac_bra_or_ket_to_fortran_decl decl i [] bra ket;
          let dsv =
            dirac_bra_or_ket_to_fortran_eval eval i [] wfs bra gamma ket in
-         F.map_atom (fun _ -> DS dsv) ds
+         L.map_atom (fun _ -> DS dsv) ds
       | indices ->
          printf
            "    ! %s"
-           (F.dirac_string_to_string ds.F.atom); nl ();
+           (L.dirac_string_to_string ds.L.atom); nl ();
          dirac_bra_or_ket_to_fortran_decl decl i indices bra ket;
          let combinations = Product.power (List.length indices) [0; 1; 2; 3] in
          let dsv =
@@ -1211,11 +418,11 @@ module Fortran : T =
                let substitute = IntPM.apply substitution in
                let indices = List.map substitute indices in
                let gamma =
-                 F.dirac_string_to_matrix substitute ds.F.atom in
+                 L.dirac_string_to_matrix substitute ds.L.atom in
                dirac_bra_or_ket_to_fortran_eval eval i indices wfs bra gamma ket)
              combinations in
          begin match ThoList.uniq (List.sort compare dsv) with
-         | [dsv] -> F.map_atom (fun _ -> DS dsv) ds
+         | [dsv] -> L.map_atom (fun _ -> DS dsv) ds
          | _ -> failwith "dirac_string_to_fortran: impossible"
          end
       end
@@ -1249,8 +456,8 @@ module Fortran : T =
        appear only once. *)
     let indices_of_contractions contractions =
       let index_pairs, polarizations =
-        F.classify_indices
-          (ThoList.flatmap (fun ds -> ds.F.indices) contractions) in
+        L.classify_indices
+          (ThoList.flatmap (fun ds -> ds.L.indices) contractions) in
       try
         ThoList.pairs index_pairs @ ThoList.uniq (List.sort compare polarizations)
       with
@@ -1271,8 +478,8 @@ module Fortran : T =
            "%s(%s,%s)" (dsv_name dsv) index_spinor (format_indices indices)
 
     let format_tensor t =
-      let indices = t.F.indices in
-      match t.F.atom with
+      let indices = t.L.indices in
+      match t.L.atom with
       | DS dsv -> format_dsv dsv indices
       | V vector -> Printf.sprintf "%s(%s)" vector (format_indices indices)
       | T UFOx.Lorentz_Atom.P (mu, n) ->
@@ -1289,7 +496,7 @@ module Fortran : T =
       | [] -> fprintf eval "1";
       | [t] -> fprintf eval "%s" (format_tensor t)
       | t :: tensors ->
-         fprintf eval "%s@ * " (format_tensor t);
+         fprintf eval "%s@,*" (format_tensor t);
          multiply_tensors ~decl ~eval tensors
 
     let contract_indices ~decl ~eval indent wf_index wfs (q, contractees) =
@@ -1311,9 +518,9 @@ module Fortran : T =
         indent indices
         (fun indent ->
           printf "%*s@[<2>%s = %s" indent "" sum_var sum_var;
-          printf "@ %s" (format_rational_factor q);
-          List.iter (fun i -> printf "@ g4_(%s) *" (index_variable i)) indices;
-          printf "@ (";
+          printf "@,%s" (format_rational_factor q);
+          List.iter (fun i -> printf "@,g4_(%s)*" (index_variable i)) indices;
+          printf "@,(";
           multiply_tensors ~decl ~eval contractees;
           printf ")@]");
       printf "@]";
@@ -1324,7 +531,7 @@ module Fortran : T =
       match wfs.(0).spin with
       | Coupling.Scalar ->
          contract_indices ~decl ~eval 2 None wfs contractees
-      | Coupling.Spinor | Coupling.ConjSpinor ->
+      | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
          let idx = index_spinor in
          fprintf eval "%*s@[<2>do %s = 1, 4@]" indent "" idx; pp_newline eval ();
          contract_indices ~decl ~eval 4 (Some idx) wfs contractees;
@@ -1372,10 +579,10 @@ module Fortran : T =
       let printf fmt = fprintf ff fmt
       and nl = pp_newline ff in
       pp_divide ~indent:4 ff ();
-      printf "    @[<2>%s = %s * %s" wfs.(0).name g wfs.(0).name;
+      printf "    @[<2>%s = %s*%s" wfs.(0).name g wfs.(0).name;
       for i = 1 to Array.length wfs - 1 do
         match wfs.(i).spin with
-        | Coupling.Scalar -> printf "@ * %s" wfs.(i).name
+        | Coupling.Scalar -> printf "@,*%s" wfs.(i).name
         | _ -> ()
       done;
       printf "@]"; nl ()
@@ -1412,24 +619,23 @@ module Fortran : T =
     let contractees_of_fusion
           ~decl ~eval wfs (max_dsv, indices_seen, contractees) fusion =
       let max_dsv', dirac_strings =
-        dirac_strings_to_fortran ~decl ~eval wfs max_dsv fusion.F.dirac
+        dirac_strings_to_fortran ~decl ~eval wfs max_dsv fusion.L.dirac
       and vectors =
         List.fold_left
           (fun acc wf ->
             match wf.local_array with
             | None -> acc
-            | Some a -> { F.atom = V a; F.indices = [wf.pos] } :: acc)
+            | Some a -> { L.atom = V a; L.indices = [wf.pos] } :: acc)
           [] (List.tl (Array.to_list wfs))
       and tensors =
-        List.map (F.map_atom (fun t -> T t)) fusion.F.vector in
+        List.map (L.map_atom (fun t -> T t)) fusion.L.vector in
       let contractees' = dirac_strings @ vectors @ tensors in
       let indices_seen' =
         iset_of_list (indices_of_contractions contractees') in
       (max_dsv',
        Sets.Int.union indices_seen indices_seen',
-       (fusion.F.coeff, contractees') :: contractees)
+       (fusion.L.coeff, contractees') :: contractees)
 
-    (* FIXME: add indices for vector wave functions and tensors. (???) *)
     let fusions_to_fortran ~decl ~eval wfs fusions =
       local_vector_copies ~decl ~eval wfs;
       local_momentum_copies ~decl ~eval wfs;
@@ -1444,7 +650,7 @@ module Fortran : T =
           pp_newline decl ())
         indices_used;
       begin match wfs.(0).spin with
-      | Coupling.Spinor | Coupling.ConjSpinor ->
+      | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
          fprintf decl "    @[<2>integer ::@ %s@]" index_spinor;
          pp_newline decl ()
       | _ -> ()
@@ -1454,7 +660,7 @@ module Fortran : T =
       | Some a -> fprintf eval "    %s = 0" a
       | None ->
          match wfs.(0).spin with
-         | Coupling.Spinor | Coupling.ConjSpinor ->
+         | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
             fprintf eval "    %s%%a = 0" wfs.(0).name
          | Coupling.Scalar -> fprintf eval "    %s = 0" wfs.(0).name
          | _ -> failwith "fusions_to_fortran"
@@ -1469,15 +675,6 @@ module Fortran : T =
     let lorentz ff name spins lorentz =
       let printf fmt = fprintf ff fmt
       and nl = pp_newline ff in
-      let fusion =
-        try
-          Lorentz_Fusion.parse (Array.to_list spins) lorentz
-        with
-        | Failure msg ->
-           begin
-             prerr_endline msg;
-             Lorentz_Fusion.dummy
-           end in
       let wfs = wf_table spins in
       let n = Array.length wfs in
       printf "  @[<4>pure function %s@ (g,@ " name;
@@ -1504,12 +701,12 @@ module Fortran : T =
       and eval_buf = Buffer.create 1024 in
       let decl = formatter_of_buffer ~width decl_buf
       and eval = formatter_of_buffer ~width eval_buf in
-      fusions_to_fortran ~decl ~eval wfs fusion;
+      fusions_to_fortran ~decl ~eval wfs lorentz;
       multiply_coupling_and_scalars eval "g" wfs;
       pp_flush decl ();
       pp_flush eval ();
       pp_divide ~indent:4 ff ();
-      printf "    ! %s" (unparse fusion); nl ();
+      printf "    ! %s" (unparse lorentz); nl ();
       pp_divide ~indent:4 ff ();
       printf "%s" (Buffer.contents decl_buf);
       pp_divide ~indent:4 ff ();
@@ -1563,58 +760,117 @@ module Fortran : T =
        care of by [Fusions] and we can concentrate on
        injecting the wave functions into the correct slots. *)
 
-    let fusion2 c v s g wf1 p1 wf2 p2 fuse2 =
-      let g = scale_coupling c g in
-      let open Coupling in
-      let perm =
-        begin match fuse2 with
-        | F12 | F21 -> "201"
-        | F23 | F32 -> "012"
-        | F31 | F13 -> "120"
-        end in
-      match fuse2 with
-      | F12 | F23 | F31 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s)" v perm g wf1 p1 wf2 p2
-      | F21 | F32 | F13 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s)" v perm g wf2 p2 wf1 p1
-
-    let fusion3 c v s g wf1 p1 wf2 p2 wf3 p3 fuse3 =
-      let g = scale_coupling c g in
-      let open Coupling in
-      let perm =
-        begin match fuse3 with
-        | F234 | F243 | F432 | F342 | F324 | F423 -> "0123"
-        | F134 | F341 | F413 | F143 | F431 | F314 -> "1230"
-        | F124 | F241 | F412 | F142 | F421 | F214 -> "2301"
-        | F123 | F231 | F312 | F132 | F321 | F213 -> "3012"
-        end in
-      match fuse3 with
-      (* These are the obvious ones, b/c they're their own inverses. *)
-      | F234 | F341 | F412 | F123 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s,%s,%s)" v perm g wf1 p1 wf2 p2 wf3 p3
-      | F243 | F314 | F421 | F132 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s,%s,%s)" v perm g wf1 p1 wf3 p3 wf2 p2
-      | F324 | F431 | F142 | F213 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s,%s,%s)" v perm g wf2 p2 wf1 p1 wf3 p3
-      | F432 | F143 | F214 | F321 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s,%s,%s)" v perm g wf3 p3 wf2 p2 wf1 p1
-      (* TODO: Explain why we need the inverses here \ldots *)
-      | F342 | F413 | F124 | F231 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s,%s,%s)" v perm g wf3 p3 wf1 p1 wf2 p2
-      | F423 | F134 | F241 | F312 ->
-         printf "%s_p%s(%s,%s,%s,%s,%s,%s,%s)" v perm g wf2 p2 wf3 p3 wf1 p1
-
-
     (* \begin{dubious}
-          FIXME: Implement the correct permutations also for
-          higher order vertices!
+          Eventually, we should use the reverted lists everywhere
+          to become a bit more efficient.
        \end{dubious} *)
 
-    let fusionn c v s g wfs ps fusion =
-      let g = scale_coupling c g in
-      printf
-        "%s_p_(%s,%s)" v g
-        (String.concat "," (List.map2 (fun wf p -> wf ^ "," ^ p) wfs ps))
+    module P = Permutation.Default
+
+    let factor_cyclic f12__n =
+      let f12__, fn = ThoList.split_last f12__n in
+      let cyclic = ThoList.cycle_until fn (List.sort compare f12__n) in
+      (P.of_list (List.map pred cyclic),
+       P.of_lists (List.tl cyclic) f12__)
+
+    let fuse c v s g wfs ps fusion =
+      let g = scale_coupling c g
+      and cyclic, factor = factor_cyclic fusion in
+      let perm = P.to_string cyclic in
+      let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
+      let args = P.list (P.inverse factor) wfs_ps in
+      let args_string =
+        String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) args) in
+      printf "%s_p%s(%s,%s)" v perm g args_string
+
+    (* \begin{dubious}
+         The following is for reference only, to better understand what JRR
+         was doing\ldots
+       \end{dubious} *)
+
+    (* The vertex is (suppressing the Lorentz index of~$\phi_2$)
+       \begin{equation}
+         \bar\psi_1 \Gamma\phi_2 \psi_3
+            = \Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \psi_{3,\beta}
+       \end{equation} *)
+
+    (* This is the version implemented by [fuse] above. *)
+
+    let tho_print_dirac_current f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
+      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
+      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
+      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
+      | [1; 2] -> printf "f_f%s(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
+      | [2; 1] -> printf "f_f%s(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
+      | _ -> ()
+
+    (* This is how JRR implemented the Dirac matrices
+       that don't change sign under $C\Gamma^T C^{-1} = \Gamma$,
+       i.\,e.~$\mathbf{1}$, $\gamma_5$ and~$\gamma_5\gamma_\mu$. *)
+
+    (* In the case of two fermions, the second wave
+       function [wf2] is always put into the right slot,
+       as described in JRR's thesis. *)
+
+    (* In the case of a boson and a fermion, there is no
+       need for both ["f_%sf"] and ["f_f%s"], since the
+       latter can be obtained by exchanging arguments. *)
+
+    let jrr_print_majorana_current_S_P_A f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \equiv
+         \Gamma $ *)
+      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta} \equiv
+         \Gamma = C\Gamma^T C^{-1} $ *)
+      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
+         \Gamma $ *)
+      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
+         \Gamma $ *)
+      | [1; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \equiv
+         \Gamma = C\Gamma^T C^{-1} $ *)
+      | [2; 1] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \equiv
+         \Gamma = C\Gamma^T C^{-1} $ *)
+      | _ -> ()
+
+    (* This is how JRR implemented the Dirac matrices
+       that do change sign under $C\Gamma^T C^{-1} = - \Gamma$,
+       i.\,e.~$\gamma_\mu$ and~$\sigma_{\mu\nu}$ (NB: the
+       latter case never appears!). *)
+
+    let jrr_print_majorana_current_V f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff( %s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \equiv
+          \Gamma $ *)
+      | [3; 1] -> printf "%s_ff(-%s,%s,%s)" f c wf1 wf2 (*
+        $-\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \equiv
+         -\Gamma = C\Gamma^T C^{-1} $ *)
+      | [2; 3] -> printf "f_%sf( %s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
+          \Gamma $ *)
+      | [3; 2] -> printf "f_%sf( %s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
+          \Gamma $ *)
+      | [1; 2] -> printf "f_%sf(-%s,%s,%s)" f c wf2 wf1 (*
+        $-\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \equiv
+         -\Gamma = C\Gamma^T C^{-1} $ *)
+      | [2; 1] -> printf "f_%sf(-%s,%s,%s)" f c wf1 wf2 (*
+        $-\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \equiv
+         -\Gamma = C\Gamma^T C^{-1} $ *)
+      | _ -> ()
+
+    (* \begin{dubious}
+         Still need a way to reliably select the Majorana
+         version in the [Target] module!
+       \end{dubious} *)
 
     let eps4_g4_g44_decl ff () =
       let printf fmt = fprintf ff fmt

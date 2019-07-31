@@ -57,14 +57,7 @@ val parse_directory : string -> t
 module type Fortran_Target =
   sig
 
-    val fusion2 :
-      Algebra.QC.t -> string -> Coupling.lorentz3 ->
-      string -> string -> string -> string -> string -> Coupling.fuse2 -> unit
-    val fusion3 :
-      Algebra.QC.t -> string -> Coupling.lorentz4 ->
-      string -> string -> string -> string -> string ->
-      string -> string -> Coupling.fuse3 -> unit
-    val fusionn :
+    val fuse :
       Algebra.QC.t -> string -> Coupling.lorentzn ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
@@ -72,7 +65,7 @@ module type Fortran_Target =
       ?only:Sets.String.t -> Format_Fortran.formatter -> unit -> unit
 
     val lorentz_module :
-      ?only:Sets.String.t -> ?name:string ->
+      ?only:Sets.String.t -> ?name:string -> ?fortran_module:string ->
       Format_Fortran.formatter -> unit -> unit
 
   end
@@ -84,6 +77,7 @@ module Targets :
 
 module type Test =
   sig
-    val example : unit -> unit
     val suite : OUnit.test
   end
+
+module Test : Test

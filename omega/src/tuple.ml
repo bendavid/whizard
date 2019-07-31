@@ -139,6 +139,7 @@ module Binary =
       graded_sym_power_fold rank (fun pair acc -> pair :: acc) set []
 
     let to_list (x, y) = [x; y]
+
     let of2_kludge  = of2
 
     exception No_termination
@@ -221,9 +222,9 @@ module Ternary =
     let graded_sym_power rank set =
       graded_sym_power_fold rank (fun pair acc -> pair :: acc) set []
 
-    let of2_kludge _ = failwith "Tuple.Ternary.of2_kludge"
-
     let to_list (x, y, z) = [x; y; z]
+
+    let of2_kludge _ = failwith "Tuple.Ternary.of2_kludge"
 
   end
 
@@ -462,6 +463,7 @@ module Nary (A : sig val max_arity : unit -> int end) =
       graded_sym_power_fold rank (fun pair acc -> pair :: acc) set []
 
     let to_list (x, y) = x :: y
+
     let of2_kludge = of2
 
   end

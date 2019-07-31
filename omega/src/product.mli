@@ -33,6 +33,14 @@ val list2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 val list3 : ('a -> 'b -> 'c -> 'd) -> 'a list -> 'b list -> 'c list -> 'd list
 val list : ('a list -> 'b) -> 'a list list -> 'b list
 
+(* Suppress all [None] in the results. *)
+val list2_opt :
+  ('a -> 'b -> 'c option) -> 'a list -> 'b list -> 'c list
+val list3_opt :
+  ('a -> 'b -> 'c -> 'd option) -> 'a list -> 'b list -> 'c list -> 'd list
+val list_opt :
+  ('a list -> 'b option) -> 'a list list -> 'b list
+
 val power : int -> 'a list -> 'a list list
 
 val thread : 'a list list -> 'a list list

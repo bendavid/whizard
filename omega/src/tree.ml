@@ -144,15 +144,15 @@ let fuse conjg root contains_root trees =
 
 type ('a, 'b) with_supremum = { sup : 'a; data : 'b }
 
-(* Since the lists are rather short, [Sort.list] could be replaced by
+(* Since the lists are rather short, [List.sort] could be replaced by
    an optimized version, but we're not (yet) dealing with the most
    important speed bottleneck here: *)
 
 let rec sort' lesseq = function
   | Leaf (_, l) as e -> { sup = l; data = e }
   | Node (n, ch) ->
-      let ch' = Sort.list
-          (fun x y -> lesseq x.sup y.sup) (List.map (sort' lesseq) ch) in
+      let ch' = List.sort
+          (fun x y -> compare x.sup y.sup) (List.map (sort' lesseq) ch) in
       { sup = (List.hd (List.rev ch')).sup;
         data = Node (n, List.map (fun x -> x.data) ch') }
 
@@ -210,11 +210,11 @@ type 'a supremum_or_infinity = Infinity | Sup of 'a
 type ('a, 'b) with_supremum_or_infinity =
     { sup : 'a supremum_or_infinity; data : 'b }
 
-let with_infinity lesseq x y =
+let with_infinity cmp x y =
   match x.sup, y.sup with
-  | Infinity, _ -> false
-  | _, Infinity -> true
-  | Sup x', Sup y' -> lesseq x' y'
+  | Infinity, _ -> 1
+  | _, Infinity -> -1
+  | Sup x', Sup y' -> cmp x' y'
 
 (* Using this, we can sort the tree in another way that guarantees that
    a particular leaf ([i2]) is moved as far to the end as possible.  We
@@ -225,7 +225,7 @@ let rec sort_2i' lesseq i2 = function
   | Leaf (_, l) as e ->
       { sup = if l = i2 then Infinity else Sup l; data = e }
   | Node (n, ch) ->
-      let ch' = Sort.list (with_infinity lesseq)
+      let ch' = List.sort (with_infinity compare)
           (List.map (sort_2i' lesseq i2) ch) in
       { sup = (List.hd (List.rev ch')).sup;
         data = Node (n, List.map (fun x -> x.data) ch') }

@@ -1,4 +1,4 @@
-(* UFO_targets.mli --
+(* dirac.mli --
 
    Copyright (C) 1999-2017 by
 
@@ -22,26 +22,50 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* \thocwmodulesection{Generating Code for UFO Lorentz Structures} *)
+(* \thocwmodulesection{Dirac $\gamma$-matrices} *)
 
 module type T =
   sig
 
-    (* NB: The [spins : int list] argument is \emph{not} sufficient
-       to determine the domain and codomain of the function.  We
-       will need to inspect the flavors, where the Lorentz structure
-       is referenced. *)
-    val lorentz :
-      Format_Fortran.formatter -> string -> Coupling.lorentz array ->
-      UFO_Lorentz.t -> unit
+    (* Matrices with complex rational entries. *)
+    type qc = Algebra.QC.t
+    type t = qc array array
 
-    val fuse :
-      Algebra.QC.t -> string -> Coupling.lorentzn ->
-      string -> string list -> string list -> Coupling.fusen -> unit
+    (* Complex rational constants. *)
+    val zero : qc
+    val one : qc
+    val minus_one : qc
+    val i : qc
+    val minus_i : qc
 
-    val eps4_g4_g44_decl : Format_Fortran.formatter -> unit -> unit
-    val eps4_g4_g44_init : Format_Fortran.formatter -> unit -> unit
+    (* Basic $\gamma$-matrices. *)
+    val unit : t
+    val null : t
+    val gamma0 : t
+    val gamma1 : t
+    val gamma2 : t
+    val gamma3 : t
+    val gamma5 : t
 
+    (* $(\gamma_0,\gamma_1,\gamma_2,\gamma_3)$ *)
+    val gamma : t array
+
+    (* Charge conjugation *)
+    val cc : t
+
+    (* Algebraic operations on $\gamma$-matrices *)
+    val neg : t -> t
+    val add : t -> t -> t
+    val sub : t -> t -> t
+    val mul : t -> t -> t
+    val times : qc -> t -> t
+    val transpose : t -> t
+    val adjoint : t -> t
+    val conj : t -> t
+    val product : t list -> t
+
+    (* Unit tests *)
+    val test_suite : OUnit.test
   end
 
-module Fortran : T
+module Chiral : T

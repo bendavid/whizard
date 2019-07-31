@@ -12,9 +12,14 @@ root=$(dirname $(dirname $src))
 build=$root/_build
 log=$src/opam_versions.out
 
+versions="$1"
+if [ -z "$versions" ]; then
+    versions="$(opam switch -s)"
+fi
+
 rm -f $log
 
-for switch in $(opam switch -s); do
+for switch in $versions; do
   opam switch $switch >/dev/null || exit 2
   opam switch show
   eval $(opam env)

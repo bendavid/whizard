@@ -324,6 +324,7 @@ bare_token:
  | COMMA    { T.token "," }
  | LPAREN   { T.token "(" }
  | RPAREN   { T.token ")" }
+;
 
 not_arg_or_token_list:
  | DIGIT    { () }

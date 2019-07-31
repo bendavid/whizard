@@ -232,6 +232,8 @@ module NMSSM_func (Flags : NMSSM_flags) =
       | Gl | Gluino -> Color.AdjSUN 3
       | _ -> Color.Singlet   
 
+    let nc () = 3
+
     let prop_spinor n m =
       if n >= 0 && m >=0 then
         Prop_Spinor

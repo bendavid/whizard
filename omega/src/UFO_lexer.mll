@@ -49,6 +49,7 @@ let lower = ['a'-'z']
 let char = upper | lower
 let word = char | digit | '_'
 let white = [' ' '\t']
+let esc = ['\'' '"' '\\']
 
 rule token = parse
     white             { token lexbuf }     (* skip blanks *)
@@ -77,12 +78,20 @@ rule token = parse
                       { FLOAT (float_of_string x) }
   | '-'? digit+ as i  { INT (int_of_string i) }
   | char word* as s   { ID s }
-  | '\'' ([^'\'']+ ( '\\' '\'' [^'\'']+ )* as s) '\''
-                      { STRING s }
-  | '"' ([^'"']+ ( '\\' '"' [^'"']+ )* as s) '"'
-                      { STRING s }
+  | '\''              { let sbuf = Buffer.create 20 in
+                        STRING (string1 sbuf lexbuf) }
+  | '"'               { let sbuf = Buffer.create 20 in
+                        STRING (string2 sbuf lexbuf) }
   | _ as c            { failwith ("invalid character at `" ^
-				    string_of_char c ^ "'") }
+				  string_of_char c ^ "'") }
   | eof               { END }
-
-
+and string1 sbuf = parse
+    '\''              { Buffer.contents sbuf }
+  | '\\' (esc as c)   { Buffer.add_char sbuf c; string1 sbuf lexbuf }
+  | eof               { raise End_of_file }
+  | _ as c            { Buffer.add_char sbuf c; string1 sbuf lexbuf }
+and string2 sbuf = parse
+    '"'               { Buffer.contents sbuf }
+  | '\\' (esc as c)   { Buffer.add_char sbuf c; string2 sbuf lexbuf }
+  | eof               { raise End_of_file }
+  | _ as c            { Buffer.add_char sbuf c; string2 sbuf lexbuf }

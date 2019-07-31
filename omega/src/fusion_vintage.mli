@@ -236,13 +236,11 @@ i*)
 (* Straightforward Dirac fermions vs. slightly more complicated
    Majorana fermions: *)
 
-exception Majorana
-
 module Binary : Maker
-(* [module Binary_Majorana : Maker] *)
+module Binary_Majorana : Maker
 
 module Mixed23 : Maker
-(* [module Mixed23_Majorana : Maker] *)
+module Mixed23_Majorana : Maker
 
 module Nary : functor (B : Tuple.Bound) -> Maker
 module Nary_Majorana : functor (B : Tuple.Bound) -> Maker
@@ -255,7 +253,7 @@ module Nary_Majorana : functor (B : Tuple.Bound) -> Maker
    be responsible for this.  *)
 
 module Helac : functor (B : Tuple.Bound) -> Maker
-(* [module Helac_Majorana : functor (B : Tuple.Bound) -> Maker] *)
+module Helac_Majorana : functor (B : Tuple.Bound) -> Maker
 
 (* \thocwmodulesection{Multiple Amplitudes} *)
 

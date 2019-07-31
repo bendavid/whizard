@@ -154,6 +154,8 @@ module Littlest (Flags : BSM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -195,9 +197,9 @@ module Littlest (Flags : BSM_flags) =
     let goldstone = function
       | G f -> 
           begin match f with 
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -367,24 +369,24 @@ module Littlest (Flags : BSM_flags) =
       []
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3));
-        nc_coupling G_NC_h_neutrino half (Const 0);
-        nc_coupling G_NC_h_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_h_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_h_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3));
+        nc_coupling G_NC_h_neutrino half (Integer 0);
+        nc_coupling G_NC_h_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_h_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_h_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -1321,6 +1323,8 @@ module Littlest_Tpar (Flags : BSM_flags) =
       | Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -1353,9 +1357,9 @@ module Littlest_Tpar (Flags : BSM_flags) =
         !default_width
 
     let goldstone = function
-      | Wp -> Some (Phip, Coupling.Const 1)
-      | Wm -> Some (Phim, Coupling.Const 1)
-      | Z -> Some (Phi0, Coupling.Const 1)
+      | Wp -> Some (Phip, Coupling.Integer 1)
+      | Wm -> Some (Phim, Coupling.Integer 1)
+      | Z -> Some (Phi0, Coupling.Integer 1)
       | _ -> None
 
     let conjugate = function
@@ -1491,24 +1495,24 @@ module Littlest_Tpar (Flags : BSM_flags) =
       []
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3));
-        nc_coupling G_NC_h_neutrino half (Const 0);
-        nc_coupling G_NC_h_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_h_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_h_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3));
+        nc_coupling G_NC_h_neutrino half (Integer 0);
+        nc_coupling G_NC_h_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_h_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_h_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -2425,6 +2429,8 @@ module Simplest (Flags : BSM_flags) =
       | Gl -> Color.AdjSUN 3 
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -2452,9 +2458,9 @@ module Simplest (Flags : BSM_flags) =
         !default_width
 
     let goldstone = function
-      | Wp -> Some (Phip, Coupling.Const 1)
-      | Wm -> Some (Phim, Coupling.Const 1)
-      | Z -> Some (Phi0, Coupling.Const 1)
+      | Wp -> Some (Phip, Coupling.Integer 1)
+      | Wm -> Some (Phim, Coupling.Integer 1)
+      | Z -> Some (Phi0, Coupling.Integer 1)
       | _ -> None
 
     let conjugate = function
@@ -2565,24 +2571,24 @@ module Simplest (Flags : BSM_flags) =
       [] 
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3));
-        nc_coupling G_NC_h_neutrino half (Const 0);
-        nc_coupling G_NC_h_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_h_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_h_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3));
+        nc_coupling G_NC_h_neutrino half (Integer 0);
+        nc_coupling G_NC_h_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_h_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_h_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
 
     let parameters () =
@@ -3190,6 +3196,8 @@ module Xdim (Flags : BSM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -3228,9 +3236,9 @@ module Xdim (Flags : BSM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -3350,20 +3358,20 @@ module Xdim (Flags : BSM_flags) =
       []
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -3814,6 +3822,8 @@ module UED (Flags : BSM_flags) =
       | G Gl | G Gl_K1 | G Gl_K2 -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -3861,9 +3871,9 @@ module UED (Flags : BSM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -4025,20 +4035,20 @@ module UED (Flags : BSM_flags) =
       []
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -4759,6 +4769,8 @@ module GravTest (Flags : BSM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -4799,9 +4811,9 @@ module GravTest (Flags : BSM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -4930,20 +4942,20 @@ module GravTest (Flags : BSM_flags) =
       []
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -5366,6 +5378,8 @@ module Template (Flags : BSM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -5403,9 +5417,9 @@ module Template (Flags : BSM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -5524,20 +5538,20 @@ module Template (Flags : BSM_flags) =
     let derived_parameters = [] 
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -5900,6 +5914,8 @@ module HSExt (Flags : BSM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -5937,9 +5953,9 @@ module HSExt (Flags : BSM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -6061,20 +6077,20 @@ module HSExt (Flags : BSM_flags) =
     let derived_parameters = [] 
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -6581,6 +6597,8 @@ module Threeshl (Module_options: Threeshl_options) =
          | Boson G -> Color.AdjSUN 3
          | _ -> Color.Singlet
       
+    let nc () = 3
+
       (* Function for calculating the MCID code of a particle. Convenctions have been choosen such
       that the heavy modes are identified by the same numbers as the light ones, prefixed with
       \verb$99$. This is supposedly in accord with the conventions for adding new particles to the list
@@ -7207,6 +7225,8 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
       | G Gl  -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -7244,9 +7264,9 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -7398,14 +7418,14 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
       | _ -> (0,0)
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let array_list = [G_h1uu; G_h2uu; G_h3uu; G_h1uc; G_h2uc; G_h3uc; G_h1ut;
         G_h2ut; G_h3ut; G_h1cu; G_h2cu; G_h3cu; G_h1cc; G_h2cc;
@@ -7426,13 +7446,13 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
         G_h1e3e1; G_h2e3e1; G_h3e3e1; G_h1e3e2; G_h2e3e2; G_h3e3e2;
         G_h1e3e3; G_h2e3e3; G_h3e3e3]
 
-    let add_complex_array_tag c = (Complex_Array c, [Const 0; Const 0])
+    let add_complex_array_tag c = (Complex_Array c, [Integer 0; Integer 0])
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3));
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3));
        ] @ (List.map add_complex_array_tag array_list)
 
     let parameters () =
@@ -8203,6 +8223,8 @@ module SSC (Flags : SSC_flags) =
       | O (Aux_top (_,co,_,_,_)) -> if co == 0 then Color.Singlet else Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -8250,9 +8272,9 @@ module SSC (Flags : SSC_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -8616,16 +8638,16 @@ module SSC (Flags : SSC_flags) =
    \end{dubious} *)
 
     let derived_parameters =
-      [ Real E, Sqrt (Prod [Const 4; Atom Pi; Atom Alpha_QED]);
+      [ Real E, Sqrt (Prod [Integer 4; Atom Pi; Atom Alpha_QED]);
         Real Sinthw, Sqrt (Atom Sin2thw);
-        Real Costhw, Sqrt (Diff (Const 1, Atom Sin2thw));
+        Real Costhw, Sqrt (Diff (Integer 1, Atom Sin2thw));
         Real G_weak, Quot (Atom E, Atom Sinthw);
         Real (Mass (G Wp)), Prod [Atom Costhw; Atom (Mass (G Z))];
-        Real Vev, Quot (Prod [Const 2; Atom (Mass (G Wp))], Atom G_weak);
+        Real Vev, Quot (Prod [Integer 2; Atom (Mass (G Wp))], Atom G_weak);
         Real Q_lepton, Atom E;
-        Real Q_up, Prod [Quot (Const (-2), Const 3); Atom E];
-        Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
-        Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
+        Real Q_up, Prod [Quot (Integer (-2), Integer 3); Atom E];
+        Real Q_down, Prod [Quot (Integer 1, Integer 3); Atom E];
+        Real G_CC, Neg (Quot (Atom G_weak, Prod [Integer 2; Sqrt (Integer 2)]));
         Complex I_Q_W, Prod [I; Atom E];
         Complex I_G_weak, Prod [I; Atom G_weak];
         Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw] ]
@@ -8634,7 +8656,7 @@ module SSC (Flags : SSC_flags) =
       - \frac{g}{2\cos\theta_w}
    \end{equation} *)
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
 (* \begin{subequations}
      \begin{align}
@@ -8646,16 +8668,16 @@ module SSC (Flags : SSC_flags) =
    \end{subequations} *)
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;
@@ -11733,6 +11755,8 @@ module SSC_AltT (Flags : SSC_flags) =
       | O (Aux_top (_,co,_,_,_)) -> if co == 0 then Color.Singlet else Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -11783,9 +11807,9 @@ module SSC_AltT (Flags : SSC_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -12156,16 +12180,16 @@ module SSC_AltT (Flags : SSC_flags) =
    \end{dubious} *)
 
     let derived_parameters =
-      [ Real E, Sqrt (Prod [Const 4; Atom Pi; Atom Alpha_QED]);
+      [ Real E, Sqrt (Prod [Integer 4; Atom Pi; Atom Alpha_QED]);
         Real Sinthw, Sqrt (Atom Sin2thw);
-        Real Costhw, Sqrt (Diff (Const 1, Atom Sin2thw));
+        Real Costhw, Sqrt (Diff (Integer 1, Atom Sin2thw));
         Real G_weak, Quot (Atom E, Atom Sinthw);
         Real (Mass (G Wp)), Prod [Atom Costhw; Atom (Mass (G Z))];
-        Real Vev, Quot (Prod [Const 2; Atom (Mass (G Wp))], Atom G_weak);
+        Real Vev, Quot (Prod [Integer 2; Atom (Mass (G Wp))], Atom G_weak);
         Real Q_lepton, Atom E;
-        Real Q_up, Prod [Quot (Const (-2), Const 3); Atom E];
-        Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
-        Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
+        Real Q_up, Prod [Quot (Integer (-2), Integer 3); Atom E];
+        Real Q_down, Prod [Quot (Integer 1, Integer 3); Atom E];
+        Real G_CC, Neg (Quot (Atom G_weak, Prod [Integer 2; Sqrt (Integer 2)]));
         Complex I_Q_W, Prod [I; Atom E];
         Complex I_G_weak, Prod [I; Atom G_weak];
         Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw] ]
@@ -12174,7 +12198,7 @@ module SSC_AltT (Flags : SSC_flags) =
       - \frac{g}{2\cos\theta_w}
    \end{equation} *)
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
 (* \begin{subequations}
      \begin{align}
@@ -12186,16 +12210,16 @@ module SSC_AltT (Flags : SSC_flags) =
    \end{subequations} *)
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;

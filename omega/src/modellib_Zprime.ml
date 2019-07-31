@@ -118,6 +118,8 @@ module Zprime (Flags : SM_flags) =
       | G Gl -> Color.AdjSUN 3
       | _ -> Color.Singlet
 
+    let nc () = 3
+
     let prop_spinor n =
       if n >= 0 then
         Prop_Spinor
@@ -155,9 +157,9 @@ module Zprime (Flags : SM_flags) =
     let goldstone = function
       | G f ->
           begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
+          | Wp -> Some (O Phip, Coupling.Integer 1)
+          | Wm -> Some (O Phim, Coupling.Integer 1)
+          | Z -> Some (O Phi0, Coupling.Integer 1)
           | _ -> None
           end
       | _ -> None
@@ -281,24 +283,24 @@ module Zprime (Flags : SM_flags) =
       []
 
     let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+      Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
 
     let nc_coupling c t3 q =
       (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+       [Prod [g_over_2_costh; Diff (t3, Prod [Integer 2; q; Atom Sin2thw])];
         Prod [g_over_2_costh; t3]])
 
-    let half = Quot (Const 1, Const 2)
+    let half = Quot (Integer 1, Integer 2)
 
     let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3));
-        nc_coupling G_NC_h_neutrino half (Const 0);
-        nc_coupling G_NC_h_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_h_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_h_down (Neg half) (Quot (Const (-1), Const 3)) ]
+      [ nc_coupling G_NC_neutrino half (Integer 0);
+        nc_coupling G_NC_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Integer (-1), Integer 3));
+        nc_coupling G_NC_h_neutrino half (Integer 0);
+        nc_coupling G_NC_h_lepton (Neg half) (Integer (-1));
+        nc_coupling G_NC_h_up half (Quot (Integer 2, Integer 3));
+        nc_coupling G_NC_h_down (Neg half) (Quot (Integer (-1), Integer 3)) ]
 
     let parameters () =
       { input = input_parameters;

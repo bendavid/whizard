@@ -28,6 +28,7 @@ module Expr :
     val of_string : string -> t
     val of_strings : string list -> t
     val substitute : string -> t -> t -> t
+    val rename : (string * string) list -> t -> t
     val half : string -> t
   end
 
@@ -77,7 +78,8 @@ module type Tensor =
     type r
     val classify_indices : t -> (int * r) list 
     val rep_to_string : r -> string
-    val rep_of_int : int -> r
+    val rep_to_string_whizard : r -> string
+    val rep_of_int : bool -> int -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
 
@@ -98,7 +100,8 @@ module type Atom =
     type r
     val classify_indices : t list -> (int * r) list
     val rep_to_string : r -> string
-    val rep_of_int : int -> r
+    val rep_to_string_whizard : r -> string
+    val rep_of_int : bool -> int -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
     type r_omega
@@ -125,6 +128,8 @@ module type Lorentz_Atom =
     type t = private
       | Dirac of dirac
       | Vector of vector
+
+    val map_indices_vector : (int -> int) -> vector -> vector
 
   end
 

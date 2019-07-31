@@ -62,25 +62,34 @@ module Expr =
 
     open UFOx_syntax
 
-    let rec substitute name value = function
+    let rec map f = function
       | Integer _ | Float _ as e -> e
       | Variable s as e ->
-         if s = name then
-           value
-         else
-           e
-      | Sum (e1, e2) ->
-         Sum (substitute name value e1, substitute name value e2)
-      | Difference (e1, e2) ->
-         Difference (substitute name value e1, substitute name value e2)
-      | Product (e1, e2) ->
-         Product (substitute name value e1, substitute name value e2)
-      | Quotient (e1, e2) ->
-         Quotient (substitute name value e1, substitute name value e2)
-      | Power (e1, e2) ->
-         Power (substitute name value e1, substitute name value e2)
-      | Application (s, el) ->
-         Application (s, List.map (substitute name value) el)
+         begin match f s with
+         | Some value -> value
+         | None -> e
+         end
+      | Sum (e1, e2) -> Sum (map f e1, map f e2)
+      | Difference (e1, e2) -> Difference (map f e1, map f e2)
+      | Product (e1, e2) -> Product (map f e1, map f e2)
+      | Quotient (e1, e2) -> Quotient (map f e1, map f e2)
+      | Power (e1, e2) -> Power (map f e1, map f e2)
+      | Application (s, el) -> Application (s, List.map (map f) el)
+
+    let substitute name value expr =
+      map (fun s -> if s = name then Some value else None) expr
+
+    module SMap = Map.Make (struct type t = string let compare = compare end)
+
+    let rename1 name_map name =
+      try Some (Variable (SMap.find name name_map)) with Not_found -> None
+
+    let rename alist_names value =
+      let name_map =
+        List.fold_left
+          (fun acc (name, name') -> SMap.add name name' acc)
+          SMap.empty alist_names in
+      map (rename1 name_map) value
 
     let half name =
       Quotient (Variable name, Integer 2)
@@ -144,7 +153,8 @@ module type Atom =
     type r
     val classify_indices : t list -> (int * r) list
     val rep_to_string : r -> string
-    val rep_of_int : int -> r
+    val rep_to_string_whizard : r -> string
+    val rep_of_int : bool -> int -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
     type r_omega
@@ -164,7 +174,8 @@ module type Tensor =
     type r
     val classify_indices : t -> (int * r) list 
     val rep_to_string : r -> string
-    val rep_of_int : int -> r
+    val rep_to_string_whizard : r -> string
+    val rep_of_int : bool -> int -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
     type r_omega
@@ -236,6 +247,7 @@ module Tensor (A : Atom) : Tensor
 
     type r = A.r
     let rep_to_string = A.rep_to_string
+    let rep_to_string_whizard = A.rep_to_string_whizard
     let rep_of_int = A.rep_of_int
     let rep_conjugate = A.rep_conjugate
     let rep_trivial = A.rep_trivial
@@ -259,7 +271,7 @@ module Tensor (A : Atom) : Tensor
 
     let of_expr e =
       let t = of_expr e in
-      let free = classify_indices t in
+      ignore (classify_indices t);
       t
 
     let of_string s =
@@ -326,6 +338,8 @@ module type Lorentz_Atom =
       | Dirac of dirac
       | Vector of vector
 
+    val map_indices_vector : (int -> int) -> vector -> vector
+
   end
 
 module Lorentz_Atom =
@@ -349,6 +363,11 @@ module Lorentz_Atom =
       | Dirac of dirac
       | Vector of vector
 
+    let map_indices_vector f = function
+      | Epsilon (mu, nu, ka, la) -> Epsilon (f mu, f nu, f ka, f la)
+      | Metric (mu, nu) -> Metric (f mu, f nu)
+      | P (mu, n) -> P (f mu, f n)
+
   end
 
 module Lorentz_Atom' : Atom
@@ -367,11 +386,6 @@ module Lorentz_Atom' : Atom
       | ProjP (i, j) -> ProjP (f i, f j)
       | ProjM (i, j) -> ProjM (f i, f j)
       | Sigma (mu, nu, i, j) -> Sigma (f mu, f nu, f i, f j)
-
-    let map_indices_vector f = function
-      | Epsilon (mu, nu, ka, la) -> Epsilon (f mu, f nu, f ka, f la)
-      | Metric (mu, nu) -> Metric (f mu, f nu)
-      | P (mu, n) -> P (f mu, f n)
 
     let map_indices f = function
       | Dirac d -> Dirac (map_indices_dirac f d)
@@ -448,23 +462,31 @@ module Lorentz_Atom' : Atom
       | name, _ ->
 	 invalid_arg ("UFOx.Lorentz.of_expr: invalid tensor '" ^ name ^ "'")
 
-    type r = S | V | Sp | CSp | Ghost
+    type r = S | V | Sp | CSp | Maj | Ghost
 
     let rep_trivial = function
       | S | Ghost -> true
-      | V | Sp | CSp-> false
+      | V | Sp | CSp | Maj -> false
 
     let rep_to_string = function
       | S -> "0"
       | V -> "1"
       | Sp -> "1/2"
       | CSp-> "1/2bar"
+      | Maj -> "1/2M"
       | Ghost -> "Ghost"
 
-    let rep_of_int = function
+    let rep_to_string_whizard = function
+      | S -> "0"
+      | V -> "1"
+      | Sp | CSp | Maj -> "1/2"
+      | Ghost -> "Ghost"
+
+    let rep_of_int neutral = function
       | -1 -> Ghost
       | 1 -> S
-      | 2 -> Sp
+      | 2 -> if neutral then Maj else Sp
+      | -2 -> if neutral then Maj else CSp
       | 3 -> V
       | _ -> invalid_arg "UFOx.Lorentz: impossible representation!"
 	 
@@ -473,6 +495,7 @@ module Lorentz_Atom' : Atom
       | V -> V
       | Sp -> CSp (* ??? *)
       | CSp -> Sp (* ??? *)
+      | Maj -> Maj
       | Ghost -> Ghost
 
     let classify_vector_indices1 = function
@@ -502,7 +525,8 @@ module Lorentz_Atom' : Atom
       | S -> Coupling.Scalar
       | V -> Coupling.Vector
       | Sp -> Coupling.Spinor
-      | CSp-> Coupling.ConjSpinor
+      | CSp -> Coupling.ConjSpinor
+      | Maj -> Coupling.Majorana
       | Ghost -> Coupling.Scalar
 
   end
@@ -620,7 +644,14 @@ module Color_Atom' : Atom
       | C -> "3bar"
       | A-> "8"
 
-    let rep_of_int = function
+    let rep_to_string_whizard = function
+      | S -> "1"
+      | Sbar -> "-1"
+      | F -> "3"
+      | C -> "-3"
+      | A-> "8"
+
+    let rep_of_int neutral = function
       | 1 -> S
       | -1 -> Sbar (* UFO appears to use this for colorless antiparticles!. *)
       | 3 -> F
@@ -658,6 +689,7 @@ module Color_Atom' : Atom
 
     type r_omega = Color.t
 
+    (* FIXME: $N_C=3$ should not be hardcoded! *)
     let omega = function
       | S | Sbar -> Color.Singlet
       | F -> Color.SUN (3)
@@ -678,21 +710,27 @@ module Value =
       | Sqrt
       | Cos
       | Sin
+      | Tan
       | Exp
+      | Atan
       | Conj
 
     let builtin_to_string = function
       | Sqrt -> "sqrt"
       | Cos -> "cos"
+      | Tan -> "tan"
       | Sin -> "sin"
       | Exp -> "exp"
+      | Atan -> "atan"
       | Conj -> "conjg"
 
     let builtin_of_string = function
       | "cmath.sqrt" -> Sqrt
       | "cmath.cos" -> Cos
       | "cmath.sin" -> Sin
+      | "cmath.tan" -> Tan
       | "cmath.exp" -> Exp
+      | "cmath.atan" -> Atan
       | "complexconjugate" -> Conj
       | name -> failwith ("UFOx.Value: unsupported function: " ^ name)
 
@@ -757,17 +795,24 @@ module Value =
       | e -> "(" ^ to_string e ^ ")"
 
     let rec to_coupling atom = function
-      | Integer i -> Coupling.Const i
+      | Integer i -> Coupling.Integer i
       | Rational q ->
          let n, d = Q.to_ratio q in
-         Coupling.Quot (Coupling.Const n, Coupling.Const d)
-      | Real x -> Coupling.Atom (atom (string_of_float x))
+         Coupling.Quot (Coupling.Integer n, Coupling.Integer d)
+      | Real x -> Coupling.Float x
       | Product es -> Coupling.Prod (List.map (to_coupling atom) es)
       | Variable s -> Coupling.Atom (atom s)
+      | Complex (r, 0.0) -> Coupling.Float r
+      | Complex (0.0,  1.0) -> Coupling.I
+      | Complex (0.0, -1.0) -> Coupling.Prod [Coupling.I; Coupling.Integer (-1)]
+      | Complex (0.0, i) -> Coupling.Prod [Coupling.I; Coupling.Float i]
+      | Complex (r, 1.0) ->
+         Coupling.Sum [Coupling.Float r; Coupling.I]
+      | Complex (r, -1.0) ->
+         Coupling.Diff (Coupling.Float r, Coupling.I)
       | Complex (r, i) ->
-         Coupling.Sum [Coupling.Atom (atom (string_of_float r));
-                       Coupling.Prod [Coupling.I;
-                                      Coupling.Atom (atom (string_of_float i))]]
+         Coupling.Sum [Coupling.Float r;
+                       Coupling.Prod [Coupling.I; Coupling.Float i]]
       | Sum es -> Coupling.Sum (List.map (to_coupling atom) es)
       | Difference (e1, e2) ->
          Coupling.Diff (to_coupling atom e1, to_coupling atom e2)
@@ -779,13 +824,19 @@ module Value =
          Coupling.PowX (to_coupling atom e1, to_coupling atom e2)
       | Application (Sin, [e]) -> Coupling.Sin (to_coupling atom e)
       | Application (Cos, [e]) -> Coupling.Cos (to_coupling atom e)
+      | Application (Tan, [e]) -> Coupling.Tan (to_coupling atom e)
       | Application (Exp, [e]) -> Coupling.Exp (to_coupling atom e)
+      | Application (Atan, [e]) -> Coupling.Atan (to_coupling atom e)
       | Application (Sqrt, [e]) -> Coupling.Sqrt (to_coupling atom e)
       | Application (Conj, [e]) -> Coupling.Conj (to_coupling atom e)
-      | Application (_, []) ->
-         failwith "UFOx.Value.to_coupling: empty argument list"
-      | Application (_, _::_) ->
-         failwith "UFOx.Value.to_coupling: more than one argument list"
+      | Application (f, []) ->
+         failwith
+           ("UFOx.Value.to_coupling:  " ^ builtin_to_string f ^
+              ": empty argument list")
+      | Application (f, _::_) ->
+         failwith
+           ("UFOx.Value.to_coupling: " ^ builtin_to_string f ^
+              ": more than one argument list")
 
     let compress terms = terms
 

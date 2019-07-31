@@ -104,25 +104,29 @@ module Fusions (F : Flavor) : Fusions with type f = F.f and type c = F.c =
           v4 : (f * c Coupling.t) list H3.t;
           vn : (f * c Coupling.t) list Hn.t }
 
+    let lookup_fuse2 table f1 f2 =
+      try H2.find table.v3 (f1, f2) with Not_found -> []
+
+    let lookup_fuse3 table f1 f2 f3 =
+      try H3.find table.v4 (f1, f2, f3) with Not_found -> []
+
+    let lookup_fusen table f =
+      try Hn.find table.vn f with Not_found -> []
+
     let fuse2 table f1 f2 =
-      try
-        H2.find table.v3 (f1, f2)
-      with
-      | Not_found -> []
+      List.rev_append
+        (lookup_fusen table [f1; f2])
+        (lookup_fuse2 table f1 f2)
 
     let fuse3 table f1 f2 f3 =
-      try
-        H3.find table.v4 (f1, f2, f3)
-      with
-      | Not_found -> []
+      List.rev_append
+        (lookup_fusen table [f1; f2; f3])
+        (lookup_fuse3 table f1 f2 f3)
 
     let fusen table f =
-      try
-        Hn.find table.vn f
-      with
-      | Not_found -> []
+      lookup_fusen table f
 
-    let fuse table = function 
+    let fuse table = function
       | [] | [_] -> invalid_arg "Fusions().fuse"
       | [f1; f2] -> fuse2 table f1 f2
       | [f1; f2; f3] -> fuse3 table f1 f2 f3
@@ -133,13 +137,13 @@ module Fusions (F : Flavor) : Fusions with type f = F.f and type c = F.c =
    replace the entry, but augment it instead.  *)
 
     let add_fusion2 table f1 f2 fusions =
-      H2.add table.v3 (f1, f2) (fusions :: fuse2 table f1 f2)
+      H2.add table.v3 (f1, f2) (fusions :: lookup_fuse2 table f1 f2)
 
     let add_fusion3 table f1 f2 f3 fusions =
-      H3.add table.v4 (f1, f2, f3) (fusions :: fuse3 table f1 f2 f3)
+      H3.add table.v4 (f1, f2, f3) (fusions :: lookup_fuse3 table f1 f2 f3)
 
     let add_fusionn table f fusions =
-      Hn.add table.vn f (fusions :: fusen table f)
+      Hn.add table.vn f (fusions :: lookup_fusen table f)
 
 (* \begin{dubious}
      Do we need to take into account the charge conjugation
@@ -223,15 +227,98 @@ module Fusions (F : Flavor) : Fusions with type f = F.f and type c = F.c =
       ignore (List.fold_left (fun set f -> add_permute4 table v c set f)
                 F3'.empty (permute4 f1234))
 
+    module Fn' = Set.Make (Fn)
+
+    let permuten = function
+      | [] -> invalid_arg "Modeltools.permuten"
+      | f ->
+         List.map
+           (fun f' ->
+             match List.split f' with
+             | i :: i_list, f :: f_list ->
+                (f_list, F.conjugate f, i_list @ [i])
+             | _ -> failwith "Modeltools.permuten: impossible")
+           (Combinatorics.permute (ThoList.enumerate 1 f))
+
+    (* This is for debugging: it provides the same permutations
+       than the legacy version. *)
+    let permutations = function
+      | [f1; f2; f3] ->
+         [ [f1; f2; f3];
+           [f2; f1; f3];
+           [f2; f3; f1];
+           [f3; f2; f1];
+           [f3; f1; f2];
+           [f1; f3; f2] ]
+      | [f1; f2; f3; f4] ->
+         [ [f1; f2; f3; f4];
+           [f1; f2; f4; f3];
+           [f1; f3; f2; f4];
+           [f1; f3; f4; f2];
+           [f1; f4; f2; f3];
+           [f1; f4; f3; f2];
+           [f2; f1; f3; f4];
+           [f2; f1; f4; f3];
+           [f2; f3; f1; f4];
+           [f2; f3; f4; f1];
+           [f2; f4; f1; f3];
+           [f2; f4; f3; f1];
+           [f3; f1; f2; f4];
+           [f3; f1; f4; f2];
+           [f3; f2; f1; f4];
+           [f3; f2; f4; f1];
+           [f3; f4; f1; f2];
+           [f3; f4; f2; f1];
+           [f4; f1; f2; f3];
+           [f4; f1; f3; f2];
+           [f4; f2; f1; f3];
+           [f4; f2; f3; f1];
+           [f4; f3; f1; f2];
+           [f4; f3; f2; f1] ]
+      | flist -> Combinatorics.permute flist
+
+    let permutations = Combinatorics.permute
+
+    let permuten = function
+      | [] -> invalid_arg "Modeltools.permuten"
+      | f ->
+         List.map
+           (fun f' ->
+             match List.split (List.rev f') with
+             | i_list, f :: f_list ->
+             (* [Printf.eprintf
+                  "permuten: %s\n"
+                  (ThoList.to_string string_of_int (List.rev i_list));] *)
+                (List.rev f_list, F.conjugate f, List.rev i_list)
+             | _ -> failwith "Modeltools.permuten: impossible")
+           (permutations (ThoList.enumerate 1 f))
+
+    let add_permuten table v c set (f12__n, f, p) =
+      if Fn'.mem f12__n set then
+        set
+      else begin
+        add_fusionn table f12__n (f, Vn (v, p, c));
+        Fn'.add f12__n set
+      end
+
+    (* \begin{dubious}
+         We could apply any necessary permutations
+         to objects that are hidden inside of the vertex [v] here
+         instead of in [Fusion.stat_fuse] and [Colorize.fuse].
+       \end{dubious} *)
+    let add_vertexn table (f12__n, v, c) =
+      ignore
+        (List.fold_left
+           (fun set f -> add_permuten table v c set f)
+           Fn'.empty (permuten f12__n))
+
     let of_vertices (vlist3, vlist4, vlistn) =
-      match vlistn with
-      | [] ->
-          let table =
-            { v3 = H2.create 37; v4 = H3.create 37; vn = Hn.create 37 } in
-          List.iter (add_vertex3 table) vlist3;
-          List.iter (add_vertex4 table) vlist4;
-          table
-      | _ -> failwith "Models.Fusions.of_vertices: incomplete"
+      let table =
+        { v3 = H2.create 37; v4 = H3.create 37; vn = Hn.create 37 } in
+      List.iter (add_vertex3 table) vlist3;
+      List.iter (add_vertex4 table) vlist4;
+      List.iter (add_vertexn table) vlistn;
+      table
 
   end
 
@@ -321,6 +408,9 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
     let set_color, color =
       declare (fun f -> uninitialized "color")
 
+    let set_nc, nc =
+      declare (fun f -> uninitialized "nc")
+
     let set_pdg, pdg =
       declare (fun f -> uninitialized "pdg")
 
@@ -397,12 +487,19 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
       let conjugate = conjugate
     end)
 
-    let setup ~color ~pdg ~lorentz ~propagator ~width ~goldstone
+    let max_degree_of_vertices (v3, v4, vn) =
+      List.fold_left
+        (fun acc (p, _, _) -> max acc (List.length p))
+        (max (match v3 with [] -> 0 | _ -> 3) (match v4 with [] -> 0 | _ -> 4))
+        vn
+
+    let setup ~color ~nc ~pdg ~lorentz ~propagator ~width ~goldstone
         ~conjugate ~fermion ~vertices
         ~flavors ~parameters ~flavor_of_string ~flavor_to_string
         ~flavor_to_TeX ~flavor_symbol
         ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol =
       set_color color;
+      set_nc nc;
       set_pdg pdg;
       set_lorentz lorentz;
       set_propagator propagator;
@@ -410,8 +507,9 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
       set_goldstone goldstone;
       set_conjugate conjugate;
       set_fermion fermion;
-      let (_, v4, _) as v = vertices () in
-      set_max_degree (fun () -> match v4 with [] -> 3 | _ -> 4);
+      let v = vertices () in
+      let max_degree = max_degree_of_vertices v in
+      set_max_degree (fun () -> max_degree);
       set_vertices (fun () -> v);
       let table = F.of_vertices v in
       set_fuse2 (F.fuse2 table);
@@ -439,6 +537,7 @@ module Static (M : Model.T) =
     type constant = M.constant
     module Ch = M.Ch
     let color = M.color
+    let nc = M.nc
     let charges = M.charges
     let pdg = M.pdg
     let lorentz = M.lorentz
@@ -465,7 +564,7 @@ module Static (M : Model.T) =
     let constant_symbol = M.constant_symbol
     let options = M.options
     let init () = ()
-    let setup ~color ~pdg ~lorentz ~propagator ~width ~goldstone
+    let setup ~color ~nc ~pdg ~lorentz ~propagator ~width ~goldstone
         ~conjugate ~fermion ~vertices
         ~flavors ~parameters ~flavor_of_string ~flavor_to_string
         ~flavor_to_TeX ~flavor_symbol

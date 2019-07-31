@@ -73,84 +73,131 @@ module type Flow =
 
 module Flow : Flow
 
-(* \thocwmodulesection{Color Structure of Vertices } *)
+(* \thocwmodulesection{Vertex Color Flows} *)
 
-(* In order for the [Colorize]r to work on fusions, we must
-   permit to choose any permutation of the color tensors. *)
+(* \begin{dubious}
+     It might be beneficial, to use the color flow representation
+     here.  This will simplify the colorizer at the price of
+     some complexity in [UFO] or here.
+   \end{dubious} *)
 
-(* Since $f_{a_1a_2a_3}$ and $\epsilon_{i_1i_2i_3}$ are totally
-   antisymmetric, we can take care of the permutations with a sign.
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
 
-   For the other invariant tensors of rank $\le 3$, it suffices
-   to specify a pair, which is symmetric in the case of the adjoint
-   representation, but \emph{not} in the case of $N\otimes\bar N$.
-   We can however disambiguate the order in the latter case by
-   looking at the color representation of of the particles involved.  *)
+module type Arrow =
+  sig
+    type endpoint
+    val position : endpoint -> int
+    val relocate : (int -> int) -> endpoint -> endpoint
+    type tip = endpoint
+    type tail = endpoint
+    type ghost = endpoint
+    type ('tail, 'tip, 'ghost) t =
+      | Arrow of 'tail * 'tip
+      | Ghost of 'ghost
+    type free = (tail, tip, ghost) t
+    type factor
+    val free_to_string : free -> string
+    val factor_to_string : factor -> string
+    val map : (endpoint -> endpoint) -> free -> free
+    val to_left_factor : (endpoint -> bool) -> free -> factor
+    val to_right_factor : (endpoint -> bool) -> free -> factor
+    val of_factor : factor -> free
+    val negatives : free -> endpoint list
+    val is_free : factor -> bool
+    val is_ghost : free -> bool
+    val single : endpoint -> endpoint -> free
+    val double : endpoint -> endpoint -> free list
+    val ghost : endpoint -> free
+    val chain : int list -> free list
+    val cycle : int list -> free list
+    type merge =
+      | Match of factor
+      | Ghost_Match
+      | Loop_Match
+      | Mismatch
+      | No_Match
+    val merge : factor -> factor -> merge
+    module BinOps : sig
+      val (=>) : int -> int -> free
+      val (==>) : int -> int -> free list
+      val (<=>) : int -> int -> free list
+      val (>=>) : int * int -> int -> free
+      val (=>>) : int -> int * int -> free
+      val (>=>>) : int * int -> int * int -> free
+      val (??) : int -> free
+    end
+    module Test : Test
+  end
 
-(* TODO: support $d_{abc}$. *)
+module Arrow : Arrow
 
-type pair3 =
-  | P3_12 | P3_23 | P3_31
-  | P3_21 | P3_32 | P3_13
+module type Propagator =
+  sig
+    type cf_in = int
+    type cf_out = int
+    type t = W | I of cf_in | O of cf_out | IO of cf_in * cf_out | G
+    val to_string : t -> string
+  end
 
-type vertex3 =
-  | Legacy3 (* only for debugging *)
-  | Trivial3
-  | Delta3 of pair3 (* $\delta_{\bar\imath_2i_3}$ *)
-  | Delta8 of pair3 (* $\delta^{a_2a_3}$ *)
-  | T of pair3 (* $T^{a_1}_{\bar\imath_2i_3}$ *)
-  | F (* $f^{a_1a_2a_3}$ *)
-  | Eps (* $\epsilon_{i_2i_3i_4}$
-       and $\epsilon_{\bar\imath_2\bar\imath_3\bar\imath_4}$ *)
+module Propagator : Propagator
 
-(* For invariant tensors of rank $\le 4$, there are more
-   possibilities.  We can choose a pair, which is equivalent
-   to choosing two pairs, as long as the order is irrelevant
-   or can be recovered. *)
+module type Birdtracks =
+  sig
+    type t
+    val to_string : t -> string
+    val pp : Format.formatter -> t -> unit
+    val trivial : t -> bool
+    val is_null : t -> bool
+    val unit : t
+    val null : t
+    val two : t
+    val half : t
+    val third : t
+    val minus : t
+    val nc : t
+    val imag : t
+    val ints : (int * int) list -> t
+    val const : Algebra.Laurent.t -> t
+    val times : t -> t -> t
+    val multiply : t list -> t
+    val scale : Algebra.Q.t -> t -> t
+    val sum : t list -> t
+    val diff : t -> t -> t
+    val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
+    val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
+    module BinOps : sig
+      val ( +++ ) : t -> t -> t
+      val ( --- ) : t -> t -> t
+      val ( *** ) : t -> t -> t
+    end
+    val map : (int -> int) -> t -> t
+    val fuse : int -> t -> Propagator.t list -> (Algebra.QC.t * Propagator.t) list
+    module Test : Test
+  end
 
-type pair4 =
-  | P4_12
-  | P4_13
-  | P4_14
-  | P4_23
-  | P4_24
-  | P4_34
+module Birdtracks : Birdtracks
 
-(* We can choose a triplet.  *)
+module type SU3 =
+  sig
+    include Birdtracks
+    val delta3 : int -> int -> t
+    val delta8 : int -> int -> t
+    val delta8_loop : int -> int -> t
+    val gluon : int -> int -> t
+    val t : int -> int -> int -> t
+    val f : int -> int -> int -> t
+    val d : int -> int -> int -> t
+    val epsilon : int -> int -> int -> t
+    val epsilonbar : int -> int -> int -> t
+    val t6 : int -> int -> int -> t
+    val k6 : int -> int -> int -> t
+    val k6bar : int -> int -> int -> t
+  end
 
-type triplet4 =
-  | P4_123
-  | P4_234
-  | P4_341
-  | P4_412
+module SU3 : SU3
+module U3 : SU3
 
-(* We can choose a cyclic permutation of three indices, when the
-   choice of the first index is irrelevant by symmetry. *)
-
-type cyclic4 =
-  | C4_234
-  | C4_342
-  | C4_423
-
-type vertex4 =
-  | Legacy4 (* only for debugging *)
-  | Trivial4
-  | Delta13 of pair4 (* $\delta_{\bar\imath_3i_4}$ *)
-  | Delta18 of pair4 (* $\delta^{a_3a_4}$ *)
-  | Delta38 of pair4 (* $\delta_{\bar\imath_1i_2}\delta^{a_3a_4}$ *)
-  | Delta33 of cyclic4 (* $\delta_{\bar\imath_1i_2}\delta_{\bar\imath_3i_4}$ *)
-  | Delta88 of cyclic4 (* $\delta^{a_1a_2}\delta^{a_3a_4}$ *)
-  | TT of cyclic4 (* $T^a_{\bar\imath_1i_2}T^a_{\bar\imath_3i_4}$ *)
-  | FF of (int * int) * (int * int) (* $f^{aa_1a_2}f^{aa_3a_4}$ *)
-  | TF of pair4 (* $T^a_{\bar\imath_1i_2}f^{aa_3a_4}$ *)
-  | T4 of triplet4 (* $T^{a_2}_{\bar\imath_3i_4}$ *)
-  | F4 of triplet4 (* $f^{a_2a_3a_4}$ *)
-  | Eps4 of triplet4 (* $\epsilon_{i_2i_3i_4}$
-                    and $\epsilon_{\bar\imath_2\bar\imath_3\bar\imath_4}$ *)
-
-type vertex =
-  | Legacy (* only for debugging *)
-  | Trivial
-
-val canonicalize_ff :
-  (int * int) * (int * int) -> int * ((int * int) * (int * int))
+module Vertex : SU3

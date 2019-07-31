@@ -52,6 +52,11 @@ let splitn n l =
   else
     splitn' n [] l
 
+let split_last l =
+  match List.rev l with
+  | [] -> invalid_arg "ThoList.split_last []"
+  | ln :: l12_rev -> (List.rev l12_rev, ln)
+
 (* This is [splitn'] all over again, but without the exception. *)
 let rec chopn'' n l1_rev l2 =
   if n <= 0 then
@@ -75,6 +80,33 @@ let chopn n l =
     invalid_arg "ThoList.chopn n <= 0"
   else
     chopn' n [] l
+
+(* Find a member [a] in the list [l] and return the
+   cyclically permuted list with [a] as head. *)
+let cycle_until a l =
+  let rec cycle_until' acc = function
+    | [] -> raise Not_found
+    | a' :: l' as al' ->
+       if a' = a then
+         al' @ List.rev acc
+       else
+         cycle_until' (a' :: acc) l' in
+  cycle_until' [] l
+
+let rec cycle' i acc l =
+  if i <= 0 then
+    l @ List.rev acc
+  else
+    match l with
+    | [] -> invalid_arg "ThoList.cycle"
+    | a' :: l' as al' ->
+       cycle' (pred i) (a' :: acc) l'
+
+let cycle n l =
+  if n < 0 then
+    invalid_arg "ThoList.cycle"
+  else
+    cycle' n [] l
 
 let of_subarray n1 n2 a =
   let rec of_subarray' n1 n2 =
@@ -362,11 +394,81 @@ let complement l1 = function
 let to_string a2s alist =
   "[" ^ String.concat "; " (List.map a2s alist) ^ "]"
 
+let random_int_list imax n =
+  let imax_plus = succ imax in
+  Array.to_list (Array.init n (fun _ -> Random.int imax_plus))
 
 module Test =
   struct
 
     open OUnit
+
+    let suite_split =
+      "split*" >:::
+	[ "split_last []" >::
+	    (fun () ->
+	      assert_raises
+                (Invalid_argument "ThoList.split_last []")
+                (fun () -> split_last []));
+          "split_last [1]" >::
+	    (fun () ->
+	      assert_equal
+                ([], 1)
+                (split_last [1]));
+          "split_last [2;3;1;4]" >::
+	    (fun () ->
+	      assert_equal
+                ([2;3;1], 4)
+                (split_last [2;3;1;4])) ]
+
+    let test_list = random_int_list 1000 100
+
+    let assert_equal_int_list =
+      assert_equal ~printer:(to_string string_of_int)
+
+    let suite_cycle =
+      "cycle_until" >:::
+	[ "cycle (-1) [1;2;3]" >::
+	    (fun () ->
+	      assert_raises
+                (Invalid_argument "ThoList.cycle")
+                (fun () -> cycle 4 [1;2;3]));
+          "cycle 4 [1;2;3]" >::
+	    (fun () ->
+	      assert_raises
+                (Invalid_argument "ThoList.cycle")
+                (fun () -> cycle 4 [1;2;3]));
+          "cycle 42 [...]" >::
+	    (fun () ->
+              let n = 42 in
+	      assert_equal_int_list
+                (tln n test_list @ hdn n test_list)
+                (cycle n test_list));
+          "cycle_until 1 []" >::
+	    (fun () ->
+	      assert_raises
+                (Not_found)
+                (fun () -> cycle_until 1 []));
+          "cycle_until 1 [2;3;4]" >::
+	    (fun () ->
+	      assert_raises
+                (Not_found)
+                (fun () -> cycle_until 1 [2;3;4]));
+          "cycle_until 1 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal
+                [1;2;3;4]
+                (cycle_until 1 [1;2;3;4]));
+          "cycle_until 3 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal
+                [3;4;1;2]
+                (cycle_until 3 [3;4;1;2]));
+          "cycle_until 4 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal
+                [4;1;2;3]
+                (cycle_until 4 [4;1;2;3])) ]
 
     let suite_alist_of_list =
       "alist_of_list" >:::
@@ -393,7 +495,9 @@ module Test =
 
     let suite =
       "ThoList" >:::
-	[suite_alist_of_list;
+	[suite_split;
+         suite_cycle;
+         suite_alist_of_list;
          suite_complement]
 
   end

@@ -1,0 +1,13 @@
+# fermi_UFO.list --
+# ----------------------------------------------------------------------
+#      thr  abs_thr    n roots model i j eps process ...
+# ----------------------------------------------------------------------
+eeee   0.70   1E-11 1000  1000    SM 1 2  -1 scatter e- e- -> e- e-
+eeee   0.75   1E-11 1000  1000    SM 3 4  -1 scatter e- e- -> e- e-
+eeeea  0.60   1E-11 1000  1000    SM 1 2  -1 scatter e- e- -> e- e- a
+eeeea  0.75   1E-11 1000  1000    SM 3 4  -1 scatter e- e- -> e- e- a
+eeeeaa 0.70   1E-11 1000  1000    SM 1 2  -1 scatter e- e- -> e- e- a a
+eeeeaa 0.75   1E-11 1000  1000    SM 3 4  -1 scatter e- e- -> e- e- a a
+eeeeaa 0.75   1E-11 1000  1000    SM 5 6   1 scatter e- e- -> e- e- a a
+eeeeee 0.75   1E-11 1000  1000    SM 3 4  -1 scatter e+ e- -> e+ e+ e- e-
+eeeeee 0.75   1E-11 1000  1000    SM 5 6  -1 scatter e+ e- -> e+ e+ e- e-

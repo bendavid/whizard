@@ -111,12 +111,11 @@ let _ =
      let spins = List.rev_map lorentz_of_string !spins in
      let buffer = Buffer.create 1024 in
      print_endline (UFOx.Lorentz.to_string t);
-     print_endline
-       (UFO_targets.Lorentz_Fusion.to_string
-          (UFO_targets.Lorentz_Fusion.parse spins t));
+     let t' = UFO_Lorentz.parse spins t in
+     print_endline (UFO_Lorentz.to_string t');
      UFO_targets.Fortran.lorentz
        (formatter_of_buffer buffer)
-       "foo" (Array.of_list spins) t;
+       "foo" (Array.of_list spins) t';
      printf "module omega_amplitude"; nl ();
      printf "  use kinds"; nl ();
      printf "  use omega95"; nl ();

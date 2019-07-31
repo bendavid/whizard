@@ -1,0 +1,15 @@
+#! /bin/sh
+########################################################################
+# This script is for developers only and needs not to be portable.
+# This script takes TO's directory structure for granted.
+########################################################################
+# tl;dr : don't try this at home, kids ;)
+########################################################################
+
+build_root=/home/ohl/physics/whizard/_build-4.07.1/
+build_root=/home/ohl/physics/whizard/_build/
+build_dir=$build_root/omega/src
+init_file=omega.ocamlinit
+
+( cd $build_dir; make omega_core.cma ) || exit 1
+exec utop -init $init_file -I $build_dir omega_core.cma "$@"
