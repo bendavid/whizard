@@ -8652,7 +8652,7 @@ The [[results]] object records results, broken down in passes and iterations.
      class(mci_t), allocatable :: mci
      type(process_counter_t) :: counter
      type(integration_results_t) :: results
-     logical :: negative_weights
+     logical :: negative_weights = .false.
      logical :: combined_integration = .false.
      integer :: real_partition_type = REAL_FULL
      integer :: associated_real_component = 0
