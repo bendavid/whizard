@@ -76,10 +76,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
         "openmp", Arg.Set openmp,
           "activate parallel computation of amplitude with OpenMP"]
 
-(* This is part of OCaml 4.01. *)
-    let (|>) fn x = x fn
-    let (@@) fn x = fn x
-
 (* Integers encode the opcodes (operation codes). *)
     let ovm_ADD_MOMENTA = 1
     let ovm_CALC_BRAKET = 2

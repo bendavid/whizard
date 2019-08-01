@@ -4,8 +4,17 @@ Use svn log to see detailed changes.
 
 	Version 2.8.0
 
-2019-07-31
+2019-08-07
 	RELEASE: version 2.8.0
+
+2019-07-31
+	Complete WHIZARD UFO interface:
+	- general Lorentz structures
+	- matrix element support for general color factors
+	- missing features: Majorana fermions and SLHA
+
+2019-07-20
+	Make WHIZARD compatible with OCaml 4.08.0+
 
 2019-07-19
 	Fix version testing for LHAPDF 6.2.3 and newer

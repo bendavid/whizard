@@ -287,9 +287,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.7 \\
+%HEVEA WHIZARD 2.8 \\
 %BEGIN LATEX
- \ttt{\huge WHIZARD 2.7} \\[\baselineskip]
+ \ttt{\huge WHIZARD 2.8} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -682,8 +682,8 @@ of \whizard:
   RAMBO PS option; \\
   & & \quad gfortran 5.0+ necessary
   \\\hline
-  2.8.0 & 05/2019 & Complete UFO support, general Lorentz structures,
-  n-point vertices
+  2.8.0 & 08/2019 & (Almost) complete UFO support, general Lorentz
+  structures, n-point vertices
   \\\hline
 \end{tabular}
 \end{center}
@@ -801,10 +801,10 @@ You need the additional prerequisites:
   details).
 \item
   The \ocaml\ system.  \ocaml\ is a functional and object-oriented
-  language.  Version 3.12 or later is required to compile all components
-  of \whizard. The package is freely available either as a debian/RPM package
-  on your system (it might be necessary to install it from the usual
-  repositories), or you can obtain it directly from
+  language.  Version 4.02.3 or newer is required to compile all
+  components of \whizard. The package is freely available either as a
+  debian/RPM package on your system (it might be necessary to install
+  it from the usual repositories), or you can obtain it directly from
   \begin{quote}
     \url{http://caml.inria.fr}
   \end{quote}
@@ -814,7 +814,9 @@ You need the additional prerequisites:
     compiler from 3.12.0 broke backwards compatibility. Therefore,
     versions of \oMega/\whizard\ up to 2.0.2 only compile with older
     versions (3.11.x works). This has been fixed in versions
-    2.0.3 and later. See also Sec.~\ref{sec:buildproblems}.}.
+    2.0.3 and later. See also
+    Sec.~\ref{sec:buildproblems}. \whizard\ versions up to 2.7.1 were
+    still backwards compatible with \ocaml\ 3.12.0}.
 \end{itemize}
 The following optional external packages are not required, but used
 for certain purposes.  Make sure to check whether you will need any of
@@ -1464,7 +1466,7 @@ order.  You may run \ttt{configure --help} for a listing; only the
 last part of this long listing is specific for the \whizard\ system.
 Here is an example:
 \begin{interaction}
-  configure  FC=gfortran-4.8  FCFLAGS="-g -O3"  --enable-fc-openmp
+  configure  FC=gfortran-5.4  FCFLAGS="-g -O3"  --enable-fc-openmp
 \end{interaction}
 
 The most important options are

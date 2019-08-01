@@ -12,7 +12,7 @@ we recommend that you create a separate build directory and work from there.
 WHIZARD is Free Software and the sources can be obtained from 
 the HepForge repository:
 
-  http://projects.hepforge.org/whizard
+  https://whizard.hepforge.org
 
 The command
 
@@ -24,7 +24,7 @@ where X.X is the current version (and sub-version) number.
 Prerequisites are:
 
  - Make
- - Objective Caml compiler (version 3.12 or higher)
+ - Objective Caml compiler (version 4.02.3 or higher)
  - Fortran 2003/2008 compiler
  - C/C++ (for PYTHIA8/FastJet/HepMC/LHAPDF/LCIO interfaces)
 
@@ -52,24 +52,24 @@ WHIZARD:
    from http://home.thep.lu.se/~torbjorn/Pythia.html
 
 -- LHAPDF for proton, pion and photon structure functions. 
-   You can get it from: http://projects.hepforge.org/lhapdf
+   You can get it from: https://lhapdf.hepforge.org
 
 -- HOPPET for perturbative evolution and matching of PDFs.
-   You can get it from: http://projects.hepforge.org/hoppet
+   You can get it from: https://hoppet.hepforge.org
 
 -- FastJet for jet clustering. 
    You can get it from: http://fastjet.fr/
 
 -- GoSAM/Ninja/FORM/Qgraf for NLO matrix elements.
-   You can get GoSAM/Ninja from: http://gosam.hepforge.org/
+   You can get GoSAM/Ninja from: https://gosam.hepforge.org/
    You can get Qgraf from: http://cfif.ist.utl.pt/~paulo/qgraf.html
    You can get FORM from: http://www.nikhef.nl/~form/
 
 -- OpenLoops for NLO matrix elements.
-   Available from: http://openloops.hepforge.org/
+   Available from: https://openloops.hepforge.org/
 
 -- Recola for NLO matrix elements.
-   Available from: http://recola.hepforge.org/
+   Available from: https://recola.hepforge.org/
 
 -- LoopTools for one-loop functions (for the top threshold)
    You can get it from: http://www.feynarts.de/looptools/
