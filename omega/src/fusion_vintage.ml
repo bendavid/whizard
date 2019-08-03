@@ -1,4 +1,4 @@
-(* fusion.ml --
+(* fusion_vintage.ml --
 
    Copyright (C) 1999-2019 by
 
@@ -1540,7 +1540,7 @@ i*)
         stat_fuse
           (PT.of2_kludge wf1' (stat_fuse wfs' (M.conjugate (A.flavor wf1))))
           (A.flavor wf1) in
-      Printf.eprintf "Fusion.stat_keystone: %s\n" (S.stat_to_string stat);
+      (*i Printf.eprintf "Fusion.stat_keystone: %s\n" (S.stat_to_string stat); i*)
       stat_sign stat
         * PT.fold_left (fun acc wf -> acc * stat_sign wf) (stat_sign wf1') wfs'
 
@@ -2426,11 +2426,11 @@ i*)
 
     let stat_fuse s1 s2 f =
       let stat = stat_fuse s1 s2 f in
-      Printf.eprintf
-        "Fusion.Stat_Majorana.stat_fuse_legacy: %s <- %s -> %s\n"
-        (M.flavor_to_string f)
-        (ThoList.to_string stat_to_string [s1; s2])
-        (stat_to_string stat);
+      (*i Printf.eprintf
+           "Fusion.Stat_Majorana.stat_fuse_legacy: %s <- %s -> %s\n"
+           (M.flavor_to_string f)
+           (ThoList.to_string stat_to_string [s1; s2])
+           (stat_to_string stat); i*)
       stat
 
 (*i These are the old Impossible raising rules. We keep them to ask Ohl
