@@ -50,15 +50,17 @@ let char = upper | lower
 let word = char | digit | '_'
 let white = [' ' '\t']
 let esc = ['\'' '"' '\\']
+let crlf = ['\r' '\n']
+let not_crlf = [^'\r' '\n']
 
 rule token = parse
     white             { token lexbuf }     (* skip blanks *)
-  | '#' [^'\n']*      { token lexbuf }     (* skip comments *)
-  | '\n'              { new_line lexbuf; token lexbuf }
-  | "from" [^'\n']*   { token lexbuf }     (* skip imports *)
-  | "import" [^'\n']* { token lexbuf }     (* skip imports (for now) *)
-  | "try:" [^'\n']*   { token lexbuf }     (* skip imports (for now) *)
-  | "except" [^'\n']* { token lexbuf }     (* skip imports (for now) *)
+  | '#' not_crlf*      { token lexbuf }     (* skip comments *)
+  | crlf+              { new_line lexbuf; token lexbuf }
+  | "from" not_crlf*   { token lexbuf }     (* skip imports *)
+  | "import" not_crlf* { token lexbuf }     (* skip imports (for now) *)
+  | "try:" not_crlf*   { token lexbuf }     (* skip imports (for now) *)
+  | "except" not_crlf* { token lexbuf }     (* skip imports (for now) *)
   | "pass"            { token lexbuf }     (* skip imports (for now) *)
   | '('        	      { LPAREN }
   | ')'        	      { RPAREN }
