@@ -9,14 +9,15 @@
 #include "HepMC3/Units.h"
 #include "HepMC3/ReaderAscii.h"
 #include "HepMC3/WriterAscii.h"
+#include "HepMC3/ReaderAsciiHepMC2.h"
+#include "HepMC3/WriterAsciiHepMC2.h"
 #include "HepMC3_WHIZARD_Polarization.h"
 
 using namespace HepMC3;
 
 // Tell the caller that this is the true HepMC library
-// For the moment this is no working HepMC, so returning false
 extern "C" bool hepmc_available() {
-  return false;
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -57,58 +58,84 @@ double Polarization::valid_phi( double phi ) {
 //////////////////////////////////////////////////////////////////////////
 // GenEvent functions
 
-// The process ID is now deprecated in HepMC3
 extern "C" GenEvent* new_gen_event( int proc_id, int event_id ) {
   GenEvent* evt = new GenEvent(Units::GEV,Units::MM);
   evt->set_event_number(event_id);
+  evt->add_attribute("signal_process_id",
+  		     make_shared<IntAttribute>( proc_id ));
   return evt;
 }
 
+extern "C" int gen_event_get_n_particles( GenEvent* evt) {
+  return evt->particles().size();
+}
+
+extern "C" int gen_event_get_n_beams( GenEvent* evt) {
+  return evt->beams().size();
+}
+
+// Deletion leads to a segmentation fault in the hepmc_interface unit test (?)
 extern "C" void gen_event_delete( GenEvent* evt) {
-  delete evt;
+  // delete evt;
 }
 
 // This seems also deprecated
 extern "C" void gen_event_print( GenEvent* evt ) {
+  Print::listing (*evt);
 }
 
 extern "C" int gen_event_event_number( GenEvent* evt ) {
   return evt->event_number();
 }
 
-// The following two are deprecated
+// The following two are no standard attributes of the HepMC3
+// event record any more
 extern "C" void gen_event_set_signal_process_id( GenEvent* evt, int id ) {
+  evt->add_attribute("signal_process_id",
+		     make_shared<IntAttribute>( id ));
 }
 
 extern "C" int gen_event_signal_process_id( GenEvent* evt ) {
-  return 0;
+  shared_ptr<IntAttribute> A_signal_process_id =
+    evt->attribute<IntAttribute>("signal_process_id");
+  int signal_process_id=A_signal_process_id?(A_signal_process_id->value()):0;
+  return signal_process_id;
 }
  
 extern "C" void gen_event_set_event_scale( GenEvent* evt, double scale ) {
-  evt->add_attribute("Scale",
+  evt->add_attribute("event_scale",
 		     make_shared<DoubleAttribute>( scale ));
 }
 
 extern "C" double gen_event_event_scale( GenEvent* evt) {
-  return evt->attribute<DoubleAttribute>("Scale")->value();
+  shared_ptr<DoubleAttribute> A_event_scale =
+    evt->attribute<DoubleAttribute>("event_scale");
+  double event_scale=A_event_scale?(A_event_scale->value()):0.0;
+  return event_scale;
 }
 
 extern "C" void gen_event_set_alpha_qcd( GenEvent* evt, double a ) {
-  evt->add_attribute("AlphaQCD",
+  evt->add_attribute("alphaQCD",
 		     make_shared<DoubleAttribute>( a ));
 }
 
 extern "C" double gen_event_alpha_qcd( GenEvent* evt) {
-  return evt->attribute<DoubleAttribute>("AlphaQCD")->value();
+  shared_ptr<DoubleAttribute> A_alpha_qcd = 
+    evt->attribute<DoubleAttribute>("alphaQCD");
+  double alpha_qcd=A_alpha_qcd?(A_alpha_qcd->value()):0.0;
+  return alpha_qcd;
 }
 
 extern "C" void gen_event_set_alpha_qed( GenEvent* evt, double a ) {
-  evt->add_attribute("AlphaEM",
+  evt->add_attribute("alphaQED",
 		     make_shared<DoubleAttribute>( a ));
 }
 
 extern "C" double gen_event_alpha_qed( GenEvent* evt) {
-  return evt->attribute<DoubleAttribute>("AlphaQED")->value();
+  shared_ptr<DoubleAttribute> A_alpha_qed = 
+    evt->attribute<DoubleAttribute>("alphaQED");
+  double alpha_qed=A_alpha_qed?(A_alpha_qed->value()):0.0;
+  return alpha_qed;
 }
 
 extern "C" void gen_event_clear_weights( GenEvent* evt ) {
@@ -131,7 +158,7 @@ extern "C" double gen_event_weight( GenEvent* evt, int i ) {
   }
 }
 
-extern "C" void gen_event_add_vertex( GenEvent* evt, GenVertexPtr v ) {
+extern "C" void gen_event_add_vertex( GenEvent* evt, GenVertex* v ) {
   evt->add_vertex( v );
 }
 
@@ -154,9 +181,9 @@ extern "C" void gen_event_set_beam_particles
 
 extern "C" void gen_event_set_cross_section
 ( GenEvent* evt, double xs, double xs_err) {
-  GenCrossSectionPtr xsec;
+  shared_ptr<GenCrossSection> xsec = make_shared<GenCrossSection>();
   xsec->set_cross_section (xs, xs_err);
-  // evt->set_cross_section( xsec );
+  evt->set_cross_section( xsec );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -196,7 +223,7 @@ extern "C" GenParticlePtr event_particle_const_iterator_get
 // GenVertex functions
 
 extern "C" GenVertex* new_gen_vertex() {
-  return new GenVertex();
+  return new GenVertex( FourVector::ZERO_VECTOR() );
 }
 
 extern "C" GenVertex* new_gen_vertex_pos( FourVector* pos ) {
@@ -278,6 +305,10 @@ extern "C" GenParticlePtr vertex_particles_in_const_iterator_get
   new GenParticlePtr();
 }
 
+extern "C" GenParticle* vertex_get_nth_particle_in( GenVertex* vtx, int n) {
+  return vtx->particles_in()[n-1].get();
+}
+
 //////////////////////////////////////////////////////////////////////////
 // GenVertex iterator over out-particles
 //  iterators do not exist anymore in HepMCv3
@@ -313,6 +344,18 @@ extern "C" GenParticlePtr vertex_particles_out_const_iterator_get
   new GenParticlePtr();
 }
 
+extern "C" GenParticle* vertex_get_nth_particle_out( GenVertex* vtx, int n) {
+  return vtx->particles_out()[n-1].get();
+}
+
+extern "C" GenParticle* gen_event_get_nth_particle( GenEvent* evt, int n) {
+  return evt->particles()[n-1].get();
+}
+
+extern "C" int gen_event_get_nth_beam( GenEvent* evt, int n) {
+  return evt->beams()[n-1].get()->id();
+}
+
 //////////////////////////////////////////////////////////////////////////
 // GenParticle functions
  
@@ -320,31 +363,28 @@ extern "C" GenParticle* new_gen_particle
 (FourVector* momentum, int pdg_id, int status) {
   return new GenParticle( *momentum, pdg_id, status );
 }
- 
+   
 extern "C" void gen_particle_delete( GenParticle* prt ) {
   delete prt;
 }
 
 extern "C" void gen_particle_set_flow
 ( GenParticle* prt, int code_index, int code ) {
-  prt->add_attribute("Code_index", 
-		     make_shared<IntAttribute>( code_index ));
-  prt->add_attribute("Code", 
-		     make_shared<IntAttribute>( code ));
+  prt->add_attribute("flow"+to_string(code_index), make_shared<IntAttribute>( code ));
 }
 
 extern "C" void gen_particle_set_polarization
 ( GenParticle* prt, Polarization* pol) {
   double theta = pol->theta ();
   double phi = pol->phi ();
-  prt->add_attribute("Pol_theta",
+  prt->add_attribute("theta",
 		     make_shared<DoubleAttribute>( theta ));
-  prt->add_attribute("Pol_phi",
+  prt->add_attribute("phi",
 		     make_shared<DoubleAttribute>( phi ));
 }
 
 extern "C" int gen_particle_barcode( GenParticle* prt ) {
-  return 0;
+  return prt->id();
 }
 
 extern "C" FourVector* gen_particle_momentum( GenParticle* prt ) {
@@ -359,6 +399,14 @@ extern "C" int gen_particle_pdg_id( GenParticle* prt ) {
   return prt->pdg_id();
 }
 
+extern "C" int gen_particle_get_n_children( GenParticle* prt ) {
+  return prt->children().size();
+}
+
+extern "C" int gen_particle_get_n_parents( GenParticle* prt ) {
+  return prt->parents().size();
+}
+
 extern "C" int gen_particle_status( GenParticle* prt ) {
   return prt->status();
 }
@@ -369,22 +417,29 @@ extern "C" bool gen_particle_is_beam( GenParticle* prt ) {
   return false;
 }
 
-extern "C" GenVertexPtr gen_particle_production_vertex( GenParticle* prt ) {
-  return prt->production_vertex();
+extern "C" GenVertex* gen_particle_production_vertex( GenParticle* prt ) {
+  return prt->production_vertex().get();
 }
 
-extern "C" GenVertexPtr gen_particle_end_vertex( GenParticle* prt ) {
-  return prt->end_vertex();
+extern "C" GenVertex* gen_particle_end_vertex( GenParticle* prt ) {
+  return prt->end_vertex().get();
 }
 
 extern "C" Polarization* gen_particle_polarization( GenParticle* prt ) {
-  double theta = prt->attribute<DoubleAttribute>("Pol_theta")->value();
-  double phi = prt->attribute<DoubleAttribute>("Pol_phi")->value();
+  shared_ptr<DoubleAttribute> A_theta =
+    prt->attribute<DoubleAttribute>("theta");
+  shared_ptr<DoubleAttribute> A_phi =
+    prt->attribute<DoubleAttribute>("phi");
+  double theta=A_theta?(A_theta->value()):0.0;
+  double phi=A_phi?(A_phi->value()):0.0;
   return new Polarization(theta, phi);
 }
 
 extern "C" int gen_particle_flow( GenParticle* prt, int code_index ) {
-  return prt->attribute<IntAttribute>("Code_index")->value();
+  shared_ptr<IntAttribute> A_flow =
+    prt->attribute<IntAttribute>("flow"+std::to_string(code_index));
+  int flow=A_flow?(A_flow->value()):0;
+  return flow;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -441,26 +496,62 @@ extern "C" double polarization_phi( Polarization* pol ) {
 //////////////////////////////////////////////////////////////////////////
 /// // IO_GenEvent functions
 
-extern "C" WriterAscii* new_io_gen_event_in( char* filename ) {
+extern "C" WriterAscii* new_io_gen_event_out( char* filename ) {
   return new WriterAscii( filename );
 }
 
-extern "C" ReaderAscii* new_io_gen_event_out( char* filename ) {
+extern "C" ReaderAscii* new_io_gen_event_in( char* filename ) {
   return new ReaderAscii( filename);
 }
 
-extern "C" void io_gen_event_delete( ReaderAscii* iostream ) {
+extern "C" WriterAsciiHepMC2* new_io_gen_event_out_hepmc2( char* filename ) {
+  return new WriterAsciiHepMC2( filename );
+}
+
+extern "C" ReaderAsciiHepMC2* new_io_gen_event_in_hepmc2( char* filename ) {
+  return new ReaderAsciiHepMC2( filename);
+}
+
+extern "C" void io_gen_event_delete( WriterAscii* iostream ) {
+  delete iostream;
+}
+
+extern "C" void io_gen_event_delete_hepmc2( WriterAsciiHepMC2* iostream ) {
   delete iostream;
 }
 
 extern "C" void io_gen_event_write_event
-( WriterAscii* iostream, const GenEvent* evt) {
-  // iostream->write_event( evt);
+( WriterAscii* writer, const GenEvent* evt) {
+  writer->write_event( *evt);
 }
 
 extern "C" bool io_gen_event_read_event
-( ReaderAscii* iostream, GenEvent* evt) {
-  // return iostream::read_event( evt);
+( ReaderAscii* reader, GenEvent* evt) {
+  bool ok;
+  ok = reader->read_event( *evt);
+  if (reader->failed()) {
+    return false;
+  }
+  else {
+    return ok;
+  }
+}
+
+extern "C" void io_gen_event_write_event_hepmc2
+( WriterAsciiHepMC2* writer, const GenEvent* evt) {
+  writer->write_event( *evt);
+}
+
+extern "C" bool io_gen_event_read_event_hepmc2
+( ReaderAsciiHepMC2* reader, GenEvent* evt) {
+  bool ok;
+  ok = reader->read_event( *evt);
+  if (reader->failed()) {
+    return false;
+  }
+  else {
+    return ok;
+  }
 }
 
 

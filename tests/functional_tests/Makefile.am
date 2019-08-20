@@ -545,18 +545,16 @@ analyze_6.run: analyze_6_check
 endif
 
 if HEPMC_AVAILABLE
-if !HEPMC_IS_VERSION3
 TESTS_SRC += $(hepmc_6_rd_SOURCES)
 noinst_PROGRAMS += hepmc_6_rd
 if HEPMC_IS_VERSION3
-hepmc_6_rd_SOURCES = hepmc_6_v3_rd.cpp
+hepmc_6_rd_SOURCES = hepmc3_6_rd.cpp
 else
-hepmc_6_rd_SOURCES = hepmc_6_v2_rd.cpp
+hepmc_6_rd_SOURCES = hepmc2_6_rd.cpp
 endif
 hepmc_6_rd_CXXFLAGS = $(HEPMC_INCLUDES) $(AM_CXXFLAGS)
 hepmc_6_rd_LDADD = $(LDFLAGS_HEPMC)
 hepmc_6.run: hepmc_6_rd
-endif
 endif
 
 if LCIO_AVAILABLE
@@ -586,7 +584,8 @@ susyhit.in: $(top_builddir)/share/tests/functional_tests/susyhit.in
 
 BUILT_SOURCES = \
     TESTFLAG  \
-    HEPMC_FLAG \
+    HEPMC2_FLAG \
+    HEPMC3_FLAG \
     LCIO_FLAG \
     FASTJET_FLAG \
     LHAPDF5_FLAG \
@@ -614,11 +613,14 @@ if FASTJET_AVAILABLE
 	touch $@
 endif
 
-HEPMC_FLAG:
-if HEPMC_AVAILABLE
-if !HEPMC_IS_VERSION3
+HEPMC2_FLAG:
+if HEPMC2_AVAILABLE
 	touch $@
 endif
+
+HEPMC3_FLAG:
+if HEPMC3_AVAILABLE
+	touch $@
 endif
 
 LCIO_FLAG:
@@ -726,9 +728,9 @@ clean-macosx:
 clean-local: clean-macosx
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG MPI_FLAG RECOLA_FLAG
-	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
-	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG LHAPDF5_FLAG
-	rm -f LHAPDF6_FLAG 
+	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC2_FLAG HEPMC3_FLAG
+	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG 
+	rm -f LHAPDF5_FLAG LHAPDF6_FLAG 
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out *_check.out
 	rm -f core* stdhep_rd

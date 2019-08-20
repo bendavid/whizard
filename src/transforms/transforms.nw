@@ -13527,6 +13527,7 @@ which is defined here.
     integer :: checkpoint
     logical :: show_process, show_transforms, show_decay, verbose, pacified
     logical :: dump_weights, dump_compressed, dump_summary, dump_screen
+    logical :: hepmc2_mode
     keep_beams = &
          var_list%get_lval (var_str ("?keep_beams"))
     keep_remnants = &
@@ -13604,9 +13605,12 @@ which is defined here.
                var_list%get_lval (var_str ("?hepmc_output_cross_section"))
           extension_hepmc = &
                var_list%get_sval (var_str ("$extension_hepmc"))
+          hepmc2_mode = &
+               var_list%get_lval (var_str ("?hepmc3_hepmc2mode"))
           call eio%set_parameters (recover_beams, &
                use_alphas_from_file, use_scale_from_file, &
-               extension_hepmc, output_cross_section)
+               extension_hepmc, output_cross_section, &
+               hepmc2_mode = hepmc2_mode)
        end select
     case ("lcio")
        allocate (eio_lcio_t :: eio)

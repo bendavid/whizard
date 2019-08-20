@@ -339,6 +339,8 @@ module system_dependencies
   ! Misc
   logical, parameter :: LHAPDF5_AVAILABLE = @LHAPDF5_AVAILABLE_FLAG@
   logical, parameter :: LHAPDF6_AVAILABLE = @LHAPDF6_AVAILABLE_FLAG@
+  logical, parameter :: HEPMC2_AVAILABLE = @HEPMC2_AVAILABLE_FLAG@
+  logical, parameter :: HEPMC3_AVAILABLE = @HEPMC3_AVAILABLE_FLAG@
   logical, parameter :: HOPPET_AVAILABLE = @HOPPET_AVAILABLE_FLAG@
 
   logical, parameter :: PYTHIA6_AVAILABLE = @PYTHIA6_AVAILABLE_FLAG@

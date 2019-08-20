@@ -11,6 +11,7 @@
    Alpha_s from file = F
    Scale from file   = F
    File extension    = 'hepmc'
+   HepMC2 compat.    = F
    Numerical process IDs:
      1: 42
 
@@ -34,6 +35,7 @@ HepMC::IO_GenEvent-END_EVENT_LISTING
    Alpha_s from file = F
    Scale from file   = F
    File extension    = 'hepmc'
+   HepMC2 compat.    = F
 
 * Cleanup
 

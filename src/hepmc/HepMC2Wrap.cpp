@@ -21,6 +21,19 @@ extern "C" GenEvent* new_gen_event( int proc_id, int event_id ) {
   return evt;
 }
 
+extern "C" int gen_event_get_n_particles( GenEvent* evt) {
+  int n_tot = 0;
+  for ( GenEvent::particle_iterator it = evt->particles_begin();
+	it != evt->particles_end(); ++it )
+    { n_tot++;
+	}
+  return n_tot;
+}
+
+extern "C" int gen_event_get_n_beams( GenEvent* evt) {
+  return 0;
+}
+
 extern "C" void gen_event_delete( GenEvent* evt) {
   delete evt;
 }
@@ -234,6 +247,11 @@ extern "C" GenParticle* vertex_particles_in_const_iterator_get
   return *(*it);
 }
 
+// This does not exist for HepMC2, we just return the first ParticlePtr
+extern "C" GenParticle* vertex_get_nth_particle_in( GenVertex::particles_in_const_iterator* it, int n) {
+  return *(*it);
+}
+
 //////////////////////////////////////////////////////////////////////////
 // GenVertex iterator over out-particles
 
@@ -268,6 +286,20 @@ extern "C" bool vertex_particles_out_const_iterator_is_valid
 extern "C" GenParticle* vertex_particles_out_const_iterator_get
 ( GenVertex::particles_out_const_iterator* it ) {
   return *(*it);
+}
+
+// This does not exist for HepMC2, we just return the first ParticlePtr
+extern "C" GenParticle* vertex_get_nth_particle_out( GenVertex::particles_out_const_iterator* it, int n) {
+  return *(*it);
+}
+
+// This does not exist for HepMC2, we just return the first ParticlePtr
+extern "C" GenParticle* gen_event_get_nth_particle( GenVertex::particles_out_const_iterator* it, int n) {
+  return *(*it);
+}
+
+extern "C" int gen_event_get_nth_beam( GenEvent* evt, int n) {
+  return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -306,6 +338,14 @@ extern "C" double gen_particle_generated_mass( GenParticle* prt ) {
 
 extern "C" int gen_particle_pdg_id( GenParticle* prt ) {
   return prt->pdg_id();
+}
+
+extern "C" int gen_particle_get_n_children( GenParticle* prt ) {
+  return 0;
+}
+
+extern "C" int gen_particle_get_n_parents( GenParticle* prt ) {
+  return 0;
 }
 
 extern "C" int gen_particle_status( GenParticle* prt ) {
@@ -395,7 +435,19 @@ extern "C" IO_GenEvent* new_io_gen_event_out( char* filename ) {
   return new IO_GenEvent( filename, std::ios::out );
 }
 
+extern "C" IO_GenEvent* new_io_gen_event_in_hepmc2( char* filename ) {
+  return new IO_GenEvent( filename, std::ios::in );
+}
+
+extern "C" IO_GenEvent* new_io_gen_event_out_hepmc2( char* filename ) {
+  return new IO_GenEvent( filename, std::ios::out );
+}
+
 extern "C" void io_gen_event_delete( IO_GenEvent* iostream ) {
+  delete iostream;
+}
+
+extern "C" void io_gen_event_delete_hepmc2( IO_GenEvent* iostream ) {
   delete iostream;
 }
 
@@ -405,6 +457,16 @@ extern "C" void io_gen_event_write_event
 }
 
 extern "C" bool io_gen_event_read_event
+( IO_GenEvent* iostream, GenEvent* evt) {
+  return iostream->fill_next_event( evt);
+}
+
+extern "C" void io_gen_event_write_event_hepmc2
+( IO_GenEvent* iostream, const GenEvent* evt) {
+  iostream->write_event( evt);
+}
+
+extern "C" bool io_gen_event_read_event_hepmc2
 ( IO_GenEvent* iostream, GenEvent* evt) {
   return iostream->fill_next_event( evt);
 }

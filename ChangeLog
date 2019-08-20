@@ -7,6 +7,13 @@ Use svn log to see detailed changes.
 2019-10-24
 	RELEASE: version 2.8.1
 
+2019-08-20
+	Complete (preliminary) HepMC3 support (incl.
+	   backwards HepMC2 write/read mode)
+
+2019-08-08
+	Bug fix: handle carriage returns in UFO files (non-Unix OS)
+
 ##################################################################
 
 2019-08-07

@@ -267,6 +267,7 @@ $lhef_extension = "lhe"
 $extension_lha = "lha"
 $extension_hepmc = "hepmc"
 ?hepmc_output_cross_section = false
+?hepmc3_hepmc2mode = false
 $extension_lcio = "slcio"
 $extension_stdhep = "hep"
 $extension_stdhep_up = "up.hep"

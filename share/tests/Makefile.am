@@ -446,8 +446,10 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/eio_stdhep_2.ref \
     unit_tests/ref-output/eio_stdhep_3.ref \
     unit_tests/ref-output/eio_stdhep_4.ref \
-    unit_tests/ref-output/eio_hepmc_1.ref \
-    unit_tests/ref-output/eio_hepmc_2.ref \
+    unit_tests/ref-output/eio_hepmc2_1.ref \
+    unit_tests/ref-output/eio_hepmc2_2.ref \
+    unit_tests/ref-output/eio_hepmc3_1.ref \
+    unit_tests/ref-output/eio_hepmc3_2.ref \
     unit_tests/ref-output/eio_lcio_1.ref \
     unit_tests/ref-output/eio_lcio_2.ref \
     unit_tests/ref-output/eio_ascii_1.ref \
@@ -566,7 +568,8 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/commands_33.ref \
     unit_tests/ref-output/commands_34.ref \
     unit_tests/ref-output/jets_1.ref \
-    unit_tests/ref-output/hepmc_interface_1.ref \
+    unit_tests/ref-output/hepmc2_interface_1.ref \
+    unit_tests/ref-output/hepmc3_interface_1.ref \
     unit_tests/ref-output/lcio_interface_1.ref \
     unit_tests/ref-output/ttv_formfactors_1.ref \
     unit_tests/ref-output/ttv_formfactors_2.ref \

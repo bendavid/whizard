@@ -108,6 +108,20 @@ AC_SUBST([LDFLAGS_HEPMC])
 AC_SUBST([HEPMC_AVAILABLE_FLAG])
 
 AM_CONDITIONAL([HEPMC_AVAILABLE], [test "$enable_hepmc" = "yes"])
+AM_CONDITIONAL([HEPMC2_AVAILABLE], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "no"])
+AM_CONDITIONAL([HEPMC3_AVAILABLE], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"])
+if test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"; then
+   HEPMC3_AVAILABLE_FLAG=".true."
+else
+   HEPMC3_AVAILABLE_FLAG=".false."
+fi
+if test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "no"; then
+   HEPMC2_AVAILABLE_FLAG=".true."
+else
+   HEPMC2_AVAILABLE_FLAG=".false."
+fi
+AC_SUBST([HEPMC2_AVAILABLE_FLAG])
+AC_SUBST([HEPMC3_AVAILABLE_FLAG])
 AM_CONDITIONAL([HEPMC_IS_VERSION3], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"])
 ])
 
@@ -138,7 +152,7 @@ else
 fi
 
 if test "${hepmcconfig}" = "no"; then
-   AC_MSG_CHECKING(HepMC3 or newer)
+   AC_MSG_CHECKING([for HepMC3 or newer])
    AC_MSG_RESULT(no);
    $2
 else
@@ -153,9 +167,9 @@ else
    AC_MSG_CHECKING([if HepMC is functional])
    AC_LANG_PUSH(C++)
    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <HepMC/GenEvent.h>
+#include <HepMC3/GenEvent.h>
    ]], [[
-using namespace HepMC; GenEvent evt(Units::GEV,Units::MM);
+using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
    ]])], [hepmcok='yes'], [hepmcok='no'])
    AC_MSG_RESULT([$hepmcok])
    AC_LANG_POP()

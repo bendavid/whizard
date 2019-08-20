@@ -5194,6 +5194,12 @@ procedure with type [[V_NONE]].
          'together with each HepMC event. This can be used by programs ' // &
          'like Rivet to scale histograms according to the cross section. ' // &
          '(cf.  also \ttt{hepmc})'))
+    call var_list%append_log (var_str ("?hepmc3_hepmc2mode"), .false., &
+         intrinsic = .true., &
+         description=var_str ('Flag for the HepMC event format that allows ' // &
+         'to use HepMC3 to write in HepMC2 backwards compatibility mode.  ' // &
+         'This option has no effect when HepMC2 is linked. ' // &
+         '(cf.  also \ttt{hepmc})'))
     call var_list%append_string (var_str ("$extension_lcio"), var_str ("slcio"), &
           intrinsic=.true., &
           description=var_str ('String variable that allows via \ttt{\$extension\_lcio ' // &

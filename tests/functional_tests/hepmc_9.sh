@@ -1,7 +1,7 @@
 #!/bin/sh
 ### Check WHIZARD for a simple test process
 echo "Running script $0"
-if test -f HEPMC_FLAG -a -f OCAML_FLAG; then
+if test -f OCAML_FLAG -a -f HEPMC2_FLAG || test -f OCAML_FLAG -a -f HEPMC3_FLAG; then
     name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QCD
     echo "Contents of ${name}a.weights.dat" >> $name.log

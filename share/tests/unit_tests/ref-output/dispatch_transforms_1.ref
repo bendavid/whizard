@@ -31,6 +31,7 @@
    Alpha_s from file = F
    Scale from file   = F
    File extension    = 'hepmc'
+   HepMC2 compat.    = F
 
 * Allocate as weight_stream
 

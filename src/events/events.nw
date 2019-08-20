@@ -44,7 +44,7 @@ These are the implementation modules:
   some of the event I/O formats below.
 \item[hepmc\_interface]
   Access particle objects of the HepMC package.  Functional only if this
-  package is linked.
+  package is linked. The interface is working both for HepMC2 and HepMC3.
 \item[lcio\_interface]
   Access objects of the LCIO package.  Functional only if this
   package is linked.
@@ -7430,6 +7430,9 @@ module hepmc_interface
 <<Use kinds>>
 <<Use strings>>
   use constants, only: PI
+  use system_dependencies, only: HEPMC2_AVAILABLE
+  use system_dependencies, only: HEPMC3_AVAILABLE
+  use diagnostics
   use lorentz
   use flavors
   use colors
@@ -8065,37 +8068,6 @@ necessary).
   end function hepmc_particle_get_decay_vertex
 
 @ %def hepmc_particle_get_production_vertex hepmc_particle_get_decay_vertex
-@ Return the number of parents/children.
-<<HepMC interface: public>>=
-  public :: hepmc_particle_get_n_parents
-  public :: hepmc_particle_get_n_children
-<<HepMC interface: procedures>>=
-  function hepmc_particle_get_n_parents (prt) result (n_parents)
-    integer :: n_parents
-    type(hepmc_particle_t), intent(in) :: prt
-    type(hepmc_vertex_t) :: v
-    v = hepmc_particle_get_production_vertex (prt)
-    if (hepmc_vertex_is_valid (v)) then
-       n_parents = hepmc_vertex_get_n_in (v)
-    else
-       n_parents = 0
-    end if
-  end function hepmc_particle_get_n_parents
-
-  function hepmc_particle_get_n_children (prt) result (n_children)
-    integer :: n_children
-    type(hepmc_particle_t), intent(in) :: prt
-    type(hepmc_vertex_t) :: v
-    v = hepmc_particle_get_decay_vertex (prt)
-    if (hepmc_vertex_is_valid (v)) then
-       n_children = hepmc_vertex_get_n_out (v)
-    else
-       n_children = 0
-    end if
-  end function hepmc_particle_get_n_children
-
-@ %def hepmc_particle_get_n_parents
-@ %def hepmc_particle_get_n_children
 @ Convenience function: Return the array of parent particles for a
 given HepMC particle.  The contents are HepMC barcodes that still have
 to be mapped to the particle indices.
@@ -8113,13 +8085,20 @@ to be mapped to the particle indices.
     if (hepmc_vertex_is_valid (v)) then
        allocate (parent_barcode (hepmc_vertex_get_n_in (v)))
        if (size (parent_barcode) /= 0) then
-          call hepmc_vertex_particle_in_iterator_init (it, v)
-          do i = 1, size (parent_barcode)
-             parent_barcode(i) = hepmc_particle_get_barcode &
-                  (hepmc_vertex_particle_in_iterator_get (it))
-             call hepmc_vertex_particle_in_iterator_advance (it)
-          end do
-          call hepmc_vertex_particle_in_iterator_final (it)
+          if (HEPMC2_AVAILABLE) then
+             call hepmc_vertex_particle_in_iterator_init (it, v)
+             do i = 1, size (parent_barcode)
+                parent_barcode(i) = hepmc_particle_get_barcode &
+                     (hepmc_vertex_particle_in_iterator_get (it))
+                call hepmc_vertex_particle_in_iterator_advance (it)
+             end do
+             call hepmc_vertex_particle_in_iterator_final (it)
+          else if (HEPMC3_AVAILABLE) then
+             do i = 1, size (parent_barcode)
+                parent_barcode(i) = hepmc_particle_get_barcode &
+                     (hepmc_vertex_get_nth_particle_in (v, i))
+             end do
+          end if
        end if
     else
        allocate (parent_barcode (0))
@@ -8135,14 +8114,21 @@ to be mapped to the particle indices.
     v = hepmc_particle_get_decay_vertex (prt)
     if (hepmc_vertex_is_valid (v)) then
        allocate (child_barcode (hepmc_vertex_get_n_out (v)))
-       call hepmc_vertex_particle_out_iterator_init (it, v)
        if (size (child_barcode) /= 0) then
-          do i = 1, size (child_barcode)
-             child_barcode(i) = hepmc_particle_get_barcode &
-                  (hepmc_vertex_particle_out_iterator_get (it))
-             call hepmc_vertex_particle_out_iterator_advance (it)
-          end do
-          call hepmc_vertex_particle_out_iterator_final (it)
+          if (HEPMC2_AVAILABLE) then
+             call hepmc_vertex_particle_out_iterator_init (it, v)
+             do i = 1, size (child_barcode)
+                child_barcode(i) = hepmc_particle_get_barcode &
+                     (hepmc_vertex_particle_out_iterator_get (it))
+                call hepmc_vertex_particle_out_iterator_advance (it)
+             end do
+             call hepmc_vertex_particle_out_iterator_final (it)
+          else if (HEPMC3_AVAILABLE) then
+             do i = 1, size (child_barcode)
+                child_barcode(i) = hepmc_particle_get_barcode &
+                     (hepmc_vertex_get_nth_particle_out (v, i))
+             end do
+          end if
        end if
     else
        allocate (child_barcode (0))
@@ -8356,11 +8342,28 @@ an event container.
        integer(c_int) :: size
        type(c_ptr), value :: v_obj
      end function gen_vertex_particles_out_size
+  end interface  
+  interface
+     function gen_particle_get_n_parents (p_obj) result (size) bind(C)
+       import
+       integer(c_int) :: size
+       type(c_ptr), value :: p_obj
+     end function gen_particle_get_n_parents
+  end interface
+  interface
+     function gen_particle_get_n_children (p_obj) result (size) bind(C)
+       import
+       integer(c_int) :: size
+       type(c_ptr), value :: p_obj
+     end function gen_particle_get_n_children
   end interface
 @ %def gen_vertex_particles_in_size gen_vertex_particles_out_size
+@ %def gen_particle_get_n_parents get_particle_get_n_children
 <<HepMC interface: public>>=
   public :: hepmc_vertex_get_n_in
   public :: hepmc_vertex_get_n_out
+  public :: hepmc_particle_get_parents
+  public :: hepmc_particle_get_children
 <<HepMC interface: procedures>>=
   function hepmc_vertex_get_n_in (v) result (n_in)
     integer :: n_in
@@ -8373,9 +8376,60 @@ an event container.
     type(hepmc_vertex_t), intent(in) :: v
     n_out = gen_vertex_particles_out_size (v%obj)
   end function hepmc_vertex_get_n_out
+  
+  function hepmc_particle_get_parents (p) result (n_p)
+    integer :: n_p
+    type(hepmc_particle_t), intent(in) :: p
+    n_p = gen_particle_get_n_parents (p%obj)
+  end function hepmc_particle_get_parents
+
+  function hepmc_particle_get_children (p) result (n_ch)
+    integer :: n_ch
+    type(hepmc_particle_t), intent(in) :: p
+    n_ch = gen_particle_get_n_children (p%obj)
+  end function hepmc_particle_get_children
 
 @ %def hepmc_vertex_n_in hepmc_vertex_n_out
-@
+@ %def hepmc_particle_get_parents hepmc_particle_get_children
+@ Return the number of parents/children.
+<<HepMC interface: public>>=
+  public :: hepmc_particle_get_n_parents
+  public :: hepmc_particle_get_n_children
+<<HepMC interface: procedures>>=
+  function hepmc_particle_get_n_parents (prt) result (n_parents)
+    integer :: n_parents
+    type(hepmc_particle_t), intent(in) :: prt
+    type(hepmc_vertex_t) :: v
+    if (HEPMC2_AVAILABLE) then
+       v = hepmc_particle_get_production_vertex (prt)
+       if (hepmc_vertex_is_valid (v)) then
+          n_parents = hepmc_vertex_get_n_in (v)
+       else
+          n_parents = 0
+       end if
+    else if (HEPMC3_AVAILABLE) then
+       n_parents = hepmc_particle_get_parents (prt)
+    end if
+  end function hepmc_particle_get_n_parents
+
+  function hepmc_particle_get_n_children (prt) result (n_children)
+    integer :: n_children
+    type(hepmc_particle_t), intent(in) :: prt
+    type(hepmc_vertex_t) :: v
+    if (HEPMC2_AVAILABLE) then
+       v = hepmc_particle_get_decay_vertex (prt)
+       if (hepmc_vertex_is_valid (v)) then
+          n_children = hepmc_vertex_get_n_out (v)
+       else
+          n_children = 0
+       end if
+    else if (HEPMC3_AVAILABLE) then
+       n_children = hepmc_particle_get_children (prt)
+    end if
+  end function hepmc_particle_get_n_children
+
+@ %def hepmc_particle_get_n_parents
+@ %def hepmc_particle_get_n_children
 \subsection{Vertex-particle-in iterator}
 This iterator iterates over all incoming particles in an vertex.  We store a
 pointer to the vertex in addition to the iterator.  This allows for
@@ -8513,6 +8567,47 @@ the particle which is owned by the vertex.)
   end function hepmc_vertex_particle_in_iterator_get
 
 @ %def hepmc_vertex_particle_in_iterator_get
+@
+<<HepMC interface: interfaces>>=
+  interface
+     type(c_ptr) function vertex_get_nth_particle_in (vtx_obj, n) bind(C)
+       import
+       type(c_ptr), value :: vtx_obj
+       integer(c_int), value :: n
+     end function vertex_get_nth_particle_in
+  end interface
+  interface
+     type(c_ptr) function vertex_get_nth_particle_out (vtx_obj, n) bind(C)
+       import
+       type(c_ptr), value :: vtx_obj
+       integer(c_int), value :: n
+     end function vertex_get_nth_particle_out
+  end interface
+@ %def vertex_get_nth_particle_in
+<<HepMC interface: public>>=
+  public :: hepmc_vertex_get_nth_particle_in
+  public :: hepmc_vertex_get_nth_particle_out
+<<HepMC interface: procedures>>=
+  function hepmc_vertex_get_nth_particle_in (vtx, n) result (prt)
+    type(hepmc_particle_t) :: prt
+    type(hepmc_vertex_t), intent(in) :: vtx
+    integer, intent(in) :: n
+    integer(c_int) :: nth
+    nth = n
+    prt%obj = vertex_get_nth_particle_in (vtx%obj, nth)
+  end function hepmc_vertex_get_nth_particle_in
+
+  function hepmc_vertex_get_nth_particle_out (vtx, n) result (prt)
+    type(hepmc_particle_t) :: prt
+    type(hepmc_vertex_t), intent(in) :: vtx
+    integer, intent(in) :: n
+    integer(c_int) :: nth
+    nth = n
+    prt%obj = vertex_get_nth_particle_out (vtx%obj, nth)
+  end function hepmc_vertex_get_nth_particle_out
+
+@ %def hepmc_vertex_get_nth_particle_in
+@ %def hepmc_vertex_get_nth_particle_out
 @
 \subsection{Vertex-particle-out iterator}
 This iterator iterates over all incoming particles in an vertex.  We store a
@@ -8746,6 +8841,40 @@ Fortran unit is obviously not possible.
   end function hepmc_event_get_event_index
 
 @ %def hepmc_event_get_event_index
+<<HepMC interface: interfaces>>=
+  interface
+     integer(c_int) function gen_event_get_n_particles &
+          (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function gen_event_get_n_particles
+  end interface
+    interface
+     integer(c_int) function gen_event_get_n_beams &
+          (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function gen_event_get_n_beams
+  end interface
+@ %def gen_event_get_n_particles gen_event_get_n_beams
+<<HepMC interface: public>>=
+  public :: hepmc_event_get_n_particles
+  public :: hepmc_event_get_n_beams
+<<HepMC interface: procedures>>=
+  function hepmc_event_get_n_particles (evt) result (n_tot)
+    integer :: n_tot
+    type(hepmc_event_t), intent(in) :: evt
+    n_tot = gen_event_get_n_particles (evt%obj)
+  end function hepmc_event_get_n_particles
+
+  function hepmc_event_get_n_beams (evt) result (n_tot)
+    integer :: n_tot
+    type(hepmc_event_t), intent(in) :: evt
+    n_tot = gen_event_get_n_beams (evt%obj)
+  end function hepmc_event_get_n_beams
+
+@ %def hepmc_event_get_n_particles
+@ %def hepmc_event_get_n_beams
 @ Set the numeric signal process ID
 <<HepMC interface: interfaces>>=
   interface
@@ -9244,6 +9373,54 @@ the particle which is owned by the vertex.)
   end function hepmc_event_particle_iterator_get
 
 @ %def hepmc_event_particle_iterator_get
+<<HepMC interface: interfaces>>=
+  interface
+     type(c_ptr) function gen_event_get_nth_particle (evt_obj, n) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: n
+     end function gen_event_get_nth_particle
+  end interface
+    interface
+     integer(c_int) function gen_event_get_nth_beam (evt_obj, n) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: n
+     end function gen_event_get_nth_beam
+  end interface
+@ %def gen_event_get_nth_particle
+@ %def gen_event_get_nth_beam
+<<HepMC interface: public>>=
+  public :: hepmc_event_get_nth_particle
+  public :: hepmc_event_get_nth_beam
+<<HepMC interface: procedures>>=
+  function hepmc_event_get_nth_particle (evt, n) result (prt)
+    type(hepmc_particle_t) :: prt
+    type(hepmc_event_t), intent(in) :: evt
+    integer, intent(in) :: n
+    integer :: n_tot
+    integer(c_int) :: nth
+    nth = n
+    n_tot = gen_event_get_n_particles (evt%obj)
+    if (n > n_tot .or. n < 1) then
+       prt%obj = c_null_ptr
+       call msg_error ("HepMC interface called for wrong particle ID.")       
+    else
+       prt%obj = gen_event_get_nth_particle (evt%obj, nth)
+    end if
+  end function hepmc_event_get_nth_particle
+
+  function hepmc_event_get_nth_beam (evt, n) result (beam_barcode)
+    integer :: beam_barcode
+    type(hepmc_event_t), intent(in) :: evt
+    integer, intent(in) :: n
+    integer(c_int) :: bc
+    bc = gen_event_get_nth_beam (evt%obj, n)
+    beam_barcode = bc
+  end function hepmc_event_get_nth_beam
+
+@ %def hepmc_event_get_nth_particle
+@ %def hepmc_event_get_nth_beam
 @
 \subsection{I/O streams}
 There is a specific I/O stream type for handling the output of
@@ -9266,14 +9443,30 @@ the file is done by the constructor, closing by the destructor.
        character(c_char), dimension(*), intent(in) :: filename
      end function new_io_gen_event_out
   end interface
-@ %def new_io_gen_event
+  interface
+     type(c_ptr) function new_io_gen_event_out_hepmc2 (filename) bind(C)
+       import
+       character(c_char), dimension(*), intent(in) :: filename
+     end function new_io_gen_event_out_hepmc2
+  end interface
+@ %def new_io_gen_event_out new_io_gen_event_out_hepmc2
 <<HepMC interface: public>>=
   public :: hepmc_iostream_open_out
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_open_out (iostream, filename)
+  subroutine hepmc_iostream_open_out (iostream, filename, hepmc2)
     type(hepmc_iostream_t), intent(out) :: iostream
     type(string_t), intent(in) :: filename
-    iostream%obj = new_io_gen_event_out (char (filename) // c_null_char)
+    logical, intent(in), optional :: hepmc2
+    logical :: hepmc2_mode
+    hepmc2_mode = .false.
+    if (present (hepmc2))  hepmc2_mode = hepmc2
+    if (hepmc2_mode) then
+       iostream%obj = &
+            new_io_gen_event_out_hepmc2 (char (filename) // c_null_char)
+    else
+       iostream%obj = &
+            new_io_gen_event_out (char (filename) // c_null_char)
+    end if
   end subroutine hepmc_iostream_open_out
 
 @ %def hepmc_iostream_open_out
@@ -9285,14 +9478,30 @@ the file is done by the constructor, closing by the destructor.
        character(c_char), dimension(*), intent(in) :: filename
      end function new_io_gen_event_in
   end interface
-@ %def new_io_gen_event
+  interface
+     type(c_ptr) function new_io_gen_event_in_hepmc2 (filename) bind(C)
+       import
+       character(c_char), dimension(*), intent(in) :: filename
+     end function new_io_gen_event_in_hepmc2
+  end interface
+@ %def new_io_gen_event_in new_io_gen_event_in_hepmc
 <<HepMC interface: public>>=
   public :: hepmc_iostream_open_in
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_open_in (iostream, filename)
+  subroutine hepmc_iostream_open_in (iostream, filename, hepmc2)
     type(hepmc_iostream_t), intent(out) :: iostream
     type(string_t), intent(in) :: filename
-    iostream%obj = new_io_gen_event_in (char (filename) // c_null_char)
+    logical, intent(in), optional :: hepmc2
+    logical :: hepmc2_mode
+    hepmc2_mode = .false.
+    if (present (hepmc2))  hepmc2_mode = hepmc2
+    if (hepmc2_mode) then
+       iostream%obj = &
+            new_io_gen_event_in_hepmc2 (char (filename) // c_null_char)
+    else
+       iostream%obj = &
+            new_io_gen_event_in (char (filename) // c_null_char)
+    end if
   end subroutine hepmc_iostream_open_in
 
 @ %def hepmc_iostream_open_in
@@ -9304,13 +9513,27 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj
      end subroutine io_gen_event_delete
   end interface
-@ %def io_gen_event_delete
+  interface
+     subroutine io_gen_event_delete_hepmc2 (io_obj) bind(C)
+       import
+       type(c_ptr), value :: io_obj
+     end subroutine io_gen_event_delete_hepmc2
+  end interface  
+@ %def io_gen_event_delete io_gen_event_delete
 <<HepMC interface: public>>=
   public :: hepmc_iostream_close
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_close (iostream)
+  subroutine hepmc_iostream_close (iostream, hepmc2)
     type(hepmc_iostream_t), intent(inout) :: iostream
-    call io_gen_event_delete (iostream%obj)
+    logical, intent(in), optional :: hepmc2
+    logical :: hepmc2_mode
+    hepmc2_mode = .false.
+    if (present (hepmc2))  hepmc2_mode = hepmc2
+    if (hepmc2_mode) then
+       call io_gen_event_delete_hepmc2 (iostream%obj)
+    else
+       call io_gen_event_delete (iostream%obj)
+    end if
   end subroutine hepmc_iostream_close
 
 @ %def hepmc_iostream_close
@@ -9322,14 +9545,28 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj, evt_obj
      end subroutine io_gen_event_write_event
   end interface
-@ %def io_gen_event_write_event
+  interface
+     subroutine io_gen_event_write_event_hepmc2 (io_obj, evt_obj) bind(C)
+       import
+       type(c_ptr), value :: io_obj, evt_obj
+     end subroutine io_gen_event_write_event_hepmc2  
+  end interface
+@ %def io_gen_event_write_event io_gen_event_write_event_hepmc2
 <<HepMC interface: public>>=
   public :: hepmc_iostream_write_event
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_write_event (iostream, evt)
+  subroutine hepmc_iostream_write_event (iostream, evt, hepmc2)
     type(hepmc_iostream_t), intent(inout) :: iostream
     type(hepmc_event_t), intent(in) :: evt
-    call io_gen_event_write_event (iostream%obj, evt%obj)
+    logical, intent(in), optional :: hepmc2
+    logical :: hepmc2_mode
+    hepmc2_mode = .false.
+    if (present (hepmc2))  hepmc2_mode = hepmc2
+    if (hepmc2_mode) then
+       call io_gen_event_write_event_hepmc2 (iostream%obj, evt%obj)
+    else
+       call io_gen_event_write_event (iostream%obj, evt%obj)
+    end if
   end subroutine hepmc_iostream_write_event
 
 @ %def hepmc_iostream_write_event
@@ -9341,15 +9578,29 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj, evt_obj
      end function io_gen_event_read_event
   end interface
-@ %def io_gen_event_read_event
+  interface
+     logical(c_bool) function io_gen_event_read_event_hepmc2 (io_obj, evt_obj) bind(C)
+       import
+       type(c_ptr), value :: io_obj, evt_obj
+     end function io_gen_event_read_event_hepmc2
+  end interface
+@ %def io_gen_event_read_event io_gen_event_read_event_hepmc2
 <<HepMC interface: public>>=
   public :: hepmc_iostream_read_event
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_read_event (iostream, evt, ok)
+  subroutine hepmc_iostream_read_event (iostream, evt, ok, hepmc2)
     type(hepmc_iostream_t), intent(inout) :: iostream
     type(hepmc_event_t), intent(inout) :: evt
     logical, intent(out) :: ok
-    ok = io_gen_event_read_event (iostream%obj, evt%obj)
+    logical, intent(in), optional :: hepmc2
+    logical :: hepmc2_mode
+    hepmc2_mode = .false.
+    if (present (hepmc2))  hepmc2_mode = hepmc2
+    if (hepmc2_mode) then
+       ok = io_gen_event_read_event_hepmc2 (iostream%obj, evt%obj)
+    else
+       ok = io_gen_event_read_event (iostream%obj, evt%obj)
+    end if
   end subroutine hepmc_iostream_read_event
 
 @ %def hepmc_iostream_read_event
@@ -9361,6 +9612,8 @@ Test module, followed by the corresponding implementation module.
 
 module hepmc_interface_ut
   use unit_tests
+  use system_dependencies, only: HEPMC2_AVAILABLE
+  use system_dependencies, only: HEPMC3_AVAILABLE
   use hepmc_interface_uti
 
 <<Standard module head>>
@@ -9422,9 +9675,15 @@ quarks and polarization for the outgoing photon.  For the latter, we
 have to define a particle-data object for the photon, so a flavor
 object can be correctly initialized.
 <<HepMC interface: execute tests>>=
-  call test (hepmc_interface_1, "hepmc_interface_1", &
-       "check HepMC interface", &
-       u, results)
+  if (HEPMC2_AVAILABLE) then
+     call test (hepmc_interface_1, "hepmc2_interface_1", &
+          "check HepMC2 interface", &
+          u, results)
+  else if (HEPMC3_AVAILABLE) then
+     call test (hepmc_interface_1, "hepmc3_interface_1", &
+          "check HepMC3 interface", &
+          u, results)
+  end if
 <<HepMC interface: test declarations>>=
   public :: hepmc_interface_1
 <<HepMC interface: tests>>=
@@ -11078,6 +11337,8 @@ module hep_events
 
 <<Use kinds>>
 <<Use strings>>
+  use system_dependencies, only: HEPMC2_AVAILABLE
+  use system_dependencies, only: HEPMC3_AVAILABLE
   use diagnostics
   use lorentz
   use numeric_utils
@@ -11284,19 +11545,23 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
     call hepmc_particle_init (hprt, &
          prt%get_momentum (), prt%get_pdg (), &
          hepmc_status)
-    call hepmc_particle_set_color (hprt, prt%get_color ())
-    select case (prt%get_polarization_status ())
-    case (PRT_DEFINITE_HELICITY)
-       call hepmc_particle_set_polarization (hprt, &
-            prt%get_helicity ())
-    case (PRT_GENERIC_POLARIZATION)
-       call hepmc_particle_set_polarization (hprt, &
-            prt%get_polarization ())
-    end select
+    if (HEPMC2_AVAILABLE) then
+       call hepmc_particle_set_color (hprt, prt%get_color ())
+       select case (prt%get_polarization_status ())
+       case (PRT_DEFINITE_HELICITY)
+          call hepmc_particle_set_polarization (hprt, &
+               prt%get_helicity ())
+       case (PRT_GENERIC_POLARIZATION)
+          call hepmc_particle_set_polarization (hprt, &
+               prt%get_polarization ())
+       end select
+    end if
   end subroutine particle_to_hepmc
 
 @ %def particle_to_hepmc
-@
+@ For HepMC3, a HepMC particle needs first to be attached to a vertex
+and an event before non-intrinsic particle properties (color flow and
+helicity) could be set.
 <<HEP events: public>>=
   public :: hepmc_event_from_particle_set
 <<HEP events: procedures>>=
@@ -11358,6 +11623,20 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
           exit FIND_SIGNAL_PROCESS
        end if
     end do FIND_SIGNAL_PROCESS
+    if (HEPMC3_AVAILABLE) then
+       do i = 1, n_tot
+          call hepmc_particle_set_color (hprt(i), &
+               particle_set%prt(i)%get_color ())
+          select case (particle_set%prt(i)%get_polarization_status ())
+          case (PRT_DEFINITE_HELICITY)
+             call hepmc_particle_set_polarization (hprt(i), &
+                  particle_set%prt(i)%get_helicity ())
+          case (PRT_GENERIC_POLARIZATION)
+             call hepmc_particle_set_polarization (hprt(i), &
+                  particle_set%prt(i)%get_polarization ())
+          end select
+       end do
+    end if
   end subroutine hepmc_event_from_particle_set
 
 @ %def hepmc_event_from_particle_set
@@ -11415,22 +11694,37 @@ could be replaced by a hash table.
          hepmc_particle_get_mass_squared (hprt))
     n_parents  = hepmc_particle_get_n_parents  (hprt)
     n_children = hepmc_particle_get_n_children (hprt)
-    allocate (parent_barcode (n_parents),  parent (n_parents))
-    allocate (child_barcode  (n_children), child  (n_children))
-    parent_barcode = hepmc_particle_get_parent_barcodes (hprt)
-    child_barcode  = hepmc_particle_get_child_barcodes  (hprt)
-    do i = 1, size (barcode)
-       where (parent_barcode == barcode(i))  parent = i
-       where (child_barcode  == barcode(i))  child  = i
-    end do
-    call prt%set_parents (parent)
-    call prt%set_children (child)
+    if (HEPMC2_AVAILABLE) then
+       allocate (parent_barcode (n_parents),  parent (n_parents))
+       allocate (child_barcode  (n_children), child  (n_children))
+       parent_barcode = hepmc_particle_get_parent_barcodes (hprt)
+       child_barcode  = hepmc_particle_get_child_barcodes  (hprt)
+       do i = 1, size (barcode)
+          where (parent_barcode == barcode(i))  parent = i
+          where (child_barcode  == barcode(i))  child  = i
+       end do
+       call prt%set_parents (parent)
+       call prt%set_children (child)
+    else if (HEPMC3_AVAILABLE) then
+       allocate (parent_barcode (n_parents),  parent (n_parents))
+       allocate (child_barcode  (n_children), child  (n_children))
+       parent_barcode = hepmc_particle_get_parent_barcodes (hprt)
+       child_barcode  = hepmc_particle_get_child_barcodes  (hprt)
+       do i = 1, size (barcode)
+          where (parent_barcode == barcode(i))  parent = i
+          where (child_barcode  == barcode(i))  child  = i
+       end do
+       call prt%set_parents (parent)
+       call prt%set_children (child)
+    end if
     if (prt%get_status () == PRT_VIRTUAL .and. n_parents == 0) &
          call prt%set_status (PRT_INCOMING)
-    vtx = hepmc_particle_get_decay_vertex (hprt)
-    if (hepmc_vertex_is_valid (vtx)) then
-       vertex = hepmc_vertex_to_vertex (vtx)
-       if (vertex /= vector4_null)  call prt%set_vertex (vertex)
+    if (HEPMC2_AVAILABLE) then
+       vtx = hepmc_particle_get_decay_vertex (hprt)
+       if (hepmc_vertex_is_valid (vtx)) then
+          vertex = hepmc_vertex_to_vertex (vtx)
+          if (vertex /= vector4_null)  call prt%set_vertex (vertex)
+       end if
     end if
   end subroutine particle_from_hepmc_particle
 
@@ -11456,50 +11750,90 @@ then define an incoming particle as
     type(hepmc_vertex_t) :: v
     type(hepmc_vertex_particle_in_iterator_t) :: v_it
     type(hepmc_particle_t) :: prt
-    integer, dimension(:), allocatable :: barcode
-    integer :: n_tot, i, bc
-    n_tot = 0
-    call hepmc_event_particle_iterator_init (it, evt)
-    do while (hepmc_event_particle_iterator_is_valid (it))
-       n_tot = n_tot + 1
-       call hepmc_event_particle_iterator_advance (it)
-    end do
-    allocate (barcode (n_tot))
-    call hepmc_event_particle_iterator_reset (it)
-    do i = 1, n_tot
-       barcode(i) = hepmc_particle_get_barcode &
-            (hepmc_event_particle_iterator_get (it))
-       call hepmc_event_particle_iterator_advance (it)
-    end do
-    allocate (particle_set%prt (n_tot))
-    call hepmc_event_particle_iterator_reset (it)
-    do i = 1, n_tot
-       prt = hepmc_event_particle_iterator_get (it)
-       call particle_from_hepmc_particle (particle_set%prt(i), &
-            prt, model, fallback_model, polarization, barcode)
-       call hepmc_event_particle_iterator_advance (it)
-    end do
-    call hepmc_event_particle_iterator_final (it)
-    v = hepmc_event_get_signal_process_vertex (evt)
-    if (hepmc_vertex_is_valid (v)) then
-       call hepmc_vertex_particle_in_iterator_init (v_it, v)
-       do while (hepmc_vertex_particle_in_iterator_is_valid (v_it))
-          prt = hepmc_vertex_particle_in_iterator_get (v_it)
-          bc = hepmc_particle_get_barcode &
-               (hepmc_vertex_particle_in_iterator_get (v_it))
-          do i = 1, size(barcode)
-             if (bc == barcode(i))  &
-               call particle_set%prt(i)%set_status (PRT_INCOMING)
-          end do
-          call hepmc_vertex_particle_in_iterator_advance (v_it)
+    integer, dimension(:), allocatable :: barcode, n_parents
+    integer :: n_tot, n_beam, i, bc
+    n_tot = hepmc_event_get_n_particles(evt)
+    allocate (barcode (n_tot))    
+    if (HEPMC2_AVAILABLE) then
+       call hepmc_event_particle_iterator_init (it, evt)
+       do i = 1, n_tot
+          barcode(i) = hepmc_particle_get_barcode &
+               (hepmc_event_particle_iterator_get (it))
+          call hepmc_event_particle_iterator_advance (it)
        end do
-       call hepmc_vertex_particle_in_iterator_final (v_it)
+       allocate (particle_set%prt (n_tot))
+       call hepmc_event_particle_iterator_reset (it)
+       do i = 1, n_tot
+          prt = hepmc_event_particle_iterator_get (it)
+          call particle_from_hepmc_particle (particle_set%prt(i), &
+               prt, model, fallback_model, polarization, barcode)
+          call hepmc_event_particle_iterator_advance (it)
+       end do
+       call hepmc_event_particle_iterator_final (it)
+       v = hepmc_event_get_signal_process_vertex (evt)
+       if (hepmc_vertex_is_valid (v)) then
+          call hepmc_vertex_particle_in_iterator_init (v_it, v)
+          do while (hepmc_vertex_particle_in_iterator_is_valid (v_it))
+             prt = hepmc_vertex_particle_in_iterator_get (v_it)
+             bc = hepmc_particle_get_barcode &
+                  (hepmc_vertex_particle_in_iterator_get (v_it))
+             do i = 1, size(barcode)
+                if (bc == barcode(i))  &
+                     call particle_set%prt(i)%set_status (PRT_INCOMING)
+             end do
+             call hepmc_vertex_particle_in_iterator_advance (v_it)
+          end do
+          call hepmc_vertex_particle_in_iterator_final (v_it)
+       end if
+    else if (HEPMC3_AVAILABLE) then
+       allocate (particle_set%prt (n_tot))
+       do i = 1, n_tot
+          barcode(i) = hepmc_particle_get_barcode &
+               (hepmc_event_get_nth_particle (evt, i))
+       end do
+       do i = 1, n_tot
+          prt = hepmc_event_get_nth_particle (evt, i)
+          call particle_from_hepmc_particle (particle_set%prt(i), &
+               prt, model, fallback_model, polarization, barcode)
+       end do
+       v = hepmc_event_get_signal_process_vertex (evt)
+       if (hepmc_vertex_is_valid (v)) then
+          call hepmc_vertex_particle_in_iterator_init (v_it, v)
+          do while (hepmc_vertex_particle_in_iterator_is_valid (v_it))
+             prt = hepmc_vertex_particle_in_iterator_get (v_it)
+             bc = hepmc_particle_get_barcode &
+                  (hepmc_vertex_particle_in_iterator_get (v_it))
+             do i = 1, size(barcode)
+                if (bc == barcode(i))  &
+                     call particle_set%prt(i)%set_status (PRT_INCOMING)
+             end do
+             call hepmc_vertex_particle_in_iterator_advance (v_it)
+          end do
+          call hepmc_vertex_particle_in_iterator_final (v_it)
+       end if       
     end if
     do i = 1, n_tot
        if (particle_set%prt(i)%get_status () == PRT_VIRTUAL &
             .and. particle_set%prt(i)%get_n_children () == 0) &
             call particle_set%prt(i)%set_status (PRT_OUTGOING)
     end do
+    if (HEPMC3_AVAILABLE) then
+       n_beam = hepmc_event_get_n_beams (evt)
+       do i = 1, n_beam
+          bc = hepmc_event_get_nth_beam (evt, i)
+          if (.not. particle_set%prt(bc)%get_status () == PRT_INCOMING) &
+               call particle_set%prt(bc)%set_status (PRT_BEAM)
+       end do
+       do i = 1, n_tot
+          if (particle_set%prt(i)%get_status () == PRT_VIRTUAL) then
+             n_parents = particle_set%prt(i)%get_parents ()
+             if (all &
+                  (particle_set%prt(n_parents)%get_status () == PRT_BEAM)) then
+                call particle_set%prt(i)%set_status (PRT_INCOMING)
+             end if
+          end if
+       end do
+    end if
     particle_set%n_tot = n_tot
     particle_set%n_beam  = &
          count (particle_set%prt%get_status () == PRT_BEAM)
@@ -11816,6 +12150,7 @@ Test module, followed by the corresponding implementation module.
 module hep_events_ut
   use unit_tests
   use hepmc_interface, only: HEPMC_IS_AVAILABLE
+  use system_dependencies, only: HEPMC2_AVAILABLE
   use hep_events_uti
 
 <<Standard module head>>
@@ -12051,7 +12386,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     call hepmc_event_init (hepmc_event)
     call hepmc_iostream_open_in &
          (iostream , var_str ("hep_events.hepmc.dat"))
-    call hepmc_iostream_read_event (iostream, hepmc_event, ok)
+    call hepmc_iostream_read_event (iostream, hepmc_event, ok=ok)
     call hepmc_iostream_close (iostream)
     call hepmc_event_to_particle_set (particle_set2, &
          hepmc_event, model, model, PRT_DEFINITE_HELICITY)
@@ -15089,6 +15424,7 @@ our best at using it for both input and output.
 
 module eio_hepmc
 
+<<Use kinds>>
 <<Use strings>>
   use io_units
   use string_utils
@@ -15136,6 +15472,7 @@ HepMC and this is written for every event, we make it optional with
      logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      logical :: output_cross_section = .false.
+     logical :: hepmc2_mode = .false.
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
@@ -15153,13 +15490,14 @@ Set parameters that are specifically used with HepMC.
   subroutine eio_hepmc_set_parameters &
        (eio, &
        recover_beams, use_alphas_from_file, use_scale_from_file, &
-       extension, output_cross_section)
+       extension, output_cross_section, hepmc2_mode)
     class(eio_hepmc_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension
+    logical, intent(in), optional :: hepmc2_mode
     if (present (recover_beams)) &
          eio%recover_beams = recover_beams
     if (present (use_alphas_from_file)) &
@@ -15173,6 +15511,8 @@ Set parameters that are specifically used with HepMC.
     end if
     if (present (output_cross_section)) &
          eio%output_cross_section = output_cross_section
+    if (present (hepmc2_mode)) &
+         eio%hepmc2_mode = hepmc2_mode
   end subroutine eio_hepmc_set_parameters
 
 @ %def eio_hepmc_set_parameters
@@ -15203,6 +15543,7 @@ of the current object status.
          object%use_scale_from_file
     write (u, "(3x,A,A,A)")     "File extension    = '", &
          char (object%extension), "'"
+    write (u, "(3x,A,L1)")    "HepMC2 compat.    = ", object%hepmc2_mode
     if (allocated (object%proc_num_id)) then
        write (u, "(3x,A)")  "Numerical process IDs:"
        do i = 1, size (object%proc_num_id)
@@ -15223,13 +15564,13 @@ of the current object status.
        write (msg_buffer, "(A,A,A)")  "Events: closing HepMC file '", &
             char (object%filename), "'"
        call msg_message ()
-       call hepmc_iostream_close (object%iostream)
+       call hepmc_iostream_close (object%iostream, object%hepmc2_mode)
        object%writing = .false.
     else if (object%reading) then
        write (msg_buffer, "(A,A,A)")  "Events: closing HepMC file '", &
             char (object%filename), "'"
        call msg_message ()
-       call hepmc_iostream_close (object%iostream)
+       call hepmc_iostream_close (object%iostream, object%hepmc2_mode)
        object%reading = .false.
     end if
   end subroutine eio_hepmc_final
@@ -15248,8 +15589,9 @@ one.  If the file needs a header, repeat it for the new file.
        write (msg_buffer, "(A,A,A)")  "Events: writing to HepMC file '", &
             char (eio%filename), "'"
        call msg_message ()
-       call hepmc_iostream_close (eio%iostream)
-       call hepmc_iostream_open_out (eio%iostream, eio%filename)
+       call hepmc_iostream_close (eio%iostream, eio%hepmc2_mode)
+       call hepmc_iostream_open_out (eio%iostream, &
+            eio%filename, eio%hepmc2_mode)
     end if
   end subroutine eio_hepmc_split_out
 
@@ -15301,7 +15643,8 @@ one.  If the file needs a header, repeat it for the new file.
          char (eio%filename), "'"
     call msg_message ()
     eio%writing = .true.
-    call hepmc_iostream_open_out (eio%iostream, eio%filename)
+    call hepmc_iostream_open_out (eio%iostream, &
+         eio%filename, eio%hepmc2_mode)
     if (present (success))  success = .true.
   end subroutine eio_hepmc_init_out
 
@@ -15326,7 +15669,8 @@ event files.
     inquire (file = char (eio%filename), exist = exist)
     if (.not. exist)  call msg_fatal ("Events: HepMC file not found.")
     eio%reading = .true.
-    call hepmc_iostream_open_in (eio%iostream, eio%filename)
+    call hepmc_iostream_open_in (eio%iostream, &
+         eio%filename, eio%hepmc2_mode)
     if (present (success))  success = .true.
   end subroutine eio_hepmc_init_in
 
@@ -15343,7 +15687,10 @@ event files.
   end subroutine eio_hepmc_switch_inout
 
 @ %def eio_hepmc_switch_inout
-@ Output an event to the allocated HepMC output stream.
+@ Output an event to the allocated HepMC output stream. For the
+moment, we set [[alpha_qed]] always to -1. There should be methods for
+the handling of $\alpha$ in [[me_methods]] in the same way as for
+$\alpha_s$.
 <<EIO HepMC: eio hepmc: TBP>>=
   procedure :: output => eio_hepmc_output
 <<EIO HepMC: procedures>>=
@@ -15369,9 +15716,11 @@ event files.
        end if
        call hepmc_event_set_scale (eio%hepmc_event, event%get_fac_scale ())
        call hepmc_event_set_alpha_qcd (eio%hepmc_event, event%get_alpha_s ())
+       call hepmc_event_set_alpha_qed (eio%hepmc_event, -1._default)
        if (.not. eio%data%unweighted) &
           call hepmc_event_add_weight (eio%hepmc_event, event%weight_prc)
-       call hepmc_iostream_write_event (eio%iostream, eio%hepmc_event)
+       call hepmc_iostream_write_event (eio%iostream, &
+            eio%hepmc_event, eio%hepmc2_mode)
        call hepmc_event_final (eio%hepmc_event)
     else
        call eio%write ()
@@ -15393,7 +15742,8 @@ event files.
     integer :: i, proc_num_id
     iostat = 0
     call hepmc_event_init (eio%hepmc_event)
-    call hepmc_iostream_read_event (eio%iostream, eio%hepmc_event, ok)
+    call hepmc_iostream_read_event (eio%iostream, &
+         eio%hepmc_event, ok=ok, hepmc2=eio%hepmc2_mode)
     proc_num_id = hepmc_event_get_process_id (eio%hepmc_event)
     if (.not. ok) then
        iostat = -1
@@ -15451,6 +15801,8 @@ Test module, followed by the corresponding implementation module.
 
 module eio_hepmc_ut
   use unit_tests
+  use system_dependencies, only: HEPMC2_AVAILABLE
+  use system_dependencies, only: HEPMC3_AVAILABLE
   use eio_hepmc_uti
 
 <<Standard module head>>
@@ -15471,7 +15823,10 @@ module eio_hepmc_uti
 
 <<Use kinds>>
 <<Use strings>>
+  use system_dependencies, only: HEPMC2_AVAILABLE
+  use system_dependencies, only: HEPMC3_AVAILABLE
   use io_units
+  use diagnostics
   use model_data
   use event_base
   use eio_data
@@ -15507,9 +15862,15 @@ end module eio_hepmc_uti
 \subsubsection{Test I/O methods}
 We test the implementation of all I/O methods.
 <<EIO HepMC: execute tests>>=
-  call test (eio_hepmc_1, "eio_hepmc_1", &
-       "write event contents", &
-       u, results)
+  if (HEPMC2_AVAILABLE) then
+     call test (eio_hepmc_1, "eio_hepmc2_1", &
+          "write event contents", &
+          u, results)
+  else if (HEPMC3_AVAILABLE) then
+     call test (eio_hepmc_1, "eio_hepmc3_1", &
+          "write event contents", &
+          u, results)
+  end if
 <<EIO HepMC: test declarations>>=
   public :: eio_hepmc_1
 <<EIO HepMC: tests>>=
@@ -15557,7 +15918,7 @@ We test the implementation of all I/O methods.
     call event%generate (1, [0._default, 0._default])
     call event%set_index (55)
 
-    call eio%output (event, i_prc = 1)
+    call eio%output (event, i_prc = 1)    
     call eio%write (u)
     call eio%final ()
 
@@ -15629,9 +15990,15 @@ We test the implementation of all I/O methods.
 @ %def eio_hepmc_1
 @ Test also the reading of HepMC events.
 <<EIO HepMC: execute tests>>=
-  call test (eio_hepmc_2, "eio_hepmc_2", &
-       "read event contents", &
-       u, results)
+  if (HEPMC2_AVAILABLE) then
+     call test (eio_hepmc_2, "eio_hepmc2_2", &
+          "read event contents", &
+          u, results)
+  else if (HEPMC3_AVAILABLE) then
+     call test (eio_hepmc_2, "eio_hepmc3_2", &
+          "read event contents", &
+          u, results)
+  end if
 <<EIO HepMC: test declarations>>=
   public :: eio_hepmc_2
 <<EIO HepMC: tests>>=
@@ -15656,26 +16023,53 @@ We test the implementation of all I/O methods.
     open (u_file, file = char (sample // ".hepmc"), &
          status = "replace", action = "readwrite")
 
-    write (u_file, "(A)")  "HepMC::Version 2.06.09"
-    write (u_file, "(A)")  "HepMC::IO_GenEvent-START_EVENT_LISTING"
-    write (u_file, "(A)")  "E 66 -1 -1.0000000000000000e+00 &
-         &-1.0000000000000000e+00 &
-         &-1.0000000000000000e+00 42 0 1 10001 10002 0 0"
-    write (u_file, "(A)")  "U GEV MM"
-    write (u_file, "(A)")  "V -1 0 0 0 0 0 2 2 0"
-    write (u_file, "(A)")  "P 10001 25 0 0 4.8412291827592713e+02 &
-         &5.0000000000000000e+02 &
-         &1.2499999999999989e+02 3 0 0 -1 0"
-    write (u_file, "(A)")  "P 10002 25 0 0 -4.8412291827592713e+02 &
-         &5.0000000000000000e+02 &
-         &1.2499999999999989e+02 3 0 0 -1 0"
-    write (u_file, "(A)")  "P 10003 25 -1.4960220911365536e+02 &
-         &-4.6042825611414656e+02 &
-         &0 5.0000000000000000e+02 1.2500000000000000e+02 1 0 0 0 0"
-    write (u_file, "(A)")  "P 10004 25 1.4960220911365536e+02 &
-         &4.6042825611414656e+02 &
-         &0 5.0000000000000000e+02 1.2500000000000000e+02 1 0 0 0 0"
-    write (u_file, "(A)")  "HepMC::IO_GenEvent-END_EVENT_LISTING"
+    if (HEPMC2_AVAILABLE) then
+       write (u_file, "(A)")  "HepMC::Version 2.06.09"
+       write (u_file, "(A)")  "HepMC::IO_GenEvent-START_EVENT_LISTING"
+       write (u_file, "(A)")  "E 66 -1 -1.0000000000000000e+00 &
+            &-1.0000000000000000e+00 &
+            &-1.0000000000000000e+00 42 0 1 10001 10002 0 0"
+       write (u_file, "(A)")  "U GEV MM"
+       write (u_file, "(A)")  "V -1 0 0 0 0 0 2 2 0"
+       write (u_file, "(A)")  "P 10001 25 0 0 4.8412291827592713e+02 &
+            &5.0000000000000000e+02 &
+            &1.2499999999999989e+02 3 0 0 -1 0"
+       write (u_file, "(A)")  "P 10002 25 0 0 -4.8412291827592713e+02 &
+            &5.0000000000000000e+02 &
+            &1.2499999999999989e+02 3 0 0 -1 0"
+       write (u_file, "(A)")  "P 10003 25 -1.4960220911365536e+02 &
+            &-4.6042825611414656e+02 &
+            &0 5.0000000000000000e+02 1.2500000000000000e+02 1 0 0 0 0"
+       write (u_file, "(A)")  "P 10004 25 1.4960220911365536e+02 &
+            &4.6042825611414656e+02 &
+            &0 5.0000000000000000e+02 1.2500000000000000e+02 1 0 0 0 0"
+       write (u_file, "(A)")  "HepMC::IO_GenEvent-END_EVENT_LISTING"
+    else if (HEPMC3_AVAILABLE) then
+       write (u_file, "(A)")  "HepMC::Version 3.01.01"
+       write (u_file, "(A)")  "HepMC::Asciiv3-START_EVENT_LISTING"
+       write (u_file, "(A)")  "E 55 1 4"
+       write (u_file, "(A)")  "U GEV MM"
+       write (u_file, "(A)")  "A 0 alphaQCD -1"
+       write (u_file, "(A)")  "A 0 event_scale 1000"
+       write (u_file, "(A)")  "A 0 signal_process_id 42"
+       write (u_file, "(A)")  "P 1 0 25 0.0000000000000000e+00 &
+            &0.0000000000000000e+00 4.8412291827592713e+02 &
+            &5.0000000000000000e+02 1.2499999999999989e+02 3"
+       write (u_file, "(A)")  "P 2 0 25 0.0000000000000000e+00 &
+            &0.0000000000000000e+00 -4.8412291827592713e+02 &
+            &5.0000000000000000e+02 1.2499999999999989e+02 3"
+       write (u_file, "(A)")  "V -1 0 [1,2]"  
+       write (u_file, "(A)")  "P 3 -1 25 -1.4960220911365536e+02 &
+            &-4.6042825611414656e+02 0.0000000000000000e+00 &
+            &5.0000000000000000e+02 1.2500000000000000e+02 1"
+       write (u_file, "(A)")  "P 4 -1 25 1.4960220911365536e+02 &
+            &4.6042825611414656e+02 0.0000000000000000e+00 &
+            &5.0000000000000000e+02 1.2500000000000000e+02 1"
+       write (u_file, "(A)")  "HepMC::Asciiv3-END_EVENT_LISTING"
+    else
+       call msg_fatal &
+            ("Trying to execute eio_hepmc unit tests without a linked HepMC")
+    end if
     close (u_file)
 
     write (u, "(A)")  "* Initialize test process"
@@ -15719,7 +16113,7 @@ We test the implementation of all I/O methods.
        write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
             " with ID = ", eio%proc_num_id(i_prc)
     end select
-
+    
     call eio%input_event (event, iostat)
 
     call event%write (u)
