@@ -2848,13 +2848,13 @@ initialization phase (more precisely: at the moment only in the
     type :: prt_array_t
        type(string_t), dimension(:), allocatable :: prt
     end type
-    integer, parameter :: n_flv_max = 10
     class(radiation_generator_t), intent(inout) :: generator
     type(string_t), intent(out), dimension(:), allocatable :: prt_tot_in, prt_tot_out
-    type(prt_array_t), dimension(n_flv_max) :: prt_in, prt_out
-    type(prt_array_t), dimension(n_flv_max) :: prt_out0, prt_in0
+    type(prt_array_t), dimension(:), allocatable :: prt_in, prt_out
+    type(prt_array_t), dimension(:), allocatable :: prt_out0, prt_in0
     type(pdg_array_t), dimension(:), allocatable :: pdg_tmp, pdg_out, pdg_in
     type(pdg_list_t), dimension(:), allocatable :: pl_in, pl_out
+    type(prt_array_t) :: prt_out0_tmp, prt_in0_tmp
     integer :: i, j
     integer, dimension(:), allocatable :: reshuffle_list_local
     type(reshuffle_list_t) :: reshuffle_list
@@ -2863,17 +2863,21 @@ initialization phase (more precisely: at the moment only in the
     integer :: i_buf
 
     flv = 0
+    allocate (prt_in0(0), prt_out0(0))
     associate (if_table => generator%if_table)
        do i = 1, if_table%get_length ()
           call if_table%get_pdg_out (i, pdg_tmp)
           if (size (pdg_tmp) == generator%n_tot) then
              call if_table%get_particle_string (i, &
-                  prt_in0(flv + 1)%prt, prt_out0(flv + 1)%prt)
+                  prt_in0_tmp%prt, prt_out0_tmp%prt)
+             prt_in0 = [prt_in0, prt_in0_tmp]
+             prt_out0 = [prt_out0, prt_out0_tmp]
              flv = flv + 1
           end if
        end do
     end associate
 
+    allocate (prt_in(size (prt_in0)), prt_out(size (prt_out0)))
     do i = 1, flv
        allocate (prt_in(i)%prt (generator%n_in))
        allocate (prt_out(i)%prt (generator%n_tot - generator%n_in))
