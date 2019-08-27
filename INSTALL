@@ -94,7 +94,8 @@ WHIZARD:
    FeynRules program: http://feynrules.irmp.ucl.ac.be
 
 -- Parallelisation with MPI requires a at least MPI-3 capable MPI library.
-   You can get OpenMPI from https://www.open-mpi.org/.
+   You can get OpenMPI from https://www.open-mpi.org/, MPICH from
+   https://www.open-mpi.org and Intel MPI from https://software.intel.com.
 
 #-------------------------------------------------------------
 #  platform specific issues
@@ -236,7 +237,7 @@ Optional Features:
   --disable-openmp        do not use OpenMP
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure	  compile Omega libraries impure [[no]]
-  --enable-fc-mpi         use OpenMPI/MPICH for the Fortran code [[no]]
+  --enable-fc-mpi         use OpenMPI/MPICH/Intel for the Fortran code [[no]]
   --disable-ocaml	  disable the OCaml parts, even if OCaml available
   			  [[no]]
   --enable-default-UFO-dir=directory
@@ -277,7 +278,7 @@ Optional Packages:
 			  double precision.  Note that only single and
                           double are guaranteed to be provided by all
                           Fortran compilers.
-  --with-mpi-lib=mpich|openmpi   request an external MPI library.
+  --with-mpi-lib=mpich|openmpi|intel   request an external MPI library.
   --with-hepmc=dir        assume the given directory for HepMC
   --with-pythia8=dir      assume the given directory for PYTHIA8
   --with-fastjet=dir      assume the given directory for FastJet

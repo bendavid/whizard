@@ -831,7 +831,7 @@ AC_SUBST([FC_OPENMP_DEFAULT_MAX_THREADS])
 ])
 ### end WO_FC_SET_OPENMP
 
-### Enable/disable MPI support (either OpenMPI or MPICH)
+### Enable/disable MPI support (either OpenMPI, MPICH or Intel MPI)
 AC_DEFUN([WO_FC_SET_MPI],
 [dnl
 AC_REQUIRE([WO_FC_FILENAME_CASE_CONVERSION])
@@ -840,8 +840,9 @@ AC_ARG_ENABLE([fc_mpi],
     [use OpenMPI/MPICH for the Fortran code [[no]]])],
   [], [enable_fc_mpi="no"])
 if test "x$enable_fc_mpi" = "xyes"; then
-   if test "$FC" != "mpifort" || test "$F77" != "mpifort"; then
-        WO_FC_MSG_ERROR_BOX([For MPI please use mpifort as Fortran and F77 compiler!])
+   if !(test "$FC" == "mpifort" || test "$F77" == "mpifort") \
+	&& !(test "$FC" == "mpiifort" || test "$F77" == "mpiifort"); then
+        WO_FC_MSG_ERROR_BOX([For MPI please use mpifort or mpiifort (for Intel) as Fortran and F77 compiler!])
    fi
    if test -n "$MPI_DIR"; then
      wo_mpi_config_path=$MPI_DIR/bin:$PATH
@@ -849,23 +850,38 @@ if test "x$enable_fc_mpi" = "xyes"; then
      wo_mpi_config_path=$PATH
    fi
    AC_MSG_CHECKING([the requested MPI library])
-   wo_cv_fc_requested_mpilib=openmpi
+   wo_cv_fc_requested_mpilib=intel
    AC_ARG_WITH([mpi-lib],
-     [  --with-mpi-lib=mpich|openmpi   request an external MPI library.],
+     [  --with-mpi-lib=mpich|openmpi|intel   request an external MPI library.],
      [case "x$withval" in
         x | xno | xyes ) wo_cv_fc_mpilib=openmpi ;;
         * )              wo_cv_fc_mpilib="`echo $withval | $LOWERCASE`" ;;
       esac])
    case "$wo_cv_fc_requested_mpilib" in
-      mpich | openmpi )
+      mpich | openmpi | intel)
         AC_MSG_RESULT([$wo_cv_fc_requested_mpilib])
         ;;
       *)
         AC_MSG_RESULT()
-        WO_FC_MSG_ERROR_BOX([argument of --with-mpi-library is $wo_cv_fc_mpilib, but must be one of mpich, openmpi!])
+        WO_FC_MSG_ERROR_BOX([argument of --with-mpi-library is $wo_cv_fc_mpilib, but must be one of mpich, openmpi or intel!])
         ;;
    esac
    case "$wo_cv_fc_requested_mpilib" in
+      intel )
+	AC_PATH_PROG([MPIIFORT],[mpiifort],[no],[$wo_mpi_config_path])
+	if test "$MPIIFORT" != "no"; then
+	  AC_CACHE_CHECK([the Intel MPI version],
+	     [wo_cv_mpiifort_version],
+	     [dnl
+		wo_cv_mpiifort_version=[`$MPIIFORT --version | head -n 1 | $SED -e 's/ifort (IFORT) \(.*\)\s.*/\1/'`]
+		wo_cv_mpiifort_major_version=[`echo $wo_cv_mpiifort_version | $SED -e 's/\([0-9]\)\..*/\1/'`]
+	  ])
+	  MPI_VERSION=$wo_cv_mpiifort_version
+          FCFLAGS_MPI="-lmpifort -lmpi"
+	else
+	  enable_fc_mpi="no"
+        fi
+	;;
       mpich )
         AC_PATH_PROG([MPICHVERSION],[mpichversion],[no],[$wo_mpi_config_path])
 	if test "$MPICHVERSION" != "no"; then

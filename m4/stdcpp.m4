@@ -69,6 +69,11 @@ ac_cxx_v_output="`echo $ac_cxx_v_output |
         grep 'LPATH is:' |
         sed 's,.*LPATH is\(: *[[^ ]]*\).*,\1,;s,: */, -L/,g'` $ac_cxx_v_output"
 
+# The Intel C++ compiler's output is rather verbose, we only need the linker information, located at the end.
+if echo $ac_cxx_v_output | grep 'mGLOB_options_string' >/dev/null 2>&1; then
+  ac_cxx_v_output="`echo $ac_cxx_v_output | sed -n -e 's/.*\( ld \)//p'`"
+fi
+
 ])# _AC_PROG_CXX_V_OUTPUT
 
 #####
