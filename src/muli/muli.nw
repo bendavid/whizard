@@ -15017,7 +15017,7 @@ end module muli_remnant
     integer, intent(in) :: lha_flavor              !!! g, u, d, etc.
     real(default), intent(out) :: valence_pdf, sea_pdf, twin_pdf
     real(double), dimension(-6:6) :: pdf_array
-    call evolvePDF (momentum_fraction, GeV_scale, pdf_array)
+    call evolvePDF (dble (momentum_fraction), dble (GeV_scale), pdf_array)
     select case (lha_flavor)
     case (0) !!! gluon
        valence_pdf = zero
@@ -15065,7 +15065,7 @@ end module muli_remnant
     real(default), intent(in) :: GeV_scale, momentum_fraction
     real(default), dimension(2), intent(out) :: valence_pdf
     real(double), dimension(-6:6), intent(out) :: sea_pdf
-    call evolvePDF (momentum_fraction, GeV_scale, sea_pdf)
+    call evolvePDF (dble (momentum_fraction), dble (GeV_scale), sea_pdf)
     valence_pdf(1) = (sea_pdf(1) - sea_pdf(-1)) * &
          this%pdf_int_weight (PDF_VALENCE_DOWN)
     valence_pdf(2) = (sea_pdf(2) - sea_pdf(-2)) * &
@@ -15181,7 +15181,7 @@ end module muli_remnant
     real(default), intent(in) :: GeV_scale, momentum_fraction
     real(default), dimension(2), intent(out) :: valence_pdf
     real(double), dimension(-6:6), intent(out) :: sea_pdf
-    call evolvePDF (momentum_fraction, GeV_scale, sea_pdf)
+    call evolvePDF (dble (momentum_fraction), dble (GeV_scale), sea_pdf)
     sea_pdf = sea_pdf / momentum_fraction
     valence_pdf(1) = (sea_pdf(1) - sea_pdf(-1)) * this%valence_content(1)
     valence_pdf(2) = (sea_pdf(2) - sea_pdf(-2)) * (this%valence_content(2) / two)
