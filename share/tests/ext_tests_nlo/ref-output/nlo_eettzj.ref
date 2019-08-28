@@ -108,9 +108,9 @@ alphas_power = 1
 | Applying user-defined cuts.
 | Using user-defined general scale.
 | Starting integration for process 'nlo_eettzj_p1' part 'born'
-| Integrate: iterations = 1:100:"gw"
+| Integrate: iterations = 1:140:"gw"
 | Integrator: 3 chains, 14 channels, 8 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: 140 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -120,9 +120,9 @@ alphas_power = 1
    1        140  4.5914279E-01  8.73E-02   19.02    2.25   18.74
 |=============================================================================|
 | Starting integration for process 'nlo_eettzj_p1' part 'real'
-| Integrate: iterations = 1:100:"gw"
+| Integrate: iterations = 1:140:"gw"
 | Integrator: 3 chains, 14 channels, 11 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: 140 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -132,9 +132,9 @@ alphas_power = 1
    1        140  2.3048638E-01  3.12E-01  135.16   15.99   11.40
 |=============================================================================|
 | Starting integration for process 'nlo_eettzj_p1' part 'virtual'
-| Integrate: iterations = 1:100:"gw"
+| Integrate: iterations = 1:140:"gw"
 | Integrator: 3 chains, 14 channels, 8 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: 140 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -151,6 +151,5 @@ alphas_power = 1
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  ( 65.5558 +-  69.07969 ) %
 |=============================================================================|
-| There were no errors and    3 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

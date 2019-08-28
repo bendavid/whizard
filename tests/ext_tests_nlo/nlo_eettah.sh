@@ -29,5 +29,5 @@ if test -f ref-output/$name.ref; then
 else
   echo "|=============================================================================|"
   echo "$name.ref not found"
-  exit 1
+  exit 77
 fi

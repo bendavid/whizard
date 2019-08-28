@@ -110,9 +110,9 @@ alphas_power = 0
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'nlo_eetthh_p1' part 'born'
-| Integrate: iterations = 1:100:"gw"
+| Integrate: iterations = 1:120:"gw"
 | Integrator: 1 chains, 12 channels, 8 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: 120 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -122,9 +122,9 @@ Warning: No cuts have been defined.
    1        120  1.3572209E-02  1.66E-03   12.26    1.34   26.86
 |=============================================================================|
 | Starting integration for process 'nlo_eetthh_p1' part 'real'
-| Integrate: iterations = 1:100:"gw"
+| Integrate: iterations = 1:120:"gw"
 | Integrator: 1 chains, 12 channels, 11 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: 120 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -134,9 +134,9 @@ Warning: No cuts have been defined.
    1        120 -2.4573051E-03  3.45E-04   14.05    1.54   23.51
 |=============================================================================|
 | Starting integration for process 'nlo_eetthh_p1' part 'virtual'
-| Integrate: iterations = 1:100:"gw"
+| Integrate: iterations = 1:120:"gw"
 | Integrator: 1 chains, 12 channels, 8 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: 120 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
@@ -153,6 +153,6 @@ Warning: No cuts have been defined.
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  (-12.4745 +-   3.13624 ) %
 |=============================================================================|
-| There were no errors and    4 warning(s).
+| There were no errors and    1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
