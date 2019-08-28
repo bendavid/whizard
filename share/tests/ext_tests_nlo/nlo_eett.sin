@@ -1,24 +1,19 @@
-?logging = true
-?openmp_logging = false
-?vis_history = false
-?integration_timer = false
-openmp_num_threads = 1
-sample_format = debug
-?debug_decay = false
-?debug_process = false
-?debug_verbose = false
-?write_raw = false
-
 include("nlo_settings.sin")
 
 alpha_power = 2
 alphas_power = 0
 
-scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-       + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)) / 2
+scale = let subevt @clustered_jets = cluster [jet] in
+        let int njet = count [@clustered_jets] in
+        if njet == 0 then
+          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)) / 2
+        elsif njet == 1 then
+          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+          + eval Pt [extract index 1 [@clustered_jets]]) / 2
+        endif
 
+#?combined_nlo_integration = true
 process nlo_eett_p1 = e1, E1 => t, T { nlo_calculation = full }
-
-#integrate (nlo_eett_p1) { iterations = 5:10000:"gw",2:10000 } # validation
-integrate (nlo_eett_p1) { iterations = 5:5000:"gw",2:5000 }
-
+integrate (nlo_eett_p1) { iterations = 1:100:"gw" }

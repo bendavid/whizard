@@ -1,14 +1,3 @@
-?logging = true
-?openmp_logging = false
-?vis_history = false
-?integration_timer = false
-openmp_num_threads = 1
-sample_format = debug
-?debug_decay = false
-?debug_process = false
-?debug_verbose = false
-?write_raw = false
-
 include ("nlo_settings.sin")
 
 alias bjet = b:B:gl
@@ -40,6 +29,6 @@ endif
 
 $exclude_gauge_splittings = "b:t"
 
-process nlo_eettbb = e1, E1 => t, T, b, B { nlo_calculation = full }
-mult_call_real = 5
-integrate (nlo_eettbb) { iterations = 10:50000:"gw",2:20000 }
+#?combined_nlo_integration = true
+process nlo_eettbb_p1 = e1, E1 => t, T, b, B { nlo_calculation = full }
+integrate (nlo_eettbb_p1) { iterations = 1:100:"gw" }

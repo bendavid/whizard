@@ -1,16 +1,4 @@
-?logging = true
-?openmp_logging = false
-?vis_history = false
-?integration_timer = false
-openmp_num_threads = 1
-sample_format = debug
-?debug_decay = false
-?debug_process = false
-?debug_verbose = false
-?write_raw = false
-
 include ("nlo_settings.sin")
-
 
 alpha_power = 3
 alphas_power = 2
@@ -20,12 +8,23 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
        count [@eta_selected] >= 2
 
-$exclude_gauge_splittings = "t"
+scale = let subevt @clustered_jets = cluster [jet] in
+        let int njet = count [@clustered_jets] in
+        if njet == 2 then
+          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+          + sqrt (eval Pt [extract index 1 [H]]**2 + eval M [extract index 1 [H]]**2)
+          + eval Pt [extract index 1 [@clustered_jets]]
+          + eval Pt [extract index 2 [@clustered_jets]]) / 2
+        elsif njet == 3 then
+          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+          + sqrt (eval Pt [extract index 1 [H]]**2 + eval M [extract index 1 [H]]**2)
+          + eval Pt [extract index 1 [@clustered_jets]]
+          + eval Pt [extract index 2 [@clustered_jets]]
+          + eval Pt [extract index 3 [@clustered_jets]]) / 2
+        endif
 
-scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-      +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-      +  sqrt (eval Pt [extract index 1 [H]]**2 + eval M [extract index 1 [H]]**2)
-      + eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]) / 2
-
-process nlo_eetthjj = e1, E1 => t, T, H, jet, jet {nlo_calculation = full }
-integrate (nlo_eetthjj) { iterations = 10:50000:"gw",2:20000 }
+#?combined_nlo_integration = true
+process nlo_eetthjj_p1 = e1, E1 => t, T, H, jet, jet {nlo_calculation = full }
+integrate (nlo_eetthjj_p1) { iterations = 1:100:"gw" }

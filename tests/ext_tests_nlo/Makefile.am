@@ -78,19 +78,16 @@ TESTS_EXTENDED = \
 
 XFAIL_TESTS_EXTENDED = \
 	nlo_ee4b.run \
-	nlo_ee4j.run \
-	nlo_ee4tj.run \
-	nlo_ee5j.run \
+	nlo_eebb.run \
 	nlo_eebbj.run \
 	nlo_eebbjj.run \
-	nlo_eejjj.run \
+	nlo_eetta.run \
+	nlo_eettaa.run \
+	nlo_eettah.run \
 	nlo_eettaj.run \
 	nlo_eettajj.run \
-	nlo_eettbb.run \
-	nlo_eetthjj.run \
-	nlo_eettjj.run \
-	nlo_eettjjj.run \
-	nlo_eettzjj.run
+	nlo_eettaz.run \
+	nlo_eettbb.run
 
 TESTS_REQ_GAMELAN = \
 	nlo_tt_powheg.run \

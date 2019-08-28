@@ -18,7 +18,7 @@ if test -f ref-output/$name.ref; then
     if test $diffrc -gt 0 -a $greprc -eq 0; then
       echo "|=============================================================================|"
       echo "OpenLoops process library missing"
-      exit 77
+      exit 99
     fi
     exit $diffrc
   else

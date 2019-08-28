@@ -1,37 +1,30 @@
-?logging = true
-?openmp_logging = false
-?vis_history = false
-?integration_timer = false
-openmp_num_threads = 1
-sample_format = debug
-?debug_decay = false
-?debug_process = false
-?debug_verbose = false
-?write_raw = false
+include("nlo_settings.sin")
 
-include ("nlo_settings.sin")
-
-cuts = let subevt @clustered_jets = cluster if E > 0 GeV [jet] in
+cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
        count [@eta_selected] >= 5
 
-scale = let int njet = count [jet] in
-      if njet == 5 then
-         (eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]
-         + eval Pt [extract index 3 [jet]] + eval Pt [extract index 4 [jet]]
-         + eval Pt [extract index 5 [jet]]) / 2
-      else
-         (eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]
-         + eval Pt [extract index 3 [jet]] + eval Pt [extract index 4 [jet]]
-         + eval Pt [extract index 5 [jet]] + eval Pt [extract index 6 [jet]]) / 2
-      endif
-
+scale = let subevt @clustered_jets = cluster [jet] in
+        let int njet = count [@clustered_jets] in
+        if njet == 5 then
+           ( eval Pt [extract index 1 [@clustered_jets]]
+           + eval Pt [extract index 2 [@clustered_jets]]
+           + eval Pt [extract index 3 [@clustered_jets]]
+           + eval Pt [extract index 4 [@clustered_jets]]
+           + eval Pt [extract index 5 [@clustered_jets]]) / 2
+        elsif njet == 6 then
+           ( eval Pt [extract index 1 [@clustered_jets]]
+           + eval Pt [extract index 2 [@clustered_jets]]
+           + eval Pt [extract index 3 [@clustered_jets]]
+           + eval Pt [extract index 4 [@clustered_jets]]
+           + eval Pt [extract index 5 [@clustered_jets]]
+           + eval Pt [extract index 6 [@clustered_jets]]) / 2
+        endif
 
 alpha_power = 2
 alphas_power = 3
-process nlo_ee5j = e1, E1 => jet, jet, jet, jet, jet { nlo_calculation = full }
-mult_call_real = 2
-mult_call_virt = 0.5
 
-integrate (nlo_ee5j) { iterations = 10:100000:"gw", 5:50000}
+#?combined_nlo_integration = true
+process nlo_ee5j_p1 = e1, E1 => jet, jet, jet, jet, jet { nlo_calculation = full $restrictions = "!W+:W-" }
+integrate (nlo_ee5j_p1) { iterations = 1:100:"gw" }
