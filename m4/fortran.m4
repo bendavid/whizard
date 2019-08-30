@@ -837,7 +837,7 @@ AC_DEFUN([WO_FC_SET_MPI],
 AC_REQUIRE([WO_FC_FILENAME_CASE_CONVERSION])
 AC_ARG_ENABLE([fc_mpi],
   [AS_HELP_STRING([--enable-fc-mpi],
-    [use OpenMPI/MPICH for the Fortran code [[no]]])],
+    [use OpenMPI/MPICH/Intel for the Fortran code (default is OpenMPI) [[no]]])],
   [], [enable_fc_mpi="no"])
 if test "x$enable_fc_mpi" = "xyes"; then
    if !(test "$FC" == "mpifort" || test "$F77" == "mpifort") \
@@ -850,13 +850,13 @@ if test "x$enable_fc_mpi" = "xyes"; then
      wo_mpi_config_path=$PATH
    fi
    AC_MSG_CHECKING([the requested MPI library])
-   wo_cv_fc_requested_mpilib=intel
    AC_ARG_WITH([mpi-lib],
      [  --with-mpi-lib=mpich|openmpi|intel   request an external MPI library.],
      [case "x$withval" in
-        x | xno | xyes ) wo_cv_fc_mpilib=openmpi ;;
-        * )              wo_cv_fc_mpilib="`echo $withval | $LOWERCASE`" ;;
-      esac])
+        x | xno | xyes ) wo_cv_fc_requested_mpilib=openmpi ;;
+        * )              wo_cv_fc_requested_mpilib="`echo $withval | $LOWERCASE`" ;;
+      esac],
+      [wo_cv_fc_requested_mpilib=openmpi])
    case "$wo_cv_fc_requested_mpilib" in
       mpich | openmpi | intel)
         AC_MSG_RESULT([$wo_cv_fc_requested_mpilib])
@@ -926,10 +926,6 @@ AC_SUBST([MPI_LIBRARY])
 AC_SUBST([MPI_VERSION])
 AC_SUBST([FCFLAGS_MPI])
 ### end WO_FC_SET_MPI
-
-
-# AC_CACHE_CHECK([whether MPI is activated], [wo_cv_fc_mpi],
-# ])
 
 
 ### Check for profiling support
