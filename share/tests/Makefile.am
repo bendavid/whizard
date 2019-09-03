@@ -663,6 +663,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/analyze_4.ref \
     functional_tests/ref-output/analyze_5.ref \
     functional_tests/ref-output/analyze_6.ref \
+    functional_tests/ref-output/bjet_cluster.ref \
     functional_tests/ref-output/colors.ref \
     functional_tests/ref-output/colors_hgg.ref \
     functional_tests/ref-output/alphas.ref \
@@ -1059,6 +1060,7 @@ MISC_TESTS_SIN = \
     functional_tests/analyze_4.sin \
     functional_tests/analyze_5.sin \
     functional_tests/analyze_6.sin \
+    functional_tests/bjet_cluster.sin \
     functional_tests/colors.sin \
     functional_tests/colors_2.sin \
     functional_tests/colors_hgg.sin \

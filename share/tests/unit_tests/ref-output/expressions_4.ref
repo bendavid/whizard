@@ -213,7 +213,7 @@ Syntax table:
  SEQUENCE    <maybe_else_pexpr> = <else_pexpr>?
  SEQUENCE    <elsif_pexpr> = elsif <lexpr> then <pexpr>
  SEQUENCE    <else_pexpr> = else <pexpr>
- ALTERNATIVE <prt_function> = <join_fun> | <combine_fun> | <collect_fun> | <cluster_fun> | <select_fun> | <extract_fun> | <sort_fun>
+ ALTERNATIVE <prt_function> = <join_fun> | <combine_fun> | <collect_fun> | <cluster_fun> | <select_fun> | <extract_fun> | <sort_fun> | <select_b_jet_fun> | <select_non_b_jet_fun> | <select_c_jet_fun> | <select_light_jet_fun>
  SEQUENCE    <join_fun> = <join_clause> <pargs2>
  SEQUENCE    <combine_fun> = <combine_clause> <pargs2>
  SEQUENCE    <collect_fun> = <collect_clause> <pargs1>
@@ -221,6 +221,10 @@ Syntax table:
  SEQUENCE    <select_fun> = <select_clause> <pargs1>
  SEQUENCE    <extract_fun> = <extract_clause> <pargs1>
  SEQUENCE    <sort_fun> = <sort_clause> <pargs1>
+ SEQUENCE    <select_b_jet_fun> = <select_b_jet_clause> <pargs1>
+ SEQUENCE    <select_non_b_jet_fun> = <select_non_b_jet_clause> <pargs1>
+ SEQUENCE    <select_c_jet_fun> = <select_c_jet_clause> <pargs1>
+ SEQUENCE    <select_light_jet_fun> = <select_light_jet_clause> <pargs1>
  SEQUENCE    <join_clause> = join <condition>?
  SEQUENCE    <combine_clause> = combine <condition>?
  SEQUENCE    <collect_clause> = collect <condition>?
@@ -228,6 +232,10 @@ Syntax table:
  SEQUENCE    <select_clause> = select <condition>?
  SEQUENCE    <extract_clause> = extract <position>?
  SEQUENCE    <sort_clause> = sort <criterion>?
+ SEQUENCE    <select_b_jet_clause> = select_b_jet <condition>?
+ SEQUENCE    <select_non_b_jet_clause> = select_non_b_jet <condition>?
+ SEQUENCE    <select_c_jet_clause> = select_c_jet <condition>?
+ SEQUENCE    <select_light_jet_clause> = select_light_jet <condition>?
  KEYWORD     join
  KEYWORD     combine
  KEYWORD     collect
@@ -237,6 +245,10 @@ Syntax table:
  KEYWORD     extract
  SEQUENCE    <position> = index <expr>
  KEYWORD     sort
+ KEYWORD     select_b_jet
+ KEYWORD     select_non_b_jet
+ KEYWORD     select_c_jet
+ KEYWORD     select_light_jet
  SEQUENCE    <criterion> = by <expr>
  KEYWORD     index
  KEYWORD     by

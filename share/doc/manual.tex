@@ -4163,6 +4163,36 @@ appropriate for the analysis and the jet algorithm.  Example:
 \end{footnotesize}
 \end{quote}
 
+\subsubsection{select\_b\_jet, select\_non\_b\_jet, select\_c\_jet,
+  select\_light\_jet}
+
+This command is available from \whizard\ version 2.8.1 on, and it only
+generates anything non-trivial if the \fastjet\ package has been
+installed and linked with \whizard\ (cf. Sec.\ref{sec:fastjet}). It
+only returns sensible results when it is applied to subevents after
+the \ttt{cluster} command (cf. the paragraph before). It is similar to
+the \ttt{select} command, and accepts a logical expression as a
+possible condition. The four commands \ttt{select\_b\_jet},
+\ttt{select\_non\_b\_jet}, \ttt{select\_c\_jet}, and
+\ttt{select\_light\_jet} select $b$ jets, non-$b$ jets 
+(anything lighter than $b$s), $c$ jets (neither $b$ nor light) and
+light jets (anything besides $b$ and $c$), respectively. An example
+looks like this:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  alias lightjet = u:U:d:D:s:S:c:C:gl
+  alias jet = b:B:lightjet
+  process eebbjj = e1, E1 => b, B, lightjet, lightjet
+  jet_algorithm = antikt_algorithm
+  jet_r = 0.5
+  cuts = let subevt @clustered_jets = cluster [jet] in
+         let subevt @bjets = select_b_jet [@clustered_jets] in
+         .....
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+
 
 \subsubsection{combine}
 \begin{quote}

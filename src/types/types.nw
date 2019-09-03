@@ -2983,7 +2983,9 @@ the particle object.
 @
 \subsubsection{The type}
 We initialize only the type here and mark as unpolarized.  The
-initializers below do the rest.
+initializers below do the rest. The logicals [[is_b_jet]] and
+[[is_c_jet]] are true only if [[prt_t]] comes out of the
+[[subevt_cluster]] routine and fulfils the correct flavor content.
 <<Subevents: public>>=
   public :: prt_t
 <<Subevents: types>>=
@@ -2993,6 +2995,8 @@ initializers below do the rest.
      integer :: pdg
      logical :: polarized = .false.
      logical :: colorized = .false.
+     logical :: is_b_jet = .false.
+     logical :: is_c_jet = .false.
      integer :: h
      type(vector4_t) :: p
      real(default) :: p2
@@ -3063,16 +3067,19 @@ is not set.
 @ %def prt_init_combine
 @ Init from a pseudojet object.
 <<Subevents: procedures>>=
-  subroutine prt_init_pseudojet (prt, jet, src, pdg)
+  subroutine prt_init_pseudojet (prt, jet, src, pdg, is_b_jet, is_c_jet)
     type(prt_t), intent(out) :: prt
     type(pseudojet_t), intent(in) :: jet
     integer, dimension(:), intent(in) :: src
     integer, intent(in) :: pdg
+    logical, intent(in) :: is_b_jet, is_c_jet
     type(vector4_t) :: p
     prt%type = PRT_COMPOSITE
     p = vector4_moving (jet%e(), &
          vector3_moving ([jet%px(), jet%py(), jet%pz()]))
     call prt_set (prt, pdg, p, p**2, src)
+    prt%is_b_jet = is_b_jet
+    prt%is_c_jet = is_c_jet
   end subroutine prt_init_pseudojet
 
 @ %def prt_init_pseudojet
@@ -3138,6 +3145,26 @@ is not set.
   end function prt_is_colorized
 
 @ %def prt_is_colorized
+<<Subevents: public>>=
+  public :: prt_is_b_jet
+<<Subevents: procedures>>=
+  elemental function prt_is_b_jet (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt%is_b_jet
+  end function prt_is_b_jet
+
+@ %def prt_is_b_jet
+<<Subevents: public>>=
+  public :: prt_is_c_jet
+<<Subevents: procedures>>=
+  elemental function prt_is_c_jet (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt%is_c_jet
+  end function prt_is_c_jet
+
+@ %def prt_is_c_jet
 @ The number of open color (anticolor) lines.  We inspect the list of color
 (anticolor) lines and count the entries that do not appear in the list
 of anticolors (colors).  (There is no check against duplicates; we assume that
@@ -3346,6 +3373,12 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
        do i = 1, size (prt%src)
           write (u, "(1x,I0)", advance="no")  prt%src(i)
        end do
+    end if
+    if (prt%is_b_jet) then
+       write (u, "('|b jet')", advance="no")
+    end if
+    if (prt%is_c_jet) then
+       write (u, "('|c jet')", advance="no")
     end if
     write (u, "(A)")  ")"
   end subroutine prt_write
@@ -4160,9 +4193,11 @@ that have been constructed by FastJet and its interface.
       integer, intent(in) :: n_src
       integer, dimension(n_src) :: src_fill
       integer :: i, jet, k, combined_pdg, pdg, n_quarks, n_src_fill
+      logical :: is_b, is_c
       call subevt_reset (subevt, size (jet_out))
       do jet = 1, size (jet_out)
          pdg = 0; src_fill = 0; n_src_fill = 0; combined_pdg = 0; n_quarks = 0
+         is_b = .false.; is_c = .false.
          PARTICLE: do i = 1, size (jet_index)
             if (jet_index(i) /= jet) cycle PARTICLE
             associate (prt => pl1%prt(map(i)), n_src_prt => size(pl1%prt(map(i))%src))
@@ -4172,12 +4207,21 @@ that have been constructed by FastJet and its interface.
               n_src_fill = n_src_fill + n_src_prt
               if (is_quark (prt%pdg)) then
                  n_quarks = n_quarks + 1
+                 if (.not. is_b) then
+                    if (abs (prt%pdg) == 5) then
+                       is_b = .true.
+                       is_c = .false.
+                    else if (abs (prt%pdg) == 4) then
+                       is_c = .true.
+                    end if
+                 end if
                  if (combined_pdg == 0) combined_pdg = prt%pdg
               end if
             end associate
          end do PARTICLE
          if (keep_jets .and. n_quarks == 1) pdg = combined_pdg
-         call prt_init_pseudojet (subevt%prt(jet), jet_out(jet), src_fill(:n_src_fill), pdg)
+         call prt_init_pseudojet (subevt%prt(jet), jet_out(jet), &
+              src_fill(:n_src_fill), pdg, is_b, is_c)
       end do
     end subroutine fill_pseudojet
   end subroutine subevt_cluster

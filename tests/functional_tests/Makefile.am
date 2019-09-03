@@ -68,7 +68,8 @@ TESTS_DEFAULT = \
 XFAIL_TESTS_DEFAULT =
 
 TESTS_REQ_FASTJET = \
-    analyze_4.run
+    analyze_4.run \
+    bjet_cluster.run
 
 TESTS_REQ_OCAML = \
     libraries_1.run \
