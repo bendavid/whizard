@@ -27,4 +27,4 @@ alphas_power = 3
 
 #?combined_nlo_integration = true
 process nlo_ee5j_p1 = e1, E1 => jet, jet, jet, jet, jet { nlo_calculation = full $restrictions = "!W+:W-" }
-integrate (nlo_ee5j_p1) { iterations = 1:100:"gw" }
+integrate (nlo_ee5j_p1) { iterations = 1:1040:"gw" }

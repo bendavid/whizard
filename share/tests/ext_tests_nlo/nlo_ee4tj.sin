@@ -27,4 +27,4 @@ scale = let subevt @clustered_jets = cluster [jet] in
 
 #?combined_nlo_integration = true
 process nlo_ee4tj_p1 = e1, E1 => t, T, t, T, jet { nlo_calculation = full }
-integrate (nlo_ee4tj_p1) { iterations = 1:100:"gw" }
+integrate (nlo_ee4tj_p1) { iterations = 1:640:"gw" }
