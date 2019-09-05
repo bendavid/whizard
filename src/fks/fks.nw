@@ -232,12 +232,14 @@ contains
 end module fks_regions
 @ %def fks_regions
 @ There are three fundamental splitting types: $q \rightarrow qg$, $g \rightarrow gg$ and
-$g \rightarrow qq$.
+$g \rightarrow qq$ for FSR and additionally $q \rightarrow gq$ for ISR which is different
+from $q \rightarrow qg$ by which particle enters the hard process.
 <<fks regions: parameters>>=
   integer, parameter :: UNDEFINED_SPLITTING = 0
   integer, parameter :: F_TO_FV = 1
   integer, parameter :: V_TO_VV = 2
   integer, parameter :: V_TO_FF = 3
+  integer, parameter :: F_TO_VF = 4
 
 @
 @ We group the indices of the emitting and the radiated particle in
@@ -450,7 +452,10 @@ the [[ftuple]]-object.
   end subroutine ftuple_set
 
 @ %def ftuple_set
-@
+@ Determines the splitting type for FSR. There are three different types of splittings
+relevant here: $g \to gg$ tagged [[V_TO_VV]], $g \to qq$ tagged [[V_TO_FF]] and
+$q \to qg$ tagged [[F_TO_FV]]. For FSR, there is no need to differentiate between
+$q \to qg$ and $q \to gq$ splittings.
 <<fks regions: ftuple: TBP>>=
   procedure :: determine_splitting_type_fsr => ftuple_determine_splitting_type_fsr
 <<fks regions: procedures>>=
@@ -462,10 +467,10 @@ the [[ftuple]]-object.
        if (is_vector (flst(i)) .and. is_vector (flst(j))) then
           ftuple%splitting_type = V_TO_VV
        else if (flst(i)+flst(j) == 0 &
-             .and. is_fermion (abs(flst(i)))) then
+             .and. is_fermion (flst(i))) then
           ftuple%splitting_type = V_TO_FF
-       else if (is_fermion(abs(flst(i))) .and. is_massless_vector (flst(j)) &
-             .or. is_fermion(abs(flst(j))) .and. is_massless_vector (flst(i))) then
+       else if (is_fermion(flst(i)) .and. is_massless_vector (flst(j)) &
+             .or. is_fermion(flst(j)) .and. is_massless_vector (flst(i))) then
           ftuple%splitting_type = F_TO_FV
        else
           ftuple%splitting_type = UNDEFINED_SPLITTING
@@ -474,7 +479,17 @@ the [[ftuple]]-object.
   end subroutine ftuple_determine_splitting_type_fsr
 
 @ %def ftuple_determine_splitting_type_fsr
-@
+@ Determines the splitting type for ISR. There are four different types of splittings
+relevant here: $g \to gg$ tagged [[V_TO_VV]], $g \to qq$ tagged [[V_TO_FF]], $q \to qg$
+tagged [[F_TO_FV]] and $q \to gq$ tagged [[F_TO_VF]]. The latter two need to be considered
+separately for ISR as they differ with respect to which particle enters the hard process.
+A splitting [[F_TO_FV]] may lead to soft divergences while [[F_TO_VF]] does not.\\
+We also want to emphasize that the splitting type naming convention for ISR names the
+splittings considering backwards evolution. So in the splitting [[V_TO_FF]], it is the
+\textit{gluon} that enteres the hard process!\\
+Special treatment here is required if emitter $0$ is assigned. This is the case only when a
+gluon was radiated from any of the IS particles. In this case, both splittings are soft divergent
+so we can equivalently choose $1$ or $2$ as the emitter here even if both have different flavors.
 <<fks regions: ftuple: TBP>>=
   procedure :: determine_splitting_type_isr => ftuple_determine_splitting_type_isr
 <<fks regions: procedures>>=
@@ -487,10 +502,12 @@ the [[ftuple]]-object.
     associate (flst => flv%flst)
        if (is_vector (flst(em)) .and. is_vector (flst(j))) then
           ftuple%splitting_type = V_TO_VV
-       else if (is_massless_vector (flst(em)) .and. is_fermion(abs(flst(j)))) then
-          ftuple%splitting_type = V_TO_FF
-       else if (is_fermion(abs(flst(em))) .and. is_massless_vector (flst(j))) then
+       else if (is_massless_vector(flst(em)) .and. is_fermion(flst(j))) then
+          ftuple%splitting_type = F_TO_VF
+       else if (is_fermion(flst(em)) .and. is_massless_vector(flst(j))) then
           ftuple%splitting_type = F_TO_FV
+       else if (is_fermion(flst(em)) .and. is_fermion(flst(j))) then
+          ftuple%splitting_type = V_TO_FF
        else
           ftuple%splitting_type = UNDEFINED_SPLITTING
        end if
@@ -799,14 +816,17 @@ splitting. For this purpose, the function first checks whether the splitting is
 allowed at all. If this is the case, the emitter is removed from the
 flavor array. If the resulting array is equivalent to the Born flavor
 structure \texttt{flv\_born}, the pair is accepted as a valid
-splitting. We first check whether the splitting is possible. The array
+splitting.
+
+We first check whether the splitting is possible. The array
 [[flv_orig]] contains all particles which share a vertex with the
-particles at position [[i]] and [[j]]. If its size is equal to zero,
-no splitting is possible and the subroutine is exited. Otherwise,
-we loop over all possible underlying Born flavor structures and check
-if any of them equals the actual underlying Born flavor structure.
-For a quark emitting a gluon, [[flv_orig]] contains the PDG code of
-the anti-quark. To be on the safe side, a second array is created,
+particles at position [[i]] and [[j]]. If any of these particles belongs
+to the initial state, a PDG-ID flip is necessary to correctly recognize
+the vertex. If its size is equal to zero, no splitting is possible and
+the subroutine is exited. Otherwise, we loop over all possible underlying
+Born flavor structures and check if any of them equals the actual underlying
+Born flavor structure. For a quark emitting a gluon, [[flv_orig]] contains
+the PDG code of the anti-quark. To be on the safe side, a second array is created,
 which contains both the positively and negatively signed PDG
 codes. Then, the origial tuple $(i,j)$ is removed from the real flavor
 structure and the particles in [[flv_orig2]] are inserted.
@@ -828,7 +848,13 @@ $(i,j)$ is accepted as valid.
     integer, dimension(:), allocatable :: flv_orig
     valid = .false.
     if (all ([i, j] <= flv%n_in)) return
-    call model%match_vertex (flv%flst(i), flv%flst(j), flv_orig)
+    if (i <= flv%n_in .and. is_fermion(flv%flst(i))) then
+       call model%match_vertex (-flv%flst(i), flv%flst(j), flv_orig)
+    else if (j <= flv%n_in .and. is_fermion(flv%flst(j))) then
+       call model%match_vertex (flv%flst(i), -flv%flst(j), flv_orig)
+    else
+       call model%match_vertex (flv%flst(i), flv%flst(j), flv_orig)
+    end if
     n_orig = size (flv_orig)
     if (n_orig == 0) then
        return
@@ -966,7 +992,8 @@ permutation of the final-state particles
   end function flv_structure_remove_particle
 
 @ %def flv_structure_remove_particle
-@
+@ Removes the particles at position i1 and i2 and inserts a new
+particle of matching flavor at position i1.
 <<fks regions: flv structure: TBP>>=
   procedure :: insert_particle_fsr => flv_structure_insert_particle_fsr
 <<fks regions: procedures>>=
@@ -982,7 +1009,7 @@ permutation of the final-state particles
   end function flv_structure_insert_particle_fsr
 
 @ %def flv_structure_insert_particle_fsr
-@ For ISR, the two particles are not exchangable.
+@ Same as [[insert_particle_fsr]] but for ISR, the two particles are not exchangable.
 <<fks regions: flv structure: TBP>>=
   procedure :: insert_particle_isr => flv_structure_insert_particle_isr
 <<fks regions: procedures>>=
@@ -998,7 +1025,7 @@ permutation of the final-state particles
   end function flv_structure_insert_particle_isr
 
 @ %def flv_structure_insert_particle_isr
-@ Removes the paritcles at position i1 and i2 and inserts a new
+@ Removes the particles at position i1 and i2 and inserts a new
 particle at position i1.
 <<fks regions: flv structure: TBP>>=
   procedure :: insert_particle => flv_structure_insert_particle
@@ -1652,7 +1679,7 @@ also be supplied by a symmetry factor, explained below.
   end subroutine singular_region_write_latex
 
 @ %def singular_region_write_latex
-@ In case of a $g \rightarrow gg$ or $g \rightarrow qq$ splitting, the factor
+@ In case of a $g \rightarrow gg$ splitting, the factor
 \begin{equation*}
  \frac{2E_{\rm{em}}}{E_{\rm{em}} + E_{\rm{rad}}}
 \end{equation*}
@@ -1668,26 +1695,31 @@ there is only a soft singularity if the radiated parton becomes soft.
     integer :: i1, i2
     integer :: reg
     region%double_fsr = .false.
+    region%soft_divergence = .false.
     associate (ftuple => region%ftuples)
        do reg = 1, region%nregions
           call ftuple(reg)%get (i1, i2)
-          if (i1 /= region%emitter) cycle
-          if (i2 /= region%flst_real%nlegs) cycle
-          region%soft_divergence = &
-               ftuple(reg)%splitting_type /= V_TO_FF
-
-          if (i1 == 0) then
-             region%coll_divergence = .not. any (region%flst_real%massive(1:n_in))
+          if (i1 /= region%emitter .or. i2 /= region%flst_real%nlegs) then
+             cycle
           else
-             region%coll_divergence = .not. region%flst_real%massive(i1)
-          end if
+             if (ftuple(reg)%splitting_type == V_TO_VV .or.  &
+                 ftuple(reg)%splitting_type == F_TO_FV ) then
+                region%soft_divergence = .true.
+             end if
 
-          if (ftuple(reg)%splitting_type == V_TO_VV) then
-             if (all (ftuple(reg)%ireg > n_in))  &
-                  region%double_fsr = all (is_gluon (region%flst_real%flst(ftuple(reg)%ireg)))
-             exit
-          else if (ftuple(reg)%splitting_type == UNDEFINED_SPLITTING) then
-             call msg_fatal ("All splittings should be defined!")
+             if (i1 == 0) then
+                region%coll_divergence = .not. all (region%flst_real%massive(1:n_in))
+             else
+                region%coll_divergence = .not. region%flst_real%massive(i1)
+             end if
+
+             if (ftuple(reg)%splitting_type == V_TO_VV) then
+                if (all (ftuple(reg)%ireg > n_in))  &
+                     region%double_fsr = all (is_gluon (region%flst_real%flst(ftuple(reg)%ireg)))
+                exit
+             else if (ftuple(reg)%splitting_type == UNDEFINED_SPLITTING) then
+                call msg_fatal ("All splittings should be defined!")
+             end if
           end if
        end do
        if (.not. region%soft_divergence .and. .not. region%coll_divergence) &
@@ -2751,9 +2783,9 @@ are therefore equivalent.
 
     do i_real = 1, n_real
        do i_born = 1, n_born
-          call check_final_state_emissions &
+          call setup_flsts_emitters_and_ftuples_fsr &
                (i_real, i_born, i_ftuple, flst_alr, emitters, ftuples)
-          call check_initial_state_emissions &
+          call setup_flsts_emitters_and_ftuples_isr &
                (i_real, i_born, i_ftuple, flst_alr, emitters, ftuples)
        end do
     end do
@@ -2771,7 +2803,7 @@ are therefore equivalent.
       end if
     end function incr_i_ftuple_if_required
 
-    subroutine check_final_state_emissions &
+    subroutine setup_flsts_emitters_and_ftuples_fsr &
            (i_real, i_born, i_ftuple, flst_alr, emitters, ftuples)
       integer, intent(in) :: i_real, i_born
       integer, intent(inout) :: i_ftuple
@@ -2813,9 +2845,9 @@ are therefore equivalent.
             end do
          end do
       end associate
-    end subroutine check_final_state_emissions
+    end subroutine setup_flsts_emitters_and_ftuples_fsr
 
-    subroutine check_initial_state_emissions &
+    subroutine setup_flsts_emitters_and_ftuples_isr &
            (i_real, i_born, i_ftuple, flst_alr, emitters, ftuples)
       integer, intent(in) :: i_real, i_born
       integer, intent(inout) :: i_ftuple
@@ -2862,7 +2894,7 @@ are therefore equivalent.
             end if
          end do
       end associate
-    end subroutine check_initial_state_emissions
+    end subroutine setup_flsts_emitters_and_ftuples_isr
 
   end subroutine region_data_find_regions
 
@@ -3940,7 +3972,7 @@ position.
 
 @ %def region_data_has_pseudo_isr
 @ Performs consistency checks on [[region_data]]. Up to now only
-checks that no [[futple]] appears more than once.
+checks that no [[ftuple]] appears more than once.
 <<fks regions: reg data: TBP>>=
   procedure :: check_consistency => region_data_check_consistency
 <<fks regions: procedures>>=
@@ -3987,12 +4019,17 @@ checks that no [[futple]] appears more than once.
        do alr = 1, reg_data%regions(i_reg)%nregions
           associate (region => reg_data%regions(i_reg))
              i1 = region%ftuples(alr)%ireg(1)
-             if (i1 == 0) i1 = 1 !!! Gluon emission from both initial-state quarks
+             if (i1 == 0) i1 = 1 !!! Gluon emission from both initial-state particles
              f1 = region%flst_real%flst(i1)
              f2 = region%flst_real%flst(region%ftuples(alr)%ireg(2))
+             ! Flip PDG sign of IS fermions to allow a q -> g q splitting
+             ! in which the ftuple has the flavors (q,q).
+             if (i1 <= reg_data%n_in .and. is_fermion(f1)) then
+                f1 = -f1
+             end if
              valid_splitting = f1 + f2 == 0 &
-                  .or. (f1 == 21 .and. f2 == 21) &
-                  .or. (is_massive_vector (f1) .and. f2 == 22) &
+                  .or. (is_gluon(f1) .and. is_gluon(f2)) &
+                  .or. (is_massive_vector(f1) .and. is_photon(f2)) &
                   .or. is_fermion_vector_splitting (f1, f2)
              if (.not. valid_splitting) then
                 if (no_fail(2)) then
@@ -6155,7 +6192,7 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
     do alr = 1, reg_data%n_regions
        if (i_flv /= reg_data%regions(alr)%uborn_index) cycle
        em = reg_data%regions(alr)%emitter
-       if (em == 0) cycle
+       if (em <= virt%n_in) cycle
        if (evaluated(i_flv, em)) cycle
        !!! Collinear terms only for massless particles
        if (reg_data%regions(alr)%flst_uborn%massive(em)) cycle
@@ -6232,7 +6269,7 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
 
 @ %def virtual_compute_massive_self_eikonals
 @ The following code implements the $\mathcal{I}_{ij}$-function.
-The complete formulas can be found in arXiv:0908.4272 (A.1-A.17).
+The complete formulas can be found in arXiv:0908.4272 (A.1-A.17) and are also discussed in arXiv:1002.2581 in Appendix A.
 The implementation may differ in the detail from the formulas presented in the above paper.
 The parameter $\xi_{\text{cut}}$ is unphysically and cancels with appropriate factors in the real subtraction.
 We keep the additional parameter for debug usage.
@@ -6278,7 +6315,7 @@ The implemented formulas are then defined as follows:
 \item[massless-massive case]
   $p^2 = 0, k^2 \neq 0,$
   \begin{equation}
-     \mathcal{I}_{ij} = \frac{1}{2}\left[\log^2\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{\pi^2}{6}\right] -\frac{1}{2}I_0(k_i,k_j)\log\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{1}{2}I_\epsilon(k_i,k_j)
+     \mathcal{I}_{ij} = \frac{1}{2}\left[\frac{1}{2}\log^2\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{\pi^2}{6}\right] + \frac{1}{2}I_0(k_i,k_j)\log\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{1}{2}I_\epsilon(k_i,k_j)
      \label{I_0m}
   \end{equation}
   with
@@ -7152,7 +7189,7 @@ We have to compute
 \begin{equation*}
   \frac{J(\Phi_n,\xi,y,\phi)}{\xi} \left[(1-y)\xi^2\mathcal{R}^\alpha(\Phi_{n+1})\right]|_{y = 1}.
 \end{equation*}
-The Jacobian $j$ is proportional to $\xi$, due to the $d^3 k_{n+1} / k_{n+1}^0$ factor
+The Jacobian $J$ is proportional to $\xi$, due to the $d^3 k_{n+1} / k_{n+1}^0$ factor
 in the integration measure. It cancels the factor of $\xi$ in the denominator.
 The remaining part of the Jacobian is multiplied in [[evaluate_region_fsr]] and is
 not relevant here.
@@ -7162,7 +7199,7 @@ Inserting the splitting functions exemplarily for $q \to qg$ yields
              \frac{1+(1-z)^2}{z} \mathcal{B},
 \end{equation*}
 where we have chosen $z = E_\mathrm{rad} / \bar{E}_\mathrm{em}$ and $\bar{E}_\mathrm{em}$ denotes the emitter energy in the Born frame.
-The collinear final state imposes $\bar{k}_n = k_{n} + k_{k + 1}$ for the
+The collinear final state imposes $\bar{k}_n = k_{n} + k_{n + 1}$ for the
 connection between $\Phi_n$- and $\Phi_{n+1}$-phasepace and we get $1 - z = E_\mathrm{em} / \bar{E}_\mathrm{em}$.
 The denominator can be rewritten by the constraint $\bar{k}_n^2 = (k_n +
 k_{n+1})^2 = 0$ to
@@ -7283,6 +7320,9 @@ cancels another factor of $\xi$. We thus end up with
 \end{equation*}
 which is soft-finite.
 Now what about this boosting to the other beam?
+
+Note that here in [[compute_isr]], [[sqme_born]] is supposed to be
+the squared Born matrix element convoluted with the real PDF.
 <<real subtraction: coll sub: TBP>>=
   procedure :: compute_isr => coll_subtraction_compute_isr
 <<real subtraction: procedures>>=
@@ -7361,18 +7401,18 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
      type(real_scales_t) :: scales
      real(default), dimension(:,:), allocatable :: sqme_real_non_sub
      real(default), dimension(:), allocatable :: sqme_born
-    real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
-    real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
-    real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
-    complex(default), dimension(:,:,:,:), allocatable :: sqme_born_spin_c
-    type(soft_subtraction_t) :: sub_soft
-    type(coll_subtraction_t) :: sub_coll
-    logical, dimension(:), allocatable :: sc_required
-    logical :: subtraction_deactivated = .false.
-    integer :: purpose = INTEGRATION
-    logical :: radiation_event = .true.
-    logical :: subtraction_event = .false.
-    integer, dimension(:), allocatable :: selected_alr
+     real(default), dimension(:,:), allocatable :: sf_factors
+     real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
+     real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
+     complex(default), dimension(:,:,:,:), allocatable :: sqme_born_spin_c
+     type(soft_subtraction_t) :: sub_soft
+     type(coll_subtraction_t) :: sub_coll
+     logical, dimension(:), allocatable :: sc_required
+     logical :: subtraction_deactivated = .false.
+     integer :: purpose = INTEGRATION
+     logical :: radiation_event = .true.
+     logical :: subtraction_event = .false.
+     integer, dimension(:), allocatable :: selected_alr
   contains
   <<real subtraction: real subtraction: TBP>>
   end type real_subtraction_t
@@ -7396,6 +7436,8 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
     rsub%reg_data => reg_data
     allocate (rsub%sqme_born (reg_data%n_flv_born))
     rsub%sqme_born = zero
+    allocate (rsub%sf_factors (reg_data%n_regions, 0:reg_data%n_in))
+    rsub%sf_factors = zero
     allocate (rsub%sqme_born_color_c (reg_data%n_legs_born, reg_data%n_legs_born, &
          reg_data%n_flv_born))
     rsub%sqme_born_color_c = zero
@@ -7414,8 +7456,6 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
     end if
     call rsub%sub_soft%init (reg_data)
     call rsub%sub_coll%init (reg_data%n_regions, reg_data%n_in)
-    allocate (rsub%sqme_coll_isr (2, 2, reg_data%n_flv_born))
-    rsub%sqme_coll_isr = zero
     rsub%settings => settings
     rsub%sub_soft%use_resonance_mappings = settings%use_resonance_mappings
     rsub%sub_coll%use_resonance_mappings = settings%use_resonance_mappings
@@ -7740,9 +7780,10 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
     real(default), intent(in), optional :: sqme_coll, sqme_cs, sqme_coll_plus, sqme_coll_minus, sqme_cs_plus, sqme_cs_minus
     real(default), dimension(:), allocatable, save :: sqme_rad_store
     logical :: is_soft, is_collinear_plus, is_collinear_minus, is_fsr
-    real(default), parameter :: soft_threshold = 0.01_default
+    real(default), parameter :: soft_threshold = 0.001_default
     real(default), parameter :: coll_threshold = 0.99_default
-    real(default) :: sqme_dummy, this_sqme_rad, E_gluon, y
+    real(default), parameter :: rel_smallness = 0.01_default
+    real(default) :: sqme_dummy, this_sqme_rad, y, xi_tilde
     logical, dimension(:), allocatable, save :: count_alr
 
     if (.not. allocated (sqme_rad_store)) then
@@ -7758,14 +7799,16 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
        end if
 
        if (is_gluon (rsub%reg_data%regions(alr)%flst_real%flst(rsub%reg_data%n_legs_real))) then
-          E_gluon = rsub%real_kinematics%p_real_cms%get_energy (i_phs, rsub%reg_data%n_legs_real)
-          is_soft = E_gluon < soft_threshold
+          xi_tilde = rsub%real_kinematics%xi_tilde
+          is_soft = xi_tilde < soft_threshold
        else
           is_soft = .false.
        end if
        y = rsub%real_kinematics%y(i_phs)
-       is_collinear_plus = y > coll_threshold
-       is_collinear_minus = -y > coll_threshold
+       is_collinear_plus = y > coll_threshold .and. &
+            rsub%reg_data%regions(alr)%has_collinear_divergence()
+       is_collinear_minus = -y > coll_threshold .and. &
+            rsub%reg_data%regions(alr)%has_collinear_divergence()
 
        is_fsr = emitter > rsub%isr_kinematics%n_in
        if (is_fsr) then
@@ -7780,7 +7823,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
        this_sqme_rad = sqme_rad_store(alr)
        if (is_soft .and. .not. is_collinear_plus .and. .not. is_collinear_minus) then
           if ( .not. nearly_equal (this_sqme_rad, sqme_soft, &
-               abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
+               abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
              call msg_print_color (char ("Soft MEs do not match in region " // str (alr)), COL_RED)
           else
              call msg_print_color (char ("sqme_soft OK in region " // str (alr)), COL_GREEN)
@@ -7791,7 +7834,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
        if (is_collinear_plus .and. .not. is_soft) then
           if (is_fsr) then
              if ( .not. nearly_equal (this_sqme_rad, sqme_coll, &
-                 abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
+                 abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
                call msg_print_color (char ("Collinear MEs do not match in region " // str (alr)), COL_RED)
              else
                call msg_print_color (char ("sqme_coll OK in region " // str (alr)), COL_GREEN)
@@ -7799,7 +7842,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
              print *, 'this_sqme_rad, sqme_coll =    ', this_sqme_rad, sqme_coll
           else
              if ( .not. nearly_equal (this_sqme_rad, sqme_coll_plus, &
-                  abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
+                  abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
              call msg_print_color (char ("Collinear MEs do not match in region " // str (alr)), COL_RED)
              else
                 call msg_print_color (char ("sqme_coll_plus OK in region " // str (alr)), COL_GREEN)
@@ -7811,7 +7854,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
        if (is_collinear_minus .and. .not. is_soft) then
           if (.not. is_fsr) then
              if ( .not. nearly_equal (this_sqme_rad, sqme_coll_minus, &
-                  abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
+                  abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
                 call msg_print_color (char ("Collinear MEs do not match in region " // str (alr)), COL_RED)
              else
                 call msg_print_color (char ("sqme_coll_minus OK in region " // str (alr)), COL_GREEN)
@@ -7823,7 +7866,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
        if (is_soft .and. is_collinear_plus) then
           if (is_fsr) then
              if ( .not. nearly_equal (this_sqme_rad, sqme_cs, &
-                  abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
+                  abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
                 call msg_print_color (char ("Soft-collinear MEs do not match in region " // str (alr)), COL_RED)
              else
                 call msg_print_color (char ("sqme_cs OK in region " // str (alr)), COL_GREEN)
@@ -7831,7 +7874,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
              print *, 'this_sqme_rad, sqme_cs =    ', this_sqme_rad, sqme_cs
           else
              if ( .not. nearly_equal (this_sqme_rad, sqme_cs_plus, &
-                  abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
+                  abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
                 call msg_print_color (char ("Soft-collinear MEs do not match in region " // str (alr)), COL_RED)
              else
                 call msg_print_color (char ("sqme_cs_plus OK in region " // str (alr)), COL_GREEN)
@@ -7841,13 +7884,15 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
        end if
 
        if (is_soft .and. is_collinear_minus) then
-          if ( .not. nearly_equal (this_sqme_rad, sqme_cs_minus, &
-               abs_smallness=eps0, rel_smallness=tiny_07*10000)) then
-             call msg_print_color (char ("Soft-collinear MEs do not match in region " // str (alr)), COL_RED)
-          else
-             call msg_print_color (char ("sqme_cs_minus OK in region " // str (alr)), COL_GREEN)
+          if (.not. is_fsr) then
+             if ( .not. nearly_equal (this_sqme_rad, sqme_cs_minus, &
+                  abs_smallness=tiny(1._default), rel_smallness=rel_smallness)) then
+                call msg_print_color (char ("Soft-collinear MEs do not match in region " // str (alr)), COL_RED)
+             else
+                call msg_print_color (char ("sqme_cs_minus OK in region " // str (alr)), COL_GREEN)
+             end if
+             print *, 'this_sqme_rad, sqme_cs_minus =    ', this_sqme_rad, sqme_cs_minus
           end if
-          print *, 'this_sqme_rad, sqme_cs_minus =    ', this_sqme_rad, sqme_cs_minus
        end if
 
        count_alr (alr) = .true.
@@ -8237,7 +8282,11 @@ to be more consistent with the evaluation of the Born phase space.
   end function real_subtraction_get_i_contributor
 
 @ %def real_subtraction_get_i_contributor
-@
+@ Computes the soft subtraction term.
+If there is an initial state emission having a soft divergence, then a gluon
+has to have been emitted. A gluon can always be emitted from both IS partons
+and thus, we can take the [[sf_factor]] for emitter $0$ in this case.
+Be aware that this approach will not work for $pe$ collisions.
 <<real subtraction: real subtraction: TBP>>=
   procedure :: compute_sub_soft => real_subtraction_compute_sub_soft
 <<real subtraction: procedures>>=
@@ -8248,39 +8297,42 @@ to be more consistent with the evaluation of the Born phase space.
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     integer :: i_xi_ref, i_born
-    real(default) :: q2
+    real(default) :: q2, sf_factor
     type(vector4_t), dimension(:), allocatable :: p_born
     associate (real_kinematics => rsub%real_kinematics, &
-            nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type)
+            nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type, &
+            sregion => rsub%reg_data%regions(alr))
       sqme_soft = zero
-      if (rsub%reg_data%regions(alr)%has_soft_divergence ()) then
+      if (sregion%has_soft_divergence ()) then
          i_xi_ref = rsub%sub_soft%i_xi_ref (alr, i_phs)
          q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
          allocate (p_born (rsub%reg_data%n_legs_born))
          if (rsub%reg_data%has_pseudo_isr ()) then
             p_born = real_kinematics%p_born_onshell%get_momenta(1)
          else
-            p_born = real_kinematics%p_born_cms%get_momenta(1)
+            p_born = real_kinematics%p_born_cms%get_momenta(1) ! TODO: cms or lab?
          end if
          if (emitter > rsub%sub_soft%reg_data%n_in) then
             call rsub%sub_soft%create_softvec_fsr &
                  (p_born, real_kinematics%y_soft(i_phs), &
                  real_kinematics%phi, emitter, &
                  real_kinematics%xi_ref_momenta(i_xi_ref))
+            sf_factor = one
          else
             call rsub%sub_soft%create_softvec_isr &
                  (real_kinematics%y_soft(i_phs), real_kinematics%phi)
+            sf_factor = rsub%sf_factors(alr, 0)
          end if
-         i_born = rsub%reg_data%regions(alr)%uborn_index
+         i_born = sregion%uborn_index
          if (nlo_corr_type == "QCD") then
             sqme_soft = rsub%sub_soft%compute &
-                 (p_born, rsub%sqme_born_color_c(:,:,i_born), &
-                 real_kinematics%y(i_phs), &
+                 (p_born, rsub%sqme_born_color_c(:,:,i_born) * &
+                 sf_factor, real_kinematics%y(i_phs), &
                  q2, alpha_coupling, alr, emitter, i_res)
          else if (nlo_corr_type == "QED") then
             sqme_soft = rsub%sub_soft%compute &
-                 (p_born, rsub%sqme_born_charge_c(:,:,i_born), &
-                 real_kinematics%y(i_phs), &
+                 (p_born, rsub%sqme_born_charge_c(:,:,i_born) * &
+                 sf_factor, real_kinematics%y(i_phs), &
                  q2, alpha_coupling, alr, emitter, i_res)
          end if
       end if
@@ -8360,7 +8412,8 @@ to be more consistent with the evaluation of the Born phase space.
 
 @ %def real_subtraction_get_spin_correlation_term
 @ Construct a normalised momentum perpendicular to momentum [[p]] and rotate by
-an arbitrary angle [[phi]].
+an arbitrary angle [[phi]]. The angular conventions we use here are
+equivalent to those used by POWHEG.
 <<real subtraction: public>>=
   public :: real_subtraction_compute_k_perp_fsr, &
        real_subtraction_compute_k_perp_isr
@@ -8387,8 +8440,8 @@ an arbitrary angle [[phi]].
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: phi
     k_perp_isr(0) = zero
-    k_perp_isr(1) = cos(phi)
-    k_perp_isr(2) = sin(phi)
+    k_perp_isr(1) = sin(phi)
+    k_perp_isr(2) = cos(phi)
     k_perp_isr(3) = zero
   end function real_subtraction_compute_k_perp_isr
 
@@ -8405,7 +8458,7 @@ an arbitrary angle [[phi]].
     real(default), intent(in) :: alpha_coupling
     real(default) :: xi, xi_max
     real(default) :: mom_times_sqme_spin_c
-    integer :: i_con, pdf_type
+    integer :: i_con
     real(default) :: pfr
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_coll = zero
@@ -8425,12 +8478,6 @@ an arbitrary angle [[phi]].
                xi_max = one - rsub%isr_kinematics%x(em)
             end select
             xi = rsub%real_kinematics%xi_tilde * xi_max
-            ! TODO sbrass introduce overall PDF/PDF_SINGLET parameter
-            if (rsub%reg_data%regions(alr)%flst_real%flst(em) == GLUON) then
-               pdf_type = 2
-            else
-               pdf_type = 1
-            end if
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "QED") then
@@ -8440,8 +8487,8 @@ an arbitrary angle [[phi]].
             end if
             sqme_coll = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                 rsub%sqme_coll_isr(em, pdf_type, sregion%uborn_index), &
-                 mom_times_sqme_spin_c, &
+                 rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em), &
+                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em), &
                  xi, alpha_coupling, rsub%isr_kinematics%isr_mode)
          else
             if (sregion%nlo_correction_type == "QCD") then
@@ -8454,7 +8501,8 @@ an arbitrary angle [[phi]].
             sqme_coll = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta (i_con), &
                  rsub%real_kinematics%p_born_lab%get_momenta(1), &
-                 rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                 rsub%sqme_born(sregion%uborn_index), &
+                 mom_times_sqme_spin_c, &
                  xi, alpha_coupling, sregion%double_fsr)
             if (rsub%sub_coll%use_resonance_mappings) then
                select type (fks_mapping => rsub%reg_data%fks_mapping)
@@ -8470,7 +8518,10 @@ an arbitrary angle [[phi]].
   end function real_subtraction_compute_sub_coll
 
 @ %def real_subtraction_compute_sub_coll
-@
+@ Computes the soft-collinear subtraction term. For alpha regions with emitter
+$0$, this routine is called with [[em == 1]] and [[em == 2]] separately.
+To still be able to use the unrescaled pdf factors stored in [[sf_factors(alr, 0)]]
+in this case, we need to differentiate between [[em]] and [[em_pdf]].
 <<real subtraction: real subtraction: TBP>>=
   procedure :: compute_sub_coll_soft => real_subtraction_compute_sub_coll_soft
 <<real subtraction: procedures>>=
@@ -8481,7 +8532,7 @@ an arbitrary angle [[phi]].
     integer, intent(in) :: alr, em, i_phs
     real(default), intent(in) :: alpha_coupling
     real(default) :: mom_times_sqme_spin_c
-    integer :: i_con
+    integer :: i_con, em_pdf
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_cs = zero
       if (sregion%has_collinear_divergence ()) then
@@ -8492,6 +8543,7 @@ an arbitrary angle [[phi]].
          end if
          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
          if (em <= rsub%sub_coll%n_in) then
+            em_pdf = sregion%emitter
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "QED") then
@@ -8501,7 +8553,8 @@ an arbitrary angle [[phi]].
             end if
             sqme_cs = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                 rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                 rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em_pdf), &
+                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em_pdf), &
                  zero, alpha_coupling, rsub%isr_kinematics%isr_mode)
          else
             if (sregion%nlo_correction_type == "QCD") then
@@ -8514,7 +8567,8 @@ an arbitrary angle [[phi]].
             sqme_cs = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta(i_con), &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                 rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                 rsub%sqme_born(sregion%uborn_index), &
+                 mom_times_sqme_spin_c, &
                  zero, alpha_coupling, sregion%double_fsr)
          end if
       end if
@@ -8548,6 +8602,7 @@ an arbitrary angle [[phi]].
     if (associated (rsub%isr_kinematics)) nullify (rsub%isr_kinematics)
     if (allocated (rsub%sqme_real_non_sub)) deallocate (rsub%sqme_real_non_sub)
     if (allocated (rsub%sqme_born)) deallocate (rsub%sqme_born)
+    if (allocated (rsub%sf_factors)) deallocate (rsub%sf_factors)
     if (allocated (rsub%sqme_born_color_c)) deallocate (rsub%sqme_born_color_c)
     if (allocated (rsub%sqme_born_charge_c)) deallocate (rsub%sqme_born_charge_c)
     if (allocated (rsub%sc_required)) deallocate (rsub%sc_required)
@@ -9275,7 +9330,7 @@ first derivative,
   P_{ab}^<(z,\epsilon) = P_{ab}^<(z,0) + \epsilon \frac{\partial P_{ab}^<(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} + \mathcal{O}(\alpha_s^2).
 \end{equation*}
 This finally gives us the equation for the collinear remnant. Note that there is still one soft $1/\epsilon$-pole, which cancels out with the corresponding expression in the soft-virtual terms.
-\begin{align}
+\begin{align} \label{eqn:sigma-in-p-final}
   d\hat{\sigma}^{(in,+)} &= \frac{\alpha_s}{2\pi} \frac{1}{\epsilon} \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \nonumber\\
                          &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z) P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_{c} \log\frac{s\delta_{\mathrm{I}}}{2\mu^2} + 2 \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right. \nonumber\\
                          &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial \epsilon} \left(\frac{1}{1-z}\right)_{c} - K_{da}(z)\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha
@@ -9295,6 +9350,7 @@ module dglap_remnant
   use physics_defs
   use pdg_arrays
   use phs_fks, only: isr_kinematics_t
+  use fks_regions, only: region_data_t
 
   use nlo_data
 
@@ -9317,12 +9373,10 @@ end module dglap_remnant
 <<dglap remnant: types>>=
   type :: dglap_remnant_t
      type(nlo_settings_t), pointer :: settings => null ()
+     type(region_data_t), pointer :: reg_data => null ()
      type(isr_kinematics_t), pointer :: isr_kinematics => null ()
-     integer, dimension(:), allocatable :: light_quark_flv
-     integer, dimension(:,:), allocatable :: flv_in
      real(default), dimension(:), allocatable :: sqme_born
-     real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
-     integer :: n_flv
+     real(default), dimension(:,:), allocatable :: sf_factors
    contains
    <<dglap remnant: dglap remnant: TBP>>
   end type dglap_remnant_t
@@ -9332,64 +9386,26 @@ end module dglap_remnant
 <<dglap remnant: dglap remnant: TBP>>=
   procedure :: init => dglap_remnant_init
 <<dglap remnant: procedures>>=
-  subroutine dglap_remnant_init (dglap, settings, n_flv_born, isr_kinematics, flv, n_alr)
+  subroutine dglap_remnant_init (dglap, settings, reg_data, isr_kinematics)
     class(dglap_remnant_t), intent(inout) :: dglap
     type(nlo_settings_t), intent(in), target :: settings
-    integer, intent(in) :: n_flv_born
+    type(region_data_t), intent(in), target :: reg_data
+    integer :: n_flv_born
     type(isr_kinematics_t), intent(in), target :: isr_kinematics
-    integer, dimension(:,:), intent(in) :: flv
-    integer, intent(in) :: n_alr
-    integer :: i, j, n_quarks
-    logical, dimension(-6:6) :: quark_checked
+    dglap%reg_data => reg_data
+    n_flv_born = reg_data%get_n_flv_born ()
+    allocate (dglap%sf_factors (reg_data%n_regions, 0:reg_data%n_in))
+    dglap%sf_factors = zero
     dglap%settings => settings
-    quark_checked = .false.
     allocate (dglap%sqme_born(n_flv_born))
     dglap%sqme_born = zero
-    allocate (dglap%sqme_coll_isr(2, 2, n_flv_born))
-    dglap%sqme_coll_isr = zero
     dglap%isr_kinematics => isr_kinematics
-    dglap%n_flv = size (flv, dim=2)
-    allocate (dglap%flv_in (2, dglap%n_flv))
-    dglap%flv_in = flv
-    n_quarks = 0
-    do i = 1, size (flv, dim = 1)
-       if (is_quark(flv(i,1))) then
-          n_quarks = n_quarks + 1
-          quark_checked(flv(i, 1)) = .true.
-       end if
-    end do
-    allocate (dglap%light_quark_flv (n_quarks))
-    j = 1
-    do i = -6, 6
-       if (quark_checked(i)) then
-          dglap%light_quark_flv(j) = i
-          j = j + 1
-       end if
-    end do
   end subroutine dglap_remnant_init
 
 @ %def dglap_remnant_init
-@
-<<dglap remnant: dglap remnant: TBP>>=
-  procedure :: get_pdf_singlet => dglap_remnant_get_pdf_singlet
-<<dglap remnant: procedures>>=
-  function dglap_remnant_get_pdf_singlet (dglap, emitter) result (sum_sqme)
-    real(default) :: sum_sqme
-    class(dglap_remnant_t), intent(in) :: dglap
-    integer, intent(in) :: emitter
-    integer :: i_flv
-    integer, parameter :: PDF_SINGLET = 2
-    sum_sqme = zero
-    do i_flv = 1, size (dglap%sqme_coll_isr, dim=3)
-       if (any (dglap%flv_in(emitter, i_flv) == dglap%light_quark_flv)) &
-            sum_sqme = sum_sqme + dglap%sqme_coll_isr (emitter, PDF_SINGLET, i_flv)
-    end do
-  end function dglap_remnant_get_pdf_singlet
-
-@ %def dglap_remnant_get_summed_quark_sqmes
-@ Evaluates formula (...). Note that, as also is the case for the real subtraction,
-we have to take into account an additional term, occuring because the integral the
-plus distribution is evaluated over is not constrained on the interval $[0,1]$.
+@ Evaluates formula \ref{eqn:sigma-in-p-final}. Note that, as also in the case for the
+real subtraction, we have to take into account an additional term, occuring because the
+integral the plus distribution is evaluated over is not constrained on the interval $[0,1]$.
 Explicitly, this means (see JHEP 06(2010)043, (4.11)-(4.12))
 \begin{align}
   \int_{\bar{x}_\oplus}^1 dz \left( \frac{1}{1-z} \right)_{\xi_{\text{cut}}} & = \log \frac{1-\bar{x}_\oplus}{\xi_{\text{cut}}} f(1) + \int_{\bar{x}_\oplus}^1 \frac{f(z) - f(1)}{1-z}, \\
@@ -9404,55 +9420,38 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
     real(default), intent(in) :: alpha_s
     logical, intent(in) :: separate_alrs
     real(default), intent(inout), dimension(:) :: sqme_dglap
-    real(default) :: factor, factor_soft, plus_dist_remnant
-    integer :: i_flv, ii_flv, emitter
-    real(default), dimension(2) :: tmp
-    real(default) :: sb, xb, onemz
-    real(default) :: fac_scale2, jac
-    real(default) :: sqme_scaled
-    integer, parameter :: PDF = 1, PDF_SINGLET = 2
+    integer :: alr, emitter
+    real(default) :: sqme_alr
+    logical, dimension(:,:,:), allocatable :: evaluated
+    real(default) :: sb, fac_scale2
     sb = dglap%isr_kinematics%sqrts_born**2
     fac_scale2 = dglap%isr_kinematics%fac_scale**2
-    do i_flv = 1, dglap%n_flv
+    allocate (evaluated(dglap%reg_data%get_n_flv_born (), dglap%reg_data%get_n_flv_real (), &
+         dglap%reg_data%n_in))
+    evaluated = .false.
+    do alr = 1, dglap%reg_data%n_regions
+       sqme_alr = zero
+       emitter = dglap%reg_data%regions(alr)%emitter
+       if (emitter > dglap%reg_data%n_in) cycle
+       associate (i_flv_born => dglap%reg_data%regions(alr)%uborn_index, &
+               i_flv_real => dglap%reg_data%regions(alr)%real_index)
+          if (emitter == 0) then
+             do emitter = 1, 2
+                if (evaluated(i_flv_born, i_flv_real, emitter)) cycle
+                call evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
+             end do
+          else if (emitter > 0) then
+             if (evaluated(i_flv_born, i_flv_real, emitter)) cycle
+             call evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
+          end if
+       end associate
        if (separate_alrs) then
-          ii_flv = i_flv
+          sqme_dglap(alr) = sqme_dglap(alr) + alpha_s / twopi * sqme_alr
        else
-          ii_flv = 1
+          sqme_dglap(1) = sqme_dglap(1) + alpha_s / twopi * sqme_alr
        end if
-       tmp = zero
-       do emitter = 1, 2
-          associate (z => dglap%isr_kinematics%z(emitter), template => dglap%settings%fks_template)
-            jac = dglap%isr_kinematics%jacobian(emitter)
-            onemz = one - z
-            factor = log (sb * template%delta_i / two / z / fac_scale2) / &
-                   onemz + two * log (onemz) / onemz
-            factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
-                   onemz + two * log (onemz) / onemz
-            xb = dglap%isr_kinematics%x(emitter)
-            plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
-                   two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
-            if (is_gluon(dglap%flv_in(emitter, i_flv))) then
-               sqme_scaled = dglap%sqme_coll_isr(emitter, PDF, i_flv)
-               tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &
-                    - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
-                    + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
-               tmp(emitter) = tmp(emitter) + &
-                    (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
-                    dglap%get_pdf_singlet (emitter)
-            else if (is_quark(dglap%flv_in(emitter, i_flv))) then
-               sqme_scaled = dglap%sqme_coll_isr(emitter, PDF, i_flv)
-               tmp(emitter) = p_hat_qq(z) * factor / z * sqme_scaled * jac &
-                    - p_derived_qq(z) / z * sqme_scaled * jac &
-                    - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
-                    + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
-               sqme_scaled = dglap%sqme_coll_isr(emitter, PDF_SINGLET, i_flv)
-               tmp(emitter) = tmp(emitter) + &
-                    (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
-            end if
-          end associate
-       end do
-       sqme_dglap(ii_flv) = sqme_dglap(ii_flv) + alpha_s / twopi * (tmp(1) + tmp(2))
     end do
+
   contains
   <<dglap remnant: dglap remnant evaluate: procedures>>
   end subroutine dglap_remnant_evaluate
@@ -9526,6 +9525,54 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
 
 @ %def p_derived_gg, p_derived_qg, p_derived_gq, p_derived_qq
 @
+<<dglap remnant: dglap remnant evaluate: procedures>>=
+subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
+  integer, intent(in) :: alr, emitter, i_flv_born, i_flv_real
+  real(default), intent(inout) :: sqme_alr
+  logical, intent(inout), dimension(:,:,:) :: evaluated
+  real(default) :: z, jac
+  real(default) :: factor, factor_soft, plus_dist_remnant
+  real(default) :: xb, onemz
+  real(default) :: sqme_scaled
+  integer :: flv_em, flv_rad
+  associate (template => dglap%settings%fks_template)
+     z = dglap%isr_kinematics%z(emitter)
+     flv_rad = dglap%reg_data%regions(alr)%flst_real%flst(dglap%reg_data%n_legs_real)
+     flv_em = dglap%reg_data%regions(alr)%flst_real%flst(emitter)
+     jac = dglap%isr_kinematics%jacobian(emitter)
+     onemz = one - z
+     factor = log (sb * template%delta_i / two / z / fac_scale2) / &
+          onemz + two * log (onemz) / onemz
+     factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
+          onemz + two * log (onemz) / onemz
+     xb = dglap%isr_kinematics%x(emitter)
+     plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
+          two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
+  end associate
+  if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
+     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+     sqme_alr = sqme_alr + p_hat_gg(z) * factor / z * sqme_scaled * jac &
+          - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
+          + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+  else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
+     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+     sqme_alr = sqme_alr + p_hat_qq(z) * factor / z * sqme_scaled * jac &
+          - p_derived_qq(z) / z * sqme_scaled * jac &
+          - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
+          + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+  else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
+     sqme_alr = sqme_alr + (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
+          dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+  else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
+     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+     sqme_alr = sqme_alr + (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
+  else
+     sqme_alr = sqme_alr + zero
+  end if
+  evaluated(i_flv_born, i_flv_real, emitter) = .true.
+end subroutine evaluate_alr
+@ %dglap_remnant_evaluate_alr
+@
 <<p variables>>=
   real(default), intent(in) :: z
   real(default) :: onemz
@@ -9539,177 +9586,13 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
   subroutine dglap_remnant_final (dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
     if (associated (dglap%isr_kinematics)) nullify (dglap%isr_kinematics)
-    if (allocated (dglap%light_quark_flv)) deallocate (dglap%light_quark_flv)
+    if (associated (dglap%reg_data)) nullify (dglap%reg_data)
+    if (associated (dglap%settings)) nullify (dglap%settings)
     if (allocated (dglap%sqme_born)) deallocate (dglap%sqme_born)
-    if (allocated (dglap%sqme_coll_isr)) deallocate (dglap%sqme_coll_isr)
+    if (allocated (dglap%sf_factors)) deallocate (dglap%sf_factors)
   end subroutine dglap_remnant_final
 
 @ %def dglap_remnant_final
-@
-\subsection{Rescaling function}
-
-NLO applications require that the beam energy fractions
-can be recomputed flexibly for different components of
-the calculation, e.g. in the collinear subtraction. To
-deal with this, we use a rescaling function which is given
-to [[sf_int_apply]] as an optional argument to use a different
-set of [[x]] values.
-
-<<[[isr_collinear.f90]]>>=
-<<File header>>
-
-module isr_collinear
-
-<<Use kinds with double>>
-<<Use strings>>
-  use diagnostics
-  use constants, only: one, two
-  use physics_defs, only: n_beam_structure_int
-  use sf_base, only: sf_rescale_t
-
-<<Standard module head>>
-
-<<isr collinear: public>>
-
-<<isr collinear: types>>
-
-contains
-
-<<isr collinear: procedures>>
-
-end module isr_collinear
-
-@ %def module isr_collinear
-
-<<isr collinear: public>>=
-  public :: sf_rescale_collinear_t
-<<isr collinear: types>>=
-  type, extends (sf_rescale_t) :: sf_rescale_collinear_t
-     real(default) :: xi_tilde
-  contains
-  <<isr collinear: rescale collinear: TBP>>
-  end type sf_rescale_collinear_t
-
-@ %def sf_rescale_collinear_t
-@
-<<isr collinear: rescale collinear: TBP>>=
-  procedure :: apply => sf_rescale_collinear_apply
-<<isr collinear: procedures>>=
-  subroutine sf_rescale_collinear_apply (func, x)
-    class(sf_rescale_collinear_t), intent(in) :: func
-    real(default), intent(inout) :: x
-    real(default) :: xi
-    if (debug2_active (D_BEAMS)) then
-       print *, 'Rescaling function - Collinear: '
-       print *, 'Input: ', x
-       print *, 'xi_tilde: ', func%xi_tilde
-    end if
-    xi = func%xi_tilde * (one - x)
-    x = x / (one - xi)
-    if (debug2_active (D_BEAMS))  print *, 'scaled x: ', x
-  end subroutine sf_rescale_collinear_apply
-
-@ %def sf_rescale_collinear_apply
-@
-<<isr collinear: rescale collinear: TBP>>=
-  procedure :: set => sf_rescale_collinear_set
-<<isr collinear: procedures>>=
-  subroutine sf_rescale_collinear_set (func, xi_tilde)
-    class(sf_rescale_collinear_t), intent(inout) :: func
-    real(default), intent(in) :: xi_tilde
-    func%xi_tilde = xi_tilde
-  end subroutine sf_rescale_collinear_set
-
-@ %def sf_rescale_collinear_set
-@
-<<isr collinear: public>>=
-  public :: sf_rescale_real_t
-<<isr collinear: types>>=
-  type, extends (sf_rescale_t) :: sf_rescale_real_t
-     real(default) :: xi, y
-  contains
-  <<isr collinear: rescale real: TBP>>
-  end type sf_rescale_real_t
-
-@ %def sf_rescale_real_t
-@
-<<isr collinear: rescale real: TBP>>=
-  procedure :: apply => sf_rescale_real_apply
-<<isr collinear: procedures>>=
-  subroutine sf_rescale_real_apply (func, x)
-    class(sf_rescale_real_t), intent(in) :: func
-    real(default), intent(inout) :: x
-    real(default) :: onepy, onemy
-    if (debug2_active (D_BEAMS)) then
-       print *, 'Rescaling function - Real: '
-       print *, 'Input: ', x
-       print *, 'Beam index: ', func%i_beam
-       print *, 'xi: ', func%xi, 'y: ', func%y
-    end if
-    x = x / sqrt (one - func%xi)
-    onepy = one + func%y; onemy = one - func%y
-    if (func%i_beam == 1) then
-       x = x * sqrt ((two - func%xi * onemy) / (two - func%xi * onepy))
-    else if (func%i_beam == 2) then
-       x = x * sqrt ((two - func%xi * onepy) / (two - func%xi * onemy))
-    else
-       call msg_fatal ("sf_rescale_real_apply - invalid beam index")
-    end if
-    if (debug2_active (D_BEAMS))  print *, 'scaled x: ', x
-  end subroutine sf_rescale_real_apply
-
-@ %def sf_rescale_real_apply
-@
-<<isr collinear: rescale real: TBP>>=
-  procedure :: set => sf_rescale_real_set
-<<isr collinear: procedures>>=
-  subroutine sf_rescale_real_set (func, xi, y)
-    class(sf_rescale_real_t), intent(inout) :: func
-    real(default), intent(in) :: xi, y
-    func%xi = xi; func%y = y
-  end subroutine sf_rescale_real_set
-
-@ %def sf_rescale_real_set
-<<isr collinear: public>>=
-  public :: sf_rescale_dglap_t
-<<isr collinear: types>>=
-  type, extends(sf_rescale_t) :: sf_rescale_dglap_t
-     real(default), dimension(:), allocatable :: z
-   contains
-   <<isr collinear: rescale dglap: TBP>>
-  end type sf_rescale_dglap_t
-
-@ %def sf_rescale_dglap_t
-@
-<<isr collinear: rescale dglap: TBP>>=
-  procedure :: apply => sf_rescale_dglap_apply
-<<isr collinear: procedures>>=
-  subroutine sf_rescale_dglap_apply (func, x)
-    class(sf_rescale_dglap_t), intent(in) :: func
-    real(default), intent(inout) :: x
-    if (debug2_active (D_BEAMS))  then
-       print *, "Rescaling function - DGLAP:"
-       print *, "Input: ", x
-       print *, "Beam index: ", func%i_beam
-       print *, "z: ", func%z
-    end if
-    x = x / func%z(func%i_beam)
-    if (debug2_active (D_BEAMS)) print *, "scaled x: ", x
-  end subroutine sf_rescale_dglap_apply
-
-@ %def sf_rescale_dglap_apply
-@
-<<isr collinear: rescale dglap: TBP>>=
-  procedure :: set => sf_rescale_dglap_set
-<<isr collinear: procedures>>=
-  subroutine sf_rescale_dglap_set (func, z)
-    class(sf_rescale_dglap_t), intent(inout) :: func
-    real(default), dimension(:), intent(in) :: z
-    ! allocate-on-assginment
-    func%z = z
-  end subroutine sf_rescale_dglap_set
-
-@  %def sf_rescale_dglap_set
 @
 \section{Dispatch}
 @

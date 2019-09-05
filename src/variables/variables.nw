@@ -5783,21 +5783,21 @@ procedure with type [[V_NONE]].
          '\ttt{\$loop\_me\_method} and \ttt{\$real\_tree\_me\_method}.)'))
     call var_list%append_log (&
          var_str ("?test_soft_limit"), .false., intrinsic = .true., &
-         description=var_str ('Sets the fixed values $\tilde{\xi} = 0.0001$ ' // &
+         description=var_str ('Sets the fixed values $\tilde{\xi} = 0.00001$ ' // &
          'and $y = 0.5$ as radiation variables.  This way, only soft, ' // &
          'but non-collinear phase space points are generated, which allows ' // &
          'for testing subtraction in this region.'))
     call var_list%append_log (&
          var_str ("?test_coll_limit"), .false., intrinsic = .true., &
          description=var_str ('Sets the fixed values $\tilde{\xi} = 0.5$ ' // &
-         'and $y = 0.999$ as radiation variables.  This way, only collinear, ' // &
+         'and $y = 0.9999999$ as radiation variables.  This way, only collinear, ' // &
          'but non-soft phase space points are generated, which allows ' // &
          'for testing subtraction in this region. Can be combined with ' // &
          '\ttt{?test\_soft\_limit} to probe soft-collinear regions.'))
     call var_list%append_log (&
          var_str ("?test_anti_coll_limit"), .false., intrinsic = .true., &
          description=var_str ('Sets the fixed values $\tilde{\xi} = 0.5$ ' // &
-         'and $y = -0.999$ as radiation variables.  This way, only anti-collinear, ' // &
+         'and $y = -0.9999999$ as radiation variables.  This way, only anti-collinear, ' // &
          'but non-soft phase space points are generated, which allows ' // &
          'for testing subtraction in this region. Can be combined with ' // &
          '\ttt{?test\_soft\_limit} to probe soft-collinear regions.'))

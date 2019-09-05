@@ -7,6 +7,14 @@ Use svn log to see detailed changes.
 2019-10-24
 	RELEASE: version 2.8.1
 
+2019-09-05
+	Major progress on NLO QCD for hadron collisions:
+	- correctly assign flavor structures for alpha regions
+	- fix crossing of particles for initial state splittings
+	- correct assignment for PDF factors for real subtractions
+	- fix kinematics for collinear splittings
+	- bug fix for integrated virtual subtraction terms
+
 2019-09-03
 	b and c jet selection in cuts and analysis
 
@@ -583,7 +591,7 @@ Use svn log to see detailed changes.
 	User-defined squared matrix elements
 	Inclusive FastJet algorithm plugin
 	Numerical improvement for small boosts
-	
+
 ##################################################################
 
 2015-08-11
@@ -650,54 +658,54 @@ Use svn log to see detailed changes.
 
 2015-02-25
 	Read-in of StdHEP events, self-tests
-	
+
 2015-02-22
 	Bugfix for mother-daughter relations in
 	   showered/hadronized events
 
 2015-02-20
 	Projection on polarization in intermediate states
-	
-2015-02-13	
+
+2015-02-13
 	Correct treatment of beam remnants in
 	   event formats (also LC remnants)
-	
+
 ##################################################################
-	
+
 2015-02-06
 	RELEASE: version 2.2.4
 
 2015-02-06
 	Bugfix in event output
 
-2015-02-05	
+2015-02-05
 	LCIO event format supported
-	
+
 2015-01-30
 	Including state matrices in WHIZARD's internal IO
 	Versioning for WHIZARD's internal IO
 	Libtool update from 2.4.3 to 2.4.5
 	LCIO event output (beta version)
-	
+
 2015-01-27
 	Progress on NLO integration
 	Fixing a bug for multiple processes in a single
 	   event file when using beam event files
-	
+
 2015-01-19
 	Bug fix for spin correlations evaluated in the rest
 	   frame of the mother particle
-	
+
 2015-01-17
 	Regression fix for statically linked processes
 	   from SARAH and FeynRules
-	
+
 2015-01-10
 	NLO: massive FKS emitters supported (experimental)
-	
+
 2015-01-06
 	MMHT2014 PDF sets included
-	
+
 2015-01-05
 	Handling mass degeneracies in auto_decays
 
@@ -750,31 +758,31 @@ Use svn log to see detailed changes.
 2014-06-22
 	LHAPDF6 interface
 
-2014-06-18	
-	Module for automatic generation of 
+2014-06-18
+	Module for automatic generation of
 	  radiation and loop infrastructure code
-	
+
 2014-06-11
 	Improved internal directory structure
-	
+
 ##################################################################
-	
+
 2014-06-03
 	RELEASE: version 2.2.1
 
 2014-05-30
 	Extensions of internal PDG arrays
-	
+
 2014-05-26
 	FastJet interface
 
 2014-05-24
 	CJ12 PDFs included
-	
+
 2014-05-20
 	Regression fix for external models (via SARAH
 	    or FeynRules)
-	
+
 ##################################################################
 
 2014-05-18
@@ -827,27 +835,27 @@ Use svn log to see detailed changes.
 
 2013-09-03
 	General 2HDM implemented
-	
+
 2013-08-18
-	Rescanning/recalculating events 
-	
+	Rescanning/recalculating events
+
 2013-06-07
-	Reconstruction of complete event 
+	Reconstruction of complete event
 	  from 4-momenta possible
-	
+
 2013-05-06
 	Process library stacks
-	
+
 2013-05-02
 	Process stacks
-	
+
 2013-04-29
 	Single-particle phase space module
-	
+
 2013-04-26
 	Abstract interface for random
 	  number generator
-	
+
 2013-04-24
 	More object-orientation on modules
 	Midpoint-rule integrator
@@ -929,45 +937,45 @@ Use svn log to see detailed changes.
 2012-03-12
 	Bugfix in decay-integration order
 	MLM matching steered completely internally now
-	
+
 2012-03-09
 	Special phase space mapping for narrow resonances
 	  decaying to 4-particle final states with far off-shell
 	  intermediate states
 	Running alphas from PDF collaborations with
 	  builtin PDFs
-	
+
 2012-02-16
 	Bug fix in cascades decay infrastructure
-	
+
 2012-02-04
 	WHIZARD documentation compatible with TeXLive 2011
-	
+
 2012-02-01
 	Bug fix in FeynRules interface with --prefix flag
-	
+
 2012-01-29
 	Bug fix with name clash of O'Mega variable names
-	
+
 2012-01-27
 	Update internal PYTHIA to version 6.4.26
 	Bug fix in LHEF output
-	
+
 2012-01-21
 	Catching stricter automake 1.11.2 rules
-	
+
 2011-12-23
 	Bug fix in decay cascade setup
-	
+
 2011-12-20
 	Bug fix in helicity selection rules
-	
+
 2011-12-16
 	Accuracy goal reimplemented
-	
+
 2011-12-14
 	WHIZARD compatible with TeXLive 2011
-	
+
 2011-12-09
 	Option --user-target added
 
@@ -1025,15 +1033,15 @@ Use svn log to see detailed changes.
 	OpenMP parallelization of channel kinematics
 		(by Matthias Trudewind)
 
-2011-05-31 
+2011-05-31
 	RELEASE: version 1.97
 
-2011-05-24 
-	Minor bug fixes: update grids and elsif statement. 
+2011-05-24
+	Minor bug fixes: update grids and elsif statement.
 
 ##################################################################
 
-2011-05-10 
+2011-05-10
 	RELEASE: version 2.0.5
 
 2011-05-09
@@ -1169,7 +1177,7 @@ Use svn log to see detailed changes.
 2010-06-17
 	MLM matching with PYTHIA shower included
 
-2010-06-16 
+2010-06-16
 	Added full CIRCE1 and CIRCE2 versions including
 	full documentation and miscellanea to the trunk
 
@@ -1407,12 +1415,12 @@ Use svn log to see detailed changes.
 	Documentation with PDF bookmarks enabled
 	Various bug fixes
 
-2007-11-29 
+2007-11-29
 	New model UED
 
 ##################################################################
 
-2007-11-23 
+2007-11-23
 	RELEASE: version 1.90
 	O'Mega now part of the WHIZARD tree
 	Madgraph/CompHEP disabled by default (but still usable)
@@ -1609,43 +1617,43 @@ Use svn log to see detailed changes.
 
 ##################################################################
 
-2004-04-15 
-	RELEASE: version 1.28	
+2004-04-15
+	RELEASE: version 1.28
         Fixed bug: Color factor was missing for O'Mega processes with
           four quarks and more
         Manual partially updated
 
-2004-04-08 
+2004-04-08
 	Support for grid files in binary format
 	New default value show_histories=F (reduce output file size)
 	Revised phase space switches: removed annihilation_lines,
-	  removed s_channel_resonance, changed meaning of 
+	  removed s_channel_resonance, changed meaning of
 	  extra_off_shell_lines, added show_deleted_channels
 	Bug fixed which lead to omission of some phase space channels
 	Color flow guessed only if requested by guess_color_flow
 
-2004-03-10 
+2004-03-10
 	New model interface: Only one model name specified in whizard.prc
         All model-dependent files reside in conf/models (modellib removed)
 
-2004-03-03 
+2004-03-03
 	Support for input/output in SUSY Les Houches Accord format
 	Split event files if requested
 	Support for overall time limit
 	Support for CIRCE and CIRCE2 generator mode
 	Support for reading beam events from file
 
-2004-02-05 
+2004-02-05
 	Fixed compiler problems with Intel Fortran 7.1 and 8.0
 	Support for catching signals
 
 ##################################################################
 
-2003-08-06 
-	RELEASE: version 1.27	
+2003-08-06
+	RELEASE: version 1.27
 	User-defined PDF libraries as an alternative to the standard PDFLIB
 
-2003-07-23 
+2003-07-23
 	Revised phase space module: improved mappings for massless particles,
 	  equivalences of phase space channels are exploited
 	Improved mapping for PDF (hadron colliders)
@@ -1653,18 +1661,18 @@ Use svn log to see detailed changes.
 
 ##################################################################
 
-2003-06-23 
+2003-06-23
 	RELEASE: version 1.26
 	CIRCE2 support
 	Fixed problem with 'TC' integer kind [Intel compiler complained]
 
-2003-05-28 
+2003-05-28
 	Support for drawing histograms of grids
 	Bug fixes for MSSM definitions
 
 ##################################################################
 
-2003-05-22 
+2003-05-22
 	RELEASE: version 1.25
 	Experimental MSSM support with ISAJET interface
 	Improved capabilities of generating/analyzing weighted events
@@ -1672,11 +1680,11 @@ Use svn log to see detailed changes.
 
 ##################################################################
 
-2003-01-31 
+2003-01-31
 	RELEASE: version 1.24
 	A few more fixes and workarounds (Intel and Lahey compiler)
 
-2003-01-15 
+2003-01-15
 	Fixes and workarounds needed for WHIZARD to run with Intel compiler
 	Command-line option interface for the Lahey compiler
 
@@ -1684,7 +1692,7 @@ Use svn log to see detailed changes.
 
 ##################################################################
 
-2002-12-10 
+2002-12-10
 	RELEASE: version 1.23
 
 	Command-line options (on some systems)
@@ -1714,42 +1722,42 @@ Use svn log to see detailed changes.
 
 ##################################################################
 
-2002-03-16 
+2002-03-16
 	RELEASE: version 1.22
 	Allow for beam remnants in the event record
 
-2002-03-01 
+2002-03-01
         Handling of aliases in whizard.prc fixed (aliases are whole tokens)
 
-2002-02-28 
+2002-02-28
 	Optimized phase space handling routines
 	  (total execution time reduced by 20-60%, depending on process)
 
 ##################################################################
 
-2002-02-26 
+2002-02-26
 	RELEASE: version 1.21
 	Fixed ISR formula (ISR was underestimated in previous versions).
-          New version includes ISR in leading-log approximation up to 
+          New version includes ISR in leading-log approximation up to
           third order.  Parameter ISR_sqrts renamed to ISR_scale.
 
 ##################################################################
 
-2002-02-19 
-	RELEASE: version 1.20	
+2002-02-19
+	RELEASE: version 1.20
 	New process-generating method 'test' (dummy matrix element)
 	Compatibility with autoconf 2.50 and current O'Mega version
 
-2002-02-05 
+2002-02-05
 	Prevent integration channels from being dropped (optionally)
 	New internal mapping for structure functions improves performance
 	Old whizard.phx file deleted after recompiling (could cause trouble)
 
-2002-01-24 
+2002-01-24
 	Support for user-defined cuts and matrix element reweighting
 	STDHEP output now written by write_events_format=20 (was 3)
 
-2002-01-16 
+2002-01-16
 	Improved structure function handling; small changes in user interface:
           new parameter structured_beams in &process_input
           parameter fixed_energy in &beam_input removed
@@ -1759,13 +1767,13 @@ Use svn log to see detailed changes.
 	Fixed bug: Default cuts were insufficient in some cases
 	Fixed bug: Unusable phase space mappings generated in some cases
 
-2001-12-06 
+2001-12-06
 	Reorganized document source
 
-2001-12-05 
+2001-12-05
 	Preliminary CIRCE2 support (no functionality yet)
 
-2001-11-27 
+2001-11-27
 	Intel compiler support (does not yet work because of compiler bugs)
 	New cut and analysis mode cos-theta* and related
 	Fixed circular jetset_interface dependency warning
@@ -1773,9 +1781,9 @@ Use svn log to see detailed changes.
 	Minor shifts in cleanup targets (Makefiles)
         Modified library search, check for pdflib8*
 
-2001-08-06 
+2001-08-06
 	Fixed bug: I/O unit number could be undefined when reading phase space
-	Fixed bug: Unitialized variable could cause segfault when 
+	Fixed bug: Unitialized variable could cause segfault when
                    event generation was disabled
 	Fixed bug: Undefined subroutine in CIRCE replacement module
 	Enabled feature: TGCs in O'Mega (not yet CompHEP!) matrix elements
@@ -1783,16 +1791,16 @@ Use svn log to see detailed changes.
 	Fixed portability issue: Makefile did rely on PWD environment variable
 	Fixed portability issue: PYTHIA library search ambiguity resolved
 
-2001-08-01 
+2001-08-01
 	Default whizard.prc and whizard.in depend on activated modules
 	Fixed bug: TEX=latex was not properly enabled when making plots
 
-2001-07-20 
+2001-07-20
 	Fixed output settings in PERL script calls
 	Cache enabled in various configure checks
 
-2001-07-13 
-	Support for multiple processes in a single WHIZARD run.  The 
+2001-07-13
+	Support for multiple processes in a single WHIZARD run.  The
           integrations are kept separate, but the generated events are mixed
 	The whizard.evx format has changed (incompatible), including now
 	  the color flow information for PYTHIA fragmentation
@@ -1800,14 +1808,14 @@ Use svn log to see detailed changes.
 	Phase space file whizard.phs (if present) is used only as input,
 	  program-generated phase space is now in whizard.phx
 
-2001-07-10 
+2001-07-10
 	Bug fix: Undefined parameters in parameters_SM_ac.f90 removed
 
-2001-07-04 
+2001-07-04
 	Bug fix: Compiler options for the case OMEGA is disabled
 	Small inconsistencies in whizard.out format fixed
 
-2001-07-01 
+2001-07-01
 	Workaround for missing PDFLIB dummy routines in PYTHIA library
 
 ##################################################################
@@ -1888,6 +1896,3 @@ Use svn log to see detailed changes.
 
 2000-12-01
 	RELEASE of first public version: version 1.00beta
-
-
-

@@ -9211,7 +9211,7 @@ the $t$-quark always massive.
 @ %def phs_parameters_t
 @ Write phase-space parameters to file.
 <<PHS forests: phs parameters: TBP>>=
-  procedure :: write => phs_parameters_write 
+  procedure :: write => phs_parameters_write
 <<PHS forests: procedures>>=
   subroutine phs_parameters_write (phs_par, unit)
     class(phs_parameters_t), intent(in) :: phs_par
@@ -14494,7 +14494,7 @@ replace [[_iX]] by [[.iX]].
        filename = subdir // "/" // filename
     end if
   end function phs_wood_make_phs_filename
-    
+
 @ %def phs_wood_make_phs_filename
 @
 <<PHS wood: phs wood config: TBP>>=
@@ -16355,8 +16355,7 @@ tiny value differing from that.
 @ %def threshold_projection_born
 @ This routine computes the bounds of the Dalitz region for massive emitters, see below.
 It is also used by [[Powheg]], so the routine is public.
-The input parameter [[m2]] corresponds to the squared mass of the emitter and [[p]] is the
-four-momentum of the emitter.
+The input parameter [[m2]] corresponds to the squared mass of the emitter.
 <<phs fks: public>>=
   public :: compute_dalitz_bounds
 <<phs fks: procedures>>=
@@ -16773,10 +16772,10 @@ be assured that Born flavors are used for this.
   integer, parameter, public :: SQRTS_FIXED = 1
   integer, parameter, public :: SQRTS_VAR = 2
 
-  real(default), parameter :: xi_tilde_test_soft = 0.0001_default
+  real(default), parameter :: xi_tilde_test_soft = 0.00001_default
   real(default), parameter :: xi_tilde_test_coll = 0.5_default
   real(default), parameter :: y_test_soft = 0.5_default
-  real(default), parameter :: y_test_coll = 0.999999_default
+  real(default), parameter :: y_test_coll = 0.9999999_default
 
 @
 @ Very soft or collinear phase-space points can become a problem for
@@ -16790,7 +16789,7 @@ tolerance.
   function check_scalar_products (p) result (valid)
     logical :: valid
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default), parameter :: tolerance = 1E-6_default
+    real(default), parameter :: tolerance = 1E-7_default
     integer :: i, j
     valid = .true.
     do i = 1, size (p)
@@ -17477,7 +17476,6 @@ recoiling momenta.
 
     call generator%generate_fsr_in (p_born, p_real)
     q0 = sum (p_born(1:generator%n_in))**1
-
     generator%i_fsr_first = generator%n_in + 1
     call generator%generate_fsr_out (emitter, i_phs, p_born, p_real, q0, &
          xi_y_phi = xi_y_phi, no_jacobians = no_jacobians)
@@ -17799,7 +17797,11 @@ is
   subroutine construct_recoiling_momenta ()
     type(lorentz_transformation_t) :: lambda
     k_rec0 = q0 - p_real(p_em)%p(0) - p_real(nlegreal)%p(0)
-    uk_rec = sqrt (k_rec0**2 - generator%mrec2)
+    if (k_rec0**2 > generator%mrec2) then
+       uk_rec = sqrt (k_rec0**2 - generator%mrec2)
+    else
+       uk_rec = 0
+    end if
     if (generator%is_massive(emitter)) then
        beta = compute_beta (q0**2, k_rec0, uk_rec, &
               p_born(p_em)%p(0), uk_n_born)
@@ -20910,7 +20912,7 @@ end module dispatch_phs_uti
     write (u, "(A)")
 
     call var_list%init_defaults (0)
-    call os_data%init () 
+    call os_data%init ()
     call syntax_model_file_init ()
     call model_list%read_model &
          (var_str ("Test"), var_str ("Test.mdl"), os_data, model)

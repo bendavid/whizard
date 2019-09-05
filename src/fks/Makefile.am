@@ -36,7 +36,6 @@ libfks_la_SOURCES = \
   nlo_data.f90 \
   virtual.f90 \
   real_subtraction.f90 \
-  isr_collinear.f90 \
   dglap_remnant.f90 \
   dispatch_fks.f90
 

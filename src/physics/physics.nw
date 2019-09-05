@@ -63,7 +63,7 @@ Conversion from millimeter to nanoseconds for lifetimes.
 <<Physics defs: public parameters>>=
   real(default), parameter, public :: &
        ns_per_mm = 1.e6_default / 299792458._default
-@ 
+@
 Rescaling factor.
 <<Physics defs: public parameters>>=
   real(default), parameter, public :: &
@@ -234,11 +234,12 @@ virtual-subtracted or subtraction-dummy matrix element.
 convenient.
 We define the number of additional subtractions for beam-involved NLO calculations.
 Each subtraction refers to a rescaling of one of two beams.
+Obviously, this approach is not flexible enough to support setups with just a
+single beam described by a structure function.
 <<Physics defs: public parameters>>=
-  integer, parameter, public :: n_beam_structure_int = 4
-  integer, parameter, public :: n_beam_gluon_offset = 2
+  integer, parameter, public :: n_beams_rescaled = 2
 
-@ %def n_beam_structure_int
+@ %def n_beams_rescaled
 @
 <<Physics defs: public>>=
   public :: component_status
@@ -2498,7 +2499,8 @@ need not be normalized.  If it is zero, return the unit matrix.
 @
 \subsection{Rotations}
 For a rotation, the vector defines the rotation axis, and its length
-the rotation angle.
+the rotation angle. All of these rotations rotate counterclockwise
+in a right-handed coordinate system.
 <<Lorentz: public functions>>=
   public :: rotation
 <<Lorentz: interfaces>>=
@@ -4272,12 +4274,12 @@ with
 Defining
 \begin{equation*}
   u_q = \frac{1 + \varepsilon^2 - w^2 - \lambda^{1/2}}{1 +
-    \varepsilon^2 - w^2 + \lambda^{1/2}} 
+    \varepsilon^2 - w^2 + \lambda^{1/2}}
 \end{equation*}
 and
 \begin{equation*}
   u_w = \frac{1 - \varepsilon^2 + w^2 - \lambda^{1/2}}{1 -
-    \varepsilon^2 + w^2 + \lambda^{1/2}} 
+    \varepsilon^2 + w^2 + \lambda^{1/2}}
 \end{equation*}
 the factor $\mathcal{F}_1$ can be expressed as
 \begin{align*}

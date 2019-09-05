@@ -8296,7 +8296,6 @@ module sf_base
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_17, FMT_19
-  use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
   use quantum_numbers
@@ -8306,6 +8305,8 @@ module sf_base
   use beams
   use sf_aux
   use sf_mappings
+  use constants, only: one, two
+  use physics_defs, only: n_beams_rescaled
 
 <<Standard module head>>
 
@@ -8326,17 +8327,15 @@ end module sf_base
 @
 \subsection{Abstract rescale data-type}
 
-NLO calculations involve treatment of initial state parton radiation.
-The radiation of a parton rescale the energy fraction which enters the hard process.
-We allow for different rescale settings by extending the abstract
+NLO calculations require the treatment of initial state parton radiation.
+The radiation of a parton rescales the energy fraction which enters the hard process.
+We allow for different rescale settings by extending the abstract.
 [[sf_rescale_t]] data type.
 <<SF base: public>>=
   public :: sf_rescale_t
 <<SF base: types>>=
   type, abstract :: sf_rescale_t
-    integer :: i_restricted_beam = -1
     integer :: i_beam = 0
-    logical :: gluon = .false.
   contains
   <<SF base: rescaling function: TBP>>
   end type sf_rescale_t
@@ -8366,50 +8365,152 @@ We allow for different rescale settings by extending the abstract
   end subroutine sf_rescale_set_i_beam
 
 @ %def rescale_set_i_beam
-@ Restrict rescaling to beam with index [[i_beam]].
-<<SF base: rescaling function: TBP>>=
-  procedure :: restrict_to_beam => sf_rescale_restrict_to_beam
+@
+<<SF base: public>>=
+  public :: sf_rescale_collinear_t
+<<SF base: types>>=
+  type, extends (sf_rescale_t) :: sf_rescale_collinear_t
+     real(default) :: xi_tilde
+  contains
+  <<SF base: rescale collinear: TBP>>
+  end type sf_rescale_collinear_t
+
+@ %def sf_rescale_collinear_t
+@ For the subtraction terms we need to rescale the Born $x$ of both beams in the
+collinear limit. This leaves one beam unaffected and rescales the other according to
+\begin{equation}
+  x = \frac{\overline{x}}{1-\xi}
+\end{equation}
+which is the collinear limit of [[sf_rescale_real_apply]].
+<<SF base: rescale collinear: TBP>>=
+  procedure :: apply => sf_rescale_collinear_apply
 <<SF base: procedures>>=
-  subroutine sf_rescale_restrict_to_beam (func, i_beam)
-    class(sf_rescale_t), intent(inout) :: func
-    integer, intent(in) :: i_beam
-    if (func%i_restricted_beam > 0) &
-         call msg_bug ("[sf_rescale_restrict_to_beam] restricted beam already set.")
-    func%i_restricted_beam = i_beam
-  end subroutine sf_rescale_restrict_to_beam
+  subroutine sf_rescale_collinear_apply (func, x)
+    class(sf_rescale_collinear_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    real(default) :: xi
+    if (debug2_active (D_BEAMS)) then
+       print *, 'Rescaling function - Collinear: '
+       print *, 'Input, unscaled x: ', x
+       print *, 'xi_tilde: ', func%xi_tilde
+    end if
+    xi = func%xi_tilde * (one - x)
+    x = x / (one - xi)
+    if (debug2_active (D_BEAMS))  print *, 'rescaled x: ', x
+  end subroutine sf_rescale_collinear_apply
 
-@ %def sf_rescale_set_rescaled_beam
-@ Test on restricted beam momentum rescaling or no restriction.
-<<SF base: rescaling function: TBP>>=
-  procedure :: is_restricted => sf_rescale_is_restricted
+@ %def sf_rescale_collinear_apply
+@
+<<SF base: rescale collinear: TBP>>=
+  procedure :: set => sf_rescale_collinear_set
 <<SF base: procedures>>=
-  logical function sf_rescale_is_restricted (func, i_beam) result (yorn)
-    class(sf_rescale_t), intent(in) :: func
-    integer, intent(in) :: i_beam
-    yorn = (func%i_restricted_beam > 0)
-    yorn = yorn .and. (func%i_restricted_beam /= i_beam)
-  end function sf_rescale_is_restricted
+  subroutine sf_rescale_collinear_set (func, xi_tilde)
+    class(sf_rescale_collinear_t), intent(inout) :: func
+    real(default), intent(in) :: xi_tilde
+    func%xi_tilde = xi_tilde
+  end subroutine sf_rescale_collinear_set
 
-@ %def sf_rescale_is_restricted
-@ In case, gluon splits into quark/anti-quark, the DGLAP formulas become
-degenerate over flavours. We add subtraction with gluonic pdfs only which are
-convoluted with all quark/anti-quark flavours - hence PDF singlet.
-<<SF base: rescaling function: TBP>>=
-  procedure :: set_gluons => sf_rescale_set_gluons
-  procedure :: has_gluons => sf_rescale_has_gluons
+@ %def sf_rescale_collinear_set
+@
+<<SF base: public>>=
+  public :: sf_rescale_real_t
+<<SF base: types>>=
+  type, extends (sf_rescale_t) :: sf_rescale_real_t
+     real(default) :: xi, y
+  contains
+  <<SF base: rescale real: TBP>>
+  end type sf_rescale_real_t
+
+@ %def sf_rescale_real_t
+@ In case of IS Splittings, the beam $x$ changes from Born to real and thus needs to be rescaled according to
+\begin{equation}
+  x_\oplus = \frac{\overline{x}_\oplus}{\sqrt{1-\xi}} \sqrt{\frac{2-\xi(1-y)}{2-\xi(1+y)}}
+  , \qquad
+  x_\ominus = \frac{\overline{x}_\ominus}{\sqrt{1-\xi}} \sqrt{\frac{2-\xi(1+y)}{2-\xi(1-y)}}
+\end{equation}
+Refs:
+\begin{itemize}
+  \item[\textbullet] [0709.2092] Eq. (5.7).
+  \item[\textbullet] [0907.4076] Eq. (2.21).
+  \item Christian Weiss' PhD Thesis (DESY-THESIS-2017-025), Eq. (A.2.3).
+\end{itemize}
+<<SF base: rescale real: TBP>>=
+  procedure :: apply => sf_rescale_real_apply
 <<SF base: procedures>>=
-  subroutine sf_rescale_set_gluons (func, yorn)
-    class(sf_rescale_t), intent(inout) :: func
-    logical, intent(in) :: yorn
-    func%gluon = yorn
-  end subroutine sf_rescale_set_gluons
+  subroutine sf_rescale_real_apply (func, x)
+    class(sf_rescale_real_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    real(default) :: onepy, onemy
+    if (debug2_active (D_BEAMS)) then
+       print *, 'Rescaling function - Real: '
+       print *, 'Input, unscaled: ', x
+       print *, 'Beam index: ', func%i_beam
+       print *, 'xi: ', func%xi, 'y: ', func%y
+    end if
+    x = x / sqrt (one - func%xi)
+    onepy = one + func%y; onemy = one - func%y
+    if (func%i_beam == 1) then
+       x = x * sqrt ((two - func%xi * onemy) / (two - func%xi * onepy))
+    else if (func%i_beam == 2) then
+       x = x * sqrt ((two - func%xi * onepy) / (two - func%xi * onemy))
+    else
+       call msg_fatal ("sf_rescale_real_apply - invalid beam index")
+    end if
+    if (debug2_active (D_BEAMS))  print *, 'rescaled x: ', x
+  end subroutine sf_rescale_real_apply
 
-  logical function sf_rescale_has_gluons (func) result (yorn)
-    class(sf_rescale_t), intent(in) :: func
-    yorn = func%gluon
-  end function sf_rescale_has_gluons
+@ %def sf_rescale_real_apply
+@
+<<SF base: rescale real: TBP>>=
+  procedure :: set => sf_rescale_real_set
+<<SF base: procedures>>=
+  subroutine sf_rescale_real_set (func, xi, y)
+    class(sf_rescale_real_t), intent(inout) :: func
+    real(default), intent(in) :: xi, y
+    func%xi = xi; func%y = y
+  end subroutine sf_rescale_real_set
 
-@ %def sf_rescale_set_gluons rescale_has_gluons
+@ %def sf_rescale_real_set
+<<SF base: public>>=
+  public :: sf_rescale_dglap_t
+<<SF base: types>>=
+  type, extends(sf_rescale_t) :: sf_rescale_dglap_t
+     real(default), dimension(:), allocatable :: z
+   contains
+   <<SF base: rescale dglap: TBP>>
+  end type sf_rescale_dglap_t
+
+@ %def sf_rescale_dglap_t
+@
+<<SF base: rescale dglap: TBP>>=
+  procedure :: apply => sf_rescale_dglap_apply
+<<SF base: procedures>>=
+  subroutine sf_rescale_dglap_apply (func, x)
+    class(sf_rescale_dglap_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    if (debug2_active (D_BEAMS))  then
+       print *, "Rescaling function - DGLAP:"
+       print *, "Input: ", x
+       print *, "Beam index: ", func%i_beam
+       print *, "z: ", func%z
+    end if
+    x = x / func%z(func%i_beam)
+    if (debug2_active (D_BEAMS)) print *, "scaled x: ", x
+  end subroutine sf_rescale_dglap_apply
+
+@ %def sf_rescale_dglap_apply
+@
+<<SF base: rescale dglap: TBP>>=
+  procedure :: set => sf_rescale_dglap_set
+<<SF base: procedures>>=
+  subroutine sf_rescale_dglap_set (func, z)
+    class(sf_rescale_dglap_t), intent(inout) :: func
+    real(default), dimension(:), intent(in) :: z
+    ! allocate-on-assginment
+    func%z = z
+  end subroutine sf_rescale_dglap_set
+
+@  %def sf_rescale_dglap_set
 @
 \subsection{Abstract structure-function data type}
 This type should hold all configuration data for a specific type of
@@ -9295,13 +9396,12 @@ indicated by the status code.
   procedure (sf_int_apply), deferred :: apply
 <<SF base: interfaces>>=
   abstract interface
-     subroutine sf_int_apply (sf_int, scale, rescale, i_sub, fill_sub)
+     subroutine sf_int_apply (sf_int, scale, rescale, i_sub)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), intent(in) :: scale
        class(sf_rescale_t), intent(in), optional :: rescale
        integer, intent(in), optional :: i_sub
-       logical, intent(in), optional :: fill_sub
      end subroutine sf_int_apply
   end interface
 
@@ -9311,8 +9411,8 @@ indicated by the status code.
 Return metadata.  Once [[interaction_t]] is rewritten in OO, some of this will
 be inherited.
 
-The number of outgoing is equal to the number of incoming particles.  The
-radiated particles are the difference.
+The number of outgoing particles is equal to the number of incoming particles.
+The radiated particles are the difference.
 <<SF base: sf int: TBP>>=
   procedure :: get_n_in => sf_int_get_n_in
   procedure :: get_n_rad => sf_int_get_n_rad
@@ -10184,15 +10284,14 @@ chain.
                 associate (sf => chain%sf(i))
                    if (yorn) then
                       if (int%get_n_sub () == 0) then
-                         call int%declare_subtraction (n_beam_structure_int)
+                         call int%declare_subtraction (n_beams_rescaled)
                       end if
                       if (sf%int%interaction_t%get_n_sub () == 0) then
-                         call sf%int%interaction_t%declare_subtraction &
-                              (n_beam_structure_int)
+                         call sf%int%interaction_t%declare_subtraction (n_beams_rescaled)
                       end if
                    end if
                    call sf%eval%init_product (int, sf%int%interaction_t, mask,&
-                        & ignore_sub = .true.)
+                        & ignore_sub_for_qn = .true.)
                    if (sf%eval%is_empty ()) then
                       chain%status = SF_FAILED_CONNECTIONS
                       return
@@ -10565,21 +10664,17 @@ We provide a [[scale]] argument that is given to all structure
 functions in the chain.
 
 Hadronic NLO calculations involve rescaled fractions of the original beam
-momentum and PDF singlets (sums over flavors). In particular, we have to handle the following cases:
+momentum. In particular, we have to handle the following cases:
 \begin{itemize}
-  \item normal evaluation (where [[n_sub = 0]]) for Born and Virtual processes,
-  \item rescaled momentum fraction for matching [[i_beam == i_sub]], [[n_sub > 0]] and
-    [[sf_rescale]] present, the other beam is kept at born kinematics,
-  \item filling the subtraction terms with values from the current evaluation
-    [[fill_sub = .true.]], used for the non-rescaled beam,
-  \item restricted rescaling to only one beam with [[sf_rescale%is_restricted]].
+  \item normal evaluation (where [[i_sub = 0]]) for all terms except the
+    real non-subtracted,
+  \item rescaled momentum fraction for both beams in the case of the
+    real non-subtracted term ([[i_sub = 0]]),
+  \item and rescaled momentum fraction for one of both beams in the case of the
+    subtraction and DGLAP component ([[i_sub = 1,2]]).
 \end{itemize}
 For the collinear final or intial state counter terms, we apply a rescaling to
 one beam, and keep the other beam as is. We redo it then vice versa having now two subtractions.
-We add two more subtraction where we apply the rescaled gluonic PDF to
-\textit{all} flavors for the PDF singlet calculations.
-For the real rescalation, we have only one rescaled beams, therefore, we have only one
-subtraction.
 <<SF base: sf chain instance: TBP>>=
   procedure :: evaluate => sf_chain_instance_evaluate
 <<SF base: procedures>>=
@@ -10590,43 +10685,43 @@ subtraction.
     type(interaction_t), pointer :: out_int
     real(default) :: sf_sum
     integer :: i_beam, i_sub, n_sub
+    logical :: rescale
+    n_sub = 0
+    rescale = .false.; if (present (sf_rescale)) rescale = .true.
+    if (rescale) then
+       n_sub = chain%get_n_sub ()
+    end if
     if (chain%status >= SF_DONE_KINEMATICS) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
              do i_beam = 1, size (chain%sf)
                 associate (sf => chain%sf(i_beam))
-                  n_sub = 0 ! default: no looping over rescaled beams
-                  if (present (sf_rescale)) then
-                     n_sub = sf%int%get_n_sub ()
-                     call sf_rescale%set_i_beam (i_beam)
-                  end if
-                  SUB: do i_sub = 0, n_sub
-                     select case (i_sub)
-                     case (0)
-                        if (n_sub == 0) then
-                           call sf%int%apply (scale, sf_rescale)
-                        else
-                           call sf%int%apply (scale, fill_sub = .true.)
-                        end if
-                     case (1:2)
-                        if (present (sf_rescale)) then
-                           if (sf_rescale%is_restricted (i_beam)) cycle SUB
-                        end if
-                        if (i_sub == i_beam) then
-                           call sf%int%apply(scale, sf_rescale, i_sub)
-                        end if
-                     case (3:4)
-                        ! dummy : handled more appropriately on a lower level (sf%int%apply ())
-                     case default
-                        call msg_bug ("sf_chain_instance_evaluate: more than 2&
-                             & subtraction indices are curently not handled.")
-                     end select
-                     if (sf%int%status <= SF_FAILED_EVALUATION) then
-                        chain%status = SF_FAILED_EVALUATION
-                        return
-                     end if
-                  end do SUB
-                  if (.not. sf%eval%is_empty ())  call sf%eval%evaluate ()
+                   if (rescale) then
+                      call sf_rescale%set_i_beam (i_beam)
+                      do i_sub = 0, n_sub
+                         select case (i_sub)
+                         case (0)
+                            if (n_sub == 0) then
+                               call sf%int%apply (scale, sf_rescale, i_sub = i_sub)
+                            else
+                               call sf%int%apply (scale, i_sub = i_sub)
+                            end if
+                         case default
+                            if (i_beam == i_sub) then
+                               call sf%int%apply (scale, sf_rescale, i_sub = i_sub)
+                            else
+                               call sf%int%apply (scale, i_sub = i_sub)
+                            end if
+                         end select
+                      end do
+                   else
+                      call sf%int%apply (scale, i_sub = n_sub)
+                   end if
+                   if (sf%int%status <= SF_FAILED_EVALUATION) then
+                      chain%status = SF_FAILED_EVALUATION
+                      return
+                   end if
+                   if (.not. sf%eval%is_empty ())  call sf%eval%evaluate ()
                 end associate
              end do
              out_int => chain%get_out_int_ptr ()
@@ -10778,6 +10873,18 @@ zero-size [[r]] argument, so nothing to do then.
   end function sf_chain_instance_get_beam_int_ptr
 
 @ %def sf_chain_instance_get_beam_ptr
+@
+<<SF base: sf chain instance: TBP>>=
+  procedure :: get_n_sub => sf_chain_instance_get_n_sub
+<<SF base: procedures>>=
+  integer function sf_chain_instance_get_n_sub (chain) result (n_sub)
+    type(interaction_t), pointer :: int
+    class(sf_chain_instance_t), intent(in), target :: chain
+    int => beam_get_int_ptr (chain%beam_t)
+    n_sub = int%get_n_sub ()
+  end function sf_chain_instance_get_n_sub
+
+@ %def sf_chain_instance_get_n_sub
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -11142,12 +11249,11 @@ parameter~$x$.
 <<SF base: sf test int: TBP>>=
   procedure :: apply => sf_test_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine sf_test_apply (sf_int, scale, rescale, i_sub)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     select case (sf_int%data%mode)
     case (0)
        call sf_int%set_matrix_element &
@@ -11448,12 +11554,11 @@ the application always succeeds.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: apply => sf_test_spectrum_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_spectrum_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine sf_test_spectrum_apply (sf_int, scale, rescale, i_sub)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
@@ -11733,12 +11838,11 @@ the application always succeeds.
 <<SF base: sf test generator: TBP>>=
   procedure :: apply => sf_test_generator_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_generator_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine sf_test_generator_apply (sf_int, scale, rescale, i_sub)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
@@ -14535,12 +14639,11 @@ choose to conserve momentum, so energy conservation may be violated.
 <<SF isr: isr: TBP>>=
   procedure :: apply => isr_apply
 <<SF isr: procedures>>=
-  subroutine isr_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine isr_apply (sf_int, scale, rescale, i_sub)
     class(isr_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: f, finv, x, xb, eps, rb
     real(default) :: log_x, log_xb, x_2
     associate (data => sf_int%data)
@@ -15899,12 +16002,11 @@ generated $x$ values are identical.
 <<SF epa: epa: TBP>>=
   procedure :: apply => epa_apply
 <<SF epa: procedures>>=
-  subroutine epa_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine epa_apply (sf_int, scale, rescale, i_sub)
     class(epa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: x, xb, qminsq, qmaxsq, f, E
     associate (data => sf_int%data)
       x = sf_int%x
@@ -17351,12 +17453,11 @@ generated $x$ values are identical.
 <<SF ewa: ewa: TBP>>=
   procedure :: apply => ewa_apply
 <<SF ewa: procedures>>=
-  subroutine ewa_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine ewa_apply (sf_int, scale, rescale, i_sub)
     class(ewa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: x, xb, pt2, c1, c2
     real(default) :: cv, ca
     real(default) :: f, fm, fp, fL
@@ -18394,12 +18495,11 @@ Here, we insert the predefined norm.
 <<SF escan: escan: TBP>>=
   procedure :: apply => escan_apply
 <<SF escan: procedures>>=
-  subroutine escan_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine escan_apply (sf_int, scale, rescale, i_sub)
     class(escan_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: f
     associate (data => sf_int%data)
       f = data%norm
@@ -19006,12 +19106,11 @@ Trivial, just set the unit weight.
 <<SF gaussian: gaussian: TBP>>=
   procedure :: apply => gaussian_apply
 <<SF gaussian: procedures>>=
-  subroutine gaussian_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine gaussian_apply (sf_int, scale, rescale, i_sub)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: f
     f = 1
     call sf_int%set_matrix_element (cmplx (f, kind=default))
@@ -19708,12 +19807,11 @@ Trivial, just set the unit weight.
 <<SF beam events: beam events: TBP>>=
   procedure :: apply => beam_events_apply
 <<SF beam events: procedures>>=
-  subroutine beam_events_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine beam_events_apply (sf_int, scale, rescale, i_sub)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: f
     f = 1
     call sf_int%set_matrix_element (cmplx (f, kind=default))
@@ -20727,12 +20825,11 @@ The scale is ignored.
 <<SF circe1: circe1: TBP>>=
   procedure :: apply => circe1_apply
 <<SF circe1: procedures>>=
-  subroutine circe1_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine circe1_apply (sf_int, scale, rescale, i_sub)
     class(circe1_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default), dimension(2) :: xb
     real(double), dimension(2) :: xc
     real(double), parameter :: one = 1
@@ -21735,12 +21832,11 @@ the interaction has only one entry, and the factor is unity.
 <<SF circe2: circe2: TBP>>=
   procedure :: apply => circe2_apply
 <<SF circe2: procedures>>=
-  subroutine circe2_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine circe2_apply (sf_int, scale, rescale, i_sub)
     class(circe2_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     complex(default) :: f
     associate (data => sf_int%data)
       f = 1
@@ -22190,7 +22286,6 @@ module sf_pdf_builtin
   use format_defs, only: FMT_17
   use diagnostics
   use os_interface
-  use physics_defs, only: n_beam_gluon_offset
   use physics_defs, only: PROTON, PHOTON, GLUON
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -22627,36 +22722,23 @@ Once the scale is also known, we can actually call the PDF and
 set the values.  Contrary to LHAPDF, the wrapper already takes care of
 adjusting to the $x$ and $Q$ bounds.  Account for the Jacobian.
 
-[[fill_sub]] allows us to the fill all matrix-elements with [[sub > 0]].
-Whereas [[rescale]] gives rescaling prescription for NLO convolution of the
+The class [[rescale]] gives rescaling prescription for NLO convolution of the
 structure function in combination with [[i_sub]].
-[[fill_sub]] and [[rescale]] with [[i_sub]] are mutually exclusive.
 <<SF pdf builtin: pdf builtin: TBP>>=
   procedure :: apply => pdf_builtin_apply
 <<SF pdf builtin: procedures>>=
-  subroutine pdf_builtin_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine pdf_builtin_apply (sf_int, scale, rescale, i_sub)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default), dimension(-6:6) :: ff
     real(double), dimension(-6:6) :: ff_dbl
     real(default) :: x, fph
     real(double) :: xx, qq
     complex(default), dimension(:), allocatable :: fc
     integer :: i, j_sub, i_sub_opt
-    logical :: fill_sub_opt
     i_sub_opt = 0; if (present (i_sub)) i_sub_opt = i_sub
-    fill_sub_opt = .false.; if (present (fill_sub)) fill_sub_opt = fill_sub
-    if (present (rescale) .and. fill_sub_opt) then
-       call msg_bug ("[pdf_builtin_apply] &
-            & sf_rescale and fill_sub option are mutually exclusive.")
-    end if
-    if (i_sub_opt > 0 .and. fill_sub_opt) then
-       call msg_bug ("[pdf_builtin_apply] &
-            & i_sub and fill_sub options are mutually exclusive.")
-    end if
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
@@ -22665,7 +22747,6 @@ structure function in combination with [[i_sub]].
          call msg_debug2 (D_BEAMS, "pdf_builtin_apply")
          call msg_debug2 (D_BEAMS, "rescale: ", present(rescale))
          call msg_debug2 (D_BEAMS, "i_sub: ", i_sub_opt)
-         call msg_debug2 (D_BEAMS, "fill_sub: ", fill_sub_opt)
          call msg_debug2 (D_BEAMS, "x: ", x)
       end if
       xx = x
@@ -22703,21 +22784,7 @@ structure function in combination with [[i_sub]].
       end if
     end associate
     if (debug_active (D_BEAMS)) print *, 'Set pdfs: ', real (fc)
-    if (present (rescale) .and. i_sub_opt > 0) then
-       call sf_int%set_matrix_element (fc, [(i_sub_opt * size(fc) + i, i = 1, size(fc))])
-       if (rescale%has_gluons ()) then
-          j_sub = i_sub_opt + n_beam_gluon_offset
-          call sf_int%set_matrix_element (&
-               spread (fc(7), 1, size(fc)), [(j_sub * size(fc) + i, i = 1, size(fc))])
-       end if
-    else
-       call sf_int%set_matrix_element (fc, [(i, i = 1, size(fc))])
-    end if
-    if(fill_sub_opt) then
-       do j_sub = 1, sf_int%get_n_sub ()
-          call sf_int%set_matrix_element (fc, [(j_sub * size(fc) + i, i = 1, size(fc))])
-       end do
-    end if
+    call sf_int%set_matrix_element (fc, [(i_sub_opt * size(fc) + i, i = 1, size(fc))])
     sf_int%status = SF_EVALUATED
   end subroutine pdf_builtin_apply
 
@@ -23110,7 +23177,6 @@ module sf_lhapdf
   use system_dependencies, only: LHAPDF5_AVAILABLE
   use system_dependencies, only: LHAPDF6_AVAILABLE
   use diagnostics
-  use physics_defs, only: n_beam_gluon_offset
   use physics_defs, only: PROTON, PHOTON, PIPLUS, GLUON
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -23601,8 +23667,8 @@ extended or quadruple, we use auxiliary variables for type casting.
     end if
     if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching
     if (LHAPDF5_AVAILABLE) then
-       call lhapdf_initialize &
-            (data%set, data%prefix, data%file, data%member, &
+       call lhapdf_initialize (data%set, &
+            data%prefix, data%file, data%member, &
             b_match = data%hoppet_b_matching)
        call GetXminM (data%set, data%member, xmin)
        call GetXmaxM (data%set, data%member, xmax)
@@ -23614,8 +23680,8 @@ extended or quadruple, we use auxiliary variables for type casting.
        data%qmax = sqrt (q2max)
        data%has_photon = has_photon ()
     else if (LHAPDF6_AVAILABLE) then
-       call lhapdf_initialize &
-            (data%set, data%prefix, data%file, data%member, &
+       call lhapdf_initialize (data%set, &
+            data%prefix, data%file, data%member, &
             data%pdf, data%hoppet_b_matching)
        data%xmin = data%pdf%getxmin ()
        data%xmax = data%pdf%getxmax ()
@@ -23904,30 +23970,19 @@ to $x=1$).  We set these unphysical values to zero.
 <<SF lhapdf: lhapdf: TBP>>=
   procedure :: apply => lhapdf_apply
 <<SF lhapdf: procedures>>=
-  subroutine lhapdf_apply (sf_int, scale, rescale, i_sub, fill_sub)
+  subroutine lhapdf_apply (sf_int, scale, rescale, i_sub)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default) :: x, s
     double precision :: xx, qq, ss
     double precision, dimension(-6:6) :: ff
     double precision :: fphot
     complex(default), dimension(:), allocatable :: fc
     integer :: i, i_sub_opt, j_sub
-    logical :: fill_sub_opt
     external :: evolvePDFM, evolvePDFpM
     i_sub_opt = 0; if (present (i_sub)) i_sub_opt = i_sub
-    fill_sub_opt = .false.; if (present (fill_sub)) fill_sub_opt = fill_sub
-    if (present (rescale) .and. fill_sub_opt) then
-       call msg_bug ("[lhapdf_apply] &
-            & sf_rescale and fill_sub option are mutually exclusive.")
-    end if
-    if (i_sub_opt > 0 .and. fill_sub_opt) then
-       call msg_bug ("[lhapdf_apply] &
-            & i_sub and fill_sub options are mutually exclusive.")
-    end if
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
@@ -23938,17 +23993,16 @@ to $x=1$).  We set these unphysical values to zero.
          call msg_debug2 (D_BEAMS, "lhapdf_apply")
          call msg_debug2 (D_BEAMS, "rescale: ", present(rescale))
          call msg_debug2 (D_BEAMS, "i_sub: ", i_sub_opt)
-         call msg_debug2 (D_BEAMS, "fill_sub: ", fill_sub_opt)
          call msg_debug2 (D_BEAMS, "x: ", x)
       end if
       qq = min (data%qmax, scale)
       qq = max (data%qmin, qq)
-      if (.not. data% photon) then
+      if (.not. data%photon) then
          if (data%invert) then
             if (data%has_photon) then
                if (LHAPDF5_AVAILABLE) then
                   call evolvePDFphotonM &
-                       (data% set, xx, qq, ff(6:-6:-1), fphot)
+                       (data%set, xx, qq, ff(6:-6:-1), fphot)
                else if (LHAPDF6_AVAILABLE) then
                   call data%pdf%evolve_pdfphotonm &
                        (xx, qq, ff(6:-6:-1), fphot)
@@ -23958,7 +24012,7 @@ to $x=1$).  We set these unphysical values to zero.
                   call hoppet_eval (xx, qq, ff(6:-6:-1))
                else
                   if (LHAPDF5_AVAILABLE) then
-                     call evolvePDFM (data% set, xx, qq, ff(6:-6:-1))
+                     call evolvePDFM (data%set, xx, qq, ff(6:-6:-1))
                   else if (LHAPDF6_AVAILABLE) then
                      call data%pdf%evolve_pdfm (xx, qq, ff(6:-6:-1))
                   end if
@@ -23967,7 +24021,7 @@ to $x=1$).  We set these unphysical values to zero.
          else
             if (data%has_photon) then
                if (LHAPDF5_AVAILABLE) then
-                  call evolvePDFphotonM (data% set, xx, qq, ff, fphot)
+                  call evolvePDFphotonM (data%set, xx, qq, ff, fphot)
                else if (LHAPDF6_AVAILABLE) then
                   call data%pdf%evolve_pdfphotonm (xx, qq, ff, fphot)
                end if
@@ -23976,7 +24030,7 @@ to $x=1$).  We set these unphysical values to zero.
                   call hoppet_eval (xx, qq, ff)
                else
                   if (LHAPDF5_AVAILABLE) then
-                     call evolvePDFM (data% set, xx, qq, ff)
+                     call evolvePDFM (data%set, xx, qq, ff)
                   else if (LHAPDF6_AVAILABLE) then
                      call data%pdf%evolve_pdfm (xx, qq, ff)
                   end if
@@ -23986,8 +24040,8 @@ to $x=1$).  We set these unphysical values to zero.
       else
          ss = s
          if (LHAPDF5_AVAILABLE) then
-            call evolvePDFpM (data% set, xx, qq, &
-                 ss, data% photon_scheme, ff)
+            call evolvePDFpM (data%set, xx, qq, &
+                 ss, data%photon_scheme, ff)
          else if (LHAPDF6_AVAILABLE) then
             call data%pdf%evolve_pdfpm (xx, qq, ss, &
                  data%photon_scheme, ff)
@@ -23996,28 +24050,14 @@ to $x=1$).  We set these unphysical values to zero.
       if (data%has_photon) then
          allocate (fc (count ([data%mask, data%mask_photon])))
          fc = max (pack ([ff, fphot] / x, &
-              [data% mask, data%mask_photon]), 0._default)
+              [data%mask, data%mask_photon]), 0._default)
       else
          allocate (fc (count (data%mask)))
          fc = max (pack (ff / x, data%mask), 0._default)
       end if
     end associate
     if (debug_active (D_BEAMS)) print *, 'Set pdfs: ', real (fc)
-    if (present (rescale) .and. i_sub_opt > 0) then
-       call sf_int%set_matrix_element (fc, [(i_sub_opt * size(fc) + i, i = 1, size(fc))])
-       if (rescale%has_gluons ()) then
-          j_sub = i_sub_opt + n_beam_gluon_offset
-          call sf_int%set_matrix_element (&
-               spread (fc(7), 1, size(fc)), [(j_sub * size(fc) + i, i = 1, size(fc))])
-       end if
-    else
-       call sf_int%set_matrix_element (fc, [(i, i = 1, size(fc))])
-    end if
-    if(fill_sub_opt) then
-       do j_sub = 1, sf_int%get_n_sub ()
-          call sf_int%set_matrix_element (fc, [(j_sub * size(fc) + i, i = 1, size(fc))])
-       end do
-    end if
+    call sf_int%set_matrix_element (fc, [(i_sub_opt * size(fc) + i, i = 1, size(fc))])
     sf_int%status = SF_EVALUATED
   end subroutine lhapdf_apply
 

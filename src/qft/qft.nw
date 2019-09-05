@@ -3525,7 +3525,7 @@ Assumption: nonzero entries precede nonzero ones.
        ctype = 0
     end if
   end function color_get_type
-    
+
 @ %def color_get_type
 @
 \subsection{Accessing contents}
@@ -4455,7 +4455,7 @@ end module colors_uti
     write (u, "(A)")  "* Test output: color_2"
     write (u, "(A)")  "*   Purpose: test all combinations for color-object fusion"
     write (u, "(A)")
-    
+
     call s1%init_col_acl (0,0)
     call t1%init_col_acl (1,0)
     call t2%init_col_acl (2,0)
@@ -4479,27 +4479,27 @@ end module colors_uti
     call wrt ("g1", g1)
 
     write (u, *)
-    
+
     call wrt ("s1 * s1", s1 .fuse. s1)
 
     write (u, *)
-    
+
     call wrt ("s1 * t1", s1 .fuse. t1)
     call wrt ("s1 * a1", s1 .fuse. a1)
     call wrt ("s1 * o1", s1 .fuse. o1)
 
     write (u, *)
-    
+
     call wrt ("t1 * s1", t1 .fuse. s1)
     call wrt ("a1 * s1", a1 .fuse. s1)
     call wrt ("o1 * s1", o1 .fuse. s1)
 
     write (u, *)
-    
+
     call wrt ("t1 * t1", t1 .fuse. t1)
 
     write (u, *)
-    
+
     call wrt ("t1 * t2", t1 .fuse. t2)
     call wrt ("t1 * a1", t1 .fuse. a1)
     call wrt ("t1 * a2", t1 .fuse. a2)
@@ -4507,7 +4507,7 @@ end module colors_uti
     call wrt ("t2 * o1", t2 .fuse. o1)
 
     write (u, *)
-    
+
     call wrt ("t2 * t1", t2 .fuse. t1)
     call wrt ("a1 * t1", a1 .fuse. t1)
     call wrt ("a2 * t1", a2 .fuse. t1)
@@ -4515,50 +4515,50 @@ end module colors_uti
     call wrt ("o1 * t2", o1 .fuse. t2)
 
     write (u, *)
-    
+
     call wrt ("a1 * a1", a1 .fuse. a1)
 
     write (u, *)
-    
+
     call wrt ("a1 * a2", a1 .fuse. a2)
     call wrt ("a1 * o1", a1 .fuse. o1)
     call wrt ("a2 * o2", a2 .fuse. o2)
 
     write (u, *)
-    
+
     call wrt ("a2 * a1", a2 .fuse. a1)
     call wrt ("o1 * a1", o1 .fuse. a1)
     call wrt ("o2 * a2", o2 .fuse. a2)
 
     write (u, *)
-    
+
     call wrt ("o1 * o1", o1 .fuse. o1)
 
     write (u, *)
-    
+
     call wrt ("o1 * o2", o1 .fuse. o2)
     call wrt ("o1 * o3", o1 .fuse. o3)
     call wrt ("o1 * o4", o1 .fuse. o4)
 
     write (u, *)
-    
+
     call wrt ("o2 * o1", o2 .fuse. o1)
     call wrt ("o3 * o1", o3 .fuse. o1)
     call wrt ("o4 * o1", o4 .fuse. o1)
 
     write (u, *)
-    
+
     call wrt ("g1 * g1", g1 .fuse. g1)
 
     write (u, *)
-    
+
     call wrt ("g1 * s1", g1 .fuse. s1)
     call wrt ("g1 * t1", g1 .fuse. t1)
     call wrt ("g1 * a1", g1 .fuse. a1)
     call wrt ("g1 * o1", g1 .fuse. o1)
 
     write (u, *)
-    
+
     call wrt ("s1 * g1", s1 .fuse. g1)
     call wrt ("t1 * g1", t1 .fuse. g1)
     call wrt ("a1 * g1", a1 .fuse. g1)
@@ -4568,7 +4568,7 @@ end module colors_uti
     write (u, "(A)")  "* Test output end: color_2"
 
   contains
-    
+
     subroutine wrt (s, col)
       character(*), intent(in) :: s
       class(color_t), intent(in) :: col
@@ -7761,14 +7761,14 @@ node.
   procedure :: add_state => state_matrix_add_state
 <<State matrices: procedures>>=
   subroutine state_matrix_add_state (state, qn, index, value, &
-         sum_values, counter_index, ignore_sub, me_index)
+         sum_values, counter_index, ignore_sub_for_qn, me_index)
     class(state_matrix_t), intent(inout) :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
     complex(default), intent(in), optional :: value
     logical, intent(in), optional :: sum_values
     integer, intent(in), optional :: counter_index
-    logical, intent(in), optional :: ignore_sub
+    logical, intent(in), optional :: ignore_sub_for_qn
     integer, intent(out), optional :: me_index
     logical :: set_index, get_index, add
     set_index = present (index)
@@ -7790,8 +7790,8 @@ node.
        match = .false.
        child => parent%child_first
        SCAN_CHILDREN: do while (associated (child))
-          if (present (ignore_sub)) then
-             if (ignore_sub) then
+          if (present (ignore_sub_for_qn)) then
+             if (ignore_sub_for_qn) then
                 match = quantum_numbers_eq_wo_sub (child%qn, qn(1))
              else
                 match = child%qn == qn(1)
@@ -7872,7 +7872,7 @@ It is said that the matrix element ordering is lost afterwards. We allow to keep
 the original matrix element index in the new state matrix. If the matrix
 element indices are kept, we do not freeze the state matrix. After reordering
 the matrix element indices by [[state_matrix_reorder_me]], the state matrix can
-be frozen. 
+be frozen.
 <<State matrices: state matrix: TBP>>=
   procedure :: reduce => state_matrix_reduce
 <<State matrices: procedures>>=
@@ -8044,7 +8044,6 @@ generic:
     class(state_matrix_t), intent(inout) :: state
     complex(default), intent(in), dimension(:) :: value
     integer, intent(in), dimension(:), optional :: range
-    integer :: i, n_me, n_val, i_first, i_last
     if (present (range)) then
        state%me(range) = value
     else
@@ -8054,6 +8053,9 @@ generic:
     end if
   end subroutine state_matrix_set_matrix_element_array
 
+@ %def state_matrix_set_matrix_element_array
+@ Set a matrix element at position [[i]] to [[value]].
+<<State matrices: procedures>>=
   pure subroutine state_matrix_set_matrix_element_single (state, i, value)
     class(state_matrix_t), intent(inout) :: state
     integer, intent(in) :: i
@@ -8064,7 +8066,6 @@ generic:
     state%me(i) = value
   end subroutine state_matrix_set_matrix_element_single
 
-@ %def state_matrix_set_matrix_element_array
 @ %def state_matrix_set_matrix_element_single
 @ Clone the matrix elements from another (matching) state matrix.
 <<State matrices: procedures>>=
@@ -8624,7 +8625,7 @@ is reflected in the state-matrix norm.
 
 @ %def state_matrix_sum
 @ Return the trace of a state matrix, i.e., the sum over all diagonal
-values.  
+values.
 
 If [[qn_in]] is provided, only branches that match this
 quantum-numbers array in flavor and helicity are considered.  (This mode is
@@ -9045,8 +9046,7 @@ cuts.
   end subroutine state_matrix_factorize
 
 @ %def state_matrix_factorize
-@
-\subsubsection{Auxiliary functions}
+@ \subsubsection{Auxiliary functions}
 <<State matrices: state matrix: TBP>>=
   procedure :: get_polarization_density_matrix &
      => state_matrix_get_polarization_density_matrix
@@ -10019,6 +10019,7 @@ such handled specially.
      logical :: flip_hel = .false.
      integer :: n_flv = 0, n_hel = 0, n_sub = 0
      integer, dimension(:, :, :), allocatable :: index
+     integer, dimension(:,:), allocatable :: sf_index_born, sf_index_real
    contains
    <<Interactions: qn index map: TBP>>
   end type qn_index_map_t
@@ -10035,9 +10036,9 @@ Else the helicity index is handled trivially as [[1]].
   generic :: init => qn_index_map_init
   procedure, private :: qn_index_map_init
 <<Interactions: procedures>>=
-  subroutine qn_index_map_init (self, int, qn_flv, n_sub, qn_hel) 
+  subroutine qn_index_map_init (self, int, qn_flv, n_sub, qn_hel)
     class(qn_index_map_t), intent(out) :: self
-    class(interaction_t), intent(in) :: int
+    type(interaction_t), intent(in) :: int
     type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_flv
     integer, intent(in) :: n_sub
     type(quantum_numbers_t), dimension(:, :), intent(in), optional :: qn_hel
@@ -10297,6 +10298,92 @@ index (latter ranging from 0 to [[n_sub]]) to the (interaction) matrix element.
   end function qn_index_map_get_n_sub
 
 @ %def qn_index_map_get_n_sub
+@ For the rescaling of the structure functions in the real subtraction
+and DGLAP components we need a mapping from the real and born flavor structure
+indices to the structure function chain interaction matrix element with the
+correct initial state quantum numbers. This is stored in [[sf_index_born]]
+and [[sf_index_real]]. The array [[index]] is only needed for the initialisation
+of the Born and real index arrays and is therefore deallocated again.
+<<Interactions: qn index map: TBP>>=
+  procedure :: init_sf => qn_index_map_init_sf
+<<Interactions: procedures>>=
+  subroutine qn_index_map_init_sf (self, int, qn_flv, n_flv_born, n_flv_real)
+    class(qn_index_map_t), intent(out) :: self
+    type(interaction_t), intent(in) :: int
+    integer, intent(in) :: n_flv_born, n_flv_real
+    type(quantum_numbers_t), dimension(:,:), intent(in) :: qn_flv
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn_int
+    type(quantum_numbers_t), dimension(:), allocatable :: qn_int_tmp
+    integer :: i, i_sub, n_flv, n_hard
+    n_flv = int%get_n_matrix_elements ()
+    qn_int_tmp = int%get_quantum_numbers (1, by_me_index = .true.)
+    n_hard = count (qn_int_tmp%are_hard_process ())
+    allocate (qn_int(n_hard, n_flv))
+    do i = 1, n_flv
+       qn_int_tmp = int%get_quantum_numbers (i, by_me_index = .true.)
+       qn_int(:, i) = pack (qn_int_tmp, qn_int_tmp%are_hard_process ())
+    end do
+    call self%init (int, qn_int, int%get_n_sub ())
+    allocate (self%sf_index_born(n_flv_born, 0:self%n_sub))
+    allocate (self%sf_index_real(n_flv_real, 0:self%n_sub))
+    do i_sub = 0, self%n_sub
+       do i = 1, n_flv_born
+          self%sf_index_born(i, i_sub) = self%get_index_by_qn (qn_flv(:,i), i_sub)
+       end do
+       do i = 1, n_flv_real
+          self%sf_index_real(i, i_sub) = &
+               self%get_index_by_qn (qn_flv(:,n_flv_born + i), i_sub)
+       end do
+    end do
+    deallocate (self%index)
+  end subroutine qn_index_map_init_sf
+
+@ %def qn_index_map_init_sf
+@ Gets the index for the matrix element corresponding to a set of quantum numbers.
+So far, it ignores helicity (and color) indices.
+<<Interactions: qn index map: TBP>>=
+  procedure :: get_index_by_qn => qn_index_map_get_index_by_qn
+<<Interactions: procedures>>=
+  integer function qn_index_map_get_index_by_qn (self, qn, i_sub) result (index)
+    class(qn_index_map_t), intent(in) :: self
+    type(quantum_numbers_t), dimension(:), intent(in) :: qn
+    integer, intent(in), optional :: i_sub
+    integer :: i_qn
+    if (size (qn) /= size (self%qn_flv, dim = 1)) &
+         call msg_bug ("[qn_index_map_get_index_by_qn] number of particles does not match.")
+    do i_qn = 1, self%n_flv
+       if (all (qn .fmatch. self%qn_flv(:, i_qn))) then
+          index = self%get_index (i_qn, i_sub = i_sub)
+          return
+       end if
+    end do
+    call msg_bug ("[qn_index_map_get_index] The index for the given quantum &
+         & numbers could not be retrieved.")
+  end function qn_index_map_get_index_by_qn
+
+@ %def qn_index_map_get_index_by_qn
+@
+<<Interactions: qn index map: TBP>>=
+  procedure :: get_sf_index_born => qn_index_map_get_sf_index_born
+<<Interactions: procedures>>=
+  integer function qn_index_map_get_sf_index_born (self, i_born, i_sub) result (index)
+    class(qn_index_map_t), intent(in) :: self
+    integer, intent(in) :: i_born, i_sub
+    index = self%sf_index_born(i_born, i_sub)
+  end function qn_index_map_get_sf_index_born
+
+@ %def qn_index_map_get_sf_index_born
+@
+<<Interactions: qn index map: TBP>>=
+  procedure :: get_sf_index_real => qn_index_map_get_sf_index_real
+<<Interactions: procedures>>=
+  integer function qn_index_map_get_sf_index_real (self, i_real, i_sub) result (index)
+    class(qn_index_map_t), intent(in) :: self
+    integer, intent(in) :: i_real, i_sub
+    index = self%sf_index_real(i_real, i_sub)
+  end function qn_index_map_get_sf_index_real
+
+@ %def qn_index_map_get_sf_index_real
 @
 \subsection{External interaction links}
 Each particle in an interaction can have a link to a corresponding
@@ -10777,7 +10864,7 @@ reset functionality.
 @ Reduce the [[state_matrix]] over the quantum mask. During the reduce procedure
 the iterator does not conserve the order of the matrix element respective their
 quantum numbers. Setting the [[keep_order]] results in a reorder state matrix
-with reintroduced matrix element indices. 
+with reintroduced matrix element indices.
 <<Interactions: interaction: TBP>>=
   procedure :: reduce_state_matrix => interaction_reduce_state_matrix
 <<Interactions: procedures>>=
@@ -10868,20 +10955,20 @@ After this, the value array has to be updated.
   procedure :: add_state => interaction_add_state
 <<Interactions: procedures>>=
   subroutine interaction_add_state &
-       (int, qn, index, value, sum_values, counter_index, ignore_sub, me_index)
+       (int, qn, index, value, sum_values, counter_index, ignore_sub_for_qn, me_index)
     class(interaction_t), intent(inout) :: int
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
     complex(default), intent(in), optional :: value
     logical, intent(in), optional :: sum_values
     integer, intent(in), optional :: counter_index
-    logical, intent(in), optional :: ignore_sub
+    logical, intent(in), optional :: ignore_sub_for_qn
     integer, intent(out), optional :: me_index
     type(quantum_numbers_t), dimension(size(qn)) :: qn_tmp
     qn_tmp = qn
     call qn_tmp%undefine (int%mask)
     call int%state_matrix%add_state (qn_tmp, index, value, sum_values, &
-         counter_index, ignore_sub, me_index)
+         counter_index, ignore_sub_for_qn, me_index)
     int%update_values = .true.
   end subroutine interaction_add_state
 
@@ -10967,7 +11054,7 @@ value pointers.
     qn = int_copy%get_quantum_numbers ()
     n_hel = 0
     do i = 1, size (qn, dim=1)
-       if (all (qn(i,:)%get_subtraction_index () == 0)) n_hel = n_hel + 1
+       if (all (qn(:, i)%get_subtraction_index () == 0)) n_hel = n_hel + 1
     end do
     call int_copy%final ()
     deallocate (qn_mask)
@@ -11037,10 +11124,10 @@ this would be unity).
     integer :: i
 <<Interactions: get quantum numbers all>>
 <<Interactions: get quantum numbers all>>=
-    allocate (qn (int%state_matrix%get_n_matrix_elements (), &
-       int%state_matrix%get_depth()))
+    allocate (qn (int%state_matrix%get_depth(), &
+         int%state_matrix%get_n_matrix_elements ()))
     do i = 1, int%state_matrix%get_n_matrix_elements ()
-       qn (i, :) = int%state_matrix%get_quantum_number (i)
+       qn (:, i) = int%state_matrix%get_quantum_number (i)
     end do
 <<Interactions: procedures>>=
   end function interaction_get_quantum_numbers_all
@@ -11060,10 +11147,10 @@ this would be unity).
     n_all = size (qn_all)
     !!! Number of matrix elements = survivors / n_particles
     n_me = (n_all - n_redundant) / int%state_matrix%get_depth ()
-    allocate (qn (n_me, int%state_matrix%get_depth()))
+    allocate (qn (int%state_matrix%get_depth(), n_me))
     do i = 1, n_me
        if (.not. any (qn_all(i, :)%are_redundant (qn_mask))) &
-          qn (i, :) = qn_all (i, :)
+          qn (:, i) = qn_all (i, :)
     end do
 <<Interactions: procedures>>=
   end function interaction_get_quantum_numbers_all_qn_mask
@@ -12464,7 +12551,7 @@ module evaluators
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use physics_defs, only: n_beam_structure_int
+  use physics_defs, only: n_beams_rescaled
   use diagnostics
   use lorentz
   use flavors
@@ -13250,7 +13337,7 @@ assignments remain fixed from now on.
 <<Evaluators: procedures>>=
   subroutine evaluator_init_product &
        (eval, int_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-        connections_are_resonant, ignore_sub)
+        connections_are_resonant, ignore_sub_for_qn)
 
     class(evaluator_t), intent(out), target :: eval
     class(interaction_t), intent(in), target :: int_in1, int_in2
@@ -13258,7 +13345,7 @@ assignments remain fixed from now on.
     type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
-    logical, intent(in), optional :: ignore_sub
+    logical, intent(in), optional :: ignore_sub_for_qn
 
     type(qn_mask_array_t), dimension(2) :: qn_mask_in
     type(state_matrix_t), pointer :: state_in1, state_in2
@@ -13330,7 +13417,7 @@ assignments remain fixed from now on.
          state_in1, state_in2, &
          qn_mask_conn_initial,  &
          n_conn, connection_index, n_rest, &
-         qn_filter_conn, ignore_sub)
+         qn_filter_conn, ignore_sub_for_qn)
     call connection_table_fill (connection_table, &
          state_in1, state_in2, &
          connection_index, prt_is_connected)
@@ -13416,7 +13503,7 @@ assignments remain fixed from now on.
     subroutine connection_table_init &
         (connection_table, state_in1, state_in2, qn_mask_conn, &
          n_conn, connection_index, n_rest, &
-         qn_filter_conn, is_real_sub)
+         qn_filter_conn, ignore_sub_for_qn_in)
       type(connection_table_t), intent(out) :: connection_table
       type(state_matrix_t), intent(in), target :: state_in1, state_in2
       type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_conn
@@ -13424,13 +13511,13 @@ assignments remain fixed from now on.
       integer, dimension(:,:), intent(in) :: connection_index
       integer, dimension(2), intent(in) :: n_rest
       type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
-      logical, intent(in), optional :: is_real_sub
+      logical, intent(in), optional :: ignore_sub_for_qn_in
       integer, dimension(2) :: n_me_in
       type(state_iterator_t) :: it
       type(quantum_numbers_t), dimension(n_conn) :: qn
       integer :: i, me_index_in, me_index_conn, n_me_conn
       integer, dimension(2) :: me_count
-      logical :: is_sub, has_sub_qn
+      logical :: ignore_sub_for_qn, has_sub_qn
       integer :: i_beam_sub
       connection_table%n_conn = n_conn
       connection_table%n_rest = n_rest
@@ -13455,14 +13542,14 @@ assignments remain fixed from now on.
             end if
             call quantum_numbers_canonicalize_color (qn)
             me_index_in = it%get_me_index ()
-            is_sub = .false.; if (present (is_real_sub)) is_sub = is_real_sub
+            ignore_sub_for_qn = .false.; if (present (ignore_sub_for_qn_in)) ignore_sub_for_qn = ignore_sub_for_qn_in
             has_sub_qn = .false.
-            do i_beam_sub = 1, n_beam_structure_int
+            do i_beam_sub = 1, n_beams_rescaled
                has_sub_qn = has_sub_qn .or. any (qn%get_sub () == i_beam_sub)
             end do
             call connection_table%state%add_state (qn, &
                  counter_index = i, &
-                 ignore_sub = .not. (is_sub .and. has_sub_qn), &
+                 ignore_sub_for_qn = .not. (ignore_sub_for_qn .and. has_sub_qn), &
                  me_index = me_index_conn)
             call index_map_set_entry (connection_table%index_conn(i), &
                  me_index_in, me_index_conn)
@@ -15423,5 +15510,3 @@ filters for the linked entry.
   end subroutine evaluator_4
 
 @ %def evaluator_4
-
-

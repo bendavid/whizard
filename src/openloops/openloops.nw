@@ -22,6 +22,7 @@ module prc_openloops
   use constants
   use numeric_utils
   use diagnostics
+<<Use debug>>
   use system_dependencies
   use physics_defs
   use variables
@@ -676,6 +677,11 @@ are requested.
        bad_point = .false.
        if (object%includes_polarization ()) &
             sqme_spin_c = object%n_hel * sqme_spin_c
+       if (debug_on) then
+          if (sum(sqme_spin_c) == 0) then
+             call msg_debug(D_SUBTRACTION,'Spin-correlated matrix elements provided by OpenLoops are zero!')
+          end if
+       end if
     else
        sqme_spin_c = zero
     end if

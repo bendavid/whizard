@@ -73,7 +73,7 @@ seed = 12
 integrate (nlo_eejj_p4_virt) { iterations = 4:20000:"gw", 3:40000}
 
 ! Output the results
-printf "delta_i      total        unc          real         unc          virtual        unc"
+printf "delta_o      total        unc          real         unc          virtual        unc"
 printf "%E %E %E %E %E %E %E" (0.5, integral (nlo_eejj_p1_real) + integral (nlo_eejj_p1_virt), sqrt (error (nlo_eejj_p1_real)**2 + error (nlo_eejj_p1_virt)**2), integral (nlo_eejj_p1_real), error (nlo_eejj_p1_real), integral (nlo_eejj_p1_virt), error (nlo_eejj_p1_virt))
 printf "%E %E %E %E %E %E %E" (1.0, integral (nlo_eejj_p2_real) + integral (nlo_eejj_p2_virt), sqrt (error (nlo_eejj_p2_real)**2 + error (nlo_eejj_p2_virt)**2), integral (nlo_eejj_p2_real), error (nlo_eejj_p2_real), integral (nlo_eejj_p2_virt), error (nlo_eejj_p2_virt))
 printf "%E %E %E %E %E %E %E" (1.5, integral (nlo_eejj_p3_real) + integral (nlo_eejj_p3_virt), sqrt (error (nlo_eejj_p3_real)**2 + error (nlo_eejj_p3_virt)**2), integral (nlo_eejj_p3_real), error (nlo_eejj_p3_real), integral (nlo_eejj_p3_virt), error (nlo_eejj_p3_virt))

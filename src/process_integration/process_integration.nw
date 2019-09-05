@@ -301,7 +301,7 @@ particles will have color information.
     logical, intent(in) :: colorize_subevt
     expr%colorize_subevt = colorize_subevt
   end subroutine subevt_expr_colorize
-    
+
 @ %def subevt_expr_colorize
 @
 \subsection{Evaluation}
@@ -1013,7 +1013,7 @@ index is reset unless explicitly told to keep it.
        index = 0
     end if
   end function event_expr_get_event_index
-  
+
 @ %def event_expr_has_event_index
 @ %def event_expr_get_event_index
 @ Set/increment the subevent index.  Initialize it if necessary.
@@ -1208,7 +1208,7 @@ unobservable quantum numbers), and one for the flow distribution
 
 @ %def parton_state_t
 @ The [[isolated_state_t]] extension contains the [[sf_chain_eff]] object
-and the (hard) effective interaction [[int_eff]], separately, both
+and the (hard) effective interaction [[int_eff]], separately, both are
 implemented as a pointer.  The evaluators (trace, matrix, flows) apply
 to the hard interaction only.
 
@@ -1565,19 +1565,22 @@ of the stored [[sf_chain]].
 The [[resonant]] flag applies if we want to construct
 a decay chain.  The resonance property can propagate to the final
 event output.
+
+If an extended structure function is required [[requires_extended_sf]],
+we have to not consider [[sub]] as a quantum number.
 <<Parton states: connected state: TBP>>=
   procedure :: setup_connected_trace => connected_state_setup_connected_trace
 <<Parton states: procedures>>=
   subroutine connected_state_setup_connected_trace &
        (state, isolated, int, resonant, undo_helicities, &
-        keep_fs_flavors, extended_sf)
+        keep_fs_flavors, requires_extended_sf)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
     logical, intent(in), optional :: undo_helicities
     logical, intent(in), optional :: keep_fs_flavors
-    logical, intent(in), optional :: extended_sf
+    logical, intent(in), optional :: requires_extended_sf
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int, beam_int
     logical :: reduce, fs_flv_flag
@@ -1601,7 +1604,7 @@ event output.
          qn_mask_conn = mask, &
          qn_mask_rest = mask, &
          connections_are_resonant = resonant, &
-         ignore_sub = extended_sf)
+         ignore_sub_for_qn = requires_extended_sf)
 
     if (reduce) then
        beam_int => isolated%sf_chain_eff%get_beam_int_ptr ()
@@ -2337,7 +2340,7 @@ end module pcm_base
 @
 \subsection{Core management}
 This object holds information about the cores used by the components
-and allocates the corresponding manager instance.  
+and allocates the corresponding manager instance.
 
 [[i_component]] is the index of the process component which this core belongs
 to.  The pointer to the core definition is a convenient help in configuring
@@ -2358,7 +2361,7 @@ configuration is allocated only if the core requires it.
      class(prc_core_t), allocatable :: core
    contains
    <<PCM base: core entry: TBP>>
-  end type  core_entry_t
+  end type core_entry_t
 
 @ %def core_entry_t
 @
@@ -2389,7 +2392,7 @@ process component are already there.
     call core_entry%core%init &
          (core_entry%core_def, lib, id, core_entry%i_component)
   end subroutine core_entry_configure
-  
+
 @ %def core_entry_configure
 @
 \subsection{Process component manager}
@@ -2467,7 +2470,7 @@ again is an error.
 @
 \subsection{Initialization methods}
 The PCM has the duty to coordinate and configure the process-object
-components. 
+components.
 
 Initialize the PCM configuration itself, using environment data.
 <<PCM base: pcm: TBP>>=
@@ -2481,8 +2484,8 @@ Initialize the PCM configuration itself, using environment data.
        type(process_metadata_t), intent(in) :: meta
      end subroutine pcm_init
   end interface
-  
-@ %def pcm_init 
+
+@ %def pcm_init
 @
 Initialize the BLHA configuration block, the component-independent default
 settings.  This is to be called by [[pcm_init]].  We use the provided variable
@@ -2510,7 +2513,7 @@ not?  We use a default value for the scheme (not set in unit tests).
     call pcm%blha_defaults%init &
          (polarized_beams, muon_yukawa_off, top_yukawa, ew_scheme)
   end subroutine pcm_set_blha_defaults
-    
+
 @ %def pcm_set_blha_defaults
 @ Read the method settings from the variable list and store them in the BLHA
 master.  The details depend on the [[pcm]] concrete type.
@@ -2525,7 +2528,7 @@ master.  The details depend on the [[pcm]] concrete type.
        type(var_list_t), intent(in) :: var_list
      end subroutine pcm_set_blha_methods
   end interface
-  
+
 @ %def pcm_set_blha_methods
 @ Produce the LO and NLO flavor-state tables (as far as available), as
 appropriate for BLHA configuration.  We may inspect either the PCM itself or
@@ -2542,7 +2545,7 @@ the array of process cores.
        integer, dimension(:,:), allocatable, intent(out) :: flv_real
      end subroutine pcm_get_blha_flv_states
   end interface
-       
+
 @ %def pcm_get_blha_flv_states
 @
 Allocate the right number of process components.  The number is also stored in
@@ -2560,7 +2563,7 @@ selected.
     allocate (pcm%component_selected (pcm%n_components), source = .false.)
     allocate (pcm%component_active (pcm%n_components), source = .true.)
   end subroutine pcm_allocate_components
-    
+
 @ %def pcm_allocate_components
 @ Each process component belongs to a category/type, which we identify by a
 universal integer constant.  The categories can be taken from the process
@@ -2580,7 +2583,7 @@ definition.  For easy lookup, we store the categories in an array.
 @
 Allocate the right number and type(s) of process-core
 objects, i.e., the interface object between the process and matrix-element
-code.  
+code.
 
 Within the [[pcm]] block, also associate cores with components and store
 relevant configuration data, including the [[i_core]] lookup table.
@@ -2595,7 +2598,7 @@ relevant configuration data, including the [[i_core]] lookup table.
        type(core_entry_t), dimension(:), allocatable, intent(out) :: core_entry
      end subroutine pcm_allocate_cores
   end interface
-  
+
 @ %def pcm_allocate_cores
 @ Generate and interface external code for a single core, if this is
 required.
@@ -2615,7 +2618,7 @@ required.
        type(var_list_t), intent(in) :: var_list
      end subroutine pcm_prepare_any_external_code
   end interface
-       
+
 @ %def pcm_prepare_any_external_code
 @ Prepare the BLHA configuration for a core object that requires it.  This
 does not affect the core object, which may not yet be allocated.
@@ -2629,7 +2632,7 @@ does not affect the core object, which may not yet be allocated.
        type(core_entry_t), intent(inout) :: core_entry
      end subroutine pcm_setup_blha
   end interface
-  
+
 @ %def pcm_setup_blha
 @ Configure the BLHA interface for a core object that requires it.  This is
 separate from the previous method, assuming that the [[pcm]] has to allocate
@@ -2645,11 +2648,11 @@ the actual cores and acquire some data in-between.
        class(model_data_t), intent(in), target :: model
      end subroutine pcm_prepare_blha_core
   end interface
-  
+
 @ %def pcm_prepare_blha_core
 @ Allocate and configure the MCI (multi-channel integrator) records and their
 relation to process components, appropriate for the algorithm implemented by
-[[pcm]].  
+[[pcm]].
 
 Create a [[mci_t]] template: the procedure [[dispatch_mci]] is called as a
 factory method for allocating the [[mci_t]] object with a specific concrete
@@ -2666,7 +2669,7 @@ type.  The call may depend on the concrete [[pcm]] type.
        logical, intent(in), optional :: is_nlo
      end subroutine dispatch_mci_proc
   end interface
-  
+
 @ %def dispatch_mci_proc
 <<PCM base: pcm: TBP>>=
   procedure(pcm_setup_mci), deferred :: setup_mci
@@ -2680,7 +2683,7 @@ type.  The call may depend on the concrete [[pcm]] type.
             dimension(:), allocatable, intent(out) :: mci_entry
      end subroutine pcm_setup_mci
   end interface
-       
+
   abstract interface
      subroutine pcm_call_dispatch_mci (pcm, &
           dispatch_mci, var_list, process_id, mci_template)
@@ -2692,7 +2695,7 @@ type.  The call may depend on the concrete [[pcm]] type.
        class(mci_t), intent(out), allocatable :: mci_template
      end subroutine pcm_call_dispatch_mci
   end interface
-       
+
 @ %def pcm_setup_mci
 @ %def pcm_call_dispatch_mci
 @ Proceed with PCM configuration based on the core and component
@@ -2727,9 +2730,9 @@ Return the core index that belongs to a particular component.
        i_core = 0
     end if
   end function pcm_get_i_core
-  
+
 @ %def pcm_get_i_core
-@ 
+@
 \subsubsection{Phase-space configuration}
 Allocate and initialize the right number and type(s) of phase-space
 configuration entries.  The [[i_phs_config]] lookup table must be set
@@ -2774,7 +2777,7 @@ We also provide the current component index [[i]] and the [[active]] flag.
        type(process_config_data_t), intent(in) :: config
      end subroutine pcm_init_component
   end interface
-       
+
 @ %def pcm_init_component
 @
 Record components in the process [[meta]] data if they have turned
@@ -2792,7 +2795,7 @@ out to be inactive.
        if (.not. component(i)%active)  call meta%deactivate_component (i)
     end do
   end subroutine pcm_record_inactive_components
-  
+
 @ %def pcm_record_inactive_components
 @
 \subsection{Manager instance}
@@ -2944,7 +2947,7 @@ Store counter and status information in a process object.
   type :: process_status_t
      private
   end type process_status_t
-  
+
 @ %def process_status_t
 @
 \subsection{Process status}
@@ -2953,7 +2956,7 @@ Store integration results in a process object.
   type :: process_results_t
      private
   end type process_results_t
-  
+
 @ %def process_results_t
 @
 \subsection{The process type}
@@ -3061,7 +3064,7 @@ to a file (identified by unit, which may also be standard output).
 Optional flags determine whether we show everything or just the
 interesting parts.
 
-The shorthand as a traditional TBP.  
+The shorthand as a traditional TBP.
 <<Process: process: TBP>>=
   procedure :: write => process_write
 <<Process: procedures>>=
@@ -3093,7 +3096,7 @@ The shorthand as a traditional TBP.
   end subroutine process_write
 
 @ %def process_write
-@ Standard DTIO procedure with binding.  
+@ Standard DTIO procedure with binding.
 
 For the particular application, the screen format is triggered by the
 [[LISTDIRECTED]] option for the [[iotype]] format editor string.  The
@@ -3204,7 +3207,7 @@ switches for all major parts.  Currently, there are only a few.
     iostat = 0
     iomsg = ""
   end subroutine process_write_formatted
-  
+
 @ %def process_write_formatted
 @
 <<Process: process: TBP>>=
@@ -3365,7 +3368,7 @@ variable list [[var_list]].
 
 We collect all important data from the environment and store them in the
 appropriate places.  OS data, model, and variable list are copied
-into [[env]] (true snapshot), also the process library (pointer only). 
+into [[env]] (true snapshot), also the process library (pointer only).
 
 The [[meta]] subobject is initialized with process ID and attributes taken
 from the process library.
@@ -3422,7 +3425,7 @@ eventually want to eliminate dependencies on concrete [[pcm_t]] extensions.
   end subroutine process_init
 
 @ %def process_init
-@ 
+@
 \subsection{Process component manager}
 The [[pcm]] (read: process-component manager) takes the responsibility of
 steering the actual algorithm of configuration and integration.  Depending on
@@ -3457,9 +3460,9 @@ appropriate integration algorithm.
     call process%pcm%complete_setup &
          (process%core_entry, process%component, process%env%get_model_ptr ())
   end subroutine process_complete_pcm_setup
-  
+
 @ %def process_complete_pcm_setup
-@ 
+@
 \subsection{Core management}
 Allocate cores (interface objects to matrix-element code).
 
@@ -3501,7 +3504,7 @@ internal data.
       end do
     end associate
   end subroutine process_setup_cores
-    
+
 @ %def process_setup_cores
 <<Process: interfaces>>=
   abstract interface
@@ -3517,7 +3520,7 @@ internal data.
        logical, intent(in), optional :: has_beam_pol
      end subroutine dispatch_core_proc
   end interface
-     
+
 @ %def dispatch_core_proc
 @ Use the [[pcm]] to initialize the BLHA interface for each core which
 requires it.
@@ -3538,7 +3541,7 @@ requires it.
       end do
     end associate
   end subroutine process_prepare_blha_cores
-    
+
 @ %def process_prepare_blha_cores
 @ Create the BLHA interface data, using PCM for specific data, and write the
 BLHA contract file(s).
@@ -3604,7 +3607,7 @@ environment variables.
            var_list%get_sval (var_str ("$openloops_extra_cmd"))
     end subroutine collect_configuration_parameters
   end subroutine process_create_blha_interface
-    
+
 @ %def process_create_blha_interface
 @ Initialize the process components, one by one.  We require templates for the
 [[mci]] (integrator) and [[phs_config]] (phase-space) configuration data.
@@ -3734,7 +3737,7 @@ recorded in the [[meta]] block.  Delegate to the [[pcm]].
               else
                  process%term(i_term)%i_core = process%pcm%get_i_core(i)
               end if
-              
+
               if (process%term(i_term)%i_core == 0) then
                  call msg_bug ("Process '" // char (process%get_id ()) &
                       // "': core not found!")
@@ -4076,7 +4079,7 @@ The phase-space configuration object(s) are allocated by [[pcm]].
     end associate
 
   end subroutine process_init_phs_config
-    
+
 @ %def process_init_phs_config
 @ We complete the kinematics configuration after the beam setup, but before we
 configure the chain of structure functions.  The reason is that we need the
@@ -5484,7 +5487,7 @@ Manually set the Run ID (unit test only).
     type(string_t), intent(in) :: run_id
     process%meta%run_id = run_id
   end subroutine process_set_run_id
-  
+
 @ %def process_set_run_id
 @
 The following methods return basic process data that stay constant
@@ -6114,11 +6117,11 @@ argument come handy, knowing that we need to support only the [[test_me]] and
        case default
           call msg_bug ("process setup test cores: unsupported type string")
        end select
-    else 
+    else
        call process%setup_cores (dispatch_test_me_core)
     end if
   end subroutine process_setup_test_cores
- 
+
   subroutine dispatch_test_me_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors, has_beam_pol)
     use prc_test_core, only: test_t
@@ -6131,7 +6134,7 @@ argument come handy, knowing that we need to support only the [[test_me]] and
     logical, intent(in), optional :: has_beam_pol
     allocate (test_t :: core)
   end subroutine dispatch_test_me_core
-    
+
   subroutine dispatch_template_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors, has_beam_pol)
     use prc_template_me, only: prc_template_me_t
@@ -6150,7 +6153,7 @@ argument come handy, knowing that we need to support only the [[test_me]] and
   end subroutine dispatch_template_core
 
 @ %def process_setup_test_cores
-@ 
+@
 <<Process: process: TBP>>=
   procedure :: get_connected_states => process_get_connected_states
 <<Process: procedures>>=
@@ -6303,7 +6306,7 @@ process object.
   end function process_get_component_core_ptr
 
 @ %def process_get_component_core_ptr
-@ 
+@
 <<Process: process: TBP>>=
   procedure :: get_component_associated_born &
             => process_get_component_associated_born
@@ -6360,7 +6363,7 @@ process object.
   end function process_get_associated_real_fin
 
 @ %def process_get_associated_real_fin
-@ 
+@
 <<Process: process: TBP>>=
   procedure :: select_i_term => process_select_i_term
 <<Process: procedures>>=
@@ -6473,7 +6476,7 @@ end module process_config
   integer, parameter, public :: COMP_SUB = 8
   integer, parameter, public :: COMP_RESUM = 9
 
-@ 
+@
 \subsection{Output selection flags}
 We declare a number of identifiers for write methods, so they only
 displays selected parts.  The identifiers can be supplied to the [[vlist]]
@@ -6493,7 +6496,7 @@ array argument of the standard F2008 derived-type writer call.
 @
 This is a simple function that returns true if a flag value is present in
 [[v_list]], but not its negative.  If neither is present, it returns
-[[default]]. 
+[[default]].
 <<Process config: public>>=
   public :: flagged
 <<Process config: procedures>>=
@@ -6510,13 +6513,13 @@ This is a simple function that returns true if a flag value is present in
        flag = all (v_list /= -id) .and. any (v_list == id)
     end if
   end function flagged
-  
+
 @ %def flagged
 @
 Related: if flag is set (unset), append [[value]] (its negative) to the
 [[v_list]], respectively.  [[v_list]] must be allocated.
 <<Process config: public>>=
-  public :: set_flag 
+  public :: set_flag
 <<Process config: procedures>>=
   subroutine set_flag (v_list, value, flag)
     integer, dimension(:), intent(inout), allocatable :: v_list
@@ -6530,7 +6533,7 @@ Related: if flag is set (unset), append [[value]] (its negative) to the
        end if
     end if
   end subroutine set_flag
-    
+
 @ %def set_flag
 @
 \subsection{Generic configuration data}
@@ -6712,7 +6715,7 @@ The RNG factory object is imported by moving the allocation.
     type(qcd_t) :: qcd
     qcd = config%qcd
   end function process_config_data_get_qcd
-    
+
 @ %def process_config_data_get_qcd
 @ Compute the MD5 sum of the configuration data.  This encodes, in
 particular, the model and the expressions for cut, scales, weight,
@@ -6775,7 +6778,7 @@ pointer is null.
    contains
    <<Process config: process environment: TBP>>
   end type process_environment_t
-  
+
 @ %def process_environment_t
 @ Model and local var list are snapshots and need a finalizer.
 <<Process config: process environment: TBP>>=
@@ -6821,7 +6824,7 @@ pointer is null.
     call set_flag (v_list, F_SHOW_OS_DATA, show_os_data)
     call env%write_formatted (u, "LISTDIRECTED", v_list, iostat, iomsg)
   end subroutine process_environment_write
-  
+
 @ %def process_environment_write
 @ DTIO standard write.
 <<Process config: procedures>>=
@@ -6875,7 +6878,7 @@ pointer is null.
     end associate
     iostat = 0
   end subroutine process_environment_write_formatted
-  
+
 @ %def process_environment_write_formatted
 @ Initialize: Make a snapshot of the provided model.  Make a link to the
 current process library.
@@ -6921,7 +6924,7 @@ yield a number of zero beams when queried.
     logical :: flag
     flag = env%var_list_is_set
   end function process_environment_got_var_list
-    
+
 @ %def process_environment_got_var_list
 @ Return a pointer to the variable list.
 <<Process config: process environment: TBP>>=
@@ -6932,7 +6935,7 @@ yield a number of zero beams when queried.
     type(var_list_t), pointer :: var_list
     var_list => env%var_list
   end function process_environment_get_var_list_ptr
-    
+
 @ %def process_environment_get_var_list_ptr
 @ Return a pointer to the model, if it exists.
 <<Process config: process environment: TBP>>=
@@ -6943,7 +6946,7 @@ yield a number of zero beams when queried.
     type(model_t), pointer :: model
     model => env%model
   end function process_environment_get_model_ptr
-    
+
 @ %def process_environment_get_model_ptr
 @ Return the process library pointer.
 <<Process config: process environment: TBP>>=
@@ -6954,7 +6957,7 @@ yield a number of zero beams when queried.
     type(process_library_t), pointer :: lib
     lib => env%lib
   end function process_environment_get_lib_ptr
-    
+
 @ %def process_environment_get_lib_ptr
 @ Clear the process library pointer, in case the library is deleted.
 <<Process config: process environment: TBP>>=
@@ -6964,7 +6967,7 @@ yield a number of zero beams when queried.
     class(process_environment_t), intent(inout) :: env
     env%lib => null ()
   end subroutine process_environment_reset_lib_ptr
-    
+
 @ %def process_environment_reset_lib_ptr
 @ Check whether the process library has changed, in case the library is
 recompiled, etc.
@@ -6981,7 +6984,7 @@ recompiled, etc.
        end if
     end if
   end subroutine process_environment_check_lib_sanity
-    
+
 @ %def process_environment_check_lib_sanity
 @ Fill the [[data]] block using the appropriate process-library access entry.
 <<Process config: process environment: TBP>>=
@@ -7007,7 +7010,7 @@ recompiled, etc.
     type(beam_structure_t) :: beam_structure
     beam_structure = env%beam_structure
   end function process_environment_get_beam_structure
-  
+
 @ %def process_environment_get_beam_structure
 @ Check the beam structure for PDFs.
 <<Process config: process environment: TBP>>=
@@ -7018,7 +7021,7 @@ recompiled, etc.
     logical :: flag
     flag = env%beam_structure%has_pdf ()
   end function process_environment_has_pdfs
-    
+
 @ %def process_environment_has_pdfs
 @ Check the beam structure for polarized beams.
 <<Process config: process environment: TBP>>=
@@ -7029,7 +7032,7 @@ recompiled, etc.
     logical :: flag
     flag = env%beam_structure%has_polarized_beams ()
   end function process_environment_has_polarized_beams
-    
+
 @ %def process_environment_has_polarized_beams
 @ Return a copy of the OS data block.
 <<Process config: process environment: TBP>>=
@@ -7040,7 +7043,7 @@ recompiled, etc.
     type(os_data_t) :: os_data
     os_data = env%os_data
   end function process_environment_get_os_data
-    
+
 @ %def process_environment_get_os_data
 @
 \subsection{Metadata}
@@ -7248,7 +7251,7 @@ We write the variable list only upon request.
 @ Initialize.  Find process ID and run ID.
 
 Also find the process ID in the process library and retrieve some metadata from
-there. 
+there.
 <<Process config: process metadata: TBP>>=
   procedure :: init => process_metadata_init
 <<Process config: procedures>>=
@@ -7315,7 +7318,7 @@ record, which can vary in concrete type.
    contains
    <<Process config: process phs config: TBP>>
   end type process_phs_config_t
-     
+
 @ %def process_phs_config_t
 @ Output, DTIO compatible.
 <<Process config: process phs config: TBP>>=
@@ -7333,7 +7336,7 @@ record, which can vary in concrete type.
     allocate (v_list (0))
     call phs_config%write_formatted (u, "LISTDIRECTED", v_list, iostat, iomsg)
   end subroutine process_phs_config_write
-  
+
 @ %def process_phs_config_write
 @ DTIO standard write.
 <<Process config: procedures>>=
@@ -7352,7 +7355,7 @@ record, which can vary in concrete type.
     end associate
     iostat = 0
   end subroutine process_phs_config_write_formatted
-  
+
 @ %def process_phs_config_write_formatted
 @
 \subsection{Beam configuration}
@@ -8282,7 +8285,9 @@ subtractions.
          if (has_pdfs &
               .and. ((nlo_t == NLO_REAL .and. can_have_sub) &
               .or. nlo_t == NLO_DGLAP)) then
-            n_sub = n_sub + n_beam_structure_int
+            !!! necessary dummy, needs refactoring, 
+            !!! c.f. [[term_instance_evaluate_interaction_userdef_tree]]
+            n_sub = n_sub + n_beams_rescaled
          end if
       end if
       term%n_sub = n_sub
@@ -9443,7 +9448,7 @@ Initialize configuration data, using environment variables.
          (env%has_polarized_beams (), env%get_var_list_ptr ())
     pcm%os_data = env%get_os_data ()
   end subroutine pcm_default_init
-  
+
 @ %def pcm_default_init
 @
 <<Pcm: types>>=
@@ -9498,7 +9503,7 @@ valid for all components.
          meta%id, &
          mapping_defs, phs_par)
   end subroutine pcm_default_init_phs_config
-  
+
 @ %def pcm_default_init_phs_config
 @
 \subsubsection{Core management}
@@ -9524,7 +9529,7 @@ configure the core objects, using the process-component configuration data.
        core_entry(i)%active = component_def%can_be_integrated ()
     end do
   end subroutine pcm_default_allocate_cores
-  
+
 @ %def pcm_default_allocate_cores
 @ Extra code is required for certain core types (threshold) or if BLHA uses an
 external OLP (Born only, this case) for getting its matrix elements.
@@ -9550,7 +9555,7 @@ external OLP (Born only, this case) for getting its matrix elements.
        end associate
     end if
   end subroutine pcm_default_prepare_any_external_code
-  
+
 @ %def pcm_default_prepare_any_external_code
 @ Allocate and configure the BLHA record for a specific core, assuming that
 the core type requires it.  In the default case, this is a Born
@@ -9564,7 +9569,7 @@ configuration.
     allocate (core_entry%blha_config, source = pcm%blha_defaults)
     call core_entry%blha_config%set_born ()
   end subroutine pcm_default_setup_blha
-    
+
 @ %def pcm_default_setup_blha
 @ Apply the configuration, using [[pcm]] data.
 <<Pcm: pcm default: TBP>>=
@@ -9590,7 +9595,7 @@ configuration.
        end associate
     end select
   end subroutine pcm_default_prepare_blha_core
-    
+
 @ %def pcm_default_prepare_blha_core
 @ Read the method settings from the variable list and store them in the BLHA
 master.  This version: no NLO flag.
@@ -9603,7 +9608,7 @@ master.  This version: no NLO flag.
     type(var_list_t), intent(in) :: var_list
     call blha_master%set_methods (.false., var_list)
   end subroutine pcm_default_set_blha_methods
- 
+
 @ %def pcm_default_set_blha_methods
 @ Produce the LO and NLO flavor-state tables (as far as available), as
 appropriate for BLHA configuration.
@@ -9622,7 +9627,7 @@ unallocated.
     integer, dimension(:,:), allocatable, intent(out) :: flv_real
     flv_born = core_entry(1)%core%data%flv_state
   end subroutine pcm_default_get_blha_flv_states
-       
+
 @ %def pcm_default_get_blha_flv_states
 @ Allocate and configure the MCI (multi-channel integrator) records.  There is
 one record per active process component.  Second procedure: call the MCI
@@ -9648,7 +9653,7 @@ dispatcher with default-setup arguments.
     end do
     allocate (mci_entry (pcm%n_mci))
   end subroutine pcm_default_setup_mci
-       
+
   subroutine pcm_default_call_dispatch_mci (pcm, &
           dispatch_mci, var_list, process_id, mci_template)
     class(pcm_default_t), intent(inout) :: pcm
@@ -9658,7 +9663,7 @@ dispatcher with default-setup arguments.
     class(mci_t), allocatable, intent(out) :: mci_template
     call dispatch_mci (mci_template, var_list, process_id)
   end subroutine pcm_default_call_dispatch_mci
-       
+
 @ %def pcm_default_setup_mci
 @ %def pcm_default_call_dispatch_mci
 @ Nothing left to do for the default algorithm.
@@ -9671,7 +9676,7 @@ dispatcher with default-setup arguments.
     type(process_component_t), dimension(:), intent(inout) :: component
     type(model_t), intent(in), target :: model
   end subroutine pcm_default_complete_setup
-  
+
 @ %def pcm_default_complete_setup
 @
 \subsubsection{Component management}
@@ -9701,7 +9706,7 @@ In the default mode, all components are marked as master components.
          phs_config)
     component%component_type = COMP_MASTER
   end subroutine pcm_default_init_component
-       
+
 @ %def pcm_default_init_component
 @
 \subsection{NLO process component manager}
@@ -9762,7 +9767,7 @@ Initialize configuration data, using environment variables.
          (env%has_polarized_beams (), env%get_var_list_ptr ())
     pcm%os_data = env%get_os_data ()
   end subroutine pcm_nlo_init
-  
+
 @ %def pcm_nlo_init
 @ Init/rewrite NLO settings without the FKS template.
 <<Pcm: pcm nlo: TBP>>=
@@ -9773,7 +9778,7 @@ Initialize configuration data, using environment variables.
     type(var_list_t), intent(in), target :: var_list
     call pcm%settings%init (var_list)
   end subroutine pcm_nlo_init_nlo_settings
-    
+
 @ %def pcm_nlo_init_nlo_settings
 @
 As appropriate for the NLO/FKS algorithm, the category defined by the
@@ -9795,7 +9800,7 @@ component gets the same core as the subtraction component.
 
 TODO wk 2018: this convention for real components can be improved.  Check whether
 all component types should be assigned, not just for combined
-integration. 
+integration.
 <<Pcm: pcm nlo: TBP>>=
   procedure :: categorize_components => pcm_nlo_categorize_components
 <<Pcm: procedures>>=
@@ -9910,7 +9915,7 @@ rely on the ordering.
        end select
     end do
   end subroutine pcm_nlo_init_phs_config
-  
+
 @ %def pcm_nlo_init_phs_config
 @
 \subsubsection{Core management}
@@ -9960,7 +9965,7 @@ by the NLO process-component manager.
        end select
     end do
   end subroutine pcm_nlo_allocate_cores
-  
+
 @ %def pcm_nlo_allocate_cores
 @ Extra code is required for certain core types (threshold) or if BLHA uses an
 external OLP for getting its matrix elements.  OMega matrix elements, by
@@ -10005,7 +10010,7 @@ record.  We use the Born and real flavor-state tables as appropriate.
        end associate
     end if
   end subroutine pcm_nlo_prepare_any_external_code
-  
+
 @ %def pcm_nlo_prepare_any_external_code
 @ Allocate and configure the BLHA record for a specific core, assuming that
 the core type requires it.  The configuration depends on the NLO type of the
@@ -10090,7 +10095,7 @@ information, required for the region data.
        end associate
     end select
   end subroutine pcm_nlo_prepare_blha_core
-    
+
 @ %def pcm_nlo_prepare_blha_core
 @ Read the method settings from the variable list and store them in the BLHA
 master.  This version: NLO flag set.
@@ -10103,7 +10108,7 @@ master.  This version: NLO flag set.
     type(var_list_t), intent(in) :: var_list
     call blha_master%set_methods (.true., var_list)
   end subroutine pcm_nlo_set_blha_methods
- 
+
 @ %def pcm_nlo_set_blha_methods
 @ Produce the LO and NLO flavor-state tables (as far as available), as
 appropriate for BLHA configuration.
@@ -10121,7 +10126,7 @@ core array is not needed.
     integer, dimension(:,:), allocatable, intent(out) :: flv_real
     call pcm%region_data%get_all_flv_states (flv_born, flv_real)
   end subroutine pcm_nlo_get_blha_flv_states
-       
+
 @ %def pcm_nlo_get_blha_flv_states
 @ Allocate and configure the MCI (multi-channel integrator) records.  The
 relation depends on the [[combined_integration]] setting.  If we integrate
@@ -10191,7 +10196,7 @@ Second procedure: call the MCI dispatcher with NLO-setup arguments.
        end do
     end if
   end subroutine pcm_nlo_setup_mci
-       
+
   subroutine pcm_nlo_call_dispatch_mci (pcm, &
           dispatch_mci, var_list, process_id, mci_template)
     class(pcm_nlo_t), intent(inout) :: pcm
@@ -10201,7 +10206,7 @@ Second procedure: call the MCI dispatcher with NLO-setup arguments.
     class(mci_t), allocatable, intent(out) :: mci_template
     call dispatch_mci (mci_template, var_list, process_id, is_nlo = .true.)
   end subroutine pcm_nlo_call_dispatch_mci
-       
+
 @ %def pcm_nlo_setup_mci
 @ %def pcm_nlo_call_dispatch_mci
 @ Check for a threshold core and adjust the configuration accordingly, before
@@ -10221,7 +10226,7 @@ singular region data are considered.
        end select
     end do
   end subroutine pcm_nlo_handle_threshold_core
-    
+
 @ %def pcm_nlo_handle_threshold_core
 @ Configure the singular-region tables based on the process data for the Born
 and Real (singular) cores, using also the appropriate FKS phase-space
@@ -10339,7 +10344,7 @@ this when everything is controlled by [[pcm]].
          phs_config)
     component%component_type = pcm%component_type(i)
   end subroutine pcm_nlo_init_component
-       
+
 @ %def pcm_nlo_init_component
 @
 Override the base method: record the active components in the PCM object, and
@@ -10361,7 +10366,7 @@ report inactive components (except for the subtraction component).
        end select
     end do
   end subroutine pcm_nlo_record_inactive_components
-  
+
 @ %def pcm_nlo_record_inactive_components
 @
 <<Pcm: pcm nlo: TBP>>=
@@ -11107,9 +11112,8 @@ object and the squared matrix-element collector.
     type is (pcm_nlo_t)
        call pcm_instance%dglap_remnant%init ( &
             config%settings, &
-            config%region_data%n_flv_born, &
-            pcm_instance%isr_kinematics, &
-            config%region_data%get_flv_states_born (), config%get_n_alr ())
+            config%region_data, &
+            pcm_instance%isr_kinematics)
     end select
   end subroutine pcm_instance_nlo_init_dglap_remnant
 
@@ -11774,7 +11778,6 @@ module instances
   use variables
   use pdg_arrays, only: is_quark
   use sf_base
-  use isr_collinear
   use physics_defs
   use process_constants
   use process_libraries
@@ -11875,6 +11878,7 @@ has passed cuts, we calculate the various scale and weight expressions.
      integer, dimension(:), allocatable :: same_kinematics
      type(qn_index_map_t) :: connected_qn_index
      type(qn_index_map_t) :: hard_qn_index
+     type(qn_index_map_t) :: sf_qn_index
    contains
    <<Instances: term instance: TBP>>
   end type term_instance_t
@@ -11987,7 +11991,11 @@ relevant for a NLO algorithm.
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
     type(state_matrix_t), pointer :: state_matrix
     type(flavor_t), dimension(:), allocatable :: flv_int, flv_src, f_in, f_out
+    integer, dimension(:,:), allocatable :: flv_born, flv_real
+    type(flavor_t), dimension(:,:), allocatable :: flv_pdf
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn_pdf
     integer :: n_in, n_vir, n_out, n_tot, n_sub
+    integer :: n_flv_born, n_flv_real, n_flv_total
     integer :: i, j
     logical :: me_already_squared, keep_fs_flavors
     logical :: decrease_n_tot
@@ -12066,7 +12074,7 @@ relevant for a NLO algorithm.
          term%nlo_type == NLO_MISMATCH) then
        n_sub = term%get_n_sub ()
     else if (term%nlo_type == NLO_DGLAP) then
-       n_sub = n_beam_structure_int
+       n_sub = n_beams_rescaled
     else
        !!! No integration of real subtraction in interactions yet
        n_sub = 0
@@ -12077,7 +12085,7 @@ relevant for a NLO algorithm.
     call term%connected%setup_connected_trace (term%isolated, &
          undo_helicities = undo_helicities (core, me_already_squared), &
          keep_fs_flavors = keep_fs_flavors, &
-         extended_sf = requires_extended_sf)
+         requires_extended_sf = requires_extended_sf)
     associate (int_eff => term%isolated%int_eff)
       state_matrix => int_eff%get_state_matrix_ptr ()
       n_tot = int_eff%get_n_tot  ()
@@ -12123,12 +12131,29 @@ relevant for a NLO algorithm.
           end associate
        class default
           call term%connected_qn_index%init (term%connected%trace)
-	  call term%hard_qn_index%init (term%int_hard)
+          call term%hard_qn_index%init (term%int_hard)
        end select
     class default
        call term%connected_qn_index%init (term%connected%trace)
        call term%hard_qn_index%init (term%int_hard)
     end select
+    if (requires_extended_sf) then
+       select type (config => term%pcm_instance%config)
+       type is (pcm_nlo_t)
+          n_in = config%region_data%get_n_in ()
+          flv_born = config%region_data%get_flv_states_born ()
+          flv_real = config%region_data%get_flv_states_real ()
+          n_flv_born = config%region_data%get_n_flv_born ()
+          n_flv_real = config%region_data%get_n_flv_real ()
+          n_flv_total = n_flv_born + n_flv_real
+          allocate (flv_pdf(n_in, n_flv_total), &
+               qn_pdf(n_in, n_flv_total))
+          call flv_pdf(:, :n_flv_born)%init (flv_born(:n_in, :))
+          call flv_pdf(:, n_flv_born + 1:n_flv_total)%init (flv_real(:n_in, :))
+          call qn_pdf%init (flv_pdf)
+          call term%sf_qn_index%init_sf (sf_chain_int, qn_pdf, n_flv_born, n_flv_real)
+       end select
+    end if
   contains
 
    function undo_helicities (core, me_squared) result (val)
@@ -12915,7 +12940,7 @@ the threshold computation where the process is well-defined and fixed.
       integer, intent(in) :: i_flv
       real(default), intent(in) :: sqme_born
       real(default), dimension(:,:), intent(inout) :: sqme_color_c
-      integer :: i_color_c, i_sub, n_pdf_off, virt_off, n_offset
+      integer :: i_color_c, i_sub, n_offset
       real(default), dimension(:), allocatable :: sqme
       if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
       if (pcm%settings%use_internal_color_correlations) then
@@ -12936,7 +12961,7 @@ the threshold computation where the process is well-defined and fixed.
          if (term%nlo_type == NLO_VIRTUAL) then
             n_offset = 1
          else if (pcm%has_pdfs .and. term%is_subtraction ()) then
-            n_offset = n_beam_structure_int
+            n_offset = n_beams_rescaled
          end if
          allocate (sqme (term%get_n_sub_color ()), source = zero)
          do i_sub = 1, term%get_n_sub_color ()
@@ -13036,7 +13061,7 @@ it is only available after the [[fks_regions]] have been created.
                 n_flv = term%connected_qn_index%get_n_flv ()
                 n_sub_color = term%get_n_sub_color ()
                 n_sub_spin = term%get_n_sub_spin ()
-                n_offset = 0; if(config%has_pdfs) n_offset = n_beam_structure_int
+                n_offset = 0; if(config%has_pdfs) n_offset = n_beams_rescaled
                 allocate (sqme_spin_c_arr(16))
                 do i_flv = 1, n_flv
                    allocate (sqme_spin_c_all(n_sub_spin))
@@ -13064,78 +13089,6 @@ it is only available after the [[fks_regions]] have been created.
   end subroutine term_instance_evaluate_spin_correlations
 
 @ %def term_instance_evaluate_spin_correlations
-@ Compute collinear ISR from interactions, real component and DLGAP remnant are
-handled accordingly.
-<<Instances: term instance: TBP>>=
-  procedure :: compute_sqme_coll_isr => term_instance_compute_sqme_coll_isr
-<<Instances: procedures>>=
-  subroutine term_instance_compute_sqme_coll_isr (term)
-    class(term_instance_t), intent(in) :: term
-    integer :: i_flv
-    integer, parameter :: BEAM_PLUS = 1, BEAM_MINUS = 2, &
-       PDF = 1, PDF_SINGLET = 2
-    select type (pcm_instance => term%pcm_instance)
-    type is (pcm_instance_nlo_t)
-       select type (pcm => term%pcm_instance%config)
-       type is (pcm_nlo_t)
-          associate (me => term%connected%trace%get_matrix_element ())
-             do i_flv = 1, pcm%region_data%n_flv_born
-                call set_sqme_coll_isr (BEAM_PLUS, PDF, i_flv, &
-                     real(me(term%connected_qn_index%get_index (i_flv, i_sub = 1))))
-                call set_sqme_coll_isr (BEAM_MINUS, PDF, i_flv, &
-                     real(me(term%connected_qn_index%get_index (i_flv, i_sub = 2))))
-                if (pcm%settings%nlo_correction_type == "QCD" .or. &
-                     pcm%settings%nlo_correction_type == "Full") then
-                   call set_sqme_coll_isr (BEAM_PLUS, PDF_SINGLET, i_flv, &
-                        real(me(term%connected_qn_index%get_index (i_flv, i_sub = 3))))
-                   call set_sqme_coll_isr (BEAM_MINUS, PDF_SINGLET, i_flv, &
-                        real(me(term%connected_qn_index%get_index (i_flv, i_sub = 4))))
-                end if
-             end do
-          end associate
-          if (debug2_active (D_BEAMS)) then
-             call msg_debug2 (D_BEAMS, "term_instance_compute_sqme_coll_isr")
-             if (term%nlo_type == NLO_REAL) then
-                print *, "nlo_type: REAL"
-                print *, "n_flv: ", pcm%region_data%n_flv_born
-                print *, "i_flv: ", i_flv
-                print *, "Beam 1: "
-                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (BEAM_PLUS, PDF, :)
-                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (BEAM_PLUS, PDF_SINGLET, :)
-                print *, "Beam 2: "
-                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (BEAM_MINUS, PDF, :)
-                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (BEAM_MINUS, PDF_SINGLET, :)
-             else if (term%nlo_type == NLO_DGLAP) then
-                print *, "nlo_type: DGLAP"
-                print *, "n_flv: ", pcm%region_data%n_flv_born
-                print *, "i_flv: ", i_flv
-                print *, "Beam 1: "
-                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_PLUS, PDF, :)
-                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_PLUS, PDF_SINGLET, :)
-                print *, "Beam 2: "
-                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_MINUS, PDF, :)
-                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_MINUS, PDF_SINGLET, :)
-             end if
-          end if
-       end select
-    end select
-  contains
-    subroutine set_sqme_coll_isr (i_beam, i_type, i_flv, me)
-      integer, intent(in) :: i_beam, i_type, i_flv
-      real(default), intent(in) :: me
-      select type (pcm_instance => term%pcm_instance)
-      type is (pcm_instance_nlo_t)
-         select case (term%nlo_type)
-         case (NLO_REAL)
-            pcm_instance%real_sub%sqme_coll_isr (i_beam, i_type, i_flv) = me
-         case (NLO_DGLAP)
-            pcm_instance%dglap_remnant%sqme_coll_isr (i_beam, i_type, i_flv) = me
-         end select
-      end select
-    end subroutine set_sqme_coll_isr
-  end subroutine term_instance_compute_sqme_coll_isr
-
-@ %def term_instance_compute_sqme_coll_isr
 @
 <<Instances: term instance: TBP>>=
   procedure :: apply_fks => term_instance_apply_fks
@@ -13311,7 +13264,7 @@ handled accordingly.
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
        if (debug2_active (D_PROCESS_INTEGRATION)) then
-          associate (n_flv => pcm_instance%dglap_remnant%n_flv)
+          associate (n_flv => pcm_instance%dglap_remnant%reg_data%n_flv_born)
              print *, "size(sqme_born) = ", size (pcm_instance%dglap_remnant%sqme_born)
              call term%connected%trace%write ()
              do i_flv = 1, n_flv
@@ -13517,7 +13470,6 @@ method may modify the [[core_state]] workspace object.
        call pcm_instance%set_fac_scale (term%fac_scale)
     end select
 
-
   contains
     subroutine evaluate_threshold_parameters (core_state, core, sqrts)
        type(openloops_state_t), intent(inout) :: core_state
@@ -13571,8 +13523,12 @@ quantum numbers provided by FKS to the hard process [[int_hard]].
 
 The calculated matrix elements are insert into [[term%amp]] in the following
 way. The first [[n_born]] particles are the matrix element of the hard process.
-In non-trivial beams, we store another [[n_beam_structure_int]] copies of these
-matrix elements as the first [[n_beam_structure_int]] subtractions.
+In non-trivial beams, we store another [[n_beams_rescaled]] copies of these
+matrix elements as the first [[n_beams_rescaled]] subtractions. This is a remnant
+from times before the method [[term_instance_set_sf_factors]] and these entries are
+not used anymore. However, eliminating these entries involves deeper changes in how
+the connection tables for the evaluator product are set up and should therefore be
+part of a larger refactoring of the interactions \& state matrices.
 The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elements.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_interaction_userdef_tree &
@@ -13612,7 +13568,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
           n_pdf_off = 0
           if (term%pcm_instance%config%has_pdfs .and. &
                (term%is_subtraction () .or. term%nlo_type == NLO_DGLAP)) then
-             n_pdf_off = n_pdf_off + n_beam_structure_int
+             n_pdf_off = n_pdf_off + n_beams_rescaled
              do i_sub = 1, n_pdf_off
                 term%amp(term%hard_qn_index%get_index (i_flv, i_hel, i_sub)) = &
                      term%amp(term%hard_qn_index%get_index (i_flv, i_hel, i_sub = 0))
@@ -13751,7 +13707,6 @@ interaction, then compute the convolution with the initial state.
 <<Instances: procedures>>=
   subroutine term_instance_evaluate_trace (term)
     class(term_instance_t), intent(inout) :: term
-    class(sf_rescale_t), allocatable :: func
     call term%k_term%evaluate_sf_chain (term%fac_scale)
     call term%evaluate_scaled_sf_chains ()
     call term%isolated%evaluate_sf_chain (term%fac_scale)
@@ -13761,11 +13716,10 @@ interaction, then compute the convolution with the initial state.
 
 @ %def term_instance_evaluate_trace
 @ Include rescaled structure functions due to NLO calculation.
-We rescale the structure function for the real subtraction [[sf_rescale_collinear]], the collinear
-counter terms [[sf_rescale_dglap_t]] and for the case, we have an emitter in the initial state,
-rescale the kinematics for it using [[sf_rescale_real_t]].
-
-References: arXiv:0709.2092, (2.35)-(2.42).
+We rescale the structure function for the real subtraction [[sf_rescale_collinear]],
+the collinear counter terms [[sf_rescale_dglap_t]] and for the case, in which we have
+an emitter in the initial state, we rescale the kinematics for it using [[sf_rescale_real_t]].\\
+References: arXiv:0709.2092, (2.35)-(2.42).\\
 Obviously, it is completely irrelevant, which beam is treated.
 It becomes problematic when handling [[e, p]]-beams.
 <<Instances: term instance: TBP>>=
@@ -13773,51 +13727,47 @@ It becomes problematic when handling [[e, p]]-beams.
 <<Instances: procedures>>=
   subroutine term_instance_evaluate_scaled_sf_chains (term)
     class(term_instance_t), intent(inout) :: term
-    class(sf_rescale_t), allocatable :: func
-    integer :: i_sub
+    class(sf_rescale_t), allocatable :: sf_rescale
     if (.not. term%pcm_instance%config%has_pdfs) return
     if (term%nlo_type == NLO_REAL) then
        if (term%is_subtraction ()) then
-          allocate (sf_rescale_collinear_t :: func)
+          allocate (sf_rescale_collinear_t :: sf_rescale)
           select type (pcm => term%pcm_instance)
           type is (pcm_instance_nlo_t)
-             select type (func)
+             select type (sf_rescale)
              type is (sf_rescale_collinear_t)
-                call func%set (pcm%real_kinematics%xi_tilde)
-                call func%set_gluons (.true.)
+                call sf_rescale%set (pcm%real_kinematics%xi_tilde)
              end select
           end select
-          call term%k_term%sf_chain%evaluate (term%fac_scale, func)
-          deallocate (func)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, sf_rescale)
+          deallocate (sf_rescale)
        else if (term%k_term%emitter >= 0 .and. term%k_term%emitter <= term%k_term%n_in) then
-          allocate (sf_rescale_real_t :: func)
+          allocate (sf_rescale_real_t :: sf_rescale)
           select type (pcm => term%pcm_instance)
           type is (pcm_instance_nlo_t)
-             select type (func)
+             select type (sf_rescale)
              type is (sf_rescale_real_t)
-                call func%set (pcm%real_kinematics%xi_tilde * &
+                call sf_rescale%set (pcm%real_kinematics%xi_tilde * &
                      pcm%real_kinematics%xi_max (term%k_term%i_phs), &
                      pcm%real_kinematics%y (term%k_term%i_phs))
-                call func%restrict_to_beam (term%k_term%emitter)
              end select
           end select
-          call term%k_term%sf_chain%evaluate (term%fac_scale, func)
-          deallocate (func)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, sf_rescale)
+          deallocate (sf_rescale)
        else
           call term%k_term%sf_chain%evaluate (term%fac_scale)
        end if
     else if (term%nlo_type == NLO_DGLAP) then
-       allocate (sf_rescale_dglap_t :: func)
+       allocate (sf_rescale_dglap_t :: sf_rescale)
        select type (pcm => term%pcm_instance)
        type is (pcm_instance_nlo_t)
-          select type (func)
+          select type (sf_rescale)
           type is (sf_rescale_dglap_t)
-             call func%set (pcm%isr_kinematics%z)
-             call func%set_gluons (.true.)
+             call sf_rescale%set (pcm%isr_kinematics%z)
           end select
        end select
-       call term%k_term%sf_chain%evaluate (term%fac_scale, func)
-       deallocate (func)
+       call term%k_term%sf_chain%evaluate (term%fac_scale, sf_rescale)
+       deallocate (sf_rescale)
     end if
   end subroutine term_instance_evaluate_scaled_sf_chains
 
@@ -15138,7 +15088,9 @@ terms, iterating over all active process components.
     real(default) :: alpha_s, alpha_qed
     class(prc_core_t), pointer :: core_sub => null ()
     class(model_data_t), pointer :: model => null ()
+    logical :: has_pdfs
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_evaluate_trace")
+    has_pdfs = instance%process%pcm_contains_pdfs ()
     instance%sqme = zero
     call instance%reset_matrix_elements ()
     if (instance%evaluation_status >= STAT_PASSED_CUTS) then
@@ -15151,8 +15103,6 @@ terms, iterating over all active process components.
                   i_core = pcm%get_i_core (pcm%i_sub)
                   core_sub => instance%process%get_core_ptr (i_core)
                end select
-!                if (instance%pcm%config%is_nlo ()) &
-!                     core_sub => instance%process%get_subtraction_core ()
                call term%evaluate_interaction (core)
                call term%evaluate_trace ()
                i_real_fin = instance%process%get_associated_real_fin (1)
@@ -15163,6 +15113,9 @@ terms, iterating over all active process components.
                        .or. term%nlo_type == NLO_MISMATCH &
                        .or. term%nlo_type == NLO_DGLAP) &
                        call term%set_born_sqmes (core)
+                  if (term%is_subtraction () .or. &
+                       term%nlo_type == NLO_DGLAP) &
+                       call term%set_sf_factors (has_pdfs)
                   if (term%nlo_type > BORN) then
                      if (.not. (term%nlo_type == NLO_REAL .and. term%k_term%emitter >= 0)) then
                         select type (config => term%pcm_instance%config)
@@ -15178,9 +15131,6 @@ terms, iterating over all active process components.
                      if (term%is_subtraction ()) then
                         call term%evaluate_spin_correlations (core_sub)
                      end if
-                     if ((term%is_subtraction () .or. term%nlo_type == NLO_DGLAP) &
-                          .and. term%pcm_instance%config%has_pdfs) &
-                          call term%compute_sqme_coll_isr ()
                   end if
                   alpha_s = core%get_alpha_s (term%core_state)
 !!!! TODO (wk 2019-02-07): this method for resetting alpha_em is not used (yet),
@@ -15248,6 +15198,81 @@ terms, iterating over all active process components.
        end do
     end select
   end subroutine term_instance_set_born_sqmes
+
+@ %def term_instance_set_born_sqmes
+@ Calculates and then saves the ratio of the value of the (rescaled) real
+structure function chain of each ISR alpha region over the value of the
+corresponding underlying born flavor structure.
+In the case of emitter 0 we also need the rescaled ratio for emitter 1 and 2
+in that region for the (soft-)collinear limits.
+Altough this procedure is implying functionality for general structure functions,
+it should be reviewed for anything else besides PDFs, as there might be complications
+in the details. The general idea of getting the ratio in this way should hold up in
+these cases as well, however.
+<<Instances: term instance: TBP>>=
+  procedure :: set_sf_factors => term_instance_set_sf_factors
+<<Instances: procedures>>=
+  subroutine term_instance_set_sf_factors (term, has_pdfs)
+    class(term_instance_t), intent(inout) :: term
+    logical, intent(in) :: has_pdfs
+    type(interaction_t), pointer :: sf_chain_int
+    real(default) :: factor_born, factor_real
+    integer :: n_in, alr, em
+    integer :: i_born, i_real
+    select type (pcm_instance => term%pcm_instance)
+    type is (pcm_instance_nlo_t)
+       if (.not. has_pdfs) then
+          pcm_instance%real_sub%sf_factors = one
+          return
+       end if
+       select type (config => pcm_instance%config)
+       type is (pcm_nlo_t)
+          sf_chain_int => term%k_term%sf_chain%get_out_int_ptr ()
+          associate (reg_data => config%region_data)
+             n_in = reg_data%get_n_in ()
+             do alr = 1, reg_data%n_regions
+                em = reg_data%regions(alr)%emitter
+                if (em <= n_in) then
+                   i_born = reg_data%regions(alr)%uborn_index
+                   i_real = reg_data%regions(alr)%real_index
+                   factor_born = sf_chain_int%get_matrix_element &
+                        (term%sf_qn_index%get_sf_index_born (i_born, i_sub = 0))
+                   factor_real = sf_chain_int%get_matrix_element &
+                        (term%sf_qn_index%get_sf_index_real (i_real, i_sub = em))
+                   call set_factor (pcm_instance, alr, em, factor_born, factor_real)
+                   if (em == 0) then
+                      do em = 1, 2
+                         factor_real = sf_chain_int%get_matrix_element &
+                              (term%sf_qn_index%get_sf_index_real (i_real, i_sub = em))
+                         call set_factor (pcm_instance, alr, em, factor_born, factor_real)
+                      end do
+                   end if
+                end if
+             end do
+          end associate
+       end select
+    end select
+  contains
+    subroutine set_factor (pcm_instance, alr, em, factor_born, factor_real)
+      type(pcm_instance_nlo_t), intent(in), pointer :: pcm_instance
+      integer, intent(in) :: alr, em
+      real(default), intent(in) :: factor_born, factor_real
+      real(default) :: factor
+      if (any (vanishes ([factor_real, factor_born], tiny(1._default), tiny(1._default)))) then
+         factor = zero
+      else
+         factor = factor_real / factor_born
+      end if
+      select case (term%nlo_type)
+      case (NLO_REAL)
+         pcm_instance%real_sub%sf_factors(alr, em) = factor
+      case (NLO_DGLAP)
+         pcm_instance%dglap_remnant%sf_factors(alr, em) = factor
+      end select
+    end subroutine
+  end subroutine term_instance_set_sf_factors
+
+@ %def term_instance_set_sf_factors
 @
 <<Instances: process instance: TBP>>=
   procedure :: apply_real_partition => process_instance_apply_real_partition
@@ -15403,10 +15428,6 @@ e.g. for Powheg, there is the possibility to supply an external $\alpha_s$
                      call term%evaluate_charge_correlations (core)
              end select
              call term%evaluate_spin_correlations (core)
-             if (term%pcm_instance%config%has_pdfs) &
-                  call term%compute_sqme_coll_isr ()
-          else if (term%nlo_type == NLO_DGLAP) then
-             call term%compute_sqme_coll_isr ()
           end if
           i_real_fin = instance%process%get_associated_real_fin (1)
           if (term%config%i_component /= i_real_fin) &
@@ -16468,7 +16489,7 @@ Initialize a process and display it.
 
     call os_data%init ()
     call prc_test_create_library (libname, lib)
-    
+
     write (u, "(A)")  "* Initialize a process object"
     write (u, "(A)")
 
@@ -16508,7 +16529,7 @@ Initialize a process and display it.
     type(string_t), intent(in) :: process_id
     logical, intent(in), optional :: is_nlo
   end subroutine dispatch_mci_empty
- 
+
 @ %def dispatch_mci_empty
 @
 \subsubsection{Compute a trivial matrix element}
@@ -16623,7 +16644,7 @@ functionality.
        call mci%set_divisions (100)
     end select
   end subroutine dispatch_mci_test3
- 
+
 @ %def dispatch_mci_test3
 @
 \subsubsection{Generate a process instance}
@@ -17337,7 +17358,7 @@ require integration in preparation for generating events.
     type is (mci_test_t);  call mci%set_divisions (100)
     end select
   end subroutine dispatch_mci_test10
- 
+
 @ %def dispatch_mci_test10
 @
 \subsubsection{Integration}
@@ -18034,7 +18055,7 @@ integrate over phase space.
     logical, intent(in), optional :: is_nlo
     allocate (mci_midpoint_t :: mci)
   end subroutine dispatch_mci_test_midpoint
- 
+
 @ %def dispatch_mci_test_midpoint
 @
 \subsubsection{Decay Process Evaluation}
@@ -18363,7 +18384,7 @@ which is not available at this point.
     logical, intent(in), optional :: is_nlo
     allocate (mci_none_t :: mci)
   end subroutine dispatch_mci_none
- 
+
 @ %def dispatch_mci_none
 @
 \subsubsection{Add after evaluate hook(s)}
@@ -18665,7 +18686,7 @@ requested, there is an optional [[fifo]] argument.
           do while (associated (process))
              call process%show (u, verbose=.false.)
              process => process%next
-          end do 
+          end do
        else
           do i = 1, object%n
              process => object%first
@@ -18762,7 +18783,7 @@ stack and will be finalized when the stack is deleted.
        stack%n = stack%n - 1
     end select
   end subroutine process_stack_pop_last
-    
+
 @ %def process_stack_pop_last
 @ Initialize process variables for a given process ID, without setting
 values.
@@ -18987,7 +19008,7 @@ Fill a process stack with two (identical) processes.
 
     libname = "process_stacks2"
     procname = libname
-    
+
     call os_data%init ()
     call prc_test_create_library (libname, lib)
 

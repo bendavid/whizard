@@ -909,13 +909,12 @@ the matrix elements.
 <<SF user: user: TBP>>=
   procedure :: apply => user_apply
 <<SF user: procedures>>=
-  subroutine user_apply (sf_int, scale, rescale, i_sub, fill_sub) !, x, data)
+  subroutine user_apply (sf_int, scale, rescale, i_sub) !, x, data)
     !!! JRR: WK please check (#529)
     class(user_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    logical, intent(in), optional :: fill_sub
     real(default), dimension(:), allocatable :: x
     real(c_double), dimension(sf_int%data%n_states) :: fval
     complex(default), dimension(sf_int%data%n_states) :: fc
