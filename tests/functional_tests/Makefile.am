@@ -97,6 +97,8 @@ TESTS_REQ_OCAML = \
     qedtest_8.run \
     qedtest_9.run \
     qedtest_10.run \
+    rambo_vamp_1.run \
+    rambo_vamp_2.run \
     beam_setup_1.run \
     beam_setup_2.run \
     beam_setup_3.run \

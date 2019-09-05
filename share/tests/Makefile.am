@@ -638,6 +638,8 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/qcdtest_4.ref \
     functional_tests/ref-output/qcdtest_5.ref \
     functional_tests/ref-output/qcdtest_6.ref \
+    functional_tests/ref-output/rambo_vamp_1.ref \
+    functional_tests/ref-output/rambo_vamp_2.ref \
     functional_tests/ref-output/beam_setup_1.ref \
     functional_tests/ref-output/beam_setup_2.ref \
     functional_tests/ref-output/beam_setup_3.ref \
@@ -1027,6 +1029,8 @@ MISC_TESTS_SIN = \
     functional_tests/qedtest_8.sin \
     functional_tests/qedtest_9.sin \
     functional_tests/qedtest_10.sin \
+    functional_tests/rambo_vamp_1.sin \
+    functional_tests/rambo_vamp_2.sin \
     functional_tests/beam_setup_1.sin \
     functional_tests/beam_setup_2.sin \
     functional_tests/beam_setup_3.sin \

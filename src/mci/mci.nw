@@ -13777,12 +13777,17 @@ Allocate an integrator according to the variable [[$integration_method]].
          var_list%get_ival (var_str ("max_bins"))
     grid_par%stratified = &
          var_list%get_lval (var_str ("?stratified"))
-    if (.not. dispatch_nlo) then
-       grid_par%use_vamp_equivalences = &
-            var_list%get_lval (var_str ("?use_vamp_equivalences"))
-    else
+    select case (char (var_list%get_sval (var_str ("$phs_method"))))
+    case default
+       if (.not. dispatch_nlo) then
+          grid_par%use_vamp_equivalences = &
+               var_list%get_lval (var_str ("?use_vamp_equivalences"))
+       else
+          grid_par%use_vamp_equivalences = .false.
+       end if
+    case ("rambo")
        grid_par%use_vamp_equivalences = .false.
-    end if
+    end select
     grid_par%channel_weights_power = &
          var_list%get_rval (var_str ("channel_weights_power"))
     grid_par%accuracy_goal = &
@@ -13822,12 +13827,17 @@ Allocate an integrator according to the variable [[$integration_method]].
          var_list%get_rval (var_str ("channel_weights_power"))
     mci_vamp2_config%stratified = &
          var_list%get_lval (var_str ("?stratified"))
-    if (.not. dispatch_nlo) then
-       mci_vamp2_config%equivalences = &
-            var_list%get_lval (var_str ("?use_vamp_equivalences"))
-    else
+    select case (char (var_list%get_sval (var_str ("$phs_method"))))
+    case default
+       if (.not. dispatch_nlo) then
+          mci_vamp2_config%equivalences = &
+               var_list%get_lval (var_str ("?use_vamp_equivalences"))
+       else
+          mci_vamp2_config%equivalences = .false.
+       end if
+    case ("rambo")
        mci_vamp2_config%equivalences = .false.
-    end if
+    end select
     mci_vamp2_config%accuracy_goal = &
          var_list%get_rval (var_str ("accuracy_goal"))
     mci_vamp2_config%error_goal = &
