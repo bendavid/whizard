@@ -15254,7 +15254,7 @@ these cases as well, however.
     end select
   contains
     subroutine set_factor (pcm_instance, alr, em, factor_born, factor_real)
-      type(pcm_instance_nlo_t), intent(in), pointer :: pcm_instance
+      type(pcm_instance_nlo_t), intent(inout), target :: pcm_instance
       integer, intent(in) :: alr, em
       real(default), intent(in) :: factor_born, factor_real
       real(default) :: factor
