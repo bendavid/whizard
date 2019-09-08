@@ -2982,6 +2982,7 @@ procedure with type [[V_NONE]].
     call var_list%set_phase_space_defaults ()
     call var_list%set_gamelan_defaults ()
     call var_list%set_clustering_defaults ()
+    call var_list%set_isolation_defaults ()
     call var_list%set_eio_defaults ()
     call var_list%set_shower_defaults ()
     call var_list%set_hadronization_defaults ()
@@ -4903,7 +4904,30 @@ procedure with type [[V_NONE]].
   end subroutine var_list_set_clustering_defaults
 
 @ %def var_list_set_clustering_defaults
-@
+@ Frixione isolation parameters and all that:
+<<Variables: var list: TBP>>=
+  procedure :: set_isolation_defaults => var_list_set_isolation_defaults
+<<Variables: procedures>>=
+  subroutine var_list_set_isolation_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_real (var_str ("photon_iso_eps"), 1._default, &
+         intrinsic=.true., &
+         description=var_str ('Photon isolation parameter $\epsilon_\gamma$ ' // &
+         '(energy fraction) from hep-ph/9801442 (cf. also ' // &
+         '\ttt{photon\_iso\_n}, \ttt{photon\_iso\_r0})'))
+    call var_list%append_real (var_str ("photon_iso_n"), 1._default, &
+         intrinsic=.true., &
+         description=var_str ('Photon isolation parameter $n$ ' // &
+         '(cone function exponent) from hep-ph/9801442 (cf. also ' // &
+         '\ttt{photon\_iso\_eps}, \ttt{photon\_iso\_r0})'))
+    call var_list%append_real (var_str ("photon_iso_r0"), 0.4_default, &
+         intrinsic=.true., &
+         description=var_str ('Photon isolation parameter $R_0^\gamma$ ' // &
+         '(isolation cone radius) from hep-ph/9801442 (cf. also ' // &
+         '\ttt{photon\_iso\_eps}, \ttt{photon\_iso\_n})'))
+  end subroutine var_list_set_isolation_defaults
+
+@ %def var_list_set_isolation_defaults
 <<Variables: var list: TBP>>=
   procedure :: set_eio_defaults => var_list_set_eio_defaults
 <<Variables: procedures>>=

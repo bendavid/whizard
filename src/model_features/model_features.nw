@@ -3756,6 +3756,7 @@ module eval_trees
   use io_units
   use constants, only: DEGREE, IMAGO, PI
   use format_defs, only: FMT_19
+  use numeric_utils, only: nearly_equal
   use diagnostics
   use lorentz
   use md5
@@ -3863,6 +3864,9 @@ leafs are literal constants or named-parameter references.
      real(default), pointer :: jet_r => null ()
      real(default), pointer :: jet_p => null ()
      real(default), pointer :: jet_ycut => null ()
+     real(default), pointer :: photon_iso_eps => null ()
+     real(default), pointer :: photon_iso_n => null ()
+     real(default), pointer :: photon_iso_r0 => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      procedure(unary_log),  nopass, pointer :: op1_log  => null ()
@@ -6546,6 +6550,136 @@ ignored.
   end function no_pp
 
 @ %def all_pp any_pp no_pp
+The conditional restriction encoded in the [[eval_node_t]] [[en_0]] is
+applied only to the photons from [[en1]], not to the objects being
+isolated from in [[en2]].
+<<Eval trees: procedures>>=
+  function photon_isolation_pp (en1, en2, en0) result (lval)
+    logical :: lval
+    type(eval_node_t), intent(in) :: en1, en2
+    type(eval_node_t), intent(inout) :: en0
+    type(prt_t) :: prt
+    type(prt_t), dimension(:), allocatable :: prt_gam0, prt_lep
+    type(vector4_t), dimension(:), allocatable :: &
+         p_gam0, p_lep0, p_lep, p_par
+    integer :: i, j, n1, n2, n_par, n_lep, n_gam, n_delta
+    real(default), dimension(:), allocatable :: delta_r, et_sum
+    real(default) :: eps, iso_n, r0, pt_gam
+    logical, dimension(:,:), allocatable :: photon_mask
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
+    allocate (p_gam0 (n1), prt_gam0 (n1))
+    eps = en1%photon_iso_eps
+    iso_n = en1%photon_iso_n
+    r0 = en1%photon_iso_r0
+    do i = 1, n1
+       en0%index = i
+       prt = subevt_get_prt (en1%pval, i)
+       prt_gam0(i) = prt
+       if (.not. prt_is_photon (prt_gam0(i))) &
+            call msg_fatal ("Photon isolation can only " // &
+            "be applied to photons.")
+       p_gam0(i) = prt_get_momentum (prt_gam0(i))
+       en0%prt1 = prt
+       call eval_node_evaluate (en0)
+    end do
+    if (n1 == 0) then
+       call msg_fatal ("Photon isolation applied on empty photon sample.")
+    end if
+    n_par = 0
+    n_lep = 0
+    n_gam = 0
+    do i = 1, n2
+       prt = subevt_get_prt (en2%pval, i)
+       if (prt_is_parton (prt) .or. prt_is_clustered (prt)) then
+          n_par = n_par + 1
+       end if
+       if (prt_is_lepton (prt)) then
+          n_lep = n_lep + 1
+       end if
+       if (prt_is_photon (prt)) then
+          n_gam = n_gam + 1
+       end if
+    end do
+    if (n_lep > 0 .and. n_gam == 0) then
+       call msg_fatal ("Photon isolation from EM energy: photons " // &
+            "have to be included.")
+    end if
+    if (n_lep > 0 .and. n_gam /= n1) then
+       call msg_fatal ("Photon isolation: photon samples do not match.")
+    end if
+    allocate (p_par (n_par))
+    allocate (p_lep0 (n_gam+n_lep), prt_lep(n_gam+n_lep))
+    n_par = 0
+    n_lep = 0
+    do i = 1, n2
+       prt = subevt_get_prt (en2%pval, i)
+       if (prt_is_parton (prt) .or. prt_is_clustered (prt)) then
+          n_par = n_par + 1
+          p_par(n_par) = prt_get_momentum (prt)
+       end if
+       if (prt_is_lepton (prt) .or. prt_is_photon(prt)) then
+          n_lep = n_lep + 1
+          prt_lep(n_lep) = prt
+          p_lep0(n_lep) = prt_get_momentum (prt_lep(n_lep))
+       end if       
+    end do
+    lval = .true.
+    if (n_par > 0) then
+       allocate (delta_r (n_par))    
+       HADRON_ISOLATION: do i = 1, n1
+          pt_gam = transverse_part (p_gam0(i))
+          delta_r(1:n_par) = sort (eta_phi_distance (p_gam0(i), p_par(1:n_par)))
+          n_delta = count (delta_r < r0)
+          allocate (et_sum(n_delta))
+          do j = 1, n_delta
+             et_sum(j) = sum (delta_r (1:j))
+             if (.not. et_sum(j) <= &
+                  iso_chi_gamma (delta_r(j), r0, iso_n, eps, pt_gam)) then
+                lval = .false.
+                return
+             end if
+          end do
+          deallocate (et_sum)
+       end do HADRON_ISOLATION
+       deallocate (delta_r)
+    end if
+    if (n_lep > 0) then
+       allocate (photon_mask(n1,n_lep))
+       do i = 1, n1
+          photon_mask(i,:) = .not. (prt_gam0(i) .match. prt_lep(:))
+       end do
+       allocate (delta_r (n_lep-1), p_lep(n_lep-1))
+       EM_ISOLATION: do i = 1, n1
+          pt_gam = transverse_part (p_gam0(i))
+          p_lep = pack (p_lep0, photon_mask(i,:))          
+          delta_r(1:n_lep-1) = sort (eta_phi_distance (p_gam0(i), p_lep(1:n_lep-1)))
+          n_delta = count (delta_r < r0)
+          allocate (et_sum(n_delta))
+          do j = 1, n_delta
+             et_sum(j) = sum (delta_r (1:j))
+             if (.not. et_sum(j) <= &
+                  iso_chi_gamma (delta_r(j), r0, iso_n, eps, pt_gam)) then
+                lval = .false.
+                return
+             end if
+          end do
+          deallocate (et_sum)
+       end do EM_ISOLATION
+    end if
+  contains
+    function iso_chi_gamma (dr, r0_gam, n_gam, eps_gam, pt_gam) result (iso)
+      real(default) :: iso
+      real(default), intent(in) :: dr, r0_gam, n_gam, eps_gam, pt_gam
+      iso = eps_gam * pt_gam
+      if (.not. nearly_equal (abs(n_gam), 0._default)) then
+         iso = iso * ((1._default - cos(dr)) / &
+              (1._default - cos(r0_gam)))**abs(n_gam)
+      end if
+    end function iso_chi_gamma
+  end function photon_isolation_pp
+
+@ %def photon_isolation_pp
 @ This function evaluates an observable for a pair of particles.  From the two
 particle lists, we take the first pair without [[src]] overlap.  If there is
 no valid pair, we revert the status of the value to unknown.
@@ -8661,7 +8795,8 @@ l.h.s.\ of compared expressions.
        call eval_node_compile_compared_expr (en, pn, var_list, V_REAL)
     case ("compared_sexpr")
        call eval_node_compile_compared_expr (en, pn, var_list, V_STR)
-    case ("all_fun", "any_fun", "no_fun", "user_cut_fun")
+    case ("all_fun", "any_fun", "no_fun", "user_cut_fun", &
+          "photon_isolation_fun")
        call eval_node_compile_log_function (en, pn, var_list)
     case ("record_cmd")
        call eval_node_compile_record_cmd (en, pn, var_list)
@@ -9421,13 +9556,16 @@ is mandatory, and the whole thing evaluates to a numeric value.
   end subroutine eval_node_compile_eval_function
 
 @ %def eval_node_compile_eval_function
-@ Logical functions of subevents.
+@ Logical functions of subevents. For [[photon_isolation]] there is a
+conditional selection expression instead of a mandatory logical
+expression, so in the case of the absence of the selection we have to
+create a logical [[eval_node_t]] with value [[.true.]].
 <<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_log_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_key, pn_str
+    type(parse_node_t), pointer :: pn_clause, pn_key, pn_str, pn_cond
     type(parse_node_t), pointer :: pn_arg0, pn_args, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
@@ -9439,15 +9577,24 @@ is mandatory, and the whole thing evaluates to a numeric value.
        pn_key => parse_node_get_sub_ptr (pn)
        pn_arg0 => parse_node_get_next_ptr (pn_key)
        pn_args => parse_node_get_next_ptr (pn_arg0)
+    case ("photon_isolation_fun")
+       pn_clause => parse_node_get_sub_ptr (pn)
+       pn_key => parse_node_get_sub_ptr (pn_clause)
+       pn_cond => parse_node_get_next_ptr (pn_key)
+       if (associated (pn_cond)) then
+          pn_arg0 => parse_node_get_sub_ptr (pn_cond, 2)
+       else
+          pn_arg0 => null ()
+       end if
+       pn_args => parse_node_get_next_ptr (pn_clause)
     case ("user_cut_fun")
        pn_key => parse_node_get_sub_ptr (pn)
        pn_str => parse_node_get_next_ptr (pn_key)
        pn_arg0 => parse_node_get_sub_ptr (pn_str)
        pn_args => parse_node_get_next_ptr (pn_str)
     case default
-       call parse_node_mismatch &
-            ("all_fun|any_fun|no_fun|user_cut_fun", &
-            pn)
+       call parse_node_mismatch ("all_fun|any_fun|" // &
+            "no_fun|photon_isolation_fun|user_cut_fun", pn)
     end select
     pn_arg1 => parse_node_get_sub_ptr (pn_args)
     pn_arg2 => parse_node_get_next_ptr (pn_arg1)
@@ -9477,6 +9624,12 @@ is mandatory, and the whole thing evaluates to a numeric value.
           call eval_node_init_log_fun_binary (en, en1, en2, key, any_pp)
        case ("no")
           call eval_node_init_log_fun_binary (en, en1, en2, key, no_pp)
+       case ("photon_isolation")
+          en1%var_list => var_list
+          call var_list%get_rptr (var_str ("photon_iso_eps"), en1%photon_iso_eps)
+          call var_list%get_rptr (var_str ("photon_iso_n"), en1%photon_iso_n)
+          call var_list%get_rptr (var_str ("photon_iso_r0"), en1%photon_iso_r0)
+          call eval_node_init_log_fun_binary (en, en1, en2, key, photon_isolation_pp)
        case default
           call msg_bug ("Binary logical particle function '" // char (key) // &
                "' undefined")
@@ -9485,7 +9638,7 @@ is mandatory, and the whole thing evaluates to a numeric value.
     if (associated (pn_arg0)) then
        call eval_node_set_observables (en, var_list)
        select case (char (key))
-       case ("all", "any", "no")
+       case ("all", "any", "no", "photon_isolation")
           call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
        case ("user_cut")
           call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
@@ -9493,6 +9646,15 @@ is mandatory, and the whole thing evaluates to a numeric value.
           call msg_bug ("Compiling logical particle function: missing mode")
        end select
        call eval_node_set_expr (en, en0, V_LOG)
+    else
+       select case (char (key))
+       case ("photon_isolation")
+          allocate (en0)
+          call eval_node_init_log (en0, .true.)
+          call eval_node_set_expr (en, en0, V_LOG)
+       case default
+          call msg_bug ("Only photon isolation can be called unconditionally")
+       end select
     end if
     if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
@@ -10944,13 +11106,19 @@ We have two different flavors of the syntax: with and without particles.
   subroutine define_logical_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "ALT logical_pexpr = " // &
-         "all_fun | any_fun | no_fun | user_cut_fun")
+         "all_fun | any_fun | no_fun | user_cut_fun |" // &
+         "photon_isolation_fun")
     call ifile_append (ifile, "SEQ all_fun = all lexpr pargs1")
     call ifile_append (ifile, "SEQ any_fun = any lexpr pargs1")
     call ifile_append (ifile, "SEQ no_fun = no lexpr pargs1")
+    call ifile_append (ifile, "SEQ photon_isolation_fun = " // &
+         "photon_isolation_clause pargs2")
+    call ifile_append (ifile, "SEQ photon_isolation_clause = " // &
+         "photon_isolation condition?")
     call ifile_append (ifile, "KEY all")
     call ifile_append (ifile, "KEY any")
     call ifile_append (ifile, "KEY no")
+    call ifile_append (ifile, "KEY photon_isolation")
     call ifile_append (ifile, "SEQ user_cut_fun = user_cut user_arg pargs1")
     call ifile_append (ifile, "KEY user_cut")
   end subroutine define_logical_pexpr_syntax

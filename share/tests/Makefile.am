@@ -722,6 +722,8 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/smtest_14.ref \
     functional_tests/ref-output/smtest_15.ref \
     functional_tests/ref-output/smtest_16.ref \
+    functional_tests/ref-output/photon_isolation_1.ref \
+    functional_tests/ref-output/photon_isolation_2.ref \
     functional_tests/ref-output/sm_cms_1.ref \
     functional_tests/ref-output/resonances_5.ref \
     functional_tests/ref-output/resonances_6.ref \
@@ -1136,6 +1138,8 @@ MISC_TESTS_SIN = \
     functional_tests/smtest_14.sin \
     functional_tests/smtest_15.sin \
     functional_tests/smtest_16.sin \
+    functional_tests/photon_isolation_1.sin \
+    functional_tests/photon_isolation_2.sin \
     functional_tests/resonances_1.sin \
     functional_tests/resonances_2.sin \
     functional_tests/resonances_3.sin \

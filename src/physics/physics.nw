@@ -105,6 +105,12 @@ We need an UNDEFINED value:
 @ %def UNDEFINED
 @ SM fermions:
 <<Physics defs: public parameters>>=
+  integer, parameter, public :: DOWN_Q = 1
+  integer, parameter, public :: UP_Q = 2
+  integer, parameter, public :: STRANGE_Q = 3
+  integer, parameter, public :: CHARM_Q = 4
+  integer, parameter, public :: BOTTOM_Q = 5
+  integer, parameter, public :: TOP_Q = 6
   integer, parameter, public :: ELECTRON = 11
   integer, parameter, public :: ELECTRON_NEUTRINO = 12
   integer, parameter, public :: MUON = 13

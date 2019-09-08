@@ -2931,6 +2931,7 @@ module subevents
   use io_units
   use format_defs, only: FMT_14, FMT_19
   use format_utils, only: pac_fmt
+  use physics_defs
   use sorting
   use c_particles
   use lorentz
@@ -2995,6 +2996,7 @@ initializers below do the rest. The logicals [[is_b_jet]] and
      integer :: pdg
      logical :: polarized = .false.
      logical :: colorized = .false.
+     logical :: clustered = .false.
      logical :: is_b_jet = .false.
      logical :: is_c_jet = .false.
      integer :: h
@@ -3080,6 +3082,7 @@ is not set.
     call prt_set (prt, pdg, p, p**2, src)
     prt%is_b_jet = is_b_jet
     prt%is_c_jet = is_c_jet
+    prt%clustered = .true.
   end subroutine prt_init_pseudojet
 
 @ %def prt_init_pseudojet
@@ -3145,6 +3148,54 @@ is not set.
   end function prt_is_colorized
 
 @ %def prt_is_colorized
+<<Subevents: public>>=
+  public :: prt_is_clustered
+<<Subevents: procedures>>=
+  elemental function prt_is_clustered (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt%clustered
+  end function prt_is_clustered
+
+@ %def prt_is_clustered
+<<Subevents: public>>=
+  public :: prt_is_photon
+<<Subevents: procedures>>=
+  elemental function prt_is_photon (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt%pdg == PHOTON
+  end function prt_is_photon
+  
+@ %def prt_is_photon
+We do not take the top quark into account here.
+<<Subevents: public>>=
+  public :: prt_is_parton
+<<Subevents: procedures>>=
+  elemental function prt_is_parton (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = abs(prt%pdg) == DOWN_Q .or. &
+           abs(prt%pdg) == UP_Q .or. &
+           abs(prt%pdg) == STRANGE_Q .or. &
+           abs(prt%pdg) == CHARM_Q .or. &
+           abs(prt%pdg) == BOTTOM_Q .or. &
+           prt%pdg == GLUON
+  end function prt_is_parton
+  
+@ %def prt_is_photon
+<<Subevents: public>>=
+  public :: prt_is_lepton
+<<Subevents: procedures>>=
+  elemental function prt_is_lepton (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = abs(prt%pdg) == ELECTRON .or. &
+           abs(prt%pdg) == MUON     .or. &
+           abs(prt%pdg) == TAU
+  end function prt_is_lepton
+  
+@ %def prt_is_lepton
 <<Subevents: public>>=
   public :: prt_is_b_jet
 <<Subevents: procedures>>=
@@ -3387,6 +3438,8 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
 @
 \subsubsection{Tools}
 Two particles match if their [[src]] arrays are the same.
+<<Subevents: public>>=
+  public :: operator(.match.)
 <<Subevents: interfaces>>=
   interface operator(.match.)
      module procedure prt_match

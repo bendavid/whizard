@@ -171,6 +171,8 @@ TESTS_REQ_OCAML = \
     smtest_14.run \
     smtest_15.run \
     smtest_16.run \
+    photon_isolation_1.run \
+    photon_isolation_2.run \
     resonances_1.run \
     resonances_2.run \
     resonances_3.run \

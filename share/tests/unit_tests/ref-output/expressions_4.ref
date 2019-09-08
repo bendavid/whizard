@@ -284,13 +284,16 @@ Syntax table:
  ALTERNATIVE <event_shape_fun> = <user_event_fun>
  SEQUENCE    <user_event_fun> = user_event_shape <user_arg> <pargs1>
  KEYWORD     user_event_shape
- ALTERNATIVE <logical_pexpr> = <all_fun> | <any_fun> | <no_fun> | <user_cut_fun>
+ ALTERNATIVE <logical_pexpr> = <all_fun> | <any_fun> | <no_fun> | <user_cut_fun> | <photon_isolation_fun>
  SEQUENCE    <all_fun> = all <lexpr> <pargs1>
  SEQUENCE    <any_fun> = any <lexpr> <pargs1>
  SEQUENCE    <no_fun> = no <lexpr> <pargs1>
+ SEQUENCE    <photon_isolation_fun> = <photon_isolation_clause> <pargs2>
+ SEQUENCE    <photon_isolation_clause> = photon_isolation <condition>?
  KEYWORD     all
  KEYWORD     any
  KEYWORD     no
+ KEYWORD     photon_isolation
  SEQUENCE    <user_cut_fun> = user_cut <user_arg> <pargs1>
  KEYWORD     user_cut
 Keyword list:
