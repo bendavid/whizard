@@ -6564,6 +6564,7 @@ isolated from in [[en2]].
          p_gam0, p_lep0, p_lep, p_par
     integer :: i, j, n1, n2, n_par, n_lep, n_gam, n_delta
     real(default), dimension(:), allocatable :: delta_r, et_sum
+    integer, dimension(:), allocatable :: index
     real(default) :: eps, iso_n, r0, pt_gam
     logical, dimension(:,:), allocatable :: photon_mask
     n1 = subevt_get_length (en1%pval)
@@ -6628,14 +6629,15 @@ isolated from in [[en2]].
        end if       
     end do
     if (n_par > 0) then
-       allocate (delta_r (n_par))    
+       allocate (delta_r (n_par), index (n_par))
        HADRON_ISOLATION: do i = 1, n1
           pt_gam = transverse_part (p_gam0(i))
           delta_r(1:n_par) = sort (eta_phi_distance (p_gam0(i), p_par(1:n_par)))
+          index(1:n_par) = order (eta_phi_distance (p_gam0(i), p_par(1:n_par)))
           n_delta = count (delta_r < r0)
           allocate (et_sum(n_delta))
           do j = 1, n_delta
-             et_sum(j) = sum (delta_r (1:j))
+             et_sum(j) = sum (transverse_part (p_par (index (1:j))))
              if (.not. et_sum(j) <= &
                   iso_chi_gamma (delta_r(j), r0, iso_n, eps, pt_gam)) then
                 lval = .false.
@@ -6645,21 +6647,23 @@ isolated from in [[en2]].
           deallocate (et_sum)
        end do HADRON_ISOLATION
        deallocate (delta_r)
+       deallocate (index)
     end if
     if (n_lep > 0) then
        allocate (photon_mask(n1,n_lep))
        do i = 1, n1
           photon_mask(i,:) = .not. (prt_gam0(i) .match. prt_lep(:))
        end do
-       allocate (delta_r (n_lep-1), p_lep(n_lep-1))
+       allocate (delta_r (n_lep-1), index (n_lep-1), p_lep(n_lep-1))
        EM_ISOLATION: do i = 1, n1
           pt_gam = transverse_part (p_gam0(i))
           p_lep = pack (p_lep0, photon_mask(i,:))          
           delta_r(1:n_lep-1) = sort (eta_phi_distance (p_gam0(i), p_lep(1:n_lep-1)))
+          index(1:n_lep-1) = order (eta_phi_distance (p_gam0(i), p_lep(1:n_lep-1)))
           n_delta = count (delta_r < r0)
           allocate (et_sum(n_delta))
           do j = 1, n_delta
-             et_sum(j) = sum (delta_r (1:j))
+             et_sum(j) = sum (transverse_part (p_lep (index(1:j))))
              if (.not. et_sum(j) <= &
                   iso_chi_gamma (delta_r(j), r0, iso_n, eps, pt_gam)) then
                 lval = .false.
@@ -6668,6 +6672,8 @@ isolated from in [[en2]].
           end do
           deallocate (et_sum)
        end do EM_ISOLATION
+       deallocate (delta_r)
+       deallocate (index)
     end if
   contains
     function iso_chi_gamma (dr, r0_gam, n_gam, eps_gam, pt_gam) result (iso)
