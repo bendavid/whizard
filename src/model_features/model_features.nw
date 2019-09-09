@@ -6572,6 +6572,7 @@ isolated from in [[en2]].
     eps = en1%photon_iso_eps
     iso_n = en1%photon_iso_n
     r0 = en1%photon_iso_r0
+    lval = .true.
     do i = 1, n1
        en0%index = i
        prt = subevt_get_prt (en1%pval, i)
@@ -6582,6 +6583,8 @@ isolated from in [[en2]].
        p_gam0(i) = prt_get_momentum (prt_gam0(i))
        en0%prt1 = prt
        call eval_node_evaluate (en0)
+       lval = en0%lval
+       if (.not. lval) return
     end do
     if (n1 == 0) then
        call msg_fatal ("Photon isolation applied on empty photon sample.")
@@ -6624,7 +6627,6 @@ isolated from in [[en2]].
           p_lep0(n_lep) = prt_get_momentum (prt_lep(n_lep))
        end if       
     end do
-    lval = .true.
     if (n_par > 0) then
        allocate (delta_r (n_par))    
        HADRON_ISOLATION: do i = 1, n1

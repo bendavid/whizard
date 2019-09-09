@@ -4193,6 +4193,51 @@ looks like this:
 \end{footnotesize}
 \end{quote}
 
+\subsubsection{photon\_isolation}
+
+This command is available from \whizard\ version 2.8.1 on. It provides
+isolation of photons from hadronic (and possibly electromagnetic)
+activity in the event to define a (especially) NLO cross section that
+is completely perturbative. The isolation criterion according to
+Frixione, cf.~\cite{Frixione:1998jh}, removes the non-perturbative
+contribution from the photon fragmentation function. This command can
+in principle be applied to elementary hard process partons (and
+leptons), but generates something sensible only if the
+\fastjet\ package has been installed and linked with
+\whizard\ (cf. Sec.\ref{sec:fastjet}). There are three parameters
+which allow to tune the isolation, \ttt{photon\_iso\_r0}, which is the
+radius $R^0_\gamma$ of the isolation cone, \ttt{photon\_iso\_eps},
+which is the fraction $\epsilon_\gamma$ of the photon (transverse)
+energy that enters the isolation criterion, and the exponent of the
+isolation cone, \ttt{photon\_iso\_n}, $n^\gamma$. For more information
+cf.~\cite{Frixione:1998jh}. The command allows also a conditional cut
+on the photon which is applied before the isolation takes place. The
+first argument are the photons in the event, the second the particles
+from which they should be isolated. If also the electromagnetic
+activity is to be isolated, photons need to be isolated from
+themselves and must be included in the second argument. This is
+mandatory if leptons appear in the second argument. Two examples look
+like this:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  alias jet = u:U:d:D:s:S:c:C:gl
+  process eeaajj = e1, E1 => A, A, jet, jet
+  jet_algorithm = antikt_algorithm
+  jet_r = 0.5
+  cuts = photon_isolation if Pt > 10 GeV [A, jet]
+         ....
+  cuts = let subevt @jets = cluster [jet] in         
+         photon_isolation if Pt > 10 GeV [A, @jets]
+         .....
+  process eeajmm = e1, E1 => A, jet, e2, E2
+  cuts = let subevt @jets = cluster [jet] in
+         let subevt @iso = join [@jets, A:e2:E2]
+         photon_isolation [A, @iso]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+
 
 \subsubsection{combine}
 \begin{quote}
@@ -15981,6 +16026,16 @@ Phi [e1]},  \ttt{all Phi > Pi [jet, jet]}. (cf. also \ttt{eval},
 \ttt{cuts}, \ttt{selection}, \ttt{Theta})
 %%%%%
 \item
+\ttt{photon\_isolation} \newline
+Logical function \ttt{photon\_isolation if {\em <condition>} [{\em
+<list1>} , {\em <list2>}]} that cuts out event where the photons in 
+\ttt{{\em <list1>}} do not fulfill the condition \ttt{{\em
+<condition>}} and are not isolated from hadronic (and electromagnetic)
+activity, i.e. the photon fragmentation. (cf. also \ttt{cluster},
+\ttt{collect}, \ttt{combine}, \ttt{extract}, \ttt{select},
+\ttt{sort}, \ttt{+})
+%%%%%
+\item
 \ttt{Pl} \newline
 Unary (binary) observable specifier for the longitudinal momentum
 ($p_z$ in the c.m. frame) of a single (two) particle(s),
@@ -16235,11 +16290,51 @@ from 500 to 600 GeV. (cf. also \ttt{/+}, \ttt{/+/}, \ttt{/-},
 \item
 \ttt{select} \newline
 Subevent function \ttt{select if {\em <condition>} [{\em <list1>} [ ,
-  {\em <list2>}]]} that select all particles in \ttt{{\em <list1>}}
+  {\em <list2>}]]} that selects all particles in \ttt{{\em <list1>}}
 that satisfy the condition \ttt{{\em <condition>}}. The second
 particle list \ttt{{\em <list2>}} is for conditions that depend on
 binary observables. (cf. also \ttt{collect},
 \ttt{combine}, \ttt{extract}, \ttt{sort}, \ttt{+})
+%%%%%
+\item
+\ttt{select\_b\_jet} \newline
+Subevent function \ttt{select if {\em <condition>} [{\em <list1>} [ ,
+  {\em <list2>}]]} that selects all particles in \ttt{{\em <list1>}}
+that are $b$ jets and satisfy the condition \ttt{{\em
+<condition>}}. The second particle list \ttt{{\em <list2>}} is for
+conditions that depend on binary observables. (cf. also \ttt{cluster},
+\ttt{collect}, \ttt{combine}, \ttt{extract}, \ttt{select},
+\ttt{sort}, \ttt{+})
+%%%%%
+\item
+\ttt{select\_c\_jet} \newline
+Subevent function \ttt{select if {\em <condition>} [{\em <list1>} [ ,
+  {\em <list2>}]]} that selects all particles in \ttt{{\em <list1>}}
+that are $c$ jets (but {\em not} $b$ jets) and satisfy the condition
+\ttt{{\em <condition>}}. The second particle list \ttt{{\em <list2>}}
+is for conditions that depend on binary observables. (cf. also
+\ttt{cluster}, \ttt{collect}, \ttt{combine}, \ttt{extract},
+\ttt{select}, \ttt{sort}, \ttt{+})
+%%%%%
+\item
+\ttt{select\_light\_jet} \newline
+Subevent function \ttt{select if {\em <condition>} [{\em <list1>} [ ,
+  {\em <list2>}]]} that selects all particles in \ttt{{\em <list1>}}
+that are light(-flavor) jets and satisfy the condition
+\ttt{{\em <condition>}}. The second particle list \ttt{{\em <list2>}}
+is for conditions that depend on binary observables. (cf. also
+\ttt{cluster}, \ttt{collect}, \ttt{combine}, \ttt{extract},
+\ttt{select}, \ttt{sort}, \ttt{+})
+%%%%%
+\item
+\ttt{select\_non\_b\_jet} \newline
+Subevent function \ttt{select if {\em <condition>} [{\em <list1>} [ ,
+{\em <list2>}]]} that selects all particles in \ttt{{\em <list1>}}
+that are {\em not} $b$ jets ($c$ and light jets) and satisfy the
+condition \ttt{{\em <condition>}}. The second particle list \ttt{{\em
+<list2>}} is for conditions that depend on binary
+observables. (cf. also \ttt{cluster}, \ttt{collect}, \ttt{combine},
+\ttt{extract}, \ttt{select}, \ttt{sort}, \ttt{+})
 %%%%%
 \item
 \ttt{selection} \newline
@@ -16998,6 +17093,15 @@ respectively.
   Fermilab CS-doc-903,
   \url{http://cd-docdb.fnal.gov/cgi-bin/ShowDocument?docid=903}
 
+%\cite{Frixione:1998jh}
+\bibitem{Frixione:1998jh} 
+  S.~Frixione,
+  %``Isolated photons in perturbative QCD,''
+  Phys.\ Lett.\ B {\bf 429}, 369 (1998)
+  doi:10.1016/S0370-2693(98)00454-7
+  [hep-ph/9801442].
+  %%CITATION = doi:10.1016/S0370-2693(98)00454-7;%%
+  
 \bibitem{LHAPDF}
   W.~Giele {\it et al.},
   {\em The QCD / SM working group: Summary report},
