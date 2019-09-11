@@ -9260,6 +9260,8 @@ implementation.
 Additionally, \whizard\ supports single-channel, flat phase-space using RAMBO
 (on diet).
 
+%%%
+
 \section{The flat method: \ttt{rambo}}
 \label{sec:rambo}
 
@@ -9273,8 +9275,13 @@ decrease rendering the algorithm less efficient. But in most cases, the
 invariants are in regions of phase space where they are much larger than the
 masses of the final-state particles.
 
-We provide the \ttt{RAMBO} mainly for cross checking our implementation and do
-not recommend it for real world application, even though it can be used as one.
+We provide the \ttt{RAMBO} mainly for cross checking our
+implementation and do not recommend it for real world application,
+even though it can be used as one.  The \ttt{RAMBO} method becomes
+useful as a fall-back option if the standard algorithm fails for
+physical reasons, see, e.g., Sec.~\ref{sec:ps_anomalous}.
+
+%%%
 
 \section{The default method: \ttt{wood}}
 \label{sec:wood}
@@ -9519,6 +9526,82 @@ restrictions command. So it advisable for the user in the case of very
 complicated processes with restrictions to use the \ttt{fast\_wood}
 phase-space method to make \whizard\ generation and integration of the
 phase space less cumbersome.
+
+%%%%%
+
+\section{Phase space for processes forbidden at tree level}
+\label{sec:ps_anomalous}
+
+The phase-space generators \ttt{wood} and \ttt{fast\_wood} are
+intended for tree-level processes with their typical patterns of
+singularities, which can be read off from Feynman graphs.  They can
+and should be used for loop-induced or for externally provided matrix
+elements as long as \whizard\ does not provide a dedicated phase-space
+module.
+
+Some scattering processes do not occur at tree level but become
+allowed if loop effects are included in the calculation.  A simple
+example is the elastic QED process
+\begin{displaymath}
+  A\quad A \longrightarrow A\quad A
+\end{displaymath}
+which is mediated by a fermion loop.  Similarly, certain applications
+provide externally provided or hand-taylored matrix-element code that
+replaces the standard \oMega\ code.
+
+Currently, \whizard's phase-space parameterization is nevertheless
+tied to the \oMega\ generator, so for tree-level forbidden processes
+the phase-space construction process will fail.
+
+There are two possible solutions for this problem:
+\begin{enumerate}
+\item
+  It is possible to provide the phase-space parameterization
+  information externally, by supplying an appropriately formatted
+  \ttt{.phs} file, bypassing the automatic algorithm.  Assuming that
+  this phase-space file has been named \ttt{my\_phase\_space.phs}, the
+  \sindarin\ code should contain the following: 
+  \begin{code}
+    ?rebuild_phase_space = false
+    $phs_file = "my_phase_space.phs"
+  \end{code}
+  Regarding the contents of this file, we recommend to generate an
+  appropriate \ttt{.phs} for a similar setup, using the standard
+  algorithm.  The generated file can serve as a template, which can be
+  adapted to the particular case.  
+
+  In detail, the \ttt{.phs} file consists of entries that specify the
+  process, then a standard header which contains MD5 sums and such --
+  these variables must be present but their values are irrelevant for
+  the present case --, and finally at least one \ttt{grove} with
+  \ttt{tree} entries that specify the parameterization.  Individual
+  parameterizations are built from the final-state and initial-state
+  momenta (in this order) which we label in binary form as
+  $1,2,4,8,\dots$.  The actual tree consists of iterative fusions of
+  those external lines.  Each fusion is indicated by the number that
+  results from adding the binary codes of the external momenta that
+  contribute to it.
+
+  For instance, a valid phase-space tree for the process $AA\to AA$ is
+  given by the simple entry
+  \begin{code}
+    tree 3
+  \end{code}
+  which indicates that the final-state momenta $1$ and $2$ are
+  combined to a fusion $1+2=3$.  The setup is identical to a process
+  such as $e^+e^-\to\mu^+\mu^-$ below the $Z$ threshold.  Hence, we
+  can take the \ttt{.phs} file for the latter process, replace the
+  process tag, and use it as an external phase-space file.
+\item
+  For realistic applications of \whizard\ together with one-loop
+  matrix-element providers, the actual number of final-state particles may be
+  rather small, say $2,3,4$.  Furthermore, one-loop processes which are
+  forbidden at tree level do not contain soft or collinear
+  singularities.  In this situation, the \ttt{RAMBO}
+  phase-space integration method, cf.\ Sec.~\ref{sec:rambo} is a
+  viable alternative which does not suffer from the problem.
+\end{enumerate}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
