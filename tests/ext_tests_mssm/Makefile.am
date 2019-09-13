@@ -107,7 +107,8 @@ endif
 
 BUILT_SOURCES = \
     TESTFLAG  \
-    HEPMC_FLAG \
+    HEPMC2_FLAG \
+    HEPMC3_FLAG \
     LCIO_FLAG \
     FASTJET_FLAG \
     LHAPDF5_FLAG \
@@ -129,8 +130,13 @@ if FASTJET_AVAILABLE
 	touch $@
 endif
 
-HEPMC_FLAG:
-if HEPMC_AVAILABLE
+HEPMC2_FLAG:
+if HEPMC2_AVAILABLE
+	touch $@
+endif
+
+HEPMC3_FLAG:
+if HEPMC3_AVAILABLE
 	touch $@
 endif
 
@@ -184,7 +190,7 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC2_FLAG HEPMC3_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out

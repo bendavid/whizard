@@ -1,0 +1,60 @@
+include("nlo_settings.sin")
+
+alias pr = u:U:d:D:s:S:c:C:b:B:gl
+!alias pr = u:U:d:D:gl
+$exclude_gauge_splittings = "t"
+!$exclude_gauge_splittings = "s:c:b:t"
+!alias pr = u:U:gl
+!alias jet = u:U:gl
+beams = p, p => lhapdf
+$lhapdf_file = "MSTW2008nlo68cl"
+sqrts = 13000 GeV
+!seed = 20190705
+
+alpha_power = 0
+alphas_power = 2
+?alphas_from_mz = false
+?alphas_from_lhapdf = true
+!alphas = 0.120179
+
+cuts = let subevt @clustered_jets = cluster [jet] in
+       let subevt @pt_selected = select if Pt > 80 GeV [@clustered_jets] in
+       let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+       let subevt @hardest_jets = select if Pt > 100 GeV [@eta_selected] in
+       count [@eta_selected] >= 2 and count [@hardest_jets] >= 1
+
+!scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+!       + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+!       + sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)) / 2
+scale = let subevt @clustered_jets = cluster [jet] in
+        let int njet = count [@clustered_jets] in
+        if njet == 2 then
+          ( eval Pt [extract index 1 [@clustered_jets]]
+          + eval Pt [extract index 2 [@clustered_jets]]) / 2
+        elsif njet == 3 then
+          ( eval Pt [extract index 1 [@clustered_jets]]
+          + eval Pt [extract index 2 [@clustered_jets]]
+          + eval Pt [extract index 3 [@clustered_jets]]) / 2
+        else
+          sqrts
+        endif
+
+?nlo_use_born_scale = false
+?nlo_cut_all_sqmes = false
+?combined_nlo_integration = false
+?use_vamp_equivalences = false
+?fixed_order_nlo_events = true
+
+!?test_coll_limit = true
+!?test_anti_coll_limit = false
+!?test_soft_limit = false
+!$select_alpha_regions = "1"
+mult_call_real = 10
+mult_call_virt = 6
+relative_error_goal = 0.009
+
+process ppjj = pr, pr => jet, jet { nlo_calculation = full $restrictions="!W+:W-" }
+!process ppjj = pr, pr => jet, jet { nlo_calculation = full }
+
+integrate (ppjj) { iterations = 15:100000:"gw",5:60000 }
+!integrate (ppjj) { iterations = 4:1000:"gw" }

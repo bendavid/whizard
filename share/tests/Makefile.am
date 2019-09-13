@@ -795,7 +795,26 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/beam_events_1.ref \
     functional_tests/ref-output/beam_events_4.ref \
     functional_tests/ref-output/energy_scan_1.ref \
-    functional_tests/ref-output/cascades2_phs_1.ref
+    functional_tests/ref-output/cascades2_phs_1.ref \
+    ext_tests_nlo/ref-output/nlo_ee4j.ref \
+    ext_tests_nlo/ref-output/nlo_ee4t.ref \
+    ext_tests_nlo/ref-output/nlo_ee5j.ref \
+    ext_tests_nlo/ref-output/nlo_eejj.ref \
+    ext_tests_nlo/ref-output/nlo_eejjj.ref \
+    ext_tests_nlo/ref-output/nlo_eett.ref \
+    ext_tests_nlo/ref-output/nlo_eetth.ref \
+    ext_tests_nlo/ref-output/nlo_eetthh.ref \
+    ext_tests_nlo/ref-output/nlo_eetthj.ref \
+    ext_tests_nlo/ref-output/nlo_eetthz.ref \
+    ext_tests_nlo/ref-output/nlo_eettwjj.ref \
+    ext_tests_nlo/ref-output/nlo_eettww.ref \
+    ext_tests_nlo/ref-output/nlo_eettz.ref \
+    ext_tests_nlo/ref-output/nlo_eettzj.ref \
+    ext_tests_nlo/ref-output/nlo_eettzjj.ref \
+    ext_tests_nlo/ref-output/nlo_eettzz.ref \
+    ext_tests_nlo/ref-output/nlo_pptttt.ref \
+    ext_tests_nlo/ref-output/nlo_ppzw.ref \
+    ext_tests_nlo/ref-output/nlo_ppzz.ref
 
 # Reference files that depend on the numerical precision
 REF_OUTPUT_FILES_DOUBLE = \
@@ -969,7 +988,9 @@ TESTSUITES_SIN = \
     $(EXT_MSSM_SIN) \
     $(EXT_NMSSM_SIN) \
     $(EXT_SHOWER_SIN) \
-    $(EXT_NLO_SIN)
+    $(EXT_NLO_SIN) \
+    $(EXT_NLO_ADD_SIN)
+
 
 MISC_TESTS_M4 =
 
@@ -1340,19 +1361,6 @@ EXT_SHOWER_SIN = \
     ext_tests_shower/shower_6.sin
 
 EXT_NLO_SIN = \
-    ext_tests_nlo/nlo_decay_tbw.sin \
-    ext_tests_nlo/nlo_tt.sin \
-    ext_tests_nlo/nlo_tt_powheg.sin \
-    ext_tests_nlo/nlo_tt_powheg_sudakov.sin \
-    ext_tests_nlo/nlo_uu.sin \
-    ext_tests_nlo/nlo_uu_powheg.sin \
-    ext_tests_nlo/nlo_qq_powheg.sin \
-    ext_tests_nlo/nlo_threshold.sin \
-    ext_tests_nlo/nlo_threshold_factorized.sin \
-    ext_tests_nlo/nlo_methods_gosam.sin \
-    ext_tests_nlo/nlo_jets.sin \
-    ext_tests_nlo/nlo_fks_delta_o_eejj.sin \
-    ext_tests_nlo/nlo_fks_delta_i_ppee.sin \
     ext_tests_nlo/nlo_settings.sin \
     ext_tests_nlo/nlo_eejj.sin \
     ext_tests_nlo/nlo_eejjj.sin \
@@ -1385,7 +1393,25 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_eetthh.sin \
     ext_tests_nlo/nlo_eetthz.sin \
     ext_tests_nlo/nlo_ee4t.sin \
-    ext_tests_nlo/nlo_ee4tj.sin
+    ext_tests_nlo/nlo_ee4tj.sin \
+    ext_tests_nlo/nlo_ppzz.sin \
+    ext_tests_nlo/nlo_ppzw.sin \
+    ext_tests_nlo/nlo_pptttt.sin
+
+EXT_NLO_ADD_SIN = \
+    ext_tests_nlo_add/nlo_decay_tbw.sin \
+    ext_tests_nlo_add/nlo_tt.sin \
+    ext_tests_nlo_add/nlo_tt_powheg.sin \
+    ext_tests_nlo_add/nlo_tt_powheg_sudakov.sin \
+    ext_tests_nlo_add/nlo_uu.sin \
+    ext_tests_nlo_add/nlo_uu_powheg.sin \
+    ext_tests_nlo_add/nlo_qq_powheg.sin \
+    ext_tests_nlo_add/nlo_threshold.sin \
+    ext_tests_nlo_add/nlo_threshold_factorized.sin \
+    ext_tests_nlo_add/nlo_methods_gosam.sin \
+    ext_tests_nlo_add/nlo_jets.sin \
+    ext_tests_nlo_add/nlo_fks_delta_o_eejj.sin \
+    ext_tests_nlo_add/nlo_fks_delta_i_ppee.sin
 
 all-local: $(TESTSUITES_SIN)
 

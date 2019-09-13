@@ -1,0 +1,62 @@
+include("nlo_settings.sin")
+
+alias pr = u:U:d:D:s:S:c:C:b:B:gl
+$exclude_gauge_splittings = "t"
+!alias pr = u:U:gl
+!alias jet = u:U:gl
+beams = p, p => lhapdf
+$lhapdf_file = "MSTW2008nlo68cl"
+sqrts = 13000 GeV
+
+alpha_power = 1
+alphas_power = 0
+?alphas_from_mz = false
+?alphas_from_lhapdf = true
+
+!alias elec = e1:E1
+!cuts = all M > 110 GeV [elec, elec]
+!   and all Pt > 30 GeV [jet]
+cuts = let subevt @clustered_jets = cluster [jet] in
+       let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+       let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+       count [@eta_selected] >= 0
+
+scale = let subevt @clustered_jets = cluster [jet] in
+        let int njet = count [@clustered_jets] in
+        if njet == 0 then
+           (sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)) / 2
+        elsif njet == 1 then
+           (sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
+          + eval Pt [extract index 1 [@clustered_jets]]) / 2
+        else
+          sqrts
+        endif
+!scale = let subevt @clustered_jets = cluster [jet] in
+!        let int njet = count [@clustered_jets] in
+!        if njet == 0 then
+!          ( sqrt (eval Pt [extract index 1 [elec]]**2 + eval M [extract index 1 [elec]]**2)
+!          + sqrt (eval Pt [extract index 2 [elec]]**2 + eval M [extract index 2 [elec]]**2)) / 2
+!        elsif njet == 1 then
+!          ( sqrt (eval Pt [extract index 1 [elec]]**2 + eval M [extract index 1 [elec]]**2)
+!          + sqrt (eval Pt [extract index 2 [elec]]**2 + eval M [extract index 2 [elec]]**2)
+!          + eval Pt [extract index 1 [@clustered_jets]]) / 2
+!        else
+!          sqrts
+!        endif
+
+?nlo_use_born_scale = false
+?nlo_cut_all_sqmes = false
+?combined_nlo_integration = false
+?use_vamp_equivalences = false
+?fixed_order_nlo_events = true
+
+!?test_coll_limit = true
+!?test_anti_coll_limit = true
+!?test_soft_limit = true
+!$select_alpha_regions = "6"
+
+
+process ppz = pr, pr => Z { nlo_calculation = full }
+!process ppz = pr, pr => elec, elec { nlo_calculation = full }
+
+integrate (ppz) { iterations = 5:10000:"gw",3:10000 }

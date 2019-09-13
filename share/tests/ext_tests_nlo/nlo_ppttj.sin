@@ -1,0 +1,63 @@
+include("nlo_settings.sin")
+
+alias pr = u:U:d:D:s:S:c:C:b:B:gl
+!alias pr = u:U:gl
+$exclude_gauge_splittings = "t"
+!$exclude_gauge_splittings = "d:s:c:b:t"
+!alias pr = u:U:gl
+!alias jet = u:U:gl
+beams = p, p => lhapdf
+$lhapdf_file = "MSTW2008nlo68cl"
+sqrts = 13000 GeV
+!seed = 20190705
+
+alpha_power = 0
+alphas_power = 3
+?alphas_from_mz = false
+?alphas_from_lhapdf = true
+!alphas = 0.120179
+
+cuts = let subevt @clustered_jets = cluster [jet] in
+       let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+       let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+       count [@eta_selected] >= 1
+
+!scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+!       + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+!       + sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)) / 2
+scale = let subevt @clustered_jets = cluster [jet] in
+        let int njet = count [@clustered_jets] in
+        if njet == 1 then
+          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+         + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+         + eval Pt [extract index 1 [@clustered_jets]]) / 2
+        elsif njet == 2 then
+          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
+         + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
+         + eval Pt [extract index 1 [@clustered_jets]]
+         + eval Pt [extract index 2 [@clustered_jets]]) / 2
+        else
+          sqrts
+        endif
+
+?nlo_use_born_scale = false
+?nlo_cut_all_sqmes = false
+?combined_nlo_integration = false
+?use_vamp_equivalences = false
+?fixed_order_nlo_events = true
+!?nlo_use_real_partition = true
+!real_partition_scale = 5 GeV
+
+!?test_coll_limit = true
+!?test_anti_coll_limit = false
+!?test_soft_limit = true
+!$select_alpha_regions = "1"
+mult_call_real = 10
+mult_call_virt = 1
+relative_error_goal = 0.001
+
+process ppttj = pr, pr => t, T, jet { nlo_calculation = full $restrictions="!W+:W-" }
+!process ppttj = pr, pr => t, T, jet { nlo_calculation = real }
+
+integrate (ppttj) { iterations = 10:100000:"gw",5:60000 }
+!integrate (ppttj) { iterations = 4:1000:"gw" }

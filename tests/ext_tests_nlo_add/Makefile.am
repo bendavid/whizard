@@ -30,45 +30,25 @@
 WHIZARD_DRIVER = run_whizard.sh
 
 TESTS_EXTENDED = \
-	nlo_ee4b.run \
-	nlo_ee4j.run \
-	nlo_ee4t.run \
-	nlo_ee4tj.run \
-	nlo_ee5j.run \
-	nlo_eebb.run \
-	nlo_eebbj.run \
-	nlo_eebbjj.run \
-	nlo_eejj.run \
-	nlo_eejjj.run \
-	nlo_eett.run \
-	nlo_eetta.run \
-	nlo_eettaa.run \
-	nlo_eettah.run \
-	nlo_eettaj.run \
-	nlo_eettajj.run \
-	nlo_eettaz.run \
-	nlo_eettbb.run \
-	nlo_eetth.run \
-	nlo_eetthh.run \
-	nlo_eetthj.run \
-	nlo_eetthjj.run \
-	nlo_eetthz.run \
-	nlo_eettj.run \
-	nlo_eettjj.run \
-	nlo_eettjjj.run \
-	nlo_eettwjj.run \
-	nlo_eettww.run \
-	nlo_eettz.run \
-	nlo_eettzj.run \
-	nlo_eettzjj.run \
-	nlo_eettzz.run \
-	nlo_ppzz.run \
-	nlo_ppzw.run \
-	nlo_pptttt.run
+	nlo_decay_tbw.run \
+	nlo_fks_delta_o_eejj.run \
+	nlo_fks_delta_i_ppee.run \
+	nlo_jets.run \
+	nlo_methods_gosam.run \
+	nlo_qq_powheg.run \
+	nlo_threshold_factorized.run \
+	nlo_threshold.run \
+	nlo_tt_powheg_sudakov.run \
+	nlo_tt_powheg.run \
+	nlo_tt.run \
+	nlo_uu_powheg.run \
+	nlo_uu.run
 
 XFAIL_TESTS_EXTENDED =
 
-TESTS_REQ_GAMELAN =
+TESTS_REQ_GAMELAN = \
+	nlo_tt_powheg.run \
+	nlo_uu_powheg.run
 
 TEST_DRIVERS_RUN = \
     $(TESTS_EXTENDED)
@@ -90,50 +70,14 @@ SUFFIXES = .sh .run
 
 .sh.run:
 	@rm -f $@
-	@if test -f $(top_builddir)/share/tests/ext_tests_nlo/$*.sin; then \
-	  $(SED) 's|@script@|$(top_builddir)/share/tests/ext_tests_nlo/$*|g' $< > $@; \
-	elif test -f $(top_srcdir)/share/tests/ext_tests_nlo/$*.sin; then \
-	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_nlo/$*|g' $< > $@; \
+	@if test -f $(top_builddir)/share/tests/ext_tests_nlo_add/$*.sin; then \
+	  $(SED) 's|@script@|$(top_builddir)/share/tests/ext_tests_nlo_add/$*|g' $< > $@; \
+	elif test -f $(top_srcdir)/share/tests/ext_tests_nlo_add/$*.sin; then \
+	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_nlo_add/$*|g' $< > $@; \
 	fi
+	$(SED) 's|@python_bin@|$(PYTHON_BIN)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
+	$(SED) 's|@share_dir@|$(top_srcdir)/share/tests|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	@chmod +x $@
-
-nlo_eejj.run: nlo_settings.sin
-nlo_eejjj.run: nlo_settings.sin
-nlo_ee4j.run: nlo_settings.sin
-nlo_ee5j.run: nlo_settings.sin
-nlo_eebb.run: nlo_settings.sin
-nlo_eebbj.run: nlo_settings.sin
-nlo_eebbjj.run: nlo_settings.sin
-nlo_ee4b.run: nlo_settings.sin
-nlo_eett.run: nlo_settings.sin
-nlo_eettj.run: nlo_settings.sin
-nlo_eettjj.run: nlo_settings.sin
-nlo_eettjjj.run: nlo_settings.sin
-nlo_eettbb.run: nlo_settings.sin
-nlo_eetta.run: nlo_settings.sin
-nlo_eettaa.run: nlo_settings.sin
-nlo_eettaj.run: nlo_settings.sin
-nlo_eettajj.run: nlo_settings.sin
-nlo_eettah.run: nlo_settings.sin
-nlo_eettaz.run: nlo_settings.sin
-nlo_eettz.run: nlo_settings.sin
-nlo_eettzj.run: nlo_settings.sin
-nlo_eettzjj.run: nlo_settings.sin
-nlo_eettzz.run: nlo_settings.sin
-nlo_eettwjj.run: nlo_settings.sin
-nlo_eettww.run: nlo_settings.sin
-nlo_eetth.run: nlo_settings.sin
-nlo_eetthj.run: nlo_settings.sin
-nlo_eetthjj.run: nlo_settings.sin
-nlo_eetthh.run: nlo_settings.sin
-nlo_eetthz.run: nlo_settings.sin
-nlo_ee4t.run: nlo_settings.sin
-nlo_ee4tj.run: nlo_settings.sin
-nlo_ppzz.run: nlo_settings.sin
-nlo_ppzw.run: nlo_settings.sin
-nlo_pptttt.run: nlo_settings.sin
-nlo_settings.sin: $(top_builddir)/share/tests/ext_tests_nlo/nlo_settings.sin
-	cp $< $@
 
 if MPOST_AVAILABLE
 $(TESTS_REQ_GAMELAN): gamelan.sty
@@ -160,8 +104,7 @@ BUILT_SOURCES = \
     PYTHIA6_FLAG \
     OPENLOOPS_FLAG \
     GOSAM_FLAG \
-    STATIC_FLAG \
-    ref-output
+    STATIC_FLAG
 
 # If this file is found in the working directory, WHIZARD
 # will use the paths for the uninstalled version (source/build tree),
@@ -239,11 +182,6 @@ if STATIC_AVAILABLE
 	touch $@
 endif
 
-# The reference output files are in the source directory.  Copy them here.
-ref-output: $(top_srcdir)/share/tests/ext_tests_nlo/ref-output
-	mkdir -p ref-output
-	for f in $</*.ref; do cp $$f $@; done
-
 ## installcheck runs the test scripts with the TESTFLAG removed.
 installcheck-local: notestflag check-am
 notestflag:
@@ -276,7 +214,9 @@ clean-local:
 	rm -rf *olp_modules
 	rm -rf Generated_Loops
 	rm -rf include lib golem.in
+	rm -f SM_tt_threshold.grid
 	rm -f *fks_regions.out
+	rm -f *_powheg_*.pg
 if FC_SUBMODULES
 	rm -f *.smod
 endif
