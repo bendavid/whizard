@@ -14,7 +14,7 @@ UFO_SMEFT=$HOME/physics/SMEFTsim_A_U35_alphaScheme_UFO_v2_1/
 UFO_SMEFT=$HOME/physics/SMEFT_mW_UFO/
 
 root=$HOME/physics/whizard
-build=$root/_build
+build=$root/_build/default
 omega=omega_UFO
 
 case X"$1" in
@@ -31,6 +31,7 @@ make -j $jobs -C $build/omega/bin $omega.opt || exit 1
 
 omega="$build/omega/bin/$omega.opt -model:UFO_dir $UFO -model:exec -target:parameter_module parameters_ufo"
 
+$omega -model:write_WHIZARD > omega_amplitude.mdl
 ( $omega -params; $omega -scatter "$1" ) > omega_amplitude.f90
 
 gfortran -Wall -c -I ../../_build/omega/src/ omega_amplitude.f90

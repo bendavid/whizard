@@ -67,8 +67,8 @@ VERTEX_ML = vertex_syntax.ml $(VERTEX_MLD) vertex.ml
 UFO_MLL = UFOx_lexer.mll UFO_lexer.mll
 UFO_MLY = UFOx_parser.mly UFO_parser.mly
 UFO_MLD = $(UFO_MLL:.mll=.ml) $(UFO_MLY:.mly=.ml)
-UFO_ML_PRIMARY = UFOx_syntax.ml UFOx.ml UFO_syntax.ml UFO_Lorentz.ml UFO_targets.ml UFO.ml
-UFO_ML = UFOx_syntax.ml UFO_syntax.ml $(UFO_MLD) UFOx.ml UFO_Lorentz.ml UFO_targets.ml UFO.ml
+UFO_ML_PRIMARY = UFO_tools.ml UFOx_syntax.ml UFOx.ml UFO_syntax.ml UFO_Lorentz.ml UFO_targets.ml UFO.ml
+UFO_ML = UFO_tools.ml UFOx_syntax.ml UFO_syntax.ml $(UFO_MLD) UFOx.ml UFO_Lorentz.ml UFO_targets.ml UFO.ml
 
 OMEGA_MLL = $(CASCADE_MLL) $(VERTEX_MLL) $(UFO_MLL)
 OMEGA_MLY = $(CASCADE_MLY) $(VERTEX_MLY) $(UFO_MLY)
@@ -91,8 +91,8 @@ OMEGA_INTERFACES_MLI = \
 
 OMEGA_CORE_ML_PART1 = \
     OUnit.ml OUnitDiff.ml \
-    config.ml partial.ml pmap.ml sets.ml format_Fortran.ml \
-    thoList.ml thoArray.ml thoString.ml bundle.ml powSet.ml \
+    config.ml partial.ml pmap.ml format_Fortran.ml \
+    thoString.ml sets.ml thoList.ml thoArray.ml bundle.ml powSet.ml \
     thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml \
     permutation.ml partition.ml tree.ml \

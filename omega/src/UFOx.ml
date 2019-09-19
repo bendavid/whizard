@@ -47,6 +47,9 @@ module Expr =
 	  UFOx_lexer.token
 	  (UFOx_lexer.init_position "" (Lexing.from_string text))
       with
+      | UFO_tools.Lexical_Error (msg, start_pos, end_pos) ->
+	 invalid_arg (Printf.sprintf "lexical error (%s) at: `%s'"
+			msg  (error_in_string text start_pos end_pos))
       | UFOx_syntax.Syntax_Error (msg, start_pos, end_pos) ->
 	 invalid_arg (Printf.sprintf "syntax error (%s) at: `%s'"
 			msg  (error_in_string text start_pos end_pos))
@@ -93,6 +96,9 @@ module Expr =
 
     let half name =
       Quotient (Variable name, Integer 2)
+
+    let variables = UFOx_syntax.variables
+    let functions = UFOx_syntax.functions
 
   end
 

@@ -22,6 +22,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* Avoid refering to [Pervasives.compare], because [Pervasives] will
+   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
+let pcompare = compare
+
 module type Test =
   sig
     val suite : OUnit.test
@@ -235,7 +239,7 @@ module Laurent : Laurent with type c = QC.t =
         (struct
           type t = int
           let compare i1 i2 =
-            Pervasives.compare i2 i1
+            pcompare i2 i1
         end)
 
     type c = QC.t
@@ -377,12 +381,12 @@ module Laurent : Laurent with type c = QC.t =
         l QC.null
 
     let compare l1 l2 =
-      Pervasives.compare
-        (List.sort Pervasives.compare (IMap.bindings l1))
-        (List.sort Pervasives.compare (IMap.bindings l2))
+      pcompare
+        (List.sort pcompare (IMap.bindings l1))
+        (List.sort pcompare (IMap.bindings l2))
 
     let compare l1 l2 =
-      IMap.compare Pervasives.compare l1 l2
+      IMap.compare pcompare l1 l2
 
     module Test =
       struct

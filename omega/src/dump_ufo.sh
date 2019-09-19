@@ -14,7 +14,7 @@ UFO_SMEFT=$HOME/physics/SMEFTsim_A_U35_alphaScheme_UFO_v2_1/
 UFO_SMEFT=$HOME/physics/SMEFT_mW_UFO/
 
 root=$HOME/physics/whizard
-build=$root/_build
+build=$root/_build/default
 omega=omega_UFO
 
 case X"$1" in

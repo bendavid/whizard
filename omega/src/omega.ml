@@ -161,10 +161,6 @@ i*)
 
     let dag_sans_color = function
       | amplitude :: _ as amplitudes ->
-	let prune_color wf =
-	  (F.flavor_sans_color wf, F.momentum_list wf) in
-	let prune_color_and_couplings (wf, c) =
-	  (prune_color wf, None) in
         let prune a = a in
         List.map prune amplitudes
       | [] -> []

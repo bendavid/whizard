@@ -22,6 +22,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* Avoid refering to [Pervasives.compare], because [Pervasives] will
+   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
+let pcompare = compare
+
 (* \thocwmodulesection{Quantum Numbers} *)
 
 type t =
@@ -816,10 +820,10 @@ module Birdtracks =
     module AMap = Pmap.Tree
 
     let find_arrows_opt arrows map =
-      try Some (AMap.find Pervasives.compare arrows map) with Not_found -> None
+      try Some (AMap.find pcompare arrows map) with Not_found -> None
 
     let canonicalize1 (coeff, io_list) =
-      (coeff, List.sort Pervasives.compare io_list)
+      (coeff, List.sort pcompare io_list)
 
     let canonicalize terms =
       let map =
@@ -830,13 +834,13 @@ module Birdtracks =
               acc
             else
               match find_arrows_opt arrows acc with
-              | None -> AMap.add Pervasives.compare arrows coeff acc
+              | None -> AMap.add pcompare arrows coeff acc
               | Some coeff' ->
                  let coeff'' = L.add coeff coeff' in
                  if coeff'' = L.null then
-                   AMap.remove Pervasives.compare arrows acc
+                   AMap.remove pcompare arrows acc
                  else
-                   AMap.add Pervasives.compare arrows coeff'' acc)
+                   AMap.add pcompare arrows coeff'' acc)
           AMap.empty terms in
       if AMap.is_empty map then
         null
@@ -963,7 +967,7 @@ module Birdtracks =
       Set.Make
         (struct
           type t = A.endpoint
-          let compare = Pervasives.compare
+          let compare = pcompare
         end)
 
     let negatives arrows =
@@ -1054,7 +1058,7 @@ module Birdtracks =
       trace3 r a b c +++ trace3 r a c b
 
     module IMap =
-      Map.Make (struct type t = int let compare = Pervasives.compare end)
+      Map.Make (struct type t = int let compare = pcompare end)
 
     let line_map lines =
       let _, map =

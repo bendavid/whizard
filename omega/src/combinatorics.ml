@@ -22,6 +22,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* Avoid refering to [Pervasives.compare], because [Pervasives] will
+   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
+let pcompare = compare
+
 type 'a seq = 'a list
 
 (* \thocwmodulesection{Simple Combinatorial Functions} *)
@@ -410,14 +414,14 @@ let insert_inorder_signed order x (eps, l) =
   in
   insert 1 [] l
 
-let sort_signed ?(cmp=Pervasives.compare) l =
+let sort_signed ?(cmp=pcompare) l =
   List.fold_right (insert_inorder_signed cmp) l (1, [])
 
-let sign ?(cmp=Pervasives.compare) l =
+let sign ?(cmp=pcompare) l =
   let eps, _ = sort_signed ~cmp l in
   eps
 
-let sign2 ?(cmp=Pervasives.compare) l =
+let sign2 ?(cmp=pcompare) l =
   let a = Array.of_list l in
   let eps = ref 1 in
   for j = 0 to Array.length a - 1 do

@@ -98,10 +98,10 @@ cascade_lexer.mli: cascade_lexer.ml cascade_parser.cmi
 vertex_lexer.mli: vertex_lexer.ml vertex_parser.cmi
 	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
-UFO_lexer.mli: UFO_lexer.ml UFO_parser.cmi
+UFO_lexer.mli: UFO_lexer.ml UFO_parser.cmi UFO_tools.cmi
 	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
-UFOx_lexer.mli: UFOx_lexer.ml UFOx_parser.cmi
+UFOx_lexer.mli: UFOx_lexer.ml UFOx_parser.cmi UFO_tools.cmi
 	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
 endif

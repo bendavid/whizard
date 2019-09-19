@@ -1,4 +1,4 @@
-(* vertex_syntax.mli --
+(* UFO_tools.ml --
 
    Copyright (C) 1999-2019 by
 
@@ -22,32 +22,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* \thocwmodulesection{Abstract Syntax} *)
+let mathematica_symbol stem stuffix =
+  Printf.sprintf "Mma_%s_%s" stem stuffix
 
-exception Syntax_Error of string * Lexing.position * Lexing.position
-
-type expr =
-  | Integer of int
-  | Float of float
-  | Variable of string
-  | Sum of expr * expr
-  | Difference of expr * expr
-  | Product of expr * expr
-  | Quotient of expr * expr
-  | Power of expr * expr
-  | Application of string * expr list
-
-val integer : int -> expr
-val float : float -> expr
-val variable : string -> expr
-val add : expr -> expr -> expr
-val subtract : expr -> expr -> expr
-val multiply : expr -> expr -> expr
-val divide : expr -> expr -> expr
-val power : expr -> expr -> expr
-val apply : string -> expr list -> expr
-
-(* Return the sets of variable and function names referenced
-   in the expression. *)
-val variables : expr -> Sets.String_Caseless.t
-val functions : expr -> Sets.String_Caseless.t
+exception Lexical_Error of string * Lexing.position * Lexing.position

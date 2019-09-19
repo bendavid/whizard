@@ -21,4 +21,5 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 module String : Set.S with type elt = string
+module String_Caseless : Set.S with type elt = string
 module Int : Set.S with type elt = int

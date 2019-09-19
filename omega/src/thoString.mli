@@ -51,10 +51,10 @@ val index_string : string -> string -> int
 (* This silently fails if the argument contains both single and double quotes! *)
 val quote : string -> string
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+(* The corresponding functions from [String] have become obsolescent
+   with O'Caml~4.0.3.  Quanrantine them here. *)
+val uppercase : string -> string
+val lowercase : string -> string
+
+(* Ignore the case in comparisons. *)
+val compare_caseless :  string -> string -> int

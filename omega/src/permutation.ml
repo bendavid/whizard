@@ -80,8 +80,12 @@ module Using_Lists : T =
       try
 	of_list (Array.to_list p)
       with 
-      | Invalid_argument "Permutation.of_list" ->
-	invalid_arg "Permutation.of_array"
+      | Invalid_argument s ->
+         if s = "Permutation.of_list" then
+	   invalid_arg "Permutation.of_array"
+         else
+           failwith ("Permutation.of_array: unexpected Invalid_argument(" ^
+                       s ^ ")")
 
     let of_lists = of_lists_list
 
@@ -93,15 +97,22 @@ module Using_Lists : T =
 	   (try
 	      List.rev_map2 (fun i x -> (i, x)) p l
 	    with
-	    | Invalid_argument "List.rev_map2" ->
-	      invalid_arg "Permutation.list: length mismatch"))
+	    | Invalid_argument s ->
+               if s = "List.rev_map2" then
+	         invalid_arg "Permutation.list: length mismatch"
+               else
+                 failwith ("Permutation.list: unexpected Invalid_argument(" ^
+                             s ^ ")")))
 
     let array p a =
       try
 	Array.of_list (list p (Array.to_list a))
       with 
-      | Invalid_argument "Permutation.list: length mismatch" ->
-	invalid_arg "Permutation.array: length mismatch"
+      | Invalid_argument s ->
+         if s = "Permutation.list: length mismatch" then
+	   invalid_arg "Permutation.array: length mismatch"
+         else
+           failwith ("Permutation.array: unexpected Invalid_argument(" ^ s ^ ")")
 
     let compose_inv p q =
       list q p
@@ -149,8 +160,12 @@ module Using_Arrays : T =
       try
 	of_list (Array.to_list p)
       with 
-      | Invalid_argument "Permutation.of_list" ->
-	invalid_arg "Permutation.of_array"
+      | Invalid_argument s ->
+         if s = "Permutation.of_list" then
+	   invalid_arg "Permutation.of_array"
+         else
+           failwith ("Permutation.of_array: unexpected Invalid_argument(" ^
+                       s ^ ")")
 
     let of_lists l l' =
       Array.of_list (of_lists_list l l')
@@ -178,8 +193,11 @@ module Using_Arrays : T =
       try
 	Array.to_list (array p (Array.of_list l))
       with 
-      | Invalid_argument "Permutation.array: length mismatch" ->
-	invalid_arg "Permutation.list: length mismatch"
+      | Invalid_argument s ->
+         if s = "Permutation.array: length mismatch" then
+	   invalid_arg "Permutation.list: length mismatch"
+         else
+           failwith ("Permutation.list: unexpected Invalid_argument(" ^ s ^ ")")
 
     let compose_inv p q =
       array q p

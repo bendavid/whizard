@@ -63,4 +63,22 @@ let power e p =
 
 let apply f args =
   Application (f, args)
-    
+
+module CSet = Sets.String_Caseless
+
+let rec variables = function
+  | Integer _ | Float _  -> CSet.empty
+  | Variable name -> CSet.singleton name
+  | Sum (e1, e2) | Difference (e1, e2)
+  | Product (e1, e2) | Quotient (e1, e2)
+  | Power (e1, e2) -> CSet.union (variables e1) (variables e2)
+  | Application (_, elist) ->
+     List.fold_left CSet.union CSet.empty (List.map variables elist)
+
+let rec functions = function
+  | Integer _ | Float _ | Variable _ -> CSet.empty
+  | Sum (e1, e2) | Difference (e1, e2)
+  | Product (e1, e2) | Quotient (e1, e2)
+  | Power (e1, e2) -> CSet.union (functions e1) (functions e2)
+  | Application (f, elist) ->
+     List.fold_left CSet.union (CSet.singleton f) (List.map functions elist)

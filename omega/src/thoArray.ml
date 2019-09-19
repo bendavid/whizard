@@ -22,6 +22,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* Avoid refering to [Pervasives.compare], because [Pervasives] will
+   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
+let pcompare = compare
+
 type 'a compressed = 
     { uniq : 'a array;
       embedding: int array }
@@ -93,7 +97,7 @@ let uncompress2 a =
   transpose (uncompress { uniq = transpose a2; embedding = a.embedding1 })
 
 (* FIXME: not tail recursive! *)
-let compare ?(cmp=Pervasives.compare) a1 a2 =
+let compare ?(cmp=pcompare) a1 a2 =
   let l1 = Array.length a1
   and l2 = Array.length a2 in
   if l1 < l2 then

@@ -23,10 +23,10 @@ for switch in $versions; do
   opam switch $switch >/dev/null || exit 2
   opam switch show
   eval $(opam env)
-  mkdir -p $build-$switch
-  cd $build-$switch
+  mkdir -p $build/$switch
+  cd $build/$switch
   if [ ! -e config.status ]; then
-    cp -a $build/config.status .
+    cp -a $build/default/config.status .
     ./config.status --recheck
     ./config.status
   fi

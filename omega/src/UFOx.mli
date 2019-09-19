@@ -30,6 +30,8 @@ module Expr :
     val substitute : string -> t -> t -> t
     val rename : (string * string) list -> t -> t
     val half : string -> t
+    val variables : t -> Sets.String_Caseless.t
+    val functions : t -> Sets.String_Caseless.t
   end
 
 module type Index =

@@ -66,8 +66,11 @@ rule token = parse
                       { FLOAT (float_of_string x) }
   | char word* ('.' char word+ )? as s
                       { ID s }
-  | _ as c            { failwith ("invalid character at `" ^
-				    string_of_char c ^ "'") }
+  | '\\' '[' (word+ as stem) ']' (word* as suffix)
+                      { ID (UFO_tools.mathematica_symbol stem suffix) }
+  | _ as c            { raise (UFO_tools.Lexical_Error
+                                 ("invalid character `" ^ string_of_char c ^ "'",
+                                  lexbuf.lex_start_p, lexbuf.lex_curr_p)) }
   | eof               { END }
 
 

@@ -30,6 +30,17 @@ let (@@) f g x =
 let (@@@) f g x y =
   f (g x y)
 
+module SMap = Map.Make (struct type t = string let compare = compare end)
+module SSet = Sets.String
+
+module CMap =
+  Map.Make
+    (struct
+      type t = string
+      let compare = ThoString.compare_caseless
+    end)
+module CSet = Sets.String_Caseless
+
 let error_in_string text start_pos end_pos =
   let i = start_pos.Lexing.pos_cnum
   and j = end_pos.Lexing.pos_cnum in
@@ -50,6 +61,9 @@ let parse_string text =
       UFO_lexer.token
       (UFO_lexer.init_position "" (Lexing.from_string text))
   with
+  | UFO_tools.Lexical_Error (msg, start_pos, end_pos) ->
+     invalid_arg (Printf.sprintf "lexical error (%s) at: `%s'"
+                    msg  (error_in_string text start_pos end_pos))
   | UFO_syntax.Syntax_Error (msg, start_pos, end_pos) ->
      invalid_arg (Printf.sprintf "syntax error (%s) at: `%s'"
                     msg  (error_in_string text start_pos end_pos))
@@ -65,6 +79,13 @@ let parse_file name =
 	  UFO_lexer.token
 	  (UFO_lexer.init_position name (Lexing.from_channel ic))
       with
+      | UFO_tools.Lexical_Error (msg, start_pos, end_pos) ->
+	 begin
+	   close_in ic;
+	   invalid_arg (Printf.sprintf
+			  "%s: lexical error (%s)"
+			  (error_in_file name start_pos end_pos) msg)
+	 end
       | UFO_syntax.Syntax_Error (msg, start_pos, end_pos) ->
 	 begin
 	   close_in ic;
@@ -188,7 +209,7 @@ let string_attrib name attribs =
 
 let boolean_attrib name attribs =
   try
-    match String.lowercase (name_attrib name attribs) with
+    match ThoString.lowercase (name_attrib name attribs) with
     | "true" -> true
     | "false" -> false
     | _ -> invalid_arg name
@@ -199,46 +220,80 @@ type value =
   | Integer of int
   | Fraction of int * int
   | Float of float
-  | String of string
+  | Expr of UFOx.Expr.t
   | Name of string list
+
+let map_expr f default = function
+  | Integer _ | Fraction (_, _) | Float _ | Name _ -> default
+  | Expr e -> f e
+
+let variables = map_expr UFOx.Expr.variables CSet.empty
+let functions = map_expr UFOx.Expr.functions CSet.empty
+
+let add_to_set_in_map key element map =
+  let set = try CMap.find key map with Not_found -> CSet.empty in
+  CMap.add key (CSet.add element set) map
+
+(* Add all variables in [value] to the [map] from variables
+   to the names in which they appear, indicating
+   that [name] depends on these variables. *)
+let dependency name value map =
+  CSet.fold
+    (fun variable acc -> add_to_set_in_map variable name acc)
+    (variables value)
+    map
+
+let dependencies name_value_list =
+  List.fold_left
+    (fun acc (name, value) -> dependency name value acc)
+    CMap.empty
+    name_value_list
+
+let dependency_to_string (variable, appearences) =
+  Printf.sprintf
+    "%s -> {%s}"
+    variable (String.concat ", " (CSet.elements appearences))
+
+let dependencies_to_strings map =
+  List.map dependency_to_string (CMap.bindings map)
+
+let expr_to_string =
+  UFOx.Value.to_string @@ UFOx.Value.of_expr
 
 let value_to_string = function
   | Integer i -> Printf.sprintf "%d" i
   | Fraction (n, d) -> Printf.sprintf "%d/%d" n d
   | Float x -> string_of_float x
-  | String s -> Printf.sprintf "'%s'" s
+  | Expr e -> "'" ^ expr_to_string e ^ "'"
   | Name n -> name_to_string n
 
 let value_to_expr substitutions = function
   | Integer i -> Printf.sprintf "%d" i
   | Fraction (n, d) -> Printf.sprintf "%d/%d" n d
   | Float x -> string_of_float x
-  | String s ->
-     UFOx.Value.to_string
-       (UFOx.Value.of_expr (substitutions (UFOx.Expr.of_string s)))
+  | Expr e -> expr_to_string (substitutions e)
   | Name n -> name_to_string n
 
 let value_to_coupling substitutions atom = function
   | Integer i -> Coupling.Integer i
   | Fraction (n, d) -> Coupling.Quot (Coupling.Integer n, Coupling.Integer d)
   | Float x -> Coupling.Float x
-  | String s ->
-     UFOx.Value.to_coupling
-       atom (UFOx.Value.of_expr (substitutions (UFOx.Expr.of_string s)))
+  | Expr e ->
+     UFOx.Value.to_coupling atom (UFOx.Value.of_expr (substitutions e))
   | Name n -> failwith "UFO.value_to_coupling: Name not supported yet!"
 
 let value_to_numeric = function
   | Integer i -> Printf.sprintf "%d" i
   | Fraction (n, d) -> Printf.sprintf "%g" (float n /. float d)
   | Float x -> Printf.sprintf "%g" x
-  | String s -> invalid_arg ("UFO.value_to_numeric: string = " ^ s)
+  | Expr e -> invalid_arg ("UFO.value_to_numeric: expr = " ^ (expr_to_string e))
   | Name n -> invalid_arg ("UFO.value_to_numeric: name = " ^ name_to_string n)
 
 let value_to_float = function
   | Integer i -> float i
   | Fraction (n, d) -> float n /. float d
   | Float x -> x
-  | String s -> invalid_arg ("UFO.value_to_float: string = " ^ s)
+  | Expr e -> invalid_arg ("UFO.value_to_float: string = " ^ (expr_to_string e))
   | Name n -> invalid_arg ("UFO.value_to_float: name = " ^ name_to_string n)
 
 let value_attrib name attribs =
@@ -246,7 +301,7 @@ let value_attrib name attribs =
   | S.Integer i -> Integer i
   | S.Fraction (n, d) -> Fraction (n, d)
   | S.Float x -> Float x
-  | S.String s -> String s
+  | S.String s -> Expr (UFOx.Expr.of_string s)
   | S.Name n -> Name n
   | _ -> invalid_arg name
 
@@ -282,13 +337,14 @@ let decay_dictionary_attrib name attribs =
      List.map (fun (p, w) -> (List.map List.hd p, w)) d
   | _ -> invalid_arg name
 
-module SMap = Map.Make (struct type t = string let compare = compare end)
-
 let map_to_alist map =
   SMap.fold (fun key value acc -> (key, value) :: acc) map []
 
 let keys map =
   SMap.fold (fun key _ acc -> key :: acc) map []
+
+let keys_caseless map =
+  CMap.fold (fun key _ acc -> key :: acc) map []
 
 let values map =
   SMap.fold (fun _ value acc -> value :: acc) map []
@@ -494,12 +550,11 @@ module type UFO_Coupling =
 
     type t = private
       { name : string;
-	value : string;
+	value : UFOx.Expr.t;
 	order : (string * int) list }
 
     val of_file : S.t -> t SMap.t
     val to_string : string -> t -> string
-    val to_string_expanded : string -> t -> string
 
   end
 
@@ -508,7 +563,7 @@ module UFO_Coupling : UFO_Coupling =
     
     type t =
       { name : string;
-	value : string;
+	value : UFOx.Expr.t;
 	order : (string * int) list }
 
     let order_to_string orders =
@@ -518,14 +573,7 @@ module UFO_Coupling : UFO_Coupling =
     let to_string symbol c =
       Printf.sprintf
 	"coupling: %s => [name = '%s', value = '%s', order = [%s]]"
-	symbol c.name c.value (order_to_string c.order)
-
-    let to_string_expanded symbol c =
-      let expansion =
-        UFOx.Value.to_string (UFOx.Value.of_expr (UFOx.Expr.of_string c.value)) in
-      Printf.sprintf
-	"coupling: %s => [name = '%s', value = '%s', value' = '%s', order = [%s]]"
-	symbol c.name c.value expansion (order_to_string c.order)
+	symbol c.name (expr_to_string c.value) (order_to_string c.order)
 
     let of_file1 map d =
       let symbol = d.S.name in
@@ -538,7 +586,7 @@ module UFO_Coupling : UFO_Coupling =
              symbol name;
 	 SMap.add symbol
            { name = name;
-	     value = string_attrib "value" attribs;
+	     value = UFOx.Expr.of_string (string_attrib "value" attribs);
 	     order = order_dictionary_attrib "order" attribs } map
       | _ -> invalid_arg ("UFO_Coupling.of_file: " ^ name_to_string d.S.kind)
 
@@ -854,6 +902,8 @@ module type Parameter =
     val of_file : S.t -> t SMap.t
     val to_string : string -> t -> string
 
+    val missing : string -> t
+
   end
 
 module Parameter : Parameter =
@@ -927,6 +977,16 @@ module Parameter : Parameter =
     let of_file parameters =
       let map, _ = List.fold_left of_file1 (SMap.empty, 0) parameters in
       map
+
+    let missing name =
+      { name;
+	nature = External;
+	ptype = Real;
+	value = Integer 0;
+	texname = Printf.sprintf "\\texttt{%s}" name;
+	lhablock = None;
+	lhacode = None;
+        sequence = 0 }
 
   end
 
@@ -1052,8 +1112,8 @@ let collect_spinor_reps_of_vertex particles lorentz v sets =
         (fun (spinors, conj_spinors as sets'') (i, rep) ->
           let p = v.Vertex.particles.(pred i) in
           match UFOx.Lorentz.omega rep with
-          | Coupling.ConjSpinor -> (Sets.String.add p spinors, conj_spinors)
-          | Coupling.Spinor -> (spinors, Sets.String.add p conj_spinors)
+          | Coupling.ConjSpinor -> (SSet.add p spinors, conj_spinors)
+          | Coupling.Spinor -> (spinors, SSet.add p conj_spinors)
           | _ -> sets'')
         sets' (UFOx.Lorentz.classify_indices l))
     sets v.Vertex.lcc
@@ -1061,7 +1121,7 @@ let collect_spinor_reps_of_vertex particles lorentz v sets =
 let collect_spinor_reps_of_vertices particles lorentz vertices =
   SMap.fold
     (fun _ v -> collect_spinor_reps_of_vertex particles lorentz v)
-    vertices (Sets.String.empty, Sets.String.empty)
+    vertices (SSet.empty, SSet.empty)
 
 let lorentz_reps_of_vertex particles v =
   ThoList.alist_of_list ~predicate:(not @@ UFOx.Lorentz.rep_trivial) ~offset:1
@@ -1332,22 +1392,22 @@ let fallback_to_majorana_if_necessary particles vertices lorentz_UFO =
     SMap.fold
       (fun p particle acc ->
         if Particle.is_majorana particle then
-          Sets.String.add p acc
+          SSet.add p acc
         else
           acc)
-      particles Sets.String.empty in
+      particles SSet.empty in
   let spinors, conj_spinors =
     collect_spinor_reps_of_vertices particles lorentz_UFO vertices in
   let ambiguous =
-    Sets.String.diff (Sets.String.inter spinors conj_spinors) majoranas in
-  let no_majoranas = Sets.String.is_empty majoranas
-  and no_ambiguities = Sets.String.is_empty ambiguous in
+    SSet.diff (SSet.inter spinors conj_spinors) majoranas in
+  let no_majoranas = SSet.is_empty majoranas
+  and no_ambiguities = SSet.is_empty ambiguous in
   if no_majoranas && no_ambiguities && not !use_majorana_spinors then
     SMap.mapi
       (fun p particle ->
-        if Sets.String.mem p spinors then
+        if SSet.mem p spinors then
           Particle.force_spinor particle
-        else if Sets.String.mem p conj_spinors then
+        else if SSet.mem p conj_spinors then
           Particle.force_conjspinor particle
         else
           particle)
@@ -1361,7 +1421,7 @@ let fallback_to_majorana_if_necessary particles vertices lorentz_UFO =
       if not no_ambiguities then
         Printf.eprintf
           "O'Mega: found ambiguous spinor representations for %s!\n"
-          (String.concat ", " (Sets.String.elements ambiguous));
+          (String.concat ", " (SSet.elements ambiguous));
       Printf.eprintf
         "O'Mega: falling back to the Majorana representation for all fermions.\n";
       SMap.map Particle.force_majorana particles
@@ -1417,7 +1477,7 @@ let parse_directory dir =
 let dump model =
   Printf.printf "NC = %d\n" model.nc;
   SMap.iter (print_endline @@@ Particle.to_string) model.particles;
-  SMap.iter (print_endline @@@ UFO_Coupling.to_string_expanded) model.couplings;
+  SMap.iter (print_endline @@@ UFO_Coupling.to_string) model.couplings;
   SMap.iter (print_endline @@@ Coupling_Order.to_string) model.coupling_orders;
   (* [SMap.iter (print_endline @@@ Vertex.to_string) model.vertices;] *)
   SMap.iter
@@ -1568,7 +1628,7 @@ module Model =
        and colorless scalars are potential Higgses. *)
 
     let is_massless p =
-      match String.uppercase p.Particle.mass with
+      match ThoString.uppercase p.Particle.mass with
       | "ZERO" -> true
       | _ -> false
 
@@ -1795,13 +1855,62 @@ module Model =
         vertices = physical_vertices }
 
     let whizard_constants =
-      [ "ZERO" ]
+      SSet.of_list
+        [ "ZERO" ]
 
     let filter_constants parameters =
       List.filter
         (fun p ->
-          not (List.mem (String.uppercase p.Parameter.name) whizard_constants))
+          not (SSet.mem (ThoString.uppercase p.Parameter.name) whizard_constants))
         parameters
+
+    let add_name set parameter =
+      CSet.add parameter.Parameter.name set
+
+    let hardcoded_parameters =
+      CSet.of_list
+        ["cmath.pi"]
+
+    let missing_parameters input derived couplings =
+      let input_parameters =
+        List.fold_left add_name hardcoded_parameters input in
+      let all_parameters =
+        List.fold_left add_name input_parameters derived in
+      let derived_dependencies =
+        dependencies
+          (List.map
+             (fun p -> (p.Parameter.name, p.Parameter.value))
+             derived) in
+      let coupling_dependencies =
+        dependencies
+          (List.map
+             (fun p -> (p.UFO_Coupling.name, Expr p.UFO_Coupling.value))
+             (values couplings)) in
+      let missing_input =
+        CMap.filter
+          (fun parameter derived_parameters ->
+            not (CSet.mem parameter all_parameters))
+          derived_dependencies
+      and missing =
+        CMap.filter
+          (fun parameter couplings ->
+            not (CSet.mem parameter all_parameters))
+          coupling_dependencies in
+      CMap.iter
+        (fun parameter derived_parameters ->
+          Printf.eprintf
+            "UFO warning: undefined input parameter %s appears in derived \
+             parameters {%s}: will be added to the list of input parameters!\n"
+            parameter (String.concat "; " (CSet.elements derived_parameters)))
+        missing_input;
+      CMap.iter
+        (fun parameter couplings ->
+          Printf.eprintf
+            "UFO warning: undefined parameter %s appears in couplings {%s}: \
+             will be added to the list of input parameters!\n"
+            parameter (String.concat "; " (CSet.elements couplings)))
+        missing;
+      keys_caseless missing_input @ keys_caseless missing
 
     let classify_parameters model =
       let compare_parameters p1 p2 =
@@ -1822,8 +1931,18 @@ module Model =
                end;
                (p :: input, derived))
           ([], []) (filter_constants (values model.parameters)) in
-      (List.sort compare_parameters input,
+      let additional = missing_parameters input derived model.couplings in
+      (List.sort compare_parameters input @ List.map Parameter.missing additional,
        List.sort compare_parameters derived)
+
+(*i
+      List.iter
+        (fun line -> Printf.eprintf "par: %s\n" line)
+        (dependencies_to_strings derived_dependencies);
+      List.iter
+        (fun line -> Printf.eprintf "coupling: %s\n" line)
+        (dependencies_to_strings coupling_dependencies);
+i*)
 
     let translate_name map name =
       try SMap.find name map with Not_found -> name
@@ -1852,7 +1971,7 @@ module Model =
        Coupling.Quot
          (value_to_coupling
             (alpha_s_half_etc map) make_atom
-            (String c.UFO_Coupling.value),
+            (Expr c.UFO_Coupling.value),
           Coupling.I))
 
     module LCP =
@@ -1861,7 +1980,7 @@ module Model =
         type base = string
         let compare_elt = compare
         let compare_base = compare
-        let pi = String.lowercase
+        let pi = ThoString.lowercase
       end
 
     module LCB = Bundle.Make (LCP)
@@ -1882,8 +2001,8 @@ module Model =
       let lc_bundle = LCB.of_list all_names in
       let lc_set =
         List.fold_left
-          (fun acc s -> Sets.String.add s acc)
-          Sets.String.empty (LCB.base lc_bundle)
+          (fun acc s -> SSet.add s acc)
+          SSet.empty (LCB.base lc_bundle)
       and ambiguities =
         List.filter
           (fun (_, names) -> List.length names > 1)
@@ -1893,11 +2012,11 @@ module Model =
     let disambiguate1 lc_set name =
       let rec disambiguate1' i =
         let name' = Printf.sprintf "%s_%d" name i in
-        let lc_name' = String.lowercase name' in
-        if Sets.String.mem lc_name' lc_set then
+        let lc_name' = ThoString.lowercase name' in
+        if SSet.mem lc_name' lc_set then
           disambiguate1' (succ i)
         else
-          (Sets.String.add lc_name' lc_set, name') in
+          (SSet.add lc_name' lc_set, name') in
       disambiguate1' 1
 
     let disambiguate lc_set names =
@@ -1934,7 +2053,7 @@ module Model =
     let lorentz_of_particle p =
       match UFOx.Lorentz.omega p.Particle.spin with
       | Coupling.Vector ->
-         begin match String.uppercase p.Particle.mass with
+         begin match ThoString.uppercase p.Particle.mass with
          | "ZERO" -> Coupling.Vector
          | _ -> Coupling.Massive_Vector
          end
@@ -2002,7 +2121,7 @@ module Model =
         match !include_all_fusions, only with
         | true, _
         | false, None -> (fun name -> true)
-        | false, Some names -> (fun name -> Sets.String.mem name names)
+        | false, Some names -> (fun name -> SSet.mem name names)
       in
       SMap.fold
         (fun name l acc ->
@@ -2180,10 +2299,10 @@ module type Fortran_Target =
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val lorentz :
-      ?only:Sets.String.t -> Format_Fortran.formatter -> unit -> unit
+      ?only:SSet.t -> Format_Fortran.formatter -> unit -> unit
 
     val lorentz_module :
-      ?only:Sets.String.t -> ?name:string -> ?fortran_module:string ->
+      ?only:SSet.t -> ?name:string -> ?fortran_module:string ->
       Format_Fortran.formatter -> unit -> unit
 
   end

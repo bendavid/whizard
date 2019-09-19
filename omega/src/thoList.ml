@@ -22,6 +22,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* Avoid refering to [Pervasives.compare], because [Pervasives] will
+   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
+let pcompare = compare
+
 let rec hdn n l =
   if n <= 0 then
     []
@@ -99,7 +103,7 @@ let rec cycle' i acc l =
   else
     match l with
     | [] -> invalid_arg "ThoList.cycle"
-    | a' :: l' as al' ->
+    | a' :: l' ->
        cycle' (pred i) (a' :: acc) l'
 
 let cycle n l =
@@ -187,9 +191,13 @@ let transpose lists =
   try
     transpose' lists
   with
-  | Failure "tl" -> invalid_arg "ThoList.transpose: not rectangular"
+  | Failure s ->
+     if s = "tl" then
+       invalid_arg "ThoList.transpose: not rectangular"
+     else
+       failwith ("ThoList.transpose: unexpected Failure(" ^ s ^ ")")
 
-let compare ?(cmp=Pervasives.compare) l1 l2 =
+let compare ?(cmp=pcompare) l1 l2 =
   let rec compare' l1' l2' =
     match l1', l2' with
     | [], [] -> 0
@@ -241,7 +249,7 @@ let rec pairs' acc = function
        end
 
 let pairs l =
-  pairs' [] (List.sort Pervasives.compare l)
+  pairs' [] (List.sort pcompare l)
 
 (* If we needed it, we could use a polymorphic version of [Set] to
    speed things up from~$O(n^2)$ to~$O(n\ln n)$.  But not before it
@@ -347,7 +355,7 @@ let partitioned_sort cmp index_sets list =
     () (complement_index_sets (List.length list) index_sets);
   Array.to_list array
 
-let ariadne_sort ?(cmp=Pervasives.compare) list =
+let ariadne_sort ?(cmp=pcompare) list =
   let sorted =
     List.sort (fun (n1, a1) (n2, a2) -> cmp a1 a2) (enumerate 0 list) in
   (List.map snd sorted, List.map fst sorted)
@@ -355,10 +363,10 @@ let ariadne_sort ?(cmp=Pervasives.compare) list =
 let ariadne_unsort (sorted, indices) =
   List.map snd
     (List.sort
-       (fun (n1, a1) (n2, a2) -> Pervasives.compare n1 n2)
+       (fun (n1, a1) (n2, a2) -> pcompare n1 n2)
        (List.map2 (fun n a -> (n, a)) indices sorted))
 
-let lexicographic ?(cmp=Pervasives.compare) l1 l2 =
+let lexicographic ?(cmp=pcompare) l1 l2 =
   let rec lexicographic' = function
     | [], [] -> 0
     | [], _ -> -1

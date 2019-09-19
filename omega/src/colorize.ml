@@ -1443,8 +1443,11 @@ module It (M : Model.T) =
             | _, _ -> CF_io (f, color_flow_of_string sc1, color_flow_of_string sc2)
             end
       with
-      | Failure "int_of_string" ->
-          invalid_arg "Colorize().flavor_of_string: expecting integer"
+      | Failure s ->
+         if s = "int_of_string" then
+           invalid_arg "Colorize().flavor_of_string: expecting integer"
+         else
+           failwith ("Colorize().flavor_of_string: unexpected Failure(" ^ s ^ ")")
 
     let flavor_to_string = function
       | White f ->

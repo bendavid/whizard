@@ -80,20 +80,31 @@ rule token = parse
                       { FLOAT (float_of_string x) }
   | '-'? digit+ as i  { INT (int_of_string i) }
   | char word* as s   { ID s }
+  | '\\' '[' (word+ as stem) ']' (word* as suffix)
+                      { ID (UFO_tools.mathematica_symbol stem suffix) }
   | '\''              { let sbuf = Buffer.create 20 in
                         STRING (string1 sbuf lexbuf) }
   | '"'               { let sbuf = Buffer.create 20 in
                         STRING (string2 sbuf lexbuf) }
-  | _ as c            { failwith ("invalid character at `" ^
-				  string_of_char c ^ "'") }
+  | _ as c            { raise (UFO_tools.Lexical_Error
+                                 ("invalid character `" ^ string_of_char c ^ "'",
+                                  lexbuf.lex_start_p, lexbuf.lex_curr_p)) }
   | eof               { END }
 and string1 sbuf = parse
     '\''              { Buffer.contents sbuf }
   | '\\' (esc as c)   { Buffer.add_char sbuf c; string1 sbuf lexbuf }
   | eof               { raise End_of_file }
+  | '\\' '[' (word+ as stem) ']' (word* as suffix)
+                      { Buffer.add_string
+                          sbuf (UFO_tools.mathematica_symbol stem suffix);
+                        string1 sbuf lexbuf }
   | _ as c            { Buffer.add_char sbuf c; string1 sbuf lexbuf }
 and string2 sbuf = parse
     '"'               { Buffer.contents sbuf }
   | '\\' (esc as c)   { Buffer.add_char sbuf c; string2 sbuf lexbuf }
   | eof               { raise End_of_file }
+  | '\\' '[' (word+ as stem) ']' (word* as suffix)
+                      { Buffer.add_string
+                          sbuf (UFO_tools.mathematica_symbol stem suffix);
+                        string2 sbuf lexbuf }
   | _ as c            { Buffer.add_char sbuf c; string2 sbuf lexbuf }

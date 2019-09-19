@@ -23,5 +23,12 @@
 module String =
   Set.Make (struct type t = string let compare = compare end)
 
+module String_Caseless =
+  Set.Make
+    (struct
+      type t = string
+      let compare = ThoString.compare_caseless
+     end)
+
 module Int =
   Set.Make (struct type t = int let compare = compare end)

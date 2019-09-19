@@ -23,6 +23,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* Avoid refering to [Pervasives.compare], because [Pervasives] will
+   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
+let pcompare = compare
+
 module type T =
   sig
     val options : Options.t
@@ -1350,7 +1354,7 @@ i*)
           let wfs, ss = PT.split wfss in
           let flavors = PT.map A.flavor wfs
           and momenta = PT.map A.momentum wfs
-          and wf_tags = PT.map A.wf_tag_raw wfs in
+(*i       and wf_tags = PT.map A.wf_tag_raw wfs i*) in
           let p = PT.fold_left_internal P.add momenta in
 (*i	  let wft = PT.fold_left Tags.fuse wf_tags in i*)
           List.fold_left
@@ -1449,7 +1453,7 @@ i*)
    \end{dubious} *)
     let grow select_wf select_vtx tower =
       let rank = succ (Array.length tower) in
-      List.sort Pervasives.compare
+      List.sort pcompare
         (PT.graded_sym_power_fold rank
            (fun wfs acc -> fuse select_wf select_vtx wfs @ acc) tower [])
 
