@@ -4,8 +4,13 @@ Use svn log to see detailed changes.
 
 	Version 2.8.0
 
-2019-10-24
+2019-09-21
 	RELEASE: version 2.8.1
+
+2019-09-19
+	Carriage return characters in UFO models can be parsed
+	Mathematica symbols in UFO models possible
+	Unused/Undefined parameters in UFO models handled
 
 2019-09-13
 	New extended NLO test suite for ee and pp processes

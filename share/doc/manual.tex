@@ -683,7 +683,9 @@ of \whizard:
   & & \quad gfortran 5.0+ necessary
   \\\hline
   2.8.0 & 08/2019 & (Almost) complete UFO support, general Lorentz
-  structures, n-point vertices
+  structures, n-point vertices \\
+  2.8.1 & 09/2019 & HepMC3, NLO QCD pp (almost)
+  complete, b/c jet selection, photon isolation
   \\\hline
 \end{tabular}
 \end{center}
@@ -1126,11 +1128,10 @@ the \hoppet\ manual.
 \subsection{HepMC}
 \label{sec:hepmc}
 
-Now, there is also a first attempt to support the new version 3 of
-\hepmc. The configure step can already successfully recognize the two
-different versions, but version 3 is not yet fully functional. So for
-the moment, users should still use version 2. Also, version 3 of
-\hepmc\ still lacks all features of version 2.
+With version 2.8.1, \whizard\ supports both the "classical" version 2
+as well as the newly designed version 3 (release 2019). The configure
+step can successfully recognize the two  different versions, the user
+do not have to specify which version is installed.
 
 \hepmc\ is a \ttt{C++} class library for handling collider scattering
 events.  In particular, it provides a portable format for event files.
@@ -1140,7 +1141,7 @@ otherwise you can skip this section.
 If it is not already installed on your system, you may obtain
 \hepmc\ from one of these two webpages:
 \begin{quote}
-  \url{http://lcgapp.cern.ch/project/simu/HepMC/}
+  \url{http://hepmc.web.cern.ch/hepmc/}
 \end{quote}
 or
 \begin{quote}
@@ -1163,6 +1164,10 @@ respectively. After configuration, do \ttt{make}, an optional
 \ttt{make check} (which might sometimes fail for non-standard values
 of momentum and length), and finally \ttt{make install}.
 
+The latest version of \hepmc\ (2.6.10) as well as the new relase
+series use \texttt{cmake} for their build process. For more
+information, confer the \hepmc\ webpage.
+
 A \whizard\ configuration for HepMC looks like this:
 \begin{footnotesize}
   \begin{verbatim}
@@ -1173,7 +1178,7 @@ A \whizard\ configuration for HepMC looks like this:
    checking HepMC3 or newer... no
    configure: HepMC3 not found, incompatible, or HepMC-config not found
    configure: looking for HepMC2 instead ...
-   checking the HepMC version... 2.06.09
+   checking the HepMC version... 2.06.10
    checking for GenEvent class in -lHepMC... yes
    configure: --------------------------------------------------------------
   \end{verbatim}
