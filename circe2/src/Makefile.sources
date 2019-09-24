@@ -39,6 +39,7 @@
 ########################################################################
 
 CIRCE2_ML_SRC_1 = \
+	bigarray_compat.ml \
 	OUnit.ml OUnitDiff.ml thoArray.ml thoMatrix.ml \
 	float.ml diffmap.ml diffmaps.ml filter.ml division.ml grid.ml \
 	events.ml syntax.ml

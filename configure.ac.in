@@ -480,6 +480,7 @@ if test "$enable_ocaml" != "no"; then
    AC_PROG_OCAMLLEX()
    AC_PROG_OCAMLYACC()
    AC_PROG_OCAMLCP()
+   AC_OCAML_BIGARRAY_MODULE()
    ### Ocamlweb is required to be newer than v0.9
    AC_PROG_OCAMLWEB(009000)
    AC_PROG_OCAML_LABLGTK()

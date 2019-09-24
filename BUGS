@@ -19,6 +19,11 @@ General:
 
 Known (recent) bugs:
 
+* WHIZARD 2.8.1 and earlier does not compile with OCaml versions 4.08.0
+  and newer due to a deletion of a deprecated feature in the OCaml language.
+  This is fixed in 2.8.2+ of WHIZARD. For older WHIZARD versions, please
+  downgrade your OCaml version to anything between versions 4.02.x and 4.07.x.
+
 * MPI version of WHIZARD: version 2.6.3 could produce the MPI-parallelized
   version only from the svn repository, and not from the release tarball.
   This was corrected for version 2.6.4.

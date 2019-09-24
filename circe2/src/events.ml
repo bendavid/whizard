@@ -23,6 +23,8 @@
 open Bigarray
 open Printf
 
+let map_array2 = Bigarray_compat.map_array2
+
 type t = (float, float64_elt, fortran_layout) Array2.t
 
 exception Incomplete of int * t
@@ -116,7 +118,7 @@ let create_array ?file dim1 dim2 =
       let fd =
         Unix.openfile name
           [Unix.O_RDWR; Unix.O_CREAT; Unix.O_TRUNC] 0o644 in
-      let a = Array2.map_file fd float64 fortran_layout true dim1 dim2 in
+      let a = map_array2 fd float64 fortran_layout true dim1 dim2 in
       Unix.close fd;
       a
 
@@ -148,13 +150,13 @@ let of_ascii_file ?file ?chunk dim1 name =
    does \emph{not} \verb+munmap(2)+. *) 
 let of_binary_file dim1 file =
   let fd = Unix.openfile file [Unix.O_RDONLY] 0o644 in
-  let a = Array2.map_file fd float64 fortran_layout false dim1 (-1) in
+  let a = map_array2 fd float64 fortran_layout false dim1 (-1) in
   Unix.close fd;
   a
 
 let shared_map_binary_file dim1 file =
   let fd = Unix.openfile file [Unix.O_RDWR] 0o644 in
-  let a = Array2.map_file fd float64 fortran_layout true dim1 (-1) in
+  let a = map_array2 fd float64 fortran_layout false dim1 (-1) in
   Unix.close fd;
   a
 
@@ -190,8 +192,7 @@ let to_binary_file file a =
     Unix.openfile file
       [Unix.O_RDWR; Unix.O_CREAT; Unix.O_TRUNC] 0o644 in
   let a' =
-    Array2.map_file fd float64 fortran_layout true
-      (Array2.dim1 a) (Array2.dim2 a) in
+    map_array2 fd float64 fortran_layout true (Array2.dim1 a) (Array2.dim2 a) in
   Unix.close fd;
   Array2.blit a a'
 

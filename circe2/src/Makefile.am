@@ -27,10 +27,17 @@
 #
 ########################################################################
 
+# backwards compatibility
+OCAML_BIGARRAY_COMPAT=@OCAML_BIGARRAY_COMPAT@
+OCAML_BIGARRAY_CMA=@OCAML_BIGARRAY_CMA@
+OCAML_BIGARRAY_CMXA=@OCAML_BIGARRAY_CMXA@
+
+########################################################################
+
 lib_LTLIBRARIES =
 SOURCE_FILES =
 MODULE_FILES =
-EXTRA_SOURCE_FILES =
+EXTRA_SOURCE_FILES = bigarray_library.ml bigarray_module.ml
 NOWEB_FILES = prelude.nw postlude.nw
 
 ########################################################################
@@ -164,10 +171,16 @@ endif NOWEB_AVAILABLE
 # O'Caml
 ########################################################################
 
+bigarray_compat.ml: $(OCAML_BIGARRAY_COMPAT).ml
+	cp -f $< $@
+
+events.cmx: bigarray_compat.cmi bigarray_compat.cmx
+events.cmo: bigarray_compat.cmi bigarray_compat.cmo
+
 if OCAML_AVAILABLE
 circe2.top: $(CIRCE2_CMO)
 	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ \
-		unix.cma bigarray.cma $(CIRCE2_CMO)
+		unix.cma $(OCAML_BIGARRAY_CMA) $(CIRCE2_CMO)
 endif OCAML_AVAILABLE
 
 lexer.mli: lexer.ml parser.cmi
@@ -226,6 +239,8 @@ Makefile.depend_ocaml: $(CIRCE2_SRC) $(CIRCE2TOOL_SRC)
 DISTCLEANFILES += Makefile.depend_ocaml
 
 DISTCLEANFILES += $(CIRCE2_DERIVED)
+
+DISTCLEANFILES += bigarray_compat.ml
 
 endif OCAML_AVAILABLE
 
