@@ -707,6 +707,10 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/lcio_3.ref \
     functional_tests/ref-output/lcio_4.ref \
     functional_tests/ref-output/lcio_5.ref \
+    functional_tests/ref-output/lcio_6.ref \
+    functional_tests/ref-output/lcio_8.ref \
+    functional_tests/ref-output/lcio_9.ref \
+    functional_tests/ref-output/lcio_10.ref \
     functional_tests/ref-output/fatal_beam_decay.ref \
     functional_tests/ref-output/smtest_1.ref \
     functional_tests/ref-output/smtest_3.ref \
@@ -847,6 +851,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/lhef_7.ref \
     functional_tests/ref-output-double/hepmc_8.ref \
     functional_tests/ref-output-double/lcio_2.ref \
+    functional_tests/ref-output-double/lcio_7.ref \
     functional_tests/ref-output-double/multi_comp_1.ref \
     functional_tests/ref-output-double/multi_comp_2.ref \
     functional_tests/ref-output-double/multi_comp_3.ref \
@@ -945,7 +950,8 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/beam_events_3.ref \
     functional_tests/ref-output-ext/mlm_matching_isr.ref \
     functional_tests/ref-output-ext/hepmc_8.ref \
-    functional_tests/ref-output-ext/lcio_2.ref
+    functional_tests/ref-output-ext/lcio_2.ref \
+    functional_tests/ref-output-ext/lcio_7.ref
 
 REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/observables_2.ref \
@@ -975,7 +981,8 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/beam_events_3.ref \
     functional_tests/ref-output-quad/mlm_matching_isr.ref \
     functional_tests/ref-output-quad/hepmc_8.ref \
-    functional_tests/ref-output-quad/lcio_2.ref
+    functional_tests/ref-output-quad/lcio_2.ref \
+    functional_tests/ref-output-quad/lcio_7.ref
 
 TESTSUITES_M4 = \
     $(MISC_TESTS_M4) \
@@ -1142,6 +1149,11 @@ MISC_TESTS_SIN = \
     functional_tests/lcio_3.sin \
     functional_tests/lcio_4.sin \
     functional_tests/lcio_5.sin \
+    functional_tests/lcio_6.sin \
+    functional_tests/lcio_7.sin \
+    functional_tests/lcio_8.sin \
+    functional_tests/lcio_9.sin \
+    functional_tests/lcio_10.sin \
     functional_tests/fatal_beam_decay.sin \
     functional_tests/smtest_1.sin \
     functional_tests/smtest_2.sin \

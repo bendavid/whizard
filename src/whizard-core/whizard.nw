@@ -22459,6 +22459,7 @@ object and its associated methods.
             (var_str ("?recover_beams"), .false., is_known=.true.)
     case ("lhef"); input_ext = lhef_extension
     case ("hepmc"); input_ext = extension_hepmc
+    case ("lcio"); input_ext = extension_lcio
     case default
        call msg_fatal ("rescan: input sample format '" // char (input_format) &
             // "' not supported")

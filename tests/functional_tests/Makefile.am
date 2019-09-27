@@ -318,7 +318,12 @@ TESTS_REQ_LCIO = \
     lcio_2.run \
     lcio_3.run \
     lcio_4.run \
-    lcio_5.run
+    lcio_5.run \
+    lcio_6.run \
+    lcio_7.run \
+    lcio_8.run \
+    lcio_9.run \
+    lcio_10.run
 XFAIL_TESTS_REQ_LCIO =
 
 TESTS_REQ_LHAPDF5 = \
@@ -573,6 +578,7 @@ lcio_2.run: lcio_rd
 lcio_3.run: lcio_rd
 lcio_4.run: lcio_rd
 lcio_5.run: lcio_rd
+lcio_10.run: lcio_rd
 endif
 
 stdhep_4.run: stdhep_rd

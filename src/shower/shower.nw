@@ -6753,7 +6753,7 @@ added back in by Pythia.
        call msg_debug (D_SHOWER, 'Combine PYTHIA6 with particle set')
        call msg_debug (D_SHOWER, 'Particle set before replacing')
        call particle_set%write (summary=.true., compressed=.true.)
-       call pylist (2)
+       call pylist (3)
        call msg_debug (D_SHOWER, string = "settings%hadron_collision", &
           value = settings%hadron_collision)
     end if

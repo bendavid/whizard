@@ -11,7 +11,7 @@ if test -f OCAML_FLAG -a -f LCIO_FLAG; then
     diff ref-output/$s.ref ${s}.log    
 else
     echo "|=============================================================================|"
-    echo "No LCIO available, test skipped"
+    echo "No LCIO or no O'Mega matrix elements available, test skipped"
     exit 77
 fi
 

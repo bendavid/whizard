@@ -13,7 +13,7 @@ $integration_method = "vamp"
 
 seed = 0
 
-process hepmc_7_p = "g", "g" => "u", "ubar"
+process lcio_6_p = "g", "g" => "u", "ubar"
 
 sqrts = 8000
 beams = p, p => pdf_builtin
@@ -29,17 +29,17 @@ safety_factor = 2
 ?read_raw = false
 ?write_raw = false
 
-simulate (hepmc_7_p) {
+simulate (lcio_6_p) {
   iterations = 1:1000
   ?keep_beams = true
-  sample_format = hepmc, weight_stream
-  $sample = "hepmc_7a"
+  sample_format = lcio, weight_stream
+  $sample = "lcio_6a"
 }
 
-rescan "hepmc_7a" (hepmc_7_p) {
-  $rescan_input_format = "hepmc"
+rescan "lcio_6a" (lcio_6_p) {
+  $rescan_input_format = "lcio"
   sample_format = weight_stream
-  $sample = "hepmc_7b"
+  $sample = "lcio_6b"
   ?update_sqme = true
   ?recover_beams = false
   alt_setup = 

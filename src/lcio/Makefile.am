@@ -29,7 +29,7 @@
 if LCIO_AVAILABLE
 noinst_LTLIBRARIES = libLCIOWrap.la
 libLCIOWrap_la_SOURCES = LCIOWrap.cpp
-libLCIOWrap_la_CPPFLAGS = $(LCIO_INCLUDES)
+libLCIOWrap_la_CPPFLAGS = --std=c++11 $(LCIO_INCLUDES)
 else
 noinst_LTLIBRARIES = libLCIOWrap_dummy.la
 libLCIOWrap_dummy_la_SOURCES = LCIOWrap_dummy.f90

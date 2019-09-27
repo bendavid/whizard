@@ -10159,9 +10159,26 @@ The Fortran version has initializer form.
        character(len=1, kind=c_char), dimension(*), intent(in) :: name
      end subroutine lcio_set_process_name
   end interface
+  interface
+     subroutine lcio_set_alt_sqme (evt_obj, sqme, index) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: sqme
+       integer(c_int), value :: index
+     end subroutine lcio_set_alt_sqme
+  end interface
+  interface
+     subroutine lcio_set_alt_weight (evt_obj, weight, index) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: weight
+       integer(c_int), value :: index
+     end subroutine lcio_set_alt_weight
+  end interface
 @ %def lcio_set_weight lcio_set_alpha_qcd lcio_set_scale lcio_set_sqrts
 @ %def lcio_set_xsec lcio_set_beam lcio_set_pol
 @ %def lcio_set_beam_file lcio_set_process_name
+@ %def lcio_set_alt_sqme lcio_set_alt_weight
 @
 <<LCIO interface: public>>=
   public :: lcio_event_set_weight
@@ -10266,6 +10283,32 @@ The Fortran version has initializer form.
   end subroutine lcio_event_set_process_name
 
 @ %def lcio_event_set_process_name
+@
+<<LCIO interface: public>>=
+  public :: lcio_event_set_alt_sqme
+<<LCIO interface: procedures>>=
+  subroutine lcio_event_set_alt_sqme (evt, sqme, index)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: sqme
+    integer, intent(in) :: index
+    call lcio_set_alt_sqme (evt%obj, real (sqme, c_double), &
+         int (index, c_int))
+  end subroutine lcio_event_set_alt_sqme
+
+@ %def lcio_event_set_alt_sqme
+@
+<<LCIO interface: public>>=
+  public :: lcio_event_set_alt_weight
+<<LCIO interface: procedures>>=
+  subroutine lcio_event_set_alt_weight (evt, weight, index)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: weight
+    integer, intent(in) :: index
+    call lcio_set_alt_weight (evt%obj, real (weight, c_double), &
+         int (index, c_int))
+  end subroutine lcio_event_set_alt_weight
+
+@ %def lcio_event_set_alt_weight
 @
 <<LCIO interface: interfaces>>=
   interface
@@ -11973,7 +12016,14 @@ necessary for making a fully qualified flavor component.
     select case (lcio_particle_get_status (lprt))
     case (1);  call prt%set_status (PRT_OUTGOING)
     case (2);  call prt%set_status (PRT_RESONANT)
-    case (3);  call prt%set_status (PRT_VIRTUAL)
+    case (3)
+       select case (size (parents))
+       case (0)
+          call prt%set_status (PRT_INCOMING)
+       case default
+          call prt%set_status (PRT_VIRTUAL)
+       end select
+    case (4);  call prt%set_status (PRT_BEAM)
     end select
     call flv%init (lcio_particle_get_pdg (lprt), model)
     call col%init (lcio_particle_get_flow (lprt))
@@ -11993,8 +12043,6 @@ necessary for making a fully qualified flavor component.
          lcio_particle_get_mass_squared (lprt))
     call prt%set_parents (parents)
     call prt%set_children (daughters)
-    if (prt%get_status () == PRT_VIRTUAL .and. size(parents) == 0) &
-         call prt%set_status (PRT_INCOMING)
     vtx4 = vector4_moving (lcio_particle_get_time (lprt), &
          lcio_particle_get_vertex (lprt))
     if (vtx4 /= vector4_null)  call prt%set_vertex (vtx4)
@@ -12128,6 +12176,7 @@ information is not available.
          lcio_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
     call particle_set%final ()
+    call event%set_weight_ref (1._default)
     alpha_qcd = lcio_event_get_alphas (lcio_event)
     scale = lcio_event_get_scaleval (lcio_event)
     if (present (use_alpha_s)) then
@@ -16162,6 +16211,7 @@ for both input and output.
 
 module eio_lcio
 
+<<Use kinds>>
 <<Use strings>>
   use io_units
   use string_utils
@@ -16202,6 +16252,7 @@ Note: the [[keep_beams]] flag is not supported.
      logical :: recover_beams = .false.
      logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
+     integer :: n_alt = 0
      type(lcio_writer_t) :: lcio_writer
      type(lcio_reader_t) :: lcio_reader
      type(lcio_run_header_t) :: lcio_run_hdr
@@ -16340,6 +16391,7 @@ one.  If the file needs a header, repeat it for the new file.
     else
        call msg_fatal ("LCIO: events must be unweighted")
     end if
+    eio%n_alt = data%n_alt
     eio%sample = sample
     if (present (extension)) then
        eio%extension = extension
@@ -16419,6 +16471,8 @@ event files.
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
     type(particle_set_t), pointer :: pset_ptr
+    real(default) :: sqme_prc, weight
+    integer :: i
     if (present (passed)) then
        if (.not. passed)  return
     end if
@@ -16440,6 +16494,12 @@ event files.
             event%get_beam_file ())
        call lcio_event_set_process_name (eio%lcio_event, &
             event%get_process_name ())
+       do i = 1, eio%n_alt
+          sqme_prc = event%get_sqme_alt(i)
+          weight = event%get_weight_alt(i)
+          call lcio_event_set_alt_sqme (eio%lcio_event, sqme_prc, i)
+          call lcio_event_set_alt_weight (eio%lcio_event, weight, i)
+       end do
        call lcio_event_write (eio%lcio_writer, eio%lcio_event)
        call lcio_event_final (eio%lcio_event)
     else

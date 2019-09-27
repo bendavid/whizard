@@ -53,6 +53,8 @@ Found process #1 with ID = 42
    Keep correlations  = F
    Safety factor      =  0.00000E+00
 ------------------------------------------------------------------------
+   Event weight (ref)       =  1.000000000000E+00
+------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1

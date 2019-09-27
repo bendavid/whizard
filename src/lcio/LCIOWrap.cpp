@@ -54,6 +54,16 @@ extern "C" void lcio_set_weight( LCEventImpl* evt, double wgt ) {
   evt->setWeight ( wgt );
 }
 
+extern "C" void lcio_set_alt_weight( LCEventImpl* evt, double wgt, int index ) {
+  float weight = wgt;
+  evt->parameters().setValue ( "alternateWeight"+to_string(index), weight );
+}
+
+extern "C" void lcio_set_alt_sqme( LCEventImpl* evt, double sqme, int index ) {
+  float sqme_dble = sqme;
+  evt->parameters().setValue ( "alternateSqme"+to_string(index) , sqme_dble );
+}
+
 extern "C" void lcio_set_alpha_qcd ( LCEventImpl* evt, double alphas ) {
   float alpha_qcd = alphas;
   evt->parameters().setValue ( "alphaQCD", alpha_qcd );

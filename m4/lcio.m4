@@ -16,9 +16,9 @@ AC_ARG_ENABLE([lcio],
 
 # First test for LCIO, then for LCIO_DIR; LCIO takes precedence.
 if test -n "$LCIO"; then
-  wo_lcio_includes="-I$LCIO/include"
+  wo_lcio_includes="--std=c++11 -I$LCIO/include"
 elif test -n "$LCIO_DIR"; then
-  wo_lcio_includes="-I$LCIO_DIR/include"
+  wo_lcio_includes="--std=c++11 -I$LCIO_DIR/include"
 fi
 
 if test "$enable_lcio" = "yes"; then
