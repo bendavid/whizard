@@ -171,20 +171,22 @@ endif NOWEB_AVAILABLE
 # O'Caml
 ########################################################################
 
+if OCAML_AVAILABLE
+
 bigarray_compat.ml: $(OCAML_BIGARRAY_COMPAT).ml
 	cp -f $< $@
 
 events.cmx: bigarray_compat.cmi bigarray_compat.cmx
 events.cmo: bigarray_compat.cmi bigarray_compat.cmo
 
-if OCAML_AVAILABLE
 circe2.top: $(CIRCE2_CMO)
 	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ \
 		unix.cma $(OCAML_BIGARRAY_CMA) $(CIRCE2_CMO)
-endif OCAML_AVAILABLE
 
 lexer.mli: lexer.ml parser.cmi
 	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
+
+endif OCAML_AVAILABLE
 
 
 ########################################################################
