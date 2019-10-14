@@ -9248,7 +9248,7 @@ The NLO PDF evolution is given by
 where $\Gamma$ are the DGLAP evolution kernels for an $a \to d$ splitting,
 \begin{equation}
   \label{eqn:dglap}
-  \Gamma_a^{(d)} = \delta_{ad}\delta(1-x) - \frac{\alpha_s}{2\pi} \left(\frac{1}{\epsilon} P_{ad}(x,0) - K_{ad}(x)\right) + \mathcal{O}(\alpha_s).
+  \Gamma_a^{(d)} = \delta_{ad}\delta(1-x) - \frac{\alpha_s}{2\pi} \left(\frac{1}{\epsilon} P_{ad}(x,0) - K_{ad}(x)\right) + \mathcal{O}(\alpha_s^2).
 \end{equation}
 $K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\overline{\text{MS}}$.
 Let the leading-order hadronic cross section be given by
@@ -9271,7 +9271,7 @@ $d\hat{\sigma}$ is called the subtracted partonic cross section. Expanding in $\
                                      &= d\tilde{\sigma}_{ab}^{(1)} + d\tilde{\sigma}_{ab}^{(cnt,+)} + d\tilde{\sigma}_{ab}^{(cnt,-)}
 \end{align}
 
-Let us now turn the soft-subtracted real part of the cross section. For ease of notation, it is constrained to one singular region,
+Let us now turn to the soft-subtracted real part of the cross section. For ease of notation, it is constrained to one singular region,
 \begin{align*}
   \label{eqn:R-in}
   d\sigma^{(in)}_\alpha &= \left[\left(\frac{1}{\xi}\right)_{c} - 2\epsilon\left(\frac{\log \xi}{\xi}\right)_{c}\right] (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha \\
@@ -9279,7 +9279,7 @@ Let us now turn the soft-subtracted real part of the cross section. For ease of 
 \end{align*}
 where we regularize collinear divergencies using the identity
 \begin{equation*}
-  \left (1 - y^2 \right)^{-1-\epsilon} = -\frac{2^{-\epsilon}}{\epsilon} \left (\delta(1-y) + \delta(1+y)\right)
+  \left (1 - y^2 \right)^{-1-\epsilon} = -\frac{2^{-\epsilon}}{2\epsilon} \left (\delta(1-y) + \delta(1+y)\right)
      + \underbrace{\frac{1}{2} \left[ \left (\frac {1}{1-y}\right)_{c} + \left (\frac{1}{1+y}\right)_{c} \right]}_{\mathcal{P}(y)}.
 \end{equation*}
 This enables us to split the cross section into a finite and a singular part. The latter can further be separated into a contribution of the incoming and of the outgoing particles,
@@ -9288,20 +9288,20 @@ This enables us to split the cross section into a finite and a singular part. Th
 \end{equation*}
 They are given by
 \begin{align}
-  \label{eqn:sigma-f}
   d\sigma^{(in,f)}_\alpha = & \mathcal{P}(y) \left[\left(\frac{1}{\xi}\right)_{c} - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_{c}\right] \frac{1}{2(2\pi)^{3-2\epsilon}}
-     \left(\frac{\sqrt{s}}{2}\right)^{2-2\epsilon} \\
+     \left(\frac{\sqrt{s}}{2}\right)^{2-2\epsilon} \nonumber\\
      & \times (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy d\Omega^{2-2\epsilon}
+  \label{eqn:sigma-f}
 \end{align}
 and
 \begin{align}
-  \label{eqn:sigma-pm}
-  d\sigma^{(in,\pm)}_\alpha &= -\frac{2^{-\epsilon}}{\epsilon} \delta (1 \mp y) \left[ \left( \frac{1}{\xi}\right)_{c} - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_{c}\right] \\
+  d\sigma^{(in,\pm)}_\alpha &= -\frac{2^{-\epsilon}}{2\epsilon} \delta (1 \mp y) \left[ \left( \frac{1}{\xi}\right)_{c} - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_{c}\right] \nonumber\\
                     & \times \frac{1}{2(2\pi)^{3-2\epsilon}} \left( \frac{\sqrt{s}}{2}\right)^{2-2\epsilon} (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy d\Omega^{2-2\epsilon}.
+  \label{eqn:sigma-pm}
 \end{align}
 Equation \ref{eqn:sigma-f} is the contribution to the real cross section which is computed in [[evaluate_region_isr]]. It is regularized both in the soft and collinear limit via the plus distributions.
 Equation \ref{eqn:sigma-pm} is a different contribution. It is only present exactly in the collinear limit, due to the delta function. The divergences present in this term do not completely cancel out
-divergences in the virtual matrix element, because the beam axis is distinguished. Thus, the conditions in which the KLM theorem applies are not met. To see this, we carry out the collinear limit, obtaining
+divergences in the virtual matrix element, because the beam axis is distinguished. Thus, the conditions in which the KLN theorem applies are not met. To see this, we carry out the collinear limit, obtaining
 \begin{equation*}
   \lim_{y \to 1} (1-y^2)\xi^2\mathcal{R}_\alpha = 8\pi\alpha_s \mu^{2\epsilon} \left(\frac{2}{\sqrt{s}}\right)^2 \xi P^<(1-\xi, \epsilon) \mathcal{R}_\alpha,
 \end{equation*}
@@ -9310,18 +9310,18 @@ This allows us to redefine $\epsilon$,
 \begin{equation}
   \frac{1}{\epsilon} - \gamma_E + \log(4\pi) \to \frac{1}{\epsilon}.
 \end{equation}
-In order to make a connection to $d\tilde{\sigma}^{(cnt,\pm)}$, we relate $P_{ab}(z,0)$ to $P^<_{ab}(z,0)$ via the equation
+Coming back to $d\tilde{\sigma}_{ab}^{(cnt,+)}$ in order to make a connection to $d{\sigma}^{(in,+)}_\alpha$, we relate $P_{ab}(z,0)$ to $P^<_{ab}(z,0)$ via the equation
 \begin{equation*}
   P_{ab}(z,0) = (1-z)P_{ab}^<(z,0)\left(\frac{1}{1-z}\right)_+ + \gamma(a)\delta_{ab}\delta(1-z),
 \end{equation*}
 which yields
 \begin{equation} \label{eqn:sigma-cnt}
-  d\tilde{\sigma}^{(cnt,+)} = \frac{\alpha_s}{2\pi} \sum_d \left\lbrace -K_{da}(1-\xi) + \frac{1}{\epsilon} \left[\left(\frac{1}{\xi}\right)_+ \xi P_{da}^<(1-\xi,0)
-                           + \delta_{da}\delta(\xi)\gamma(d)\right]\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha.
+  d\tilde{\sigma}^{(cnt,+)}_{\alpha} = \frac{\alpha_s}{2\pi} \sum_d \left\lbrace -K_{da}(1-\xi) + \frac{1}{\epsilon} \left[\left(\frac{1}{\xi}\right)_+ \xi P_{da}^<(1-\xi,0)
+                           + \delta_{da}\delta(\xi)\gamma(d)\right]\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy.
 \end{equation}
 This term has the same pole structure as eqn. \ref{eqn:sigma-pm}. This makes clear that the quantity
 \begin{equation}
-  d\hat{\sigma}^{(in,+)} = d\tilde{\sigma}^{(in,+)} + \frac{1}{4} d\tilde{\sigma}^{(cnt,+)}
+  d\hat{\sigma}^{(in,+)} = d\tilde{\sigma}^{(in,+)} + d\tilde{\sigma}^{(cnt,+)}
 \end{equation}
 has no collinear poles. Therefore, our task is to add up eqns. \ref{eqn:sigma-pm} and \ref{eqn:sigma-cnt} in order to compute the finite remainder. This is the integrand which is evaluated in the [[dglap_remnant]] component.\\
 So, we have to perform an expansion of $d\hat{\sigma}^{(in,+)}$ in $\epsilon$. Hereby, we must not neglect the implicit $\epsilon$-dependence of $P^<$, which leads to additional terms involving the
@@ -9333,7 +9333,7 @@ This finally gives us the equation for the collinear remnant. Note that there is
 \begin{align} \label{eqn:sigma-in-p-final}
   d\hat{\sigma}^{(in,+)} &= \frac{\alpha_s}{2\pi} \frac{1}{\epsilon} \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \nonumber\\
                          &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z) P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_{c} \log\frac{s\delta_{\mathrm{I}}}{2\mu^2} + 2 \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right. \nonumber\\
-                         &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial \epsilon} \left(\frac{1}{1-z}\right)_{c} - K_{da}(z)\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha
+                         &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial \epsilon} \left(\frac{1}{1-z}\right)_{c} - K_{da}(z)\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy
 \end{align}
 
 
