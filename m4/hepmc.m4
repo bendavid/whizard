@@ -43,7 +43,7 @@ if test "$enable_hepmc" = "yes"; then
      HEPMC_VERSION=$wk_hepmc_version
      AC_SUBST([HEPMC_VERSION])
      
-     wo_hepmc_ldflags="-lHepMC"
+     wo_hepmc_ldflags="-Wl,-rpath,$HEPMC_DIR/lib -L$HEPMC_DIR/lib -lHepMC"
       
      if test "$enable_hepmc" = "yes"; then
        wo_require_stdcpp="yes"
@@ -179,7 +179,7 @@ using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
    AC_MSG_CHECKING(HepMC3)
    if test "${hepmcok}" = "yes"; then
       HEPMC_INCLUDES="--std=c++11 `${hepmcconfig} --cxxflags`"
-      LDFLAGS_HEPMC="`${hepmcconfig} --libs`"
+      LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs`"
       AC_MSG_RESULT(yes)
       $1
    else
