@@ -42,15 +42,15 @@ if test "$enable_hepmc" = "yes"; then
      
      HEPMC_VERSION=$wk_hepmc_version
      AC_SUBST([HEPMC_VERSION])
-     
-     wo_hepmc_ldflags="-Wl,-rpath,$HEPMC_DIR/lib -L$HEPMC_DIR/lib -lHepMC"
-      
+
+     if test -n "$HEPMC_DIR"; then
+       wo_hepmc_ldflags="-Wl,-rpath,$HEPMC_DIR/lib -L$HEPMC_DIR/lib -lHepMC"
+     else
+       wo_hepmc_ldflags="-lHepMC"
+     fi
      if test "$enable_hepmc" = "yes"; then
        wo_require_stdcpp="yes"
        AC_MSG_CHECKING([for GenEvent class in -lHepMC])
-       if test -n "$HEPMC_DIR"; then
-         wo_hepmc_ldflags="-L$HEPMC_DIR/lib $wo_hepmc_ldflags"
-       fi
        wo_libs_tmp=$LIBS
        LIBS="$wo_hepmc_ldflags $wo_libs_tmp"
        AC_LANG([C++])
