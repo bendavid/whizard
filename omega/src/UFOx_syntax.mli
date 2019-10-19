@@ -30,6 +30,7 @@ type expr =
   | Integer of int
   | Float of float
   | Variable of string
+  | Quoted of string
   | Sum of expr * expr
   | Difference of expr * expr
   | Product of expr * expr
@@ -40,6 +41,7 @@ type expr =
 val integer : int -> expr
 val float : float -> expr
 val variable : string -> expr
+val quoted : string -> expr
 val add : expr -> expr -> expr
 val subtract : expr -> expr -> expr
 val multiply : expr -> expr -> expr

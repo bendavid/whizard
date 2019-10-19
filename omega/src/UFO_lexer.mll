@@ -29,9 +29,6 @@ open UFO_parser
 let string_of_char c =
   String.make 1 c
 
-let int_of_char c =
-  int_of_string (string_of_char c)
-
 let init_position fname lexbuf =
   let curr_p = lexbuf.lex_curr_p in
   lexbuf.lex_curr_p <-

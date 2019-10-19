@@ -30,6 +30,7 @@ type expr =
   | Integer of int
   | Float of float
   | Variable of string
+  | Quoted of string
   | Sum of expr * expr
   | Difference of expr * expr
   | Product of expr * expr
@@ -45,6 +46,9 @@ let float x =
 
 let variable s =
   Variable s
+
+let quoted s =
+  Quoted s
 
 let add e1 e2 =
   Sum (e1, e2)
@@ -67,7 +71,7 @@ let apply f args =
 module CSet = Sets.String_Caseless
 
 let rec variables = function
-  | Integer _ | Float _  -> CSet.empty
+  | Integer _ | Float _ | Quoted _ -> CSet.empty
   | Variable name -> CSet.singleton name
   | Sum (e1, e2) | Difference (e1, e2)
   | Product (e1, e2) | Quotient (e1, e2)
@@ -76,7 +80,7 @@ let rec variables = function
      List.fold_left CSet.union CSet.empty (List.map variables elist)
 
 let rec functions = function
-  | Integer _ | Float _ | Variable _ -> CSet.empty
+  | Integer _ | Float _ | Variable _ | Quoted _ -> CSet.empty
   | Sum (e1, e2) | Difference (e1, e2)
   | Product (e1, e2) | Quotient (e1, e2)
   | Power (e1, e2) -> CSet.union (functions e1) (functions e2)

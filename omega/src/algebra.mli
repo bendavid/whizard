@@ -62,6 +62,7 @@ module type Rational =
     val to_ratio : t -> int * int
     val to_float : t -> float
     val to_integer : t -> int
+    module Test : Test
   end
 
 (* \thocwmodulesection{Naive Rational Arithmetic} *)
@@ -85,7 +86,7 @@ module type QComplex =
 
     val make : q -> q -> t
     val null : t
-    val one : t
+    val unit : t
 
     val real : t -> q
     val imag : t -> q
@@ -97,6 +98,21 @@ module type QComplex =
     val sub : t -> t -> t
     val mul : t -> t -> t
     val inv : t -> t
+    val div : t -> t -> t
+
+    val pow : t -> int -> t
+    val sum : t list -> t
+
+    val is_null : t -> bool
+    val is_unit : t -> bool
+    val is_positive : t -> bool
+    val is_negative : t -> bool
+    val is_integer : t -> bool
+    val is_real : t -> bool
+
+    val to_string : t -> string
+
+    module Test : Test
 
   end
 

@@ -750,7 +750,7 @@ module type Birdtracks =
     val const : Algebra.Laurent.t -> t
     val times : t -> t -> t
     val multiply : t list -> t
-    val scale : Q.t -> t -> t
+    val scale : QC.t -> t -> t
     val sum : t list -> t
     val diff : t -> t -> t
     val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
@@ -1033,11 +1033,11 @@ module Birdtracks =
          canonicalize (List.fold_left times term terms)
 
     let scale1 q (coeff, arrows) =
-      (L.scale (qc_rational q) coeff, arrows)
+      (L.scale q coeff, arrows)
     let scale q = List.map (scale1 q)
 
     let diff term1 term2 =
-      canonicalize (List.rev_append term1 (scale (q_int (-1)) term2))
+      canonicalize (List.rev_append term1 (scale (qc_int (-1)) term2))
 
     module BinOps =
       struct
@@ -1164,7 +1164,7 @@ module Birdtracks =
       match vertex with
       | [] ->
          if List.for_all is_white lines then
-           [(QC.one, P.W)]
+           [(QC.unit, P.W)]
          else
            []
       | vertex ->

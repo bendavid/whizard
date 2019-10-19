@@ -70,26 +70,34 @@ module Fortran : T =
       | Coupling.Spinor -> "psi"
       | Coupling.ConjSpinor -> "psibar"
       | Coupling.Majorana -> "chi"
-      | Coupling.Maj_Ghost -> "???"
+      | Coupling.Maj_Ghost ->
+         invalid_arg "UFO_targets: Maj_Ghost"
       | Coupling.Vector -> "a"
       | Coupling.Massive_Vector -> "v"
-      | Coupling.Vectorspinor -> "???"
-      | Coupling.Tensor_1 -> "???"
-      | Coupling.Tensor_2 -> "???"
-      | Coupling.BRS l -> "???"
+      | Coupling.Vectorspinor ->
+         invalid_arg "UFO_targets: Vectorspinor"
+      | Coupling.Tensor_1 ->
+         invalid_arg "UFO_targets: Tensor_1"
+      | Coupling.Tensor_2 -> "h"
+      | Coupling.BRS l ->
+         invalid_arg "UFO_targets: BRS"
 
     let fortran_type = function
       | Coupling.Scalar -> "complex(kind=default)"
       | Coupling.Spinor -> "type(spinor)"
       | Coupling.ConjSpinor -> "type(conjspinor)"
       | Coupling.Majorana -> "type(bispinor)"
-      | Coupling.Maj_Ghost -> "???"
+      | Coupling.Maj_Ghost ->
+         invalid_arg "UFO_targets: Maj_Ghost"
       | Coupling.Vector -> "type(vector)"
       | Coupling.Massive_Vector -> "type(vector)"
-      | Coupling.Vectorspinor -> "???"
-      | Coupling.Tensor_1 -> "???"
-      | Coupling.Tensor_2 -> "???"
-      | Coupling.BRS l -> "???"
+      | Coupling.Vectorspinor ->
+         invalid_arg "UFO_targets: Vectorspinor"
+      | Coupling.Tensor_1 ->
+         invalid_arg "UFO_targets: Tensor_1"
+      | Coupling.Tensor_2 -> "type(tensor)"
+      | Coupling.BRS l ->
+         invalid_arg "UFO_targets: BRS"
 
     (* The \texttt{omegalib} separates time from space.  Maybe
        not a good idea after all.  Mend it locally \ldots *)
@@ -115,7 +123,7 @@ module Fortran : T =
           let name = spin_mnemonic s ^ i in
           let local_array =
             begin match spin with
-            | Coupling.Vector -> Some (name ^ "a")
+            | Coupling.Vector | Coupling.Massive_Vector -> Some (name ^ "a")
             | _ -> None
             end in
           { pos;
@@ -128,37 +136,6 @@ module Fortran : T =
         spins
 
     module L = UFO_Lorentz
-
-    let unparse_rational q =
-      match Q.to_ratio q with
-      |  0, _ -> printf "0"
-      |  1, 1 -> printf "1"
-      | -1, 1 -> printf "-1"
-      |  n, 1 -> printf "%d" n
-      |  1, d -> printf "(1/%d.0_default)" d
-      | -1, d -> printf "(-1/%d.0_default)" d
-      |  n, d -> printf "(%d.0_default/%d)" n d
-
-    let unparse_error msg =
-      printf " [[ERROR: %s]] " msg
-
-    let unparse_list e o unparse_term = function
-      | [] -> printf "%s" e
-      | [t] -> unparse_term t;
-      | t :: tl ->
-         printf "(";
-         unparse_term t;
-         List.iter (fun t -> printf "%s" o; unparse_term t) tl;
-         printf ")"
-
-    let unparse_product unparse_term l =
-      unparse_list "1" "*" unparse_term l
-
-    let unparse_sum unparse_term l =
-      unparse_list "0" "+" unparse_term l
-                   
-    let unparse fusion =
-      L.to_string fusion
 
     (* Format rational ([Q.t]) and complex rational ([QC.t])
        numbers as fortran values. *)
@@ -366,6 +343,7 @@ module Fortran : T =
     let prefix_summation = "mu"
     let prefix_polarization = "nu"
     let index_spinor = "alpha"
+    let index_tensor = "nu"
 
     let index_variable mu =
       if mu < 0 then
@@ -466,6 +444,12 @@ module Fortran : T =
            ("indices_of_contractions: " ^
               ThoList.to_string string_of_int index_pairs)
 
+(*i   Printf.eprintf
+        "indices_of_contractions: %s / %s\n"
+        (ThoList.to_string string_of_int index_pairs)
+        (ThoList.to_string string_of_int polarizations);
+i*)
+
     let format_dsv dsv indices =
       match dsv, indices with
       | Braket _, [] -> dsv_name dsv
@@ -499,26 +483,38 @@ module Fortran : T =
          fprintf eval "%s@,*" (format_tensor t);
          multiply_tensors ~decl ~eval tensors
 
-    let contract_indices ~decl ~eval indent wf_index wfs (q, contractees) =
+    let contract_indices ~decl ~eval indent wf_indices wfs (fusion, contractees) =
       let printf fmt = fprintf eval fmt
       and nl = pp_newline eval in
       let sum_var =
-        begin match wf_index with
-        | None -> wfs.(0).name
-        | Some i ->
+        begin match wf_indices with
+        | [] -> wfs.(0).name
+        | ilist ->
+           let indices = String.concat "," ilist in
            begin match wfs.(0).local_array with
-           | None -> Printf.sprintf "%s%%a(%s)" wfs.(0).name i
-           | Some a -> Printf.sprintf "%s(%s)" a i
+           | None ->
+              let component =
+                begin match wfs.(0).spin with
+                | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana -> "a"
+                | Coupling.Tensor_2 -> "t"
+                | Coupling.Vector | Coupling.Massive_Vector ->
+                   failwith "contract_indices: expected local_array for vectors"
+                | _ -> failwith "contract_indices: unexpected spin"
+                end in
+              Printf.sprintf "%s%%%s(%s)" wfs.(0).name component indices
+           | Some a -> Printf.sprintf "%s(%s)" a indices
            end
         end in
       let indices =
-        List.filter (fun i -> i <> 1) (indices_of_contractions contractees) in
+        List.filter
+          (fun i -> UFOx.Index.position i <> 1)
+          (indices_of_contractions contractees) in
       nested_sums
         ~decl ~eval
         indent indices
         (fun indent ->
           printf "%*s@[<2>%s = %s" indent "" sum_var sum_var;
-          printf "@,%s" (format_rational_factor q);
+          printf "@,%s" (format_complex_rational_factor fusion.L.coeff);
           List.iter (fun i -> printf "@,g4_(%s)*" (index_variable i)) indices;
           printf "@,(";
           multiply_tensors ~decl ~eval contractees;
@@ -526,20 +522,32 @@ module Fortran : T =
       printf "@]";
       nl ()
 
-    let external_wf_loop ~decl ~eval ~indent wfs contractees =
+    let external_wf_loop ~decl ~eval ~indent wfs (fusion, _ as contractees) =
+      pp_divide ~indent eval ();
+      fprintf eval "%*s! %s\n" indent "" (L.to_string [fusion]);
       pp_divide ~indent eval ();
       match wfs.(0).spin with
       | Coupling.Scalar ->
-         contract_indices ~decl ~eval 2 None wfs contractees
+         contract_indices ~decl ~eval 2 [] wfs contractees
       | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
          let idx = index_spinor in
          fprintf eval "%*s@[<2>do %s = 1, 4@]" indent "" idx; pp_newline eval ();
-         contract_indices ~decl ~eval 4 (Some idx) wfs contractees;
+         contract_indices ~decl ~eval 4 [idx] wfs contractees;
          fprintf eval "%*send do@]" indent ""; pp_newline eval ()
       | Coupling.Vector ->
          let idx = index_variable 1 in
          fprintf eval "%*s@[<2>do %s = 0, 3@]" indent "" idx; pp_newline eval ();
-         contract_indices ~decl ~eval 4 (Some idx) wfs contractees;
+         contract_indices ~decl ~eval 4 [idx] wfs contractees;
+         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
+      | Coupling.Tensor_2 ->
+         let idx1 = index_variable (UFOx.Index.pack 1 1)
+         and idx2 = index_variable (UFOx.Index.pack 1 2) in
+         fprintf eval "%*s@[<2>do %s = 0, 3@]" indent "" idx1;
+         pp_newline eval ();
+         fprintf eval "%*s@[<2>do %s = 0, 3@]" (indent + 2) "" idx2;
+         pp_newline eval ();
+         contract_indices ~decl ~eval 6 [idx1; idx2] wfs contractees;
+         fprintf eval "%*send do@]" (indent + 2) ""; pp_newline eval ();
          fprintf eval "%*send do@]" indent ""; pp_newline eval ()
       | _ -> failwith "external_wf_loop: incomplete"
 
@@ -612,10 +620,6 @@ module Fortran : T =
       fprintf eval "@]";
       pp_newline eval ()
 
-    (* FIXME: can be retired starting from O'Caml 4.02.0! *)
-    let iset_of_list list =
-      List.fold_right Sets.Int.add list Sets.Int.empty
-
     let contractees_of_fusion
           ~decl ~eval wfs (max_dsv, indices_seen, contractees) fusion =
       let max_dsv', dirac_strings =
@@ -623,18 +627,23 @@ module Fortran : T =
       and vectors =
         List.fold_left
           (fun acc wf ->
-            match wf.local_array with
-            | None -> acc
-            | Some a -> { L.atom = V a; L.indices = [wf.pos] } :: acc)
+            match wf.spin, wf.local_array with
+            | Coupling.Tensor_2, None ->
+               { L.atom =
+                   V (Printf.sprintf "%s%d%%t" (spin_mnemonic wf.spin) wf.pos);
+                 L.indices = [UFOx.Index.pack wf.pos 1;
+                              UFOx.Index.pack wf.pos 2] } :: acc
+            | _, None -> acc
+            | _, Some a -> { L.atom = V a; L.indices = [wf.pos] } :: acc)
           [] (List.tl (Array.to_list wfs))
       and tensors =
         List.map (L.map_atom (fun t -> T t)) fusion.L.vector in
       let contractees' = dirac_strings @ vectors @ tensors in
       let indices_seen' =
-        iset_of_list (indices_of_contractions contractees') in
+        Sets.Int.of_list (indices_of_contractions contractees') in
       (max_dsv',
        Sets.Int.union indices_seen indices_seen',
-       (fusion.L.coeff, contractees') :: contractees)
+       (fusion, contractees') :: contractees)
 
     let fusions_to_fortran ~decl ~eval wfs fusions =
       local_vector_copies ~decl ~eval wfs;
@@ -663,7 +672,12 @@ module Fortran : T =
          | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
             fprintf eval "    %s%%a = 0" wfs.(0).name
          | Coupling.Scalar -> fprintf eval "    %s = 0" wfs.(0).name
-         | _ -> failwith "fusions_to_fortran"
+         | Coupling.Tensor_2 ->
+            fprintf eval "    %s%%t = 0" wfs.(0).name
+         | Coupling.Vector | Coupling.Massive_Vector ->
+            failwith "UFO_targets.Fortran.fusions_to_fortran: unexpected spin 1"
+         | _ ->
+            failwith "UFO_targets.Fortran.fusions_to_fortran: unhandled spin"
       end;
       pp_newline eval ();
       List.iter (external_wf_loop ~decl ~eval ~indent:4 wfs) contractions;
@@ -706,8 +720,8 @@ module Fortran : T =
       pp_flush decl ();
       pp_flush eval ();
       pp_divide ~indent:4 ff ();
-      printf "    ! %s" (unparse lorentz); nl ();
-      pp_divide ~indent:4 ff ();
+(*i   printf "    ! %s" (L.to_string lorentz); nl ();
+      pp_divide ~indent:4 ff (); i*)
       printf "%s" (Buffer.contents decl_buf);
       pp_divide ~indent:4 ff ();
       printf "%s" (Buffer.contents eval_buf);

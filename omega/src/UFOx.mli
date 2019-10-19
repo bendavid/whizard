@@ -36,6 +36,22 @@ module Expr :
 
 module type Index =
   sig
+    (* \begin{dubious}
+         UFO represents rank-2 indices $(i,j)$ as $1000\cdot j + i$.
+         This should be replaced by a proper union type eventually.
+         Unfortunately, this requires many changes in the [Atom]s in
+         [UFOx].  Therefore, we try a quick'n'dirty proof of principle
+         first.
+       \end{dubious} *)
+
+    val position : int -> int
+    val factor : int -> int
+    val unpack : int -> int * int
+    val pack : int -> int -> int
+    val map_position : (int -> int) -> int -> int
+    val to_string : int -> string
+    val list_to_string : int list -> string
+
     (* Indices are represented by a pair [int * 'r], where
        ['r] denotes the representation the index belongs to.  *)
 
@@ -60,7 +76,7 @@ module type Tensor =
 
     (* A tensor is linear combination of products of [atom]s
        with rational coefficients. *)
-    type t = (atom list * Algebra.Q.t) list
+    type t = (atom list * Algebra.QC.t) list
 
     (* We might need to replace atoms if the syntax is not
        context free. *)

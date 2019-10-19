@@ -41,7 +41,7 @@ let invalid_parameter_attr () =
 
 %token < int > INT
 %token < float > FLOAT
-%token < string > ID
+%token < string > ID QUOTED
 %token PLUS MINUS TIMES POWER DIV
 %token LPAREN RPAREN COMMA DOT
 
@@ -67,6 +67,7 @@ expr:
  | INT             	  { X.integer $1 }
  | FLOAT           	  { X.float $1 }
  | ID              	  { X.variable $1 }
+ | QUOTED             	  { X.quoted $1 }
  | expr PLUS expr  	  { X.add $1 $3 }
  | expr MINUS expr 	  { X.subtract $1 $3 }
  | expr TIMES expr 	  { X.multiply $1 $3 }

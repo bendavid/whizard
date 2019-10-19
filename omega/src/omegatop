@@ -6,8 +6,8 @@
 # tl;dr : don't try this at home, kids ;)
 ########################################################################
 
-build_root=/home/ohl/physics/whizard/_build-4.07.1/
-build_root=/home/ohl/physics/whizard/_build/
+build_root=/home/ohl/physics/whizard/_build/4.08.1
+build_root=/home/ohl/physics/whizard/_build/default
 build_dir=$build_root/omega/src
 init_file=omega.ocamlinit
 

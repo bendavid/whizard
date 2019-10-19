@@ -163,7 +163,7 @@ module type Birdtracks =
     val const : Algebra.Laurent.t -> t
     val times : t -> t -> t
     val multiply : t list -> t
-    val scale : Algebra.Q.t -> t -> t
+    val scale : Algebra.QC.t -> t -> t
     val sum : t list -> t
     val diff : t -> t -> t
     val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t

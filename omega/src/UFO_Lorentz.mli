@@ -59,7 +59,7 @@ val map_atom : ('a -> 'b) -> 'a term -> 'b term
    Dirac strings and a (possibly empty) product of Lorentz
    tensors with a rational coefficient. *)
 type contraction = (* [private] *)
-  { coeff : Algebra.Q.t;
+  { coeff : Algebra.QC.t;
     dirac : dirac_string term list;
     vector : UFOx.Lorentz_Atom.vector term list }
 

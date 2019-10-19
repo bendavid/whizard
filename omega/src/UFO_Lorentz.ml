@@ -140,7 +140,7 @@ let classify_indices ilist =
     ilist
 
 type contraction =
-  { coeff : Q.t;
+  { coeff : QC.t;
     dirac : dirac_string term list;
     vector : A.vector term list }
 
@@ -382,7 +382,7 @@ let substitute_index_dirac mu nu dirac_strings =
                      ds.atom.gammas } } )
     dirac_strings
 
-let trace_metric = Q.make 4 1
+let trace_metric = QC.make (Q.make 4 1) Q.null
 
 (* FIXME: can this be made typesafe by mapping to a
    type that \emph{only} contains [P] and [Epsilon]? *)
@@ -391,7 +391,7 @@ let rec compress_metrics c =
   | None, _ -> c
   | Some (Trace mu), vector' ->
      compress_metrics
-       { coeff = Q.mul trace_metric c.coeff;
+       { coeff = QC.mul trace_metric c.coeff;
          dirac = c.dirac;
          vector = vector' }
   | Some (Replace (mu, nu)), vector' ->
@@ -409,20 +409,22 @@ let parse1 spins atom =
 let parse spins l =
   List.map (parse1 spins) l
 
+let i2s = UFOx.Index.to_string
+
 let vector_to_string = function
   | A.Epsilon (mu, nu, ka, la) ->
-     Printf.sprintf "Epsilon(%d,%d,%d,%d)" mu nu ka la
+     Printf.sprintf "Epsilon(%s,%s,%s,%s)" (i2s mu) (i2s nu) (i2s ka) (i2s la)
   | A.Metric (mu, nu) ->
-     Printf.sprintf "Metric(%d,%d)" mu nu
+     Printf.sprintf "Metric(%s,%s)" (i2s mu) (i2s nu)
   | A.P (mu, n) ->
-     Printf.sprintf "P(%d,%d)" mu n
+     Printf.sprintf "P(%s,%d)" (i2s mu) n
 
 let dirac_to_string = function
   | Gamma5 -> "g5"
   | ProjM -> "(1-g5)/2"
   | ProjP -> "(1+g5)/2"
-  | Gamma (mu) -> Printf.sprintf "g(%d)" mu
-  | Sigma (mu, nu) ->  Printf.sprintf "s(%d,%d)" mu nu
+  | Gamma (mu) -> Printf.sprintf "g(%s)" (i2s mu)
+  | Sigma (mu, nu) ->  Printf.sprintf "s(%s,%s)" (i2s mu) (i2s nu)
   | C -> "C"
 
 let dirac_string_to_string ds =
@@ -434,7 +436,7 @@ let dirac_string_to_string ds =
        ds.bra (String.concat "*" (List.map dirac_to_string gammas)) ds.ket
 
 let contraction_to_string c =
-  Q.to_string c.coeff ^ " * " ^
+  QC.to_string c.coeff ^ " * " ^
     String.concat
       " * " (List.map (fun ds -> dirac_string_to_string ds.atom) c.dirac) ^
       " * " ^

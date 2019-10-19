@@ -32,6 +32,6 @@ make -j $jobs -C $build/omega/bin $omega.opt || exit 1
 omega="$build/omega/bin/$omega.opt -model:UFO_dir $UFO -model:exec -target:parameter_module parameters_ufo"
 
 $omega -model:write_WHIZARD > omega_amplitude.mdl
-( $omega -params; $omega -scatter "$1" ) > omega_amplitude.f90
+( $omega -params; $omega -scatter "$@" ) > omega_amplitude.f90
 
-gfortran -Wall -c -I ../../_build/omega/src/ omega_amplitude.f90
+gfortran -Wall -c -I $build/omega/src/ omega_amplitude.f90

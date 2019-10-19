@@ -66,7 +66,7 @@ module Expr =
     open UFOx_syntax
 
     let rec map f = function
-      | Integer _ | Float _ as e -> e
+      | Integer _ | Float _ | Quoted _ as e -> e
       | Variable s as e ->
          begin match f s with
          | Some value -> value
@@ -108,22 +108,19 @@ let positive integers =
 let not_positive integers =
   List.filter (fun (i, _) -> i <= 0) integers
 
-let int_list_to_string is =
-  "[" ^ String.concat ", " (List.map string_of_int is) ^ "]"
-	
 module type Index =
   sig
-    (* Indices are represented by a pair [int * 'r], where
-       ['r] denotes the representation the index belongs to.  *)
 
-    (* [free indices] returns all free indices in the
-       list [indices], i.\,e.~all positive indices. *)
+    val position : int -> int
+    val factor : int -> int
+    val unpack : int -> int * int
+    val pack : int -> int -> int
+    val map_position : (int -> int) -> int -> int
+    val to_string : int -> string
+    val list_to_string : int list -> string
+
     val free : (int * 'r) list -> (int * 'r) list
-
-    (* [summation indices] returns all summation indices in the
-       list [indices], i.\,e.~all negative indices.  *)
     val summation : (int * 'r) list -> (int * 'r) list
-
     val classes_to_string : ('r -> string) -> (int * 'r) list -> string
 
   end
@@ -134,6 +131,49 @@ module Index : Index =
     let free i = positive i
     let summation i = not_positive i
 
+    let position i =
+      if i > 0 then
+        i mod 1000
+      else
+        i
+
+    let factor i =
+      if i > 0 then
+        i / 1000
+      else
+        invalid_arg "UFOx.Index.factor: argument not positive"
+
+    let unpack i =
+      if i > 0 then
+        (position i, factor i)
+      else
+        (i, 0)
+
+    let pack i j =
+      if j > 0 then
+        if i > 0 then
+          1000 * j + i
+        else
+          invalid_arg "UFOx.Index.pack: position not positive"
+      else if j = 0 then
+        i
+      else
+        invalid_arg "UFOx.Index.pack: factor negative"
+
+    let map_position f i =
+      let pos, fac = unpack i in
+      pack (f pos) fac
+
+    let to_string i =
+      let pos, fac = unpack i in
+      if fac = 0 then
+        Printf.sprintf "%d" pos
+      else
+        Printf.sprintf "%d.%d" pos fac
+
+    let list_to_string is =
+      "[" ^ String.concat ", " (List.map to_string is) ^ "]"
+	
     let classes_to_string rep_to_string index_classes =
       let reps =
 	ThoList.uniq (List.sort compare (List.map snd index_classes)) in
@@ -142,7 +182,7 @@ module Index : Index =
 	(List.map
 	   (fun r ->
 	     (rep_to_string r) ^ "=" ^
-	       (int_list_to_string
+	       (list_to_string
 		  (List.map
 		     fst
 		     (List.filter (fun (_, r') -> r = r') index_classes))))
@@ -170,7 +210,7 @@ module type Atom =
 module type Tensor =
   sig
     type atom
-    type t = (atom list * Algebra.Q.t) list
+    type t = (atom list * Algebra.QC.t) list
     val map_atoms : (atom -> atom) -> t -> t
     val map_indices : (int -> int) -> t -> t
     val of_expr : UFOx_syntax.expr -> t
@@ -193,10 +233,13 @@ module Tensor (A : Atom) : Tensor
   struct
 
     module S = UFOx_syntax
+    (* TODO: we have to switch to [Algebra.QC] to support complex
+       coefficients, as used in custom propagators. *)
     module Q = Algebra.Q
+    module QC = Algebra.QC
 
     type atom = A.t
-    type t = (atom list * Q.t) list
+    type t = (atom list * QC.t) list
 
     let map_atoms f t =
       List.map (fun (atoms, q) -> (List.map f atoms, q)) t
@@ -205,21 +248,24 @@ module Tensor (A : Atom) : Tensor
       map_atoms (A.map_indices f) t
 
     let multiply (t1, c1) (t2, c2) =
-      (List.sort compare (t1 @ t2), Q.mul c1 c2)
+      (List.sort compare (t1 @ t2), QC.mul c1 c2)
 
     let compress terms =
-      List.map (fun (t, cs) -> (t, Q.sum cs)) (ThoList.factorize terms)
+      List.map (fun (t, cs) -> (t, QC.sum cs)) (ThoList.factorize terms)
 
     let rec of_expr e =
       compress (of_expr' e)
 
     and of_expr' = function
-      | S.Integer i -> [([], Q.make i 1)]
+      | S.Integer i -> [([], QC.make (Q.make i 1) Q.null)]
       | S.Float _ -> invalid_arg "UFOx.Tensor.of_expr: unexpected float"
+      | S.Quoted name ->
+	 invalid_arg ("UFOx.Tensor.of_expr: unexpected quoted variable '" ^
+			 name ^ "'")
       | S.Variable name ->
 	 invalid_arg ("UFOx.Tensor.of_expr: unexpected variable '" ^
 			 name ^ "'")
-      | S.Application (name, args) -> [([A.of_expr name args], Q.unit)]
+      | S.Application (name, args) -> [([A.of_expr name args], QC.unit)]
       | S.Sum (e1, e2) ->
 	 of_expr e1 @ of_expr e2
       | S.Difference (e1, e2) ->
@@ -228,7 +274,7 @@ module Tensor (A : Atom) : Tensor
       | S.Quotient (n, d) ->
 	 begin match of_expr d with
 	 | [([], q)] ->
-	    List.map (fun (t, c) -> (t, Q.div c q)) (of_expr n)
+	    List.map (fun (t, c) -> (t, QC.div c q)) (of_expr n)
 	 | [] ->
 	    failwith "UFOx.Tensor.of_expr: zero denominator"
 	 | _ ->
@@ -237,14 +283,19 @@ module Tensor (A : Atom) : Tensor
       | S.Power (e, p) ->
 	 begin match of_expr e, of_expr p with
 	 | [([], q)], [([], p)] ->
-	    if Q.is_integer p then
-	      [([], Q.pow q (Q.to_integer p))]
-	    else
-	      failwith "UFOx.Tensor.of_expr: rational power"
+	    if QC.is_real p then
+              let re_p = QC.real p in
+	      if Q.is_integer re_p then
+	        [([], QC.pow q (Q.to_integer re_p))]
+	      else
+	        failwith "UFOx.Tensor.of_expr: rational power"
+            else
+	      failwith "UFOx.Tensor.of_expr: complex power"
 	 | [([], q)], _ ->
 	    failwith "UFOx.Tensor.of_expr: non-numeric power"
 	 | t, [([], p)] ->
-            if Q.is_null (Q.sub p (Q.make 2 1)) then
+            let qc = QC.sub p (QC.make (Q.make 2 1) Q.null) in
+            if QC.is_null qc then
               Product.list2 multiply t t
             else
 	      failwith "UFOx.Tensor.of_expr: only 2 as power of tensor allowed"
@@ -275,9 +326,12 @@ module Tensor (A : Atom) : Tensor
       | _ ->
 	 invalid_arg "UFOx.Tensor.classify_indices: incompatible free indices!"
 
+    let check_indices t =
+      ignore (classify_indices t)
+
     let of_expr e =
       let t = of_expr e in
-      ignore (classify_indices t);
+      check_indices t;
       t
 
     let of_string s =
@@ -287,33 +341,15 @@ module Tensor (A : Atom) : Tensor
       of_expr (Expr.of_strings s)
 
     let term_to_string (tensors, c) =
-      if Q.is_null c then
+      if QC.is_null c then
 	""
       else
-	(if Q.is_negative c then " - " else " + ") ^
-	  (let c = Q.abs c in
-	   if Q.is_unit c && tensors = [] then
-	     ""
-	   else
-	     Q.to_string c) ^
-	  (match tensors with
-	  | [] -> ""
-	  | tensors ->
-	     (if Q.is_unit (Q.abs c) then "" else "*") ^
-	       String.concat "*" (List.map A.to_string tensors))
-
-    let term_to_string (tensors, c) =
-      if Q.is_null c then
-	""
-      else
-	(if Q.is_negative c then " - " else " + ") ^
-	  (let c = Q.abs c in
-	   match tensors with
-	   | [] -> Q.to_string c
-	   | tensors ->
-	      String.concat "*"
-		((if Q.is_unit c then [] else [Q.to_string c]) @
-		    List.map A.to_string tensors))
+	match tensors with
+	| [] -> QC.to_string c
+	| tensors ->
+	   String.concat
+             "*" ((if QC.is_unit c then [] else [QC.to_string c]) @
+		    List.map A.to_string tensors)
 
     let to_string terms =
       String.concat "" (List.map term_to_string terms)
@@ -360,6 +396,7 @@ module Lorentz_Atom =
       | ProjM of int * int
       | Sigma of int * int * int * int
 
+    (* TODO: the propagators use additional atoms! *)
     type vector =
       | Epsilon of int * int * int * int
       | Metric of int * int
@@ -468,15 +505,16 @@ module Lorentz_Atom' : Atom
       | name, _ ->
 	 invalid_arg ("UFOx.Lorentz.of_expr: invalid tensor '" ^ name ^ "'")
 
-    type r = S | V | Sp | CSp | Maj | Ghost
+    type r = S | V | T | Sp | CSp | Maj | Ghost
 
     let rep_trivial = function
       | S | Ghost -> true
-      | V | Sp | CSp | Maj -> false
+      | V | T | Sp | CSp | Maj -> false
 
     let rep_to_string = function
       | S -> "0"
       | V -> "1"
+      | T -> "2"
       | Sp -> "1/2"
       | CSp-> "1/2bar"
       | Maj -> "1/2M"
@@ -485,6 +523,7 @@ module Lorentz_Atom' : Atom
     let rep_to_string_whizard = function
       | S -> "0"
       | V -> "1"
+      | T -> "2"
       | Sp | CSp | Maj -> "1/2"
       | Ghost -> "Ghost"
 
@@ -492,13 +531,19 @@ module Lorentz_Atom' : Atom
       | -1 -> Ghost
       | 1 -> S
       | 2 -> if neutral then Maj else Sp
-      | -2 -> if neutral then Maj else CSp
+      | -2 -> if neutral then Maj else CSp (* used by [UFO.Particle.force_conjspinor] *)
       | 3 -> V
-      | _ -> invalid_arg "UFOx.Lorentz: impossible representation!"
+      | 4 -> failwith "UFOx.Lorentz: spin 3/2 not supported yet!"
+      | 5 -> T
+      | s when s > 0 ->
+         failwith "UFOx.Lorentz: spin > 2 not supported!"
+      | _ ->
+         invalid_arg "UFOx.Lorentz: invalid non-positive spin value"
 	 
     let rep_conjugate = function
       | S -> S
       | V -> V
+      | T -> T
       | Sp -> CSp (* ??? *)
       | CSp -> Sp (* ??? *)
       | Maj -> Maj
@@ -520,16 +565,49 @@ module Lorentz_Atom' : Atom
       | Dirac d -> classify_dirac_indices1 d
       | Vector v -> classify_vector_indices1 v
 
-    let classify_indices tensors =
-      List.sort compare
-	(List.fold_right
-	   (fun v acc -> classify_indices1 v @ acc)
-	   tensors [])
+    module IMap = Map.Make (struct type t = int let compare = compare end)
+
+    exception Incompatible_factors
+
+    let product rep1 rep2 =
+      match rep1, rep2 with
+      | V, V -> T
+      | _, _ -> raise Incompatible_factors
+
+    let combine_or_add_index (i, rep) map =
+      let pos, fac = Index.unpack i in
+      try
+        let fac', rep' = IMap.find pos map in
+        if pos < 0 then
+          IMap.add pos (fac, rep) map
+        else if fac <> fac' then
+          IMap.add pos (0, product rep rep') map
+        else
+          invalid_arg (Printf.sprintf "UFO: duplicate subindex %d" pos)
+      with
+      | Not_found -> IMap.add pos (fac, rep) map
+      | Incompatible_factors ->
+         invalid_arg (Printf.sprintf "UFO: incompatible factors at %d" pos)
+
+    let combine_or_add_indices atom map =
+      List.fold_right combine_or_add_index (classify_indices1 atom) map
+
+    let project_factors (pos, (fac, rep)) =
+      if fac = 0 then
+        (pos, rep)
+      else
+        invalid_arg (Printf.sprintf "UFO: leftover subindex %d.%d" pos fac)
+
+    let classify_indices atoms =
+      List.map
+        project_factors
+        (IMap.bindings (List.fold_right combine_or_add_indices atoms IMap.empty))
 
     type r_omega = Coupling.lorentz
     let omega = function
       | S -> Coupling.Scalar
       | V -> Coupling.Vector
+      | T -> Coupling.Tensor_2
       | Sp -> Coupling.Spinor
       | CSp -> Coupling.ConjSpinor
       | Maj -> Coupling.Majorana
@@ -714,29 +792,61 @@ module Value =
 
     type builtin =
       | Sqrt
-      | Cos
-      | Sin
-      | Tan
-      | Exp
-      | Atan
+      | Exp | Log | Log10
+      | Sin | Asin
+      | Cos | Acos
+      | Tan | Atan
+      | Sinh | Asinh
+      | Cosh | Acosh
+      | Tanh | Atanh
+      | Sec | Asec
+      | Csc | Acsc
       | Conj
 
     let builtin_to_string = function
       | Sqrt -> "sqrt"
+      | Exp -> "exp"
+      | Log -> "log"
+      | Log10 -> "log10"
+      | Sin -> "sin"
       | Cos -> "cos"
       | Tan -> "tan"
-      | Sin -> "sin"
-      | Exp -> "exp"
+      | Asin -> "asin"
+      | Acos -> "acos"
       | Atan -> "atan"
+      | Sinh -> "sinh"
+      | Cosh -> "cosh"
+      | Tanh -> "tanh"
+      | Asinh -> "asinh"
+      | Acosh -> "acosh"
+      | Atanh -> "atanh"
+      | Sec -> "sec"
+      | Csc -> "csc"
+      | Asec -> "asec"
+      | Acsc -> "acsc"
       | Conj -> "conjg"
 
     let builtin_of_string = function
       | "cmath.sqrt" -> Sqrt
-      | "cmath.cos" -> Cos
-      | "cmath.sin" -> Sin
-      | "cmath.tan" -> Tan
       | "cmath.exp" -> Exp
+      | "cmath.log" -> Log
+      | "cmath.log10" -> Log10
+      | "cmath.sin" -> Sin
+      | "cmath.cos" -> Cos
+      | "cmath.tan" -> Tan
+      | "cmath.asin" -> Asin
+      | "cmath.acos" -> Acos
       | "cmath.atan" -> Atan
+      | "cmath.sinh" -> Sinh
+      | "cmath.cosh" -> Cosh
+      | "cmath.tanh" -> Tanh
+      | "cmath.asinh" -> Asinh
+      | "cmath.acosh" -> Acosh
+      | "cmath.atanh" -> Atanh
+      | "sec" -> Sec
+      | "csc" -> Csc
+      | "asec" -> Asec
+      | "acsc" -> Acsc
       | "complexconjugate" -> Conj
       | name -> failwith ("UFOx.Value: unsupported function: " ^ name)
 
@@ -828,21 +938,39 @@ module Value =
          Coupling.Pow (to_coupling atom e1, e2)
       | Power (e1, e2) ->
          Coupling.PowX (to_coupling atom e1, to_coupling atom e2)
-      | Application (Sin, [e]) -> Coupling.Sin (to_coupling atom e)
-      | Application (Cos, [e]) -> Coupling.Cos (to_coupling atom e)
-      | Application (Tan, [e]) -> Coupling.Tan (to_coupling atom e)
-      | Application (Exp, [e]) -> Coupling.Exp (to_coupling atom e)
-      | Application (Atan, [e]) -> Coupling.Atan (to_coupling atom e)
-      | Application (Sqrt, [e]) -> Coupling.Sqrt (to_coupling atom e)
-      | Application (Conj, [e]) -> Coupling.Conj (to_coupling atom e)
+      | Application (f, [e]) -> apply1 (to_coupling atom e) f
       | Application (f, []) ->
          failwith
            ("UFOx.Value.to_coupling:  " ^ builtin_to_string f ^
               ": empty argument list")
-      | Application (f, _::_) ->
+      | Application (f, _::_::_) ->
          failwith
            ("UFOx.Value.to_coupling: " ^ builtin_to_string f ^
-              ": more than one argument list")
+              ": more than one argument in list")
+
+    and apply1 e = function
+      | Sqrt -> Coupling.Sqrt e
+      | Exp -> Coupling.Exp e
+      | Log -> Coupling.Log e
+      | Log10 -> Coupling.Log10 e
+      | Sin -> Coupling.Sin e
+      | Cos -> Coupling.Cos e
+      | Tan -> Coupling.Tan e
+      | Asin -> Coupling.Asin e
+      | Acos -> Coupling.Acos e
+      | Atan -> Coupling.Atan e
+      | Sinh -> Coupling.Sinh e
+      | Cosh -> Coupling.Cosh e
+      | Tanh -> Coupling.Tanh e
+      | Sec -> Coupling.Quot (Coupling.Integer 1, Coupling.Cos e)
+      | Csc -> Coupling.Quot (Coupling.Integer 1, Coupling.Sin e)
+      | Asec -> Coupling.Acos (Coupling.Quot (Coupling.Integer 1, e))
+      | Acsc -> Coupling.Asin (Coupling.Quot (Coupling.Integer 1, e))
+      | Conj -> Coupling.Conj e
+      | (Asinh | Acosh | Atanh as f) ->
+         failwith
+           ("UFOx.Value.to_coupling: function `"
+            ^ builtin_to_string f ^ "' not supported yet!")
 
     let compress terms = terms
 
@@ -853,6 +981,9 @@ module Value =
       | S.Integer i -> Integer i
       | S.Float x -> Real x
       | S.Variable "cmath.pi" -> Variable "pi"
+      | S.Quoted name ->
+	 invalid_arg ("UFOx.Value.of_expr: unexpected quoted variable '" ^
+			 name ^ "'")
       | S.Variable name -> Variable name
       | S.Sum (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with

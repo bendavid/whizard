@@ -71,6 +71,7 @@ module type Rational =
     val to_ratio : t -> int * int
     val to_float : t -> float
     val to_integer : t -> int
+    module Test : Test
   end
 
 (* \thocwmodulesection{Naive Rational Arithmetic} *)
@@ -136,6 +137,29 @@ module Small_Rational : Rational =
         n
       else
         invalid_arg "Algebra.Small_Rational.to_integer"
+
+    module Test =
+      struct
+        open OUnit
+
+        let equal z1 z2 =
+          is_null (sub z1 z2)
+
+        let assert_equal_rational z1 z2 =
+          assert_equal ~printer:to_string ~cmp:equal z1 z2
+
+        let suite_mul =
+          "mul" >:::
+
+	    [ "1*1=1" >::
+                (fun () ->
+                  assert_equal_rational (mul unit unit) unit) ]
+
+        let suite =
+          "Algebra.Small_Rational" >:::
+	    [suite_mul]
+      end
+
   end
 
 module Q = Small_Rational
@@ -150,7 +174,7 @@ module type QComplex =
 
     val make : q -> q -> t 
     val null : t
-    val one : t
+    val unit : t
 
     val real : t -> q
     val imag : t -> q
@@ -162,6 +186,21 @@ module type QComplex =
     val sub : t -> t -> t
     val mul : t -> t -> t
     val inv : t -> t
+    val div : t -> t -> t
+
+    val pow : t -> int -> t
+    val sum : t list -> t
+
+    val is_null : t -> bool
+    val is_unit : t -> bool
+    val is_positive : t -> bool
+    val is_negative : t -> bool
+    val is_integer : t -> bool
+    val is_real : t -> bool
+
+    val to_string : t -> string
+
+    module Test : Test
 
   end
 
@@ -173,7 +212,7 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
 
     let make re im = { re; im }
     let null = { re = Q.null; im = Q.null }
-    let one = { re = Q.unit; im = Q.null }
+    let unit = { re = Q.unit; im = Q.null }
 
     let real z = z.re
     let imag z = z.im
@@ -182,6 +221,9 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
     let neg z = { re = Q.neg z.re; im = Q.neg z.im }
     let add z1 z2 = { re = Q.add z1.re z2.re; im = Q.add z1.im z2.im }
     let sub z1 z2 = { re = Q.sub z1.re z2.re; im = Q.sub z1.im z2.im }
+
+    let sum qs =
+      List.fold_right add qs null
 
 (* Save one multiplication with respect to the standard formula
    \begin{equation}
@@ -201,6 +243,67 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
       let modulus = Q.add (Q.mul z.re z.re) (Q.mul z.im z.im) in
       { re = Q.div z.re modulus;
         im = Q.div (Q.neg z.im) modulus }
+
+    let div n d =
+      mul (inv d) n
+
+    let rec pow q p =
+      if p = 0 then
+	unit
+      else if p < 0 then
+	pow (inv q) (-p)
+      else
+	mul q (pow q (pred p))
+
+    let is_real q =
+      Q.is_null q.im
+
+    let test_real test q =
+      is_real q && test q.re
+      
+    let is_null = test_real Q.is_null
+    let is_unit = test_real Q.is_unit
+    let is_positive = test_real Q.is_positive
+    let is_negative = test_real Q.is_negative
+    let is_integer = test_real Q.is_integer
+
+    let q_to_string q =
+      (if Q.is_positive q then "+" else "-") ^ Q.to_string (Q.abs q)
+
+    let to_string z =
+      if Q.is_null z.im then
+        q_to_string z.re
+      else if Q.is_null z.re then
+        if Q.is_unit z.im then
+          "+I"
+        else if Q.is_unit (Q.neg z.im) then
+          "-I"
+        else
+          q_to_string z.im ^ "*I"
+      else
+        Printf.sprintf "(%s%s*I)" (Q.to_string z.re) (q_to_string z.im)
+
+    module Test =
+      struct
+        open OUnit
+
+        let equal z1 z2 =
+          is_null (sub z1 z2)
+
+        let assert_equal_complex z1 z2 =
+          assert_equal ~printer:to_string ~cmp:equal z1 z2
+
+        let suite_mul =
+          "mul" >:::
+
+	    [ "1*1=1" >::
+                (fun () ->
+                  assert_equal_complex (mul unit unit) unit) ]
+
+        let suite =
+          "Algebra.QComplex" >:::
+	    [suite_mul]
+      end
 
   end
 
@@ -245,7 +348,7 @@ module Laurent : Laurent with type c = QC.t =
     type c = QC.t
 
     let qc_minus_one =
-      QC.neg QC.one
+      QC.neg QC.unit
 
     type t = c IMap.t
 
@@ -259,7 +362,7 @@ module Laurent : Laurent with type c = QC.t =
         IMap.singleton n qc
 
     let const z = atom z 0
-    let unit = const QC.one
+    let unit = const QC.unit
 
     let add1 n qc l =
       try
@@ -322,7 +425,7 @@ module Laurent : Laurent with type c = QC.t =
         pow' (pred n) x x
 
     let qc_pow n z =
-      poly_pow QC.mul QC.one QC.inv n z
+      poly_pow QC.mul QC.unit QC.inv n z
 
     let pow n l =
       poly_pow mul unit (fun _ -> invalid_arg "Algebra.Laurent.pow") n l
@@ -349,7 +452,7 @@ module Laurent : Laurent with type c = QC.t =
       if n = 0 then
         qc_to_string qc
       else if n = 1 then
-        if qc = QC.one then
+        if QC.is_unit qc then
           name
         else if qc = qc_minus_one then
           "-" ^ name
@@ -358,7 +461,7 @@ module Laurent : Laurent with type c = QC.t =
       else if n = -1 then
         Printf.sprintf "%s/%s" (qc_to_string qc) name
       else if n > 1 then
-        if qc = QC.one then
+        if QC.is_unit qc then
           Printf.sprintf "%s^%d" name n
         else if qc = qc_minus_one then
           Printf.sprintf "-%s^%d" name n
@@ -404,16 +507,16 @@ module Laurent : Laurent with type c = QC.t =
 	    [ "(1+N)(1-N)=1-N^2" >::
                 (fun () ->
                   assert_equal_laurent
-                    (sum [unit; atom (QC.neg QC.one) 2])
-                    (product [sum [unit; atom QC.one 1];
-                              sum [unit; atom (QC.neg QC.one) 1]]));
+                    (sum [unit; atom (QC.neg QC.unit) 2])
+                    (product [sum [unit; atom QC.unit 1];
+                              sum [unit; atom (QC.neg QC.unit) 1]]));
 
               "(1+N)(1-1/N)=N-1/N" >::
                 (fun () ->
                   assert_equal_laurent
-                    (sum [atom QC.one 1; atom (QC.neg QC.one) (-1)])
-                    (product [sum [unit; atom QC.one 1];
-                              sum [unit; atom (QC.neg QC.one) (-1)]])); ]
+                    (sum [atom QC.unit 1; atom (QC.neg QC.unit) (-1)])
+                    (product [sum [unit; atom QC.unit 1];
+                              sum [unit; atom (QC.neg QC.unit) (-1)]])); ]
 
         let suite =
           "Algebra.Laurent" >:::

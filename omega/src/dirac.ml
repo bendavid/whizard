@@ -66,7 +66,7 @@ module Chiral : T =
     type t = qc array array
 
     let zero = QC.null
-    let one = QC.one
+    let one = QC.unit
     let minus_one = QC.neg one
     let i = QC.make Q.null Q.unit
     let minus_i = QC.conj i

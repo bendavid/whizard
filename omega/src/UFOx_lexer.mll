@@ -29,9 +29,6 @@ open UFOx_parser
 let string_of_char c =
   String.make 1 c
 
-let int_of_char c =
-  int_of_string (string_of_char c)
-
 let init_position fname lexbuf =
   let curr_p = lexbuf.lex_curr_p in
   lexbuf.lex_curr_p <-
@@ -64,6 +61,8 @@ rule token = parse
                       { INT (int_of_string i) }
   | digit* '.' digit+ ( ['E''e'] '-'? digit+ )? as x
                       { FLOAT (float_of_string x) }
+  | '\'' (char word* as s) '\''
+                      { QUOTED s }
   | char word* ('.' char word+ )? as s
                       { ID s }
   | '\\' '[' (word+ as stem) ']' (word* as suffix)

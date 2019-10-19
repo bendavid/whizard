@@ -322,14 +322,11 @@ let multiply n l = rev_multiply n (List.rev l) l
 exception Overlapping_indices
 exception Out_of_bounds
 
-let iset_of_list list =
-  List.fold_right Sets.Int.add list Sets.Int.empty
-
 let iset_list_union list =
   List.fold_right Sets.Int.union list Sets.Int.empty
 
 let complement_index_sets n index_set_lists =
-  let index_sets = List.map iset_of_list index_set_lists in
+  let index_sets = List.map Sets.Int.of_list index_set_lists in
   let index_set = iset_list_union index_sets in
   let size_index_sets =
     List.fold_left (fun acc s -> Sets.Int.cardinal s + acc) 0 index_sets in
@@ -339,7 +336,7 @@ let complement_index_sets n index_set_lists =
     raise Overlapping_indices
   else
     match Sets.Int.elements
-            (Sets.Int.diff (iset_of_list (range 0 (pred n))) index_set) with
+            (Sets.Int.diff (Sets.Int.of_list (range 0 (pred n))) index_set) with
     | [] -> index_set_lists
     | complement -> complement :: index_set_lists
 

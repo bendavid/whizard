@@ -68,10 +68,6 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
     module VSet =
       Set.Make (struct type t = F.constant Coupling.t let compare = compare end)
 
-    (* FIXME: can be retired starting from O'Caml 4.02.0! *)
-    let vset_of_list list =
-      List.fold_right VSet.add list VSet.empty;
-
 (* For the phase space, we need asymmetric DAGs.
 
    HACK: since we will not use this to compute amplitudes, there's
@@ -549,7 +545,7 @@ i*)
                 let fusions = ThoList.flatmap F.rhs (F.fusions p)
                 and brakets = ThoList.flatmap F.ket (F.brakets p) in
                 let couplings =
-                  vset_of_list (List.map F.coupling (fusions @ brakets)) in
+                  VSet.of_list (List.map F.coupling (fusions @ brakets)) in
                 VSet.union acc couplings)
               VSet.empty (CF.processes amplitudes) in
           Printf.eprintf "SUMMARY: %d vertices\n" (VSet.cardinal couplings);

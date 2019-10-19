@@ -185,6 +185,8 @@ let suite =
      Permutation_Test_Using_Arrays.suite;
      Combinatorics_Unit_Tests.suite;
      Combinatorics.Test.suite;
+     Algebra.Q.Test.suite;
+     Algebra.QC.Test.suite;
      Algebra.Laurent.Test.suite;
      Color.Arrow.Test.suite;
      Color.Birdtracks.Test.suite;

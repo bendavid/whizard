@@ -66,12 +66,9 @@ module Make (E : Ordered_Type) =
     let to_string powset =
       "{" ^ String.concat "," (List.map set_to_string (EPowSet.elements powset)) ^ "}"
 
-    let set_of_list list =
-      List.fold_right ESet.add list ESet.empty
-
     let of_lists lists =
       List.fold_right
-        (fun list acc -> EPowSet.add (set_of_list list) acc)
+        (fun list acc -> EPowSet.add (ESet.of_list list) acc)
         lists EPowSet.empty
 
     let to_lists ps =

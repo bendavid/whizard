@@ -2401,10 +2401,17 @@ i*)
       | Cos x -> printf "@,cos ("; eval_parameter' x; printf ")"
       | Tan x -> printf "@,tan ("; eval_parameter' x; printf ")"
       | Cot x -> printf "@,cot ("; eval_parameter' x; printf ")"
+      | Asin x -> printf "@,asin ("; eval_parameter' x; printf ")"
+      | Acos x -> printf "@,acos ("; eval_parameter' x; printf ")"
       | Atan x -> printf "@,atan ("; eval_parameter' x; printf ")"
       | Atan2 (y, x) -> printf "@,atan2 ("; eval_parameter' y;
           printf ",@ "; eval_parameter' x; printf ")"
+      | Sinh x -> printf "@,sinh ("; eval_parameter' x; printf ")"
+      | Cosh x -> printf "@,cosh ("; eval_parameter' x; printf ")"
+      | Tanh x -> printf "@,tanh ("; eval_parameter' x; printf ")"
       | Exp x -> printf "@,exp ("; eval_parameter' x; printf ")"
+      | Log x -> printf "@,log ("; eval_parameter' x; printf ")"
+      | Log10 x -> printf "@,log10 ("; eval_parameter' x; printf ")"
       | Conj (Integer _ | Float _ as x) -> eval_parameter' x
       | Conj x -> printf "@,cconjg ("; eval_parameter' x; printf ")"
 
@@ -2463,7 +2470,11 @@ i*)
          depends_on params e1 || depends_on params e2
       | Neg e | Rec e | Pow (e, _) ->
          depends_on params e
-      | Sqrt e | Sin e | Cos e | Tan e | Cot e | Conj e | Exp e | Atan e ->
+      | Sqrt e | Exp e | Log e | Log10 e
+      | Sin e | Cos e | Tan e | Cot e
+      | Asin e | Acos e | Atan e
+      | Sinh e | Cosh e | Tanh e
+      | Conj e ->
          depends_on params e
       | Atan2 (e1, e2) ->
          depends_on params e1 || depends_on params e2
@@ -7207,10 +7218,6 @@ i*)
     module VSet =
       Set.Make (struct type t = F.constant Coupling.t let compare = compare end)
 
-    (* FIXME: can be retired starting from O'Caml 4.02.0! *)
-    let vset_of_list list =
-      List.fold_right VSet.add list VSet.empty
-
     let ufo_fusions_used amplitudes =
       let couplings =
         List.fold_left
@@ -7218,7 +7225,7 @@ i*)
             let fusions = ThoList.flatmap F.rhs (F.fusions p)
             and brakets = ThoList.flatmap F.ket (F.brakets p) in
             let couplings =
-              vset_of_list (List.map F.coupling (fusions @ brakets)) in
+              VSet.of_list (List.map F.coupling (fusions @ brakets)) in
             VSet.union acc couplings)
           VSet.empty (CF.processes amplitudes) in
       VSet.fold

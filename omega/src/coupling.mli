@@ -2688,9 +2688,16 @@ type 'a expr =
   | Cos of 'a expr
   | Tan of 'a expr
   | Cot of 'a expr
-  | Atan2 of 'a expr * 'a expr
+  | Asin of 'a expr
+  | Acos of 'a expr
   | Atan of 'a expr
+  | Atan2 of 'a expr * 'a expr
+  | Sinh of 'a expr
+  | Cosh of 'a expr
+  | Tanh of 'a expr
   | Exp of 'a expr
+  | Log of 'a expr
+  | Log10 of 'a expr
   | Conj of 'a expr
 
 type 'a variable = Real of 'a | Complex of 'a
