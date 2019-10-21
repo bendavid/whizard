@@ -49,7 +49,7 @@ WO_CONFIGURE_SECTION([Start of package configuration])
 
 ### Further version information
 PACKAGE_DATE="Oct 24 2019"
-PACKAGE_STATUS="alpha"
+PACKAGE_STATUS="release"
 
 AC_SUBST(PACKAGE_DATE)
 AC_SUBST(PACKAGE_STATUS)
