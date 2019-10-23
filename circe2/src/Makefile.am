@@ -37,7 +37,7 @@ OCAML_BIGARRAY_CMXA=@OCAML_BIGARRAY_CMXA@
 lib_LTLIBRARIES =
 SOURCE_FILES =
 MODULE_FILES =
-EXTRA_SOURCE_FILES = bigarray_library.ml bigarray_module.ml
+EXTRA_SOURCE_FILES = bigarray_library.ml bigarray_module.ml bigarray_compat.mli
 NOWEB_FILES = prelude.nw postlude.nw
 
 ########################################################################

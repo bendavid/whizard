@@ -523,8 +523,8 @@ subroutine circe2_generate_polarized (c2s, rng, p, pol, x)
   call circe2_generate (c2s, rng, x, p, h)
   call circe2_density_matrix (c2s, pol, p, x)
   pol00 = pol(0,0)
-  do i1 = 0, 4
-     do i2 = 0, 4
+  do i1 = 0, 3
+     do i2 = 0, 3
         pol(i1,i2) = pol(i1,i2) / pol00
      end do
   end do
