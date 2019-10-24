@@ -30,10 +30,32 @@ for switch in $versions; do
   cd $build/$switch
   $root/configure --enable-distribution --disable-static
   make -j $(getconf _NPROCESSORS_ONLN) && \
-  make -j $(getconf _NPROCESSORS_ONLN) check distcheck
+  make -j $(getconf _NPROCESSORS_ONLN) check && \
+  make -j $(getconf _NPROCESSORS_ONLN) dist && \
+  make -j $(getconf _NPROCESSORS_ONLN) distcheck
   if [ "$?" = 0 ]; then
     echo "$switch PASS" >> $log
   else
     echo "$switch FAIL" >> $log
   fi
+done
+
+for dist_switch in $versions; do
+  for build_switch in $versions; do
+    cd $build/$dist_switch
+    rm -fr whizard_circe2-[0-9].[0-9].[0-9]
+    tar xzf whizard_circe2-[0-9].[0-9].[0-9].tar.gz
+    cd whizard_circe2-[0-9].[0-9].[0-9]
+    opam switch $build_switch >/dev/null || exit 2
+    echo "Building with $(opam switch show) in $(pwd)"
+    eval $(opam env)
+    $root/configure --enable-distribution --disable-static
+    make -j $(getconf _NPROCESSORS_ONLN) && \
+    make -j $(getconf _NPROCESSORS_ONLN) check
+    if [ "$?" = 0 ]; then
+      echo "build: $build_switch dist: $dist_switch PASS" >> $log
+    else
+      echo "build: $build_switch dist: $dist_switch FAIL" >> $log
+    fi
+  done
 done

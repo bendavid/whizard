@@ -23,18 +23,39 @@ for switch in $versions; do
   opam switch $switch >/dev/null || exit 2
   opam switch show
   eval $(opam env)
+  cd $root
+  ./build_master.sh OMEGA
+  rm -fr $build/$switch
   mkdir -p $build/$switch
   cd $build/$switch
-  if [ ! -e config.status ]; then
-    cp -a $build/default/config.status .
-    ./config.status --recheck
-    ./config.status
-  fi
-  make -j $(getconf _NPROCESSORS_ONLN) -C omega && \
-  make -j $(getconf _NPROCESSORS_ONLN) -C omega check
+  $root/configure --enable-distribution --disable-static
+  make -j $(getconf _NPROCESSORS_ONLN) && \
+  make -j $(getconf _NPROCESSORS_ONLN) check && \
+  make -j $(getconf _NPROCESSORS_ONLN) dist && \
+  make -j $(getconf _NPROCESSORS_ONLN) distcheck
   if [ "$?" = 0 ]; then
     echo "$switch PASS" >> $log
   else
     echo "$switch FAIL" >> $log
   fi
+done
+
+for dist_switch in $versions; do
+  for build_switch in $versions; do
+    cd $build/$dist_switch
+    rm -fr whizard_omega-[0-9].[0-9].[0-9]
+    tar xzf whizard_omega-[0-9].[0-9].[0-9].tar.gz
+    cd whizard_omega-[0-9].[0-9].[0-9]
+    opam switch $build_switch >/dev/null || exit 2
+    echo "Building with $(opam switch show) in $(pwd)"
+    eval $(opam env)
+    $root/configure --enable-distribution --disable-static
+    make -j $(getconf _NPROCESSORS_ONLN) && \
+    make -j $(getconf _NPROCESSORS_ONLN) check
+    if [ "$?" = 0 ]; then
+      echo "build: $build_switch dist: $dist_switch PASS" >> $log
+    else
+      echo "build: $build_switch dist: $dist_switch FAIL" >> $log
+    fi
+  done
 done

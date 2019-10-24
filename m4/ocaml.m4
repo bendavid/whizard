@@ -99,9 +99,6 @@ AC_ARG_ENABLE([ocaml],
      AC_SUBST([OCAMLC])
 
      # Allow to use flags set by environment variable OCAMLFLAGS
-     if test $OCAMLINTEGERVERSION -ge 406000; then
-        OCAMLFLAGS="-unsafe-string $OCAMLFLAGS"
-     fi
      AC_SUBST([OCAMLFLAGS],[$OCAMLFLAGS])
 
      # checking for ocamldep
