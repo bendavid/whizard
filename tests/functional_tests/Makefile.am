@@ -293,7 +293,9 @@ TESTS_REQ_OCAML = \
     user_cuts.run \
     user_prc_threshold_1.run \
     cascades2_phs_1.run \
-    user_prc_threshold_2.run
+    user_prc_threshold_2.run \
+    vamp2_1.run \
+    vamp2_2.run
 
 XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \
@@ -753,7 +755,7 @@ clean-local: clean-macosx
 	rm -rf ref-output
 	rm -f *.sin *.hbc *_fks_regions.out
 	rm -f *.olc *.olp *.olp_parameters output.rcl
-	rm -f *.phs *.vg *.vg2 *.pg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.fds
+	rm -f *.phs *.vg *.vg2 *.vgx2 *.pg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.fds
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -rf pack_1.1 pack_1.2 pack_1.3 pack_1.4

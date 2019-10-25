@@ -800,6 +800,8 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/beam_events_4.ref \
     functional_tests/ref-output/energy_scan_1.ref \
     functional_tests/ref-output/cascades2_phs_1.ref \
+    functional_tests/ref-output/vamp2_1.ref \
+    functional_tests/ref-output/vamp2_2.ref \
     ext_tests_nlo/ref-output/nlo_ee4j.ref \
     ext_tests_nlo/ref-output/nlo_ee4t.ref \
     ext_tests_nlo/ref-output/nlo_ee5j.ref \
@@ -1296,7 +1298,9 @@ MISC_TESTS_SIN = \
     functional_tests/user_cuts.sin \
     functional_tests/user_prc_threshold_1.sin \
     functional_tests/cascades2_phs_1.sin \
-    functional_tests/user_prc_threshold_2.sin
+    functional_tests/user_prc_threshold_2.sin \
+    functional_tests/vamp2_1.sin \
+    functional_tests/vamp2_2.sin
 
 EXT_MSSM_M4 = \
     ext_tests_mssm/mssm_ext-ee.m4 \

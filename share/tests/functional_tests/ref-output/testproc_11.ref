@@ -80,7 +80,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| [VAMP2] set chain: use chained weights.
+| VAMP2: Initialize new grids and write to file 'testproc_11_p2.m1.vg2'.
+| VAMP2: set chain: use chained weights.
    1       1000  7.7464622E+03  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1       1000  7.7464622E+03  0.00E+00    0.00    0.00  100.00

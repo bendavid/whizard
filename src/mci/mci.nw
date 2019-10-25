@@ -11900,12 +11900,13 @@ we replace [[n_calls]] with [[n_min_calls]].
      type(list_pass_t) :: list_pass
      logical :: rebuild = .true.
      logical :: check_grid_file = .true.
-     logical :: integrator_filename_set = .false.
+     logical :: grid_filename_set = .false.
      logical :: negative_weights = .false.
      logical :: verbose = .false.
      logical :: pass_complete = .false.
      logical :: it_complete = .false.
-     type(string_t) :: integrator_filename
+     type(string_t) :: grid_filename
+     logical :: binary_grid_format = .false.
      character(32) :: md5sum_adapted = ""
    contains
    <<MCI vamp2: mci vamp2: TBP>>
@@ -12049,15 +12050,9 @@ append the index to the grid filename, just before the final dotted suffix.
     integer, intent(in) :: i_mci
     type(string_t) :: basename, suffix
     character(32) :: buffer
-    if (mci%integrator_filename_set) then
-       basename = mci%integrator_filename
-       call split (basename, suffix, ".", back=.true.)
+    if (mci%grid_filename_set) then
        write (buffer, "(I0)") i_mci
-       if (basename /= "") then
-          mci%integrator_filename = basename // ".m" // trim (buffer) // "." // suffix
-       else
-          mci%integrator_filename = suffix // ".m" // trim (buffer) // ".vg2"
-       end if
+       mci%grid_filename = mci%grid_filename // ".m" // trim (buffer)
     end if
   end subroutine mci_vamp2_record_index
 
@@ -12089,34 +12084,48 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
 @ %def mci_vegaa_set_rebuild_flag
 @ Set the filename.
 <<MCI vamp2: mci vamp2: TBP>>=
-  procedure, public :: set_integrator_filename => mci_vamp2_set_integrator_filename
+  procedure, public :: set_grid_filename => mci_vamp2_set_grid_filename
+  procedure, public :: get_grid_filename => mci_vamp2_get_grid_filename
 <<MCI vamp2: procedures>>=
-  subroutine mci_vamp2_set_integrator_filename (mci, name, run_id)
+  subroutine mci_vamp2_set_grid_filename (mci, name, run_id)
     class(mci_vamp2_t), intent(inout) :: mci
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: run_id
-    mci%integrator_filename = name // ".vg2"
+    mci%grid_filename = name
     if (present (run_id)) then
-       mci%integrator_filename = name // "." // run_id // ".vg2"
+       mci%grid_filename = name // "." // run_id
     end if
-    mci%integrator_filename_set = .true.
-  end subroutine mci_vamp2_set_integrator_filename
+    mci%grid_filename_set = .true.
+  end subroutine mci_vamp2_set_grid_filename
 
-@ %def mci_vamp2_set_integrator_filename
+  type(string_t) function mci_vamp2_get_grid_filename (mci, binary_grid_format) &
+       result (filename)
+    class(mci_vamp2_t), intent(in) :: mci
+    logical, intent(in), optional :: binary_grid_format
+    filename = mci%grid_filename // ".vg2"
+    if (present (binary_grid_format)) then
+       if (binary_grid_format) then
+         filename = mci%grid_filename // ".vgx2"
+       end if
+    end if
+  end function mci_vamp2_get_grid_filename
+
+@ %def mci_vamp2_set_grid_filename, mci_vamp2_get_grid_filename
+
 @ To simplify the interface, we prepend a grid path in a separate subroutine.
 <<MCI vamp2: mci vamp2: TBP>>=
-  procedure :: prepend_integrator_path => mci_vamp2_prepend_integrator_path
+  procedure :: prepend_grid_path => mci_vamp2_prepend_grid_path
 <<MCI vamp2: procedures>>=
-  subroutine mci_vamp2_prepend_integrator_path (mci, prefix)
+  subroutine mci_vamp2_prepend_grid_path (mci, prefix)
     class(mci_vamp2_t), intent(inout) :: mci
     type(string_t), intent(in) :: prefix
-    if (.not. mci%integrator_filename_set) then
+    if (.not. mci%grid_filename_set) then
        call msg_warning ("Cannot add prefix to invalid integrator filename!")
     end if
-    mci%integrator_filename = prefix // "/" // mci%integrator_filename
-  end subroutine mci_vamp2_prepend_integrator_path
+    mci%grid_filename = prefix // "/" // mci%grid_filename
+  end subroutine mci_vamp2_prepend_grid_path
 
-@ %def mci_vamp2_prepend_integrator_path
+@ %def mci_vamp2_prepend_grid_path
 @ Not implemented.
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure, public :: declare_flat_dimensions => mci_vamp2_declare_flat_dimensions
@@ -12274,117 +12283,145 @@ We split the reading process in two parts. First, we check on the header where
 we check (and update) all relevant pass data using [[mci_vamp2_update]]. In the
 second part we only read the integrator data. We implement [[mci_vamp2_read]]
 for completeness.
+
+The writing of the MCI object is split into two parts, a header with the relevant process configuration regarding the integration and the results of the different passes and their iterations.
+The other part is the actual grid.
+The header will always be written in ASCII format, including a md5 hash, in order to testify against unwilling changes to the setup.
+The grid part can be either added to the ASCII file, or to an additional binary file.
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure :: write_grids => mci_vamp2_write_grids
   procedure :: read_header => mci_vamp2_read_header
   procedure :: read_data => mci_vamp2_read_data
-  procedure :: read_grids => mci_vamp2_read_grids
+  procedure, private :: advance_to_data => mci_vamp2_advance_to_data
 <<MCI vamp2: procedures>>=
   subroutine mci_vamp2_write_grids (mci)
     class(mci_vamp2_t), intent(in) :: mci
     integer :: u
-    if (.not. mci%integrator_filename_set) then
+    if (.not. mci%grid_filename_set) then
        call msg_bug ("VAMP2: write grids: filename undefined")
     end if
     if (.not. mci%integrator_defined) then
        call msg_bug ("VAMP2: write grids: grids undefined")
     end if
-    u = free_unit ()
-    open (u, file = char (mci%integrator_filename), &
+    open (newunit = u, file = char (mci%get_grid_filename ()), &
          action = "write", status = "replace")
     write (u, "(1X,A,A,A)") "MD5sum = '", mci%md5sum, "'"
     write (u, *)
     call mci%write (u)
     write (u, *)
-    write (u, "(1X,A)") "VAMP2 grids:"
-    call mci%integrator%write_grids (u)
+    if (mci%binary_grid_format) then
+       write (u, "(1X,2A)") "VAMP2 grids: binary file: ", &
+            char (mci%get_grid_filename (binary_grid_format = .true.))
+       close (u)
+       open (newunit = u, &
+            file = char (mci%get_grid_filename (binary_grid_format = .true.)), &
+            action = "write", &
+            access = "stream", &
+            form = "unformatted", &
+            status = "replace")
+       call mci%integrator%write_binary_grids (u)
+    else
+       write (u, "(1X,A)") "VAMP2 grids:"
+       call mci%integrator%write_grids (u)
+    end if
     close (u)
   end subroutine mci_vamp2_write_grids
 
   subroutine mci_vamp2_read_header (mci, success)
     class(mci_vamp2_t), intent(inout) :: mci
     logical, intent(out) :: success
-    logical :: exist
+    logical :: exist, binary_grid_format, exist_binary
     integer :: u
     success = .false.
-    if (.not. mci%integrator_filename_set) then
+    if (.not. mci%grid_filename_set) then
        call msg_bug ("VAMP2: read grids: filename undefined")
     end if
-    inquire (file = char (mci%integrator_filename), exist = exist)
-    if (exist) then
-       u = free_unit ()
-       open (u, file = char (mci%integrator_filename), &
-            action = "read", status = "old")
-       call mci%update (u, success)
-       close (u)
-       if (.not. success) then
-          write (msg_buffer, "(A,A,A)") &
-               "VAMP2: header: parameter mismatch, discarding grid file '", &
-               char (mci%integrator_filename), "'"
+    !! First, check for existence of the (usual) grid file.
+    inquire (file = char (mci%get_grid_filename ()), exist = exist)
+    if (.not. exist) return !! success = .false.
+    open (newunit = u, file = char (mci%get_grid_filename ()), &
+         action = "read", status = "old")
+    !! Second, check for existence of a (possible) binary grid file.
+    call mci%advance_to_data (u, binary_grid_format)
+    rewind (u) !! Rewind header file, after line search.
+    if (binary_grid_format) then
+       inquire (file = char (mci%get_grid_filename (binary_grid_format = .true.)), &
+            exist = exist)
+       if (.not. exist) then
+          write (msg_buffer, "(3A)") &
+               "VAMP2: header: binary grid file not found, discarding grid file '", &
+               char (mci%get_grid_filename ()), "'."
           call msg_message ()
+          return !! success = .false.
        end if
+    end if
+    !! The grid file (ending *.vg) exists and, if binary file is listed, it exists, too.
+    call mci%update (u, success)
+    close (u)
+    if (.not. success) then
+       write (msg_buffer, "(A,A,A)") &
+            "VAMP2: header: parameter mismatch, discarding pass from file '", &
+            char (mci%get_grid_filename ()), "'."
+       call msg_message ()
     end if
   end subroutine mci_vamp2_read_header
 
   subroutine mci_vamp2_read_data (mci)
     class(mci_vamp2_t), intent(inout) :: mci
     integer :: u
-    character(80) :: buffer
+    logical :: binary_grid_format
     if (mci%integrator_defined) then
        call msg_bug ("VAMP2: read grids: grids already defined")
     end if
-    u = free_unit ()
-    open (u, file = char (mci%integrator_filename), &
-         action = "read", status = "old")
-    do
-       read (u, "(A)")  buffer
-       if (trim (adjustl (buffer)) == "VAMP2 grids:")  exit
-    end do
-    call mci%integrator%read_grids (u)
-    close (u)
+    open (newunit = u, &
+         file = char (mci%get_grid_filename ()), &
+         action = "read", &
+         status = "old")
+    call mci%advance_to_data (u, binary_grid_format)
+    if (binary_grid_format) then
+       close (u)
+       write (msg_buffer, "(3A)") &
+            "VAMP2: Reading from binary grid file '", &
+            char (mci%get_grid_filename (binary_grid_format = .true.)), "'"
+       call msg_message ()
+       open (newunit = u, &
+            file = char (mci%get_grid_filename (binary_grid_format = .true.)), &
+            action = "read", &
+            access = "stream", &
+            form = "unformatted", &
+            status = "old")
+       call mci%integrator%read_binary_grids (u)
+    else
+       call mci%integrator%read_grids (u)
+    end if
     mci%integrator_defined = .true.
+    close (u)
   end subroutine mci_vamp2_read_data
 
-  subroutine mci_vamp2_read_grids (mci, success)
-    class(mci_vamp2_t), intent(inout) :: mci
-    logical, intent(out) :: success
-    logical :: exist
-    integer :: u
+  subroutine mci_vamp2_advance_to_data (mci, u, binary_grid_format)
+    class(mci_vamp2_t), intent(in) :: mci
+    integer, intent(in) :: u
+    logical, intent(out) :: binary_grid_format
     character(80) :: buffer
-    success = .false.
-    if (.not. mci%integrator_filename_set) then
-       call msg_bug ("VAMP2: read grids: filename undefined")
-    end if
-    if (mci%integrator_defined) then
-       call msg_bug ("VAMP2: read grids: grids already defined")
-    end if
-    inquire (file = char (mci%integrator_filename), exist = exist)
-    if (exist) then
-       u = free_unit ()
-       open (u, file = char (mci%integrator_filename), &
-            action = "read", status = "old")
-       call mci%update (u, success)
-       if (success) then
-          read (u, "(A)")  buffer
-          if (trim (adjustl (buffer)) /= "VAMP2 grids:") then
-             call msg_fatal ("VAMP2: reading grid file: &
-                  &corrupted grid data")
-          end if
-          call mci%integrator%read_grids (u)
-       else
-          write (msg_buffer, "(A,A,A)") &
-               "VAMP2: read grids: parameter mismatch, discarding grid file '", &
-               char (mci%integrator_filename), "'"
-          call msg_message ()
+    type(string_t) :: search_string_binary, search_string_ascii
+    search_string_binary = "VAMP2 grids: binary file: " // &
+         mci%get_grid_filename (binary_grid_format = .true.)
+    search_string_ascii = "VAMP2 grids:"
+    SEARCH: do
+       read (u, "(A)")  buffer
+       if (trim (adjustl (buffer)) == char (search_string_binary)) then
+          binary_grid_format = .true.
+          exit SEARCH
+       else if (trim (adjustl (buffer)) == char (search_string_ascii)) then
+          binary_grid_format = .false.
+          exit SEARCH
        end if
-       close (u)
-       mci%integrator_defined = success
-    end if
-  end subroutine mci_vamp2_read_grids
+    end do SEARCH
+  end subroutine mci_vamp2_advance_to_data
+
 @ %def mci_vamp2_write_grids
 @ %def mci_vamp2_read_header
 @ %def mci_vamp2_read_data
-@ %def mci_vamp2_read_grids
 @
 \subsubsection{Interface: VAMP2}
 \label{sec:interface-vamp2}
@@ -12481,20 +12518,23 @@ read from file.
       mci%it_complete = .false.
       from_file = .false.
       if (.not. mci%integrator_defined .or. mci%integrator_from_file) then
-         if (mci%integrator_filename_set .and. .not. mci%rebuild) then
+         if (mci%grid_filename_set .and. .not. mci%rebuild) then
             call mci%read_header (success)
             from_file = success
             if (.not. mci%integrator_defined .and. success) &
-                 & call mci%read_data ()
+               call mci%read_data ()
          end if
       end if
       if (from_file) then
          if (.not. mci%check_grid_file) &
               & call msg_warning ("Reading grid file: MD5 sum check disabled")
          call msg_message ("VAMP2: " &
-              // "using grids and results from file ’" &
-              // char (mci%integrator_filename) // "’")
+              // "Using grids and results from file ’" &
+              // char (mci%get_grid_filename ()) // "’.")
       else if (.not. mci%integrator_defined) then
+         call msg_message ("VAMP2: " &
+              // "Initialize new grids and write to file '" &
+              // char (mci%get_grid_filename ()) // "'.")
          call mci%init_integrator ()
       end if
       mci%integrator_from_file = from_file
@@ -12598,7 +12638,7 @@ Note: recording the efficiency is not supported yet.
             end if
          end if
          if (.not. mci%integrator_from_file &
-              .and. mci%integrator_filename_set) then
+              .and. mci%grid_filename_set) then
             <<MCI vamp2: mci vamp2 integrate: post sampling>> call mci%write_grids ()
          end if
          if (.not. current_pass%is_final_pass) then
@@ -12743,7 +12783,7 @@ Prepare simulation. We check the grids and reread them from file, if necessary.
   subroutine mci_vamp2_prepare_simulation (mci)
     class(mci_vamp2_t), intent(inout) :: mci
     logical :: success
-    if (.not. mci%integrator_filename_set) then
+    if (.not. mci%grid_filename_set) then
        call msg_bug ("VAMP2: preapre simulation: integrator filename not set.")
     end if
     call mci%read_header (success)
@@ -12751,7 +12791,7 @@ Prepare simulation. We check the grids and reread them from file, if necessary.
     if (.not. success) then
        call msg_fatal ("Simulate: " &
             // "reading integration grids from file ’" &
-            // char (mci%integrator_filename) // "’ failed")
+            // char (mci%get_grid_filename ()) // "’ failed")
     end if
     if (.not. mci%integrator_defined) then
        call mci%read_data ()
@@ -13409,7 +13449,7 @@ Construct an integrator and use it for a one-dimensional sampler.
     select type (mci)
     type is (mci_vamp2_t)
        call mci%set_config (config)
-       call mci%set_integrator_filename (filename)
+       call mci%set_grid_filename (filename)
     end select
 
     allocate (rng_stream_t :: rng)
@@ -13507,7 +13547,7 @@ Integrate with five iterations without grid adaptation.
     select type (mci)
     type is (mci_vamp2_t)
        call mci%set_config (config)
-       call mci%set_integrator_filename (filename)
+       call mci%set_grid_filename (filename)
     end select
 
     allocate (rng_stream_t :: rng)
@@ -13597,7 +13637,7 @@ Integrate with three iterations and in-between grid adaptations.
     filename = "mci_vamp2_3"
     select type (mci)
     type is (mci_vamp2_t)
-       call mci%set_integrator_filename (filename)
+       call mci%set_grid_filename (filename)
        call mci%set_config (config)
     end select
 
@@ -13702,7 +13742,7 @@ Allocate an integrator according to the variable [[$integration_method]].
     type(history_parameters_t) :: history_par
     type(mci_vamp2_config_t) :: mci_vamp2_config
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
-    logical :: dispatch_nlo
+    logical :: dispatch_nlo, binary_grid_format
     type(string_t) :: grid_path
     dispatch_nlo = .false.; if (present (is_nlo)) dispatch_nlo = is_nlo
     integration_method = &
@@ -13740,18 +13780,19 @@ Allocate an integrator according to the variable [[$integration_method]].
        type is (mci_vamp2_t)
           call mci%set_config (mci_vamp2_config)
           if (run_id /= "") then
-             call mci%set_integrator_filename (process_id, run_id)
+             call mci%set_grid_filename (process_id, run_id)
           else
-             call mci%set_integrator_filename (process_id)
+             call mci%set_grid_filename (process_id)
           end if
           grid_path = var_list%get_sval (var_str ("$integrate_workspace"))
           if (grid_path /= "") then
              call setup_grid_path (grid_path)
-             call mci%prepend_integrator_path (grid_path)
+             call mci%prepend_grid_path (grid_path)
           end if
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
           mci%verbose = verbose
+          mci%binary_grid_format = binary_grid_format
        end select
     case default
        call msg_fatal ("Integrator '" &
@@ -13854,6 +13895,14 @@ Allocate an integrator according to the variable [[$integration_method]].
          var_list%get_lval (var_str ("?rebuild_grids"))
     negative_weights = &
          var_list%get_lval (var_str ("?negative_weights")) .or. dispatch_nlo
+    select case (char (var_list%get_sval (var_str ("$vamp_grid_format"))))
+    case ("binary","Binary","BINARY")
+       binary_grid_format = .true.
+    case ("ascii","Ascii","ASCII")
+       binary_grid_format = .false.
+    case default
+       binary_grid_format = .false.
+    end select
   end subroutine unpack_options_vamp2
 
 @

@@ -273,6 +273,7 @@ $out_file = ""
 $integration_method = "vamp"
 $run_id = ""
 [undefined] $integrate_workspace = [unknown string]
+$vamp_grid_format = "ascii"
 $phs_method = "default"
 $phs_file = ""
 $obs_label = ""

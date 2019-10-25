@@ -1861,7 +1861,139 @@ the maximum weight, we update the maximum, accordingly.
   end subroutine vegas_read_grid
 
 @ %def vegas_read_grid
-@
+Read and write a grid from an unformatted file.
+<<vegas: vegas: TBP>>=
+  procedure :: write_binary_grid => vegas_write_binary_grid
+  procedure :: read_binary_grid => vegas_read_binary_grid
+<<vegas: procedures>>=
+  subroutine vegas_write_binary_grid (self, unit)
+    class(vegas_t), intent(in) :: self
+    integer, intent(in) :: unit
+    integer :: i, j
+    write (unit) self%config%n_dim
+    write (unit) self%config%n_bins_max
+    write (unit) self%config%alpha
+    write (unit) self%config%iterations
+    write (unit) self%config%mode
+    write (unit) self%config%calls_per_box
+    write (unit) self%config%n_calls
+    write (unit) self%config%n_calls_min
+    write (unit) self%config%n_boxes
+    write (unit) self%config%n_bins
+    write (unit) self%result%it_start
+    write (unit) self%result%it_num
+    write (unit) self%result%samples
+    write (unit) self%result%sum_int_wgtd
+    write (unit) self%result%sum_wgts
+    write (unit) self%result%sum_chi
+    write (unit) self%result%chi2
+    write (unit) self%result%efficiency
+    write (unit) self%result%efficiency_pos
+    write (unit) self%result%efficiency_neg
+    write (unit) self%result%max_abs_f
+    write (unit) self%result%max_abs_f_pos
+    write (unit) self%result%max_abs_f_neg
+    write (unit) self%result%result
+    write (unit) self%result%std
+    write (unit) self%hypercube_volume
+    write (unit) self%jacobian
+    do j = 1, self%config%n_dim
+       write (unit) j, self%grid%x_lower(j)
+    end do
+    do j = 1, self%config%n_dim
+       write (unit) j, self%grid%x_upper(j)
+    end do
+    do j = 1, self%config%n_dim
+       write (unit) j, self%grid%delta_x(j)
+    end do
+    write (unit) self%config%n_bins
+    do j = 1, self%config%n_dim
+       write (unit) j, self%bin(j)
+    end do
+    write (unit) self%config%n_boxes
+    do j = 1, self%config%n_dim
+       write (unit) j, self%box(j)
+    end do
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max
+          write (unit) i, j, self%d(i, j)
+       end do
+    end do
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max + 1
+          write (unit) i, j, self%grid%xi(i, j)
+       end do
+    end do
+  end subroutine vegas_write_binary_grid
+
+  subroutine vegas_read_binary_grid (self, unit)
+    class(vegas_t), intent(out) :: self
+    integer, intent(in) :: unit
+    integer :: i, j
+    integer :: ibuffer, jbuffer
+    read (unit) ibuffer
+    read (unit) jbuffer
+    select type(self)
+    type is (vegas_t)
+       self = vegas_t (n_dim = ibuffer, n_bins_max = jbuffer)
+    end select
+    read (unit) self%config%alpha
+    read (unit) self%config%iterations
+    read (unit) self%config%mode
+    read (unit) self%config%calls_per_box
+    read (unit) self%config%n_calls
+    read (unit) self%config%n_calls_min
+    read (unit) self%config%n_boxes
+    read (unit) self%config%n_bins
+    self%grid%n_bins = self%config%n_bins
+    read (unit) self%result%it_start
+    read (unit) self%result%it_num
+    read (unit) self%result%samples
+    read (unit) self%result%sum_int_wgtd
+    read (unit) self%result%sum_wgts
+    read (unit) self%result%sum_chi
+    read (unit) self%result%chi2
+    read (unit) self%result%efficiency
+    read (unit) self%result%efficiency_pos
+    read (unit) self%result%efficiency_neg
+    read (unit) self%result%max_abs_f
+    read (unit) self%result%max_abs_f_pos
+    read (unit) self%result%max_abs_f_neg
+    read (unit) self%result%result
+    read (unit) self%result%std
+    read (unit) self%hypercube_volume
+    read (unit) self%jacobian
+    do j = 1, self%config%n_dim
+       read (unit) jbuffer, self%grid%x_lower(j)
+    end do
+    do j = 1, self%config%n_dim
+       read (unit) jbuffer, self%grid%x_upper(j)
+    end do
+    do j = 1, self%config%n_dim
+       read (unit) jbuffer, self%grid%delta_x(j)
+    end do
+    read (unit) self%config%n_bins
+    do j = 1, self%config%n_dim
+       read (unit) jbuffer, self%bin(j)
+    end do
+    read (unit) self%config%n_boxes
+    do j = 1, self%config%n_dim
+       read (unit) jbuffer, self%box(j)
+    end do
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max
+          read (unit) ibuffer, jbuffer, self%d(i, j)
+       end do
+    end do
+    do j = 1, self%config%n_dim
+       do i = 1, self%config%n_bins_max + 1
+          read (unit) ibuffer, jbuffer, self%grid%xi(i, j)
+       end do
+    end do
+  end subroutine vegas_read_binary_grid
+
+@ %def vegas_write_binary_grid, vegas_read_binary_grid
+
 \section{Unit tests}
 \label{sec:unit-tests}
 
@@ -3000,13 +3132,13 @@ integer, parameter, public :: &
     integer, dimension(:), intent(in) :: perm, mode
     integer :: i
     if (dest < 1 .or. dest > eqv%n_channel)  call msg_bug &
-       ("[VAMP2] set_equivalences: destination channel out of range.")
+       ("VAMP2: set_equivalences: destination channel out of range.")
     if (src < 1 .or. src > eqv%n_channel)  call msg_bug &
-         ("[VAMP2] set_equivalences: source channel out of range.")
+         ("VAMP2: set_equivalences: source channel out of range.")
     if (size(perm) /= eqv%n_dim)  call msg_bug &
-         ("[VAMP2] set_equivalences: size(perm) does not match n_dim.")
+         ("VAMP2: set_equivalences: size(perm) does not match n_dim.")
     if (size(mode) /= eqv%n_dim)  call msg_bug &
-         ("[VAMP2] set_equivalences: size(mode) does not match n_dim.")
+         ("VAMP2: set_equivalences: size(mode) does not match n_dim.")
     eqv%eqv(i_eqv)%ch = dest
     eqv%eqv(i_eqv)%ch_src = src
     allocate (eqv%eqv(i_eqv)%perm (size (perm)))
@@ -3047,7 +3179,7 @@ integer, parameter, public :: &
             do i_eqv = lower, upper
                call self%eqv(i_eqv)%write ()
             end do
-            call msg_bug ("[VAMP2] vamp2_equivalences_freeze: &
+            call msg_bug ("VAMP2: vamp2_equivalences_freeze: &
                  &equivalence order is not correct.")
          end if
          self%symmetry(ch) = count (eqv(lower:upper)%ch_src == ch)
@@ -3055,7 +3187,7 @@ integer, parameter, public :: &
             do i_eqv = lower, upper
                call self%eqv(i_eqv)%write ()
             end do
-            call msg_bug ("[VAMP2] vamp2_equivalences_freeze: &
+            call msg_bug ("VAMP2: vamp2_equivalences_freeze: &
                  &permutation count is not correct.")
          end if
          self%multiplicity(ch) = n_eqv / self%symmetry(ch)
@@ -3251,9 +3383,9 @@ chained weights in [[vamp2_adapt_weights]].
     integer, intent(in) :: n_chains
     integer, dimension(:), intent(in) :: chain
     if (size (chain) /= self%config%n_channel) then
-       call msg_bug ("[VAMP2] set chain: size of chain array does not match n_channel.")
+       call msg_bug ("VAMP2: set chain: size of chain array does not match n_channel.")
     else
-       call msg_message ("[VAMP2] set chain: use chained weights.")
+       call msg_message ("VAMP2: set chain: use chained weights.")
     end if
     self%config%n_chains = n_chains
     self%chain = chain
@@ -3344,7 +3476,7 @@ chained weights in [[vamp2_adapt_weights]].
     class(vamp2_t), intent(in) :: self
     integer, intent(in) :: channel
     if (channel < 1 .or. channel > self%config%n_channel) &
-         call msg_bug ("[VAMP2] vamp2_get_grid: channel index < 1 or > n_channel.")
+         call msg_bug ("VAMP2: vamp2_get_grid: channel index < 1 or > n_channel.")
     grid = self%integrator(channel)%get_grid ()
   end function vamp2_get_grid
 
@@ -3417,7 +3549,7 @@ accordingly resized to fit the boundary condition of the partition of unity.
     real(default), dimension(:, :), allocatable :: d_src
     integer, dimension(:), allocatable :: mode, perm
     if (.not. self%equivalences%is_allocated ()) then
-       call msg_bug ("[VAMP2] vamp2_apply_equivalences: &
+       call msg_bug ("VAMP2: vamp2_apply_equivalences: &
             &cannot apply not-allocated equivalences.")
     end if
     allocate (d(self%config%n_bins_max, self%config%n_dim, &
@@ -3986,6 +4118,104 @@ to one and therefore the overall normalization cancels.
   end subroutine vamp2_read_grids
 
 @ %def vamp2_read_grids
+@ Read and write grids from an unformatted file.
+<<vamp2: vamp2: TBP>>=
+procedure :: write_binary_grids => vamp2_write_binary_grids
+procedure :: read_binary_grids => vamp2_read_binary_grids
+<<vamp2: procedures>>=
+  subroutine vamp2_write_binary_grids (self, unit)
+    class(vamp2_t), intent(in) :: self
+    integer, intent(in) :: unit
+    integer :: ch
+    write (unit)
+    write (unit) self%config%n_channel
+    write (unit) self%config%n_dim
+    write (unit) self%config%n_calls_min_per_channel
+    write (unit) self%config%n_calls_threshold
+    write (unit) self%config%n_chains
+    write (unit) self%config%stratified
+    write (unit) self%config%alpha
+    write (unit) self%config%beta
+    write (unit) self%config%n_bins_max
+    write (unit) self%config%iterations
+    write (unit) self%config%n_calls
+    write (unit) self%result%it_start
+    write (unit) self%result%it_num
+    write (unit) self%result%samples
+    write (unit) self%result%sum_int_wgtd
+    write (unit) self%result%sum_wgts
+    write (unit) self%result%sum_chi
+    write (unit) self%result%chi2
+    write (unit) self%result%efficiency
+    write (unit) self%result%efficiency_pos
+    write (unit) self%result%efficiency_neg
+    write (unit) self%result%max_abs_f
+    write (unit) self%result%max_abs_f_pos
+    write (unit) self%result%max_abs_f_neg
+    write (unit) self%result%result
+    write (unit) self%result%std
+    do ch = 1, self%config%n_channel
+       write (unit) ch, self%weight(ch)
+    end do
+    if (self%config%n_chains > 0) then
+       do ch = 1, self%config%n_channel
+          write (unit) ch, self%chain(ch)
+       end do
+    end if
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%write_binary_grid (unit)
+    end do
+  end subroutine vamp2_write_binary_grids
+
+  subroutine vamp2_read_binary_grids (self, unit)
+    class(vamp2_t), intent(out) :: self
+    integer, intent(in) :: unit
+    integer :: ch, ibuffer, jbuffer
+    read (unit)
+    read (unit) ibuffer
+    read (unit) jbuffer
+    select type (self)
+    type is (vamp2_t)
+       self = vamp2_t (n_channel = ibuffer, n_dim = jbuffer)
+    end select
+    read (unit) self%config%n_calls_min_per_channel
+    read (unit) self%config%n_calls_threshold
+    read (unit) self%config%n_chains
+    read (unit) self%config%stratified
+    read (unit) self%config%alpha
+    read (unit) self%config%beta
+    read (unit) self%config%n_bins_max
+    read (unit) self%config%iterations
+    read (unit) self%config%n_calls
+    read (unit) self%result%it_start
+    read (unit) self%result%it_num
+    read (unit) self%result%samples
+    read (unit) self%result%sum_int_wgtd
+    read (unit) self%result%sum_wgts
+    read (unit) self%result%sum_chi
+    read (unit) self%result%chi2
+    read (unit) self%result%efficiency
+    read (unit) self%result%efficiency_pos
+    read (unit) self%result%efficiency_neg
+    read (unit) self%result%max_abs_f
+    read (unit) self%result%max_abs_f_pos
+    read (unit) self%result%max_abs_f_neg
+    read (unit) self%result%result
+    read (unit) self%result%std
+    do ch = 1, self%config%n_channel
+       read (unit) ibuffer, self%weight(ch)
+    end do
+    if (self%config%n_chains > 0) then
+       do ch = 1, self%config%n_channel
+          read (unit) ibuffer, self%chain(ch)
+       end do
+    end if
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%read_binary_grid (unit)
+    end do
+  end subroutine vamp2_read_binary_grids
+
+@ %def vamp2_write_binary_grids, vamp2_read_binary_grids
 @
 \section{Unit tests}
 \label{sec:unit-tests}

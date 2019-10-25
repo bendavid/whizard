@@ -36,6 +36,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
+| VAMP2: Initialize new grids and write to file 'testproc_12_p1.m1.vg2'.
    1        800  7.7464622E+03  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1        800  7.7464622E+03  0.00E+00    0.00    0.00  100.00
@@ -67,7 +68,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP2: using grids and results from file ’testproc_12_p1.m1.vg2’
+| VAMP2: Using grids and results from file ’testproc_12_p1.m1.vg2’.
    1        800  7.7464622E+03  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1        800  7.7464622E+03  0.00E+00    0.00    0.00  100.00
@@ -99,7 +100,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP2: header: parameter mismatch, discarding grid file 'testproc_12_p1.m1.vg2'
+| VAMP2: header: parameter mismatch, discarding pass from file 'testproc_12_p1.m1.vg2'.
+| VAMP2: Initialize new grids and write to file 'testproc_12_p1.m1.vg2'.
    1        800  3.0985849E+04  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1        800  3.0985849E+04  0.00E+00    0.00    0.00  100.00
@@ -133,7 +135,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP2: header: parameter mismatch, discarding grid file 'testproc_12_p1.m1.vg2'
+| VAMP2: header: parameter mismatch, discarding pass from file 'testproc_12_p1.m1.vg2'.
+| VAMP2: Initialize new grids and write to file 'testproc_12_p1.m1.vg2'.
    1        800  3.0985849E+04  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1        800  3.0985849E+04  0.00E+00    0.00    0.00  100.00

@@ -50,7 +50,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| [VAMP2] set chain: use chained weights.
+| VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
+| VAMP2: set chain: use chained weights.
    1        800  8.6990044E+01  7.71E-02    0.09    0.03*  66.87
    2        800  8.6806923E+01  6.12E-02    0.07    0.02*  49.30
    3        800  8.6830909E+01  6.08E-02    0.07    0.02*  66.03
@@ -107,7 +108,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| [VAMP2] set chain: use chained weights.
+| VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
+| VAMP2: set chain: use chained weights.
    1        800  8.6787815E+01  1.63E-01    0.19    0.05*  33.31
    2        800  8.7189309E+01  1.36E-01    0.16    0.04*  70.58
    3        800  8.6997292E+01  1.34E-01    0.15    0.04*  42.41
@@ -168,7 +170,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| [VAMP2] set chain: use chained weights.
+| VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
+| VAMP2: set chain: use chained weights.
    1        800 -8.6707576E+01  1.62E-01    0.19    0.05*  33.99
    2        800 -8.6712716E+01  1.29E-01    0.15    0.04*  72.70
    3        800 -8.6793578E+01  1.22E-01    0.14    0.04*  52.78
@@ -226,7 +229,8 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| [VAMP2] set chain: use chained weights.
+| VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
+| VAMP2: set chain: use chained weights.
    1        800 -4.3608894E+01  1.58E-01    0.36    0.10*  29.56
    2        800 -4.3545396E+01  1.44E-01    0.33    0.09*  62.37
    3        800 -4.3426646E+01  1.39E-01    0.32    0.09*  36.98

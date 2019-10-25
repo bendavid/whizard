@@ -300,6 +300,7 @@ integration_results_verbosity = 1
 error_threshold =  0.000000000000E+00
 channel_weights_power =  2.500000000000E-01
 [undefined] $integrate_workspace = [unknown string]
+$vamp_grid_format = "ascii"
 $phs_method = "wood"
 ?vis_channels = false
 ?check_phs_file = true

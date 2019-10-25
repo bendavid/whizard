@@ -4174,6 +4174,17 @@ procedure with type [[V_NONE]].
           'searches for them in the ' // &
           'current directory.  (cf. also  \ttt{\$job\_id}, ' // &
           '\ttt{\$run\_id}, \ttt{\$compile\_workspace})'))
+    call var_list%append_string (var_str ("$vamp_grid_format"), var_str ("ascii"), &
+         intrinsic=.true., &
+         description=var_str ('Character string that tells \whizard\ ' // &
+         'the file format for \ttt{vamp2} to use for writing and reading ' // &
+         'the configuration for the multi-channel integration setup and the ' // &
+         '\vamptwo\ (only) grid data. The values can be \ttt{ascii} for a single ' // &
+         'human-readable grid file with ending \ttt{.vg2} or \ttt{binary} for two files, ' // &
+         'a human-readable header file with ending \ttt{.vg2} and binary file with ending ' // &
+         '\ttt{.vgx2} storing the grid data.' // &
+         'The main purpose of the binary format is to perform faster I/O, e.g. for HPC runs.' // &
+         '\whizard\ can convert between the different file formats automatically.'))
   end subroutine var_list_set_integration_defaults
 
 @ %def var_list_set_integration_defaults
