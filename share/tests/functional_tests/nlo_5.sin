@@ -2,7 +2,7 @@
 !!! flavors in the final-state.
 
 model = SM ("GF_MW_MZ")
-$blha_ew_scheme = "alpha_qed"
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false

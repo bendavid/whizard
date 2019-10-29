@@ -1,7 +1,8 @@
 # SINDARIN input for WHIZARD self-test
 # Testing integration of non-polarized OpenLoops matrix elements.
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -20,8 +21,6 @@ mb = 4.2 GeV
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 process openloops_1_p1 = E1, e1 => b, B { nlo_calculation = virtual }
 
 seed = 2222

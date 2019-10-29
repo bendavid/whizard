@@ -2856,11 +2856,12 @@ implementation can fail due to missing helicity initialization.
   procedure :: compute_sqme_virt => prc_recola_compute_sqme_virt
 <<prc recola: procedures>>=
   subroutine prc_recola_compute_sqme_virt (object, i_flv, i_hel,  &
-          p, ren_scale, sqme, bad_point)
+          p, ren_scale, es_scale, loop_method, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: ren_scale
+    real(default), intent(in) :: ren_scale, es_scale
+    integer, intent(in) :: loop_method
     real(default), dimension(4), intent(out) :: sqme
     real(default) :: amp
     logical, intent(out) :: bad_point

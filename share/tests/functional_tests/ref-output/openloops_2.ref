@@ -9,7 +9,6 @@ SM.wtop =>  0.00000E+00
 ?use_vamp_equivalences = false
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
-?openloops_use_collier = false
 | Process library 'openloops_2_lib': recorded process 'openloops_2_p1'
 sqrts =  5.00000E+02
 $virtual_selection = "OLP"

@@ -2,7 +2,8 @@
 # Testing the integration of NLO QCD corrections
 # to Drell-Yan constrained to the dglap remnant component.
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 mW = 80.376
 mZ = 91.1876
@@ -34,8 +35,6 @@ alias pr = u:d:U:D
 
 cuts = all M > 20 GeV [e1, E1]
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 $dglap_me_method = "openloops"
 
 !!! Tests should be run single-threaded

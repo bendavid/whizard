@@ -5859,12 +5859,14 @@ procedure with type [[V_NONE]].
          'Note that having different values for $y_t$ and $m_t$ must be ' // &
          'supported by your OLP-library and yield errors if this is not the case.'))
     call var_list%append_string (var_str ("$blha_ew_scheme"), &
-         var_str ("alpha_qed"), intrinsic = .true., &
+         var_str ("alpha_internal"), intrinsic = .true., &
          description=var_str ('String variable that transfers the electroweak ' // &
          'renormalization scheme via BLHA to the one-loop provider. Possible ' // &
          'values are \ttt{GF} or \ttt{Gmu} for the $G_\mu$ scheme, ' // &
-         '\ttt{alpha\_qed}, \ttt{alpha\_mz} and \ttt{alpha\_0} or ' // &
-         '\ttt{alpha\_thompson} for different schemes with $\alpha$ as input.'))
+         '\ttt{alpha\_internal} (default, $G_\mu$ scheme, but value of ' // &
+         '$\alpha_S$ calculated internally by \whizard), \ttt{alpha\_mz} ' // &
+         'and \ttt{alpha\_0} (or \ttt{alpha\_thompson}) for different schemes ' // &
+         'with $\alpha$ as input.'))
     call var_list%append_int (var_str ("openloops_verbosity"), 1, &
          intrinsic = .true., &
          description=var_str ('Decides how much \openloops\ output is printed. ' // &
@@ -5901,21 +5903,23 @@ procedure with type [[V_NONE]].
          '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &
          '\ttt{\$openloops\_extra\_cmd})'))
     call var_list%append_string (var_str ("$openloops_extra_cmd"), &
-          var_str (""), intrinsic = .true., &
-          description=var_str ('String variable to transfer customized ' // &
-          'special commands to \openloops. The three supported examples ' // &
-          '\ttt{\$openloops\_extra\_command = "extra approx top/stop/not"} ' // &
-          'are for selection of subdiagrams in top production. (cf. also ' // &
-          '\ttt{\$method}, \ttt{openloos\_verbosity}, ' // &
-          '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &
-          '\ttt{?openloops\_switch\_off\_muon\_yukawa})'))
-    call var_list%append_log (var_str ("?openloops_use_collier"), &
-         .true., intrinsic = .true., &
-         description=var_str ('Use \collier\ as the reduction method of ' // &
-         '\openloops. Otherwise, \ttt{CutTools} will be used. (cf. also ' // &
-          '\ttt{\$method}, \ttt{openloos\_verbosity}, ' // &
-          '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &
-          '\ttt{?openloops\_switch\_off\_muon\_yukawa})'))
+         var_str (""), intrinsic = .true., &
+         description=var_str ('String variable to transfer customized ' // &
+         'special commands to \openloops. The three supported examples ' // &
+         '\ttt{\$openloops\_extra\_command = "extra approx top/stop/not"} ' // &
+         'are for selection of subdiagrams in top production. (cf. also ' // &
+         '\ttt{\$method}, \ttt{openloos\_verbosity}, ' // &
+         '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &
+         '\ttt{?openloops\_switch\_off\_muon\_yukawa})'))
+    call var_list%append_real (var_str ("ellis_sexton_scale"), &
+         -1._default, intrinsic = .true., &
+         description = var_str ('Real positive paramter for the Ellis-Sexton scale' // &
+         '$\mathcal{Q}$ used both in the finite one-loop contribution provided by' // &
+         'the OLP and in the virtual counter terms. The NLO cross section is' // &
+         'independend of $\mathcal{Q}$. Therefore, this allows for debugging of' // &
+         'the implemention of the virtual counter terms. As the default' // &
+         '$\mathcal{Q} = \mu_{\rm{R}}$ is chosen. So far, setting this parameter' // &
+         'only works for OpenLoops2, otherwise the default behaviour is invoked.'))
     call var_list%append_log (var_str ("?disable_subtraction"), &
          .false., intrinsic = .true., &
          description=var_str ('Disables the subtraction of soft and collinear ' // &
@@ -5950,26 +5954,27 @@ procedure with type [[V_NONE]].
          '\ttt{true}, generates \LaTeX\ code and executes it into a PDF ' // &
          ' to produce a table of all singular FKS regions and their ' // &
          ' flavor structures. The default is \ttt{false}.'))
-   call var_list%append_real (var_str ("fks_xi_cut"), &
-        1.0_default, intrinsic = .true., &
-        description = var_str ('Real paramter for the FKS ' // &
-        'phase space that applies a cut to $\xi$ variable with $0 < \xi_{\text{cut}}' // &
-        '\leq \xi_{\text{max}}$. The dependence on the parameter vanishes between ' // &
-        'real subtraction and integrated subtraction term.'))
-   call var_list%append_real (var_str ("fks_delta_o"), &
-        2._default, intrinsic = .true., &
-        description = var_str ('Real paramter for the FKS ' // &
-        'phase space that applies a cut to the $y$ variable with $0 < \delta_o \leq 2$. ' // &
-        'The dependence on the parameter vanishes between real subtraction and integrated ' // &
-        'subtraction term.'))
-   call var_list%append_real (var_str ("fks_delta_i"), &
-        2._default, intrinsic = .true., &
-        description = var_str ('Real paramter for the FKS ' // &
-        'phase space that applies a cut to the $y$ variable with $0 < \delta_{\mathrm{I}} \leq 2$ '// &
-        'for initial state singularities only. ' // &
-        'The dependence on the parameter vanishes between real subtraction and integrated ' // &
-        'subtraction term.'))
-   call var_list%append_string (var_str ("$fks_mapping_type"), &
+    call var_list%append_real (var_str ("fks_xi_cut"), &
+         1.0_default, intrinsic = .true., &
+         description = var_str ('Real paramter for the FKS ' // &
+         'phase space that applies a cut to $\xi$ variable with $0 < \xi_{\text{cut}}' // &
+         '\leq \xi_{\text{max}}$. The dependence on the parameter vanishes between ' // &
+         'real subtraction and integrated subtraction term.'))
+    call var_list%append_real (var_str ("fks_delta_o"), &
+         2._default, intrinsic = .true., &
+         description = var_str ('Real paramter for the FKS ' // &
+         'phase space that applies a cut to the $y$ variable with $0 < \delta_o \leq 2$. ' // &
+         'The dependence on the parameter vanishes between real subtraction and integrated ' // &
+         'subtraction term.'))
+    call var_list%append_real (var_str ("fks_delta_i"), &
+         2._default, intrinsic = .true., &
+         description = var_str ('Real paramter for the FKS ' // &
+         'phase space that applies a cut to the $y$ variable with ' // &
+         '$0 < \delta_{\mathrm{I}} \leq 2$ '// &
+         'for initial state singularities only. ' // &
+         'The dependence on the parameter vanishes between real subtraction and integrated ' // &
+         'subtraction term.'))
+    call var_list%append_string (var_str ("$fks_mapping_type"), &
          var_str ("default"), intrinsic = .true., &
          description=var_str ('Sets the FKS mapping type. Possible values ' // &
          'are \ttt{"default"} and \ttt{"resonances"}. The latter option ' // &
@@ -6123,23 +6128,23 @@ procedure with type [[V_NONE]].
          'shall be discarded for that phase space point as well or not. ' // &
          '(cf. also \ttt{?nlo\_use\_born\_scale})'))
     call var_list%append_log (var_str ("?nlo_use_real_partition"), &
-          .false., intrinsic = .true., &
-          description=var_str (' If set to \ttt{true}, the real matrix ' // &
-          'element is split into a finite and a singular part using a ' // &
-          'partition function $f$, such that $\mathcal{R} ' // &
-          '= [1-f(p_T^2)]\mathcal{R} + f(p_T^2)\mathcal{R} = ' // &
-          '\mathcal{R}_{\text{fin}} ' // &
-          '+ \mathcal{R}_{\text{sing}}$. The emission ' // &
-          'generation is then performed using $\mathcal{R}_{\text{sing}}$, ' // &
-          'whereas $\mathcal{R}_{\text{fin}}$ is treated separately. ' // &
-          '(cf. also \ttt{real\_partition\_scale})'))
+         .false., intrinsic = .true., &
+         description=var_str (' If set to \ttt{true}, the real matrix ' // &
+         'element is split into a finite and a singular part using a ' // &
+         'partition function $f$, such that $\mathcal{R} ' // &
+         '= [1-f(p_T^2)]\mathcal{R} + f(p_T^2)\mathcal{R} = ' // &
+         '\mathcal{R}_{\text{fin}} ' // &
+         '+ \mathcal{R}_{\text{sing}}$. The emission ' // &
+         'generation is then performed using $\mathcal{R}_{\text{sing}}$, ' // &
+         'whereas $\mathcal{R}_{\text{fin}}$ is treated separately. ' // &
+         '(cf. also \ttt{real\_partition\_scale})'))
     call var_list%append_real (var_str ("real_partition_scale"), &
-          10._default, intrinsic = .true., &
-          description=var_str ('This real variable sets the invariant mass ' // &
-          'of the FKS pair used as a separator between the singular and the ' // &
-          'finite part of the real subtraction terms in an NLO calculation, ' // &
-          'e.g. in $e^+e^- \to ' // &
-          't\bar tj$. (cf. also \ttt{?nlo\_use\_real\_partition})'))
+         10._default, intrinsic = .true., &
+         description=var_str ('This real variable sets the invariant mass ' // &
+         'of the FKS pair used as a separator between the singular and the ' // &
+         'finite part of the real subtraction terms in an NLO calculation, ' // &
+         'e.g. in $e^+e^- \to ' // &
+         't\bar tj$. (cf. also \ttt{?nlo\_use\_real\_partition})'))
   end subroutine var_list_set_nlo_defaults
 
 @ %def var_list_set_nlo_defaults

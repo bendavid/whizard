@@ -5,7 +5,6 @@
 alpha_power = 2
 alphas_power = 0
 [user variable] jet = PDG(2, 1, -2, -1)
-?openloops_use_collier = false
 ?openloops_use_cms = false
 $method = "openloops"
 openmp_num_threads = 1

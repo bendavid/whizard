@@ -3,7 +3,8 @@
 # Testing only standard components, i.e. Born, Real and Virtual
 # No Mismatch or Dglap
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -19,8 +20,6 @@ openmp_num_threads = 1
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 
 seed = 2222
 sqrts = 500 GeV

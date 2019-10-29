@@ -439,7 +439,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call driver%blha_olp_set_parameter &
        (c_char_'alpha'//c_null_char, &
         dble (alpha), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('alpha'))
+    if (ierr == 0) call ew_parameter_error_message (var_str ('alpha'))
   end subroutine gosam_driver_set_alpha_qed
 
 @ %def gosam_driver_set_alpha_qed
@@ -454,7 +454,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call driver%blha_olp_set_parameter &
        (c_char_'GF'//c_null_char, &
         dble(GF), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('GF'))
+    if (ierr == 0) call ew_parameter_error_message (var_str ('GF'))
   end subroutine gosam_driver_set_GF
 
 @ %def gosam_driver_set_GF
@@ -469,7 +469,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call driver%blha_olp_set_parameter &
        (c_char_'sw2'//c_null_char, &
         dble(sw2), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('sw2'))
+    if (ierr == 0) call ew_parameter_error_message (var_str ('sw2'))
   end subroutine gosam_driver_set_weinberg_angle
 
 @ %def gosam_driver_set_weinberg_angle

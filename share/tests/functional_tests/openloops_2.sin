@@ -2,7 +2,8 @@
 # Testing the integration of the pure virtual-subtracted matrix element
 # using beam polarization.
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -26,8 +27,6 @@ wtop = 0.0
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 process openloops_2_p1 = e1, E1 => t, T { nlo_calculation = virtual }
 
 sqrts = 500 GeV

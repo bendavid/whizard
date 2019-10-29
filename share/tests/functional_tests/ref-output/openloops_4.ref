@@ -3,7 +3,6 @@
 ?integration_timer = false
 ?pacify = true
 openmp_num_threads = 1
-?openloops_use_collier = false
 ?openloops_use_cms = false
 SM.mW =>  7.00000E+01
 SM.mZ =>  9.00000E+01

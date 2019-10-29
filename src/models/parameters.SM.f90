@@ -218,12 +218,12 @@ contains
     end select
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
-    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    
+    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
     real(default), intent(in) :: alpha_s
     gs = sqrt(2.0_default*PI*alpha_s)
-    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs     
+    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
   end subroutine model_update_alpha_s
 end module parameters_sm

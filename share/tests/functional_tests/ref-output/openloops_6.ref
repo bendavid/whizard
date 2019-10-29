@@ -12,7 +12,6 @@ alpha_power = 1
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 error_threshold =  1.00000E-08
-?openloops_use_collier = false
 seed = 1111
 | Process library 'openloops_6_lib': recorded process 'openloops_6_p0'
 | Integrate: current process library needs compilation

@@ -95,6 +95,7 @@ end module blha_olp_interfaces
     logical :: use_internal_color_correlations = .true.
     real(default) :: external_top_yukawa = -1._default
     integer :: ew_scheme
+    integer :: loop_method = BLHA_MODE_GENERIC
   contains
   <<BLHA OLP interfaces: blha template: TBP>>
   end type blha_template_t
@@ -110,13 +111,13 @@ end module blha_olp_interfaces
     integer :: u
     u = given_output_unit (unit)
     write (u,"(A,4(L1))") "Compute components: ", &
-       blha_template%compute_component
+         blha_template%compute_component
     write (u,"(A,L1)") "Include polarizations: ", &
-       blha_template%include_polarizations
+         blha_template%include_polarizations
     write (u,"(A,L1)") "Switch off muon yukawas: ", &
-       blha_template%switch_off_muon_yukawas
+         blha_template%switch_off_muon_yukawas
     write (u,"(A,L1)") "Use internal color correlations: ", &
-       blha_template%use_internal_color_correlations
+         blha_template%use_internal_color_correlations
   end subroutine blha_template_write
 
 @ %def blha_template_write
@@ -141,13 +142,15 @@ yields the [[n_hel]] value as required below.
        end do
     end if
   end function blha_template_get_n_hel
-  
+
 @ %def blha_template_get_n_hel
 @
 <<BLHA OLP interfaces: parameters>>=
-  integer, parameter :: I_ALPHA = 1
+  integer, parameter :: I_ALPHA_0 = 1
   integer, parameter :: I_GF = 2
-  integer, parameter :: I_SW2 = 3
+  integer, parameter :: I_ALPHA_MZ = 3
+  integer, parameter :: I_ALPHA_INTERNAL = 4
+  integer, parameter :: I_SW2 = 5
 
 <<BLHA OLP interfaces: public>>=
   public :: prc_blha_t
@@ -159,7 +162,7 @@ yields the [[n_hel]] value as required below.
     integer, dimension(:, :), allocatable :: i_tree, i_spin_c, i_color_c
     integer, dimension(:, :), allocatable :: i_virt
     integer, dimension(:, :), allocatable :: i_hel
-    logical, dimension(3) :: ew_parameter_mask
+    logical, dimension(5) :: ew_parameter_mask
     integer :: sqme_tree_pos
   contains
   <<BLHA OLP interfaces: prc blha: TBP>>
@@ -175,9 +178,9 @@ Obviously, this process-core type uses the BLHA interface.
     logical :: flag
     flag = .true.
   end function prc_blha_uses_blha
-  
+
 @ %def prc_blha_uses_blha
-@ 
+@
 <<BLHA OLP interfaces: public>>=
   public :: blha_driver_t
 <<BLHA OLP interfaces: types>>=
@@ -188,23 +191,23 @@ Obviously, this process-core type uses the BLHA interface.
     logical :: switch_off_muon_yukawas = .false.
     real(default) :: external_top_yukawa = -1.0
     procedure(olp_start),nopass,  pointer :: &
-              blha_olp_start => null ()
+         blha_olp_start => null ()
     procedure(olp_eval), nopass, pointer :: &
-              blha_olp_eval => null()
+         blha_olp_eval => null()
     procedure(olp_info), nopass, pointer :: &
-              blha_olp_info => null ()
+         blha_olp_info => null ()
     procedure(olp_set_parameter), nopass, pointer :: &
-              blha_olp_set_parameter => null ()
+         blha_olp_set_parameter => null ()
     procedure(olp_eval2), nopass, pointer :: &
-              blha_olp_eval2 => null ()
+         blha_olp_eval2 => null ()
     procedure(olp_option), nopass, pointer :: &
-              blha_olp_option => null ()
+         blha_olp_option => null ()
     procedure(olp_polvec), nopass, pointer :: &
-              blha_olp_polvec => null ()
+         blha_olp_polvec => null ()
     procedure(olp_finalize), nopass, pointer :: &
-              blha_olp_finalize => null ()
+         blha_olp_finalize => null ()
     procedure(olp_print_parameter), nopass, pointer :: &
-              blha_olp_print_parameter => null ()
+         blha_olp_print_parameter => null ()
   contains
   <<BLHA OLP interfaces: blha driver: TBP>>
   end type blha_driver_t
@@ -276,7 +279,7 @@ Obviously, this process-core type uses the BLHA interface.
 <<BLHA OLP interfaces: interfaces>>=
   interface
     subroutine olp_eval (label, momenta, mu, parameters, res) &
-         bind (C, name = "OLP_EvalSubProcess")
+           bind (C, name = "OLP_EvalSubProcess")
       import
       integer(kind = c_int), value, intent(in) :: label
       real(kind = c_double), value, intent(in) :: mu
@@ -309,7 +312,7 @@ Obviously, this process-core type uses the BLHA interface.
 <<BLHA OLP interfaces: interfaces>>=
   interface
     subroutine olp_set_parameter &
-         (variable_name, real_part, complex_part, success) bind(C)
+           (variable_name, real_part, complex_part, success) bind(C)
       import
       character(kind = c_char,len = 1), intent(in) :: variable_name
       real(kind = c_double), intent(in) :: real_part, complex_part
@@ -417,7 +420,7 @@ Obviously, this process-core type uses the BLHA interface.
 
     n = size (p)
     if (n > 10) call msg_fatal ("Number of external particles exceeds" &
-           // "size of BLHA-internal momentum array")
+         // "size of BLHA-internal momentum array")
 
     mom = zero
     k = 1
@@ -434,7 +437,7 @@ Obviously, this process-core type uses the BLHA interface.
   procedure :: init => blha_template_init
 <<BLHA OLP interfaces: procedures>>=
   subroutine blha_template_init (template, requires_polarizations, &
-       switch_off_muon_yukawas, external_top_yukawa, ew_scheme)
+         switch_off_muon_yukawas, external_top_yukawa, ew_scheme)
     class(blha_template_t), intent(inout) :: template
     logical, intent(in) :: requires_polarizations, switch_off_muon_yukawas
     real(default), intent(in) :: external_top_yukawa
@@ -484,7 +487,7 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha template: TBP>>=
   procedure :: set_internal_color_correlations &
-     => blha_template_set_internal_color_correlations
+       => blha_template_set_internal_color_correlations
 <<BLHA OLP interfaces: procedures>>=
   subroutine blha_template_set_internal_color_correlations (template)
     class(blha_template_t), intent(inout) :: template
@@ -495,10 +498,10 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha template: TBP>>=
   procedure :: get_internal_color_correlations &
-     => blha_template_get_internal_color_correlations
+       => blha_template_get_internal_color_correlations
 <<BLHA OLP interfaces: procedures>>=
   pure function blha_template_get_internal_color_correlations (template) &
-     result (val)
+         result (val)
     logical :: val
     class(blha_template_t), intent(in) :: template
     val = template%use_internal_color_correlations
@@ -544,6 +547,16 @@ Obviously, this process-core type uses the BLHA interface.
   end function blha_template_compute_dglap
 
 @ %def blha_template_compute
+@
+<<BLHA OLP interfaces: blha template: TBP>>=
+  procedure :: set_loop_method => blha_template_set_loop_method
+<<BLHA OLP interfaces: procedures>>=
+  subroutine blha_template_set_loop_method (template, master)
+    class(blha_template_t), intent(inout) :: template
+    class(blha_master_t), intent(in) :: master
+    template%loop_method = master%blha_mode(1)
+  end subroutine blha_template_set_loop_method
+@ %def blha_template_set_loop_method
 @
 <<BLHA OLP interfaces: blha template: TBP>>=
   procedure :: check => blha_template_check
@@ -601,7 +614,7 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
   procedure(blha_driver_set_GF), deferred :: &
-     set_GF
+       set_GF
 <<BLHA OLP interfaces: interfaces>>=
   abstract interface
     subroutine blha_driver_set_GF (driver, GF)
@@ -615,7 +628,7 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
   procedure(blha_driver_set_alpha_s), deferred :: &
-     set_alpha_s
+       set_alpha_s
 <<BLHA OLP interfaces: interfaces>>=
   abstract interface
     subroutine blha_driver_set_alpha_s (driver, alpha_s)
@@ -629,7 +642,7 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
   procedure(blha_driver_set_weinberg_angle), deferred :: &
-     set_weinberg_angle
+       set_weinberg_angle
 <<BLHA OLP interfaces: interfaces>>=
   abstract interface
     subroutine blha_driver_set_weinberg_angle (driver, sw2)
@@ -656,7 +669,7 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
   procedure(blha_driver_print_alpha_s), deferred :: &
-     print_alpha_s
+       print_alpha_s
 <<BLHA OLP interfaces: interfaces>>=
   abstract interface
     subroutine blha_driver_print_alpha_s (object)
@@ -670,17 +683,30 @@ Obviously, this process-core type uses the BLHA interface.
 <<BLHA OLP interfaces: public>>=
   public :: parameter_error_message
 <<BLHA OLP interfaces: procedures>>=
-  subroutine parameter_error_message (par)
-     type(string_t), intent(in) :: par
+  subroutine parameter_error_message (par, subr)
+     type(string_t), intent(in) :: par, subr
      type(string_t) :: message
      message = "Setting of parameter " // par &
-        // "failed. This happens because the chosen " &
-        // "EWScheme in the BLHA file does not fit " &
-        // "your parameter choice"
+          // "failed in " // subr // "!"
      call msg_fatal (char (message))
   end subroutine parameter_error_message
 
 @ %def parameter_error_message
+@
+<<BLHA OLP interfaces: public>>=
+  public :: ew_parameter_error_message
+<<BLHA OLP interfaces: procedures>>=
+  subroutine ew_parameter_error_message (par)
+     type(string_t), intent(in) :: par
+     type(string_t) :: message
+     message = "Setting of parameter " // par &
+          // "failed. This happens because the chosen " &
+          // "EWScheme in the BLHA file does not fit " &
+          // "your parameter choice"
+     call msg_fatal (char (message))
+  end subroutine ew_parameter_error_message
+
+@ %def ew_parameter_error_message
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
   procedure :: set_mass_and_width => blha_driver_set_mass_and_width
@@ -698,10 +724,10 @@ Obviously, this process-core type uses the BLHA interface.
        buf = 'mass(' // str (abs(i_pdg)) // ')'
        c_string = char(buf) // c_null_char
        call driver%blha_olp_set_parameter &
-                (c_string, dble(mass), 0._double, ierr)
+            (c_string, dble(mass), 0._double, ierr)
        if (ierr == 0) then
           buf = "BLHA driver: Attempt to set mass of particle " // &
-                str (abs(i_pdg)) // "failed"
+               str (abs(i_pdg)) // "failed"
           call msg_fatal (char(buf))
        end if
     end if
@@ -709,10 +735,10 @@ Obviously, this process-core type uses the BLHA interface.
        buf = 'width(' // str (abs(i_pdg)) // ')'
        c_string = char(buf)//c_null_char
        call driver%blha_olp_set_parameter &
-                (c_string, dble(width), 0._double, ierr)
+            (c_string, dble(width), 0._double, ierr)
        if (ierr == 0) then
           buf = "BLHA driver: Attempt to set width of particle " // &
-                str (abs(i_pdg)) // "failed"
+               str (abs(i_pdg)) // "failed"
           call msg_fatal (char(buf))
        end if
     end if
@@ -722,11 +748,11 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
   procedure(blha_driver_init_dlaccess_to_library), deferred :: &
-    init_dlaccess_to_library
+       init_dlaccess_to_library
 <<BLHA OLP interfaces: interfaces>>=
   abstract interface
     subroutine blha_driver_init_dlaccess_to_library &
-       (object, os_data, dlaccess, success)
+           (object, os_data, dlaccess, success)
       import
       class(blha_driver_t), intent(in) :: object
       type(os_data_t), intent(in) :: os_data
@@ -794,7 +820,7 @@ Obviously, this process-core type uses the BLHA interface.
       subroutine check_for_error (function_name)
         type(string_t), intent(in) :: function_name
         if (dlaccess_has_error (dlaccess)) &
-           call msg_fatal (char ("Loading of " // function_name // " failed!"))
+             call msg_fatal (char ("Loading of " // function_name // " failed!"))
      end subroutine check_for_error
   end subroutine blha_driver_load
 
@@ -807,7 +833,7 @@ Obviously, this process-core type uses the BLHA interface.
   procedure :: read_contract_file => blha_driver_read_contract_file
 <<BLHA OLP interfaces: procedures>>=
   subroutine blha_driver_read_contract_file (driver, flavors, &
-       amp_type, flv_index, hel_index, label, helicities)
+         amp_type, flv_index, hel_index, label, helicities)
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in), dimension(:,:) :: flavors
     integer, intent(out), dimension(:), allocatable :: amp_type, &
@@ -826,7 +852,7 @@ Obviously, this process-core type uses the BLHA interface.
     integer, parameter :: list_incr = 50
     integer :: n_found
     allocate (amp_type (N_MAX_FLAVORS), flv_index (N_MAX_FLAVORS), &
-           hel_index (N_MAX_FLAVORS), label (N_MAX_FLAVORS))
+         hel_index (N_MAX_FLAVORS), label (N_MAX_FLAVORS))
     amp_type = -1; flv_index = -1; hel_index = -1; label = -1
     helicities = 0
     n_in = size (helicities, dim = 2)
@@ -902,16 +928,16 @@ Obviously, this process-core type uses the BLHA interface.
     if (n_found == 0) then
        call msg_fatal ("The desired process has not been found ",  &
             [var_str ("by the OLP-Provider. Maybe the value of alpha_power "), &
-             var_str ("or alphas_power does not correspond to the process. "), &
-             var_str ("If you are using OpenLoops, you can set the option "), &
-             var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
-             var_str ("more information")])
+            var_str ("or alphas_power does not correspond to the process. "), &
+            var_str ("If you are using OpenLoops, you can set the option "), &
+            var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
+            var_str ("more information")])
     else if (give_warning) then
        call msg_warning ("Some processes have not been found in the OLC file.", &
             [var_str ("This is because these processes do not fit the required "), &
-             var_str ("coupling alpha_power and alphas_power. Be aware that the "), &
-             var_str ("results of this calculation are not necessarily an accurate "), &
-             var_str ("description of the physics of interest.")])
+            var_str ("coupling alpha_power and alphas_power. Be aware that the "), &
+            var_str ("results of this calculation are not necessarily an accurate "), &
+            var_str ("description of the physics of interest.")])
     end if
     close(unit)
 
@@ -926,7 +952,7 @@ Obviously, this process-core type uses the BLHA interface.
       k = 1; current_position = 1
       do
          if (current_position > LEN_MAX_FLAVOR_STRING) &
-            call msg_fatal ("Read OLC File: Current position exceeds maximum value")
+              call msg_fatal ("Read OLC File: Current position exceeds maximum value")
          if (s(current_position:current_position) /= " ") then
             call create_flavor (s, i_entry, current_position)
             if (i_entry /= NO_NUMBER .and. i_entry /= PROC_NOT_FOUND) then
@@ -958,7 +984,7 @@ Obviously, this process-core type uses the BLHA interface.
       k = 1; current_position = 1
       do
          if (current_position > LEN_MAX_FLAVOR_STRING) &
-            call msg_fatal ("Read OLC File: Current position exceeds maximum value")
+              call msg_fatal ("Read OLC File: Current position exceeds maximum value")
          if (s(current_position:current_position) /= " ") then
             call create_helicity (s, hel, current_position)
             if (hel >= -1 .and. hel <= 1) then
@@ -1007,7 +1033,7 @@ Obviously, this process-core type uses the BLHA interface.
       character(len = 10), intent(in) :: buf
       integer, intent(in) :: i
       valid = (buf(1 : i - 1) /= "->" .and. buf(1 : i - 1) /= "|" &
-         .and. buf(1 : i - 1) /= "Process")
+           .and. buf(1 : i - 1) /= "Process")
     end function is_particle_buffer
 
     subroutine create_flavor (s, i_particle, current_position)
@@ -1105,7 +1131,7 @@ Obviously, this process-core type uses the BLHA interface.
          valid = valid .and. (hel_array(i) == 1 .or. hel_array(i) == -1)
       end do
       if (.not. valid) &
-         call msg_fatal ("Invalid helicities encountered!")
+           call msg_fatal ("Invalid helicities encountered!")
     end subroutine check_helicity_array
 
   end subroutine blha_driver_read_contract_file
@@ -1166,7 +1192,7 @@ Obviously, this process-core type uses the BLHA interface.
 @
 <<BLHA OLP interfaces: prc blha: TBP>>=
   procedure :: set_electroweak_parameters => &
-     prc_blha_set_electroweak_parameters
+       prc_blha_set_electroweak_parameters
 <<BLHA OLP interfaces: procedures>>=
   subroutine prc_blha_set_electroweak_parameters (object, model)
      class(prc_blha_t), intent(inout) :: object
@@ -1176,7 +1202,7 @@ Obviously, this process-core type uses the BLHA interface.
      else if (count (object%ew_parameter_mask) > 1) then
         call msg_fatal ("Cannot decide EW parameter setting: More than one scheme set!")
      end if
-     if (object%ew_parameter_mask (I_ALPHA)) call object%set_alpha_qed (model)
+     if (object%ew_parameter_mask (I_ALPHA_INTERNAL)) call object%set_alpha_qed (model)
      if (object%ew_parameter_mask (I_GF)) call object%set_GF (model)
      if (object%ew_parameter_mask (I_SW2)) call object%set_weinberg_angle (model)
   end subroutine prc_blha_set_electroweak_parameters
@@ -1202,7 +1228,7 @@ Obviously, this process-core type uses the BLHA interface.
     do i_proc = 1, object%n_proc
        if (amp_type (i_proc) < 0) exit
        if (hel_index(i_proc) < 0 .and. object%includes_polarization ()) &
-               call msg_bug ("Object includes polarization, but helicity index is undefined.")
+            call msg_bug ("Object includes polarization, but helicity index is undefined.")
        i_hel = hel_index (i_proc)
        select case (amp_type (i_proc))
        case (BLHA_AMP_TREE)
@@ -1237,7 +1263,7 @@ Obviously, this process-core type uses the BLHA interface.
           call msg_fatal ("Undefined amplitude type")
        end select
        if (allocated (object%i_hel)) &
-          object%i_hel (i_proc, :) = helicities (label(i_proc), :)
+            object%i_hel (i_proc, :) = helicities (label(i_proc), :)
     end do
   end subroutine prc_blha_read_contract_file
 
@@ -1267,8 +1293,8 @@ Obviously, this process-core type uses the BLHA interface.
   procedure :: compute_amplitude => prc_blha_compute_amplitude
 <<BLHA OLP interfaces: procedures>>=
   function prc_blha_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
-       core_state)  result (amp)
+         (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+         core_state)  result (amp)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
@@ -1279,7 +1305,7 @@ Obviously, this process-core type uses the BLHA interface.
     complex(default) :: amp
     select type (core_state)
     class is (blha_state_t)
-      core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+      core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
     end select
     amp = zero
   end function prc_blha_compute_amplitude
@@ -1326,7 +1352,7 @@ Obviously, this process-core type uses the BLHA interface.
        object%i_color_c = -1
        object%i_spin_c = -1
     else if (blha_template%compute_real_trees () .or. blha_template%compute_born () &
-           .or. blha_template%compute_dglap ()) then
+         .or. blha_template%compute_dglap ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_tree (n_flv, n_hel))
           allocate (object%i_hel (n_flv * n_hel * n_in, n_in))
@@ -1384,7 +1410,7 @@ Obviously, this process-core type uses the BLHA interface.
        class is (blha_driver_t)
           call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
           if (i_pdg == 5) call driver%blha_olp_set_parameter &
-             ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
+               ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
           if (i_pdg == 6) then
              if (driver%external_top_yukawa > 0._default) then
                 top_yukawa = driver%external_top_yukawa
@@ -1392,11 +1418,11 @@ Obviously, this process-core type uses the BLHA interface.
                 top_yukawa = mass
              end if
              call driver%blha_olp_set_parameter &
-                ('yuk(6)'//c_null_char, dble(top_yukawa), 0._double, ierr)
+                  ('yuk(6)'//c_null_char, dble(top_yukawa), 0._double, ierr)
           end if
           if (driver%switch_off_muon_yukawas) then
              if (i_pdg == 13) call driver%blha_olp_set_parameter &
-                ('yuk(13)' //c_null_char, 0._double, 0._double, ierr)
+                  ('yuk(13)' //c_null_char, 0._double, 0._double, ierr)
           end if
        end select
     end do
@@ -1413,10 +1439,14 @@ the chosen BLHA EWScheme. This is only implemented for the default OLP method so
     integer, intent(in) :: ew_scheme
     object%ew_parameter_mask = .false.
     select case (ew_scheme)
-    case (BLHA_EW_QED)
-       object%ew_parameter_mask (I_ALPHA) = .true.
+    case (BLHA_EW_0)
+       object%ew_parameter_mask (I_ALPHA_0) = .true.
     case (BLHA_EW_GF)
        object%ew_parameter_mask (I_GF) = .true.
+    case (BLHA_EW_MZ)
+       object%ew_parameter_mask (I_ALPHA_MZ) = .true.
+    case (BLHA_EW_INTERNAL)
+       object%ew_parameter_mask (I_ALPHA_INTERNAL) = .true.
     end select
   end subroutine prc_blha_init_ew_parameters
 
@@ -1435,19 +1465,21 @@ are requested (GoSam does not support polarized matrix elements).
   procedure :: compute_sqme_virt => prc_blha_compute_sqme_virt
 <<BLHA OLP interfaces: procedures>>=
   subroutine prc_blha_compute_sqme_virt (object, &
-       i_flv, i_hel, p, ren_scale, sqme, bad_point)
+         i_flv, i_hel, p, ren_scale, es_scale, loop_method, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: ren_scale
+    real(default), intent(in) :: ren_scale, es_scale
+    integer, intent(in) :: loop_method
     real(default), dimension(4), intent(out) :: sqme
     logical, intent(out) :: bad_point
     real(double), dimension(5 * object%n_particles) :: mom
     real(double), dimension(:), allocatable :: r
-    real(double) :: mu_dble
+    real(double) :: mu_dble, es_dble
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
+    integer :: ierr
     if (object%i_virt(i_flv, i_hel) >= 0) then
        allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
        if (debug_on) call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
@@ -1461,10 +1493,16 @@ are requested (GoSam does not support polarized matrix elements).
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
             call msg_fatal ("prc_blha_compute_sqme_virt: ren_scale vanishes")
-       mu_dble = dble(ren_scale)
+       mu_dble = dble (ren_scale)
+       es_dble = dble (es_scale)
        alpha_s = object%qcd%alpha%get (ren_scale)
        select type (driver => object%driver)
        class is (blha_driver_t)
+          if (loop_method == BLHA_MODE_OPENLOOPS) then
+             call driver%blha_olp_set_parameter ('mureg'//c_null_char, es_dble, 0._double, ierr)
+             if (ierr == 0) call parameter_error_message (var_str ('mureg'), &
+                  var_str ('prc_blha_compute_sqme_virt'))
+          end if
           call driver%set_alpha_s (alpha_s)
           call driver%blha_olp_eval2 (object%i_virt(i_flv, i_hel), mom, mu_dble, r, acc_dble)
        end select
@@ -1488,7 +1526,7 @@ are requested (GoSam does not support polarized matrix elements).
   procedure :: compute_sqme => prc_blha_compute_sqme
 <<BLHA OLP interfaces: procedures>>=
   subroutine prc_blha_compute_sqme (object, i_flv, i_hel, p, &
-      ren_scale, sqme, bad_point)
+         ren_scale, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
@@ -1582,7 +1620,7 @@ are requested (GoSam does not support polarized matrix elements).
   procedure :: compute_sqme_color_c_raw => prc_blha_compute_sqme_color_c_raw
 <<BLHA OLP interfaces: procedures>>=
   subroutine prc_blha_compute_sqme_color_c_raw &
-     (object, i_flv, i_hel, p, ren_scale, rr, bad_point)
+         (object, i_flv, i_hel, p, ren_scale, rr, bad_point)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
@@ -1596,7 +1634,7 @@ are requested (GoSam does not support polarized matrix elements).
     if (object%i_color_c(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
-          call msg_fatal ("prc_blha_compute_sqme_color_c: ren_scale vanishes")
+            call msg_fatal ("prc_blha_compute_sqme_color_c: ren_scale vanishes")
        mu_dble = dble(ren_scale)
        alpha_s = object%qcd%alpha%get (ren_scale)
 
@@ -1705,7 +1743,7 @@ are requested (GoSam does not support polarized matrix elements).
 @
 <<BLHA OLP interfaces: prc blha: TBP>>=
   procedure(prc_blha_init_driver), deferred :: &
-      init_driver
+       init_driver
 <<BLHA OLP interfaces: interfaces>>=
   abstract interface
     subroutine prc_blha_init_driver (object, os_data)
@@ -1814,7 +1852,7 @@ Parameters to enumerate the different options in the order.
        BLHA_AMP_LOOP = 1, BLHA_AMP_COLOR_C = 2, BLHA_AMP_SPIN_C = 3, &
        BLHA_AMP_TREE = 4, BLHA_AMP_LOOPINDUCED = 5
   integer, public, parameter :: &
-       BLHA_EW_QED = 0, &
+       BLHA_EW_INTERNAL = 0, &
        BLHA_EW_GF = 1, BLHA_EW_MZ = 2, BLHA_EW_MSBAR = 3, &
        BLHA_EW_0 = 4, BLHA_EW_RUN = 5
   integer, public, parameter :: &
@@ -1832,7 +1870,7 @@ Those are the default pdg codes for massive particles in BLHA programs
 <<BLHA config: parameters>>=
   integer, parameter, public :: OLP_N_MASSIVE_PARTICLES = 12
   integer, dimension(OLP_N_MASSIVE_PARTICLES), public :: &
-    OLP_MASSIVE_PARTICLES = [5, -5, 6, -6, 13, -13, 15, -15, 23, 24, -24, 25]
+       OLP_MASSIVE_PARTICLES = [5, -5, 6, -6, 13, -13, 15, -15, 23, 24, -24, 25]
   integer, parameter :: OLP_HEL_UNPOLARIZED = 0
 
 @ %def OLP_MASSIVE_PARTICLES
@@ -1859,11 +1897,11 @@ possible options to ease the user's memory.
             (extra_cmd == var_str ('extra approx ') // known_methods(i))
     end do
     if (.not. found) &
-      call msg_fatal ("The given extra OpenLoops method is not kown ", &
+         call msg_fatal ("The given extra OpenLoops method is not kown ", &
          [var_str ("Available commands are: "), &
-          var_str ("extra approx top (only WbWb signal),"), &
-          var_str ("extra approx stop (only WbWb singletop),"), &
-          var_str ("extra approx not (no top in WbWb).")])
+         var_str ("extra approx top (only WbWb signal),"), &
+         var_str ("extra approx stop (only WbWb singletop),"), &
+         var_str ("extra approx not (no top in WbWb).")])
   end subroutine check_extra_cmd
 
 @ %def check_extra_cmd
@@ -1911,7 +1949,7 @@ of the particles. Note that the output can only be processed by OpenLoops.
   generic :: write_pdg => write_pdg_character
   procedure :: write_pdg_unit => blha_particle_string_element_write_pdg_unit
   procedure :: write_pdg_character &
-     => blha_particle_string_element_write_pdg_character
+       => blha_particle_string_element_write_pdg_character
 <<BLHA config: procedures>>=
   subroutine blha_particle_string_element_write_pdg_unit (blha_p, unit)
     class(blha_particle_string_element_t), intent(in) :: blha_p
@@ -1936,9 +1974,9 @@ of the particles. Note that the output can only be processed by OpenLoops.
   generic :: write_helicity => write_helicity_unit
   generic :: write_helicity => write_helicity_character
   procedure :: write_helicity_unit &
-     => blha_particle_string_element_write_helicity_unit
+       => blha_particle_string_element_write_helicity_unit
   procedure :: write_helicity_character &
-     => blha_particle_string_element_write_helicity_character
+       => blha_particle_string_element_write_helicity_character
 <<BLHA config: procedures>>=
   subroutine blha_particle_string_element_write_helicity_unit (blha_p, unit)
     class(blha_particle_string_element_t), intent(in) :: blha_p
@@ -2000,7 +2038,6 @@ of the particles. Note that the output can only be processed by OpenLoops.
      integer :: openloops_phs_tolerance = 0
      type(string_t) :: openloops_extra_cmd
      integer :: openloops_stability_log = 0
-     logical :: openloops_use_collier = .false.
   end type blha_configuration_t
 
 @ %def blha_cffg_process_node_t blha_configuration_t
@@ -2014,15 +2051,15 @@ of the particles. Note that the output can only be processed by OpenLoops.
     select case (char (ew_scheme_str))
     case ('GF', 'Gmu')
        ew_scheme_int = BLHA_EW_GF
-    case ('alpha_qed')
-       ew_scheme_int = BLHA_EW_QED
+    case ('alpha_qed', 'alpha_internal')
+       ew_scheme_int = BLHA_EW_INTERNAL
     case ('alpha_mz')
        ew_scheme_int = BLHA_EW_MZ
     case ('alpha_0', 'alpha_thompson')
        ew_scheme_int = BLHA_EW_0
     case default
        call msg_fatal ("ew_scheme: " // char (ew_scheme_str) // &
-            " not supported. Try 'Gmu', 'alpha_qed', 'alpha_mz' or 'alpha_0'.")
+            " not supported. Try 'Gmu', 'alpha_internal', 'alpha_mz' or 'alpha_0'.")
     end select
   end function ew_scheme_string_to_int
 
@@ -2204,7 +2241,7 @@ This types control the creation of BLHA-interface files
   procedure :: generate => blha_master_generate
 <<BLHA config: procedures>>=
   subroutine blha_master_generate (master, basename, model, &
-       n_in, alpha_power, alphas_power, flv_born, flv_real)
+         n_in, alpha_power, alphas_power, flv_born, flv_real)
     class(blha_master_t), intent(inout) :: master
     type(string_t), intent(in) :: basename
     class(model_data_t), intent(in), target :: model
@@ -2258,7 +2295,7 @@ This types control the creation of BLHA-interface files
           i_file = i_file + 1
         else
           call msg_fatal ("BLHA Loops requested but " &
-                           // "Born flavor not existing")
+               // "Born flavor not existing")
         end if
     end if
   end subroutine blha_master_generate_loop
@@ -2294,7 +2331,7 @@ This types control the creation of BLHA-interface files
           i_file = i_file + 1
        else
           call msg_fatal ("BLHA Correlations requested but "&
-                           // "Born flavor not existing")
+               // "Born flavor not existing")
        end if
     end if
   end subroutine blha_master_generate_correlation
@@ -2330,7 +2367,7 @@ This types control the creation of BLHA-interface files
           i_file = i_file + 1
        else
           call msg_fatal ("BLHA Trees requested but "&
-                           // "Real flavor not existing")
+               // "Real flavor not existing")
        end if
     end if
   end subroutine blha_master_generate_real_tree
@@ -2341,7 +2378,7 @@ This types control the creation of BLHA-interface files
   procedure :: generate_born => blha_master_generate_born
 <<BLHA config: procedures>>=
 subroutine blha_master_generate_born (master, basename, model, n_in, &
-         alpha_power, alphas_power, flv_born, i_file)
+       alpha_power, alphas_power, flv_born, i_file)
     class(blha_master_t), intent(inout) :: master
     type(string_t), intent(in) :: basename
     class(model_data_t), intent(in), target :: model
@@ -2374,7 +2411,7 @@ subroutine blha_master_generate_born (master, basename, model, n_in, &
   procedure :: generate_dglap => blha_master_generate_dglap
 <<BLHA config: procedures>>=
 subroutine blha_master_generate_dglap (master, basename, model, n_in, &
-         alpha_power, alphas_power, flv_born, i_file)
+       alpha_power, alphas_power, flv_born, i_file)
     class(blha_master_t), intent(inout) :: master
     type(string_t), intent(in) :: basename
     class(model_data_t), intent(in), target :: model
@@ -2407,13 +2444,12 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
   procedure :: setup_additional_features => blha_master_setup_additional_features
 <<BLHA config: procedures>>=
   subroutine blha_master_setup_additional_features (master, &
-       phs_tolerance, use_cms, stability_log, use_collier, extra_cmd, beam_structure)
+         phs_tolerance, use_cms, stability_log, extra_cmd, beam_structure)
      class(blha_master_t), intent(inout) :: master
      integer, intent(in) :: phs_tolerance
      logical, intent(in) :: use_cms
      type(string_t), intent(in), optional :: extra_cmd
      integer, intent(in) :: stability_log
-     logical, intent(in) :: use_collier
      type(beam_structure_t), intent(in), optional :: beam_structure
      integer :: i_file
      logical :: polarized, throw_warning
@@ -2451,7 +2487,6 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
                  master%blha_cfg(i_file)%openloops_extra_cmd = var_str ('')
               end if
               master%blha_cfg(i_file)%openloops_stability_log = stability_log
-              master%blha_cfg(i_file)%openloops_use_collier = use_collier
            end select
         end if
      end do
@@ -2459,15 +2494,15 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
      subroutine cms_warning ()
         call msg_warning ("You have set ?openloops_use_cms = true, but not all active matrix ", &
              [var_str ("element methods are set to OpenLoops. Note that other "), &
-              var_str ("methods might not necessarily support the complex mass "), &
-              var_str ("scheme. This can yield inconsistencies in your NLO results!")])
+             var_str ("methods might not necessarily support the complex mass "), &
+             var_str ("scheme. This can yield inconsistencies in your NLO results!")])
      end subroutine cms_warning
 
      subroutine gosam_error_message ()
         call msg_fatal ("You are trying to evaluate a process at NLO ", &
              [var_str ("which involves polarized beams using GoSam. "), &
-              var_str ("This feature is not supported yet. "), &
-              var_str ("Please use OpenLoops instead")])
+             var_str ("This feature is not supported yet. "), &
+             var_str ("Please use OpenLoops instead")])
      end subroutine gosam_error_message
   end subroutine blha_master_setup_additional_features
 
@@ -2508,7 +2543,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
 @
 <<BLHA config: procedures>>=
   subroutine blha_init_born (blha_cfg, blha_flavor, n_in, &
-        ap, asp, ew_scheme, basename, model, blha_mode, suffix)
+         ap, asp, ew_scheme, basename, model, blha_mode, suffix)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: n_in
@@ -2536,7 +2571,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
   end subroutine blha_init_born
 
   subroutine blha_init_virtual (blha_cfg, blha_flavor, n_in, &
-     ap, asp, ew_scheme, basename, model, blha_mode, suffix)
+         ap, asp, ew_scheme, basename, model, blha_mode, suffix)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: n_in
@@ -2567,7 +2602,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
   end subroutine blha_init_virtual
 
   subroutine blha_init_subtraction (blha_cfg, blha_flavor, n_in, &
-     ap, asp, ew_scheme, basename, model, blha_mode, suffix)
+         ap, asp, ew_scheme, basename, model, blha_mode, suffix)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: n_in
@@ -2599,7 +2634,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
   end subroutine blha_init_subtraction
 
   subroutine blha_init_real (blha_cfg, blha_flavor, n_in, &
-     ap, asp, ew_scheme, basename, model, blha_mode, suffix)
+         ap, asp, ew_scheme, basename, model, blha_mode, suffix)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: n_in
@@ -2716,7 +2751,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
 "MassiveParticle"-statement of the order file.
 <<BLHA config: procedures>>=
   subroutine blha_configuration_get_massive_particles &
-             (cfg, massive, i_massive)
+         (cfg, massive, i_massive)
     type(blha_configuration_t), intent(in) :: cfg
     logical, intent(out) :: massive
     integer, intent(out), dimension(:), allocatable :: i_massive
@@ -2732,14 +2767,14 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        current_process => cfg%processes
     else
        call msg_fatal ("BLHA, massive particles: " // &
-                       "No processes allocated!")
+            "No processes allocated!")
     end if
     do
        call check_pdg_list (current_process%pdg_in%pdg)
        call check_pdg_list (current_process%pdg_out%pdg)
        if (k > max_particles) &
-          call msg_fatal ("BLHA, massive particles: " // &
-                          "Max. number of particles exceeded!")
+            call msg_fatal ("BLHA, massive particles: " // &
+            "Max. number of particles exceeded!")
        if (associated (current_process%next)) then
           current_process => current_process%next
        else
@@ -2795,7 +2830,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        n_proc_tot = n_proc_tot + flavor(i_flv)%flv_mult
     end do
     if (.not. associated (cfg%processes)) &
-      allocate (cfg%processes)
+         allocate (cfg%processes)
     current_node => cfg%processes
     do i_flv = 1, size (flavor)
        n_tot = size (flavor(i_flv)%flavors)
@@ -2823,7 +2858,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
             current_node => current_node%next
           end if
           if (i_process == flavor(i_flv)%flv_mult) &
-             proc_offset = proc_offset + flavor(i_flv)%flv_mult
+               proc_offset = proc_offset + flavor(i_flv)%flv_mult
        end do
        deallocate (pdg_in, pdg_out)
        deallocate (flavor_state)
@@ -2882,9 +2917,9 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
   public :: blha_configuration_set
 <<BLHA config: procedures>>=
   subroutine blha_configuration_set (cfg, &
-       version, irreg, massive_particle_scheme, &
-       model_file, alphas_power, alpha_power, ew_scheme, width_scheme, &
-       accuracy, debug)
+         version, irreg, massive_particle_scheme, &
+         model_file, alphas_power, alpha_power, ew_scheme, width_scheme, &
+         accuracy, debug)
     type(blha_configuration_t), intent(inout) :: cfg
     integer, optional, intent(in) :: version
     integer, optional, intent(in) :: irreg
@@ -2896,25 +2931,25 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
     real(default), optional, intent(in) :: accuracy
     logical, optional, intent(in) :: debug
     if (present (version)) &
-       cfg%version = version
+         cfg%version = version
     if (present (irreg)) &
-       cfg%irreg = irreg
+         cfg%irreg = irreg
     if (present (massive_particle_scheme)) &
-       cfg%massive_particle_scheme = massive_particle_scheme
+         cfg%massive_particle_scheme = massive_particle_scheme
     if (present (model_file)) &
-       cfg%model_file = model_file
+         cfg%model_file = model_file
     if (present (alphas_power)) &
-       cfg%alphas_power = alphas_power
+         cfg%alphas_power = alphas_power
     if (present (alpha_power)) &
-       cfg%alpha_power = alpha_power
+         cfg%alpha_power = alpha_power
     if (present (ew_scheme)) &
-       cfg%ew_scheme = ew_scheme
+         cfg%ew_scheme = ew_scheme
     if (present (width_scheme)) &
-       cfg%width_scheme = width_scheme
+         cfg%width_scheme = width_scheme
     if (present (accuracy)) &
-       cfg%accuracy_target = accuracy
+         cfg%accuracy_target = accuracy
     if (present (debug)) &
-       cfg%debug_unstable = debug
+         cfg%debug_unstable = debug
     cfg%dirty = .false.
   end subroutine blha_configuration_set
 
@@ -2952,7 +2987,7 @@ Write the BLHA file. Internal mode is intented for md5summing only.
     u = given_output_unit (unit); if (u < 0) return
     full = .true.; if (present (internal)) full = .not. internal
     if (full .and. cfg%dirty) call msg_bug ( &
-       "BUG: attempted to write out a dirty BLHA configuration")
+         "BUG: attempted to write out a dirty BLHA configuration")
     if (full) then
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
@@ -3001,46 +3036,46 @@ Write the BLHA file. Internal mode is intented for md5summing only.
        case default; buf = cfg%massive_particle_scheme_other
     end select
     if (cfg%mode == BLHA_MODE_GOSAM) &
-       write (u,'(A25,A)') "MassiveParticleScheme" // pad, char (buf)
+         write (u,'(A25,A)') "MassiveParticleScheme" // pad, char (buf)
     select case (cfg%version)
     case (1)
       if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
-         "AlphasPower" // pad, int2char (cfg%alphas_power)
+           "AlphasPower" // pad, int2char (cfg%alphas_power)
       if (cfg%alpha_power >= 0) write (u,'(A25,A)') &
-         "AlphaPower " // pad, int2char (cfg%alpha_power)
+           "AlphaPower " // pad, int2char (cfg%alpha_power)
     case (2)
       if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
-         "CouplingPower QCD " // pad, int2char (cfg%alphas_power)
+           "CouplingPower QCD " // pad, int2char (cfg%alphas_power)
       if (cfg%alpha_power >= 0) write (u, '(A25,A)') &
-         "CouplingPower QED " // pad, int2char (cfg%alpha_power)
+           "CouplingPower QED " // pad, int2char (cfg%alpha_power)
     end select
-    if (cfg%ew_scheme > BLHA_EW_QED) then
-       select case (cfg%mode)
-       case (BLHA_MODE_GOSAM)
-          select case (cfg%ew_scheme)
-             case (BLHA_EW_GF); buf = "alphaGF"
-             case (BLHA_EW_MZ); buf = "alphaMZ"
-             case (BLHA_EW_MSBAR); buf = "alphaMSbar"
-             case (BLHA_EW_0); buf = "alpha0"
-             case (BLHA_EW_RUN); buf = "alphaRUN"
-          end select
-          write (u, '(A25, A)') "EWScheme " // pad, char (buf)
-       case (BLHA_MODE_OPENLOOPS)
-          select case (cfg%ew_scheme)
-             case (BLHA_EW_0); buf = "alpha0"
-             case (BLHA_EW_GF); buf = "Gmu"
-             case default
-                call msg_fatal ("OpenLoops input: Only supported EW schemes are 'alpha0' and 'Gmu'")
-          end select
-          write (u, '(A25, A)') "ewscheme " // pad, char (buf)
+    select case (cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       select case (cfg%ew_scheme)
+          case (BLHA_EW_GF, BLHA_EW_INTERNAL); buf = "alphaGF"
+          case (BLHA_EW_MZ); buf = "alphaMZ"
+          case (BLHA_EW_MSBAR); buf = "alphaMSbar"
+          case (BLHA_EW_0); buf = "alpha0"
+          case (BLHA_EW_RUN); buf = "alphaRUN"
        end select
-    end if
+       write (u, '(A25, A)') "EWScheme " // pad, char (buf)
+    case (BLHA_MODE_OPENLOOPS)
+       select case (cfg%ew_scheme)
+          case (BLHA_EW_0); buf = "alpha0"
+          case (BLHA_EW_GF); buf = "Gmu"
+          case (BLHA_EW_MZ, BLHA_EW_INTERNAL); buf = "alphaMZ"
+          case default
+             call msg_fatal ("OpenLoops input: Only supported EW schemes &
+                  & are 'alpha0', 'Gmu', and 'alphaMZ'")
+          end select
+       write (u, '(A25, A)') "ewscheme " // pad, char (buf)
+    end select
     select case (cfg%mode)
     case (BLHA_MODE_GOSAM)
        write (u, '(A25)', advance='no') "MassiveParticles " // pad
        do i = 1, size (OLP_MASSIVE_PARTICLES)
           if (OLP_MASSIVE_PARTICLES(i) > 0) &
-             write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
+               write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
        end do
        write (u,*)
     case (BLHA_MODE_OPENLOOPS)
@@ -3050,20 +3085,18 @@ Write the BLHA file. Internal mode is intented for md5summing only.
           write (u, '(A25,I1)') "extra use_cms " // pad, 0
        end if
        write (u, '(A25,I1)') "extra me_cache " // pad, 0
+       !!! Turn off calculation of 1/eps & 1/eps^2 poles in one-loop calculation
+       !!! Not needed in FKS (or any numerical NLO subtraction scheme)
+       write (u, '(A25,I1)') "extra IR_on " // pad, 0
        if (cfg%openloops_phs_tolerance > 0) then
           write (u, '(A25,A4,I0)') "extra psp_tolerance " // pad, "10e-", &
-             cfg%openloops_phs_tolerance
+               cfg%openloops_phs_tolerance
        end if
        call check_extra_cmd (cfg%openloops_extra_cmd)
        write (u, '(A)') char (cfg%openloops_extra_cmd)
        if (cfg%openloops_stability_log > 0) &
-          write (u, '(A25,I1)') "extra stability_log " // pad, &
-          cfg%openloops_stability_log
-       if (cfg%openloops_use_collier) then
-          write (u, '(A25,I1)') "extra preset " // pad, 2
-       else
-          write (u, '(A25,I1)') "extra preset " // pad, 1
-       end if
+            write (u, '(A25,I1)') "extra stability_log " // pad, &
+            cfg%openloops_stability_log
     end select
     if (full) then
        write (u, "(A)")
@@ -3071,7 +3104,7 @@ Write the BLHA file. Internal mode is intented for md5summing only.
        write (u, "(A)")
     end if
     if (cfg%debug_unstable) &
-      write (u, '(A25,A)') "DebugUnstable " // pad, "True"
+         write (u, '(A25,A)') "DebugUnstable " // pad, "True"
     write (u, *)
     node => cfg%processes
     do while (associated (node))
@@ -3171,9 +3204,9 @@ end module blha_uti
     type(test_results_t), intent(inout) :: results
     call test(blha_1, "blha_1", "Test the creation of BLHA-OLP files", u, results)
     call test(blha_2, "blha_2", "Test the creation of BLHA-OLP files for "&
-       &"multiple flavor structures", u, results)
+         &"multiple flavor structures", u, results)
     call test(blha_3, "blha_3", "Test helicity-information in OpenLoops OLP files", &
-       u, results)
+         u, results)
   end subroutine blha_test
 
 @ %def blha_test
@@ -3228,7 +3261,7 @@ end module blha_uti
     call syntax_model_file_init ()
     call os_data%init ()
     call model_list%read_model &
-       (var_str ("SM"), var_str ("SM.mdl"), os_data, model)
+         (var_str ("SM"), var_str ("SM.mdl"), os_data, model)
 
     write (u, "(A)") "* BLHA matrix elements assumed for all process components"
     write (u, "(A)") "* Mode: GoSam"
@@ -3271,7 +3304,7 @@ end module blha_uti
        end do
     end if
     call blha_master%setup_additional_features &
-       (openloops_phs_tolerance, .false., 0, .false.)
+         (openloops_phs_tolerance, .false., 0)
 
     call test_output (u)
 
@@ -3317,7 +3350,7 @@ end module blha_uti
     integer, intent(in) :: u
     write (u, "(A)") "* Test output: blha_1"
     write (u, "(A)") "* Purpose: Test the creation of olp-files for single "&
-       &"and unpolarized flavor structures"
+         &"and unpolarized flavor structures"
     write (u, "(A)")
     call setup_and_write_blha_configuration (u, single = .true., polarized = .false.)
   end subroutine blha_1
@@ -3331,7 +3364,7 @@ end module blha_uti
     integer, intent(in) :: u
     write (u, "(A)") "* Test output: blha_2"
     write (u, "(A)") "* Purpose: Test the creation of olp-files for multiple "&
-      &"and unpolarized flavor structures"
+         &"and unpolarized flavor structures"
     write (u, "(A)")
     call setup_and_write_blha_configuration (u, single = .false., polarized = .false.)
   end subroutine blha_2
@@ -3345,7 +3378,7 @@ end module blha_uti
     integer, intent(in) :: u
     write (u, "(A)") "* Test output: blha_3"
     write (u, "(A)") "* Purpose: Test the creation of olp-files for single "&
-      &"and polarized flavor structures"
+         &"and polarized flavor structures"
     write (u, "(A)")
     call setup_and_write_blha_configuration (u, single = .true., polarized = .true.)
   end subroutine blha_3

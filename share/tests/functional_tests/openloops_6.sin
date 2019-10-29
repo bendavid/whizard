@@ -1,7 +1,8 @@
 # SINDARIN input for WHIZARD self-test
 # Testing polarized OpenLoops Decays
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -25,8 +26,6 @@ alpha_power = 1
 
 error_threshold = 1e-8
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 
 iterations = 1:100
 

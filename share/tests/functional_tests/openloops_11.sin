@@ -2,7 +2,8 @@
 # Testing LO event generation for external/OpenLoops matrix elements
 # with structure functions
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -15,8 +16,6 @@ alphas_power = 0
 
 alias jet = u:d:U:D
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 ?openloops_use_cms = false
 $method = "openloops"
 

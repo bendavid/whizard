@@ -2,7 +2,8 @@
 # Testing the integration of the real-subtracted matrix element
 # using beam polarization.
 
-model = "SM"
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -16,8 +17,6 @@ beams_pol_fraction = 0.8, 0.3
 
 $method = "openloops"
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 
 ### Tests should be run single-threaded
 openmp_num_threads = 1

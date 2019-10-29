@@ -37,6 +37,8 @@ sqrts =  1.000000000000E+03
 jet_algorithm = 2
 jet_r =  5.000000000000E-01
 ?use_vamp_equivalences = false
+$integration_method = "vamp2"
+$rng_method = "rng_stream"
 | End of included 'nlo_settings.sin'
 alpha_power = 4
 alphas_power = 0
@@ -53,7 +55,7 @@ alphas_power = 0
 | Process library 'nlo_eetthz_lib': ... success.
 | Integrate: compilation done
 | QCD alpha: using a running strong coupling
-| RNG: Initializing TAO random-number generator
+| RNG: Initializing RNG Stream random-number generator
 | RNG: Setting seed for random-number generator to 8131
 | Initializing integration for process nlo_eetthz_p1:
 | Beam structure: [any particles]
@@ -110,46 +112,52 @@ Warning: No cuts have been defined.
 | Starting integration for process 'nlo_eetthz_p1' part 'born'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 6 channels, 8 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         96  4.0465639E-02  1.20E-02   29.62    2.90*  11.23
+| VAMP2: Initialize new grids and write to file 'nlo_eetthz_p1.m1.vg2'.
+| VAMP2: set chain: use chained weights.
+   1        102  2.7683185E-02  8.29E-03   29.94    3.02*  10.86
 |-----------------------------------------------------------------------------|
-   1         96  4.0465639E-02  1.20E-02   29.62    2.90   11.23
+   1        102  2.7683185E-02  8.29E-03   29.94    3.02   10.86
 |=============================================================================|
 | Starting integration for process 'nlo_eetthz_p1' part 'real'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 6 channels, 11 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         96 -6.4549955E-03  2.05E-03   31.74    3.11*  10.75
+| VAMP2: Initialize new grids and write to file 'nlo_eetthz_p1.m2.vg2'.
+| VAMP2: set chain: use chained weights.
+   1        102 -7.9626362E-03  2.24E-03   28.07    2.84*  11.01
 |-----------------------------------------------------------------------------|
-   1         96 -6.4549955E-03  2.05E-03   31.74    3.11   10.75
+   1        102 -7.9626362E-03  2.24E-03   28.07    2.84   11.01
 |=============================================================================|
 | Starting integration for process 'nlo_eetthz_p1' part 'virtual'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 6 channels, 8 dimensions
-| Integrator: 100 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         96  3.8163605E-03  1.35E-03   35.38    3.47*  12.98
+| VAMP2: Initialize new grids and write to file 'nlo_eetthz_p1.m3.vg2'.
+| VAMP2: set chain: use chained weights.
+   1        102  1.2424068E-02  2.92E-03   23.48    2.37*  12.29
 |-----------------------------------------------------------------------------|
-   1         96  3.8163605E-03  1.35E-03   35.38    3.47   12.98
+   1        102  1.2424068E-02  2.92E-03   23.48    2.37   12.29
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  3.7827004E-02  1.22E-02   32.34    0.00*   9.70
+   1          0  3.2144617E-02  9.07E-03   28.21    0.00*   9.03
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  ( -6.5207 +-   6.36341 ) %
+|  ( 16.1160 +-  14.12548 ) %
 |=============================================================================|
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

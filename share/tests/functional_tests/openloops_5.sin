@@ -5,7 +5,7 @@
 !!! compare them to the total result.
 
 model = SM ("GF_MW_MZ")
-$blha_ew_scheme = "alpha_qed"
+$blha_ew_scheme = "alpha_internal"
 
 ?logging = true
 ?openmp_logging = false
@@ -13,8 +13,6 @@ $blha_ew_scheme = "alpha_qed"
 ?integration_timer = false
 ?pacify = true
 
-### The OpenLoops version installed might not be new enough to support Collier
-?openloops_use_collier = false
 $loop_me_method = "openloops"
 $real_tree_me_method = "openloops"
 $correlation_me_method = "openloops"

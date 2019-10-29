@@ -9,7 +9,6 @@
 alpha_power = 2
 alphas_power = 0
 [user variable] pr = PDG(2, 1, -2, -1)
-?openloops_use_collier = false
 $loop_me_method = "openloops"
 openmp_num_threads = 1
 | Process library 'openloops_9_lib': recorded process 'openloops_9_p1'

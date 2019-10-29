@@ -20912,9 +20912,10 @@ The data type encapsulating the command:
        FORBIDDEN_ENDINGS1 = [ "o", "a" ]
   character(len=2), dimension(6), parameter, public :: &
        FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "pg", "lo", "la" ]
-  character(len=3), dimension(16), parameter, public :: &
+  character(len=3), dimension(18), parameter, public :: &
        FORBIDDEN_ENDINGS3 = [ "aux", "dvi", "evt", "evx", "f03", "f90", &
-          "f95", "log", "ltp", "mpx", "olc", "olp", "pdf", "phs", "sin", "tex" ]
+          "f95", "log", "ltp", "mpx", "olc", "olp", "pdf", "phs", "sin", &
+          "tex", "vg2", "vgx" ]
 
 @ %def DEFAULT_ANALYSIS_FILENAME
 @ %def FORBIDDEN_ENDINGS1

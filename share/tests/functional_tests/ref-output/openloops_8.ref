@@ -9,7 +9,6 @@
 alpha_power = 2
 alphas_power = 0
 [user variable] pr = PDG(2, 1, -2, -1)
-?openloops_use_collier = false
 $real_tree_me_method = "openloops"
 $correlation_me_method = "openloops"
 openmp_num_threads = 1

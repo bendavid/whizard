@@ -5872,14 +5872,10 @@ center-of-mass energy.
 <<virtual: virtual: TBP>>=
   procedure :: set_ellis_sexton_scale => virtual_set_ellis_sexton_scale
 <<virtual: procedures>>=
-  subroutine virtual_set_ellis_sexton_scale (virt, Q2)
+  subroutine virtual_set_ellis_sexton_scale (virt, Q)
     class(virtual_t), intent(inout) :: virt
-    real(default), intent(in), optional :: Q2
-    if (present (Q2)) then
-       virt%es_scale2 = Q2
-    else
-       virt%es_scale2 = virt%ren_scale2
-    end if
+    real(default), intent(in) :: Q
+    virt%es_scale2 = Q * Q
   end subroutine virtual_set_ellis_sexton_scale
 
 @ %def virtual_set_ellis_sexton_scale

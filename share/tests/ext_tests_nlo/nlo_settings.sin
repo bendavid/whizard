@@ -51,3 +51,5 @@ jet_algorithm = antikt_algorithm
 jet_r = 0.5
 
 ?use_vamp_equivalences = false
+$integration_method = "vamp2"
+$rng_method = "rng_stream"

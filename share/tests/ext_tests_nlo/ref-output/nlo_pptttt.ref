@@ -37,6 +37,8 @@ sqrts =  1.000000000000E+03
 jet_algorithm = 2
 jet_r =  5.000000000000E-01
 ?use_vamp_equivalences = false
+$integration_method = "vamp2"
+$rng_method = "rng_stream"
 | End of included 'nlo_settings.sin'
 [user variable] pr = PDG(2, -2, 1, -1, 3, -3, 4, -4, 5, -5, 21)
 $exclude_gauge_splittings = "t"
@@ -62,7 +64,7 @@ alphas_power = 4
 | Process library 'nlo_pptttt_lib': ... success.
 | Integrate: compilation done
 | QCD alpha: using a running strong coupling
-| RNG: Initializing TAO random-number generator
+| RNG: Initializing RNG Stream random-number generator
 | RNG: Setting seed for random-number generator to 8131
 | Initializing integration for process nlo_pptttt_p1:
 | Beam structure: p, p => lhapdf
@@ -132,58 +134,66 @@ Warning: No cuts have been defined.
 | Starting integration for process 'nlo_pptttt_p1' part 'born'
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 10 dimensions
-| Integrator: 2000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 2000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1920  3.7766329E+00  9.83E-01   26.02   11.40*   7.34
+| VAMP2: Initialize new grids and write to file 'nlo_pptttt_p1.m1.vg2'.
+| VAMP2: set chain: use chained weights.
+   1       1984  7.3169590E+00  3.56E+00   48.70   21.69*   6.96
 |-----------------------------------------------------------------------------|
-   1       1920  3.7766329E+00  9.83E-01   26.02   11.40    7.34
+   1       1984  7.3169590E+00  3.56E+00   48.70   21.69    6.96
 |=============================================================================|
 | Starting integration for process 'nlo_pptttt_p1' part 'real'
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 13 dimensions
-| Integrator: 2000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 2000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1920 -2.7540448E-01  2.76E-01  100.35   43.97*   7.67
+| VAMP2: Initialize new grids and write to file 'nlo_pptttt_p1.m2.vg2'.
+| VAMP2: set chain: use chained weights.
+   1       1992  1.2530138E-01  4.52E-01  360.86  161.06*   6.57
 |-----------------------------------------------------------------------------|
-   1       1920 -2.7540448E-01  2.76E-01  100.35   43.97    7.67
+   1       1992  1.2530138E-01  4.52E-01  360.86  161.06    6.57
 |=============================================================================|
 | Starting integration for process 'nlo_pptttt_p1' part 'virtual'
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 10 dimensions
-| Integrator: 2000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 2000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1920  3.2001140E+00  5.13E-01   16.02    7.02*   7.50
+| VAMP2: Initialize new grids and write to file 'nlo_pptttt_p1.m3.vg2'.
+| VAMP2: set chain: use chained weights.
+   1       2000  5.4971119E+00  1.46E+00   26.47   11.84*   6.76
 |-----------------------------------------------------------------------------|
-   1       1920  3.2001140E+00  5.13E-01   16.02    7.02    7.50
+   1       2000  5.4971119E+00  1.46E+00   26.47   11.84    6.76
 |=============================================================================|
 | Starting integration for process 'nlo_pptttt_p1' part 'dglap'
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 11 dimensions
-| Integrator: 2000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
+| Integrator: 2000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1920  1.3194125E+00  5.93E-01   44.96   19.70*   7.09
+| VAMP2: Initialize new grids and write to file 'nlo_pptttt_p1.m4.vg2'.
+| VAMP2: set chain: use chained weights.
+   1       1976  1.9642699E+00  1.07E+00   54.45   24.21*   6.77
 |-----------------------------------------------------------------------------|
-   1       1920  1.3194125E+00  5.93E-01   44.96   19.70    7.09
+   1       1976  1.9642699E+00  1.07E+00   54.45   24.21    6.77
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  8.0207550E+00  1.29E+00   16.05    0.00*   7.12
+   1          0  1.4903642E+01  4.02E+00   26.98    0.00*   6.85
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  ( 77.4422 +-  25.37284 ) %
+|  ( 76.8408 +-  42.82618 ) %
 |=============================================================================|
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

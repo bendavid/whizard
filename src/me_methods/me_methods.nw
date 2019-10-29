@@ -5260,11 +5260,12 @@ Used for testing.
   procedure :: compute_sqme_virt => prc_external_compute_sqme_virt
 <<Prc external: procedures>>=
   subroutine prc_external_compute_sqme_virt (object, i_flv, i_hel, &
-     p, ren_scale, sqme, bad_point)
+     p, ren_scale, es_scale, loop_method, sqme, bad_point)
     class(prc_external_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: ren_scale
+    real(default), intent(in) :: ren_scale, es_scale
+    integer, intent(in) :: loop_method
     logical, intent(out) :: bad_point
     real(default), dimension(4), intent(out) :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_external_compute_sqme_virt")
@@ -6784,11 +6785,12 @@ This core type has the beam polarization as an extra parameter.
   procedure :: compute_sqme_virt => prc_threshold_compute_sqme_virt
 <<Prc Threshold: procedures>>=
   subroutine prc_threshold_compute_sqme_virt (object, i_flv, i_hel, &
-         p, ren_scale, sqme, bad_point)
+         p, ren_scale, es_scale, loop_method, sqme, bad_point)
     class(prc_threshold_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: ren_scale
+    real(default), intent(in) :: ren_scale, es_scale
+    integer, intent(in) :: loop_method
     real(default), dimension(4), intent(out) :: sqme
     real(c_default_float), dimension(:,:), allocatable, save :: parray
     logical, intent(out) :: bad_point

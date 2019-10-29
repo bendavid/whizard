@@ -127,9 +127,9 @@ CouplingPower QED        4
 ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
+extra IR_on              0
 extra psp_tolerance      10e-7
 
-extra preset             1
 
 # Process definitions
 
@@ -157,9 +157,9 @@ CouplingPower QED        4
 ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
+extra IR_on              0
 extra psp_tolerance      10e-7
 
-extra preset             1
 
 # Process definitions
 
@@ -190,9 +190,9 @@ CouplingPower QED        4
 ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
+extra IR_on              0
 extra psp_tolerance      10e-7
 
-extra preset             1
 
 # Process definitions
 
@@ -217,9 +217,9 @@ CouplingPower QED        4
 ewscheme                 Gmu
 extra use_cms            0
 extra me_cache           0
+extra IR_on              0
 extra psp_tolerance      10e-7
 
-extra preset             1
 
 # Process definitions
 

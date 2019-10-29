@@ -3,7 +3,6 @@
 ?integration_timer = false
 ?pacify = true
 $method = "openloops"
-?openloops_use_collier = false
 openmp_num_threads = 1
 SM.mtop =>  1.73200E+02
 SM.wtop =>  0.00000E+00

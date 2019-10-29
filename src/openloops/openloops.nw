@@ -85,6 +85,17 @@ end module prc_openloops
 
 @ %def ol_evaluate_scpowheg interface
 @
+<<prc openloops: interfaces>>=
+  abstract interface
+     subroutine ol_getparameter_double (variable_name, value) bind(C)
+       import
+       character(kind = c_char,len = 1), intent(in) :: variable_name
+       real(kind = c_double), intent(out) :: value
+     end subroutine ol_getparameter_double
+  end interface
+
+@ %def ol_getparameter_double interface
+@
 <<prc openloops: types>>=
   type, extends (prc_blha_writer_t) :: openloops_writer_t
   contains
@@ -110,6 +121,8 @@ end module prc_openloops
     type(string_t) :: olp_file
     procedure(ol_evaluate_scpowheg), nopass, pointer :: &
          evaluate_spin_correlations_powheg => null ()
+    procedure(ol_getparameter_double), nopass, pointer :: &
+         get_parameter_double => null ()
   contains
   <<prc openloops: openloops driver: TBP>>
   end type openloops_driver_t
@@ -311,7 +324,8 @@ filenames do not clash.
     else
        call msg_fatal ("blha_olp_set_parameter not associated!")
     end if
-    if (ierr == 0) call parameter_error_message (var_str ('alphas'))
+    if (ierr == 0) call parameter_error_message (var_str ('alphas'), &
+         var_str ('openloops_driver_set_alpha_s'))
   end subroutine openloops_driver_set_alpha_s
 
 @ %def openloops_driver_set_alpha_s
@@ -326,7 +340,7 @@ filenames do not clash.
     call driver%blha_olp_set_parameter &
        (c_char_'alpha_qed'//c_null_char, &
         dble (alpha), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('alpha_qed'))
+    if (ierr == 0) call ew_parameter_error_message (var_str ('alpha_qed'))
   end subroutine openloops_driver_set_alpha_qed
 
 @ %def openloops_driver_set_alpha_qed
@@ -341,7 +355,7 @@ filenames do not clash.
     call driver%blha_olp_set_parameter &
        (c_char_'Gmu'//c_null_char, &
         dble(GF), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('Gmu'))
+    if (ierr == 0) call ew_parameter_error_message (var_str ('Gmu'))
   end subroutine openloops_driver_set_GF
 
 @ %def openloops_driver_set_GF
@@ -356,7 +370,7 @@ filenames do not clash.
     call driver%blha_olp_set_parameter &
        (c_char_'sw2'//c_null_char, &
         dble(sw2), 0._double, ierr)
-    if (ierr == 0) call parameter_error_message (var_str ('sw2'))
+    if (ierr == 0) call ew_parameter_error_message (var_str ('sw2'))
   end subroutine openloops_driver_set_weinberg_angle
 
 @ %def openloops_driver_set_weinberg_angle
@@ -382,9 +396,9 @@ filenames do not clash.
 @ %def openloops_driver_type_name
 @
 <<prc openloops: openloops driver: TBP>>=
-  procedure :: load_sc_procedure => openloops_driver_load_sc_procedure
+  procedure :: load_procedures => openloops_driver_load_procedures
 <<prc openloops: procedures>>=
-  subroutine openloops_driver_load_sc_procedure (object, os_data, success)
+  subroutine openloops_driver_load_procedures (object, os_data, success)
     class(openloops_driver_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     logical, intent(out) :: success
@@ -396,15 +410,21 @@ filenames do not clash.
 
     c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("ol_evaluate_scpowheg"))
     call c_f_procpointer (c_fptr, object%evaluate_spin_correlations_powheg)
-    if (dlaccess_has_error (dlaccess)) then
-       call msg_fatal ("Could not load Openloops-powheg spin correlations!")
-    else
-       success = .true.
-    end if
+    call check_for_error (var_str ("ol_evaluate_scpowheg"))
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("ol_getparameter_double"))
+    call c_f_procpointer (c_fptr, object%get_parameter_double)
+    call check_for_error (var_str ("ol_getparameter_double"))
+    success = .true.
 
-  end subroutine openloops_driver_load_sc_procedure
+    contains
+      subroutine check_for_error (function_name)
+        type(string_t), intent(in) :: function_name
+        if (dlaccess_has_error (dlaccess)) &
+           call msg_fatal (char ("Loading of " // function_name // " failed!"))
+     end subroutine check_for_error
+  end subroutine openloops_driver_load_procedures
 
-@ %def openloops_driver_load_sc_procedure
+@ %def openloops_driver_load_procedures
 @
 <<prc openloops: openloops def: TBP>>=
   procedure :: read => openloops_def_read
@@ -512,7 +532,6 @@ filenames do not clash.
     call object%load_driver (os_data)
     call object%reset_parameters ()
     call object%set_particle_properties (model)
-    call object%set_electroweak_parameters (model)
     select type(def => object%def)
     type is (openloops_def_t)
        call object%set_verbosity (def%verbosity)
@@ -531,7 +550,7 @@ filenames do not clash.
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%load (os_data, success)
-       call driver%load_sc_procedure (os_data, success)
+       call driver%load_procedures (os_data, success)
     end select
   end subroutine prc_openloops_load_driver
 
@@ -630,10 +649,21 @@ filenames do not clash.
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
     logical, intent(in) :: is_nlo
+    integer :: ierr
     core%sqme_tree_pos = 1
     call core%set_n_external (core%data%get_n_tot ())
     call core%prepare_library (os_data, model)
     call core%start ()
+    call core%set_electroweak_parameters (model)
+    select type (driver => core%driver)
+    type is (openloops_driver_t)
+       !!! We have to set the external vector boson wavefunction to the MadGraph convention
+       !!! in order to be consistent with our calculation of the spin correlated contributions.
+       call driver%blha_olp_set_parameter ('wf_v_select'//c_null_char, &
+            3._double, 0._double, ierr)
+       if (ierr == 0) call parameter_error_message (var_str ('wf_v_select'), &
+            var_str ('prc_openloops_prepare_external_code'))
+    end select
     call core%read_contract_file (flv_states)
     call core%print_parameter_file (i_core)
   end subroutine prc_openloops_prepare_external_code
@@ -689,3 +719,20 @@ are requested.
 
 @ %def prc_openloops_compute_sqme_spin_c
 @
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: get_alpha_qed => prc_openloops_get_alpha_qed
+<<prc openloops: procedures>>=
+  function prc_openloops_get_alpha_qed (object) result (alpha_qed)
+    class(prc_openloops_t), intent(in) :: object
+    real(double) :: value
+    real(default) :: alpha_qed
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%get_parameter_double ('alpha_qed'//c_null_char, value)
+       alpha_qed = value
+       return
+    end select
+    call msg_fatal ("prc_openloops_get_alpha_qed: called by wrong driver, only supported for OpenLoops!")
+  end function prc_openloops_get_alpha_qed
+
+@ %def prc_openloops_get_alpha_qed

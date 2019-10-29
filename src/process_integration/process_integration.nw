@@ -2523,7 +2523,7 @@ master.  The details depend on the [[pcm]] concrete type.
   abstract interface
      subroutine pcm_set_blha_methods (pcm, blha_master, var_list)
        import
-       class(pcm_t), intent(in) :: pcm
+       class(pcm_t), intent(inout) :: pcm
        type(blha_master_t), intent(inout) :: blha_master
        type(var_list_t), intent(in) :: var_list
      end subroutine pcm_set_blha_methods
@@ -3556,10 +3556,10 @@ environment variables.
   procedure :: create_blha_interface => process_create_blha_interface
 <<Process: procedures>>=
   subroutine process_create_blha_interface (process)
-    class(process_t), intent(in) :: process
+    class(process_t), intent(inout) :: process
     integer :: alpha_power, alphas_power
     integer :: openloops_phs_tolerance, openloops_stability_log
-    logical :: use_cms, use_collier
+    logical :: use_cms
     type(string_t) :: ew_scheme, correction_type
     type(string_t) :: openloops_extra_cmd
     type(blha_master_t) :: blha_master
@@ -3577,7 +3577,6 @@ environment variables.
               openloops_phs_tolerance, &
               use_cms, &
               openloops_stability_log, &
-              use_collier, &
               extra_cmd = openloops_extra_cmd, &
               beam_structure = process%env%get_beam_structure ())
          call pcm%get_blha_flv_states (process%core_entry, flv_born, flv_real)
@@ -3597,8 +3596,6 @@ environment variables.
            var_list%get_ival (var_str ("openloops_stability_log"))
       use_cms = &
            var_list%get_lval (var_str ("?openloops_use_cms"))
-      use_collier = &
-           var_list%get_lval (var_str ("?openloops_use_collier"))
       ew_scheme = &
            var_list%get_sval (var_str ("$blha_ew_scheme"))
       correction_type = &
@@ -9603,7 +9600,7 @@ master.  This version: no NLO flag.
   procedure :: set_blha_methods => pcm_default_set_blha_methods
 <<Pcm: procedures>>=
   subroutine pcm_default_set_blha_methods (pcm, blha_master, var_list)
-    class(pcm_default_t), intent(in) :: pcm
+    class(pcm_default_t), intent(inout) :: pcm
     type(blha_master_t), intent(inout) :: blha_master
     type(var_list_t), intent(in) :: var_list
     call blha_master%set_methods (.false., var_list)
@@ -10103,10 +10100,11 @@ master.  This version: NLO flag set.
   procedure :: set_blha_methods => pcm_nlo_set_blha_methods
 <<Pcm: procedures>>=
   subroutine pcm_nlo_set_blha_methods (pcm, blha_master, var_list)
-    class(pcm_nlo_t), intent(in) :: pcm
+    class(pcm_nlo_t), intent(inout) :: pcm
     type(blha_master_t), intent(inout) :: blha_master
     type(var_list_t), intent(in) :: var_list
     call blha_master%set_methods (.true., var_list)
+    call pcm%blha_defaults%set_loop_method (blha_master)
   end subroutine pcm_nlo_set_blha_methods
 
 @ %def pcm_nlo_set_blha_methods
@@ -10795,16 +10793,16 @@ object and the squared matrix-element collector.
      pcm_instance_nlo_set_momenta_and_scales_virtual
 <<Pcm: procedures>>=
   subroutine pcm_instance_nlo_set_momenta_and_scales_virtual (pcm_instance, p, &
-     ren_scale, fac_scale)
+     ren_scale, fac_scale, es_scale)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale, fac_scale
+    real(default), intent(in) :: ren_scale, fac_scale, es_scale
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        associate (virtual => pcm_instance%virtual)
           call virtual%set_ren_scale (p, ren_scale)
           call virtual%set_fac_scale (p, fac_scale)
-          call virtual%set_ellis_sexton_scale ()
+          call virtual%set_ellis_sexton_scale (es_scale)
        end associate
     end select
   end subroutine pcm_instance_nlo_set_momenta_and_scales_virtual
@@ -11869,6 +11867,7 @@ has passed cuts, we calculate the various scale and weight expressions.
      real(default) :: scale = 0
      real(default) :: fac_scale = 0
      real(default) :: ren_scale = 0
+     real(default) :: es_scale = 0
      real(default), allocatable :: alpha_qcd_forced
      real(default) :: weight = 1
      type(vector4_t), dimension(:), allocatable :: p_seed
@@ -13171,6 +13170,7 @@ it is only available after the [[fks_regions]] have been created.
         call msg_debug2 (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
         print *, 'ren_scale: ', term%ren_scale
         print *, 'fac_scale: ', term%fac_scale
+        print *, 'Ellis-Sexton scale:', term%es_scale
      end if
      select type (config => term%pcm_instance%config)
      type is (pcm_nlo_t)
@@ -13192,7 +13192,7 @@ it is only available after the [[fks_regions]] have been created.
               p_born = term%int_hard%get_momenta ()
            end if
            call pcm_instance%set_momenta_and_scales_virtual &
-                (p_born, term%ren_scale, term%fac_scale)
+                (p_born, term%ren_scale, term%fac_scale, term%es_scale)
            select type (pcm_instance => term%pcm_instance)
            type is (pcm_instance_nlo_t)
               associate (virtual => pcm_instance%virtual)
@@ -13656,7 +13656,9 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
           select type (core)
           class is (prc_external_t)
              call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
-                  term%ren_scale, sqme_virt, bad_point)
+                  term%ren_scale, term%es_scale, &
+                  term%pcm_instance%config%blha_defaults%loop_method, &
+                  sqme_virt, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
           end select
           associate (i_born => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = 0), &
@@ -14971,6 +14973,7 @@ in the term expressions.
           end if
        end do
        call evaluate_real_scales_and_cuts ()
+       call set_ellis_sexton_scale ()
        if (.not. passed_real) then
           instance%evaluation_status = STAT_FAILED_CUTS
        else
@@ -15007,6 +15010,23 @@ in the term expressions.
          this_term%fac_scale = instance%term(i_sub)%fac_scale
       end if
     end subroutine replace_scales
+
+    subroutine set_ellis_sexton_scale ()
+      real(default) :: es_scale
+      type(var_list_t), pointer :: var_list
+      integer :: i
+      var_list => instance%process%get_var_list_ptr ()
+      es_scale = var_list%get_rval (var_str ("ellis_sexton_scale"))
+      do i = 1, size (instance%term)
+         if (instance%term(i)%active .and. instance%term(i)%nlo_type == NLO_VIRTUAL) then
+            if (es_scale < zero) then
+               instance%term(i)%es_scale = instance%term(i)%ren_scale
+            else
+               instance%term(i)%es_scale = es_scale
+            end if
+         end if
+      end do
+    end subroutine set_ellis_sexton_scale
   end subroutine process_instance_evaluate_expressions
 
 @ %def process_instance_evaluate_expressions

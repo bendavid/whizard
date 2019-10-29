@@ -46,14 +46,14 @@ fi
 if test "$enable_openloops" = "yes" -a "$openloops_lib" != "no"; then
     AC_MSG_CHECKING([for standard OpenLoops processes])
     
-    if test -f "$OPENLOOPS_DIR/proclib/libopenloops_ppll_lt.info" && test -f "$OPENLOOPS_DIR/proclib/libopenloops_eett_lt.info" && test -n "`$GREP 'eexttxg' $OPENLOOPS_DIR/proclib/libopenloops_eett_lt.info`" && test -f "$OPENLOOPS_DIR/proclib/libopenloops_tbw_lt.info"; then
-       AC_MSG_RESULT([ OpenLoops processes ppll/eett/tbw are installed])
+    if test -f "$OPENLOOPS_DIR/proclib/libopenloops_ppllj_lt.info" && test -f "$OPENLOOPS_DIR/proclib/libopenloops_eett_lt.info" && test -n "`$GREP 'eexttxg' $OPENLOOPS_DIR/proclib/libopenloops_eett_lt.info`" && test -f "$OPENLOOPS_DIR/proclib/libopenloops_tbw_lt.info"; then
+       AC_MSG_RESULT([ OpenLoops processes ppllj/eett/tbw are installed])
        OPENLOOPS_AVAILABLE_FLAG=".true."
     else
-       AC_MSG_RESULT([ OpenLoops processes ppll/eett/tbw are not installed])
+       AC_MSG_RESULT([ OpenLoops processes ppllj/eett/tbw are not installed])
        AC_MSG_NOTICE([error: *************************************************************])
        AC_MSG_NOTICE([error: OpenLoops standard process is not installed, please install  ])
-       AC_MSG_NOTICE([error:    ppll, eett and tbw with compile_extra=1                   ])
+       AC_MSG_NOTICE([error:    ppllj, eett and tbw with compile_extra=1                  ])
        AC_MSG_NOTICE([error: *************************************************************])
        OPENLOOPS_AVAILABLE_FLAG=".false."
        enable_openloops="no"
@@ -64,6 +64,14 @@ if test "$enable_openloops" = "yes" -a "$openloops_lib" != "no"; then
     wo_openloops_version=`$GREP 'release = ' $wo_openloops_versionfile | $SED 's/release = //g'`
     OPENLOOPS_VERSION=$wo_openloops_version
     AC_MSG_RESULT([$wo_openloops_version])
+    if test "$wo_openloops_version" = "1.0.0" || test "$wo_openloops_version" = "1.1.0" || test "$wo_openloops_version" = "1.2.0" || test "$wo_openloops_version" = "1.3.0" || test "$wo_openloops_version" = "1.3.1" || test "$wo_openloops_version" = "2.0.0" || test "$wo_openloops_version" = "2.1.0"; then
+       AC_MSG_NOTICE([error: *************************************************************])
+       AC_MSG_NOTICE([error: OpenLoops version $wo_openloops_version is too old.          ])
+       AC_MSG_NOTICE([error:    Please install at least v2.1.1 or the public beta version.])
+       AC_MSG_NOTICE([error: *************************************************************])
+       OPENLOOPS_AVAILABLE_FLAG=".false."
+       enable_openloops="no"
+    fi
     AC_SUBST([OPENLOOPS_VERSION])
 	
 else
@@ -78,7 +86,3 @@ AC_SUBST([LDFLAGS_OPENLOOPS])
 AM_CONDITIONAL([OPENLOOPS_AVAILABLE], [test "$enable_openloops" = "yes"])
 
 ]) dnl WO_PROG_OPENLOOPS
-
-
-
-
