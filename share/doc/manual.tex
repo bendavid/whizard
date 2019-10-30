@@ -8734,6 +8734,12 @@ has to be set via \ttt{--with-openloops=<openloops\_dir>}.
 \begin{code}
   git clone https://gitlab.com/openloops/OpenLoops.git
 \end{code}
+Note that \whizard\ only supports \openloops\ version that are at
+least 2.1.1 or newer. Alternatively, one can use the public beta
+version of \openloops, which can be checked out by the command
+\begin{code}
+  git clone -b public_beta https://gitlab.com/openloops/OpenLoops.git
+\end{code}
 The program can be build by running \ttt{scons} or \ttt{./scons}, a
 local version that is included in the \openloops\ directory.  This
 produces the script \ttt{./openloops}, which is the main hook for the
@@ -8760,7 +8766,7 @@ The libraries can then be installed via
 \end{code}
 A list of supported library names can be found on the \openloops\ web
 page.  Note that a process library also includes all possible permutated
-processes.  The process library \ttt{ppll}, for example, can also be
+processes.  The process library \ttt{ppllj}, for example, can also be
 used to compute the matrix elements for $e^+ e^- \rightarrow q \bar{q}$
 (massless quarks only).  The massive case of the top quark is handled in
 \ttt{eett}.  Additionally, there are process libraries for top and gauge
@@ -8778,7 +8784,7 @@ used with the \sindarin\ option
   $loop_me_method = "openloops".
 \end{code}
 The functional tests which check the \openloops\ functionality require
-the libraries \ttt{ppll}, \ttt{eett} and \ttt{tbw} to be installed (note
+the libraries \ttt{ppllj}, \ttt{eett} and \ttt{tbw} to be installed (note
 that \ttt{eett} is not contained in \ttt{ppll}).  During the
 configuration of \whizard, it is automatically checked that these two
 libraries, as well as the option \ttt{compile\_extra=1}, are present.
@@ -10000,7 +10006,7 @@ calculation (cf. Sec.~\ref{sec:gosam_me}.
 The main difference between \openloops\ and \gosam\ is that for
 \openloops\ there is no process code to be generated, compiled and
 linked for a process, but a precompiled library is called and linked,
-e.g. \ttt{ppll} for the Drell-Yan process. Of course, this library has
+e.g. \ttt{ppllj} for the Drell-Yan process. Of course, this library has
 to be installed on the system, but if that is not the case, the user
 can execute the \openloops\ script in the source directory of
 \openloops\ to download, compile and link the corresponding dynamic
