@@ -2,7 +2,7 @@
 echo "Running script $0"
 name=`basename @script@`
 if test -f ref-output/$name.ref; then
-  if test -f OCAML_FLAG -a -f OPENLOOPS_FLAG; then
+  if test -f OCAML_FLAG -a -f OPENLOOPS_FLAG -a -f FASTJET_FLAG; then
     ./run_whizard.sh @script@ --no-logging
     mv $name.log $name.log.tmp
     cat $name.log.tmp | sed -e 's/Loading library:.*/Loading library: [...]/' > $name.log
@@ -19,7 +19,7 @@ if test -f ref-output/$name.ref; then
     exit $diffrc
   else
     echo "|=============================================================================|"
-    echo "No O'Mega/OpenLoops matrix elements available"
+    echo "No O'Mega/OpenLoops matrix elements / FastJet available"
     exit 77
   fi
 else
