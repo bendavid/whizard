@@ -9,6 +9,6 @@ if test -f OCAML_FLAG -a -f OPENLOOPS_FLAG -a -f FASTJET_FLAG; then
     diff ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"
-    echo "No O'Mega or OpenLoops matrix elements available, test skipped"
+    echo "No O'Mega/OpenLoops matrix elements / FastJet available. Test skipped."
     exit 77
 fi
