@@ -1,6 +1,6 @@
 # SINDARIN input for WHIZARD self-test
 # Testing the integration of NLO QCD corrections
-# to Drell-Yan constrained to the real-subtracted component.
+# to Drell-Yan constrained to the real component.
 
 model = SM ("GF_MW_MZ")
 $blha_ew_scheme = "alpha_internal"

@@ -69,7 +69,9 @@ XFAIL_TESTS_DEFAULT =
 
 TESTS_REQ_FASTJET = \
     analyze_4.run \
-    bjet_cluster.run
+    bjet_cluster.run \
+    openloops_12.run \
+    openloops_13.run
 
 TESTS_REQ_OCAML = \
     libraries_1.run \
@@ -214,6 +216,8 @@ TESTS_REQ_OCAML = \
     openloops_9.run \
     openloops_10.run \
     openloops_11.run \
+    openloops_12.run \
+    openloops_13.run \
     recola_1.run \
     recola_2.run \
     recola_3.run \

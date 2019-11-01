@@ -753,6 +753,8 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/openloops_9.ref \
     functional_tests/ref-output/openloops_10.ref \
     functional_tests/ref-output/openloops_11.ref \
+    functional_tests/ref-output/openloops_12.ref \
+    functional_tests/ref-output/openloops_13.ref \
     functional_tests/ref-output/recola_1.ref \
     functional_tests/ref-output/recola_2.ref \
     functional_tests/ref-output/recola_3.ref \
@@ -1213,6 +1215,8 @@ MISC_TESTS_SIN = \
     functional_tests/openloops_9.sin \
     functional_tests/openloops_10.sin \
     functional_tests/openloops_11.sin \
+    functional_tests/openloops_12.sin \
+    functional_tests/openloops_13.sin \
     functional_tests/recola_1.sin \
     functional_tests/recola_2.sin \
     functional_tests/recola_3.sin \
