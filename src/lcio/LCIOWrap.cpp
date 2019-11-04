@@ -88,18 +88,18 @@ extern "C" void lcio_set_xsec ( LCEventImpl* evt, double xsec, double xsec_err )
 
 extern "C" void lcio_set_beam ( LCEventImpl* evt, int pdg, int beam ) {
   if (beam == 1){    
-    evt->parameters().setValue ( "beamPDG0", pdg );
+    evt->parameters().setValue ( "beamPDG1", pdg );
   }
   else if (beam == 2){
-    evt->parameters().setValue ( "beamPDG1", pdg );
+    evt->parameters().setValue ( "beamPDG2", pdg );
   }
 }
 
 extern "C" void lcio_set_pol ( LCEventImpl* evt, double pol1, double pol2 ) {
   float pol1_f = pol1;
   float pol2_f = pol2;
-  evt->parameters().setValue ( "Pol0", pol1_f );
-  evt->parameters().setValue ( "Pol1", pol2_f );
+  evt->parameters().setValue ( "beamPol1", pol1_f );
+  evt->parameters().setValue ( "beamPol2", pol2_f );
 }
 
 extern "C" void lcio_set_beam_file ( LCEventImpl* evt, char* file ) {

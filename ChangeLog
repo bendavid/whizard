@@ -7,11 +7,15 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
-2020-10-30
+2019-11-04
+	Full CIRCE2 ILC 250 and 500 GeV beam spectra added
+	Minor update on LCIO event header information
+
+2019-10-30
 	NLO QCD for final states completed
 	When using Openloops, v2.1.1+ mandatory
 
-2020-10-25
+2019-10-25
 	Binary grid files for VAMP2 integrator
 
 ##################################################################
