@@ -85,7 +85,7 @@ Output from running lcio_2_rd:
  parameter beamPDG1 [int]: 11, 
  parameter beamPDG2 [int]: -11, 
  parameter Energy [float]: 1000, 
- parameter _weight [float]: 1,
+ parameter _weight [float]: 1, 
  parameter alphaQCD [float]: 0.1178, 
  parameter beamPol1 [float]: 0, 
  parameter beamPol2 [float]: 0, 
