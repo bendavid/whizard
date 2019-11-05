@@ -29,7 +29,6 @@ xf=  0.0272592
    polarized  = F
    beams pol. = F
    luminosity =  1.006190000000E+03
- RNG factory: test (1)
  SF instance: [evaluated]
    beam      = 1 2
    incoming  = 1 2

@@ -8643,15 +8643,17 @@ object contains the actual configuration data.
 <<SF base: sf config: TBP>>=
   procedure :: write => sf_config_write
 <<SF base: procedures>>=
-  subroutine sf_config_write (object, unit)
+  subroutine sf_config_write (object, unit, verbose)
     class(sf_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
     integer :: u
     u = given_output_unit (unit)
     if (allocated (object%i)) then
        write (u, "(1x,A,2(1x,I0))")  "Structure-function configuration: &
             &beam(s)", object%i
-       if (allocated (object%data))  call object%data%write (u)
+       if (allocated (object%data)) &
+            call object%data%write (u, verbose = verbose)
     else
        write (u, "(1x,A)")  "Structure-function configuration: [undefined]"
     end if
@@ -20330,6 +20332,8 @@ type, which can then spawn RNG generator objects.
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
+    logical :: verb
+    verb = .false.;  if (present (verbose))  verb = verbose
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "CIRCE1 data:"
     write (u, "(3x,A,2(1x,A))") "prt_in   =", &
@@ -20345,7 +20349,11 @@ type, which can then spawn RNG generator objects.
     write (u, "(3x,A,A)")  "acc      = ", data%acc
     write (u, "(3x,A,I0)") "chat     = ", data%chat
     write (u, "(3x,A,L1)") "with rad.= ", data%with_radiation
-    if (data%generate)  call data%rng_factory%write (u)
+    if (data%generate) then
+       if (verb) then
+          call data%rng_factory%write (u)
+       end if
+    end if
   end subroutine circe1_data_write
 
 @ %def circe1_data_write
@@ -21462,6 +21470,8 @@ in the current directory.
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u, h
+    logical :: verb
+    verb = .false.;  if (present (verbose))  verb = verbose
     u = given_output_unit (unit)
     write (u, "(1x,A)") "CIRCE2 data:"
     write (u, "(3x,A,A)")       "file   = ", char(data%filename)
@@ -21480,7 +21490,9 @@ in the current directory.
           write (u, "(6x, " // FMT_19 // ")")  data%lumi_hel_frac(h)
        end do
     end if
-    call data%rng_factory%write (u)
+    if (verb) then
+       call data%rng_factory%write (u)
+    end if
   end subroutine circe2_data_write
 
 @ %def circe2_data_write
@@ -21967,7 +21979,7 @@ Construct and display a test structure function data object.
        call data%set_generator_mode (rng_factory)
     end select
 
-    call data%write (u)
+    call data%write (u, verbose = .true.)
 
     write (u, "(A)")
 
@@ -21994,7 +22006,7 @@ Construct and display a test structure function data object.
        call data%set_generator_mode (rng_factory)
     end select
 
-    call data%write (u)
+    call data%write (u, verbose = .true.)
 
     call model%final ()
 
