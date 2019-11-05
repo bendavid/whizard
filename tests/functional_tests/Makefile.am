@@ -216,8 +216,6 @@ TESTS_REQ_OCAML = \
     openloops_9.run \
     openloops_10.run \
     openloops_11.run \
-    openloops_12.run \
-    openloops_13.run \
     recola_1.run \
     recola_2.run \
     recola_3.run \
