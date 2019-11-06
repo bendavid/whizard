@@ -7,6 +7,9 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2019-11-06
+	Add squared matrix elements to the LCIO event header
+
 2019-11-05
 	Do not include RNG state in MD5 sum for CIRCE1/2
 

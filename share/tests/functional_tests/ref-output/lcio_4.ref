@@ -98,6 +98,7 @@ Output from running lcio_4_rd:
  parameter crossSection [float]: 361.926, 
  parameter crossSectionError [float]: 9.68695, 
  parameter scale [float]: 457.78, 
+ parameter sqme [float]: 0.00878025, 
  parameter BeamSpectrum [string]: CIRCE2: ilc500.circe, 
  parameter processName [string]: lcio_4_p, 
 

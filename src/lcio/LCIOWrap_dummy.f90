@@ -57,6 +57,17 @@ subroutine lcio_set_weight (evt_obj, weight) bind(C)
   stop
 end subroutine lcio_set_weight
 
+! extern "C" void lcio_set_sqme( LCEventImpl* evt, double sqme ) {
+subroutine lcio_set_sqme (evt_obj, sqme) bind(C)
+  use iso_c_binding
+  type(c_ptr), value :: evt_obj
+  real(c_double), value :: sqme
+  write (0, "(A)")  "***********************************************************"
+  write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "***********************************************************"
+  stop
+end subroutine lcio_set_sqme
+
 ! extern "C" void lcio_set_alt_weight( LCEventImpl* evt, double wgt, int index )
 subroutine lcio_set_alt_weight (evt_obj, weight, index) bind(C)
   use iso_c_binding

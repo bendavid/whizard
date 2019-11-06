@@ -193,6 +193,7 @@ Output from running lcio_10_rd:
  parameter crossSection [float]: 97927.9, 
  parameter crossSectionError [float]: 20802.6, 
  parameter scale [float]: 488.791, 
+ parameter sqme [float]: 120.063, 
  parameter BeamSpectrum [string]: , 
  parameter processName [string]: lcio_10_p, 
 

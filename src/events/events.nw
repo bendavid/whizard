@@ -10160,6 +10160,13 @@ The Fortran version has initializer form.
      end subroutine lcio_set_process_name
   end interface
   interface
+     subroutine lcio_set_sqme (evt_obj, sqme) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: sqme
+     end subroutine lcio_set_sqme
+  end interface
+  interface
      subroutine lcio_set_alt_sqme (evt_obj, sqme, index) bind(C)
        import
        type(c_ptr), value :: evt_obj
@@ -10178,7 +10185,7 @@ The Fortran version has initializer form.
 @ %def lcio_set_weight lcio_set_alpha_qcd lcio_set_scale lcio_set_sqrts
 @ %def lcio_set_xsec lcio_set_beam lcio_set_pol
 @ %def lcio_set_beam_file lcio_set_process_name
-@ %def lcio_set_alt_sqme lcio_set_alt_weight
+@ %def lcio_set_sqme lcio_set_alt_sqme lcio_set_alt_weight
 @
 <<LCIO interface: public>>=
   public :: lcio_event_set_weight
@@ -10296,6 +10303,17 @@ The Fortran version has initializer form.
   end subroutine lcio_event_set_alt_sqme
 
 @ %def lcio_event_set_alt_sqme
+@
+<<LCIO interface: public>>=
+  public :: lcio_event_set_sqme
+<<LCIO interface: procedures>>=
+  subroutine lcio_event_set_sqme (evt, sqme)
+    type(lcio_event_t), intent(inout) :: evt
+    real(default), intent(in) :: sqme
+    call lcio_set_sqme (evt%obj, real (sqme, c_double))
+  end subroutine lcio_event_set_sqme
+
+@ %def lcio_event_set_sqme
 @
 <<LCIO interface: public>>=
   public :: lcio_event_set_alt_weight
@@ -16484,6 +16502,7 @@ event files.
        call lcio_event_from_particle_set (eio%lcio_event, pset_ptr)
        call lcio_event_set_weight (eio%lcio_event, event%weight_prc)
        call lcio_event_set_sqrts (eio%lcio_event, event%get_sqrts ())
+       call lcio_event_set_sqme (eio%lcio_event, event%get_sqme_prc ())
        call lcio_event_set_scale (eio%lcio_event, event%get_fac_scale ())
        call lcio_event_set_alpha_qcd (eio%lcio_event, event%get_alpha_s ())
        call lcio_event_set_xsec (eio%lcio_event, eio%data%cross_section(i_prc), &
