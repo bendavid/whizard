@@ -79,7 +79,7 @@ if test "$enable_hepmc" = "yes"; then
       save_CXXFLAGS="$CXXFLAGS"
       save_LIBS="$LIBS"
       CXXFLAGS="${CXXFLAGS} --std=c++11 `${hepmcconfig} --cxxflags`"
-      LIBS="${LIBS} `${hepmcconfig} --libs`"
+      LIBS="${LIBS} -Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs`"
       AC_LANG([C++])
       AC_LINK_IFELSE([dnl
         AC_LANG_PROGRAM([[
