@@ -69,7 +69,7 @@ else
    save_LIBS="$LIBS"
 
    CXXFLAGS="${CXXFLAGS} `${pyconfig} --cxxflags`"
-   LIBS="${LIBS} `${pyconfig} --libs`"
+   LIBS="${LIBS} -Wl,-rpath,`${pyconfig} --libdir` `${pyconfig} --libs`"
 
    AC_MSG_CHECKING([if PYTHIA8 is functional])
    AC_LANG_PUSH(C++)
@@ -86,7 +86,7 @@ Pythia8::Pythia* pythia=new Pythia8::Pythia;
    AC_MSG_CHECKING(PYTHIA8)
    if test "${pyok}" = "yes"; then
       PYTHIA8_CXXFLAGS="`${pyconfig} --cxxflags`"
-      PYTHIA8_LIBS="`${pyconfig} --libs`"
+      PYTHIA8_LIBS="-Wl,-rpath,`${pyconfig} --libdir` `${pyconfig} --libs`"
       AC_MSG_RESULT(yes)
       $1
    else
@@ -100,7 +100,7 @@ Pythia8::Pythia* pythia=new Pythia8::Pythia;
    save_CXXFLAGS="$CXXFLAGS"	
    save_LIBS="$LIBS"
    CXXFLAGS="${CXXFLAGS} `${pyconfig} --cxxflags`"
-   LIBS="${LIBS} `${pyconfig} --libs`"
+   LIBS="${LIBS} -Wl,-rpath,`${pyconfig} --libdir` `${pyconfig} --libs`"
    AC_LINK_IFELSE([dnl
      AC_LANG_PROGRAM([[#include "Pythia8/Pythia.h"]],
        [[
