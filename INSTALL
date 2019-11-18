@@ -119,7 +119,7 @@ to subprocesses. This does not change anything for the installed
 WHIZARD, but the testsuite (make check) will not work probably even
 after make install has been executed. make distcheck will not work on
 Darwin >= 10.11. There is also the option to disable the System Integrity
-Protocol (SIP) of El Capitan by booting in Recovery Mode (use Command R
+Protection (SIP) of El Capitan by booting in Recovery Mode (use Command R
 while booting), open a terminal and type 'csrutil disable'. However, we 
 do not recommend to do so unless you know exactly what you are doing.
 
