@@ -345,6 +345,13 @@ AC_PATH_PROG(ACROREAD,acroread,false)
 AC_PATH_PROG(GHOSTVIEW,gv ghostview,false)
 AC_PATH_PROG(DOT,dot,false)
 AM_CONDITIONAL([DOT_AVAILABLE],[test "$DOT" != "false"])
+if test "$enable_distribution" = "yes"; then
+if test "$DOT" = "false"; then
+AC_MSG_NOTICE([error: ********************************])
+AC_MSG_NOTICE([error: Dot (graphviz) is not installed.])
+AC_MSG_ERROR([********************************])
+fi
+fi
 
 ### Determine whether Metapost is present and whether event display is possible
 AC_PROG_MPOST()
