@@ -11857,21 +11857,6 @@ then define an incoming particle as
           call particle_from_hepmc_particle (particle_set%prt(i), &
                prt, model, fallback_model, polarization, barcode)
        end do
-       v = hepmc_event_get_signal_process_vertex (evt)
-       if (hepmc_vertex_is_valid (v)) then
-          call hepmc_vertex_particle_in_iterator_init (v_it, v)
-          do while (hepmc_vertex_particle_in_iterator_is_valid (v_it))
-             prt = hepmc_vertex_particle_in_iterator_get (v_it)
-             bc = hepmc_particle_get_barcode &
-                  (hepmc_vertex_particle_in_iterator_get (v_it))
-             do i = 1, size(barcode)
-                if (bc == barcode(i))  &
-                     call particle_set%prt(i)%set_status (PRT_INCOMING)
-             end do
-             call hepmc_vertex_particle_in_iterator_advance (v_it)
-          end do
-          call hepmc_vertex_particle_in_iterator_final (v_it)
-       end if       
     end if
     do i = 1, n_tot
        if (particle_set%prt(i)%get_status () == PRT_VIRTUAL &
