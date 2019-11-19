@@ -200,33 +200,52 @@ be used, to export the actual grid.
 <<vegas: vegas grid: TBP>>=
   procedure, public :: write => vegas_grid_write
 <<vegas: procedures>>=
-  subroutine vegas_grid_write (self, unit)
+  subroutine vegas_grid_write (self, unit, pacify)
     class(vegas_grid_t), intent(in) :: self
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacify
+    logical :: pac
     integer :: u, i, j
+    pac = .false.; if (present (pacify))  pac = pacify
     u = given_output_unit (unit)
     write (u, descr_fmt) "begin vegas_grid_t"
     write (u, integer_fmt) "n_dim = ", self%n_dim
     write (u, integer_fmt) "n_bins = ", self%n_bins
     write (u, descr_fmt) "begin x_lower"
     do j = 1, self%n_dim
-       write (u, double_array_fmt)  j, self%x_lower(j)
+       if (pac) then
+          write (u, double_array_pac_fmt)  j, self%x_lower(j)
+       else
+          write (u, double_array_fmt)  j, self%x_lower(j)
+       end if
     end do
     write (u, descr_fmt) "end x_lower"
     write (u, descr_fmt) "begin x_upper"
     do j = 1, self%n_dim
-       write (u, double_array_fmt) j, self%x_upper(j)
+       if (pac) then
+          write (u, double_array_pac_fmt) j, self%x_upper(j)
+       else
+          write (u, double_array_fmt) j, self%x_upper(j)
+       end if
     end do
     write (u, descr_fmt) "end x_upper"
     write (u, descr_fmt) "begin delta_x"
     do j = 1, self%n_dim
-       write (u, double_array_fmt)  j, self%delta_x(j)
+       if (pac) then
+          write (u, double_array_pac_fmt)  j, self%delta_x(j)
+       else
+          write (u, double_array_fmt)  j, self%delta_x(j)
+       end if
     end do
     write (u, descr_fmt) "end delta_x"
     write (u, descr_fmt) "begin xi"
     do j = 1, self%n_dim
        do i = 1, self%n_bins + 1
-          write (u, double_array2_fmt) i, j, self%xi(i, j)
+          if (pac) then
+             write (u, double_array2_pac_fmt) i, j, self%xi(i, j)
+          else
+             write (u, double_array2_fmt) i, j, self%xi(i, j)
+          end if
        end do
     end do
     write (u, descr_fmt) "end xi"
@@ -1327,7 +1346,7 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
        end associate
        call calculate_efficiency ()
        if (verbose) then
-          write (msg_buffer, "(I0,1x,I0,1x, 4(E16.8E4,1x))") &
+          write (msg_buffer, "(I0,1x,I0,1x, 4(E24.16E4,1x))") &
                & it, self%config%n_calls, cumulative_int, cumulative_std, &
                & self%result%chi2, self%result%efficiency
           call msg_message ()
@@ -1685,9 +1704,11 @@ the maximum weight, we update the maximum, accordingly.
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X,E16.8E4)", &
-     double_array_fmt =  "(1X,I18,1X,E16.8E4)", &
-     double_array2_fmt =  "(1X,2(1X,I8),1X,E16.8E4)"
+     double_fmt =        "(1X,A18,1X,E24.16E4)", &
+     double_array_fmt =  "(1X,I18,1X,E24.16E4)", &
+     double_array_pac_fmt = "(1X,I18,1X,E16.8E4)", &
+     double_array2_fmt =  "(1X,2(1X,I8),1X,E24.16E4)", &
+     double_array2_pac_fmt = "(1X,2(1X,I8),1X,E16.8E4)"
 
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
@@ -2307,7 +2328,7 @@ Repeat with different number of dimensions.
     write (u, "(A)")
 
     mc_integrator_grid = mc_integrator%get_grid ()
-    call mc_integrator_grid%write (u)
+    call mc_integrator_grid%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 20000 (Adaptation)"
@@ -2342,7 +2363,7 @@ Repeat with different number of dimensions.
     write (u, "(A)")
 
     mc_integrator_grid = mc_integrator%get_grid ()
-    call mc_integrator_grid%write (u)
+    call mc_integrator_grid%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"
@@ -3703,7 +3724,7 @@ in [[vegas_integrate]].
          cumulative_std = sqrt (1. / result%sum_wgts)
          call calculate_efficiency ()
          if (verbose) then
-            write (msg_buffer, "(I0,1x,I0,1x, 4(E16.8E4,1x))") &
+            write (msg_buffer, "(I0,1x,I0,1x, 4(E24.16E4,1x))") &
                  & it, self%config%n_calls, cumulative_int, cumulative_std, &
                  & self%result%chi2, self%result%efficiency
             call msg_message ()
@@ -3994,9 +4015,11 @@ to one and therefore the overall normalization cancels.
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X,E16.8E4)", &
-     double_array_fmt =  "(1X,I18,1X,E16.8E4)", &
-     double_array2_fmt = "(1X,2(1X,I8),1X,E16.8E4)"
+     double_fmt =        "(1X,A18,1X,E24.16E4)", &
+     double_array_fmt =  "(1X,I18,1X,E24.16E4)", &
+     double_array_pac_fmt = "(1X,I18,1X,E16.8E4)", &
+     double_array2_fmt = "(1X,2(1X,I8),1X,E24.16E4)", &
+     double_array2_pac_fmt = "(1X,2(1X,I8),1X,E16.8E4)"
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
 <<vamp2: vamp2: TBP>>=
