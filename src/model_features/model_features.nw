@@ -14629,6 +14629,9 @@ part of the [[model_data_t]] base type and are copied afterwards via its
 [[copy_from]] method.
 
 Note: the parameter set is initialized for real parameters only.
+
+In order for the local model to be able to use the correct UFO model
+setup, UFO model information has to be transferred.
 <<Models: model: TBP>>=
   procedure :: init_instance => model_copy
 <<Models: procedures>>=
@@ -14649,6 +14652,8 @@ Note: the parameter set is initialized for real parameters only.
        end if
     end if
     model%md5sum = orig%md5sum
+    model%ufo_model = orig%ufo_model
+    model%ufo_path = orig%ufo_path
     if (allocated (orig%par)) then
        do i = 1, n_par
           call model%copy_parameter (i, orig%par(i))

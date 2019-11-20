@@ -194,6 +194,7 @@ TESTS_REQ_OCAML = \
     ufo_1.run \
     ufo_2.run \
     ufo_3.run \
+    ufo_4.run \
     nlo_1.run \
     nlo_2.run \
     nlo_3.run \
@@ -488,6 +489,7 @@ UFO_MODELPATH = ../models/UFO
 ufo_1.run: ufo_1_SM/$(UFO_TAG_FILE)
 ufo_2.run: ufo_2_SM/$(UFO_TAG_FILE)
 ufo_3.run: ufo_3_models/ufo_3_SM/$(UFO_TAG_FILE)
+ufo_4.run: ufo_4_models/ufo_4_SM/$(UFO_TAG_FILE)
 
 ufo_1_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 	mkdir -p ufo_1_SM
@@ -498,6 +500,9 @@ ufo_2_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 ufo_3_models/ufo_3_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 	mkdir -p ufo_3_models/ufo_3_SM
 	cp $(UFO_MODELPATH)/SM/*.py ufo_3_models/ufo_3_SM
+ufo_4_models/ufo_4_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
+	mkdir -p ufo_4_models/ufo_4_SM
+	cp $(UFO_MODELPATH)/SM/*.py ufo_4_models/ufo_4_SM
 
 $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE): $(top_srcdir)/omega/tests/UFO/SM/$(UFO_TAG_FILE)
 	$(MAKE) -C $(UFO_MODELPATH)/SM all
@@ -769,8 +774,9 @@ clean-local: clean-macosx
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -rf job_id_3_x.8001 job_id_4_x.8001
-	rm -rf ufo_1_SM ufo_2_SM ufo_3_models
-	rm -f ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl ufo_3_SM.ufo.mdl
+	rm -rf ufo_1_SM ufo_2_SM ufo_3_models ufo_4_models
+	rm -f ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl
+	rm -f ufo_3_SM.ufo.mdl ufo_4_SM.ufo.mdl
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 	rm -rf output_cll
 	rm -rf *.dSYM

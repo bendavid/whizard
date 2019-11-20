@@ -738,6 +738,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/ufo_1.ref \
     functional_tests/ref-output/ufo_2.ref \
     functional_tests/ref-output/ufo_3.ref \
+    functional_tests/ref-output/ufo_4.ref \
     functional_tests/ref-output/nlo_1.ref \
     functional_tests/ref-output/nlo_2.ref \
     functional_tests/ref-output/nlo_6.ref \
@@ -1193,6 +1194,7 @@ MISC_TESTS_SIN = \
     functional_tests/ufo_1.sin \
     functional_tests/ufo_2.sin \
     functional_tests/ufo_3.sin \
+    functional_tests/ufo_4.sin \
     functional_tests/nlo_1.sin \
     functional_tests/nlo_2.sin \
     functional_tests/nlo_3.sin \
