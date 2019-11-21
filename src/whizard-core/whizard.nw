@@ -28456,8 +28456,15 @@ a time.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Tools for the command line}
 
-We don't intent to be very smart here, but this module provides a few
+We do not intent to be very smart here, but this module provides a few
 small tools that simplify dealing with the command line.
+
+The [[unquote_value]] subroutine handles an option value that begins with a
+single/double quote character.  It swallows extra option strings until it
+finds a value that ends with another quote character.  The returned string
+consists of all argument strings between quotes, concatenated by blanks (with
+a leading blank).  Note that more complex patterns, such as quoted or embedded
+quotes, or multiple blanks, are not accounted for.
 <<[[cmdline_options.f90]]>>=
 <<File header>>
 
@@ -28509,7 +28516,7 @@ contains
        has_value = .false.
     end if
     if (has_value) then
-       string = value
+       call unquote_value (i, option, value, string)
     else
        i = i + 1
        call get_command_argument (i, arg_value, arg_len, arg_status)
@@ -28526,9 +28533,48 @@ contains
           call print_usage ()
           call msg_fatal (" Option '" // char (option) // "' needs a value")
        end select
-       string = trim (arg_value)
+       call unquote_value (i, option, var_str (trim (arg_value)), string)
     end if
   end function get_option_value
+
+  subroutine unquote_value (i, option, value, string)
+    integer, intent(inout) :: i
+    type(string_t), intent(in) :: option
+    type(string_t), intent(in) :: value
+    type(string_t), intent(out) :: string
+    character(1) :: quote
+    character(CMDLINE_ARG_LEN) :: arg_value
+    integer :: arg_len, arg_status
+    quote = extract (value, 1, 1)
+    select case (quote)
+    case ("'", '"')
+       string = ""
+       arg_value = extract (value, 2)
+       arg_len = len_trim (value)
+       APPEND_QUOTED: do
+          if (extract (arg_value, arg_len, arg_len) == quote) then
+             string = string // " " // extract (arg_value, 1, arg_len-1)
+             exit APPEND_QUOTED
+          else
+             string = string // " " // trim (arg_value)
+             i = i + 1
+             call get_command_argument (i, arg_value, arg_len, arg_status)
+             select case (arg_status)
+             case (0)
+             case (-1)
+                call msg_error (" Quoted option value truncated: '" &
+                     // char (string) // "'")
+             case default
+                call print_usage ()
+                call msg_fatal (" Option '" // char (option) &
+                     // "': unterminated quoted value")
+             end select
+          end if
+       end do APPEND_QUOTED
+    case default
+       string = value
+    end select
+  end subroutine unquote_value
 
 end module cmdline_options
 
@@ -28823,7 +28869,9 @@ program main
   logical :: rebuild_phs, rebuild_grids, rebuild_events
   logical :: recompile_library
   type(ifile_t) :: commands
-  type(string_t) :: command
+  type(string_t) :: command, cmdfile
+  integer :: cmdfile_unit
+  logical :: cmdfile_exists
 
   type(whizard_options_t), allocatable :: options
   type(whizard_t), allocatable, target :: whizard_instance
@@ -28917,6 +28965,19 @@ program main
            case ("--execute")
               command = get_option_value (i, long_option, value)
               call ifile_append (commands, command)
+              cycle SCAN_CMDLINE
+           case ("--file")
+              cmdfile = get_option_value (i, long_option, value)
+              inquire (file=char(cmdfile), exist=cmdfile_exists)
+              if (cmdfile_exists) then
+                 open (newunit=cmdfile_unit, file=char(cmdfile), &
+                      action="read", status="old")
+                 call ifile_append (commands, cmdfile_unit)
+                 close (cmdfile_unit)
+              else
+                 call msg_error &
+                      ("Sindarin file '" // char (cmdfile) // "' not found")
+              end if
               cycle SCAN_CMDLINE
            case ("--interactive")
               call no_option_value (long_option, value)
@@ -29108,6 +29169,19 @@ program main
                     command = get_option_value (i, var_str (option))
                     call ifile_append (commands, command)
                     cycle SCAN_CMDLINE
+                 case ("-f")
+                    cmdfile = get_option_value (i, var_str (option))
+                    inquire (file=char(cmdfile), exist=cmdfile_exists)
+                    if (cmdfile_exists) then
+                       open (newunit=cmdfile_unit, file=char(cmdfile), &
+                            action="read", status="old")
+                       call ifile_append (commands, cmdfile_unit)
+                       close (cmdfile_unit)
+                    else
+                       call msg_error ("Sindarin file '" &
+                            // char (cmdfile) // "' not found")
+                    end if
+                    cycle SCAN_CMDLINE
                  case ("-i")
                     interactive = .true.
                     cycle SCAN_SHORT_OPTIONS
@@ -29288,6 +29362,7 @@ end program main
     print "(A)", "    --debug2 AREA     switch on more verbose debug output for AREA."
     print "(A)", "    --single-event    only compute one phase-space point (for debugging)"
     print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"
+    print "(A)", "-f, --file CMDFILE    execute SINDARIN from CMDFILE before reading FILE(s)"
     print "(A)", "-i, --interactive     run interactively after reading FILE(s)"
     print "(A)", "-J, --job-id STRING   set job ID to STRING (default: empty)"
     print "(A)", "-l, --library LIB     preload process library NAME"

@@ -32,6 +32,7 @@ WHIZARD_DRIVER = run_whizard.sh
 TESTS_DEFAULT = \
     empty.run \
     fatal.run \
+    cmdline_1.run \
     structure_1.run \
     structure_2.run \
     structure_3.run \
@@ -441,6 +442,12 @@ SUFFIXES = .sh .run
 		exit 2; \
 	fi
 	@chmod +x $@
+
+cmdline_1.run: cmdline_1_a.sin cmdline_1_b.sin
+cmdline_1_a.sin: $(top_builddir)/share/tests/functional_tests/cmdline_1_a.sin
+	cp $< $@
+cmdline_1_b.sin: $(top_builddir)/share/tests/functional_tests/cmdline_1_b.sin
+	cp $< $@
 
 structure_2.run: structure_2_inc.sin
 structure_2_inc.sin: $(top_builddir)/share/tests/functional_tests/structure_2_inc.sin

@@ -618,6 +618,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/rebuild_3.ref \
     functional_tests/ref-output/rebuild_4.ref \
     functional_tests/ref-output/fatal.ref \
+    functional_tests/ref-output/cmdline_1.ref \
     functional_tests/ref-output/model_change_1.ref \
     functional_tests/ref-output/model_change_2.ref \
     functional_tests/ref-output/model_change_3.ref \
@@ -1009,6 +1010,9 @@ MISC_TESTS_M4 =
 MISC_TESTS_SIN = \
     functional_tests/empty.sin \
     functional_tests/fatal.sin \
+    functional_tests/cmdline_1_a.sin \
+    functional_tests/cmdline_1_b.sin \
+    functional_tests/cmdline_1.sin \
     functional_tests/pack_1.sin \
     functional_tests/defaultcuts.sin \
     functional_tests/cuts.sin \

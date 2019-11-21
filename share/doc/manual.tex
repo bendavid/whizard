@@ -12974,7 +12974,9 @@ The first set of options is intended for normal operation.
 \item[\ttt{--debug2 AREA}]: Switch on more verbose debug output for \ttt{AREA}.
 \item[\ttt{--single-event}]: Only compute one phase-space point (for debugging).
 \item[\ttt{--execute COMMANDS}]:  Execute \ttt{COMMANDS} as a script
-  before the script file.  Short version: \ttt{-e}
+  before the script file (see below).  Short version: \ttt{-e}
+\item[\ttt{--file CMDFILE}]:  Execute commands in \ttt{CMDFILE} before the
+  main script file (see below).  Short version: \ttt{-f} 
 \item[\ttt{--help}]:  List the available options and exit.  Short version:
   \ttt{-h}
 \item[\ttt{--interactive}]:  Run \whizard\ interactively.  See
@@ -13034,6 +13036,25 @@ on a batch systems.
   of the \lhapdf\ installation that should be used by \whizard.
 \end{description}
 
+The \ttt{--execute} and \ttt{--file} options allow for fine-tuning the command
+flow.  The \whizard\ main program will concatenate all commands given in
+\ttt{--execute} commands together with all commands contained in \ttt{--file}
+options, in the order they are encountered, as a contiguous command stream
+that is executed \emph{before} the main script (in the example above,
+\ttt{script-name.sin}).
+
+Regarding the \ttt{--execute} option, commands that contain blanks must be
+enclosed in matching single- or double-quote characters since the individual
+tokens would otherwise be intepreted as separate option strings.
+Unfortunately, a Unix/Linux shell interpreter will strip quotes before handing
+the command string over to the program.  In that situation, the
+quote-characters must be quoted themselves, or the string must be enclosed in
+quotes twice.  Either version should work as a command line interpreted by
+the shell:
+\begin{interaction}
+  whizard --execute \'int my_flag = 1\' script-name.sin
+  whizard --execute "'int my_flag = 1'" script-name.sin
+\end{interaction}
 
 
 \section{WHISH -- The \whizard\ Shell/Interactive mode}
