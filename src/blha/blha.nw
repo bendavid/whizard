@@ -1837,7 +1837,7 @@ end module blha_config
 Parameters to enumerate the different options in the order.
 <<BLHA config: parameters>>=
   integer, public, parameter :: &
-       BLHA_CT_QCD = 1, BLHA_CT_EW = 2, BLHA_CT_QED = 3, BLHA_CT_OTHER = 4
+       BLHA_CT_QCD = 1, BLHA_CT_EW = 2, BLHA_CT_OTHER = 3
   integer, public, parameter :: &
        BLHA_IRREG_CDR = 1, BLHA_IRREG_DRED = 2, BLHA_IRREG_THV = 3, &
        BLHA_IRREG_MREG = 4, BLHA_IRREG_OTHER = 5
@@ -1860,7 +1860,7 @@ Parameters to enumerate the different options in the order.
        BLHA_WIDTH_RUNNING = 3, BLHA_WIDTH_POLE = 4, &
        BLHA_WIDTH_DEFAULT = 5
 
-@ %def blha_ct_qcd blha_ct_ew blha_ct_qed blha_ct_other
+@ %def blha_ct_qcd blha_ct_ew blha_ct_other
 @ %def blha_irreg_cdr blha_irreg_dred blha_irreg_thv blha_irreg_mreg blha_irreg_other
 @ %def blha_mps_onshell blha_mps_other
 @ %def blha_mode_gosam blha_mode_feynarts blha_mode_generic
@@ -2065,7 +2065,8 @@ of the particles. Note that the output can only be processed by OpenLoops.
 
 @ %def ew_scheme_string_to_int
 @
-@ Translate the SINDARIN input string to the corresponding named integer.
+@ Translate the SINDARIN input string to the corresponding named integer
+denoting the type of NLO correction.
 <<BLHA config: public>>=
   public :: correction_type_string_to_int
 <<BLHA config: procedures>>=
@@ -2075,11 +2076,11 @@ of the particles. Note that the output can only be processed by OpenLoops.
     select case (char (correction_type_str))
     case ('QCD')
        correction_type_int = BLHA_CT_QCD
-    case ('QED', 'EW')
+    case ('EW')
        correction_type_int = BLHA_CT_EW
     case default
        call msg_warning ("nlo_correction_type: " // char (correction_type_str) // &
-            " not supported. Try setting it to 'QCD', 'QED' or 'EW'.")
+            " not supported. Try setting it to 'QCD', 'EW'.")
     end select
   end function correction_type_string_to_int
 
@@ -3012,7 +3013,6 @@ Write the BLHA file. Internal mode is intented for md5summing only.
     select case (cfg%correction_type)
        case (BLHA_CT_QCD); buf = "QCD"
        case (BLHA_CT_EW); buf = "EW"
-       case (BLHA_CT_QED); buf = "QED"
        case default; buf = cfg%correction_type_other
     end select
     write (u,'(A25,A)') "CorrectionType" // pad, char (buf)

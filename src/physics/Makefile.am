@@ -38,6 +38,7 @@ libphysics_la_SOURCES = \
   lorentz.f90 \
   sm_physics.f90 \
   sm_qcd.f90 \
+  sm_qed.f90 \
   shower_algorithms.f90
 
 libphysics_ut_la_SOURCES = \

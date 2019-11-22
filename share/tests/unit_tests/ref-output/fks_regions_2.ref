@@ -20,7 +20,7 @@ alr ||             flst_real || i_real ||  em || mul || nreg ||       ftuples ||
   2 || [ 11,-11,  2, -2, 21] ||      1 ||   4 ||   1 ||    2 || {(3,5),(4,5)} || [ 11,-11,  2, -2] ||       1
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
-* ee -> qq with QED corrections
+* ee -> qq with EW corrections
 
 | Check that no negative ftuple indices occur
 | Success!

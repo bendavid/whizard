@@ -6096,8 +6096,8 @@ procedure with type [[V_NONE]].
          var_str ("QCD"), intrinsic = .true., &
          description=var_str ('String variable which sets the NLO correction ' // &
          'type via \ttt{nlo\_correction\_type = "{\em <type>}"} to either ' // &
-         '\ttt{"QCD"} or \ttt{"QED"}, or to both with \ttt{\em{<type>}} ' // &
-         'set to \ttt{"Full"}.'))
+         '\ttt{"QCD"}, \ttt{"EW"}, or to all with \ttt{\em{<type>}} ' // &
+         'set to \ttt{"Full"}. Must be set before the \texttt{process} statement.'))
     call var_list%append_string (var_str ("$exclude_gauge_splittings"), &
          var_str ("c:b:t:e2:e3"), intrinsic = .true., &
          description=var_str ('String variable that allows via ' // &

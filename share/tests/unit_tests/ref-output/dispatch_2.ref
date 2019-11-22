@@ -18,5 +18,7 @@
      threshold = 1.0000000000E+09
      cutoff    = 10
    QCD parameters (coupling undefined)
+   QED parameters (fixed coupling):
+     alpha_qed = -1.00000E+00
 
 * Test output end: dispatch_2

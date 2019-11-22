@@ -106,7 +106,7 @@ end module prc_core
 @
 \subsection{The process core}
 The process core is of abstract data type.  Different types of matrix
-element will be represented by different implementations.
+elements will be represented by different implementations.
 <<Prc core: public>>=
   public :: prc_core_t
 <<Prc core: types>>=
@@ -231,7 +231,7 @@ only on the concrete type, and the default is no.
     logical :: flag
     flag = .false.
   end function prc_core_uses_blha
-  
+
 @ %def prc_core_uses_blha
 @
 Tell whether a particular combination of flavor/helicity/color state
@@ -271,14 +271,25 @@ process-specific workspace.
 <<Prc core: process core: TBP>>=
   procedure :: get_alpha_s => prc_core_get_alpha_s
 <<Prc core: procedures>>=
-  function prc_core_get_alpha_s (object, core_state) result (alpha)
+  function prc_core_get_alpha_s (object, core_state) result (alpha_qcd)
     class(prc_core_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state
-    real(default) :: alpha
-    alpha = -1
+    real(default) :: alpha_qcd
+    alpha_qcd = -1
   end function prc_core_get_alpha_s
 
 @ %def prc_core_get_alpha_s
+@ We follow the same strategy for the electromagnetic coupling $\alpha_\text{em}$.
+<<Prc core: process core: TBP>>=
+  procedure :: get_alpha_qed => prc_core_get_alpha_qed
+<<Prc core: procedures>>=
+  function prc_core_get_alpha_qed (object) result (alpha_qed)
+    class(prc_core_t), intent(in) :: object
+    real(default) :: alpha_qed
+    alpha_qed = -1
+  end function prc_core_get_alpha_qed
+
+@ %def prc_core_get_alpha_qed
 @ Allocate the workspace associated to a process component.  The default is
 that there is no workspace, so we do nothing.  A type extension may override
 this and allocate a workspace object of appropriate type, which can be used in
@@ -981,7 +992,7 @@ responsible for writing interfaces and wrappers.
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     if (.not. verbose) then
        write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
-    end if    
+    end if
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
   end subroutine template_me_write_makefile_code
 
@@ -1384,12 +1395,12 @@ responsible for writing interfaces and wrappers.
     class(template_me_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine template_me_before_compile
-  
+
   subroutine template_me_after_compile (writer, id)
     class(template_me_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine template_me_after_compile
-  
+
 @ %def template_me_before_compile
 @ %def template_me_after_compile
 @ Return the name of a procedure that implements a given feature, as
@@ -2334,10 +2345,12 @@ module prc_omega
 <<Use strings>>
   use io_units
   use system_defs, only: TAB
+  use constants, only: one
   use diagnostics
   use os_interface
   use lorentz
   use sm_qcd
+  use sm_qed
   use interactions
   use model_data
 
@@ -3089,12 +3102,12 @@ diagrams, at least in the testsuite.
     class(omega_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine omega_before_compile
-  
+
   subroutine omega_after_compile (writer, id)
     class(omega_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine omega_after_compile
-  
+
 @ %def omega_before_compile
 @ %def omega_after_compile
 @ Return the name of a procedure that implements a given feature, as
@@ -3341,7 +3354,7 @@ cause a segfault.
     logical, intent(in), optional :: diags, diags_color
     logical :: ufo_model
     class(prc_core_def_t), allocatable :: def
-    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo    
+    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     allocate (omega_def_t :: def)
     select type (def)
     class is (omega_def_t)
@@ -3373,6 +3386,7 @@ pointer to the process definition ([[omega_def_t]]), a data component
      integer :: scheme = 0
      type(helicity_selection_t) :: helicity_selection
      type(qcd_t) :: qcd
+     type(qed_t) :: qed
    contains
    <<Omega interface: prc omega: TBP>>
   end type prc_omega_t
@@ -3460,6 +3474,7 @@ only if active.)
     end if
     call object%helicity_selection%write (u)
     call object%qcd%write (u)
+    call object%qed%write (u)
   end subroutine prc_omega_write
 
 @ %def prc_omega_write
@@ -3488,12 +3503,17 @@ store threshold and cutoff for helicity selection.
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
+    type(qed_t) :: qed
     logical, intent(in), optional :: use_color_factors
     if (present (model)) then
        if (.not. allocated (prc_omega%par)) &
             allocate (prc_omega%par (model%get_n_real ()))
        call model%real_parameters_to_array (prc_omega%par)
        prc_omega%scheme = model%get_scheme_num ()
+       if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) then
+          call qed%set_alpha_qed (one / model%get_real (var_str ('alpha_em_i')))
+       end if
+       prc_omega%qed = qed
     end if
     if (present (helicity_selection)) then
        prc_omega%helicity_selection = helicity_selection
@@ -3726,20 +3746,33 @@ $\alpha_s$.  This works only if $\alpha_s$ varies, and if the workspace
 <<Omega interface: prc omega: TBP>>=
   procedure :: get_alpha_s => prc_omega_get_alpha_s
 <<Omega interface: procedures>>=
-  function prc_omega_get_alpha_s (object, core_state) result (alpha)
+  function prc_omega_get_alpha_s (object, core_state) result (alpha_qcd)
     class(prc_omega_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state
-    real(default) :: alpha
-    alpha = -1
+    real(default) :: alpha_qcd
+    alpha_qcd = -1
     if (allocated (object%qcd%alpha) .and. allocated (core_state)) then
        select type (core_state)
        type is (omega_state_t)
-          alpha = core_state%alpha_qcd
+          alpha_qcd = core_state%alpha_qcd
        end select
     end if
   end function prc_omega_get_alpha_s
 
 @ %def prc_omega_get_alpha_s
+@ $\alpha_\text{em}$ is not updated after computing the amplitude
+because we currently only support a fixed $\alpha_\text{em}$ but
+we still need a routine to get the value of [[alpha_qed]].
+<<Omega interface: prc omega: TBP>>=
+  procedure :: get_alpha_qed => prc_omega_get_alpha_qed
+<<Omega interface: procedures>>=
+  function prc_omega_get_alpha_qed (object) result (alpha_qed)
+    class(prc_omega_t), intent(in) :: object
+    real(default) :: alpha_qed
+    alpha_qed = object%qed%get_alpha_qed ()
+  end function prc_omega_get_alpha_qed
+
+@ %def prc_omega_get_alpha_qed
 @
 \subsection{Unit Test}
 Test module, followed by the corresponding implementation module.
@@ -4964,7 +4997,7 @@ This defines an abstract framework that can handle matrix elements which are
 computed outside of \whizard.  Such matrix elements typically (i) require
 extra code or libraries to be configured linked at execution time, and (ii)
 provide only plain or correlated squared matrix elements instead of
-amplitudes.  
+amplitudes.
 
 In particular, matrix-element libraries that conform to the BLHA standard
 belong to this class.  They have their own (also abstract) extension of the
@@ -4988,6 +5021,7 @@ module prc_external
   use lorentz
   use interactions
   use sm_qcd
+  use sm_qed
   use variables, only: var_list_t
 
   use model_data
@@ -5190,6 +5224,7 @@ driver.
 <<Prc external: types>>=
   type, abstract, extends (prc_core_t) :: prc_external_t
     type(qcd_t) :: qcd
+    type(qed_t) :: qed
     integer :: n_flv = 1
     real(default), dimension(:), allocatable :: par
     integer :: scheme = 0
@@ -5329,25 +5364,36 @@ Used for testing.
 <<Prc external: prc external: TBP>>=
   procedure :: get_alpha_s => prc_external_get_alpha_s
 <<Prc external: procedures>>=
-  function prc_external_get_alpha_s (object, core_state) result (alpha)
+  function prc_external_get_alpha_s (object, core_state) result (alpha_qcd)
     class(prc_external_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state
-    real(default) :: alpha
+    real(default) :: alpha_qcd
     if (allocated (core_state)) then
       select type (core_state)
       class is (prc_external_state_t)
-         alpha = core_state%alpha_qcd
+         alpha_qcd = core_state%alpha_qcd
       type is (omega_state_t)
-         alpha = core_state%alpha_qcd
+         alpha_qcd = core_state%alpha_qcd
       class default
-         alpha = zero
+         alpha_qcd = zero
       end select
     else
-       alpha = zero
+       alpha_qcd = zero
     end if
   end function prc_external_get_alpha_s
 
 @ %def prc_external_get_alpha_s
+@ Getter for [[alpha_qed]]
+<<Prc external: prc external: TBP>>=
+  procedure :: get_alpha_qed => prc_external_get_alpha_qed
+<<Prc external: procedures>>=
+  function prc_external_get_alpha_qed (object) result (alpha_qed)
+    class(prc_external_t), intent(in) :: object
+    real(default) :: alpha_qed
+    alpha_qed = object%qed%get_alpha_qed ()
+  end function prc_external_get_alpha_qed
+
+@ %def prc_external_get_alpha_qed
 @
 <<Prc external: prc external: TBP>>=
   procedure :: is_allowed => prc_external_is_allowed
@@ -5421,6 +5467,7 @@ Used for testing.
   subroutine prc_external_set_parameters (object, qcd, model)
     class(prc_external_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
+    type(qed_t) :: qed
     class(model_data_t), intent(in), target, optional :: model
     object%qcd = qcd
     if (present (model)) then
@@ -5428,6 +5475,10 @@ Used for testing.
             allocate (object%par (model%get_n_real ()))
        call model%real_parameters_to_array (object%par)
        object%scheme = model%get_scheme_num ()
+       if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) then
+          call qed%set_alpha_qed (one / model%get_real (var_str ('alpha_em_i')))
+       end if
+       object%qed = qed
     end if
   end subroutine prc_external_set_parameters
 
@@ -5858,7 +5909,7 @@ This is the abstract external matrix-element interface.
          "prc_external_writer_before_compile (no-op)")
     !!! This is a dummy
   end subroutine prc_external_writer_before_compile
-  
+
   subroutine prc_external_writer_after_compile (writer, id)
     class(prc_external_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
@@ -5866,7 +5917,7 @@ This is the abstract external matrix-element interface.
          "prc_external_writer_after_compile (no-op)")
     !!! This is a dummy
   end subroutine prc_external_writer_after_compile
-  
+
 @ %def prc_external_writer_before_compile
 @ %def prc_external_writer_after_compile
 @ Standard Makefile, set up to call \oMega.  Additionally, the \oMega\ output
@@ -5918,7 +5969,7 @@ can be exploited for its data-management parts.
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     if (.not. verbose) then
        write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
-    end if    
+    end if
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
 
   end subroutine prc_external_writer_write_makefile_code
@@ -6661,7 +6712,7 @@ This core type has the beam polarization as an extra parameter.
        object%has_beam_pol = has_beam_pol
     end if
   end subroutine prc_threshold_set_beam_pol
-  
+
 @ %def prc_threshold_set_beam_pol
 @
 <<Prc Threshold: prc threshold: TBP>>=

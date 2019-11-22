@@ -140,14 +140,14 @@ process. It is used to collect the process definitions in an array.
   end type rcl_process_t
 
 @ %def rcl_process_t
-@ 
+@
 <<recola wrapper: types>>=
   interface rcl_process_t
      module procedure new_rcl_process_t
   end interface
 
 @ %def rcl_process_t
-@ 
+@
 <<recola wrapper: procedures>>=
   function new_rcl_process_t (id, process_string, order)
     integer, intent(in) :: id
@@ -187,7 +187,7 @@ process. It is used to collect the process definitions in an array.
          "order=", char(object%order)
   end subroutine rcl_process_write
 
-@ %def rcl_process_write 
+@ %def rcl_process_write
 @ This defines a singleton object, located in this module only, that
 controls RECOLA initialization and process management.  When WHIZARD
 compiles processes, it should also run the RECOLA "`controller"',
@@ -212,11 +212,11 @@ Type and object can be private.
    contains
    <<recola wrapper: rcl controller: TBP>>
   end type rcl_controller_t
-  
+
 @ %def rcl_controller_t
 <<recola wrapper: variables>>=
   type(rcl_controller_t), target, save :: rcl_controller
-  
+
 @ %def rcl_controller
 @ Add a RECOLA process to the controller. This will make sure that
 processes can be redefined if additional definitions are to be made
@@ -231,7 +231,7 @@ after process generation.
     if (rcl%n_processes == size(rcl%processes)) then
       allocate( temp(2 * rcl%n_processes) )
       temp(:rcl%n_processes) = rcl%processes
-      call move_alloc(temp, rcl%processes) 
+      call move_alloc(temp, rcl%processes)
     end if
     rcl%processes(rcl%n_processes + 1) = process
     rcl%n_processes = rcl%n_processes + 1
@@ -280,7 +280,7 @@ done something).
     rcl%recola_id = 0
     rcl%n_processes = 0
   end subroutine rcl_controller_reset
-    
+
 @ %def rcl_controller_reset
 @ Output.
 <<recola wrapper: rcl controller: TBP>>=
@@ -295,7 +295,7 @@ done something).
          "active=", object%active, "done=", object%done, &
          "id=", object%recola_id, "n_processes=", object%n_processes
   end subroutine rcl_controller_write
-    
+
 @ %def rcl_controller_write
 @ Return a new numeric process ID, incrementing the counter once.
 <<recola wrapper: rcl controller: TBP>>=
@@ -307,7 +307,7 @@ done something).
     object%recola_id = object%recola_id + 1
     id = object%recola_id
   end subroutine rcl_controller_get_new_id
-    
+
 @ %def rcl_controller_get_new_id
 @ Return the current numeric process ID without incrementing the counter.
 <<recola wrapper: rcl controller: TBP>>=
@@ -318,7 +318,7 @@ done something).
     integer, intent(out) :: id
     id = object%recola_id
   end subroutine rcl_controller_get_current_id
-    
+
 @ %def rcl_controller_get_current_id
 @ Do not allow activation if processes have been calculated
 previously.   Otherwise set the flag.
@@ -330,7 +330,7 @@ previously.   Otherwise set the flag.
     if ( .not. allocated(rcl%processes) ) allocate ( rcl%processes(10) )
     rcl_controller%active = .true.
   end subroutine rcl_controller_activate
-  
+
 @ %def rcl_controller_activate
 @ Start process initialization by calling the RECOLA API.  Do not
 allow this twice (skip silently), and skip anyway if there is no activation.
@@ -347,7 +347,7 @@ allow this twice (skip silently), and skip anyway if there is no activation.
        end if
     end if
   end subroutine rcl_controller_generate_processes
-       
+
 @ %def rcl_controller_generate_processes
 @ Return a new numeric RECOLA process ID.  The singleton nature of the
 controller guarantees that the ID is unique.
@@ -358,7 +358,7 @@ controller guarantees that the ID is unique.
     integer, intent(out) :: id
     call rcl_controller%get_new_id (id)
   end subroutine rclwrap_get_new_recola_id
-    
+
 @ %def rclwrap_get_new_recola_id
 @ Return the current numeric RECOLA process ID. This coincides with the amount
 of IDs currently in use.
@@ -369,7 +369,7 @@ of IDs currently in use.
     integer :: n
     call rcl_controller%get_current_id (n)
   end function rclwrap_get_current_recola_id
-    
+
 @ %def rclwrap_get_current_recola_id
 @ This procedure records the fact that there is a recola process
 pending, so we will have to call [[generate_processes]] before we can
@@ -1339,7 +1339,7 @@ end module recola_wrapper
   end function get_recola_particle_string
 
 @ %def get_recola_paritcle_string
-@ 
+@
 <<recola wrapper dummy: public>>=
   public :: rclwrap_get_new_recola_id
 <<recola wrapper dummy: procedures>>=
@@ -1347,9 +1347,9 @@ end module recola_wrapper
     integer, intent(out) :: id
     id = 0
   end subroutine rclwrap_get_new_recola_id
-    
+
 @ %def rclwrap_get_new_recola_id
-@ 
+@
 <<recola wrapper dummy: public>>=
   public :: rclwrap_get_current_recola_id
 <<recola wrapper dummy: procedures>>=
@@ -1357,7 +1357,7 @@ end module recola_wrapper
     integer :: n
     n = 0
   end function rclwrap_get_current_recola_id
-    
+
 @ %def rclwrap_get_current_recola_id
 @
 <<recola wrapper dummy: public>>=
@@ -1375,7 +1375,7 @@ end module recola_wrapper
      integer, intent(in) :: id
      type(string_t), intent(in) :: process_string, order
    end subroutine rclwrap_add_process
- 
+
 @ %def rclwrap_add_process
 @
 <<recola wrapper dummy: public>>=
@@ -2087,7 +2087,7 @@ contains
 
 end module prc_recola
 @ %def prc_recola
-@ 
+@
 \subsection{Sanity check}
 Checks the [[rclwrap_is_active]] flag and aborts the program if the dummy
 is used.
@@ -2107,12 +2107,12 @@ is used.
 @
 \subsection{Process definition}
 When defining a RECOLA process, we store the process-specific flags
-and parameters. Correction types are either QCD, QED, or full SM.
+and parameters. Correction types are either QCD, EW, or full SM.
 <<prc recola: parameters>>=
   integer, parameter :: RECOLA_UNDEFINED = 0, RECOLA_QCD = 1, &
-       RECOLA_QED = 2, RECOLA_FULL = 3
+       RECOLA_EW = 2, RECOLA_FULL = 3
 
-@ %def RECOLA_QCD RECOLA_QED RECOLA_FULL
+@ %def RECOLA_QCD RECOLA_EW RECOLA_FULL
 @
 <<prc recola: public>>=
   public :: recola_def_t
@@ -2196,8 +2196,8 @@ The NLO flag is true only for virtual matrix elements.
     select case (char (correction_type))
     case ("QCD")
        object%corr = RECOLA_QCD
-    case ("QED")
-       object%corr = RECOLA_QED
+    case ("EW")
+       object%corr = RECOLA_EW
     case ("Full")
        object%corr = RECOLA_FULL
     end select
@@ -2210,7 +2210,7 @@ The NLO flag is true only for virtual matrix elements.
        object%suffix = '_REAL'
        object%order = "LO"
        if (object%corr == RECOLA_QCD)  object%alphas_power = alphas_power + 1
-       if (object%corr == RECOLA_QED)  object%alpha_power = alpha_power + 1
+       if (object%corr == RECOLA_EW)  object%alpha_power = alpha_power + 1
     case (NLO_VIRTUAL)
        object%suffix = '_LOOP'
        object%order = "NLO"
@@ -2270,7 +2270,7 @@ information to RECOLA.
     if (debug_on) call msg_debug2 (D_ME_METHODS, "Recola writer: id = " // char (id))
     writer%id = id
   end subroutine recola_writer_set_id
-  
+
 @ %def recola_writer_set_id
 @ Set the NLO flag.
 <<prc recola: recola writer: TBP>>=
@@ -2282,7 +2282,7 @@ information to RECOLA.
     if (debug_on) call msg_debug2 (D_ME_METHODS, "Recola writer: order = " // char (order))
     writer%order = order
   end subroutine recola_writer_set_order
-  
+
 @ %def recola_writer_set_order
 @ Set coupling powers.
 <<prc recola: recola writer: TBP>>=
@@ -2297,7 +2297,7 @@ information to RECOLA.
     writer%alpha_power = alpha_power
     writer%alphas_power = alphas_power
   end subroutine recola_writer_set_coupling_powers
-  
+
 @ %def recola_writer_set_coupling_powers
 @
 The Makefile code contains all of the code that the [[prc_external]] base
@@ -2429,7 +2429,7 @@ this being created along with the \oMega\ call.
             // char (flv_file) // "' failed")
     end if
   end subroutine open_flv_list
-  
+
   subroutine err_flv_list (id)
     type(string_t), intent(in) :: id
     type(string_t) :: flv_file
@@ -2523,7 +2523,7 @@ implement the deferred type-bound procedures of [[prc_core_t]].
   end function prc_recola_has_matrix_element
 
 @ %def prc_recola_has_matrix_element
-@ 
+@
 Not implemented yet.
 <<prc recola: prc recola: TBP>>=
   procedure :: write => prc_recola_write
@@ -2584,7 +2584,7 @@ obtain it, we need a type cast.
        end select
     end if
   end function prc_recola_get_alpha_power
-  
+
   function prc_recola_get_alphas_power (object) result (p)
     class(prc_recola_t), intent(in) :: object
     integer :: p
@@ -2596,7 +2596,7 @@ obtain it, we need a type cast.
        end select
     end if
   end function prc_recola_get_alphas_power
-  
+
 @ %def prc_recola_get_alpha_power
 @ %def prc_recola_get_alphas_power
 @
@@ -2691,7 +2691,7 @@ the Recola workflow, however.
   end subroutine prc_recola_set_parameters
 
 @ %def prc_recola_set_parameters
-@ 
+@
 <<XXX prc recola: prc recola: TBP>>=
   procedure :: set_mu_ir => prc_recola_set_mu_ir
 <<XXX prc recola: procedures>>=
@@ -2702,7 +2702,7 @@ the Recola workflow, however.
   end subroutine prc_recola_set_mu_ir
 
 @ %def prc_recola_set_mu_ir
-@ 
+@
 Extend the base-type initialization method by Recola-specific
 initialization.
 
@@ -2739,7 +2739,7 @@ new Recola instance.
     call rclwrap_generate_processes ()
     call object%replace_helicity_and_color_arrays ()
   end subroutine prc_recola_init
-  
+
 @ %def prc_recola_init
 @ Recola can compute dressed amplitudes, but it needs helicity and color
 to be in its own format to do so.
@@ -2880,10 +2880,10 @@ implementation can fail due to missing helicity initialization.
     alpha_s = object%qcd%alpha%get (ren_scale)
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
     call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'NLO')
-    !!! JRR, TODO: generalize for QED corrections
+    !!! JRR, TODO: generalize for EW corrections
     call rclwrap_get_squared_amplitude &
          (object%recola_ids(i_flv), object%get_alphas_power () + 1, 'NLO', sqme_dble)
-    sqme(3) = sqme_dble
+    sqme(3) = sqme_dble 
     call rclwrap_get_squared_amplitude &
          (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
     sqme(4) = sqme_dble
@@ -3135,7 +3135,7 @@ end module prc_recola_uti
            amp_recola_default = amp_recola
            call driver%get_amplitude (1, i, 1, amp)
            write(u,"(A,4(I2),A)") "Helicity: [",data%hel_state (:,i),"]"
-           call assert_equal (u, amp, amp_recola_default, rel_smallness = 1.E-7_default) 
+           call assert_equal (u, amp, amp_recola_default, rel_smallness = 1.E-7_default)
        end do
 
     end select

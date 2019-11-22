@@ -1216,12 +1216,12 @@ structure if the particle at position \texttt{emitter} is removed
       select case (char (nlo_correction_type))
       case ("QCD")
          determine_gauge_boson_to_be_inserted = GLUON
-      case ("QED")
+      case ("EW")
          determine_gauge_boson_to_be_inserted = PHOTON
       case ("Full")
          call msg_fatal ("NLO correction type 'Full' not yet implemented!")
       case default
-         call msg_fatal ("Invalid NLO correction type! Valid inputs are: QCD, QED, Full (default: QCD)")
+         call msg_fatal ("Invalid NLO correction type! Valid inputs are: QCD, EW and Full (default: QCD)")
       end select
     end function determine_gauge_boson_to_be_inserted
 
@@ -5050,7 +5050,7 @@ end module fks_regions_uti
     call reg_data%final ()
     call write_separator (u)
 
-    write (u, "(A)") "* ee -> qq with QED corrections"
+    write (u, "(A)") "* ee -> qq with EW corrections"
     write (u, "(A)")
 
     allocate (flv_born (n_legs_born, n_flv_born))
@@ -5058,7 +5058,7 @@ end module fks_regions_uti
     flv_born (:, 1) = [11, -11, 2, -2]
     flv_real (:, 1) = [11, -11, 2, -2, 22]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5133,7 +5133,7 @@ end module fks_regions_uti
     flv_real (:, 1) = [11, -11, 2, -2, 22, 22]
     flv_real (:, 2) = [11, -11, 2, -2, 11, -11]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5205,7 +5205,7 @@ end module fks_regions_uti
     flv_real (:, 5) = [11, -11, -13, -13, 13, 13]
     flv_real (:, 6) = [11, -11, -13, 13, 22, 22]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5309,7 +5309,7 @@ end module fks_regions_uti
     call reg_data%final ()
     call write_separator (u)
 
-    write (u, "(A)") "* ee -> bbmumu with QED corrections"
+    write (u, "(A)") "* ee -> bbmumu with EW corrections"
     write (u, "(A)")
     n_flv_born = 1; n_flv_real = 1
     n_legs_born = 6; n_legs_real = 7
@@ -5623,7 +5623,7 @@ end module fks_regions_uti
     flv_real (:, 2) = [11, 22, -11, 11, 11]
     flv_real (:, 3) = [22, -11, 11, -11, -11]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
     call reg_data%final ()
@@ -5775,10 +5775,11 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
     type(flavor_t) :: flv
     allocate (CF_factor (size (flv_born, 1), size (flv_born, 2)), &
          TR_factor (size (flv_born, 1), size (flv_born, 2)))
-    if (nlo_corr_type == "QCD") then
+    select case (char (nlo_corr_type))
+    case ("QCD")
        CA_factor = CA; CF_factor = CF; TR_factor = TR
        nf = real(nf_input, default)
-    else if (nlo_corr_type == "QED") then
+    case ("EW")
        CA_factor = zero
        do i_flv = 1, size (flv_born, 2)
           do i_part = 1, size (flv_born, 1)
@@ -5789,7 +5790,7 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
        end do
        ! TODO vincent_r fixed nf needs replacement  !!! for testing only, needs dynamical treatment!
        nf = real(4, default)
-    end if
+    end select
     do i_flv = 1, size (flv_born, 2)
        do i_part = 1, size (flv_born, 1)
           if (is_corresponding_vector (flv_born(i_part, i_flv), nlo_corr_type)) then
@@ -5818,7 +5819,7 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
       is_corresponding_vector = .false.
       if (nlo_corr_type == "QCD") then
          is_corresponding_vector = is_gluon (pdg_nr)
-      else if (nlo_corr_type == "QED") then
+      else if (nlo_corr_type == "EW") then
          is_corresponding_vector = is_photon (pdg_nr)
       end if
     end function is_corresponding_vector
@@ -5829,7 +5830,7 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
       is_corresponding_fermion = .false.
       if (nlo_corr_type == "QCD") then
          is_corresponding_fermion = is_quark (pdg_nr)
-      else if (nlo_corr_type == "QED") then
+      else if (nlo_corr_type == "EW") then
          is_corresponding_fermion = is_fermion (pdg_nr)
       end if
     end function is_corresponding_fermion
@@ -5995,7 +5996,7 @@ particles involved in the radiation process are massive or massless.
                       if (debug2_active (D_VIRTUAL)) &
                            print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
                    end if
-                else if (nlo_corr_type == "QED") then
+                else if (nlo_corr_type == "EW") then
                    I_ij = compute_eikonal_factor (p_born, flst_born%massive, &
                         i, j, s_o_Q2)
                    BI_tmp = BI_tmp + virtual%sqme_charge_c (i, j, i_flv) * I_ij
@@ -6007,7 +6008,7 @@ particles involved in the radiation process are massive or massless.
              end if
           end do
        end do
-       if (virtual%settings%use_internal_color_correlations .or. nlo_corr_type == "QED") &
+       if (virtual%settings%use_internal_color_correlations .or. nlo_corr_type == "EW") &
             BI_tmp = BI_tmp * virtual%sqme_born (i_flv)
     end associate
     BI(i_flv) = BI(i_flv) + BI_tmp
@@ -6769,13 +6770,12 @@ distinguished by the flag [[xi2_expanded]].
        call msg_fatal ("Soft subtraction: phase space point must be in CMS")
     end if
     if (debug2_active (D_SUBTRACTION)) then
-       associate (nlo_corr_type => sub_soft%reg_data%regions(alr)%nlo_correction_type)
-          if (nlo_corr_type == "QCD") then
-             print *, 'Compute soft subtraction using alpha_s = ', alpha_coupling
-          else if (nlo_corr_type == "QED") then
-             print *, 'Compute soft subtraction using alpha_qed = ', alpha_coupling
-          end if
-       end associate
+       select case (char (sub_soft%reg_data%regions(alr)%nlo_correction_type))
+       case ("QCD")
+          print *, 'Compute soft subtraction using alpha_s = ', alpha_coupling
+       case ("EW")
+          print *, 'Compute soft subtraction using alpha_qed = ', alpha_coupling
+       end select
     end if
 
     s_alpha_soft = sub_soft%reg_data%get_svalue_soft (p_born, &
@@ -7550,13 +7550,12 @@ This formula is implemented in \texttt{compute\_sqme\_real\_fin}
        else
           same_emitter = rsub%reg_data%regions(alr)%emitter <= rsub%isr_kinematics%n_in
        end if
-       associate (nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type)
-          if (nlo_corr_type == "QCD") then
-             alpha_coupling = alpha_s
-          else if (nlo_corr_type == "QED") then
-             alpha_coupling = alpha_qed
-          end if
-       end associate
+       select case (char(rsub%reg_data%regions(alr)%nlo_correction_type))
+       case ("QCD")
+          alpha_coupling = alpha_s
+       case ("EW")
+          alpha_coupling = alpha_qed
+       end select
        if (same_emitter .and. i_phs == rsub%real_kinematics%alr_to_i_phs (alr)) then
           i_res = rsub%get_i_res (alr)
           this_emitter = rsub%reg_data%regions(alr)%emitter
@@ -8320,17 +8319,18 @@ Be aware that this approach will not work for $pe$ collisions.
             sf_factor = rsub%sf_factors(alr, 0)
          end if
          i_born = sregion%uborn_index
-         if (nlo_corr_type == "QCD") then
+         select case (char (nlo_corr_type))
+         case ("QCD")
             sqme_soft = rsub%sub_soft%compute &
-                 (p_born, rsub%sqme_born_color_c(:,:,i_born) * &
-                 sf_factor, real_kinematics%y(i_phs), &
-                 q2, alpha_coupling, alr, emitter, i_res)
-         else if (nlo_corr_type == "QED") then
+            (p_born, rsub%sqme_born_color_c(:,:,i_born) * &
+            sf_factor, real_kinematics%y(i_phs), &
+            q2, alpha_coupling, alr, emitter, i_res)
+         case ("EW")
             sqme_soft = rsub%sub_soft%compute &
-                 (p_born, rsub%sqme_born_charge_c(:,:,i_born) * &
-                 sf_factor, real_kinematics%y(i_phs), &
-                 q2, alpha_coupling, alr, emitter, i_res)
-         end if
+            (p_born, rsub%sqme_born_charge_c(:,:,i_born) * &
+            sf_factor, real_kinematics%y(i_phs), &
+            q2, alpha_coupling, alr, emitter, i_res)
+         end select
       end if
     end associate
     if (debug2_active (D_SUBTRACTION)) call check_soft_vector ()
@@ -8476,7 +8476,7 @@ equivalent to those used by POWHEG.
             xi = rsub%real_kinematics%xi_tilde * xi_max
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
-            else if (sregion%nlo_correction_type == "QED") then
+            else if (sregion%nlo_correction_type == "EW") then
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(em)**2, &
                     TR = sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
@@ -8489,7 +8489,7 @@ equivalent to those used by POWHEG.
          else
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
-            else if (sregion%nlo_correction_type == "QED") then
+            else if (sregion%nlo_correction_type == "EW") then
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(sregion%emitter)**2, &
                     TR = sregion%flst_real%charge(sregion%emitter)**2)
@@ -8542,7 +8542,7 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             em_pdf = sregion%emitter
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
-            else if (sregion%nlo_correction_type == "QED") then
+            else if (sregion%nlo_correction_type == "EW") then
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(em)**2, &
                     TR = sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
@@ -8555,7 +8555,7 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
          else
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
-            else if (sregion%nlo_correction_type == "QED") then
+            else if (sregion%nlo_correction_type == "EW") then
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(sregion%emitter)**2, &
                     TR = sregion%flst_real%charge(sregion%emitter)**2)

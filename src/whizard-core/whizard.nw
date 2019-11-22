@@ -252,7 +252,7 @@ file is open.
        unit = -1
     end if
   end function file_list_get_unit
-  
+
 @ %def file_list_get_unit
 @ Append a new file entry, i.e., open this file.  Error if it is
 already open.
@@ -1129,7 +1129,7 @@ Write names of objects to be exported:
   end function rt_data_get_n_export
 
 @ %def rt_data_get_n_export
-@ Return a specific export 
+@ Return a specific export
 @ Append new names to the export list.  If a duplicate occurs, do not transfer
 it.
 <<RT data: rt data: TBP>>=
@@ -1215,7 +1215,7 @@ global variable list.
             (process_id, global%var_list)
     end do
   end subroutine rt_data_transfer_process_stack
-    
+
 @ %def rt_data_transfer_process_stack
 @
 \subsection{Finalization}
@@ -2981,26 +2981,26 @@ We test appending and retrieval for the export list.
 
     write (u, "(A)")  "* Empty export list"
     write (u, "(A)")
-    
+
     call global%write_exports (u)
 
     write (u, "(A)")  "* Add an entry"
     write (u, "(A)")
-    
+
     allocate (exports (1))
     exports(1) = var_str ("results")
     do i = 1, size (exports)
        write (u, "('+ ',A)")  char (exports(i))
     end do
     write (u, *)
-    
+
     call global%append_exports (exports)
     call global%write_exports (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Add more entries, including doubler"
     write (u, "(A)")
-    
+
     deallocate (exports)
     allocate (exports (3))
     exports(1) = var_str ("foo")
@@ -3016,7 +3016,7 @@ We test appending and retrieval for the export list.
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call global%final ()
 
     write (u, "(A)")
@@ -5757,7 +5757,7 @@ local changes to currently inactive models.
 
     initialize_only = .false.
     if (present (init_only))  initialize_only = init_only
-    
+
     call display_init_message (verb)
 
     var_list => local%get_var_list_ptr ()
@@ -8570,7 +8570,7 @@ Finally, compile the library.
             (var_str ("?phs_only"), phs_only_saved, is_known=.true.)
     end if
   end subroutine spawn_resonant_subprocess_libraries
-    
+
 @ %def spawn_resonant_subprocess_libraries
 @ This is another version of the library constructor, bound to a
 restricted-subprocess set object.  Create the appropriate
@@ -8644,7 +8644,7 @@ process configuration and record it.
        call global%update_prclib (lib)
     end if
   end subroutine create_library
-  
+
   subroutine add_to_library (libname, res_history_set, prt_in, prt_out, global)
     type(string_t), intent(in) :: libname
     type(resonance_history_set_t), intent(in) :: res_history_set
@@ -8679,7 +8679,7 @@ process configuration and record it.
             // char (libname) // "' not found")
     end if
   end subroutine add_to_library
-  
+
 @ %def create_library
 @ %def add_to_library
 @ Compile the generated library, required settings taken from the
@@ -10463,7 +10463,7 @@ issue a message here.
        call msg_warning ()
     end if
   end subroutine counter_show_dropped
-  
+
 @ %def counter_show_dropped
 @
 <<Simulations: counter: TBP>>=
@@ -12973,7 +12973,7 @@ object that is visible in event records and analysis expressions.
 @ %def simulation_increment_event_index
 @ %def simulation_set_event_index
 @ %def simulation_get_event_index
-@ 
+@
 @ These routines take care of temporary parameter redefinitions that
 we want to take effect while recalculating the matrix elements.  We
 extract the core(s) of the processes that we are simulating, apply the
@@ -16234,7 +16234,7 @@ functionality.
     type(string_t), intent(in) :: process_id
     logical, intent(in), optional :: is_nlo
   end subroutine dispatch_mci_empty
- 
+
 @ %def dispatch_mci_empty
 @
 \subsubsection{Processes: scales and such}
@@ -17231,7 +17231,7 @@ an array of PDG codes, which we sort and compare.  If a particle entry
 is actually a PDG array, only the first entry in the array is used for
 the comparison. The user should make sure that there is no overlap
 between different particles or arrays which would make the expansion
-ambiguous. 
+ambiguous.
 
 There are two possibilities that a process contains more than
 component: by an explicit component statement by the user for
@@ -17289,7 +17289,7 @@ determines [[n_components]].
     call prt_expr_out%expand ()
     call scan_components ()
     allocate (nlo_comp (n_components))
-    
+
     nlo_fixed_order = cmd%local%nlo_fixed_order
     gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
     gks_active = gks_multiplicity > 2
@@ -17368,13 +17368,13 @@ determines [[n_components]].
        select case (char(nlo_correction_type))
        case ("QCD")
           qcd_corr = .true.; qed_corr = .false.
-       case ("QED")
+       case ("EW")
           qcd_corr = .false.; qed_corr = .true.
        case ("Full")
           qcd_corr =.true.; qed_corr = .true.
        case default
           call msg_fatal ("Invalid NLO correction type! " // &
-               "Valid inputs are: QCD, QED, Full (default: QCD)")
+               "Valid inputs are: QCD, EW, Full (default: QCD)")
        end select
        call check_for_excluded_gauge_boson_splitting_partners ()
        call setup_radiation_generator ()
@@ -28082,7 +28082,7 @@ undefined.
       end if
     end associate
   end subroutine whizard_init_job_id
-  
+
 @ %def whizard_init_job_id
 @
 Set the rebuild flags.  They can be specified on the command line and
@@ -28124,7 +28124,7 @@ Pack/unpack files in the working directory, if requested.
        do i = 1, size (whizard%options%pack_args)
           file = whizard%options%pack_args(i)
           call msg_message ("Packing file/dir '" // char (file) // "'")
-          exist = os_file_exist (file) .or. os_dir_exist (file) 
+          exist = os_file_exist (file) .or. os_dir_exist (file)
           if (exist) then
              call os_pack_file (whizard%options%pack_args(i), &
                   whizard%global%os_data)
@@ -28144,7 +28144,7 @@ Pack/unpack files in the working directory, if requested.
        do i = 1, size (whizard%options%unpack_args)
           file = whizard%options%unpack_args(i)
           call msg_message ("Unpacking file '" // char (file) // "'")
-          exist = os_file_exist (file) 
+          exist = os_file_exist (file)
           if (exist) then
              call os_unpack_file (whizard%options%unpack_args(i), &
                   whizard%global%os_data)

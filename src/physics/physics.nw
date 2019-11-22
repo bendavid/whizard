@@ -4873,15 +4873,14 @@ for the chosen scale.  Normally, this should be the $Z$ boson mass.
     class(alpha_qcd_from_scale_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
     real(default) :: alpha
-    alpha = running_as (scale, &
-         alpha_qcd%ref, alpha_qcd%mu_ref, alpha_qcd%order, &
-         real (alpha_qcd%nf, kind=default))
+    alpha = running_as (scale, alpha_qcd%ref, alpha_qcd%mu_ref, &
+         alpha_qcd%order, real (alpha_qcd%nf, kind=default))
   end function alpha_qcd_from_scale_get
 
 @ %def alpha_qcd_from_scale_get
 @
 \subsection{Running Coupling, determined by $\Lambda_{\text{QCD}}$}
-In this version, the input are the value $\Lambda_{\text{QCD}}$ and
+In this version, the inputs are the value $\Lambda_{\text{QCD}}$ and
 the order of the approximation.
 <<SM qcd: public>>=
   public :: alpha_qcd_from_lambda_t
@@ -4928,7 +4927,7 @@ flavors.  Again, thresholds are not incorporated.
 
 @ %def alpha_qcd_from_lambda_get
 @
-\subsection{Wrapper type}
+\subsection{QCD Wrapper type}
 We could get along with a polymorphic QCD type, but a monomorphic wrapper type
 with a polymorphic component is easier to handle and probably safer
 (w.r.t.\ compiler bugs).  However, we keep the object transparent, so we can
@@ -5186,6 +5185,85 @@ We check two different implementations of the abstract QCD coupling.
   end subroutine sm_qcd_1
 
 @ %def sm_qcd_1
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{QED Coupling}
+On the surface similar to the QCD coupling module but much simpler.
+Only a fixed QED couping $\alpha_\text{em}$ is allowed.
+Can be extended later if we want to enable a running of
+$\alpha_\text{em}$ as well.
+<<[[sm_qed.f90]]>>=
+<<File header>>
+
+module sm_qed
+
+<<Use kinds>>
+  use io_units
+  use format_defs, only: FMT_12
+
+<<Standard module head>>
+
+<<SM qed: public>>
+
+<<SM qed: types>>
+
+contains
+
+<<SM qed: procedures>>
+
+end module sm_qed
+@ %def sm_qed
+@
+\subsection{QED type}
+Slightly similar to [[qcd_t]] but way simpler. It just needs to store [[alpha_em]].
+<<SM qed: public>>=
+  public :: qed_t
+<<SM qed: types>>=
+  type :: qed_t
+     private
+     real(default) :: alpha_qed = -1
+   contains
+   <<SM qed: TBP>>
+  end type qed_t
+
+@ %def qed_t
+@ Output routine
+<<SM qed: TBP>>=
+  procedure :: write => qed_write
+<<SM qed: procedures>>=
+  subroutine qed_write (qed, unit)
+    class(qed_t), intent(in) :: qed
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(3x,A)")  "QED parameters (fixed coupling):"
+    write (u, "(5x,A," // FMT_12 // ")")  "alpha_qed = ", qed%alpha_qed
+  end subroutine qed_write
+
+@ % def qed_write
+@ Setter for [[alpha_qed]]
+<<SM qed: TBP>>=
+  procedure :: set_alpha_qed => qed_set_alpha_qed
+<<SM qed: procedures>>=
+  subroutine qed_set_alpha_qed (qed, alpha_qed_in)
+    class(qed_t), intent(inout) :: qed
+    real(default), intent(in) :: alpha_qed_in
+    qed%alpha_qed = alpha_qed_in
+  end subroutine qed_set_alpha_qed
+
+@ % def set_alpha_qed
+@ Getter for [[alpha_qed]]
+<<SM qed: TBP>>=
+  procedure :: get_alpha_qed => qed_get_alpha_qed
+<<SM qed: procedures>>=
+  function qed_get_alpha_qed (qed) result (alpha_qed_out)
+    class(qed_t), intent(in) :: qed
+    real(default) :: alpha_qed_out
+    alpha_qed_out = qed%alpha_qed
+  end function qed_get_alpha_qed
+
+@ % def get_alpha_qed
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -7,11 +7,16 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2019-11-21
+	Infrastructure for accessing alpha_QED event-by-event
+	Guard against tiny numbers that break ASCII event output
+
+2019-11-20
+	Allow quoted -e argument, implemented -f option
+
 2019-11-19
 	Bug fix: resonance histories now work also with UFO models
 	Fix in numerical precision of ASCII VAMP2 grids
-	Allow quoted -e argument, implemented -f option
-	Guard against tiny numbers that break ASCII event output
 
 2019-11-06
 	Add squared matrix elements to the LCIO event header

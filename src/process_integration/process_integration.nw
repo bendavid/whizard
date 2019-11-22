@@ -3549,7 +3549,7 @@ BLHA contract file(s).
 We take various configuration data and copy them to the [[blha_master]]
 record, which then creates and writes the contracts.
 
-For assigning the QCD/QED coupling powers, we inspect the first process
+For assigning the QCD/EW coupling powers, we inspect the first process
 component only.  The other parameters are taken as-is from the process
 environment variables.
 <<Process: process: TBP>>=
@@ -8282,7 +8282,7 @@ subtractions.
          if (has_pdfs &
               .and. ((nlo_t == NLO_REAL .and. can_have_sub) &
               .or. nlo_t == NLO_DGLAP)) then
-            !!! necessary dummy, needs refactoring, 
+            !!! necessary dummy, needs refactoring,
             !!! c.f. [[term_instance_evaluate_interaction_userdef_tree]]
             n_sub = n_sub + n_beams_rescaled
          end if
@@ -13176,15 +13176,14 @@ it is only available after the [[fks_regions]] have been created.
      type is (pcm_nlo_t)
         select type (pcm_instance => term%pcm_instance)
         type is (pcm_instance_nlo_t)
-           associate (nlo_corr_type => config%region_data%regions(1)%nlo_correction_type)
-              if (nlo_corr_type == "QCD") then
-                 alpha_coupling = alpha_s
-                 if (debug2_active (D_VIRTUAL)) print *, 'alpha_s: ', alpha_coupling
-              else if (nlo_corr_type == "QED") then
-                 alpha_coupling = alpha_qed
-                 if (debug2_active (D_VIRTUAL)) print *, 'alpha_qed: ', alpha_coupling
-              end if
-           end associate
+           select case (char (config%region_data%regions(1)%nlo_correction_type))
+           case ("QCD")
+             alpha_coupling = alpha_s
+             if (debug2_active (D_VIRTUAL)) print *, 'alpha_s: ', alpha_coupling
+           case ("EW")
+              alpha_coupling = alpha_qed
+              if (debug2_active (D_VIRTUAL)) print *, 'alpha_qed: ', alpha_coupling
+           end select
            allocate (p_born (config%region_data%n_legs_born))
            if (config%settings%factorization_mode == FACTORIZATION_THRESHOLD) then
               p_born = pcm_instance%real_kinematics%p_born_onshell%get_momenta(1)
@@ -15143,7 +15142,7 @@ terms, iterating over all active process components.
                            if (char (config%settings%nlo_correction_type) == "QCD" .or. &
                                 char (config%settings%nlo_correction_type) == "Full") &
                                 call term%evaluate_color_correlations (core_sub)
-                           if (char (config%settings%nlo_correction_type) == "QED" .or. &
+                           if (char (config%settings%nlo_correction_type) == "EW" .or. &
                                 char (config%settings%nlo_correction_type) == "Full") &
                                 call term%evaluate_charge_correlations (core_sub)
                         end select
@@ -15153,16 +15152,17 @@ terms, iterating over all active process components.
                      end if
                   end if
                   alpha_s = core%get_alpha_s (term%core_state)
-!!!! TODO (wk 2019-02-07): this method for resetting alpha_em is not used (yet),
-!!!!       and it slows down the program significantly by using string handling.
-!!!        Should be removed or replaced by an efficient method.
-                  alpha_qed = 0
-!!!                   if (associated (instance%process%get_model_ptr ())) then
-!!!                      model => instance%process%get_model_ptr ()
-!!!                      if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) &
-!!!                           alpha_qed = one / model%get_real (var_str ('alpha_em_i'))
-!!!                      model => null ()
-!!!                   end if
+                  alpha_qed = core%get_alpha_qed ()
+                  if (term%nlo_type > BORN) then
+                     select type (config => term%pcm_instance%config)
+                     type is (pcm_nlo_t)
+                        if (alpha_qed == -1 .and. (&
+                             char (config%settings%nlo_correction_type) == "EW" .or. &
+                             char (config%settings%nlo_correction_type) == "Full")) then
+                           call msg_bug("Attempting to compute EW corrections with alpha_qed = -1")
+                        end if
+                     end select
+                  end if
                   select case (term%nlo_type)
                   case (NLO_REAL)
                      call term%apply_fks (alpha_s, alpha_qed)
@@ -15443,7 +15443,7 @@ e.g. for Powheg, there is the possibility to supply an external $\alpha_s$
                 if (char (config%settings%nlo_correction_type) == "QCD" .or. &
                      char (config%settings%nlo_correction_type) == "Full") &
                      call term%evaluate_color_correlations (core)
-                if (char (config%settings%nlo_correction_type) == "QED" .or. &
+                if (char (config%settings%nlo_correction_type) == "EW" .or. &
                      char (config%settings%nlo_correction_type) == "Full") &
                      call term%evaluate_charge_correlations (core)
              end select
