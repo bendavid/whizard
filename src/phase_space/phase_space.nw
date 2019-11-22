@@ -413,8 +413,6 @@ set of channels.
 
 @ %def phs_channel_collection_final
 @ Output.
-
-Note: eliminating the [[string]] auxiliary triggers an ICE in gfortran 4.7.2.
 <<PHS base: phs channel collection: TBP>>=
   procedure :: write => phs_channel_collection_write
 <<PHS base: procedures>>=
@@ -422,14 +420,12 @@ Note: eliminating the [[string]] auxiliary triggers an ICE in gfortran 4.7.2.
     class(phs_channel_collection_t), intent(in) :: object
     integer, intent(in), optional :: unit
     type(prop_entry_t), pointer :: entry
-    type(string_t) :: string
     integer :: u
     u = given_output_unit (unit)
     entry => object%first
     do while (associated (entry))
        if (allocated (entry%prop)) then
-          string = entry%prop%to_string ()
-          write (u, "(1x,I0,1x,A)")  entry%i, char (string)
+          write (u, "(1x,I0,1x,A)")  entry%i, char (entry%prop%to_string ())
        else
           write (u, "(1x,I0)")  entry%i
        end if
@@ -2755,8 +2751,6 @@ Note: the current implementation works for elastic scattering only.
     class(phs_single_t), intent(inout) :: phs
     integer, intent(in) :: c_in
     real(default), intent(in), dimension(:) :: r_in
-    !!! !!! !!! Catching a gfortran bogus warning
-    type(vector4_t), dimension(2) :: p_dum
     if (phs%p_defined) then
        call phs%select_channel (c_in)
        phs%r(:,c_in) = r_in
@@ -2768,10 +2762,7 @@ Note: the current implementation works for elastic scattering only.
              call msg_bug ("PHS single: inelastic scattering not implemented")
           end if
        case (1)
-          !!! !!! !!! Catching a gfortran bogus warning
-          !!! call compute_kinematics_solid_angle (phs%decay_p (), phs%q, x)
-          p_dum = phs%decay_p ()
-          call compute_kinematics_solid_angle (p_dum, phs%q, r_in)
+          call compute_kinematics_solid_angle (phs%decay_p (), phs%q, r_in)
        end select
        call phs%compute_factor ()
        phs%q_defined = .true.
@@ -12011,9 +12002,6 @@ the phase space file would be nonempty.
 guessed by looking at the number of external particles.  We choose 256
 for 3 external particles and a factor of 4 for each additional
 particle, limited at $2^{30}$=1G.
-
-Note: the explicit initialization loop might be avoided (ELEMENTAL),
-but a bug in nagfor 5.3.2 prevents this.
 <<Cascades: parameters>>=
   real, parameter, public :: CASCADE_SET_FILL_RATIO = 0.1
 <<Cascades: procedures>>=

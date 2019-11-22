@@ -3338,9 +3338,7 @@ implements a [[record]] method.
   integer, parameter :: RESULTS_CHUNK_SIZE = 10
 
 @ %def RESULTS_CHUNK_SIZE
-@ The standard does not require to explicitly initialize the integers;
-however, some gfortran version has a bug here and misses the default
-initialization in the type definition.
+@
 <<Integration results: integration results: TBP>>=
   procedure :: init => integration_results_init
 <<Integration results: procedures>>=
@@ -8902,11 +8900,6 @@ to implement.  The [[data]] argument allows us to pass pointers to the
 data and fill point-dependent contents within these objects.
 
 The [[weights]] and [[channel]] argument must be present in the call.
-
-Note: we would normally declare the [[instance]] pointer with the
-concrete type, or just use the [[data]] component directly.
-Unfortunately, gfortran 4.6 forgets the inherited base-type methods in
-that case.
 
 Note: this is the place where we must look for external signals, i.e.,
 interrupt from the OS.  We would like to raise a \vamp\ exception which is then

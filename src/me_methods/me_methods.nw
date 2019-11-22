@@ -1594,12 +1594,6 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
 \subsection{High-level process definition}
 This procedure wraps the details filling a process-component
 definition entry as appropriate for an template matrix element.
-
-NOTE: For calling the [[import_component]] method, we must explicitly
-address the [[process_def_t]] parent object.  The natural way to call
-the method of the extended type triggers a bug in gfortran 4.6.  The
-string array arguments [[prt_in]] and [[prt_out]] become corrupted and
-cause a segfault.
 <<Template matrix elements: public>>=
   public :: template_me_make_process_component
 <<Template matrix elements: procedures>>=
@@ -1618,7 +1612,7 @@ cause a segfault.
     type is (template_me_def_t)
        call def%init (model, prt_in, prt_out, unity)
     end select
-    call entry%process_def_t%import_component (component_index, &
+    call entry%import_component (component_index, &
          n_out = size (prt_out), &
          prt_in  = new_prt_spec (prt_in), &
          prt_out = new_prt_spec (prt_out), &
@@ -3325,12 +3319,6 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
 This procedure wraps the details filling a process-component
 definition entry as appropriate for an
 \oMega\ matrix element.
-
-NOTE: For calling the [[import_component]] method, we must explicitly
-address the [[process_def_t]] parent object.  The natural way to call
-the method of the extended type triggers a bug in gfortran 4.6.  The
-string array arguments [[prt_in]] and [[prt_out]] become corrupted and
-cause a segfault.
 <<Omega interface: public>>=
   public :: omega_make_process_component
 <<Omega interface: procedures>>=
@@ -3363,7 +3351,7 @@ cause a segfault.
             restrictions, cms_scheme, &
             openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
     end select
-    call entry%process_def_t%import_component (component_index, &
+    call entry%import_component (component_index, &
          n_out = size (prt_out), &
          prt_in  = new_prt_spec (prt_in), &
          prt_out = new_prt_spec (prt_out), &

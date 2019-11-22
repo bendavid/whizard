@@ -892,7 +892,7 @@ can set momenta by the same formula as for normal kinematics.
     type(c_prt_t), dimension(data%n_in) :: prt_in
     type(c_prt_t), dimension(data%n_out) :: prt_out
     real(c_double), dimension(data%n_var) :: xval
-    call int%get_momenta_sub (p_in, outgoing=.false.)
+    p_in = int%get_momenta (outgoing=.false.)
     prt_in = vector4_to_c_prt (p_in)
     prt_in%type = PRT_INCOMING
     call data%kinematics (prt_in, real (r, c_double), prt_out, xval)

@@ -2101,8 +2101,7 @@ end module radiation_generator
   end subroutine prt_queue_append
 
 @ %def prt_queue_append
-@ [[gfortran 4.7.4]] does not support allocate-on-assignment for the
-caller when this is a function.
+@
 <<radiation generator: prt queue: TBP>>=
   procedure :: get => prt_queue_get
 <<radiation generator: procedures>>=
@@ -2110,7 +2109,6 @@ caller when this is a function.
     class(prt_queue_t), intent(inout) :: queue
     type(string_t), dimension(:), allocatable, intent(out) :: prt_string
     if (associated (queue%current_prt)) then
-       allocate (prt_string(size (queue%current_prt%prt_string)))
        prt_string = queue%current_prt%prt_string
        if (associated (queue%current_prt%next)) &
           queue%current_prt => queue%current_prt%next
@@ -3215,16 +3213,8 @@ initialization phase (more precisely: at the moment only in the
   subroutine radiation_generator_save_born_raw (generator, pdg_in, pdg_out)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_array_t), dimension(:), allocatable, intent(in) :: pdg_in, pdg_out
-    integer :: i
-    !!! !!! !!! Explicit allocation due to gfortran 4.7.4
-    allocate (generator%pdg_in_born (size (pdg_in)))
-    do i = 1, size (pdg_in)
-       generator%pdg_in_born(i) = pdg_in(i)
-    end do
-    allocate (generator%pdg_out_born (size (pdg_out)))
-    do i = 1, size (pdg_out)
-       generator%pdg_out_born(i) = pdg_out(i)
-    end do
+    generator%pdg_in_born = pdg_in
+    generator%pdg_out_born = pdg_out
   end subroutine radiation_generator_save_born_raw
 @ %def radiation_generator_save_born_raw
 @
@@ -4807,8 +4797,6 @@ abstract interfaces for all cases.
 
 Particles/subevents are transferred by-reference, to avoid
 unnecessary copying.  Therefore, subroutines instead of functions.
-(Furthermore, the function version of [[unary_prt]] triggers an obscure
-bug in nagfor 5.2(649) [invalid C code].)
 <<Eval trees: interfaces>>=
   abstract interface
      logical function unary_log (arg)
@@ -5511,20 +5499,18 @@ expense of some overhead.
     type(eval_node_t), intent(in) :: en
     y = tanh (en%rval)
   end function tanh_r
-!!! These are F2008 additions but accepted by nagfor 5.3 and gfortran 4.6+
-!!! Currently not used.
-!   real(default) function asinh_r (en) result (y)
-!     type(eval_node_t), intent(in) :: en
-!     y = asinh (en%rval)
-!   end function asinh_r
-!   real(default) function acosh_r (en) result (y)
-!     type(eval_node_t), intent(in) :: en
-!     y = acosh (en%rval)
-!   end function acosh_r
-!   real(default) function atanh_r (en) result (y)
-!     type(eval_node_t), intent(in) :: en
-!     y = atanh (en%rval)
-!   end function atanh_r
+  real(default) function asinh_r (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = asinh (en%rval)
+  end function asinh_r
+  real(default) function acosh_r (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = acosh (en%rval)
+  end function acosh_r
+  real(default) function atanh_r (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = atanh (en%rval)
+  end function atanh_r
 
 @
 \subsubsection{Binary logical functions}
@@ -6263,10 +6249,6 @@ evaluates to a string that indicates the procedure name.
 @ The following function returns an integer value, namely the number
 of particles for which the condition is true.  If there is no
 condition, it returns simply the length of the subevent.
-
-A function would be more natural.  Making it a subroutine avoids
-another compiler bug (internal error in nagfor 5.2 (649)).  (See the
-interface [[unary_evi]].)
 <<Eval trees: procedures>>=
   subroutine count_a (ival, en1, en0)
     integer, intent(out) :: ival
@@ -6775,10 +6757,6 @@ into a real value.
 of valid particle-pairs from both lists for which the condition is
 true.  Invalid pairs (with common [[src]] entry) are ignored.  If
 there is no condition, it returns the number of valid particle pairs.
-
-A function would be more natural.  Making it a subroutine avoids
-another compiler bug (internal error in nagfor 5.2 (649)).  (See the
-interface [[binary_num]].)
 <<Eval trees: procedures>>=
   subroutine count_pp (ival, en1, en2, en0)
     integer, intent(out) :: ival
@@ -7954,6 +7932,21 @@ for functions which convert their argument to a different type.
           case (V_REAL); call eval_node_init_real (en, tanh_r (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
+       case ("asinh")
+          select case (t)
+          case (V_REAL); call eval_node_init_real (en, asinh_r (en1))
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
+       case ("acosh")
+          select case (t)
+          case (V_REAL); call eval_node_init_real (en, acosh_r (en1))
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
+       case ("atanh")
+          select case (t)
+          case (V_REAL); call eval_node_init_real (en, atanh_r (en1))
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
        case default
           call parse_node_mismatch ("function name", pn_fname)
        end select
@@ -8099,6 +8092,21 @@ for functions which convert their argument to a different type.
        case ("tanh")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, tanh_r)
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
+       case ("asinh")
+          select case (t)
+          case (V_REAL); call eval_node_set_op1_real (en, asinh_r)
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
+       case ("acosh")
+          select case (t)
+          case (V_REAL); call eval_node_set_op1_real (en, acosh_r)
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
+       case ("atanh")
+          select case (t)
+          case (V_REAL); call eval_node_set_op1_real (en, atanh_r)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case default
@@ -10771,7 +10779,7 @@ We have two different flavors of the syntax: with and without particles.
          "complex | real | int | nint | floor | ceiling | abs | conjg | sgn | " // &
          "sqrt | exp | log | log10 | " // &
          "sin | cos | tan | asin | acos | atan | " // &
-         "sinh | cosh | tanh")
+         "sinh | cosh | tanh | asinh | acosh | atanh")
     call ifile_append (ifile, "KEY complex")
     call ifile_append (ifile, "KEY real")
     call ifile_append (ifile, "KEY int")
@@ -10794,6 +10802,9 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "KEY sinh")
     call ifile_append (ifile, "KEY cosh")
     call ifile_append (ifile, "KEY tanh")
+    call ifile_append (ifile, "KEY asinh")
+    call ifile_append (ifile, "KEY acosh")
+    call ifile_append (ifile, "KEY atanh")
     call ifile_append (ifile, "ALT fun_binary = max | min | mod | modulo")
     call ifile_append (ifile, "KEY max")
     call ifile_append (ifile, "KEY min")
@@ -13028,10 +13039,6 @@ particles, respectively.
 @ %def model_get_md5sum
 @ Parameters are defined by an expression which may be constant or
 arbitrary.
-
-Note: the auxiliary pointer [[value_ptr]] is a workaround for a bug in gfortran
-4.8.1: the target of the function pointer is lost, if the pointer is provided
-directly as argument.
 <<Models: model: TBP>>=
   procedure :: &
        set_parameter_constant => model_set_parameter_constant

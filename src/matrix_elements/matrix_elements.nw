@@ -1072,15 +1072,12 @@ The default version of [[dispatch_prclib_static]] resides in the
 [[prebuilt]] section of the \whizard\ tree, in a separate
 library.  It does nothing, but can be replaced by a different
 procedure that allocates a static library driver if requested by name.
-
-Note: [[intent(out)]] for the [[driver]] argument segfaults with
-gfortran 4.7.
 <<Prclib interfaces: public>>=
   public :: dispatch_prclib_driver
 <<Prclib interfaces: procedures>>=
   subroutine dispatch_prclib_driver &
        (driver, basename, modellibs_ldflags)
-    class(prclib_driver_t), intent(inout), allocatable :: driver
+    class(prclib_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
     type(string_t), intent(in), optional :: modellibs_ldflags
     procedure(dispatch_prclib_driver) :: dispatch_prclib_static

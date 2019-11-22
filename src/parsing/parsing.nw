@@ -1922,9 +1922,6 @@ element (blank, "?", "*", or "+"), mirrored in the flags [[opt]] and
 [[rep]].  Then, we have the character constants used as separators and
 delimiters for this rule.  Finally, the [[used]] flag can be set to
 indicate that this rule is the child of another rule.
-
-Note: we separate [[delimiter_left]] and [[delimiter_right]] because
-the previous fixed dimension(2) array triggered an ICE in gfortran-4.9.2.
 <<Syntax: types>>=
   public :: syntax_rule_t
 <<Syntax: types>>=
@@ -1934,7 +1931,7 @@ the previous fixed dimension(2) array triggered an ICE in gfortran-4.9.2.
      logical :: used = .false.
      type(string_t) :: keyword
      type(string_t) :: separator
-     type(string_t) :: delimiter_left, delimiter_right
+     type(string_t), dimension(2) :: delimiter
      type(rule_p), dimension(:), allocatable :: child
      character(1) :: modifier = ""
      logical :: opt = .false., rep = .false.
@@ -2001,18 +1998,18 @@ newline.
     case (S_KEYWORD);    call write_atom ("KEYWORD", typ)
     case (S_QUOTED)
        call write_quotes (typ, def, &
-            del = [rule%delimiter_left, rule%delimiter_right])
+            del = rule%delimiter)
     case (S_SEQUENCE)
        call write_sequence ("SEQUENCE", typ, def, size (rule%child))
     case (S_GROUP)
        call write_sequence ("GROUP", typ, def, size (rule%child), &
-            del = [rule%delimiter_left, rule%delimiter_right])
+            del = rule%delimiter)
     case (S_LIST)
        call write_sequence ("LIST", typ, def, size (rule%child), &
             sep = rule%separator)
     case (S_ARGS)
        call write_sequence ("ARGUMENTS", typ, def, size (rule%child), &
-            del = [rule%delimiter_left, rule%delimiter_right], &
+            del = rule%delimiter, &
             sep = rule%separator)
     case (S_ALTERNATIVE)
        call write_sequence ("ALTERNATIVE", typ, def, size (rule%child), &
@@ -2127,11 +2124,10 @@ Set the separator and delimiter entries, using defaults:
     type(syntax_rule_t), intent(inout) :: rule
     type(string_t), dimension(2), intent(in), optional :: delimiter
     if (present (delimiter)) then
-       rule%delimiter_left = delimiter(1)
-       rule%delimiter_right = delimiter(2)
+       rule%delimiter = delimiter
     else
-       rule%delimiter_left = "("
-       rule%delimiter_right = ")"
+       rule%delimiter(1) = "("
+       rule%delimiter(2) = ")"
     end if
   end subroutine syntax_rule_set_delimiter
 
@@ -2173,16 +2169,16 @@ Set the separator and delimiter entries, using defaults:
     case (S_IGNORE, S_LOGICAL, S_INTEGER, S_REAL, S_COMPLEX, &
              S_IDENTIFIER, S_KEYWORD)
     case (S_QUOTED)
-       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+       if (rule%delimiter(1) == "" .or. rule%delimiter(2) == "") &
             call bug (" Missing quote character(s)")
     case (S_SEQUENCE)
     case (S_GROUP)
-       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+       if (rule%delimiter(1) == "" .or. rule%delimiter(2) == "") &
             call bug (" Missing delimiter(s)")
     case (S_LIST)
        if (rule%separator == "") call bug (" Missing separator")
     case (S_ARGS)
-       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+       if (rule%delimiter(1) == "" .or. rule%delimiter(2) == "") &
             call bug (" Missing delimiter(s)")
        if (rule%separator == "") call bug (" Missing separator")
     case (S_ALTERNATIVE)
@@ -2247,7 +2243,7 @@ This is the API for syntax rules:
   function syntax_rule_get_delimiter (rule) result (delimiter)
     type(string_t), dimension(2) :: delimiter
     type(syntax_rule_t), intent(in) :: rule
-    delimiter = [rule%delimiter_left, rule%delimiter_right]
+    delimiter = rule%delimiter
   end function syntax_rule_get_delimiter
 
 @ %def syntax_rule_get_separator syntax_rule_get_delimiter
@@ -2635,8 +2631,8 @@ in the list.
       end select
       select case (rule%type)
       case (S_GROUP, S_ARGS)
-         call keyword_list_add (keyword_list, rule%delimiter_left)
-         call keyword_list_add (keyword_list, rule%delimiter_right)
+         call keyword_list_add (keyword_list, rule%delimiter(1))
+         call keyword_list_add (keyword_list, rule%delimiter(2))
       end select
       select case (rule%type)
       case (S_SEQUENCE, S_GROUP, S_LIST, S_ARGS, S_ALTERNATIVE)

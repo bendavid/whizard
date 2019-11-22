@@ -4091,9 +4091,6 @@ only couple to a triplet or antitriplet.  A fusion of triplet with
 matching antitriplet will yield a singlet, not a ghost, however.
 
 If the fusion fails, the result is undefined.
-
-NOTE: The [[select type]] casting is required by gfortran 4.8.  It may not be
-required by the standard.
 <<Colors: color: TBP>>=
   generic :: operator (.fuse.) => color_fusion
   procedure, private :: color_fusion
@@ -4104,52 +4101,46 @@ required by the standard.
     integer, dimension(2) :: ctype
     if (col1%is_defined () .and. col2%is_defined ()) then
        if (col1%is_diagonal () .and. col2%is_diagonal ()) then
-          select type (col1)
-          type is (color_t)
-             select type (col2)
-             type is (color_t)
-                ctype = [col1%get_type (), col2%get_type ()]
-                select case (ctype(1))
-                case (1)
-                   select case (ctype(2))
-                   case (1,3,-3,8)
-                      col = col2
-                   end select
-                case (3)
-                   select case (ctype(2))
-                   case (1)
-                      col = col1
-                   case (-3)
-                      call t_a (col1%get_col (), col2%get_acl ())
-                   case (8)
-                      call t_o (col1%get_col (), col2%get_acl (), &
-                           &    col2%get_col ())
-                   end select
-                case (-3)
-                   select case (ctype(2))
-                   case (1)
-                      col = col1
-                   case (3)
-                      call t_a (col2%get_col (), col1%get_acl ())
-                   case (8)
-                      call a_o (col1%get_acl (), col2%get_col (), &
-                           &    col2%get_acl ())
-                   end select
-                case (8)
-                   select case (ctype(2))
-                   case (1)
-                      col = col1
-                   case (3)
-                      call t_o (col2%get_col (), col1%get_acl (), &
-                           &    col1%get_col ())
-                   case (-3)
-                      call a_o (col2%get_acl (), col1%get_col (), &
-                           &    col1%get_acl ())
-                   case (8)
-                      call o_o (col1%get_col (), col1%get_acl (), &
-                           &    col2%get_col (), col2%get_acl ())
-                   end select
-                end select
+          ctype = [col1%get_type (), col2%get_type ()]
+          select case (ctype(1))
+          case (1)
+             select case (ctype(2))
+             case (1,3,-3,8)
+                col = col2
+             end select
+          case (3)
+             select case (ctype(2))
+             case (1)
+                col = col1
+             case (-3)
+                call t_a (col1%get_col (), col2%get_acl ())
+             case (8)
+                call t_o (col1%get_col (), col2%get_acl (), &
+                     &    col2%get_col ())
+             end select
+          case (-3)
+             select case (ctype(2))
+             case (1)
+                col = col1
+             case (3)
+                call t_a (col2%get_col (), col1%get_acl ())
+             case (8)
+                call a_o (col1%get_acl (), col2%get_col (), &
+                     &    col2%get_acl ())
+             end select
+          case (8)
+             select case (ctype(2))
+             case (1)
+                col = col1
+             case (3)
+                call t_o (col2%get_col (), col1%get_acl (), &
+                     &    col1%get_col ())
+             case (-3)
+                call a_o (col2%get_acl (), col1%get_col (), &
+                     &    col1%get_acl ())
+             case (8)
+                call o_o (col1%get_col (), col1%get_acl (), &
+                     &    col2%get_col (), col2%get_acl ())
              end select
           end select
        end if
@@ -6061,12 +6052,6 @@ us to avoid temporaries in some places.
 @ %def quantum_numbers_get_subtraction_index
 @ This is a convenience function: return the color type for the flavor
 (array).
-
-Note: keep the public version temporarily, this will be used in a
-complicated expression which triggers a compiler bug (nagfor 5.3) in
-the TBP version.
-<<Quantum numbers: public>>=
-  public :: quantum_numbers_get_color_type
 <<Quantum numbers: quantum numbers: TBP>>=
   procedure :: get_color_type => quantum_numbers_get_color_type
 <<Quantum numbers: procedures>>=
@@ -10183,8 +10168,8 @@ Else the helicity index is handled trivially as [[1]].
   end subroutine qn_index_map_write
 
 @ %def qn_index_map_write
-@ Set helicity convention. If [[flip]], then we flip the helicities of anti-particles
-and we remap the indices accordingly.
+@ Set helicity convention. If [[flip]], then we flip the helicities of
+anti-particles and we remap the indices accordingly.
 <<Interactions: qn index map: TBP>>=
   procedure :: set_helicity_flip => qn_index_map_set_helicity_flip
 <<Interactions: procedures>>=
@@ -10198,10 +10183,7 @@ and we remap the indices accordingly.
        call msg_bug ("[qn_index_map_set_helicity_flip] &
             &cannot flip not-given helicity.")
     end if
-    ! Workaround for ifort (allocate-on-assignmet)
-    allocate (qn_hel_flip (size (self%qn_hel, dim=1),&
-         size (self%qn_hel, dim=2)))
-    allocate (index (self%n_flv, self%n_hel, 0:self%n_sub),&
+    allocate (index (self%n_flv, self%n_hel, 0:self%n_sub), &
          source=self%index)
     self%flip_hel = yorn
     if (self%flip_hel) then
@@ -11643,23 +11625,6 @@ incoming, virtual, or outgoing momenta.  Check for illegal values.
   end function interaction_get_momentum
 
 @ %def interaction_get_momenta interaction_get_momentum
-@ This is a variant as a subroutine.  Redundant, but the function
-above fails at times for gfortran 4.5.0 (double allocation, compiler
-bug).
-<<Interactions: interaction: TBP>>=
-  procedure :: get_momenta_sub => interaction_get_momenta_sub
-<<Interactions: procedures>>=
-  subroutine interaction_get_momenta_sub (int, p, outgoing)
-    class(interaction_t), intent(in) :: int
-    type(vector4_t), dimension(:), intent(out) :: p
-    logical, intent(in), optional :: outgoing
-    integer :: i
-    do i = 1, size (p)
-       p(i) = int%p(idx (int, i, outgoing))
-    end do
-  end subroutine interaction_get_momenta_sub
-
-@ %def interaction_get_momenta_sub
 @ Return a shallow copy of the state matrix:
 <<Interactions: interaction: TBP>>=
   procedure :: get_state_matrix_ptr => &
@@ -14151,9 +14116,8 @@ differences:
          entry => connection_table%entry(i)
          do k = 1, entry%n_index(1)
             if (sum_colors) then
-               color_multiplicity_in = &
-                     product (abs (quantum_numbers_get_color_type &
-                                     (entry%qn_in_list(1)%qn(:n_in, k))))
+               color_multiplicity_in = product (abs &
+                    (entry%qn_in_list(1)%qn(:n_in, k)%get_color_type ()))
                do l = 1, entry%n_index(1)
                   r = index_map_get_entry (connection_table%index_result, m)
                   n_entries(r) = n_entries(r) + 1
@@ -14488,9 +14452,8 @@ complications due to the necessity to loop over two helicity indices.
                k2s = index_map_get_entry (entry%index_in(2), k)
                pa(r)%i1(n_entries(r)) = k1s
                pa(r)%i2(n_entries(r)) = k2s
-               color_multiplicity_in = &
-                     product (abs (quantum_numbers_get_color_type &
-                                     (entry%qn_in_list(1)%qn(:n_in, k))))
+               color_multiplicity_in = product (abs &
+                    (entry%qn_in_list(1)%qn(:n_in, k)%get_color_type ()))
                pa(r)%factor(n_entries(r)) = &
                     color_table_get_color_factor (color_table, k1s, k2s, nc) &
                     / color_multiplicity_in

@@ -6691,8 +6691,7 @@ parameters.
   end subroutine sf_channel_init
 
 @ %def sf_channel_init
-@ Assignment.  This merely copies intrinsic assignment, but apparently
-the latter is bugged in gfortran 4.6.3, causing memory corruption.
+@ Assignment.  This merely copies intrinsic assignment.
 <<SF mappings: sf channel: TBP>>=
   generic :: assignment (=) => sf_channel_assign
   procedure :: sf_channel_assign
@@ -6703,7 +6702,7 @@ the latter is bugged in gfortran 4.6.3, causing memory corruption.
     allocate (copy%map_code (size (original%map_code)))
     copy%map_code = original%map_code
     if (allocated (original%multi_mapping)) then
-       allocate (copy%multi_mapping, source = original%multi_mapping)
+         allocate (copy%multi_mapping, source = original%multi_mapping)
     end if
   end subroutine sf_channel_assign
 
@@ -7021,10 +7020,6 @@ mapping object must be allocated.
 
 @ %def sf_channel_is_multi_mapping
 @ Return true if there is any nontrivial mapping in any of the channels.
-
-Note: we provide an explicit public function.  gfortran 4.6.3 has
-problems with the alternative implementation as a type-bound
-procedure for an array base object.
 <<SF mappings: public>>=
   public :: any_sf_channel_has_mapping
 <<SF mappings: procedures>>=
@@ -9941,9 +9936,6 @@ involved in a local mapping.
 
 @ %def sf_chain_instance_final
 @ Output.
-
-Note: nagfor 5.3.1 appears to be slightly confused with the allocation
-status.  We check both for allocation and nonzero size.
 <<SF base: sf chain instance: TBP>>=
   procedure :: write => sf_chain_instance_write
 <<SF base: procedures>>=
@@ -10036,14 +10028,13 @@ configuration chain, assumed to be properly initialized.  In the copy,
 we allocate the [[p]] etc.\ arrays.
 
 The brute-force assignment of the [[sf]] component would be
-straightforward, but at least gfortran 4.6.3 would like a more
-fine-grained copy.  In any case, the copy is deep
-as far as allocatables are concerned, but for the contained
-[[interaction_t]] objects the copy is shallow, as long as we do not
-bind defined assignment to the type.  Therefore, we have to re-assign
-the [[interaction_t]] components explicitly, this time calling the
-proper defined assignment.  Furthermore, we allocate the parameter
-arrays for each structure function.
+straightforward, but we provide a more fine-grained copy.
+In any case, the copy is deep as far as allocatables are concerned,
+but for the contained [[interaction_t]] objects the copy is shallow,
+as long as we do not bind defined assignment to the type.  Therefore,
+we have to re-assign the [[interaction_t]] components explicitly, this
+time calling the proper defined assignment.  Furthermore, we allocate
+the parameter arrays for each structure function.
 <<SF base: sf chain instance: TBP>>=
   procedure :: init => sf_chain_instance_init
 <<SF base: procedures>>=
@@ -10406,7 +10397,6 @@ multiply to obtain the overall Jacobian.
     real(default), dimension(:), intent(in) :: p_in
     type(interaction_t), pointer :: int
     real(default) :: f_mapping
-    logical, dimension(size (chain%bound)) :: bound
     integer :: i, j, c
     if (chain%status >= SF_DONE_CONNECTIONS) then
        call chain%select_channel (c_sel)
@@ -10415,11 +10405,7 @@ multiply to obtain the overall Jacobian.
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
              forall (i = 1:size (chain%sf))  chain%sf(i)%int%status = SF_INITIAL
-             !!! Bug in nagfor 5.3.1(907), fixed in 5.3.1(982)
-             ! chain%p (:,c_sel) = unpack (p_in, chain%bound, 0._default)
-             !!! Workaround:
-             bound = chain%bound
-             chain%p (:,c_sel) = unpack (p_in, bound, 0._default)
+             chain%p (:,c_sel) = unpack (p_in, chain%bound, 0._default)
              chain%pb(:,c_sel) = 1 - chain%p(:,c_sel)
              chain%f = 1
              chain%x_free = 1

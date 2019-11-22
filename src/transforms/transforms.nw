@@ -5903,8 +5903,7 @@ particles.
 In theory, for the particle instance we only need to consider the
 unstable case.  However, it is more straightforward to treat
 configuration and instance on the same footing, and to introduce a
-wrapper for particle objects as above.  This also works
-around a compiler bug in gfortran.
+wrapper for particle objects as above.
 <<Decays: types>>=
   type, abstract :: any_t
      private
@@ -6668,20 +6667,17 @@ rng-spawning method, but not the pointer.
 @ %def decay_gen_make_term_rng
 @ Recursively link interactions of the enclosed decay terms to the
 corresponding terms in the current process instance.
-
-Note: A bug in nagfor requires the extra [[i_term]] variable.
 <<Decays: decay gen: TBP>>=
   procedure :: link_term_interactions => decay_gen_link_term_interactions
 <<Decays: procedures>>=
   recursive subroutine decay_gen_link_term_interactions (decay)
     class(decay_gen_t), intent(inout) :: decay
-    integer :: i, i_term
+    integer :: i
     type(interaction_t), pointer :: trace
     associate (instance => decay%process_instance)
       do i = 1, size (decay%term)
-         i_term = i
-         trace => instance%get_trace_int_ptr (i_term)
-         call decay%term(i_term)%link_interactions (trace)
+         trace => instance%get_trace_int_ptr (i)
+         call decay%term(i)%link_interactions (trace)
       end do
     end associate
   end subroutine decay_gen_link_term_interactions
@@ -11027,18 +11023,13 @@ Evaluate the event-related expressions, given a valid
 [[particle_set]].  If [[update_sqme]] is set, we use the process
 instance for the [[sqme_prc]] value.  The [[sqme_ref]] value is
 always taken from the event record.
-
-Note: without the explicit [[particle_set]] pointer, some gfortran 4.8
-version corrupts its memory.
 <<Events: event: TBP>>=
   procedure :: evaluate_expressions => event_evaluate_expressions
 <<Events: procedures>>=
   subroutine event_evaluate_expressions (event)
     class(event_t), intent(inout) :: event
-    type(particle_set_t), pointer :: particle_set
     if (event%has_valid_particle_set ()) then
-       particle_set => event%get_particle_set_ptr ()
-       call event%expr%fill_subevt (particle_set)
+       call event%expr%fill_subevt (event%get_particle_set_ptr ())
     end if
     if (event%weight_ref_is_known ()) then
        call event%expr%set (weight_ref = event%get_weight_ref ())
@@ -11880,9 +11871,6 @@ end module events_uti
 \subsubsection{Recovering an event}
 Generate an event and store the particle set.  Then reset the event
 record, recall the particle set, and recover the event from that.
-
-Note: The extra [[particle_set_ptr]] auxiliary is a workaround for
-memory corruption in gfortran 4.7.
 <<Events: execute tests>>=
   call test (events_4, "events_4", &
        "recover event", &
@@ -11899,7 +11887,6 @@ memory corruption in gfortran 4.7.
     type(process_t), allocatable, target :: process2
     type(process_instance_t), allocatable, target :: process2_instance
     type(particle_set_t) :: particle_set
-    type(particle_set_t), pointer :: particle_set_ptr
     type(model_data_t), target :: model
 
     write (u, "(A)")  "* Test output: events_4"
@@ -11925,8 +11912,7 @@ memory corruption in gfortran 4.7.
     call event%evaluate_expressions ()
     call event%write (u)
 
-    particle_set_ptr => event%get_particle_set_ptr ()
-    particle_set = particle_set_ptr
+    particle_set = event%get_particle_set_ptr ()
     ! NB: 'particle_set' contains pointers to the model within 'process'
 
     call event%final ()
@@ -12015,7 +12001,6 @@ without recomputing the squared matrix element.
     type(process_t), allocatable, target :: process2
     type(process_instance_t), allocatable, target :: process2_instance
     type(particle_set_t) :: particle_set
-    type(particle_set_t), pointer :: particle_set_ptr
     real(default) :: sqme, weight
     type(model_data_t), target :: model
 
@@ -12042,8 +12027,7 @@ without recomputing the squared matrix element.
     call event%evaluate_expressions ()
     call event%write (u)
 
-    particle_set_ptr => event%get_particle_set_ptr ()
-    particle_set = particle_set_ptr
+    particle_set = event%get_particle_set_ptr ()
     sqme = event%get_sqme_ref ()
     weight = event%get_weight_ref ()
 
@@ -13510,8 +13494,6 @@ which is defined here.
     type(var_list_t), intent(in) :: var_list
     type(model_t), target, intent(in) :: fallback_model
     class(event_callback_t), allocatable, intent(in) :: event_callback
-    !!! !!! !!! Workaround for ifort v18(beta) bug
-    type(event_callback_nop_t) :: event_callback_tmp
     logical :: check, keep_beams, keep_remnants, recover_beams
     logical :: use_alphas_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
@@ -13572,9 +13554,7 @@ which is defined here.
           if (allocated (event_callback)) then
              call eio%set_parameters (event_callback, checkpoint)
           else
-             !!! !!! !!! Workaround for ifort v18(beta) bug
-             ! call eio%set_parameters (event_callback_nop_t (), 0)
-             call eio%set_parameters (event_callback_tmp, 0)
+             call eio%set_parameters (event_callback_nop_t (), 0)
           end if
        end select
     case ("lhef")

@@ -4380,9 +4380,6 @@ PDG value.
 @ %def subevt_sort
 @ Return the list of particles which have any of the specified PDG
 codes (and optionally particle type: beam, incoming, outgoing).
-
-The [[pack]] command was buggy in some gfortran versions, therefore it
-is unrolled.  The unrolled version may be more efficient, actually.
 <<Subevents: public>>=
   public :: subevt_select_pdg_code
 <<Subevents: procedures>>=
@@ -4402,8 +4399,6 @@ is unrolled.  The unrolled version may be more efficient, actually.
          mask = mask .and. subevt_in%prt(:n_active)%type == prt_type
     n_match = count (mask)
     call subevt_reset (subevt, n_match)
-    !!! !!! !!! Workaround for gfortran compiler bug
-    ! subevt%prt(:n_match) = pack (subevt_in%prt(:n_active), mask)
     j = 0
     do i = 1, n_active
        if (mask(i)) then

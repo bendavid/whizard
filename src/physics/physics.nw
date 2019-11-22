@@ -3031,11 +3031,8 @@ transformations.
     do i = n_in + 1, size (p)
        psum_out = psum_out + p(i)
     end do
-    !!! !!! !!! Workaround for gfortran-4.8.4 bug
-    do i = 0, 3
-       p_diff(i) = vanishes (psum_in%p(i) - psum_out%p(i), &
-            abs_smallness = abs_smallness, rel_smallness = rel_smallness)
-    end do
+    p_diff = vanishes (psum_in%p - psum_out%p, &
+         abs_smallness = abs_smallness, rel_smallness = rel_smallness)
     if (.not. all (p_diff)) then
        call msg_warning ("Momentum conservation: FAIL", unit = u)
        if (verb) then

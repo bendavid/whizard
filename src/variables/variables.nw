@@ -869,8 +869,7 @@ always return false.
 
 @ %def var_entry_get_prt1_ptr
 @ %def var_entry_get_prt2_ptr
-@ Subroutines might be safer than functions for procedure pointer transfer
-(there was a nagfor bug).
+@ Subroutines might be safer than functions for procedure pointer transfer.
 <<Variables: procedures>>=
   subroutine var_entry_assign_obs1_int_ptr (ptr, var)
     procedure(obs_unary_int), pointer :: ptr

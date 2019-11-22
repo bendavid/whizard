@@ -3077,15 +3077,12 @@ end module dispatch_me_methods
 \subsection{Process Core Definition}
 The [[prc_core_def_t]] abstract type can be instantiated by providing a
 [[$method]] string variable.
-
-Note: [[core_def]] has intent(inout) because gfortran 4.7.1 crashes for
-intent(out).
 <<Dispatch me methods: public>>=
   public :: dispatch_core_def
 <<Dispatch me methods: procedures>>=
   subroutine dispatch_core_def (core_def, prt_in, prt_out, &
        model, var_list, id, nlo_type, method)
-    class(prc_core_def_t), allocatable, intent(inout) :: core_def
+    class(prc_core_def_t), allocatable, intent(out) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
     type(model_t), pointer, intent(in) :: model
@@ -21821,12 +21818,8 @@ referred to at any time.
           call prc_config%init (process_id(i), 1, 1, &
                global%model, global%var_list, &
                nlo_process = global%nlo_fixed_order)
-          !!! Causes runtime error with gfortran 4.9.1
-          ! call prc_config%setup_component (1, &
-          !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global%model, global%var_list)
-          !!! Workaround:
-          call prc_config%setup_component (1, &
-               [new_prt_spec (prt_in)], new_prt_spec (prt_out), global%model, global%var_list)
+          call prc_config%setup_component (1, new_prt_spec ([prt_in]), &
+               new_prt_spec (prt_out), global%model, global%var_list)
           call prc_config%record (global)
           deallocate (prt_out)
           deallocate (pa_out)
@@ -23241,20 +23234,13 @@ The scan command allocates a new parse node for the variable
 assignment (the lhs).  The rhs of this parse node is assigned from the
 available rhs expressions in the scan list, one at a time, so the
 compiled parse node can be prepended to the scan body.
-
-Note: for the integer/real range array, the obvious implementation as a
-polymorphic array is suspended because in gfortran 4.7, polymorphic arrays are
-apparently broken.
 <<Commands: types>>=
   type, extends (command_t) :: cmd_scan_t
      private
      type(string_t) :: name
      integer :: n_values = 0
      type(parse_node_p), dimension(:), allocatable :: scan_cmd
-     !!! !!! gfortran 4.7.x memory corruption
-     !!!  class(range_t), dimension(:), allocatable :: range
-     type(range_int_t), dimension(:), allocatable :: range_int
-     type(range_real_t), dimension(:), allocatable :: range_real
+     class(range_t), dimension(:), allocatable :: range
    contains
    <<Commands: cmd scan: TBP>>
   end type cmd_scan_t
@@ -23289,20 +23275,9 @@ finalizer recursively.
        end do
        deallocate (cmd%scan_cmd)
     end if
-    !!! !!! gfortran 4.7.x memory corruption
-    !!!  if (allocated (cmd%range)) then
-    !!!     do i = 1, size (cmd%range)
-    !!!        call cmd%range(i)%final ()
-    !!!     end do
-    !!!  end if
-    if (allocated (cmd%range_int)) then
-       do i = 1, size (cmd%range_int)
-          call cmd%range_int(i)%final ()
-       end do
-    end if
-    if (allocated (cmd%range_real)) then
-       do i = 1, size (cmd%range_real)
-          call cmd%range_real(i)%final ()
+    if (allocated (cmd%range)) then
+       do i = 1, size (cmd%range)
+          call cmd%range(i)%final ()
        end do
     end if
   end subroutine cmd_scan_final
@@ -23463,13 +23438,9 @@ rhs by the stored rhs pointers (the list elements), one by one, then
             var_list%get_type (cmd%name)
        select case (var_type)
        case (V_INT)
-          !!! !!! gfortran 4.7.x memory corruption
-          !!!  allocate (range_int_t :: cmd%range (cmd%n_values))
-          allocate (cmd%range_int (cmd%n_values))
+          allocate (range_int_t :: cmd%range (cmd%n_values))
        case (V_REAL)
-          !!! !!! gfortran 4.7.x memory corruption
-          !!!  allocate (range_real_t :: cmd%range (cmd%n_values))
-          allocate (cmd%range_real (cmd%n_values))
+          allocate (range_real_t :: cmd%range (cmd%n_values))
        case (V_CMPLX)
           call msg_fatal ("scan over complex variable not implemented")
        case (V_NONE)
@@ -23478,13 +23449,9 @@ rhs by the stored rhs pointers (the list elements), one by one, then
           call msg_bug ("scan: impossible variable type")
        end select
     case ("scan_int")
-       !!! !!! gfortran 4.7.x memory corruption
-       !!!  allocate (range_int_t :: cmd%range (cmd%n_values))
-       allocate (cmd%range_int (cmd%n_values))
+       allocate (range_int_t :: cmd%range (cmd%n_values))
     case ("scan_real")
-       !!! !!! gfortran 4.7.x memory corruption
-       !!!  allocate (range_real_t :: cmd%range (cmd%n_values))
-       allocate (cmd%range_real (cmd%n_values))
+       allocate (range_real_t :: cmd%range (cmd%n_values))
     case ("scan_complex")
        call msg_fatal ("scan over complex variable not implemented")
     end select
@@ -23508,18 +23475,10 @@ rhs by the stored rhs pointers (the list elements), one by one, then
             "scan_scale", "scan_ren_scale", "scan_fac_scale", &
             "scan_selection", "scan_reweight", "scan_analysis", &
             "scan_model", "scan_library")
-          if (allocated (cmd%range_int)) then
-             call cmd%range_int(i)%init (pn_rhs)
-             !!! !!! gfortran 4.7.x memory corruption
-             !!!  call cmd%range_int(i)%compile (global)
+          if (allocated (cmd%range)) then
+             call cmd%range(i)%init (pn_rhs)
              call parse_node_replace_last_sub &
-                  (pn_var_single, cmd%range_int(i)%pn_expr)
-          else if (allocated (cmd%range_real)) then
-             call cmd%range_real(i)%init (pn_rhs)
-             !!! !!! gfortran 4.7.x memory corruption
-             !!!  call cmd%range_real(i)%compile (global)
-             call parse_node_replace_last_sub &
-                  (pn_var_single, cmd%range_real(i)%pn_expr)
+                  (pn_var_single, cmd%range(i)%pn_expr)
           else
              call parse_node_replace_last_sub (pn_var_single, pn_rhs)
           end if
@@ -23546,8 +23505,7 @@ rhs by the stored rhs pointers (the list elements), one by one, then
        do i = 1, cmd%n_values
           print *, "scan command ", i
           call parse_node_write_rec (cmd%scan_cmd(i)%ptr)
-          if (allocated (cmd%range_int))  call cmd%range_int(i)%write ()
-          if (allocated (cmd%range_real))  call cmd%range_real(i)%write ()
+          if (allocated (cmd%range))  call cmd%range(i)%write ()
        end do
        print *, "original"
        call parse_node_write_rec (cmd%pn)
@@ -23571,21 +23529,11 @@ command list, directly in the local parse tree.
     type(rt_data_t), allocatable :: local
     integer :: i, j
     do i = 1, cmd%n_values
-       if (allocated (cmd%range_int)) then
-          call cmd%range_int(i)%compile (global)
-          call cmd%range_int(i)%evaluate ()
-          do j = 1, cmd%range_int(i)%get_n_iterations ()
-             call cmd%range_int(i)%set_value (j)
-             allocate (local)
-             call build_alt_setup (local, global, cmd%scan_cmd(i)%ptr)
-             call local%local_final ()
-             deallocate (local)
-          end do
-       else if (allocated (cmd%range_real)) then
-          call cmd%range_real(i)%compile (global)
-          call cmd%range_real(i)%evaluate ()
-          do j = 1, cmd%range_real(i)%get_n_iterations ()
-             call cmd%range_real(i)%set_value (j)
+       if (allocated (cmd%range)) then
+          call cmd%range(i)%compile (global)
+          call cmd%range(i)%evaluate ()
+          do j = 1, cmd%range(i)%get_n_iterations ()
+             call cmd%range(i)%set_value (j)
              allocate (local)
              call build_alt_setup (local, global, cmd%scan_cmd(i)%ptr)
              call local%local_final ()

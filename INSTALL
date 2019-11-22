@@ -93,7 +93,7 @@ WHIZARD:
 -- An interface to FeynRules exists and is included in the 
    FeynRules program: http://feynrules.irmp.ucl.ac.be
 
--- Parallelisation with MPI requires a at least MPI-3 capable MPI library.
+-- Parallelization with MPI requires a at least MPI-3 capable MPI library.
    You can get OpenMPI from https://www.open-mpi.org/, MPICH from
    https://www.open-mpi.org and Intel MPI from https://software.intel.com.
 

@@ -1141,8 +1141,7 @@ furthermore exclusive in colors, but neglecting all color interference.  The
 [[matrix]] and [[flows]] evaluators are filled only for sampling points that
 become part of physical events.
 
-Note: It would be natural to make the evaluators allocatable.
-However, this causes memory corruption in gfortran 4.6.3.  The extra
+Note: It would be natural to make the evaluators allocatable. The extra
 [[has_XXX]] flags indicate whether evaluators are active, instead.
 
 This module contains no unit tests.  The tests are covered by the

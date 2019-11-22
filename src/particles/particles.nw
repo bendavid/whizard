@@ -6222,23 +6222,20 @@ relations assuming the ordering [[b]], [[i]], [[r]], [[x]], [[o]].
 <<Particles: particle set: TBP>>=
   procedure :: find_particle => particle_set_find_particle
 <<Particles: procedures>>=
-  pure function particle_set_find_particle &
-         (particle_set, pdg, momentum, abs_smallness, rel_smallness) result (idx)
+  pure function particle_set_find_particle (particle_set, pdg, &
+       momentum, abs_smallness, rel_smallness) result (idx)
     integer :: idx
     class(particle_set_t), intent(in) :: particle_set
     integer, intent(in) :: pdg
     type(vector4_t), intent(in) :: momentum
     real(default), intent(in), optional :: abs_smallness, rel_smallness
-    integer :: i, j
+    integer :: i
     logical, dimension(0:3) :: equals
     idx = 0
     do i = 1, size (particle_set%prt)
        if (particle_set%prt(i)%flv%get_pdg () == pdg) then
-          !!! Workaround for gfortran 4.8.3 with overloaded elemental function
-          do j = 0, 3
-            equals(j) = nearly_equal (particle_set%prt(i)%p%p(j), momentum%p(j), &
-                                   abs_smallness, rel_smallness)
-          end do
+          equals = nearly_equal (particle_set%prt(i)%p%p, momentum%p, &
+               abs_smallness, rel_smallness)
           if (all (equals)) then
              idx = i
              return
@@ -6475,12 +6472,6 @@ ignored.
     call copy_particles (PRT_OUTGOING)
     do i = 1, pset_in%n_tot
        if (map(i) == 0)  cycle
-       !!! !!! triggers nagfor bug!
-       !!!  call particle_set_parents (pset_out%prt(map(i)), &
-       !!!       map (particle_set_get_real_parents (pset_in, i)))
-       !!!  call particle_set_children (pset_out%prt(map(i)), &
-       !!!       map (particle_set_get_real_children (pset_in, i)))
-       !!! !!! workaround:
        call pset_out%prt(map(i))%set_parents &
             (pset_in%get_real_parents (i, kb))
        call pset_out%prt(map(i))%set_parents &
