@@ -11467,10 +11467,18 @@ as optional arguments of a \ttt{simulate} command, so e.g.
 generates an event sample in the HepMC format for the process
 \ttt{proc} in the file \ttt{foo.hepmc}.
 
-Examples for event formats, for specifications of the
-event formats correspond the different accords and publicatios:
+Examples for event formats, for specifications of the event formats correspond
+the different accords and publications~\footnote{Some event formats, based on
+  the \ttt{HEPEVT} or \ttt{HEPEUP} common blocks, use fixed-form ASCII output
+  with a two-digit exponent for real numbers.  There are rare cases (mainly,
+  ISR photons) where the event record can contain numbers with absolute value
+  less than $10^{-99}$.  Since those numbers are not representable in that
+  format, \whizard\ will set all non-zero numbers below that value to $\pm
+  10^{-99}$, when filling either common block.  Obviously, such values are
+  physically irrelevant, but in the output they are representable and
+  distinguishable from zero.}:
 
-{\bf HEPEVT:}
+\paragraph{HEPEVT:}
 
 The HEPEVT is an ASCII event format that does not contain an event
 file header. There is a one-line header for each single event,
@@ -11507,7 +11515,7 @@ reconstruction.
   \end{verbatim}
 \end{scriptsize}
 
-{\bf ASCII SHORT:}
+\paragraph{ASCII SHORT:}
 
 This is basically the same as the HEPEVT standard, but very much
 abbreviated. The header line for each event is identical, but the first
@@ -11528,7 +11536,7 @@ while the vertex information line is omitted.
   \end{verbatim}
 \end{scriptsize}
 
-{\bf ASCII LONG:}
+\paragraph{ASCII LONG:}
 
 Identical to the ASCII short format, but after each event there is a
 line containg two values: the value of the sample function to be
@@ -11551,7 +11559,7 @@ etc.
   \end{verbatim}
 \end{scriptsize}
 
-{\bf ATHENA:}
+\paragraph{ATHENA:}
 
 Quite similar to the HEPEVT ASCII format. The header line, however,
 does contain only two numbers: an event counter, and the number of
@@ -11580,7 +11588,7 @@ entries.
   \end{verbatim}
 \end{scriptsize}
 
-{\bf MOKKA:}
+\paragraph{MOKKA:}
 
 Quite similar to the ASCII short format, but the event entries are the
 particle status, the PDG code, the first and last daughter, the
@@ -11596,7 +11604,7 @@ three spatial components of the momentum, as well as the mass.
 \end{verbatim}
 \end{scriptsize}
 
-{\bf LHA:}
+\paragraph{LHA:}
 
 This is the implementation of the Les Houches Accord, as it was used
 in \whizard\ 1 and the old MadEvent. There is a first line containing
@@ -11633,7 +11641,7 @@ information on this event format confer~\cite{LesHouches}.
   \end{verbatim}
 \end{scriptsize}
 
-{\bf LHEF:}
+\paragraph{LHEF:}
 
 This is the modern version of the Les Houches accord event format
 (LHEF), for the details confer the corresponding publication~\cite{LHEF}.

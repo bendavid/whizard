@@ -462,6 +462,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/eio_ascii_8.ref \
     unit_tests/ref-output/eio_ascii_9.ref \
     unit_tests/ref-output/eio_ascii_10.ref \
+    unit_tests/ref-output/eio_ascii_11.ref \
     unit_tests/ref-output/eio_weights_1.ref \
     unit_tests/ref-output/eio_weights_2.ref \
     unit_tests/ref-output/eio_weights_3.ref \

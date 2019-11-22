@@ -792,6 +792,35 @@ Conditional format string, intended for switchable numeric precision.
 
 @ %def pac_fmt
 @
+\subsection{Guard tiny values}
+This function can be applied if values smaller than $10^{-99}$ would cause an
+underflow in the output format.  We know that Fortran fixed-format can handle
+this by omitting the exponent letter, but we should expect non-Fortran or
+Fortran list-directed input, which would fail.  We reset such values to $\pm
+10^{-99}$, assuming that such tiny values would not matter, except for being
+non-zero.
+<<Format utils: public>>=
+  public :: refmt_tiny
+<<Format utils: procedures>>=
+  elemental function refmt_tiny (val) result (trunc_val)
+    real(default), intent(in) :: val
+    real(default) :: trunc_val
+    real(default), parameter :: tiny_val = 1.e-99_default
+
+    if (val /= 0) then
+       if (abs (val) < tiny_val) then
+          trunc_val = sign (tiny_val, val)
+       else
+          trunc_val = val
+       end if
+    else
+       trunc_val = val
+    end if
+    
+  end function refmt_tiny
+  
+@ %def refmt_tiny
+@
 \subsection{Compressed output of integer arrays}
 <<Format utils: public>>=
   public :: write_compressed_integer_array
