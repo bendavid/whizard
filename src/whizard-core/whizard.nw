@@ -11518,21 +11518,29 @@ the normalization procedure for the process components.
 parameters change.  If explicit arguments [[model]], [[qcd]], or
 [[helicity_selection]] are provided, use those.  Otherwise use the
 parameters stored in the process object.
+
+These two procedures come with a caching mechanism which guarantees
+that the current core object is saved when calling [[update_process]],
+and restored by calling [[restore_process]].  If the flag [[saved]] is
+unset, saving is skipped, and the [[restore]] procedure should not be
+called.
 <<Simulations: entry: TBP>>=
   procedure :: update_process => entry_update_process
   procedure :: restore_process => entry_restore_process
 <<Simulations: procedures>>=
   subroutine entry_update_process &
-       (entry, model, qcd, helicity_selection)
+       (entry, model, qcd, helicity_selection, saved)
     class(entry_t), intent(inout) :: entry
     class(model_data_t), intent(in), optional, target :: model
     type(qcd_t), intent(in), optional :: qcd
     type(helicity_selection_t), intent(in), optional :: helicity_selection
+    logical, intent(in), optional :: saved
     type(process_t), pointer :: process
     class(prc_core_t), allocatable :: core
     integer :: i, n_terms
     class(model_data_t), pointer :: model_local
     type(qcd_t) :: qcd_local
+    logical :: use_saved
     if (present (model)) then
        model_local => model
     else
@@ -11543,16 +11551,21 @@ parameters stored in the process object.
     else
        qcd_local = entry%qcd
     end if
+    use_saved = .true.;  if (present (saved))  use_saved = saved
     process => entry%get_process_ptr ()
-
     n_terms = process%get_n_terms ()
-    allocate (entry%core_safe (n_terms))
+    if (use_saved)  allocate (entry%core_safe (n_terms))
     do i = 1, n_terms
        if (process%has_matrix_element (i, is_term_index = .true.)) then
           call process%extract_core (i, core)
-          call dispatch_core_update (core, &
-               model_local, helicity_selection, qcd_local, &
-               entry%core_safe(i)%core)
+          if (use_saved) then
+             call dispatch_core_update (core, &
+                  model_local, helicity_selection, qcd_local, &
+                  entry%core_safe(i)%core)
+          else
+             call dispatch_core_update (core, &
+                  model_local, helicity_selection, qcd_local)
+          end if
           call process%restore_core (i, core)
        end if
     end do
@@ -12803,7 +12816,7 @@ external matrix element parameters event by event.  The matrix element
          if (signal_is_pending ())  return
          factor = entry%get_kinematical_weight ()
          associate (alt_entry => simulation%alt_entry(i,j))
-           call alt_entry%update_process ()
+           call alt_entry%update_process (saved=.false.)
            call alt_entry%select &
                 (entry%get_i_mci (), entry%get_i_term (), entry%get_channel ())
            call alt_entry%fill_particle_set (entry)
@@ -12817,13 +12830,13 @@ external matrix element parameters event by event.  The matrix element
            call alt_entry%set_index (simulation%get_event_index ())
            call alt_entry%evaluate_expressions ()
            if (signal_is_pending ())  return
-           call alt_entry%restore_process ()
            sqme_alt(j) = alt_entry%get_sqme_ref ()
            if (alt_entry%passed_selection ()) then
               weight_alt(j) = alt_entry%get_weight_ref ()
            end if
          end associate
       end do
+      call entry%update_process (saved=.false.)
       call entry%set (sqme_alt = sqme_alt, weight_alt = weight_alt)
       call entry%check ()
       call entry%store_alt_values ()
