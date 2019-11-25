@@ -149,21 +149,13 @@ AC_SUBST([FC_IS_GFORTRAN_4])
 AC_SUBST([FC_IS_GFORTRAN_65])
 AC_SUBST([FC_IS_NAG])
 
-### Catch old ifort version 15.0.0/1/2/3 and 16.0/1/2/3
-if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.3" ; then
-FC_IS_IFORT1516="yes"
+### Veto old ifort versions 15.0.0/1/2/3/4/5/6/7 and 16.0.0/1/2/3/4 and 17.0.0/1/2/3/4/5/6/7/8
+if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.5" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.6" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.7" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.5" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.6" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.7" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.7" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.8"; then
+FC_IS_IFORT151617="yes"
   else
-FC_IS_IFORT1516="no"
+FC_IS_IFORT151617="no"
 fi
-AC_SUBST([FC_IS_IFORT1516])
-
-### Catch buggy ifort version 17.0.0/1/2/3
-if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.3" ; then
-FC_IS_IFORT170123="yes"
-  else
-FC_IS_IFORT170123="no"
-fi
-AC_SUBST([FC_IS_IFORT170123])
+AC_SUBST([FC_IS_IFORT151617])
 
 ### Catch buggy ifort version 19.0.0/1/2
 if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.2"; then
@@ -201,20 +193,11 @@ AC_MSG_ERROR([******************************************************])
 fi 
 ])
 
-AC_DEFUN([WO_FC_VETO_IFORT_1516],
+AC_DEFUN([WO_FC_VETO_IFORT_151617],
 [dnl
-if test "$FC_IS_IFORT1516" = "yes"; then
+if test "$FC_IS_IFORT151617" = "yes"; then
 AC_MSG_NOTICE([error: ***************************************************************])
-AC_MSG_NOTICE([error: ifort version < 17 suffers from severe compiler bugs, disabled.])
-AC_MSG_ERROR([***************************************************************])
-fi 
-])
-
-AC_DEFUN([WO_FC_VETO_IFORT_170123],
-[dnl
-if test "$FC_IS_IFORT170123" = "yes"; then
-AC_MSG_NOTICE([error: ***************************************************************])
-AC_MSG_NOTICE([error: ifort v17.0.01/2/3 suffers from severe compiler bugs, disabled.])
+AC_MSG_NOTICE([error: ifort version < 18 suffers from severe compiler bugs, disabled.])
 AC_MSG_ERROR([***************************************************************])
 fi 
 ])

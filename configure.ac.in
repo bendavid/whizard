@@ -382,11 +382,8 @@ WO_FC_VETO_GFORTRAN_4()
 ### Veto against buggy gfortran 6.5.0 version
 WO_FC_VETO_GFORTRAN_65()
 
-### Veto against ifort 15/16
-WO_FC_VETO_IFORT_1516()
-
-### Veto against ifort 17.0.0/1/2/3
-WO_FC_VETO_IFORT_170123()
+### Veto against ifort 15/16/17
+WO_FC_VETO_IFORT_151617()
 
 ### Veto against ifort 19.0.0/1/2
 WO_FC_VETO_IFORT_190012()
