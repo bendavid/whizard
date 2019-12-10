@@ -7,6 +7,10 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2019-12-10
+	For distribution building: check for graphviz/dot
+	   version 2.40 or newer
+
 2019-11-21
 	Bug fix: alternate setups now work correctly
 	Infrastructure for accessing alpha_QED event-by-event
