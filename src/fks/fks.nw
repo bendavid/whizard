@@ -6127,8 +6127,8 @@ particles follows from the integral
 \end{equation*}
 We can distinguish three situations:
 \begin{enumerate}
-  \item $\alpha_r$ contains a massive emitter. In this case, no collinear subtraction terms is required and
-        the integral above irrelevant.
+  \item $\alpha_r$ contains a massive emitter. In this case, no collinear subtraction term is required and
+        the integral above is irrelevant.
   \item $\alpha_r$ contains a massless emitter, but resonances are not taken into account in the subtraction.
         Here, $\xi_{max} = \frac{2E_{em}}{\sqrt{s}}$ is the upper bound on $\xi$.
   \item $\alpha_r$ contains a massless emitter and resonance-aware subtraction is used. Here,
@@ -6200,12 +6200,11 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
           E_tot2 = k_res%p(0)**2
           L_to_resonance = inverse (boost (k_res, k_res**1))
           xi_max = two * space_part_norm (L_to_resonance * p_born(em)) / k_res%p(0)
-          log_xi_max = log (xi_max)
        else
           E_tot2 = sqrts**2
           xi_max = two * E_em / sqrts
-          log_xi_max = log (xi_max)
        end if
+       log_xi_max = log (xi_max)
        associate (xi_cut => virt%settings%fks_template%xi_cut, delta_o => virt%settings%fks_template%delta_o)
          if (virt%settings%virtual_resonance_aware_collinear) then
             if (debug_active (D_VIRTUAL)) &
@@ -7657,7 +7656,7 @@ multiplied by the appropriate $S_\alpha$-factors,
 region multiplicities and double-FSR factors.
 Then, it computes the soft, collinear, soft-collinear and remnant matrix
 elements and supplies the corresponding factor $1/\xi/(1-y)$ as well as
-the corresponding jacobians.
+the corresponding Jacobians.
 <<real subtraction: real subtraction: TBP>>=
   procedure :: evaluate_region_fsr => real_subtraction_evaluate_region_fsr
 <<real subtraction: procedures>>=
@@ -7904,6 +7903,8 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
   \sigma_{\text{remn}} = \left(\sigma_{\text{soft}} - \sigma_{\text{soft-coll}}\right)
       \log (\xi_{\text{max}}\xi_{\text{cut}})) \cdot \tilde{\xi}.
 \end{equation}
+There is only one factor of $\log (\xi_{\text{max}}\xi_{\text{cut}})$ for both limits
+as $\xi_{\text{max}}$ does not depend on $y$ in the case of FSR.
 We use the already computed [[sqme_soft]] and [[sqme_cs]] with a factor of
 $\tilde{\xi}$ which we have to compensate.
 <<real subtraction: real subtraction evaluate region fsr: procedures>>=
@@ -7911,8 +7912,7 @@ $\tilde{\xi}$ which we have to compensate.
     real(default) :: sqme_remn
     real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
     if (debug_on) call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
-    sqme_remn = zero
-    sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
+    sqme_remn = (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
   end function compute_sqme_remnant_fsr
 
 @ %def compute_sqme_remnant_fsr
@@ -8004,7 +8004,38 @@ $\tilde{\xi}$ which we have to compensate.
   end function real_subtraction_evaluate_region_isr
 
 @ %def real_subtraction_evaluate_region_isr
-@
+@ Computes the soft remnant for ISR. The formulas can be found in arXiv:1002.2581, eq. 4.21.
+and arXiv:0709.2092, sec. 5.1.2.
+This results in
+\begin{equation}
+  \sigma_{\text{remn}}^{\text{ISR}} = \log(\xi_{\text{max}}(y)) \sigma_{\text{soft}}
+  - \frac{1}{2} \log(\xi_{\text{max}}(1)) \sigma^{\text{soft-coll}}_{\oplus}
+  - \frac{1}{2} \log(\xi_{\text{max}}(-1)) \sigma^{\text{soft-coll}}_{\ominus}
+\end{equation}
+where for ISR, $\xi_{\text{max}}$ does explicitly depend on $y$
+due to the rescaling of the $x$ values from the Born to the real partonic system according to
+\begin{equation}
+  x_\oplus = \frac{\overline{x}_\oplus}{\sqrt{1-\xi}} \sqrt{\frac{2-\xi(1-y)}{2-\xi(1+y)}}
+  , \qquad
+  x_\ominus = \frac{\overline{x}_\ominus}{\sqrt{1-\xi}} \sqrt{\frac{2-\xi(1+y)}{2-\xi(1-y)}}
+\end{equation}
+As $\xi_{\text{max}}$ is determined by the fact that the real $x_\oplus,x_\ominus$ have to
+stay in a physically meaningful regime, i.e. $x_\oplus,x_\ominus < 1$, this leads to
+\begin{align}
+\label{eqn:xi_max_isr}
+\xi_\text{max} = 1 - \text{max}
+  &\left\{\frac{2(1+y)\overline{x}_\oplus^2}{\sqrt{(1+\overline{x}_\oplus^2)^2(1-y)^2 + 16y\overline{x}_\oplus^2} + (1-y)(1-\overline{x}_\oplus^2)}\right., \\
+  &\left.\frac{2(1-y)\overline{x}_\oplus^2}{\sqrt{(1+\overline{x}_\oplus^2)^2(1+y)^2 - 16y\overline{x}_\oplus^2} + (1+y)(1-\overline{x}_\oplus^2)}\right\}
+\end{align}
+and thus
+\begin{align}
+  \xi_{\text{max}}(y=1) &= 1 - \overline{x}_\oplus \\
+  \xi_{\text{max}}(y=-1) &= 1 - \overline{x}_\ominus
+\end{align}
+So we need to use the unrescaled $\overline{x}_\oplus,\overline{x}_\ominus$ here.
+Factors of $\frac{1}{2}$ and $\frac{1}{\tilde{\xi}}$
+are already included in the matrix elements from [[apply_kinematic_factors_subtraction_isr]].
+We keep the former and remove the latter by multiplying with $\tilde{\xi}$.
 <<real subtraction: evaluate region isr: procedures>>=
   function compute_sqme_remnant_isr (isr_mode, sqme_soft, sqme_cs_plus, sqme_cs_minus, &
      isr_kinematics, real_kinematics, i_phs, xi_cut) result (sqme_remn)
@@ -8015,20 +8046,22 @@ $\tilde{\xi}$ which we have to compensate.
     type(real_kinematics_t), intent(in) :: real_kinematics
     integer, intent(in) :: i_phs
     real(default), intent(in) :: xi_cut
-    real(default) :: xi_tilde, xi_max, xi_max_plus, xi_max_minus
+    real(default) :: xi_tilde, xi_max, xi_max_plus, xi_max_minus, xb_plus, xb_minus
     xi_max = real_kinematics%xi_max (i_phs)
+    xi_tilde = real_kinematics%xi_tilde
     select case (isr_mode)
     case (SQRTS_VAR)
-       xi_max_plus = one - isr_kinematics%x(I_PLUS)
-       xi_max_minus = one - isr_kinematics%x(I_MINUS)
+       xb_plus = isr_kinematics%x(I_PLUS)
+       xb_minus = isr_kinematics%x(I_MINUS)
+       xi_max_plus = one - xb_plus
+       xi_max_minus = one - xb_minus
     case (SQRTS_FIXED)
        xi_max_plus = real_kinematics%xi_max (i_phs)
        xi_max_minus = real_kinematics%xi_max (i_phs)
     end select
-    xi_tilde = real_kinematics%xi_tilde
-    sqme_remn = log(xi_max * xi_cut) * xi_tilde * sqme_soft
-    sqme_remn = sqme_remn - log (xi_max_plus * xi_cut) * xi_tilde * sqme_cs_plus &
-                          - log (xi_max_minus * xi_cut) * xi_tilde * sqme_cs_minus
+    sqme_remn = log (xi_max * xi_cut) * xi_tilde * sqme_soft &
+              - log (xi_max_plus * xi_cut) * xi_tilde * sqme_cs_plus &
+              - log (xi_max_minus * xi_cut) * xi_tilde * sqme_cs_minus
   end function compute_sqme_remnant_isr
 
 @ %def compute_sqme_remnant_isr
@@ -8120,7 +8153,8 @@ $\tilde{\xi}$ which we have to compensate.
   end subroutine apply_kinematic_factors_radiation
 
 @ %def apply_kinematics_factors_radiation
-@
+@ This routine applies the factors in the integrand of eq. 4.20
+in arXiv:1002.2581 to the matrix elements.
 <<real subtraction: procedures>>=
   subroutine apply_kinematic_factors_subtraction_fsr &
      (sqme_soft, sqme_coll, sqme_cs, real_kinematics, i_phs)
@@ -8141,7 +8175,8 @@ $\tilde{\xi}$ which we have to compensate.
   end subroutine apply_kinematic_factors_subtraction_fsr
 
 @ %def apply_kinematic_factors_subtraction_fsr
-@
+@ This routine applies the factors in the integrand of eq. 4.21
+in arXiv:1002.2581 to the matrix elements.
 <<real subtraction: procedures>>=
   subroutine apply_kinematic_factors_subtraction_isr &
      (sqme_soft, sqme_coll_plus, sqme_coll_minus, sqme_cs_plus, &

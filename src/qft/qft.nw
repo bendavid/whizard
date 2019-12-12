@@ -9988,7 +9988,7 @@ contains
 
 end module interactions
 @ %def interactions
-@ Given a ordered list of quantum numbers (without any subtraction index) map
+@ Given an ordered list of quantum numbers (without any subtraction index) map
 these list to a state matrix, such that each list index corresponds to index of a set of
 quantum numbers in the state matrix, hence, the matrix element.
 

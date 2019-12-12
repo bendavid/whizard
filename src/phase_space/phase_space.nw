@@ -18160,36 +18160,32 @@ momentum vanishes. Thus we define
   integer, parameter, public :: I_MINUS = 2
 
 @ %def parameters
-@
+@ Computes $\xi_{\text{max}}$ in the case of ISR as documented in eq. \ref{eqn:xi_max_isr}.
 <<phs fks: procedures>>=
   function get_xi_max_isr (xb, y) result (xi_max)
     real(default) :: xi_max
     real(default), dimension(2), intent(in) :: xb
     real(default), intent(in) :: y
     xi_max = one - max (xi_max_isr_plus (xb(I_PLUS), y), xi_max_isr_minus (xb(I_MINUS), y))
+  contains
+    function xi_max_isr_plus (x, y)
+      real(default) :: xi_max_isr_plus
+      real(default), intent(in) :: x, y
+      real(default) :: deno
+      deno = sqrt ((one + x**2)**2 * (one - y)**2 + 16 * y * x**2) + (one - y) * (1 - x**2)
+      xi_max_isr_plus = two * (one + y) * x**2 / deno
+    end function xi_max_isr_plus
+
+    function xi_max_isr_minus (x, y)
+      real(default) :: xi_max_isr_minus
+      real(default), intent(in) :: x, y
+      real(default) :: deno
+      deno = sqrt ((one + x**2)**2 * (one + y)**2 - 16 * y * x**2) + (one + y) * (1 - x**2)
+      xi_max_isr_minus = two * (one - y) * x**2 / deno
+    end function xi_max_isr_minus
   end function get_xi_max_isr
 
 @ %def get_xi_max_isr
-@
-<<phs fks: procedures>>=
-  function xi_max_isr_plus (x, y)
-    real(default) :: xi_max_isr_plus
-    real(default), intent(in) :: x, y
-    real(default) :: deno
-    deno = sqrt ((one + x**2)**2 * (one - y)**2 + 16 * y * x**2) + (one - y) * (1 - x**2)
-    xi_max_isr_plus = two * (one + y) * x**2 / deno
-  end function xi_max_isr_plus
-
-  function xi_max_isr_minus (x, y)
-    real(default) :: xi_max_isr_minus
-    real(default), intent(in) :: x, y
-    real(default) :: deno
-    deno = sqrt ((one + x**2)**2 * (one + y)**2 - 16 * y * x**2) + (one + y) * (1 - x**2)
-    xi_max_isr_minus = two * (one - y) * x**2 / deno
-  end function xi_max_isr_minus
-
-
-@ %def xi_max_isr_plus, xi_max_isr_minus
 @
 <<phs fks: procedures>>=
   recursive function get_xi_max_isr_decay (p) result (xi_max)
