@@ -722,9 +722,12 @@ endif
 if OCAML_AVAILABLE
 
 TESTS += keystones_omegalib keystones_UFO
+TESTS += keystones_omegalib_bispinors keystones_UFO_bispinors
 # XFAIL_TESTS += keystones_UFO
+XFAIL_TESTS += keystones_UFO_bispinors
 
 EXTRA_PROGRAMS += keystones_omegalib keystones_UFO
+EXTRA_PROGRAMS += keystones_omegalib_bispinors keystones_UFO_bispinors
 
 keystones_omegalib_SOURCES = omega_testtools.f90 keystones_tools.f90
 nodist_keystones_omegalib_SOURCES = keystones_omegalib.f90
@@ -734,17 +737,36 @@ keystones_UFO_SOURCES = omega_testtools.f90 keystones_tools.f90
 nodist_keystones_UFO_SOURCES = keystones_UFO.f90
 keystones_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
+keystones_omegalib_bispinors_SOURCES = omega_testtools.f90 keystones_tools.f90
+nodist_keystones_omegalib_bispinors_SOURCES = keystones_omegalib_bispinors.f90
+keystones_omegalib_bispinors_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+keystones_UFO_bispinors_SOURCES = omega_testtools.f90 keystones_tools.f90
+nodist_keystones_UFO_bispinors_SOURCES = keystones_UFO_bispinors.f90
+keystones_UFO_bispinors_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
 EXTRA_PROGRAMS += keystones_omegalib_generate keystones_UFO_generate
+EXTRA_PROGRAMS += keystones_omegalib_bispinors_generate keystones_UFO_bispinors_generate
 keystones_omegalib_generate_SOURCES = \
 	keystones.ml keystones.mli keystones_omegalib_generate.ml
 keystones_UFO_generate_SOURCES = \
 	keystones.ml keystones.mli keystones_UFO_generate.ml
+keystones_omegalib_bispinors_generate_SOURCES = \
+	keystones.ml keystones.mli keystones_omegalib_bispinors_generate.ml
+keystones_UFO_bispinors_generate_SOURCES = \
+	keystones.ml keystones.mli keystones_UFO_bispinors_generate.ml
 
 keystones_omegalib.f90: keystones_omegalib_generate
 	./keystones_omegalib_generate -cat > $@
 
 keystones_UFO.f90: keystones_UFO_generate
 	./keystones_UFO_generate -cat > $@
+
+keystones_omegalib_bispinors.f90: keystones_omegalib_bispinors_generate
+	./keystones_omegalib_bispinors_generate -cat > $@
+
+keystones_UFO_bispinors.f90: keystones_UFO_bispinors_generate
+	./keystones_UFO_bispinors_generate -cat > $@
 
 keystones_omegalib_generate: $(OMEGA_CORE) keystones_omegalib_generate.cmx
 	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
@@ -760,6 +782,20 @@ keystones_UFO_generate: $(OMEGA_CORE) keystones_UFO_generate.cmx
 		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) \
 		keystones.cmx keystones_UFO_generate.cmx
 
+keystones_omegalib_bispinors_generate: $(OMEGA_CORE) keystones_omegalib_bispinors_generate.cmx
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) \
+		-o keystones_omegalib_bispinors_generate \
+		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) \
+		keystones.cmx keystones_omegalib_bispinors_generate.cmx
+
+keystones_UFO_bispinors_generate: $(OMEGA_CORE) keystones_UFO_bispinors_generate.cmx
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) \
+		-o keystones_UFO_bispinors_generate \
+		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) \
+		keystones.cmx keystones_UFO_bispinors_generate.cmx
+
 keystones_omegalib_generate.cmx: \
 	keystones.cmi keystones.cmx keystones_omegalib_generate.ml
 keystones_omegalib_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
@@ -767,6 +803,14 @@ keystones_omegalib_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 keystones_UFO_generate.cmx: \
 	keystones.cmi keystones.cmx keystones_UFO_generate.ml
 keystones_UFO_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+
+keystones_omegalib_bispinors_generate.cmx: \
+	keystones.cmi keystones.cmx keystones_omegalib_bispinors_generate.ml
+keystones_omegalib_bispinors_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
+
+keystones_UFO_bispinors_generate.cmx: \
+	keystones.cmi keystones.cmx keystones_UFO_bispinors_generate.ml
+keystones_UFO_bispinors_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 
 keystones.cmx: keystones.ml keystones.cmi
 keystones.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
@@ -855,6 +899,7 @@ clean-local: clean-macosx
 		$(EXTRA_PROGRAMS) ects.f90 ward.f90 ward_UFO.f90 \
 		fermi.f90 fermi_UFO.f90 compare_*.f90 \
 		parameters_SM_UFO.f90 keystones_omegalib.f90 keystones_UFO.f90 \
+		keystones_UFO_bispinors.f90 keystones_omegalib_bispinors.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
 		*.hbc *wrappers.f90 cascade phase_space \
 		output.rcl recola.log

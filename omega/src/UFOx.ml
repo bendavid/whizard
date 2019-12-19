@@ -36,6 +36,8 @@ let error_in_file name start_pos end_pos =
     end_pos.Lexing.pos_lnum
     (end_pos.Lexing.pos_cnum - end_pos.Lexing.pos_bol)
 
+module SMap = Map.Make (struct type t = string let compare = compare end)
+
 module Expr =
   struct
 
@@ -82,8 +84,6 @@ module Expr =
     let substitute name value expr =
       map (fun s -> if s = name then Some value else None) expr
 
-    module SMap = Map.Make (struct type t = string let compare = compare end)
-
     let rename1 name_map name =
       try Some (Variable (SMap.find name name_map)) with Not_found -> None
 
@@ -111,22 +111,29 @@ let not_positive integers =
 module type Index =
   sig
 
-    val position : int -> int
-    val factor : int -> int
-    val unpack : int -> int * int
-    val pack : int -> int -> int
-    val map_position : (int -> int) -> int -> int
-    val to_string : int -> string
-    val list_to_string : int list -> string
+    type t = int
 
-    val free : (int * 'r) list -> (int * 'r) list
-    val summation : (int * 'r) list -> (int * 'r) list
-    val classes_to_string : ('r -> string) -> (int * 'r) list -> string
+    val position : t -> int
+    val factor : t -> int
+    val unpack : t -> int * int
+    val pack : int -> int -> t
+    val map_position : (int -> int) -> t -> t
+    val to_string : t -> string
+    val list_to_string : t list -> string
+
+    val free : (t * 'r) list -> (t * 'r) list
+    val summation : (t * 'r) list -> (t * 'r) list
+    val classes_to_string : ('r -> string) -> (t * 'r) list -> string
+
+    val fresh_summation : unit -> t
+    val named_summation : string -> unit -> t
 
   end
 
 module Index : Index =
   struct
+
+    type t = int
 
     let free i = positive i
     let summation i = not_positive i
@@ -171,6 +178,8 @@ module Index : Index =
       else
         Printf.sprintf "%d.%d" pos fac
 
+    let to_string' = string_of_int
+
     let list_to_string is =
       "[" ^ String.concat ", " (List.map to_string is) ^ "]"
 	
@@ -187,17 +196,51 @@ module Index : Index =
 		     fst
 		     (List.filter (fun (_, r') -> r = r') index_classes))))
 	   reps) ^ "]"
-      
+
+    type factory =
+      { mutable named : int SMap.t;
+        mutable used : Sets.Int.t }
+
+    let factory =
+      { named = SMap.empty;
+        used = Sets.Int.empty }
+
+    let first_anonymous = -1001
+
+    let fresh_summation () =
+      let next_anonymous =
+        try
+          pred (Sets.Int.min_elt factory.used)
+        with
+        | Not_found -> first_anonymous in
+      factory.used <- Sets.Int.add next_anonymous factory.used;
+      next_anonymous
+
+    let named_summation name () =
+      try
+        SMap.find name factory.named
+      with
+      | Not_found ->
+         begin
+           let next_named = fresh_summation () in
+           factory.named <- SMap.add name next_named factory.named;
+           next_named
+         end
+
   end
 
 module type Atom =
   sig
     type t
     val map_indices : (int -> int) -> t -> t
-    val of_expr : string -> UFOx_syntax.expr list -> t
+    val rename_indices : (int -> int) -> t -> t
+    val invertible : t -> bool
+    val invert : t -> t
+    val of_expr : string -> UFOx_syntax.expr list -> t list
     val to_string : t -> string
     type r
-    val classify_indices : t list -> (int * r) list
+    val classify_indices : t list -> (Index.t * r) list
+    val disambiguate_indices : t list -> t list
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
@@ -213,12 +256,14 @@ module type Tensor =
     type t = (atom list * Algebra.QC.t) list
     val map_atoms : (atom -> atom) -> t -> t
     val map_indices : (int -> int) -> t -> t
+    val rename_indices : (int -> int) -> t -> t
+    val map_coef : (Algebra.QC.t -> Algebra.QC.t) -> t -> t
     val of_expr : UFOx_syntax.expr -> t
     val of_string : string -> t
     val of_strings : string list -> t
     val to_string : t -> string
     type r
-    val classify_indices : t -> (int * r) list 
+    val classify_indices : t -> (Index.t * r) list
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
@@ -247,6 +292,12 @@ module Tensor (A : Atom) : Tensor
     let map_indices f t =
       map_atoms (A.map_indices f) t
 
+    let rename_indices f t =
+      map_atoms (A.rename_indices f) t
+
+    let map_coef f t =
+      List.map (fun (atoms, q) -> (atoms, f q)) t
+
     let multiply (t1, c1) (t2, c2) =
       (List.sort compare (t1 @ t2), QC.mul c1 c2)
 
@@ -265,7 +316,17 @@ module Tensor (A : Atom) : Tensor
       | S.Variable name ->
 	 invalid_arg ("UFOx.Tensor.of_expr: unexpected variable '" ^
 			 name ^ "'")
-      | S.Application (name, args) -> [([A.of_expr name args], QC.unit)]
+      | S.Application ("complex", [re; im]) ->
+         begin match of_expr re, of_expr im with
+         | [([], re)], [([], im)] ->
+            if QC.is_real re && QC.is_real im then
+              [([], QC.make (QC.real re) (QC.real im))]
+            else
+	      invalid_arg ("UFOx.Tensor.of_expr: argument of complex is complex")
+         | _ ->
+            invalid_arg "UFOx.Tensor.of_expr: unexpected argument of complex"
+         end
+      | S.Application (name, args) -> [(A.of_expr name args, QC.unit)]
       | S.Sum (e1, e2) ->
 	 of_expr e1 @ of_expr e2
       | S.Difference (e1, e2) ->
@@ -273,12 +334,15 @@ module Tensor (A : Atom) : Tensor
       | S.Product (e1, e2) -> Product.list2 multiply (of_expr e1) (of_expr e2)
       | S.Quotient (n, d) ->
 	 begin match of_expr d with
-	 | [([], q)] ->
-	    List.map (fun (t, c) -> (t, QC.div c q)) (of_expr n)
-	 | [] ->
-	    failwith "UFOx.Tensor.of_expr: zero denominator"
-	 | _ ->
-	    failwith "UFOx.Tensor.of_expr: only integer denominators allowed"
+	 | [] -> failwith "UFOx.Tensor.of_expr: zero denominator"
+	 | [([], q)] -> List.map (fun (t, c) -> (t, QC.div c q)) (of_expr n)
+	 | [(invertibles, q)] ->
+            if List.for_all A.invertible invertibles then
+              let inverses = List.map A.invert invertibles in
+	      List.map (fun (t, c) -> (inverses @ t, QC.div c q)) (of_expr n)
+            else
+              failwith "UFOx.Tensor.of_expr: non-invertible denominator"
+	 | _ -> failwith "UFOx.Tensor.of_expr: illegal denominator"
 	 end
       | S.Power (e, p) ->
 	 begin match of_expr e, of_expr p with
@@ -326,11 +390,17 @@ module Tensor (A : Atom) : Tensor
       | _ ->
 	 invalid_arg "UFOx.Tensor.classify_indices: incompatible free indices!"
 
+    let disambiguate_indices1 (atoms, q) =
+      (A.disambiguate_indices atoms, q)
+
+    let disambiguate_indices tensors =
+      List.map disambiguate_indices1 tensors
+
     let check_indices t =
       ignore (classify_indices t)
 
     let of_expr e =
-      let t = of_expr e in
+      let t = disambiguate_indices (of_expr e) in
       check_indices t;
       t
 
@@ -376,11 +446,18 @@ module type Lorentz_Atom =
       | Metric of int * int
       | P of int * int
 
-    type t = private
+    type scalar = (* private *)
+      | Mass of int
+      | Width of int
+
+    type t = (* private *)
       | Dirac of dirac
       | Vector of vector
+      | Scalar of scalar
+      | Inverse of scalar
 
     val map_indices_vector : (int -> int) -> vector -> vector
+    val rename_indices_vector : (int -> int) -> vector -> vector
 
   end
 
@@ -396,20 +473,30 @@ module Lorentz_Atom =
       | ProjM of int * int
       | Sigma of int * int * int * int
 
-    (* TODO: the propagators use additional atoms! *)
     type vector =
       | Epsilon of int * int * int * int
       | Metric of int * int
       | P of int * int
 
+    type scalar =
+      | Mass of int
+      | Width of int
+
     type t =
       | Dirac of dirac
       | Vector of vector
+      | Scalar of scalar
+      | Inverse of scalar
 
     let map_indices_vector f = function
       | Epsilon (mu, nu, ka, la) -> Epsilon (f mu, f nu, f ka, f la)
       | Metric (mu, nu) -> Metric (f mu, f nu)
       | P (mu, n) -> P (f mu, f n)
+
+    let rename_indices_vector f = function
+      | Epsilon (mu, nu, ka, la) -> Epsilon (f mu, f nu, f ka, f la)
+      | Metric (mu, nu) -> Metric (f mu, f nu)
+      | P (mu, n) -> P (f mu, n)
 
   end
 
@@ -430,86 +517,177 @@ module Lorentz_Atom' : Atom
       | ProjM (i, j) -> ProjM (f i, f j)
       | Sigma (mu, nu, i, j) -> Sigma (f mu, f nu, f i, f j)
 
+    let rename_indices_dirac = map_indices_dirac
+
+    let map_indices_scalar f = function
+      | Mass i -> Mass (f i)
+      | Width i -> Width (f i)
+
     let map_indices f = function
       | Dirac d -> Dirac (map_indices_dirac f d)
       | Vector v -> Vector (map_indices_vector f v)
+      | Scalar s -> Scalar (map_indices_scalar f s)
+      | Inverse s -> Inverse (map_indices_scalar f s)
+
+    let rename_indices2 fd fv = function
+      | Dirac d -> Dirac (rename_indices_dirac fd d)
+      | Vector v -> Vector (rename_indices_vector fv v)
+      | Scalar s -> Scalar s
+      | Inverse s -> Inverse s
+
+    let rename_indices f atom =
+      rename_indices2 f f atom
+
+    let invert = function
+      | Dirac _ -> invalid_arg "UFOx.Lorentz_Atom.invert Dirac"
+      | Vector _ -> invalid_arg "UFOx.Lorentz_Atom.invert Vector"
+      | Scalar s -> Inverse s
+      | Inverse s -> Scalar s
+
+    let invertible = function
+      | Dirac _ | Vector _ -> false
+      | Scalar _ | Inverse _ -> true
+
+    let i2s = Index.to_string
 
     let dirac_to_string = function
       | C (i, j) ->
-	 Printf.sprintf "C(%d,%d)" i j
+	 Printf.sprintf "C(%s,%s)" (i2s i) (i2s j)
       | Gamma (mu, i, j) ->
-	 Printf.sprintf "Gamma(%d,%d,%d)" mu i j
+	 Printf.sprintf "Gamma(%s,%s,%s)" (i2s mu) (i2s i) (i2s j)
       | Gamma5 (i, j) ->
-	 Printf.sprintf "Gamma5(%d,%d)" i j
+	 Printf.sprintf "Gamma5(%s,%s)" (i2s i) (i2s j)
       | Identity (i, j) ->
-	 Printf.sprintf "Identity(%d,%d)" i j
+	 Printf.sprintf "Identity(%s,%s)" (i2s i) (i2s j)
       | ProjP (i, j) ->
-	 Printf.sprintf "ProjP(%d,%d)" i j
+	 Printf.sprintf "ProjP(%s,%s)" (i2s i) (i2s j)
       | ProjM (i, j) ->
-	 Printf.sprintf "ProjM(%d,%d)" i j
+	 Printf.sprintf "ProjM(%s,%s)" (i2s i) (i2s j)
       | Sigma (mu, nu, i, j) ->
-	 Printf.sprintf "Sigma(%d,%d,%d,%d)" mu nu i j
+	 Printf.sprintf "Sigma(%s,%s,%s,%s)" (i2s mu) (i2s nu) (i2s i) (i2s j)
 
     let vector_to_string = function
       | Epsilon (mu, nu, ka, la) ->
-	 Printf.sprintf "Epsilon(%d,%d,%d,%d)" mu nu ka la
+	 Printf.sprintf "Epsilon(%s,%s,%s,%s)" (i2s mu) (i2s nu) (i2s ka) (i2s la)
       | Metric (mu, nu) ->
-	 Printf.sprintf "Metric(%d,%d)" mu nu
+	 Printf.sprintf "Metric(%s,%s)" (i2s mu) (i2s nu)
       | P (mu, n) ->
-	 Printf.sprintf "P(%d,%d)" mu n
+	 Printf.sprintf "P(%s,%d)" (i2s mu) n
+
+    let scalar_to_string = function
+      | Mass id -> Printf.sprintf "Mass(%d)" id
+      | Width id -> Printf.sprintf "Width(%d)" id
 
     let to_string = function
       | Dirac d -> dirac_to_string d
       | Vector v -> vector_to_string v
+      | Scalar s -> scalar_to_string s
+      | Inverse s -> "1/" ^ scalar_to_string s
 
     module S = UFOx_syntax
 
+    (* \begin{dubious}
+         Here we handle some special cases in order to be able to
+         parse propagators.  This needs to be made more general,
+         but unfortunately the syntax for the propagator extension
+         is not well documented and appears to be a bit chaotic!
+       \end{dubious} *)
+
+    let quoted_index s =
+      Index.named_summation s ()
+
+    let integer_or_id = function
+      | S.Integer n -> n
+      | S.Variable "id" -> 1
+      | _ -> failwith "UFOx.Lorentz_Atom.integer_or_id: impossible"
+
+    let vector_index = function
+      | S.Integer n -> n
+      | S.Quoted mu -> quoted_index mu
+      | S.Variable id ->
+         let l = String.length id in
+         if l > 1 then
+           if id.[0] = 'l' then
+             int_of_string (String.sub id 1 (pred l))
+           else
+             invalid_arg ("UFOx.Lorentz_Atom.vector_index: " ^ id)
+         else
+           invalid_arg "UFOx.Lorentz_Atom.vector_index: empty variable"
+      | _ -> invalid_arg "UFOx.Lorentz_Atom.vector_index"
+
+    let spinor_index = function
+      | S.Integer n -> n
+      | S.Variable id ->
+         let l = String.length id in
+         if l > 1 then
+           if id.[0] = 's' then
+             int_of_string (String.sub id 1 (pred l))
+           else
+             invalid_arg ("UFOx.Lorentz_Atom.spinor_index: " ^ id)
+         else
+           invalid_arg "UFOx.Lorentz_Atom.spinor_index: empty variable"
+      | _ -> invalid_arg "UFOx.Lorentz_Atom.spinor_index"
+
     let of_expr name args =
       match name, args with
-      | "C", [S.Integer i; S.Integer j] -> Dirac (C (i, j))
+      | "C", [i; j] -> [Dirac (C (spinor_index i, spinor_index j))]
       | "C", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to C()"
-      | "Epsilon", [S.Integer mu; S.Integer nu; S.Integer ka; S.Integer la] ->
-	 Vector (Epsilon (mu, nu, ka, la))
+      | "Epsilon", [mu; nu; ka; la] ->
+	 [Vector (Epsilon (vector_index mu, vector_index nu,
+                           vector_index ka, vector_index la))]
       | "Epsilon", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Epsilon()"
-      | "Gamma", [S.Integer mu; S.Integer i; S.Integer j] ->
-	 Dirac (Gamma (mu, i, j))
+      | "Gamma", [mu; i; j] ->
+	 [Dirac (Gamma (vector_index mu, spinor_index i, spinor_index j))]
       | "Gamma", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Gamma()"
-      | "Gamma5", [S.Integer i; S.Integer j] -> Dirac (Gamma5 (i, j))
+      | "Gamma5", [i; j] -> [Dirac (Gamma5 (spinor_index i, spinor_index j))]
       | "Gamma5", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Gamma5()"
-      | "Identity", [S.Integer i; S.Integer j] -> Dirac (Identity (i, j))
+      | "Identity", [i; j] -> [Dirac (Identity (spinor_index i, spinor_index j))]
       | "Identity", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Identity()"
-      | "Metric", [S.Integer mu; S.Integer nu] -> Vector (Metric (mu, nu))
+      | "Metric", [mu; nu] -> [Vector (Metric (vector_index mu, vector_index nu))]
       | "Metric", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Metric()"
-      | "P", [S.Integer mu; S.Integer n] -> Vector (P (mu, n))
+      | "P", [mu; id] -> [Vector (P (vector_index mu, integer_or_id id))]
       | "P", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to P()"
-      | "ProjP", [S.Integer i; S.Integer j] -> Dirac (ProjP (i, j))
+      | "ProjP", [i; j] -> [Dirac (ProjP (spinor_index i, spinor_index j))]
       | "ProjP", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to ProjP()"
-      | "ProjM", [S.Integer i; S.Integer j] -> Dirac (ProjM (i, j))
+      | "ProjM", [i; j] -> [Dirac (ProjM (spinor_index i, spinor_index j))]
       | "ProjM", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to ProjM()"
-      | "Sigma", [S.Integer mu; S.Integer nu; S.Integer i; S.Integer j] ->
+      | "Sigma", [mu; nu; i; j] ->
          if mu <> nu then
-	   Dirac (Sigma (mu, nu, i, j))
+	   [Dirac (Sigma (vector_index mu, vector_index nu,
+                          spinor_index i, spinor_index j))]
          else
 	   invalid_arg "UFOx.Lorentz.of_expr: implausible arguments to Sigma()"
       | "Sigma", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Sigma()"
+      | "PSlash", [i; j; id] ->
+         let mu = Index.fresh_summation () in
+	 [Dirac (Gamma (mu, spinor_index i, spinor_index j));
+          Vector (P (mu, integer_or_id id))]
+      | "PSlash", _ ->
+	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to PSlash()"
+      | "Mass", [id] -> [Scalar (Mass (integer_or_id id))]
+      | "Mass", _ ->
+	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Mass()"
+      | "Width", [id] -> [Scalar (Width (integer_or_id id))]
+      | "Width", _ ->
+	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Width()"
       | name, _ ->
 	 invalid_arg ("UFOx.Lorentz.of_expr: invalid tensor '" ^ name ^ "'")
 
-    type r = S | V | T | Sp | CSp | Maj | Ghost
+    type r = S | V | T | Sp | CSp | Maj | VSp | CVSp | VMaj | Ghost
 
     let rep_trivial = function
       | S | Ghost -> true
-      | V | T | Sp | CSp | Maj -> false
+      | V | T | Sp | CSp | Maj | VSp | CVSp | VMaj -> false
 
     let rep_to_string = function
       | S -> "0"
@@ -518,6 +696,9 @@ module Lorentz_Atom' : Atom
       | Sp -> "1/2"
       | CSp-> "1/2bar"
       | Maj -> "1/2M"
+      | VSp -> "3/2"
+      | CVSp -> "3/2bar"
+      | VMaj -> "3/2M"
       | Ghost -> "Ghost"
 
     let rep_to_string_whizard = function
@@ -525,6 +706,7 @@ module Lorentz_Atom' : Atom
       | V -> "1"
       | T -> "2"
       | Sp | CSp | Maj -> "1/2"
+      | VSp | CVSp | VMaj -> "3/2"
       | Ghost -> "Ghost"
 
     let rep_of_int neutral = function
@@ -533,7 +715,8 @@ module Lorentz_Atom' : Atom
       | 2 -> if neutral then Maj else Sp
       | -2 -> if neutral then Maj else CSp (* used by [UFO.Particle.force_conjspinor] *)
       | 3 -> V
-      | 4 -> failwith "UFOx.Lorentz: spin 3/2 not supported yet!"
+      | 4 -> if neutral then VMaj else VSp
+      | -4 -> if neutral then VMaj else CVSp (* used by [UFO.Particle.force_conjspinor] *)
       | 5 -> T
       | s when s > 0 ->
          failwith "UFOx.Lorentz: spin > 2 not supported!"
@@ -547,6 +730,9 @@ module Lorentz_Atom' : Atom
       | Sp -> CSp (* ??? *)
       | CSp -> Sp (* ??? *)
       | Maj -> Maj
+      | VSp -> CVSp
+      | CVSp -> VSp
+      | VMaj -> VMaj
       | Ghost -> Ghost
 
     let classify_vector_indices1 = function
@@ -564,15 +750,22 @@ module Lorentz_Atom' : Atom
     let classify_indices1 = function
       | Dirac d -> classify_dirac_indices1 d
       | Vector v -> classify_vector_indices1 v
+      | Scalar _ | Inverse _ -> []
 
     module IMap = Map.Make (struct type t = int let compare = compare end)
 
-    exception Incompatible_factors
+    exception Incompatible_factors of r * r
 
     let product rep1 rep2 =
       match rep1, rep2 with
       | V, V -> T
-      | _, _ -> raise Incompatible_factors
+      | V, Sp -> VSp
+      | V, CSp -> CVSp
+      | V, Maj -> VMaj
+      | Sp, V -> VSp
+      | CSp, V -> CVSp
+      | Maj, V -> VMaj
+      | _, _ -> raise (Incompatible_factors (rep1, rep2))
 
     let combine_or_add_index (i, rep) map =
       let pos, fac = Index.unpack i in
@@ -582,12 +775,17 @@ module Lorentz_Atom' : Atom
           IMap.add pos (fac, rep) map
         else if fac <> fac' then
           IMap.add pos (0, product rep rep') map
+        else if rep <> rep' then (* Can be disambiguated! *)
+          IMap.add pos (0, product rep rep') map
         else
           invalid_arg (Printf.sprintf "UFO: duplicate subindex %d" pos)
       with
       | Not_found -> IMap.add pos (fac, rep) map
-      | Incompatible_factors ->
-         invalid_arg (Printf.sprintf "UFO: incompatible factors at %d" pos)
+      | Incompatible_factors (rep1, rep2) ->
+         invalid_arg
+           (Printf.sprintf
+              "UFO: incompatible factors (%s,%s) at %d"
+              (rep_to_string rep1) (rep_to_string rep2) pos)
 
     let combine_or_add_indices atom map =
       List.fold_right combine_or_add_index (classify_indices1 atom) map
@@ -603,6 +801,30 @@ module Lorentz_Atom' : Atom
         project_factors
         (IMap.bindings (List.fold_right combine_or_add_indices atoms IMap.empty))
 
+    let add_factor fac indices pos =
+      if pos > 0 then
+        if Sets.Int.mem pos indices then
+          Index.pack pos fac
+        else
+          pos
+      else
+        pos
+
+    let disambiguate_indices1 indices atom =
+      rename_indices2 (add_factor 1 indices) (add_factor 2 indices) atom
+
+    let vectorspinors atoms =
+      List.fold_left
+        (fun acc (i, r) ->
+          match r with
+          | S | V | T | Sp | CSp | Maj | Ghost -> acc
+          | VSp | CVSp | VMaj -> Sets.Int.add i acc)
+        Sets.Int.empty (classify_indices atoms)
+
+    let disambiguate_indices atoms =
+      let vectorspinor_indices = vectorspinors atoms in
+      List.map (disambiguate_indices1 vectorspinor_indices) atoms
+
     type r_omega = Coupling.lorentz
     let omega = function
       | S -> Coupling.Scalar
@@ -611,6 +833,9 @@ module Lorentz_Atom' : Atom
       | Sp -> Coupling.Spinor
       | CSp -> Coupling.ConjSpinor
       | Maj -> Coupling.Majorana
+      | VSp -> Coupling.Vectorspinor
+      | CVSp -> Coupling.Vectorspinor (* TODO: not really! *)
+      | VMaj -> Coupling.Vectorspinor (* TODO: not really! *)
       | Ghost -> Coupling.Scalar
 
   end
@@ -669,7 +894,15 @@ module Color_Atom' : Atom
       | K6 (i', j, k) -> K6 (f i', f j, f k)
       | K6Bar (i', j, k) -> K6Bar (f i', f j, f k)
 
-    let of_expr name args =
+    let rename_indices = map_indices
+
+    let invert _ =
+      invalid_arg "UFOx.Color_Atom.invert"
+
+    let invertible _ =
+      false
+
+    let of_expr1 name args =
       match name, args with
       | "Identity", [S.Integer i; S.Integer j] -> Identity (i, j)
       | "Identity", _ ->
@@ -703,6 +936,9 @@ module Color_Atom' : Atom
       | name, _ ->
 	 invalid_arg ("UFOx.Color.of_expr: invalid tensor '" ^ name ^ "'")
 	
+    let of_expr name args =
+      [of_expr1 name args]
+
     let to_string = function
       | Identity (i, j) -> Printf.sprintf "Identity(%d,%d)" i j
       | Identity8 (a, b) -> Printf.sprintf "Identity8(%d,%d)" a b
@@ -770,6 +1006,9 @@ module Color_Atom' : Atom
 	(List.fold_right
 	   (fun v acc -> classify_indices1 v @ acc)
 	   tensors [])
+
+    let disambiguate_indices atoms =
+      atoms
 
     type r_omega = Color.t
 
@@ -1054,4 +1293,3 @@ module type Test =
     val example : unit -> unit
     val suite : OUnit.test
   end
-

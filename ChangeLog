@@ -7,6 +7,10 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2019-12-19
+	Support for UFO customized propagators
+	O'Mega unit tests for fermion-number violating interactions
+
 2019-12-10
 	For distribution building: check for graphviz/dot
 	   version 2.40 or newer

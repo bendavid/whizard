@@ -1444,6 +1444,8 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
           failwith "print_fusion: Prop_Vector_pure not implemented!"
       | Prop_Rxi _ ->
           failwith "print_fusion: Prop_Rxi not implemented!"
+      | Prop_UFO _ ->
+          failwith "print_fusion: Prop_UFO not implemented!"
       end;
 
 (* Since the OVM knows that we want to propagate a wf, we can send the
@@ -5829,6 +5831,8 @@ i*)
 	| Aux_Vector | Aux_Tensor_1 -> printf "("
 	| Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
 	| Only_Insertion -> printf "("
+	| Prop_UFO name ->
+          printf "pr_U_%s(%s,%s,%s," name p m w
 
     let print_projector f p m gamma =
       let minus_third = "(-1.0_" ^ !kind ^ "/3.0_" ^ !kind ^ ")" in
@@ -5869,6 +5873,8 @@ i*)
       | Aux_Vector | Aux_Tensor_1 -> printf "("
       | Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
       | Only_Insertion -> printf "("
+      | Prop_UFO name ->
+         invalid_arg "no on shell UFO propagator"
 
     let print_gauss f p m gamma =
       let minus_third = "(-1.0_" ^ !kind ^ "/3.0_" ^ !kind ^ ")" in
@@ -5902,6 +5908,8 @@ i*)
       | Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
       | Aux_Vector | Aux_Tensor_1 -> printf "("
       | Only_Insertion -> printf "("
+      | Prop_UFO name ->
+         invalid_arg "no UFO gauss insertion"
       | _ -> invalid_arg "targets:print_gauss: not available"
 
     let print_fusion_diagnostics amplitude dictionary fusion =

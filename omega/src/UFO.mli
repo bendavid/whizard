@@ -61,9 +61,6 @@ module type Fortran_Target =
       Algebra.QC.t -> string -> Coupling.lorentzn ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
-    val lorentz :
-      ?only:Sets.String.t -> Format_Fortran.formatter -> unit -> unit
-
     val lorentz_module :
       ?only:Sets.String.t -> ?name:string -> ?fortran_module:string ->
       Format_Fortran.formatter -> unit -> unit
@@ -73,6 +70,27 @@ module type Fortran_Target =
 module Targets :
   sig
     module Fortran : Fortran_Target
+  end
+
+(* Export some functions for testing: *)
+
+module Propagator_UFO :
+  sig
+    type t = (* private *)
+      { name : string;
+	numerator : UFOx.Lorentz.t;
+	denominator : UFOx.Lorentz.t }
+  end
+
+module Propagator :
+  sig
+    type t = (* private *)
+      { name : string;
+        spins : Coupling.lorentz * Coupling.lorentz;
+	numerator : UFO_Lorentz.t;
+	denominator : UFO_Lorentz.t }
+    val of_propagator_UFO : Propagator_UFO.t -> t
+    val transpose : t -> t
   end
 
 module type Test =

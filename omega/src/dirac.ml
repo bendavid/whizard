@@ -117,10 +117,10 @@ module Chiral : T =
       [| gamma0; gamma1; gamma2; gamma3 |]
 
     let cc =
-      [| [| zero; minus_one; zero;      zero |];
-         [| one;  zero;      zero;      zero |];
-         [| zero; zero;      zero;      one  |];
-         [| zero; zero;      minus_one; zero |] |]
+      [| [| zero;      one;  zero; zero      |];
+         [| minus_one; zero; zero; zero      |];
+         [| zero;      zero; zero; minus_one |];
+         [| zero;      zero; one;  zero      |] |]
 
     let neg g =
       let g' = Array.make_matrix 4 4 zero in

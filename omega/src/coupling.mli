@@ -155,6 +155,7 @@ type 'a propagator =
   | Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1
   | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
   | Only_Insertion
+  | Prop_UFO of string
 
 (* \begin{JR}
    We don't need different fermionic propagators as supposed by the variable

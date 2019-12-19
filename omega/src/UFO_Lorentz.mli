@@ -32,6 +32,7 @@ type dirac = (* [private] *)
   | Gamma of int
   | Sigma of int * int
   | C
+  | Minus
 
 (* A sandwich of a string of $\gamma$-matrices. [bra] and [ket] are
    positions of fields in the vertex, \emph{not} spinor indices. *)
@@ -39,6 +40,11 @@ type dirac_string = (* [private] *)
   { bra : int;
     ket : int;
     gammas : dirac list }
+
+(* In the case of Majorana spinors, we have to insert charge conjugation
+   matrices. *)
+val majorana : dirac_string -> dirac_string
+val transpose : dirac_string -> dirac_string
 
 (* The Lorentz indices appearing in a term are either negative
    internal summation indices or positive external polarization
@@ -61,7 +67,9 @@ val map_atom : ('a -> 'b) -> 'a term -> 'b term
 type contraction = (* [private] *)
   { coeff : Algebra.QC.t;
     dirac : dirac_string term list;
-    vector : UFOx.Lorentz_Atom.vector term list }
+    vector : UFOx.Lorentz_Atom.vector term list;
+    scalar : UFOx.Lorentz_Atom.scalar list;
+    inverse : UFOx.Lorentz_Atom.scalar list }
 
 (* A sum of [contraction]s. *)
 type t = contraction list
@@ -94,3 +102,4 @@ val dirac_string_to_string : dirac_string -> string
    of $\gamma$-matrices [ds], applies [substitute] to
    the indices and returns the product as a matrix. *)
 val dirac_string_to_matrix : (int -> int) -> dirac_string -> Dirac.Chiral.t
+

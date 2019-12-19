@@ -28,6 +28,7 @@ module keystones_tools
   use constants
   ! use tao_random_numbers
   use omega95
+  use omega95_bispinors, only: bispinor
 
   implicit none
   private
@@ -53,7 +54,9 @@ module keystones_tools
           make_random_spinor, &
           make_random_spinor_vector, &
           make_random_conjspinor, &
-          make_random_conjspinor_vector
+          make_random_conjspinor_vector, &
+          make_random_bispinor, &
+          make_random_bispinor_vector
   end interface make_random
 
 contains
@@ -207,5 +210,20 @@ contains
        call make_random_tensor2odd (t(i), range)
     end do
   end subroutine make_random_tensor2odd_vector
+
+  subroutine make_random_bispinor (chi, range)
+    type(bispinor), intent(inout) :: chi
+    real(kind=default), intent(in), optional :: range
+    call make_random_complex_vector (chi%a, range)
+  end subroutine make_random_bispinor
+
+  subroutine make_random_bispinor_vector (chi, range)
+    type(bispinor), dimension(:), intent(inout) :: chi
+    real(kind=default), intent(in), optional :: range
+    integer :: i
+    do i = 1, size(chi)
+       call make_random_bispinor (chi(i), range)
+    end do
+  end subroutine make_random_bispinor_vector
 
 end module keystones_tools

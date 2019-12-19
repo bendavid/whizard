@@ -25,25 +25,25 @@ open Keystones
 
 let vector_spinor_current tag =
   { tag = Printf.sprintf "vector_spinor_current__%s_ff" tag;
-    keystones = [ { ket = (ConjSpinor, 0);
+    keystones = [ { bra = (ConjSpinor, 0);
                     name = Printf.sprintf "f_%sf" tag;
                     args = [G (0); F (Vector, 1); F (Spinor, 2)] };
-                  { ket = (Vector, 1);
+                  { bra = (Vector, 1);
                     name = Printf.sprintf "%s_ff" tag;
                     args = [G (0); F (ConjSpinor, 0); F (Spinor, 2)] };
-                  { ket = (Spinor, 2);
+                  { bra = (Spinor, 2);
                     name = Printf.sprintf "f_f%s" tag;
                     args = [G (0); F (ConjSpinor, 0); F (Vector, 1)] } ] }
 
 let scalar_spinor_current tag =
   { tag = Printf.sprintf "scalar_spinor_current__%s_ff" tag;
-    keystones = [ { ket = (ConjSpinor, 0);
+    keystones = [ { bra = (ConjSpinor, 0);
                     name = Printf.sprintf "f_%sf" tag;
                     args = [G (0); F (Scalar, 1); F (Spinor, 2)] };
-                  { ket = (Scalar, 1);
+                  { bra = (Scalar, 1);
                     name = Printf.sprintf "%s_ff" tag;
                     args = [G (0); F (ConjSpinor, 0); F (Spinor, 2)] };
-                  { ket = (Spinor, 2);
+                  { bra = (Spinor, 2);
                     name = Printf.sprintf "f_f%s" tag;
                     args = [G (0); F (ConjSpinor, 0); F (Scalar, 1)] } ] }
 
@@ -51,19 +51,19 @@ let scalar_spinor_current tag =
    use a cyclic permutation. *)
 let vector_scalar_current =
   { tag = "vector_scalar_current__v_ss";
-    keystones = [ { ket = (Vector, 0);
+    keystones = [ { bra = (Vector, 0);
                     name = "v_ss";
                     args = [G (0); F (Scalar, 1); P (1); F (Scalar, 2); P (2)] };
-                  { ket = (Scalar, 2);
+                  { bra = (Scalar, 2);
                     name = "s_vs";
                     args = [G (0); F (Vector, 0); P (0); F (Scalar, 1); P (1)] } ] }
 
 let scalar_vector_current tag =
   { tag = Printf.sprintf "transversal_vector_current__s_vv_%s" tag;
-    keystones = [ { ket = (Scalar, 0);
+    keystones = [ { bra = (Scalar, 0);
                     name = Printf.sprintf "s_vv_%s" tag;
                     args = [G (0); F (Vector, 1); P (1); F (Vector, 2); P (2)] };
-                  { ket = (Vector, 1);
+                  { bra = (Vector, 1);
                     name = Printf.sprintf "v_sv_%s" tag;
                     args = [G (0); F (Scalar, 0); P (0); F (Vector, 2); P (2)] } ] }
 

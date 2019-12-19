@@ -10,3 +10,14 @@ module SU3 = Color.SU3;;
 module U3 = Color.U3;;
 open SU3;;
 open BinOps;;
+
+(* parse and unparse *)
+let pnup spins s =
+  let t = UFOx.Lorentz.of_string s in
+  String.concat
+    " >>>> "
+    [s; UFOx.Lorentz.to_string t;
+     UFO_Lorentz.to_string (UFO_Lorentz.parse spins t)];;
+
+let pnup1 spin s =
+  pnup [spin; spin] s;;

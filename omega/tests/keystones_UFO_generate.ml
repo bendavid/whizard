@@ -22,103 +22,6 @@
 
 open Coupling
 open Keystones
-open Format_Fortran
-
-type ufo_vertex =
-  { ufo_tag : string;
-    spins : lorentz array;
-    tensor : UFOx.Lorentz.t }
-
-module P = Permutation.Default
-
-let permute_spins p s = P.array p s
-
-(* We must permute only the free indices, of course.
-   Note that we apply the \emph{inverse} permutation to
-   the indices in order to match the permutation of the
-   particles/spins. *)
-let permute_structure n p l =
-  let permuted = P.array (P.inverse p) (Array.init n succ) in
-  let permute_index i =
-    if i > 0 then
-      permuted.(pred i)
-    else
-      i in
-  UFOx.Lorentz.map_indices permute_index l
-
-let permute_vertex n v p =
-  { ufo_tag = v.ufo_tag ^ "_p" ^ P.to_string p;
-    spins = permute_spins p v.spins;
-    tensor = permute_structure n p v.tensor }
-
-let vertex_permutations v =
-  let n = Array.length v.spins in
-  List.map (permute_vertex n v) (P.cyclic n)
-
-let keystones_of_ufo_vertex { ufo_tag; spins } =
-  { tag = ufo_tag;
-    keystones =
-      let fields = Array.mapi (fun i s -> (s, i)) spins in
-      let n = Array.length fields in
-      List.map
-        (fun p ->
-          let permuted = P.array p fields in
-          match Array.to_list permuted with
-          | [] -> invalid_arg "keystones_of_ufo_vertex"
-          | ket :: args ->
-             { ket = ket;
-               name = ufo_tag ^ "_p" ^ P.to_string p;
-               args =
-                 G (0) ::
-                   (ThoList.flatmap (fun (s, i) -> [ F (s, i); P (i) ]) args) })
-        (P.cyclic n) }
-
-let merge (ufo_list, omegalib) =
-  match ufo_list with
-  | [] -> omegalib
-  | ufo1 :: _ ->
-     { tag = ufo1.ufo_tag;
-       keystones =
-         (ThoList.flatmap
-            (fun ufo -> (keystones_of_ufo_vertex ufo).keystones)
-            ufo_list)
-         @ omegalib.keystones }
-
-let fusions ff module_name vertices =
-  let printf fmt = fprintf ff fmt
-  and nl () = pp_newline ff () in
-  printf "module %s" module_name; nl ();
-  printf "  use kinds"; nl ();
-  printf "  use omega95"; nl ();
-  printf "  implicit none"; nl ();
-  printf "  ! private"; nl ();
-  UFO_targets.Fortran.eps4_g4_g44_decl std_formatter ();
-  UFO_targets.Fortran.eps4_g4_g44_init std_formatter ();
-  printf "contains"; nl ();
-  List.iter
-    (fun v ->
-      List.iter
-        (fun v' ->
-          let tensor = UFO_Lorentz.parse (Array.to_list v'.spins) v'.tensor in
-          printf "  ! %s" (String.make 68 '='); nl ();
-          printf "  ! %s" (UFO_Lorentz.to_string tensor); nl ();
-          UFO_targets.Fortran.lorentz
-            std_formatter v'.ufo_tag v'.spins tensor)
-        (vertex_permutations v))
-    vertices;
-  printf "end module %s" module_name; nl ()
-
-let generate ?reps ?threshold module_name vertices =
-  fusions std_formatter module_name (ThoList.flatmap fst vertices);
-  Keystones.generate
-    ?reps ?threshold ~modules:[module_name]
-    (List.map merge vertices)
-
-let equivalent_tensors spins alternatives =
-  List.map
-    (fun (ufo_tag, tensor) ->
-      { ufo_tag; spins; tensor = UFOx.Lorentz.of_string tensor })
-    alternatives
 
 let qed =
   equivalent_tensors
@@ -150,15 +53,50 @@ let right =
 let vector_spinor_current tag =
   { tag = Printf.sprintf "vector_spinor_current__%s_ff" tag;
     keystones =
-      [ { ket = (ConjSpinor, 0);
+      [ { bra = (ConjSpinor, 0);
           name = Printf.sprintf "f_%sf" tag;
           args = [G (0); F (Vector, 1); F (Spinor, 2)] };
-        { ket = (Vector, 1);
+        { bra = (Vector, 1);
           name = Printf.sprintf "%s_ff" tag;
           args = [G (0); F (ConjSpinor, 0); F (Spinor, 2)] };
-        { ket = (Spinor, 2);
+        { bra = (Spinor, 2);
           name = Printf.sprintf "f_f%s" tag;
           args = [G (0); F (ConjSpinor, 0); F (Vector, 1)] } ] }
+
+let scalar =
+  equivalent_tensors
+    [| ConjSpinor; Scalar; Spinor |]
+    [ ("scalar_current", "Identity(1,3)") ]
+
+let pseudo =
+  equivalent_tensors
+    [| ConjSpinor; Scalar; Spinor |]
+    [ ("pseudo_current", "Gamma5(1,3)") ]
+
+let left_scalar =
+  equivalent_tensors
+    [| ConjSpinor; Scalar; Spinor |]
+    [ ("left_scalar1", "Identity(1,3)-Gamma5(1,3)");
+      ("left_scalar2", "2*ProjM(1,3)") ]
+
+let right_scalar =
+  equivalent_tensors
+    [| ConjSpinor; Scalar; Spinor |]
+    [ ("right_scalar1", "Identity(1,3)+Gamma5(1,3)");
+      ("right_scalar2", "2*ProjP(1,3)") ]
+
+let scalar_spinor_current tag =
+  { tag = Printf.sprintf "scalar_spinor_current__%s_ff" tag;
+    keystones =
+      [ { bra = (ConjSpinor, 0);
+          name = Printf.sprintf "f_%sf" tag;
+          args = [G (0); F (Scalar, 1); F (Spinor, 2)] };
+        { bra = (Scalar, 1);
+          name = Printf.sprintf "%s_ff" tag;
+          args = [G (0); F (ConjSpinor, 0); F (Spinor, 2)] };
+        { bra = (Spinor, 2);
+          name = Printf.sprintf "f_f%s" tag;
+          args = [G (0); F (ConjSpinor, 0); F (Scalar, 1)] } ] }
 
 let fermi_ss =
   equivalent_tensors
@@ -239,10 +177,10 @@ let sqed =
 let vector_scalar_current =
   { tag = "vector_scalar_current__v_ss";
     keystones =
-      [ { ket = (Vector, 1);
+      [ { bra = (Vector, 1);
           name = "v_ss";
           args = [G (0); F (Scalar, 2); P (2); F (Scalar, 0); P (0)] };
-        { ket = (Scalar, 0);
+        { bra = (Scalar, 0);
           name = "s_vs";
           args = [G (0); F (Vector, 1); P (1); F (Scalar, 2); P (2)] } ] }
 
@@ -253,10 +191,10 @@ let svv_t =
 
 let scalar_vector_current tag =
   { tag = Printf.sprintf "transversal_vector_current__s_vv_%s" tag;
-    keystones = [ { ket = (Scalar, 0);
+    keystones = [ { bra = (Scalar, 0);
                     name = Printf.sprintf "s_vv_%s" tag;
                     args = [G (0); F (Vector, 1); P (1); F (Vector, 2); P (2)] };
-                  { ket = (Vector, 1);
+                  { bra = (Vector, 1);
                     name = Printf.sprintf "v_sv_%s" tag;
                     args = [G (0); F (Scalar, 0); P (0); F (Vector, 2); P (2)] } ] }
 
@@ -270,7 +208,7 @@ let gauge =
 let gauge_omega =
   { tag = "g_gg";
     keystones =
-      [ { ket = (Vector, 0);
+      [ { bra = (Vector, 0);
           name = "(0,1)*g_gg";
           args = [G (0); F (Vector, 1); P (1); F (Vector, 2); P (2)] } ] }
 
@@ -317,6 +255,10 @@ let vertices =
     (axial, vector_spinor_current "a");
     (left, vector_spinor_current "vl");
     (right, vector_spinor_current "vr");
+    (scalar, scalar_spinor_current "s");
+    (pseudo, scalar_spinor_current "p");
+    (left_scalar, scalar_spinor_current "sl");
+    (right_scalar, scalar_spinor_current "sr");
     (sqed, vector_scalar_current);
     (fermi_ss, empty);
     (fermi_vv, empty);
@@ -334,6 +276,82 @@ let vertices =
     (charge_conjugate_a, empty);
     (charge_conjugate_t, empty) ]
 
+let parse_propagator (p_tag, p_omega, p_spins, numerator, denominator) =
+  let p =
+    UFO.Propagator.of_propagator_UFO
+      { UFO.Propagator_UFO.name = p_tag;
+        UFO.Propagator_UFO.numerator = UFOx.Lorentz.of_string numerator;
+        UFO.Propagator_UFO.denominator = UFOx.Lorentz.of_string denominator } in
+  { p_tag; p_omega; p_spins;
+    p_propagator = p }
+
+let default_denominator =
+  "P('mu', id) * P('mu', id) - Mass(id) * Mass(id) \
+   + complex(0,1) * Mass(id) * Width(id)"
+
+let scalar_propagator =
+  ( "scalar", "pr_phi", (Scalar, Scalar),
+    "1",
+    default_denominator )
+
+let spinor_propagator =
+  ( "spinor", "pr_psi", (ConjSpinor, Spinor),
+    "Gamma('mu', 1, 2) * P('mu', id) + Mass(id) * Identity(1, 2)",
+    default_denominator )
+
+let conjspinor_propagator =
+  ( "conjspinor", "pr_psibar", (ConjSpinor, Spinor),
+    "Gamma('mu', 1, 2) * P('mu', id) + Mass(id) * Identity(1, 2)",
+    default_denominator )
+
+let feynman_propagator =
+  ( "feynman", "pr_feynman", (Vector, Vector),
+    " - Metric(1, 2)",
+    "P('mu', id) * P('mu', id)" )
+
+let unitarity_propagator =
+  ( "unitarity", "pr_unitarity", (Massive_Vector, Massive_Vector),
+    "- Metric(1, 2) + Metric(1,'mu')*P('mu', id)*P(2, id)/Mass(id)**2",
+    default_denominator )
+
+let tensor_propagator =    
+  ( "tensor", "pr_tensor", (Tensor_2, Tensor_2),
+    "  1/2 * (Metric(1001,1002) - P(1001,id)*P(1002,id)/Mass(id)**2) \
+           * (Metric(2001,2002) - P(2001,id)*P(2002,id)/Mass(id)**2) \
+     + 1/2 * (Metric(1001,2002) - P(1001,id)*P(2002,id)/Mass(id)**2) \
+           * (Metric(2001,1002) - P(2001,id)*P(1002,id)/Mass(id)**2) \
+     - 1/3 * (Metric(1001,2001) - P(1001,id)*P(2001,id)/Mass(id)**2) \
+           * (Metric(1002,2002) - P(1002,id)*P(2002,id)/Mass(id)**2) ",
+    default_denominator )
+
+let tensor_propagator_51_52 =
+  ( "tensor_51_52", "pr_tensor", (Tensor_2, Tensor_2),
+    "  1/2 * (Metric( 1, 2) - P( 1,id)*P( 2,id)/Mass(id)**2) \
+           * (Metric(51,52) - P(51,id)*P(52,id)/Mass(id)**2) \
+     + 1/2 * (Metric( 1,52) - P( 1,id)*P(52,id)/Mass(id)**2) \
+           * (Metric(51, 2) - P(51,id)*P( 2,id)/Mass(id)**2) \
+     - 1/3 * (Metric( 1,51) - P( 1,id)*P(51,id)/Mass(id)**2) \
+           * (Metric( 2,52) - P( 2,id)*P(52,id)/Mass(id)**2) ",
+    default_denominator )
+
+let propagators =
+  List.map
+    parse_propagator
+    [ scalar_propagator;
+      spinor_propagator;
+      feynman_propagator;
+      unitarity_propagator;
+      tensor_propagator;
+      tensor_propagator_51_52 ]
+
+let conjugate_propagators =
+  List.map
+    (fun p -> transpose (parse_propagator p))
+    [ conjspinor_propagator ]
+
+let all_propagators = propagators @ conjugate_propagators
+
 let _ =
-  generate ~reps:10000 ~threshold:0.70 "fusions" vertices;
+  generate_ufo
+    ~reps:10000 ~threshold:0.70 "fusions" vertices all_propagators;
   exit 0

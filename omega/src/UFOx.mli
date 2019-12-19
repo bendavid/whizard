@@ -43,27 +43,35 @@ module type Index =
          [UFOx].  Therefore, we try a quick'n'dirty proof of principle
          first.
        \end{dubious} *)
+    type t = int
+               
+    val position : t -> int
+    val factor : t -> int
+    val unpack : t -> int * int
+    val pack : int -> int -> t
+    val map_position : (int -> int) -> t -> t
+    val to_string : t -> string
+    val list_to_string : t list -> string
 
-    val position : int -> int
-    val factor : int -> int
-    val unpack : int -> int * int
-    val pack : int -> int -> int
-    val map_position : (int -> int) -> int -> int
-    val to_string : int -> string
-    val list_to_string : int list -> string
 
     (* Indices are represented by a pair [int * 'r], where
        ['r] denotes the representation the index belongs to.  *)
 
     (* [free indices] returns all free indices in the
        list [indices], i.\,e.~all positive indices. *)
-    val free : (int * 'r) list -> (int * 'r) list
+    val free : (t * 'r) list -> (t * 'r) list
 
     (* [summation indices] returns all summation indices in the
        list [indices], i.\,e.~all negative indices.  *)
-    val summation : (int * 'r) list -> (int * 'r) list
+    val summation : (t * 'r) list -> (t * 'r) list
 
-    val classes_to_string : ('r -> string) -> (int * 'r) list -> string
+    val classes_to_string : ('r -> string) -> (t * 'r) list -> string
+
+    (* Generate summation indices, starting from~$-1001$.
+       TODO: check that there are no clashes with explicitely
+       named indices. *)
+    val fresh_summation : unit -> t
+    val named_summation : string -> unit -> t
 
   end
 
@@ -82,8 +90,18 @@ module type Tensor =
        context free. *)
     val map_atoms : (atom -> atom) -> t -> t
 
-    (* We need to rename indices to implement permutations. *)
+    (* We need to rename indices to implement permutations \ldots *)
     val map_indices : (int -> int) -> t -> t
+
+    (* \ldots{} but in order to to clean up inconsistencies
+       in the syntax of \texttt{lorentz.py} and
+       \texttt{propagators.py} we also need to rename indices
+       without touching the second argument of \texttt{P}, the
+       argument of \texttt{Mass} etc. *)
+    val rename_indices : (int -> int) -> t -> t
+
+    (* We need scale coefficients. *)
+    val map_coef : (Algebra.QC.t -> Algebra.QC.t) -> t -> t
 
     (* Parsing and unparsing.  Lists of [string]s are
        interpreted as sums. *)
@@ -113,10 +131,14 @@ module type Atom =
   sig
     type t
     val map_indices : (int -> int) -> t -> t
-    val of_expr : string -> UFOx_syntax.expr list -> t
+    val rename_indices : (int -> int) -> t -> t
+    val invertible : t -> bool
+    val invert : t -> t
+    val of_expr : string -> UFOx_syntax.expr list -> t list
     val to_string : t -> string
     type r
     val classify_indices : t list -> (int * r) list
+    val disambiguate_indices : t list -> t list
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
@@ -143,11 +165,18 @@ module type Lorentz_Atom =
       | Metric of int * int
       | P of int * int
 
-    type t = private
+    type scalar = (* private *)
+      | Mass of int
+      | Width of int
+
+    type t = (* private *)
       | Dirac of dirac
       | Vector of vector
+      | Scalar of scalar
+      | Inverse of scalar
 
     val map_indices_vector : (int -> int) -> vector -> vector
+    val rename_indices_vector : (int -> int) -> vector -> vector
 
   end
 

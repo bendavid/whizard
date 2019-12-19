@@ -30,14 +30,16 @@ module A = UFOx.Lorentz_Atom
 module D = Dirac.Chiral
 
 (* Take a [A.t list] and return the corresponding pair
-   [A.dirac list * A.vector list], without preserving the
-   order (currently, the order is reversed). *)
+   [A.dirac list * A.vector list * A.scalar list * A.scalar list],
+   without preserving the order (currently, the order is reversed). *)
 let split_atoms atoms =
   List.fold_left
-    (fun (d, v) -> function
-      | A.Vector v' -> (d, v' :: v)
-      | A.Dirac d' -> (d' :: d, v))
-    ([], []) atoms
+    (fun (d, v, s, i) -> function
+      | A.Vector v' -> (d, v' :: v, s, i)
+      | A.Dirac d' -> (d' :: d, v, s, i)
+      | A.Scalar s' -> (d, v, s' :: s, i)
+      | A.Inverse i' -> (d, v, s, i' :: i))
+    ([], [], [], []) atoms
 
 (* Just like [UFOx.Lorentz_Atom.dirac], but without the Dirac matrix indices. *)
 type dirac =
@@ -47,9 +49,10 @@ type dirac =
   | Gamma of int
   | Sigma of int * int
   | C
+  | Minus
 
 let map_indices_gamma f = function
-  | (Gamma5 | ProjM | ProjP | C as g) -> g
+  | (Gamma5 | ProjM | ProjP | C | Minus as g) -> g
   | Gamma mu -> Gamma (f mu)
   | Sigma (mu, nu) -> Sigma (f mu, f nu)
 
@@ -64,6 +67,103 @@ let map_indices_dirac f d =
   { bra = f d.bra;
     ket = f d.ket;
     gammas = List.map (map_indices_gamma f) d.gammas }
+
+(*
+   Implementation of Dirac couplings using
+   \texttt{conjspinor\_spinor}
+   \begin{equation}
+       \text{\texttt{psibar0 * psi1}}
+     = \sum_\alpha \bar\psi_{0,\alpha} \psi_{1,\alpha}
+     = \bar\psi_0\psi_1
+   \end{equation}
+   JRR's implementation of Majorana couplings using
+   \texttt{spinor\_product}
+   \begin{equation}
+       \text{\texttt{chibar0 * chi1}}
+     = \sum_{\alpha} \bar\chi_{0,\alpha} (C^T\chi_1)_\beta
+     = \sum_{\alpha} (C\bar\chi_0^T)_\alpha \chi_{1,\alpha}
+     = (C\bar\chi_0^T)^T \chi_1
+     = \tilde\chi_0^T\chi_1
+   \end{equation}
+   with charge conjugation\footnote{%
+     In detail, to make sure we understand all phases
+     \begin{multline}
+         \bar{\tilde\chi}
+       = \tilde\chi^\dagger\gamma_0
+       = \left(C\bar\chi^T\right)^\dagger\gamma_0
+       = \left(C(\chi^\dagger\gamma_0)^T\right)^\dagger\gamma_0
+       = \left(C\gamma_0^T{\chi^\dagger}^T\right)^\dagger\gamma_0
+       = \left(C\gamma_0^T{\chi^T}^\dagger\right)^\dagger\gamma_0
+       = {\chi^T} {\gamma_0^T}^\dagger C^\dagger\gamma_0 \\
+       = {\chi^T} {\gamma_0^\dagger}^T C^{-1}\gamma_0
+       = {\chi^T} {\gamma_0}^T C^{-1}\gamma_0
+       = {\chi^T} C^{-1} C {\gamma_0}^T C^{-1}\gamma_0
+       = - {\chi^T} C^{-1} \gamma_0 \gamma_0
+       = - {\chi^T} C^{-1}\,.
+     \end{multline}}
+   \begin{subequations}
+   \begin{align}
+     \tilde\chi &= C\bar\chi^T \\
+     \bar{\tilde\chi} &= -\chi^T C^{-1} \,.
+   \end{align}
+   \end{subequations}
+   So we write in JRR's implementation
+   \begin{equation}
+     \bar\chi_0 \Gamma \chi_1\phi
+       = \bar\chi_0 C^T C\Gamma \chi_1\phi
+       = (C\bar\chi_0^T)^T C\Gamma \chi_1\phi
+       = \tilde\chi_0^T C\Gamma \chi_1\phi
+   \end{equation}
+   using~$C^{-1}=C^\dagger$, $C^T=-C$ and the representation
+   dependent~$C^2=-1$ that holds in all our representation(s).
+   Analoguously
+   \begin{multline}
+     \bar\chi_0 \Gamma \chi_1\phi
+       = \left(\bar\chi_0 \Gamma \chi_1\right)^T \phi
+       = - \chi_1^T \Gamma^T \bar\chi_0^T \phi
+       = \bar{\tilde\chi}_1 C \Gamma^T C^{-1}\tilde\chi_0 \phi
+       = - \chi_1^T C^{-1} C \Gamma^T C^{-1}\tilde\chi_0 \phi \\
+       = - \chi_1^T \Gamma^T C^{-1}\tilde\chi_0 \phi
+       = - \chi_1^T \Gamma^T C^T \tilde\chi_0 \phi
+       = - \chi_1^T (C\Gamma)^T \tilde\chi_0 \phi
+   \end{multline}
+ *)
+
+(* \begin{dubious}
+     There's still something wrong with chiral projectors \ldots
+   \end{dubious} *)
+
+(* In the following, note that~$C^{-1}=-C=C^T$: *)
+
+let inv_c = [Minus; C]
+
+let transpose1 = function
+  | (Gamma5 | ProjM | ProjP as g) -> inv_c @ [g; C]
+  | (Gamma _ | Sigma (_, _) as g) -> [Minus] @ inv_c @ [g; C]
+  | C -> [Minus; C]
+  | Minus -> [Minus]
+
+let rec compress_transpose = function
+  | [] -> []
+  | [g] -> [g]
+  | Minus :: Minus :: g_list -> compress_transpose g_list
+  | g :: g_list -> g :: compress_transpose g_list
+
+let transpose d =
+  { d with gammas = ThoList.rev_flatmap transpose1 d.gammas }
+
+(* \begin{dubious}
+     Why not [ThoList.rev_flatmap] here?
+   \end{dubious} *)
+
+let transpose d =
+  { d with gammas = ThoList.flatmap transpose1 d.gammas }
+
+let majorana1 g =
+  [g]
+
+let majorana d =
+  { d with gammas = C :: ThoList.flatmap majorana1 d.gammas }
 
 (* [dirac_string bind ds] applies the mapping [bind] to the indices
    of $\gamma_\mu$ and~$\sigma_{\mu\nu}$ and multiplies the resulting
@@ -102,6 +202,7 @@ module To_Matrix : To_Matrix =
       | Gamma (mu) -> D.gamma.(bind_indices mu)
       | Sigma (mu, nu) -> sigma.(bind_indices mu).(bind_indices nu)
       | C -> D.cc
+      | Minus -> D.neg D.unit
 
     let dirac_string bind_indices ds =
       D.product (List.map (dirac bind_indices) ds.gammas)
@@ -142,7 +243,9 @@ let classify_indices ilist =
 type contraction =
   { coeff : QC.t;
     dirac : dirac_string term list;
-    vector : A.vector term list }
+    vector : A.vector term list;
+    scalar : A.scalar list;
+    inverse : A.scalar list }
 
 let fermion_lines_of_contraction contraction =
   List.sort
@@ -152,7 +255,9 @@ let fermion_lines_of_contraction contraction =
 let map_indices_contraction f c =
   { coeff = c.coeff;
     dirac = List.map (map_term f (map_indices_dirac f)) c.dirac;
-    vector = List.map (map_term f (A.map_indices_vector f)) c.vector }
+    vector = List.map (map_term f (A.map_indices_vector f)) c.vector;
+    scalar = c.scalar;
+    inverse = c.inverse }
 
 type t = contraction list
 
@@ -265,7 +370,7 @@ let classify_vector atom =
     atom }
 
 let indices_of_dirac = function
-  | Gamma5 | ProjM | ProjP | C -> []
+  | Gamma5 | ProjM | ProjP | C | Minus -> []
   | Gamma (mu) -> [mu]
   | Sigma (mu, nu) -> [mu; nu]
 
@@ -277,12 +382,12 @@ let classify_dirac atom =
     atom }
 
 let contraction_of_lorentz_atoms (atoms, coeff) =
-  let dirac_atoms, vector_atoms = split_atoms atoms in
+  let dirac_atoms, vector_atoms, scalar, inverse = split_atoms atoms in
   let dirac =
     List.map classify_dirac (dirac_strings_of_dirac_atoms dirac_atoms)
   and vector =
     List.map classify_vector vector_atoms in
-  { coeff; dirac; vector }
+  { coeff; dirac; vector; scalar; inverse }
 
 type redundancy =
   | Trace of int
@@ -355,7 +460,7 @@ let substitute_index_vector mu nu vectors =
 
 (* Substitude any occurance of the index [mu] by the index [nu]: *)
 let substitute_index_dirac1 mu nu = function
-  | (Gamma5 | ProjM | ProjP | C) as g -> g
+  | (Gamma5 | ProjM | ProjP | C | Minus) as g -> g
   | Gamma (mu1) as g ->
      if mu = mu1 then
        Gamma (nu)
@@ -393,12 +498,16 @@ let rec compress_metrics c =
      compress_metrics
        { coeff = QC.mul trace_metric c.coeff;
          dirac = c.dirac;
-         vector = vector' }
+         vector = vector';
+         scalar = c.scalar;
+         inverse = c.inverse }
   | Some (Replace (mu, nu)), vector' ->
      compress_metrics
        { coeff = c.coeff;
          dirac = substitute_index_dirac mu nu c.dirac;
-         vector = substitute_index_vector mu nu vector' }
+         vector = substitute_index_vector mu nu vector';
+         scalar = c.scalar;
+         inverse = c.inverse }
 
 let dummy =
   []
@@ -426,26 +535,41 @@ let dirac_to_string = function
   | Gamma (mu) -> Printf.sprintf "g(%s)" (i2s mu)
   | Sigma (mu, nu) ->  Printf.sprintf "s(%s,%s)" (i2s mu) (i2s nu)
   | C -> "C"
+  | Minus -> "-1"
 
 let dirac_string_to_string ds =
   match ds.gammas with
-  | [] -> Printf.sprintf "<%d|%d>" ds.bra ds.ket
+  | [] -> Printf.sprintf "<%s|%s>" (i2s ds.bra) (i2s ds.ket)
   | gammas ->
      Printf.sprintf
-       "<%d|%s|%d>"
-       ds.bra (String.concat "*" (List.map dirac_to_string gammas)) ds.ket
+       "<%s|%s|%s>"
+       (i2s ds.bra)
+       (String.concat "*" (List.map dirac_to_string gammas))
+       (i2s ds.ket)
+
+let scalar_to_string = function
+  | A.Mass _ -> "m"
+  | A.Width _ -> "w"
 
 let contraction_to_string c =
-  QC.to_string c.coeff ^ " * " ^
-    String.concat
-      " * " (List.map (fun ds -> dirac_string_to_string ds.atom) c.dirac) ^
-      " * " ^
-        String.concat
-          " * " (List.map (fun v -> vector_to_string v.atom) c.vector)
+  String.concat
+    " * "
+    (List.concat
+       [if QC.is_unit c.coeff then
+          []
+        else
+          [QC.to_string c.coeff];
+        List.map (fun ds -> dirac_string_to_string ds.atom) c.dirac;
+        List.map (fun v -> vector_to_string v.atom) c.vector;
+        List.map scalar_to_string c.scalar]) ^
+    (match c.inverse with
+     | [] -> ""
+     | inverse ->
+        " / (" ^ String.concat "*" (List.map scalar_to_string inverse) ^ ")")
 
 let fermion_lines_to_string fermion_lines =
   ThoList.to_string
-    (fun (bra, ket) -> Printf.sprintf "%d->%d" bra ket)
+    (fun (bra, ket) -> Printf.sprintf "%s->%s" (i2s bra) (i2s ket))
     fermion_lines
 
 let to_string contractions =

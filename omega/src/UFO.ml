@@ -337,6 +337,45 @@ let decay_dictionary_attrib name attribs =
      List.map (fun (p, w) -> (List.map List.hd p, w)) d
   | _ -> invalid_arg name
 
+(*i The following doesn't typecheck in applications, even with
+    type annotations ...
+let attrib_handlers : type attribs value.
+      string -> string -> attribs ->
+      ((string -> attribs -> value) -> string -> value) *
+        ((string -> attribs -> value) -> string -> value -> value) =
+  fun kind symbol attribs ->
+  let required query name =
+    try
+      query name attribs
+    with
+    | Not_found ->
+       invalid_arg
+         (Printf.sprintf
+            "fatal UFO error: mandatory attribute `%s' missing for %s `%s'!"
+            name kind symbol)
+  and optional query name default =
+    try
+      query name attribs
+    with
+    | Not_found -> default in
+  (required, optional) i*)
+
+let required_handler kind symbol attribs query name =
+  try
+    query name attribs
+  with
+  | Not_found ->
+     invalid_arg
+       (Printf.sprintf
+          "fatal UFO error: mandatory attribute `%s' missing for %s `%s'!"
+          name kind symbol)
+
+let optional_handler attribs query name default =
+  try
+    query name attribs
+  with
+  | Not_found -> default
+
 let warn_symbol_name file symbol name =
   if name <> symbol then
     Printf.eprintf
@@ -478,31 +517,39 @@ module Particle : Particle =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Particle" ], attribs ->
-         let name = string_attrib "name" attribs
-	 and antiname = string_attrib "antiname" attribs in
+         let required query name =
+           required_handler "particle" symbol attribs query name
+         and optional query name default =
+           optional_handler attribs query name default in
+         let name = required string_attrib "name"
+	 and antiname = required string_attrib "antiname" in
          let neutral = (name = antiname) in
 	 SMap.add symbol
-	   { pdg_code = integer_attrib "pdg_code" attribs;
+	   { (* The required attributes per UFO docs. *)
+             pdg_code = required integer_attrib "pdg_code";
 	     name; antiname;
 	     spin =
-               UFOx.Lorentz.rep_of_int neutral (integer_attrib "spin" attribs);
+               UFOx.Lorentz.rep_of_int neutral (required integer_attrib "spin");
 	     color =
-               UFOx.Color.rep_of_int neutral (integer_attrib "color" attribs);
-	     mass = name_attrib ~strip:"Param" "mass" attribs;
-	     width = name_attrib ~strip:"Param" "width" attribs;
+               UFOx.Color.rep_of_int neutral (required integer_attrib "color");
+	     mass = required (name_attrib ~strip:"Param") "mass";
+	     width = required (name_attrib ~strip:"Param") "width";
+	     texname = required string_attrib "texname";
+	     antitexname = required string_attrib "antitexname";
+	     charge = required charge_attrib "charge";
+	     (* The optional attributes per UFO docs. *)
+             ghost_number = optional integer_attrib "GhostNumber" 0;
+	     lepton_number = optional integer_attrib "LeptonNumber" 0;
+	     y = optional integer_attrib "Y" 0;
+	     goldstone = optional boolean_attrib "goldstone" false;
+	     propagating = optional boolean_attrib "propagating" true;
+	     line =
+               (try Some (name_attrib "line" attribs) with _ -> None);
+	     (* Undocumented extensions. *)
              propagator =
                (try Some (name_attrib "propagator" attribs) with _ -> None);
-	     texname = string_attrib "texname" attribs;
-	     antitexname = string_attrib "antitexname" attribs;
-	     charge = charge_attrib "charge" attribs;
-	     ghost_number = integer_attrib "GhostNumber" attribs;
-	     lepton_number =
-               (try integer_attrib "LeptonNumber" attribs with _ -> 0);
-	     y = (try integer_attrib "Y" attribs with _ -> 0);
-	     goldstone = (try boolean_attrib "goldstone" attribs with _ -> false);
-	     propagating = true;
-	     line = None;
-             is_anti = false} map
+             (* O'Mega extensions. *)
+             is_anti = false } map
       | [ "anti"; p ], [] ->
 	 begin
 	   try
@@ -597,12 +644,14 @@ module UFO_Coupling : UFO_Coupling =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Coupling" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "coupling" symbol attribs query name in
+         let name = required string_attrib "name" in
          warn_symbol_name "couplings" symbol name;
 	 SMap.add symbol
            { name;
-	     value = UFOx.Expr.of_string (string_attrib "value" attribs);
-	     order = order_dictionary_attrib "order" attribs } map
+	     value = UFOx.Expr.of_string (required string_attrib "value");
+	     order = required order_dictionary_attrib "order" } map
       | _ -> invalid_arg ("UFO_Coupling.of_file: " ^ name_to_string d.S.kind)
 
     let of_file couplings =
@@ -642,12 +691,14 @@ module Coupling_Order : Coupling_Order =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "CouplingOrder" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "coupling order" symbol attribs query name in
+         let name = required string_attrib "name" in
          warn_symbol_name "coupling_orders" symbol name;
 	 SMap.add symbol
 	   { name;
-	     expansion_order = integer_attrib "expansion_order" attribs;
-	     hierarchy = integer_attrib "hierarchy" attribs } map
+	     expansion_order = required integer_attrib "expansion_order";
+	     hierarchy = required integer_attrib "hierarchy" } map
       | _ -> invalid_arg ("Coupling_order.of_file: " ^ name_to_string d.S.kind)
 
     let of_file coupling_orders =
@@ -687,13 +738,15 @@ module Lorentz_UFO : Lorentz_UFO =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Lorentz" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "lorentz" symbol attribs query name in
+         let name = required string_attrib "name" in
          warn_symbol_name "lorentz" symbol name;
 	 SMap.add symbol
 	   { name;
-	     spins = integer_list_attrib "spins" attribs;
+	     spins = required integer_list_attrib "spins";
 	     structure =
-	       UFOx.Lorentz.of_string (string_attrib "structure" attribs) } map
+	       UFOx.Lorentz.of_string (required string_attrib "structure") } map
       | _ -> invalid_arg ("Lorentz.of_file: " ^ name_to_string d.S.kind)
 
     let of_file lorentz =
@@ -869,20 +922,22 @@ module Vertex : Vertex =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Vertex" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "vertex" symbol attribs query name in
+         let name = required string_attrib "name" in
          warn_symbol_name "vertices" symbol name;
          let particles =
-	   Array.of_list (name_list_attrib ~strip:"P" "particles" attribs) in
+	   Array.of_list (required (name_list_attrib ~strip:"P") "particles") in
 	 let color =
            let indices = classify_color_indices particle_map particles in
 	   Array.of_list
 	     (List.map
                 (force_identity indices @@ UFOx.Color.of_string)
-                (string_list_attrib "color" attribs))
+                (required string_list_attrib "color"))
 	 and lorentz =
-	   Array.of_list (name_list_attrib ~strip:"L" "lorentz" attribs)
+	   Array.of_list (required (name_list_attrib ~strip:"L") "lorentz")
 	 and couplings_alist =
-	   coupling_dictionary_attrib ~strip:"C" "couplings" attribs in
+	   required (coupling_dictionary_attrib ~strip:"C") "couplings" in
 	 let lcc =
 	   List.map
 	     (fun (i, j, c) ->
@@ -977,14 +1032,16 @@ module Parameter : Parameter =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Parameter" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "particle" symbol attribs query name in
+         let name = required string_attrib "name" in
          warn_symbol_name "parameters" symbol name;
 	 (SMap.add symbol
 	    { name;
-	      nature = nature_of_string (string_attrib "nature" attribs);
-	      ptype = ptype_of_string (string_attrib "type" attribs);
-	      value = value_attrib "value" attribs;
-	      texname = string_attrib "texname" attribs;
+	      nature = nature_of_string (required string_attrib "nature");
+	      ptype = ptype_of_string (required string_attrib "type");
+	      value = required value_attrib "value";
+	      texname = required string_attrib "texname";
 	      lhablock =
 	        (try Some (string_attrib "lhablock" attribs) with
 		   Not_found -> None);
@@ -1010,55 +1067,63 @@ module Parameter : Parameter =
 
   end
 
-module type Propagator =
+module type Propagator_UFO =
   sig
 
-    type t = private
+    type t = (* private *)
       { name : string;
-	numerator : string;
-	denominator : string }
+	numerator : UFOx.Lorentz.t;
+	denominator : UFOx.Lorentz.t }
 
     val of_file : S.t -> t SMap.t
     val to_string : string -> t -> string
 
   end
 
-module Propagator : Propagator =
+module Propagator_UFO : Propagator_UFO =
   struct
 
     type t =
       { name : string;
-	numerator : string;
-	denominator : string }
+	numerator : UFOx.Lorentz.t;
+	denominator : UFOx.Lorentz.t }
 
     let to_string symbol p =
       Printf.sprintf
 	"propagator: %s => [name = '%s', numerator = '%s', \
                             denominator = '%s']"
-	symbol p.name p.numerator p.denominator
-      
-    let inspect_propagator symbol numerator denominator =
-      begin
-        try
-          ignore (UFOx.Lorentz.of_string numerator)
-        with
-        | Invalid_argument msg ->
-           Printf.eprintf
-             "in progress: propagator %s numerator: %s in \"%s\"\n"
-             symbol msg numerator
-      end;
-      begin
-        try
-          ignore (UFOx.Expr.of_string denominator)
-        with
-        | Invalid_argument msg ->
-           Printf.eprintf
-             "in progress: propagator %s denominator: %s in \"%s\"\n"
-             symbol msg denominator
-      end
+	symbol p.name
+        (UFOx.Lorentz.to_string p.numerator)
+        (UFOx.Lorentz.to_string p.denominator)
 
-    let inspect_propagator symbol numerator denominator =
-      ()
+    (* The \texttt{denominator} attribute is optional and
+       there is a default (cf.~\texttt{arXiv:1308.1668}) *)
+    let default_denominator =
+      "P('mu', id) * P('mu', id) \
+       - Mass(id) * Mass(id) \
+       + complex(0,1) * Mass(id) * Width(id)"
+
+    let of_string_with_error_correction symbol num_or_den s =
+      try
+        UFOx.Lorentz.of_string s
+      with
+      | Invalid_argument msg ->
+         begin
+           let fixed = s ^ ")" in
+           try
+             let tensor = UFOx.Lorentz.of_string fixed in
+             Printf.eprintf
+               "UFO.Propagator.of_string: added missing closing parenthesis \
+                in %s of %s: \"%s\"\n"
+               num_or_den symbol s;
+             tensor
+           with
+           | Invalid_argument _ ->
+              invalid_arg
+                (Printf.sprintf
+                   "UFO.Propagator.of_string: %s of %s: %s in \"%s\"\n"
+                   num_or_den symbol msg fixed)
+         end
 
     (* The parser will turn [foo = "bar"] into [foo = "bar"."$"],
        which will be interpreted as a macro definition
@@ -1071,21 +1136,25 @@ module Propagator : Propagator =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Propagator" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "particle" symbol attribs query name
+         and optional query name default =
+           optional_handler attribs query name default in
+        let name = required string_attrib "name" in
          warn_symbol_name "propagators" symbol name;
-         let numerator = string_attrib "numerator" attribs
-         and denominator =
-	   begin match find_attrib "denominator" attribs with
+         let num_string = required string_attrib "numerator"
+         and den_string =
+	   begin match optional find_attrib "denominator"
+                                (S.String default_denominator) with
 	   | S.String s -> s
 	   | S.Name [n] -> SMap.find n macros
 	   | _ -> invalid_arg "Propagator.denominator: "
 	   end in
-         inspect_propagator symbol numerator denominator;
-	 (macros,
-	  SMap.add symbol
-	    { name;
-	      numerator;
-	      denominator } map)
+         let numerator =
+           of_string_with_error_correction symbol "numerator" num_string
+         and denominator =
+           of_string_with_error_correction symbol "denominator" den_string in
+	 (macros, SMap.add symbol { name; numerator; denominator } map)
       | [ "$"; s ], [] ->
 	 (SMap.add symbol s macros, map)
       | _ -> invalid_arg ("Propagator:of_file: " ^ name_to_string d.S.kind)
@@ -1134,12 +1203,14 @@ module Decay : Decay =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
       | [ "Decay" ], attribs ->
-         let name = string_attrib "name" attribs in
+         let required query name =
+           required_handler "particle" symbol attribs query name in
+         let name = required string_attrib "name" in
          warn_symbol_name "decays" symbol name;
 	 SMap.add symbol
 	   { name;
-	     particle = name_attrib ~strip:"P" "particle" attribs;
-	     widths = decay_dictionary_attrib "partial_widths" attribs } map
+	     particle = required (name_attrib ~strip:"P") "particle";
+	     widths = required decay_dictionary_attrib "partial_widths" } map
       | _ -> invalid_arg ("Decay.of_file: " ^ name_to_string d.S.kind)
 
     let of_file decays =
@@ -1255,6 +1326,7 @@ module type Lorentz =
       Particle.t SMap.t -> Vertex.t SMap.t ->
       Lorentz_UFO.t SMap.t -> t SMap.t
 
+    val lorentz_to_string : Coupling.lorentz -> string
     val to_string : string -> t -> string
 
   end
@@ -1304,11 +1376,6 @@ module Lorentz : Lorentz =
     (* Note that we apply the \emph{inverse} permutation to
        the indices in order to match the permutation of the
        particles/spins. *)
-
-    (* \begin{dubious}
-         FIXME: here we loose the information on the factor
-         for higher rank representations.
-       \end{dubious} *)
 
     let permute_structure n p (l, f) =
       let permuted = P.array (P.inverse p) (Array.init n succ) in
@@ -1427,6 +1494,121 @@ module Lorentz : Lorentz =
 
   end
 
+(* According to arxiv:1308:1668, there should not be a factor
+   of~$i$ in the numerators of propagators, but the (unused)
+   \texttt{propagators.py} in most models violate this rule! *)
+let divide_propagators_by_i = ref false
+
+module type Propagator =
+  sig
+
+    type t = (* private *)
+      { name : string;
+        spins : Coupling.lorentz * Coupling.lorentz;
+	numerator : UFO_Lorentz.t;
+	denominator : UFO_Lorentz.t }
+
+    val of_propagator_UFO : Propagator_UFO.t -> t
+
+    val of_propagators_UFO :
+      Particle.t SMap.t -> Propagator_UFO.t SMap.t -> t SMap.t
+
+    val transpose : t -> t
+
+    val to_string : string -> t -> string
+
+  end
+
+module Propagator : Propagator =
+  struct
+
+    type t = (* private *)
+      { name : string;
+        spins : Coupling.lorentz * Coupling.lorentz;
+	numerator : UFO_Lorentz.t;
+	denominator : UFO_Lorentz.t }
+
+    let lorentz_rep_at rep_classes i =
+      try
+        UFOx.Lorentz.omega (List.assoc i rep_classes)
+      with
+      | Not_found -> Coupling.Scalar
+
+    let imaginary = Algebra.QC.make Algebra.Q.null Algebra.Q.unit
+    let scalars = [Coupling.Scalar; Coupling.Scalar]
+
+    (* If~$51$ and~$52$ show up as indices, we must
+       map $(1,51)\to(1001,2001)$ and $(2,52)\to(1002,2002)$,
+       as per the UFO conventions for Lorentz structures. *)
+
+    (* \begin{dubious}
+         This does not work yet, because [UFOx.Lorentz.map_indices]
+         affects also the position argument of [P], [Mass] and [Width].
+       \end{dubious} *)
+
+    let contains_51_52 tensor =
+      List.exists
+        (fun (i, _) -> i = 51 || i = 52)
+        (UFOx.Lorentz.classify_indices tensor)
+
+    let remap_51_52 = function
+      | 1 -> 1001 | 51 -> 2001
+      | 2 -> 1002 | 52 -> 2002
+      | i -> i
+
+    let canonicalize_51_52 tensor =
+      if contains_51_52 tensor then
+        UFOx.Lorentz.rename_indices remap_51_52 tensor
+      else
+        tensor
+
+    (* In the current conventions, the factor of~$i$ is not included: *)
+    let of_propagator_UFO p =
+      let numerator = canonicalize_51_52 p.Propagator_UFO.numerator in
+      let lorentz_reps = UFOx.Lorentz.classify_indices numerator in
+      let spin1 = lorentz_rep_at lorentz_reps 1
+      and spin2 = lorentz_rep_at lorentz_reps 2 in
+      let numerator_sans_i =
+        if !divide_propagators_by_i then
+          UFOx.Lorentz.map_coef (fun q -> Algebra.QC.div q imaginary) numerator
+        else
+          numerator in
+      { name = p.Propagator_UFO.name;
+        spins = (spin1, spin2);
+        numerator = UFO_Lorentz.parse [spin1; spin2] numerator_sans_i;
+        denominator = UFO_Lorentz.parse scalars p.Propagator_UFO.denominator }
+
+    let of_propagators_UFO particles propagators_UFO =
+      SMap.fold
+        (fun name p acc -> SMap.add name (of_propagator_UFO p) acc)
+        propagators_UFO SMap.empty
+
+    let permute12 = function
+      | 1 -> 2
+      | 2 -> 1
+      | n -> n
+
+    let transpose_positions t =
+      UFOx.Index.map_position permute12 t
+
+    let transpose p =
+      { name = p.name;
+        spins = (snd p.spins, fst p.spins);
+        numerator = UFO_Lorentz.map_indices transpose_positions p.numerator;
+        denominator = p.denominator }
+
+    let to_string symbol p =
+      Printf.sprintf
+	"propagator: %s => [name = '%s', spin = '(%s, %s)', numerator/I = '%s', \
+                            denominator = '%s']"
+	symbol p.name
+        (Lorentz.lorentz_to_string (fst p.spins))
+        (Lorentz.lorentz_to_string (snd p.spins))
+        (UFO_Lorentz.to_string p.numerator)
+        (UFO_Lorentz.to_string p.denominator)
+
+  end
+
 type t =
   { particles : Particle.t SMap.t;
     particle_array : Particle.t array; (* for diagnostics *)
@@ -1436,6 +1618,7 @@ type t =
     lorentz_UFO : Lorentz_UFO.t SMap.t;
     lorentz : Lorentz.t SMap.t;
     parameters : Parameter.t SMap.t;
+    propagators_UFO : Propagator_UFO.t SMap.t;
     propagators : Propagator.t SMap.t;
     decays : Decay.t SMap.t;
     nc : int }
@@ -1502,11 +1685,13 @@ let nc_of_particles particles =
 let of_file u =
   let particles = Particle.of_file u.Files.particles in
   let vertices = Vertex.of_file particles u.Files.vertices
-  and lorentz_UFO = Lorentz_UFO.of_file u.Files.lorentz in
+  and lorentz_UFO = Lorentz_UFO.of_file u.Files.lorentz
+  and propagators_UFO = Propagator_UFO.of_file u.Files.propagators in
   let particles =
     fallback_to_majorana_if_necessary particles vertices lorentz_UFO in
   let particle_array = Array.of_list (values particles)
-  and lorentz = Lorentz.of_lorentz_UFO particles vertices lorentz_UFO in
+  and lorentz = Lorentz.of_lorentz_UFO particles vertices lorentz_UFO
+  and propagators = Propagator.of_propagators_UFO particles propagators_UFO in
   let model =
     { particles;
       particle_array;
@@ -1516,7 +1701,8 @@ let of_file u =
       lorentz_UFO;
       lorentz;
       parameters = Parameter.of_file u.Files.parameters;
-      propagators = Propagator.of_file u.Files.propagators;
+      propagators_UFO;
+      propagators;
       decays = Decay.of_file u.Files.decays;
       nc = nc_of_particles particles } in
   SMap.iter
@@ -1544,6 +1730,7 @@ let dump model =
   SMap.iter (print_endline @@@ Lorentz_UFO.to_string) model.lorentz_UFO;
   SMap.iter (print_endline @@@ Lorentz.to_string) model.lorentz;
   SMap.iter (print_endline @@@ Parameter.to_string) model.parameters;
+  SMap.iter (print_endline @@@ Propagator_UFO.to_string) model.propagators_UFO;
   SMap.iter (print_endline @@@ Propagator.to_string) model.propagators;
   SMap.iter (print_endline @@@ Decay.to_string) model.decays;
   SMap.iter
@@ -2139,6 +2326,11 @@ i*)
       let vertices () = translate_vertices model tables in
       let particle f = tables.Lookup.particle f in
       let lorentz f = lorentz_of_particle (particle f) in
+      let propagator f =
+        let p = particle f in
+        match p.Particle.propagator with
+        | None -> propagator_of_lorentz (lorentz_of_particle p)
+        | Some s -> Coupling.Prop_UFO s in
       let gauge_symbol () = "?GAUGE?" in
       let constant_symbol s = s in
       let parameters = translate_parameters model in
@@ -2147,7 +2339,7 @@ i*)
         ~nc:(fun () -> model.nc)
         ~pdg:(fun f -> (particle f).Particle.pdg_code)
         ~lorentz
-        ~propagator:(fun f -> propagator_of_lorentz (lorentz f))
+        ~propagator
         ~width:(fun f -> Coupling.Constant)
         ~goldstone:(fun f -> None)
         ~conjugate:tables.Lookup.conjugate
@@ -2202,6 +2394,26 @@ i*)
       match !initialized with
       | None -> []
       | Some { model = model } -> fusions_of_model ?only model
+
+    let propagators_of_model ?only model =
+      let include_propagator =
+        match !include_all_fusions, only with
+        | true, _
+        | false, None -> (fun name -> true)
+        | false, Some names -> (fun name -> SSet.mem name names)
+      in
+      SMap.fold
+        (fun name p acc ->
+          if include_propagator name then
+            (name, p) :: acc
+          else
+            acc)
+        model.propagators []
+
+    let propagators ?only () =
+      match !initialized with
+      | None -> []
+      | Some { model = model } -> propagators_of_model ?only model
 
     let include_hadrons = ref true
 
@@ -2328,6 +2540,8 @@ i*)
            "UFO model directory (default: " ^ !ufo_directory ^ ")");
           ("Majorana", Arg.Set use_majorana_spinors,
            "use Majorana spinors (must come _before_ exec!)");
+          ("divide_propagators_by_i", Arg.Set divide_propagators_by_i,
+           "divide propagators by I (pre 2013 FeynRules convention)");
           ("verbatim_Hg", Arg.Set verbatim_higgs_glue,
            "don't correct the color flows for effective Higgs Gluon couplings");
           ("write_WHIZARD", Arg.Unit Whizard.write,
@@ -2357,9 +2571,6 @@ module type Fortran_Target =
       Algebra.QC.t -> string -> Coupling.lorentzn ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
-    val lorentz :
-      ?only:SSet.t -> Format_Fortran.formatter -> unit -> unit
-
     val lorentz_module :
       ?only:SSet.t -> ?name:string -> ?fortran_module:string ->
       Format_Fortran.formatter -> unit -> unit
@@ -2381,8 +2592,13 @@ module Targets =
             (fun (name, s, l) -> UFO_targets.Fortran.lorentz ff name s l)
             fusions
 
-        let lorentz ?only ff () =
-          lorentz_functions ff (Model.fusions ?only ()) ()
+        let propagator_functions ff propagators () =
+          List.iter
+            (fun (name, p) ->
+              UFO_targets.Fortran.propagator
+                ff name p.Propagator.spins
+                p.Propagator.numerator p.Propagator.denominator)
+            propagators
 
         let lorentz_module
               ?only ?(name="omega_amplitude_ufo")
@@ -2394,14 +2610,19 @@ module Targets =
           printf "  use %s" fortran_module; nl ();
           printf "  implicit none"; nl ();
           printf "  private"; nl ();
-          let fusions = Model.fusions ?only () in
+          let fusions = Model.fusions ?only ()
+          and propagators = Model.propagators () in
           List.iter
             (fun (name, _, _) -> printf "  public :: %s" name; nl ())
             fusions;
+          List.iter
+            (fun (name, _) -> printf "  public :: pr_U_%s" name; nl ())
+            propagators;
           UFO_targets.Fortran.eps4_g4_g44_decl ff ();
           UFO_targets.Fortran.eps4_g4_g44_init ff ();
           printf "contains"; nl ();
           lorentz_functions ff fusions ();
+          propagator_functions ff propagators ();
           printf "end module %s" name; nl ();
           pp_flush ff ()
 

@@ -35,6 +35,11 @@ module type T =
       Format_Fortran.formatter -> string -> Coupling.lorentz array ->
       UFO_Lorentz.t -> unit
 
+    val propagator :
+      Format_Fortran.formatter -> string ->
+      Coupling.lorentz * Coupling.lorentz ->
+      UFO_Lorentz.t -> UFO_Lorentz.t -> unit
+
     val fuse :
       Algebra.QC.t -> string -> Coupling.lorentzn ->
       string -> string list -> string list -> Coupling.fusen -> unit
