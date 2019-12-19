@@ -152,7 +152,7 @@ AM_FCFLAGS += $(FCFLAGS_MPI)
 endif
 
 if OPENLOOPS_AVAILABLE
-AM_FCFLAGS += -L$(OPENLOOPS_DIR)/lib -lcuttools -lopenloops -loneloop -lolcommon -lrambo
+AM_FCFLAGS += -L$(OPENLOOPS_DIR)/lib -lcuttools -lopenloops -loneloop -lolcommon -lrambo -ltrred
 endif
 
 ########################################################################

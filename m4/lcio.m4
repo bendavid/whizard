@@ -47,9 +47,9 @@ if test "$enable_lcio" = "yes"; then
   AC_MSG_CHECKING([for LCEventImpl class in -llcio])
 # First test for LCIO, then for LCIO_DIR; LCIO takes precedence.
   if test -n "$LCIO"; then
-    wo_lcio_ldflags="-Wl,-rpath,$LCIO/lib -L$LCIO/lib $wo_lcio_ldflags"
+    wo_lcio_ldflags="-Wl,-rpath,$LCIO/lib -Wl,-rpath,$LCIO/lib64 -L$LCIO/lib -L$LCIO/lib64 $wo_lcio_ldflags"
   elif test -n "$LCIO_DIR"; then
-    wo_lcio_ldflags="-Wl,-rpath,$LCIO_DIR/lib -L$LCIO_DIR/lib $wo_lcio_ldflags"
+    wo_lcio_ldflags="-Wl,-rpath,$LCIO_DIR/lib -Wl,-rpath,$LCIO_DIR/lib64 -L$LCIO_DIR/lib -L$LCIO_DIR/lib64 $wo_lcio_ldflags"
   fi
   wo_libs_tmp=$LIBS
   LIBS="$wo_lcio_ldflags $wo_libs_tmp"

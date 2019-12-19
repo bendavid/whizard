@@ -35,7 +35,7 @@ if test "$enable_hoppet" = "yes"; then
 
   if test "$enable_hoppet" = "yes"; then
     wo_hoppet_includes="-I$HOPPET_ROOT/include/hoppet"
-    wo_hoppet_libdir="-L$HOPPET_ROOT/lib"
+    wo_hoppet_libdir="-L$HOPPET_ROOT/lib -L$HOPPET_ROOT/lib64"
     AC_LANG_PUSH([Fortran])
     AC_CHECK_LIB([hoppet_v1],[hoppetAssign],
       [LDFLAGS_HOPPET="$wo_hoppet_libdir -lhoppet_v1"],

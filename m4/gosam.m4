@@ -68,7 +68,7 @@ if test "$enable_gosam" = "yes"; then
   else
     AC_MSG_RESULT([no])
     PATH=${GOSAM_DIR}/bin:$PATH
-    LD_LIBRARY_PATH=${GOSAM_DIR}/lib:$LD_LIBRARY_PATH
+    LD_LIBRARY_PATH=${GOSAM_DIR}/lib:${GOSAM_DIR}/lib64:$LD_LIBRARY_PATH
   fi
 
   WO_PROG_GOLEM()
@@ -124,7 +124,8 @@ AC_DEFUN([WO_PROG_GOLEM],
 [dnl
   unset GOLEM_DIR
   if test -n "$with_golem"; then
-    WO_PATH_LIB(golem_lib, [golem], [libgolem.la], ${with_golem}/lib)
+    echo "Checking for golem in " ${with_golem}/lib
+    WO_PATH_LIB(golem_lib, [golem], [libgolem.la], ${with_golem}/lib:${with_golem}/lib64)
   else
     WO_PATH_LIB(golem_lib, [golem], [libgolem.la], $LD_LIBRARY_PATH)
   fi
@@ -170,7 +171,7 @@ AC_DEFUN([WO_PROG_NINJA],
   unset NINJA_DIR
   if test -n "$with_ninja"; then
     echo "Checking for ninja in " ${with_ninja}/lib
-    WO_PATH_LIB(ninja_lib, [ninja], [libninja.la], ${with_ninja}/lib)
+    WO_PATH_LIB(ninja_lib, [ninja], [libninja.la], ${with_ninja}/lib:${with_ninja}/lib64)
   else
     WO_PATH_LIB(ninja_lib, [ninja], [libninja.la], $LD_LIBRARY_PATH)
   fi
@@ -185,7 +186,8 @@ AC_DEFUN([WO_PROG_SAMURAI],
 [dnl
   unset SAMURAI_DIR
   if test -n "$with_samurai"; then
-    WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.la], ${with_samurai}/lib)
+    echo "Checking for samurai in " ${with_samurai}/lib
+    WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.la], ${with_samurai}/lib:${with_samurai}/lib64)
   else
     WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.la], $LD_LIBRARY_PATH)
   fi

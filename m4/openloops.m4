@@ -19,7 +19,7 @@ if test "$enable_openloops" = "yes"; then
 
   unset OPENLOOPS_DIR
   if test -n "$with_openloops"; then
-    WO_PATH_LIB(openloops_lib, [openloops], [libopenloops.${SHRLIB_EXT}], ${with_openloops}/lib)
+    WO_PATH_LIB(openloops_lib, [openloops], [libopenloops.${SHRLIB_EXT}], ${with_openloops}/lib:${with_openloops}/lib64)
   else
     WO_PATH_LIB(openloops_lib, [openloops], [libopenloops.${SHRLIB_EXT}], $LD_LIBRARY_PATH)
   fi
@@ -39,7 +39,7 @@ AC_SUBST([OPENLOOPS_DIR])
 
 if test -n "$OPENLOOPS_DIR"; then
   wo_openloops_includes="-I$OPENLOOPS_DIR/lib_src/openloops/mod"
-  wo_openloops_ldflags="-Wl,-rpath,$OPENLOOPS_DIR/lib -L$OPENLOOPS_DIR/lib -lopenloops"
+  wo_openloops_ldflags="-Wl,-rpath,$OPENLOOPS_DIR/lib -L$OPENLOOPS_DIR/lib -Wl,-rpath,$OPENLOOPS_DIR/lib64 -L$OPENLOOPS_DIR/lib64 -lopenloops"
   wo_openloops_versionfile="$OPENLOOPS_DIR/pyol/config/default.cfg"
 fi
 
