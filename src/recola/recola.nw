@@ -2730,7 +2730,7 @@ new Recola instance.
     integer :: n_flv
     if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: init process object")
     call object%base_init (def, lib, id, i_component)
-    n_flv = object%get_n_flvs (1)
+    n_flv = size (object%data%flv_state, 2)
     allocate (object%recola_ids(n_flv))
     select type (writer => object%def%writer)
     type is (recola_writer_t)

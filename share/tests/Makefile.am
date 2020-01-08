@@ -766,6 +766,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/recola_6.ref \
     functional_tests/ref-output/recola_7.ref \
     functional_tests/ref-output/recola_8.ref \
+    functional_tests/ref-output/recola_9.ref \
     functional_tests/ref-output/nlo_decay_1.ref \
     functional_tests/ref-output/mssmtest_1.ref \
     functional_tests/ref-output/mssmtest_2.ref \
@@ -1232,6 +1233,7 @@ MISC_TESTS_SIN = \
     functional_tests/recola_6.sin \
     functional_tests/recola_7.sin \
     functional_tests/recola_8.sin \
+    functional_tests/recola_9.sin \
     functional_tests/powheg_1.sin \
     functional_tests/mssmtest_1.sin \
     functional_tests/mssmtest_2.sin \

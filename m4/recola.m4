@@ -27,7 +27,8 @@ if test "$enable_recola" = "yes"; then
      recola_libdir=`dirname $RECOLA`
      RECOLA_DIR=$recola_libdir
      wo_recola_libdir="-L${recola_libdir}"
-     wo_recola_ldflags="-Wl,-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola -lcollier"
+     wo_recola_ldflags="${lt_prog_compiler_wl_FC}-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola -lcollier"
+     wo_recola_ldflags_cc="${lt_prog_compiler_wl}-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola -lcollier"
      wo_recola_includes="-I${recola_libdir}/../include"
      wo_recola_version=""
      save_LIBS="$LIBS"
@@ -42,8 +43,8 @@ if test "$enable_recola" = "yes"; then
          [wo_recola_version=`./conftest | $SED -e 's/^[ \t]*//'`],
          [enable_recola="no"])
      AC_MSG_RESULT([$enable_recola])
+     LIBS="$save_LIBS"
      if test "$enable_recola" = "no"; then
-       LIBS="$save_LIBS"
        AC_MSG_NOTICE([warning:  ********************************************************])
        AC_MSG_NOTICE([warning:  It seems your RECOLA was not compiled properly or       ])
        AC_MSG_NOTICE([warning:  compiled with a different FORTRAN compiler and you      ])
@@ -64,7 +65,7 @@ if test "$enable_recola" = "yes"; then
        else 
          RECOLA_INCLUDES=$wo_recola_includes
          RECOLA_VERSION=$wo_recola_version
-         LDFLAGS_RECOLA=$wo_recola_ldflags
+         LDFLAGS_RECOLA=$wo_recola_ldflags_cc
          AC_SUBST([RECOLA_VERSION]) 
          AC_SUBST([RECOLA_DIR])
          AC_MSG_CHECKING([for Recola version])
