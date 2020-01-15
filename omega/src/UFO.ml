@@ -2431,8 +2431,27 @@ i*)
           List.iter
             (fun p ->
               Printf.printf
-                "parameter %s = %s\n"
-                p.name (value_to_numeric p.value))
+                "parameter %s = %s"
+                p.name (value_to_numeric p.value);
+              begin match p.lhablock, p.lhacode with
+              | None, None -> ()
+              | Some name, Some (index :: indices) ->
+                 Printf.printf " slha_entry %s %d" name index;
+                 List.iter (fun i -> Printf.printf " %d" i) indices
+              | Some name, None ->
+                 Printf.eprintf
+                   "UFO: parameter %s: slhablock %s without slhacode\n"
+                   p.name name
+              | Some name, Some [] ->
+                 Printf.eprintf
+                   "UFO: parameter %s: slhablock %s with empty slhacode\n"
+                   p.name name
+              | None, Some _ ->
+                 Printf.eprintf
+                   "UFO: parameter %s: slhacode without slhablock\n"
+                   p.name
+              end;
+              Printf.printf "\n")
             parameters;
           Printf.printf "\n"
 

@@ -13584,7 +13584,7 @@ expression syntax, so we exclude them here.
     call ifile_append (ifile, "ALT generic_par_def = &
          &parameter_def | derived_def | unused_def | scheme_block")
     call ifile_append (ifile, "SEQ parameter_def = parameter par_name " // &
-         "'=' any_real_value")
+         "'=' any_real_value slha_annotation?")
     call ifile_append (ifile, "ALT any_real_value = " &
          // "neg_real_value | pos_real_value | real_value")
     call ifile_append (ifile, "SEQ neg_real_value = '-' real_value")
@@ -13592,6 +13592,11 @@ expression syntax, so we exclude them here.
     call ifile_append (ifile, "KEY parameter")
     call ifile_append (ifile, "IDE par_name")
     ! call ifile_append (ifile, "KEY '='")          !!! Key already exists
+    call ifile_append (ifile, "SEQ slha_annotation = " // &
+         "slha_entry slha_block_name slha_entry_index")
+    call ifile_append (ifile, "KEY slha_entry")
+    call ifile_append (ifile, "IDE slha_block_name")
+    call ifile_append (ifile, "INT slha_entry_index")
     call ifile_append (ifile, "SEQ derived_def = derived par_name " // &
          "'=' expr")
     call ifile_append (ifile, "KEY derived")
