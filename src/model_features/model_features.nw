@@ -12466,6 +12466,12 @@ object.  The latter is a component of the [[model_t]] handler.
 Methods of [[parameter_t]] can be delegated to the [[par_data_t]]
 component.
 
+The [[block_name]] and [[block_index]] values, if nonempty, indicate
+the possibility of reading this parameter from a SLHA-type input file.
+(Within the [[parameter_t]] object, this info is just used for I/O,
+the actual block register is located in the parent [[model_t]]
+object.)
+
 The [[pn]] component is a pointer to the parameter definition inside the
 model parse tree.  It allows us to recreate the [[eval_tree]] when making
 copies (instances) of the parameter object.
@@ -12480,6 +12486,8 @@ copies (instances) of the parameter object.
      private
      integer :: type  = PAR_NONE
      class(modelpar_data_t), pointer :: data => null ()
+     type(string_t) :: block_name
+     integer, dimension(:), allocatable :: block_index
      type(parse_node_t), pointer :: pn => null ()
      class(expr_t), allocatable :: expr
    contains
@@ -12624,6 +12632,13 @@ suitable for input and output!]
        write (u, "(1x,A)", advance="no")  char (par%data%get_name ())
     end select
     select case (par%type)
+    case (PAR_INDEPENDENT)
+       if (allocated (par%block_index)) then
+          write (u, "(1x,A,1x,A,*(1x,I0))") &
+               "slha_entry", char (par%block_name), par%block_index
+       else
+          write (u, "(A)")
+       end if
     case (PAR_DERIVED)
        if (defs) then
           call par%expr%write (unit)
@@ -12651,6 +12666,26 @@ suitable for input and output!]
 
 @ %def parameter_show
 @
+\subsection{SLHA block register}
+For the optional SLHA interface, the model record contains a register
+of SLHA-type block names together with index values, which point to a
+particular parameter.  These are private types:
+<<Models: types>>=
+  type :: slha_entry_t
+     integer, dimension(:), allocatable :: block_index
+     integer :: i_par = 0
+  end type slha_entry_t
+  
+@ %def slha_entry_t
+<<Models: types>>=
+  type :: slha_block_t
+     type(string_t) :: name
+     integer :: n_entry = 0
+     type(slha_entry_t), dimension(:), allocatable :: entry
+  end type slha_block_t
+  
+@ %def slha_block_t
+@
 \subsection{Model Object}
 A model object holds all information about parameters, particles,
 and vertices.  For models that require an external program for
@@ -12675,6 +12710,8 @@ the instances).
      type(string_t), dimension(:), allocatable :: schemes
      type(string_t), allocatable :: selected_scheme
      type(parameter_t), dimension(:), allocatable :: par
+     integer :: n_slha_block = 0
+     type(slha_block_t), dimension(:), allocatable :: slha_block
      integer :: max_par_name_length = 0
      integer :: max_field_name_length = 0
      type(var_list_t) :: var_list
@@ -13142,6 +13179,10 @@ which also take care of the building a new variable list.
           value = par%data%get_real ()
           call model%set_parameter_constant (i, name, value)
        end if
+       if (allocated (par%block_index)) then
+          model%par(i)%block_name = par%block_name
+          model%par(i)%block_index = par%block_index
+       end if
     case (PAR_DERIVED)
        call model%set_parameter_parse_node (i, name, par%pn, &
             constant = .false.)
@@ -13561,6 +13602,208 @@ if there is an [[ufo_path]] requested, it must coincide with the
 
 @ %def model_matches
 @
+\subsection{SLHA-type interface}
+Abusing the original strict SUSY Les Houches Accord (SLHA), we support
+reading parameter data from some custom SLHA-type input file.  To this
+end, the [[model]] object stores a list of model-specific block names
+together with information how to find a parameter in the model record,
+given a block name and index vector.
+
+Check if the model supports custom SLHA block info.  This is the case
+if [[n_slha_block]] is nonzero, i.e., after SLHA block names have been
+parsed and registered.
+<<Models: model: TBP>>=
+  procedure :: supports_custom_slha => model_supports_custom_slha
+<<Models: procedures>>=
+  function model_supports_custom_slha (model) result (flag)
+    class(model_t), intent(in) :: model
+    logical :: flag
+    
+    flag = model%n_slha_block > 0
+    
+  end function model_supports_custom_slha
+
+@ %def model_supports_custom_slha 
+@ Return the block names for all SLHA block references.
+<<Models: model: TBP>>=
+  procedure :: get_custom_slha_blocks => model_get_custom_slha_blocks
+<<Models: procedures>>=
+  subroutine model_get_custom_slha_blocks (model, block_name)
+    class(model_t), intent(in) :: model
+    type(string_t), dimension(:), allocatable :: block_name
+    
+    integer :: i
+    
+    allocate (block_name (model%n_slha_block))
+    do i = 1, size (block_name)
+       block_name(i) = model%slha_block(i)%name
+    end do
+    
+  end subroutine model_get_custom_slha_blocks
+  
+@ %def model_get_custom_slha_blocks
+@
+This routine registers a SLHA block reference.  We have the index of a
+(new) parameter entry and a parse node from the model file which
+specifies a block name and an index array.
+<<Models: procedures>>=
+  subroutine model_record_slha_block_entry (model, i_par, node)
+    class(model_t), intent(inout) :: model
+    integer, intent(in) :: i_par
+    type(parse_node_t), intent(in), target :: node
+
+    type(parse_node_t), pointer :: node_block_name, node_index
+    type(string_t) :: block_name
+    integer :: n_index, i, i_block
+    integer, dimension(:), allocatable :: block_index
+
+    node_block_name => node%get_sub_ptr (2)
+    block_name = node_block_name%get_string ()
+    n_index = node%get_n_sub () - 2
+    allocate (block_index (n_index))
+    node_index => node_block_name%get_next_ptr ()
+    do i = 1, n_index
+       block_index(i) = node_index%get_integer ()
+       node_index => node_index%get_next_ptr ()
+    end do
+    i_block = 0
+    FIND_BLOCK: do i = 1, model%n_slha_block
+       if (model%slha_block(i)%name == block_name) then
+          i_block = i
+          exit FIND_BLOCK
+       end if
+    end do FIND_BLOCK
+    if (i_block == 0) then
+       call model_add_slha_block (model, block_name)
+       i_block = model%n_slha_block
+    end if
+    associate (b => model%slha_block(i_block))
+      call add_shla_block_entry (b, block_index, i_par)
+    end associate
+    model%par(i_par)%block_name = block_name
+    model%par(i_par)%block_index = block_index
+  end subroutine model_record_slha_block_entry
+  
+@ %def model_record_slha_block_entry
+@ Add a new entry to the SLHA block register, increasing the array
+size if necessary
+<<Models: procedures>>=
+  subroutine model_add_slha_block (model, block_name)
+    class(model_t), intent(inout) :: model
+    type(string_t), intent(in) :: block_name
+    
+    if (.not. allocated (model%slha_block))  allocate (model%slha_block (1))
+    if (model%n_slha_block == size (model%slha_block))  call grow
+    model%n_slha_block = model%n_slha_block + 1
+    associate (b => model%slha_block(model%n_slha_block))
+      b%name = block_name
+      allocate (b%entry (1))
+    end associate
+    
+  contains
+    
+    subroutine grow
+      type(slha_block_t), dimension(:), allocatable :: b_tmp
+      call move_alloc (model%slha_block, b_tmp)
+      allocate (model%slha_block (2 * size (b_tmp)))
+      model%slha_block(:size (b_tmp)) = b_tmp(:)
+    end subroutine grow
+     
+  end subroutine model_add_slha_block
+  
+@ %def model_add_slha_block
+@ Add a new entry to a block-register record.  The entry establishes a
+pointer-target relation between an index array within the SLHA block and a
+parameter-data record.  We increase the entry array as needed.
+<<Models: procedures>>=
+  subroutine add_shla_block_entry (b, block_index, i_par)
+    type(slha_block_t), intent(inout) :: b
+    integer, dimension(:), intent(in) :: block_index
+    integer, intent(in) :: i_par
+    
+    if (b%n_entry == size (b%entry))  call grow
+    b%n_entry = b%n_entry + 1
+    associate (entry => b%entry(b%n_entry))
+      entry%block_index = block_index
+      entry%i_par = i_par
+    end associate
+    
+  contains
+    
+    subroutine grow
+      type(slha_entry_t), dimension(:), allocatable :: entry_tmp
+      call move_alloc (b%entry, entry_tmp)
+      allocate (b%entry (2 * size (entry_tmp)))
+      b%entry(:size (entry_tmp)) = entry_tmp(:)
+    end subroutine grow
+    
+  end subroutine add_shla_block_entry
+
+@ %def add_slha_block_entry
+@
+The lookup routine returns a pointer to the appropriate [[par_data]]
+record, if [[block_name]] and [[block_index]] are valid.  The latter
+point to the [[slha_block_t]] register within the [[model_t]] object,
+if it is allocated.
+
+This should only be needed during I/O (i.e., while reading the SLHA
+file), so a simple linear search for each parameter should not be a
+performance problem.
+<<Models: model: TBP>>=
+  procedure :: slha_lookup => model_slha_lookup
+<<Models: procedures>>=
+  subroutine model_slha_lookup (model, block_name, block_index, par_data)
+    class(model_t), intent(in) :: model
+    type(string_t), intent(in) :: block_name
+    integer, dimension(:), intent(in) :: block_index
+    class(modelpar_data_t), pointer, intent(out) :: par_data
+    
+    integer :: i, j
+    
+    par_data => null ()
+    if (allocated (model%slha_block)) then
+       do i = 1, model%n_slha_block
+          associate (block => model%slha_block(i))
+            if (block%name == block_name) then
+               do j = 1, block%n_entry
+                  associate (entry => block%entry(j))
+                    if (size (entry%block_index) == size (block_index)) then
+                       if (all (entry%block_index == block_index)) then
+                          par_data => model%par(entry%i_par)%data
+                          return
+                       end if
+                    end if
+                  end associate
+               end do
+            end if
+          end associate
+       end do
+    end if
+    
+  end subroutine model_slha_lookup
+    
+@ %def model_slha_lookup
+@ Modify the value of a parameter, identified by block name and index array.
+<<Models: model: TBP>>=
+  procedure :: slha_set_par => model_slha_set_par
+<<Models: procedures>>=
+  subroutine model_slha_set_par (model, block_name, block_index, value)
+    class(model_t), intent(inout) :: model
+    type(string_t), intent(in) :: block_name
+    integer, dimension(:), intent(in) :: block_index
+    real(default), intent(in) :: value
+    
+    class(modelpar_data_t), pointer :: par_data
+    
+    call model%slha_lookup (block_name, block_index, par_data)
+    if (associated (par_data)) then
+       par_data = value
+    end if
+
+  end subroutine model_slha_set_par
+  
+@ %def model_slha_set_par
+@
 \subsection{Reading models from file}
 This procedure defines the model-file syntax for the parser, returning
 an internal file (ifile).
@@ -13593,7 +13836,7 @@ expression syntax, so we exclude them here.
     call ifile_append (ifile, "IDE par_name")
     ! call ifile_append (ifile, "KEY '='")          !!! Key already exists
     call ifile_append (ifile, "SEQ slha_annotation = " // &
-         "slha_entry slha_block_name slha_entry_index")
+         "slha_entry slha_block_name slha_entry_index*")
     call ifile_append (ifile, "KEY slha_entry")
     call ifile_append (ifile, "IDE slha_block_name")
     call ifile_append (ifile, "INT slha_entry_index")
@@ -14055,12 +14298,16 @@ contents of the file or the generated model object.
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in), target :: node
-    type(parse_node_t), pointer :: node_name, node_val
+    type(parse_node_t), pointer :: node_name, node_val, node_slha_entry
     type(string_t) :: name
     node_name => parse_node_get_sub_ptr (node, 2)
     name = parse_node_get_string (node_name)
     node_val => parse_node_get_next_ptr (node_name, 2)
     call model%set_parameter_parse_node (i, name, node_val, constant=.true.)
+    node_slha_entry => parse_node_get_next_ptr (node_val)
+    if (associated (node_slha_entry)) then
+       call model_record_slha_block_entry (model, i, node_slha_entry)
+    end if
   end subroutine model_read_parameter
 
 @ %def model_read_parameter
@@ -14662,6 +14909,9 @@ setup, UFO model information has to be transferred.
           model%selected_scheme = orig%selected_scheme
           call model%set_scheme_num (orig%get_scheme_num ())
        end if
+    end if
+    if (allocated (orig%slha_block)) then
+       model%slha_block = orig%slha_block
     end if
     model%md5sum = orig%md5sum
     model%ufo_model = orig%ufo_model
@@ -15467,6 +15717,128 @@ UFO model.  The model file is deleted explicitly at the end of this test.
 
 @ %def models_9
 @
+\subsubsection{Read model with schemes}
+Read a model from file which contains [[slha_entry]] qualifiers for parameters.
+<<Models: execute tests>>=
+  call test (models_10, "models_10", &
+       "handle slha_entry option", &
+       u, results)
+<<Models: test declarations>>=
+  public :: models_10
+<<Models: tests>>=
+  subroutine models_10 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(var_list_t), pointer :: var_list
+    type(model_t), pointer :: model
+    type(string_t), dimension(:), allocatable :: slha_block_name
+    integer :: i
+
+    write (u, "(A)")  "* Test output: models_10"
+    write (u, "(A)")  "*   Purpose: read a model from file &
+         &with slha_entry options"
+    write (u, *)
+
+    open (newunit=um, file="Test10.mdl", status="replace", action="readwrite")
+    write (um, "(A)")  'model "Test10"'
+    write (um, "(A)")  '  parameter a = 1   slha_entry FOO 1'
+    write (um, "(A)")  '  parameter b = 4   slha_entry BAR 2 1'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=1)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+1   continue
+    close (um)
+
+    call syntax_model_file_init ()
+    call os_data%init ()
+
+    write (u, *)
+    write (u, "(A)")  "* Model output, default scheme (= foo)"
+    write (u, *)
+
+    call model_list%read_model (var_str ("Test10"), var_str ("Test10.mdl"), &
+         os_data, model)
+    call model%write (u, show_md5sum=.false.)
+
+    write (u, *)
+    write (u, "(A)")  "* Check that model contains slha_entry options"
+    write (u, *)
+
+    write (u, "(A,1x,L1)")  &
+         "supports_custom_slha =", model%supports_custom_slha ()
+    
+    write (u, *)
+    write (u, "(A)")  "custom_slha_blocks ="
+    call model%get_custom_slha_blocks (slha_block_name)
+    do i = 1, size (slha_block_name)
+       write (u, "(1x,A)", advance="no")  char (slha_block_name(i))
+    end do
+    write (u, *)
+
+    write (u, *)
+    write (u, "(A)")  "* Parameter lookup"
+    write (u, *)
+
+    call show_slha ("FOO", [1])
+    call show_slha ("FOO", [2])
+    call show_slha ("BAR", [2, 1])
+    call show_slha ("GEE", [3])
+
+    write (u, *)
+    write (u, "(A)")  "* Modify parameter via SLHA block interface"
+    write (u, *)
+
+    call model%slha_set_par (var_str ("FOO"), [1], 7._default)
+    call show_slha ("FOO", [1])
+
+    write (u, *)
+    write (u, "(A)")  "* Show var list with modified parameter"
+    write (u, *)
+
+    call show_var_list ()
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_10"
+
+  contains
+
+    subroutine show_slha (block_name, block_index)
+      character(*), intent(in) :: block_name
+      integer, dimension(:), intent(in) :: block_index
+      class(modelpar_data_t), pointer :: par_data
+      write (u, "(A,*(1x,I0))", advance="no")  block_name, block_index
+      write (u, "(' => ')", advance="no")
+      call model%slha_lookup (var_str (block_name), block_index, par_data)
+      if (associated (par_data)) then
+         call par_data%write (u)
+         write (u, *)
+      else
+         write (u, "('-')")
+      end if
+         
+    end subroutine show_slha
+
+    subroutine show_var_list ()
+      var_list => model%get_var_list_ptr ()
+      call var_list%write (u)
+    end subroutine show_var_list
+
+  end subroutine models_10
+
+@ %def models_10
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The SUSY Les Houches Accord}
@@ -15529,13 +15901,18 @@ remove trailing comments, and skip lines consisting only of comments.
 The preprocessor reads from a stream and puts out an [[ifile]].
 Blocks that are not recognized are skipped.  For some blocks, data
 items are quoted, so they can be read as strings if necessary.
+
+A name clash occurse if the block name is identical to a keyword.
+This can happen for custom SLHA models and files.  In that case, we
+prepend an underscore, which will be silently suppressed where needed.
 <<SLHA: parameters>>=
   integer, parameter :: MODE_SKIP = 0, MODE_DATA = 1, MODE_INFO = 2
 
 @ %def MODE_SKIP = 0, MODE_DATA = 1, MODE_INFO = 2
 <<SLHA: procedures>>=
-  subroutine slha_preprocess (stream, ifile)
+  subroutine slha_preprocess (stream, custom_block_name, ifile)
     type(stream_t), intent(inout), target :: stream
+    type(string_t), dimension(:), intent(in) :: custom_block_name
     type(ifile_t), intent(out) :: ifile
     type(string_t) :: buffer, line, item
     integer :: iostat
@@ -15549,7 +15926,7 @@ items are quoted, so they can be read as strings if necessary.
           if (len_trim (line) == 0)  cycle SCAN_FILE
           select case (char (extract (line, 1, 1)))
           case ("B", "b")
-             mode = check_block_handling (line)
+             call check_block_handling (line, custom_block_name, mode)
              call ifile_append (ifile, line // "$")
           case ("D", "d")
              mode = MODE_DATA
@@ -15577,17 +15954,31 @@ items are quoted, so they can be read as strings if necessary.
   end subroutine slha_preprocess
 
 @ %def slha_preprocess
-@ Return the mode that we should treat this block with.  We need
-to recognize only those blocks that we actually use.
+@ Return the mode that we should treat this block with.  We add the
+[[custom_block_name]] array to the set of supported blocks, which
+otherwise includes only hard-coded block names.  Those custom blocks
+are data blocks.  
+
+Unknown blocks will be skipped altogether.  The standard does not
+specify their internal format at all, so we must not parse their
+content.
+
+If the name of a (custom) block clashes with a keyword of the SLHA
+syntax, we append an underscore to the block name, modifying the
+current line string.  This should be silently suppressed when actually
+parsing block names.
 <<SLHA: procedures>>=
-  function check_block_handling (line) result (mode)
-    integer :: mode
-    type(string_t), intent(in) :: line
+  subroutine check_block_handling (line, custom_block_name, mode)
+    type(string_t), intent(inout) :: line
+    type(string_t), dimension(:), intent(in) :: custom_block_name
+    integer, intent(out) :: mode
     type(string_t) :: buffer, key, block_name
+    integer :: i
     buffer = trim (line)
     call split (buffer, key, " ")
     buffer = adjustl (buffer)
     call split (buffer, block_name, " ")
+    buffer = adjustl (buffer)
     block_name = trim (adjustl (upper_case (block_name)))
     select case (char (block_name))
     case ("MODSEL", "MINPAR", "SMINPUTS")
@@ -15606,10 +15997,41 @@ to recognize only those blocks that we actually use.
        mode = MODE_INFO
     case default
        mode = MODE_SKIP
+       CHECK_CUSTOM_NAMES: do i = 1, size (custom_block_name)
+          if (block_name == custom_block_name(i)) then
+             mode = MODE_DATA
+             call mangle_keywords (block_name)
+             line = key // " " // block_name // " " // trim (buffer)
+             exit CHECK_CUSTOM_NAMES
+          end if
+       end do CHECK_CUSTOM_NAMES
     end select
-  end function check_block_handling
+  end subroutine check_block_handling
 
 @ %def check_block_handling
+@ Append an underscore to specific block names:
+<<SLHA: procedures>>=
+  subroutine mangle_keywords (name)
+    type(string_t), intent(inout) :: name
+    select case (char (name))
+    case ("BLOCK", "DATA", "INFO", "DECAY")
+       name = name // "_"
+    end select
+  end subroutine mangle_keywords
+  
+@ %def mangle_keywords
+@ Remove the underscore again:
+<<SLHA: procedures>>=
+  subroutine demangle_keywords (name)
+    type(string_t), intent(inout) :: name
+    select case (char (name))
+    case ("BLOCK_", "DATA_", "INFO_", "DECAY_")
+       name = extract (name, 1, len(name)-1)
+    end select
+  end subroutine demangle_keywords
+  
+@ %def demangle_keywords
+
 @
 \subsection{Lexer and syntax}
 <<SLHA: variables>>=
@@ -16129,6 +16551,19 @@ SLHA codes for particular physics models
 model and store all data that is present in the appropriate variable
 list.  Finally, update the variable record.
 
+We assume that if the model contains custom SLHA block names, we just
+have to scan those to get complete information.  Block names could
+coincide with the SLHA standard block names, but we do not have to
+assume this.  This will be the situation for an UFO-generated file.
+In particular, an UFO file should contain all expressions necessary
+for computing dependent parameters, so we can forget about the strict
+SLHA standard and its hard-coded conventions.
+
+If there are no custom SLHA block names, we should assume that the
+model is a standard SUSY model, and the parameters and hard-coded
+blocks can be read as specified by the original SLHA standard.  There
+are hard-coded block names and parameter calculations.
+
 Public for use in unit test.
 <<SLHA: public>>=
   public :: slha_interpret_parse_tree
@@ -16140,30 +16575,34 @@ Public for use in unit test.
     logical, intent(in) :: input, spectrum, decays
     logical :: errors
     integer :: mssm_type
-    call slha_handle_MODSEL (parse_tree, model, mssm_type)
-    if (input) then
-       call slha_handle_SMINPUTS (parse_tree, model)
-       call slha_handle_MINPAR (parse_tree, model, mssm_type)
-    end if
-    if (spectrum) then
-       call slha_handle_info_block (parse_tree, "SPINFO", errors)
-       if (errors)  return
-       call slha_handle_MASS (parse_tree, model)
-       call slha_handle_matrix_block (parse_tree, "NMIX", "mn_", 4, 4, model)
-       call slha_handle_matrix_block (parse_tree, "NMNMIX", "mixn_", 5, 5, model)
-       call slha_handle_matrix_block (parse_tree, "UMIX", "mu_", 2, 2, model)
-       call slha_handle_matrix_block (parse_tree, "VMIX", "mv_", 2, 2, model)
-       call slha_handle_matrix_block (parse_tree, "STOPMIX", "mt_", 2, 2, model)
-       call slha_handle_matrix_block (parse_tree, "SBOTMIX", "mb_", 2, 2, model)
-       call slha_handle_matrix_block (parse_tree, "STAUMIX", "ml_", 2, 2, model)
-       call slha_handle_matrix_block (parse_tree, "NMHMIX", "mixh0_", 3, 3, model)
-       call slha_handle_matrix_block (parse_tree, "NMAMIX", "mixa0_", 2, 3, model)
-       call slha_handle_ALPHA (parse_tree, model)
-       call slha_handle_HMIX (parse_tree, model)
-       call slha_handle_NMSSMRUN (parse_tree, model)
-       call slha_handle_matrix_block (parse_tree, "AU", "Au_", 3, 3, model)
-       call slha_handle_matrix_block (parse_tree, "AD", "Ad_", 3, 3, model)
-       call slha_handle_matrix_block (parse_tree, "AE", "Ae_", 3, 3, model)
+    if (model%supports_custom_slha ()) then
+       call slha_handle_custom_file (parse_tree, model)
+    else
+       call slha_handle_MODSEL (parse_tree, model, mssm_type)
+       if (input) then
+          call slha_handle_SMINPUTS (parse_tree, model)
+          call slha_handle_MINPAR (parse_tree, model, mssm_type)
+       end if
+       if (spectrum) then
+          call slha_handle_info_block (parse_tree, "SPINFO", errors)
+          if (errors)  return
+          call slha_handle_MASS (parse_tree, model)
+          call slha_handle_matrix_block (parse_tree, "NMIX", "mn_", 4, 4, model)
+          call slha_handle_matrix_block (parse_tree, "NMNMIX", "mixn_", 5, 5, model)
+          call slha_handle_matrix_block (parse_tree, "UMIX", "mu_", 2, 2, model)
+          call slha_handle_matrix_block (parse_tree, "VMIX", "mv_", 2, 2, model)
+          call slha_handle_matrix_block (parse_tree, "STOPMIX", "mt_", 2, 2, model)
+          call slha_handle_matrix_block (parse_tree, "SBOTMIX", "mb_", 2, 2, model)
+          call slha_handle_matrix_block (parse_tree, "STAUMIX", "ml_", 2, 2, model)
+          call slha_handle_matrix_block (parse_tree, "NMHMIX", "mixh0_", 3, 3, model)
+          call slha_handle_matrix_block (parse_tree, "NMAMIX", "mixa0_", 2, 3, model)
+          call slha_handle_ALPHA (parse_tree, model)
+          call slha_handle_HMIX (parse_tree, model)
+          call slha_handle_NMSSMRUN (parse_tree, model)
+          call slha_handle_matrix_block (parse_tree, "AU", "Au_", 3, 3, model)
+          call slha_handle_matrix_block (parse_tree, "AD", "Ad_", 3, 3, model)
+          call slha_handle_matrix_block (parse_tree, "AE", "Ae_", 3, 3, model)
+       end if
     end if
     if (decays) then
        call slha_handle_info_block (parse_tree, "DCINFO", errors)
@@ -16225,7 +16664,12 @@ and errors.
 \subsubsection{MODSEL}
 Handle the overall model definition.  Only certain models are
 recognized.  The soft-breaking model templates that determine the set
-of input parameters:
+of input parameters.
+
+This block used to be required, but for generic UFO model support we
+should allow for its absence.  In that case, [[mssm_type]] will be set
+to a negative value.  If the block is present, the model must be one
+of the following, or parsing ends with an error.
 <<SLHA: parameters>>=
   integer, parameter :: MSSM_GENERIC = 0
   integer, parameter :: MSSM_SUGRA = 1
@@ -16241,7 +16685,11 @@ of input parameters:
     type(parse_node_t), pointer :: pn_block, pn_data, pn_item
     type(string_t) :: model_name
     pn_block => slha_get_block_ptr &
-         (parse_tree, var_str ("MODSEL"), required=.true.)
+         (parse_tree, var_str ("MODSEL"), required=.false.)
+    if (.not. associated (pn_block)) then
+       mssm_type = -1
+       return
+    end if
     call slha_find_index_ptr (pn_block, pn_data, pn_item, 1)
     if (associated (pn_item)) then
        mssm_type = get_integer_parameter (pn_item)
@@ -16663,17 +17111,100 @@ Read the block ALPHA which holds just the Higgs mixing angle.
 
 @ %def slha_handle_NMSSMRUN
 @
+\subsection{Parsing custom SLHA files}
+With the introduction of UFO models, we support custom files in
+generic SLHA format that reset model parameters.  In contrast to
+strict SLHA files, the order and naming of blocks is arbitrary.
+
+We scan the complete file (i.e., preprocessed parse tree), parsing all
+blocks that contain data lines.  For each data line, we identify index
+array and associated value.  Then we set the model parameter
+that is associated with that block name and index array, if it exists.
+<<SLHA: procedures>>=
+  subroutine slha_handle_custom_file (parse_tree, model)
+    type(parse_tree_t), intent(in) :: parse_tree
+    type(model_t), intent(inout), target :: model
+
+    type(parse_node_t), pointer :: pn_root, pn_block
+    type(parse_node_t), pointer :: pn_block_spec, pn_block_name
+    type(parse_node_t), pointer :: pn_data, pn_line, pn_code, pn_item
+    type(string_t) :: block_name
+    integer, dimension(:), allocatable :: block_index
+    integer :: n_index, i
+    real(default) :: value
+    
+    pn_root => parse_tree%get_root_ptr ()
+    pn_block => pn_root%get_sub_ptr ()
+    HANDLE_BLOCKS: do while (associated (pn_block))
+       select case (char (pn_block%get_rule_key ()))
+       case ("block_def")
+          call slha_handle_custom_block (pn_block, model)
+       end select
+       pn_block => pn_block%get_next_ptr ()
+    end do HANDLE_BLOCKS
+
+  end subroutine slha_handle_custom_file
+  
+@ %def slha_handle_custom_file
+@
+<<SLHA: procedures>>=
+  subroutine slha_handle_custom_block (pn_block, model)
+    type(parse_node_t), intent(in), target :: pn_block
+    type(model_t), intent(inout), target :: model
+    
+    type(parse_node_t), pointer :: pn_block_spec, pn_block_name
+    type(parse_node_t), pointer :: pn_data, pn_line, pn_code, pn_item
+    type(string_t) :: block_name
+    integer, dimension(:), allocatable :: block_index
+    integer :: n_index, i
+    real(default) :: value
+
+    pn_block_spec => parse_node_get_sub_ptr (pn_block, 2)
+    pn_block_name => parse_node_get_sub_ptr (pn_block_spec)
+    block_name = trim (adjustl (upper_case (pn_block_name%get_string ())))
+    call demangle_keywords (block_name)
+    pn_data => pn_block%get_sub_ptr (4)
+    HANDLE_LINES: do while (associated (pn_data))
+       select case (char (pn_data%get_rule_key ()))
+       case ("block_data")
+          pn_line => pn_data%get_sub_ptr (2)
+          n_index = pn_line%get_n_sub () - 1
+          allocate (block_index (n_index))
+          pn_code => pn_line%get_sub_ptr ()
+          READ_LINE: do i = 1, n_index
+             select case (char (pn_code%get_rule_key ()))
+             case ("integer");  block_index(i) = pn_code%get_integer ()
+             case default
+                pn_code => null ()
+                exit READ_LINE
+             end select
+             pn_code => pn_code%get_next_ptr ()
+          end do READ_LINE
+          if (associated (pn_code)) then
+             value = get_real_parameter (pn_code)
+             call model%slha_set_par (block_name, block_index, value)
+          end if
+          deallocate (block_index)
+       end select
+       pn_data => pn_data%get_next_ptr ()
+    end do HANDLE_LINES
+    
+  end subroutine slha_handle_custom_block
+  
+@ %def slha_handle_custom_block
+@
 \subsection{Parser}
 Read a SLHA file from stream, including preprocessing, and make up a
 parse tree.
 <<SLHA: procedures>>=
-  subroutine slha_parse_stream (stream, parse_tree)
+  subroutine slha_parse_stream (stream, custom_block_name, parse_tree)
     type(stream_t), intent(inout), target :: stream
+    type(string_t), dimension(:), intent(in) :: custom_block_name
     type(parse_tree_t), intent(out) :: parse_tree
     type(ifile_t) :: ifile
     type(lexer_t) :: lexer
     type(stream_t), target :: stream_tmp
-    call slha_preprocess (stream, ifile)
+    call slha_preprocess (stream, custom_block_name, ifile)
     call stream_init (stream_tmp, ifile)
     call lexer_init_slha (lexer)
     call lexer_assign_stream (lexer, stream_tmp)
@@ -16687,12 +17218,15 @@ parse tree.
 @ Read a SLHA file chosen by name.  Check first the current directory,
 then the directory where SUSY input files should be located.
 
-Required for test:
+The [[default_mode]] applies to unknown blocks in the SLHA file: this
+is either [[MODE_SKIP]] or [[MODE_DATA]], corresponding to genuine
+SUSY and custom file content, respectively.
 <<SLHA: public>>=
   public :: slha_parse_file
 <<SLHA: procedures>>=
-  subroutine slha_parse_file (file, os_data, parse_tree)
+  subroutine slha_parse_file (file, custom_block_name, os_data, parse_tree)
     type(string_t), intent(in) :: file
+    type(string_t), dimension(:), intent(in) :: custom_block_name
     type(os_data_t), intent(in) :: os_data
     type(parse_tree_t), intent(out) :: parse_tree
     logical :: exist
@@ -16710,7 +17244,7 @@ Required for test:
        end if
     end if
     call stream_init (stream, char (filename))
-    call slha_parse_stream (stream, parse_tree)
+    call slha_parse_stream (stream, custom_block_name, parse_tree)
     call stream_final (stream)
   end subroutine slha_parse_file
 
@@ -16730,8 +17264,10 @@ The pointer to this model is returned as the last argument.
     type(os_data_t), intent(in) :: os_data
     type(model_t), intent(inout), target :: model
     logical, intent(in) :: input, spectrum, decays
+    type(string_t), dimension(:), allocatable :: custom_block_name
     type(parse_tree_t) :: parse_tree
-    call slha_parse_file (file, os_data, parse_tree)
+    call model%get_custom_slha_blocks (custom_block_name)
+    call slha_parse_file (file, custom_block_name, os_data, parse_tree)
     if (associated (parse_tree%get_root_ptr ())) then
        call slha_interpret_parse_tree &
             (parse_tree, model, input, spectrum, decays)
@@ -16859,6 +17395,7 @@ end module slha_interface_uti
     character(*), parameter :: file_slha = "slha_test.dat"
     type(model_list_t) :: model_list
     type(model_t), pointer :: model => null ()
+    type(string_t), dimension(0) :: empty_string_array
 
     write (u, "(A)")  "* Test output: SLHA Interface"
     write (u, "(A)")  "*   Purpose: test SLHA file reading and writing"
@@ -16878,7 +17415,8 @@ end module slha_interface_uti
     write (u, "(A)")  "* Reading SLHA file sps1ap_decays.slha"
     write (u, "(A)")
 
-    call slha_parse_file (var_str ("sps1ap_decays.slha"), os_data, parse_tree)
+    call slha_parse_file (var_str ("sps1ap_decays.slha"), &
+         empty_string_array, os_data, parse_tree)
 
     write (u, "(A)")  "* Writing the parse tree:"
     write (u, "(A)")

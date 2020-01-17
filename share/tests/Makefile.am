@@ -37,6 +37,7 @@ EXTRA_DIST = \
     functional_tests/structure_2_inc.sin functional_tests/testproc_3.phs \
     functional_tests/user_cuts.f90 \
     functional_tests/susyhit.in \
+    functional_tests/ufo_5_test.slha \
     ext_tests_nmssm/nmssm.slha
 
 TESTSUITE_MACROS = testsuite.m4
@@ -126,6 +127,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/models_7.ref \
     unit_tests/ref-output/models_8.ref \
     unit_tests/ref-output/models_9.ref \
+    unit_tests/ref-output/models_10.ref \
     unit_tests/ref-output/auto_components_1.ref \
     unit_tests/ref-output/auto_components_2.ref \
     unit_tests/ref-output/auto_components_3.ref \
@@ -741,6 +743,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/ufo_2.ref \
     functional_tests/ref-output/ufo_3.ref \
     functional_tests/ref-output/ufo_4.ref \
+    functional_tests/ref-output/ufo_5.ref \
     functional_tests/ref-output/nlo_1.ref \
     functional_tests/ref-output/nlo_2.ref \
     functional_tests/ref-output/nlo_6.ref \
@@ -1201,6 +1204,7 @@ MISC_TESTS_SIN = \
     functional_tests/ufo_2.sin \
     functional_tests/ufo_3.sin \
     functional_tests/ufo_4.sin \
+    functional_tests/ufo_5.sin \
     functional_tests/nlo_1.sin \
     functional_tests/nlo_2.sin \
     functional_tests/nlo_3.sin \

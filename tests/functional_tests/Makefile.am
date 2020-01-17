@@ -196,6 +196,7 @@ TESTS_REQ_OCAML = \
     ufo_2.run \
     ufo_3.run \
     ufo_4.run \
+    ufo_5.run \
     nlo_1.run \
     nlo_2.run \
     nlo_3.run \
@@ -498,6 +499,7 @@ ufo_1.run: ufo_1_SM/$(UFO_TAG_FILE)
 ufo_2.run: ufo_2_SM/$(UFO_TAG_FILE)
 ufo_3.run: ufo_3_models/ufo_3_SM/$(UFO_TAG_FILE)
 ufo_4.run: ufo_4_models/ufo_4_SM/$(UFO_TAG_FILE)
+ufo_5.run: ufo_5_SM/$(UFO_TAG_FILE)
 
 ufo_1_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 	mkdir -p ufo_1_SM
@@ -511,6 +513,13 @@ ufo_3_models/ufo_3_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 ufo_4_models/ufo_4_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 	mkdir -p ufo_4_models/ufo_4_SM
 	cp $(UFO_MODELPATH)/SM/*.py ufo_4_models/ufo_4_SM
+ufo_5_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
+	mkdir -p ufo_5_SM
+	cp $(UFO_MODELPATH)/SM/*.py ufo_5_SM
+
+ufo_5.run: ufo_5_test.slha
+ufo_5_test.slha: $(top_builddir)/share/tests/functional_tests/ufo_5_test.slha
+	cp $< $@
 
 $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE): $(top_srcdir)/omega/tests/UFO/SM/$(UFO_TAG_FILE)
 	$(MAKE) -C $(UFO_MODELPATH)/SM all
@@ -760,7 +769,7 @@ clean-local: clean-macosx
 	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG 
 	rm -f LHAPDF5_FLAG LHAPDF6_FLAG 
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
-	rm -f *.run *.log slha_test.out *_check.out
+	rm -f *.run *.log slha_test.out *_check.out ufo_5_test.slha
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *_count.out
@@ -782,9 +791,10 @@ clean-local: clean-macosx
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -rf job_id_3_x.8001 job_id_4_x.8001
-	rm -rf ufo_1_SM ufo_2_SM ufo_3_models ufo_4_models
+	rm -rf ufo_1_SM ufo_2_SM ufo_3_models ufo_4_models ufo_5_SM
 	rm -f ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl
 	rm -f ufo_3_SM.ufo.mdl ufo_4_SM.ufo.mdl
+	rm -f ufo_5_SM.ufo.mdl
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 	rm -rf output_cll
 	rm -rf *.dSYM
