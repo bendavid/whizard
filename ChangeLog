@@ -7,6 +7,9 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2020-01-20
+	Bugfix for configure setup for automake v1.16+
+
 2020-01-18
 	General SLHA parameter files for UFO models supported
 
