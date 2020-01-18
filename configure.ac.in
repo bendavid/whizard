@@ -34,7 +34,7 @@ dnl ***********************************************************************
 dnl
 dnl Start configuration
 AC_INIT([XXXWHIZARDXXX],[2.8.3])
-AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([1.12.2 color-tests parallel-tests])
 AC_PREREQ([2.65])
 AM_MAKE_INCLUDE
