@@ -1538,6 +1538,13 @@ are requested (GoSam does not support polarized matrix elements).
     real(double) :: mu_dble, acc_dble
     real(default) :: acc, alpha_s
     if (object%i_tree(i_flv, i_hel) >= 0) then
+       if (debug_on) call msg_debug2 (D_REAL, "prc_blha_compute_sqme")
+       if (debug_on) call msg_debug2 (D_REAL, "i_flv", i_flv)
+       if (debug2_active (D_REAL)) then
+           call msg_debug2 (D_REAL, "use momenta: ")
+           call vector4_write_set (p, show_mass = .true., &
+                check_conservation = .true.)
+       end if
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
             call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
@@ -1631,6 +1638,11 @@ are requested (GoSam does not support polarized matrix elements).
     real(double), dimension(size(rr)) :: r
     real(default) :: alpha_s, acc
     real(double) :: mu_dble, acc_dble
+    if (debug2_active (D_REAL)) then
+       call msg_debug2 (D_REAL, "use momenta: ")
+       call vector4_write_set (p, show_mass = .true., &
+            check_conservation = .true.)
+    end if
     if (object%i_color_c(i_flv, i_hel) >= 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
@@ -1671,6 +1683,11 @@ are requested (GoSam does not support polarized matrix elements).
     logical :: bad_point2
     real(default) :: born
     integer, dimension(:), allocatable :: flavors
+    if (debug2_active (D_REAL)) then
+       call msg_debug2 (D_REAL, "use momenta: ")
+       call vector4_write_set (p, show_mass = .true., &
+            check_conservation = .true.)
+    end if
     allocate (r (blha_result_array_size &
          (size(born_color_c, dim=1), BLHA_AMP_COLOR_C)))
     call object%compute_sqme_color_c_raw (i_flv, i_hel, p, ren_scale, r, bad_point)

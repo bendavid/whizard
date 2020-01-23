@@ -38,18 +38,11 @@ scale = let subevt @clustered_jets = cluster [jet] in
           sqrts
         endif
 
-?nlo_use_born_scale = false
-?nlo_cut_all_sqmes = false
 ?combined_nlo_integration = false
 relative_error_goal = 0.009
-
-!?test_coll_limit = true
-!?test_soft_limit = true
-!$select_alpha_regions = "1,7"
 mult_call_real = 10
 mult_call_virt = 5
 
-!process ppwjj = pr, pr => W, jet { nlo_calculation = full }
 process ppwjj = pr, pr => W, jet, jet { nlo_calculation = full }
 
 show(model)

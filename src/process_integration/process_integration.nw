@@ -4094,7 +4094,7 @@ parameterizing an s-channel resonance.
     logical, intent(in), optional :: combined_integration
     type(string_t), intent(in), optional :: subdir
     real(default) :: sqrts
-    integer :: i, i_born
+    integer :: i, i_born, nlo_type
     class(phs_config_t), pointer :: phs_config_born
     sqrts = process%get_sqrts ()
     do i = 1, process%meta%n_components
@@ -4105,7 +4105,8 @@ parameterizing an s-channel resonance.
                call component%configure_phs (sqrts, process%beam_config, &
                     rebuild, ignore_mismatch, subdir)
             class is (pcm_nlo_t)
-               select case (component%config%get_nlo_type ())
+               nlo_type = component%config%get_nlo_type ()
+               select case (nlo_type)
                case (BORN, NLO_VIRTUAL, NLO_SUBTRACTION)
                   call component%configure_phs (sqrts, process%beam_config, &
                        rebuild, ignore_mismatch, subdir)
@@ -4114,12 +4115,14 @@ parameterizing an s-channel resonance.
                   i_born = component%config%get_associated_born ()
                   if (component%component_type /= COMP_REAL_FIN) &
                        call check_and_extend_phs (component)
-                  call process%component(i_born)%get_phs_config (phs_config_born)
+                  call process%component(i_born)%get_phs_config &
+                       (phs_config_born)
                   select type (config => component%phs_config)
                   type is (phs_fks_config_t)
                      select type (phs_config_born)
                      type is (phs_wood_config_t)
-                        config%md5sum_born_config = phs_config_born%md5sum_phs_config
+                        config%md5sum_born_config = &
+                             phs_config_born%md5sum_phs_config
                         call config%set_born_config (phs_config_born)
                         call config%set_mode (component%config%get_nlo_type ())
                      end select
@@ -11177,6 +11180,7 @@ a pointer.
 module kinematics
 
 <<Use kinds>>
+<<Use debug>>
   use format_utils, only: write_separator
   use diagnostics
   use io_units
@@ -11415,10 +11419,15 @@ parameter arrays for the selected channel.
 
     select type (phs => k%phs)
     type is (phs_fks_t)
-      if (phs%q_defined) then
-         call phs%get_born_momenta (p)
-         k%phs_factor = phs%get_overall_factor ()
-         success = .true.
+       if (debug_on)  call msg_debug2 (D_REAL, "phase space is phs_FKS")
+       if (phs%q_defined) then
+          call phs%get_born_momenta (p)
+          if (debug_on) then
+             call msg_debug2 (D_REAL, "q is defined")
+             call msg_debug2 (D_REAL, "get_born_momenta called")
+          end if
+          k%phs_factor = phs%get_overall_factor ()
+          success = .true.
       else
          k%phs_factor = 0
          success = .false.
@@ -12588,6 +12597,10 @@ choose to calculate all terms at once together with the seed kinematics, use
        success = .true.
     end if
     call term%int_hard%set_momenta (p)
+    if (debug_on) then
+       call msg_debug2 (D_REAL, "inside compute_hard_kinematics")
+       if (debug2_active (D_REAL))  call vector4_write_set (p)
+    end if
   end subroutine term_instance_compute_hard_kinematics
 
 @ %def term_instance_compute_hard_kinematics

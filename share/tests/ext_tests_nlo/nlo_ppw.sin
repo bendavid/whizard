@@ -1,6 +1,7 @@
 include("nlo_settings.sin")
 
 alias pr = u:U:d:D:s:S:c:C:b:B:gl
+alias Wpm = Wp:Wm
 
 $exclude_gauge_splittings = "t"
 
@@ -20,9 +21,9 @@ cuts = let subevt @clustered_jets = cluster [jet] in
 
 scale = let int njet = count [jet] in
         if njet == 0 then
-           (sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)) / 2
+           (sqrt (eval Pt [extract index 1 [Wpm]]**2 + eval M [extract index 1 [Wpm]]**2)) / 2
         elsif njet == 1 then
-           (sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
+           (sqrt (eval Pt [extract index 1 [Wpm]]**2 + eval M [extract index 1 [Wpm]]**2)
           + eval Pt [extract index 1 [jet]]) / 2
         else
           sqrts
@@ -32,6 +33,6 @@ scale = let int njet = count [jet] in
 ?use_vamp_equivalences = false
 ?fixed_order_nlo_events = true
 
-process ppz = pr, pr => Z { nlo_calculation = full }
+process ppw = pr, pr => Wpm { nlo_calculation = full }
 
-integrate (ppz) { iterations = 5:10000:"gw",3:10000 }
+integrate (ppw) { iterations = 5:10000:"gw",3:10000 }

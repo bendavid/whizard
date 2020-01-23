@@ -374,6 +374,8 @@ Diagnostics areas:
        i = D_QFT
     case ("beams")
        i = D_BEAMS
+    case ("real")
+       i = D_REAL
     case ("all")
        i = D_ALL
     case default
@@ -440,7 +442,7 @@ Diagnostics areas:
   public :: D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
        D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD, &
        D_PHASESPACE, D_MISMATCH, D_ME_METHODS, D_PROCESS_INTEGRATION, &
-       D_TAUOLA, D_CORE, D_VAMP2, D_MPI, D_QFT, D_BEAMS
+       D_TAUOLA, D_CORE, D_VAMP2, D_MPI, D_QFT, D_BEAMS, D_REAL
 <<Diagnostics: parameters>>=
   integer, parameter :: D_ALL=0, D_PARTICLES=1, D_EVENTS=2, &
        D_SHOWER=3, D_MODEL_F=4, &
@@ -448,7 +450,7 @@ Diagnostics areas:
        D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9, D_PHASESPACE=10, &
        D_MISMATCH=11, D_ME_METHODS=12, D_PROCESS_INTEGRATION=13, &
        D_TAUOLA=14, D_CORE=15, D_VAMP2 = 16, D_MPI = 17, D_QFT = 18, &
-       D_BEAMS=19, D_LAST=19
+       D_BEAMS=19, D_REAL=20, D_LAST=20
 @ %def D_ALL D_PARTICLES D_EVENTS
 @ %def D_SHOWER D_MODEL_F D_MATCHING D_TRANSFORMS
 @ %def D_SUBTRACTION D_VIRTUAL D_THRESHOLD D_PHASESPACE

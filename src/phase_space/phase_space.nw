@@ -1276,6 +1276,7 @@ There are three different flux factors.
 \end{enumerate}
 <<PHS base: phs: TBP>>=
   procedure :: compute_flux => phs_compute_flux
+  procedure :: compute_base_flux => phs_compute_flux
 <<PHS base: procedures>>=
   subroutine phs_compute_flux (phs)
     class(phs_t), intent(inout) :: phs
@@ -16442,6 +16443,7 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
   type, extends (phs_wood_config_t) :: phs_fks_config_t
     integer :: mode = PHS_MODE_UNDEFINED
     character(32) :: md5sum_born_config
+    logical :: born_2_to_1 = .false.
     logical :: make_dalitz_plot = .false.
   contains
   <<phs fks: fks config: TBP>>
@@ -16468,6 +16470,9 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
     integer :: u
     u = given_output_unit (unit)
     call object%phs_wood_config_t%write (u)
+    write (u, "(3x,A,I0)")  "NLO mode  = ", object%mode
+    write (u, "(3x,A,L1)")  "2->1 proc = ", object%born_2_to_1
+    write (u, "(3x,A,L1)")  "Dalitz    = ", object%make_dalitz_plot
     write (u, "(A,A)") "Extra Born md5sum: ", object%md5sum_born_config
   end subroutine phs_fks_config_write
 
@@ -16504,10 +16509,14 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
     logical, intent(in), optional :: ignore_mismatch
     integer, intent(in), optional :: nlo_type
     type(string_t), intent(in), optional :: subdir
+    if (present (nlo_type))  phs_config%nlo_type = nlo_type
     if (phs_config%extension_mode == EXTENSION_NONE) then
        select case (phs_config%mode)
        case (PHS_MODE_ADDITIONAL_PARTICLE)
           phs_config%n_par = phs_config%n_par + 3
+          if (phs_config%nlo_type == NLO_REAL .and. phs_config%n_out == 2) then
+             phs_config%born_2_to_1 = .true.
+          end if
        case (PHS_MODE_COLLINEAR_REMNANT)
           phs_config%n_par = phs_config%n_par + 1
        end select
@@ -16612,7 +16621,8 @@ be assured that Born flavors are used for this.
   subroutine phs_fks_config_set_born_config (phs_config, phs_cfg_born)
     class(phs_fks_config_t), intent(inout) :: phs_config
     type(phs_wood_config_t), intent(in), target :: phs_cfg_born
-    if (debug_on) call msg_debug (D_PHASESPACE, "phs_fks_config_set_born_config")
+    if (debug_on) &
+         call msg_debug (D_PHASESPACE, "phs_fks_config_set_born_config")
     phs_config%forest = phs_cfg_born%forest
     phs_config%n_channel = phs_cfg_born%n_channel
     allocate (phs_config%channel (phs_config%n_channel))
@@ -17073,7 +17083,7 @@ channel-emitter-association and allocates space for the momenta.
        phs%forest = phs_config%forest
     end select
 
-    select type(phs)
+    select type (phs)
     type is (phs_fks_t)
       select type (phs_config)
       type is (phs_fks_config_t)
@@ -17090,6 +17100,24 @@ channel-emitter-association and allocates space for the momenta.
   end subroutine phs_fks_init
 
 @ %def phs_fks_init
+@ For real components of $2\to 1$ NLO processes we have to recompute the
+flux factor as this has to be the one of the underlying Born.
+<<phs fks: phs fks: TBP>>=
+  procedure :: compute_flux => phs_fks_compute_flux
+<<phs fks: procedures>>=
+  subroutine phs_fks_compute_flux (phs)
+    class(phs_fks_t), intent(inout) :: phs
+    call phs%compute_base_flux ()
+    select type (config => phs%config)
+    type is (phs_fks_config_t)
+       if (config%born_2_to_1) then
+          phs%flux = conv * twopi &
+               / (2 * config%sqrts ** 2 * phs%m_out(1) ** 2)
+       end if
+    end select
+  end subroutine phs_fks_compute_flux
+
+@  %def phs_fks_compute_flux
 @
 <<phs fks: phs fks: TBP>>=
   procedure :: allocate_momenta => phs_fks_allocate_momenta

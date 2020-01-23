@@ -40,24 +40,16 @@ scale = let subevt @clustered_jets = cluster [jet] in
           sqrts
         endif
 
-?nlo_use_born_scale = false
-?nlo_cut_all_sqmes = false
 ?combined_nlo_integration = false
 ?use_vamp_equivalences = false
 ?fixed_order_nlo_events = true
 !?nlo_use_real_partition = true
 !real_partition_scale = 5 GeV
-
-!?test_coll_limit = true
-!?test_anti_coll_limit = false
-!?test_soft_limit = true
-!$select_alpha_regions = "1"
 mult_call_real = 10
 mult_call_virt = 1
 relative_error_goal = 0.001
 
 process ppttj = pr, pr => t, T, jet { nlo_calculation = full $restrictions="!W+:W-" }
-!process ppttj = pr, pr => t, T, jet { nlo_calculation = real }
 
 integrate (ppttj) { iterations = 10:100000:"gw",5:60000 }
 !integrate (ppttj) { iterations = 4:1000:"gw" }
