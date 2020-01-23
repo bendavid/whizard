@@ -11282,6 +11282,8 @@ module mci_vamp2
   use md5
   use phs_base
   use rng_base
+  use os_interface, only: mpi_get_comm_id
+  use rng_stream, only: rng_stream_t
 
   use mci_base
 
@@ -12789,6 +12791,24 @@ Prepare simulation. We check the grids and reread them from file, if necessary.
     if (.not. mci%integrator_defined) then
        call mci%read_data ()
     end if
+    call groom_rng (mci%rng)
+   contains
+    subroutine groom_rng (rng)
+      class(rng_t), intent(inout) :: rng
+      integer :: i, rank, n_size
+      call mpi_get_comm_id (n_size, rank)
+      do i = 2, rank + 1
+         select type (rng)
+         type is (rng_stream_t)
+            call rng%next_substream ()
+            if (i == rank) &
+               call msg_message ("MCI: Advance RNG for parallel event simulation")
+         class default
+            call msg_bug ("Use of any random number generator &
+               &beside rng_stream for parallel event generation not supported.")
+         end select
+      end do
+    end subroutine groom_rng
   end subroutine mci_vamp2_prepare_simulation
 
 @ %def mci_vamp2_prepare_simulation

@@ -7,6 +7,13 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2020-01-22
+        Bug fix: correct random number sequencing during parallel MPI event
+	generation with rng_stream
+
+2020-01-21
+	Consistent distribution of events during parallel MPI event generation
+
 2020-01-20
 	Bugfix for configure setup for automake v1.16+
 

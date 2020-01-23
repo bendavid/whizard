@@ -10526,6 +10526,35 @@ generation step has been completed.
   end subroutine counter_record
 
 @ %def counter_record
+<<MPI: Simulations: counter: TBP>>=
+  procedure :: allreduce_record => counter_allreduce_record
+<<MPI: Simulations: procedures>>=
+  subroutine counter_allreduce_record (counter)
+    class(counter_t), intent(inout) :: counter
+    integer :: read, generated
+    integer :: positive, negative, zero, excess, dropped
+    real(default) :: max_excess, sum_excess
+    read = counter%read
+    generated = counter%generated
+    positive = counter%positive
+    negative = counter%negative
+    zero = counter%zero
+    excess = counter%excess
+    max_excess = counter%max_excess
+    sum_excess = counter%sum_excess
+    dropped = counter%dropped
+    call MPI_ALLREDUCE (read, counter%read, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (generated, counter%generated, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (positive, counter%positive, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (negative, counter%negative, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (zero, counter%zero, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (excess, counter%excess, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (max_excess, counter%max_excess, 1, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (sum_excess, counter%sum_excess, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD)
+    call MPI_ALLREDUCE (dropped, counter%dropped, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+    !! \todo{sbrass - Implement allreduce of mean and variance, relevant for weighted events.}
+  end subroutine counter_allreduce_record
+
 @
 <<Simulations: counter: TBP>>=
   procedure :: record_mean_and_variance => &
@@ -12344,6 +12373,7 @@ we may only read and rescan events.
        call dispatch_rng_factory (rng_factory, local%var_list, next_rng_seed)
        call update_rng_seed_in_var_list (local%var_list, next_rng_seed)
        call rng_factory%make (simulation%rng)
+     <<Simulations: simulation init: rng>>
 !    end if
     if (all (simulation%entry%has_integral)) then
        simulation%integral = sum (simulation%entry%integral)
@@ -12385,6 +12415,19 @@ we may only read and rescan events.
   if (n_size > 1) then
      sample_suffix = var_str ("_") // str (rank)
   end if
+@
+<<MPI: Simulations: simulation init: rng>>=
+  do i = 2, rank + 1
+     select type (rng => simulation%rng)
+     type is (rng_stream_t)
+        call rng%next_substream ()
+        if (i == rank) &
+           call msg_message ("Simulate: Advance RNG for parallel event generation")
+     class default
+        call msg_bug ("Use of any random number generator &
+               &beside rng_stream for parallel event generation not supported.")
+     end select
+  end do
 @
 @ The number of events that we want to simulate is determined by the
 settings of [[n_events]], [[luminosity]], and [[?unweighted]].  For
@@ -12588,6 +12631,43 @@ weights.
   end function simulation_select_mci
 
 @ %def simulation_select_mci
+<<Simulations: simulation: TBP>>=
+  procedure, private :: startup_message_generate => simulation_startup_message_generate
+<<Simulations: procedures>>=
+  subroutine simulation_startup_message_generate (simulation, &
+     has_input, is_weighted, is_polarized, is_leading_order, n_events)
+    class(simulation_t), intent(in) :: simulation
+    logical, intent(in) :: has_input
+    logical, intent(in) :: is_weighted
+    logical, intent(in) :: is_polarized
+    logical, intent(in) :: is_leading_order
+    integer, intent(in) :: n_events
+    type(string_t) :: str1, str2, str3, str4
+    if (has_input) then
+       str1 = "Events: reading"
+    else
+       str1 = "Events: generating"
+    end if
+    if (is_weighted) then
+       str2 = "weighted"
+    else
+       str2 = "unweighted"
+    end if
+    if (is_polarized) then
+       str3 = ", polarized"
+    else
+       str3 = ", unpolarized"
+    end if
+    str4 = ""
+    if (.not. is_leading_order) str4 = " NLO"
+    write (msg_buffer, "(A,1X,I0,1X,A,1X,A)")  char (str1), n_events, &
+            char (str2) // char(str3) // char(str4), "events ..."
+    call msg_message ()
+    write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
+         char (event_normalization_string (simulation%norm_mode))
+    call msg_message ()
+  end subroutine simulation_startup_message_generate
+
 @ Generate a predefined number of events.  First select a process and
 a component set, then generate an event for that process and factorize
 the quantum state.  The pair of random numbers can be used for
@@ -12609,45 +12689,28 @@ process instance will not be complete.  This should be fixed.
     class(simulation_t), intent(inout), target :: simulation
     integer, intent(in) :: n
     type(event_stream_array_t), intent(inout), optional :: es_array
-    type(string_t) :: str1, str2, str3
     logical :: generate_new, passed
-    integer :: i, j, k
+    integer :: i, j, k, begin_it, end_it
     type(entry_t), pointer :: current_entry
-    integer :: n_events
-  <<Simulations: simulation generate: variables>>
+    integer :: n_events_print
+    logical :: has_input, is_leading_order
+    has_input = .false.; if (present (es_array)) has_input = es_array%has_input ()
+    n_events_print = n * simulation%get_n_nlo_entries (1)
+    is_leading_order = (n_events_print == n)
+    call simulation%startup_message_generate ( &
+         has_input = has_input, &
+         is_weighted = .not. simulation%entry(1)%config%unweighted, &
+         is_polarized = .not. (simulation%entry(1)%config%factorization_mode &
+            == FM_IGNORE_HELICITY), &
+         is_leading_order = is_leading_order, &
+         n_events = n_events_print)
     simulation%n_evt_requested = n
-    n_events = n * simulation%get_n_nlo_entries (1)
     call simulation%entry%set_n (n)
     if (simulation%n_alt > 0)  call simulation%alt_entry%set_n (n)
-    str1 = "Events: generating"
-    if (present (es_array)) then
-       if (es_array%has_input ())  str1 = "Events: reading"
-    end if
-    if (simulation%entry(1)%config%unweighted) then
-       str2 = "unweighted"
-    else
-       str2 = "weighted"
-    end if
-    if (simulation%entry(1)%config%factorization_mode == &
-         FM_IGNORE_HELICITY) then
-       str3 = ", unpolarized"
-    else
-       str3 = ", polarized"
-    end if
-    if (n_events == n) then
-       write (msg_buffer, "(A,1x,I0,1x,A,1x,A)")  char (str1), n, &
-            char (str2) // char(str3), "events ..."
-    else
-       write (msg_buffer, "(A,1x,I0,1x,A,1x,A)") char (str1), n_events, &
-            char (str2) // char(str3), "NLO events ..."
-    end if
-    call msg_message ()
-    write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
-         char (event_normalization_string (simulation%norm_mode))
-    call msg_message ()
     call simulation%init_event_index ()
+    begin_it = 1; end_it = n
   <<Simulations: simulation generate: init>>
-    do i = start_it, end_it
+    do i = begin_it, end_it
        call simulation%increment_event_index ()
        if (present (es_array)) then
           call simulation%read_event (es_array, .true., generate_new)
@@ -12732,8 +12795,8 @@ process instance will not be complete.  This should be fixed.
           call simulation%write_event (es_array, passed)
        end if
     end do
-  <<Simulations: simulation generate: finalize>>
     call msg_message ("        ... event sample complete.")
+  <<Simulations: simulation generate: finalize>>
     if (simulation%unweighted)  call simulation%show_efficiency ()
     call simulation%counter%show_excess ()
     call simulation%counter%show_dropped ()
@@ -12742,45 +12805,90 @@ process instance will not be complete.  This should be fixed.
 
 @ %def simulation_generate
 @
-<<Simulations: simulation generate: variables>>=
-  integer :: start_it, end_it
-@
 <<Simulations: simulation generate: init>>=
-  start_it = 1
-  end_it = n
+@
+<<MPI: Simulations: simulation generate: init>>=
+  call simulation%init_event_loop (n, begin_it, end_it)
 @
 <<Simulations: simulation generate: finalize>>=
 @
-<<MPI: Simulations: simulation generate: variables>>=
-  integer :: n_size, rank
-  integer :: worker_n_events, root_n_events
-<<MPI: Simulations: simulation generate: init>>=
-  call mpi_get_comm_id (n_size, rank)
-  if (n_size > 1) then
-     start_it = start_it + nint (rank * (real (n) / n_size))
-     end_it = min (nint ((rank + 1) * (real (n) / n_size)), n)
-     write (msg_buffer, "(A,I0,A,I0,A)") &
-          & "MPI: generate events [", start_it, ":", end_it, "]"
-     call msg_message ()
-     do i = 1, rank + 1
-        select type (rng => simulation%rng)
-        type is (rng_stream_t)
-           call rng%next_substream ()
-        end select
-     end do
-  end if
-@
 <<MPI: Simulations: simulation generate: finalize>>=
-  call MPI_Barrier (MPI_COMM_WORLD)
-  if (n_size > 1) then
-     worker_n_events = end_it - start_it + 1
-     call MPI_Reduce (worker_n_events, root_n_events, 1, MPI_INTEGER, MPI_SUM,&
-          & 0, MPI_COMM_WORLD)
-     if (rank == 0) then
-        write (msg_buffer, "(A,I0)") "MPI: Number of generated events in world = ", root_n_events
-        call msg_message ()
-     end if
-  end if
+  call simulation%finalize_event_loop (n, begin_it, end_it)
+@ We iterate over [[1:n]].
+However, for the MPI event generation this interval is split up into intervals of [[n_workers]].
+<<MPI: Simulations: simulation: TBP>>=
+  procedure, private :: init_event_loop => simulation_init_event_loop
+<<MPI: Simulations: procedures>>=
+  subroutine simulation_init_event_loop (simulation, n_events, begin_it, end_it)
+    class(simulation_t), intent(inout) :: simulation
+    integer, intent(in) :: n_events
+    integer, intent(out) :: begin_it, end_it
+    integer :: rank, n_workers
+    call MPI_COMM_SIZE (MPI_COMM_WORLD, n_workers)
+    if (n_workers < 2) then
+       begin_it = 1; end_it = n_events
+       return
+    end if
+    call MPI_COMM_RANK (MPI_COMM_WORLD, rank)
+    if (rank == 0) then
+       call compute_and_scatter_intervals (n_events, begin_it, end_it)
+    else
+       call retrieve_intervals (begin_it, end_it)
+    end if
+    !! Event index starts by 0 (before incrementing when the first event gets generated/read in).
+    !! Proof: event_index_offset in [0, N], start_it in [1, N].
+    simulation%event_index_offset = simulation%event_index_offset + (begin_it - 1)
+    call simulation%init_event_index ()
+    write (msg_buffer, "(A,I0,A,I0,A)") &
+          & "MPI: generate events [", begin_it, ":", end_it, "]"
+    call msg_message ()
+   contains
+    subroutine compute_and_scatter_intervals (n_events, begin_it, end_it)
+      integer, intent(in) :: n_events
+      integer, intent(out) :: begin_it, end_it
+      integer, dimension(:), allocatable :: all_begin_it, all_end_it
+      integer :: rank, n_workers, n_events_per_worker
+      call MPI_COMM_RANK (MPI_COMM_WORLD, rank)
+      call MPI_COMM_SIZE (MPI_COMM_WORLD, n_workers)
+      allocate (all_begin_it (n_workers), source = 1)
+      allocate (all_end_it (n_workers), source = n_events)
+      n_events_per_worker = floor (real (n_events, default) / n_workers)
+      all_begin_it = [(1 + rank * n_events_per_worker, rank = 0, n_workers - 1)]
+      all_end_it = [(rank * n_events_per_worker, rank = 1, n_workers)]
+      all_end_it(n_workers) = n_events
+      call MPI_SCATTER (all_begin_it, 1, MPI_INTEGER, begin_it, 1, MPI_INTEGER, 0, MPI_COMM_WORLD)
+      call MPI_SCATTER (all_end_it, 1, MPI_INTEGER, end_it, 1, MPI_INTEGER, 0, MPI_COMM_WORLD)
+    end subroutine compute_and_scatter_intervals
+
+    subroutine retrieve_intervals (begin_it, end_it)
+      integer, intent(out) :: begin_it, end_it
+      integer :: local_begin_it, local_end_it
+      call MPI_SCATTER (local_begin_it, 1, MPI_INTEGER, begin_it, 1, MPI_INTEGER, 0, MPI_COMM_WORLD)
+      call MPI_SCATTER (local_end_it, 1, MPI_INTEGER, end_it, 1, MPI_INTEGER, 0, MPI_COMM_WORLD)
+    end subroutine retrieve_intervals
+  end subroutine simulation_init_event_loop
+
+@
+<<MPI: Simulations: simulation: TBP>>=
+  procedure, private :: finalize_event_loop => simulation_finalize_event_loop
+<<MPI: Simulations: procedures>>=
+  subroutine simulation_finalize_event_loop (simulation, n_events, begin_it, end_it)
+     class(simulation_t), intent(inout) :: simulation
+     integer, intent(in) :: n_events
+     integer, intent(in) :: begin_it, end_it
+     integer :: n_workers, n_events_local, n_events_global
+     call MPI_Barrier (MPI_COMM_WORLD)
+     call MPI_COMM_SIZE (MPI_COMM_WORLD, n_workers)
+     if (n_workers < 2) return
+     n_events_local = end_it - begin_it + 1
+     call MPI_ALLREDUCE (n_events_local, n_events_global, 1, MPI_INTEGER, MPI_SUM,&
+          & MPI_COMM_WORLD)
+     write (msg_buffer, "(2(A,1X,I0))") &
+          "MPI: Number of generated events locally", n_events_local, " and in world", n_events_global
+     call msg_message ()
+     call simulation%counter%allreduce_record ()
+  end subroutine simulation_finalize_event_loop
+
 @
 @ Compute the event matrix element and weight for all alternative
 environments, given the current event and selected process.  We first
