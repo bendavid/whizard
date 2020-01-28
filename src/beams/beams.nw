@@ -15529,11 +15529,11 @@ particle mass.
   procedure :: init => epa_data_init
 <<SF epa: procedures>>=
   subroutine epa_data_init (data, model, pdg_in, alpha, &
-       x_min, q_min, E_max, mass, recoil, keep_energy)
+       x_min, q_min, q_max, mass, recoil, keep_energy)
     class(epa_data_t), intent(inout) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
-    real(default), intent(in) :: alpha, x_min, q_min, E_max
+    real(default), intent(in) :: alpha, x_min, q_min, q_max
     real(default), intent(in), optional :: mass
     logical, intent(in), optional :: recoil
     logical, intent(in), optional :: keep_energy
@@ -15545,14 +15545,14 @@ particle mass.
        call data%flv_in(i)%init (pdg_array_get (pdg_in, i), model)
     end do
     data%alpha = alpha
-    data%E_max = E_max
+    data%E_max = q_max / 2
     data%x_min = x_min
     data%x_max = 1
     if (vanishes (data%x_min)) then
        data%error = ZERO_XMIN;  return
     end if
     data%q_min = q_min
-    data%q_max = 2 * data%E_max
+    data%q_max = q_max
     select case (char (data%model%get_name ()))
     case ("QCD","Test")
        data%error = NO_EPA;  return
@@ -15576,7 +15576,7 @@ particle mass.
     else if (max (data%mass, data%q_min) >= data%E_max) then
        data%error = Q_MAX_TOO_SMALL;  return
     end if
-    data%log = log (4 * (data%E_max / max (data%mass, data%q_min)) ** 2 )
+    data%log = log ((data%q_max / max (data%mass, data%q_min)) ** 2 )
     data%a  = data%alpha / pi
     data%c0 = log (data%x_min) * (data%log - log (data%x_min))
     data%c1 = log (data%x_max) * (data%log - log (data%x_max))
@@ -16117,7 +16117,7 @@ Construct and display a test structure function data object.
     select type (data)
     type is (epa_data_t)
        call data%init (model, pdg_in, 1./137._default, 0.01_default, &
-            10._default, 50._default, 0.000511_default, recoil = .false.)
+            10._default, 100._default, 0.000511_default, recoil = .false.)
     end select
 
     call data%write (u)
@@ -16179,7 +16179,7 @@ structure function.
     select type (data)
     type is (epa_data_t)
        call data%init (model, pdg_in, 1./137._default, 0.01_default, &
-            10._default, 50._default, 0.000511_default, recoil = .false.)
+            10._default, 100._default, 0.000511_default, recoil = .false.)
     end select
 
     write (u, "(A)")  "* Initialize structure-function object"
@@ -16303,7 +16303,7 @@ structure function, applying the standard single-particle mapping.
     select type (data)
     type is (epa_data_t)
        call data%init (model, pdg_in, 1./137._default, 0.01_default, &
-            10._default, 50._default, 0.000511_default, recoil = .false.)
+            10._default, 100._default, 0.000511_default, recoil = .false.)
     end select
 
     write (u, "(A)")  "* Initialize structure-function object"
@@ -16427,7 +16427,7 @@ structure function.
     select type (data)
     type is (epa_data_t)
        call data%init (model, pdg_in, 1./137._default, 0.01_default, &
-            10._default, 50._default, 5.0_default, recoil = .true.)
+            10._default, 100._default, 5.0_default, recoil = .true.)
     end select
 
     write (u, "(A)")  "* Initialize structure-function object"
@@ -16556,7 +16556,7 @@ non-uniform charge.
     select type (data)
     type is (epa_data_t)
        call data%init (model, pdg_in, 1./137._default, 0.01_default, &
-            10._default, 50._default, 0.000511_default, recoil = .false.)
+            10._default, 100._default, 0.000511_default, recoil = .false.)
        call data%check ()
     end select
 
@@ -24734,7 +24734,7 @@ flavors (beam index, component index) for the hard process.
     real(default) :: isr_alpha, isr_q_max, isr_mass
     integer :: isr_order
     logical :: isr_recoil, isr_keep_energy
-    real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass
+    real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_q_max, epa_mass
     logical :: epa_recoil, epa_keep_energy
     real(default) :: ewa_x_min, ewa_pt_max, ewa_mass
     logical :: ewa_recoil, ewa_keep_energy
@@ -24869,9 +24869,9 @@ flavors (beam index, component index) for the hard process.
        end if
        epa_x_min = var_list%get_rval (var_str ("epa_x_min"))
        epa_q_min = var_list%get_rval (var_str ("epa_q_min"))
-       epa_e_max = var_list%get_rval (var_str ("epa_e_max"))
-       if (vanishes (epa_e_max)) then
-          epa_e_max = sqrts
+       epa_q_max = var_list%get_rval (var_str ("epa_q_max"))
+       if (vanishes (epa_q_max)) then
+          epa_q_max = sqrts
        end if
        epa_mass   = var_list%get_rval (var_str ("epa_mass"))
        epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
@@ -24880,7 +24880,7 @@ flavors (beam index, component index) for the hard process.
        type is (epa_data_t)
           call data%init &
                (model, pdg_in (i_beam(1)), epa_alpha, epa_x_min, &
-               epa_q_min, epa_e_max, epa_mass, recoil = epa_recoil, &
+               epa_q_min, epa_q_max, epa_mass, recoil = epa_recoil, &
                keep_energy = epa_keep_energy)
           call data%check ()
        end select

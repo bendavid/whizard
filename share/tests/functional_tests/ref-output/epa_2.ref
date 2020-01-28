@@ -54,9 +54,9 @@ seed = 0
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000     1.444E+05   3.49E+04   24.14    7.63     1.4
+   1       1000     1.097E+05   2.99E+04   27.25    8.62     1.2
 |-----------------------------------------------------------------------------|
-   1       1000     1.444E+05   3.49E+04   24.14    7.63     1.4
+   1       1000     1.097E+05   2.99E+04   27.25    8.62     1.2
 |=============================================================================|
 ?epa_handler = true
 $epa_handler_mode = "recoil"
@@ -68,15 +68,15 @@ n_events = 100
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 100
-|             corr. to luminosity [fb-1] =   6.9234E-04
+|             corr. to luminosity [fb-1] =   9.1189E-04
 | Events: writing to raw file 'epa_2a.evx'
 | Events: generating 100 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =   0.96 %
-Warning: Encountered events with excess weight: 14 events ( 14.000 %)
-| Maximum excess weight = 1.190E+01
-| Average excess weight = 2.949E-01
+| Events: actual unweighting efficiency =   0.84 %
+Warning: Encountered events with excess weight: 12 events ( 12.000 %)
+| Maximum excess weight = 1.215E+01
+| Average excess weight = 3.097E-01
 | Events: closing raw file 'epa_2a.evx'
 $out_file = "epa_2a.dat"
 | Opening file 'epa_2a.dat' for output

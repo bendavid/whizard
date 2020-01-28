@@ -262,7 +262,7 @@ Process library: show_1_lib
   EPA alpha         = 0.000000000000E+00
   EPA x min         = 0.000000000000E+00
   EPA Q min         = 0.000000000000E+00
-  EPA E max         = 0.000000000000E+00
+  EPA Q max         = 0.000000000000E+00
   EPA mass          = 0.000000000000E+00
   EPA recoil        = F
   EPA  energy cons. = F

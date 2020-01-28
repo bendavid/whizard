@@ -57,9 +57,9 @@ seed = 0
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        999     1.508E+04   2.40E+03   15.90    5.03     2.0
+   1        999     1.363E+04   2.21E+03   16.20    5.12     1.9
 |-----------------------------------------------------------------------------|
-   1        999     1.508E+04   2.40E+03   15.90    5.03     2.0
+   1        999     1.363E+04   2.21E+03   16.20    5.12     1.9
 |=============================================================================|
 ?isr_handler = true
 ?epa_handler = true
@@ -74,15 +74,15 @@ n_events = 100
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 100
-|             corr. to luminosity [fb-1] =   6.6299E-03
+|             corr. to luminosity [fb-1] =   7.3361E-03
 | Events: writing to raw file 'isr_epa_1a.evx'
 | Events: generating 100 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =   2.72 %
+| Events: actual unweighting efficiency =   2.74 %
 Warning: Encountered events with excess weight: 19 events ( 19.000 %)
-| Maximum excess weight = 8.059E+00
-| Average excess weight = 1.260E-01
+| Maximum excess weight = 7.146E+00
+| Average excess weight = 1.111E-01
 | Events: closing raw file 'isr_epa_1a.evx'
 $out_file = "isr_epa_1a.dat"
 | Opening file 'isr_epa_1a.dat' for output

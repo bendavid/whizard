@@ -1903,8 +1903,8 @@ we collect them in a single record.
               var_list%get_rval (var_str ("epa_x_min"))
          write (u, "(2x,A," // FMT_19 // ")") "EPA Q min         =", &
               var_list%get_rval (var_str ("epa_q_min"))
-         write (u, "(2x,A," // FMT_19 // ")") "EPA E max         =", &
-              var_list%get_rval (var_str ("epa_e_max"))
+         write (u, "(2x,A," // FMT_19 // ")") "EPA Q max         =", &
+              var_list%get_rval (var_str ("epa_q_max"))
          write (u, "(2x,A," // FMT_19 // ")") "EPA mass          =", &
               var_list%get_rval (var_str ("epa_mass"))
          write (u, "(2x,A,1x,L1)") "EPA recoil        =", &
