@@ -30,17 +30,7 @@
 noinst_LTLIBRARIES = libmuli.la
 
 libmuli_la_SOURCES = \
-   muli_base.f90 \
-   muli.f90 \
-   muli_cuba.f90 \
-   muli_momentum.f90 \
-   muli_interactions.f90 \
-   muli_trapezium.f90 \
-   muli_fibonacci_tree.f90 \
-   muli_aq.f90 \
-   muli_dsigma.f90 \
-   muli_remnant.f90 \
-   muli_mcint.f90
+   muli.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = muli.nw
