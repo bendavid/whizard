@@ -828,6 +828,8 @@ REF_OUTPUT_FILES_BASE = \
     ext_tests_nlo/ref-output/nlo_eettzjj.ref \
     ext_tests_nlo/ref-output/nlo_eettzz.ref \
     ext_tests_nlo/ref-output/nlo_pptttt.ref \
+    ext_tests_nlo/ref-output/nlo_ppz.ref \
+    ext_tests_nlo/ref-output/nlo_ppw.ref \
     ext_tests_nlo/ref-output/nlo_ppzw.ref \
     ext_tests_nlo/ref-output/nlo_ppzz.ref
 
@@ -1427,6 +1429,8 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_eetthz.sin \
     ext_tests_nlo/nlo_ee4t.sin \
     ext_tests_nlo/nlo_ee4tj.sin \
+    ext_tests_nlo/nlo_ppz.sin \
+    ext_tests_nlo/nlo_ppw.sin \
     ext_tests_nlo/nlo_ppzz.sin \
     ext_tests_nlo/nlo_ppzw.sin \
     ext_tests_nlo/nlo_pptttt.sin

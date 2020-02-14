@@ -1,0 +1,213 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+| Switching to model 'SM', scheme 'GF_MW_MZ'
+$blha_ew_scheme = "alpha_qed"
+SM.mZ =>  9.118800000000E+01
+SM.mW =>  8.041900200000E+01
+SM.mH =>  1.250000000000E+02
+SM.GF =>  1.166390000000E-05
+SM.wZ =>  0.000000000000E+00
+SM.wtop =>  0.000000000000E+00
+SM.wW =>  0.000000000000E+00
+SM.wH =>  0.000000000000E+00
+SM.ms =>  0.000000000000E+00
+SM.mc =>  0.000000000000E+00
+SM.mb =>  0.000000000000E+00
+SM.mtop =>  1.732000000000E+02
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
+SM.mtau =>  1.777000000000E+00
+SM.alphas =>  1.180000000000E-01
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
+alphas_nf = 5
+alphas_order = 2
+[user variable] jet = PDG(2, -2, 1, -1, 3, -3, 4, -4, 5, -5, 21)
+$exclude_gauge_splittings = "t"
+$method = "openloops"
+seed = 8131
+sqrts =  1.000000000000E+03
+jet_algorithm = 2
+jet_r =  5.000000000000E-01
+?use_vamp_equivalences = false
+$integration_method = "vamp2"
+$rng_method = "rng_stream"
+| End of included 'nlo_settings.sin'
+[user variable] pr = PDG(2, -2, 1, -1, 3, -3, 4, -4, 5, -5, 21)
+[user variable] Wpm = PDG(24, -24)
+$exclude_gauge_splittings = "t"
+$lhapdf_file = "MSTW2008nlo68cl"
+sqrts =  1.300000000000E+04
+alpha_power = 1
+alphas_power = 0
+?alphas_from_mz = false
+?alphas_from_lhapdf = true
+?combined_nlo_integration = false
+relative_error_goal =  4.000000000000E-03
+| Process library 'nlo_ppw_lib': recorded process 'ppw'
+| Integrate: current process library needs compilation
+| Process library 'nlo_ppw_lib': compiling ...
+| Process library 'nlo_ppw_lib': writing makefile
+| Process library 'nlo_ppw_lib': removing old files
+| Process library 'nlo_ppw_lib': writing driver
+| Process library 'nlo_ppw_lib': creating source code
+| Process library 'nlo_ppw_lib': compiling sources
+| Process library 'nlo_ppw_lib': linking
+| Process library 'nlo_ppw_lib': loading
+| Process library 'nlo_ppw_lib': ... success.
+| Integrate: compilation done
+| QCD alpha: using a running strong coupling
+| RNG: Initializing RNG Stream random-number generator
+| RNG: Setting seed for random-number generator to 8131
+| Initializing integration for process ppw:
+| Beam structure: p, p => lhapdf
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.300000000000E+04 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ppw.i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ppw.i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ppw'
+|   Library name  = 'nlo_ppw_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ppw_i1':   u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl => W+:W- [openloops]
+|     2: 'ppw_i2':   dbar:d:ubar:u:sbar:s:cbar:c:bbar:b:gl, dbar:d:ubar:u:sbar:s:cbar:c:bbar:b:gl => W+:W-, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar:gl [openloops], [real]
+|     3: 'ppw_i3':   u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl => W+:W- [openloops], [virtual]
+|     4: 'ppw_i4':   u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl => W+:W- [inactive], [subtraction]
+|     5: 'ppw_i5':   u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar:gl => W+:W- [openloops], [dglap]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 0 dimensions
+| Phase space: found 2 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 3 dimensions
+| Phase space: found 2 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 0 dimensions
+| Phase space: found 2 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 1 dimensions
+| Phase space: found 2 channels, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Beam structure: lhapdf, none => none, lhapdf
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Using user-defined general scale.
+| Starting integration for process 'ppw' part 'born'
+| Integrate: iterations = 5:100:"gw"
+| Integrator: 1 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| VAMP2: Initialize new grids and write to file 'ppw.m1.vg2'.
+| VAMP2: set chain: use chained weights.
+   1        100  1.4010570E+08  3.16E+06    2.26    0.23*  73.87
+   2        100  1.3839065E+08  3.65E+06    2.64    0.26   66.92
+   3        100  1.3678909E+08  3.68E+06    2.69    0.27   69.98
+   4        100  1.4462663E+08  1.94E+06    1.34    0.13*  74.80
+   5        100  1.4143428E+08  3.10E+06    2.19    0.22   66.27
+|-----------------------------------------------------------------------------|
+   5        500  1.4166162E+08  1.27E+06    0.90    0.20   66.27    1.28   5
+|=============================================================================|
+| Starting integration for process 'ppw' part 'real'
+| Integrate: iterations = 5:100:"gw"
+| Integrator: 1 chains, 2 channels, 5 dimensions
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| VAMP2: Initialize new grids and write to file 'ppw.m2.vg2'.
+| VAMP2: set chain: use chained weights.
+   1        100  9.8853129E+06  1.38E+06   13.94    1.39*  29.20
+   2        100  7.4695755E+06  1.32E+06   17.73    1.77   30.89
+   3        100  8.7052694E+06  1.69E+06   19.46    1.95   24.71
+   4        100  1.1111861E+07  1.67E+06   15.06    1.51*  21.28
+   5        100  1.0249393E+07  1.47E+06   14.31    1.43*  26.68
+|-----------------------------------------------------------------------------|
+   5        500  9.3646224E+06  6.64E+05    7.09    1.59   26.68    0.95   5
+|=============================================================================|
+| Starting integration for process 'ppw' part 'virtual'
+| Integrate: iterations = 5:100:"gw"
+| Integrator: 1 chains, 2 channels, 2 dimensions
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| VAMP2: Initialize new grids and write to file 'ppw.m3.vg2'.
+| VAMP2: set chain: use chained weights.
+   1        100  1.0997093E+07  2.83E+05    2.58    0.26*  72.55
+   2        100  1.1159774E+07  2.53E+05    2.26    0.23*  60.39
+   3        100  1.0791441E+07  2.40E+05    2.22    0.22*  75.62
+   4        100  1.1174326E+07  4.45E+05    3.98    0.40   38.22
+   5        100  1.0945643E+07  3.30E+05    3.01    0.30*  65.77
+|-----------------------------------------------------------------------------|
+   5        500  1.0986978E+07  1.29E+05    1.18    0.26   65.77    0.33   5
+|=============================================================================|
+| Starting integration for process 'ppw' part 'dglap'
+| Integrate: iterations = 5:100:"gw"
+| Integrator: 1 chains, 2 channels, 3 dimensions
+| Integrator: 100 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| VAMP2: Initialize new grids and write to file 'ppw.m4.vg2'.
+| VAMP2: set chain: use chained weights.
+   1         96  1.6843581E+07  5.54E+06   32.92    3.23*  14.38
+   2         96  2.4445493E+07  3.34E+06   13.66    1.34*  41.52
+   3         96  2.2455051E+07  3.11E+06   13.84    1.36   40.36
+   4         96  1.6276142E+07  2.87E+06   17.65    1.73   51.80
+   5         96  1.4714363E+07  3.58E+06   24.36    2.39   40.68
+|-----------------------------------------------------------------------------|
+   5        480  1.9263663E+07  1.53E+06    7.97    1.75   40.68    1.59   5
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0  1.8127688E+08  2.10E+06    1.16    0.00*  57.93
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  ( 14.3663 +-   0.49467 ) %
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

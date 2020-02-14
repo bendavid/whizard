@@ -11,6 +11,7 @@ sqrts = 13000 GeV
 
 alpha_power = 1
 alphas_power = 0
+
 ?alphas_from_mz = false
 ?alphas_from_lhapdf = true
 
@@ -30,9 +31,8 @@ scale = let int njet = count [jet] in
         endif
 
 ?combined_nlo_integration = false
-?use_vamp_equivalences = false
-?fixed_order_nlo_events = true
+relative_error_goal = 0.004
 
 process ppw = pr, pr => Wpm { nlo_calculation = full }
 
-integrate (ppw) { iterations = 5:10000:"gw",3:10000 }
+integrate (ppw) { iterations = 5:100:"gw" }

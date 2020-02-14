@@ -62,6 +62,8 @@ TESTS_EXTENDED = \
 	nlo_eettzj.run \
 	nlo_eettzjj.run \
 	nlo_eettzz.run \
+	nlo_ppz.run \
+	nlo_ppw.run \
 	nlo_ppzz.run \
 	nlo_ppzw.run \
 	nlo_pptttt.run
@@ -129,6 +131,8 @@ nlo_eetthh.run: nlo_settings.sin
 nlo_eetthz.run: nlo_settings.sin
 nlo_ee4t.run: nlo_settings.sin
 nlo_ee4tj.run: nlo_settings.sin
+nlo_ppz.run: nlo_settings.sin
+nlo_ppw.run: nlo_settings.sin
 nlo_ppzz.run: nlo_settings.sin
 nlo_ppzw.run: nlo_settings.sin
 nlo_pptttt.run: nlo_settings.sin
