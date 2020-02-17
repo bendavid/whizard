@@ -121,6 +121,7 @@ TESTS_REQ_OCAML = \
     event_eff_2.run \
     event_dump_1.run \
     event_dump_2.run \
+    event_failed_1.run \
     reweight_1.run \
     reweight_2.run \
     reweight_3.run \

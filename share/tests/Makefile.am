@@ -655,6 +655,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/event_eff_2.ref \
     functional_tests/ref-output/event_dump_1.ref \
     functional_tests/ref-output/event_dump_2.ref \
+    functional_tests/ref-output/event_failed_1.ref \
     functional_tests/ref-output/reweight_1.ref \
     functional_tests/ref-output/reweight_2.ref \
     functional_tests/ref-output/reweight_3.ref \
@@ -1097,6 +1098,7 @@ MISC_TESTS_SIN = \
     functional_tests/event_eff_2.sin \
     functional_tests/event_dump_1.sin \
     functional_tests/event_dump_2.sin \
+    functional_tests/event_failed_1.sin \
     functional_tests/reweight_1.sin \
     functional_tests/reweight_2.sin \
     functional_tests/reweight_3.sin \

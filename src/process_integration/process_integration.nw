@@ -15402,12 +15402,18 @@ it from the MCI record.
     else
        !!! failed kinematics etc.: set weight to zero
        instance%weight = zero
-       !!! Maybe we want to keep the event nevertheless
+       !!! Maybe we want to process and keep the event nevertheless
        if (instance%keep_failed_events ()) then
-          !!! Force factorization scale, otherwise writing to event output fails
           do i = 1, size (instance%term)
-             instance%term(i)%fac_scale = zero
+             associate (term => instance%term(i))
+               if (term%active) then
+                  call term%evaluate_event_data ()
+               end if
+             end associate
           end do
+!           do i = 1, size (instance%term)
+!              instance%term(i)%fac_scale = zero
+!           end do
           instance%evaluation_status = STAT_EVENT_COMPLETE
        end if
     end if
