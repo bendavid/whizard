@@ -6916,19 +6916,21 @@ given a particle set.  Since the particle orderings
       type(interaction_t), pointer :: int_src
       integer, dimension(2) :: i_child
       call int%find_source (k, int_src, k_src)
-      call int%set_momentum (int_src%get_momentum (k_src), k)
-      i_set(k) = .true.
-      if (n_in == 2) then
-         i_child = interaction_get_children (int, k)
-         if (interaction_get_n_children (int, i_child(1)) > 0) then
-            k_in = i_child(1);  k_rad = i_child(2)
-         else
-            k_in = i_child(2);  k_rad = i_child(1)
-         end if
-         if (.not. i_set(k_in))  call err_beams
-         call int%set_momentum &
+      if (.not. i_set (k)) then
+         call int%set_momentum (int_src%get_momentum (k_src), k)
+         i_set(k) = .true.
+         if (n_in == 2) then
+            i_child = interaction_get_children (int, k)
+            if (interaction_get_n_children (int, i_child(1)) > 0) then
+               k_in = i_child(1);  k_rad = i_child(2)
+            else
+               k_in = i_child(2);  k_rad = i_child(1)
+            end if
+            if (.not. i_set(k_in))  call err_beams
+            call int%set_momentum &
               (int%get_momentum (k) - int%get_momentum (k_in), k_rad)
-         i_set(k_rad) = .true.
+            i_set(k_rad) = .true.
+         end if
       end if
     end subroutine reconstruct_beam_and_radiation
     subroutine err_pset_hard
