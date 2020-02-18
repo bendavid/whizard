@@ -9,6 +9,7 @@ Use svn log to see detailed changes.
 
 2020-02-17
 	Bugfix: ?keep_failed_events now forces output of actual event data
+	Bugfix: particle-set reconstruction (rescanning events w/o radiation)
 
 2020-01-28
 	Bugfix for left-over EPA parameter epa_e_max (replaced by epa_q_max)

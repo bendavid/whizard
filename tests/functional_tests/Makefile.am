@@ -131,6 +131,7 @@ TESTS_REQ_OCAML = \
     reweight_7.run \
     reweight_8.run \
     reweight_9.run \
+    reweight_10.run \
     analyze_1.run \
     analyze_2.run \
     analyze_5.run \

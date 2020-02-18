@@ -665,6 +665,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/reweight_7.ref \
     functional_tests/ref-output/reweight_8.ref \
     functional_tests/ref-output/reweight_9.ref \
+    functional_tests/ref-output/reweight_10.ref \
     functional_tests/ref-output/analyze_1.ref \
     functional_tests/ref-output/analyze_2.ref \
     functional_tests/ref-output/analyze_3.ref \
@@ -1108,6 +1109,7 @@ MISC_TESTS_SIN = \
     functional_tests/reweight_7.sin \
     functional_tests/reweight_8.sin \
     functional_tests/reweight_9.sin \
+    functional_tests/reweight_10.sin \
     functional_tests/analyze_1.sin \
     functional_tests/analyze_2.sin \
     functional_tests/analyze_3.sin \

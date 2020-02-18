@@ -12929,7 +12929,9 @@ external matrix element parameters event by event.  The matrix element
                 (entry%get_i_mci (), entry%get_i_term (), entry%get_channel ())
            call alt_entry%fill_particle_set (entry)
            call alt_entry%recalculate &
-                (update_sqme = .true., weight_factor = factor)
+                (update_sqme = .true., &
+                recover_beams = simulation%recover_beams, &
+                weight_factor = factor)
            if (signal_is_pending ())  return
            call alt_entry%accept_sqme_prc ()
            call alt_entry%update_normalization ()
