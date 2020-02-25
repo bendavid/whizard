@@ -116,6 +116,8 @@ event_excess* =>  0.000000000000E+00
  Raw event stream:
    Check MD5 sum     = F
    Alternate weights = 2
+   Alpha_s from file = F
+   Scale from file   = F
    Writing to file   = eio_raw_2.evx
 
 * Re-read the event
@@ -123,6 +125,8 @@ event_excess* =>  0.000000000000E+00
  Raw event stream:
    Check MD5 sum     = F
    Alternate weights = 2
+   Alpha_s from file = F
+   Scale from file   = F
    Reading from file = eio_raw_2.evx
 
  i_prc = 42

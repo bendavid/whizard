@@ -12361,6 +12361,8 @@ initialization, which should enforce some compatibility mode.
      integer :: n = 1
      integer :: n_alt = 0
      logical :: check = .false.
+     logical :: use_alphas_from_file = .false.
+     logical :: use_scale_from_file = .false.
      integer :: file_version = CURRENT_FILE_VERSION
    contains
    <<EIO raw: eio raw: TBP>>
@@ -12382,6 +12384,10 @@ of the current object status.
     if (object%n_alt > 0) then
        write (u, "(3x,A,I0)")  "Alternate weights = ", object%n_alt
     end if
+    write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
+         object%use_alphas_from_file
+    write (u, "(3x,A,L1)")    "Scale from file   = ", &
+         object%use_scale_from_file
     if (object%reading) then
        write (u, "(3x,A,A)")  "Reading from file = ", char (object%filename)
     else if (object%writing) then
@@ -12413,12 +12419,18 @@ of the current object status.
 <<EIO raw: eio raw: TBP>>=
   procedure :: set_parameters => eio_raw_set_parameters
 <<EIO raw: procedures>>=
-  subroutine eio_raw_set_parameters (eio, check, version_string, extension)
+  subroutine eio_raw_set_parameters (eio, check, use_alphas_from_file, &
+       use_scale_from_file, version_string, extension)
     class(eio_raw_t), intent(inout) :: eio
-    logical, intent(in), optional :: check
+    logical, intent(in), optional :: check, use_alphas_from_file, &
+         use_scale_from_file
     type(string_t), intent(in), optional :: version_string
     type(string_t), intent(in), optional :: extension
     if (present (check))  eio%check = check
+    if (present (use_alphas_from_file))  eio%use_alphas_from_file = &
+         use_alphas_from_file
+    if (present (use_scale_from_file))  eio%use_scale_from_file = &
+         use_scale_from_file
     if (present (version_string)) then
        select case (char (version_string))
        case ("", "2.2.4")
@@ -12745,6 +12757,9 @@ a different version of [[event%set_hard_particle_set]].
           if (iostat /= 0)  return
           if (associated (model))  call pset%set_model (model)
           call event%set_hard_particle_set (pset)
+          if (eio%use_alphas_from_file .or. eio%use_scale_from_file) then
+             call event%recalculate (update_sqme = .true.)
+          end if
           call pset%final ()
           deallocate (pset)
           select case (eio%file_version)
@@ -13533,7 +13548,8 @@ which is defined here.
                var_list%get_sval (var_str ("$event_file_version"))
           extension_raw = &
                var_list%get_sval (var_str ("$extension_raw"))
-          call eio%set_parameters (check, raw_version, extension_raw)
+          call eio%set_parameters (check, use_alphas_from_file, &
+               use_scale_from_file, raw_version, extension_raw)
        end select
     case ("checkpoint")
        allocate (eio_checkpoints_t :: eio)

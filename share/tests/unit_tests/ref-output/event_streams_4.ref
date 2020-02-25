@@ -8,6 +8,8 @@
  Event stream array:
  Raw event stream:
    Check MD5 sum     = T
+   Alpha_s from file = F
+   Scale from file   = F
    Writing to file   = event_streams_4.evx
 
 * Reallocate raw eio stream for reading
@@ -16,6 +18,8 @@
  Input stream:
  Raw event stream:
    Check MD5 sum     = T
+   Alpha_s from file = F
+   Scale from file   = F
    Reading from file = event_streams_4.evx
 
 * Reallocate modified raw eio stream for reading (fail)
@@ -23,6 +27,8 @@
  Event stream array:
  Raw event stream:
    Check MD5 sum     = T
+   Alpha_s from file = F
+   Scale from file   = F
    Writing to file   = event_streams_4.evx
 
 * Repeat ignoring checksum
@@ -31,6 +37,8 @@
  Input stream:
  Raw event stream:
    Check MD5 sum     = F
+   Alpha_s from file = F
+   Scale from file   = F
    Reading from file = event_streams_4.evx
 
 * Test output end: event_streams_4

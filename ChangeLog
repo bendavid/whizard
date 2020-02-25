@@ -7,6 +7,10 @@ Use svn log to see detailed changes.
 2020-01-09
 	RELEASE: version 2.8.3
 
+2020-02-25
+	Bugfix: Scale and alphas can be retrieved from internal event format to
+	   external formats
+
 2020-02-17
 	Bugfix: ?keep_failed_events now forces output of actual event data
 	Bugfix: particle-set reconstruction (rescanning events w/o radiation)

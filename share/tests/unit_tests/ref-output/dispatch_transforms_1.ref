@@ -5,6 +5,8 @@
 
  Raw event stream:
    Check MD5 sum     = T
+   Alpha_s from file = F
+   Scale from file   = F
    [closed]
 
 * Allocate as checkpoints:
