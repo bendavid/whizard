@@ -1,6 +1,6 @@
 (* format_Fortran.mli -- Fortran90+ continuation lines etc.
 
-   Copyright (C) 2019- by
+   Copyright (C) 2019-2020 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

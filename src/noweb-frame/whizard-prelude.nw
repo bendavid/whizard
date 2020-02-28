@@ -49,11 +49,11 @@
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \def\WhizardVersion{2.8.3}
-\def\WhizardDate{Oct 24 2019}
+\def\WhizardDate{Mar 03 2020}
 <<Version>>=
 2.8.3
 <<Date>>=
-Oct 24 2019
+Mar 03 2020
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -121,7 +121,7 @@ The WHIZARD file header:
 <<File header>>=
 ! WHIZARD <<Version>> <<Date>>
 !
-! Copyright (C) 1999-2019 by
+! Copyright (C) 1999-2020 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

@@ -5,7 +5,7 @@ dnl ************************************************************************
 dnl configure.ac -- Main configuration script for WHIZARD
 dnl configure.ac -- WHIZARD configuration
 dnl
-dnl Copyright (C) 1999-2019 by
+dnl Copyright (C) 1999-2020 by
 dnl     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 dnl     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 dnl     Juergen Reuter <juergen.reuter@desy.de>
@@ -49,7 +49,7 @@ AC_MSG_NOTICE([**************************************************************])
 WO_CONFIGURE_SECTION([Start of package configuration])
 
 ### Further version information
-PACKAGE_DATE="Jan 09 2020"
+PACKAGE_DATE="Mar 03 2020"
 PACKAGE_STATUS="alpha"
 
 AC_SUBST(PACKAGE_DATE)
