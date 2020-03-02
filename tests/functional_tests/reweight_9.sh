@@ -4,6 +4,8 @@ name=`basename @script@`
 echo "Running script $0"
 if test -f OCAML_FLAG; then
     ./run_whizard.sh @script@ --no-logging --no-model
+    cat $name.log | sed -e 's/WHIZARD 2.*$/WHIZARD [version]/' > $name.log.tmp
+    mv $name.log.tmp $name.log
     echo "Contents of ${name}_in.weights.dat" >> $name.log
     cat ${name}_in.weights.dat >> $name.log
     echo "Contents of ${name}_raw.weights.dat" >> $name.log
