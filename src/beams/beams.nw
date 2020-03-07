@@ -21645,6 +21645,7 @@ helicities.
     class(circe2_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
     logical, dimension(4) :: mask_h
+    real(default), dimension(2) :: m2_array
     real(default), dimension(0) :: null_array
     type(quantum_numbers_mask_t), dimension(4) :: mask
     type(quantum_numbers_t), dimension(4) :: qn
@@ -21663,8 +21664,8 @@ helicities.
        mask_h(1:2) = .not. data%beams_polarized
        mask_h(3:4) = .not. (data%polarized .or. data%beams_polarized)
        mask = quantum_numbers_mask (.false., .false., mask_h)
-       call sf_int%base_init (mask, [0._default, 0._default], &
-            null_array, [0._default, 0._default])
+       m2_array(:) = (data%flv_in(:)%get_mass ())**2
+       call sf_int%base_init (mask, m2_array, null_array, m2_array)
        sf_int%data => data
        if (data%polarized) then
           if (vanishes (sum (data%lumi_hel_frac)) .or. &

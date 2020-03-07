@@ -7,6 +7,9 @@ Use svn log to see detailed changes.
 2020-03-03
 	RELEASE: version 2.8.3
 
+2020-03-09
+	Beam masses are correctly passed to hard matrix element for CIRCE2
+
 2020-02-25
 	Bugfix: Scale and alphas can be retrieved from internal event format to
 	   external formats
