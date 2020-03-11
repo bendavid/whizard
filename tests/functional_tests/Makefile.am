@@ -283,6 +283,7 @@ TESTS_REQ_OCAML = \
     isr_5.run \
     epa_1.run \
     epa_2.run \
+    epa_3.run \
     isr_epa_1.run \
     ilc.run \
     gaussian_1.run \

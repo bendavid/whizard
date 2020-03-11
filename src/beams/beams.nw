@@ -15987,6 +15987,14 @@ $p_T$ generation; in this case, we only need one.
 For obtaining splitting kinematics, we rely on the assumption that all
 in-particles are mass-degenerate (or there is only one), so the
 generated $x$ values are identical.
+
+Fix 2020-03-10: Divide by two if there is polarization.
+In the polarized case, the outgoing electron/positron
+retains the incoming polarization.  The latter is summed over
+when convoluting with the beam, but there are still two
+states with different outgoing polarization but identical
+structure-function value.  This leads to double-counting for the
+overall cross section.
 <<SF epa: epa: TBP>>=
   procedure :: apply => epa_apply
 <<SF epa: procedures>>=
@@ -16011,6 +16019,7 @@ generated $x$ values are identical.
       else
          f = 0
       end if
+      f = f / sf_int%get_n_matrix_elements ()
       call sf_int%set_matrix_element &
            (cmplx (f, kind=default) * sf_int%charge2)
     end associate

@@ -803,6 +803,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/isr_1.ref \
     functional_tests/ref-output/epa_1.ref \
     functional_tests/ref-output/epa_2.ref \
+    functional_tests/ref-output/epa_3.ref \
     functional_tests/ref-output/isr_epa_1.ref \
     functional_tests/ref-output/ep_3.ref \
     functional_tests/ref-output/ewa_4.ref \
@@ -1299,6 +1300,7 @@ MISC_TESTS_SIN = \
     functional_tests/isr_5.sin \
     functional_tests/epa_1.sin \
     functional_tests/epa_2.sin \
+    functional_tests/epa_3.sin \
     functional_tests/isr_epa_1.sin \
     functional_tests/ewa_1.sin \
     functional_tests/ewa_2.sin \
