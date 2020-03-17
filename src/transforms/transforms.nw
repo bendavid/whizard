@@ -10038,8 +10038,7 @@ is distributed over the real and Born subevents.
              if (event_deps%phs_identifiers(i_phs)%evaluated) cycle
              emitter = event_deps%phs_identifiers(i_phs)%emitter
              associate (generator => evt%phs_fks_generator)
-                !!! TODO: (cw-2016-12-30): Replace by n_in
-                if (emitter <= 2) then
+                if (emitter <= evt%process%get_n_in ()) then
                    call generator%prepare_generation (x_rad, i_phs, emitter, &
                         event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                    call generator%generate_isr (i_phs, &
