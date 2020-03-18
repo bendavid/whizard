@@ -13521,9 +13521,10 @@ which is defined here.
          extension_raw, extension_hepevt_verb, extension_lha_verb, &
          extension_lcio
     integer :: checkpoint
+    integer :: lcio_run_id
     logical :: show_process, show_transforms, show_decay, verbose, pacified
     logical :: dump_weights, dump_compressed, dump_summary, dump_screen
-    logical :: hepmc2_mode
+    logical :: hepmc2_mode, proc_as_run_id
     keep_beams = &
          var_list%get_lval (var_str ("?keep_beams"))
     keep_remnants = &
@@ -13613,9 +13614,14 @@ which is defined here.
        type is (eio_lcio_t)
           extension_lcio = &
                var_list%get_sval (var_str ("$extension_lcio"))
+          proc_as_run_id = &
+               var_list%get_lval (var_str ("?proc_as_run_id"))
+          lcio_run_id = &
+               var_list%get_ival (var_str ("lcio_run_id"))
           call eio%set_parameters (recover_beams, &
                use_alphas_from_file, use_scale_from_file, &
-               extension_lcio)
+               extension_lcio, proc_as_run_id = proc_as_run_id, &
+               lcio_run_id = lcio_run_id)
        end select
     case ("stdhep")
        allocate (eio_stdhep_hepevt_t :: eio)

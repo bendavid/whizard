@@ -6,7 +6,7 @@ if test -f OCAML_FLAG -a -f LCIO_FLAG; then
     s=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QED
     echo "Output from running ${s}_rd:" >> ${s}.log
-    ./lcio_rd ${s}_p.slcio 1 1 >> ${s}.log
+    ./lcio_rd ${s}_p.slcio 27 347 >> ${s}.log
     cat ${s}.log | sed -e 's/^ date:.*$/ date: [...]/' | sed -e 's/timestamp .*$/ timestamp [...]/' > ${s}.log.tmp && mv ${s}.log.tmp ${s}.log
     diff ref-output/$s.ref ${s}.log    
 else

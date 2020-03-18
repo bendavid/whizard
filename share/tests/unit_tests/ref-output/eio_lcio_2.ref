@@ -10,6 +10,8 @@
    Recover beams     = F
    Alpha_s from file = F
    Scale from file   = F
+   Process as run ID = T
+   LCIO run ID       = 0
    File extension    = 'slcio'
    Numerical process IDs:
      1: 42
@@ -37,6 +39,8 @@
    Recover beams     = F
    Alpha_s from file = F
    Scale from file   = F
+   Process as run ID = T
+   LCIO run ID       = 0
    File extension    = 'slcio'
    Numerical process IDs:
      1: 42

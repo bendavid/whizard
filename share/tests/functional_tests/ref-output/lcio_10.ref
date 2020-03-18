@@ -155,14 +155,14 @@ Warning: Reading phs file: MD5 sum check disabled
 Output from running lcio_10_rd:
 
 ============================================================================
-        Event  : 1 - run:  0 -  timestamp [...]
+        Event  : 1 - run:  1 -  timestamp [...]
 ============================================================================
  date: [...]
  detector : unknown
  event parameters: 
  parameter Event Number [int]: 1, 
  parameter ProcessID [int]: 1, 
- parameter Run ID [int]: 0, 
+ parameter Run ID [int]: 1, 
  parameter beamPDG1 [int]: 2212, 
  parameter beamPDG2 [int]: 2212, 
  parameter Energy [float]: 8000, 

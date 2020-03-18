@@ -3479,7 +3479,19 @@ procedure with type [[V_NONE]].
          '= {\em <int\_var>}} one can set a numerical identifier for processes ' // &
          'within a process library. This can be set either just before ' // &
          'the corresponding \ttt{process} definition or as an optional ' // &
-         'local argument of the latter. (cf. also \ttt{process})'))
+         'local argument of the latter. (cf. also \ttt{process}, ' // &
+         '\ttt{?proc\_as\_run\_id}, \ttt{lcio\_run\_id})'))
+    call var_list%append_log (var_str ("?proc_as_run_id"), .true., &
+         intrinsic=.true., &
+         description=var_str ('Normally, for LCIO the process ID (cf. ' // &
+         '\ttt{process\_num\_id}) is used as run ID, unless this flag is ' // &
+         'set to \ttt{false}, cf. also \ttt{process}, \ttt{lcio\_run\_id}.'))
+    call var_list%append_int (var_str ("lcio_run_id"), 0, &
+         intrinsic=.true., &
+         description=var_str ('Allows to set an integer run ID for the LCIO ' // &
+         'event format. Normally, the process ID is taken as run ID, unless ' // &
+         'the flag (cf.) \ttt{?proc\_as\_run\_id} is set to \ttt{false}, ' // &
+         'cf. also \ttt{process}.'))
     call var_list%append_string (var_str ("$method"), var_str ("omega"), &
          intrinsic=.true., &
          description=var_str ('This string variable specifies the method ' // &

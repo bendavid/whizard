@@ -110,6 +110,7 @@ seed = 2
 ?beam_events_warn_eof = true
 ?energy_scan_normalize = false
 ?logging => true
+?proc_as_run_id = true
 ?report_progress = true
 [user variable] ?me_verbose = false
 ?omega_write_phs_output = false

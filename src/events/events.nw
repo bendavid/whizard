@@ -16354,7 +16354,9 @@ Note: the [[keep_beams]] flag is not supported.
      logical :: recover_beams = .false.
      logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
+     logical :: proc_as_run_id = .true.
      integer :: n_alt = 0
+     integer :: lcio_run_id = 0
      type(lcio_writer_t) :: lcio_writer
      type(lcio_reader_t) :: lcio_reader
      type(lcio_run_header_t) :: lcio_run_hdr
@@ -16373,17 +16375,23 @@ Set parameters that are specifically used with LCIO.
 <<EIO LCIO: procedures>>=
   subroutine eio_lcio_set_parameters &
        (eio, recover_beams, use_alphas_from_file, use_scale_from_file, &
-       extension)
+       extension, proc_as_run_id, lcio_run_id)
     class(eio_lcio_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
+    logical, intent(in), optional :: proc_as_run_id
+    integer, intent(in), optional :: lcio_run_id
     type(string_t), intent(in), optional :: extension
     if (present (recover_beams))  eio%recover_beams = recover_beams
     if (present (use_alphas_from_file)) &
          eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file)) &
          eio%use_scale_from_file = use_scale_from_file
+    if (present (proc_as_run_id)) &
+         eio%proc_as_run_id = proc_as_run_id
+    if (present (lcio_run_id)) &
+         eio%lcio_run_id = lcio_run_id
     if (present (extension)) then
        eio%extension = extension
     else
@@ -16417,6 +16425,10 @@ of the current object status.
          object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
+    write (u, "(3x,A,L1)")    "Process as run ID = ", &
+         object%proc_as_run_id
+    write (u, "(3x,A,I0)")    "LCIO run ID       = ", &
+         object%lcio_run_id
     write (u, "(3x,A,A,A)")     "File extension    = '", &
          char (object%extension), "'"
     if (allocated (object%proc_num_id)) then
@@ -16580,9 +16592,17 @@ event files.
     end if
     if (eio%writing) then
        pset_ptr => event%get_particle_set_ptr ()
-       call lcio_event_init (eio%lcio_event, &
-             proc_id = eio%proc_num_id (i_prc), &
-             event_id = event%get_index ())
+       if (eio%proc_as_run_id) then
+          call lcio_event_init (eio%lcio_event, &
+               proc_id = eio%proc_num_id (i_prc), &
+               event_id = event%get_index (), &
+               run_id = eio%proc_num_id (i_prc))
+       else
+          call lcio_event_init (eio%lcio_event, &
+               proc_id = eio%proc_num_id (i_prc), &
+               event_id = event%get_index (), &
+               run_id = eio%lcio_run_id)
+       end if
        call lcio_event_from_particle_set (eio%lcio_event, pset_ptr)
        call lcio_event_set_weight (eio%lcio_event, event%weight_prc)
        call lcio_event_set_sqrts (eio%lcio_event, event%get_sqrts ())
