@@ -402,6 +402,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/recoil_kinematics_3.ref \
     unit_tests/ref-output/recoil_kinematics_4.ref \
     unit_tests/ref-output/recoil_kinematics_5.ref \
+    unit_tests/ref-output/recoil_kinematics_6.ref \
     unit_tests/ref-output/resonance_insertion_1.ref \
     unit_tests/ref-output/resonance_insertion_2.ref \
     unit_tests/ref-output/resonance_insertion_3.ref \
@@ -892,6 +893,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/isr_3.ref \
     functional_tests/ref-output-double/isr_4.ref \
     functional_tests/ref-output-double/isr_5.ref \
+    functional_tests/ref-output-double/isr_6.ref \
     functional_tests/ref-output-double/pythia6_3.ref \
     functional_tests/ref-output-double/pythia6_4.ref \
     functional_tests/ref-output-double/tauola_1.ref \
@@ -956,6 +958,7 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/isr_3.ref \
     functional_tests/ref-output-ext/isr_4.ref \
     functional_tests/ref-output-ext/isr_5.ref \
+    functional_tests/ref-output-ext/isr_6.ref \
     functional_tests/ref-output-ext/nlo_5.ref \
     functional_tests/ref-output-ext/powheg_1.ref \
     functional_tests/ref-output-ext/pythia6_3.ref \
@@ -987,6 +990,7 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/isr_3.ref \
     functional_tests/ref-output-quad/isr_4.ref \
     functional_tests/ref-output-quad/isr_5.ref \
+    functional_tests/ref-output-quad/isr_6.ref \
     functional_tests/ref-output-quad/nlo_5.ref \
     functional_tests/ref-output-quad/powheg_1.ref \
     functional_tests/ref-output-quad/pythia6_3.ref \
@@ -1300,6 +1304,7 @@ MISC_TESTS_SIN = \
     functional_tests/isr_3.sin \
     functional_tests/isr_4.sin \
     functional_tests/isr_5.sin \
+    functional_tests/isr_6.sin \
     functional_tests/epa_1.sin \
     functional_tests/epa_2.sin \
     functional_tests/epa_3.sin \

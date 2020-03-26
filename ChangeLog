@@ -7,6 +7,10 @@ Use svn log to see detailed changes.
 2020-03-03
 	RELEASE: version 2.8.3
 
+2020-03-24
+	ISR: Fix on-shell kinematics for events with ?isr_handler=true
+	   (set ?isr_handler_keep_mass=false for old behavior)
+
 2020-03-11
 	Beam masses are correctly passed to hard matrix element for CIRCE2
 	EPA with polarized beams: double-counting corrected

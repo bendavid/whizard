@@ -281,6 +281,7 @@ TESTS_REQ_OCAML = \
     isr_3.run \
     isr_4.run \
     isr_5.run \
+    isr_6.run \
     epa_1.run \
     epa_2.run \
     epa_3.run \
@@ -579,6 +580,10 @@ noinst_PROGRAMS += isr_epa_1_count
 isr_epa_1_count_SOURCES = isr_epa_1_count.f90
 isr_epa_1.run: isr_epa_1_count
 
+noinst_PROGRAMS += isr_6_digest
+isr_6_digest_SOURCES = isr_6_digest.f90
+isr_6.run: isr_6_digest
+
 noinst_PROGRAMS += analyze_6_check
 analyze_6_check_SOURCES = analyze_6_check.f90
 analyze_6.run: analyze_6_check
@@ -779,6 +784,7 @@ clean-local: clean-macosx
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *_count.out
+	rm -f *_digest.out
 	rm -f *.makefile
 	rm -f *.grid
 	rm -rf err-output

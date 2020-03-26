@@ -31,6 +31,7 @@ integrate (isr_5)
 isr_mass = 511 keV
 ?isr_handler = true
 $isr_handler_mode = "recoil"
+?isr_handler_keep_mass = false
 
 ?ps_fsr_active = true
 $shower_method = "PYTHIA6"

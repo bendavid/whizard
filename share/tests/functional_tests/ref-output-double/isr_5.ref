@@ -61,6 +61,7 @@ Warning: No cuts have been defined.
 isr_mass =  5.11000E-04
 ?isr_handler = true
 $isr_handler_mode = "recoil"
+?isr_handler_keep_mass = false
 ?ps_fsr_active = true
 $shower_method = "PYTHIA6"
 ?hadronization_active = true

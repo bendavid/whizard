@@ -3171,6 +3171,13 @@ procedure with type [[V_NONE]].
           description=var_str ('Operation mode for the ISR ' // &
           'event handler.  Allowed values: \ttt{trivial} (no effect), ' // &
           '\ttt{recoil} (recoil kinematics with two photons)'))
+    call var_list%append_log (var_str ("?isr_handler_keep_mass"), .true., &
+          intrinsic=.true., &
+          description=var_str ('If \ttt{true} (default), force the incoming ' // &
+          'partons of the hard process (after radiation) on their mass ' // &
+          'shell.  Otherwise, insert massless on-shell momenta.  This ' // &
+          'applies only for event generation (no effect on integration, ' // &
+          'cf.\ also \ttt{?isr\_handler})'))
     call var_list%append_real (var_str ("epa_alpha"), 0._default, &
           intrinsic=.true., &
           description=var_str ('For the equivalent photon approximation ' // &

@@ -26,6 +26,7 @@
  Insertion mode = 1: pair recoil
    ISR: Q_max =  1.000000000000E+02
         m     =  5.110000000000E-04
+        keep m= T
    EPA: [inactive]
  Event:
    mode  =  ---                 ---

@@ -96,6 +96,7 @@ seed = 2
 ?isr_recoil = false
 ?isr_keep_energy = false
 ?isr_handler = false
+?isr_handler_keep_mass = true
 ?epa_recoil = false
 ?epa_keep_energy = false
 ?epa_handler = false

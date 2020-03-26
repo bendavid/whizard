@@ -65,6 +65,7 @@
  Insertion mode = 1: pair recoil
    ISR: Q_max =  1.00000E+02
         m     =  5.11000E-01
+        keep m= F
    EPA: [inactive]
  Event:
    mode  =  ---          ---
@@ -114,6 +115,7 @@ Combined transformation (partons -> partons with recoil in lab frame) =
  Insertion mode = 1: pair recoil
    ISR: Q_max =  1.00000E+02
         m     =  5.11000E-01
+        keep m= F
    EPA: [inactive]
  Event:
    mode  =  ISR          ISR

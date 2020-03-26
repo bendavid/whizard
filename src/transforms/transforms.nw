@@ -3102,6 +3102,7 @@ module recoil_kinematics
 <<Use kinds>>
   use constants, only: twopi
   use lorentz, only: vector4_t
+  use lorentz, only: vector4_null
   use lorentz, only: vector4_moving
   use lorentz, only: vector3_moving
   use lorentz, only: transverse_part
@@ -3113,6 +3114,7 @@ module recoil_kinematics
   use lorentz, only: operator(-)
   use lorentz, only: operator(*)
   use lorentz, only: operator(**)
+  use lorentz, only: lambda
 
 <<Standard module head>>
 
@@ -3398,20 +3400,25 @@ on-shell projected parton momenta.
 <<Recoil kinematics: public>>=
   public :: recoil_momenta
 <<Recoil kinematics: procedures>>=
-  subroutine recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+  subroutine recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, &
+       km, qm, qo, ok)
     real(default), intent(in) :: sqrts
     real(default), dimension(2), intent(in) :: xc
     real(default), dimension(2), intent(in) :: xb
     real(default), dimension(2), intent(in) :: cos_th
     real(default), dimension(2), intent(in) :: sin_th
     real(default), dimension(2), intent(in) :: phi
+    real(default), dimension(2), intent(in) :: mo
     type(vector4_t), dimension(2), intent(out) :: km
     type(vector4_t), dimension(2), intent(out) :: qm
     type(vector4_t), dimension(2), intent(out) :: qo
+    logical, intent(out) :: ok
 
     type(vector4_t), dimension(2) :: pm
     type(lorentz_transformation_t) :: lt
     real(default) :: sqsh
+    real(default) :: po4, po2
+    real(default), dimension(2) :: p0, p3
 
     pm(1) = &
          vector4_moving (sqrts/2, &
@@ -3441,8 +3448,16 @@ on-shell projected parton momenta.
     sqsh = sqrt (xc(1)*xc(2)) * sqrts
     lt = transformation (3, qm(1), qm(2), sqsh)
 
-    qo(1) = lt * vector4_moving (sqsh/2, sqsh/2, 3)
-    qo(2) = lt * vector4_moving (sqsh/2,-sqsh/2, 3)
+    po4 = lambda (sqsh**2, mo(1)**2, mo(2)**2)
+    ok = po4 > 0
+    if (ok) then
+       po2 = sqrt (po4)/4
+       p0 = sqrt (po2 + mo**2)
+       p3 = [sqrt (po2), -sqrt (po2)]
+       qo = lt * vector4_moving (p0, p3, 3)
+    else
+       qo = vector4_null
+    end if
 
   end subroutine recoil_momenta
 
@@ -3506,15 +3521,19 @@ Combine the above kinematics calculations.  First generate azimuthal
 angles and momentum transfer, solve kinematics and compute momenta for
 the radiated photons and the on-shell projected, recoiling partons.
 
+The [[mo]] masses are used for the on-shell projection of the partons after
+radiation.  They may be equal to [[m]], or set to zero.
+
 If [[ok]] is false, the data point has failed and we should repeat the
 procedure for a new set of RNG parameters [[r]].
 <<Recoil kinematics: public>>=
   public :: generate_recoil
 <<Recoil kinematics: procedures>>=
-  subroutine generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+  subroutine generate_recoil (sqrts, q_max, m, mo, xc, xcb, r, km, qm, qo, ok)
     real(default), intent(in) :: sqrts
     real(default), intent(in), dimension(2) :: q_max
     real(default), intent(in), dimension(2) :: m
+    real(default), intent(in), dimension(2) :: mo
     real(default), intent(in), dimension(2) :: xc
     real(default), intent(in), dimension(2) :: xcb
     real(default), intent(in), dimension(4) :: r
@@ -3529,13 +3548,14 @@ procedure for a new set of RNG parameters [[r]].
     real(default), dimension(2) :: xb
     real(default), dimension(2) :: cos_th
     real(default), dimension(2) :: sin_th
-
+    
     call generate_q2_recoil (sqrts**2, xcb, q_max**2, m**2, r(1:2), q2)
     call generate_phi_recoil (r(3:4), phi)
     
     call solve_recoil (sqrts, xc, xcb, phi, q2, x, xb, cos_th, sin_th, ok)
     if (ok) then
-       call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+       call recoil_momenta &
+            (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     end if
 
   end subroutine generate_recoil
@@ -3626,6 +3646,7 @@ momenta accordingly.
     real(default), dimension(2) :: xc, xcb
     real(default), dimension(2) :: q
     real(default), dimension(2) :: phi
+    real(default), dimension(2) :: mo
     real(default), dimension(2) :: cos_th, sin_th
     real(default), dimension(2) :: x
     real(default), dimension(2) :: xb
@@ -3654,12 +3675,13 @@ momenta accordingly.
     xcb = 1 - xc
     phi = [0.1_default, 0.2_default] * twopi
     q = 0
+    mo = 0
 
     call show_data
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
     call show_results
 
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3675,7 +3697,7 @@ momenta accordingly.
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
     call show_results
     
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3691,7 +3713,7 @@ momenta accordingly.
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
     call show_results
 
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3707,7 +3729,7 @@ momenta accordingly.
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
     call show_results
 
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3723,7 +3745,7 @@ momenta accordingly.
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
     call show_results
 
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3900,7 +3922,7 @@ Combine $Q^2$ sampling with momentum generation.
 
     real(default) :: sqrts
     real(default), dimension(2) :: q_max
-    real(default), dimension(2) :: m
+    real(default), dimension(2) :: m, mo
     real(default), dimension(2) :: xc, xcb
     real(default), dimension(4) :: r
     type(vector4_t), dimension(2) :: km
@@ -3921,6 +3943,7 @@ Combine $Q^2$ sampling with momentum generation.
     sqrts = 100
     q_max = sqrts
     m     = 0.511e-3_default
+    mo    = 0
 
     xc = [0.6_default, 0.9_default]
     xcb = 1 - xc
@@ -3928,7 +3951,7 @@ Combine $Q^2$ sampling with momentum generation.
     r = [0._default, 0._default, 0._default, 0._default]
 
     call show_data
-    call generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    call generate_recoil (sqrts, q_max, m, mo, xc, xcb, r, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3941,7 +3964,7 @@ Combine $Q^2$ sampling with momentum generation.
     r = [0.8_default, 0.2_default, 0.1_default, 0.2_default]
 
     call show_data
-    call generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    call generate_recoil (sqrts, q_max, m, mo, xc, xcb, r, km, qm, qo, ok)
     call show_momenta
 
     write (u, "(A)")
@@ -3954,7 +3977,7 @@ Combine $Q^2$ sampling with momentum generation.
     r = [0.9999_default, 0.3_default, 0.1_default, 0.8_default]
 
     call show_data
-    call generate_recoil (sqrts, q_max, m, xc, xcb, r, km, qm, qo, ok)
+    call generate_recoil (sqrts, q_max, m, mo, xc, xcb, r, km, qm, qo, ok)
     if (.not. ok) then
        write (u, "(A)")
        write (u, "(A)") "Failed as expected."
@@ -4028,6 +4051,7 @@ the new parton momenta.
     real(default), dimension(2) :: q
     real(default), dimension(2) :: phi
     real(default), dimension(2) :: cos_th, sin_th
+    real(default), dimension(2) :: mo
     real(default), dimension(2) :: x
     real(default), dimension(2) :: xb
     type(vector4_t), dimension(2) :: km
@@ -4046,7 +4070,6 @@ the new parton momenta.
     sqrts = 100
     write (u, FMT1)  "sqrts =", sqrts
     
-
     write (u, "(A)")
     write (u, "(A)") "*** collinear data set"
     write (u, "(A)")
@@ -4055,10 +4078,11 @@ the new parton momenta.
     xcb = 1 - xc
     phi = [0.1_default, 0.2_default] * twopi
     q = 0
+    mo = 0
 
     call show_data
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call recoil_transformation (sqrts, xc, qo, lt)
     call show_transformation
 
@@ -4073,7 +4097,7 @@ the new parton momenta.
 
     call show_data
     call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
-    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, km, qm, qo)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
     call recoil_transformation (sqrts, xc, qo, lt)
     call show_transformation
 
@@ -4187,6 +4211,120 @@ into the lab frame.
 
 @ %def recoil_kinematics_5
 @
+\subsubsection{Transformation after recoil with on-shell momenta}
+Given a solution to recoil kinematics, compute the Lorentz
+transformation that transforms the old collinear parton momenta into
+the new parton momenta.
+
+Compare the results for massless and massive on-shell projection.
+<<Recoil kinematics: execute tests>>=
+  call test (recoil_kinematics_6, "recoil_kinematics_6", &
+       "massless/massive on-shell projection", &
+       u, results)
+<<Recoil kinematics: test declarations>>=
+  public :: recoil_kinematics_6
+<<Recoil kinematics: tests>>=
+  subroutine recoil_kinematics_6 (u)
+    integer, intent(in) :: u
+
+    real(default) :: sqrts
+    real(default), dimension(2) :: xc, xcb
+    real(default), dimension(2) :: q
+    real(default), dimension(2) :: phi
+    real(default), dimension(2) :: cos_th, sin_th
+    real(default), dimension(2) :: x
+    real(default), dimension(2) :: xb
+    real(default), dimension(2) :: mo, z
+    type(vector4_t), dimension(2) :: km
+    type(vector4_t), dimension(2) :: qm
+    type(vector4_t), dimension(2) :: qo
+    type(lorentz_transformation_t) :: lt
+    logical :: ok
+    
+    character(*), parameter :: FMT1 = "(1x,A,9(1x,F15.10))"
+    character(*), parameter :: FMT2 = "(1x,A,9(1x,F11.6))"
+
+    write (u, "(A)")  "* Test output: recoil_kinematics_6"
+    write (u, "(A)")  "*   Purpose: check effect of mass in on-shell projection"
+    write (u, "(A)")
+
+    sqrts = 10
+    write (u, FMT1)  "sqrts =", sqrts
+    z = 0
+    mo = 0.511e-3
+    write (u, FMT1)  "mass  =", mo
+
+    write (u, "(A)")
+    write (u, "(A)") "*** collinear data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.2_default] * twopi
+    q = 0
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, z, km, qm, qo, ok)
+    call recoil_transformation (sqrts, xc, qo, lt)
+    write (u, "(A)")
+    write (u, "(A)") "Massless projection:"
+    call show_momenta
+
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
+    call recoil_transformation (sqrts, xc, qo, lt)
+    write (u, "(A)")
+    write (u, "(A)") "Massive projection:"
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)") "*** moderate data set"
+    write (u, "(A)")
+
+    xc = [0.6_default, 0.9_default]
+    xcb = 1 - xc
+    phi = [0.1_default, 0.2_default] * twopi
+    q = [0.2_default, 0.05_default] * sqrts
+
+    call show_data
+    call solve_recoil (sqrts, xc, xcb, phi, q**2, x, xb, cos_th, sin_th, ok)
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, z, km, qm, qo, ok)
+    call recoil_transformation (sqrts, xc, qo, lt)
+    write (u, "(A)")
+    write (u, "(A)") "Massless projection:"
+    call show_momenta
+
+    call recoil_momenta (sqrts, xc, xb, cos_th, sin_th, phi, mo, km, qm, qo, ok)
+    call recoil_transformation (sqrts, xc, qo, lt)
+    write (u, "(A)")
+    write (u, "(A)") "Massive projection:"
+    call show_momenta
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: recoil_kinematics_6"
+
+  contains
+
+    subroutine show_data
+      write (u, FMT1) "sqs_h =", sqrt (xc(1) * xc(2)) * sqrts
+      write (u, FMT1) "xc    =", xc
+      write (u, FMT1) "xcb   =", xcb
+      write (u, FMT1) "Q     =", Q
+      write (u, FMT1) "phi/D =", phi / degree
+    end subroutine show_data
+
+    subroutine show_momenta
+      write (u, "(A)") "Momenta: q(os)"
+      call qo(1)%write (u, testflag=.true.)
+      write (u, FMT2)  "m = ", abs (qo(1)**1)
+      call qo(2)%write (u, testflag=.true.)
+      write (u, FMT2)  "m = ", abs (qo(2)**1)
+    end subroutine show_momenta
+
+  end subroutine recoil_kinematics_6
+
+@ %def recoil_kinematics_6
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Transverse momentum for the ISR and EPA approximations}
 
@@ -4294,6 +4432,7 @@ photon/parton momenta with the $Q$ distribution applied, and finally
      real(default) :: epa_q_max = 0
      real(default) :: isr_mass = 0
      real(default) :: epa_mass = 0
+     logical :: isr_keep_mass = .true.
      real(default) :: sqrts = 0
      integer, dimension(2) :: rad_mode = BEAM_RAD_NONE
      real(default), dimension(2) :: q_max = 0
@@ -4430,6 +4569,7 @@ photon/parton momenta with the $Q$ distribution applied, and finally
     if (evt%isr_active) then
        write (u, "(3x,A,1x," // fmt // ")") "ISR: Q_max =", evt%isr_q_max
        write (u, "(3x,A,1x," // fmt // ")") "     m     =", evt%isr_mass
+       write (u, "(3x,A,1x,L1)") "     keep m=", evt%isr_keep_mass
     else
        write (u, "(3x,A)") "ISR: [inactive]"
     end if
@@ -4592,11 +4732,12 @@ event.
 <<ISR/EPA handler: evt isr: TBP>>=
   procedure :: set_data_isr => evt_isr_epa_set_data_isr
 <<ISR/EPA handler: procedures>>=
-  subroutine evt_isr_epa_set_data_isr (evt, sqrts, q_max, m)
+  subroutine evt_isr_epa_set_data_isr (evt, sqrts, q_max, m, keep_mass)
     class(evt_isr_epa_t), intent(inout) :: evt
     real(default), intent(in) :: sqrts
     real(default), intent(in) :: q_max
     real(default), intent(in) :: m
+    logical, intent(in) :: keep_mass
     if (sqrts <= 0) then
        call msg_fatal ("ISR handler: sqrts value must be positive")
     end if
@@ -4611,6 +4752,7 @@ event.
        call msg_fatal ("ISR handler: ISR_mass value must be positive")
     end if
     evt%isr_active = .true.
+    evt%isr_keep_mass = keep_mass
   end subroutine evt_isr_epa_set_data_isr
     
 @ %def evt_isr_epa_set_data_isr
@@ -4867,17 +5009,21 @@ unweighting procedure.
     class(evt_isr_epa_t), intent(inout) :: evt
     logical, intent(out) :: ok
     real(default), dimension(4) :: r
-    real(default), dimension(2) :: m
+    real(default), dimension(2) :: m, mo
     integer :: i
     call evt%rng%generate (r)
+    m = 0
+    mo = 0
     do i = 1, 2
        select case (evt%rad_mode(i))
-       case (BEAM_RAD_ISR);  m(i) = evt%m(i)
-       case (BEAM_RAD_EPA);  m(i) = evt%xc(i) * evt%m(i)
-       case default;         m(i) = 0
+       case (BEAM_RAD_ISR)  
+          m(i) = evt%m(i)
+          if (evt%isr_keep_mass)  mo(i) = m(i)
+       case (BEAM_RAD_EPA)
+          m(i) = evt%xc(i) * evt%m(i)
        end select
     end do
-    call generate_recoil (evt%sqrts, evt%q_max, m, evt%xc, evt%xcb, r, &
+    call generate_recoil (evt%sqrts, evt%q_max, m, mo, evt%xc, evt%xcb, r, &
          evt%km, evt%qm, evt%qo, ok)
   end subroutine evt_generate_recoil
 
@@ -5285,7 +5431,8 @@ is conserved, and all outgoing photons and partons are on-shell
     call evt_isr_epa%set_data_isr ( &
          sqrts = sqrts, &
          q_max = sqrts, &
-         m = 511.e-3_default &
+         m = 511.e-3_default, &
+         keep_mass = .false. &
          )
 
     allocate (rng_test_t :: rng)
@@ -5414,7 +5561,8 @@ are not in their c.m.\ frame (but collinear).
     call evt_isr_epa%set_data_isr ( &
          sqrts = sqrts, &
          q_max = sqrts, &
-         m = 511.e-3_default &
+         m = 511.e-3_default, &
+         keep_mass = .false. &
          )
 
     allocate (rng_test_t :: rng)
@@ -13267,6 +13415,7 @@ implementation requires the handler modes of ISR and EPA to coincide.
     logical :: epa_handler_active
     type(string_t) :: isr_handler_mode
     type(string_t) :: epa_handler_mode
+    logical :: isr_keep_mass
     real(default) :: sqrts
     real(default) :: isr_q_max
     real(default) :: epa_q_max
@@ -13275,8 +13424,12 @@ implementation requires the handler modes of ISR and EPA to coincide.
     isr_handler_active = var_list%get_lval (var_str ("?isr_handler"))
     if (isr_handler_active) then
        call msg_message ("Simulate: activating ISR handler")
-       isr_recoil = var_list%get_lval (var_str ("?isr_recoil"))
-       isr_handler_mode = var_list%get_sval (var_str ("$isr_handler_mode"))
+       isr_recoil = &
+            var_list%get_lval (var_str ("?isr_recoil"))
+       isr_handler_mode = &
+            var_list%get_sval (var_str ("$isr_handler_mode"))
+       isr_keep_mass = &
+            var_list%get_lval (var_str ("?isr_handler_keep_mass"))
        if (isr_recoil) then
           call msg_fatal ("Simulate: ISR handler is incompatible &
                &with ?isr_recoil=true")
@@ -13310,7 +13463,7 @@ implementation requires the handler modes of ISR and EPA to coincide.
           if (isr_handler_active) then
              isr_q_max = var_list%get_rval (var_str ("isr_q_max"))
              isr_mass = var_list%get_rval (var_str ("isr_mass"))
-             call evt%set_data_isr (sqrts, isr_q_max, isr_mass)
+             call evt%set_data_isr (sqrts, isr_q_max, isr_mass, isr_keep_mass)
           end if
           if (epa_handler_active) then
              epa_q_max = var_list%get_rval (var_str ("epa_q_max"))
