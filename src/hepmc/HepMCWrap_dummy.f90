@@ -996,10 +996,11 @@ end function polarization_phi
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! IO_GenEvent functions
 
-! extern "C" void* new_io_gen_event_in( char* filename )
-type(c_ptr) function new_io_gen_event_in (filename) bind(C)
+! extern "C" void* new_io_gen_event_in( int* io_format, char* filename )
+type(c_ptr) function new_io_gen_event_in (io_format, filename) bind(C)
   use iso_c_binding
   character(c_char), dimension(*), intent(in) :: filename
+  integer(c_int), intent(in) :: io_format
   new_io_gen_event_in = c_null_ptr
   write (0, "(A)")  "************************************************************"
   write (0, "(A)")  "*** HepMC: Error: library not linked, WHIZARD terminates ***"
@@ -1018,28 +1019,6 @@ type(c_ptr) function new_io_gen_event_out (filename) bind(C)
   stop
 end function new_io_gen_event_out
 
-! extern "C" void* new_io_gen_event_in_hepmc2( char* filename )
-type(c_ptr) function new_io_gen_event_in_hepmc2 (filename) bind(C)
-  use iso_c_binding
-  character(c_char), dimension(*), intent(in) :: filename
-  new_io_gen_event_in_hepmc2 = c_null_ptr
-  write (0, "(A)")  "************************************************************"
-  write (0, "(A)")  "*** HepMC: Error: library not linked, WHIZARD terminates ***"
-  write (0, "(A)")  "************************************************************"
-  stop
-end function new_io_gen_event_in_hepmc2
-
-! extern "C" void* new_io_gen_event_out_hepmc2( char* filename )
-type(c_ptr) function new_io_gen_event_out_hepmc2 (filename) bind(C)
-  use iso_c_binding
-  character(c_char), dimension(*), intent(in) :: filename
-  new_io_gen_event_out_hepmc2 = c_null_ptr
-  write (0, "(A)")  "************************************************************"
-  write (0, "(A)")  "*** HepMC: Error: library not linked, WHIZARD terminates ***"
-  write (0, "(A)")  "************************************************************"
-  stop
-end function new_io_gen_event_out_hepmc2
-
 ! extern "C" void io_gen_event_delete( void* iostream ) {}
 subroutine io_gen_event_delete (io_obj) bind(C)
   use iso_c_binding
@@ -1049,16 +1028,6 @@ subroutine io_gen_event_delete (io_obj) bind(C)
   write (0, "(A)")  "************************************************************"
   stop
 end subroutine io_gen_event_delete
-
-! extern "C" void io_gen_event_delete_hepmc2( void* iostream ) {}
-subroutine io_gen_event_delete_hepmc2 (io_obj) bind(C)
-  use iso_c_binding
-  type(c_ptr), value :: io_obj
-  write (0, "(A)")  "************************************************************"
-  write (0, "(A)")  "*** HepMC: Error: library not linked, WHIZARD terminates ***"
-  write (0, "(A)")  "************************************************************"
-  stop
-end subroutine io_gen_event_delete_hepmc2
 
 ! extern "C" void io_gen_event_write_event
 ! ( void* iostream, const void* evt) {}
@@ -1082,27 +1051,3 @@ logical(c_bool) function io_gen_event_read_event (io_obj, evt_obj) bind(C)
   write (0, "(A)")  "************************************************************"
   stop
 end function io_gen_event_read_event
-
-! extern "C" void io_gen_event_write_event_hepmc2
-! ( void* iostream, const void* evt) {}
-subroutine io_gen_event_write_event_hepmc2 (io_obj, evt_obj) bind(C)
-  use iso_c_binding
-  type(c_ptr), value :: io_obj, evt_obj
-  write (0, "(A)")  "************************************************************"
-  write (0, "(A)")  "*** HepMC: Error: library not linked, WHIZARD terminates ***"
-  write (0, "(A)")  "************************************************************"
-  stop
-end subroutine io_gen_event_write_event_hepmc2
-
-! extern "C" bool io_gen_event_read_event_hepmc2
-! ( void* iostream, void* evt) {}
-logical(c_bool) function io_gen_event_read_event_hepmc2 (io_obj, evt_obj) bind(C)
-  use iso_c_binding
-  type(c_ptr), value :: io_obj, evt_obj
-  io_gen_event_read_event_hepmc2 = .false.
-  write (0, "(A)")  "************************************************************"
-  write (0, "(A)")  "*** HepMC: Error: library not linked, WHIZARD terminates ***"
-  write (0, "(A)")  "************************************************************"
-  stop
-end function io_gen_event_read_event_hepmc2
-

@@ -29,9 +29,15 @@
 if HEPMC_AVAILABLE
 noinst_LTLIBRARIES = libHepMCWrap.la
 if HEPMC_IS_VERSION3
+if HEPMC3_HAS_ROOT
+libHepMCWrap_la_SOURCES = \
+   HepMC3_WHIZARD_Polarization.h \
+   HepMC3RootWrap.cpp
+else
 libHepMCWrap_la_SOURCES = \
    HepMC3_WHIZARD_Polarization.h \
    HepMC3Wrap.cpp
+endif
 else
 libHepMCWrap_la_SOURCES = HepMC2Wrap.cpp
 endif

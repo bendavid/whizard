@@ -13317,6 +13317,8 @@ module dispatch_transforms
   use instances, only: process_instance_t, process_instance_hook_t
 
   use event_base, only: event_callback_t, event_callback_nop_t
+  use hepmc_interface, only: HEPMC3_MODE_HEPMC2, HEPMC3_MODE_HEPMC3
+  use hepmc_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_HEPEVT
   use eio_base
   use eio_raw
   use eio_checkpoints
@@ -13674,10 +13676,10 @@ which is defined here.
          extension_raw, extension_hepevt_verb, extension_lha_verb, &
          extension_lcio
     integer :: checkpoint
-    integer :: lcio_run_id
+    integer :: lcio_run_id, hepmc3_mode
     logical :: show_process, show_transforms, show_decay, verbose, pacified
     logical :: dump_weights, dump_compressed, dump_summary, dump_screen
-    logical :: hepmc2_mode, proc_as_run_id
+    logical :: proc_as_run_id
     keep_beams = &
          var_list%get_lval (var_str ("?keep_beams"))
     keep_remnants = &
@@ -13754,12 +13756,24 @@ which is defined here.
                var_list%get_lval (var_str ("?hepmc_output_cross_section"))
           extension_hepmc = &
                var_list%get_sval (var_str ("$extension_hepmc"))
-          hepmc2_mode = &
-               var_list%get_lval (var_str ("?hepmc3_hepmc2mode"))
+          select case (char (var_list%get_sval (var_str ("$hepmc3_mode"))))
+          case ("HepMC2")
+             hepmc3_mode = HEPMC3_MODE_HEPMC2
+          case ("HepMC3")
+             hepmc3_mode = HEPMC3_MODE_HEPMC3
+          case ("ROOT")
+             hepmc3_mode = HEPMC3_MODE_ROOT
+          case ("HepEVT")
+             hepmc3_mode = HEPMC3_MODE_HEPEVT
+          case default
+             call msg_fatal ("Only supported HepMC3 modes are: 'HepMC2', " // &
+                  "'HepMC3', 'HepEVT', and 'ROOT'.")
+          end select
           call eio%set_parameters (recover_beams, &
                use_alphas_from_file, use_scale_from_file, &
-               extension_hepmc, output_cross_section, &
-               hepmc2_mode = hepmc2_mode)
+               extension = extension_hepmc, &
+               output_cross_section = output_cross_section, &
+               hepmc3_mode = hepmc3_mode)
        end select
     case ("lcio")
        allocate (eio_lcio_t :: eio)

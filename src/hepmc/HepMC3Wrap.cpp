@@ -11,6 +11,8 @@
 #include "HepMC3/WriterAscii.h"
 #include "HepMC3/ReaderAsciiHepMC2.h"
 #include "HepMC3/WriterAsciiHepMC2.h"
+#include "HepMC3/ReaderHEPEVT.h"
+#include "HepMC3/WriterHEPEVT.h"
 #include "HepMC3_WHIZARD_Polarization.h"
 
 using namespace HepMC3;
@@ -496,54 +498,43 @@ extern "C" double polarization_phi( Polarization* pol ) {
 //////////////////////////////////////////////////////////////////////////
 /// // IO_GenEvent functions
 
-extern "C" WriterAscii* new_io_gen_event_out( char* filename ) {
-  return new WriterAscii( filename );
+extern "C" Writer* new_io_gen_event_out( int* io_format, char* filename ) {
+  switch (*io_format) {
+  case 1:
+    return (Writer*)(new WriterAsciiHepMC2( filename ));
+  case 2:
+    return (Writer*)(new WriterAscii( filename));
+  case 4:
+    return (Writer*)(new WriterHEPEVT( filename));
+  default:
+    return (Writer*)(new WriterAscii( filename));
+  }
 }
 
-extern "C" ReaderAscii* new_io_gen_event_in( char* filename ) {
-  return new ReaderAscii( filename);
+extern "C" Reader* new_io_gen_event_in( int* io_format, char* filename ) {
+  switch (*io_format) {
+  case 1:
+    return (Reader*)(new ReaderAsciiHepMC2( filename));
+  case 2:
+    return (Reader*)(new ReaderAscii( filename));
+  case 4:
+    return (Reader*)(new ReaderHEPEVT( filename));
+  default:
+    return (Reader*)(new ReaderAscii( filename));
+  }
 }
 
-extern "C" WriterAsciiHepMC2* new_io_gen_event_out_hepmc2( char* filename ) {
-  return new WriterAsciiHepMC2( filename );
-}
-
-extern "C" ReaderAsciiHepMC2* new_io_gen_event_in_hepmc2( char* filename ) {
-  return new ReaderAsciiHepMC2( filename);
-}
-
-extern "C" void io_gen_event_delete( WriterAscii* iostream ) {
-  delete iostream;
-}
-
-extern "C" void io_gen_event_delete_hepmc2( WriterAsciiHepMC2* iostream ) {
+extern "C" void io_gen_event_delete( Writer* iostream ) {
   delete iostream;
 }
 
 extern "C" void io_gen_event_write_event
-( WriterAscii* writer, const GenEvent* evt) {
+( Writer* writer, const GenEvent* evt) {
   writer->write_event( *evt);
 }
 
 extern "C" bool io_gen_event_read_event
-( ReaderAscii* reader, GenEvent* evt) {
-  bool ok;
-  ok = reader->read_event( *evt);
-  if (reader->failed()) {
-    return false;
-  }
-  else {
-    return ok;
-  }
-}
-
-extern "C" void io_gen_event_write_event_hepmc2
-( WriterAsciiHepMC2* writer, const GenEvent* evt) {
-  writer->write_event( *evt);
-}
-
-extern "C" bool io_gen_event_read_event_hepmc2
-( ReaderAsciiHepMC2* reader, GenEvent* evt) {
+( Reader* reader, GenEvent* evt) {
   bool ok;
   ok = reader->read_event( *evt);
   if (reader->failed()) {

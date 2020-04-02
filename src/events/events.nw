@@ -9149,6 +9149,10 @@ Fortran unit is obviously not possible.
 @ %def gen_event_set_alpha_qed
 @ The HepMC weights are measured in pb.
 <<HepMC interface: parameters>>=
+  integer, parameter, public :: HEPMC3_MODE_HEPMC2 = 1
+  integer, parameter, public :: HEPMC3_MODE_HEPMC3 = 2
+  integer, parameter, public :: HEPMC3_MODE_ROOT = 3
+  integer, parameter, public :: HEPMC3_MODE_HEPEVT = 4
   real(default), parameter :: pb_per_fb = 1.e-3_default
 @ %def pb_per_fb
 @
@@ -9537,70 +9541,48 @@ the file is done by the constructor, closing by the destructor.
 @ Constructor for an output stream associated to a file.
 <<HepMC interface: interfaces>>=
   interface
-     type(c_ptr) function new_io_gen_event_out (filename) bind(C)
+     type(c_ptr) function new_io_gen_event_out (hepmc3_mode, filename) bind(C)
        import
+       integer(c_int), intent(in) :: hepmc3_mode
        character(c_char), dimension(*), intent(in) :: filename
      end function new_io_gen_event_out
   end interface
-  interface
-     type(c_ptr) function new_io_gen_event_out_hepmc2 (filename) bind(C)
-       import
-       character(c_char), dimension(*), intent(in) :: filename
-     end function new_io_gen_event_out_hepmc2
-  end interface
-@ %def new_io_gen_event_out new_io_gen_event_out_hepmc2
+@ %def new_io_gen_event_out
 <<HepMC interface: public>>=
   public :: hepmc_iostream_open_out
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_open_out (iostream, filename, hepmc2)
+  subroutine hepmc_iostream_open_out (iostream, filename, hepmc3_mode)
     type(hepmc_iostream_t), intent(out) :: iostream
     type(string_t), intent(in) :: filename
-    logical, intent(in), optional :: hepmc2
-    logical :: hepmc2_mode
-    hepmc2_mode = .false.
-    if (present (hepmc2))  hepmc2_mode = hepmc2
-    if (hepmc2_mode) then
-       iostream%obj = &
-            new_io_gen_event_out_hepmc2 (char (filename) // c_null_char)
-    else
-       iostream%obj = &
-            new_io_gen_event_out (char (filename) // c_null_char)
-    end if
+    integer, intent(in) :: hepmc3_mode
+    integer(c_int) :: mode
+    mode = hepmc3_mode
+    iostream%obj = &
+         new_io_gen_event_out (mode, char (filename) // c_null_char)
   end subroutine hepmc_iostream_open_out
 
 @ %def hepmc_iostream_open_out
 @ Constructor for an input stream associated to a file.
 <<HepMC interface: interfaces>>=
   interface
-     type(c_ptr) function new_io_gen_event_in (filename) bind(C)
+     type(c_ptr) function new_io_gen_event_in (hepmc3_mode, filename) bind(C)
        import
+       integer(c_int), intent(in) :: hepmc3_mode
        character(c_char), dimension(*), intent(in) :: filename
      end function new_io_gen_event_in
   end interface
-  interface
-     type(c_ptr) function new_io_gen_event_in_hepmc2 (filename) bind(C)
-       import
-       character(c_char), dimension(*), intent(in) :: filename
-     end function new_io_gen_event_in_hepmc2
-  end interface
-@ %def new_io_gen_event_in new_io_gen_event_in_hepmc
+@ %def new_io_gen_event_in
 <<HepMC interface: public>>=
   public :: hepmc_iostream_open_in
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_open_in (iostream, filename, hepmc2)
+  subroutine hepmc_iostream_open_in (iostream, filename, hepmc3_mode)
     type(hepmc_iostream_t), intent(out) :: iostream
     type(string_t), intent(in) :: filename
-    logical, intent(in), optional :: hepmc2
-    logical :: hepmc2_mode
-    hepmc2_mode = .false.
-    if (present (hepmc2))  hepmc2_mode = hepmc2
-    if (hepmc2_mode) then
-       iostream%obj = &
-            new_io_gen_event_in_hepmc2 (char (filename) // c_null_char)
-    else
-       iostream%obj = &
-            new_io_gen_event_in (char (filename) // c_null_char)
-    end if
+    integer, intent(in) :: hepmc3_mode
+    integer(c_int) :: mode
+    mode = hepmc3_mode
+    iostream%obj = &
+            new_io_gen_event_in (mode, char (filename) // c_null_char)
   end subroutine hepmc_iostream_open_in
 
 @ %def hepmc_iostream_open_in
@@ -9612,27 +9594,13 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj
      end subroutine io_gen_event_delete
   end interface
-  interface
-     subroutine io_gen_event_delete_hepmc2 (io_obj) bind(C)
-       import
-       type(c_ptr), value :: io_obj
-     end subroutine io_gen_event_delete_hepmc2
-  end interface  
-@ %def io_gen_event_delete io_gen_event_delete
+@ %def io_gen_event_delete
 <<HepMC interface: public>>=
   public :: hepmc_iostream_close
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_close (iostream, hepmc2)
+  subroutine hepmc_iostream_close (iostream)
     type(hepmc_iostream_t), intent(inout) :: iostream
-    logical, intent(in), optional :: hepmc2
-    logical :: hepmc2_mode
-    hepmc2_mode = .false.
-    if (present (hepmc2))  hepmc2_mode = hepmc2
-    if (hepmc2_mode) then
-       call io_gen_event_delete_hepmc2 (iostream%obj)
-    else
-       call io_gen_event_delete (iostream%obj)
-    end if
+    call io_gen_event_delete (iostream%obj)
   end subroutine hepmc_iostream_close
 
 @ %def hepmc_iostream_close
@@ -9644,28 +9612,18 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj, evt_obj
      end subroutine io_gen_event_write_event
   end interface
-  interface
-     subroutine io_gen_event_write_event_hepmc2 (io_obj, evt_obj) bind(C)
-       import
-       type(c_ptr), value :: io_obj, evt_obj
-     end subroutine io_gen_event_write_event_hepmc2  
-  end interface
-@ %def io_gen_event_write_event io_gen_event_write_event_hepmc2
+@ %def io_gen_event_write_event
 <<HepMC interface: public>>=
   public :: hepmc_iostream_write_event
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_write_event (iostream, evt, hepmc2)
+  subroutine hepmc_iostream_write_event (iostream, evt, hepmc3_mode)
     type(hepmc_iostream_t), intent(inout) :: iostream
     type(hepmc_event_t), intent(in) :: evt
-    logical, intent(in), optional :: hepmc2
-    logical :: hepmc2_mode
-    hepmc2_mode = .false.
-    if (present (hepmc2))  hepmc2_mode = hepmc2
-    if (hepmc2_mode) then
-       call io_gen_event_write_event_hepmc2 (iostream%obj, evt%obj)
-    else
-       call io_gen_event_write_event (iostream%obj, evt%obj)
-    end if
+    integer, intent(in), optional :: hepmc3_mode
+    integer :: mode
+    mode = HEPMC3_MODE_HEPMC3
+    if (present (hepmc3_mode))  mode = hepmc3_mode
+    call io_gen_event_write_event (iostream%obj, evt%obj)
   end subroutine hepmc_iostream_write_event
 
 @ %def hepmc_iostream_write_event
@@ -9677,29 +9635,15 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj, evt_obj
      end function io_gen_event_read_event
   end interface
-  interface
-     logical(c_bool) function io_gen_event_read_event_hepmc2 (io_obj, evt_obj) bind(C)
-       import
-       type(c_ptr), value :: io_obj, evt_obj
-     end function io_gen_event_read_event_hepmc2
-  end interface
-@ %def io_gen_event_read_event io_gen_event_read_event_hepmc2
+@ %def io_gen_event_read_event
 <<HepMC interface: public>>=
   public :: hepmc_iostream_read_event
 <<HepMC interface: procedures>>=
-  subroutine hepmc_iostream_read_event (iostream, evt, ok, hepmc2)
+  subroutine hepmc_iostream_read_event (iostream, evt, ok)
     type(hepmc_iostream_t), intent(inout) :: iostream
     type(hepmc_event_t), intent(inout) :: evt
     logical, intent(out) :: ok
-    logical, intent(in), optional :: hepmc2
-    logical :: hepmc2_mode
-    hepmc2_mode = .false.
-    if (present (hepmc2))  hepmc2_mode = hepmc2
-    if (hepmc2_mode) then
-       ok = io_gen_event_read_event_hepmc2 (iostream%obj, evt%obj)
-    else
-       ok = io_gen_event_read_event (iostream%obj, evt%obj)
-    end if
+    ok = io_gen_event_read_event (iostream%obj, evt%obj)
   end subroutine hepmc_iostream_read_event
 
 @ %def hepmc_iostream_read_event
@@ -9886,7 +9830,7 @@ object can be correctly initialized.
     write (u, "(A)")  "Writing to file 'hepmc_test.hepmc'"
     write (u, "(A)")
 
-    call hepmc_iostream_open_out (iostream , var_str ("hepmc_test.hepmc"))
+    call hepmc_iostream_open_out (iostream , var_str ("hepmc_test.hepmc"), 2)
     call hepmc_iostream_write_event (iostream, evt)
     call hepmc_iostream_close (iostream)
 
@@ -12524,7 +12468,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     call hepmc_event_add_weight (hepmc_event, weight)
     call hepmc_event_print (hepmc_event)
     call hepmc_iostream_open_out &
-         (iostream , var_str ("hep_events.hepmc.dat"))
+         (iostream , var_str ("hep_events.hepmc.dat"), 2)
     call hepmc_iostream_write_event (iostream, hepmc_event)
     call hepmc_iostream_close (iostream)
 
@@ -12536,7 +12480,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     call hepmc_event_final (hepmc_event)
     call hepmc_event_init (hepmc_event)
     call hepmc_iostream_open_in &
-         (iostream , var_str ("hep_events.hepmc.dat"))
+         (iostream , var_str ("hep_events.hepmc.dat"), HEPMC3_MODE_HEPMC3)
     call hepmc_iostream_read_event (iostream, hepmc_event, ok=ok)
     call hepmc_iostream_close (iostream)
     call hepmc_event_to_particle_set (particle_set2, &
@@ -15623,7 +15567,7 @@ HepMC and this is written for every event, we make it optional with
      logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      logical :: output_cross_section = .false.
-     logical :: hepmc2_mode = .false.
+     integer :: hepmc3_mode = HEPMC3_MODE_HEPMC3
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
@@ -15641,14 +15585,14 @@ Set parameters that are specifically used with HepMC.
   subroutine eio_hepmc_set_parameters &
        (eio, &
        recover_beams, use_alphas_from_file, use_scale_from_file, &
-       extension, output_cross_section, hepmc2_mode)
+       extension, output_cross_section, hepmc3_mode)
     class(eio_hepmc_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension
-    logical, intent(in), optional :: hepmc2_mode
+    integer, intent(in), optional :: hepmc3_mode
     if (present (recover_beams)) &
          eio%recover_beams = recover_beams
     if (present (use_alphas_from_file)) &
@@ -15662,8 +15606,8 @@ Set parameters that are specifically used with HepMC.
     end if
     if (present (output_cross_section)) &
          eio%output_cross_section = output_cross_section
-    if (present (hepmc2_mode)) &
-         eio%hepmc2_mode = hepmc2_mode
+    if (present (hepmc3_mode)) &
+         eio%hepmc3_mode = hepmc3_mode
   end subroutine eio_hepmc_set_parameters
 
 @ %def eio_hepmc_set_parameters
@@ -15694,7 +15638,7 @@ of the current object status.
          object%use_scale_from_file
     write (u, "(3x,A,A,A)")     "File extension    = '", &
          char (object%extension), "'"
-    write (u, "(3x,A,L1)")    "HepMC2 compat.    = ", object%hepmc2_mode
+    write (u, "(3x,A,I0)")    "HepMC3 mode       = ", object%hepmc3_mode
     if (allocated (object%proc_num_id)) then
        write (u, "(3x,A)")  "Numerical process IDs:"
        do i = 1, size (object%proc_num_id)
@@ -15715,13 +15659,13 @@ of the current object status.
        write (msg_buffer, "(A,A,A)")  "Events: closing HepMC file '", &
             char (object%filename), "'"
        call msg_message ()
-       call hepmc_iostream_close (object%iostream, object%hepmc2_mode)
+       call hepmc_iostream_close (object%iostream)
        object%writing = .false.
     else if (object%reading) then
        write (msg_buffer, "(A,A,A)")  "Events: closing HepMC file '", &
             char (object%filename), "'"
        call msg_message ()
-       call hepmc_iostream_close (object%iostream, object%hepmc2_mode)
+       call hepmc_iostream_close (object%iostream)
        object%reading = .false.
     end if
   end subroutine eio_hepmc_final
@@ -15740,9 +15684,9 @@ one.  If the file needs a header, repeat it for the new file.
        write (msg_buffer, "(A,A,A)")  "Events: writing to HepMC file '", &
             char (eio%filename), "'"
        call msg_message ()
-       call hepmc_iostream_close (eio%iostream, eio%hepmc2_mode)
+       call hepmc_iostream_close (eio%iostream)
        call hepmc_iostream_open_out (eio%iostream, &
-            eio%filename, eio%hepmc2_mode)
+            eio%filename, eio%hepmc3_mode)
     end if
   end subroutine eio_hepmc_split_out
 
@@ -15795,7 +15739,7 @@ one.  If the file needs a header, repeat it for the new file.
     call msg_message ()
     eio%writing = .true.
     call hepmc_iostream_open_out (eio%iostream, &
-         eio%filename, eio%hepmc2_mode)
+         eio%filename, eio%hepmc3_mode)
     if (present (success))  success = .true.
   end subroutine eio_hepmc_init_out
 
@@ -15821,7 +15765,7 @@ event files.
     if (.not. exist)  call msg_fatal ("Events: HepMC file not found.")
     eio%reading = .true.
     call hepmc_iostream_open_in (eio%iostream, &
-         eio%filename, eio%hepmc2_mode)
+         eio%filename, eio%hepmc3_mode)
     if (present (success))  success = .true.
   end subroutine eio_hepmc_init_in
 
@@ -15871,7 +15815,7 @@ $\alpha_s$.
        if (.not. eio%data%unweighted) &
           call hepmc_event_add_weight (eio%hepmc_event, event%weight_prc)
        call hepmc_iostream_write_event (eio%iostream, &
-            eio%hepmc_event, eio%hepmc2_mode)
+            eio%hepmc_event, eio%hepmc3_mode)
        call hepmc_event_final (eio%hepmc_event)
     else
        call eio%write ()
@@ -15894,7 +15838,7 @@ $\alpha_s$.
     iostat = 0
     call hepmc_event_init (eio%hepmc_event)
     call hepmc_iostream_read_event (eio%iostream, &
-         eio%hepmc_event, ok=ok, hepmc2=eio%hepmc2_mode)
+         eio%hepmc_event, ok=ok)
     proc_num_id = hepmc_event_get_process_id (eio%hepmc_event)
     if (.not. ok) then
        iostat = -1

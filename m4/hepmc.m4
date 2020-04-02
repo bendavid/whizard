@@ -73,6 +73,7 @@ if test "$enable_hepmc" = "yes"; then
        HEPMC_INCLUDES=$wo_hepmc_includes
        LDFLAGS_HEPMC=$wo_hepmc_ldflags
      fi
+     AM_CONDITIONAL([HEPMC3_HAS_ROOT],false)
    else
       hepmc_is_v3="yes"
       AC_MSG_CHECKING([the HepMC3 version])
@@ -120,6 +121,9 @@ if test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "no"; then
 else
    HEPMC2_AVAILABLE_FLAG=".false."
 fi
+if test "$enable_hepmc" = "no"; then
+   AM_CONDITIONAL([HEPMC3_HAS_ROOT],false)
+fi
 AC_SUBST([HEPMC2_AVAILABLE_FLAG])
 AC_SUBST([HEPMC3_AVAILABLE_FLAG])
 AM_CONDITIONAL([HEPMC_IS_VERSION3], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"])
@@ -164,7 +168,17 @@ else
    CXXFLAGS="${CXXFLAGS} --std=c++11 `${hepmcconfig} --cxxflags`"
    LIBS="${LIBS} `${hepmcconfig} --libs`"
 
-   AC_MSG_CHECKING([if HepMC is functional])
+   AC_MSG_CHECKING([if HepMC3 is built with ROOT interface])
+   if ${hepmcconfig} --rootIO | grep rootIO >/dev/null 2>&1; then
+      hepmc3_root="yes"
+      HEPMCROOTLIBS="`${hepmcconfig} --rootIO` -Wl,-rpath,$ROOTLIBDIR -L$ROOTLIBDIR $ROOTLIBS"
+   else
+      hepmc3_root="no"
+   fi
+   AC_MSG_RESULT([$hepmc3_root])
+   AM_CONDITIONAL([HEPMC3_HAS_ROOT], [test "$hepmc3_root" = "yes"])
+
+   AC_MSG_CHECKING([if HepMC3 is functional])
    AC_LANG_PUSH(C++)
    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <HepMC3/GenEvent.h>
@@ -179,7 +193,7 @@ using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
    AC_MSG_CHECKING(HepMC3)
    if test "${hepmcok}" = "yes"; then
       HEPMC_INCLUDES="--std=c++11 `${hepmcconfig} --cxxflags`"
-      LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs`"
+      LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs` $HEPMCROOTLIBS"
       AC_MSG_RESULT(yes)
       $1
    else
