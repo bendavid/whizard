@@ -569,7 +569,7 @@ WO_CONFIGURE_SECTION([ROOT])
 
 WO_ROOT_PATH(,[
         AC_DEFINE([HAVE_ROOT],,[Root library])
-        AC_CHECK_LIB([dl],[dlopen],[],AC_MSG_ERROR([Root libraries not linking properly]))
+        AC_CHECK_LIB([dl],[dlopen],[],AC_MSG_WARN([Root libraries not linking properly]))
         ],AC_MSG_RESULT([The ROOT support of HepMC might not be working properly]))
 
 ###---------------------------------------------------------------------
