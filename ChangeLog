@@ -7,8 +7,8 @@ Use svn log to see detailed changes.
 2020-03-03
 	RELEASE: version 2.8.3
 
-2020-04-02
-	Improved HepMC3 interface: support for HepMC ROOT interface
+2020-04-04
+	Improved HepMC3 interface: HepMC3 Root/RootTree interface
 
 2020-03-24
 	ISR: Fix on-shell kinematics for events with ?isr_handler=true

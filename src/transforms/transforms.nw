@@ -13318,7 +13318,8 @@ module dispatch_transforms
 
   use event_base, only: event_callback_t, event_callback_nop_t
   use hepmc_interface, only: HEPMC3_MODE_HEPMC2, HEPMC3_MODE_HEPMC3
-  use hepmc_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_HEPEVT
+  use hepmc_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_ROOTTREE
+  use hepmc_interface, only: HEPMC3_MODE_HEPEVT
   use eio_base
   use eio_raw
   use eio_checkpoints
@@ -13761,13 +13762,15 @@ which is defined here.
              hepmc3_mode = HEPMC3_MODE_HEPMC2
           case ("HepMC3")
              hepmc3_mode = HEPMC3_MODE_HEPMC3
-          case ("ROOT")
+          case ("Root")
              hepmc3_mode = HEPMC3_MODE_ROOT
+          case ("RootTree")
+             hepmc3_mode = HEPMC3_MODE_ROOTTREE
           case ("HepEVT")
              hepmc3_mode = HEPMC3_MODE_HEPEVT
           case default
              call msg_fatal ("Only supported HepMC3 modes are: 'HepMC2', " // &
-                  "'HepMC3', 'HepEVT', and 'ROOT'.")
+                  "'HepMC3', 'HepEVT', 'Root', and 'RootTree'.")
           end select
           call eio%set_parameters (recover_beams, &
                use_alphas_from_file, use_scale_from_file, &

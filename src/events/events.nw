@@ -9152,7 +9152,8 @@ Fortran unit is obviously not possible.
   integer, parameter, public :: HEPMC3_MODE_HEPMC2 = 1
   integer, parameter, public :: HEPMC3_MODE_HEPMC3 = 2
   integer, parameter, public :: HEPMC3_MODE_ROOT = 3
-  integer, parameter, public :: HEPMC3_MODE_HEPEVT = 4
+  integer, parameter, public :: HEPMC3_MODE_ROOTTREE = 4
+  integer, parameter, public :: HEPMC3_MODE_HEPEVT = 5
   real(default), parameter :: pb_per_fb = 1.e-3_default
 @ %def pb_per_fb
 @

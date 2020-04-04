@@ -525,6 +525,7 @@ extern "C" Reader* new_io_gen_event_in( int* io_format, char* filename ) {
 }
 
 extern "C" void io_gen_event_delete( Writer* iostream ) {
+  iostream->close();
   delete iostream;
 }
 

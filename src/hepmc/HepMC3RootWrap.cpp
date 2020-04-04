@@ -13,6 +13,8 @@
 #include "HepMC3/WriterAsciiHepMC2.h"
 #include "HepMC3/ReaderRootTree.h"
 #include "HepMC3/WriterRootTree.h"
+#include "HepMC3/ReaderRoot.h"
+#include "HepMC3/WriterRoot.h"
 #include "HepMC3/ReaderHEPEVT.h"
 #include "HepMC3/WriterHEPEVT.h"
 #include "HepMC3_WHIZARD_Polarization.h"
@@ -507,8 +509,10 @@ extern "C" Writer* new_io_gen_event_out( int* io_format, char* filename ) {
   case 2:
     return (Writer*)(new WriterAscii( filename));
   case 3:
-    return (Writer*)(new WriterRootTree( filename));
+    return (Writer*)(new WriterRoot( filename));
   case 4:
+    return (Writer*)(new WriterRootTree( filename));
+  case 5:
     return (Writer*)(new WriterHEPEVT( filename));
   default:
     return (Writer*)(new WriterAscii( filename));
@@ -522,8 +526,10 @@ extern "C" Reader* new_io_gen_event_in( int* io_format, char* filename ) {
   case 2:
     return (Reader*)(new ReaderAscii( filename));
   case 3:
-    return (Reader*)(new ReaderRootTree( filename));
+    return (Reader*)(new ReaderRoot( filename));
   case 4:
+    return (Reader*)(new ReaderRootTree( filename));
+  case 5:
     return (Reader*)(new ReaderHEPEVT( filename));
   default:
     return (Reader*)(new ReaderAscii( filename));
@@ -531,6 +537,7 @@ extern "C" Reader* new_io_gen_event_in( int* io_format, char* filename ) {
 }
 
 extern "C" void io_gen_event_delete( Writer* iostream ) {
+  iostream->close();
   delete iostream;
 }
 

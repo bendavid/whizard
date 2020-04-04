@@ -5250,8 +5250,8 @@ procedure with type [[V_NONE]].
     call var_list%append_string (var_str ("$hepmc3_mode"), var_str ("HepMC3"), &
          intrinsic = .true., &
          description=var_str ('This specifies the writer mode for HepMC3. ' // &
-         'Possible values are \ttt{HepMC2}, \ttt{HepMC3} (default), and ' // &
-         '\ttt{HepEVT}, \ttt{ROOT}. (cf. also \ttt{hepmc})'))
+         'Possible values are \ttt{HepMC2}, \ttt{HepMC3} (default),  ' // &
+         '\ttt{HepEVT}, \ttt{Root}. and \ttt{RootTree} (cf. also \ttt{hepmc})'))
     call var_list%append_string (var_str ("$extension_lcio"), var_str ("slcio"), &
           intrinsic=.true., &
           description=var_str ('String variable that allows via \ttt{\$extension\_lcio ' // &
