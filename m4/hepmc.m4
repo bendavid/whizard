@@ -190,14 +190,14 @@ using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
    CXXFLAGS="$save_CXXFLAGS"
    LIBS="$save_LIBS"
 
-   AC_MSG_CHECKING(HepMC3)
+   AC_MSG_CHECKING([for HepMC3])
    if test "${hepmcok}" = "yes"; then
       HEPMC_INCLUDES="--std=c++11 `${hepmcconfig} --cxxflags`"
       LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs` $HEPMCROOTLIBS"
-      AC_MSG_RESULT(yes)
+      AC_MSG_RESULT([yes])
       $1
    else
-      AC_MSG_RESULT(no)
+      AC_MSG_RESULT([no])
       $2
    fi
 fi
