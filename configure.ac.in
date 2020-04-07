@@ -903,11 +903,6 @@ AC_CONFIG_FILES([src/mci/Makefile])
 AC_CONFIG_FILES([src/phase_space/Makefile])
 
 ###---------------------------------------------------------------------
-### Subdirectory src/user: user plugin support
-
-AC_CONFIG_FILES([src/user/Makefile])
-
-###---------------------------------------------------------------------
 ### Subdirectory src/blha: BLHA support (NLO data record)
 
 AC_CONFIG_FILES([src/blha/Makefile])

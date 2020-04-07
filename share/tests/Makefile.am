@@ -35,7 +35,6 @@ EXTRA_DIST = \
     cascades2_1.fds \
     cascades2_2.fds \
     functional_tests/structure_2_inc.sin functional_tests/testproc_3.phs \
-    functional_tests/user_cuts.f90 \
     functional_tests/susyhit.in \
     functional_tests/ufo_5_test.slha \
     ext_tests_nmssm/nmssm.slha
@@ -629,7 +628,6 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/model_scheme_1.ref \
     functional_tests/ref-output/model_test.ref \
     functional_tests/ref-output/cuts.ref \
-    functional_tests/ref-output/user_cuts.ref \
     functional_tests/ref-output/user_prc_threshold_1.ref \
     functional_tests/ref-output/user_prc_threshold_2.ref \
     functional_tests/ref-output/qedtest_1.ref \
@@ -1329,7 +1327,6 @@ MISC_TESTS_SIN = \
     functional_tests/static_1.exe.sin \
     functional_tests/static_2.sin \
     functional_tests/static_2.exe.sin \
-    functional_tests/user_cuts.sin \
     functional_tests/user_prc_threshold_1.sin \
     functional_tests/cascades2_phs_1.sin \
     functional_tests/user_prc_threshold_2.sin \

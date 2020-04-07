@@ -102,7 +102,6 @@ module_lists = \
   ../muli/Modules \
   ../phase_space/Modules \
   ../mci/Modules \
-  ../user/Modules \
   ../blha/Modules \
   ../gosam/Modules \
   ../openloops/Modules \
@@ -156,7 +155,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../beams -I../matrix_elements -I../me_methods -I../events -I../muli -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../openloops -I../recola -I../fks -I../model_features -I../variables -I../tauola -I../shower -I../threshold -I../process_integration -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../beams -I../matrix_elements -I../me_methods -I../events -I../muli -I../phase_space -I../mci -I../blha -I../gosam -I../openloops -I../recola -I../fks -I../model_features -I../variables -I../tauola -I../shower -I../threshold -I../process_integration -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src
 
 ########################################################################
 ## Default Fortran compiler options

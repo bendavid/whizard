@@ -3558,22 +3558,6 @@ procedure with type [[V_NONE]].
           description=var_str ('This flag decides whether to read QCD ' // &
           'color factors from the matrix element provided by each method, ' // &
           'or to try and calculate the color factors in \whizard\ internally.'))
-     !!! JRR: WK please check (#529)
-!     call var_list_append_string &
-!          (var_list, var_str ("$user_procs_cut"), var_str (""), &
-!           intrinsic=.true.)
-!     call var_list_append_string &
-!          (var_list, var_str ("$user_procs_event_shape"), var_str (""), &
-!           intrinsic=.true.)
-!     call var_list_append_string &
-!          (var_list, var_str ("$user_procs_obs1"), var_str (""), &
-!           intrinsic=.true.)
-!     call var_list_append_string &
-!          (var_list, var_str ("$user_procs_obs2"), var_str (""), &
-!           intrinsic=.true.)
-!     call var_list_append_string &
-!          (var_list, var_str ("$user_procs_sf"), var_str (""), &
-!           intrinsic=.true.)
     call var_list%append_log (var_str ("?slha_read_input"), .true., &
           intrinsic=.true., &
           description=var_str ('Flag which decides whether \whizard\ reads ' // &

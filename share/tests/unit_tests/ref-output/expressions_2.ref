@@ -20,7 +20,7 @@ Syntax table:
  KEYWORD     '**'
  ALTERNATIVE <value> = <signed_value> | <unsigned_value>
  SEQUENCE    <signed_value> = '-' <unsigned_value>
- ALTERNATIVE <unsigned_value> = <numeric_value> | <constant> | <variable> | <result> | <user_observable> | <grouped_expr> | <block_expr> | <conditional_expr> | <unary_function> | <binary_function>
+ ALTERNATIVE <unsigned_value> = <numeric_value> | <constant> | <variable> | <result> | <grouped_expr> | <block_expr> | <conditional_expr> | <unary_function> | <binary_function>
  ALTERNATIVE <numeric_value> = <integer_value> | <real_value> | <complex_value>
  SEQUENCE    <integer_value> = <integer_literal> <unit_expr>?
  SEQUENCE    <real_value> = <real_literal> <unit_expr>?
@@ -58,9 +58,6 @@ Syntax table:
  IDENTIFIER  <variable>
  SEQUENCE    <result> = <result_key> <result_arg>
  ALTERNATIVE <result_key> = num_id | integral | error
- SEQUENCE    <user_observable> = user_obs <user_arg>
- KEYWORD     user_obs
- ARGUMENTS   <user_arg> = ( <sexpr> )
  KEYWORD     num_id
  KEYWORD     integral
  KEYWORD     error
@@ -191,7 +188,7 @@ Syntax table:
  ALTERNATIVE <sprintf_arg> = <lvariable> | <svariable> | <expr>
  QUOTED      <string_literal> = '"' ... '"'
 Keyword list:
- + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error user_obs , let = int real complex logical ? true false not in if then elsif else endif < > <= >= == <> and or ; string $ sprintf & nint floor ceiling a
+ + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error let = int real complex , logical ? true false not in if then elsif else endif < > <= >= == <> $ sprintf & and or ; string nint floor ceiling abs conjg
 [user variable] tolerance =  0.000000000000E+00
 [user variable] x = -5.000000000000E+00
 [user variable] foo = -27

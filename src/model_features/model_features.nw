@@ -3760,7 +3760,6 @@ module eval_trees
   use jets
   use pdg_arrays
   use subevents
-  use user_code_interface
   use var_base
   use expr_base
   use variables
@@ -3800,8 +3799,6 @@ leafs are literal constants or named-parameter references.
   integer, parameter :: EN_RECORD_CMD = 7
   integer, parameter :: EN_OBS1_INT = 11, EN_OBS2_INT = 12
   integer, parameter :: EN_OBS1_REAL = 21, EN_OBS2_REAL = 22
-  integer, parameter :: EN_UOBS1_INT = 31, EN_UOBS2_INT = 32
-  integer, parameter :: EN_UOBS1_REAL = 41, EN_UOBS2_REAL = 42
   integer, parameter :: EN_PRT_FUN_UNARY = 101, EN_PRT_FUN_BINARY = 102
   integer, parameter :: EN_EVAL_FUN_UNARY = 111, EN_EVAL_FUN_BINARY = 112
   integer, parameter :: EN_LOG_FUN_UNARY = 121, EN_LOG_FUN_BINARY = 122
@@ -3812,7 +3809,6 @@ leafs are literal constants or named-parameter references.
 @ %def EN_UNKNOWN EN_UNARY EN_BINARY EN_CONSTANT EN_VARIABLE EN_CONDITIONAL
 @ %def EN_RECORD_CMD
 @ %def EN_OBS1_INT EN_OBS2_INT EN_OBS1_REAL EN_OBS2_REAL
-@ %def EN_UOBS1_INT EN_UOBS2_INT EN_UOBS1_REAL EN_UOBS2_REAL
 @ %def EN_PRT_FUN_UNARY EN_PRT_FUN_BINARY
 @ %def EN_EVAL_FUN_UNARY EN_EVAL_FUN_BINARY
 @ %def EN_LOG_FUN_UNARY EN_LOG_FUN_BINARY
@@ -4181,60 +4177,6 @@ Initialize a leaf node with a literal constant.
 @ %def eval_node_init_obs2_int_ptr
 @ %def eval_node_init_obs1_real_ptr
 @ %def eval_node_init_obs2_real_ptr
-@ These nodes refer to user-defined procedures.
-<<Eval trees: procedures>>=
-  subroutine eval_node_init_uobs1_int (node, name, arg)
-    type(eval_node_t), intent(out) :: node
-    type(string_t), intent(in) :: name
-    type(eval_node_t), intent(in), target :: arg
-    node%type = EN_UOBS1_INT
-    node%tag = name
-    node%result_type = V_INT
-    allocate (node%ival, node%value_is_known)
-    node%value_is_known = .false.
-    node%arg0 => arg
-  end subroutine eval_node_init_uobs1_int
-
-  subroutine eval_node_init_uobs2_int (node, name, arg)
-    type(eval_node_t), intent(out) :: node
-    type(string_t), intent(in) :: name
-    type(eval_node_t), intent(in), target :: arg
-    node%type = EN_UOBS2_INT
-    node%tag = name
-    node%result_type = V_INT
-    allocate (node%ival, node%value_is_known)
-    node%value_is_known = .false.
-    node%arg0 => arg
-  end subroutine eval_node_init_uobs2_int
-
-  subroutine eval_node_init_uobs1_real (node, name, arg)
-    type(eval_node_t), intent(out) :: node
-    type(string_t), intent(in) :: name
-    type(eval_node_t), intent(in), target :: arg
-    node%type = EN_UOBS1_REAL
-    node%tag = name
-    node%result_type = V_REAL
-    allocate (node%rval, node%value_is_known)
-    node%value_is_known = .false.
-    node%arg0 => arg
-  end subroutine eval_node_init_uobs1_real
-
-  subroutine eval_node_init_uobs2_real (node, name, arg)
-    type(eval_node_t), intent(out) :: node
-    type(string_t), intent(in) :: name
-    type(eval_node_t), intent(in), target :: arg
-    node%type = EN_UOBS2_REAL
-    node%tag = name
-    node%result_type = V_REAL
-    allocate (node%rval, node%value_is_known)
-    node%value_is_known = .false.
-    node%arg0 => arg
-  end subroutine eval_node_init_uobs2_real
-
-@ %def eval_node_init_uobs1_int
-@ %def eval_node_init_uobs2_int
-@ %def eval_node_init_uobs1_real
-@ %def eval_node_init_uobs2_real
 @
 \subsubsection{Branch nodes}
 Initialize a branch node, sub-nodes are given.
@@ -4665,8 +4607,7 @@ pseudo-observable is always known when it is referred to.
        write (u, "(A)", advance="no")  "[const] ="
     case (EN_VARIABLE)
        write (u, "(A)", advance="no")  char (node%tag) // " =>"
-    case (EN_OBS1_INT, EN_OBS2_INT, EN_OBS1_REAL, EN_OBS2_REAL, &
-         EN_UOBS1_INT, EN_UOBS2_INT, EN_UOBS1_REAL, EN_UOBS2_REAL)
+    case (EN_OBS1_INT, EN_OBS2_INT, EN_OBS1_REAL, EN_OBS2_REAL)
        write (u, "(A)", advance="no")  char (node%tag) // " ="
     case (EN_BLOCK)
        write (u, "(A)", advance="no")  "[" // char (node%tag) // "]" // &
@@ -4726,10 +4667,10 @@ pseudo-observable is always known when it is referred to.
        write (u, "(1x,A)") "[empty]"
     end select
     select case (node%type)
-    case (EN_OBS1_INT, EN_OBS1_REAL, EN_UOBS1_INT, EN_UOBS1_REAL)
+    case (EN_OBS1_INT, EN_OBS1_REAL)
        write (u, "(A,6x,A)", advance="no")  repeat ("|  ", ind), "prt1 ="
        call prt_write (node%prt1, unit)
-    case (EN_OBS2_INT, EN_OBS2_REAL, EN_UOBS2_INT, EN_UOBS2_REAL)
+    case (EN_OBS2_INT, EN_OBS2_REAL)
        write (u, "(A,6x,A)", advance="no")  repeat ("|  ", ind), "prt1 ="
        call prt_write (node%prt1, unit)
        write (u, "(A,6x,A)", advance="no")  repeat ("|  ", ind), "prt2 ="
@@ -6170,82 +6111,6 @@ subevent.  [[any]] and [[no]] are analogous.
   end function no_p
 
 @ %def all_p any_p no_p
-@ This is the interface to user-supplied observables.  The node [[en0]]
-evaluates to a string that indicates the procedure name.  We search for the
-procedure in the dynamic library and load it into the procedure pointer which
-is then called.  [[en1]] is the subevent on which the external code
-operates.  The external function returns a [[c_int]], which we translate
-into a real value.
-<<Eval trees: procedures>>=
-  function user_obs_int_p (en0, prt1) result (ival)
-    integer :: ival
-    type(eval_node_t), intent(inout) :: en0
-    type(prt_t), intent(in) :: prt1
-    type(string_t) :: name
-    procedure(user_obs_int_unary), pointer :: user_obs
-    call eval_node_evaluate (en0)
-    if (en0%value_is_known) then
-       select case (en0%result_type)
-       case (V_STR);  name = en0%sval
-       case default
-          call msg_bug ("user_obs: procedure name must be a string")
-          name = ""
-       end select
-       call c_f_procpointer (user_code_find_proc (name), user_obs)
-       ival = user_obs (c_prt (prt1))
-    else
-       call eval_node_write_rec (en0)
-       call msg_fatal ("User observable name is undefined")
-    end if
-  end function user_obs_int_p
-
-  function user_obs_real_p (en0, prt1) result (rval)
-    real(default) :: rval
-    type(eval_node_t), intent(inout) :: en0
-    type(prt_t), intent(in) :: prt1
-    type(string_t) :: name
-    procedure(user_obs_real_unary), pointer :: user_obs
-    call eval_node_evaluate (en0)
-    if (en0%value_is_known) then
-       select case (en0%result_type)
-       case (V_STR);  name = en0%sval
-       case default
-          call msg_bug ("user_obs: procedure name must be a string")
-          name = ""
-       end select
-       call c_f_procpointer (user_code_find_proc (name), user_obs)
-       rval = user_obs (c_prt (prt1))
-    else
-       call eval_node_write_rec (en0)
-       call msg_fatal ("User observable name is undefined")
-    end if
-  end function user_obs_real_p
-
-@ %def user_obs_int_p
-@ %def user_obs_real_p
-@ This is the interface to user-supplied cut code.  The node [[en0]]
-evaluates to a string that indicates the procedure name.
-<<Eval trees: procedures>>=
-  function user_cut_p (en1, en0) result (lval)
-    logical :: lval
-    type(eval_node_t), intent(in) :: en1
-    type(eval_node_t), intent(inout) :: en0
-    type(string_t) :: name
-    procedure(user_cut_fun), pointer :: user_cut
-    call eval_node_evaluate (en0)
-    select case (en0%result_type)
-    case (V_STR);  name = en0%sval
-    case default
-       call msg_bug ("user_cut: procedure name must be a string")
-       name = ""
-    end select
-    call c_f_procpointer (user_code_find_proc (name), user_cut)
-    lval = user_cut (c_prt (en1%pval), &
-                     int (subevt_get_length (en1%pval), kind=c_int)) &
-           /= 0
-  end function user_cut_p
-
-@ %def user_cut_p
 @ The following function returns an integer value, namely the number
 of particles for which the condition is true.  If there is no
 condition, it returns simply the length of the subevent.
@@ -6271,30 +6136,6 @@ condition, it returns simply the length of the subevent.
   end subroutine count_a
 
 @ %def count_a
-@ This evaluates a user-defined event-shape observable for the current
-subevent.
-<<Eval trees: procedures>>=
-  subroutine user_event_shape_a (rval, en1, en0)
-    real(default), intent(out) :: rval
-    type(eval_node_t), intent(in) :: en1
-    type(eval_node_t), intent(inout), optional :: en0
-    type(string_t) :: name
-    procedure(user_event_shape_fun), pointer :: user_event_shape
-    if (.not. present (en0))  call msg_bug &
-         ("user_event_shape called without procedure name")
-    call eval_node_evaluate (en0)
-    select case (en0%result_type)
-    case (V_STR);  name = en0%sval
-    case default
-       call msg_bug ("user_event_shape: procedure name must be a string")
-       name = ""
-    end select
-    call c_f_procpointer (user_code_find_proc (name), user_event_shape)
-    rval = user_event_shape (c_prt (en1%pval), &
-                             int (subevt_get_length (en1%pval), kind=c_int))
-  end subroutine user_event_shape_a
-
-@ %def user_event_shape_a
 @
 \subsubsection{Binary particle-list functions}
 This joins two subevents, stored in the evaluation nodes [[en1]]
@@ -6699,60 +6540,7 @@ no valid pair, we revert the status of the value to unknown.
     end do LOOP1
   end subroutine eval_pp
 
-@ %def eval_pp
-@ This is the interface to user-supplied observables.  The node [[en0]]
-evaluates to a string that indicates the procedure name.  We search for the
-procedure in the dynamic library and load it into the procedure pointer which
-is then called.  [[en1]] is the subevent on which the external code
-operates.  The external function returns a [[c_int]], which we translate
-into a real value.
-<<Eval trees: procedures>>=
-  function user_obs_int_pp (en0, prt1, prt2) result (ival)
-    integer :: ival
-    type(eval_node_t), intent(inout) :: en0
-    type(prt_t), intent(in) :: prt1, prt2
-    type(string_t) :: name
-    procedure(user_obs_int_binary), pointer :: user_obs
-    call eval_node_evaluate (en0)
-    if (en0%value_is_known) then
-       select case (en0%result_type)
-       case (V_STR);  name = en0%sval
-       case default
-          call msg_bug ("user_obs: procedure name must be a string")
-          name = ""
-       end select
-       call c_f_procpointer (user_code_find_proc (name), user_obs)
-       ival = user_obs (c_prt (prt1), c_prt (prt2))
-    else
-       call eval_node_write_rec (en0)
-       call msg_fatal ("User observable name is undefined")
-    end if
-  end function user_obs_int_pp
-
-  function user_obs_real_pp (en0, prt1, prt2) result (rval)
-    real(default) :: rval
-    type(eval_node_t), intent(inout) :: en0
-    type(prt_t), intent(in) :: prt1, prt2
-    type(string_t) :: name
-    procedure(user_obs_real_binary), pointer :: user_obs
-    call eval_node_evaluate (en0)
-    if (en0%value_is_known) then
-       select case (en0%result_type)
-       case (V_STR);  name = en0%sval
-       case default
-          call msg_bug ("user_obs: procedure name must be a string")
-          name = ""
-       end select
-       call c_f_procpointer (user_code_find_proc (name), user_obs)
-       rval = user_obs (c_prt (prt1), c_prt (prt2))
-    else
-       call eval_node_write_rec (en0)
-       call msg_fatal ("User observable name is undefined")
-    end if
-  end function user_obs_real_pp
-
-@ %def user_obs_int_pp
-@ %def user_obs_real_pp
+@ %def eval_ppp
 @ The following function returns an integer value, namely the number
 of valid particle-pairs from both lists for which the condition is
 true.  Invalid pairs (with common [[src]] entry) are ignored.  If
@@ -7287,8 +7075,6 @@ a real constant.
        call eval_node_compile_variable (en, pn, var_list)
     case ("result")
        call eval_node_compile_result (en, pn, var_list)
-    case ("user_observable")
-       call eval_node_compile_user_observable (en, pn, var_list)
     case ("expr")
        call eval_node_compile_expr (en, pn, var_list)
     case ("block_expr")
@@ -7301,7 +7087,7 @@ a real constant.
        call eval_node_compile_binary_function (en, pn, var_list)
     case ("eval_fun")
        call eval_node_compile_eval_function (en, pn, var_list)
-    case ("count_fun", "user_event_fun")
+    case ("count_fun")
        call eval_node_compile_numeric_function (en, pn, var_list)
     case default
        call parse_node_mismatch &
@@ -7724,65 +7510,6 @@ used.
   end subroutine eval_node_compile_result
 
 @ %def eval_node_compile_result
-@ This user observable behaves like a variable.  We link the node to
-the generic user-observable entry in the variable list.  The syntax
-element has an argument which provides the name of the user variable,
-this is stored as an eval-node alongside with the variable.  When the
-variable value is used, the user-supplied external function is called
-and provides the (real) result value.
-<<Eval trees: procedures>>=
-  subroutine eval_node_compile_user_observable (en, pn, var_list)
-    type(eval_node_t), pointer :: en
-    type(parse_node_t), intent(in), target :: pn
-    type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_key, pn_arg, pn_obs
-    type(eval_node_t), pointer :: en0
-    integer :: res_type
-    type(string_t) :: var_name
-    integer :: type
-    logical :: defined
-    if (debug_active (D_MODEL_F)) then
-       print *, "read user observable";  call parse_node_write (pn)
-    end if
-    pn_key => parse_node_get_sub_ptr (pn)
-    select case (char (parse_node_get_key (pn_key)))
-    case ("user_obs")
-       res_type = V_REAL
-    case default
-       call parse_node_write (pn_key)
-       call msg_bug ("user_observable: wrong keyword")
-    end select
-    pn_arg => parse_node_get_next_ptr (pn_key)
-    pn_obs => parse_node_get_sub_ptr (pn_arg)
-    call eval_node_compile_sexpr (en0, pn_obs, var_list)
-    select case (res_type)
-    case (V_INT);  var_name = "_User_obs_int"
-    case (V_REAL); var_name = "_User_obs_real"
-    end select
-    call var_list%get_var_properties (var_name, type=type, is_defined=defined)
-    allocate (en)
-    if (defined) then
-       select case (type)
-       case (V_UOBS1_INT)
-          call eval_node_init_uobs1_int (en, var_name, en0)
-       case (V_UOBS2_INT)
-          call eval_node_init_uobs2_int (en, var_name, en0)
-       case (V_UOBS1_REAL)
-          call eval_node_init_uobs1_real (en, var_name, en0)
-       case (V_UOBS2_REAL)
-          call eval_node_init_uobs2_real (en, var_name, en0)
-       end select
-    else
-       call parse_node_write (pn)
-       call msg_error ("This variable is undefined at this point")
-    end if
-    if (debug_active (D_MODEL_F)) then
-       call eval_node_write (en)
-       print *, "done user observable"
-    end if
-  end subroutine eval_node_compile_user_observable
-
-@ %def eval_node_compile_user_observable
 @ Functions with a single argument.  For non-constant arguments, watch
 for functions which convert their argument to a different type.
 <<Eval trees: procedures>>=
@@ -8811,8 +8538,7 @@ l.h.s.\ of compared expressions.
        call eval_node_compile_compared_expr (en, pn, var_list, V_REAL)
     case ("compared_sexpr")
        call eval_node_compile_compared_expr (en, pn, var_list, V_STR)
-    case ("all_fun", "any_fun", "no_fun", "user_cut_fun", &
-          "photon_isolation_fun")
+    case ("all_fun", "any_fun", "no_fun", "photon_isolation_fun")
        call eval_node_compile_log_function (en, pn, var_list)
     case ("record_cmd")
        call eval_node_compile_record_cmd (en, pn, var_list)
@@ -9603,14 +9329,9 @@ create a logical [[eval_node_t]] with value [[.true.]].
           pn_arg0 => null ()
        end if
        pn_args => parse_node_get_next_ptr (pn_clause)
-    case ("user_cut_fun")
-       pn_key => parse_node_get_sub_ptr (pn)
-       pn_str => parse_node_get_next_ptr (pn_key)
-       pn_arg0 => parse_node_get_sub_ptr (pn_str)
-       pn_args => parse_node_get_next_ptr (pn_str)
     case default
        call parse_node_mismatch ("all_fun|any_fun|" // &
-            "no_fun|photon_isolation_fun|user_cut_fun", pn)
+            "no_fun|photon_isolation_fun", pn)
     end select
     pn_arg1 => parse_node_get_sub_ptr (pn_args)
     pn_arg2 => parse_node_get_next_ptr (pn_arg1)
@@ -9625,8 +9346,6 @@ create a logical [[eval_node_t]] with value [[.true.]].
           call eval_node_init_log_fun_unary (en, en1, key, any_p)
        case ("no")
           call eval_node_init_log_fun_unary (en, en1, key, no_p)
-       case ("user_cut")
-          call eval_node_init_log_fun_unary (en, en1, key, user_cut_p)
        case default
           call msg_bug ("Unary logical particle function '" // char (key) // &
                "' undefined")
@@ -9656,8 +9375,6 @@ create a logical [[eval_node_t]] with value [[.true.]].
        select case (char (key))
        case ("all", "any", "no", "photon_isolation")
           call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
-       case ("user_cut")
-          call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
        case default
           call msg_bug ("Compiling logical particle function: missing mode")
        end select
@@ -9703,11 +9420,6 @@ create a logical [[eval_node_t]] with value [[.true.]].
           pn_arg0 => null ()
        end if
        pn_args => parse_node_get_next_ptr (pn_clause)
-    case ("user_event_fun")
-       pn_key => parse_node_get_sub_ptr (pn)
-       pn_cond => parse_node_get_next_ptr (pn_key)
-       pn_arg0 => parse_node_get_sub_ptr (pn_cond)
-       pn_args => parse_node_get_next_ptr (pn_cond)
     end select
     pn_arg1 => parse_node_get_sub_ptr (pn_args)
     pn_arg2 => parse_node_get_next_ptr (pn_arg1)
@@ -9718,8 +9430,6 @@ create a logical [[eval_node_t]] with value [[.true.]].
        select case (char (key))
        case ("count")
           call eval_node_init_int_fun_unary (en, en1, key, count_a)
-       case ("user_event_shape")
-          call eval_node_init_real_fun_unary (en, en1, key, user_event_shape_a)
        case default
           call msg_bug ("Unary subevent function '" // char (key) // &
                "' undefined")
@@ -9740,9 +9450,6 @@ create a logical [[eval_node_t]] with value [[.true.]].
        case ("count")
           call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
           call eval_node_set_expr (en, en0, V_INT)
-       case ("user_event_shape")
-          call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
-          call eval_node_set_expr (en, en0, V_REAL)
        end select
     end if
     if (debug_active (D_MODEL_F)) then
@@ -10446,18 +10153,6 @@ determine the result.
     case (EN_OBS2_REAL)
        en%rval = en%obs2_real (en%prt1, en%prt2)
        en%value_is_known = .true.
-    case (EN_UOBS1_INT)
-       en%ival = user_obs_int_p (en%arg0, en%prt1)
-       en%value_is_known = .true.
-    case (EN_UOBS2_INT)
-       en%ival = user_obs_int_pp (en%arg0, en%prt1, en%prt2)
-       en%value_is_known = .true.
-    case (EN_UOBS1_REAL)
-       en%rval = user_obs_real_p (en%arg0, en%prt1)
-       en%value_is_known = .true.
-    case (EN_UOBS2_REAL)
-       en%rval = user_obs_real_pp (en%arg0, en%prt1, en%prt2)
-       en%value_is_known = .true.
     case (EN_PRT_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
        en%value_is_known = en%arg1%value_is_known
@@ -10718,7 +10413,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ signed_value = '-' unsigned_value")
     call ifile_append (ifile, "ALT unsigned_value = " // &
          "numeric_value | constant | variable | " // &
-         "result | user_observable | " // &
+         "result | " // &
          "grouped_expr | block_expr | conditional_expr | " // &
          "unary_function | binary_function" // &
          numeric_pexpr)
@@ -10765,9 +10460,6 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ result = result_key result_arg")
     call ifile_append (ifile, "ALT result_key = " // &
          "num_id | integral | error")
-    call ifile_append (ifile, "SEQ user_observable = user_obs user_arg")
-    call ifile_append (ifile, "KEY user_obs")
-    call ifile_append (ifile, "ARG user_arg = ( sexpr )")
     call ifile_append (ifile, "KEY num_id")
     call ifile_append (ifile, "KEY integral")
     call ifile_append (ifile, "KEY error")
@@ -11107,16 +10799,12 @@ We have two different flavors of the syntax: with and without particles.
   subroutine define_numeric_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "ALT numeric_pexpr = " &
-         // "eval_fun | count_fun | event_shape_fun")
+         // "eval_fun | count_fun")
     call ifile_append (ifile, "SEQ eval_fun = eval expr pargs1")
     call ifile_append (ifile, "SEQ count_fun = count_clause pargs1")
     call ifile_append (ifile, "SEQ count_clause = count condition?")
     call ifile_append (ifile, "KEY eval")
     call ifile_append (ifile, "KEY count")
-    call ifile_append (ifile, "ALT event_shape_fun = user_event_fun")
-    call ifile_append (ifile, "SEQ user_event_fun = " &
-         // "user_event_shape user_arg pargs1")
-    call ifile_append (ifile, "KEY user_event_shape")
   end subroutine define_numeric_pexpr_syntax
 
 @ %def define_numeric_pexpr_syntax
@@ -11125,7 +10813,7 @@ We have two different flavors of the syntax: with and without particles.
   subroutine define_logical_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "ALT logical_pexpr = " // &
-         "all_fun | any_fun | no_fun | user_cut_fun |" // &
+         "all_fun | any_fun | no_fun | " // &
          "photon_isolation_fun")
     call ifile_append (ifile, "SEQ all_fun = all lexpr pargs1")
     call ifile_append (ifile, "SEQ any_fun = any lexpr pargs1")
@@ -11138,8 +10826,6 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "KEY any")
     call ifile_append (ifile, "KEY no")
     call ifile_append (ifile, "KEY photon_isolation")
-    call ifile_append (ifile, "SEQ user_cut_fun = user_cut user_arg pargs1")
-    call ifile_append (ifile, "KEY user_cut")
   end subroutine define_logical_pexpr_syntax
 
 @ %def define_logical_pexpr_syntax

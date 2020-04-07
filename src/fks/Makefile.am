@@ -67,7 +67,6 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../parsing/Modules \
-  ../user/Modules \
   ../combinatorics/Modules \
   ../physics/Modules \
   ../qft/Modules \
@@ -124,7 +123,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../user -I../rng -I../combinatorics -I../physics -I../qft -I../model_features -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../blha -I../threshold -I../lhapdf -I../pdf_builtin -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../combinatorics -I../physics -I../qft -I../model_features -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../blha -I../threshold -I../lhapdf -I../pdf_builtin -I../fastjet
 
 
 ########################################################################

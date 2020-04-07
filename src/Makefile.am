@@ -40,7 +40,7 @@ SUBDIRS = \
   models particles matrix_elements variables \
   events prebuilt rng \
   beams tauola \
-  me_methods pythia8 shower user \
+  me_methods pythia8 shower \
   blha model_features \
   gosam openloops \
   recola phase_space \
@@ -89,7 +89,6 @@ libwhizard_la_LIBADD = \
   openloops/liboloops.la \
   recola/libwo_recola.la \
   blha/libblha.la \
-  user/libuser.la \
   vegas/libvegas.la \
   mci/libmci.la \
   phase_space/libphase_space.la \

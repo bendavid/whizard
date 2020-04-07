@@ -77,7 +77,6 @@ module_lists = \
   ../expr_base/Modules \
   ../types/Modules \
   ../particles/Modules \
-  ../user/Modules \
   ../variables/Modules \
   ../threshold/Modules
 
@@ -126,7 +125,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../threshold -I../user -I../fastjet -I../variables
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../threshold -I../fastjet -I../variables
 
 
 ########################################################################

@@ -115,7 +115,7 @@ rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../../vamp/src -I../variables -I../expr_base -I../user -I../parsing -I../types -I../fastjet -I../physics -I../combinatorics
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../../vamp/src -I../variables -I../expr_base -I../parsing -I../types -I../fastjet -I../physics -I../combinatorics
 
 
 ########################################################################

@@ -74,7 +74,6 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../combinatorics/Modules \
-  ../user/Modules \
   ../rng/Modules \
   ../physics/Modules \
   ../qft/Modules \

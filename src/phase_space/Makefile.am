@@ -96,7 +96,6 @@ module_lists = \
   ../model_features/Modules \
   ../variables/Modules \
   ../expr_base/Modules \
-  ../user/Modules \
   ../threshold/Modules
 
 $(module_lists):
@@ -141,7 +140,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../fastjet -I../qed_pdf -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../rng -I../../circe1/src -I../../circe2/src  -I../pdf_builtin -I../lhapdf -I../model_features -I../variables -I../expr_base -I../user -I../threshold
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../fastjet -I../qed_pdf -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../rng -I../../circe1/src -I../../circe2/src  -I../pdf_builtin -I../lhapdf -I../model_features -I../variables -I../expr_base -I../threshold
 
 
 ########################################################################

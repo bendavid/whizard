@@ -22,7 +22,7 @@ Syntax table:
  KEYWORD     '**'
  ALTERNATIVE <value> = <signed_value> | <unsigned_value>
  SEQUENCE    <signed_value> = '-' <unsigned_value>
- ALTERNATIVE <unsigned_value> = <numeric_value> | <constant> | <variable> | <result> | <user_observable> | <grouped_expr> | <block_expr> | <conditional_expr> | <unary_function> | <binary_function> | <numeric_pexpr>
+ ALTERNATIVE <unsigned_value> = <numeric_value> | <constant> | <variable> | <result> | <grouped_expr> | <block_expr> | <conditional_expr> | <unary_function> | <binary_function> | <numeric_pexpr>
  ALTERNATIVE <numeric_value> = <integer_value> | <real_value> | <complex_value>
  SEQUENCE    <integer_value> = <integer_literal> <unit_expr>?
  SEQUENCE    <real_value> = <real_literal> <unit_expr>?
@@ -60,9 +60,6 @@ Syntax table:
  IDENTIFIER  <variable>
  SEQUENCE    <result> = <result_key> <result_arg>
  ALTERNATIVE <result_key> = num_id | integral | error
- SEQUENCE    <user_observable> = user_obs <user_arg>
- KEYWORD     user_obs
- ARGUMENTS   <user_arg> = ( <sexpr> )
  KEYWORD     num_id
  KEYWORD     integral
  KEYWORD     error
@@ -278,16 +275,13 @@ Syntax table:
  SEQUENCE    <var_plist_spec> = '@' <var_name> '=' <pexpr>
  SEQUENCE    <var_alias> = alias <var_name> '=' <cexpr>
  KEYWORD     alias
- ALTERNATIVE <numeric_pexpr> = <eval_fun> | <count_fun> | <event_shape_fun>
+ ALTERNATIVE <numeric_pexpr> = <eval_fun> | <count_fun>
  SEQUENCE    <eval_fun> = eval <expr> <pargs1>
  SEQUENCE    <count_fun> = <count_clause> <pargs1>
  SEQUENCE    <count_clause> = count <condition>?
  KEYWORD     eval
  KEYWORD     count
- ALTERNATIVE <event_shape_fun> = <user_event_fun>
- SEQUENCE    <user_event_fun> = user_event_shape <user_arg> <pargs1>
- KEYWORD     user_event_shape
- ALTERNATIVE <logical_pexpr> = <all_fun> | <any_fun> | <no_fun> | <user_cut_fun> | <photon_isolation_fun>
+ ALTERNATIVE <logical_pexpr> = <all_fun> | <any_fun> | <no_fun> | <photon_isolation_fun>
  SEQUENCE    <all_fun> = all <lexpr> <pargs1>
  SEQUENCE    <any_fun> = any <lexpr> <pargs1>
  SEQUENCE    <no_fun> = no <lexpr> <pargs1>
@@ -297,10 +291,8 @@ Syntax table:
  KEYWORD     any
  KEYWORD     no
  KEYWORD     photon_isolation
- SEQUENCE    <user_cut_fun> = user_cut <user_arg> <pargs1>
- KEYWORD     user_cut
 Keyword list:
- + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error user_obs , let = int real complex logical ? true false not in if then elsif else endif < > <= >= == <> all [ ] beam pdg : incoming outgoing @ join comb
+ + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error let = int real complex , logical ? true false not in if then elsif else endif < > <= >= == <> $ sprintf & all [ ] beam pdg : incoming outgoing @ join c
 
 * Expression:
      let alias quark = pdg(1):pdg(2):pdg(3) in  any E > 3 GeV     [sort by - Pt        [select if Index < 6           [photon:pdg(-11):pdg(3):quark            & incoming particle]]]  and  eval Theta [extract index -1 [photon]] > 45 degree  and  count [inco

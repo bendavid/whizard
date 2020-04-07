@@ -28009,7 +28009,6 @@ state.
      type(string_t) :: preload_libraries
      logical :: rebuild_library = .false.
      logical :: recompile_library = .false.
-     logical :: rebuild_user
      logical :: rebuild_phs = .false.
      logical :: rebuild_grids = .false.
      logical :: rebuild_events = .false.
@@ -28133,8 +28132,6 @@ process and model lists need to be finalized.
     call whizard%global%final ()
     call whizard%pt_stack%final ()
     call whizard%pack_files ()
-!!! JRR: WK please check (#529)
-    !    call user_code_final ()
     call final_syntax_tables ()
   end subroutine whizard_final
 
@@ -28929,14 +28926,11 @@ program main
   logical :: banner
   type(string_t) :: job_id, files, this, model, default_lib, library, libraries
   type(string_t) :: logfile, query_string
-  logical :: user_code_enable = .false.
-  integer :: n_user_src = 0, n_user_lib = 0
-  type(string_t) :: user_src, user_lib, user_target
   type(paths_t) :: paths
   type(string_t) :: pack_arg, unpack_arg
   type(string_t), dimension(:), allocatable :: pack_args, unpack_args
   type(string_t), dimension(:), allocatable :: tmp_strings
-  logical :: rebuild_library, rebuild_user
+  logical :: rebuild_library
   logical :: rebuild_phs, rebuild_grids, rebuild_events
   logical :: recompile_library
   type(ifile_t) :: commands
@@ -28964,11 +28958,7 @@ program main
   logging = .true.
   msg_level = RESULT
   logfile = "whizard.log"
-  user_src = ""
-  user_lib = ""
-  user_target = ""
   rebuild_library = .false.
-  rebuild_user = .false.
   rebuild_phs = .false.
   rebuild_grids = .false.
   rebuild_events = .false.
@@ -29146,7 +29136,6 @@ program main
            case ("--rebuild")
               call no_option_value (long_option, value)
               rebuild_library = .true.
-              rebuild_user = .true.
               rebuild_phs = .true.
               rebuild_grids = .true.
               rebuild_events = .true.
@@ -29155,7 +29144,6 @@ program main
               call no_option_value (long_option, value)
               rebuild_library = .false.
               recompile_library = .false.
-              rebuild_user = .false.
               rebuild_phs = .false.
               rebuild_grids = .false.
               rebuild_events = .false.
@@ -29163,10 +29151,6 @@ program main
            case ("--rebuild-library")
               call no_option_value (long_option, value)
               rebuild_library = .true.
-              cycle SCAN_CMDLINE
-           case ("--rebuild-user")
-              call no_option_value (long_option, value)
-              rebuild_user = .true.
               cycle SCAN_CMDLINE
            case ("--rebuild-phase-space")
               call no_option_value (long_option, value)
@@ -29184,30 +29168,6 @@ program main
               call no_option_value (long_option, value)
               recompile_library = .true.
               rebuild_grids = .true.
-              cycle SCAN_CMDLINE
-           case ("--user")
-              user_code_enable = .true.
-              cycle SCAN_CMDLINE
-           case ("--user-src")
-              if (user_src == "") then
-                 user_src = get_option_value (i, long_option, value)
-              else
-                 user_src = user_src // " " &
-                      // get_option_value (i, long_option, value)
-              end if
-              n_user_src = n_user_src + 1
-              cycle SCAN_CMDLINE
-           case ("--user-lib")
-              if (user_lib == "") then
-                 user_lib = get_option_value (i, long_option, value)
-              else
-                 user_lib = user_lib // " " &
-                      // get_option_value (i, long_option, value)
-              end if
-              n_user_lib = n_user_lib + 1
-              cycle SCAN_CMDLINE
-           case ("--user-target")
-              user_target = get_option_value (i, long_option, value)
               cycle SCAN_CMDLINE
            case ("--write-syntax-tables")
               call no_option_value (long_option, value)
@@ -29290,13 +29250,9 @@ program main
                     call exit (0)
                  case ("-r")
                     rebuild_library = .true.
-                    rebuild_user = .true.
                     rebuild_phs = .true.
                     rebuild_grids = .true.
                     rebuild_events = .true.
-                    cycle SCAN_SHORT_OPTIONS
-                 case ("-u")
-                    user_code_enable = .true.
                     cycle SCAN_SHORT_OPTIONS
                  case default
                     call print_usage ()
@@ -29339,7 +29295,6 @@ program main
       options%preload_libraries = libraries
       options%rebuild_library = rebuild_library
       options%recompile_library = recompile_library
-      options%rebuild_user = rebuild_user
       options%rebuild_phs = rebuild_phs
       options%rebuild_grids = rebuild_grids
       options%rebuild_events = rebuild_events
@@ -29461,10 +29416,6 @@ end program main
     print "(A)", "    --recompile       recompile process code"
     print "(A)", "    --show-config     show build-time configuration"
     print "(A)", "    --unpack FILE     untar/gunzip FILE before job"
-    print "(A)", "-u  --user            enable user-provided code"
-    print "(A)", "    --user-src FILE   user-provided source file"
-    print "(A)", "    --user-lib FILE   user-provided library file"
-    print "(A)", "    --user-target BN  basename of created user library (default: user)"
     print "(A)", "-V, --version         output version information and exit"
     print "(A)", "    --write-syntax-tables"
     print "(A)", "                      write the internal syntax tables to files and exit"
@@ -29689,7 +29640,6 @@ integration object.
   if (.not. mpi_is_comm_master ()) then
     options%rebuild_library = .false.
     options%recompile_library = .false.
-    options%rebuild_user = .false.
     options%rebuild_phs = .false.
     options%rebuild_events = .false.
   end if
@@ -31136,9 +31086,8 @@ This is for developers only, but needs a well-defined interface.
     type(string_t) :: files, model, default_lib, library, libraries
 !     type(string_t) :: check, checks
     type(string_t) :: logfile
-    type(string_t) :: user_src, user_lib
     type(paths_t) :: paths
-    logical :: rebuild_library, rebuild_user
+    logical :: rebuild_library
     logical :: rebuild_phs, rebuild_grids, rebuild_events
 
     type(whizard_options_t), allocatable :: options
@@ -31156,10 +31105,7 @@ This is for developers only, but needs a well-defined interface.
     logfile = "whizard.log"
 !     check = ""
 !     checks = ""
-    user_src = ""
-    user_lib = ""
     rebuild_library = .false.
-    rebuild_user = .false.
     rebuild_phs = .false.
     rebuild_grids = .false.
     rebuild_events = .false.
@@ -31176,7 +31122,6 @@ This is for developers only, but needs a well-defined interface.
     options%default_lib = default_lib
     options%preload_libraries = libraries
     options%rebuild_library = rebuild_library
-    options%rebuild_user = rebuild_user
     options%rebuild_phs = rebuild_phs
     options%rebuild_grids = rebuild_grids
     options%rebuild_events = rebuild_events

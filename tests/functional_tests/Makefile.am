@@ -301,7 +301,6 @@ TESTS_REQ_OCAML = \
     parton_shower_2.run \
     hadronize_1.run \
     mlm_matching_fsr.run \
-    user_cuts.run \
     user_prc_threshold_1.run \
     cascades2_phs_1.run \
     user_prc_threshold_2.run \
@@ -310,8 +309,7 @@ TESTS_REQ_OCAML = \
 
 XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \
-    hadronize_1.run \
-    user_cuts.run
+    hadronize_1.run
 
 TESTS_REQ_HEPMC = \
     hepmc_1.run \
@@ -473,9 +471,6 @@ static_2.exe.sin: $(top_builddir)/share/tests/functional_tests/static_2.exe.sin
 	cp $< $@
 
 susyhit.run: susyhit.in
-user_cuts.run: user_cuts.f90
-user_cuts.f90: $(top_builddir)/share/tests/functional_tests/user_cuts.f90
-	cp $< $@
 
 model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
 	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT)

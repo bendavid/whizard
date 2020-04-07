@@ -150,7 +150,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../matching -I../model_features -I../events -I../tauola -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../threshold -I../fks -I../openloops -I../gosam -I../recola -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src -I../user -I../pythia8
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../matching -I../model_features -I../events -I../tauola -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../threshold -I../fks -I../openloops -I../gosam -I../recola -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src -I../pythia8
 
 ########################################################################
 ## Default Fortran compiler options
