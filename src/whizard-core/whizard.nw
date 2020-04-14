@@ -29654,7 +29654,7 @@ This subroutine prepares a test process with a single event.  All objects are
 allocated via anonymous pointers, because we want to recover the pointers and
 delete the objects in a separate procedure.
 <<Main: tests>>=
-  subroutine prepare_eio_test (event, unweighted, n_alt)
+  subroutine prepare_eio_test (event, unweighted, n_alt, sample_norm)
     use variables, only: var_list_t
     use model_data
     use process, only: process_t
@@ -29666,8 +29666,10 @@ delete the objects in a separate procedure.
     class(generic_event_t), intent(inout), pointer :: event
     logical, intent(in), optional :: unweighted
     integer, intent(in), optional :: n_alt
+    type(string_t), intent(in), optional :: sample_norm
     type(model_data_t), pointer :: model
     type(var_list_t) :: var_list
+    type(string_t) :: sample_normalization
     type(process_t), pointer :: proc
     type(process_instance_t), pointer :: process_instance
 
@@ -29696,9 +29698,14 @@ delete the objects in a separate procedure.
                var_str ("?unweighted"), .true., &
                intrinsic = .true.)
        end if
+       if (present (sample_norm)) then
+          sample_normalization = sample_norm
+       else
+          sample_normalization = var_str ("auto")
+       end if
        call var_list%append_string (&
             var_str ("$sample_normalization"), &
-            var_str ("auto"), intrinsic = .true.)
+            sample_normalization, intrinsic = .true.)
        call event%basic_init (var_list, n_alt)
        call event%connect (process_instance, proc%get_model_ptr ())
        call var_list%final ()

@@ -450,8 +450,10 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/eio_stdhep_4.ref \
     unit_tests/ref-output/eio_hepmc2_1.ref \
     unit_tests/ref-output/eio_hepmc2_2.ref \
+    unit_tests/ref-output/eio_hepmc2_3.ref \
     unit_tests/ref-output/eio_hepmc3_1.ref \
     unit_tests/ref-output/eio_hepmc3_2.ref \
+    unit_tests/ref-output/eio_hepmc3_3.ref \
     unit_tests/ref-output/eio_lcio_1.ref \
     unit_tests/ref-output/eio_lcio_2.ref \
     unit_tests/ref-output/eio_ascii_1.ref \
