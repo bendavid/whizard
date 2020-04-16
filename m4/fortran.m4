@@ -614,15 +614,14 @@ AC_DEFUN([WO_FC_CHECK_ISO_FORTRAN_ENV],
         ], [wo_cv_fc_iso_fortran_env=yes], [wo_cv_fc_iso_fortran_env=no]
       )]
     )
-#    test "$wo_cv_fc_iso_fortran_env" = no && iso_fortran_env_stub=yes
    if test "$wo_cv_fc_iso_fortran_env" = "no"; then
-     AC_MSG_NOTICE([error: ***************************************************************************])
-     AC_MSG_NOTICE([error: Fortran compiler does not support iso_fortran_env; configure aborted.])
-     AC_MSG_ERROR([***************************************************************************])
+     AC_MSG_NOTICE([error: *****************************************************************************])
+     AC_MSG_NOTICE([error: Fortran compiler does not support iso_fortran_env (F2003); configure aborted.])
+     AC_MSG_ERROR([*****************************************************************************])
    fi
   ]
 )
-
+### end WO_FC_CHECK_ISO_FORTRAN_ENV
 
 ### Check for the TR19767 extensions (submodules)
 AC_DEFUN([WO_FC_CHECK_TR19767],
@@ -1027,27 +1026,16 @@ AC_DEFUN([WO_FC_CHECK_ISO_FORTRAN_ENV_2008],
          i = int64
        end program conftest],
       [wo_cv_fc_iso_fortran_env_2008=yes],
-      [wo_cv_fc_iso_fortran_env_2008=no])])])
-
-dnl#  An extension of ISO_FORTRAN_ENV adding definitions of the
-dnl#  Fortran 2008 variables, flagged as unavailable.
-AC_DEFUN([WO_FC_ISO_FORTRAN_ENV_2008_DUMMY],
- [module iso_fortran_env_2008
-    public
-    integer, parameter :: real32 = -1
-    integer, parameter :: real64 = -1
-    integer, parameter :: real128 = -1
-    integer, parameter :: int8 = -1
-    integer, parameter :: int16 = -1
-    integer, parameter :: int32 = -1
-    integer, parameter :: int64 = -1
-  end module iso_fortran_env_2008])
-
-dnl#  An empty extension of ISO_FORTRAN_ENV to be used if the
-dnl#  Fortran 2008 variables are available
-AC_DEFUN([WO_FC_ISO_FORTRAN_ENV_2008_EMPTY],
- [module iso_fortran_env_2008
-  end module iso_fortran_env_2008])
+      [wo_cv_fc_iso_fortran_env_2008=no])]
+      )
+    if test "$wo_cv_fc_iso_fortran_env_2008" = "no"; then
+      AC_MSG_NOTICE([error: *****************************************************************************])
+      AC_MSG_NOTICE([error: Fortran compiler does not support iso_fortran_env (F2008); configure aborted.])
+      AC_MSG_ERROR([*****************************************************************************])
+    fi
+   ]
+)
+### end WO_FC_CHECK_ISO_FORTRAN_ENV_2008
 
 dnl#  An extension of ISO_C_BINDING adding definitions of
 dnl#  gfortran extensions, flagged as unavailable.
@@ -1088,7 +1076,6 @@ AC_DEFUN([WO_FC_MODULE_QUERY_KINDS],
 module query_kinds
   use, intrinsic :: iso_fortran_env
   use, intrinsic :: iso_c_binding
-  use :: iso_fortran_env_2008
   use :: iso_c_binding_gfortran
   implicit none
   private
@@ -1512,7 +1499,6 @@ AC_REQUIRE([AC_PROG_INSTALL])
 AC_REQUIRE([WO_FC_FILENAME_CASE_CONVERSION])
 AC_REQUIRE([AC_PROG_FC])
 AC_LANG([Fortran])
-AC_REQUIRE([WO_FC_CHECK_ISO_FORTRAN_ENV_2008])
 AC_REQUIRE([WO_FC_CHECK_ISO_C_BINDING_GFORTRAN])
 AC_MSG_CHECKING([the requested floating point precision])
 wo_cv_fc_requested_precision=double
@@ -1540,45 +1526,22 @@ esac
 dnl  save_cross_compiling=$cross_compiling
 dnl  cross_compiling=yes
 
-if test "x$wo_cv_fc_iso_fortran_env_2008" = xyes; then
-  if test "x$wo_cv_fc_iso_c_binding_gfortran" = xyes; then
+if test "x$wo_cv_fc_iso_c_binding_gfortran" = xyes; then
     AC_RUN_IFELSE(dnl
-     [WO_FC_ISO_FORTRAN_ENV_2008_EMPTY
-      WO_FC_ISO_C_BINDING_GFORTRAN_EMPTY
+     [WO_FC_ISO_C_BINDING_GFORTRAN_EMPTY
       WO_FC_CONFIGURE_KINDS_SOURCE],
      [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
      [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
      [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
-  else
-    AC_RUN_IFELSE(dnl
-     [WO_FC_ISO_FORTRAN_ENV_2008_EMPTY
-      WO_FC_ISO_C_BINDING_GFORTRAN_DUMMY
-      WO_FC_CONFIGURE_KINDS_SOURCE],
-     [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
-     [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
-     [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
-  fi
 else
-  if test "x$wo_cv_fc_iso_c_binding_gfortran" = xyes; then
     AC_RUN_IFELSE(dnl
-     [WO_FC_ISO_FORTRAN_ENV_2008_DUMMY
-      WO_FC_ISO_C_BINDING_GFORTRAN_EMPTY
+     [WO_FC_ISO_C_BINDING_GFORTRAN_DUMMY
       WO_FC_CONFIGURE_KINDS_SOURCE],
      [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
      [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
      [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
-  else
-    AC_RUN_IFELSE(dnl
-     [WO_FC_ISO_FORTRAN_ENV_2008_DUMMY
-      WO_FC_ISO_C_BINDING_GFORTRAN_DUMMY
-      WO_FC_CONFIGURE_KINDS_SOURCE],
-     [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
-     [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
-     [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
-  fi
 fi
 rm -f iso_c_binding_gfortran.*
-rm -f iso_fortran_env_2008.*
 rm -f query_kinds.*
 rm -f report_kinds.*
 

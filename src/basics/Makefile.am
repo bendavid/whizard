@@ -30,17 +30,6 @@
 ## The files in this directory end up in an auxiliary libtool library.
 noinst_LTLIBRARIES = libbasics.la
 
-### WK 15.09.2014: this stub module is probably obsolete, to be deleted:
-# ## include the iso_fortran_env stub if required and make sure that it is
-# ## distributed in any case.
-# if ISO_FORTRAN_ENV_STUB
-# sources_extra = iso_fortran_env_stub.f90
-# modules_extra = iso_fortran_env.$(FC_MODULE_EXT)
-# iso_fortran_env_depend = iso_fortran_env_stub.lo
-# iso_fortran_env.mod: iso_fortran_env_stub.lo
-# endif
-# EXTRA_DIST = iso_fortran_env_stub.f90
-
 nodist_libbasics_la_SOURCES = \
   kinds.f90
 libbasics_la_SOURCES = \

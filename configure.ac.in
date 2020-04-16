@@ -422,6 +422,7 @@ WO_FC_CHECK_FLUSH()
 
 ### Check for iso_fortran_env
 WO_FC_CHECK_ISO_FORTRAN_ENV()
+WO_FC_CHECK_ISO_FORTRAN_ENV_2008()
 
 ### Turn on/off master switch for debugging features
 WO_FC_SET_DEBUG()
