@@ -1,9 +1,9 @@
 General:
 
-* WHIZARD 2.7+ currently runs only with the NAGFOR 6.2 (or newer) and
+* WHIZARD 2.8+ currently runs only with the NAGFOR 6.2 (or newer) and
   gfortran 5.1.0 (or newer) Fortran compilers as well as Intel ifort
-  18.0.0 (or newer). gfortran 6.5 has a severe regression, and cannot
-  be used, as well as Intel ifort 19.0.0/1.
+  19.0.2 (or newer). gfortran 6.5 has a severe regression, and cannot
+  be used.
 
   [See the file EXTENSIONS for the list of Fortran 2003/2008/2018 
    features that the compiler must support.]
