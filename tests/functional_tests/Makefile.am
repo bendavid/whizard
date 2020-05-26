@@ -191,6 +191,7 @@ TESTS_REQ_OCAML = \
     resonances_10.run \
     resonances_11.run \
     resonances_12.run \
+    resonances_13.run \
     mssmtest_1.run \
     mssmtest_2.run \
     mssmtest_3.run \

@@ -457,6 +457,12 @@ instance.  The [[generate]] methods do nothing.
     call evt%write_name (u)
     call write_separator (u)
     call evt%base_write (u, testflag = testflag)
+!!! More readable but wider output; in line with evt_resonance_write
+!     if (verbose .and. evt%particle_set_exists) then
+!        call evt%particle_set%write &
+!             (u, summary = .true., compressed = .true., testflag = testflag)
+!        call write_separator (u)
+!     end if
   end subroutine evt_trivial_write
 
 @ %def evt_trivial_write

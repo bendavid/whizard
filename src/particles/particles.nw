@@ -5144,12 +5144,21 @@ virtual.
     integer :: i
     call pset%basic_init &
          (source%n_beam, source%n_in, source%n_vir + n_new, source%n_out)
+    pset%factorization_mode = source%factorization_mode
     do i = 1, source%n_tot
        call pset%prt(map(i))%reset_status (source%prt(i)%get_status ())
        call pset%prt(map(i))%set_flavor (source%prt(i)%get_flv ())
        call pset%prt(map(i))%set_color (source%prt(i)%get_col ())
        call pset%prt(map(i))%set_parents (map (source%prt(i)%get_parents ()))
        call pset%prt(map(i))%set_children (map (source%prt(i)%get_children ()))
+       call pset%prt(map(i))%set_polarization &
+            (source%prt(i)%get_polarization_status ())
+       select case (source%prt(i)%get_polarization_status ())
+       case (PRT_DEFINITE_HELICITY)
+          call pset%prt(map(i))%set_helicity (source%prt(i)%get_hel ())
+       case (PRT_GENERIC_POLARIZATION)
+          call pset%prt(map(i))%set_pol (source%prt(i)%get_polarization ())
+       end select
     end do
   end subroutine particle_set_transfer
   

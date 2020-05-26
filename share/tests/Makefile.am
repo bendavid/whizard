@@ -856,6 +856,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/resonances_4.ref \
     functional_tests/ref-output-double/resonances_10.ref \
     functional_tests/ref-output-double/resonances_11.ref \
+    functional_tests/ref-output-double/resonances_13.ref \
     functional_tests/ref-output-double/beam_setup_5.ref \
     functional_tests/ref-output-double/nlo_3.ref \
     functional_tests/ref-output-double/nlo_4.ref \
@@ -950,6 +951,7 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/resonances_4.ref \
     functional_tests/ref-output-ext/resonances_10.ref \
     functional_tests/ref-output-ext/resonances_11.ref \
+    functional_tests/ref-output-ext/resonances_13.ref \
     functional_tests/ref-output-ext/circe1_4.ref \
     functional_tests/ref-output-ext/circe1_5.ref \
     functional_tests/ref-output-ext/circe1_7.ref \
@@ -982,6 +984,7 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/resonances_4.ref \
     functional_tests/ref-output-quad/resonances_10.ref \
     functional_tests/ref-output-quad/resonances_11.ref \
+    functional_tests/ref-output-quad/resonances_13.ref \
     functional_tests/ref-output-quad/circe1_4.ref \
     functional_tests/ref-output-quad/circe1_5.ref \
     functional_tests/ref-output-quad/circe1_7.ref \
@@ -1214,6 +1217,7 @@ MISC_TESTS_SIN = \
     functional_tests/resonances_10.sin \
     functional_tests/resonances_11.sin \
     functional_tests/resonances_12.sin \
+    functional_tests/resonances_13.sin \
     functional_tests/sm_cms_1.sin \
     functional_tests/ufo_1.sin \
     functional_tests/ufo_2.sin \
