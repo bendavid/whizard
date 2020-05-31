@@ -6342,9 +6342,92 @@ the $e \to e\gamma$ collinear splitting to allow the simulation of
 photon-induced backgrounds in lepton collider physics. The original
 concept is that of the Weizs\"acker-Williams
 approximation~\cite{vonWeizsacker:1934sx,Williams:1934ad,Budnev:1974de}. This
-is a single-beam structure
-function that can be applied to both beams, or also to one beam
-only. Examples are:
+is a single-beam structure function that can be applied to both beams,
+or also to one beam only. Usually, there are some simplifications
+being made in the derivation. The formula which is implemented here
+and seems to be the best for the QCD background for low-$p_T$ hadrons,
+corresponds to Eq.~(6.17) of Ref.~\cite{Budnev:1974de}. As this
+reference already found, this leads to an "overshooting" of accuracy,
+and especially in the high-$x$ (high-energy) region to wrong
+results. This formula corresponds to
+\begin{equation}
+  \label{eq:budnev_617}
+  f(x) = \frac{\alpha}{\pi} \frac{1}{x} \biggl[ \left( \bar{x} +
+    \frac{x^2}{2} \right) \log
+    \frac{Q^2_{\text{max}}}{Q^2_{\text{min}}}
+    - \left( 1 - \frac{x}{2} \right)^2
+    \log \frac{x^2 + \tfrac{Q^2_{\text{max}}}{E^2}}{x^2 +
+      \tfrac{Q^2_{\text{min}}}{E^2}}
+    - \frac{m_e^2 x^2}{Q^2_{\text{min}}} \left( 1 -
+    \frac{Q^2_{\text{min}}}{Q^2_{\text{max}}} \right) \biggr] \qquad .
+\end{equation}
+Here, $x$ is the ratio of the photon energy (called frequency $\omega$
+in~\cite{Budnev:1974de} over the original electron (or positron) beam
+energy $E$. The energy of the electron (or positron) after the
+splitting is given by $\bar{x} = 1-x$.
+
+The simplified version is the one that corresponds to many
+publications about the EPA during SLC and LEP times, and corresponds
+to the $q^2$ integration of Eq.~(6.16e) in~\cite{Budnet:1974de}, where
+$q^2$ is the virtuality or momentum transfer of the photon in the EPA:
+\begin{equation}
+  \label{eq:budnev_616e}
+  f(x) = \frac{\alpha}{\pi} \frac{1}{x} \biggl[ \left( \bar{x} +
+    \frac{x^2}{2} \right) \log
+    \frac{Q^2_{\text{max}}}{Q^2_{\text{min}}}
+    - \frac{m_e^2 x^2}{Q^2_{\text{min}}} \left( 1 -
+    \frac{Q^2_{\text{min}}}{Q^2_{\text{max}}} \right) \biggr] \qquad .
+\end{equation}
+While Eq.~(\ref{eq:budnev_617}) is supposed to be the better choice
+for simulating hadronic background like low-$p_T$ hadrons and should
+be applied for the low-$x$ region of the EPA,
+Eq.~(\ref{eq:budnev_616e}) seems better suited for high-$x$
+simulations like the photoproduction of BSM resonances etc.
+Note that the first term in Eqs.~(\ref{eq:budnev617}) and
+(\ref{eq:budnev616e}) is the standard Altarelli-Parisi QED splitting
+function of electron, $P_{e\to e\gamma}(x) \propto 1 + (1-x)^2$, while
+the last term in both equations is the default power correction.
+
+The two parameters $Q^2_{\text{max}}$ and $Q^2_{\text{min}}$ are the
+integration boundaries of the photon virtuality integration. Usually,
+they are given by the kinematic limits:
+\begin{equation}
+  Q^2_{\text{min}} = \frac{m_e^2 x^2}{\bar{x}} \qquad\qquad
+  Q^2_{\text{max}} = 4 E^2 \bar{x} = s \bar{x} \qquad .
+\end{equation}
+For low-$p_T$ hadron simulations, it is not a good idea to take the
+kinematic limit as an upper limit, but one should cut the simulation
+off at a hadronic scale like e.g. a multiple of the $\rho$ mass.
+
+The user can switch between the two different options using the setting
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$epa_mode = "default"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+or
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$epa_mode = "Budnev_617"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+for Eq.~(\ref{eq:budnev_617}), while Eq.~(\ref{eq:budnev_616e}) can be
+chosen with
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$epa_mode = "Budnev_616e"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+Note that a thorough study for high-energy $e^+e^-$ colliders
+regarding the suitability of different EPA options is still lacking.
+
+Examples for the application of the EPA in \whizard\ are:
 \begin{quote}
 \begin{footnotesize}
 \begin{Verbatim}

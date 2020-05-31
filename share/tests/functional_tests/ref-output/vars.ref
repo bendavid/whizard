@@ -254,6 +254,7 @@ $lhapdf_file = ""
 $lhapdf_photon_file = ""
 $pdf_builtin_set = "CTEQ6L"
 $isr_handler_mode = "trivial"
+$epa_mode = "default"
 $epa_handler_mode = "trivial"
 $circe1_acc = "SBAND"
 [undefined] $circe2_file = [unknown string]

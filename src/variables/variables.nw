@@ -3178,6 +3178,15 @@ procedure with type [[V_NONE]].
           'shell.  Otherwise, insert massless on-shell momenta.  This ' // &
           'applies only for event generation (no effect on integration, ' // &
           'cf.\ also \ttt{?isr\_handler})'))
+    call var_list%append_string (var_str ("$epa_mode"), &
+          var_str ("default"), intrinsic=.true., &
+          description=var_str ('For the equivalent photon approximation ' // &
+          '(EPA), this string variable defines the mode, i.e. the explicit ' // &
+          'formula for the EPA distribution. For more details cf. the manual. ' // &
+          'Possible are \ttt{default} (\ttt{Budnev\_617}), \ttt{Budnev\_616e}. ' // &
+          '(cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_e\_max}, ' // &
+          '\ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, ' // &
+          '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_real (var_str ("epa_alpha"), 0._default, &
           intrinsic=.true., &
           description=var_str ('For the equivalent photon approximation ' // &
@@ -3185,7 +3194,8 @@ procedure with type [[V_NONE]].
           'used in the structure function. If not set, it is taken from ' // &
           'the parameter set of the physics model in use (cf. also \ttt{epa}, ' // &
           '\ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_e\_max}, \ttt{epa\_q\_min}, ' // &
-          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})'))
+          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, \ttt{\$epa\_mode}, ' // &
+          '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_real (var_str ("epa_x_min"), 0._default, &
           intrinsic=.true., &
           description=var_str ('Real parameter that sets the lower cutoff ' // &
@@ -3193,7 +3203,8 @@ procedure with type [[V_NONE]].
           'approximation (EPA). This parameter has to be set by the user ' // &
           'to a non-zero value smaller than one. (cf. also \ttt{epa}, ' // &
           '\ttt{epa\_e\_max}, \ttt{epa\_mass}, \ttt{epa\_alpha}, \ttt{epa\_q\_min}, ' // &
-          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})'))
+          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, \ttt{\$epa\_mode}, ' // &
+                    '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_real (var_str ("epa_q_min"), 0._default, &
           intrinsic=.true., &
           description=var_str ('In the equivalent-photon approximation ' // &
@@ -3201,14 +3212,16 @@ procedure with type [[V_NONE]].
           'transferred momentum. Either this parameter or the mass of ' // &
           'the beam particle has to be non-zero.  (cf. also \ttt{epa}, ' // &
           '\ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha}, \ttt{epa\_q\_max}, ' // &
-          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})'))
+          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, \ttt{\$epa\_mode}, ' // &
+          '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_real (var_str ("epa_q_max"), 0._default, &
           intrinsic=.true., &
           description=var_str ('This real parameter allows to set the ' // &
           'upper energy cutoff for the equivalent-photon approximation ' // &
           '(EPA). If not set, \whizard\ simply takes the collider energy, ' // &
           '$\sqrt{s}$. (cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, ' // &
-          '\ttt{epa\_alpha}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})'))
+          '\ttt{epa\_alpha}, \ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{\$epa\_mode}, ' // &
+          '\ttt{?epa\_keep\_energy}, \ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_real (var_str ("epa_mass"), 0._default, &
           intrinsic=.true., &
           description=var_str ('This real parameter allows to set by hand ' // &
@@ -3216,13 +3229,15 @@ procedure with type [[V_NONE]].
           'approximation (EPA). If not set, the mass for the initial beam ' // &
           'particle is taken from the model in use. (cf. also \ttt{epa}, ' // &
           '\ttt{epa\_x\_min}, \ttt{epa\_e\_max}, \ttt{epa\_alpha}, \ttt{epa\_q\_min}, ' // &
-          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy})'))
+          '\ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, \ttt{\$epa\_mode}. ' // &
+          '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_log (var_str ("?epa_recoil"), .false., &
           intrinsic=.true., &
           description=var_str ('Flag to switch on recoil, i.e. a non-vanishing ' // &
           '$p_T$-kick for the equivalent-photon approximation (EPA).  ' // &
           '(cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha}, ' // &
-          '\ttt{epa\_e\_max}, \ttt{epa\_q\_min}, \ttt{?epa\_keep\_energy})'))
+          '\ttt{epa\_e\_max}, \ttt{epa\_q\_min}, \ttt{?epa\_keep\_energy}, ' // &
+          '\ttt{\$epa\_mode}, \ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_log (var_str ("?epa_keep_energy"), .false., &
           intrinsic=.true., &
           description=var_str ('As the splitting kinematics for the EPA ' // &
@@ -3230,7 +3245,8 @@ procedure with type [[V_NONE]].
           'is switched on, this flag forces energy conservation when set ' // &
           'to true, otherwise violating energy conservation. (cf. also ' // &
           '\ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_alpha}, ' // &
-          '\ttt{epa\_q\_min}, \ttt{?epa\_recoil})'))
+          '\ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{\$epa\_mode}, ' // &
+          '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_log (var_str ("?epa_handler"), .false., &
           intrinsic=.true., &
           description=var_str ('Activate EPA ' // &

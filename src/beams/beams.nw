@@ -15408,6 +15408,10 @@ end module sf_epa
 The EPA structure function for a photon inside an (elementary)
 particle $p$ with energy $E$, mass $m$ and charge $q_p$ (e.g.,
 electron) is given by ($\bar x \equiv 1-x$)
+
+There are several variants of the EPA, which are steered by the
+[[\$epa\_mode]] switch. The formula (6.17b) from the report by Budnev
+et al. is given by
 %% %\cite{Budnev:1974de}
 %% \bibitem{Budnev:1974de}
 %%   V.~M.~Budnev, I.~F.~Ginzburg, G.~V.~Meledin and V.~G.~Serbo,
@@ -15416,7 +15420,7 @@ electron) is given by ($\bar x \equiv 1-x$)
 %%   Phys.\ Rept.\  {\bf 15} (1974) 181.
 %%   %%CITATION = PRPLC,15,181;%%
 \begin{multline}
-\label{EPA}
+\label{EPA_617}
   f(x) =
   \frac{\alpha}{\pi}\,q_p^2\,
   \frac{1}{x}\,
@@ -15439,7 +15443,7 @@ If no explicit $Q$ bounds are provided, the kinematical bounds are
   -\frac{x^2}{\bar x}m^2.
 \end{align}
 
-The second and third terms in (\ref{EPA}) are negative definite (and
+The second and third terms in (\ref{EPA_617}) are negative definite (and
 subleading).  Noting that $\bar x + x^2/2$ is bounded between
 $1/2$ and $1$, we derive that $f(x)$ is always smaller than
 \begin{equation}
@@ -15480,6 +15484,22 @@ The structure of the mapping is most obvious from:
   {\log x_1 ( L - \log x_1) - \log x_0 (L - \log x_0)} \; .
 \end{equation}
 
+Taking the Eq. (6.16e) from the Budnev et al. report, and integrating
+it over $q^2$ yields the modified result
+\begin{equation}
+\label{EPA_616e}
+  f(x) =
+  \frac{\alpha}{\pi}\,q_p^2\,
+  \frac{1}{x}\,
+  \biggl[\left(\bar x + \frac{x^2}{2}\right)
+        \ln\frac{Q^2_{\rm max}}{Q^2_{\rm min}}
+        - x^2\frac{m^2}{Q^2_{\rm min}}
+          \left(1 - \frac{Q^2_{\rm min}}{Q^2_{\rm max}}\right)
+  \biggr].
+\end{equation}
+This is closer to many standard papers from LEP times, and to textbook
+formulae like e.g. in Peskin/Schroeder. For historical reasons, we
+keep Eq.~(\ref{EPA_617}) as the default in \whizard.
 
 
 \subsection{The EPA data block}
@@ -15490,6 +15510,16 @@ code as input; from this we can deduce the mass and charge.
 Internally we store in addition $C_{0/1} = \frac{\alpha}{\pi}q_e^2\ln
 x_{0/1} (L - \ln x_{0/1})$, the c.m. energy squared and the incoming
 particle mass.
+<<SF epa: public>>=
+  public :: EPA_MODE_DEFAULT
+  public :: EPA_MODE_BUDNEV_617
+  public :: EPA_MODE_BUDNEV_616E
+<<SF epa: parameters>>=
+  integer, parameter :: EPA_MODE_DEFAULT = 0
+  integer, parameter :: EPA_MODE_BUDNEV_617 = 0
+  integer, parameter :: EPA_MODE_BUDNEV_616E = 1
+
+@ %def EPA_MODE_DEFAULT EPA_MODE_BUDNEV_617 EPA_MODE_BUDNEV_616E
 <<SF epa: public>>=
   public :: epa_data_t
 <<SF epa: types>>=
@@ -15509,6 +15539,7 @@ particle mass.
      real(default) :: c0
      real(default) :: c1
      real(default) :: dc
+     integer :: mode = EPA_MODE_DEFAULT
      integer :: error = NONE
      logical :: recoil = .false.
      logical :: keep_energy = .true.
@@ -15528,17 +15559,19 @@ particle mass.
 <<SF epa: epa data: TBP>>=
   procedure :: init => epa_data_init
 <<SF epa: procedures>>=
-  subroutine epa_data_init (data, model, pdg_in, alpha, &
+  subroutine epa_data_init (data, model, mode, pdg_in, alpha, &
        x_min, q_min, q_max, mass, recoil, keep_energy)
     class(epa_data_t), intent(inout) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
+    integer, intent(in) :: mode
     real(default), intent(in) :: alpha, x_min, q_min, q_max
     real(default), intent(in), optional :: mass
     logical, intent(in), optional :: recoil
     logical, intent(in), optional :: keep_energy
     integer :: n_flv, i
     data%model => model
+    data%mode = mode
     n_flv = pdg_array_get_length (pdg_in)
     allocate (data%flv_in (n_flv))
     do i = 1, n_flv
@@ -16011,11 +16044,18 @@ overall cross section.
       qminsq = max (x ** 2 / xb * data%mass ** 2, data%q_min ** 2)
       qmaxsq = min (4 * xb * E ** 2, data%q_max ** 2)
       if (qminsq < qmaxsq) then
-         f = data%a / x &
-              * ((xb + x ** 2 / 2) * log (qmaxsq / qminsq) &
-              - (1 - x / 2) ** 2 &
-              * log ((x**2 + qmaxsq / E ** 2) / (x**2 + qminsq / E ** 2)) &
-              - x ** 2 * data%mass ** 2 / qminsq * (1 - qminsq / qmaxsq))
+         select case (data%mode)
+         case (0)
+            f = data%a / x &
+                 * ((xb + x ** 2 / 2) * log (qmaxsq / qminsq) &
+                 - (1 - x / 2) ** 2 &
+                 * log ((x**2 + qmaxsq / E ** 2) / (x**2 + qminsq / E ** 2)) &
+                 - x ** 2 * data%mass ** 2 / qminsq * (1 - qminsq / qmaxsq))
+         case (1)
+            f = data%a / x &
+                 * ((xb + x ** 2 / 2) * log (qmaxsq / qminsq) &
+                 - x ** 2 * data%mass ** 2 / qminsq * (1 - qminsq / qmaxsq))
+         end select
       else
          f = 0
       end if
@@ -16125,7 +16165,7 @@ Construct and display a test structure function data object.
 
     select type (data)
     type is (epa_data_t)
-       call data%init (model, pdg_in, 1./137._default, 0.01_default, &
+       call data%init (model, 0, pdg_in, 1./137._default, 0.01_default, &
             10._default, 100._default, 0.000511_default, recoil = .false.)
     end select
 
@@ -16187,7 +16227,7 @@ structure function.
     allocate (epa_data_t :: data)
     select type (data)
     type is (epa_data_t)
-       call data%init (model, pdg_in, 1./137._default, 0.01_default, &
+       call data%init (model, 0, pdg_in, 1./137._default, 0.01_default, &
             10._default, 100._default, 0.000511_default, recoil = .false.)
     end select
 
@@ -16311,7 +16351,7 @@ structure function, applying the standard single-particle mapping.
     allocate (epa_data_t :: data)
     select type (data)
     type is (epa_data_t)
-       call data%init (model, pdg_in, 1./137._default, 0.01_default, &
+       call data%init (model, 0, pdg_in, 1./137._default, 0.01_default, &
             10._default, 100._default, 0.000511_default, recoil = .false.)
     end select
 
@@ -16435,7 +16475,7 @@ structure function.
     allocate (epa_data_t :: data)
     select type (data)
     type is (epa_data_t)
-       call data%init (model, pdg_in, 1./137._default, 0.01_default, &
+       call data%init (model, 0, pdg_in, 1./137._default, 0.01_default, &
             10._default, 100._default, 5.0_default, recoil = .true.)
     end select
 
@@ -16564,7 +16604,7 @@ non-uniform charge.
     allocate (epa_data_t :: data)
     select type (data)
     type is (epa_data_t)
-       call data%init (model, pdg_in, 1./137._default, 0.01_default, &
+       call data%init (model, 0, pdg_in, 1./137._default, 0.01_default, &
             10._default, 100._default, 0.000511_default, recoil = .false.)
        call data%check ()
     end select
@@ -24746,6 +24786,8 @@ flavors (beam index, component index) for the hard process.
     logical :: isr_recoil, isr_keep_energy
     real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_q_max, epa_mass
     logical :: epa_recoil, epa_keep_energy
+    integer :: epa_int_mode
+    type(string_t) :: epa_mode
     real(default) :: ewa_x_min, ewa_pt_max, ewa_mass
     logical :: ewa_recoil, ewa_keep_energy
     type(pdg_array_t), dimension(:), allocatable :: pdg_prc1
@@ -24872,6 +24914,17 @@ flavors (beam index, component index) for the hard process.
        end select
     case ("epa")
        allocate (epa_data_t :: data)
+       epa_mode = var_list%get_sval (var_str ("$epa_mode"))
+       epa_int_mode = 0
+       select case (char (epa_mode))
+       case ("default", "Budnev_617")
+          epa_int_mode = 0
+       case ("Budnev_616e")
+          epa_int_mode = 1
+       case default
+          call msg_fatal ("EPA: unsupported EPA mode; please choose " // &
+               "'default', 'Budnev_616' or 'Budnev_616e'")
+       end select
        epa_alpha = var_list%get_rval (var_str ("epa_alpha"))
        if (vanishes (epa_alpha)) then
           epa_alpha = (var_list%get_rval (var_str ("ee"))) &
@@ -24889,9 +24942,9 @@ flavors (beam index, component index) for the hard process.
        select type (data)
        type is (epa_data_t)
           call data%init &
-               (model, pdg_in (i_beam(1)), epa_alpha, epa_x_min, &
-               epa_q_min, epa_q_max, epa_mass, recoil = epa_recoil, &
-               keep_energy = epa_keep_energy)
+               (model, epa_int_mode, pdg_in (i_beam(1)), epa_alpha, &
+               epa_x_min, epa_q_min, epa_q_max, epa_mass, &
+               recoil = epa_recoil, keep_energy = epa_keep_energy)
           call data%check ()
        end select
     case ("ewa")
