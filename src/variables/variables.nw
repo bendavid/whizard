@@ -3183,7 +3183,8 @@ procedure with type [[V_NONE]].
           description=var_str ('For the equivalent photon approximation ' // &
           '(EPA), this string variable defines the mode, i.e. the explicit ' // &
           'formula for the EPA distribution. For more details cf. the manual. ' // &
-          'Possible are \ttt{default} (\ttt{Budnev\_617}), \ttt{Budnev\_616e}. ' // &
+          'Possible are \ttt{default} (\ttt{Budnev\_617}), \ttt{Budnev\_616e}, ' // &
+          '\ttt{log\_power}, \ttt{log\_simple}, and \ttt{log}. ' // &
           '(cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_e\_max}, ' // &
           '\ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, ' // &
           '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))

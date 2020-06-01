@@ -8,6 +8,9 @@
 
 process epa_4a = A, A => e2, E2
 process epa_4b = A, A => e2, E2
+process epa_4c = A, A => e2, E2
+process epa_4d = A, A => e2, E2
+process epa_4e = A, A => e2, E2
 
 compile
 
@@ -33,6 +36,16 @@ integrate (epa_4a)
 seed = 0
 $epa_mode = "Budnev_616e"
 integrate (epa_4b)
+seed = 0
+$epa_mode = "log_power"
+integrate (epa_4c)
+seed = 0
+$epa_mode = "log_simple"
+integrate (epa_4d)
+seed = 0
+$epa_mode = "log"
+integrate (epa_4e)
+
 ?keep_beams = true
 ?keep_remnants = true
 
@@ -45,3 +58,15 @@ simulate (epa_4a) { n_events = 1 }
 $sample = "epa_4b"
 sample_format = lhef
 simulate (epa_4b) { n_events = 1 }
+
+$sample = "epa_4c"
+sample_format = lhef
+simulate (epa_4c) { n_events = 1 }
+
+$sample = "epa_4d"
+sample_format = lhef
+simulate (epa_4d) { n_events = 1 }
+
+$sample = "epa_4e"
+sample_format = lhef
+simulate (epa_4e) { n_events = 1 }

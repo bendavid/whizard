@@ -6368,7 +6368,7 @@ splitting is given by $\bar{x} = 1-x$.
 
 The simplified version is the one that corresponds to many
 publications about the EPA during SLC and LEP times, and corresponds
-to the $q^2$ integration of Eq.~(6.16e) in~\cite{Budnet:1974de}, where
+to the $q^2$ integration of Eq.~(6.16e) in~\cite{Budnev:1974de}, where
 $q^2$ is the virtuality or momentum transfer of the photon in the EPA:
 \begin{equation}
   \label{eq:budnev_616e}
@@ -6383,8 +6383,8 @@ for simulating hadronic background like low-$p_T$ hadrons and should
 be applied for the low-$x$ region of the EPA,
 Eq.~(\ref{eq:budnev_616e}) seems better suited for high-$x$
 simulations like the photoproduction of BSM resonances etc.
-Note that the first term in Eqs.~(\ref{eq:budnev617}) and
-(\ref{eq:budnev616e}) is the standard Altarelli-Parisi QED splitting
+Note that the first term in Eqs.~(\ref{eq:budnev_617}) and
+(\ref{eq:budnev_616e}) is the standard Altarelli-Parisi QED splitting
 function of electron, $P_{e\to e\gamma}(x) \propto 1 + (1-x)^2$, while
 the last term in both equations is the default power correction.
 
@@ -6426,6 +6426,19 @@ $epa_mode = "Budnev_616e"
 \end{quote}
 Note that a thorough study for high-energy $e^+e^-$ colliders
 regarding the suitability of different EPA options is still lacking.
+
+For testing purposes also three more variants or simplifications of
+Eq.~(\ref{eq:budnev_616e}) are implemented: the first, steered by
+\ttt{\$epa\_mode = log\_power} uses simply $Q^2_{\text{max}} =
+s$. This is also the case for the two other method. But the switch
+\ttt{\$epa\_mode = log\_simple} uses just \ttt{epa\_mass} (cf. below)
+as $Q^2_{\text{min}}$. The final simplification is to drop the power
+correction, which can be chosen with \ttt{\$epa\_mode = log}. This
+corresponds to the simple formula:
+\begin{equation}
+  f(x) = \frac{\alpha}{2\pi} \frac{1}{x} \, \log\frac{s}{m^2}
+  \qquad . 
+\end{equation}
 
 Examples for the application of the EPA in \whizard\ are:
 \begin{quote}

@@ -15514,12 +15514,20 @@ particle mass.
   public :: EPA_MODE_DEFAULT
   public :: EPA_MODE_BUDNEV_617
   public :: EPA_MODE_BUDNEV_616E
+  public :: EPA_MODE_LOG_POWER
+  public :: EPA_MODE_LOG_SIMPLE
+  public :: EPA_MODE_LOG
 <<SF epa: parameters>>=
   integer, parameter :: EPA_MODE_DEFAULT = 0
   integer, parameter :: EPA_MODE_BUDNEV_617 = 0
   integer, parameter :: EPA_MODE_BUDNEV_616E = 1
+  integer, parameter :: EPA_MODE_LOG_POWER = 2
+  integer, parameter :: EPA_MODE_LOG_SIMPLE = 3
+  integer, parameter :: EPA_MODE_LOG = 4
 
 @ %def EPA_MODE_DEFAULT EPA_MODE_BUDNEV_617 EPA_MODE_BUDNEV_616E
+@ %def EPA_MODE_LOG_POWER EPA_MODE_LOG_SIMPLE EPA_MODE_LOG
+@ 
 <<SF epa: public>>=
   public :: epa_data_t
 <<SF epa: types>>=
@@ -16036,29 +16044,61 @@ overall cross section.
     real(default), intent(in) :: scale
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    real(default) :: x, xb, qminsq, qmaxsq, f, E
+    real(default) :: x, xb, qminsq, qmaxsq, f, E, m2
     associate (data => sf_int%data)
       x = sf_int%x
       xb= sf_int%xb
       E = sf_int%E
+      m2 = data%mass ** 2
       qminsq = max (x ** 2 / xb * data%mass ** 2, data%q_min ** 2)
-      qmaxsq = min (4 * xb * E ** 2, data%q_max ** 2)
-      if (qminsq < qmaxsq) then
-         select case (data%mode)
-         case (0)
+      select case (data%mode)
+      case (0)
+         qmaxsq = min (4 * xb * E ** 2, data%q_max ** 2)
+         if (qminsq < qmaxsq) then
             f = data%a / x &
                  * ((xb + x ** 2 / 2) * log (qmaxsq / qminsq) &
                  - (1 - x / 2) ** 2 &
                  * log ((x**2 + qmaxsq / E ** 2) / (x**2 + qminsq / E ** 2)) &
                  - x ** 2 * data%mass ** 2 / qminsq * (1 - qminsq / qmaxsq))
-         case (1)
+         else
+            f = 0
+         end if
+      case (1)
+         qmaxsq = min (4 * xb * E ** 2, data%q_max ** 2)
+         if (qminsq < qmaxsq) then
             f = data%a / x &
                  * ((xb + x ** 2 / 2) * log (qmaxsq / qminsq) &
                  - x ** 2 * data%mass ** 2 / qminsq * (1 - qminsq / qmaxsq))
-         end select
-      else
-         f = 0
-      end if
+         else
+            f = 0
+         end if
+      case (2)
+         qmaxsq = data%q_max ** 2
+         if (data%mass ** 2 < qmaxsq) then
+            f = data%a / x &
+                 * ((xb + x ** 2 / 2) * log (qmaxsq / m2) &
+                 - x ** 2 * data%mass ** 2 / qminsq * (1 - qminsq / qmaxsq))
+         else
+            f = 0
+         end if
+      case (3)
+         qmaxsq = data%q_max ** 2
+         if (data%mass ** 2 < qmaxsq) then
+            f = data%a / x &
+                 * ((xb + x ** 2 / 2) * log (qmaxsq / m2) &
+                 - x ** 2 * (1 - m2 / qmaxsq))
+         else
+            f = 0
+         end if
+      case (4)
+         qmaxsq = data%q_max ** 2
+         if (data%mass ** 2 < qmaxsq) then
+            f = data%a / x &
+                 * ((xb + x ** 2 / 2) * log (qmaxsq / m2))
+         else
+            f = 0
+         end if
+      end select
       f = f / sf_int%get_n_matrix_elements ()
       call sf_int%set_matrix_element &
            (cmplx (f, kind=default) * sf_int%charge2)
@@ -24916,15 +24956,6 @@ flavors (beam index, component index) for the hard process.
        allocate (epa_data_t :: data)
        epa_mode = var_list%get_sval (var_str ("$epa_mode"))
        epa_int_mode = 0
-       select case (char (epa_mode))
-       case ("default", "Budnev_617")
-          epa_int_mode = 0
-       case ("Budnev_616e")
-          epa_int_mode = 1
-       case default
-          call msg_fatal ("EPA: unsupported EPA mode; please choose " // &
-               "'default', 'Budnev_616' or 'Budnev_616e'")
-       end select
        epa_alpha = var_list%get_rval (var_str ("epa_alpha"))
        if (vanishes (epa_alpha)) then
           epa_alpha = (var_list%get_rval (var_str ("ee"))) &
@@ -24936,6 +24967,25 @@ flavors (beam index, component index) for the hard process.
        if (vanishes (epa_q_max)) then
           epa_q_max = sqrts
        end if
+       select case (char (epa_mode))
+       case ("default", "Budnev_617")
+          epa_int_mode = 0
+       case ("Budnev_616e")
+          epa_int_mode = 1
+       case ("log_power")
+          epa_int_mode = 2
+          epa_q_max = sqrts
+       case ("log_simple")
+          epa_int_mode = 3
+          epa_q_max = sqrts
+       case ("log")
+          epa_int_mode = 4
+          epa_q_max = sqrts
+       case default
+          call msg_fatal ("EPA: unsupported EPA mode; please choose " // &
+               "'default', 'Budnev_616', 'Budnev_616e', 'log_power', " // &
+               "'log_simple', or 'log'")
+       end select
        epa_mass   = var_list%get_rval (var_str ("epa_mass"))
        epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
        epa_keep_energy = var_list%get_lval (var_str ("?epa_keep_energy"))
