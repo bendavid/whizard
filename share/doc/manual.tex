@@ -192,6 +192,7 @@
 \newcommand{\pdflib}{\ttt{PDFLIB}}
 \newcommand{\lhapdf}{\ttt{LHAPDF}}
 \newcommand{\hepmc}{\ttt{HepMC}}
+\newcommand{\hepmcthree}{\ttt{HepMC3}}
 \newcommand{\fastjet}{\ttt{FastJet}}
 \newcommand{\hoppet}{\ttt{HOPPET}}
 \newcommand{\metapost}{\ttt{MetaPost}}
@@ -205,6 +206,10 @@
 \newcommand{\recola}{\ttt{Recola}}
 \newcommand{\collier}{\ttt{Collier}}
 \newcommand{\powheg}{\ttt{POWHEG}}
+\newcommand{\delphes}{\ttt{Delphes}}
+\newcommand{\geant}{\ttt{Geant}}
+\newcommand{\ROOT}{\ttt{ROOT}}
+\newcommand{\rivet}{\ttt{Rivet}}
 %%%%%
 \newcommand{\sindarin}{\ttt{SINDARIN}}
 \newcommand{\cpp}{\ttt{C++}}
@@ -1170,7 +1175,7 @@ The latest version of \hepmc\ (2.6.10) as well as the new relase
 series use \texttt{cmake} for their build process. For more
 information, confer the \hepmc\ webpage.
 
-A \whizard\ configuration for HepMC looks like this:
+A \whizard\ configuration for \hepmc\ looks like this:
 \begin{footnotesize}
   \begin{verbatim}
    configure: --------------------------------------------------------------
@@ -1192,6 +1197,33 @@ the correct installation path when configuring \whizard.  Furthermore,
 the environment variable \ttt{CXXFLAGS} allows you to set specific
 \ttt{C/C++} preprocessor flags, e.g. non-standard include paths for
 header files.
+
+A typical configuration of \hepmcthree\ will look like this:
+\begin{footnotesize}
+\begin{verbatim}
+configure: --------------------------------------------------------------
+configure: --- ROOT ---
+configure:
+checking for root-config... /usr/local/bin/root-config
+checking for root... /usr/local/bin/root
+checking for rootcint... /usr/local/bin/rootcint
+checking for dlopen in -ldl... (cached) yes
+configure: --------------------------------------------------------------
+configure: --- HepMC ---
+configure:
+checking for HepMC3-config... /usr/local/bin/HepMC3-config
+checking if HepMC3 is built with ROOT interface... yes
+checking if HepMC3 is functional... yes
+checking for HepMC3... yes
+checking the HepMC3 version... 3.02.01
+configure: --------------------------------------------------------------
+\end{verbatim}
+\end{footnotesize}
+As can be seen, \whizard\ will check for the \ROOT\ environment as
+well as whether \hepmcthree\ has been built with support for the
+\ROOT\ and \ttt{RootTree} writer classes. This is an easy option to
+use \whizard\ to write out \ROOT\ events. For more information see
+Sec.~\ref{sec:root}. 
 
 %%%%%
 
@@ -12176,7 +12208,8 @@ varying sign (also known as events and counter events) is currently not
 supported.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Data Visualization}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Internal Data Visualization}
 \label{chap:visualization}
 
 \section{GAMELAN}
@@ -12612,11 +12645,267 @@ in the \ttt{\$err\_options} string.
 To draw symbols at plot points (or histogram midpoints), the flag
 \ttt{?draw\_symbols} has to be switched on.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\chapter{Fast Detector Simulation and External Analysis}
+\label{chap:ext_anal}
 
+Events from a Monte Carlo event generator are further used in an
+analysis, most often combined with a detector simulation. Event files
+from the generator are then classified whether they are (i) parton
+level (coming from the hard matrix element) for which mostly LHE or
+\hepmc\ event formats are used, particle level (after parton shower
+and hadronization) - usually in \hepmc\ or \lcio\ format -, or
+detector level objects. The latter is the realm of packages like
+\ROOT\ or specific software from the experimental software
+frameworks. While detailed experimental studies take into account the
+best-possible detector description in a so-called full simulation via
+\geant\ which takes several seconds per event, fast studies are made
+with parameterized fast detector simulations like in \delphes\ or
+\texttt{SGV}. In the following, we discuss the options to interface
+external packages for these purposes or to pipe events from
+\whizard\ to such external packages.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%
+
+\section{Interfacing ROOT}
+\label{sec:root}
+
+One of the most distributed analysis framework is
+\ROOT~\cite{Brun:1997pa}. In \whizard\ for the moment there is no
+direct interface to the \ROOT\ framework. The easiest way to write
+out particle-level events in the \ROOT\ or \ttt{RootTree} format is to
+use \whizard's interface to \hepmcthree: this modern incarnation of
+the \hepmc\ format has different writer classes, where the writer
+class for \ROOT\ and \ttt{RootTree} files is supported by \whizard's
+\hepmcthree\ interface. For this to work, one only has to make sure
+that \hepmcthree\ has been built with \ROOT\ support, and that the
+\whizard\ \ttt{configure} has to detect the \ROOT\ setup on the
+computing environment. For more details cf. the installation
+section~\ref{sec:hepmc}. If this has been successfully linked, then
+\whizard\ can use its own \hepmcthree\ interface to write out
+\ROOT\ or \ttt{RootTree} formats.
+
+This can be done by setting the following options in the
+\sindarin\ files:
+\begin{code}
+  $hepmc3_mode = "Root"
+\end{code}
+or
+\begin{code}
+  $hepmc3_mode = "RootTree"
+\end{code}
+For more details cf.~the \ROOT\ manual and documentation therein.
+
+%%%%%
+
+\section{Interfacing RIVET}
+\label{sec:rivet}
+
+\rivet~\cite{Buckley:2010ar} is a very mighty analysis framework which
+has been developed to make experimental analyses from the LHC
+experiments available for non-collaboration members. It can be easily
+used to analyze events and produce high-quality plots for differential
+distributions and experimental observables. Since version
+3~\cite{Bierlich:2019rhm} there is now also a lot of functionality
+that comes very handy for plotting differential distributions at fixed
+order in NLO calculations, e.g. negative weights in bins or how to
+treat imperfectly balanced events and counterevents close to bin
+boundaries etc. For the moment, \whizard\ does not have a dedicated
+interface to \rivet, so the preferred method is to write out events,
+best in the \hepmc\ or \hepmcthree\ format and then read them into
+\rivet. A more sophisticated interface is foreseen for a future
+version of \whizard, while there are already development versions
+where \whizard\ detects all the \rivet\ infrastructure and
+libraries. But they are not yet used.
+
+For more details and practical examples cf.~the \rivet\ manual. This
+describes in detail especially the \rivet\ installation. A typical
+error that occurs on systems where no \ROOT\ is installed
+(cf.~Sec.~\ref{sec:root}) is the one these \ttt{Missing TPython.h}
+missing headers. Then \rivet\ can nevertheless be easily built without
+\ROOT\ support by setting
+\begin{code}
+  --disable-root
+\end{code}
+in the \ttt{rivet-bootstrap} script. For an installation of \rivet\ it
+is favorable to include the location of the \rivet\ \python\ scripts
+in the \ttt{PYTHONPATH} environment variable. They can be accessed
+from the \rivet\ configuration script as
+\begin{code}
+  <path_to_rivet-config>/rivet-config --pythonpath
+\end{code}
+If the \python\ path is not known within the environment variables,
+then one commonly encounters error like \ttt{No module named rivet} or
+\ttt{Import error: no module named yoda} when running \rivet\ scripts
+like e.g. \ttt{yodamerge}.
+
+If you use a \rivet\ version older than \ttt{v3.1.1} there is no
+support for \hepmcthree\ yet, so when using \hepmcthree\ with
+\whizard\ please use the backwards compatibility mode of \hepmcthree
+in the \sindarin\ file:
+\begin{code}
+  $hepmc3_mode = "HepMC2"
+\end{code}
+When using MPI parallelized runs of \whizard\ there will a large
+number of different \ttt{.hepmc} files (also if some grid architecture
+has produced these event files in junks). Then one has to first merge
+these event files.
+
+Here, we quickly explain how to steer \rivet\ for your own
+analysis. For more details, please confer the \rivet\ manual.
+\begin{enumerate}
+\item The command
+  \begin{code}
+    rivet-mkanalysis <name>
+  \end{code}
+  creates a template \rivet\ plugin for the analysis \ttt{<name>.cc},
+  a template info file \ttt{<name>.info} amd a template file for the
+  plot generation \ttt{<name>.plot}. Note that this overwrites
+  potentially existing files in this folder with the same name.
+
+\item
+  Now, analysis statements like e.g. cuts etc. can be implemented in
+  \ttt{<name>.cc}. For analysis of parton-level events without parton
+  showering, the cuts can be equivalent to those in \whizard, i.e. the
+  generator-level cuts can be as strict as the analysis cuts to avoid
+  generating unnecessary events. If parton showering is applied it is
+  better to have looser generator than analysis cuts to avoid
+  undesired plot artifacts.
+
+\item
+  Next, one executes the command (the shared library name might be
+  different e.g. on Darwin or BSD OS)
+  \begin{code}
+    rivet-buildplugin Rivet<name>.so <name>.cc
+  \end{code}
+  This creates an executable \rivet\ analysis library
+  \ttt{Rivet<name>.so}. The custom analysis should now appear in the
+  output of
+  \begin{code}
+    rivet --list <name>
+  \end{code}
+  If this is not the case, the analysis path has to be exported first
+  as \ttt{RIVET\_ANALYSIS\_PATH=\$PWD}.
+
+\item
+  We are now ready to use the custom analysis to analyze the
+  \ttt{.hepmc} events by executing the command
+  \begin{code}
+    rivet --pwd --analysis=<name> -o <outfile>.yoda <path/to/hepmcfiles>
+  \end{code}
+  and save the produced histograms of the analysis in the \ttt{.yoda}
+  format. In general the option \ttt{--ignore-beams} for
+  \rivet\ should be used to prevent \rivet\ to stumble over beam
+  remnants. This is also relevant for lepton collider processes with
+  electron PDFs. For a large number of events, event files can become
+  very big. To avoid writing them all on disk, a FIFO for the
+  \ttt{<path/to/hepmcfiles>} can be used.
+
+\item
+  Different \ttt{yoda} files can now be merged into a single file
+  using the command
+  \begin{code}
+    <yodamerge --add -o <name>_full.yoda <name>_01.yoda ...
+  \end{code}
+  This should be applied e.g. for the case of fixed-order NLO
+  differential distributions where Born, real and virtual components
+  have been generated separately.
+
+\item
+  Finally, plots can be produced: after listing all the histograms to
+  be plotted in the plot file \ttt{<name>.plot}, the command
+  \begin{code}
+    rivet-mkhtml <name>_full.yoda
+  \end{code}
+  translates the \ttt{.yoda} file into a histogram file in the
+  \ttt{.dat} format. These plots can either be visually enhanced by
+  modifying the \ttt{<name>.plot} file as is described on the webpage
+  \url{https://rivet.hepforge.org/make-plots.html}, or by using any
+  other external plotting tool like e.g. \ttt{Gnuplot} for the
+  \ttt{.dat} files.
+
+\end{enumerate}
+
+Clearly, this gives only a rough sketch on how to use \rivet\ for an
+analysis. For more details, please consult the \rivet\ webpage and the
+\rivet\ manual.
+
+%%%%%
+
+\vspace{1cm}
+
+\section{Fast Detector Simulation with DELPHES}
+\label{sec:delphes}
+
+Fast detector simulation allows relatively quick checks whether
+experimental analyses actually work in a semi-realistic detector
+study. There are some older tools for fast simulation like
+e.g.~\ttt{PGS} (which is no longer actively maintained) and \ttt{SGV}
+which is default fast simulation for ILC studies. For LHC and general
+future hadron collider studies, \delphes~\cite{deFavereau:2013fsa} is
+the most commonly used tool for fast detector simulation.
+
+The details on how to obtain and build \delphes\ can be obtained from
+their webpage, \url{https://cp3.irmp.ucl.ac.be/projects/delphes}. It
+depends both on~\ttt{Tcl/Tk} as well as
+\ROOT~(cf. Sec.~\ref{sec:root}. Interfacing any Monte Carlo event
+generator with a fast detector simulation like \delphes\ is rather
+trivial: \delphes\ ships with up to five executables
+\begin{code}
+  DelphesHepMC
+  DelphesLHEF
+  DelphesPythia8
+  DelphesROOT
+  DelphesSTDHEP
+\end{code}
+\ttt{DelphesPythia8} is a direct interface between \pythiaeight\ and
+\delphes, so detector-level events are directly produced via an API
+interface between \pythiaeight\ and \delphes. This is the most
+convenient method which is foreseen for \whizard, however not yet
+implemented. The other four binaries take input files in the \hepmc,
+LHE, \stdhep\ and \ROOT\ format, apply a fast detector simulation
+according to the chosen input file and give a \ROOT\ detector-level
+event file as output.
+
+Executing one of the binaries above without options, the following
+message will be displayed:
+\begin{code}
+  ./DelphesHepMC
+ Usage: DelphesHepMC config_file output_file [input_file(s)]
+ config_file - configuration file in Tcl format,
+ output_file - output file in ROOT format,
+ input_file(s) - input file(s) in HepMC format,
+ with no input_file, or when input_file is -, read standard input.
+\end{code}
+Using \delphes\ with \hepmc\ event files then works as
+\begin{code}
+  ./DelphesHepMC cards/delphes_card_ATLAS.tcl output.root input.hepmc
+\end{code}
+For \stdhep\ files which are directly by \whizard\ without external
+packages (only assuming that the XDR C libraries are present on the
+system), execute
+\begin{code}
+  ./DelphesSTDHEP cards/delphes_card_ILD.tcl delphes_output.root input.hep
+\end{code}
+For LHE files as input, use
+\begin{code}
+  ./DelphesLHEF cards/delphes_card_CLICdet_Stage1.tcl delphes_output.root input.lhef
+\end{code}
+and for \ROOT\ (particle-level) files use
+\begin{code}
+  ./DelphesROOT cards/delphes_card_CMS.tcl delphes_output.root input.root
+\end{code}
+In the \delphes\ cards directory, there is a long list of supported
+input files for existing and future detectors, a few of which we have
+displayed here.
+
+\delphes\ detector-level output files can then be analyzed with
+\ROOT\ as described in the \delphes\ manual.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{User Interfaces for WHIZARD}
 \label{chap:userint}
@@ -17222,6 +17511,42 @@ respectively.
   Comput.\ Phys.\ Commun.\  {\bf 40} (1986) 359.
   doi:10.1016/0010-4655(86)90119-0
   %% CITATION = doi:10.1016/0010-4655(86)90119-0;%%
+
+%\cite{Brun:1997pa}
+\bibitem{Brun:1997pa}
+  R.~Brun and F.~Rademakers,
+  {\em ROOT: An object oriented data analysis framework},
+  Nucl. Instrum. Meth. A \textbf{389}, 81-86 (1997)
+  doi:10.1016/S0168-9002(97)00048-X
+
+%\cite{Buckley:2010ar}
+\bibitem{Buckley:2010ar}
+A.~Buckley, J.~Butterworth, L.~Lonnblad, D.~Grellscheid, H.~Hoeth, J.~Monk, H.~Schulz and F.~Siegert,
+{\em Rivet user manual}, 
+Comput. Phys. Commun. \textbf{184}, 2803-2819 (2013)
+doi:10.1016/j.cpc.2013.05.021
+[arXiv:1003.0694 [hep-ph]].
+
+%\cite{Bierlich:2019rhm}
+\bibitem{Bierlich:2019rhm}
+C.~Bierlich, A.~Buckley, J.~Butterworth, C.~H.~Christensen, L.~Corpe,
+D.~Grellscheid, J.~F.~Grosse-Oetringhaus, C.~Gutschow,
+P.~Karczmarczyk, J.~Klein, L.~Lönnblad, C.~S.~Pollard, P.~Richardson,
+H.~Schulz and F.~Siegert, 
+{\em Robust Independent Validation of Experiment and Theory: Rivet
+  version 3}, 
+SciPost Phys. \textbf{8}, 026 (2020)
+doi:10.21468/SciPostPhys.8.2.026
+[arXiv:1912.05451 [hep-ph]].
+
+%\cite{deFavereau:2013fsa}
+\bibitem{deFavereau:2013fsa}
+J.~de Favereau \textit{et al.} [DELPHES 3],
+{\em DELPHES 3, A modular framework for fast simulation of a generic
+  collider experiment}, 
+JHEP \textbf{02}, 057 (2014)
+doi:10.1007/JHEP02(2014)057
+[arXiv:1307.6346 [hep-ex]]
 
 \end{thebibliography}
 
