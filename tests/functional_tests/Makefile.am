@@ -305,6 +305,7 @@ TESTS_REQ_OCAML = \
     mlm_matching_fsr.run \
     user_prc_threshold_1.run \
     cascades2_phs_1.run \
+    cascades2_phs_2.run \
     user_prc_threshold_2.run \
     vamp2_1.run \
     vamp2_2.run

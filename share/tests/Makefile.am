@@ -816,6 +816,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/beam_events_4.ref \
     functional_tests/ref-output/energy_scan_1.ref \
     functional_tests/ref-output/cascades2_phs_1.ref \
+    functional_tests/ref-output/cascades2_phs_2.ref \
     functional_tests/ref-output/vamp2_1.ref \
     functional_tests/ref-output/vamp2_2.ref \
     ext_tests_nlo/ref-output/nlo_ee4j.ref \
@@ -1337,6 +1338,7 @@ MISC_TESTS_SIN = \
     functional_tests/static_2.exe.sin \
     functional_tests/user_prc_threshold_1.sin \
     functional_tests/cascades2_phs_1.sin \
+    functional_tests/cascades2_phs_2.sin \
     functional_tests/user_prc_threshold_2.sin \
     functional_tests/vamp2_1.sin \
     functional_tests/vamp2_2.sin

@@ -22205,16 +22205,21 @@ mapping).
     if (tree%empty) then
        i1 = tree1%n_entries
        i2 = tree1%n_entries + tree2%n_entries
+       !! Proof: tree_size > 0 (always)
        tree_size = tree1%n_entries + tree2%n_entries + 1
        allocate (tree%bc (tree_size))
        allocate (tree%pdg (tree_size))
        allocate (tree%mapping (tree_size))
-       tree%bc(:i1) = tree1%bc
-       tree%pdg(:i1) = tree1%pdg
-       tree%mapping(:i1) = tree1%mapping
-       tree%bc(i1+1:i2) = tree2%bc
-       tree%pdg(i1+1:i2) = tree2%pdg
-       tree%mapping(i1+1:i2) = tree2%mapping
+       if (.not. tree1%empty) then
+          tree%bc(:i1) = tree1%bc
+          tree%pdg(:i1) = tree1%pdg
+          tree%mapping(:i1) = tree1%mapping
+       end if
+       if (.not. tree2%empty) then
+          tree%bc(i1+1:i2) = tree2%bc
+          tree%pdg(i1+1:i2) = tree2%pdg
+          tree%mapping(i1+1:i2) = tree2%mapping
+       end if
        tree%bc(tree_size) = bc
        tree%pdg(tree_size) = pdg
        tree%mapping(tree_size) = mapping
