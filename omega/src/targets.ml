@@ -6610,7 +6610,7 @@ i*)
       printf "hel_max_abs = 0"; nl ();
       printf "  @[<2>real(kind=%s), save :: " !kind;
       printf "hel_sum_abs = 0, ";
-      printf "hel_threshold = 1E10"; nl ();
+      printf "hel_threshold = 1E10_%s" !kind; nl ();
       printf "  @[<2>integer, save :: ";
       printf "hel_count = 0, ";
       printf "hel_cutoff = 100"; nl ();
