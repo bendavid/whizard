@@ -3812,6 +3812,8 @@ C AMRO, GAMRO IS ONLY A PARAMETER FOR GETING HIGHT EFFICIENCY
 C
 C THREE BODY PHASE SPACE NORMALISED AS IN BJORKEN-DRELL
 C D**3 P /2E/(2PI)**3 (2PI)**4 DELTA4(SUM P)
+C JRR: Initializing the polarimeter vector to zero
+      HV = 0
       PHSPAC=1./2**23/PI**11
       PHSP=1./2**5/PI**2
 C init decay mode JNPI

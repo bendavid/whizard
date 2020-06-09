@@ -1,4 +1,5 @@
 # SINDARIN input for WHIZARD self-test
+# Testing PYTHIA6/TAUOLA for a four-tau final state
 
 model = SM
 
@@ -8,7 +9,7 @@ model = SM
 ?integration_timer = false
 ?pacify = true
 
-process tauola_1_p1 = e1, E1 => e3, E3
+process tauola_3 = e1, E1 => e3, E3, e3, E3
 
 compile
 
@@ -21,7 +22,7 @@ seed = 0
 $shower_method = "PYTHIA6"
 ?ps_taudec_active = true
 
-polarized e3, E3, "W+", "W-", Z
+polarized e3, E3, Wp, Wm, Z
 ?polarized_events = true
 
 sqrts = 250 GeV
@@ -30,11 +31,13 @@ beams = e1, E1 => beam_events => isr
 $beam_events_file = "uniform_spread_2.5%.dat"
 beams_pol_density = @(-1), @(+1)
 
-iterations = 1:1000:"gw"
-integrate (tauola_1_p1)
+iterations = 1:1200:"gw"
+integrate (tauola_3)
 
 sample_format = stdhep_ev4
 ?write_raw = false
+
+
 n_events = 1
-$sample = "tauola_1_p1"
-simulate (tauola_1_p1)
+$sample = "tauola_3_p1"
+simulate (tauola_3)

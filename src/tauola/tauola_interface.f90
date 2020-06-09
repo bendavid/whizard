@@ -4,6 +4,7 @@
 !  for Whizard1 developed by Timothy Barklow (SLAC)
 !
 !    Akiya Miyamoto
+!    Bug fixes: Mikael Berggren, Juergen Reuter
 !
 
 module tauola_interface
@@ -50,7 +51,6 @@ module tauola_interface
 
   integer, parameter :: n_pyjets_max = 4000
 
-  integer, save :: max_dump = 0
   integer, save :: nsub_call = 0
 
   double precision :: spin_dexay
@@ -104,7 +104,7 @@ contains
   subroutine fill_pyjets_spin_data
     integer :: ip
     integer :: hepeup_index
-    integer :: iorig
+    integer :: iorig, iii
     integer :: idau1, idau2, n_doc_lines
     integer, dimension(200) :: mstp
     double precision, dimension(200) :: parp
@@ -134,13 +134,26 @@ contains
     ip = 1
     hepeup_index = 0
 
+    if (debug_active (D_TAUOLA)) then
+       call msg_debug (D_TAUOLA, "TAUOLA interface: fill_pyjets_spin_data")
+       print *,"nup in hepev4 = ", nup
+       print *, "        index       spin" // &
+            "                      pdg              mothers "
+       do iii=1,nup
+          print *, iii, spinup(iii), idup(iii),mothup(:,iii)
+       enddo
+    end if
+
+    if (signal_is_pending ()) return
     do while (k(ip,1) == 21)
        pyjets_spin_data(ip)%pid     = k(ip,2)
        pyjets_spin_data(ip)%id_orig = k(ip,3)
        pyjets_spin_data(ip)%index_orig = ip
        pyjets_spin_data(ip)%n_daughter = 0
        iorig = k(ip,3)
-       if (iorig == 0) then
+       if ((hepeup_index < nup) .and. (iorig == 0 .or. &
+            (any (abs(k(ip,2)) == [15,16]) .and. .not. &
+             any(spinup(min(hepeup_index+1,nup)) == [0.0, 9.0])))) then
           hepeup_index = hepeup_index + 1
           pyjets_spin_data(ip)%index_to_hepeup = hepeup_index
           pyjets_spin_data(ip)%helicity = spinup(hepeup_index)
@@ -150,16 +163,15 @@ contains
           pyjets_spin_data(iorig)%n_daughter = &
                pyjets_spin_data(iorig)%n_daughter + 1
           pyjets_spin_data(iorig)%index_daughter(pyjets_spin_data(iorig)%n_daughter)=ip
-       end if
-       if (debug2_active (D_TAUOLA)) then
-          call msg_debug2 (D_TAUOLA, "TAUOLA interface: fill_pyjets_spin_data")
-          write (msg_buffer, "(A,I0,A,I0,A,I0,A,ES19.12)") &
-               "ip = ", ip, " iorig = ", iorig, " pid  ", k(ip,2), &
-               " spin = ", pyjets_spin_data(ip)%helicity
-          call msg_message ()
+          if (debug_active (D_TAUOLA)) then
+             if ( abs(k(ip,2)) == 15 ) then
+                print *, " No input spin information for tau at ip = ", ip, &
+                     ". Will be set in fill_pyjets_spin_data"
+             end if
+          end if
        end if
        if (abs(k(ip,2)) == 15 .and. pyjets_spin_data(ip)%helicity == 9) then
-          if (nsub_call .lt. min(5, 2*max_dump)) then
+          if (nsub_call .lt. 5) then
              write (msg_buffer, "(A)") &
                   "Subroutine fill_pyjets_spin_data: tau helicity information"
              call msg_message ()
@@ -182,7 +194,9 @@ contains
     end do
     n_doc_lines = ip - 1
 
+    if (signal_is_pending ()) return
     do ip = 1, n_doc_lines
+       iorig = k(ip,3)
        if (pyjets_spin_data(ip)%n_daughter == 2) then
           !!! h0/H0/A0 -> tau tau
           if (pyjets_spin_data(ip)%pid == 25 .or. &
@@ -195,10 +209,10 @@ contains
                   pyjets_spin_data(idau2)%pid) == 0) then
                 if (pyr(0) .lt. 0.5) then
                    pyjets_spin_data(idau1)%helicity = -1
-                   pyjets_spin_data(idau2)%helicity = +1
+                   pyjets_spin_data(idau2)%helicity = -1
                 else
                    pyjets_spin_data(idau1)%helicity = +1
-                   pyjets_spin_data(idau2)%helicity = -1
+                   pyjets_spin_data(idau2)%helicity = +1
                 end if
              end if
 
@@ -242,6 +256,13 @@ contains
              end if
           end if
        end if
+       if (debug2_active (D_TAUOLA)) then
+          call msg_debug2 (D_TAUOLA, "TAUOLA interface: end of fill_pyjets_spin_data")
+          write (msg_buffer, "(A,I0,A,I0,A,I0,A,ES19.12)") &
+               "ip = ", ip, " iorig = ", iorig, " pid  ", k(ip,2), &
+               " spin = ", pyjets_spin_data(ip)%helicity
+          call msg_message ()
+       end if
     end do
   end subroutine fill_pyjets_spin_data
 
@@ -279,11 +300,16 @@ contains
     !!!       called once per event (not per tau)
     integer :: idau1, idau2
 
+    integer, allocatable :: these_taus(:), these_tau_daughters(:)
+    logical, allocatable :: chain(:)
+    integer :: i,ntaus, itp , offset
+
     higgs_dec = .false.
     if (kforig == 25 .or. kforig==35 .or. kforig== 36) then
       higgs_dec = .true.
     end if
 
+    if (signal_is_pending ()) return
     !!! JRR: Tau decays are very sensitive to numerical noise, momenta
     !!!      should be, in principle, strictly on the z axis
     if (abs (p(itau,1)) < 1.d-13)  p(itau,1) = 0
@@ -298,84 +324,105 @@ contains
        nsub_call = nsub_call + 1
     end if
 
-    if (nsub_call .lt. max_dump) then
+    if (debug_active (D_TAUOLA)) then
        write (msg_buffer, "(A)") "wo_tauola_pytaud was called."
        call msg_message ()
        write (msg_buffer, "(A,I0,A,I0,A,I0,A,I0)") &
-            "ncall = ", nsub_call, "itau = ", itau, " iorig = ", iorig, &
+            "ncall = ", nsub_call, " itau = ", itau, " iorig = ", iorig, &
             " kforig = ", kforig
        call msg_message ()
-       call pylist(2)
+       if (debug2_active (D_TAUOLA)) then
+          call pylist(2)
+       end if
     end if
 
     jorig = iorig
     jforig = kforig
 
-    !!! If tau origin is not known (tau is generated by parton generator with
-    !!! with full matrix elements), look for the parton information, which is
-    !!! stored as status code 21
-    if (iorig == 0) then
-       ip = itau
-       do while (k(ip,3) .ne. 0 .or. ip .le. 0)
-          ip = k(ip,3)
-       end do
-       id_dexay = k(itau,2)
-       p_dexay = p(itau,1:5)
-       pyjets_spin_data(itau)%helicity = pyjets_spin_data(ip)%helicity
-       spin_dexay = pyjets_spin_data(ip)%helicity
+    offset=0 ; if ( MSTP(125) > 1 ) offset = mstp(126)-count(k(1:mstp(126)-1,1)==21)
+    these_taus=PACK([(i,i=1,n)],(k(1:n,2)==k(itau,2).and.k(1:n,1)/=21)) ; ntaus=size(these_taus) 
+    these_tau_daughters=modulo(k(these_taus,4),10000)  ! 10000 = mstu(5) in /pydat1/
 
-       !!! If tau origin is known (iorig .ne. 0), decide tau helicity
-       !!! based on parent particle id (kforig)
-       !!! kforig = 25/35/36: 2 tau's spin must be generated: tau
+    if (debug2_active (D_TAUOLA)) then
+       print *, ' offsets etc. : ',offset,  MSTP(125),  MSTP(126)
+       print *, ' ntaus = ', ntaus
+       print *, ' these_taus          = ', these_taus
+       print *, ' these_tau_daughters = ', these_tau_daughters
+       print *, ' these_taus parent on line(s)  = ', k(these_taus(1:ntaus),3)
+       print *, ' helicty of parents : ', pyjets_spin_data(k(these_taus(1:ntaus),3))%helicity
+    end if
 
-    else
-       id_dexay = k(itau,2)
-       p_dexay = p(itau,1:5)
-       !!! h0 or Z0 or W case
-       if (higgs_dec .or. kforig==23 .or. abs(kforig)==24) then
-          ip = k(itau,3)
-          if (k(ip,1)==21 .and. abs(k(ip,2))==15) then
-             pyjets_spin_data(itau)%helicity = pyjets_spin_data(ip)%helicity
+    if (.not. all(these_tau_daughters(1:ntaus-1) == these_taus(2:ntaus))) then
+      ! maybe multi-tau, sqeeze out the wrong chain(s)
+       allocate (chain(ntaus))
+       chain=.FALSE.
+       itp = transfer (maxloc(these_taus,(these_taus==itau)),itp)
+
+       if (debug2_active (D_TAUOLA)) then
+          print *, ' tau and daughter lists NOT equal. Checking for multiple taus ... '
+          print *, ' initial itp = ', itp
+       end if
+
+       chain(itp) = .true.
+       do while (itp > 0)
+          if (signal_is_pending ()) return
+          if (size (these_taus) /= 0 .and. any (these_tau_daughters == these_taus(itp))) then
+             itp=transfer(maxloc(these_taus,(these_tau_daughters==these_taus(itp))),itp)
+          else
+             itp = 0
           end if
-          spin_dexay = pyjets_spin_data(itau)%helicity
+          if (itp > 0) chain(itp) = .true.
+       end do
 
-          !!! Fill momentum of second tau if kforig == 25 ( Higgs )
-          if (higgs_dec .and. trans_spin) then
+       ntaus = count(chain)
+       these_taus(1:ntaus) = pack (these_taus, chain)
+       these_tau_daughters(1:ntaus) = pack (these_tau_daughters, chain)
 
-             idau1 = pyjets_spin_data(iorig)%index_daughter(1)
-             idau2 = pyjets_spin_data(iorig)%index_daughter(2)
+       if (debug2_active (D_TAUOLA)) then
+          print *, ' after multi-tau loop : '
+          print *, ' ntaus = ', ntaus
+          print *, ' chain = ', chain
+          print *, ' these_taus          = ', these_taus
+          print *, ' these_tau_daughters = ', these_tau_daughters
+       end if
+
+    end if
+    if (all(these_tau_daughters(1:ntaus-1) == these_taus(2:ntaus)) .and. ntaus > 0) then
+       pyjets_spin_data(these_taus(1:ntaus))%helicity = pyjets_spin_data(k(these_taus(1),3))%helicity
+       if (offset /= 0) pyjets_spin_data(these_taus(1:ntaus)-offset)%helicity = &
+            pyjets_spin_data(k(these_taus(1),3))%helicity
+    else
+       call msg_warning ("Tau lepton not found: ntaus is " // int2char (ntaus) // ".")
+    end if
+
+    if (signal_is_pending ()) return
+
+    if (iorig /= 0 .and. higgs_dec .and. trans_spin) then
+
+      idau1 = pyjets_spin_data(iorig)%index_daughter(1)
+      idau2 = pyjets_spin_data(iorig)%index_daughter(2)
              !!! Parent Higgs is not in the documentation line (K(,1) != 21)
              !!! Get pointer to daughter directly from JETSET
-             if (idau1 == 0) then
-                idau1 = k(iorig,4)
-                idau2 = k(iorig,5)
-             end if
-             if (idau1 .ne. itau) then
-                write (msg_buffer, "(A,I0,A,I0,A)") &
+      if (idau1 == 0) then
+        idau1 = k(iorig,4)
+        idau2 = k(iorig,5)
+      end if
+      if (idau1 .ne. itau) then
+        write (msg_buffer, "(A,I0,A,I0,A)") &
                      "idau1 = ", idau1, "itau = ", itau, " are not equal."
-                call msg_fatal ("wo_tauola_pytaud: " // &
+        call msg_fatal ("wo_tauola_pytaud: " // &
                      "Something is wrong in parent-daughter relation.")
-             end if
-             jtau2 = idau2
+      end if
+      jtau2 = idau2
              !!! Reset tau spin information because it is decided internally
-             pyjets_spin_data(itau)%helicity = 0
-             pyjets_spin_data(jtau2)%helicity = 0
-          end if
-       else
-        !!! Unknow decay mother
-          if (debug_active (D_TAUOLA)) then
-             call msg_warning ("wo_tau_decay : Unknown decay mother of " // &
-                  "tau, id = " // int2char (kforig) // &
-                  ", tau is 50% right or 50% left handed.")
-          end if
-          if (pyr(0) .lt. 0.5) then
-             spin_dexay = -1
-          else
-             spin_dexay = +1
-          end if
-          pyjets_spin_data(itau)%helicity = spin_dexay
-       end if
+      pyjets_spin_data(itau)%helicity = 0
+      pyjets_spin_data(jtau2)%helicity = 0
     end if
+
+    id_dexay = k(itau,2)
+    p_dexay = p(itau,1:5)
+    spin_dexay = pyjets_spin_data(itau)%helicity
+
     call do_dexay (itau, p_dexay, id_dexay, kforig)
     ndecay = nproducts
   end subroutine wo_tauola_pytaud
@@ -496,7 +543,7 @@ contains
           p1 = phep(1:4,n1)
           p2 = phep(1:4,n2)
           q1 = p1 + p2
-          if (nsub_call .lt. max_dump) then
+          if (debug_active (D_TAUOLA)) then
              call msg_message ("Tau+ decay with pol(3) = " // &
                   real2char (real (pol(3), kind=default)) // ".")
              write (*, "(A,4(1x,ES19.12))") "Antiparticle decay, q1 = ", q1
@@ -521,7 +568,7 @@ contains
           p2 = phep(1:4,n1)
           p1 = phep(1:4,n2)
           q1 = p1 + p2
-          if (nsub_call .lt. max_dump) then
+          if (debug_active (D_TAUOLA)) then
              call msg_message ("Tau- decay with pol(3) = " // &
                   real2char (real (pol(3), kind=default)) // ".")
              write (*, "(A,4(1x,ES19.12))") "Antiparticle decay, q1 = ", q1
@@ -544,6 +591,8 @@ contains
 !!!   calculated here.  It would be possible to calculate them
 !!!   from the polarimetric vectors, hh1 and hh2,  after
 !!!   the end of the rejection loop.
+
+    if (signal_is_pending ()) return
 
     if (trans_spin) then
        if (.not. tau_pol_vec) then
@@ -702,7 +751,7 @@ contains
        k(itau,5) = jdahep(2,2) - n2 + n
     end if
 
-    if (nsub_call .lt. max_dump) then
+    if (debug2_active (D_TAUOLA)) then
       call msg_message ("TAUOLA interface: PYLIST at the end of do_dexay")
       n = n + nproducts
       call pylist(2)
@@ -862,6 +911,7 @@ contains
     csc = cos(psi) * betah
     ssc = sin(psi)
 
+    if (signal_is_pending ()) return
     if (trans_spin) then
        if (mstj(39) .ne. 15) then
           call msg_warning ("wo_tauola_init_call: transverse spin " // &
