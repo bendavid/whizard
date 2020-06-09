@@ -7893,6 +7893,9 @@ Note: we record the integral once per iteration.  The integral stored
 in the [[mci]] record itself is the last integral of the current
 iteration, no averaging done.  The [[results]] record may average results.
 
+In case we read the integration from file and we added new iterations to the pass preserving number of calls, we need to reshape the grids in order to incorporate the correct number of calls.
+Else the grids would be sampled with the number of calls from the grids file, which does not need to coincide with the number of calls from the pass.
+
 Note: recording the efficiency is not supported yet.
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: integrate => mci_vamp_integrate
@@ -7945,6 +7948,8 @@ Note: recording the efficiency is not supported yet.
           end if
           do it = 1, instance%n_it
              if (signal_is_pending ())  return
+             reshape = reshape .or. &
+                  (instance%grids_from_file .and. n_it > mci%current_pass%get_integration_index ())
              instance%grids_from_file = from_file .and. &
                   it <= mci%current_pass%get_integration_index ()
              if (.not. instance%grids_from_file) then
@@ -12489,8 +12494,8 @@ channel weight
 Initialize. We prepare the integrator from a previous pass, or from file, or
 with new objects.
 
-At the emd, set the number of calls for the current, if the integrator is not
-read from file.
+At the end, we update the number of calls either when we got the integration grids from file
+and we added new iterations to the current pass, or we allocated a new integrator.
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure, private :: init_integration => mci_vamp2_init_integration
 <<MCI vamp2: procedures>>=
@@ -12533,7 +12538,7 @@ read from file.
          call mci%init_integrator ()
       end if
       mci%integrator_from_file = from_file
-      if (.not. mci%integrator_from_file) then
+      if (.not. mci%integrator_from_file .or. (n_it > current_pass%get_integration_index ())) then
          call mci%integrator%set_calls (current_pass%n_calls)
       end if
       call mci%integrator%set_equivalences (mci%equivalences)

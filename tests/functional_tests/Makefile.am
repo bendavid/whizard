@@ -308,7 +308,8 @@ TESTS_REQ_OCAML = \
     cascades2_phs_2.run \
     user_prc_threshold_2.run \
     vamp2_1.run \
-    vamp2_2.run
+    vamp2_2.run \
+    vamp2_3.run
 
 XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \

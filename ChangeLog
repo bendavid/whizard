@@ -8,6 +8,7 @@ Use svn log to see detailed changes.
 	RELEASE: version 2.8.3
 
 2020-06-09
+	Bug fix: correctly update calls for additional VAMP/2 iterations
 	Bug fix: correct assignment for tau spins from PYTHIA6 interface
 
 2020-06-04
