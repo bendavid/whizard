@@ -7,6 +7,9 @@ Use svn log to see detailed changes.
 2020-03-03
 	RELEASE: version 2.8.3
 
+2020-06-15
+	Bug fix: PYTHIA6/Tauola, correctly assign tau spins for stau decays
+
 2020-06-09
 	Bug fix: correctly update calls for additional VAMP/2 iterations
 	Bug fix: correct assignment for tau spins from PYTHIA6 interface

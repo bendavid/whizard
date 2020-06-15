@@ -104,7 +104,7 @@ contains
   subroutine fill_pyjets_spin_data
     integer :: ip
     integer :: hepeup_index
-    integer :: iorig, iii
+    integer :: iorig, iii, ihep_start, ipy_start, first_pdg
     integer :: idau1, idau2, n_doc_lines
     integer, dimension(200) :: mstp
     double precision, dimension(200) :: parp
@@ -141,34 +141,71 @@ contains
             "                      pdg              mothers "
        do iii=1,nup
           print *, iii, spinup(iii), idup(iii),mothup(:,iii)
-       enddo
+       end do
+       if (debug2_active (D_TAUOLA)) then
+          call pylist(2)
+       end if
     end if
 
+    do ip = 1, Nup
+      if (mothup(1,ip) /= 0) exit
+    end do
+    ihep_start = ip
+    first_pdg = idup(ip)
+    do ip = 1, N
+      if (k(ip,1) == 21) then
+        if (k(ip,2) == first_pdg) exit
+      end if
+    end do
+    ipy_start = ip
+    if (debug_active (D_TAUOLA)) then
+      print *, ' First hepev4 index to consider: ', ihep_start, &
+               ' , which correspinds to  pyjets index : ', ipy_start
+    end if
+
+
+    hepeup_index = ihep_start
+    n_doc_lines = count (k(1:N,1) == 21)
+
+
     if (signal_is_pending ()) return
-    do while (k(ip,1) == 21)
+    do ip=1,n_doc_lines
+       if (k(ip,1) /= 21) exit
        pyjets_spin_data(ip)%pid     = k(ip,2)
        pyjets_spin_data(ip)%id_orig = k(ip,3)
        pyjets_spin_data(ip)%index_orig = ip
        pyjets_spin_data(ip)%n_daughter = 0
        iorig = k(ip,3)
-       if ((hepeup_index < nup) .and. (iorig == 0 .or. &
-            (any (abs(k(ip,2)) == [15,16]) .and. .not. &
-             any(spinup(min(hepeup_index+1,nup)) == [0.0, 9.0])))) then
-          hepeup_index = hepeup_index + 1
+       if ((ip >= ipy_start) .and. (.not. any(spinup(hepeup_index) == [0.0, 9.0]))) then
           pyjets_spin_data(ip)%index_to_hepeup = hepeup_index
           pyjets_spin_data(ip)%helicity = spinup(hepeup_index)
        else
           pyjets_spin_data(ip)%index_to_hepeup = -1
-          pyjets_spin_data(ip)%helicity = 0
-          pyjets_spin_data(iorig)%n_daughter = &
-               pyjets_spin_data(iorig)%n_daughter + 1
-          pyjets_spin_data(iorig)%index_daughter(pyjets_spin_data(iorig)%n_daughter)=ip
+          if (ip >= ipy_start) then
+            pyjets_spin_data(ip)%helicity = spinup(hepeup_index)
+          else
+            pyjets_spin_data(ip)%helicity = 0.
+          end if
+          if (iorig > 0) then
+            pyjets_spin_data(iorig)%n_daughter = &
+            pyjets_spin_data(iorig)%n_daughter + 1
+            pyjets_spin_data(iorig)%index_daughter(pyjets_spin_data(iorig)%n_daughter)=ip
+          end if
           if (debug_active (D_TAUOLA)) then
-             if ( abs(k(ip,2)) == 15 ) then
+             if (abs(k(ip,2)) == 15) then
                 print *, " No input spin information for tau at ip = ", ip, &
                      ". Will be set in fill_pyjets_spin_data"
              end if
           end if
+       end if
+       if (ip >= ipy_start) hepeup_index = hepeup_index + 1
+       if (debug2_active (D_TAUOLA)) then
+          call msg_debug2 (D_TAUOLA, "TAUOLA interface: fill_pyjets_spin_data")
+          write (msg_buffer, "(A,I0,A,I0,A,I0,A,ES19.12,A,I0)") &
+               "ip = ", ip, " iorig = ", iorig, " pid  ", k(ip,2), &
+               " spin = ", pyjets_spin_data(ip)%helicity,&
+               " hepeup index = ", pyjets_spin_data(ip)%index_to_hepeup
+          call msg_message ()
        end if
        if (abs(k(ip,2)) == 15 .and. pyjets_spin_data(ip)%helicity == 9) then
           if (nsub_call .lt. 5) then
@@ -184,15 +221,13 @@ contains
              write (msg_buffer, "(A)") &
                   "for particles and/or not ?polarized_events=true"
              call msg_message ()
-             write (msg_buffer, "(A,I0,A,I0,A,I0,A,I0)") &
+             write (msg_buffer, "(A,I0,A,I0,A,I0,A,I0,A,ES19.12)") &
                   "Number of calls:", nsub_call, " ip = ", ip, " iorig = ", &
                   iorig, " pid = ", k(ip,2), " spin = ", &
                   pyjets_spin_data(ip)%helicity
           end if
        end if
-       ip = ip + 1
     end do
-    n_doc_lines = ip - 1
 
     if (signal_is_pending ()) return
     do ip = 1, n_doc_lines
@@ -234,13 +269,13 @@ contains
              end if
 
              !!! W+(24)/H+(37) -> tau+(-15) and neu_tau
-          else if ( pyjets_spin_data(ip)%pid == 24 .or. &
+          else if (pyjets_spin_data(ip)%pid == 24 .or. &
                pyjets_spin_data(ip)%pid == 37) then
              idau1 = pyjets_spin_data(ip)%index_daughter(1)
              idau2 = pyjets_spin_data(ip)%index_daughter(2)
-             if ( pyjets_spin_data(idau1)%pid == -15 ) then
+             if (pyjets_spin_data(idau1)%pid == -15) then
                 pyjets_spin_data(idau1)%helicity = 1
-             else if ( pyjets_spin_data(idau2)%pid == -15 ) then
+             else if (pyjets_spin_data(idau2)%pid == -15) then
                 pyjets_spin_data(idau2)%helicity = 1
              end if
 
@@ -258,9 +293,10 @@ contains
        end if
        if (debug2_active (D_TAUOLA)) then
           call msg_debug2 (D_TAUOLA, "TAUOLA interface: end of fill_pyjets_spin_data")
-          write (msg_buffer, "(A,I0,A,I0,A,I0,A,ES19.12)") &
+          write (msg_buffer, "(A,I0,A,I0,A,I0,A,ES19.12,A,I0)") &
                "ip = ", ip, " iorig = ", iorig, " pid  ", k(ip,2), &
-               " spin = ", pyjets_spin_data(ip)%helicity
+               " spin = ", pyjets_spin_data(ip)%helicity,&
+               " hepeup index = ", pyjets_spin_data(ip)%index_to_hepeup
           call msg_message ()
        end if
     end do
@@ -339,7 +375,7 @@ contains
     jorig = iorig
     jforig = kforig
 
-    offset=0 ; if ( MSTP(125) > 1 ) offset = mstp(126)-count(k(1:mstp(126)-1,1)==21)
+    offset=0 ; if (MSTP(125) > 1) offset = mstp(126)-count(k(1:mstp(126)-1,1)==21)
     these_taus=PACK([(i,i=1,n)],(k(1:n,2)==k(itau,2).and.k(1:n,1)/=21)) ; ntaus=size(these_taus) 
     these_tau_daughters=modulo(k(these_taus,4),10000)  ! 10000 = mstu(5) in /pydat1/
 
@@ -830,10 +866,10 @@ contains
     double precision, dimension(200) :: parj
     common /pydat1/ mstu, paru, mstj, parj
     save /pydat1/
-    if ( MSTJ(28) .NE. 2 ) then
+    if (MSTJ(28) .NE. 2) then
        the_helicity=0
     else
-      if ( ip .le. 0 .or. ip .gt. n ) then
+      if (ip .le. 0 .or. ip .gt. n) then
         the_helicity = 0
       else
         the_helicity = int(pyjets_spin_data(ip)%helicity)
@@ -846,7 +882,7 @@ contains
     integer, intent(out) :: the_helicity
     the_helicity = wo_tauola_get_helicity_mod(ip)
     if (debug_active (D_TAUOLA)) then
-       if ( abs(the_helicity) .gt. 1 ) then
+       if (abs(the_helicity) .gt. 1) then
           write (msg_buffer, "(A,I0,A,I0,A)") &
                "Stored helicity information is wrong: ", the_helicity, &
                "for ip = ", ip, "."
