@@ -35,7 +35,20 @@ check-extended: check
 WHIZARD_DRIVER = run_whizard.sh
 
 TESTS_EXTENDED = \
-    ilc_ext.run
+    ilc_top_pair_360.run \
+    ilc_top_pair_500.run \
+    ilc_vbf_higgs_360.run \
+    ilc_vbf_higgs_500.run \
+    ilc_vbf_no_higgs_360.run \
+    ilc_vbf_no_higgs_500.run \
+    ilc_higgs_strahlung_360.run \
+    ilc_higgs_strahlung_500.run \
+    ilc_higgs_strahlung_background_360.run \
+    ilc_higgs_strahlung_background_500.run \
+    ilc_higgs_coupling_360.run \
+    ilc_higgs_coupling_500.run \
+    ilc_higgs_coupling_background_360.run \
+    ilc_higgs_coupling_background_500.run
 
 XFAIL_TESTS_EXTENDED =
 
@@ -54,8 +67,11 @@ TESTS =
 XFAIL_TESTS =
 TESTS_SRC =
 
+if FC_PREC
+else
 TESTS += $(TESTS_EXTENDED)
 XFAIL_TESTS += $(XFAIL_TESTS_EXTENDED)
+endif
 
 EXTRA_DIST = $(TEST_DRIVERS_SH) \
     $(TESTS_SRC)
@@ -98,6 +114,21 @@ BUILT_SOURCES = \
     OCAML_FLAG \
     PYTHIA6_FLAG \
     STATIC_FLAG
+
+ilc_top_pair_360.run: ilc_settings.sin
+ilc_top_pair_500.run: ilc_settings.sin
+ilc_vbf_higgs_360.run: ilc_settings.sin
+ilc_vbf_higgs_500.run: ilc_settings.sin
+ilc_higgs_strahlung_360.run: ilc_settings.sin
+ilc_higgs_strahlung_500.run: ilc_settings.sin
+ilc_higgs_strahlung_background_360.run: ilc_settings.sin
+ilc_higgs_strahlung_background_500.run: ilc_settings.sin
+ilc_higgs_coupling_360.run: ilc_settings.sin
+ilc_higgs_coupling_500.run: ilc_settings.sin
+ilc_higgs_coupling_background_360.run: ilc_settings.sin
+ilc_higgs_coupling_background_500.run: ilc_settings.sin
+ilc_settings.sin: $(top_builddir)/share/tests/ext_tests_ilc/ilc_settings.sin
+	cp $< $@
 
 # If this file is found in the working directory, WHIZARD
 # will use the paths for the uninstalled version (source/build tree),
@@ -178,7 +209,7 @@ clean-local:
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *.makefile
 	rm -f *.sin *.hbc
-	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug
+	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.vg2 *.vgx2 *.fds
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]

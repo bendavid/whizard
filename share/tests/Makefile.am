@@ -1408,7 +1408,22 @@ EXT_MSSM_SIN = $(EXT_MSSM_M4:.m4=.sin)
 EXT_NMSSM_SIN = $(EXT_NMSSM_M4:.m4=.sin)
 
 EXT_ILC_SIN = \
-    ext_tests_ilc/ilc_ext.sin
+    ext_tests_ilc/ilc_settings.sin \
+    ext_tests_ilc/ilc_top_pair_360.sin \
+    ext_tests_ilc/ilc_top_pair_500.sin \
+    ext_tests_ilc/ilc_vbf_higgs_360.sin \
+    ext_tests_ilc/ilc_vbf_higgs_500.sin \
+    ext_tests_ilc/ilc_vbf_no_higgs_360.sin \
+    ext_tests_ilc/ilc_vbf_no_higgs_500.sin \
+    ext_tests_ilc/ilc_higgs_strahlung_360.sin \
+    ext_tests_ilc/ilc_higgs_strahlung_500.sin \
+    ext_tests_ilc/ilc_higgs_strahlung_background_360.sin \
+    ext_tests_ilc/ilc_higgs_strahlung_background_500.sin \
+    ext_tests_ilc/ilc_higgs_coupling_360.sin \
+    ext_tests_ilc/ilc_higgs_coupling_500.sin \
+    ext_tests_ilc/ilc_higgs_coupling_background_360.sin \
+    ext_tests_ilc/ilc_higgs_coupling_background_500.sin
+
 
 EXT_SHOWER_SIN = \
     ext_tests_shower/shower_1_norad.sin \
