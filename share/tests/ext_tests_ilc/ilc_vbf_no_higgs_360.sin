@@ -26,7 +26,8 @@ beams = e1, E1
 
 $run_id = "360"
 
-integrate(higgs_back_electron_360_1_qcd,
+integrate(higgs_back_electron_360_1_noqcd,
+	  higgs_back_electron_360_1_qcd,
           higgs_back_electron_360_2,
           higgs_back_electron_360_3,
           higgs_back_neutrino_360_1_noqcd,
