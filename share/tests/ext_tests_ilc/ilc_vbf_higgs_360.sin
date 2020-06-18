@@ -31,7 +31,7 @@ integrate(higgs_prod_electron_360_1_noqcd,
           higgs_prod_neutrino_360_1_noqcd,
           higgs_prod_neutrino_360_1_qcd,
           higgs_prod_neutrino_360_2,
-          higgs_pod_neutrino_360_3)
+          higgs_prod_neutrino_360_3)
 
 !! Compare against previous WHIZARD production run by Simon Braß.
 tolerance = 2 * sqrt( error(higgs_prod_electron_360_1_noqcd)**2 + 0.0012**2 )

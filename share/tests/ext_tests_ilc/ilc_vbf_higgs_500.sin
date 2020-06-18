@@ -31,7 +31,7 @@ integrate(higgs_prod_electron_500_1_noqcd,
           higgs_prod_neutrino_500_1_noqcd,
           higgs_prod_neutrino_500_1_qcd,
           higgs_prod_neutrino_500_2,
-          higgs_pod_neutrino_500_3)
+          higgs_prod_neutrino_500_3)
 
 tolerance = 2 * sqrt( error(higgs_prod_electron_500_1_noqcd)**2 + 0.0024**2 )
 expect(integral(higgs_prod_electron_500_1_noqcd) == 1.2446)
