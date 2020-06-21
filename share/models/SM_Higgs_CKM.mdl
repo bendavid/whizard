@@ -238,8 +238,7 @@ vertex E2 n2 Wm
 vertex E3 n3 Wm 
 
 # Yukawa
-### keeping only 3rd generation for the moment
-# vertex S s H 
+vertex S s H 
 vertex C c H 
 vertex B b H 
 vertex T t H

@@ -17,11 +17,11 @@ mc = 5 GeV
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1
 
-process photon_isolation_1_p1 = t, tbar => A, A, c, cbar
+process photon_isolation_1_p1 = t, tbar => A, A, s, sbar
 
 sqrts = 400 GeV
 
 cuts = all E > 4 GeV [A] and all Pt > 5 GeV [A] and
-       all Dist > 1 [c:C:A, c:C:A] and photon_isolation [A, c:C]
+       all Dist > 1 [s:S:A, s:S:A] and photon_isolation [A, s:S]
 
-integrate (photon_isolation_1_p1) { iterations = 1:640:"gw" }
+integrate (photon_isolation_1_p1) { iterations = 1:940:"gw" }

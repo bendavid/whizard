@@ -6,6 +6,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
+?omega_write_phs_output = true
 
 model = SM
 
@@ -23,7 +24,9 @@ alias lightjet = u:U:d:D:s:S:c:C:gl
 alias jet = lightjet:b:B
 
 
-process bjet_cluster_p1 = e1, E1 => b, B, lightjet, lightjet
+$phs_method = "fast_wood"
+
+process bjet_cluster_p1 = e1, E1 => b, B, lightjet, lightjet { $restrictions = "!H" }
 
 seed = 1234
 sqrts = 1 TeV
@@ -37,10 +40,10 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @bjets = select_b_jet if Pt > 100 GeV [@selected] in
        count [@selected] == 4 and count [@bjets] == 2 
 
-integrate (bjet_cluster_p1) { iterations = 1:700:"gw" }
+integrate (bjet_cluster_p1) { iterations = 1:760:"gw" }
 
 cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @selected = select if (Pt > 30 GeV and abs(Eta) < 4) [@clustered_jets] in
        count [@selected] == 4
 
-integrate (bjet_cluster_p1) { iterations = 1:700:"gw" }
+integrate (bjet_cluster_p1) { iterations = 1:760:"gw" }

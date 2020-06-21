@@ -39,7 +39,7 @@ module parameters_sm_higgs
   real(default), public :: ltop, lbot, lc, ltau, lw
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
-       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
+       ghbb, ghtt, ghcc, ghss, ghtautau, gh3, gh4, &
        ghgaga, ghgaz, ghgg, ghmm, ghee, &
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   real(default), public :: vev
@@ -213,6 +213,7 @@ contains
     ghtt = - mass(6) / vev
     ghbb = - mass(5) / vev
     ghcc = - mass(4) / vev
+    ghss = - mass(3) / vev
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
     gh3 = - 3 * mass(25)**2 / vev

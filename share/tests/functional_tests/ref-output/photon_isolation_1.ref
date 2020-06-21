@@ -36,7 +36,7 @@ sqrts =  4.00000E+02
 |   Library name  = 'photon_isolation_1_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'photon_isolation_1_p1_i1':   t, tbar => A, A, c, cbar [omega]
+|     1: 'photon_isolation_1_p1_i1':   t, tbar => A, A, s, sbar [omega]
 | ------------------------------------------------------------------------
 | Phase space: 64 channels, 8 dimensions
 | Phase space: found 64 channels, collected in 10 groves.
@@ -44,17 +44,17 @@ sqrts =  4.00000E+02
 | Phase space: wood
 | Applying user-defined cuts.
 | Starting integration for process 'photon_isolation_1_p1'
-| Integrate: iterations = 1:640:"gw"
+| Integrate: iterations = 1:940:"gw"
 | Integrator: 10 chains, 64 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 640 initial calls, 20 bins, stratified = T
+| Integrator: 940 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        640     9.485E+00   2.39E+00   25.19    6.37    11.5
+   1        896     4.358E+00   8.74E-01   20.05    6.00    10.1
 |-----------------------------------------------------------------------------|
-   1        640     9.485E+00   2.39E+00   25.19    6.37    11.5
+   1        896     4.358E+00   8.74E-01   20.05    6.00    10.1
 |=============================================================================|
 | WHIZARD run finished.
 |=============================================================================|

@@ -39,9 +39,9 @@ Warning:  Intermediate decay of zero-width particle e+ may be possible.
 |   Process components:
 |     1: 'cascades2_phs_2_1_i1':   e-, e+ => e-, nuebar, cbar, sbar, c, c [omega]
 | ------------------------------------------------------------------------
-| Phase space: 1684 channels, 14 dimensions
-| Phase space: found 1684 channels, collected in 182 groves.
-| Phase space: Using 4048 equivalences between channels.
+| Phase space: 1836 channels, 14 dimensions
+| Phase space: found 1836 channels, collected in 219 groves.
+| Phase space: Using 4352 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Integrate: phase space only, skipping integration

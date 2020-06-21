@@ -982,7 +982,7 @@ module SM (Flags : SM_flags) =
       | D_Alpha_WWWW0_T | D_Alpha_WWWW0_U | D_Alpha_WWWW2_S
       | D_Alpha_WWWW2_T | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T
       | G_HWW | G_HHWW | G_HZZ | G_HHZZ
-      | G_Htt | G_Hbb | G_Hcc | G_Hmm | G_Hee
+      | G_Htt | G_Hbb | G_Hcc | G_Hss | G_Hmm | G_Hee
       | G_Htautau | G_H3 | G_H4
       | G_HGaZ | G_HGaGa | G_Hgg
       | G_HGaZ_anom | G_HGaGa_anom | G_HZZ_anom | G_HWW_anom  
@@ -1017,7 +1017,7 @@ module SM (Flags : SM_flags) =
     let orders = function 
       | Q_lepton | Q_up | Q_down | G_NC_lepton | G_NC_neutrino 
       | G_NC_up | G_NC_down | G_CC | G_CCQ _ | G_Htt | G_H3
-      | G_Hbb | G_Hcc | G_Htautau | G_Hmm | G_Hee | I_Q_W
+      | G_Hbb | G_Hcc | G_Hss | G_Htautau | G_Hmm | G_Hee | I_Q_W
       | I_G_ZWW | I_G1_AWW | I_G1_ZWW | I_G_weak
       | G_HWW | G_HZZ | G_HWW_u | G_HZZ_u | G_HGaZ_u
       | G_HWW_anom | G_HZZ_anom | G_HGaZ | G_HGaGa | G_HGaZ_anom
@@ -1263,10 +1263,11 @@ module SM (Flags : SM_flags) =
         ((M (U (-2)), O H, M (U 2)), FBF (1, Psibar, S, Psi), G_Hcc);
         ((M (L (-3)), O H, M (L 3)), FBF (1, Psibar, S, Psi), G_Htautau) ] @
       if Flags.higgs_hmm then
-      [ ((M (L (-2)), O H, M (L 2)), FBF (1, Psibar, S, Psi), G_Hmm);
-        ((M (L (-1)), O H, M (L 1)), FBF (1, Psibar, S, Psi), G_Hee) ]
-          else
-      []
+	[ ((M (D (-2)), O H, M (D 2)), FBF (1, Psibar, S, Psi), G_Hss);
+	  ((M (L (-2)), O H, M (L 2)), FBF (1, Psibar, S, Psi), G_Hmm);
+          ((M (L (-1)), O H, M (L 1)), FBF (1, Psibar, S, Psi), G_Hee) ]
+      else
+	[]
 
       
 (* \begin{equation}
@@ -2535,7 +2536,8 @@ effective operators:
       | D_Alpha_ZZZZ_T -> "dalz4_t(gkm,mkm,"
       | G_HWW -> "ghww" | G_HZZ -> "ghzz"
       | G_HHWW -> "ghhww" | G_HHZZ -> "ghhzz"
-      | G_Htt -> "ghtt" | G_Hbb -> "ghbb" | G_Hee -> "ghee"
+      | G_Htt -> "ghtt" | G_Hbb -> "ghbb"
+      | G_Hss -> "ghss" | G_Hee -> "ghee"
       | G_Htautau -> "ghtautau" | G_Hcc -> "ghcc" | G_Hmm -> "ghmm"
       | G_HGaZ -> "ghgaz" | G_HGaGa -> "ghgaga" | G_Hgg -> "ghgg"
       | G_HGaGa_anom -> "ghgaga_ac" | G_HGaZ_anom -> "ghgaz_ac"
