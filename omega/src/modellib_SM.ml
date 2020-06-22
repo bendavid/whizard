@@ -690,7 +690,9 @@ module SM (Flags : SM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"  ]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width" ]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW 
 		     | TCGG  | TUGG (*i top auxiliary field "flavors" i*)

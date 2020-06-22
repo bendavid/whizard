@@ -58,7 +58,9 @@ module Anomtop (Flags : SM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width" ]
+        "use vanishing width";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width" ]
 
     type matter_field = L of int | N of int | U of int | D of int 
     type gauge_boson = Ga | Wp | Wm | Z | Gl   

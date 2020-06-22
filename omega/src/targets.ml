@@ -1397,7 +1397,7 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
         | Constant -> 1
         | Timelike -> 2
         | Complex_Mass -> 3
-        | Running -> failwith "Targets.VM: running width not available"
+        | Running -> 4
         | Custom _ -> failwith "Targets.VM: custom width not available"
         end
       in
@@ -5784,8 +5784,7 @@ i*)
           | Vanishing | Fudged -> "0.0_" ^ !kind
           | Constant | Complex_Mass -> gamma
           | Timelike -> "wd_tl(" ^ p ^ "," ^ gamma ^ ")"
-          | Running ->
-            failwith "Targets.Fortran: running width not yet available"
+          | Running -> "wd_run(" ^ p ^ "," ^ m ^ "," ^ gamma ^ ")"
           | Custom f -> f ^ "(" ^ p ^ "," ^ gamma ^ ")"
         end in
       let cms =

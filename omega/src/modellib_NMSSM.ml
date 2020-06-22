@@ -68,7 +68,9 @@ module NMSSM_func (Flags : NMSSM_flags) =
         "custom_width", Arg.String (fun f -> default_width := Custom f),
         "use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
+        "use vanishing width";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
 (* Yields a list of tuples consistig of the off-diag combinations of the elements in "set". *)
 

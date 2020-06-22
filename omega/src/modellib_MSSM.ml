@@ -108,7 +108,9 @@ module MSSM (Flags : MSSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type gen = 
       | G of int | GG of gen*gen

@@ -7,6 +7,9 @@ Use svn log to see detailed changes.
 2020-03-03
 	RELEASE: version 2.8.3
 
+2020-06-22
+	Running width scheme supported for O'Mega matrix elements
+
 2020-06-20
 	Adding H-s-s coupling to SM_Higgs(_CKM) models
 

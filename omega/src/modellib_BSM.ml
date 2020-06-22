@@ -66,7 +66,9 @@ module Littlest (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme" ]
+        "use complex mass scheme" ;
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width" ]
 
     let gauge_symbol () =
       failwith "Modellib_BSM.Littlest.gauge_symbol: internal error"
@@ -1262,7 +1264,9 @@ module Littlest_Tpar (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type flavor = L of int | N of int | U of int | D of int 
         | Topp | Toppb 
@@ -2378,7 +2382,9 @@ module Simplest (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
 (* We do not introduce the Goldstones for the heavy vectors here. The heavy
    quarks are simply numerated by their generation, the assignments whether
@@ -3128,7 +3134,9 @@ module Xdim (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -3724,7 +3732,9 @@ module UED (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type matter_field = L of int | N of int | U of int | D of int 
           | L_K1_L of int | L_K1_R of int | N_K1 of int
@@ -4699,7 +4709,9 @@ module GravTest (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type matter_field = L of int | N of int | U of int | D of int | SL of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl | Phino
@@ -5315,7 +5327,9 @@ module Template (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl 
@@ -5851,7 +5865,9 @@ module HSExt (Flags : BSM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl 
@@ -7162,7 +7178,9 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -8129,7 +8147,9 @@ module SSC (Flags : SSC_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR
@@ -11657,7 +11677,9 @@ module SSC_AltT (Flags : SSC_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme"]
+        "use complex mass scheme";
+        "running_width", Arg.Unit (fun () -> default_width := Running),
+        "use running width"]
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR

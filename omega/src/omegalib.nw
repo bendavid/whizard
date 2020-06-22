@@ -2378,6 +2378,9 @@ end module omega_couplings
 public :: wd_tl
 @
 <<Declaration of propagators>>=
+public :: wd_run
+@
+<<Declaration of propagators>>=
 public :: gauss
 @
 \begin{equation}
@@ -2394,6 +2397,22 @@ pure function wd_tl (p, w) result (width)
      width = 0
   end if
 end function wd_tl
+@
+\begin{equation}
+  \frac{p^2}{m^2} \Gamma
+\end{equation}
+<<Implementation of propagators>>=
+pure function wd_run (p, m, w) result (width)
+  real(kind=default) :: width
+  type(momentum), intent(in) :: p
+  real(kind=default), intent(in) :: m
+  real(kind=default), intent(in) :: w
+  if (p*p > 0) then
+     width = w * (p*p) / m**2
+  else
+     width = 0
+  end if
+end function wd_run
 @
 <<Implementation of propagators>>=
 pure function gauss (x, mu, w) result (gg)
@@ -13489,6 +13508,9 @@ case (ovm_PROPAGATE_SCALAR : ovm_PROPAGATE_NONE)
    case (3)
      w = vm%width(i(2))
      vm%cms = .true.
+
+   case (4)
+     w = wd_run(<<p>>, <<m>>, vm%width(i(2)))
 
    case default
       print *, 'not implemented'

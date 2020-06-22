@@ -5152,23 +5152,42 @@ An alternative is
 \begin{quote}
 \begin{footnotesize}
   \verb|$omega_flags = "-model:fudged_width"|
-\end{footnotesize}
+\end{footnotesize},
 \end{quote}
 which puts zero width in the matrix element, so that gauge cancellations
 hold, and reinstates the $s$-channel width in the appropriate places by an
 overall factor that multiplies the whole matrix element.
-
+Note that the fudged width option only applies to charged unstable particles, such as the $W$ boson or top quark.
 Another possibility is
 \begin{quote}
 \begin{footnotesize}
   \verb|$omega_flags = "-model:constant_width"|
-\end{footnotesize}
+\end{footnotesize},
 \end{quote}
-which puts the width both in the $s$ and in the $t$ channel everywhere.
+which puts the width both in the $s$- and in the $t$-channel like diagrams.
+A third option is provided by the running width scheme
+\begin{quote}
+  \begin{footnotesize}
+   \verb|$omega_flags = "-model:running_width"| 
+  \end{footnotesize},
+\end{quote}
+which applies the width only for $s$-channel like diagrams and multiplies it by a factor of $p^2 / M^2$.
+The additional $p^2$-dependent factor mimicks the momentum dependence of the imaginary part of a vacuum polarization for a particle decaying into massles decay products. 
+It is noted that none of the above options preserves gauge invariance.
 
-Note that both options apply only to charged unstable particles, such as the
-$W$ boson.
-
+For a gauge preserving approach (at least at tree level), \oMega\ provides the complex-mass scheme
+\begin{quote}
+  \begin{footnotesize}
+    \verb|$omega_flags = "-model:cms_width|
+  \end{footnotesize}.
+\end{quote}
+However, in this case, one also has to modify the model in usage.
+For example, the parameter setting for the Standard Model can be changed by,
+\begin{quote}
+  \begin{footnotesize}
+    \verb|model = SM (Complex_Mass_Scheme)|
+  \end{footnotesize}.
+\end{quote}
 
 \subsubsection{Multithreaded calculation of helicity sums via OpenMP}
 \label{sec:openmp}
