@@ -551,6 +551,11 @@ In the appendices, we e.g. give an exhaustive reference list of
 Please report any inconsistencies, bugs, problems or simply pose open
 questions to our contact \url{whizard@desy.de}.
 
+There is now also a support page on \texttt{Launchpad}, which offers
+support that is easily visible for the whole user community:
+\url{https://launchpad.net/whizard}.
+
+
 
 %%%%%
 
@@ -608,7 +613,8 @@ interfaces for QCD environments (BLHA/HOPPET).
 
 The following tables shows some of the major steps (physics
 implementation and/or technical improvements) in the development
-of \whizard:
+of \whizard (we break the table into logical and temporal blocks of
+\whizard\ development):
 
 \begin{center}
 \begin{tabular}{|l|l|l|}\hline
@@ -633,10 +639,10 @@ of \whizard:
   1.95 & 02/2010 & MLM matching; development stop in version 1
   \\
   1.97 & 05/2011 & Manual for version 1 completed. \\\hline\hline
-%%% \end{tabular}
-%%% \end{center}
-%%% \begin{center}
-%%% \begin{tabular}{|l|l|l|}\hline
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
   2.0.0 & 04/2010 & Major refactoring: automake setup; dynamic
   libraries \\
   & & improved speed; cascades; OpenMP; \sindarin\ steering language \\
@@ -653,16 +659,21 @@ of \whizard:
   2.2.2 & 07/2014 & LHAPDF6 support; correlated LC beams; GuineaPig
   interface \\
   2.2.3 & 11/2014 & O'Mega virtual machine; lepton collider top
-  pair threshold; Higgs singlet extension \\
+  pair threshold; \\
+  & & Higgs singlet extension \\
   2.2.4 & 02/2015 & LCIO support; progress on NLO; many technical
   bug fixes \\
-  2.2.7 & 08/2015 & progress on POWHEG; fixed-order NLO events;
-  revalidation of ILC event chain \\
-  2.2.8 & 11/2015 & support for quadruple precision; StdHEP included;
-  SM dim 6 operators supported
+  2.2.7 & 08/2015 & progress on POWHEG; fixed-order NLO events; \\
+  & & revalidation of ILC event chain \\
+  2.2.8 & 11/2015 & support for quadruple precision; StdHEP included; \\
+  & & SM dim 6 operators supported
   \\\hline
-  2.3.0 & 07/2016 & NLO: resonance mappings for FKS subtraction; more
-  advanced cascade syntax; \\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+  2.3.0 & 07/2016 & NLO: resonance mappings for FKS subtraction; \\
+  & & more advanced cascade syntax; \\
   & & GUI ($\alpha$ version); UFO support
   ($\alpha$ version); ILC v1.9x-v2.x final validation \\
   2.3.1 & 08/2016 & Complex mass scheme
@@ -679,8 +690,8 @@ of \whizard:
   shower resonances; \\
   & & more efficient (alternative) phase space generation \\
   2.6.2 & 12/2017 & $Hee$ coupling, improved resonance matching \\
-  2.6.3 & 02/2018 & Partial NLO refactoring for quantum numbers,
-  unified RECOLA 1/2 interface. \\
+  2.6.3 & 02/2018 & Partial NLO refactoring for quantum numbers, \\
+  &  & unified RECOLA 1/2 interface. \\
   2.6.4 & 08/2018 & Gridpack functionality; Bug fixes: color flows,
   HSExt model, MPI setup
   \\\hline
@@ -693,8 +704,10 @@ of \whizard:
   2.8.1 & 09/2019 & HepMC3, NLO QCD pp (almost)
   complete, b/c jet selection, photon isolation \\
   2.8.2 & 10/2019 & Support for OCaml $\geq$ 4.06.0, UFO Spin-2 support,
-  LCIO alternative weights
-  \\\hline
+  LCIO alternative weights \\
+  2.8.3 & 07/2020 & UFO Majorana feature complete, many $e^+e^-$ related
+  improvements
+  \\\hline\hline
 \end{tabular}
 \end{center}
 

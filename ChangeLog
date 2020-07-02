@@ -4,8 +4,11 @@ Use svn log to see detailed changes.
 
 	Version 2.8.3
 
-2020-03-03
+2020-07-03
 	RELEASE: version 2.8.3
+
+2020-07-02
+	Feature-complete UFO implementation for Majorana fermions
 
 2020-06-22
 	Running width scheme supported for O'Mega matrix elements
@@ -45,6 +48,11 @@ Use svn log to see detailed changes.
 2020-03-11
 	Beam masses are correctly passed to hard matrix element for CIRCE2
 	EPA with polarized beams: double-counting corrected
+
+##################################################################
+
+2020-03-03
+        RELEASE: version 3.0.0_alpha
 
 2020-02-25
 	Bug fix: Scale and alphas can be retrieved from internal event format to
