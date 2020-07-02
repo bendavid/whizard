@@ -1,4 +1,3 @@
-! compare_lib.f90 --
 ! compare_lib.f90 -- compare two O'Mega versions
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -46,25 +45,32 @@ contains
   end function ieee_is_nan
 
   subroutine check (v1, v2, roots, threshold, n, &
-                    failures, attempts, seed, abs_threshold, ignore_phase)
+                    failures, attempts, seed, abs_threshold, &
+                    ignore_phase, flip_sign)
     type(omega_procedures), intent(in) :: v1, v2
     real(kind=default), intent(in) :: roots, threshold
     integer, intent(in) :: n
     integer, intent(out) :: failures, attempts
     integer, intent(in), optional :: seed
     real(kind=default), intent(in), optional :: abs_threshold
-    logical, intent(in), optional :: ignore_phase
+    logical, intent(in), optional :: ignore_phase, flip_sign
     logical :: modulus_only
     logical :: match, passed
     integer :: n_out, n_flv, n_hel, n_col
     integer :: i, i_flv, i_hel, i_col
     real(kind=default), dimension(:,:), allocatable :: p
     complex(kind=default) :: a1, a2
-    real(kind=default) :: asq1, asq2, s_asq1, s_asq2
+    real(kind=default) :: asq1, asq2, s_asq1, s_asq2, relative_sign
     character(len=80) :: msg
     modulus_only = .false.
     if (present (ignore_phase)) then
        modulus_only = ignore_phase
+    end if
+    relative_sign = 1
+    if (present (flip_sign)) then
+       if (flip_sign) then
+          relative_sign = -1
+       end if
     end if
     failures = 0
     attempts = 0
@@ -76,6 +82,26 @@ contains
     s_asq2 = 0
     call quantum_numbers (v1, v2, n_out, n_flv, n_hel, n_col, match)
     if (.not.match) then
+       failures = 1
+       return
+    end if
+    if (n_out <= 0) then
+       print *, "no outgoing particles"
+       failures = 1
+       return
+    end if
+    if (n_flv <= 0) then
+       print *, "no allowed flavor combinations"
+       failures = 1
+       return
+    end if
+    if (n_hel <= 0) then
+       print *, "no allowed helicity combinations"
+       failures = 1
+       return
+    end if
+    if (n_col <= 0) then
+       print *, "no allowed color flows"
        failures = 1
        return
     end if
@@ -101,7 +127,7 @@ contains
              passed = .true.
              do i_col = 1, n_col
                 a1 = v1%get_amplitude (i_flv, i_hel, i_col)
-                a2 = v2%get_amplitude (i_flv, i_hel, i_col)
+                a2 = v2%get_amplitude (i_flv, i_hel, i_col)*relative_sign
                 if (ieee_is_nan (real (a1)) .or. ieee_is_nan (aimag (a1))) then
                    write (*, "(1X,'evt=',I5,', flv=',I3,', col=',I3,': ', A)") &
                         i, i_flv, i_col, "v1 amplitude NaN"

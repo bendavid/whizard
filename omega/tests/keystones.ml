@@ -156,6 +156,15 @@ let keystone_to_fortran ff (ksv, { bra; name; args }) =
   | Spinor, _ ->
      fusion_to_fortran ff name args;
      printf "@ * %s" (format_field bra)
+  | Majorana, _ ->
+     begin match args with
+     | _ :: F (Majorana, _) :: _ ->
+        fusion_to_fortran ff name args;
+        printf "@ * %s" (format_field bra)
+     | _ ->
+        printf "%s@ * " (format_field bra);
+        fusion_to_fortran ff name args
+     end
   | _, _ -> 
      printf "%s@ * " (format_field bra);
      fusion_to_fortran ff name args

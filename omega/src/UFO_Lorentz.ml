@@ -129,41 +129,200 @@ let map_indices_dirac f d =
    \end{multline}
  *)
 
-(* \begin{dubious}
-     There's still something wrong with chiral projectors \ldots
-   \end{dubious} *)
+(* In the following, we assume to be in a realization
+   with~$C^{-1}=-C=C^T$: *)
+let inv_C = [Minus; C]
 
-(* In the following, note that~$C^{-1}=-C=C^T$: *)
+(* In JRR's implementation of Majorana fermions
+   (see~\pageref{pg:JRR-Fusions}),
+   \emph{all} fermion-boson fusions are realized with the
+   \texttt{f\_}$b$\texttt{f(g,phi,chi)} functions, where
+   $b\in\{\text{\texttt{v}},\text{\texttt{a}},\ldots\}$.
+   This is different from the original Dirac implementation, where
+   \emph{both} \texttt{f\_}$b$\texttt{f(g,phi,psi)}
+   and \texttt{f\_f}$b$\texttt{(g,psibar,phi)} are used. *)
 
-let inv_c = [Minus; C]
+(* However, the latter plays nicer with the permutations in the UFO
+   version of [fuse].  Therefore, we want to automatically map
+   \texttt{f\_}$b$\texttt{f(g,phi,chi)} to
+   \texttt{f\_f}$b$\texttt{(g,chi,phi)} by an appropriate
+   transformation of the $\gamma$-matrices involved. *)
+
+(* Starting from
+   \begin{equation}
+     \text{\texttt{f\_}$b$\texttt{f(g,phi,chi)}}
+        \cong
+     \chi'_\alpha =
+       \sum_{\mu,\beta} \phi_\mu \Gamma^\mu_{\alpha\beta}\chi_\beta
+   \end{equation}
+   with~$\Gamma$ an appropriate product of $\gamma$-matrices, we obtain
+   \begin{equation}
+     \text{\texttt{f\_f}$b$\texttt{(g,chi,phi)}}
+        \cong
+     \chi'_\alpha
+       = \sum_{\mu,\beta} \phi_\mu \chi_\beta\tilde\Gamma^\mu_{\beta\alpha}
+       = \sum_{\mu,\beta} \phi_\mu
+           \left(\tilde\Gamma^\mu\right)^T_{\alpha\beta} \chi_\beta
+   \end{equation}
+   and we should require $\tilde\Gamma=\Gamma^T$. *)
+
+(* We can now use the standard charge conjugation matrix relations
+   \begin{subequations}
+     \begin{align}
+       \mathbf{1}^T           &= \mathbf{1} \\
+       \gamma_\mu^T           &= - C\gamma_\mu C^{-1} \\
+       \sigma_{\mu\nu}^T      &=   C\sigma_{\nu\mu} C^{-1}
+                               = - C\sigma_{\mu\nu} C^{-1} \\
+       (\gamma_5\gamma_\mu)^T &= \gamma_\mu^T \gamma_5^T
+                               = - C\gamma_\mu\gamma_5 C^{-1}
+                               = C\gamma_5\gamma_\mu C^{-1} \\
+       \gamma_5^T             &= C\gamma_5 C^{-1}
+     \end{align}
+   \end{subequations}
+   to perform the transpositions symbolically.
+   For the chiral projectors
+   \begin{equation}
+     \gamma_\pm = \mathbf{1}\pm\gamma_5
+   \end{equation}
+   this means\footnote{The final two equations are two different ways
+   to obtain the same result, of course.}
+
+   \begin{subequations}
+     \begin{align}
+       \gamma_\pm^T
+         &= (\mathbf{1}\pm\gamma_5)^T
+          = C(\mathbf{1}\pm\gamma_5) C^{-1} = C\gamma_\pm C^{-1} \\
+       (\gamma_\mu\gamma_\pm)^T
+            &= \gamma_\pm^T \gamma_\mu^T
+             = - C\gamma_\pm \gamma_\mu C^{-1}
+             = - C\gamma_\mu\gamma_\mp C^{-1} \\
+       (\gamma_\mu\pm\gamma_\mu\gamma_5)^T
+            &= - C(\gamma_\mu\mp\gamma_\mu\gamma_5) C^{-1}
+     \end{align}
+   \end{subequations}
+   and of course
+   \begin{equation}
+      C^T = - C\,.
+   \end{equation} *)
 
 let transpose1 = function
-  | (Gamma5 | ProjM | ProjP as g) -> inv_c @ [g; C]
-  | (Gamma _ | Sigma (_, _) as g) -> [Minus] @ inv_c @ [g; C]
+  | (Gamma5 | ProjM | ProjP as g) -> [C; g] @ inv_C
+  | (Gamma _ | Sigma (_, _) as g) -> [Minus] @ [C; g] @ inv_C
   | C -> [Minus; C]
   | Minus -> [Minus]
 
-let rec compress_transpose = function
-  | [] -> []
-  | [g] -> [g]
-  | Minus :: Minus :: g_list -> compress_transpose g_list
-  | g :: g_list -> g :: compress_transpose g_list
+let rec collect_signs_rev (negative, acc) = function
+  | [] -> (negative, acc)
+  | Minus :: g_list -> collect_signs_rev (not negative, acc) g_list
+  | g :: g_list -> collect_signs_rev (negative, g :: acc) g_list
+
+let rec compress_ccs_rev (negative, acc) = function
+  | [] -> (negative, acc)
+  | C :: C :: g_list -> compress_ccs_rev (not negative, acc) g_list
+  | g :: g_list -> compress_ccs_rev (negative, g :: acc) g_list
+
+let compress_signs g_list =
+  let negative, g_list_rev = collect_signs_rev (false, []) g_list in
+  match compress_ccs_rev (negative, []) g_list_rev with
+  | true, g_list -> Minus :: g_list
+  | false, g_list -> g_list
 
 let transpose d =
-  { d with gammas = ThoList.rev_flatmap transpose1 d.gammas }
+  { d with
+    gammas = compress_signs (ThoList.rev_flatmap transpose1 d.gammas) }
+
+(* Regarding the tests in \texttt{keystones\_UFO\_bispinors}, we observe%
+   \footnote{In components:
+   \begin{subequations}
+   \begin{align}
+     \text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
+        &\cong
+     \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
+        C_{\alpha\alpha'}\chi_{0,\alpha'} \Gamma^\mu_{\alpha\beta}\chi_{2,\beta}
+     = \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
+        \chi_{0,\alpha'} C^T_{\alpha'\alpha}
+             \Gamma^\mu_{\alpha\beta}\chi_{2,\beta} \\
+     \text{\texttt{f\_f}$b$\texttt{(g,chi0,phi1) * chi2}}
+        &\cong
+      \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
+        C_{\alpha\alpha'}\chi_{0,\beta}
+            \tilde\Gamma^\mu_{\beta\alpha'} \chi_{2,\alpha}
+     =\sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
+         \chi_{0,\beta} \tilde\Gamma^\mu_{\beta\alpha'}
+        C^T_{\alpha'\alpha}\chi_{2,\alpha} \\
+     \text{\texttt{chi2 * f\_f}$b$\texttt{(g,chi0,phi1)}}
+        &\cong
+      \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
+        C_{\alpha\alpha'} \chi_{2,\alpha'} \chi_{0,\beta}
+            \tilde\Gamma^\mu_{\beta\alpha}
+     =\sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
+        \chi_{0,\beta}
+          \tilde\Gamma^\mu_{\beta\alpha} C_{\alpha\alpha'} \chi_{2,\alpha'}
+   \end{align}
+   \end{subequations}}
+   \begin{subequations}
+   \begin{align}
+     \text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
+       &\cong
+     \phi_1^\mu (C\chi_0)^T \Gamma_\mu \chi_2
+     = \phi_1^\mu \chi_0^T C^T\Gamma_\mu\chi_2 \\
+     \text{\texttt{f\_f}$b$\texttt{(g,chi0,phi1) * chi2}}
+       &\cong
+       \phi_1^\mu (C(\chi_0^T\tilde\Gamma_\mu)^T)^T \chi_2
+     = \phi_1 (C\tilde\Gamma_\mu^T\chi_0)^T \chi_2
+     = \phi_1 \chi_0^T \tilde\Gamma_\mu C^T \chi_2 \\
+     \text{\texttt{chi2 * f\_f}$b$\texttt{(g,chi0,phi1)}}
+       &\cong
+      \phi_1^\mu (C\chi_2)^T (\chi_0^T\tilde\Gamma_\mu)^T
+     =\phi_1^\mu  \chi_0^T\tilde\Gamma_\mu C\chi_2
+   \end{align}
+   \end{subequations}
+   The natural
+   condition~$\text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
+    = \text{\texttt{f\_f}$b$\texttt{(g,chi0,phi1) * chi2}}$
+   can be satisfied with
+   \begin{equation}
+      C^T \Gamma_\mu = \tilde\Gamma_\mu C^T\,,
+   \end{equation}
+   i.\,e.
+   \begin{equation}
+      \tilde\Gamma_\mu = C \Gamma_\mu C^{-1}\,.
+   \end{equation}
+   This is \emph{not} compatible with with~$\tilde\Gamma_\mu=\Gamma^T_\mu$,
+   but we can make this work for the \texttt{keystones\_UFO\_bispinors}
+   tests with *)
+
+let conjugate d =
+  { d with gammas = compress_signs (C :: d.gammas @ inv_C) }
+
+let conjugate_transpose d =
+  conjugate (transpose d)
+
+(* The alternative
+   condition~$\text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
+    = \text{\texttt{chi2 * f\_f}$b$\texttt{(g,chi0,phi1)}}$
+   would require
+   \begin{equation}
+      C^T \Gamma_\mu = \tilde\Gamma_\mu C\,,
+   \end{equation}
+   i.\,e.
+   \begin{equation}
+      \tilde\Gamma_\mu = C \Gamma_\mu C = - C \Gamma_\mu C^{-1}\,.
+   \end{equation}  *)
 
 (* \begin{dubious}
-     Why not [ThoList.rev_flatmap] here?
+     Now make also the fusions work in
+     \texttt{fermi\_UFO} and \texttt{compare\_majorana\_UFO}?
    \end{dubious} *)
 
-let transpose d =
-  { d with gammas = ThoList.flatmap transpose1 d.gammas }
+let minus d =
+  { d with gammas = compress_signs (Minus :: d.gammas) }
 
-let majorana1 g =
-  [g]
+let cc_times d =
+  { d with gammas = compress_signs (C :: d.gammas) }
 
-let majorana d =
-  { d with gammas = C :: ThoList.flatmap majorana1 d.gammas }
+let times_cc_inv d =
+  { d with gammas = compress_signs (d.gammas @ inv_C) }
 
 (* [dirac_string bind ds] applies the mapping [bind] to the indices
    of $\gamma_\mu$ and~$\sigma_{\mu\nu}$ and multiplies the resulting
@@ -260,6 +419,20 @@ let map_indices_contraction f c =
     inverse = c.inverse }
 
 type t = contraction list
+
+let rec charge_conjugate_dirac (bra, ket as fermion_line) = function
+  | [] -> []
+  | dirac :: dirac_list  ->
+     if dirac.atom.bra = bra && dirac.atom.ket = ket then
+       map_atom conjugate dirac :: dirac_list
+     else
+       dirac :: charge_conjugate_dirac fermion_line dirac_list
+
+let charge_conjugate_contraction fermion_line c =
+  { c with dirac = charge_conjugate_dirac fermion_line c.dirac }
+
+let charge_conjugate fermion_line l =
+  List.map (charge_conjugate_contraction fermion_line) l
 
 let fermion_lines contractions =
   let pairs = List.map fermion_lines_of_contraction contractions in
@@ -574,3 +747,112 @@ let fermion_lines_to_string fermion_lines =
 
 let to_string contractions =
   String.concat " + " (List.map contraction_to_string contractions)
+
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
+
+module Test : Test =
+  struct
+
+    open OUnit
+
+    let braket gammas =
+      { bra = 11; ket = 22; gammas }
+
+    let assert_transpose gt g =
+      assert_equal ~printer:dirac_string_to_string
+        (braket gt) (transpose (braket g))
+
+    let assert_conjugate_transpose gct g =
+      assert_equal ~printer:dirac_string_to_string
+        (braket gct) (conjugate_transpose (braket g))
+
+    let suite_transpose =
+      "transpose" >:::
+
+        [ "identity" >::
+            (fun () ->
+              assert_transpose [] []);
+
+          "gamma_mu" >::
+            (fun () ->
+              assert_transpose [C; Gamma 1; C] [Gamma 1]);
+
+          "sigma_munu" >::
+            (fun () ->
+              assert_transpose [C; Sigma (1, 2); C] [Sigma (1, 2)]);
+
+          "gamma_5*gamma_mu" >::
+            (fun () ->
+              assert_transpose
+                [C; Gamma 1; Gamma5; C]
+                [Gamma5; Gamma 1]);
+
+          "gamma5" >::
+            (fun () ->
+              assert_transpose [Minus; C; Gamma5; C] [Gamma5]);
+
+          "gamma+" >::
+            (fun () ->
+              assert_transpose [Minus; C; ProjP; C] [ProjP]);
+
+          "gamma-" >::
+            (fun () ->
+              assert_transpose [Minus; C; ProjM; C] [ProjM]);
+
+          "gamma_mu*gamma_nu" >::
+            (fun () ->
+              assert_transpose
+                [Minus; C; Gamma 2; Gamma 1; C]
+                [Gamma 1; Gamma 2]);
+
+          "gamma_mu*gamma_nu*gamma_la" >::
+            (fun () ->
+              assert_transpose
+                [C; Gamma 3; Gamma 2; Gamma 1; C]
+                [Gamma 1; Gamma 2; Gamma 3]);
+
+          "gamma_mu*gamma+" >::
+            (fun () ->
+              assert_transpose
+                [C; ProjP; Gamma 1; C]
+                [Gamma 1; ProjP]);
+
+          "gamma_mu*gamma-" >::
+            (fun () ->
+              assert_transpose
+                [C; ProjM; Gamma 1; C]
+                [Gamma 1; ProjM]) ]
+
+    let suite_conjugate_transpose =
+      "conjugate_transpose" >:::
+
+        [ "identity" >::
+            (fun () ->
+              assert_conjugate_transpose [] []);
+
+          "gamma_mu" >::
+            (fun () ->
+              assert_conjugate_transpose [Minus; Gamma 1] [Gamma 1]);
+
+          "sigma_munu" >::
+            (fun () ->
+              assert_conjugate_transpose [Minus; Sigma (1, 2)] [Sigma (1,2)]);
+
+          "gamma_mu*gamma5" >::
+            (fun () ->
+              assert_conjugate_transpose
+                [Minus; Gamma5; Gamma 1] [Gamma 1; Gamma5]);
+
+          "gamma5" >::
+            (fun () ->
+              assert_conjugate_transpose [Gamma5] [Gamma5]) ]
+
+    let suite =
+      "UFO_Lorentz" >:::
+        [suite_transpose;
+         suite_conjugate_transpose]
+
+  end

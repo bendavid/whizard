@@ -31,6 +31,7 @@ module Phi3 =
     open Coupling
 
     let options = Options.empty
+    let caveats () = []
 
     type flavor = Phi
     let external_flavors () = [ "", [Phi]]
@@ -97,6 +98,7 @@ module Phi4 =
     open Coupling
 
     let options = Options.empty
+    let caveats () = []
 
     type flavor = Phi
     let external_flavors () = [ "", [Phi]]
@@ -170,6 +172,7 @@ module QED =
     open Coupling
 
     let options = Options.empty
+    let caveats () = []
 
     type flavor =
       | Electron | Positron
@@ -301,6 +304,7 @@ module QCD =
     open Coupling
 
     let options = Options.empty
+    let caveats () = []
 
     type flavor = 
       | U | Ubar | D | Dbar
@@ -693,6 +697,7 @@ module SM (Flags : SM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width" ]
+    let caveats () = []
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW 
 		     | TCGG  | TUGG (*i top auxiliary field "flavors" i*)
@@ -2603,6 +2608,7 @@ module SM_Rxi =
 
     module SM = SM(SM_no_anomalous)
     let options = SM.options
+    let caveats = SM.caveats
     type flavor = SM.flavor
     let flavors = SM.flavors
     let external_flavors = SM.external_flavors
@@ -2675,6 +2681,7 @@ module Groves (M : Model.Gauge) : Model.Gauge with module Ch = M.Ch =
   struct
     let max_generations = 5
     let options = M.options
+    let caveats = M.caveats
 
     type matter_field = M.matter_field * int
     type gauge_boson = M.gauge_boson

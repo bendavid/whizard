@@ -200,10 +200,10 @@ OMEGA_APPLICATIONS_ML = \
     omega_HSExt_VM.ml \
     omega_Template.ml \
     omega_SYM.ml \
-    omega_UFO.ml
-
-### Not ready for primetime yet!!!
-# omega_UFO_Majorana.ml
+    omega_UFO.ml \
+    omega_UFO_Majorana.ml \
+    omega_SM_Majorana.ml \
+    omega_SM_Majorana_legacy.ml
 
 OMEGA_CORE_CMO = $(OMEGA_CORE_ML:.ml=.cmo)
 OMEGA_CORE_CMX = $(OMEGA_CORE_ML:.ml=.cmx)

@@ -30,6 +30,7 @@ let pcompare = compare
 module type T =
   sig
     val options : Options.t
+    val vintage : bool
     type wf
     val conjugate : wf -> wf
     type flavor
@@ -306,6 +307,8 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
     (Stat : Stat_Maker) (T : Topology.T with type 'a children = 'a PT.t)
     (P : Momentum.T) (M : Model.T) =
   struct 
+
+    let vintage = true
 
     type cache_mode = Cache_Use | Cache_Ignore | Cache_Overwrite
     let cache_option = ref Cache_Ignore

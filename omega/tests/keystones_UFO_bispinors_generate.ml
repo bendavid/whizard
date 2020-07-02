@@ -102,11 +102,13 @@ let vertices =
     (scalar, scalar_spinor_current "s");
     (pseudo, scalar_spinor_current "p");
     (left_scalar, scalar_spinor_current "sl");
-    (right_scalar, scalar_spinor_current "sr") ]
+    (right_scalar, scalar_spinor_current "sr");
+  ]
 
 let parse_propagator (p_tag, p_omega, p_spins, numerator, denominator) =
   let p =
     UFO.Propagator.of_propagator_UFO
+      ~majorana:true
       { UFO.Propagator_UFO.name = p_tag;
         UFO.Propagator_UFO.numerator = UFOx.Lorentz.of_string numerator;
         UFO.Propagator_UFO.denominator = UFOx.Lorentz.of_string denominator } in

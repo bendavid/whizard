@@ -248,6 +248,13 @@ let charge_conjugate_t =
     [ ("sigma_munu",    "Sigma(1,2,3,4)");
       ("sigma_munu_cc", "-C(4,-4)*Sigma(1,2,-4,-3)*(-C(-3,3))") ]
 
+(* $C \gamma_\mu \gamma_\nu C^{-1} = \gamma_\nu^T \gamma_\mu^T$ *)
+let charge_conjugate_vv =
+  equivalent_tensors
+    [| Vector; Vector; ConjSpinor; Spinor |]
+    [ ("gamma_mu_nu",    "Gamma(1,3,-1)*Gamma(2,-1,4)");
+      ("gamma_mu_nu_cc", "C(4,-4)*Gamma(2,-4,-1)*Gamma(1,-1,-3)*(-C(-3,3))") ]
+
 let empty = { tag = "empty"; keystones = [ ] }
 
 let vertices =
@@ -274,7 +281,8 @@ let vertices =
     (charge_conjugate_p, empty);
     (charge_conjugate_v, empty);
     (charge_conjugate_a, empty);
-    (charge_conjugate_t, empty) ]
+    (charge_conjugate_t, empty);
+    (charge_conjugate_vv, empty) ]
 
 let parse_propagator (p_tag, p_omega, p_spins, numerator, denominator) =
   let p =

@@ -8,8 +8,8 @@
 
 jobs=12
 
-UFO_SM=$HOME/physics/SM/
-UFO_MSSM=$HOME/physics/MSSM_UFO/
+UFO_SM=../tests/UFO/SM/
+UFO_MSSM=../tests/UFO/MSSM/
 UFO_SMEFT=$HOME/physics/SMEFTsim_A_U35_alphaScheme_UFO_v2_1/
 UFO_SMEFT=$HOME/physics/SMEFT_mW_UFO/
 

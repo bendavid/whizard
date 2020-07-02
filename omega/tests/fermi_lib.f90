@@ -74,6 +74,26 @@ contains
     n_hel = process%number_spin_states ()
     n_col = process%number_color_flows ()
     n_cix = process%number_color_indices ()
+    if (n_out <= 0) then
+       print *, "no outgoing particles"
+       failures = 1
+       return
+    end if
+    if (n_flv <= 0) then
+       print *, "no allowed flavor combinations"
+       failures = 1
+       return
+    end if
+    if (n_hel <= 0) then
+       print *, "no allowed helicity combinations"
+       failures = 1
+       return
+    end if
+    if (n_col <= 0) then
+       print *, "no allowed color flows"
+       failures = 1
+       return
+    end if
     if (max (i, j) > n_prt .or. min (i, j) < 1) then
        print *, "invalid #particles, i or j!"
        stop 2

@@ -29,6 +29,7 @@ module SYM =
     open Coupling
 
     let options = Options.empty
+    let caveats () = []
 
     let nc = 3
 

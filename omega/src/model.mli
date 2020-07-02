@@ -121,6 +121,11 @@ module type T =
 (* Model specific options. *)
     val options : Options.t
 
+(* \textit{Not ready for prime time} or other warnings to
+   be written to the source files for the amplitudes. *)
+
+    val caveats : unit -> string list
+
   end
 
 (* In addition to hardcoded models, we can have models that are

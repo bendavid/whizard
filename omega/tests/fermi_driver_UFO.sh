@@ -2,7 +2,13 @@
 # fermi_driver_UFO.sh --
 ########################################################################
 
-omega="$1"
+omega_dirac="$1"
+shift
+
+omega_majorana="$1"
+shift
+
+omega_path="$1"
 shift
 
 models="sm_ufo"
@@ -35,10 +41,16 @@ while read prefix threshold abs_threshold n roots model i j eps mode process; do
       eval eps_$module=$eps
       eval roots_$module=$roots
       eval process_$module="'$process'"
+      eval model_$module="$model"
       ########################################################################
 
-      # echo "running $omega_bin -$mode '$process'" 1>&2
-      $omega "$@" -model:exec \
+      omega=$omega_dirac
+      case "$model" in
+	  */M)  model=`echo $model | sed 's|/M||'`
+	        omega="$omega_majorana -model:Majorana";;
+	  MSSM) omega="$omega_majorana -model:Majorana";;
+      esac
+      $omega -model:UFO_dir $omega_path/$model "$@" -model:exec \
         -target:parameter_module parameters_sm_ufo \
         -target:module amplitude_fermi_ufo_$module \
         -$mode "$process" 2>/dev/null
@@ -124,6 +136,7 @@ done
 for module in $modules; do
 
 eval process="\${process_$module}"
+eval model="\${model_$module}"
 eval n="\${n_$module}"
 eval i="\${i_$module}"
 eval j="\${j_$module}"
@@ -133,7 +146,7 @@ eval abs_threshold="\${abs_threshold_$module}"
 eval roots="\${roots_$module}"
 
 cat <<EOF
-  print *, "checking process '$process' ($i <=> $j)"
+  print *, "checking process '$process' ($i <=> $j) in $model"
   call check (load_$module (), i = $i, j = $j, eps = $eps, &
               roots = real ($roots, kind=default), &
               threshold = real ($threshold, kind=default), &

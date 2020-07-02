@@ -593,7 +593,7 @@ module Particle : Particle =
 
     let is_majorana p =
       match UFOx.Lorentz.omega p.spin with
-      | Coupling.Majorana -> true
+      | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
       | _ -> false
 
     let is_ghost p =
@@ -1320,6 +1320,7 @@ module type Lorentz =
 	structure : UFO_Lorentz.t;
         fermion_lines : Coupling.fermion_lines }
 
+    val all_charge_conjugates : t -> t list
     val permute : P.t -> t -> t
 
     val of_lorentz_UFO :
@@ -1361,12 +1362,33 @@ module Lorentz : Lorentz =
       | Unique of Coupling.lorentz array
       | Ambiguous of Coupling.lorentz array SMap.t
 
+    (* \begin{dubious}
+         Use [UFO_targets.Fortran.fusion_name] below in order
+         to avoid communication problems.  Or even move away
+         from strings alltogether.
+       \end{dubious} *)
     type t =
       { name : string;
         n : int;
 	spins : spins;
 	structure : UFO_Lorentz.t;
         fermion_lines : Coupling.fermion_lines }
+
+    (* Add one charge conjugated fermion lines. *)
+    let charge_conjugate1 l (bra, ket as fermion_line) =
+      { name = l.name ^ Printf.sprintf "_c%x%x" bra ket;
+        n = l.n;
+        spins = l.spins;
+        structure = UFO_Lorentz.charge_conjugate fermion_line l.structure;
+        fermion_lines = l.fermion_lines }
+
+    (* Add several charge conjugated fermion lines. *)
+    let charge_conjugate l fermion_lines =
+      List.fold_left charge_conjugate1 l fermion_lines
+
+    (* Add all combinations of charge conjugated fermion lines. *)
+    let all_charge_conjugates l =
+      List.map (charge_conjugate l) (ThoList.power l.fermion_lines)
 
     let permute_spins p = function
       | Unused -> Unused
@@ -1508,10 +1530,8 @@ module type Propagator =
 	numerator : UFO_Lorentz.t;
 	denominator : UFO_Lorentz.t }
 
-    val of_propagator_UFO : Propagator_UFO.t -> t
-
-    val of_propagators_UFO :
-      Particle.t SMap.t -> Propagator_UFO.t SMap.t -> t SMap.t
+    val of_propagator_UFO : ?majorana:bool -> Propagator_UFO.t -> t
+    val of_propagators_UFO : ?majorana:bool -> Propagator_UFO.t SMap.t -> t SMap.t
 
     val transpose : t -> t
 
@@ -1562,8 +1582,12 @@ module Propagator : Propagator =
       else
         tensor
 
+    let force_majorana = function
+      | Coupling.Spinor | Coupling.ConjSpinor -> Coupling.Majorana
+      | s -> s
+
     (* In the current conventions, the factor of~$i$ is not included: *)
-    let of_propagator_UFO p =
+    let of_propagator_UFO ?(majorana=false) p =
       let numerator = canonicalize_51_52 p.Propagator_UFO.numerator in
       let lorentz_reps = UFOx.Lorentz.classify_indices numerator in
       let spin1 = lorentz_rep_at lorentz_reps 1
@@ -1574,13 +1598,17 @@ module Propagator : Propagator =
         else
           numerator in
       { name = p.Propagator_UFO.name;
-        spins = (spin1, spin2);
+        spins =
+          if majorana then
+            (force_majorana spin1, force_majorana spin2)
+          else
+            (spin1, spin2);
         numerator = UFO_Lorentz.parse [spin1; spin2] numerator_sans_i;
         denominator = UFO_Lorentz.parse scalars p.Propagator_UFO.denominator }
 
-    let of_propagators_UFO particles propagators_UFO =
+    let of_propagators_UFO ?majorana propagators_UFO =
       SMap.fold
-        (fun name p acc -> SMap.add name (of_propagator_UFO p) acc)
+        (fun name p acc -> SMap.add name (of_propagator_UFO ?majorana p) acc)
         propagators_UFO SMap.empty
 
     let permute12 = function
@@ -1641,15 +1669,16 @@ let fallback_to_majorana_if_necessary particles vertices lorentz_UFO =
   let no_majoranas = SSet.is_empty majoranas
   and no_ambiguities = SSet.is_empty ambiguous in
   if no_majoranas && no_ambiguities && not !use_majorana_spinors then
-    SMap.mapi
-      (fun p particle ->
-        if SSet.mem p spinors then
-          Particle.force_spinor particle
-        else if SSet.mem p conj_spinors then
-          Particle.force_conjspinor particle
-        else
-          particle)
-      particles
+    (SMap.mapi
+       (fun p particle ->
+         if SSet.mem p spinors then
+           Particle.force_spinor particle
+         else if SSet.mem p conj_spinors then
+           Particle.force_conjspinor particle
+         else
+           particle)
+       particles,
+     false)
   else
     begin
       if !use_majorana_spinors then
@@ -1662,7 +1691,8 @@ let fallback_to_majorana_if_necessary particles vertices lorentz_UFO =
           (String.concat ", " (SSet.elements ambiguous));
       Printf.eprintf
         "O'Mega: falling back to the Majorana representation for all fermions.\n";
-      SMap.map Particle.force_majorana particles
+      (SMap.map Particle.force_majorana particles,
+       true)
     end
 
 let nc_of_particles particles =
@@ -1687,11 +1717,11 @@ let of_file u =
   let vertices = Vertex.of_file particles u.Files.vertices
   and lorentz_UFO = Lorentz_UFO.of_file u.Files.lorentz
   and propagators_UFO = Propagator_UFO.of_file u.Files.propagators in
-  let particles =
+  let particles, majorana =
     fallback_to_majorana_if_necessary particles vertices lorentz_UFO in
   let particle_array = Array.of_list (values particles)
   and lorentz = Lorentz.of_lorentz_UFO particles vertices lorentz_UFO
-  and propagators = Propagator.of_propagators_UFO particles propagators_UFO in
+  and propagators = Propagator.of_propagators_UFO ~majorana propagators_UFO in
   let model =
     { particles;
       particle_array;
@@ -2367,6 +2397,27 @@ i*)
 
     let include_all_fusions = ref false
 
+    (*   In case of Majorana spinors, also generate
+         all combinations of charge conjugated fermion lines.
+         The naming convention is to append
+         \texttt{\_c}$nm$ if the $\gamma$-matrices
+         of the fermion line $n\to m$ has been charge conjugated
+         (this could become impractical for too many fermions at
+         a vertex, but shouldn't matter in real life). *)
+
+    (* \begin{dubious}
+         To be decided: is it better (in the sense of
+         \emph{easier to understand}, not efficiency)
+         to permute first or to charge conjugate first?
+       \end{dubious} *)
+
+    let is_majorana = function
+      | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
+      | _ -> false
+
+    let name_spins_structure spins l =
+      (l.Lorentz.name, spins, l.Lorentz.structure)
+
     let fusions_of_model ?only model =
       let include_fusion =
         match !include_all_fusions, only with
@@ -2383,7 +2434,13 @@ i*)
                 match l'.Lorentz.spins with
                 | Lorentz.Unused -> acc
                 | Lorentz.Unique spins ->
-                   (l'.Lorentz.name, spins, l'.Lorentz.structure) :: acc
+                   if Array.exists is_majorana spins then
+                     List.map
+                       (name_spins_structure spins)
+                       (Lorentz.all_charge_conjugates l')
+                     @ acc
+                   else
+                     name_spins_structure spins l' :: acc
                 | Lorentz.Ambiguous _ -> failwith "fusions: Lorentz.Ambiguous")
               [] (Permutation.Default.cyclic l.Lorentz.n) @ acc
           else
@@ -2417,12 +2474,36 @@ i*)
 
     let include_hadrons = ref true
 
+    let ufo_majorana_warnings =
+      [ "***************************************************";
+        "*                                                 *";
+        "* CAVEAT:                                         *";
+        "*                                                 *";
+        "*   These amplitudes have been computed for a     *";
+        "*   UFO model containing Majorana fermions.       *";
+        "*   This version of O'Mega contains some known    *";
+        "*   bugs for this case.  It was released early at *";
+        "*   the request of the Linear Collider community. *";
+        "*                                                 *";
+        "*   These amplitudes MUST NOT be used for         *";
+        "*   publications without prior consulation        *";
+        "*   with the WHIZARD authors !!!                  *";
+        "*                                                 *";
+        "***************************************************" ]
+
+    let caveats () =
+      if !use_majorana_spinors then
+        ufo_majorana_warnings
+      else
+        []
+
     module Whizard : sig val write : unit -> unit end =
       struct
         
         let write_header dir =
           Printf.printf "# WHIZARD Model file derived from UFO directory\n";
           Printf.printf "#   '%s'\n\n" dir;
+          List.iter (fun s -> Printf.printf "# %s\n" s) (M.caveats ());
           Printf.printf "model \"%s\"\n\n" (Filename.basename dir)
 
         let write_input_parameters parameters =
@@ -2587,7 +2668,8 @@ module type Fortran_Target =
   sig
 
     val fuse :
-      Algebra.QC.t -> string -> Coupling.lorentzn ->
+      Algebra.QC.t -> string ->
+      Coupling.lorentzn -> Coupling.fermion_lines ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val lorentz_module :

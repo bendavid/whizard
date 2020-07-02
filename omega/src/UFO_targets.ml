@@ -48,12 +48,23 @@ module type T =
       Coupling.lorentz * Coupling.lorentz ->
       UFO_Lorentz.t -> UFO_Lorentz.t -> unit
 
+    val fusion_name :
+      string -> Permutation.Default.t -> Coupling.fermion_lines -> string
+
     val fuse :
-      Algebra.QC.t -> string -> Coupling.lorentzn ->
+      Algebra.QC.t -> string ->
+      Coupling.lorentzn -> Coupling.fermion_lines ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val eps4_g4_g44_decl : Format_Fortran.formatter -> unit -> unit
     val eps4_g4_g44_init : Format_Fortran.formatter -> unit -> unit
+
+    module type Test =
+      sig
+        val suite : OUnit.test
+      end
+
+    module Test : Test
 
   end
 
@@ -370,6 +381,211 @@ module Fortran : T =
       | S of UFOx.Lorentz_Atom.scalar
       | Inv of UFOx.Lorentz_Atom.scalar
 
+    (* Transform the Dirac strings if we have Majorana
+       fermions involved, in order to implement the algorithm
+       from JRR's thesis. NB:
+       The following is for reference only, to better understand what JRR
+       was doing\ldots *)
+
+    (* If the vertex is (suppressing the Lorentz indices of~$\phi_2$ and~$\Gamma$)
+       \begin{equation}
+         \bar\psi_1 \Gamma\phi_2 \psi_3
+            = \Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \psi_{3,\beta}\,,
+       \end{equation}
+       then this is the version implemented by [fuse] below. *)
+
+    let tho_print_dirac_current f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
+      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
+      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
+      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
+      | [1; 2] -> printf "f_f%s(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
+      | [2; 1] -> printf "f_f%s(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
+      | _ -> ()
+
+    (* This is how JRR implemented
+       (see subsection~\ref{sec:dirac-matrices-jrr}) the Dirac matrices
+       that don't change sign under $C\Gamma^T C^{-1} = \Gamma$,
+       i.\,e.~$\mathbf{1}$, $\gamma_5$ and~$\gamma_5\gamma_\mu$
+       (see [Targets.Fortran_Majorana_Fermions.print_fermion_current])
+       \begin{itemize}
+         \item In the case of two fermions, the second wave
+           function [wf2] is always put into the right slot,
+           as described in JRR's thesis.
+           \label{pg:JRR-Fusions}
+         \item In the case of a boson and a fermion, there is no
+           need for both ["f_%sf"] and ["f_f%s"], since the
+           latter can be obtained by exchanging arguments.
+       \end{itemize} *)
+
+    let jrr_print_majorana_current_S_P_A f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
+        $(C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+         C\Gamma $ *)
+      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
+        $(C\Gamma)_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta} \cong
+         C\Gamma = C\,C\Gamma^T C^{-1} $ *)
+      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+         \Gamma $ *)
+      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+         \Gamma $ *)
+      | [1; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+         \Gamma = C\Gamma^T C^{-1} $ *)
+      | [2; 1] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+         \Gamma = C\Gamma^T C^{-1} $ *)
+      | _ -> ()
+
+    (* This is how JRR implemented the Dirac matrices
+       that do change sign under $C\Gamma^T C^{-1} = - \Gamma$,
+       i.\,e.~$\gamma_\mu$ and~$\sigma_{\mu\nu}$
+       (see [Targets.Fortran_Majorana_Fermions.print_fermion_current_vector]). *)
+
+    let jrr_print_majorana_current_V f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff( %s,%s,%s)" f c wf1 wf2 (*
+        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+          C\Gamma $ *)
+      | [3; 1] -> printf "%s_ff(-%s,%s,%s)" f c wf1 wf2 (*
+        $-(C\Gamma)_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta}  \cong
+         -C\Gamma = C\,C\Gamma^T C^{-1} $ *)
+      | [2; 3] -> printf "f_%sf( %s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+          \Gamma $ *)
+      | [3; 2] -> printf "f_%sf( %s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+          \Gamma $ *)
+      | [1; 2] -> printf "f_%sf(-%s,%s,%s)" f c wf2 wf1 (*
+        $-\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+         -\Gamma = C\Gamma^T C^{-1} $ *)
+      | [2; 1] -> printf "f_%sf(-%s,%s,%s)" f c wf1 wf2 (*
+        $-\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+         -\Gamma = C\Gamma^T C^{-1} $ *)
+      | _ -> ()
+
+    (* These two can be unified, if the \texttt{\_c} functions
+       implement~$\Gamma'=C\Gamma^T C^{-1}$, but we \emph{must}
+       make sure that the multiplication with~$C$ from the left
+       happens \emph{after} the transformation~$\Gamma\to\Gamma'$. *)
+    let jrr_print_majorana_current f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff  (%s,%s,%s)" f c wf1 wf2 (*
+        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+          C\Gamma $ *)
+      | [3; 1] -> printf "%s_ff_c(%s,%s,%s)" f c wf1 wf2 (*
+        $(C\Gamma')_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta} \cong
+         C\Gamma' = C\,C\Gamma^T C^{-1} $ *)
+      | [2; 3] -> printf "f_%sf  (%s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+          \Gamma $ *)
+      | [3; 2] -> printf "f_%sf  (%s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+          \Gamma $ *)
+      | [1; 2] -> printf "f_%sf_c(%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma'_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+         \Gamma' = C\Gamma^T C^{-1} $ *)
+      | [2; 1] -> printf "f_%sf_c(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma'_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+         \Gamma' = C\Gamma^T C^{-1} $ *)
+      | _ -> ()
+
+    (* Since we may assume~$C^{-1}=-C=C^T$, this can be rewritten
+       if the \texttt{\_c} functions implement
+       \begin{equation}
+          \Gamma^{\prime\,T}
+            = \left(C\Gamma^T C^{-1}\right)^T
+            = \left(C^{-1}\right)^T \Gamma \left(C\right)^T 
+            = C \Gamma C^{-1} 
+       \end{equation}
+       instead. *)
+    let jrr_print_majorana_current_transposing f c wf1 wf2 fusion =
+      match fusion with
+      | [1; 3] -> printf "%s_ff  (%s,%s,%s)" f c wf1 wf2 (*
+        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+          C\Gamma $ *)
+      | [3; 1] -> printf "%s_ff_c(%s,%s,%s)" f c wf2 wf1 (*
+        $(C\Gamma')^T_{\alpha\beta}
+           \bar\psi_{1,\alpha} \psi_{3,\beta}  \cong
+         (C\Gamma')^T = - C\Gamma $ *)
+      | [2; 3] -> printf "f_%sf  (%s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+          \Gamma $ *)
+      | [3; 2] -> printf "f_%sf  (%s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+          \Gamma $ *)
+      | [1; 2] -> printf "f_f%s_c(%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1}$ *)
+      | [2; 1] -> printf "f_f%s_c(%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1} $ *)
+      | _ -> ()
+
+    (* where we have used
+       \begin{equation}
+         (C\Gamma')^T = \Gamma^{\prime,T}C^T = C\Gamma C^{-1} C^T = - C\Gamma\,.
+       \end{equation} *)
+
+    (* This puts the arguments in the same slots as [tho_print_dirac_current]
+       above and can be implemented by [fuse], iff we inject the proper
+       transformations in [dennerize] below. *)
+
+    let is_majorana = function
+      | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
+      | _ -> false
+
+    let is_dirac = function
+      | Coupling.Spinor | Coupling.ConjSpinor -> true
+      | _ -> false
+
+    let dennerize ~eval wfs atom =
+      let printf fmt = fprintf eval fmt
+      and nl = pp_newline eval in
+      if is_majorana wfs.(pred atom.L.bra).spin ||
+           is_majorana wfs.(pred atom.L.ket).spin then
+        if atom.L.bra = 1 then
+          (* Fusing one or more bosons with a ket like fermion:
+             $\chi \leftarrow \Gamma\chi$. *)
+          (* Don't do anything,
+             as per subsection~\ref{sec:dirac-matrices-jrr}. *)
+          atom
+        else if atom.L.ket = 1 then
+          (* We fuse one or more bosons with a bra like fermion:
+             $\bar\chi \leftarrow \bar\chi\Gamma$. *)
+          (* $\Gamma\to C\Gamma C^{-1}$. *)
+          begin
+            let atom = L.conjugate atom in
+            printf "    ! conjugated for Majorana"; nl ();
+            printf "    ! %s" (L.dirac_string_to_string atom); nl ();
+            atom
+          end
+        else if atom.L.ket < atom.L.bra then
+          (* We fuse zero or more bosons with a sandwich of fermions.
+             $\phi \leftarrow \bar\chi\gamma\chi$.*)
+          (* Multiply by~$C$ from the left,
+             as per subsection~\ref{sec:dirac-matrices-jrr}. *)
+          begin
+            let atom = L.cc_times atom in
+            printf "    ! multiplied by CC for Majorana"; nl ();
+            printf "    ! %s" (L.dirac_string_to_string atom); nl ();
+            atom
+          end
+        else
+          (* Transposed: multiply by~$-C$ from the left. *)
+          begin
+            let atom = L.minus (L.cc_times atom) in
+            printf "    ! multiplied by negative CC for Majorana"; nl ();
+            printf "    ! %s" (L.dirac_string_to_string atom); nl ();
+            atom
+          end
+      else
+        atom
+
     (* Write the [i]th Dirac string [ds] as Fortran code to [eval], including
        a shorthand representation as a comment.  Return [ds] with
        [ds.L.atom] replaced by the dirac string variable,
@@ -381,17 +597,8 @@ module Fortran : T =
       let bra = ds.L.atom.L.bra
       and ket = ds.L.atom.L.ket in
       pp_divide ~indent:4 eval ();
-      let atom =
-        match wfs.(pred bra).spin with
-        | Coupling.Majorana | Coupling.Vectorspinor ->
-           if bra = 1 then
-             ds.L.atom
-           else if ket = 1 then
-             L.transpose ds.L.atom
-           else
-             L.majorana ds.L.atom
-        | _ -> ds.L.atom in
-      printf "    ! %s" (L.dirac_string_to_string atom); nl ();
+      printf "    ! %s" (L.dirac_string_to_string ds.L.atom); nl ();
+      let atom = dennerize ~eval wfs ds.L.atom in
       begin match ds.L.indices with
       | [] ->
          let gamma = L.dirac_string_to_matrix (fun _ -> 0) atom in
@@ -886,104 +1093,133 @@ i*)
       (P.of_list (List.map pred cyclic),
        P.of_lists (List.tl cyclic) f12__)
 
-    let fuse c v s g wfs ps fusion =
+    let ccs_to_string ccs =
+      String.concat "" (List.map (fun (f, i) -> Printf.sprintf "_c%x%x" i f) ccs)
+
+    let fusion_name v perm ccs =
+      Printf.sprintf "%s_p%s%s" v (P.to_string perm) (ccs_to_string ccs)
+
+    let fuse_dirac c v s fl g wfs ps fusion =
       let g = scale_coupling c g
       and cyclic, factor = factor_cyclic fusion in
-      let perm = P.to_string cyclic in
       let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
       let args = P.list (P.inverse factor) wfs_ps in
       let args_string =
         String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) args) in
-      printf "%s_p%s(%s,%s)" v perm g args_string
+      printf "%s(%s,%s)" (fusion_name v cyclic []) g args_string
+
+    (* We need to look at the permuted fermion lines in order to
+       decide wether to apply charge conjugations.  *)
+
+    (* It is not enough to look at the cyclic permutation used
+       to move the fields into the correct arguments of
+       the fusions \ldots *)
+    let map_indices perm unit =
+      let pmap = IntPM.of_lists unit (P.list perm unit) in
+      IntPM.apply pmap
+
+    (* \ldots{} we also need to inspect the full permutation of
+       the fields. *)
+    let map_indices2 perm unit =
+      let pmap =
+        IntPM.of_lists unit (1 :: P.list (P.inverse perm) (List.tl unit)) in
+      IntPM.apply pmap
+
+    (* This is a more direct implementation of the composition
+       of [map_indices2] and [map_indices], that is used in the
+       unit tests. *)
+    let map_indices_raw fusion =
+      let unit = ThoList.range 1 (List.length fusion) in
+      let f12__, fn = ThoList.split_last fusion in
+      let fusion = fn :: f12__ in
+      let map_index = IntPM.of_lists fusion unit in
+      IntPM.apply map_index
+
+    (* Map the fermion line indices in [fl] according to [map_index]. *)
+    let map_fermion_lines map_index fl =
+      List.map (fun (i, f) -> (map_index i, map_index f)) fl
+
+    (* Map the fermion line indices in [fl] according to [map_index],
+       but keep a copy of the original. *)
+    let map_fermion_lines2 map_index fl =
+      List.map (fun (i, f) -> ((i, f), (map_index i, map_index f))) fl
+
+    let permute_fermion_lines cyclic unit fl =
+      map_fermion_lines (map_indices cyclic unit) fl
+
+    let permute_fermion_lines2 cyclic factor unit fl =
+      map_fermion_lines2
+        (map_indices2 factor unit)
+        (map_fermion_lines (map_indices cyclic unit) fl)
 
     (* \begin{dubious}
-         The following is for reference only, to better understand what JRR
-         was doing\ldots
+         TODO: this needs more more work for the fully
+         general case.
        \end{dubious} *)
+    let charge_conjugations fl2 =
+      ThoList.filtermap
+        (fun ((i, f), (i', f')) ->
+          match (i, f), (i', f') with
+          | (1, 2), _ | (2, 1), _ -> Some (f, i) (* $\chi^T\Gamma'$ *)
+          | _, (2, 3) -> Some (f, i)             (* $\chi^T(C\Gamma')\chi$ *)
+          | _ -> None)
+        fl2
 
-    (* The vertex is (suppressing the Lorentz index of~$\phi_2$)
-       \begin{equation}
-         \bar\psi_1 \Gamma\phi_2 \psi_3
-            = \Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \psi_{3,\beta}
-       \end{equation} *)
+(*i
+    let fuse_majorana c v s fl g wfs ps fusion =
+      let g = scale_coupling c g
+      and cyclic, factor = factor_cyclic fusion in
+      let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
+      let wfs_ps_string =
+        String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) wfs_ps) in
+      let args = P.list (P.inverse factor) wfs_ps in
+      let args_string =
+        String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) args) in
+      let f12__, fn = ThoList.split_last fusion in
+      Printf.eprintf
+        "fusion : %d < %s\n" fn (ThoList.to_string string_of_int f12__);
+      Printf.eprintf "cyclic : %s\n" (P.to_string cyclic);
+      Printf.eprintf "factor : %s\n" (P.to_string factor);
+      let unit = ThoList.range 1 (List.length fusion) in
+      Printf.eprintf "permutation     : %s -> %s\n"
+        (ThoList.to_string string_of_int unit)
+        (ThoList.to_string
+           string_of_int (List.map (map_indices cyclic unit) unit));
+      Printf.eprintf "permutation raw : %s -> %s\n"
+        (ThoList.to_string string_of_int unit)
+        (ThoList.to_string
+           string_of_int (List.map (map_indices_raw fusion) unit));
+      Printf.eprintf "fermion lines : %s\n"
+        (ThoList.to_string (fun (i, f) -> Printf.sprintf "%d>%d" i f) fl);
+      let fl2 = permute_fermion_lines2 cyclic factor unit fl in
+      let fl = permute_fermion_lines cyclic unit fl in
+      Printf.eprintf "permuted      : %s\n"
+        (ThoList.to_string (fun (i, f) -> Printf.sprintf "%d>%d" i f) fl);
+      Printf.eprintf "arguments : %s\n" wfs_ps_string;
+      Printf.eprintf "permuted  : %s\n" args_string;
+      Printf.eprintf
+        ">> %s(%s,%s)\n"
+        (fusion_name v cyclic (charge_conjugations fl2)) g args_string;
+      printf "%s(%s,%s)" (fusion_name v cyclic (charge_conjugations fl2)) g args_string
+i*)
 
-    (* This is the version implemented by [fuse] above. *)
+    let fuse_majorana c v s fl g wfs ps fusion =
+      let g = scale_coupling c g
+      and cyclic, factor = factor_cyclic fusion in
+      let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
+      let args = P.list (P.inverse factor) wfs_ps in
+      let args_string =
+        String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) args) in
+      let unit = ThoList.range 1 (List.length fusion) in
+      let ccs =
+        charge_conjugations (permute_fermion_lines2 cyclic factor unit fl) in
+      printf "%s(%s,%s)" (fusion_name v cyclic ccs) g args_string
 
-    let tho_print_dirac_current f c wf1 wf2 fusion =
-      match fusion with
-      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
-      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
-      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
-      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
-      | [1; 2] -> printf "f_f%s(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
-      | [2; 1] -> printf "f_f%s(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
-      | _ -> ()
-
-    (* This is how JRR implemented the Dirac matrices
-       that don't change sign under $C\Gamma^T C^{-1} = \Gamma$,
-       i.\,e.~$\mathbf{1}$, $\gamma_5$ and~$\gamma_5\gamma_\mu$. *)
-
-    (* In the case of two fermions, the second wave
-       function [wf2] is always put into the right slot,
-       as described in JRR's thesis. *)
-
-    (* In the case of a boson and a fermion, there is no
-       need for both ["f_%sf"] and ["f_f%s"], since the
-       latter can be obtained by exchanging arguments. *)
-
-    let jrr_print_majorana_current_S_P_A f c wf1 wf2 fusion =
-      match fusion with
-      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \equiv
-         \Gamma $ *)
-      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta} \equiv
-         \Gamma = C\Gamma^T C^{-1} $ *)
-      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
-         \Gamma $ *)
-      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
-        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
-         \Gamma $ *)
-      | [1; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
-        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \equiv
-         \Gamma = C\Gamma^T C^{-1} $ *)
-      | [2; 1] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \equiv
-         \Gamma = C\Gamma^T C^{-1} $ *)
-      | _ -> ()
-
-    (* This is how JRR implemented the Dirac matrices
-       that do change sign under $C\Gamma^T C^{-1} = - \Gamma$,
-       i.\,e.~$\gamma_\mu$ and~$\sigma_{\mu\nu}$ (NB: the
-       latter case never appears!). *)
-
-    let jrr_print_majorana_current_V f c wf1 wf2 fusion =
-      match fusion with
-      | [1; 3] -> printf "%s_ff( %s,%s,%s)" f c wf1 wf2 (*
-        $ \Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \equiv
-          \Gamma $ *)
-      | [3; 1] -> printf "%s_ff(-%s,%s,%s)" f c wf1 wf2 (*
-        $-\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \equiv
-         -\Gamma = C\Gamma^T C^{-1} $ *)
-      | [2; 3] -> printf "f_%sf( %s,%s,%s)" f c wf1 wf2 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
-          \Gamma $ *)
-      | [3; 2] -> printf "f_%sf( %s,%s,%s)" f c wf2 wf1 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \equiv
-          \Gamma $ *)
-      | [1; 2] -> printf "f_%sf(-%s,%s,%s)" f c wf2 wf1 (*
-        $-\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \equiv
-         -\Gamma = C\Gamma^T C^{-1} $ *)
-      | [2; 1] -> printf "f_%sf(-%s,%s,%s)" f c wf1 wf2 (*
-        $-\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \equiv
-         -\Gamma = C\Gamma^T C^{-1} $ *)
-      | _ -> ()
-
-    (* \begin{dubious}
-         Still need a way to reliably select the Majorana
-         version in the [Target] module!
-       \end{dubious} *)
+    let fuse c v s fl g wfs ps fusion =
+      if List.exists is_majorana s then
+        fuse_majorana c v s fl g wfs ps fusion
+      else
+        fuse_dirac c v s fl g wfs ps fusion
 
     let eps4_g4_g44_decl ff () =
       let printf fmt = fprintf ff fmt
@@ -1022,5 +1258,41 @@ i*)
         done
       done
 
+    module type Test =
+      sig
+        val suite : OUnit.test
+      end
+
+    module Test : Test =
+      struct
+
+        open OUnit
+
+        let assert_mappings fusion =
+          let unit = ThoList.range 1 (List.length fusion) in
+          let cyclic, factor = factor_cyclic fusion in
+          let raw = map_indices_raw fusion
+          and map1 = map_indices cyclic unit
+          and map2 = map_indices2 factor unit in
+          let map i = map2 (map1 i) in
+          assert_equal ~printer:(ThoList.to_string string_of_int)
+            (List.map raw unit) (List.map map unit)
+
+        let suite_mappings =
+          "mappings" >:::
+
+            [ "1<-2" >::
+                (fun () ->
+                  List.iter assert_mappings (Combinatorics.permute [1;2;3]));
+
+              "1<-3" >::
+                (fun () ->
+                  List.iter assert_mappings (Combinatorics.permute [1;2;3;4])) ]
+
+        let suite =
+          "UFO_targets" >:::
+            [suite_mappings]
+
+      end
   end
     

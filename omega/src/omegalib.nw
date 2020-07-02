@@ -6473,6 +6473,7 @@ increase the chance of running past continuation line limits without
 adding much to the legibility.
 @
 \subsection{Fermionic Vector and Axial Couplings}
+\label{sec:dirac-matrices-jrr}
 There's more than one chiral representation.  This one is compatible
 with HELAS~\cite{HELAS}.
 \begin{subequations}

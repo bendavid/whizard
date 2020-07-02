@@ -55,7 +55,7 @@ ZZZZ    0.60  1E-15   200   1000   SM       scatter Z Z -> Z Z
 VBF     0.60  1E-12   100   1000   SM       scatter u:ubar:d:dbar u:ubar:d:dbar -> u:ubar:d:dbar u:ubar:d:dbar H
 
 # Check zero amplitude
-uudd    0.60  1E-12   200   1000   QCD      scatter u u -> d d
+#uudd   0.60  1E-12   200   1000   QCD      scatter u u -> d d
 
 # Check SM_CKM
 ttbar   0.60  1E-12   100   50     SM_CKM   scatter u ubar -> e+ nue b bbar mu- numubar

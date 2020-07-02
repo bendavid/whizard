@@ -386,6 +386,7 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
     let init () = ()
 
     let options = Options.empty
+    let caveats () = []
 
     module Ch = Charges.Null
     let charges _ = ()
@@ -563,6 +564,7 @@ module Static (M : Model.T) =
     let width_symbol = M.width_symbol
     let constant_symbol = M.constant_symbol
     let options = M.options
+    let caveats = M.caveats
     let init () = ()
     let setup ~color ~nc ~pdg ~lorentz ~propagator ~width ~goldstone
         ~conjugate ~fermion ~vertices

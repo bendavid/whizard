@@ -1330,6 +1330,7 @@ module It (M : Model.T) =
     type gauge = M.gauge
     type constant = M.constant
     let options = M.options
+    let caveats = M.caveats
 
     open Colored_Flavor
 
@@ -1807,6 +1808,7 @@ module Gauge (M : Model.Gauge) =
     let width_symbol = CM.width_symbol
     let constant_symbol = CM.constant_symbol
     let options = CM.options
+    let caveats = CM.caveats
 
     let incomplete s =
       failwith ("Colorize.Gauge()." ^ s ^ " not done yet!")

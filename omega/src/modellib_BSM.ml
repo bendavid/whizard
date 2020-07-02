@@ -69,6 +69,7 @@ module Littlest (Flags : BSM_flags) =
         "use complex mass scheme" ;
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width" ]
+    let caveats () = []
 
     let gauge_symbol () =
       failwith "Modellib_BSM.Littlest.gauge_symbol: internal error"
@@ -1267,6 +1268,7 @@ module Littlest_Tpar (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type flavor = L of int | N of int | U of int | D of int 
         | Topp | Toppb 
@@ -2385,6 +2387,7 @@ module Simplest (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
 (* We do not introduce the Goldstones for the heavy vectors here. The heavy
    quarks are simply numerated by their generation, the assignments whether
@@ -3137,6 +3140,7 @@ module Xdim (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -3735,6 +3739,7 @@ module UED (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int 
           | L_K1_L of int | L_K1_R of int | N_K1 of int
@@ -4712,6 +4717,7 @@ module GravTest (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int | SL of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl | Phino
@@ -5330,6 +5336,7 @@ module Template (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl 
@@ -5868,6 +5875,7 @@ module HSExt (Flags : BSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl 
@@ -6497,7 +6505,8 @@ module Threeshl (Module_options: Threeshl_options) =
             "assign feynman gauge propagators to all gauge bosons\n"
             ^ "\t(for checking the ward identities); use only if you *really* know\n"
             ^ "\twhat you are doing"]
-   
+       let caveats () = []
+
       (* The quantum numbers that are carried by the particles. \verb$csign$ is \emph{not} the charge
       carried by the particle, but differentiates between particles (\verb$Pos$) and antiparticles
       (\verb$Neg$) *)
@@ -7181,6 +7190,7 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -8150,6 +8160,7 @@ module SSC (Flags : SSC_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR
@@ -11680,6 +11691,7 @@ module SSC_AltT (Flags : SSC_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR

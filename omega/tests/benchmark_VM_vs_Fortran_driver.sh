@@ -23,6 +23,9 @@ while read module n roots model mode process; do
    '')   # skip empty lines
      ;;
 
+   '!'*) break
+     ;;
+
     *)
       ########################################################################
       modules="$modules $module"

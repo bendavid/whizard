@@ -1837,7 +1837,7 @@ module type Fermions =
       -> fuse2 -> unit
     val print_current_g4 : int * fermionbar * boson2 * fermion ->
       string -> string -> string -> string -> fuse3 -> unit
-    val reverse_braket : lorentz -> bool
+    val reverse_braket : bool -> lorentz -> lorentz list -> bool
     val use_module : string
     val require_library : string list
    end
@@ -2053,7 +2053,8 @@ module Fortran_Fermions : Fermions =
       | _, _, _, _ -> invalid_arg
             "Targets.Fortran_Fermions: No gravitinos here"
 
-    let reverse_braket= function
+    let reverse_braket vintage bra ket =
+      match bra with
       | Spinor -> true
       | _ -> false
 
@@ -5764,7 +5765,7 @@ i*)
                    = -\ii(-1)^n \cdots
            \end{equation*}
          \end{dubious} *)
-      | Vn (UFO (c, v, s, _, color), fusion, constant) ->
+      | Vn (UFO (c, v, s, fl, color), fusion, constant) ->
          if Color.Vertex.trivial color then
            let g = CM.constant_symbol constant
            and chn = F.children rhs in
@@ -5773,7 +5774,7 @@ i*)
            let n = List.length fusion in
            let eps = if n mod 2 = 0 then -1 else 1 in
            printf "@, %s " (if (eps * F.sign rhs) < 0 then "-" else "+");
-           UFO.Targets.Fortran.fuse c v s g wfs ps fusion
+           UFO.Targets.Fortran.fuse c v s fl g wfs ps fusion
          else
            failwith "print_current: nontrivial color structure"
 
@@ -5974,20 +5975,46 @@ i*)
           print_fusion amplitude dictionary f)
         fusions
 
+(* \begin{dubious}
+     The following will need a bit more work, because
+     the decision when to [reverse_braket] for UFO models
+     with Majorana fermions needs collaboration
+     from [UFO.Targets.Fortran.fuse] which is called by
+     [print_current].  See the function
+     [UFO_targets.Fortran.jrr_print_majorana_current_transposing]
+     for illustration (the function is never used and only for
+     documentation).
+   \end{dubious} *)
+
+    let spins_of_rhs rhs =
+      List.map (fun wf -> CM.lorentz (F.flavor wf)) (F.children rhs)
+
+    let spins_of_ket ket =
+      match ThoList.uniq (List.map spins_of_rhs ket) with
+      | [spins] -> spins
+      | [] -> failwith "Targets.Fortran.spins_of_ket: empty"
+      | _ -> [] (* HACK! *)
+
     let print_braket amplitude dictionary name braket =
       let bra = F.bra braket
       and ket = F.ket braket in
+      let spin_bra = CM.lorentz (F.flavor bra)
+      and spins_ket = spins_of_ket ket in
+      let vintage = true (* [F.vintage] *) in
       printf "      @[<2>%s = %s@, + " name name;
-      begin match Fermions.reverse_braket (CM.lorentz (F.flavor bra)) with
-      | false ->
-          printf "%s*@,(" (multiple_variable amplitude dictionary bra);
-          List.iter (print_current amplitude dictionary) ket;
-          printf ")"
-      | true ->
+      if Fermions.reverse_braket vintage spin_bra spins_ket then
+        begin
           printf "@,(";
           List.iter (print_current amplitude dictionary) ket;
           printf ")*%s" (multiple_variable amplitude dictionary bra)
-      end; nl ()
+        end
+      else
+        begin
+          printf "%s*@,(" (multiple_variable amplitude dictionary bra);
+          List.iter (print_current amplitude dictionary) ket;
+          printf ")"
+        end;
+      nl ()
 
 (* \begin{equation}
    \label{eq:factors-of-i}
@@ -6849,6 +6876,7 @@ i*)
       printf
         "! File generated automatically by O'Mega %s %s %s"
         Config.version Config.status Config.date; nl ();
+      List.iter (fun s -> printf "! %s" s; nl ()) (M.caveats ());
       printf "!"; nl ();
       printf "!   %s" cmdline; nl ();
       printf "!"; nl ();
@@ -8258,7 +8286,13 @@ module Fortran_Majorana_Fermions : Fermions =
       | coeff, _, SLRV, _ -> print_fermion_g4_svlr_current coeff "svlr"
       | _, _, V2LR, _ -> invalid_arg "Targets.print_current: not available"
 
-    let reverse_braket _ = false
+    let reverse_braket vintage bra ket =
+      if vintage then
+        false
+      else
+        match bra, ket with
+        | Majorana, Majorana :: _ -> true
+        | _, _ -> false
 
     let use_module = "omega95_bispinors"
     let require_library =

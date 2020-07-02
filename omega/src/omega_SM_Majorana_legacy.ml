@@ -1,6 +1,6 @@
 (* omega_SM_Maj.ml --
 
-   Copyright (C) 1999-2020 by
+   Copyright (C) 1999-2019 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -23,7 +23,7 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 module O = Omega.Make
-    (Fusion.Binary_Majorana)(Targets.Fortran_Majorana)
+    (Fusion_vintage.Mixed23_Majorana)(Targets.Fortran_Majorana)
     (Modellib_SM.SM(Modellib_SM.SM_no_anomalous))
 let _ = O.main ()
 

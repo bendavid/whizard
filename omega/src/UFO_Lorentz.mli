@@ -43,8 +43,32 @@ type dirac_string = (* [private] *)
 
 (* In the case of Majorana spinors, we have to insert charge conjugation
    matrices. *)
-val majorana : dirac_string -> dirac_string
+
+(* $\Gamma\to - \Gamma$: *)
+val minus : dirac_string -> dirac_string
+
+(* $\Gamma\to C\Gamma$: *)
+val cc_times : dirac_string -> dirac_string
+
+(* $\Gamma\to \Gamma C^{-1}$: *)
+val times_cc_inv : dirac_string -> dirac_string
+
+(* $\Gamma\to \Gamma^T$: *)
 val transpose : dirac_string -> dirac_string
+
+(* $\Gamma\to C\Gamma C^{-1}$: *)
+val conjugate : dirac_string -> dirac_string
+
+(* $\Gamma\to C\Gamma^T C^{-1}$, i.\,e.~the composition of [conjugate]
+   and [transpose]: *)
+val conjugate_transpose : dirac_string -> dirac_string
+
+(* \begin{dubious}
+     Careful: of the above, [transpose] is currently implemented
+     as [conjugate] to make the tests in~\texttt{keystones\_UFO\_bispinors}
+     work. This needs to be changed eventually!  [conjugate_transpose] is
+     the real thing, though.
+   \end{dubious} *)
 
 (* The Lorentz indices appearing in a term are either negative
    internal summation indices or positive external polarization
@@ -77,6 +101,9 @@ type t = contraction list
 (* Fermion line connections. *)
 val fermion_lines : t -> Coupling.fermion_lines
 
+(* $\Gamma\to C\Gamma C^{-1}$ *)
+val charge_conjugate : int * int -> t -> t
+
 (* [parse spins lorentz] uses the [spins] to parse the
    UFO [lorentz] structure as a list of [contraction]s. *)
 val parse : Coupling.lorentz list -> UFOx.Lorentz.t -> t
@@ -103,3 +130,9 @@ val dirac_string_to_string : dirac_string -> string
    the indices and returns the product as a matrix. *)
 val dirac_string_to_matrix : (int -> int) -> dirac_string -> Dirac.Chiral.t
 
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
+
+module Test : Test

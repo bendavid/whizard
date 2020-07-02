@@ -40,13 +40,36 @@ module type T =
       Coupling.lorentz * Coupling.lorentz ->
       UFO_Lorentz.t -> UFO_Lorentz.t -> unit
 
+    (* [fusion_name name perm cc_list] forms a name for the fusion
+       [name] with the permutations [perm] and charge conjugations
+       applied to the fermion lines [cc_list]. *)
+    val fusion_name :
+      string -> Permutation.Default.t -> Coupling.fermion_lines -> string
+
+    (* [fuse c v s fl g wfs ps fusion]
+       fuses the wavefunctions named [wfs] with momenta named [ps]
+       using the vertex named [v] with legs reordered according to [fusion].
+       The overall coupling constant named [g] is multiplied by the rational
+       coefficient [c].  The list of spins [s] and the fermion
+       lines [fl] are used for selecting the appropriately
+       transformed version of the vertex [v]. *)
     val fuse :
-      Algebra.QC.t -> string -> Coupling.lorentzn ->
+      Algebra.QC.t -> string ->
+      Coupling.lorentzn -> Coupling.fermion_lines ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val eps4_g4_g44_decl : Format_Fortran.formatter -> unit -> unit
     val eps4_g4_g44_init : Format_Fortran.formatter -> unit -> unit
 
+    module type Test =
+      sig
+        val suite : OUnit.test
+      end
+
+    module Test : Test
+
   end
 
 module Fortran : T
+
+

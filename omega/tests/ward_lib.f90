@@ -65,6 +65,26 @@ contains
        failures = 1
        return
     end if
+    if (n_out <= 0) then
+       print *, "no outgoing particles"
+       failures = 1
+       return
+    end if
+    if (n_flv <= 0) then
+       print *, "no allowed flavor combinations"
+       failures = 1
+       return
+    end if
+    if (n_hel <= 0) then
+       print *, "no allowed helicity combinations"
+       failures = 1
+       return
+    end if
+    if (n_col <= 0) then
+       print *, "no allowed color flows"
+       failures = 1
+       return
+    end if
     if (present (seed)) then
        call tao_random_seed (seed)
     end if

@@ -55,6 +55,7 @@ module Zprime (Flags : SM_flags) =
         "use vanishing width";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width" ]
+    let caveats () = []
 
 (* We do not introduce the Goldstones for the heavy vectors here. *)
 

@@ -61,6 +61,7 @@ module Anomtop (Flags : SM_flags) =
         "use vanishing width";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width" ]
+    let caveats () = []
 
     type matter_field = L of int | N of int | U of int | D of int 
     type gauge_boson = Ga | Wp | Wm | Z | Gl   

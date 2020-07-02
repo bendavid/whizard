@@ -164,6 +164,12 @@ let rev_flatmap f l =
     | x :: rest -> rev_flatmap' (List.rev_append (f x) acc) f rest in
   rev_flatmap' [] f l
 
+let rec power = function
+  | [] -> [[]]
+  | a :: a_list ->
+     let power_a_list = power a_list in
+     power_a_list @ List.map (fun a_list -> a :: a_list) power_a_list
+             
 let fold_left2 f acc lists =
   List.fold_left (List.fold_left f) acc lists
 
@@ -180,6 +186,14 @@ let mapi f start list =
   let next, list' =
     List.fold_left (fun (i, acc) a -> (succ i, f i a :: acc)) (start, []) list in
   List.rev list'
+
+let rec map3 f l1 l2 l3 =
+  match l1, l2, l3 with
+  | [], [], [] -> []
+  | a1 :: l1, a2 :: l2, a3 :: l3 ->
+     let fa123 = f a1 a2 a3 in
+     fa123 :: map3 f l1 l2 l3
+  | _, _, _ -> invalid_arg "ThoList.map3"
 
 (* Is there a more efficient implementation? *)
 let transpose lists =
@@ -319,6 +333,16 @@ let rec rev_multiply n rl l =
 
 let multiply n l = rev_multiply n (List.rev l) l
 
+let filtermap f l =
+  let rec rev_filtermap acc = function
+    | [] -> List.rev acc
+    | a :: a_list ->
+       match f a with
+       | None -> rev_filtermap acc a_list
+       | Some fa -> rev_filtermap (fa :: acc) a_list
+  in
+  rev_filtermap [] l
+  
 exception Overlapping_indices
 exception Out_of_bounds
 
@@ -406,7 +430,84 @@ let random_int_list imax n =
 module Test =
   struct
 
+    let int_list2_to_string l2 =
+      to_string (to_string string_of_int) l2
+
+    (* Inefficient, must only be used for unit tests. *)
+    let compare_lists_by_size l1 l2 =
+      let lengths = pcompare (List.length l1) (List.length l2) in
+      if lengths = 0 then
+        pcompare l1 l2
+      else
+        lengths
+
     open OUnit
+
+    let suite_filtermap =
+      "filtermap" >:::
+        [ "filtermap Some []" >::
+            (fun () ->
+              assert_equal ~printer:(to_string string_of_int)
+                [] (filtermap (fun x -> Some x) []));
+
+          "filtermap None []" >::
+            (fun () ->
+              assert_equal ~printer:(to_string string_of_int)
+                [] (filtermap (fun x -> None) []));
+
+          "filtermap even_neg []" >::
+            (fun () ->
+              assert_equal ~printer:(to_string string_of_int)
+                [0; -2; -4]
+                (filtermap
+                   (fun n -> if n mod 2 = 0 then Some (-n) else None)
+                   (range 0 5)));
+
+          "filtermap odd_neg []" >::
+            (fun () ->
+              assert_equal ~printer:(to_string string_of_int)
+                [-1; -3; -5]
+                (filtermap
+                   (fun n -> if n mod 2 <> 0 then Some (-n) else None)
+                   (range 0 5))) ]
+          
+    let assert_power power_a_list a_list =
+      assert_equal ~printer:int_list2_to_string
+        power_a_list
+        (List.sort compare_lists_by_size (power a_list))
+
+    let suite_power =
+      "power" >:::
+        [ "power []" >::
+            (fun () ->
+              assert_power [[]] []);
+
+          "power [1]" >::
+            (fun () ->
+              assert_power [[]; [1]] [1]);
+
+          "power [1;2]" >::
+            (fun () ->
+              assert_power [[]; [1]; [2]; [1;2]] [1;2]);
+
+          "power [1;2;3]" >::
+            (fun () ->
+              assert_power
+                [[];
+                 [1]; [2]; [3];
+                 [1;2]; [1;3]; [2;3];
+                 [1;2;3]]
+                [1;2;3]);
+
+          "power [1;2;3;4]" >::
+            (fun () ->
+              assert_power
+                [[];
+                 [1]; [2]; [3]; [4];
+                 [1;2]; [1;3]; [1;4]; [2;3]; [2;4]; [3;4];
+                 [1;2;3]; [1;2;4]; [1;3;4]; [2;3;4];
+                 [1;2;3;4]]
+                [1;2;3;4]) ]
 
     let suite_split =
       "split*" >:::
@@ -500,7 +601,9 @@ module Test =
 
     let suite =
       "ThoList" >:::
-	[suite_split;
+	[suite_filtermap;
+         suite_power;
+         suite_split;
          suite_cycle;
          suite_alist_of_list;
          suite_complement]
@@ -514,4 +617,3 @@ module Test =
  *  compile-command:"ocamlc -o vertex thoList.ml{i,} pmap.ml{i,} vertex.ml"
  *  End:
 i*)
-

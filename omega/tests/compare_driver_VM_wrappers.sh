@@ -21,6 +21,9 @@ while read module threshold abs_threshold n roots model mode process; do
    '')   # skip empty lines
      ;;
 
+   '!'*) break
+     ;;
+
     *)
       modules="$modules $module"
       eval threshold_$module=$threshold

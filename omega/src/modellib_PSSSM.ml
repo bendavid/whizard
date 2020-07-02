@@ -63,7 +63,7 @@ module ExtMSSM (Flags : extMSSM_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
-
+    let caveats () = []
 
 (*additional combinatorics *)
 (* yields a list of tuples consistig of the off-diag combinations of the elements in "set" *)

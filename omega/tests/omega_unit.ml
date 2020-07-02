@@ -192,6 +192,8 @@ let suite =
      Color.Birdtracks.Test.suite;
      Color.SU3.Test.suite;
      Color.U3.Test.suite;
+     UFO_targets.Fortran.Test.suite;
+     UFO_Lorentz.Test.suite;
      UFO.Test.suite;
      Format_Fortran.Test.suite;
      Dirac.Chiral.test_suite]

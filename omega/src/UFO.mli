@@ -57,8 +57,16 @@ val parse_directory : string -> t
 module type Fortran_Target =
   sig
 
+    (* [fuse c v s fl g wfs ps fusion]
+       fuses the wavefunctions named [wfs] with momenta named [ps]
+       using the vertex named [v] with legs reordered according to [fusion].
+       The overall coupling constant named [g] is multiplied by the rational
+       coefficient [c].  The list of spins [s] and the fermion
+       lines [fl] are used for selecting the appropriately
+       transformed version of the vertex [v]. *)
     val fuse :
-      Algebra.QC.t -> string -> Coupling.lorentzn ->
+      Algebra.QC.t -> string ->
+      Coupling.lorentzn -> Coupling.fermion_lines ->
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val lorentz_module :
@@ -89,7 +97,7 @@ module Propagator :
         spins : Coupling.lorentz * Coupling.lorentz;
 	numerator : UFO_Lorentz.t;
 	denominator : UFO_Lorentz.t }
-    val of_propagator_UFO : Propagator_UFO.t -> t
+    val of_propagator_UFO : ?majorana:bool -> Propagator_UFO.t -> t
     val transpose : t -> t
   end
 

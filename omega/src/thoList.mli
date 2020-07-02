@@ -110,8 +110,20 @@ val flatmap : ('a -> 'b list) -> 'a list -> 'b list
    It is tail recursive. *)
 val rev_flatmap : ('a -> 'b list) -> 'a list -> 'b list
 
+(* [clone n a] builds a list from [n] copies of the element [a]. *)
 val clone : int -> 'a -> 'a list
+
+(* [multiply n l] concatenates [n] copies of the list [l]. *)
 val multiply : int -> 'a list -> 'a list
+
+(* [filtermap f l] applies [f] to each element of [l] and drops
+   the results [None]. *)
+val filtermap : ('a -> 'b option) -> 'a list -> 'b list
+
+(* [power a_list] computes the list of all sublists of [a_list],
+   i.\,e.~the power set.  The elements of the sublists are \emph{not}
+   required to have been sequential in [a_list]. *)
+val power : 'a list -> 'a list list
 
 (* \begin{dubious}
      Invent other names to avoid confusions with [List.fold_left2]
@@ -128,6 +140,9 @@ val mapi : (int -> 'a -> 'b) -> int -> 'a list -> 'b list
    [f (n+1) m ba] and [f (n+1) (m+1) bb].
    NB: the nested lists need not be rectangular. *)
 val iteri2 : (int -> int -> 'a -> unit) -> int -> int -> 'a list list -> unit
+
+(* Just like [List.map3]: *)
+val map3 : ('a -> 'b -> 'c -> 'd) -> 'a list -> 'b list -> 'c list -> 'd list
 
 (* Transpose a \emph{rectangular} list of lists like a matrix.  *)
 val transpose : 'a list list -> 'a list list

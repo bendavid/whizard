@@ -27,6 +27,9 @@ module type T =
 
     val options : Options.t
 
+(* JRR's implementation of Majoranas needs a special case. *)
+    val vintage : bool
+
 (* Wavefunctions are an abstract data type, containing a momentum~[p]
    and additional quantum numbers, collected in~[flavor]. *)
     type wf
@@ -239,10 +242,10 @@ i*)
 exception Majorana
 
 module Binary : Maker
-(* [module Binary_Majorana : Maker] *)
+module Binary_Majorana : Maker
 
 module Mixed23 : Maker
-(* [module Mixed23_Majorana : Maker] *)
+module Mixed23_Majorana : Maker
 
 module Nary : functor (B : Tuple.Bound) -> Maker
 module Nary_Majorana : functor (B : Tuple.Bound) -> Maker

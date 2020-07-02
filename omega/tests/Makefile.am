@@ -63,12 +63,19 @@ OMEGA_SM_top_anom = $(top_builddir)/omega/bin/omega_SM_top_anom$(OCAML_NATIVE_EX
 OMEGA_SM_top_anom_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SM_top_anom
 
 OMEGA_UFO = $(top_builddir)/omega/bin/omega_UFO$(OCAML_NATIVE_EXT)
+OMEGA_UFO_MAJORANA = \
+	$(top_builddir)/omega/bin/omega_UFO_Majorana$(OCAML_NATIVE_EXT)
 OMEGA_UFO_OPTS = -target:parameter_module parameters_UFO
+OMEGA_UFO_PATH = $(top_srcdir)/omega/tests/UFO
 
 OMEGA_XXX = $(top_builddir)/omega/bin/omega_%%%$(OCAML_NATIVE_EXT)
 OMEGA_XXX_OPTS = -target:parameter_module parameters_%%%
 OMEGA_UFO_XXX_OPTS = \
 	"-model:UFO_dir $(top_srcdir)/omega/tests/UFO/%%%/ -model:exec"
+OMEGA_XXX_MAJORANA = \
+	$(top_builddir)/omega/bin/omega_%%%_Majorana$(OCAML_NATIVE_EXT)
+OMEGA_XXX_MAJORANA_LEGACY = \
+	$(top_builddir)/omega/bin/omega_%%%_Majorana_legacy$(OCAML_NATIVE_EXT)
 
 OMEGA_QED_VM = $(top_builddir)/omega/bin/omega_QED_VM$(OCAML_NATIVE_EXT)
 OMEGA_QCD_VM = $(top_builddir)/omega/bin/omega_QCD_VM$(OCAML_NATIVE_EXT)
@@ -396,6 +403,46 @@ compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 
 ########################################################################
 
+TESTS += compare_majorana compare_majorana_legacy compare_majorana_UFO
+EXTRA_PROGRAMS += compare_majorana compare_majorana_legacy compare_majorana_UFO
+EXTRA_DIST += compare_driver_majorana.sh compare_driver_majorana_UFO.sh
+EXTRA_DIST += comparisons_majorana.list comparisons_majorana_legacy.list \
+	comparisons_majorana_UFO.list
+
+compare_majorana.f90: comparisons_majorana.list
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_majorana.sh Maj \
+	"$(OMEGA_XXX)" "$(OMEGA_XXX_MAJORANA)" < $< > $@
+
+compare_majorana_legacy.f90: comparisons_majorana_legacy.list
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_majorana.sh MajL \
+	"$(OMEGA_XXX)" "$(OMEGA_XXX_MAJORANA_LEGACY)" < $< > $@
+
+compare_majorana_UFO.f90: comparisons_majorana_UFO.list
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_majorana_UFO.sh MajU \
+	"$(OMEGA_UFO)" "$(OMEGA_UFO_MAJORANA)" "$(OMEGA_UFO_PATH)" < $< > $@
+
+compare_majorana.f90 compare_majorana_legacy.f90 compare_majorana_UFO.f90: \
+	compare_driver_majorana.sh $(OMEGA_UFO) $(OMEGA_UFO_MAJORANA)
+
+compare_majorana_SOURCES = $(COMPARE_LIB_F90)
+nodist_compare_majorana_SOURCES = compare_majorana.f90
+compare_majorana_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+compare_majorana_legacy_SOURCES = $(COMPARE_LIB_F90)
+nodist_compare_majorana_legacy_SOURCES = compare_majorana_legacy.f90
+compare_majorana_legacy_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+compare_majorana_UFO_SOURCES = $(COMPARE_LIB_F90) parameters_SM_UFO.f90
+nodist_compare_majorana_UFO_SOURCES = compare_majorana_UFO.f90
+compare_majorana_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+compare_majorana.o compare_majorana_legacy.o compare_majorana_UFO.o: $(COMPARE_LIB_O)
+
+########################################################################
+
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
 if FC_PREC
 else
@@ -419,11 +466,6 @@ compare_amplitude_UFO.f90: comparisons_UFO.list compare_driver_UFO.sh $(OMEGA_UF
 		< $< > $@
 # -model:long_flavors
 
-parameters_SM_UFO.f90: $(OMEGA_UFO)
-	$(OMEGA_UFO) \
-	  -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ -model:exec \
-	  -target:parameter_module parameters_sm_ufo -params > $@
-
 nodist_compare_amplitude_UFO_SOURCES = \
 	compare_amplitude_UFO.f90 parameters_SM_UFO.f90
 compare_amplitude_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
@@ -433,6 +475,11 @@ compare_amplitude_UFO.o: parameters_SM_UFO.o parameters_SM_from_UFO.o
 compare_amplitude_UFO.o: $(COMPARE_LIB_O)
 
 endif
+
+parameters_SM_UFO.f90: $(OMEGA_UFO)
+	$(OMEGA_UFO) \
+	  -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ -model:exec \
+	  -target:parameter_module parameters_sm_ufo -params > $@
 
 ########################################################################
 
@@ -468,7 +515,7 @@ run_fermi_UFO: fermi_UFO
 fermi_UFO.f90: fermi_UFO.list fermi_driver_UFO.sh $(OMEGA_UFO)
 	@if $(AM_V_P); then :; else echo "  FERMI_UFO_DRIVER"; fi
 	$(AM_V_at)$(SHELL) $(srcdir)/fermi_driver_UFO.sh \
-	  $(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ \
+	  $(OMEGA_UFO) $(OMEGA_UFO_MAJORANA) $(OMEGA_UFO_PATH) \
 	  $(OMEGA_SPLIT) < $< > $@
 
 fermi_UFO_SOURCES = $(FERMI_UFO_LIB_F90)
@@ -724,7 +771,7 @@ if OCAML_AVAILABLE
 TESTS += keystones_omegalib keystones_UFO
 TESTS += keystones_omegalib_bispinors keystones_UFO_bispinors
 # XFAIL_TESTS += keystones_UFO
-XFAIL_TESTS += keystones_UFO_bispinors
+# XFAIL_TESTS += keystones_UFO_bispinors
 
 EXTRA_PROGRAMS += keystones_omegalib keystones_UFO
 EXTRA_PROGRAMS += keystones_omegalib_bispinors keystones_UFO_bispinors

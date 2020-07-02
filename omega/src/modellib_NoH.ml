@@ -68,6 +68,7 @@ module NoH (Flags : NoH_flags) =
         "use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
         "use running width"]
+    let caveats () = []
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR |
@@ -1489,6 +1490,7 @@ module AltH (Flags : NoH_flags) =
         "use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
         "use complex mass scheme"]
+    let caveats () = []
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
                      QGUG | QBUB | QW | DL | DR
