@@ -265,7 +265,8 @@ endif
 
 mostlyclean-html:
 	-rm -f *.haux *.htoc *.css index.html contents_motif.gif \
-	next_motif.gif previous_motif.gif manual*.html  manual*.png \
+	next_motif.gif previous_motif.gif contents_motif.svg \
+	next_motif.svg previous_motif.svg manual*.html  manual*.png \
 	manual.image.tex
 clean-html:
 maintainer-clean-html:
