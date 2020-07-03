@@ -164,6 +164,8 @@ endif NOWEB_AVAILABLE
 
 ########################################################################
 
+if OCAML_AVAILABLE
+
 TESTS += test_qed_eemm
 EXTRA_PROGRAMS += test_qed_eemm
 
@@ -178,6 +180,8 @@ amplitude_qed_eemm.f90: $(OMEGA_QED) Makefile
 test_qed_eemm.o: amplitude_qed_eemm.o
 test_qed_eemm.o: parameters_QED.o
 amplitude_qed_eemm.o: parameters_QED.o
+
+endif
 
 ########################################################################
 
@@ -403,6 +407,8 @@ compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 
 ########################################################################
 
+if OCAML_AVAILABLE
+
 TESTS += compare_majorana compare_majorana_legacy compare_majorana_UFO
 EXTRA_PROGRAMS += compare_majorana compare_majorana_legacy compare_majorana_UFO
 EXTRA_DIST += compare_driver_majorana.sh compare_driver_majorana_UFO.sh
@@ -441,7 +447,11 @@ compare_majorana_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 compare_majorana.o compare_majorana_legacy.o compare_majorana_UFO.o: $(COMPARE_LIB_O)
 
+endif
+
 ########################################################################
+
+if OCAML_AVAILABLE
 
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
 if FC_PREC
@@ -480,8 +490,11 @@ parameters_SM_UFO.f90: $(OMEGA_UFO)
 	$(OMEGA_UFO) \
 	  -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ -model:exec \
 	  -target:parameter_module parameters_sm_ufo -params > $@
+endif
 
 ########################################################################
+
+if OCAML_AVAILABLE
 
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
 if FC_PREC
@@ -525,8 +538,11 @@ fermi_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 fermi_UFO.o: $(FERMI_UFO_LIB_O)
 
 endif
+endif
 
 ########################################################################
+
+if OCAML_AVAILABLE
 
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
 if FC_PREC
@@ -567,6 +583,8 @@ nodist_ward_UFO_SOURCES = ward_UFO.f90 parameters_SM_UFO.f90
 ward_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 ward_UFO.o: $(WARD_UFO_LIB_O)
+
+endif
 
 endif
 

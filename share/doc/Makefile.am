@@ -270,7 +270,8 @@ mostlyclean-html:
 clean-html:
 maintainer-clean-html:
 	-rm -f manual*.html index.html contents_motif.gif \
-	next_motif.gif previous_motif.gif
+	next_motif.gif previous_motif.gif contents_motif.svg \
+	next_motif.svg previous_motif.svg
 .PHONY: mostlyclean-html clean-html maintainer-clean-html
 
 ## Remove backup files
