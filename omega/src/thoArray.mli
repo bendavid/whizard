@@ -61,7 +61,12 @@ val match_all : 'a -> 'a array -> int list
 val num_rows : 'a array array -> int
 val num_columns : 'a array array -> int
 
-                                      
+(* [exists p [|a1; ...; an|]] checks if at least one element of
+   the array satisfies the predicate [p]. That is, it returns
+   [(p a1) || (p a2) || ... || (p an)].
+   Has been [Array.exists] since 4.03.0. *)
+val exists : ('a -> bool) -> 'a array -> bool
+
 module Test : sig val suite : OUnit.test end
 
 (*i

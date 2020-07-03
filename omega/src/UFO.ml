@@ -2434,7 +2434,7 @@ i*)
                 match l'.Lorentz.spins with
                 | Lorentz.Unused -> acc
                 | Lorentz.Unique spins ->
-                   if Array.exists is_majorana spins then
+                   if ThoArray.exists is_majorana spins then
                      List.map
                        (name_spins_structure spins)
                        (Lorentz.all_charge_conjugates l')
