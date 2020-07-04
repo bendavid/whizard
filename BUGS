@@ -1,6 +1,6 @@
 General:
 
-* WHIZARD 2.8+ currently runs only with the NAGFOR 6.2 (or newer) and
+* WHIZARD 3.0+ currently runs only with the NAGFOR 6.2 (or newer) and
   gfortran 5.1.0 (or newer) Fortran compilers as well as Intel ifort
   19.0.2 (or newer). gfortran 6.5 has a severe regression, and cannot
   be used.
@@ -41,7 +41,7 @@ Compilers and OS specialties:
   anything for the installed WHIZARD, but the testsuite (make check)
   will not work before make install has been executed. make distcheck 
   will not work on El Capitan. There is also the option to disable
-  the System Integrity Protocol (SIP) of El Capitan by booting in
+  the System Integrity Protocol (SIP) of modern OSX by booting in
   Recovery Mode, open a terminal and type 'csrutil disable'. However, we
   do not recommend to do so.
 
@@ -51,6 +51,9 @@ Manual:
   that. Regular updates independent from the subreleases can be found
   on the Hepforge webpage:
   https://whizard.hepforge.org/manual.pdf
+
+
+
 
 Old bugs in old versions:
 
