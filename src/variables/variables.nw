@@ -5945,14 +5945,14 @@ procedure with type [[V_NONE]].
     call var_list%append_real (var_str ("fks_dij_exp1"), &
          1._default, intrinsic = .true., &
          description=var_str ('Fine-tuning parameters of the FKS ' // &
-         'partition functions. The exact meaning depends on the mapping ' // &
-         'implementation. (cf. also \ttt{fks\_dij\_exp2}, ' // &
+         'final state partition functions. The exact meaning depends ' // &
+         'on the mapping implementation. (cf. also \ttt{fks\_dij\_exp2}, ' // &
          '\ttt{\$fks\_mapping\_type}, \ttt{fks\_xi\_min}, \ttt{fks\_y\_max})'))
     call var_list%append_real (var_str ("fks_dij_exp2"), &
          1._default, intrinsic = .true., &
          description=var_str ('Fine-tuning parameters of the FKS ' // &
-         'partition functions. The exact meaning depends on the mapping ' // &
-         'implementation. (cf. also \ttt{fks\_dij\_exp1}, ' // &
+         'initial state partition functions. The exact meaning depends ' // &
+         'on the mapping implementation. (cf. also \ttt{fks\_dij\_exp1}, ' // &
          '\ttt{\$fks\_mapping\_type}, \ttt{fks\_xi\_min}, \ttt{fks\_y\_max})'))
     call var_list%append_real (var_str ("fks_xi_min"), &
          0.0000001_default, intrinsic = .true., &
