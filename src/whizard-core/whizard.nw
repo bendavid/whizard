@@ -1195,7 +1195,7 @@ stack and push it on the global stack.  Also handle the corresponding result
 variables: append if the process did not exist yet in the global stack,
 otherwise update.
 
-TODO: result variables don't work that way yet, require initialization in the
+TODO: result variables do not work that way yet, require initialization in the
 global variable list.
 <<RT data: rt data: TBP>>=
   procedure :: transfer_process_stack => rt_data_transfer_process_stack
@@ -10443,6 +10443,11 @@ sample or sub-sample.
 @ %def counter_show_excess
 @ If events have been dropped during simulation of weighted events,
 issue a message here.
+If a fraction [[n_dropped / n_total]] of the events fail the cuts, we keep
+generating new ones until we have [[n_total]] events with [[weight > 0]].
+Thus, the total sum of weights will be a fraction of [[n_dropped / n_total]]
+too large. However, we do not know how many events will pass or fail the cuts
+prior to generating them so we leave it to the user to correct for this factor.
 <<Simulations: counter: TBP>>=
   procedure :: show_dropped => counter_show_dropped
 <<Simulations: procedures>>=
@@ -10761,7 +10766,7 @@ the global stack, if it is separate from the local one.
 For each process that we consider for event generation, we need a
 separate entry.  The entry separately records the process ID and run ID.  The
 [[weight_mci]] array is used for selecting a component set (which
-shares a MCI record inside the process container) when generating an
+shares an MCI record inside the process container) when generating an
 event for the current process.
 
 The simulation entry is an extension of the [[event_t]] event record.
@@ -10769,16 +10774,17 @@ This core object contains configuration data, pointers to the process
 and process instance, the expressions, flags and values that are
 evaluated at runtime, and the resulting particle set.
 
-The entry explicitly allocate the [[process_instance]], which becomes
+The entry explicitly allocates the [[process_instance]], which becomes
 the process-specific workspace for the event record.
 
 If entries with differing environments are present simultaneously, we
 may need to switch QCD parameters and/or the model event by event.  In
-this case, the [[qcd]] and/or [[model]] components are present.\\
-For the puropose of NLO events, [[entry_t]] contains a pointer list
+this case, the [[qcd]] and/or [[model]] components are present.
+
+For the purpose of NLO events, [[entry_t]] contains a pointer list
 to other simulation-entries. This is due to the fact that we have to
 associate an event for each component of the fixed order simulation,
-i.e. one $N$-particle event and $N_\alpha$ $N+1$-particle events.
+i.e. one $N$-particle event and $N_\text{phs}$ $N+1$-particle events.
 However, all entries share the same event transforms.
 <<Simulations: types>>=
   type, extends (event_t) :: entry_t
@@ -10924,7 +10930,7 @@ object and at the environment.
 If [[n_alt]] is set, we prepare for additional alternate sqme and weight
 entries.
 
-The [[compile]] flag is only false if we don't need the Whizard
+The [[compile]] flag is only false if we do not need the Whizard
 process at all, just its definition.  In that case, we skip process
 initialization.
 
@@ -11422,6 +11428,7 @@ unstable particle in the game.
     logical :: enable_epa_handler
     logical :: enable_fixed_order
     logical :: enable_shower
+    character(len=7) :: sample_normalization
     var_list => local%get_var_list_ptr ()
     enable_isr_handler = local%get_lval (var_str ("?isr_handler"))
     enable_epa_handler = local%get_lval (var_str ("?epa_handler"))
@@ -11452,6 +11459,10 @@ unstable particle in the game.
        if (local%get_lval (var_str ("?unweighted"))) &
           call msg_fatal ("NLO Fixed Order events have to be generated with &
                           &?unweighted = false")
+       sample_normalization = local%get_sval (var_str ("$sample_normalization"))
+       if ( sample_normalization /= "sigma" .and. sample_normalization /= "auto" ) &
+          call msg_fatal ('For NLO Fixed Order events only $sample_normalization = &
+                          &"sigma" is supported.')
        call dispatch_evt_nlo (evt, local%get_lval (var_str ("?keep_failed_events")))
        call entry%import_transform (evt)
     end if
@@ -12221,7 +12232,7 @@ switch rapidly between processes.
 
 If [[integrate]] is set, we make sure that all affected processes are
 integrated before simulation.  This is necessary if we want to actually
-generate events.  If [[integrate]] is unset, we don't need the integral
+generate events.  If [[integrate]] is unset, we do not need the integral
 because we just rescan existing events.  In that case, we just need compiled
 matrix elements.
 
@@ -13364,8 +13375,8 @@ Return the MD5 sum that summarizes configuration and integration
 @ Return data that may be useful for writing event files.
 
 Usually we can refer to a previously integrated process, for which we
-can fetch a process pointer.  Occasionally, we don't have this because
-we're just rescanning an externally generated file without
+can fetch a process pointer.  Occasionally, we do not have this because
+we are just rescanning an externally generated file without
 calculation.  For that situation, we generate our local beam data object
 using the current enviroment, or, in simple cases, just fetch the
 necessary data from the process definition and environment.
@@ -16693,6 +16704,7 @@ module commands
   use format_defs, only: FMT_14, FMT_19
   use diagnostics
 
+  use constants, only: one
   use physics_defs
   use sorting
   use sf_lhapdf, only: lhapdf_global_reset
@@ -17353,7 +17365,7 @@ the comparison. The user should make sure that there is no overlap
 between different particles or arrays which would make the expansion
 ambiguous.
 
-There are two possibilities that a process contains more than
+There are two possibilities that a process contains more than one
 component: by an explicit component statement by the user for
 inclusive processes, or by having one process at NLO level. The first
 option is determined in the routine [[scan_components]], and
@@ -17755,6 +17767,7 @@ on into an object (the pcm?).
   subroutine check_nlo_options (local)
     type(rt_data_t), intent(in) :: local
     type(var_list_t), pointer :: var_list => null ()
+    real :: mult_real, mult_virt, mult_dglap
     logical :: nlo, combined, powheg
     logical :: case_lo_but_any_other
     logical :: case_nlo_powheg_but_not_combined
@@ -17778,12 +17791,29 @@ on into an object (the pcm?).
     fixed_order_nlo_events = &
          var_list%get_lval (var_str ('?fixed_order_nlo_events'))
     if (fixed_order_nlo_events .and. .not. combined .and. &
-         all (local%selected_nlo_parts)) &
-       call msg_fatal ("Option mismatch: Fixed order NLO events of the full ", &
-            [var_str ("process are requested, but ?combined_nlo_integration"), &
-            var_str ("is false. You can either switch to the combined NLO"), &
-            var_str ("integration mode or choose one individual NLO component"), &
-            var_str ("to generate events with.")])
+         count (local%selected_nlo_parts) > 1) &
+       call msg_fatal ("Option mismatch: Fixed order NLO events of multiple ", &
+            [var_str ("components are requested, but ?combined_nlo_integration "), &
+            var_str ("is false. You can either switch to the combined NLO "), &
+            var_str ("integration mode for the full process or choose one "), &
+            var_str ("individual NLO component to generate events with.")])
+            associate (nlo_parts => local%selected_nlo_parts)
+               ! TODO (PS-2020-03-26): This technically leaves the possibility to skip this
+               ! message by deactivating the dglap component for a proton collider process.
+               ! To circumvent this, the selected_nlo_parts should be refactored.
+               if (combined .and. .not. (nlo_parts(BORN) &
+                    .and. nlo_parts(NLO_VIRTUAL) .and. nlo_parts(NLO_REAL))) then
+                 call msg_fatal ("A combined integration of anything else than", &
+                      [var_str ("all NLO components together is not supported.")])
+               end if
+            end associate
+            mult_real = local%var_list%get_rval (var_str ("mult_call_real"))
+            mult_virt = local%var_list%get_rval (var_str ("mult_call_virt"))
+            mult_dglap = local%var_list%get_rval (var_str ("mult_call_dglap"))
+            if (combined .and. (mult_real /= one .or. mult_virt /= one .or. mult_dglap /= one)) then
+               call msg_warning ("mult_call_real, mult_call_virt and mult_call_dglap", &
+               [var_str (" will be ignored because of ?combined_nlo_integration = true. ")])
+            end if
     vamp_equivalences_enabled = var_list%get_lval &
          (var_str ('?use_vamp_equivalences'))
     if (nlo .and. vamp_equivalences_enabled) &
@@ -17959,7 +17989,8 @@ particle-specifier expression which we can process further.
   end subroutine cmd_nlo_compile
 
 @ %def cmd_nlo_compile
-@
+@ % TODO (PS-2020-03-26): This routine still needs to be adopted
+% to cope with more than 5 components.
 <<Commands: cmd nlo: TBP>>=
   procedure :: execute => cmd_nlo_execute
 <<Commands: procedures>>=
@@ -22295,6 +22326,9 @@ terminate then in [[command_list_execute]].
     integer :: i, checkpoint, callback
    <<Commands: cmd simulate execute: variables>>
     var_list => cmd%local%var_list
+    if (cmd%local%nlo_fixed_order) then
+       call check_nlo_options (cmd%local)
+    end if
     if (allocated (cmd%local%pn%alt_setup)) then
        allocate (alt_env (size (cmd%local%pn%alt_setup)))
        do i = 1, size (alt_env)

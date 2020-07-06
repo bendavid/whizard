@@ -16780,7 +16780,10 @@ be assured that Born flavors are used for this.
 matrix elements providers, as some scalar products cannot be evaluated
 properly. Here, a nonsensical result can spoil the whole integration.
 We therefore check the scalar products appearing to be below a certain
-tolerance.
+tolerance.\\
+Naturally, this happens very rarely but for some processes,
+setting [[?test_coll_limit = true]] and/or [[?test_soft_limit = true]]
+leads to all phase space points beeing discarded by this routine.
 <<phs fks: public>>=
   public :: check_scalar_products
 <<phs fks: procedures>>=

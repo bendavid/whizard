@@ -30,7 +30,6 @@ scale = let subevt @clustered_jets = cluster [jet] in
 ?combined_nlo_integration = false
 ?use_vamp_equivalences = false
 
-?fixed_order_nlo_events = true
 !?nlo_use_real_partition = true
 !real_partition_scale = 5 GeV
 

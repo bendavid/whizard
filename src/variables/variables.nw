@@ -4818,7 +4818,7 @@ procedure with type [[V_NONE]].
          'external \fastjet\ package.  (cf. also \ttt{kt\_algorithm}, ' // &
          '\ttt{cambridge\_for\_passive\_algorithm}, \ttt{plugin\_algorithm}, ' // &
          '\ttt{genkt\_for\_passive\_algorithm}, \ttt{ee\_[gen]kt\_algorithm}, ' // &
-         '\ttt{jet\_r})'))
+         '\ttt{jet\_r}), \ttt{jet\_p}'))
     call var_list%append_int (&
          var_str ("cambridge_for_passive_algorithm"), &
          cambridge_for_passive_algorithm, &
@@ -4861,7 +4861,7 @@ procedure with type [[V_NONE]].
          'external \fastjet\ package.  (cf. also \ttt{kt\_algorithm}, ' // &
          '\ttt{cambridge\_[for\_passive\_]algorithm}, \ttt{plugin\_algorithm}, ' // &
          '\ttt{genkt\_[for\_passive\_]algorithm}, \ttt{ee\_kt\_algorithm}, ' // &
-         '\ttt{jet\_r})'))
+         '\ttt{jet\_r}), \ttt{jet\_p})'))
     call var_list%append_int (&
          var_str ("plugin_algorithm"), &
          plugin_algorithm, &
@@ -4897,7 +4897,7 @@ procedure with type [[V_NONE]].
          var_str ("jet_r"), 0._default, &
          intrinsic = .true., &
          description=var_str ('Value for the distance measure $R$ used in ' // &
-         'the (non-Cambridge) algorithms that are available via the interface ' // &
+         'some algorithms that are available via the interface ' // &
          'to the \fastjet\ package.  (cf. also \ttt{cluster}, \ttt{combine}, ' // &
          '\ttt{jet\_algorithm}, \ttt{kt\_algorithm}, ' // &
          '\ttt{cambridge\_[for\_passive\_]algorithm}, \ttt{antikt\_algorithm}, ' // &
@@ -5793,9 +5793,9 @@ procedure with type [[V_NONE]].
          var_str (""), intrinsic = .true., &
          description=var_str ('This string variable specifies the method ' // &
          'for the matrix elements to be used in the evaluation of the ' // &
-         'virtual part of the NLO computation. The default is the empty string,' // &
+         'virtual part of the NLO computation. The default is the empty string, ' // &
          'i.e. the same as \ttt{\$method}. Working options are: ' // &
-         '\ttt{"threshold"}, \ttt{"openloops"}, \ttt{"recola"}, \ttt{gosam}. ' // &
+         '\ttt{"threshold"}, \ttt{"openloops"}, \ttt{"recola"}, \ttt{"gosam"}. ' // &
          '(cf. also \ttt{\$real\_tree\_me\_method}, \ttt{\$correlation\_me\_method} ' // &
          'and \ttt{\$born\_me\_method}.)'))
     call var_list%append_string (var_str ("$correlation_me_method"), &
@@ -6031,7 +6031,7 @@ procedure with type [[V_NONE]].
     call var_list%append_log (var_str ("?fixed_order_nlo_events"), &
          .false., intrinsic = .true., &
          description=var_str ('Induces the generation of fixed-order ' // &
-         'NLO events.  Deprecated name: \ttt{?nlo\_fixed\_order}.'))
+         'NLO events.'))
     call var_list%append_log (var_str ("?check_event_weights_against_xsection"), &
          .false., intrinsic = .true., &
          description=var_str ('Activates an internal recording of event ' // &
@@ -6138,11 +6138,11 @@ procedure with type [[V_NONE]].
          description=var_str ('Flag that decides whether a scale expression ' // &
          'defined for the Born component of an NLO process shall be applied ' // &
          'to all other components as well or not. ' // &
-         '(cf. also \ttt{?nlo\_cut\_all\_sqmes})'))
-    call var_list%append_log (var_str ("?nlo_cut_all_sqmes"), &
+         '(cf. also \ttt{?nlo\_cut\_all\_real\_sqmes})'))
+    call var_list%append_log (var_str ("?nlo_cut_all_real_sqmes"), &
          .false., intrinsic = .true., &
          description=var_str ('Flag that decides whether in the case that ' // &
-         'some NLO component does not pass a cut, all other components ' // &
+         'the real component does not pass a cut, its subtraction term ' // &
          'shall be discarded for that phase space point as well or not. ' // &
          '(cf. also \ttt{?nlo\_use\_born\_scale})'))
     call var_list%append_log (var_str ("?nlo_use_real_partition"), &

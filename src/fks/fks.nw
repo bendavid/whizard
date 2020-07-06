@@ -151,7 +151,7 @@ up all possible singular regions for this problem.
   1 & [-11,11,2,-2,21,21] & 3 & {(3,5), (3,6), (4,5), (4,6), (5,6)} \\ \hline
   2 & [-11,11,2,-2,21,21] & 4 & {(3,5), (3,6), (4,5), (4,6), (5,6)} \\ \hline
   3 & [-11,11,2,-2,21,21] & 5 & {(3,5), (3,6), (4,5), (4,6), (5,6)} \\ \hline
-  4 & [-11,11,2,-2,2,-2]  & 5 & {(5,6)} \\
+  4 & [-11,11,2,-2,2,-2]  & 5 & {(3,4), (3,6), (4,5), (5,6)} \\
   \hline
 \end{tabular}
 \caption{List of singular regions. The particles are represented by
@@ -161,8 +161,9 @@ up all possible singular regions for this problem.
   from the first gluon. Each emitter yields the same list of
   fundamental tuples, five in total. The last singular region
   corresponds to the process where the gluon splits up into two
-  quarks. Here, there is only one fundamental tuple, corresponding to
-  a singular configuration of the momenta of the additional quarks.}
+  quarks. As the matrix element for this process has no information
+  on which quarks originate from a gluon splitting, there are ftuples
+  for all the quark pairs and not just those involving the emitter.}
 \label{table:singular regions}
 \end{table}
 \\
@@ -3684,7 +3685,6 @@ resonances are possible for all ftuples
 @ %def region_data_write_latex
 @ Creates a table with information about all singular regions and
 writes it to a file.
-@ Returns the index of the real flavor structure an ftuple belongs to.
 <<fks regions: reg data: TBP>>=
   procedure :: write => region_data_write
 <<fks regions: procedures>>=
@@ -3705,8 +3705,8 @@ writes it to a file.
      end do
      flst_title = '(A' // flst_title_format(reg_data%n_legs_real) // ')'
      ftuple_title = '(A' // ftuple_title_format() // ')'
-     write (u,'(A,1X,I3)') 'Total number of regions: ', size(reg_data%regions)
-     write (u, '(A3)', advance = 'no') 'alr'
+     write (u,'(A,1X,I4)') 'Total number of regions: ', size(reg_data%regions)
+     write (u, '(A4)', advance = 'no') ' alr'
      call write_vline (u)
      write (u, char (flst_title), advance = 'no') 'flst_real'
      call write_vline (u)
@@ -3732,7 +3732,7 @@ writes it to a file.
      call write_vline (u)
      write (u, '(A7)') 'i_born'
      do j = 1, reg_data%n_regions
-        write (u, '(I3)', advance = 'no') j
+        write (u, '(I4)', advance = 'no') j
         call reg_data%regions(j)%write (u, maxnregions)
      end do
      call write_separator (u)
@@ -4389,13 +4389,13 @@ respectively.
   end function fks_mapping_default_svalue
 
 @ %def fks_mapping_default_svalue
-@ In the soft limit, our treatment of the divergences requires a
+@ In the soft limit, our treatment of the divergencies requires a
 modification of the mapping functions. Recall that there, the ratios of
 the $d$-functions must approach either $1$ or $0$. This means
 \begin{equation*}
-  \frac{d_{lm}}{d_{0m}} = \frac{(2k_l \cdot k_m) \left[E_lE_m /(E_l + E_m)^2\right]}{E_m^2 (1-y^2)} =
+  \frac{d_{lm}}{d_{0m}} = \frac{(2k_l \cdot k_m) \left[E_lE_m /(E_l + E_m)^2\right]}{E_m^2 (1-y^2)}
     \overset {k_m = E_m \hat{k}} {=} \frac{E_l E_m^2}{(E_l + E_m)^2} \frac{2k_l \cdot \hat{k}}{E_m^2 (1-y^2)}
-    \overset {E_m \rightarrow 0}{=} \frac{2}{k_l \cdot \hat{k}}{(1-y^2)E_l},
+    \overset {E_m \to 0}{=} \frac{2k_l \cdot \hat{k}}{E_l}{(1-y^2)},
 \end{equation*}
 where we have written the gluon momentum in terms of the soft momentum
 $\hat{k}$. In the same limit
@@ -6741,7 +6741,7 @@ of $\xi^{-1}$ is supplied in the [[evaluate_region_fsr]]-routine. Thus,
 we are left with a factor of $\xi^2$. A look on the expression for the
 soft limit of $R_\alpha$ below reveals that we are factoring out the gluon
 energy $E_i$ in the denominator. Therefore, we have a factor
-$\xi^2 / E_i^2 = q^2 / 4$.\\
+$\xi^2 / E_i^2 = 4 / q^2$.\\
 Note that the same routine is used also for the computation of the soft
 mismatch. There, the gluon energy is not factored out from the soft vector,
 so that we are left with the $\xi^2$-factor, which will eventually be
@@ -7805,6 +7805,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
             rsub%reg_data%regions(alr)%has_collinear_divergence()
 
        is_fsr = emitter > rsub%isr_kinematics%n_in
+
        if (is_fsr) then
           if (.not. present(sqme_coll) .or. .not. present(sqme_cs)) &
              call msg_error ("real_subtraction_register_debug_sqme: Wrong arguments for FSR")
@@ -9133,8 +9134,8 @@ end module nlo_data
      type(fks_template_t) :: fks_template
      type(string_t) :: virtual_selection
      logical :: virtual_resonance_aware_collinear = .true.
-     logical :: use_born_scale = .true.
-     logical :: cut_all_sqmes = .true.
+     logical :: use_born_scale = .false.
+     logical :: cut_all_real_sqmes = .false.
      type(string_t) :: nlo_correction_type
   contains
   <<nlo data: nlo settings: TBP>>
@@ -9170,8 +9171,8 @@ procedure :: init => nlo_settings_init
          var_list%get_rval (var_str ('powheg_damping_scale'))
     nlo_settings%use_born_scale = &
          var_list%get_lval (var_str ("?nlo_use_born_scale"))
-    nlo_settings%cut_all_sqmes = &
-         var_list%get_lval (var_str ("?nlo_cut_all_sqmes"))
+    nlo_settings%cut_all_real_sqmes = &
+         var_list%get_lval (var_str ("?nlo_cut_all_real_sqmes"))
     nlo_settings%nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
   contains
     subroutine setup_alr_selection ()
@@ -9490,71 +9491,71 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
 @ %def dglap_remnant_evaluate
 @ We introduce $\hat{P}(z, \epsilon) = (1 - z) P(z, \epsilon)$ and have
 \begin{align}
-  \hat{P}^{gg}(z) & = 2C_A \left[z + \frac{(1-z)^2}{z} + z(1-z)^2\right], \\
-  \hat{P}^{qg}(z) & = C_F (1-z) \frac{1 + (1-z)^2}{z}, \\
-  \hat{P}^{gq}(z) & = T_F (1 - z - 2z(1-z)^2), \\
-  \hat{P}^{qq}(z) & = C_F (1 + z^2).
+  \hat{P}_{g\to gg}(z) & = 2C_A \left[z + \frac{(1-z)^2}{z} + z(1-z)^2\right], \\
+  \hat{P}_{g\to qq}(z) & = C_F (1-z) \frac{1 + (1-z)^2}{z}, \\
+  \hat{P}_{q\to gq}(z) & = T_F (1 - z - 2z(1-z)^2), \\
+  \hat{P}_{q\to qg}(z) & = C_F (1 + z^2).
 \end{align}
 <<dglap remnant: dglap remnant evaluate: procedures>>=
-  function p_hat_gg (z)
-    real(default) :: p_hat_gg
+  function p_hat_gtogg (z)
+    real(default) :: p_hat_gtogg
   <<p variables>>
-    p_hat_gg = two * CA * (z + onemz**2 / z + z * onemz**2)
-  end function p_hat_gg
+    p_hat_gtogg = two * CA * (z + onemz**2 / z + z * onemz**2)
+  end function p_hat_gtogg
 
-  function p_hat_qg (z)
-    real(default) :: p_hat_qg
+  function p_hat_gtoqq (z)
+    real(default) :: p_hat_gtoqq
   <<p variables>>
-    p_hat_qg = CF * onemz / z * (one + onemz**2)
-  end function p_hat_qg
+    p_hat_gtoqq = CF * onemz / z * (one + onemz**2)
+  end function p_hat_gtoqq
 
-  function p_hat_gq (z)
-    real(default) :: p_hat_gq
+  function p_hat_qtogq (z)
+    real(default) :: p_hat_qtogq
   <<p variables>>
-    p_hat_gq = TR * (onemz - two * z * onemz**2)
-  end function p_hat_gq
+    p_hat_qtogq = TR * (onemz - two * z * onemz**2)
+  end function p_hat_qtogq
 
-  function p_hat_qq (z)
-    real(default) :: p_hat_qq
+  function p_hat_qtoqg (z)
+    real(default) :: p_hat_qtoqg
     real(default), intent(in) :: z
-    p_hat_qq = CF * (one + z**2)
-  end function p_hat_qq
+    p_hat_qtoqg = CF * (one + z**2)
+  end function p_hat_qtoqg
 
-@ %def p_hat_qq, p_hat_gq, p_hat_qg, p_hat_gg
+@ %def p_hat_qtoqg, p_hat_qtogq, p_hat_gtoqq, p_hat_gtogg
 @
 \begin{align}
-  \frac{\partial P^{gg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = 0, \\
-  \frac{\partial P^{qg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F z, \\
-  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -
+  \frac{\partial P_{g\to gg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = 0, \\
+  \frac{\partial P_{g\to qq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F z, \\
+  \frac{\partial P_{q\to gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -
 2 T_F z (1-z), \\
-  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F (1-z).\\
+  \frac{\partial P_{q\to qg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F (1-z).\\
 \end{align}
 <<dglap remnant: dglap remnant evaluate: procedures>>=
-  function p_derived_gg (z)
-    real(default) :: p_derived_gg
+  function p_derived_gtogg (z)
+    real(default) :: p_derived_gtogg
     real(default), intent(in) :: z
-    p_derived_gg = zero
-  end function p_derived_gg
+    p_derived_gtogg = zero
+  end function p_derived_gtogg
 
-  function p_derived_qg (z)
-    real(default) :: p_derived_qg
+  function p_derived_gtoqq (z)
+    real(default) :: p_derived_gtoqq
     real(default), intent(in) :: z
-    p_derived_qg = -CF * z
-  end function p_derived_qg
+    p_derived_gtoqq = -CF * z
+  end function p_derived_gtoqq
 
-  function p_derived_gq (z)
-    real(default) :: p_derived_gq
+  function p_derived_qtogq (z)
+    real(default) :: p_derived_qtogq
   <<p variables>>
-    p_derived_gq = -two * TR * z * onemz
-  end function p_derived_gq
+    p_derived_qtogq = -two * TR * z * onemz
+  end function p_derived_qtogq
 
-  function p_derived_qq (z)
-    real(default) :: p_derived_qq
+  function p_derived_qtoqg (z)
+    real(default) :: p_derived_qtoqg
   <<p variables>>
-    p_derived_qq = -CF * onemz
-  end function p_derived_qq
+    p_derived_qtoqg = -CF * onemz
+  end function p_derived_qtoqg
 
-@ %def p_derived_gg, p_derived_qg, p_derived_gq, p_derived_qq
+@ %def p_derived_gtogg, p_derived_gtoqq, p_derived_qtogq, p_derived_qtoqg
 @
 <<dglap remnant: dglap remnant evaluate: procedures>>=
 subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
@@ -9582,21 +9583,21 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
   end associate
   if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
      sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
-     sqme_alr = sqme_alr + p_hat_gg(z) * factor / z * sqme_scaled * jac &
-          - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
-          + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+     sqme_alr = sqme_alr + p_hat_gtogg(z) * factor / z * sqme_scaled * jac &
+          - p_hat_gtogg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
+          + p_hat_gtogg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
   else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
      sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
-     sqme_alr = sqme_alr + p_hat_qq(z) * factor / z * sqme_scaled * jac &
-          - p_derived_qq(z) / z * sqme_scaled * jac &
-          - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
-          + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+     sqme_alr = sqme_alr + p_hat_qtoqg(z) * factor / z * sqme_scaled * jac &
+          - p_derived_qtoqg(z) / z * sqme_scaled * jac &
+          - p_hat_qtoqg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
+          + p_hat_qtoqg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
   else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
-     sqme_alr = sqme_alr + (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
+     sqme_alr = sqme_alr + (p_hat_gtoqq(z) * factor - p_derived_gtoqq(z)) / z * jac * &
           dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
   else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
      sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
-     sqme_alr = sqme_alr + (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
+     sqme_alr = sqme_alr + (p_hat_qtogq(z) * factor - p_derived_qtogq(z)) / z * sqme_scaled * jac
   else
      sqme_alr = sqme_alr + zero
   end if

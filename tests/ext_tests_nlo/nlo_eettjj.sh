@@ -13,7 +13,7 @@ if test -f ref-output/$name.ref; then
     rm $name.log.tmp
     diff ref-output/$name.ref $name.log
     diffrc=$?
-    grep --quiet "\[OpenLoops\] Requested library not installed." $name.run.log
+    grep --quiet "The desired process has not been found" $name.run.log
     greprc=$?
     if test $diffrc -gt 0 -a $greprc -eq 0; then
       echo "|=============================================================================|"

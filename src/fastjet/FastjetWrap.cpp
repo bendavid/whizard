@@ -98,8 +98,11 @@ extern "C" {
       EECambridgePlugin *eec = new EECambridgePlugin (jet_ycut);
       jet_def = new JetDefinition (eec);
     }
-    else if (jet_alg == ee_genkt_algorithm) {
+    else if ((jet_alg == genkt_algorithm) || (jet_alg == ee_genkt_algorithm)) {
       jet_def = new JetDefinition (jet_alg, R, p);
+    }
+    else if (jet_alg == ee_kt_algorithm) {
+      jet_def = new JetDefinition (jet_alg);
     }
     else{
       jet_def = new JetDefinition (jet_alg, R);

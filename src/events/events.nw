@@ -449,7 +449,7 @@ alternate values.
     event%excess_prc = excess
     event%excess_prc_known = .true.
   end subroutine generic_event_set_excess_prc
-  
+
   subroutine generic_event_set_n_dropped (event, n_dropped)
     class(generic_event_t), intent(inout) :: event
     integer, intent(in) :: n_dropped
@@ -571,7 +571,7 @@ therefore this is a deferred method.
   procedure (generic_event_set_index), deferred :: set_index
   procedure (generic_event_handler), deferred :: reset_index
   procedure (generic_event_increment_index), deferred :: increment_index
-@ 
+@
 <<Event base: interfaces>>=
   abstract interface
      subroutine generic_event_set_index (event, index)
@@ -2124,7 +2124,7 @@ Output.
   end subroutine eio_direct_init_out
 
 @ %def eio_direct_init_out
-@ 
+@
 <<EIO direct: eio direct: TBP>>=
   procedure :: init_in => eio_direct_init_in
 <<EIO direct: procedures>>=
@@ -2335,12 +2335,12 @@ Build the contained particle set from scratch.
     eio%i_evt = index
     eio%i_evt_set = .true.
   end subroutine eio_direct_set_event_index
-  
+
   subroutine eio_direct_reset_event_index (eio)
     class(eio_direct_t), intent(inout) :: eio
     eio%i_evt_set = .false.
   end subroutine eio_direct_reset_event_index
-  
+
 @ %def eio_direct_set_event_index
 @ %def eio_direct_reset_event_index
 @ Set the selection indices.  This is supposed to select the [[i_prc]],
@@ -4139,7 +4139,7 @@ We test the implementation of all I/O methods.
     end select
 
     i_prc = 42
-    
+
     call eio%init_out (var_str (""))
 
     call event%generate (1, [0._default, 0._default])
@@ -4462,8 +4462,8 @@ that are not covered by the HEPRUP definition.
          action = "write", status = "replace")
     select type (eio)
     type is (eio_ascii_lha_t)
-       call heprup_init &
-            (data%pdg_beam, &
+       call heprup_init( &
+            data%pdg_beam, &
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
@@ -4476,8 +4476,8 @@ that are not covered by the HEPRUP definition.
        end do
        call heprup_write_ascii (eio%unit)
     type is (eio_ascii_lha_verb_t)
-       call heprup_init &
-            (data%pdg_beam, &
+       call heprup_init( &
+            data%pdg_beam, &
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
@@ -8442,7 +8442,7 @@ an event container.
        integer(c_int) :: size
        type(c_ptr), value :: v_obj
      end function gen_vertex_particles_out_size
-  end interface  
+  end interface
   interface
      function gen_particle_get_n_parents (p_obj) result (size) bind(C)
        import
@@ -8476,7 +8476,7 @@ an event container.
     type(hepmc_vertex_t), intent(in) :: v
     n_out = gen_vertex_particles_out_size (v%obj)
   end function hepmc_vertex_get_n_out
-  
+
   function hepmc_particle_get_parents (p) result (n_p)
     integer :: n_p
     type(hepmc_particle_t), intent(in) :: p
@@ -9520,7 +9520,7 @@ the particle which is owned by the vertex.)
     n_tot = gen_event_get_n_particles (evt%obj)
     if (n > n_tot .or. n < 1) then
        prt%obj = c_null_ptr
-       call msg_error ("HepMC interface called for wrong particle ID.")       
+       call msg_error ("HepMC interface called for wrong particle ID.")
     else
        prt%obj = gen_event_get_nth_particle (evt%obj, nth)
     end if
@@ -9625,7 +9625,13 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj, evt_obj
      end subroutine io_gen_event_write_event
   end interface
-@ %def io_gen_event_write_event
+  interface
+     subroutine io_gen_event_write_event_hepmc2 (io_obj, evt_obj) bind(C)
+       import
+       type(c_ptr), value :: io_obj, evt_obj
+     end subroutine io_gen_event_write_event_hepmc2
+  end interface
+@ %def io_gen_event_write_event io_gen_event_write_event_hepmc2
 <<HepMC interface: public>>=
   public :: hepmc_iostream_write_event
 <<HepMC interface: procedures>>=
@@ -11870,7 +11876,7 @@ then define an incoming particle as
     integer, dimension(:), allocatable :: barcode, n_parents
     integer :: n_tot, n_beam, i, bc
     n_tot = hepmc_event_get_n_particles(evt)
-    allocate (barcode (n_tot))    
+    allocate (barcode (n_tot))
     if (HEPMC2_AVAILABLE) then
        call hepmc_event_particle_iterator_init (it, evt)
        do i = 1, n_tot
@@ -16185,7 +16191,7 @@ We test the implementation of all I/O methods.
        write (u_file, "(A)")  "P 2 0 25 0.0000000000000000e+00 &
             &0.0000000000000000e+00 -4.8412291827592713e+02 &
             &5.0000000000000000e+02 1.2499999999999989e+02 3"
-       write (u_file, "(A)")  "V -1 0 [1,2]"  
+       write (u_file, "(A)")  "V -1 0 [1,2]"
        write (u_file, "(A)")  "P 3 -1 25 -1.4960220911365536e+02 &
             &-4.6042825611414656e+02 0.0000000000000000e+00 &
             &5.0000000000000000e+02 1.2500000000000000e+02 1"
@@ -16240,7 +16246,7 @@ We test the implementation of all I/O methods.
        write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
             " with ID = ", eio%proc_num_id(i_prc)
     end select
-    
+
     call eio%input_event (event, iostat)
 
     call event%write (u)

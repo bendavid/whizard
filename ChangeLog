@@ -4,6 +4,17 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_alpha+
 
+2020-07-05
+	Bug fix: correctly steer e+e- FastJet clustering algorithms
+	Major revision of NLO differential distributions and events:
+	- Correctly assign quantum numbers to NLO fixed-order events
+	- Correctly assign weights to NLO fixed-order events for
+	     combined simulation
+	- Cut all NLO fixed-order subevents in event groups individually
+	- Only allow "sigma" normalization for NLO fixed-order events
+	- Use correct PDF setup for NLO counter events
+	- Several technical fixes and updates of the NLO testsuite
+
 ##################################################################
 
 2020-07-03
