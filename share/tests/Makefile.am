@@ -689,6 +689,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/nlo_1.ref \
     functional_tests/ref-output/nlo_2.ref \
     functional_tests/ref-output/nlo_6.ref \
+    functional_tests/ref-output/nlo_9.ref \
     functional_tests/ref-output/nlo_decay_1.ref \
     functional_tests/ref-output/observables_1.ref \
     functional_tests/ref-output/openloops_1.ref \
@@ -1195,6 +1196,7 @@ MISC_TESTS_SIN = \
     functional_tests/nlo_6.sin \
     functional_tests/nlo_7.sin \
     functional_tests/nlo_8.sin \
+    functional_tests/nlo_9.sin \
     functional_tests/nlo_decay_1.sin \
     functional_tests/observables_1.sin \
     functional_tests/observables_2.sin \

@@ -2911,7 +2911,6 @@ module process
   use mappings, only: mapping_defaults_t
   use phs_forests, only: phs_parameters_t
   use phs_wood, only: phs_wood_config_t
-  use phs_wood, only: EXTENSION_DEFAULT, EXTENSION_DGLAP
   use dispatch_phase_space, only: dispatch_phs
   use blha_config, only: blha_master_t
   use nlo_data, only: FKS_DEFAULT, FKS_RESONANCES
@@ -4139,16 +4138,10 @@ parameterizing an s-channel resonance.
   contains
     subroutine check_and_extend_phs (component)
       type(process_component_t), intent(inout) :: component
-      logical :: requires_dglap_random_number
       if (combined_integration) then
-         requires_dglap_random_number = any (process%component%get_nlo_type () == NLO_DGLAP)
          select type (phs_config => component%phs_config)
          class is (phs_wood_config_t)
-            if (requires_dglap_random_number) then
-               call phs_config%set_extension_mode (EXTENSION_DGLAP)
-            else
-               call phs_config%set_extension_mode (EXTENSION_DEFAULT)
-            end if
+            phs_config%is_combined_integration = .true.
             call phs_config%increase_n_par ()
          end select
       end if
@@ -13086,7 +13079,7 @@ it is only available after the [[fks_regions]] have been created.
                 n_flv = term%connected_qn_index%get_n_flv ()
                 n_sub_color = term%get_n_sub_color ()
                 n_sub_spin = term%get_n_sub_spin ()
-                n_offset = 0; if(config%has_pdfs) n_offset = n_beams_rescaled
+                n_offset = 0; if (config%has_pdfs) n_offset = n_beams_rescaled
                 allocate (sqme_spin_c_arr(16))
                 do i_flv = 1, n_flv
                    allocate (sqme_spin_c_all(n_sub_spin))

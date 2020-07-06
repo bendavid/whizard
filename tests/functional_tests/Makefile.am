@@ -209,6 +209,7 @@ TESTS_REQ_OCAML = \
     nlo_4.run \
     nlo_5.run \
     nlo_6.run \
+    nlo_9.run \
     nlo_decay_1.run \
     real_partition_1.run \
     fks_res_1.run \

@@ -9581,22 +9581,20 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
      plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
           two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
   end associate
+  sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
   if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
-     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
      sqme_alr = sqme_alr + p_hat_gtogg(z) * factor / z * sqme_scaled * jac &
           - p_hat_gtogg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
           + p_hat_gtogg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
   else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
-     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
      sqme_alr = sqme_alr + p_hat_qtoqg(z) * factor / z * sqme_scaled * jac &
           - p_derived_qtoqg(z) / z * sqme_scaled * jac &
           - p_hat_qtoqg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
           + p_hat_qtoqg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
   else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
      sqme_alr = sqme_alr + (p_hat_gtoqq(z) * factor - p_derived_gtoqq(z)) / z * jac * &
-          dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+          sqme_scaled
   else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
-     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
      sqme_alr = sqme_alr + (p_hat_qtogq(z) * factor - p_derived_qtogq(z)) / z * sqme_scaled * jac
   else
      sqme_alr = sqme_alr + zero
