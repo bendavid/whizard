@@ -201,6 +201,7 @@ OMEGA_APPLICATIONS_ML = \
     omega_Template.ml \
     omega_SYM.ml \
     omega_UFO.ml \
+    omega_UFO_Dirac.ml \
     omega_UFO_Majorana.ml \
     omega_SM_Majorana.ml \
     omega_SM_Majorana_legacy.ml

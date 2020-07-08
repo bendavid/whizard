@@ -31,12 +31,5 @@ module Bound (M : Model.T) : Tuple.Bound =
       pred (M.max_degree ())
   end
 
-module Omega_Dirac =
-  Omega.Make(Fusion.Nary(Bound(UFO.Model)))(Targets.Fortran)(UFO.Model)
-
-module Omega_Majorana =
-  Omega.Make(Fusion.Nary_Majorana(Bound(UFO.Model)))(Targets.Fortran_Majorana)(UFO.Model)
-
-let _ =
-  try Omega_Dirac.main () with
-  | Fusion.Majorana -> Omega_Majorana.main ()
+module O = Omega.Make(Fusion.Nary(Bound(UFO.Model)))(Targets.Fortran)(UFO.Model)
+let _ = O.main ()

@@ -30,14 +30,13 @@
 
 # The UFO model is contained in the OMega test suite.  Copy all files here.
 OMEGA_TEST_UFO_DIR = $(top_srcdir)/omega/tests/UFO
-MODEL = SM
+MODEL = MSSM
 
 UFO_FILES = \
   __init__.py \
   coupling_orders.py \
   couplings.py \
   CT_couplings.py \
-  decays.py \
   function_library.py \
   lorentz.py \
   object_library.py \

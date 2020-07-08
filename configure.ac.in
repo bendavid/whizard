@@ -1058,6 +1058,7 @@ AC_CONFIG_FILES([tests/Makefile])
 AC_CONFIG_FILES([tests/models/Makefile])
 AC_CONFIG_FILES([tests/models/UFO/Makefile])
 AC_CONFIG_FILES([tests/models/UFO/SM/Makefile])
+AC_CONFIG_FILES([tests/models/UFO/MSSM/Makefile])
 
 AC_CONFIG_FILES([tests/unit_tests/Makefile])
 AC_CONFIG_FILES([tests/functional_tests/Makefile])

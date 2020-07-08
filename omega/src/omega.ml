@@ -446,10 +446,13 @@ i*)
       let cmdline =
         String.concat " " (List.map ThoString.quote (Array.to_list Sys.argv)) in
         
-      let output_channel =
+      let output_channel, close_output_channel =
         match !output_file with
-        | None -> stdout
-        | Some name -> open_out name in
+        | None ->
+           (stdout, fun () -> ())
+        | Some name ->
+           let oc = open_out name in
+           (oc, fun () -> close_out oc) in
 
       let processes =
         try
@@ -514,9 +517,11 @@ i*)
           | Fusion.Majorana ->
              begin
                Printf.eprintf
-                 "O'Mega: found Majorana fermions: use a supporting binary!\n";
+                 "O'Mega: found Majorana fermions, switching representation!\n";
                flush stderr;
-               CF.empty;
+               close_output_channel ();
+               Arg.current := 0;
+               raise Fusion.Majorana
              end
           | exc ->
               begin 
@@ -658,10 +663,7 @@ i*)
         | None -> ()
         end;
 
-        begin match !output_file with
-        | None -> ()
-        | Some name -> close_out output_channel
-        end;
+        close_output_channel ();
 
         exit 0
 
