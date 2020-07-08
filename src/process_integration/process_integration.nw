@@ -2911,7 +2911,6 @@ module process
   use mappings, only: mapping_defaults_t
   use phs_forests, only: phs_parameters_t
   use phs_wood, only: phs_wood_config_t
-  use phs_wood, only: EXTENSION_DEFAULT, EXTENSION_DGLAP
   use dispatch_phase_space, only: dispatch_phs
   use blha_config, only: blha_master_t
   use nlo_data, only: FKS_DEFAULT, FKS_RESONANCES
@@ -4139,16 +4138,10 @@ parameterizing an s-channel resonance.
   contains
     subroutine check_and_extend_phs (component)
       type(process_component_t), intent(inout) :: component
-      logical :: requires_dglap_random_number
       if (combined_integration) then
-         requires_dglap_random_number = any (process%component%get_nlo_type () == NLO_DGLAP)
          select type (phs_config => component%phs_config)
          class is (phs_wood_config_t)
-            if (requires_dglap_random_number) then
-               call phs_config%set_extension_mode (EXTENSION_DGLAP)
-            else
-               call phs_config%set_extension_mode (EXTENSION_DEFAULT)
-            end if
+            phs_config%is_combined_integration = .true.
             call phs_config%increase_n_par ()
          end select
       end if
@@ -5256,6 +5249,17 @@ the process setup, data, and expressions, but no integration results.
   end function process_get_i_term
 
 @ %def process_get_i_term
+@
+<<Process: process: TBP>>=
+  procedure :: get_i_core => process_get_i_core
+<<Process: procedures>>=
+  integer function process_get_i_core (process, i_term) result (i_core)
+    class(process_t), intent(in) :: process
+    integer, intent(in) :: i_term
+    i_core = process%term(i_term)%i_core
+  end function process_get_i_core
+
+@ %def process_get_i_core
 @
 <<Process: process: TBP>>=
   procedure :: set_i_mci_work => process_set_i_mci_work
@@ -8184,7 +8188,7 @@ are given by
 In the soft limit, $\xi \to 0$, this yields $x_\oplus = \bar{x}_\oplus$
 and $x_\ominus = \bar{x}_\ominus$. In the collinear limit, $y \to 1$,
 it is $x_\oplus = \bar{x}_\oplus / (1 - \xi)$ and $x_\ominus = \bar{x}_\ominus$.
-Likewise, in the anti-collinear limit $y \-o -1$, the inverse relation holds.
+Likewise, in the anti-collinear limit $y \to -1$, the inverse relation holds.
 We therefore have to distinguish four cases with the PDF assignments
 $f(x_\oplus) \cdot f(x_\ominus)$, $f(\bar{x}_\oplus) \cdot f(\bar{x}_\ominus)$,
 $f\left(\bar{x}_\oplus / (1-\xi)\right) \cdot f(\bar{x}_\ominus)$ and
@@ -11858,8 +11862,11 @@ convolutes this scattering matrix with the beam (and possibly
 structure-function) density matrix.
 
 The [[checked]] flag is set once we have applied cuts on this term.
-The result of this is stored in the [[passed]] flag.  Once the term
-has passed cuts, we calculate the various scale and weight expressions.
+The result of this is stored in the [[passed]] flag.
+
+Although each [[term_instance]] carries a [[weight]], this currently
+always keeps the value $1$ and is only used to be given to routines
+to fulfill their signature.
 <<Instances: types>>=
   type :: term_instance_t
      type(process_term_t), pointer :: config => null ()
@@ -13072,7 +13079,7 @@ it is only available after the [[fks_regions]] have been created.
                 n_flv = term%connected_qn_index%get_n_flv ()
                 n_sub_color = term%get_n_sub_color ()
                 n_sub_spin = term%get_n_sub_spin ()
-                n_offset = 0; if(config%has_pdfs) n_offset = n_beams_rescaled
+                n_offset = 0; if (config%has_pdfs) n_offset = n_beams_rescaled
                 allocate (sqme_spin_c_arr(16))
                 do i_flv = 1, n_flv
                    allocate (sqme_spin_c_all(n_sub_spin))
@@ -13152,12 +13159,12 @@ it is only available after the [[fks_regions]] have been created.
     type is (pcm_nlo_t)
        is_subtraction = term%k_term%emitter < 0
        if (term%connected%has_matrix) &
-           call refill_evaluator (cmplx (sqme, 0, default), &
+           call refill_evaluator (cmplx (sqme * term%weight, 0, default), &
                 config%get_qn (is_subtraction), &
                 config%region_data%get_flavor_indices (is_subtraction), &
                 term%connected%matrix)
        if (term%connected%has_flows) &
-            call refill_evaluator (cmplx (sqme, 0, default), &
+            call refill_evaluator (cmplx (sqme * term%weight, 0, default), &
                  config%get_qn (is_subtraction), &
                  config%region_data%get_flavor_indices (is_subtraction), &
                  term%connected%flows)
@@ -13220,13 +13227,19 @@ it is only available after the [[fks_regions]] have been created.
            call pcm_instance%compute_sqme_virt (term%p_hard, alpha_coupling, &
                 term%connected%has_matrix, sqme_virt)
            call term%connected%trace%set_only_matrix_element &
-                (1, cmplx (sum(sqme_virt) * term%weight, 0, default))
-           if (term%connected%has_matrix) then
-              call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
-                   config%get_qn (.true.), &
-                   config%region_data%get_flavor_indices (.true.), &
-                   term%connected%matrix)
-           end if
+                (1, cmplx (sum(sqme_virt), 0, default))
+           if (term%connected%has_matrix) &
+                call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
+                     config%get_qn (.true.), &
+                     remove_duplicates_from_int_array ( &
+                     config%region_data%get_flavor_indices (.true.)), &
+                     term%connected%matrix)
+           if (term%connected%has_flows) &
+                call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
+                     config%get_qn (.true.), &
+                     remove_duplicates_from_int_array ( &
+                     config%region_data%get_flavor_indices (.true.)), &
+                     term%connected%flows)
         end select
      end select
   end subroutine term_instance_evaluate_sqme_virt
@@ -13252,9 +13265,18 @@ it is only available after the [[fks_regions]] have been created.
     if (term%connected%has_matrix) then
        select type (config => term%pcm_instance%config)
        type is (pcm_nlo_t)
-          call refill_evaluator (cmplx (sqme_mism * term%weight, 0, default), &
-               config%get_qn (.true.), config%region_data%get_flavor_indices (.true.), &
-               term%connected%matrix)
+          if (term%connected%has_matrix) &
+               call refill_evaluator (cmplx (sqme_mism * term%weight, 0, default), &
+                    config%get_qn (.true.), &
+                    remove_duplicates_from_int_array ( &
+                    config%region_data%get_flavor_indices (.true.)), &
+                    term%connected%matrix)
+          if (term%connected%has_flows) &
+               call refill_evaluator (cmplx (sqme_mism * term%weight, 0, default), &
+                    config%get_qn (.true.), &
+                    remove_duplicates_from_int_array ( &
+                    config%region_data%get_flavor_indices (.true.)), &
+                    term%connected%flows)
        end select
     end if
   end subroutine term_instance_evaluate_sqme_mismatch
@@ -13292,10 +13314,18 @@ it is only available after the [[fks_regions]] have been created.
     if (term%connected%has_matrix) then
        select type (config => term%pcm_instance%config)
        type is (pcm_nlo_t)
-          call refill_evaluator (cmplx (sqme_dglap * term%weight, 0, default), &
-               config%get_qn (.true.), &
-               config%region_data%get_flavor_indices (.true.), &
-               term%connected%matrix)
+          if (term%connected%has_matrix) &
+               call refill_evaluator (cmplx (sqme_dglap * term%weight, 0, default), &
+                    config%get_qn (.true.), &
+                    remove_duplicates_from_int_array ( &
+                    config%region_data%get_flavor_indices (.true.)), &
+                    term%connected%matrix)
+          if (term%connected%has_flows) &
+               call refill_evaluator (cmplx (sqme_dglap * term%weight, 0, default), &
+                    config%get_qn (.true.), &
+                    remove_duplicates_from_int_array ( &
+                    config%region_data%get_flavor_indices (.true.)), &
+                    term%connected%flows)
        end select
     end if
   end subroutine term_instance_evaluate_sqme_dglap
@@ -14963,7 +14993,7 @@ one term, then compute effective kinematics for the other terms.
 
 @ %def recover_hard_kinematics
 @ Fourth step of process evaluation: check cuts for all terms.  Where
-sucessful, compute any scales and weights.  Otherwise, deactive the term.
+successful, compute any scales and weights.  Otherwise, deactive the term.
 If any of the terms has passed, set the state to [[STAT_PASSED_CUTS]].
 
 The argument [[scale_forced]], if present, will override the scale calculation
@@ -14993,7 +15023,7 @@ in the term expressions.
           else
              instance%evaluation_status = STAT_FAILED_CUTS
           end if
-      end if
+       end if
     end if
   contains
     subroutine evaluate_real_scales_and_cuts ()
@@ -15003,7 +15033,7 @@ in the term expressions.
       type is (pcm_nlo_t)
          do i = 1, size (instance%term)
             if (instance%term(i)%active .and. instance%term(i)%nlo_type == NLO_REAL) then
-               if (config%settings%cut_all_sqmes) &
+               if (config%settings%cut_all_real_sqmes) &
                     passed_real = passed_real .and. instance%term(i)%passed
                if (config%settings%use_born_scale) &
                     call replace_scales (instance%term(i))
@@ -15084,7 +15114,7 @@ recovered, and we are just computing the rest.
   end subroutine process_instance_compute_other_channels
 
 @ %def process_instance_compute_other_channels
-@ If not done otherwise, we an flag the kinematics as new for the core state,
+@ If not done otherwise, we flag the kinematics as new for the core state,
 such that the routine below will actually compute the matrix element and not
 just look it up.
 <<Instances: process instance: TBP>>=
@@ -15383,7 +15413,7 @@ it from the MCI record.
     if (instance%evaluation_status >= STAT_EVALUATED_TRACE) then
        do i = 1, size (instance%term)
           associate (term => instance%term(i))
-            if (term%active .and. term%passed) then
+            if (term%active) then
                call term%evaluate_event_data ()
             end if
           end associate
@@ -15420,8 +15450,11 @@ it from the MCI record.
   end subroutine process_instance_evaluate_event_data
 
 @ %def process_instance_evaluate_event_data
-@ Computes the real-emission matrix element for externally supplied momenta. Also,
-e.g. for Powheg, there is the possibility to supply an external $\alpha_s$
+@ Computes the real-emission matrix element for externally supplied momenta
+for the term instance with index [[i_term]] and a phase space point set with
+index [[i_phs]]. In addition, for the real emission, each term instance
+corresponds to one emitter. Also, e.g. for Powheg, there is the possibility
+to supply an external $\alpha_s$.
 <<Instances: process instance: TBP>>=
   procedure :: compute_sqme_rad => process_instance_compute_sqme_rad
 <<Instances: procedures>>=
@@ -15433,6 +15466,8 @@ e.g. for Powheg, there is the possibility to supply an external $\alpha_s$
     real(default), intent(in), optional :: alpha_s_external
     class(prc_core_t), pointer :: core
     integer :: i_real_fin
+    logical :: has_pdfs
+    has_pdfs = instance%process%pcm_contains_pdfs ()
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_rad")
     select type (pcm => instance%pcm)
     type is (pcm_instance_nlo_t)
@@ -15453,9 +15488,12 @@ e.g. for Powheg, there is the possibility to supply an external $\alpha_s$
           call term%evaluate_expressions ()
           call term%evaluate_interaction (core)
           call term%evaluate_trace ()
+          !!! TODO (VR 2020-05-08) check the (unnecessary) line below and delete it:
           pcm%real_sub%sqme_born (1) = &
                real (term%connected%trace%get_matrix_element (1))
+          !!! !!! !!!
           if (term%is_subtraction ()) then
+             call term%set_sf_factors (has_pdfs)
              select type (config => term%pcm_instance%config)
              type is (pcm_nlo_t)
                 if (char (config%settings%nlo_correction_type) == "QCD" .or. &

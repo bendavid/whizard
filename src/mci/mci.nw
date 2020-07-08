@@ -888,17 +888,17 @@ are counted within the [[mci_instance]] object.
     integer :: n_dropped
     n_dropped = mci%n_dropped
   end function mci_instance_get_n_event_dropped
-  
+
   subroutine mci_instance_reset_n_event_dropped (mci)
     class(mci_instance_t), intent(inout) :: mci
     mci%n_dropped = 0
   end subroutine mci_instance_reset_n_event_dropped
-  
+
   subroutine mci_instance_record_event_dropped (mci)
     class(mci_instance_t), intent(inout) :: mci
     mci%n_dropped = mci%n_dropped + 1
   end subroutine mci_instance_record_event_dropped
-  
+
 @ %def mci_instance_get_n_event_dropped
 @ %def mci_instance_reset_n_event_dropped
 @ %def mci_instance_record_event_dropped
@@ -990,7 +990,7 @@ The final steps are equivalent to the [[evaluate]] method above.
 \subsection{MCI sampler}
 A sampler is an object that implements a multi-channel parameterization of the
 unit hypercube.  Specifically, it is able to compute, given a channel and a
-set of $x$ MC parameter values, a the complete set of $x$ values and
+set of $x$ MC parameter values, the complete set of $x$ values and
 associated Jacobian factors $f$ for all channels.
 
 Furthermore, the sampler should return a single real value, the integrand, for
@@ -13947,7 +13947,7 @@ used.  Also include a sanity check on the directory name.
             // char (grid_path) // "' contains illegal characters")
     end if
   end subroutine setup_grid_path
-  
+
 @ %def setup_grid_path
 @
 \subsection{Unit tests}

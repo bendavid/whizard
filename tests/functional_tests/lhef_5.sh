@@ -5,7 +5,7 @@ if test -f OCAML_FLAG; then
     rm -f @script@_lib.* @script@_p?.*
     name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QCD
-    cat $name.log | sed -e 's/WHIZARD 2.*$/WHIZARD [version]/' > $name.log.tmp
+    cat $name.log | sed -e 's/WHIZARD 3.*$/WHIZARD [version]/' > $name.log.tmp
     mv $name.log.tmp $name.log
     echo "Contents of ${name}b.weights.dat" >> $name.log
     cat ${name}b.weights.dat >> $name.log

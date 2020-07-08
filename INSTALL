@@ -16,9 +16,9 @@ the HepForge repository:
 
 The command
 
-  gzip -cd whizard-2.X.X.tgz | tar xf -
+  gzip -cd whizard-3.X.X.tgz | tar xf -
 
-will unpack the sources in a subdirectory whizard-2.X.X,
+will unpack the sources in a subdirectory whizard-3.X.X,
 where X.X is the current version (and sub-version) number.
 
 Prerequisites are:
@@ -103,12 +103,8 @@ WHIZARD:
 
 MAC OS X:
 
-WHIZARD has been tested and partially developed under MAC OS X 
-Darwin 9.6.X-9.8.X (Leopard) and Darwin 10.0.X-10.6.X (Snow 
-Leopard), Darwin 10.7.X (Lion), Darwin 10.8.X (Mountain Lion),
-Darwin 10.9.X (Maverick), Darwin 10.10.X (Yosemite), Darwin
-10.11.X (El Capitan) as well as Darwin 10.12.X (Sierra) and
-10.13.X (High Sierra). The single pass linker here forces to
+WHIZARD has been tested and partially developed under MAC OSX 
+The single pass linker of OSX forces to
 explicitly include static C++ libraries when externally linking
 PYTHIA8, HepMC, FastJet, LHAPDF or LCIO. The necessary flags
 are automatically taken care of by the configure script.
@@ -119,7 +115,7 @@ to subprocesses. This does not change anything for the installed
 WHIZARD, but the testsuite (make check) will not work probably even
 after make install has been executed. make distcheck will not work on
 Darwin >= 10.11. There is also the option to disable the System Integrity
-Protection (SIP) of El Capitan by booting in Recovery Mode (use Command R
+Protection (SIP) of modern OSX by booting in Recovery Mode (use Command R
 while booting), open a terminal and type 'csrutil disable'. However, we 
 do not recommend to do so unless you know exactly what you are doing.
 

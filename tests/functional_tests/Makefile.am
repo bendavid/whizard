@@ -71,6 +71,8 @@ XFAIL_TESTS_DEFAULT =
 TESTS_REQ_FASTJET = \
     analyze_4.run \
     bjet_cluster.run \
+    nlo_7.run \
+    nlo_8.run \
     openloops_12.run \
     openloops_13.run
 
@@ -208,6 +210,7 @@ TESTS_REQ_OCAML = \
     nlo_4.run \
     nlo_5.run \
     nlo_6.run \
+    nlo_9.run \
     nlo_decay_1.run \
     real_partition_1.run \
     fks_res_1.run \
@@ -396,7 +399,7 @@ TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
 
 ########################################################################
 
-TESTS = 
+TESTS =
 XFAIL_TESTS =
 TESTS_SRC =
 
@@ -548,7 +551,7 @@ $(top_builddir)/src/gamelan/gamelan.sty:
 	$(MAKE) -C $(top_builddir)/src/gamelan gamelan.sty
 endif
 
-noinst_PROGRAMS = 
+noinst_PROGRAMS =
 
 if OCAML_AVAILABLE
 noinst_PROGRAMS += resonances_1_count
@@ -785,8 +788,8 @@ clean-local: clean-macosx
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG MPI_FLAG RECOLA_FLAG
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC2_FLAG HEPMC3_FLAG
-	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG 
-	rm -f LHAPDF5_FLAG LHAPDF6_FLAG 
+	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG
+	rm -f LHAPDF5_FLAG LHAPDF6_FLAG
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out *_check.out ufo_5_test.slha
 	rm -f core* stdhep_rd
@@ -804,11 +807,11 @@ clean-local: clean-macosx
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -rf pack_1.1 pack_1.2 pack_1.3 pack_1.4
 	rm -rf pack_1.1.tgz pack_1.2.tgz pack_1.3.tgz pack_1.4.tgz
-	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]
+	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9]
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
-	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
-	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
+	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f slhaspectrum.in suspect2.out suspect2_lha.out
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -rf job_id_3_x.8001 job_id_4_x.8001
 	rm -rf ufo_1_SM ufo_2_SM ufo_3_models ufo_4_models ufo_5_SM ufo_6_MSSM

@@ -1179,6 +1179,28 @@ adaption to specific use cases but have reasonable defaults.
   end function abs2
 
 @ %def abs2
+@ Remove element with [[index]] from array
+<<Numeric utils: public>>=
+  public:: remove_array_element
+  interface remove_array_element
+     module procedure remove_array_element_logical
+  end interface
+@
+<<Numeric utils: procedures>>=
+  function remove_array_element_logical (array, index) result (array_reduced)
+    logical, intent(in), dimension(:) :: array
+    integer, intent(in) :: index
+    logical, dimension(:), allocatable :: array_reduced
+    integer :: i
+    allocate (array_reduced(0))
+    do i = 1, size (array)
+       if (i /= index) then
+          array_reduced = [array_reduced, [array(i)]]
+       end if
+    end do
+  end function remove_array_element_logical
+
+@ %def remove_array_element
 @ Remove all duplicates from an array of signed integers and returns an
 unordered array of remaining elements.
 This method does not really fit into this module. It could be part of a

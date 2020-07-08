@@ -7206,7 +7206,7 @@ indentation.
   procedure :: write => state_matrix_write
 <<State matrices: procedures>>=
   subroutine state_matrix_write (state, unit, write_value_list, &
-	verbose, col_verbose, testflag)
+         verbose, col_verbose, testflag)
     class(state_matrix_t), intent(in) :: state
     logical, intent(in), optional :: write_value_list, verbose, col_verbose
     logical, intent(in), optional :: testflag
@@ -7221,11 +7221,11 @@ indentation.
     if (associated (state%root)) then
        if (allocated (state%me)) then
           call node_write_rec (state%root, state%me, verbose = verbose, &
-	       indent = 1, unit = u, col_verbose = col_verbose, &
+               indent = 1, unit = u, col_verbose = col_verbose, &
                testflag = testflag)
        else
           call node_write_rec (state%root, verbose = verbose, indent = 1, &
-	       unit = u, col_verbose = col_verbose, testflag = testflag)
+               unit = u, col_verbose = col_verbose, testflag = testflag)
        end if
     end if
     if (present (write_value_list)) then
@@ -8885,8 +8885,8 @@ If the optional [[correlated_state]] is provided, it is assigned the
 correlated density matrix for the selected flavor-color branch, so
 multi-particle spin correlations remain available even if they are
 dropped in the single-particle density matrices.  This should be
-done by the caller for the choice [[FM_CORRELATED_HELICITY]], which otherwise
-is handled as [[FM_IGNORE_HELICITY]].
+done by the caller for the choice [[FM_CORRELATED_HELICITY]], which
+otherwise is handled as [[FM_IGNORE_HELICITY]].
 
 The algorithm is as follows: First, we determine the normalization by
 summing over all diagonal matrix elements.  In a second scan, we
@@ -9989,8 +9989,8 @@ contains
 end module interactions
 @ %def interactions
 @ Given an ordered list of quantum numbers (without any subtraction index) map
-these list to a state matrix, such that each list index corresponds to index of a set of
-quantum numbers in the state matrix, hence, the matrix element.
+this list to a state matrix, such that each list index corresponds to an
+index of a set of quantum numbers in the state matrix, hence, the matrix element.
 
 The (unphysical) subtraction index is not a genuine quantum number and as
 such handled specially.
@@ -10339,7 +10339,8 @@ So far, it ignores helicity (and color) indices.
           return
        end if
     end do
-    call msg_bug ("[qn_index_map_get_index] The index for the given quantum &
+    call self%write ()
+    call msg_bug ("[qn_index_map_get_index_by_qn] The index for the given quantum &
          & numbers could not be retrieved.")
   end function qn_index_map_get_index_by_qn
 

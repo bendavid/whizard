@@ -283,7 +283,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.8.4}
+\newcommand{\thisversion}{3.0.0 $\alpha$}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -292,9 +292,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.8 \\
+%HEVEA WHIZARD 3.0 \\
 %BEGIN LATEX
- \ttt{\huge WHIZARD 2.8} \\[\baselineskip]
+ \ttt{\huge WHIZARD 3.0} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -326,6 +326,7 @@ Parameter & Value & Default & Description \\
   Christian Speckner, %
   So Young Shim, %
   Florian Staub, %
+  Pascal Stienemeier, %
   Christian Weiss}
 
 %BEGIN LATEX
@@ -1351,11 +1352,11 @@ replaced in the hadron collider community by the \hepmc\ format, and
 in the lepton collider community by \lcio. \whizard\ might serve as a
 conversion tools for all these formats, but other tools also exist, of
 course. Note that the \ttt{mcfio} framework makes use of the \ttt{RPC}
-headers. These come -- provided by \ttt{SunOS/Oracle America, Inc.} -- 
+headers. These come -- provided by \ttt{SunOS/Oracle America, Inc.} --
 together with the system headers, but on some \ttt{Unix} systems
 (e.g. \ttt{ArchLinux}, \ttt{Fedora}) have been replaced by the
 \ttt{libtirpc} headers . The \ttt{configure} script searches for these
-headers so these have to be installed mandatorily. 
+headers so these have to be installed mandatorily.
 
 If the \stdhep\ library is linked with the installation, \whizard\ is
 able to write files in the \stdhep\ format, the  corresponding
@@ -1802,7 +1803,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 2.8.4
+    |                               WHIZARD 3.0.0_alpha
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -1833,7 +1834,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.8.4
+|                               WHIZARD 3.0.0_alpha
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -1892,7 +1893,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.8.4
+ |                               WHIZARD 3.0.0_alpha
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -4227,7 +4228,7 @@ the \ttt{cluster} command (cf. the paragraph before). It is similar to
 the \ttt{select} command, and accepts a logical expression as a
 possible condition. The four commands \ttt{select\_b\_jet},
 \ttt{select\_non\_b\_jet}, \ttt{select\_c\_jet}, and
-\ttt{select\_light\_jet} select $b$ jets, non-$b$ jets 
+\ttt{select\_light\_jet} select $b$ jets, non-$b$ jets
 (anything lighter than $b$s), $c$ jets (neither $b$ nor light) and
 light jets (anything besides $b$ and $c$), respectively. An example
 looks like this:
@@ -4280,7 +4281,7 @@ like this:
   jet_r = 0.5
   cuts = photon_isolation if Pt > 10 GeV [A, jet]
          ....
-  cuts = let subevt @jets = cluster [jet] in         
+  cuts = let subevt @jets = cluster [jet] in
          photon_isolation if Pt > 10 GeV [A, @jets]
          .....
   process eeajmm = e1, E1 => A, jet, e2, E2
@@ -9734,7 +9735,7 @@ There are two possible solutions for this problem:
   information externally, by supplying an appropriately formatted
   \ttt{.phs} file, bypassing the automatic algorithm.  Assuming that
   this phase-space file has been named \ttt{my\_phase\_space.phs}, the
-  \sindarin\ code should contain the following: 
+  \sindarin\ code should contain the following:
   \begin{code}
     ?rebuild_phase_space = false
     $phs_file = "my_phase_space.phs"
@@ -9742,7 +9743,7 @@ There are two possible solutions for this problem:
   Regarding the contents of this file, we recommend to generate an
   appropriate \ttt{.phs} for a similar setup, using the standard
   algorithm.  The generated file can serve as a template, which can be
-  adapted to the particular case.  
+  adapted to the particular case.
 
   In detail, the \ttt{.phs} file consists of entries that specify the
   process, then a standard header which contains MD5 sums and such --
@@ -11808,7 +11809,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.8.4</generator_version>
+  <generator_version>3.0.0_alpha</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -12978,7 +12979,7 @@ The first set of options is intended for normal operation.
 \item[\ttt{--execute COMMANDS}]:  Execute \ttt{COMMANDS} as a script
   before the script file (see below).  Short version: \ttt{-e}
 \item[\ttt{--file CMDFILE}]:  Execute commands in \ttt{CMDFILE} before the
-  main script file (see below).  Short version: \ttt{-f} 
+  main script file (see below).  Short version: \ttt{-f}
 \item[\ttt{--help}]:  List the available options and exit.  Short version:
   \ttt{-h}
 \item[\ttt{--interactive}]:  Run \whizard\ interactively.  See
@@ -16151,7 +16152,7 @@ Phi [e1]},  \ttt{all Phi > Pi [jet, jet]}. (cf. also \ttt{eval},
 \item
 \ttt{photon\_isolation} \newline
 Logical function \ttt{photon\_isolation if {\em <condition>} [{\em
-<list1>} , {\em <list2>}]} that cuts out event where the photons in 
+<list1>} , {\em <list2>}]} that cuts out event where the photons in
 \ttt{{\em <list1>}} do not fulfill the condition \ttt{{\em
 <condition>}} and are not isolated from hadronic (and electromagnetic)
 activity, i.e. the photon fragmentation. (cf. also \ttt{cluster},
@@ -16367,13 +16368,13 @@ beyond the \whizard\ native binary event format. Its syntax is
 \ttt{sample\_format = {\em <format>}}, where \ttt{{\em <format>}} can be any of
 the following specifiers: \ttt{hepevt}, \ttt{hepevt\_verb}, \ttt{ascii},
 \ttt{athena}, \ttt{debug}, \ttt{long}, \ttt{short}, \ttt{hepmc},
-\ttt{lhef}, \ttt{lha}, \ttt{lha\_verb}, \ttt{stdhep}, \ttt{stdhep\_up}.
+\ttt{lhef}, \ttt{lha}, \ttt{lha\_verb}, \ttt{stdhep}, \ttt{stdhep\_up},
+\texttt{lcio}, \texttt{mokka}.
 (cf. also \ttt{\$sample}, \ttt{simulate}, \ttt{hepevt}, \ttt{ascii},
 \ttt{athena}, \ttt{debug}, \ttt{long}, \ttt{short}, \ttt{hepmc},
-\ttt{lhef}, \ttt{lha}, \ttt{stdhep}, \ttt{stdhep\_up}, \newline
-\ttt{\$sample\_normalization}, \ttt{?sample\_pacify},
-\ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt},
-\ttt{sample\_split\_n\_kbytes})
+\ttt{lhef}, \ttt{lha}, \ttt{stdhep}, \ttt{stdhep\_up}, \texttt{lcio},
+\texttt{mokka}, \ttt{\$sample\_normalization}, \ttt{?sample\_pacify}, \newline
+\ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt}, \ttt{sample\_split\_n\_kbytes})
 %%%%%
 \item
 \ttt{scale} \newline
@@ -17217,14 +17218,14 @@ respectively.
   \url{http://cd-docdb.fnal.gov/cgi-bin/ShowDocument?docid=903}
 
 %\cite{Frixione:1998jh}
-\bibitem{Frixione:1998jh} 
+\bibitem{Frixione:1998jh}
   S.~Frixione,
   %``Isolated photons in perturbative QCD,''
   Phys.\ Lett.\ B {\bf 429}, 369 (1998)
   doi:10.1016/S0370-2693(98)00454-7
   [hep-ph/9801442].
   %%CITATION = doi:10.1016/S0370-2693(98)00454-7;%%
-  
+
 \bibitem{LHAPDF}
   W.~Giele {\it et al.},
   {\em The QCD / SM working group: Summary report},

@@ -1,5 +1,6 @@
-!!! Tests the integration of an NLO process with multiple
-!!! flavors in the final-state.
+# SINDARIN input for WHIZARD self-test
+# Tests the integration of an NLO process with multiple flavors in the final state.
+# without cuts and producing an NLO event
 
 model = SM ("GF_MW_MZ")
 $blha_ew_scheme = "alpha_internal"

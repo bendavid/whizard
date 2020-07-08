@@ -7811,7 +7811,7 @@ smaller code value than the second one.
     integer(TC), intent(in) :: k
     integer(TC) :: m,n
     do m=1, k-1
-       if(iand(k,m)==m) then
+       if (iand(k,m)==m) then
           n = ieor(k,m)
           if ( tree%branch(m)%set .and. tree%branch(n)%set ) then
              tree%branch(k)%daughter(1) = m;  tree%branch(k)%daughter(2) = n
@@ -13905,8 +13905,6 @@ module phs_wood
 
 <<PHS wood: public>>
 
-<<PHS wood: parameters>>
-
 <<PHS wood: types>>
 
 contains
@@ -13917,11 +13915,6 @@ end module phs_wood
 @ %def phs_wood
 @
 \subsection{Configuration}
-<<PHS wood: parameters>>=
-  integer, parameter, public :: EXTENSION_NONE = 0
-  integer, parameter, public :: EXTENSION_DEFAULT = 1
-  integer, parameter, public :: EXTENSION_DGLAP = 2
-
 <<PHS wood: public>>=
   public :: phs_wood_config_t
 <<PHS wood: types>>=
@@ -13940,7 +13933,7 @@ end module phs_wood
      type(feyngraph_set_t), allocatable :: feyngraph_set
      type(phs_forest_t) :: forest
      type(os_data_t) :: os_data
-     integer :: extension_mode = EXTENSION_NONE
+     logical :: is_combined_integration = .false.
    contains
    <<PHS wood: phs wood config: TBP>>
   end type phs_wood_config_t
@@ -13971,26 +13964,12 @@ not standard input/output.)
 <<PHS wood: procedures>>=
   subroutine phs_wood_config_increase_n_par (phs_config)
     class(phs_wood_config_t), intent(inout) :: phs_config
-    select case (phs_config%extension_mode)
-    case (EXTENSION_DEFAULT)
+    if (phs_config%is_combined_integration) then
        phs_config%n_par = phs_config%n_par + 3
-    case (EXTENSION_DGLAP)
-       phs_config%n_par = phs_config%n_par + 4
-    end select
+    end if
   end subroutine phs_wood_config_increase_n_par
 
 @ %def phs_wood_config_increase_n_par
-@
-<<PHS wood: phs wood config: TBP>>=
-  procedure :: set_extension_mode => phs_wood_config_set_extension_mode
-<<PHS wood: procedures>>=
-  subroutine phs_wood_config_set_extension_mode (phs_config, mode)
-    class(phs_wood_config_t), intent(inout) :: phs_config
-    integer, intent(in) :: mode
-    phs_config%extension_mode = mode
-  end subroutine phs_wood_config_set_extension_mode
-
-@ %def phs_wood_config_set_extension_mode
 @ Output.  The contents of the PHS forest are not printed explicitly.
 <<PHS wood: phs wood config: TBP>>=
   procedure :: write => phs_wood_config_write
@@ -14737,12 +14716,9 @@ independent of the particle masses.
     select type (phs_config)
     type is (phs_wood_config_t)
        phs%forest = phs_config%forest
-       select case (phs_config%extension_mode)
-       case (EXTENSION_DEFAULT)
+       if (phs_config%is_combined_integration) then
           phs%n_r_born = phs_config%n_par - 3
-       case (EXTENSION_DGLAP)
-          phs%n_r_born = phs_config%n_par - 4
-       end select
+       end if
     end select
   end subroutine phs_wood_init
 
@@ -14775,7 +14751,7 @@ extracting them.
             phs%sqrts_hat, phs%r, phs%f, phs%volume, ok)
        select type (config => phs%config)
        type is (phs_wood_config_t)
-          if (config%extension_mode > EXTENSION_NONE) then
+          if (config%is_combined_integration) then
              if (phs%n_r_born >= 0) then
                 phs%r_real = r_in (phs%n_r_born + 1 : phs%n_r_born + 3)
              else
@@ -14800,7 +14776,7 @@ extracting them.
             phs%sqrts_hat, phs%r, phs%f, combine=.true.)
        select type (config => phs%config)
        type is (phs_wood_config_t)
-          if (config%extension_mode > EXTENSION_NONE) then
+          if (config%is_combined_integration) then
              if (phs%n_r_born >= 0) then
                 do c = 1, size (phs%r, 2)
                    phs%r(phs%n_r_born + 1 : phs%n_r_born + 3, c) = phs%r_real
@@ -15850,7 +15826,6 @@ phase spaces.
     integer :: n_in
     real(default), dimension(2) :: x = one
     real(default), dimension(2) :: z = zero
-    real(default), dimension(2) :: z_coll = zero
     real(default) :: sqrts_born = zero
     real(default) :: beam_energy = zero
     real(default) :: fac_scale = zero
@@ -16510,7 +16485,7 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
     integer, intent(in), optional :: nlo_type
     type(string_t), intent(in), optional :: subdir
     if (present (nlo_type))  phs_config%nlo_type = nlo_type
-    if (phs_config%extension_mode == EXTENSION_NONE) then
+    if (.not. phs_config%is_combined_integration) then
        select case (phs_config%mode)
        case (PHS_MODE_ADDITIONAL_PARTICLE)
           phs_config%n_par = phs_config%n_par + 3
@@ -16780,7 +16755,10 @@ be assured that Born flavors are used for this.
 matrix elements providers, as some scalar products cannot be evaluated
 properly. Here, a nonsensical result can spoil the whole integration.
 We therefore check the scalar products appearing to be below a certain
-tolerance.
+tolerance.\\
+Naturally, this happens very rarely but for some processes,
+setting [[?test_coll_limit = true]] and/or [[?test_soft_limit = true]]
+leads to all phase space points beeing discarded by this routine.
 <<phs fks: public>>=
   public :: check_scalar_products
 <<phs fks: procedures>>=
@@ -16863,13 +16841,13 @@ phase-space points with [[p_real(emitter) = 0]].
        p = generator%real_kinematics%p_born_lab%phs_point(1)%p(1:2)
     end if
 
-    associate (isr => generator%isr_kinematics)
+    associate (isr_kinematics => generator%isr_kinematics)
        do em = 1, 2
-          isr%x(em) = p(em)%p(0) / isr%beam_energy
-          isr%z(em) = one - (one - isr%x(em)) * r
-          isr%jacobian(em) =  one - isr%x(em)
+          isr_kinematics%x(em) = p(em)%p(0) / isr_kinematics%beam_energy
+          isr_kinematics%z(em) = one - (one - isr_kinematics%x(em)) * r
+          isr_kinematics%jacobian(em) =  one - isr_kinematics%x(em)
        end do
-       isr%sqrts_born = (p(1) + p(2))**1
+       isr_kinematics%sqrts_born = (p(1) + p(2))**1
     end associate
   end subroutine phs_fks_generator_compute_isr_kinematics
 
@@ -18421,7 +18399,8 @@ with $\Lambda$.
   end subroutine phs_fks_generator_generate_isr_factorized
 
 @ %def phs_fks_generator_generate_isr_factorized
-@
+@ Computes the ISR kinematics for the real component and in a combined integration,
+overwrites the collinear ISR kinematics for the DGLAP remnant.
 <<phs fks: phs fks generator: TBP>>=
   procedure :: generate_isr => phs_fks_generator_generate_isr
 <<phs fks: procedures>>=
@@ -18466,10 +18445,10 @@ with $\Lambda$.
     xi_minus = xi_tilde * (one - xb_minus)
     p_real(I_PLUS) = x_plus / xb_plus * p_born(I_PLUS)
     p_real(I_MINUS) = x_minus / xb_minus * p_born(I_MINUS)
-    generator%isr_kinematics%z(I_PLUS) = x_plus / xb_plus
-    generator%isr_kinematics%z(I_MINUS) = x_minus / xb_minus
-    generator%isr_kinematics%z_coll(I_PLUS) = one / (one - xi_plus)
-    generator%isr_kinematics%z_coll(I_MINUS) = one / (one - xi_minus)
+
+    !!! Fraction of momentum fractions in a collinear splitting
+    generator%isr_kinematics%z(I_PLUS) = (one - xi_plus)
+    generator%isr_kinematics%z(I_MINUS) = (one - xi_minus)
 
     !!! Create radiation momentum
     sqrts_real = generator%isr_kinematics%sqrts_born / sqrt (one - xi)
@@ -18594,7 +18573,7 @@ with $\Lambda$.
   end subroutine phs_fks_generator_set_xi_and_y_bounds
 
 @ %def phs_fks_generator_set_xi_and_y_bounds
-@
+@ Sets [[x]] in the generator's [[isr_kinematics]] to be used in unit tests.
 <<phs fks: phs fks generator: TBP>>=
   procedure :: set_isr_kinematics => phs_fks_generator_set_isr_kinematics
 <<phs fks: procedures>>=

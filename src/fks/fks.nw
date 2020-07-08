@@ -33,8 +33,7 @@ and third issue are connected in FKS subtraction.
   lepton collisions. For hadron collisions, renormalization of parton
   distributions has to be taken into account. Further, for QCD
   corrections, initial-state radiation is necessarily
-  present. However, most quantities have so far been only constructed
-  for final-state emissions}
+  present.}
 
 The aim is to calculate the next-to-leading order cross section
 according to
@@ -44,7 +43,7 @@ according to
 \end{equation*}
 Analytically, the divergences, in terms of poles in the complex
 quantity $\varepsilon = 2-d/2$, cancel. However, this is in general
-only valid in an arbitrary, comlex number of dimensions. This is,
+only valid in an arbitrary, complex number of dimensions. This is,
 roughly, the content of the KLN-theorem. \whizard, as any
 other numerical program, is confined to four dimensions. We will
 assume that the KLN-theorem is valid and that there exist subtraction
@@ -60,7 +59,7 @@ real and virtual matrix element.
 Because $\mathcal{C}$ subtracts the divergences of $\mathcal{R}$ as
 well as those of $\mathcal{V}$, it suffices to consider one of them,
 so we focus on $\mathcal{R}$. For this purpose, $\mathcal{R}$ is
-rewritten,
+rewritten as
 \begin{equation*}
   \mathcal{R} = \frac{1}{\xi^2}\frac{1}{1-y} \left(\xi^2
     (1-y)\mathcal{R}\right) =
@@ -71,7 +70,7 @@ with $\xi = \left(2k_{\rm{rad}}^0\right)/\sqrt{s}$ and $y =
 parton and $\theta$ is the angle between emitter and radiated
 parton. $\tilde{\mathcal{R}}$ is finite, therefore the whole
 singularity structure is contained in the prefactor
-$\xi^{-2}(1-y)^{-1}$. Combined with the d-dimensional phase space
+$\xi^{-2}(1-y)^{-1}$. Combined with the $d$-dimensional phase space
 element,
 \begin{equation*}
   \frac{d^{d-1}k}{2k^0(2\pi)^{d-1}} =
@@ -146,12 +145,12 @@ up all possible singular regions for this problem.
 \begin{table}
 \begin{tabular}{|c|c|c|c|}
   \hline
-  \texttt{alr} & \texttt{flst\_alr} & \texttt{emi} &
+  \texttt{alr} & \texttt{flst\_alr} & \texttt{emitter} &
   \texttt{ftuple\_list}\\ \hline
   1 & [-11,11,2,-2,21,21] & 3 & {(3,5), (3,6), (4,5), (4,6), (5,6)} \\ \hline
   2 & [-11,11,2,-2,21,21] & 4 & {(3,5), (3,6), (4,5), (4,6), (5,6)} \\ \hline
   3 & [-11,11,2,-2,21,21] & 5 & {(3,5), (3,6), (4,5), (4,6), (5,6)} \\ \hline
-  4 & [-11,11,2,-2,2,-2]  & 5 & {(5,6)} \\
+  4 & [-11,11,2,-2,2,-2]  & 5 & {(3,4), (3,6), (4,5), (5,6)} \\
   \hline
 \end{tabular}
 \caption{List of singular regions. The particles are represented by
@@ -161,8 +160,9 @@ up all possible singular regions for this problem.
   from the first gluon. Each emitter yields the same list of
   fundamental tuples, five in total. The last singular region
   corresponds to the process where the gluon splits up into two
-  quarks. Here, there is only one fundamental tuple, corresponding to
-  a singular configuration of the momenta of the additional quarks.}
+  quarks. As the matrix element for this process has no information
+  on which quarks originate from a gluon splitting, there are ftuples
+  for all the quark pairs and not just those involving the emitter.}
 \label{table:singular regions}
 \end{table}
 \\
@@ -195,7 +195,7 @@ module fks_regions
 
 <<Use kinds>>
   use format_utils, only: write_separator
-  use numeric_utils, only: remove_duplicates_from_int_array
+  use numeric_utils
   use string_utils, only: str
   use io_units
   use os_interface
@@ -1509,9 +1509,9 @@ divergenent phase space configuration, which are collected in the
 [[ftuples]]-array.
 
 Some singular regions might behave physically identical. E.g. a real
-flavor structure associated with three-jet production is $[11,-11,0,2-2,0]$.
+flavor structure associated with three-jet production is $[11,-11,2,-2,21,21]$.
 Here, there are two possible [[ftuples]] which contribute to the same
-$u \rightarrow u g$ splitting, namely $(3,4)$ and $(4,6)$. The resulting
+$u \rightarrow u g$ splitting, namely $(3,5)$ and $(3,6)$. The resulting
 singular regions will be identical. To avoid this, one singular region
 is associated with the multiplicity factor [[mult]]. When computing the
 subtraction terms for each singular region, the result is then simply
@@ -2689,20 +2689,20 @@ the flavor structure list.
   procedure :: get_svalue_last_pos => region_data_get_svalue_last_pos
   procedure :: get_svalue_ij => region_data_get_svalue_ij
 <<fks regions: procedures>>=
-  function region_data_get_svalue_ij (reg_data, p, alr, i, j, i_res) result (sval)
+  function region_data_get_svalue_ij (reg_data, p_real, alr, i, j, i_res) result (sval)
     class(region_data_t), intent(inout) :: reg_data
-    type(vector4_t), intent(in), dimension(:) :: p
+    type(vector4_t), intent(in), dimension(:) :: p_real
     integer, intent(in) :: alr, i, j
     integer, intent(in) :: i_res
     real(default) :: sval
     associate (map => reg_data%fks_mapping)
-       call map%compute_sumdij (reg_data%regions(alr), p)
+       call map%compute_sumdij (reg_data%regions(alr), p_real)
        select type (map)
        type is (fks_mapping_resonances_t)
           map%i_con = reg_data%alr_to_i_contributor (alr)
        end select
        map%pseudo_isr = reg_data%regions(alr)%pseudo_isr
-       sval = map%svalue (p, i, j, i_res) * map%normalization_factor
+       sval = map%svalue (p_real, i, j, i_res) * map%normalization_factor
     end associate
   end function region_data_get_svalue_ij
 
@@ -2721,20 +2721,20 @@ the flavor structure list.
   procedure :: get_svalue_soft => region_data_get_svalue_soft
 <<fks regions: procedures>>=
   function region_data_get_svalue_soft &
-       (reg_data, p, p_soft, alr, emitter, i_res) result (sval)
+       (reg_data, p_born, p_soft, alr, emitter, i_res) result (sval)
     class(region_data_t), intent(inout) :: reg_data
-    type(vector4_t), intent(in), dimension(:) :: p
+    type(vector4_t), intent(in), dimension(:) :: p_born
     type(vector4_t), intent(in) :: p_soft
     integer, intent(in) :: alr, emitter, i_res
     real(default) :: sval
     associate (map => reg_data%fks_mapping)
-       call map%compute_sumdij_soft (reg_data%regions(alr), p, p_soft)
+       call map%compute_sumdij_soft (reg_data%regions(alr), p_born, p_soft)
        select type (map)
        type is (fks_mapping_resonances_t)
           map%i_con = reg_data%alr_to_i_contributor (alr)
        end select
        map%pseudo_isr = reg_data%regions(alr)%pseudo_isr
-       sval = map%svalue_soft (p, p_soft, emitter, i_res) * map%normalization_factor
+       sval = map%svalue_soft (p_born, p_soft, emitter, i_res) * map%normalization_factor
     end associate
   end function region_data_get_svalue_soft
 
@@ -3684,7 +3684,6 @@ resonances are possible for all ftuples
 @ %def region_data_write_latex
 @ Creates a table with information about all singular regions and
 writes it to a file.
-@ Returns the index of the real flavor structure an ftuple belongs to.
 <<fks regions: reg data: TBP>>=
   procedure :: write => region_data_write
 <<fks regions: procedures>>=
@@ -3705,8 +3704,8 @@ writes it to a file.
      end do
      flst_title = '(A' // flst_title_format(reg_data%n_legs_real) // ')'
      ftuple_title = '(A' // ftuple_title_format() // ')'
-     write (u,'(A,1X,I3)') 'Total number of regions: ', size(reg_data%regions)
-     write (u, '(A3)', advance = 'no') 'alr'
+     write (u,'(A,1X,I4)') 'Total number of regions: ', size(reg_data%regions)
+     write (u, '(A4)', advance = 'no') ' alr'
      call write_vline (u)
      write (u, char (flst_title), advance = 'no') 'flst_real'
      call write_vline (u)
@@ -3732,7 +3731,7 @@ writes it to a file.
      call write_vline (u)
      write (u, '(A7)') 'i_born'
      do j = 1, reg_data%n_regions
-        write (u, '(I3)', advance = 'no') j
+        write (u, '(I4)', advance = 'no') j
         call reg_data%regions(j)%write (u, maxnregions)
      end do
      call write_separator (u)
@@ -4161,11 +4160,11 @@ factor from the born flavor structure has to be cancelled.
   procedure (fks_mapping_compute_sumdij), deferred :: compute_sumdij
 <<fks regions: interfaces>>=
   abstract interface
-    subroutine fks_mapping_compute_sumdij (map, sregion, p)
+    subroutine fks_mapping_compute_sumdij (map, sregion, p_real)
       import
       class(fks_mapping_t), intent(inout) :: map
       type(singular_region_t), intent(in) :: sregion
-      type(vector4_t), intent(in), dimension(:) :: p
+      type(vector4_t), intent(in), dimension(:) :: p_real
     end subroutine fks_mapping_compute_sumdij
   end interface
 
@@ -4249,15 +4248,16 @@ factor from the born flavor structure has to be cancelled.
 @ %def fks_mapping_default_set_parameter
 @ Computes the $d_{ij}$-quantities defined als follows:
 \begin{align*}
-  d_{0i} &= \left[E_i^2\left(1-y_i\right)\right]^{p_1}\\,
-  d_{1i} &= \left[2E_i^2\left(1-y_i\right)\right]^{p_1}\\,
-  d_{2i} &= \left[2E_i^2\left(1+y_i\right)\right]^{p_1}\\,
+  d_{0i} &= \left[E_i^2\left(1-y_i\right)\right]^{p_2}\\,
+  d_{1i} &= \left[2E_i^2\left(1-y_i\right)\right]^{p_2}\\,
+  d_{2i} &= \left[2E_i^2\left(1+y_i\right)\right]^{p_2}\\,
 \end{align*}
 for initial state regions and
 \begin{align*}
-  d_{ij} = \left[2(k_i \cdot k_j) \frac{E_i E_j}{(E_i+E_j)^2}\right]^{p_2}
+  d_{ij} = \left[2(k_i \cdot k_j) \frac{E_i E_j}{(E_i+E_j)^2}\right]^{p_1}
 \end{align*}
-for final state regions. The exponents $p_1$ and $p_2$ can be used for
+for final state regions, c.f. [1002.2581, Eq. 4.23f].
+The exponents $p_1$ and $p_2$ can be used for
 tuning the efficiency of the mapping and are set to $1$ per default.
 <<fks regions: fks mapping default: TBP>>=
   procedure :: dij => fks_mapping_default_dij
@@ -4345,22 +4345,23 @@ tuning the efficiency of the mapping and are set to $1$ per default.
 \begin{equation*}
   \mathcal{D} = \sum_k \frac{1}{d_{0k}} + \sum_{kl} \frac{1}{d_{kl}}.
 \end{equation*}
+where the sum goes over all ftuples of a single singular region.
 <<fks regions: fks mapping default: TBP>>=
   procedure :: compute_sumdij => fks_mapping_default_compute_sumdij
 <<fks regions: procedures>>=
-  subroutine fks_mapping_default_compute_sumdij (map, sregion, p)
+  subroutine fks_mapping_default_compute_sumdij (map, sregion, p_real)
     class(fks_mapping_default_t), intent(inout) :: map
     type(singular_region_t), intent(in) :: sregion
-    type(vector4_t), intent(in), dimension(:) :: p
+    type(vector4_t), intent(in), dimension(:) :: p_real
     real(default) :: d
-    integer :: alr, i, j
+    integer :: i_ftuple, i, j
 
     associate (ftuples => sregion%ftuples)
       d = zero
-      do alr = 1, sregion%nregions
-         call ftuples(alr)%get (i, j)
-         map%pseudo_isr = ftuples(alr)%pseudo_isr
-         d = d + one / map%dij (p, i, j)
+      do i_ftuple = 1, sregion%nregions
+         call ftuples(i_ftuple)%get (i, j)
+         map%pseudo_isr = ftuples(i_ftuple)%pseudo_isr
+         d = d + one / map%dij (p_real, i, j)
       end do
     end associate
     map%sumdij = d
@@ -4389,13 +4390,13 @@ respectively.
   end function fks_mapping_default_svalue
 
 @ %def fks_mapping_default_svalue
-@ In the soft limit, our treatment of the divergences requires a
+@ In the soft limit, our treatment of the divergencies requires a
 modification of the mapping functions. Recall that there, the ratios of
 the $d$-functions must approach either $1$ or $0$. This means
 \begin{equation*}
-  \frac{d_{lm}}{d_{0m}} = \frac{(2k_l \cdot k_m) \left[E_lE_m /(E_l + E_m)^2\right]}{E_m^2 (1-y^2)} =
+  \frac{d_{lm}}{d_{0m}} = \frac{(2k_l \cdot k_m) \left[E_lE_m /(E_l + E_m)^2\right]}{E_m^2 (1-y^2)}
     \overset {k_m = E_m \hat{k}} {=} \frac{E_l E_m^2}{(E_l + E_m)^2} \frac{2k_l \cdot \hat{k}}{E_m^2 (1-y^2)}
-    \overset {E_m \rightarrow 0}{=} \frac{2}{k_l \cdot \hat{k}}{(1-y^2)E_l},
+    \overset {E_m \to 0}{=} \frac{2k_l \cdot \hat{k}}{E_l}{(1-y^2)},
 \end{equation*}
 where we have written the gluon momentum in terms of the soft momentum
 $\hat{k}$. In the same limit
@@ -4428,17 +4429,17 @@ From these equations we can deduce the soft limit of $d$:
     end if
   contains
 
-    function dij_soft_threshold_gluon_from_top (em, p, p_soft, expo) result (dij_soft)
+    function dij_soft_threshold_gluon_from_top (em, p_born, p_soft, expo) result (dij_soft)
       real(default) :: dij_soft
       integer, intent(in) :: em
-      type(vector4_t), intent(in), dimension(:) :: p
+      type(vector4_t), intent(in), dimension(:) :: p_born
       type(vector4_t), intent(in) :: p_soft
       real(default), intent(in) :: expo
       type(vector4_t) :: p_top
       if (em == THR_POS_B) then
-         p_top = p(THR_POS_WP) + p(THR_POS_B)
+         p_top = p_born(THR_POS_WP) + p_born(THR_POS_B)
       else
-         p_top = p(THR_POS_WM) + p(THR_POS_BBAR)
+         p_top = p_born(THR_POS_WM) + p_born(THR_POS_BBAR)
       end if
       dij_soft = dij_soft_fsr (p_top, p_soft, expo)
     end function dij_soft_threshold_gluon_from_top
@@ -4481,7 +4482,13 @@ From these equations we can deduce the soft limit of $d$:
   end function fks_mapping_default_dij_soft
 
 @ %def fks_mapping_default_dij_soft
-@
+@ Computes the sum of all soft [[dij]]s required to normalize the soft S functions
+[[s_alpha_soft]] similar to [[fks_mapping_default_compute_sumdij]].
+In the soft limit however, we need to skip all ftuples $(i,j)$ in which $j$ does
+not correspond to the emitted particle because those $d_{ij}$s are finite and thus
+their contribution to the soft S function vanishes in the limit of soft radiation.
+Technically, they would not vanish if computed here because the fixed [[p_soft]]
+at this point would not fit their actual emitter.
 <<fks regions: fks mapping default: TBP>>=
   procedure :: compute_sumdij_soft => fks_mapping_default_compute_sumdij_soft
 <<fks regions: procedures>>=
@@ -4491,15 +4498,15 @@ From these equations we can deduce the soft limit of $d$:
     type(vector4_t), intent(in), dimension(:) :: p_born
     type(vector4_t), intent(in) :: p_soft
     real(default) :: d
-    integer :: alr, i, j
+    integer :: i_ftuple, i, j
     integer :: nlegs
     d = zero
     nlegs = size (sregion%flst_real%flst)
     associate (ftuples => sregion%ftuples)
-      do alr = 1, sregion%nregions
-         call ftuples(alr)%get (i ,j)
+      do i_ftuple = 1, sregion%nregions
+         call ftuples(i_ftuple)%get (i ,j)
          if (j == nlegs) then
-            map%pseudo_isr = ftuples(alr)%pseudo_isr
+            map%pseudo_isr = ftuples(i_ftuple)%pseudo_isr
             d = d + one / map%dij_soft (p_born, p_soft, i)
          end if
       end do
@@ -4587,24 +4594,24 @@ leave out the denominator because it will cancel out anyway.
 <<fks regions: fks mapping resonances: TBP>>=
   procedure :: compute_sumdij => fks_mapping_resonances_compute_sumdij
 <<fks regions: procedures>>=
-  subroutine fks_mapping_resonances_compute_sumdij (map, sregion, p)
+  subroutine fks_mapping_resonances_compute_sumdij (map, sregion, p_real)
     class(fks_mapping_resonances_t), intent(inout) :: map
     type(singular_region_t), intent(in) :: sregion
-    type(vector4_t), intent(in), dimension(:) :: p
+    type(vector4_t), intent(in), dimension(:) :: p_real
     real(default) :: d, pfr
     integer :: i_res, i_reg, i, j, i_con
     integer :: nlegreal
 
-    nlegreal = size (p)
+    nlegreal = size (p_real)
     d = zero
     do i_reg = 1, sregion%nregions
        associate (ftuple => sregion%ftuples(i_reg))
           call ftuple%get (i, j)
           i_res = ftuple%i_res
        end associate
-       pfr = map%res_map%get_resonance_value (i_res, p, nlegreal)
+       pfr = map%res_map%get_resonance_value (i_res, p_real, nlegreal)
        i_con = sregion%i_reg_to_i_con (i_reg)
-       d = d + pfr / map%dij (p, i, j, i_con)
+       d = d + pfr / map%dij (p_real, i, j, i_con)
     end do
     map%sumdij = d
   end subroutine fks_mapping_resonances_compute_sumdij
@@ -6632,16 +6639,19 @@ where $k$ denotes the momentum of the emitted parton. The quantity $\mathcal{B}_
 
 @ %def soft_subtraction_requires_boost
 @ The treatment of the momentum $k$ follows the discussion about the
-soft limit of the partition functions (ref????).  The parton momentum is
+soft limit of the partition functions (see [1002.2581], p. 29 and
+C. Weiss' PhD Thesis, p. 24).  The parton momentum is
 pulled out, $k = E \hat{k}$. In fact, we will substitute $\hat{k}$ for
 $k$ throughout the code, because the energy will factor out of the
-equation when the soft $\mathcal{S}$-function is multiplied.  The soft
-momentum is a unit vector, because $k^2 = \left(k^0\right)^2 -
-\left(k^0\right)^2\hat{\vec{k}}^2 = 0$.
+equation when the soft $\mathcal{S}$-function is multiplied.  The
+momentum [[p_soft]] represents the soft limit of the radiated particle
+divided by its energy. It is a unit vector, because
+$k^2 = \left(k^0\right)^2 - \left(k^0\right)^2\hat{\vec{k}}^2 = 0$.
 
 The soft momentum is constructed by first creating a unit vector
 parallel to the emitter's Born momentum. This unit vector is then
-rotated about the corresponding angles $y$ and $\phi$.
+rotated about the corresponding angles $y$ and $\phi$ to match
+the direction of the real radiation in the soft limit.
 <<real subtraction: soft sub: TBP>>=
   procedure :: create_softvec_fsr => soft_subtraction_create_softvec_fsr
 <<real subtraction: procedures>>=
@@ -6682,6 +6692,8 @@ rotated about the corresponding angles $y$ and $\phi$.
 @ %def soft_subtraction_create_softvec_fsr
 @ For initial-state emissions, the soft vector is just a unit vector
 with the same direction as the radiated particle.
+As $y$ for ISR is defined independently of the emitter, also [[p_soft]]
+is the same for all initial state emitters.
 <<real subtraction: soft sub: TBP>>=
   procedure :: create_softvec_isr => soft_subtraction_create_softvec_isr
 <<real subtraction: procedures>>=
@@ -6741,12 +6753,16 @@ of $\xi^{-1}$ is supplied in the [[evaluate_region_fsr]]-routine. Thus,
 we are left with a factor of $\xi^2$. A look on the expression for the
 soft limit of $R_\alpha$ below reveals that we are factoring out the gluon
 energy $E_i$ in the denominator. Therefore, we have a factor
-$\xi^2 / E_i^2 = q^2 / 4$.\\
+$\xi^2 / E_i^2 = 4 / q^2$.\\
 Note that the same routine is used also for the computation of the soft
 mismatch. There, the gluon energy is not factored out from the soft vector,
 so that we are left with the $\xi^2$-factor, which will eventually be
 cancelled out again. So, we just multiply with 1. Both cases are
 distinguished by the flag [[xi2_expanded]].
+
+Note that for the soft subtraction term, also the S functions are computed
+in the soft limit. The input momenta are thus the real momenta in the soft limit,
+i.e. the Born momenta given by [[p_born]].
 <<real subtraction: soft sub: TBP>>=
   procedure :: compute => soft_subtraction_compute
 <<real subtraction: procedures>>=
@@ -7571,19 +7587,25 @@ This formula is implemented in \texttt{compute\_sqme\_real\_fin}
           sqme(1) = sqme(1) + sqme_alr
        end if
     end do
-    if (debug2_active (D_SUBTRACTION)) call check_s_alpha_consistency ()
+    if (debug_on) then
+       if (debug2_active (D_SUBTRACTION)) call check_s_alpha_consistency ()
+    end if
   contains
     subroutine check_s_alpha_consistency ()
       real(default) :: sum_s_alpha, sum_s_alpha_soft
-      integer :: i_reg, i1, i2
+      integer :: i_ftuple
       if (debug_on) call msg_debug2 (D_SUBTRACTION, "Check consistency of s_alpha: ")
-      do i_reg = 1, rsub%reg_data%n_regions
-         sum_s_alpha = zero; sum_s_alpha_soft = zero
-         do alr = 1, rsub%reg_data%regions(i_reg)%nregions
-            call rsub%reg_data%regions(i_reg)%ftuples(alr)%get (i1, i2)
-            call rsub%evaluate_emitter_region_debug (i_reg, alr, i1, i2, i_phs, &
-                 sum_s_alpha, sum_s_alpha_soft)
-         end do
+      do alr = 1, rsub%reg_data%n_regions
+         sum_s_alpha = rsub%sum_up_s_alpha(alr, i_phs)
+         call msg_debug2 (D_SUBTRACTION, 'sum_s_alpha', sum_s_alpha)
+         if (.not. nearly_equal(sum_s_alpha, one)) then
+            call msg_bug ("The sum of all S functions should be equal to one!")
+         end if
+         sum_s_alpha_soft = rsub%sum_up_s_alpha_soft(alr, i_phs)
+         call msg_debug2 (D_SUBTRACTION, 'sum_s_alpha_soft', sum_s_alpha_soft)
+         if (.not. nearly_equal(sum_s_alpha_soft, one)) then
+            call msg_bug ("The sum of all soft S functions should be equal to one!")
+         end if
       end do
     end subroutine check_s_alpha_consistency
   end subroutine real_subtraction_compute
@@ -7613,42 +7635,74 @@ region, and also if resonances are used.
   end function real_subtraction_evaluate_emitter_region
 
 @ %def real_subtraction_evaluate_emitter_region
-@
+@ Sums up $\sum_{i_1, i_2} S_{i_1 i_2}$ for the given [[alr]].
 <<real subtraction: real subtraction: TBP>>=
-  procedure :: evaluate_emitter_region_debug &
-       => real_subtraction_evaluate_emitter_region_debug
+  procedure :: sum_up_s_alpha => real_subtraction_sum_up_s_alpha
 <<real subtraction: procedures>>=
-  subroutine real_subtraction_evaluate_emitter_region_debug (rsub, i_reg, alr, i1, i2, &
-       i_phs, sum_s_alpha, sum_s_alpha_soft)
+  function real_subtraction_sum_up_s_alpha (rsub, alr, i_phs) result (sum_s_alpha)
+    real(default) :: sum_s_alpha
     class(real_subtraction_t), intent(inout) :: rsub
-    integer, intent(in) :: i_reg, alr, i1, i2, i_phs
-    real(default), intent(inout) :: sum_s_alpha, sum_s_alpha_soft
-    type(vector4_t), dimension(:), allocatable :: p_real, p_born
-    integer :: i_res
+    integer, intent(in) :: alr, i_phs
+    type(vector4_t), dimension(:), allocatable :: p_real
+    integer :: i_res, i_ftuple, i1, i2
     allocate (p_real (rsub%reg_data%n_legs_real))
-    allocate (p_born (rsub%reg_data%n_legs_born))
     if (rsub%reg_data%has_pseudo_isr ()) then
        p_real = rsub%real_kinematics%p_real_onshell(i_phs)%get_momenta (i_phs)
-       p_born = rsub%real_kinematics%p_born_onshell%get_momenta (1)
     else
        p_real = rsub%real_kinematics%p_real_cms%get_momenta (i_phs)
+    end if
+    i_res = rsub%get_i_res (alr)
+    sum_s_alpha = zero
+    do i_ftuple = 1, rsub%reg_data%regions(alr)%nregions
+       call rsub%reg_data%regions(alr)%ftuples(i_ftuple)%get (i1, i2)
+       sum_s_alpha = sum_s_alpha + rsub%reg_data%get_svalue (p_real, alr, i1, i2, i_res)
+    end do
+  end function real_subtraction_sum_up_s_alpha
+
+@ %def real_subtraction_sum_up_s_alpha
+@ Sums up $\sum_{i_1, i_2} S_{i_1 i_2}$ for the given [[alr]].
+The soft S functions take the real momenta in the soft limit, i.e. the Born momenta.
+For each summand of [[sum_s_alpha_soft]] we take [[p_soft]] constructed from the
+emitter of the given alpha region also for ftuples in which the first integer [[i1]]
+does not coincide with the emitter. This is necessary because only if we keep [[p_soft]]
+fixed, all soft S functions are computed with the same denominator and thus add up to 1.
+<<real subtraction: real subtraction: TBP>>=
+  procedure :: sum_up_s_alpha_soft => real_subtraction_sum_up_s_alpha_soft
+<<real subtraction: procedures>>=
+  function real_subtraction_sum_up_s_alpha_soft (rsub, alr, i_phs) result (sum_s_alpha_soft)
+    real(default) :: sum_s_alpha_soft
+    class(real_subtraction_t), intent(inout) :: rsub
+    integer, intent(in) :: alr, i_phs
+    type(vector4_t), dimension(:), allocatable :: p_born
+    integer :: i_res, i_ftuple, i1, i2, emitter, nlegs
+    allocate (p_born (rsub%reg_data%n_legs_born))
+    if (rsub%reg_data%has_pseudo_isr ()) then
+       p_born = rsub%real_kinematics%p_born_onshell%get_momenta (1)
+    else
        p_born = rsub%real_kinematics%p_born_cms%get_momenta (1)
     end if
-    i_res = rsub%get_i_res (i_reg)
-    sum_s_alpha = sum_s_alpha + rsub%reg_data%get_svalue (p_real, i_reg, i1, i2, i_res)
+    i_res = rsub%get_i_res (alr)
+    emitter = rsub%reg_data%regions(alr)%emitter
     associate (r => rsub%real_kinematics)
-       if (i1 > rsub%sub_soft%reg_data%n_in) then
+       if (emitter > rsub%sub_soft%reg_data%n_in) then
           call rsub%sub_soft%create_softvec_fsr (p_born, r%y_soft(i_phs), r%phi, &
-               i1, r%xi_ref_momenta(rsub%sub_soft%i_xi_ref (i_reg, i_phs)))
+               emitter, r%xi_ref_momenta(rsub%sub_soft%i_xi_ref (alr, i_phs)))
        else
           call rsub%sub_soft%create_softvec_isr (r%y_soft(i_phs), r%phi)
        end if
     end associate
-    sum_s_alpha_soft = sum_s_alpha_soft + rsub%reg_data%get_svalue_soft &
-         (p_born, rsub%sub_soft%p_soft, i_reg, i1, i_res)
-  end subroutine real_subtraction_evaluate_emitter_region_debug
+    nlegs = rsub%reg_data%n_legs_real
+    sum_s_alpha_soft = zero
+    do i_ftuple = 1, rsub%reg_data%regions(alr)%nregions
+       call rsub%reg_data%regions(alr)%ftuples(i_ftuple)%get (i1, i2)
+       if (i2 == nlegs) then
+          sum_s_alpha_soft = sum_s_alpha_soft + rsub%reg_data%get_svalue_soft &
+            (p_born, rsub%sub_soft%p_soft, alr, i1, i_res)
+       end if
+    end do
+  end function real_subtraction_sum_up_s_alpha_soft
 
-@ %def real_subtraction_evaluate_emitter_region_debug
+@ %def real_subtraction_sum_up_s_alpha_soft
 @ This subroutine computes the finite part of the real matrix element in
 an individual singular region.
 First, the radiation variables are fetched and $\mathcal{R}$ is
@@ -7734,7 +7788,7 @@ the corresponding Jacobians.
       i_born = rsub%reg_data%regions(alr)%uborn_index
       xi = rsub%real_kinematics%xi_max (i_phs) * rsub%real_kinematics%xi_tilde
       write (u,'(A,I2)') 'rsub%purpose: ', rsub%purpose
-      write (u,'(A,I3)') 'alr: ', alr
+      write (u,'(A,I4)') 'alr: ', alr
       write (u,'(A,I3)') 'emitter: ', emitter
       write (u,'(A,I3)') 'i_phs: ', i_phs
       write (u,'(A,F6.4)') 'xi_max: ', rsub%real_kinematics%xi_max (i_phs)
@@ -7805,6 +7859,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
             rsub%reg_data%regions(alr)%has_collinear_divergence()
 
        is_fsr = emitter > rsub%isr_kinematics%n_in
+
        if (is_fsr) then
           if (.not. present(sqme_coll) .or. .not. present(sqme_cs)) &
              call msg_error ("real_subtraction_register_debug_sqme: Wrong arguments for FSR")
@@ -7981,7 +8036,7 @@ $\tilde{\xi}$ which we have to compensate.
        u = given_output_unit (unit); if (u < 0) return
        i_born = rsub%reg_data%regions(alr)%uborn_index
        xi = rsub%real_kinematics%xi_max (i_phs) * rsub%real_kinematics%xi_tilde
-       write (u,'(A,I2)') 'alr: ', alr
+       write (u,'(A,I4)') 'alr: ', alr
        write (u,'(A,I2)') 'emitter: ', emitter
        write (u,'(A,F4.2)') 'xi_max: ', rsub%real_kinematics%xi_max (i_phs)
        print *, 'xi: ', xi, 'y: ', rsub%real_kinematics%y (i_phs)
@@ -8338,9 +8393,9 @@ Be aware that this approach will not work for $pe$ collisions.
          q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
          allocate (p_born (rsub%reg_data%n_legs_born))
          if (rsub%reg_data%has_pseudo_isr ()) then
-            p_born = real_kinematics%p_born_onshell%get_momenta(1)
+            p_born = real_kinematics%p_born_onshell%get_momenta (1)
          else
-            p_born = real_kinematics%p_born_cms%get_momenta(1) ! TODO: cms or lab?
+            p_born = real_kinematics%p_born_cms%get_momenta (1)
          end if
          if (emitter > rsub%sub_soft%reg_data%n_in) then
             call rsub%sub_soft%create_softvec_fsr &
@@ -8371,6 +8426,8 @@ Be aware that this approach will not work for $pe$ collisions.
     if (debug2_active (D_SUBTRACTION)) call check_soft_vector ()
   contains
     subroutine check_soft_vector ()
+      !!! p_soft = p_gluon / E_gluon only in the soft limit
+      !!! This check only has to be passed for ISR or for FSR if ?test_soft_limit = true is set.
       type(vector4_t) :: p_gluon
       if (debug_on) call msg_debug2 (D_SUBTRACTION, "Compare soft vector: ")
       print *, 'p_soft: ', rsub%sub_soft%p_soft%p
@@ -9133,8 +9190,8 @@ end module nlo_data
      type(fks_template_t) :: fks_template
      type(string_t) :: virtual_selection
      logical :: virtual_resonance_aware_collinear = .true.
-     logical :: use_born_scale = .true.
-     logical :: cut_all_sqmes = .true.
+     logical :: use_born_scale = .false.
+     logical :: cut_all_real_sqmes = .false.
      type(string_t) :: nlo_correction_type
   contains
   <<nlo data: nlo settings: TBP>>
@@ -9170,8 +9227,8 @@ procedure :: init => nlo_settings_init
          var_list%get_rval (var_str ('powheg_damping_scale'))
     nlo_settings%use_born_scale = &
          var_list%get_lval (var_str ("?nlo_use_born_scale"))
-    nlo_settings%cut_all_sqmes = &
-         var_list%get_lval (var_str ("?nlo_cut_all_sqmes"))
+    nlo_settings%cut_all_real_sqmes = &
+         var_list%get_lval (var_str ("?nlo_cut_all_real_sqmes"))
     nlo_settings%nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
   contains
     subroutine setup_alr_selection ()
@@ -9490,71 +9547,71 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
 @ %def dglap_remnant_evaluate
 @ We introduce $\hat{P}(z, \epsilon) = (1 - z) P(z, \epsilon)$ and have
 \begin{align}
-  \hat{P}^{gg}(z) & = 2C_A \left[z + \frac{(1-z)^2}{z} + z(1-z)^2\right], \\
-  \hat{P}^{qg}(z) & = C_F (1-z) \frac{1 + (1-z)^2}{z}, \\
-  \hat{P}^{gq}(z) & = T_F (1 - z - 2z(1-z)^2), \\
-  \hat{P}^{qq}(z) & = C_F (1 + z^2).
+  \hat{P}_{g\to gg}(z) & = 2C_A \left[z + \frac{(1-z)^2}{z} + z(1-z)^2\right], \\
+  \hat{P}_{g\to qq}(z) & = C_F (1-z) \frac{1 + (1-z)^2}{z}, \\
+  \hat{P}_{q\to gq}(z) & = T_F (1 - z - 2z(1-z)^2), \\
+  \hat{P}_{q\to qg}(z) & = C_F (1 + z^2).
 \end{align}
 <<dglap remnant: dglap remnant evaluate: procedures>>=
-  function p_hat_gg (z)
-    real(default) :: p_hat_gg
+  function p_hat_gtogg (z)
+    real(default) :: p_hat_gtogg
   <<p variables>>
-    p_hat_gg = two * CA * (z + onemz**2 / z + z * onemz**2)
-  end function p_hat_gg
+    p_hat_gtogg = two * CA * (z + onemz**2 / z + z * onemz**2)
+  end function p_hat_gtogg
 
-  function p_hat_qg (z)
-    real(default) :: p_hat_qg
+  function p_hat_gtoqq (z)
+    real(default) :: p_hat_gtoqq
   <<p variables>>
-    p_hat_qg = CF * onemz / z * (one + onemz**2)
-  end function p_hat_qg
+    p_hat_gtoqq = CF * onemz / z * (one + onemz**2)
+  end function p_hat_gtoqq
 
-  function p_hat_gq (z)
-    real(default) :: p_hat_gq
+  function p_hat_qtogq (z)
+    real(default) :: p_hat_qtogq
   <<p variables>>
-    p_hat_gq = TR * (onemz - two * z * onemz**2)
-  end function p_hat_gq
+    p_hat_qtogq = TR * (onemz - two * z * onemz**2)
+  end function p_hat_qtogq
 
-  function p_hat_qq (z)
-    real(default) :: p_hat_qq
+  function p_hat_qtoqg (z)
+    real(default) :: p_hat_qtoqg
     real(default), intent(in) :: z
-    p_hat_qq = CF * (one + z**2)
-  end function p_hat_qq
+    p_hat_qtoqg = CF * (one + z**2)
+  end function p_hat_qtoqg
 
-@ %def p_hat_qq, p_hat_gq, p_hat_qg, p_hat_gg
+@ %def p_hat_qtoqg, p_hat_qtogq, p_hat_gtoqq, p_hat_gtogg
 @
 \begin{align}
-  \frac{\partial P^{gg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = 0, \\
-  \frac{\partial P^{qg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F z, \\
-  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -
+  \frac{\partial P_{g\to gg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = 0, \\
+  \frac{\partial P_{g\to qq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F z, \\
+  \frac{\partial P_{q\to gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -
 2 T_F z (1-z), \\
-  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F (1-z).\\
+  \frac{\partial P_{q\to qg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F (1-z).\\
 \end{align}
 <<dglap remnant: dglap remnant evaluate: procedures>>=
-  function p_derived_gg (z)
-    real(default) :: p_derived_gg
+  function p_derived_gtogg (z)
+    real(default) :: p_derived_gtogg
     real(default), intent(in) :: z
-    p_derived_gg = zero
-  end function p_derived_gg
+    p_derived_gtogg = zero
+  end function p_derived_gtogg
 
-  function p_derived_qg (z)
-    real(default) :: p_derived_qg
+  function p_derived_gtoqq (z)
+    real(default) :: p_derived_gtoqq
     real(default), intent(in) :: z
-    p_derived_qg = -CF * z
-  end function p_derived_qg
+    p_derived_gtoqq = -CF * z
+  end function p_derived_gtoqq
 
-  function p_derived_gq (z)
-    real(default) :: p_derived_gq
+  function p_derived_qtogq (z)
+    real(default) :: p_derived_qtogq
   <<p variables>>
-    p_derived_gq = -two * TR * z * onemz
-  end function p_derived_gq
+    p_derived_qtogq = -two * TR * z * onemz
+  end function p_derived_qtogq
 
-  function p_derived_qq (z)
-    real(default) :: p_derived_qq
+  function p_derived_qtoqg (z)
+    real(default) :: p_derived_qtoqg
   <<p variables>>
-    p_derived_qq = -CF * onemz
-  end function p_derived_qq
+    p_derived_qtoqg = -CF * onemz
+  end function p_derived_qtoqg
 
-@ %def p_derived_gg, p_derived_qg, p_derived_gq, p_derived_qq
+@ %def p_derived_gtogg, p_derived_gtoqq, p_derived_qtogq, p_derived_qtoqg
 @
 <<dglap remnant: dglap remnant evaluate: procedures>>=
 subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
@@ -9580,23 +9637,21 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
      plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
           two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
   end associate
+  sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
   if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
-     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
-     sqme_alr = sqme_alr + p_hat_gg(z) * factor / z * sqme_scaled * jac &
-          - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
-          + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+     sqme_alr = sqme_alr + p_hat_gtogg(z) * factor / z * sqme_scaled * jac &
+          - p_hat_gtogg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
+          + p_hat_gtogg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
   else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
-     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
-     sqme_alr = sqme_alr + p_hat_qq(z) * factor / z * sqme_scaled * jac &
-          - p_derived_qq(z) / z * sqme_scaled * jac &
-          - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
-          + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+     sqme_alr = sqme_alr + p_hat_qtoqg(z) * factor / z * sqme_scaled * jac &
+          - p_derived_qtoqg(z) / z * sqme_scaled * jac &
+          - p_hat_qtoqg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
+          + p_hat_qtoqg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
   else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
-     sqme_alr = sqme_alr + (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
-          dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+     sqme_alr = sqme_alr + (p_hat_gtoqq(z) * factor - p_derived_gtoqq(z)) / z * jac * &
+          sqme_scaled
   else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
-     sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
-     sqme_alr = sqme_alr + (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
+     sqme_alr = sqme_alr + (p_hat_qtogq(z) * factor - p_derived_qtogq(z)) / z * sqme_scaled * jac
   else
      sqme_alr = sqme_alr + zero
   end if
