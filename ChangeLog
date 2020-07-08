@@ -2,7 +2,15 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.8.3
+	Version 2.8.4
+
+2020-07-08
+	RELEASE: version 2.8.4
+
+2020-07-07
+	Bug fix: steering of UFO Majorana models from WHIZARD
+
+##################################################################
 
 2020-07-03
 	RELEASE: version 2.8.3

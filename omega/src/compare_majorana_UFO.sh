@@ -27,8 +27,11 @@ make OCAMLFLAGS="$OCAMLFLAGS" -j $jobs -C $build/omega/src || exit 1
 make -j $jobs -C $build/omega/bin \
    omega_UFO.opt omega_UFO_Majorana.opt || exit 1
 
-omega_dirac="$build/omega/bin/omega_UFO.opt -model:exec -target:width $width"
+omega_dirac="$build/omega/bin/omega_UFO_Dirac.opt -model:exec -target:width $width"
 omega_majorana="$build/omega/bin/omega_UFO_Majorana.opt -model:Majorana -model:exec -target:width $width"
+
+omega_dirac="$build/omega/bin/omega_UFO.opt -model:exec -target:width $width"
+omega_majorana="$build/omega/bin/omega_UFO.opt -model:Majorana -model:exec -target:width $width"
 
 $omega_dirac "$mode" "$process" > omega_amplitude_dirac.f90 2>/dev/null
 $omega_majorana "$mode" "$process" > omega_amplitude_majorana.f90 2>/dev/null
