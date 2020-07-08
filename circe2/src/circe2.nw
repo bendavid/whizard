@@ -3,7 +3,7 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation of [[circe2]]}
 <<Version>>=
-'Version 2.8.4'
+'Version 3.0.0_alpha'
 @ 
 <<[[implicit none]]>>=
 implicit none
