@@ -7415,7 +7415,7 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
      real(default), dimension(:,:), allocatable :: sf_factors
      real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
      real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
-     complex(default), dimension(:,:,:,:), allocatable :: sqme_born_spin_c
+     real(default), dimension(:,:,:,:), allocatable :: sqme_born_spin_c
      type(soft_subtraction_t) :: sub_soft
      type(coll_subtraction_t) :: sub_coll
      logical, dimension(:), allocatable :: sc_required
@@ -7462,7 +7462,7 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
        rsub%sc_required(alr) = reg_data%regions(alr)%sc_required
     end do
     if (rsub%requires_spin_correlations ()) then
-       allocate (rsub%sqme_born_spin_c (0:3, 0:3, reg_data%n_legs_born, reg_data%n_flv_born))
+       allocate (rsub%sqme_born_spin_c (1:3, 1:3, reg_data%n_legs_born, reg_data%n_flv_born))
        rsub%sqme_born_spin_c = zero
     end if
     call rsub%sub_soft%init (reg_data)
@@ -8469,8 +8469,8 @@ Be aware that this approach will not work for $pe$ collisions.
          end if
        end associate
        mom_times_sqme = zero
-       do mu = 0, 3
-          do nu = 0, 3
+       do mu = 1, 3
+          do nu = 1, 3
              mom_times_sqme = mom_times_sqme + &
                   k_perp(mu) * k_perp(nu) * rsub%sqme_born_spin_c (mu, nu, emitter, i_born)
           end do
@@ -8482,8 +8482,7 @@ Be aware that this approach will not work for $pe$ collisions.
     subroutine check_me_consistency ()
       real(default) ::  sqme_sum
       if (debug_on) call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
-      sqme_sum = rsub%sqme_born_spin_c(0,0,emitter,i_born) &
-               - rsub%sqme_born_spin_c(1,1,emitter,i_born) &
+      sqme_sum = rsub%sqme_born_spin_c(1,1,emitter,i_born) &
                - rsub%sqme_born_spin_c(2,2,emitter,i_born) &
                - rsub%sqme_born_spin_c(3,3,emitter,i_born)
       if (.not. nearly_equal (sqme_sum, -rsub%sqme_born(i_born), 0.0001_default)) then

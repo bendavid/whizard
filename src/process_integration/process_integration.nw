@@ -8276,7 +8276,7 @@ subtractions.
          if (.not. use_color) n_sub_color = n_tot * (n_tot - 1) / 2
          if (nlo_t == NLO_REAL) then
             if (present (n_emitters)) then
-               n_sub_spin = 16 * n_emitters
+               n_sub_spin = 6 * n_emitters
             end if
          end if
       end if
@@ -13062,8 +13062,8 @@ it is only available after the [[fks_regions]] have been created.
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
     integer :: i_flv, i_hel, i_sub, i_emitter, emitter
-    integer :: n_flv, n_sub_color, n_sub_spin, n_offset
-    real(default), dimension(0:3, 0:3) :: sqme_spin_c
+    integer :: n_flv, n_sub_color, n_sub_spin, n_offset,i,j
+    real(default), dimension(1:3, 1:3) :: sqme_spin_c
     real(default), dimension(:), allocatable :: sqme_spin_c_all
     real(default), dimension(:), allocatable :: sqme_spin_c_arr
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
@@ -13080,7 +13080,7 @@ it is only available after the [[fks_regions]] have been created.
                 n_sub_color = term%get_n_sub_color ()
                 n_sub_spin = term%get_n_sub_spin ()
                 n_offset = 0; if (config%has_pdfs) n_offset = n_beams_rescaled
-                allocate (sqme_spin_c_arr(16))
+                allocate (sqme_spin_c_arr(6))
                 do i_flv = 1, n_flv
                    allocate (sqme_spin_c_all(n_sub_spin))
                    do i_sub = 1, n_sub_spin
@@ -13092,7 +13092,14 @@ it is only available after the [[fks_regions]] have been created.
                       emitter = config%region_data%emitters(i_emitter)
                       if (emitter > 0) then
                          call split_array (sqme_spin_c_all, sqme_spin_c_arr)
-                         sqme_spin_c = reshape (sqme_spin_c_arr, (/4,4/))
+                         do j = 1, size (sqme_spin_c, dim=2)
+                            do i = j, size (sqme_spin_c, dim=1)
+                               !!! Restoring the symmetric matrix packed into a 1-dim array
+                               !!! c.f. [[prc_openloops_compute_sqme_spin_c]]
+                               sqme_spin_c(i,j) = sqme_spin_c_arr(j + i * (i - 1) / 2)
+                               if (i /= j) sqme_spin_c(j,i) = sqme_spin_c(i,j)
+                            end do
+                         end do
                          pcm_instance%real_sub%sqme_born_spin_c(:,:,emitter,i_flv) = sqme_spin_c
                       end if
                    end do
@@ -13581,7 +13588,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     real(default) :: sqme
     real(default), dimension(:), allocatable :: sqme_color_c
     real(default), dimension(:), allocatable :: sqme_spin_c
-    real(default), dimension(16) :: sqme_spin_c_tmp
+    real(default), dimension(6) :: sqme_spin_c_tmp
     integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off
     integer :: i_flv, i_hel, i_sub, i_color_c, i_spin_c, i_emitter
     integer :: emitter
