@@ -71,7 +71,12 @@ libvegas_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = vegas.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${nodist_libvegas_la_SOURCES:.f90=.$(FCMOD)}
+
 libvegas_Modules = $(nodist_libvegas_la_SOURCES:.f90=) $(libvegas_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libvegas_Modules); do \
@@ -133,10 +138,10 @@ Makefile.depend: $(nodist_libvegas_la_SOURCES) $(libvegas_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 ## Dependencies across directories and packages, if not automatically generated
-rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
+rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FCMOD)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -214,7 +219,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f vegas.stamp vegas.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

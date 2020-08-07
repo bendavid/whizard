@@ -45,7 +45,17 @@ libshower_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = shower.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ktclus.$(FCMOD) \
+  shower_base.$(FCMOD) \
+  shower_core.$(FCMOD) \
+  shower_partons.$(FCMOD) \
+  shower_pythia6.$(FCMOD) \
+  shower_pythia8.$(FCMOD)
+
 libshower_Modules = ${libshower_la_SOURCES:.f90=} ${libshower_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libshower_Modules); do \
@@ -122,7 +132,7 @@ Makefile.depend: $(libshower_la_SOURCES) $(libshower_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -196,7 +206,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f shower.stamp shower.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -57,6 +57,28 @@ REF_OUTPUT_FILES = \
 
 REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/analysis_1.ref \
+    unit_tests/ref-output/api_1.ref \
+    unit_tests/ref-output/api_2.ref \
+    unit_tests/ref-output/api_3.ref \
+    unit_tests/ref-output/api_4.ref \
+    unit_tests/ref-output/api_5.ref \
+    unit_tests/ref-output/api_6.ref \
+    unit_tests/ref-output/api_7.ref \
+    unit_tests/ref-output/api_8.ref \
+    unit_tests/ref-output/api_c_1.ref \
+    unit_tests/ref-output/api_c_2.ref \
+    unit_tests/ref-output/api_c_3.ref \
+    unit_tests/ref-output/api_c_4.ref \
+    unit_tests/ref-output/api_c_5.ref \
+    unit_tests/ref-output/api_cc_1.ref \
+    unit_tests/ref-output/api_cc_2.ref \
+    unit_tests/ref-output/api_cc_3.ref \
+    unit_tests/ref-output/api_cc_4.ref \
+    unit_tests/ref-output/api_cc_5.ref \
+    unit_tests/ref-output/api_hepmc3_1.ref \
+    unit_tests/ref-output/api_hepmc3_cc_1.ref \
+    unit_tests/ref-output/api_lcio_1.ref \
+    unit_tests/ref-output/api_lcio_cc_1.ref \
     unit_tests/ref-output/auto_components_1.ref \
     unit_tests/ref-output/auto_components_2.ref \
     unit_tests/ref-output/auto_components_3.ref \

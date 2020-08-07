@@ -69,7 +69,12 @@ libbeams_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = beams.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libbeams_la_SOURCES:.f90=.$(FCMOD)}
+
 libbeams_Modules = ${libbeams_la_SOURCES:.f90=} ${libbeams_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libbeams_Modules); do \
@@ -99,11 +104,11 @@ module_lists = \
   ../qed_pdf/Modules
 
 # Explicit dependencies, not automatically generated
-sf_circe1.lo: ../../circe1/src/circe1.$(FC_MODULE_EXT)
-sf_circe2.lo: ../../circe2/src/circe2.$(FC_MODULE_EXT)
-hoppet_interface.lo:  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
-sf_pdf_builtin.lo: ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT)
-sf_lhapdf.lo:  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
+sf_circe1.lo: ../../circe1/src/circe1.$(FCMOD)
+sf_circe2.lo: ../../circe2/src/circe2.$(FCMOD)
+hoppet_interface.lo:  ../lhapdf/lhapdf.$(FCMOD)
+sf_pdf_builtin.lo: ../pdf_builtin/pdf_builtin.$(FCMOD)
+sf_lhapdf.lo:  ../lhapdf/lhapdf.$(FCMOD)
 
 
 $(module_lists):
@@ -144,7 +149,7 @@ Makefile.depend: $(libbeams_la_SOURCES) $(libbeams_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -171,10 +176,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-#execmoddir = $(pkglibdir)/mod/beams
-#nodist_execmod_HEADERS = \#
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -218,7 +219,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f beams.stamp beams.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

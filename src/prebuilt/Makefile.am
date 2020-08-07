@@ -9,8 +9,8 @@ libwhizard_prebuilt_la_SOURCES = libmanager.f90
 
 ## Dependencies of whizard_prebuilt
 $(libwhizard_prebuilt_la_OBJECTS): \
-  ../basics/iso_varying_string.$(FC_MODULE_EXT) \
-  ../matrix_elements/prclib_interfaces.$(FC_MODULE_EXT)
+  ../basics/iso_varying_string.$(FCMOD) \
+  ../matrix_elements/prclib_interfaces.$(FCMOD)
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../matrix_elements
 
@@ -37,7 +37,7 @@ endif
 
 ## Remove F90 module files
 clean-local:
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 
 ## Remove backup files
 maintainer-clean-backup:

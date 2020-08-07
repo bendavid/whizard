@@ -48,7 +48,12 @@ librng_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = rng.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${librng_la_SOURCES:.f90=.$(FCMOD)}
+
 librng_Modules = ${librng_la_SOURCES:.f90=} ${librng_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(librng_Modules); do \
@@ -108,10 +113,10 @@ Makefile.depend: $(librng_la_SOURCES) $(librng_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 ## Dependencies across directories and packages, if not automatically generated
-rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
+rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FCMOD)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -138,11 +143,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-## and by the user code library
-#execmoddir = $(pkglibdir)/mod/rng
-#nodist_execmod_HEADERS =
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -187,7 +187,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f rng.stamp rng.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

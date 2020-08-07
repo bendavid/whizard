@@ -43,6 +43,12 @@ libWOStdHep_la_SOURCES = \
 	WOStdHepRdr.cpp \
 	$(FC_SOURCE)
 
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${FC_SOURCE:.f90=.$(FCMOD)}
+
 libWOStdHep_Modules = ${FC_SOURCE:.f90=}
 Modules: Makefile
 	@for module in $(libWOStdHep_Modules); do \
@@ -97,14 +103,9 @@ Makefile.depend: $(FC_SOURCE)
 
 DISTCLEANFILES += Makefile.depend 
 
-## Install the modules used by generated matrix element code
-execmoddir = $(pkglibdir)/mod/xdr
-nodist_execmod_HEADERS = \
-  xdr_wo_stdhep.$(FC_MODULE_EXT)
-
-SUFFIXES = .lo .$(FC_MODULE_EXT)
+SUFFIXES = .lo .$(FCMOD)
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -137,7 +138,7 @@ clean-macosx:
 .PHONY: clean-macosx
 
 clean-local: clean-macosx
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

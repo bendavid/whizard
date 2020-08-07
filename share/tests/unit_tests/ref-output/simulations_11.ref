@@ -8,7 +8,7 @@
 * Generate event
 
 ========================================================================
- Event sample: ''
+ Event sample: 'simulation_11_p'
    Processes    = 1
    Unweighted   = T
    Event norm   = '1'

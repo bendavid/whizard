@@ -28,6 +28,8 @@
 ########################################################################
 
 WHIZARD_UT_DRIVER = run_whizard_ut.sh
+WHIZARD_C_TEST_DRIVER = run_whizard_c_test.sh
+WHIZARD_CC_TEST_DRIVER = run_whizard_cc_test.sh
 
 UNIT_TESTS = \
     analysis.run \
@@ -157,22 +159,28 @@ UNIT_TESTS_REQ_FASTJET = \
 
 UNIT_TESTS_REQ_HEPMC2 = \
     hepmc2.run \
-    eio_hepmc2.run
+    eio_hepmc2.run \
+    api_hepmc2.run
 
 UNIT_TESTS_REQ_HEPMC3 = \
     hepmc3.run \
-    eio_hepmc3.run
+    eio_hepmc3.run \
+    api_hepmc3.run
 
 UNIT_TESTS_REQ_LCIO = \
     lcio.run \
-    eio_lcio.run
+    eio_lcio.run \
+    api_lcio.run
 
 UNIT_TESTS_REQ_OCAML = \
     prc_omega.run \
     compilations.run \
     compilations_static.run \
     restricted_subprocesses.run \
-    simulations.run
+    simulations.run \
+    api.run \
+    api_c.run \
+    api_cc.run
 
 UNIT_TESTS_REQ_RECOLA = \
    prc_recola.run
@@ -229,6 +237,26 @@ $(TEST_DRIVERS_RUN): $(WHIZARD_UT)
 
 $(WHIZARD_UT):
 	$(MAKE) -C ../../src check
+
+########################################################################
+# Force building the whizard_c_test executable in the main src directory.
+# This depends on the unit-test libraries which will be built recursively.
+
+WHIZARD_C_TEST = ../../src/whizard_c_test
+
+$(TEST_DRIVERS_RUN): $(WHIZARD_C_TEST)
+
+$(WHIZARD_C_TEST): $(WHIZARD_UT)
+
+########################################################################
+# Force building the whizard_c_test executable in the main src directory.
+# This depends on the unit-test libraries which will be built recursively.
+
+WHIZARD_CC_TEST = ../../src/whizard_cc_test
+
+$(TEST_DRIVERS_RUN): $(WHIZARD_CC_TEST)
+
+$(WHIZARD_CC_TEST): $(WHIZARD_C_TEST)
 
 ########################################################################
 
@@ -404,7 +432,7 @@ clean-local: clean-macosx
 	rm -f LHAPDF5_FLAG LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* 
-	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *.f90 *.c *.$(FCMOD) *.o *.la
 	rm -f *.makefile
 	rm -f *.grid output.rcl
 	rm -rf err-output
@@ -417,7 +445,7 @@ clean-local: clean-macosx
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
-	rm -f *.fds
+	rm -f *.fds api_*.out
 	rm -f *.vg2 *.vegas *.grids grids_2_test
 	rm -rf output_cll
 	rm -rf *.dSYM

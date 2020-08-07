@@ -60,7 +60,7 @@ EXTRA_DIST = $(circe1_plot_SOURCES) $(circe1_fit_SOURCES) \
 	$(circe1_sample_SOURCES) $(circe1_int_SOURCES) \
 	$(bin_SCRIPTS:.run=.sh)
 
-SUFFIXES = .nw .lo .$(FC_MODULE_EXT) .sh. .run
+SUFFIXES = .nw .lo .$(FCMOD) .sh. .run
 
 .sh.run:
 	@rm -f @$
@@ -68,7 +68,7 @@ SUFFIXES = .nw .lo .$(FC_MODULE_EXT) .sh. .run
 	chmod +x $@
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 
 AM_FFLAGS = 
@@ -177,7 +177,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f *.run
-	-rm -f *.$(FC_MODULE_EXT) *.g90 circemacs.mp4
+	-rm -f *.$(FCMOD) *.g90 circemacs.mp4
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -53,7 +53,7 @@ weight = 2
 * Generate an event
 
 ========================================================================
- Event sample: ''
+ Event sample: 'simulation_10p'
    Processes    = 1
    Alt.wgts     = 1
    Unweighted   = F

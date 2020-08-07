@@ -36,7 +36,12 @@ libqed_pdf_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = qed_pdf.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libqed_pdf_la_SOURCES:.f90=.$(FCMOD)}
+
 libqed_pdf_Modules = ${libqed_pdf_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libqed_pdf_Modules); do \
@@ -94,7 +99,7 @@ Makefile.depend: $(libqed_pdf_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -165,7 +170,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f qed_pdf.stamp qed_pdf.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

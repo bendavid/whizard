@@ -29,7 +29,7 @@
 ## defined outside the DISTRIBUTION environment as modern autotools
 ## versions complain otherwise
 w_srcdir = $(top_srcdir)/src
-VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/expr_base:$(w_srcdir)/physics:$(w_srcdir)/qed_pdf:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/me_methods:$(w_srcdir)/events:$(w_srcdir)/phase_space:$(w_srcdir)/vegas:$(w_srcdir)/mci:$(w_srcdir)/fks:$(w_srcdir)/gosam:$(w_srcdir)/openloops:$(w_srcdir)/blha:$(w_srcdir)/shower:$(w_srcdir)/muli:$(w_srcdir)/variables:$(w_srcdir)/model_features:$(w_srcdir)/threshold:$(w_srcdir)/process_integration:$(w_srcdir)/matching:$(w_srcdir)/transforms:$(w_srcdir)/whizard-core
+VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/expr_base:$(w_srcdir)/physics:$(w_srcdir)/qed_pdf:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/me_methods:$(w_srcdir)/events:$(w_srcdir)/phase_space:$(w_srcdir)/vegas:$(w_srcdir)/mci:$(w_srcdir)/fks:$(w_srcdir)/gosam:$(w_srcdir)/openloops:$(w_srcdir)/blha:$(w_srcdir)/shower:$(w_srcdir)/muli:$(w_srcdir)/variables:$(w_srcdir)/model_features:$(w_srcdir)/threshold:$(w_srcdir)/process_integration:$(w_srcdir)/matching:$(w_srcdir)/transforms:$(w_srcdir)/whizard-core:$(w_srcdir)/main:$(w_srcdir)/api
 
 ## The primary targets
 if DISTRIBUTION
@@ -123,7 +123,9 @@ WHIZARD_DEPENDENCY_GRAPHS_DOT = \
 	types.dot \
 	utilities.dot \
 	variables.dot \
-	whizard-core.dot
+	whizard-core.dot \
+	main.dot \
+	api.dot
 
 WHIZARD_DEPENDENCY_GRAPHS_PDF = $(WHIZARD_DEPENDENCY_GRAPHS_DOT:.dot=.pdf)
 all-dots: $(WHIZARD_DEPENDENCY_GRAPHS_DOT) overview.dot

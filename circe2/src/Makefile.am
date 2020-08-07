@@ -46,7 +46,7 @@ NOWEB_FILES = prelude.nw postlude.nw
 
 lib_LTLIBRARIES += libcirce2.la
 libcirce2_la_SOURCES = circe2.f90
-MODULE_FILES += circe2.$(FC_MODULE_EXT)
+MODULE_FILES += circe2.$(FCMOD)
 SOURCE_FILES += $(libcirce2_la_SOURCES)
 NOWEB_FILES += circe2.nw
 
@@ -56,17 +56,27 @@ NOWEB_FILES += circe2.nw
 ########################################################################
 
 EXTRA_SOURCE_FILES +=
-MODULE_FILES += kinds.$(FC_MODULE_EXT)
+MODULE_FILES += kinds.$(FCMOD)
 
 lib_LTLIBRARIES += libtaorng.la
 libtaorng_la_SOURCES = tao_random_numbers.f90
-MODULE_FILES += tao_random_numbers.$(FC_MODULE_EXT)
+MODULE_FILES += tao_random_numbers.$(FCMOD)
 SOURCE_FILES += $(libtaorng_la_SOURCES)
 
 lib_LTLIBRARIES += libtaorng_objs.la
 libtaorng_objs_la_SOURCES = tao_random_objects.f90
-MODULE_FILES += tao_random_objects.$(FC_MODULE_EXT)
+MODULE_FILES += tao_random_objects.$(FCMOD)
 SOURCE_FILES += $(libtaorng_objs_la_SOURCES)
+
+########################################################################
+# Install generated .mod files
+#   once in 'circe2' and once in 'whizard' (main only)
+########################################################################
+execmodcircedir = $(fmoddir)/circe2
+nodist_execmodcirce_HEADERS = $(MODULE_FILES)
+
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = circe2.$(FCMOD)
 
 ########################################################################
 # Testing and tools
@@ -113,12 +123,9 @@ EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) $(CIRCE2_CAML) \
 MYPRECIOUS = $(CIRCE2_DERIVED)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
-
-moduleexecincludedir = $(pkgincludedir)/../circe2
-nodist_moduleexecinclude_HEADERS = $(MODULE_FILES)
 
 AM_FFLAGS = 
 AM_FCFLAGS = 
@@ -147,7 +154,7 @@ WEBS = $(srcdir)/prelude.nw $(srcdir)/circe2.nw $(srcdir)/postlude.nw
 NOTANGLE_IT = \
   cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
-SUFFIXES += .nw .$(FC_MODULE_EXT)
+SUFFIXES += .nw .$(FCMOD)
 
 if NOWEB_AVAILABLE
 .nw.f90:
@@ -213,7 +220,7 @@ Makefile.depend: $(SOURCE_FILES) $(circe2_moments_SOURCES) $(circe2_ls_SOURCES) 
 	          -e 's/, *only:.*//' \
 	          -e 's/, *&//' \
 	          -e 's/, *.*=>.*//' \
-	          -e 's/ *$$/.$$(FC_MODULE_EXT)/'; \
+	          -e 's/ *$$/.$$(FCMOD)/'; \
 	done > $@
 
 DISTCLEANFILES = Makefile.depend kinds.f90
@@ -266,7 +273,7 @@ endif
 
 ## Remove F90 module files
 clean-local: clean-noweb
-	-rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FC_MODULE_EXT) \
+	-rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FCMOD) \
 	*.g90 $(CIRCE2_NATIVE) $(CIRCE2_BYTECODE) $(CIRCE2_DERIVED)
 if FC_SUBMODULES
 	-rm -f *.smod

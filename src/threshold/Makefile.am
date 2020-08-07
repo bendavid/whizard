@@ -48,6 +48,19 @@ dist_noinst_DATA = threshold.nw
 libthreshold_ut_la_SOURCES = \
   ttv_formfactors_uti.f90 ttv_formfactors_ut.f90
 
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  interpolation.$(FCMOD) \
+  nr_tools.$(FCMOD) \
+  ttv_formfactors.$(FCMOD) \
+  nr.$(FCMOD) \
+  nrtype.$(FCMOD) \
+  nrutil.$(FCMOD) \
+  hypgeo_info.$(FCMOD) \
+  ode_path.$(FCMOD)
+
 # Dump module names into file Modules
 libthreshold_Modules = \
 	${libthreshold_la_SOURCES:.f90=} \
@@ -112,12 +125,12 @@ Makefile.depend: $(libthreshold_la_SOURCES) \
 
 DISTCLEANFILES += Makefile.depend
 
-nrtype.$(FC_MODULE_EXT) nr.$(FC_MODULE_EXT): nr_tools.$(FC_MODULE_EXT)
+nrtype.$(FCMOD) nr.$(FCMOD): nr_tools.$(FCMOD)
 
-SUFFIXES = .lo .$(FC_MODULE_EXT)
+SUFFIXES = .lo .$(FCMOD)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 
 AM_FCFLAGS = -I../basics -I../testing -I../utilities -I../system -I../physics -I../combinatorics
@@ -142,15 +155,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-execmoddir = $(pkglibdir)/mod/threshold
-nodist_execmod_HEADERS = \
-	interpolation.$(FC_MODULE_EXT) \
-	nr_tools.$(FC_MODULE_EXT) \
-	nr.$(FC_MODULE_EXT) \
-	nrtype.$(FC_MODULE_EXT) \
-	ttv_formfactors.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -178,6 +182,18 @@ $(libthreshold_la_SOURCES) $(libthreshold_ut_la_SOURCES): threshold.stamp
 endif
 
 ########################################################################
+## Explicit dependencies
+
+interpolation.$(FCMOD): interpolation.lo
+nr_tools.$(FCMOD): nr_tools.lo
+ttv_formfactors.$(FCMOD): ttv_formfactors.lo
+nr.$(FCMOD): nr_tools.lo
+nrtype.$(FCMOD): nr_tools.lo
+nrutil.$(FCMOD): nr_tools.lo
+hypgeo_info.$(FCMOD): nr_tools.lo
+ode_path.$(FCMOD): nr_tools.lo
+
+########################################################################
 ## Non-standard cleanup tasks
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
@@ -196,7 +212,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f *.stamp *.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

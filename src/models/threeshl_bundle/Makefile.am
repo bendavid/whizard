@@ -36,12 +36,12 @@ EXTRA_DIST = threeshl_bundle.f90 threeshl_bundle_lt.f90
 libthreeshl_bundle_la_SOURCES = threeshl_bundle.f90
 
 ## Unfortunately, the NAG and intel compilers require these to be happy.
-execmoddir = $(pkglibdir)/mod/models
+execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-	tdefs.$(FC_MODULE_EXT) \
-	threeshl.$(FC_MODULE_EXT) \
-	tscript.$(FC_MODULE_EXT) \
-	tglue.$(FC_MODULE_EXT)
+	tdefs.$(FCMOD) \
+	threeshl.$(FCMOD) \
+	tscript.$(FCMOD) \
+	tglue.$(FCMOD)
 
 # Fortran90 module files are generated at the same time as object files
 $(nodist_execmod_HEADERS): threeshl_bundle.lo
@@ -52,8 +52,8 @@ $(nodist_execmod_HEADERS): threeshl_bundle.lo
 
 basicsdir = $(top_builddir)/src/basics
 
-KINDS_MOD = kinds.$(FC_MODULE_EXT)
-CONSTANTS_MOD = constants.$(FC_MODULE_EXT)
+KINDS_MOD = kinds.$(FCMOD)
+CONSTANTS_MOD = constants.$(FCMOD)
 
 AM_FCFLAGS = -I$(basicsdir) 
 
@@ -77,7 +77,7 @@ endif
 ########################################################################
 ## Non-standard cleanup tasks
 clean-local:
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

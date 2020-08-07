@@ -65,7 +65,13 @@ SRC_FROM_NOWEB = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = pythia8.nw
 
+
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  pythia8.$(FCMOD) whizard_lha.$(FCMOD)
+
 libwo_pythia8_Modules = ${libwo_pythia8_la_SOURCES:.f90=} ${libwo_pythia8_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libwo_pythia8_Modules); do \
@@ -131,7 +137,7 @@ DISTCLEANFILES += Makefile.depend
 
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -207,7 +213,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f Pythia8.stamp Pythia8.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -196,7 +196,7 @@ clean-local:
 	rm -f static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la *.f90.in
+	rm -f *.f90 *.c *.$(FCMOD) *.o *.la *.f90.in
 	rm -f *.makefile
 	rm -rf ref-output
 	rm -f *.sin *.hbc

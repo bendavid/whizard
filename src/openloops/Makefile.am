@@ -58,7 +58,13 @@ endif
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = openloops.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${liboloops_la_SOURCES:.f90=.$(FCMOD)} \
+  prc_openloops.$(FCMOD)
+
 liboloops_Modules = $(nodist_liboloops_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(liboloops_Modules); do \
@@ -127,7 +133,7 @@ Makefile.depend: $(nodist_liboloops_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -209,7 +215,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f openloops.stamp openloops.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

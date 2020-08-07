@@ -35,7 +35,12 @@ libmuli_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = muli.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libmuli_la_SOURCES:.f90=.$(FCMOD)}
+
 libmuli_Modules = ${libmuli_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libmuli_Modules); do \
@@ -76,7 +81,7 @@ DISTCLEANFILES = Module_dependencies.sed
 
 ## Dependencies across directories and packages, if not automatically generated
 $(libmuli_la_OBJECTS): \
-  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT)
+  ../pdf_builtin/pdf_builtin.$(FCMOD)
 
 # The following line just says
 #    include Makefile.depend
@@ -97,7 +102,7 @@ Makefile.depend: $(libmuli_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -171,7 +176,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f muli.stamp muli.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -481,15 +481,15 @@ static_2.exe.sin: $(top_builddir)/share/tests/functional_tests/static_2.exe.sin
 
 susyhit.run: susyhit.in
 
-model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
-	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT)
-tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FC_MODULE_EXT)
+model_test.run: tdefs.$(FCMOD) tglue.$(FCMOD) \
+	threeshl.$(FCMOD) tscript.$(FCMOD)
+tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FCMOD)
 	cp $< $@
-tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FC_MODULE_EXT)
+tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FCMOD)
 	cp $< $@
-tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FC_MODULE_EXT)
+tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FCMOD)
 	cp $< $@
-threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EXT)
+threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FCMOD)
 	cp $< $@
 
 WT_OCAML_NATIVE_EXT=opt
@@ -793,7 +793,7 @@ clean-local: clean-macosx
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out *_check.out ufo_5_test.slha
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *.f90 *.f90.in *.c *.$(FCMOD) *.o *.la
 	rm -f *_count.out
 	rm -f *_digest.out
 	rm -f *.makefile

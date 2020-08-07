@@ -82,52 +82,52 @@ libmodels_la_SOURCES = \
 
 
 ## Install the modules used by generated matrix element code
-execmoddir = $(pkglibdir)/mod/models
+execmoddir = $(fmoddir)/models
 nodist_execmod_HEADERS = \
-  parameters_thdm.$(FC_MODULE_EXT) \
-  parameters_thdm_ckm.$(FC_MODULE_EXT) \
-  parameters_alth.$(FC_MODULE_EXT) \
-  parameters_gravtest.$(FC_MODULE_EXT) \
-  parameters_hsext.$(FC_MODULE_EXT) \
-  parameters_littlest.$(FC_MODULE_EXT) \
-  parameters_littlest_eta.$(FC_MODULE_EXT) \
-  parameters_littlest_tpar.$(FC_MODULE_EXT) \
-  parameters_mssm.$(FC_MODULE_EXT) \
-  parameters_mssm_ckm.$(FC_MODULE_EXT) \
-  parameters_mssm_hgg.$(FC_MODULE_EXT) \
-  parameters_mssm_grav.$(FC_MODULE_EXT) \
-  parameters_nmssm.$(FC_MODULE_EXT) \
-  parameters_nmssm_ckm.$(FC_MODULE_EXT) \
-  parameters_nmssm_hgg.$(FC_MODULE_EXT) \
-  parameters_noh_rx.$(FC_MODULE_EXT) \
-  parameters_qed.$(FC_MODULE_EXT) \
-  parameters_qcd.$(FC_MODULE_EXT) \
-  parameters_psssm.$(FC_MODULE_EXT) \
-  parameters_simplest.$(FC_MODULE_EXT) \
-  parameters_simplest_univ.$(FC_MODULE_EXT) \
-  parameters_sm.$(FC_MODULE_EXT) \
-  parameters_sm_ac.$(FC_MODULE_EXT) \
-  parameters_sm_ac_ckm.$(FC_MODULE_EXT) \
-  parameters_sm_dim6.$(FC_MODULE_EXT) \
-  parameters_sm_ckm.$(FC_MODULE_EXT) \
-  parameters_sm_top.$(FC_MODULE_EXT) \
-  parameters_sm_top_anom.$(FC_MODULE_EXT) \
-  parameters_sm_tt_threshold.$(FC_MODULE_EXT) \
-  parameters_sm_higgs.$(FC_MODULE_EXT) \
-  parameters_sm_higgs_ckm.$(FC_MODULE_EXT) \
-  parameters_sm_rx.$(FC_MODULE_EXT) \
-  parameters_sm_ul.$(FC_MODULE_EXT) \
-  parameters_template.$(FC_MODULE_EXT) \
-  parameters_ued.$(FC_MODULE_EXT) \
-  parameters_ssc.$(FC_MODULE_EXT) \
-  parameters_ssc_2.$(FC_MODULE_EXT) \
-  parameters_ssc_altt.$(FC_MODULE_EXT) \
-  parameters_xdim.$(FC_MODULE_EXT) \
-  parameters_wzw.$(FC_MODULE_EXT) \
-  parameters_zprime.$(FC_MODULE_EXT) \
-  parameters_threeshl.$(FC_MODULE_EXT) \
-  parameters_threeshl_nohf.$(FC_MODULE_EXT) \
-  parameters_test.$(FC_MODULE_EXT)
+  parameters_thdm.$(FCMOD) \
+  parameters_thdm_ckm.$(FCMOD) \
+  parameters_alth.$(FCMOD) \
+  parameters_gravtest.$(FCMOD) \
+  parameters_hsext.$(FCMOD) \
+  parameters_littlest.$(FCMOD) \
+  parameters_littlest_eta.$(FCMOD) \
+  parameters_littlest_tpar.$(FCMOD) \
+  parameters_mssm.$(FCMOD) \
+  parameters_mssm_ckm.$(FCMOD) \
+  parameters_mssm_hgg.$(FCMOD) \
+  parameters_mssm_grav.$(FCMOD) \
+  parameters_nmssm.$(FCMOD) \
+  parameters_nmssm_ckm.$(FCMOD) \
+  parameters_nmssm_hgg.$(FCMOD) \
+  parameters_noh_rx.$(FCMOD) \
+  parameters_qed.$(FCMOD) \
+  parameters_qcd.$(FCMOD) \
+  parameters_psssm.$(FCMOD) \
+  parameters_simplest.$(FCMOD) \
+  parameters_simplest_univ.$(FCMOD) \
+  parameters_sm.$(FCMOD) \
+  parameters_sm_ac.$(FCMOD) \
+  parameters_sm_ac_ckm.$(FCMOD) \
+  parameters_sm_dim6.$(FCMOD) \
+  parameters_sm_ckm.$(FCMOD) \
+  parameters_sm_top.$(FCMOD) \
+  parameters_sm_top_anom.$(FCMOD) \
+  parameters_sm_tt_threshold.$(FCMOD) \
+  parameters_sm_higgs.$(FCMOD) \
+  parameters_sm_higgs_ckm.$(FCMOD) \
+  parameters_sm_rx.$(FCMOD) \
+  parameters_sm_ul.$(FCMOD) \
+  parameters_template.$(FCMOD) \
+  parameters_ued.$(FCMOD) \
+  parameters_ssc.$(FCMOD) \
+  parameters_ssc_2.$(FCMOD) \
+  parameters_ssc_altt.$(FCMOD) \
+  parameters_xdim.$(FCMOD) \
+  parameters_wzw.$(FCMOD) \
+  parameters_zprime.$(FCMOD) \
+  parameters_threeshl.$(FCMOD) \
+  parameters_threeshl_nohf.$(FCMOD) \
+  parameters_test.$(FCMOD)
 
 ## Build WHIZARD auxiliary dynamic libraries for model access
 ## These modules handle initialization operations that are not accounted
@@ -177,139 +177,139 @@ endif
 	$(AM_V_FC)$(LTFCCOMPILE) $(NO_OPT) -c -o $@ $<
 
 ## The mismatch of filenames and module names requires a lot of repetition:
-parameters_thdm.$(FC_MODULE_EXT): parameters.THDM.lo
+parameters_thdm.$(FCMOD): parameters.THDM.lo
 	@:
 
-parameters_thdm_ckm.$(FC_MODULE_EXT): parameters.THDM_CKM.lo
+parameters_thdm_ckm.$(FCMOD): parameters.THDM_CKM.lo
 	@:
 
-parameters_alth.$(FC_MODULE_EXT): parameters.AltH.lo
+parameters_alth.$(FCMOD): parameters.AltH.lo
 	@:
 
-parameters_gravtest.$(FC_MODULE_EXT): parameters.GravTest.lo
+parameters_gravtest.$(FCMOD): parameters.GravTest.lo
 	@:
 
-parameters_hsext.$(FC_MODULE_EXT): parameters.HSExt.lo
+parameters_hsext.$(FCMOD): parameters.HSExt.lo
 	@:
 
-parameters_littlest.$(FC_MODULE_EXT): parameters.Littlest.lo
+parameters_littlest.$(FCMOD): parameters.Littlest.lo
 	@:
 
-parameters_littlest_eta.$(FC_MODULE_EXT): parameters.Littlest_Eta.lo
+parameters_littlest_eta.$(FCMOD): parameters.Littlest_Eta.lo
 	@:
 
-parameters_littlest_tpar.$(FC_MODULE_EXT): parameters.Littlest_Tpar.lo
+parameters_littlest_tpar.$(FCMOD): parameters.Littlest_Tpar.lo
 	@:
 
-parameters_mssm.$(FC_MODULE_EXT): parameters.MSSM.lo
+parameters_mssm.$(FCMOD): parameters.MSSM.lo
 	@:
 
-parameters_mssm_4.$(FC_MODULE_EXT): parameters.MSSM_4.lo
+parameters_mssm_4.$(FCMOD): parameters.MSSM_4.lo
 	@:
 
-parameters_mssm_ckm.$(FC_MODULE_EXT): parameters.MSSM_CKM.lo
+parameters_mssm_ckm.$(FCMOD): parameters.MSSM_CKM.lo
 	@:
 
-parameters_mssm_grav.$(FC_MODULE_EXT): parameters.MSSM_Grav.lo
+parameters_mssm_grav.$(FCMOD): parameters.MSSM_Grav.lo
 	@:
 
-parameters_mssm_hgg.$(FC_MODULE_EXT): parameters.MSSM_Hgg.lo
+parameters_mssm_hgg.$(FCMOD): parameters.MSSM_Hgg.lo
 	@:
 
-parameters_nmssm.$(FC_MODULE_EXT): parameters.NMSSM.lo
+parameters_nmssm.$(FCMOD): parameters.NMSSM.lo
 	@:
 
-parameters_nmssm_ckm.$(FC_MODULE_EXT): parameters.NMSSM_CKM.lo
+parameters_nmssm_ckm.$(FCMOD): parameters.NMSSM_CKM.lo
 	@:
 
-parameters_nmssm_hgg.$(FC_MODULE_EXT): parameters.NMSSM_Hgg.lo
+parameters_nmssm_hgg.$(FCMOD): parameters.NMSSM_Hgg.lo
 	@:
 
-parameters_noh_rx.$(FC_MODULE_EXT): parameters.NoH_rx.lo
+parameters_noh_rx.$(FCMOD): parameters.NoH_rx.lo
 	@:
 
-parameters_psssm.$(FC_MODULE_EXT): parameters.PSSSM.lo
+parameters_psssm.$(FCMOD): parameters.PSSSM.lo
 	@:
 
-parameters_qcd.$(FC_MODULE_EXT): parameters.QCD.lo
+parameters_qcd.$(FCMOD): parameters.QCD.lo
 	@:
 
-parameters_qed.$(FC_MODULE_EXT): parameters.QED.lo
+parameters_qed.$(FCMOD): parameters.QED.lo
 	@:
 
-parameters_sm.$(FC_MODULE_EXT): parameters.SM.lo
+parameters_sm.$(FCMOD): parameters.SM.lo
 	@:
 
-parameters_sm_ckm.$(FC_MODULE_EXT): parameters.SM_CKM.lo
+parameters_sm_ckm.$(FCMOD): parameters.SM_CKM.lo
 	@:
 
-parameters_sm_dim6.$(FC_MODULE_EXT): parameters.SM_dim6.lo
+parameters_sm_dim6.$(FCMOD): parameters.SM_dim6.lo
 	@:
 
-parameters_sm_ac.$(FC_MODULE_EXT): parameters.SM_ac.lo
+parameters_sm_ac.$(FCMOD): parameters.SM_ac.lo
 	@:
 
-parameters_sm_ac_ckm.$(FC_MODULE_EXT): parameters.SM_ac_CKM.lo
+parameters_sm_ac_ckm.$(FCMOD): parameters.SM_ac_CKM.lo
 	@:
 
-parameters_sm_top.$(FC_MODULE_EXT): parameters.SM_top.lo
+parameters_sm_top.$(FCMOD): parameters.SM_top.lo
 	@:
 
-parameters_sm_top_anom.$(FC_MODULE_EXT): parameters.SM_top_anom.lo
+parameters_sm_top_anom.$(FCMOD): parameters.SM_top_anom.lo
 	@:
 
-parameters_sm_tt_threshold.$(FC_MODULE_EXT): parameters.SM_tt_threshold.lo
+parameters_sm_tt_threshold.$(FCMOD): parameters.SM_tt_threshold.lo
 	@:
 
-parameters_sm_higgs.$(FC_MODULE_EXT): parameters.SM_Higgs.lo
+parameters_sm_higgs.$(FCMOD): parameters.SM_Higgs.lo
 	@:
 
-parameters_sm_higgs_ckm.$(FC_MODULE_EXT): parameters.SM_Higgs_CKM.lo
+parameters_sm_higgs_ckm.$(FCMOD): parameters.SM_Higgs_CKM.lo
 	@:
 
-parameters_sm_rx.$(FC_MODULE_EXT): parameters.SM_rx.lo
+parameters_sm_rx.$(FCMOD): parameters.SM_rx.lo
 	@:
 
-parameters_sm_ul.$(FC_MODULE_EXT): parameters.SM_ul.lo
+parameters_sm_ul.$(FCMOD): parameters.SM_ul.lo
 	@:
 
-parameters_simplest.$(FC_MODULE_EXT): parameters.Simplest.lo
+parameters_simplest.$(FCMOD): parameters.Simplest.lo
 	@:
 
-parameters_simplest_univ.$(FC_MODULE_EXT): parameters.Simplest_univ.lo
+parameters_simplest_univ.$(FCMOD): parameters.Simplest_univ.lo
 	@:
 
-parameters_template.$(FC_MODULE_EXT): parameters.Template.lo
+parameters_template.$(FCMOD): parameters.Template.lo
 	@:
 
-parameters_test.$(FC_MODULE_EXT): parameters.Test.lo
+parameters_test.$(FCMOD): parameters.Test.lo
 	@:
 
-parameters_threeshl.$(FC_MODULE_EXT): parameters.Threeshl.lo
+parameters_threeshl.$(FCMOD): parameters.Threeshl.lo
 	@:
 
-parameters_threeshl_nohf.$(FC_MODULE_EXT): parameters.Threeshl_nohf.lo
+parameters_threeshl_nohf.$(FCMOD): parameters.Threeshl_nohf.lo
 	@:
 
-parameters_ued.$(FC_MODULE_EXT): parameters.UED.lo
+parameters_ued.$(FCMOD): parameters.UED.lo
 	@:
 
-parameters_ssc.$(FC_MODULE_EXT): parameters.SSC.lo
+parameters_ssc.$(FCMOD): parameters.SSC.lo
 	@:
 
-parameters_ssc_2.$(FC_MODULE_EXT): parameters.SSC_2.lo
+parameters_ssc_2.$(FCMOD): parameters.SSC_2.lo
 	@:
 
-parameters_ssc_altt.$(FC_MODULE_EXT): parameters.SSC_AltT.lo
+parameters_ssc_altt.$(FCMOD): parameters.SSC_AltT.lo
 	@:
 
-parameters_xdim.$(FC_MODULE_EXT): parameters.Xdim.lo
+parameters_xdim.$(FCMOD): parameters.Xdim.lo
 	@:
 
-parameters_wzw.$(FC_MODULE_EXT): parameters.WZW.lo
+parameters_wzw.$(FCMOD): parameters.WZW.lo
 	@:
 
-parameters_zprime.$(FC_MODULE_EXT): parameters.Zprime.lo
+parameters_zprime.$(FCMOD): parameters.Zprime.lo
 	@:
 
 ########################################################################
@@ -322,15 +322,15 @@ physicsdir = $(top_builddir)/src/physics
 combinatoricsdir = $(top_builddir)/src/combinatorics
 omegadir = $(top_builddir)/omega/src
 
-KINDS_MOD = kinds.$(FC_MODULE_EXT)
-CONSTANTS_MOD = constants.$(FC_MODULE_EXT)
-PHYSICS_DEFS_MOD = physics_defs.$(FC_MODULE_EXT)
-FORMAT_DEFS_MOD = format_defs.$(FC_MODULE_EXT)
-DIAGNOSTICS_MOD = diagnostics.$(FC_MODULE_EXT)
-SMPHYSICS_MOD = sm_physics.$(FC_MODULE_EXT)
-SOLVER_MOD = solver.$(FC_MODULE_EXT)
-OMEGAVECTORS_MOD = omega_vectors.$(FC_MODULE_EXT)
-TTV_FORMFACTORS_MOD = ttv_formfactors.$(FC_MODULE_EXT)
+KINDS_MOD = kinds.$(FCMOD)
+CONSTANTS_MOD = constants.$(FCMOD)
+PHYSICS_DEFS_MOD = physics_defs.$(FCMOD)
+FORMAT_DEFS_MOD = format_defs.$(FCMOD)
+DIAGNOSTICS_MOD = diagnostics.$(FCMOD)
+SMPHYSICS_MOD = sm_physics.$(FCMOD)
+SOLVER_MOD = solver.$(FCMOD)
+OMEGAVECTORS_MOD = omega_vectors.$(FCMOD)
+TTV_FORMFACTORS_MOD = ttv_formfactors.$(FCMOD)
 
 ### To be changed when moved in an external physics library
 $(libmodels_la_OBJECTS) $(external_SM_tt_threshold_la_OBJECTS) $(external_Threeshl_la_OBJECTS): \
@@ -343,8 +343,8 @@ $(libmodels_la_OBJECTS) $(external_SM_tt_threshold_la_OBJECTS) $(external_Threes
   $(combinatoricsdir)/$(SOLVER_MOD) \
   $(omegadir)/$(OMEGAVECTORS_MOD) \
   ../threshold/$(TTV_FORMFACTORS_MOD) \
-  threeshl_bundle/threeshl.$(FC_MODULE_EXT) \
-  threeshl_bundle/tglue.$(FC_MODULE_EXT)
+  threeshl_bundle/threeshl.$(FCMOD) \
+  threeshl_bundle/tglue.$(FCMOD)
 
 AM_FCFLAGS = -I$(basicsdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(combinatoricsdir) -I$(omegadir) -I../threshold -Ithreeshl_bundle
 
@@ -380,7 +380,7 @@ CLEANFILES = \
   external.Threeshl_nohf.f90
 
 clean-local:
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

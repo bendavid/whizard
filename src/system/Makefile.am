@@ -72,7 +72,18 @@ libsystem_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = system.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  system_dependencies.$(FCMOD) \
+  debug_master.$(FCMOD) \
+  system_defs.$(FCMOD) \
+  cputime.$(FCMOD) \
+  diagnostics.$(FCMOD) \
+  formats.$(FCMOD) \
+  os_interface.$(FCMOD)
+
 libsystem_Modules = \
   $(nodist_libsystem_la_SOURCES:.f90=) \
   $(libsystem_ut_la_SOURCES:.f90=)
@@ -131,19 +142,10 @@ Makefile.depend: $(nodist_libsystem_la_SOURCES) $(libsystem_ut_la_SOURCES)
 
 DISTCLEANFILES += Makefile.depend
 
-## Install the modules used by generated matrix element code
-execmoddir = $(pkglibdir)/mod/system
-nodist_execmod_HEADERS = \
-  system_dependencies.$(FC_MODULE_EXT) \
-  debug_master.$(FC_MODULE_EXT) \
-  system_defs.$(FC_MODULE_EXT) \
-  diagnostics.$(FC_MODULE_EXT) \
-  os_interface.$(FC_MODULE_EXT)
-
-SUFFIXES = .lo .$(FC_MODULE_EXT)
+SUFFIXES = .lo .$(FCMOD)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -222,7 +224,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f system.stamp system.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

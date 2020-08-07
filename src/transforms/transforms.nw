@@ -12522,6 +12522,7 @@ module eio_raw
   use model_data
   use particles
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
   use events
@@ -12839,10 +12840,12 @@ selection criteria upon rereading.
 <<EIO raw: eio raw: TBP>>=
   procedure :: output => eio_raw_output
 <<EIO raw: procedures>>=
-  subroutine eio_raw_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_raw_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     integer, intent(in) :: i_prc
     type(particle_set_t), pointer :: pset
     integer :: i
@@ -12912,10 +12915,11 @@ a different version of [[event%set_hard_particle_set]].
     end if
   end subroutine eio_raw_input_i_prc
 
-  subroutine eio_raw_input_event (eio, event, iostat)
+  subroutine eio_raw_input_event (eio, event, iostat, event_handle)
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     integer :: event_index, i_mci, i_term, channel, i
     real(default) :: weight, excess, sqme
     integer :: n_dropped

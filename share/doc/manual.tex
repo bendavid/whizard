@@ -13121,10 +13121,1018 @@ it in the GUI, the log file will be updated in the browser as it is
 produced.  Any \sindarin\ features that are not supported by the GUI can
 be added directly as "Additional Code".
 
-\section{WHIZARD as a library}
+\section{\whizard\ as a library}
 
-\emph{This is planned, but not implemented yet.}
-%%%%%
+The compiled \whizard\ program consists of two libraries (\ttt{libwhizard} and
+\ttt{libomega}).  In the standard setup, these are linked to a short main
+program which deals with command line options and top-level administration.
+This is the stand-alone \ttt{whizard} executable program.
+
+Alternatively, it is possible to link the libraries to a different main
+program of the user's choice.  The user program can take complete control of
+the \whizard\ features.  The \ttt{libwhizard} library provides an API, a
+well-defined set of procedures which can be called from a foreign main
+program.  The supported languages are Fortran, C, and C++.  Using the C API,
+any other language which supports linking against C libraries can also be
+interfaced. 
+
+\subsection{Fortran main program}
+
+To link a Fortran main program with the \whizard\ library, the following steps
+must be performed:
+\begin{enumerate}
+\item
+  Configure, build and install \whizard\ as normal.
+\item
+  Include code for accessing \whizard\ functionality in the user program.
+  The code should initialize 
+  \whizard, execute the intended commands, and finalize.  For an example, see
+  below. 
+\item
+  Compile the user program.   The user program must be
+  compiled with the same Fortran compiler that has been used for the \whizard\
+  build. 
+
+  If necessary, specify an option that finds the
+  installed \whizard\ module files.
+  For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
+  should read 
+  \begin{code}
+    -Iwhizard-path/lib/mod/whizard
+  \end{code}
+\item
+  Link the program (or compile-link in a single step).  If necessary, specify
+  options that find the installed \whizard\ and \oMega\ libraries.  For
+  instance, if \whizard\ has been installed in \ttt{whizard-path}, this should
+  read 
+  \begin{code}
+    -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}.
+
+  Such an example compile-link could look like
+  \begin{code}
+    gfortran manual_example_api.f90 -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega
+  \end{code}  
+
+  If \whizard\ has been compiled with a non-default Fortran compiler, you may
+  have to explicitly link the appropriate Fortran run-time libraries.
+
+  The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
+  functionality.  This library should be present on the host
+  system. This library needs only be linked of the SunRPC library is
+  not installed on the system.
+
+  If additional libraries such as  
+  \hepmc\ are enabled in the \whizard\ configuration, it may be necessary to
+  provide extra options for linking those.
+
+  An example here looks like
+  \begin{code}
+    gfortran manual_example_api.f90 -Lwhizard-path/lib -lwhizard
+        -lwhizard_prebuilt -lomega -lHepMC3 -lHepMC3rootIO -llcio
+  \end{code}
+
+\item
+  Run the program.  If necessary, provide the path to the installed shared
+  libraries.  For instance, if \whizard\ has been installed in
+  \ttt{whizard-path}, this should read 
+  \begin{code}
+    export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}, as above.
+
+  The \whizard\ subsystem will work with input and output
+  files in the current working directory, unless asked to do otherwise.
+\end{enumerate}
+Below is an example program, adapted from \whizard's internal unit-test suite.
+The user program controls the \whizard\ workflow in the same way as a
+\sindarin\ script would do.  The commands are a mixture of \sindarin\ command
+calls and functionality for passing information between the \whizard\
+subsystem and the host program.
+In particular, the program can process generated events one-by-one.
+\begin{code}
+program main
+
+  ! WHIZARD API as a module
+  use api
+
+  ! Standard numeric types
+  use iso_fortran_env, only: real64, int32
+
+  implicit none
+
+  ! WHIZARD and event-sample objects
+  type(whizard_api_t)    :: whizard
+  type(simulation_api_t) :: sample
+    
+  ! Local variables
+  real(real64)   :: integral, error
+  real(real64)   :: sqme, weight
+  integer(int32) :: idx
+  integer(int32) :: i, it_begin, it_end
+    
+  ! Initialize WHIZARD, setting some global option
+  call whizard%option ("model", "QED")
+  call whizard%init ()
+
+  ! Define a process, set some variables
+  call whizard%command ("process mupair = e1, E1 => e2, E2")
+  call whizard%set_var ("sqrts", 100._real64)
+  call whizard%set_var ("seed", 0)
+
+  ! Generate matrix-element code, integrate and retrieve result
+  call whizard%command ("integrate (mupair)")
+  call whizard%get_integration_result ("mupair", integral, error)
+
+  ! Print result
+  print 1, "cross section =", integral / 1000, "pb"
+  print 1, "error         =", error    / 1000, "pb"
+1 format (2x,A,1x,F5.1,1x,A)
+2 format (2x,A,1x,L1)
+    
+  ! Settings for event generation
+  call whizard%set_var ("$sample", "mupair_events")
+  call whizard%set_var ("n_events", 2)
+
+  ! Create an event-sample object and generate events
+  call whizard%new_sample ("mupair", sample)
+  call sample%open (it_begin, it_end)
+  do i = it_begin, it_end
+     call sample%next_event ()
+     call sample%get_event_index (idx)
+     call sample%get_weight (weight)
+     call sample%get_sqme (sqme)
+     print "(A,I0)", "Event #", idx
+     print 3, "sqme    =", sqme
+     print 3, "weight  =", weight
+3    format (2x,A,1x,ES10.3)
+  end do
+
+  ! Finalize the event-sample object
+  call sample%close ()
+   
+  ! Finalize the WHIZARD object
+  call whizard%final ()
+
+end program main
+\end{code}
+The API provides the following commands as Fortran subroutines.  Most of them
+are used in the example above.
+
+\subsubsection{Module}
+There is only one module from the \whizard\ package which must be
+\texttt{use}d by the user program:
+\begin{quote}
+  \tt use api
+\end{quote}
+You may \texttt{use} any other \whizard\ module in our program, all module
+files are part of the installation.  Be aware,
+however, that all other modules are considered internal.  Unless explictly
+mentioned in this manual, interfaces are
+not documented here and may change between versions.  
+
+Changes to the \ttt{api} module, if any, will be documented here.
+
+\subsubsection{Master object}
+All functionality is accessed via a master API object which should be declared
+as follows:
+\begin{quote}
+  \tt type(whizard\_api\_t) :: whizard
+\end{quote}
+There should be only one master object.
+
+\subsubsection{Pre-Initialization options}
+Before initializing the API object, it is possible to provide options.  The
+available options mirror the command-line options of the stand-alone program,
+cf.\ Sec.~\ref{sec:cmdline-options}.
+\begin{quote}
+  \tt call whizard\%option (\textit{key}, \textit{value})
+\end{quote}
+All keys and values are Fortran character strings.  The following options are
+available.  For all options, default values exist as listed in
+Sec.~\ref{sec:cmdline-options}.
+\begin{description}
+\item[\tt model] Model that should be preloaded. 
+\item[\tt library] Name of the library where matrix-element code should end up.
+\item[\tt logfile] Name of the logfile that \whizard\ will write.
+\item[\tt job\_id] Name of the current job; can be used for writing unique output
+  files.
+\item[\tt unpack] Comma-separated list of files to be uncompressed and unpacked
+  (via \ttt{tar} and \ttt{gzip}) when \ttt{init} is called on the API object.
+\item[\tt pack] Comma-separated list of files or directories to be packed and
+  compressed when \ttt{final} is called.
+\item[\tt rebuild] All of the following:
+\item[\tt rebuild\_library]  Force rebuilding a matrix-element code library,
+  overwriting results from a previous run.
+\item[\tt recompile]  Force recompiling the matrix-element code library.
+\item[\tt rebuild\_grids]  Force reproducing integration passes.
+\item[\tt rebuild\_events]  Force regenerating event samples.
+\end{description}
+
+\subsubsection{Initialization and finalization}
+After options have been set, the system is initialized via
+\begin{quote}
+  \tt call whizard\%init
+\end{quote}
+Once initialized, \whizard\ can execute commands as listed below.  When this
+is complete, clean up by
+\begin{quote}
+  \tt call whizard\%final
+\end{quote}
+
+\subsubsection{Variables and values}
+
+In the API, \whizard\ requires numeric data types according to the IEEE
+standard, which is available to Fortran in the \ttt{iso\_fortran\_env}
+intrinsic module.  Strictly speaking, integer data must have type \ttt{int32},
+and real data must have type \ttt{real64}.  
+
+For most systems and default compiler settings, it
+is not really necessary to \ttt{use} the ISO module and its data types.
+Integers map to default Fortran \ttt{integer}, 
+and real values map to default Fortran \ttt{double precision}.  
+
+As an
+alternative, you may \ttt{use} the \whizard\ internal \ttt{kinds} module which
+declares a \ttt{real(default)} type
+\begin{quote}
+  \tt use kinds, only: default
+\end{quote}
+On most systems, this will be equivalent
+to \ttt{real(real64)}.
+
+To set a \sindarin\ variable, use the function that corresponds to the data
+type:
+\begin{quote}
+  \tt call whizard\%set\_var (\textit{name}, \textit{value})
+\end{quote}
+The name is a Fortran string which has to be equal to the name of the
+corresponding \sindarin\ variable, including any prefix character (\$ or ?).
+The value depends on the type of the \sindarin\ 
+variable.
+
+To retrieve the current value of a variable:
+\begin{quote}
+  \tt call whizard\%get\_var (\textit{name}, \textit{var})
+\end{quote}
+The variable must be declared as \ttt{integer}, \ttt{real(real64)},
+\ttt{logical},  or
+\ttt{character(:), allocatable}.  This depends on the \sindarin\ variable type.
+
+\subsubsection{Commands}
+Any \sindarin\ command can be called via
+\begin{quote}
+  \tt call whizard\%command (\textit{command})
+\end{quote}
+\ttt{\it command} is a Fortran character string, as it would appear
+in a \sindarin\ script.
+
+This includes, in particular, the important commands \ttt{process},
+\ttt{integrate}, and \ttt{simulate}.  You may also set variables that way.
+
+\subsubsection{Retrieving cross-section results}
+This call returns the results (integration and error) from a preceding
+integration run for the process \textit{process-name}:
+\begin{quote}
+  \tt call whizard\%get\_integration\_result ("\textit{process-name}",
+  integral, error)
+\end{quote}
+There is also an optional argument \ttt{known} of type \ttt{logical} which is
+set if the integration run was successful, so integral and error are
+meaningful.
+
+
+
+\subsubsection{Event-sample object}
+A \ttt{simulate} command will produce an event sample.  With the appropriate
+settings, the sample will be written to file in any chosen format, to be
+post-processed when it is complete.
+
+However, a possible purpose of using the \whizard\ API is to process events one-by-one
+when they are generated.  To this end, there is an event-sample handle, which
+can be declared in this way:
+\begin{quote}
+  \tt type(simulation\_api\_t) :: sample
+\end{quote}
+An instance \ttt{sample} of this type is created by this factory method:
+\begin{quote}
+  \tt call whizard\%new\_sample ("\textit{process-name(s)}", sample)
+\end{quote}
+The command accepts a comma-separated list of process names which should be
+included in the event sample.
+
+To start event generation for this sample, call
+\begin{quote}
+  \tt call sample\%open (\textit{it\_begin}, \textit{it\_end} )
+\end{quote}
+where the two output parameters (integers) \ttt{\it it\_begin} and \ttt{\it it\_end}
+provide the bounds for an event loop in the calling program.  (In serial mode,
+the bounds are equal to 1 and \ttt{n\_events}, respectively, but in an MPI
+parallel environment, they depend on the computing node.)
+
+This command generates a new event, to be enclosed within an event loop:
+\begin{quote}
+  \tt call sample\%next\_event
+\end{quote}
+The event will be available by format-specific access methods, see below.
+
+This command closes and deletes an event sample after the event loop has
+completed:
+\begin{quote}
+  \tt call sample\%close
+\end{quote}
+
+\subsubsection{Retrieving event data}
+
+After a call to \ttt{next\_event}, the sample object can be queried for
+specific event data.
+\begin{quote}
+  \tt call sample\%get\_event\_index (\textit{value})
+\end{quote}
+returns the index (integer counter) of the current event.
+\begin{quote}
+  \tt call sample\%get\_process\_index (\textit{value})
+  \\
+  \tt call sample\%get\_process\_id (\textit{value})
+\end{quote}
+returns the numeric (string) ID of the hard process, respectively, that was
+generated in this event.  The variables must be declared as \ttt{integer} and
+\ttt{character(:), allocatable}, respectively.
+
+The following methods return \ttt{real(real64)} values.
+\begin{quote}
+  \tt call sample\%get\_sqrts (\textit{value})
+\end{quote}
+returns the $\sqrt{s}$ value of this event.
+\begin{quote}
+  \tt call sample\%get\_fac\_scale (\textit{value})
+\end{quote}
+returns the factorization scale of this event (\textit{value}).
+\begin{quote}
+  \tt call sample\%get\_alpha\_s (\textit{value})
+\end{quote}
+returns the value of the strong coupling for this event (\textit{value}).
+\begin{quote}
+  \tt call sample\%get\_sqme (\textit{value})
+\end{quote}
+returns the value of the squared matrix element (summed over final states and
+averaged over initial states).
+\begin{quote}
+  \tt call sample\%get\_weight (\textit{value})
+\end{quote}
+returns the Monte-Carlo weight of this event.
+
+Access to the event record depends on the event format that has been
+selected.  The format must allow access to individual events via data
+structures in memory.  There are three cases where such structures exist and
+are accessible:
+\begin{enumerate}
+\item
+  If the event format uses a COMMON block, event data is accessible
+  via this COMMON block, which must be declared in the calling routine.
+\item
+  The \hepmc\ event format communicates via a C++ object.  In Fortran, there
+  is a wrapper which has to be declared as
+  \begin{quote}
+    \tt type(hepmc\_event\_t) :: hepmc\_event
+  \end{quote}
+  To activate this handle, the \ttt{next\_event} call must reference it as
+  an argument:
+  \begin{quote}
+    \tt call sample\%next\_event (hepmc\_event)
+  \end{quote}
+  The \whizard\ module \ttt{hepmc\_interface} contains procedures which can
+  work with this record.  A pointer to the actual C++ object can be retrieved
+  as a Fortran 
+  \ttt{c\_ptr} object as follows:
+  \begin{quote}
+    \tt
+    type(c\_ptr) :: hepmc\_ptr
+    \\
+    \dots
+    \\
+    hepmc\_ptr = hepmc\_event\_get\_c\_ptr (hepmc\_event)
+  \end{quote}
+\item
+  The \lcio\ event format also communicates via a C++ object.  The access
+  methods are entirely analogous, replacing \ttt{hepmc} by \ttt{lcio} in all
+  calls and names.
+\end{enumerate}
+
+
+\subsection{C main program}
+To link a C main program with the \whizard\ library, the following steps
+must be performed:
+\begin{enumerate}
+\item
+  Configure, build and install \whizard\ as normal.
+\item
+  Include code for accessing \whizard\ functionality in the user program.
+  The code should initialize 
+  \whizard, execute the intended commands, and finalize.  For an example, see
+  below. 
+\item
+  Compile the user program with the option that finds the WHIZARD C/C++
+  interface header file.
+  For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
+  should read 
+  \begin{code}
+    -Iwhizard-path/include
+  \end{code}
+\item
+  Link the program with the necessary libraries (or compile-link in a single
+  step).  If
+  \whizard\ has been installed in a system path, this should work
+  automatically.  If
+  \whizard\ has been installed in a non-default \ttt{whizard-path}, these
+  are the options: 
+  \begin{code}
+    -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega -ltirpc
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}. 
+
+  If \whizard\ has been compiled with a non-default Fortran compiler, you may
+  have to explicitly link the appropriate Fortran run-time libraries.
+
+  The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
+  functionality.  This library should be present on the host
+  system. Cf. the corresponding remarks in the section for a
+  \fortran\ main program.
+
+  If additional libraries such as  
+  \hepmc\ are enabled in the \whizard\ configuration, it may be necessary to
+  provide extra options for linking those.
+  
+\item
+  Run the program.  If necessary, provide the path to the installed shared
+  libraries.  For instance, if \whizard\ has been installed in
+  \ttt{whizard-path}, this should read 
+  \begin{code}
+    export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}, as above.
+
+  The \whizard\ subsystem will work with input and output
+  files in the current working directory, unless asked to do otherwise.
+\end{enumerate}
+Below is an example program, adapted from \whizard's internal unit-test suite.
+The user program controls the \whizard\ workflow in the same way as a
+\sindarin\ script would do.  The commands are a mixture of \sindarin\ command
+calls and functionality for passing information between the \whizard\
+subsystem and the host program.
+In particular, the program can process generated events one-by-one.
+\begin{code}
+#include <stdio.h>
+#include "whizard.h"
+
+int main( int argc, char* argv[] )
+{ 
+  /* WHIZARD and event-sample objects */
+  void* wh;
+  void* sample;
+    
+  /* Local variables */
+  double integral, error;
+  double sqme, weight;
+  int idx;
+  int it, it_begin, it_end;
+
+  /* Initialize WHIZARD, setting some global option */
+  whizard_create( &wh );
+  whizard_option( &wh, "model", "QED" );
+  whizard_init( &wh );
+
+  /* Define a process, set some variables */
+  whizard_command( &wh, "process mupair = e1, E1 => e2, E2" );
+  whizard_set_double( &wh, "sqrts", 10. );
+  whizard_set_int( &wh, "seed", 0 );
+
+  /* Generate matrix-element code, integrate and retrieve result */
+  whizard_command( &wh, "integrate (mupair)" );
+  
+  /* Print result */
+  whizard_get_integration_result( &wh, "mupair", &integral, &error);
+  printf( "  cross section = %5.1f pb\n", integral / 1000. );
+  printf( "  error         = %5.1f pb\n", error / 1000. );
+    
+  /* Settings for event generation */
+  whizard_set_char( &wh, "$sample", "mupair_events" );
+  whizard_set_int( &wh, "n_events", 2 );
+
+  /* Create an event-sample object and generate events */
+  whizard_new_sample( &wh, "mupair", &sample );
+  whizard_sample_open( &sample, &it_begin, &it_end );
+  for (it=it_begin; it<=it_end; it++) {
+    whizard_sample_next_event( &sample );
+    whizard_sample_get_event_index( &sample, &idx );
+    whizard_sample_get_weight( &sample, &weight );
+    whizard_sample_get_sqme( &sample, &sqme );
+    printf( "Event #%d\n", idx );
+    printf( "  sqme    = %10.3e\n", sqme );
+    printf( "  weight  = %10.3e\n", weight );
+  }
+
+  /* Finalize the event-sample object */
+  whizard_sample_close( &sample );
+
+  /* Finalize the WHIZARD object */
+  whizard_final( &wh );
+}
+\end{code}
+
+\subsubsection{Header}
+The necessary declarations are imported by the directive
+\begin{quote}
+  \tt \#include "whizard.h"
+\end{quote}
+
+\subsubsection{Master object}
+All functionality is accessed via a master API object which should be declared
+as a \ttt{void*} pointer:
+\begin{quote}
+  \tt void* wh;
+\end{quote}
+The object must be explicitly created:
+\begin{quote}
+  \tt whizard\_create( \&wh );
+\end{quote}
+There should be only one master object.
+
+\subsubsection{Pre-Initialization options}
+Before initializing the API object, it is possible to provide options.  The
+available options mirror the command-line options of the stand-alone program,
+cf.\ Sec.~\ref{sec:cmdline-options}.
+\begin{quote}
+  \tt  whizard\_option( \&wh, \textit{key}, \textit{value} );
+\end{quote}
+All keys and values are null-terminated C character strings.  The available
+options are 
+listed above in the Fortran interface documentation.
+
+\subsubsection{Initialization and finalization}
+After options have been set, the system is initialized via
+\begin{quote}
+  \tt whizard\_init( \&wh );
+\end{quote}
+Once initialized, \whizard\ can execute commands as listed below.  When this
+is complete, clean up by
+\begin{quote}
+  \tt whizard\_final( \&wh );
+\end{quote}
+
+\subsubsection{Variables and values}
+
+In the API, \whizard\ requires numeric data types according to the IEEE
+standard.  Integers map to C \ttt{int}, and real values map to C
+\ttt{double}.  Logical values map to C \ttt{int} interpreted as \ttt{bool},
+and string values map to null-terminated C strings.
+
+To set a \sindarin\ variable of appropriate type:
+\begin{quote}
+  \tt whizard\_set\_int ( \&wh, \textit{name}, \textit{value} );
+  \\
+  \tt whizard\_set\_double ( \&wh, \textit{name}, \textit{value} );
+  \\
+  \tt whizard\_set\_bool ( \&wh, \textit{name}, \textit{value} );
+  \\
+  \tt whizard\_set\_char ( \&wh, \textit{name}, \textit{value} );
+\end{quote}
+\textit{name} is declared \ttt{const char*}.  It must match the corresponding
+\sindarin\ variable name, including any prefix character (\$ or ?).
+\textit{value} is declared \ttt{const double/int/char*}.
+
+To retrieve the current value of a variable:
+\begin{quote}
+  \tt whizard\_get\_int ( \&wh, \textit{name}, \&\textit{var} );
+  \\
+  \tt whizard\_get\_double ( \&wh, \textit{name}, \&\textit{var} );
+  \\
+  \tt whizard\_get\_bool ( \&wh, \textit{name}, \&\textit{var} );
+  \\
+  \tt whizard\_get\_char ( \&wh, \textit{name}, \textit{var}, \textit{len} );
+\end{quote}
+Here, \ttt{\it var} is a C variable of appropriate type.  In the character
+case, \ttt{\it var} is a C character array declared as
+\ttt{\it var}[\ttt{\it len}].  The functions return zero if the \sindarin\
+variable has a known value.
+
+\subsubsection{Commands}
+Any \sindarin\ command can be called via
+\begin{quote}
+  \tt whizard\_command( \&wh, \textit{command} );
+\end{quote}
+\ttt{\it command} is a null-terminated C string that contains commands as they
+would appear in a \sindarin\ script.
+
+This includes, in particular, the important commands \ttt{process},
+\ttt{integrate}, and \ttt{simulate}.  You may also set variables that way.
+
+\subsubsection{Retrieving cross-section results}
+This call returns the results (integration and error) from a preceding
+integration run for the process \textit{process-name}:
+\begin{quote}
+  \tt whizard\_get\_integration\_result( \&wh, "\textit{process-name}",
+  \&\textit{integral}, \&\textit{error})
+\end{quote}
+\ttt{\it integral} and \ttt{\it error} are C variables of type \ttt{double}.
+The function returns zero if the integration run was successful, so integral
+and error are meaningful.
+
+\subsubsection{Event-sample object}
+A \ttt{simulate} command will produce an event sample.  With the appropriate
+settings, the sample will be written to file in any chosen format, to be
+post-processed when it is complete.
+
+However, a possible purpose of using the \whizard\ API is to process events one-by-one
+when they are generated.  To this end, there is an event-sample handle, which
+can be declared in this way:
+\begin{quote}
+  \tt void* \textit{sample};
+\end{quote}
+An instance \ttt{\it sample} of this type is created by this factory method:
+\begin{quote}
+  \tt whizard\_new\_sample( \&wh, "\textit{process-name(s)}", \&\textit{sample});
+\end{quote}
+The command accepts a comma-separated list of process names which should be
+included in the event sample.
+
+To start event generation for this sample, call
+\begin{quote}
+  \tt whizard\_sample\_open( \&\textit{sample}, \&\textit{it\_begin},
+  \&\textit{it\_end} );
+\end{quote}
+where the two output variables (\ttt{int}) \ttt{\it it\_begin} and
+\ttt{\it it\_end} 
+provide the bounds for an event loop in the calling program.  (In serial mode,
+the bounds are equal to 1 and \ttt{n\_events}, respectively, but in an MPI
+parallel environment, they depend on the computing node.)
+
+This command generates a new event, to be enclosed within an event loop:
+\begin{quote}
+  \tt whizard\_sample\_next\_event( \&\textit{sample} );
+\end{quote}
+The event will be available by format-specific access methods, see below.
+
+This command closes and deletes an event sample after the event loop has
+completed:
+\begin{quote}
+  \tt whizard\_sample\_close( \&\textit{sample} );
+\end{quote}
+
+\subsubsection{Retrieving event data}
+
+After a call to \ttt{whizard\_sample\_next\_event}, the sample object can be
+queried for specific event data.
+\begin{quote}
+  \tt whizard\_sample\_get\_event\_index( \&\textit{sample}, \&\textit{value} );
+  \\
+  \tt whizard\_sample\_get\_process\_index( \&\textit{sample}, \&\textit{value} );
+  \\
+  \tt whizard\_sample\_get\_process\_id( \&\textit{sample}, \textit{value}, \textit{len} );
+  \\
+  \tt whizard\_sample\_get\_sqrts( \&\textit{sample}, \&\textit{value} );
+  \\
+  \tt whizard\_sample\_get\_fac\_scale( \&\textit{sample}, \&\textit{value} );
+  \\
+  \tt whizard\_sample\_get\_alpha\_s( \&\textit{sample}, \&\textit{value} );
+  \\
+  \tt whizard\_sample\_get\_sqme( \&\textit{sample}, \&\textit{value} );
+  \\
+  \tt whizard\_sample\_get\_weight( \&\textit{sample}, \&\textit{value} );
+\end{quote}
+where the \ttt{\it value} is a variable of appropriate type (see above).
+
+Event data are stored in a format-specific way.  This may be a COMMON block,
+or a \hepmc\ or \lcio\ event record.  In the latter cases, cf.\ the C++ API
+below for access information.
+
+\subsection{C++ main program}
+To link a C++ main program with the \whizard\ library, the following steps
+must be performed:
+\begin{enumerate}
+\item
+  Configure, build and install \whizard\ as normal.
+\item
+  Include code for accessing \whizard\ functionality in the user program.
+  The code should initialize 
+  \whizard, execute the intended commands, and finalize.  For an example, see
+  below. 
+\item
+  Compile the user program with the option that finds the WHIZARD C/C++ interface
+  header file.
+  For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
+  should read 
+  \begin{code}
+    -Iwhizard-path/include
+  \end{code}
+\item
+  Link the program with the necessary libraries (or compile-link in a single
+  step).  If
+  \whizard\ has been installed in a system path, this should work
+  automatically.  If
+  \whizard\ has been installed in a non-default \ttt{whizard-path}, these
+  are the options: 
+  \begin{code}
+    -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega -ltirpc
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}. 
+
+  If \whizard\ has been compiled with a non-default Fortran compiler, you may
+  have to explicitly link the appropriate Fortran run-time libraries.
+
+  The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
+  functionality.  This
+  library should be present on the host system.  
+
+  If additional libraries such as  
+  \hepmc\ are enabled in the \whizard\ configuration, it may be necessary to
+  provide extra options for linking those.
+\item
+  Run the program.  If necessary, provide the path to the installed shared
+  libraries.  For instance, if \whizard\ has been installed in
+  \ttt{whizard-path}, this should read 
+  \begin{code}
+    export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}, as above.
+
+  The \whizard\ subsystem will work with input and output
+  files in the current working directory, unless asked to do otherwise.
+\end{enumerate}
+Below is an example program, adapted from \whizard's internal unit-test suite.
+The user program controls the \whizard\ workflow in the same way as a
+\sindarin\ script would do.  The commands are a mixture of \sindarin\ command
+calls and functionality for passing information between the \whizard\
+subsystem and the host program.
+In particular, the program can process generated events one-by-one.
+\begin{code}
+#include <cstdio>
+#include <string>
+#include "whizard.h"
+
+int main( int argc, char* argv[] )
+{ 
+  // WHIZARD and event-sample objects 
+  Whizard* whizard;
+  WhizardSample* sample;
+    
+  // Local variables 
+  double integral, error;
+  double sqme, weight;
+  int idx;
+  int it, it_begin, it_end;
+
+  // Initialize WHIZARD, setting some global option 
+  whizard = new Whizard();
+  whizard->option( "model", "QED" );
+  whizard->init();
+
+  // Define a process, set some variables 
+  whizard->command( "process mupair = e1, E1 => e2, E2" );
+  whizard->set_double( "sqrts", 10. );
+  whizard->set_int( "seed", 0 );
+
+  // Generate matrix-element code, integrate and retrieve result 
+  whizard->command( "integrate (mupair)" );
+  
+  // Print result 
+  whizard->get_integration_result( "mupair", &integral, &error );
+  printf( "  cross section = %5.1f pb\n", integral / 1000. );
+  printf( "  error         = %5.1f pb\n", error / 1000. );
+    
+  // Settings for event generation 
+  whizard->set_string( "$sample", "mupair_events" );
+  whizard->set_int( "n_events", 2 );
+
+  // Create an event-sample object and generate events 
+  sample = whizard->new_sample( "mupair" );
+  sample->open( &it_begin, &it_end );
+  for (it=it_begin; it<=it_end; it++) {
+    sample->next_event();
+    idx = sample->get_event_index();
+    weight = sample->get_weight();
+    sqme = sample->get_sqme();
+    printf( "Event #%d\n", idx );
+    printf( "  sqme    = %10.3e\n", sqme );
+    printf( "  weight  = %10.3e\n", weight );
+  }
+
+  // Finalize the event-sample object 
+  sample->close();
+  delete sample;
+
+  // Finalize the WHIZARD object 
+  delete whizard;
+}
+\end{code}
+
+\subsubsection{Header}
+The necessary declarations are imported by the directive
+\begin{quote}
+  \tt \#include "whizard.h"
+\end{quote}
+
+\subsubsection{Master object}
+All functionality is accessed via a master API object which should be declared
+as follows:
+\begin{quote}
+  \tt Whizard* whizard;
+\end{quote}
+The constructor takes no arguments:
+\begin{quote}
+  \tt whizard = new Whizard();
+\end{quote}
+There should be only one master object.
+
+\subsubsection{Pre-Initialization options}
+Before initializing the API object, it is possible to provide options.  The
+available options mirror the command-line options of the stand-alone program,
+cf.\ Sec.~\ref{sec:cmdline-options}.
+\begin{quote}
+  \tt  whizard->option( \textit{key}, \textit{value} );
+\end{quote}
+All keys and values are C++ strings.  The available options are
+listed above in the Fortran interface documentation.
+
+\subsubsection{Initialization and finalization}
+After options have been set, the system is initialized via
+\begin{quote}
+  \tt whizard->init();
+\end{quote}
+Once initialized, \whizard\ can execute commands as listed below.  When all
+is complete, delete the \whizard\ object.  This will call the destructor that
+correctly finalizes the \whizard\ workflow.
+
+\subsubsection{Variables and values}
+
+In the API, \whizard\ requires numeric data types according to the IEEE
+standard.  Integers map to C \ttt{int}, and real values map to C
+\ttt{double}.  Logical values map to C \ttt{int} interpreted as \ttt{bool},
+and string values map to C++ \ttt{string}.
+
+To set a \sindarin\ variable of appropriate type:
+\begin{quote}
+  \tt whizard->set\_int ( \textit{name}, \textit{value} );
+  \\
+  \tt whizard->set\_double ( \textit{name}, \textit{value} );
+  \\
+  \tt whizard->set\_bool ( \textit{name}, \textit{value} );
+  \\
+  \tt whizard->set\_string ( \textit{name}, \textit{value} );
+\end{quote}
+\textit{name} is a C++ string value.  It must match the corresponding
+\sindarin\ variable name, including any prefix character (\$ or ?).
+\textit{value} is a \ttt{double/int/string}, respectively.
+
+To retrieve the current value of a variable:
+\begin{quote}
+  \tt whizard->get\_int ( \textit{name}, \&\textit{var} );
+  \\
+  \tt whizard->get\_double ( \textit{name}, \&\textit{var} );
+  \\
+  \tt whizard->get\_bool ( \textit{name}, \&\textit{var} );
+  \\
+  \tt whizard->get\_string ( \textit{name}, \&\textit{var} );
+\end{quote}
+Here, \ttt{\it var} is a C variable of appropriate type.  The functions return
+zero if the \sindarin\ variable has a known value.
+
+\subsubsection{Commands}
+Any \sindarin\ command can be called via
+\begin{quote}
+  \tt whizard->command( \textit{command} );
+\end{quote}
+\ttt{\it command} is a C++ string value that contains commands as they
+would appear in a \sindarin\ script.
+
+This includes, in particular, the important commands \ttt{process},
+\ttt{integrate}, and \ttt{simulate}.  You may also set variables that way.
+
+\subsubsection{Retrieving cross-section results}
+This call returns the results (integration and error) from a preceding
+integration run for the process \textit{process-name}:
+\begin{quote}
+  \tt whizard->get\_integration\_result( "\textit{process-name}",
+  \&\textit{integral}, \&\textit{error} );
+\end{quote}
+\ttt{\it integral} and \ttt{\it error} are variables of type \ttt{double}.
+The function returns zero if the integration run was successful, so integral
+and error are meaningful.
+
+\subsubsection{Event-sample object}
+A \ttt{simulate} command will produce an event sample.  With the appropriate
+settings, the sample will be written to file in any chosen format, to be
+post-processed when it is complete.
+
+However, a possible purpose of using the \whizard\ API is to process events one-by-one
+when they are generated.  To this end, there is an event-sample handle, which
+can be declared in this way:
+\begin{quote}
+  \tt WhizardSample* {sample};
+\end{quote}
+An instance \ttt{\it sample} of this type is created by this factory method:
+\begin{quote}
+  \tt {sample} = whizard->new\_sample( "\textit{process-name(s)}" );
+\end{quote}
+The command accepts a comma-separated list of process names which should be
+included in the event sample.
+
+To start event generation for this sample, call
+\begin{quote}
+  \tt sample->open( \&\textit{it\_begin},
+  \&\textit{it\_end});
+\end{quote}
+where the two output variables (\ttt{int}) \ttt{\it it\_begin} and
+\ttt{\it it\_end} 
+provide the bounds for an event loop in the calling program.  (In serial mode,
+the bounds are equal to 1 and \ttt{n\_events}, respectively, but in an MPI
+parallel environment, they depend on the computing node.)
+
+This command generates a new event, to be enclosed within an event loop:
+\begin{quote}
+  \tt sample->next\_event();
+\end{quote}
+The event will be available by format-specific access methods, see below.
+
+This command closes and deletes an event sample after the event loop has
+completed:
+\begin{quote}
+  \tt sample->close();
+\end{quote}
+
+\subsubsection{Retrieving event data}
+
+After a call to \ttt{sample->next\_event}, the sample object can be
+queried for specific event data.
+\begin{quote}
+  \tt value = sample->get\_event\_index();
+  \\
+  \tt value = sample->get\_process\_index();
+  \\
+  \tt value = sample->get\_process\_id();
+  \\
+  \tt value = sample->get\_sqrts();
+  \\
+  \tt value = sample->get\_fac\_scale();
+  \\
+  \tt value = sample->get\_alpha\_s();
+  \\
+  \tt value = sample->get\_sqme();
+  \\
+  \tt value = sample->get\_weight();
+\end{quote}
+where the \ttt{\it value} is a variable of appropriate type (see above).
+
+Event data are stored in a format-specific way.  This may be a \hepmc\ or
+\lcio\ C++ event record. 
+
+For interfacing with the \hepmc\ event record, the appropriate declarations
+must be in place, e.g.,
+\begin{quote}
+  \tt \#include "HepMC/GenEvent.h"
+  \\
+  using namespace HepMC;
+\end{quote}
+An event-record object must be declared,
+\begin{quote}
+  \tt GenEvent* evt;
+\end{quote}
+and the \whizard\ event call must take the event as an argument
+\begin{quote}
+  \tt sample->next\_event ( \&evt );
+\end{quote}
+This will create a new \ttt{evt} object.
+Then, the \hepmc\ event record can be accessed via its own methods.  After
+an event has been processed, the event record should be deleted
+\begin{quote}
+  \tt delete evt;
+\end{quote}
+
+Analogously, for interfacing with the \lcio\ event record, the appropriate declarations
+must be in place, e.g.,
+\begin{quote}
+  \tt
+  \#include "lcio.h"
+  \\
+  \#include "IMPL/LCEventImpl.h"
+  \\
+  using namespace lcio;
+\end{quote}
+An event-record object must be declared,
+\begin{quote}
+  \tt LCEvent* evt;
+\end{quote}
+and the \whizard\ event call must take the event as an argument
+\begin{quote}
+  \tt sample->next\_event ( \&evt );
+\end{quote}
+This will create a new \ttt{evt} object.
+Then, the \lcio\ event record can be accessed via its own methods.  After
+an event has been processed, the event record should be deleted
+\begin{quote}
+  \tt delete evt;
+\end{quote}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

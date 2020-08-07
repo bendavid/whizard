@@ -60,7 +60,12 @@ libtransforms_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = transforms.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libtransforms_la_SOURCES:.f90=.$(FCMOD)}
+
 libtransforms_Modules = \
   ${libtransforms_la_SOURCES:.f90=} \
   ${libtransforms_ut_la_SOURCES:.f90=}
@@ -104,9 +109,9 @@ module_lists = \
   ../fks/Modules
 
 # Explicit dependencies, not automatically generated
-event_transforms.lo:  ../../vamp/src/vamp.$(FC_MODULE_EXT)
-shower.lo:  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
-shower.lo:  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT)
+event_transforms.lo:  ../../vamp/src/vamp.$(FCMOD)
+shower.lo:  ../lhapdf/lhapdf.$(FCMOD)
+shower.lo:  ../pdf_builtin/pdf_builtin.$(FCMOD)
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -146,7 +151,7 @@ Makefile.depend: $(libtransforms_la_SOURCES) $(libtransforms_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -176,10 +181,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-#execmoddir = $(pkglibdir)/mod/transforms
-#nodist_execmod_HEADERS = \#
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -226,7 +227,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f transforms.stamp transforms.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

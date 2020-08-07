@@ -59,17 +59,17 @@ endif
 ## Explicit dependencies
 
 libhoppet.lo: \
-  ../system/system_dependencies.$(FC_MODULE_EXT) \
-  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
-  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
+  ../system/system_dependencies.$(FCMOD) \
+  ../pdf_builtin/pdf_builtin.$(FCMOD) \
+  ../lhapdf/lhapdf.$(FCMOD)
 
 libhoppet_dummy.lo: \
-  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
+  ../lhapdf/lhapdf.$(FCMOD)
 
 AM_FCFLAGS += -I../basics -I../system -I../pdf_builtin -I../lhapdf
 
 MODULES= \
-   hoppet.$(FC_MODULE_EXT)
+   hoppet.$(FCMOD)
 
 ########################################################################
 ## Cleanup

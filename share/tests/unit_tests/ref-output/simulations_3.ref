@@ -23,7 +23,7 @@
 * Generate three events
 
 ========================================================================
- Event sample: ''
+ Event sample: 'simulation_3p'
    Processes    = 1
    Unweighted   = T
    Event norm   = '1'

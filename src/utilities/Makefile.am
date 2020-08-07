@@ -41,6 +41,12 @@ libutilities_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = utilities.nw
 
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libutilities_la_SOURCES:.f90=.$(FCMOD)}
+
 # Dump module names into file Modules
 libutilities_Modules = ${libutilities_la_SOURCES:.f90=}
 Modules: Makefile
@@ -97,7 +103,7 @@ Makefile.depend: $(libutilities_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -124,16 +130,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-## and by the user code library
-execmoddir = $(pkglibdir)/mod/utilities
-nodist_execmod_HEADERS = \
-  file_utils.$(FC_MODULE_EXT) \
-  string_utils.$(FC_MODULE_EXT) \
-  format_utils.$(FC_MODULE_EXT) \
-  format_defs.$(FC_MODULE_EXT) \
-  numeric_utils.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -178,7 +174,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f utilities.stamp utilities.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

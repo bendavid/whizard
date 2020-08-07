@@ -31,8 +31,8 @@ SOURCE_FILES = \
   circe1.f90
 
 MODULE_FILES = \
-  kinds.$(FC_MODULE_EXT) \
-  circe1.$(FC_MODULE_EXT)	
+  kinds.$(FCMOD) \
+  circe1.$(FCMOD)
 
 NOWEB_FILES = \
     prelude.nw postlude.nw circe1.nw \
@@ -41,7 +41,7 @@ NOWEB_FILES = \
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 
 lib_LTLIBRARIES = libcirce1.la
@@ -74,12 +74,18 @@ TRIPLE = $(srcdir)/prelude.nw $< $(srcdir)/postlude.nw
 NOTANGLE_IT = \
   cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
-SUFFIXES = .nw .lo .$(FC_MODULE_EXT)
+SUFFIXES = .nw .lo .$(FCMOD)
 
 if NOWEB_AVAILABLE
 .nw.f90:
 	$(NOTANGLE_IT)
 endif NOWEB_AVAILABLE
+
+execmodcirce1dir = $(fmoddir)/circe1
+nodist_execmodcirce1_HEADERS = $(MODULE_FILES)
+
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = circe1.$(FCMOD)
 
 ########################################################################
 # The following line just says
@@ -123,7 +129,7 @@ endif
 
 ## Remove F90 module files
 clean-local: clean-noweb
-	-rm -f *.$(FC_MODULE_EXT) *.g90
+	-rm -f *.$(FCMOD) *.g90
 if FC_SUBMODULES
 	-rm -f *.smod
 endif
