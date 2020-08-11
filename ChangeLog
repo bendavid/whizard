@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_alpha+
 
+2020-08-11
+	Bug fix for linking problem with OpenMPI
+
 2020-08-07
 	New WHIZARD API: WHIZARD can be externally linked as a
 	  library, added examples for Fortran, C, C++ programs
