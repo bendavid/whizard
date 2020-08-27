@@ -41,7 +41,7 @@
    Method              = test_me
    Process variant     = test_me
    MD5 sum (def)       = '21ED79524E14AB7F6A911E111431A595'
-   MD5 sum (phs)       = '0C0E0D2300F2F5D4DBCD15436F83AC15'
+   MD5 sum (phs)       = '9E6CA809BE0ADC70A048222CF506D81C'
  Referenced data:
    Terms                    = [undefined]
    MC dataset               = 1
@@ -55,7 +55,7 @@
    n_channel = 2
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
@@ -63,7 +63,7 @@
    1: 1
    2: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '0C0E0D2300F2F5D4DBCD15436F83AC15'
+   MD5 sum (phs config) = '9E6CA809BE0ADC70A048222CF506D81C'
 ========================================================================
  Process term configuration: [undefined]
 ========================================================================
@@ -102,7 +102,7 @@
    MC input parameters   = 4
    MC parameters (SF)    = 2
    MC parameters (PHS)   = 2
-   MD5 sum (components)  = 'A00F41FC394814680916C1C93D1B3403'
+   MD5 sum (components)  = '26AFE1596036E931EA05A8DFE9EB4B80'
  Call statistics (current run): [no calls]
 ========================================================================
 

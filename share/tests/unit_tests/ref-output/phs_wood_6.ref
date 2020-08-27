@@ -15,13 +15,13 @@
 
  MD5 sum (process)    = '1234567890abcdef1234567890abcdef'
  MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
- MD5 sum (phs config) = '5B0A3D2247F848673FF809EFB4DD3406'
+ MD5 sum (phs config) = 'FF6B2FB63939E2E8E5EA04456FE82258'
 
 * Check MD5 sum
 
  MD5 sum (process)    = '1234567890abcdef1234567890abcdef'
  MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
- MD5 sum (phs config) = '5B0A3D2247F848673FF809EFB4DD3406'
+ MD5 sum (phs config) = 'FF6B2FB63939E2E8E5EA04456FE82258'
  exist = T
  found = T
  match = T
@@ -30,7 +30,7 @@
 
  MD5 sum (process)    = '1234567890abcdef1234567890abcdef'
  MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
- MD5 sum (phs config) = 'F155AF3D4B4B0EEB2D8E1F48533B1468'
+ MD5 sum (phs config) = '2AA0E44B3A7A630ECEEB78E5EBE3568C'
  exist = T
  found = T
  match = F
@@ -39,7 +39,7 @@
 
  MD5 sum (process)    = '77777777777777777777777777777777'
  MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
- MD5 sum (phs config) = '075B5A55B15C82E720B97C3FC2138BD1'
+ MD5 sum (phs config) = 'D845D930E438DF04CAA370304C8932CE'
  exist = T
  found = T
  match = F
@@ -48,7 +48,7 @@
 
  MD5 sum (process)    = '1234567890abcdef1234567890abcdef'
  MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
- MD5 sum (phs config) = '9F0B2067AEF705AA3A12512DDB53870B'
+ MD5 sum (phs config) = 'B72F495C2326EDD2CD3FE0D9EB1B9A3C'
  exist = T
  found = T
  match = F
@@ -57,7 +57,7 @@
 
  MD5 sum (process)    = '1234567890abcdef1234567890abcdef'
  MD5 sum (model par)  = '0607E53E39F805915025CAFFAF57245A'
- MD5 sum (phs config) = '1989C28E8E3C63B667EF51AEE22306BC'
+ MD5 sum (phs config) = '8CE235592EEC93B24C7BE33144BFACE6'
  exist = T
  found = T
  match = F

@@ -49,7 +49,7 @@
    n_channel = 1
    sqrts     =  1.250000000000E+02
    s_fixed   = T
-   cm_frame  = F
+   lab_is_cm = F
    azim.dep. = F
    flat dim. = 2
  Flavor combinations:
@@ -57,7 +57,7 @@
  Phase-space / structure-function channels:
    1: 1
    MD5 sum (model par)  = 'D97BD28DED990FF93E2D56F3C62D67B8'
-   MD5 sum (phs config) = '76ADF7FA8551546CF272EADEB19E55FB'
+   MD5 sum (phs config) = '0642B6FF27B8B5268AA8FB40B92ACF7D'
 ========================================================================
  Process term configuration:
 ------------------------------------------------------------------------

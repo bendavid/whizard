@@ -1,5 +1,6 @@
 #!/bin/sh
-### Check WHIZARD for a simple NLO process with dummy virtual matrix-elements
+# Testing complete NLO calculation of ee -> t tbar
+# using dummy output for virtual matrix elements
 echo "Running script $0"
 if test -f OCAML_FLAG; then
     name=`basename @script@`

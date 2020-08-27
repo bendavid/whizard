@@ -17,7 +17,7 @@
    n_channel = 0
    sqrts     =  0.000000000000E+00
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
 
@@ -33,7 +33,7 @@
    n_channel = 0
    sqrts     =  0.000000000000E+00
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
  Phase-space configuration parameters:
@@ -63,7 +63,7 @@
    n_channel = 0
    sqrts     =  0.000000000000E+00
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
  Phase-space configuration parameters:

@@ -11305,7 +11305,7 @@ information about how many entries to associate from [[region_data]].
        current_entry%first => entry
        call get_nlo_evt_ptr (current_entry, evt, mode)
        if (mode > EVT_NLO_SEPARATE_BORNLIKE) then
-          allocate (evt%particle_set_radiated (n_phs + 1))
+          allocate (evt%particle_set_nlo (n_phs + 1))
           evt%event_deps%n_phs = n_phs
           evt%qcd = entry%qcd
           do i = 1, n_phs
@@ -11316,7 +11316,7 @@ information about how many entries to associate from [[region_data]].
              current_entry%i_event = i
           end do
        else
-          allocate (evt%particle_set_radiated (1))
+          allocate (evt%particle_set_nlo (1))
        end if
     end select
   contains
@@ -28487,8 +28487,6 @@ set the initial value for the associated logical variables.
       call var_list%append_log (var_str ("?rebuild_phase_space"), &
            options%rebuild_phs, intrinsic=.true.)
       call var_list%append_log (var_str ("?rebuild_grids"), &
-           options%rebuild_grids, intrinsic=.true.)
-      call var_list%append_log (var_str ("?powheg_rebuild_grids"), &
            options%rebuild_grids, intrinsic=.true.)
       call var_list%append_log (var_str ("?rebuild_events"), &
            options%rebuild_events, intrinsic=.true.)

@@ -320,12 +320,17 @@ further processing.
 
 @ %def evt_set_particle_set
 @ This procedure can help in the previous task, if the particles are
-available in the form of an interaction object.  (We need two
-interactions, one with color summed over, and one with the probability
-distributed among flows.)
+available in the form of an interaction object.
+We need two interactions, one with color summed over, the [[int_matrix]],
+and one with the probability distributed among flows, the [[int_flows]].
 
-We use the two values from the random number generator for factorizing
-the state.  For testing purposes, we can provide those numbers explicitly.
+We use the two values from the random number generator saved in [[r]]
+for factorizing the state.
+For testing purposes, we can provide those numbers explicitly.
+
+The optional [[qn_select]] allows to limit the number of quantum numbers to
+choose from when factorizing. If only a single set of quantum numbers is given,
+it effectively dictates the quantum numbers chosen for the event.
 <<Event transforms: evt: TBP>>=
   procedure :: factorize_interactions => evt_factorize_interactions
 <<Event transforms: procedures>>=
@@ -489,6 +494,13 @@ instance.  The [[generate]] methods do nothing.
 @ %def evt_trivial_generate_weighted
 @ This routine makes a particle set, using the associated process
 instance as-is.
+Note that it is a potential risk to tolerate a non-existent particle set at this point.
+We should remove it once the flavors are determined correctly in all cases.
+It is currently neccessary if we are keeping failed events [[?keep_failed_events = .true.]].
+For these events, we do not compute the matrix elements, so the factorization fails trying to
+determine the quantum numbers.
+Additionally, it is necessary for the trivial event transformation preceeding the event
+transformations required for POWHEG matching.
 <<Event transforms: evt trivial: TBP>>=
   procedure :: make_particle_set => evt_trivial_make_particle_set
 <<Event transforms: procedures>>=
@@ -6955,7 +6967,7 @@ the decay partial width and error have been overridden there.
     call decay%decay_root_config_t%connect &
          (process, model, process_stack, var_list=var_list)
     process_id = process%get_id ()
-    if (process%cm_frame ()) then
+    if (process%lab_is_cm ()) then
        call msg_fatal ("Decay process " // char (process_id) &
             // ": unusable because rest frame is fixed.")
     end if
@@ -9759,6 +9771,7 @@ module evt_nlo
   use physics_defs, only: NLO_REAL
   use sm_qcd
   use model_data
+  use interactions, only: interaction_t
   use particles
   use instances, only: process_instance_t
   use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
@@ -9766,6 +9779,7 @@ module evt_nlo
   use event_transforms
   use prc_core, only: prc_core_t
   use prc_external, only: prc_external_t
+  use quantum_numbers, only: quantum_numbers_t
 
   use phs_fks, only: phs_fks_t, phs_fks_generator_t
   use phs_fks, only: phs_identifier_t, phs_point_set_t
@@ -9790,7 +9804,7 @@ end module evt_nlo
 @
 <<Evt Nlo: types>>=
   type :: nlo_event_deps_t
-     logical :: cm_frame = .true.
+     logical :: lab_is_cm = .true.
      type(phs_point_set_t) :: p_born_cms
      type(phs_point_set_t) :: p_born_lab
      type(phs_point_set_t) :: p_real_cms
@@ -9804,12 +9818,16 @@ end module evt_nlo
 @ %def nlo_event_deps_t
 @ This event transformation is for the generation of fixed-order NLO events. It
 takes an event with Born kinematics and creates $N_\alpha + 1$ modified weighted events.
-The first one has Born kinematics and its weight is the sum of Born, virtual and subtraction
-matrix elements. The other $N_\alpha$ events have a weight which is equal to the real matrix
-element, evaluated with the phase space corresponding to the emitter of the $\alpha$-region.
-All NLO event objects share the same event transformation. For this reason, we save the
-particle set of the current $\alpha$-region in the array [[particle_set_radiated]]. Otherwise
-it would be unretrievable if the usual particle set of the event object was used.
+The first one has Born kinematics and its weight is the sum of Born, virtual, subtraction
+and, if present, also DGLAP matrix elements. The other $N_\alpha$ events have a weight which
+is equal to the real matrix element, evaluated with the phase space corresponding to the
+emitter of the $\alpha$-region.
+
+As the NLO event transforms have different kinematics, they also differ in their [[particle_set]]s.
+The NLO [[event_t]] object carries a single pointer to a [[particle_set]].
+To avoid interference between the different NLO [[particle_set]]s, we save the
+[[particle_set]] of the current $\alpha$-region in the array [[particle_set_nlo]].
+Otherwise it would be unretrievable if the usual particle set of the event object was used.
 <<Evt Nlo: public parameters>>=
   integer, parameter, public :: EVT_NLO_UNDEFINED = 0
   integer, parameter, public :: EVT_NLO_SEPARATE_BORNLIKE = 1
@@ -9822,7 +9840,7 @@ it would be unretrievable if the usual particle set of the event object was used
     type(phs_fks_generator_t) :: phs_fks_generator
     real(default) :: sqme_rad = zero
     integer :: i_evaluation = 0
-    type(particle_set_t), dimension(:), allocatable :: particle_set_radiated
+    type(particle_set_t), dimension(:), allocatable :: particle_set_nlo
     type(qcd_t) :: qcd
     type(nlo_event_deps_t) :: event_deps
     integer :: mode = EVT_NLO_UNDEFINED
@@ -9867,8 +9885,8 @@ it would be unretrievable if the usual particle set of the event object was used
     write (u, "(3x,A,I0)")  "i_evaluation = ", evt%i_evaluation
     call write_separator (u)
     write (u, "(1x,A)")  "Radiated particle sets:"
-    do i = 1, size (evt%particle_set_radiated)
-       call evt%particle_set_radiated(i)%write (u, testflag = testflag)
+    do i = 1, size (evt%particle_set_nlo)
+       call evt%particle_set_nlo(i)%write (u, testflag = testflag)
        call write_separator (u)
     end do
   end subroutine evt_nlo_write
@@ -10045,7 +10063,7 @@ object in the [[pcm_instance]].
 @ %def evt_nlo_copy_previous_particle_set
 @ The event transform has a variable which counts the number of times it
 has already been called for one generation point. If this variable,
-[[i_evaluation]], is zero, this means that [[evt_nlo_generate]] is called
+[[i_evaluation]], is zero, this means that [[evt_nlo_generate_weighted]] is called
 for the first time, so that the generation of an $N$-particle event is required.
 In all other cases, emission events are generated.\\
 During a separate integration of the real component, the first event of
@@ -10083,7 +10101,6 @@ event transformation is an abuse of the interface which should be refactored.
     end if
     probability = sqme
     if (debug_on) call msg_debug (D_TRANSFORMS, "probability (after)", probability)
-    evt%particle_set_exists = .true.
   contains
     function status_code_to_string (mode) result (smode)
       type(string_t) :: smode
@@ -10128,6 +10145,41 @@ event transformation is an abuse of the interface which should be refactored.
   end subroutine evt_nlo_reset_phs_identifiers
 
 @ %def evt_nlo_reset_phs_identifiers
+@ The routine [[make_factorized_particle_set]] will setup the subevent momenta
+from the [[connected%matrix]]. Its initial state momenta correspond
+to the Born process without IS splitting and thus need to be updated with the real
+momenta from the [[int_hard]] to get correct momenta in the events with real radiation.
+
+Ideally the [[int_hard]] and the [[connected]] would be setup with correct
+[[source_link]]s to real momenta so that we would not need to replace momenta of the
+[[connected]] here.
+
+The parameter [[n_in]] from the [[int_matrix]] is still $0$ as it has been shifted to
+[[n_vir]]. We thus take [[n_in]] from the [[particle_set]].
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: connected_set_real_IS_momenta => evt_nlo_connected_set_real_IS_momenta
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_connected_set_real_IS_momenta (evt)
+    class(evt_nlo_t), intent(inout) :: evt
+    type(vector4_t) :: p_hard, p_beam, p_remn
+    type(interaction_t), pointer :: int_matrix
+    integer :: i, i_term, n_in, i_in_beam, i_in_hard, i_in_remn
+    i_term = evt%get_i_term ()
+    int_matrix => evt%process_instance%get_matrix_int_ptr (i_term)
+    n_in = evt%particle_set%get_n_in ()
+    do i = 1, n_in
+       i_in_beam = i
+       i_in_hard = n_in + i
+       i_in_remn = 2 * n_in + i
+       p_hard = evt%process_instance%term(i_term)%int_hard%get_momentum (i)
+       p_beam = int_matrix%get_momentum (i_in_beam)
+       p_remn = p_beam - p_hard
+       call int_matrix%set_momentum (p_hard , i_in_hard)
+       call int_matrix%set_momentum (p_remn , i_in_remn)
+    end do
+  end subroutine evt_nlo_connected_set_real_IS_momenta
+
+@ %def evt_nlo_connected_set_real_IS_momenta
 @
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: make_particle_set => evt_nlo_make_particle_set
@@ -10139,18 +10191,9 @@ event transformation is an abuse of the interface which should be refactored.
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
     if (evt%mode >= EVT_NLO_SEPARATE_BORNLIKE) then
-       select type (config => evt%process_instance%pcm%config)
-       type is (pcm_nlo_t)
-          if (evt%i_evaluation > 0) then
-             call make_factorized_particle_set (evt, factorization_mode, &
-                  keep_correlations, r, evt%get_i_term (), &
-                  config%qn_real(:, evt%selected_i_flv))
-          else
-             call make_factorized_particle_set (evt, factorization_mode, &
-                  keep_correlations, r, evt%get_i_term (), &
-                  config%qn_born(:, evt%selected_i_flv))
-          end if
-       end select
+       call make_factorized_particle_set (evt, factorization_mode, &
+            keep_correlations, r, evt%get_i_term (), &
+            evt%get_selected_quantum_numbers (evt%selected_i_flv))
     else
        call make_factorized_particle_set (evt, factorization_mode, &
             keep_correlations, r)
@@ -10158,29 +10201,6 @@ event transformation is an abuse of the interface which should be refactored.
   end subroutine evt_nlo_make_particle_set
 
 @ %def evt_nlo_make_particle_set
-@
-<<Evt Nlo: evt nlo: TBP>>=
-  procedure :: keep_and_boost_born_particle_set => &
-       evt_nlo_keep_and_boost_born_particle_set
-<<Evt Nlo: procedures>>=
-  subroutine evt_nlo_keep_and_boost_born_particle_set (evt, i_event)
-    class(evt_nlo_t), intent(inout) :: evt
-    integer, intent(in) :: i_event
-    evt%particle_set_radiated(i_event) = evt%particle_set
-    if (evt%event_deps%cm_frame) then
-       evt%event_deps%p_born_cms%phs_point(1) = &
-          evt%particle_set%get_in_and_out_momenta ()
-       evt%event_deps%p_born_lab%phs_point(1) = &
-          evt%boost_to_lab (evt%event_deps%p_born_cms%phs_point(1))
-       call evt%particle_set_radiated(i_event)%replace_incoming_momenta &
-          (evt%event_deps%p_born_lab%phs_point(1)%p)
-       call evt%particle_set_radiated(i_event)%replace_outgoing_momenta &
-          (evt%event_deps%p_born_lab%phs_point(1)%p)
-    end if
-  end subroutine evt_nlo_keep_and_boost_born_particle_set
-
-@ %def evt_nlo_keep_and_boost_born_particle_set
-@
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: evaluate_real_kinematics => evt_nlo_evaluate_real_kinematics
 <<Evt Nlo: procedures>>=
@@ -10197,7 +10217,7 @@ event transformation is an abuse of the interface which should be refactored.
        associate (event_deps => evt%event_deps)
           i_term = evt%get_i_term ()
           event_deps%p_born_lab%phs_point(1) = &
-               evt%process_instance%term(i_term)%connected%matrix%get_momenta ()
+               evt%process_instance%term(i_term)%p_seed
           event_deps%p_born_cms%phs_point(1) &
                = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1))
           call evt%phs_fks_generator%set_sqrts_hat &
@@ -10316,31 +10336,45 @@ the sum of all valid real matrix elements.
   end function evt_nlo_compute_all_sqme_rad
 
 @ %def evt_nlo_compute_all_sqme_rad
-@
+@ Boosts the given four vector [[p_lab]] to the Born or real CMS depending on
+the number of given momenta.
+Unfortunately, all boosts available via [[get_boost_to_cms]] are Born-like,
+so we need to compute the boost to the real CMS here manually.
+We cannot rely on [[i_term]] in order to determine whether to apply a Born-like
+or a real boost as we also need a real boost to compute the weights of the Born-like
+subevents as implemented in [[evt_nlo_generate_weighted]].
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: boost_to_cms => evt_nlo_boost_to_cms
 <<Evt Nlo: procedures>>=
   function evt_nlo_boost_to_cms (evt, p_lab) result (p_cms)
     type(phs_point_t), intent(in) :: p_lab
+    type(vector4_t) :: p0, p1
     class(evt_nlo_t), intent(in) :: evt
     type(phs_point_t) :: p_cms
-    type(lorentz_transformation_t) :: lt_lab_to_cms
-    integer :: i_boost
-    if (evt%event_deps%cm_frame) then
+    type(lorentz_transformation_t) :: lt_lab_to_cms, lt
+    real(default) :: sqrts_hat
+    integer :: i_boost, n_legs_born
+    if (evt%event_deps%lab_is_cm) then
        lt_lab_to_cms = identity
     else
-       if (evt%mode == EVT_NLO_COMBINED) then
-          i_boost = 1
+       n_legs_born = evt%event_deps%p_born_lab%phs_point(1)%n_momenta
+       if (p_lab%n_momenta == n_legs_born) then
+          i_boost = evt%get_i_term ()
+          lt_lab_to_cms = evt%process_instance%get_boost_to_cms (i_boost)
        else
-          i_boost = evt%process_instance%select_i_term ()
+          sqrts_hat = (p_lab%p(1) + p_lab%p(2))**1
+          p0 = p_lab%p(1) + p_lab%p(2)
+          lt = boost (p0, sqrts_hat)
+          p1 = inverse(lt) * p_lab%p(1)
+          lt_lab_to_cms = inverse (lt * rotation_to_2nd (3, space_part (p1)))
        end if
-       lt_lab_to_cms = evt%process_instance%get_boost_to_cms (i_boost)
     end if
     p_cms = lt_lab_to_cms * p_lab
   end function evt_nlo_boost_to_cms
 
 @ %def evt_nlo_boost_to_cms
-@
+@ Boosts the given four vector [[p_cms]] from the Born CMS to the lab system.
+It should not be called for ISR as in this case, the Born CMS and the real CMS differ.
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: boost_to_lab => evt_nlo_boost_to_lab
 <<Evt Nlo: procedures>>=
@@ -10350,14 +10384,10 @@ the sum of all valid real matrix elements.
     type(phs_point_t), intent(in) :: p_cms
     type(lorentz_transformation_t) :: lt_cms_to_lab
     integer :: i_boost
-    if (.not. evt%event_deps%cm_frame) then
+    if (evt%event_deps%lab_is_cm) then
        lt_cms_to_lab = identity
     else
-       if (evt%mode == EVT_NLO_COMBINED) then
-          i_boost = 1
-       else
-          i_boost = evt%process_instance%select_i_term ()
-       end if
+       i_boost = evt%get_i_term ()
        lt_cms_to_lab = evt%process_instance%get_boost_to_lab (i_boost)
     end if
     p_lab = lt_cms_to_lab * p_cms
@@ -10373,7 +10403,7 @@ the sum of all valid real matrix elements.
     type(process_instance_t), intent(in) :: process_instance
     integer :: n_born
     associate (event_deps => evt%event_deps)
-       event_deps%cm_frame = process_instance%is_cm_frame (1)
+       event_deps%lab_is_cm = process_instance%lab_is_cm (1)
        select type (pcm => process_instance%pcm)
        type is (pcm_instance_nlo_t)
           n_born = pcm%get_n_born ()
@@ -10464,9 +10494,31 @@ the sum of all valid real matrix elements.
   end function evt_nlo_is_valid_event
 
 @ %def evt_nlo_is_valid_event
+@ Retrieves the actual quantum numbers chosen in [[evt_nlo_prepare_new_event]].
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: get_selected_quantum_numbers => evt_nlo_get_selected_quantum_numbers
+<<Evt Nlo: procedures>>=
+  function evt_nlo_get_selected_quantum_numbers (evt, i_flv) result (qn_select)
+    class(evt_nlo_t), intent(in) :: evt
+    integer, intent(in) :: i_flv
+    type(quantum_numbers_t), dimension(:), allocatable :: qn_select
+    integer :: i_term, index
+    i_term = evt%get_i_term ()
+    associate (term => evt%process_instance%term(i_term))
+       index = term%connected%matrix%get_qn_index (i_flv, i_sub = 0)
+       qn_select = term%connected%matrix%get_quantum_numbers (index)
+    end associate
+  end function evt_nlo_get_selected_quantum_numbers
+
+@ %def evt_nlo_get_selected_quantum_numbers
 @ Prepares a new event.
-Selects a flavor structure such that each flavor structure is as probable as
-its portion of the total squared matrix element.
+Selects a Born flavor structure such that each possible flavor structure
+is as probable as its portion of the total sum of all Born-like squared
+matrix elements.
+
+In case all subevents failed the cuts, all [[sqme]]s were set to $0$ so
+we cannot determine the flavor in this way. In this case, we always choose
+[[i_flv = 1]].
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: prepare_new_event => evt_nlo_prepare_new_event
 <<Evt Nlo: procedures>>=
@@ -10488,27 +10540,30 @@ its portion of the total squared matrix element.
     core => evt%process%get_core_ptr (i_core)
     do i = 1, size (evt%process_instance%term)
        associate (term => evt%process_instance%term(i))
-          sqme_total = sqme_total + real (sum ( &
-               term%connected%matrix%get_matrix_element ()))
-          !!! TODO: figure out why this select type is needed for prc_omega_t
-          !!! For NLO and prc_omega_t the connected trace seems to be set up incorrectly!
-          select type (core)
-          class is (prc_external_t)
-             do i_flv = 1, size (sqme_flv)
-                sqme_flv(i_flv) = sqme_flv(i_flv) &
-                     + real (term%connected%matrix%get_matrix_element ( &
-                     term%connected_qn_index%get_index (i_flv, i_sub = 0)))
-             end do
-          class default
-             sqme_flv = sqme_flv &
-                  + real (term%connected%matrix%get_matrix_element ())
-       end select
-    end associate
+          if (.not. (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction())) then
+             sqme_total = sqme_total + real (sum ( &
+                  term%connected%matrix%get_matrix_element ()))
+             !!! TODO: figure out why this select type is needed for prc_omega_t
+             !!! For NLO and prc_omega_t the connected trace seems to be set up incorrectly!
+             select type (core)
+             class is (prc_external_t)
+                do i_flv = 1, size (sqme_flv)
+                   sqme_flv(i_flv) = sqme_flv(i_flv) &
+                        + real (term%connected%matrix%get_matrix_element ( &
+                        term%connected%matrix%get_qn_index (i_flv, i_sub = 0)))
+                end do
+             class default
+                sqme_flv = sqme_flv &
+                     + real (term%connected%matrix%get_matrix_element ())
+             end select
+          end if
+       end associate
     end do
     !!! Need absolute values to take into account negative weights
     x = x * abs (sqme_total)
-    s = zero
-    do i_flv = 1, size (sqme_flv)
+    s = abs (sqme_flv (1))
+    evt%selected_i_flv = 1
+    do i_flv = 2, size (sqme_flv)
        s = s + abs (sqme_flv (i_flv))
        if (s > x) then
           evt%selected_i_flv = i_flv
@@ -11129,7 +11184,7 @@ For testing purpose, we allow for providing them explicitly, as an option.
     real(default), dimension(:), intent(in), optional :: r
     class(evt_t), pointer :: evt
     real(default) :: weight_over_sqme
-    integer :: i_term
+    integer :: i_term, emitter, n_in
     logical :: failed_but_keep
     failed_but_keep = .false.
     if (debug_on) call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
@@ -11144,16 +11199,17 @@ For testing purpose, we allow for providing them explicitly, as an option.
                (event%selected_i_mci, event%selected_i_term)
           evt => evt%next
        end do
-       evt => event%transform_first
        if (debug_on) call msg_debug (D_TRANSFORMS, "Before event transformations")
        if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
        if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       evt => event%transform_first
        do while (associated (evt))
           call print_transform_name_if_debug ()
           if (evt%only_weighted_events) then
              select type (evt)
              type is (evt_nlo_t)
-                failed_but_keep = .not. evt%is_valid_event (evt%get_i_term ()) &
+                i_term = evt%get_i_term ()
+                failed_but_keep = .not. evt%is_valid_event (i_term) &
                      .and. evt%keep_failed_events
                 if (.not. any(evt%process_instance%term%passed .and. evt%process_instance%term%active) &
                     .and. .not. evt%keep_failed_events)  return
@@ -11164,7 +11220,7 @@ For testing purpose, we allow for providing them explicitly, as an option.
                 event%weight_prc = weight_over_sqme * event%sqme_prc
                 select type (evt)
                 type is (evt_nlo_t)
-                   if (.not. evt%is_valid_event (evt%get_i_term ())) event%weight_prc = 0
+                   if (.not. evt%is_valid_event (i_term)) event%weight_prc = 0
                 end select
              else
                 if (.not. failed_but_keep) exit
@@ -11173,6 +11229,16 @@ For testing purpose, we allow for providing them explicitly, as an option.
              call evt%generate_unweighted ()
           end if
           if (signal_is_pending ())  return
+          select type (evt)
+          type is (evt_nlo_t)
+             if (evt%i_evaluation > 0) then
+                emitter = evt%process_instance%term(i_term)%k_term%emitter
+                n_in = evt%process_instance%term(i_term)%k_term%n_in
+                if (emitter <= n_in) then
+                   call evt%connected_set_real_IS_momenta ()
+                end if
+             end if
+          end select
           call evt%make_particle_set (event%config%factorization_mode, &
                event%config%keep_correlations)
           if (signal_is_pending ())  return
@@ -11184,14 +11250,10 @@ For testing purpose, we allow for providing them explicitly, as an option.
           if (event%is_nlo ()) then
              select type (evt)
              type is (evt_nlo_t)
-                if (evt%i_evaluation > 0) then
-                   evt%particle_set_radiated (event%i_event + 1) = evt%particle_set
-                else
-                   call evt%keep_and_boost_born_particle_set (event%i_event + 1)
-                end if
+                evt%particle_set_nlo (event%i_event + 1) = evt%particle_set
                 evt%i_evaluation = evt%i_evaluation + 1
                 call event%link_particle_set &
-                   (evt%particle_set_radiated(event%i_event + 1))
+                     (evt%particle_set_nlo(event%i_event + 1))
              end select
           else
              call event%link_particle_set (evt%particle_set)
@@ -11643,7 +11705,7 @@ new values.
 
 The event [[weight]] may also be known already.  If yes, we pass it to the
 [[evaluate_event_data]] procedure.  It should already be normalized.  If we
-have an [[weight_factor]] value, we obtain the event weight by multiplying the
+have a [[weight_factor]] value, we obtain the event weight by multiplying the
 computed [[sqme]] by this factor.  Otherwise, we make use of the MCI setup
 (which should be valid then) to compute the event weight, and we should
 normalize the result just as when generating events.

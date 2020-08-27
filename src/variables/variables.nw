@@ -41,7 +41,7 @@ module variables
   use io_units
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_12, FMT_19
-  use constants, only: eps0
+  use constants, only: eps0, tiny_07
   use os_interface, only: paths_t
   use physics_defs, only: LAMBDA_QCD_REF
   use system_dependencies
@@ -5693,10 +5693,6 @@ procedure with type [[V_NONE]].
           LAMBDA_QCD_REF, intrinsic = .true., &
           description=var_str ('Reference scale of the $\alpha_s$ evolution ' // &
           'in the POWHEG matching algorithm.'))
-    call var_list%append_log (var_str ("?powheg_rebuild_grids"), &
-          .false., intrinsic = .true., &
-          description=var_str ('If set to \ttt{true}, the existing POWHEG ' // &
-          'grid is discarded and a new one is generated.'))
     call var_list%append_log (var_str ("?powheg_test_sudakov"), &
           .false., intrinsic = .true., &
           description=var_str ('Performs an internal consistency check ' // &
@@ -5955,16 +5951,20 @@ procedure with type [[V_NONE]].
          'on the mapping implementation. (cf. also \ttt{fks\_dij\_exp1}, ' // &
          '\ttt{\$fks\_mapping\_type}, \ttt{fks\_xi\_min}, \ttt{fks\_y\_max})'))
     call var_list%append_real (var_str ("fks_xi_min"), &
-         0.0000001_default, intrinsic = .true., &
+         0._default, intrinsic = .true., &
          description=var_str ('Real parameter for the FKS ' // &
          'phase space that sets the numerical lower value of the $\xi$ ' // &
-         'variable. (cf. also \ttt{fks\_dij\_exp1}, ' // &
+         'variable. Valid for the value range $[\texttt{tiny\_07},1]$, where ' // &
+         'value inputs out of bounds will take the value of the closest bound. ' // &
+         'Here, $\texttt{tiny\_07} = \texttt{1E0\_default * epsilon (0.\_default)}$, where ' // &
+         '\ttt{epsilon} is an intrinsic Fortran function. (cf. also \ttt{fks\_dij\_exp1}, ' // &
          '\ttt{fks\_dij\_exp2}, \ttt{\$fks\_mapping\_type}, \ttt{fks\_y\_max})'))
     call var_list%append_real (var_str ("fks_y_max"), &
          1._default, intrinsic = .true., &
          description=var_str ('Real parameter for the FKS ' // &
-         'phase space that sets the numerical upper value of the $y$ ' // &
-         'variable. (cf. also \ttt{fks\_dij\_exp1}, ' // &
+         'phase space that sets the numerical upper value of the $\left|y\right|$ ' // &
+         'variable. Valid for ranges $[0,1]$, where value inputs out of bounds will take ' // &
+         'the value of the closest bound.(cf. also \ttt{fks\_dij\_exp1}, ' // &
          '\ttt{\$fks\_mapping\_type}, \ttt{fks\_dij\_exp2}, \ttt{fks\_y\_max})'))
     call var_list%append_log (var_str ("?vis_fks_regions"), &
          .false., intrinsic = .true., &
@@ -6067,11 +6067,11 @@ procedure with type [[V_NONE]].
          '\ttt{family} etc. For more info see the \gosam\ manual.'))
     call var_list%append_int (var_str ("form_threads"), &
          2, intrinsic = .true., &
-         description=var_str ('The number of threads used by \gosam when ' // &
+         description=var_str ('The number of threads used by \gosam\ when ' // &
          'matrix elements are evaluated using \ttt{FORM}'))
     call var_list%append_int (var_str ("form_workspace"), &
          1000, intrinsic = .true., &
-         description=var_str ('The size of the workspace \gosam requires ' // &
+         description=var_str ('The size of the workspace \gosam\ requires ' // &
          'from \ttt{FORM}. Inside \ttt{FORM}, it corresponds to the heap ' // &
          'size used by the algebra processor.'))
     call var_list%append_string (var_str ("$gosam_fc"), &

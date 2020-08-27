@@ -4877,15 +4877,16 @@ usual error propagation gives
 @ %def process_get_correction process_get_correction_error
 @
 <<Process: process: TBP>>=
-  procedure :: lab_is_cm_frame => process_lab_is_cm_frame
+  procedure :: lab_is_cm => process_lab_is_cm
 <<Process: procedures>>=
-  pure function process_lab_is_cm_frame (process) result (cm_frame)
-    logical :: cm_frame
+  pure function process_lab_is_cm (process) result (lab_is_cm)
+    logical :: lab_is_cm
     class(process_t), intent(in) :: process
-    cm_frame = process%beam_config%lab_is_cm_frame
-  end function process_lab_is_cm_frame
+    lab_is_cm = process%beam_config%lab_is_cm
+    ! This asks beam_config for the frame
+  end function process_lab_is_cm
 
-@ %def process_lab_is_cm_frame
+@ %def process_lab_is_cm
 @
 <<Process: process: TBP>>=
   procedure :: get_component_ptr => process_get_component_ptr
@@ -5827,19 +5828,6 @@ one that is stored in the process object.
   end function process_get_beam_config_ptr
 
 @ %def process_get_beam_config_ptr
-@ Return true if lab and c.m.\ frame coincide for this process.
-<<Process: process: TBP>>=
-  procedure :: cm_frame => process_cm_frame
-<<Process: procedures>>=
-  function process_cm_frame (process) result (flag)
-    class(process_t), intent(in), target :: process
-    logical :: flag
-    type(beam_data_t), pointer :: beam_data
-    beam_data => process%beam_config%data
-    flag = beam_data%cm_frame ()
-  end function process_cm_frame
-
-@ %def process_cm_frame
 @ Get the PDF set currently in use, if any.
 <<Process: process: TBP>>=
   procedure :: get_pdf_set => process_get_pdf_set
@@ -7376,7 +7364,7 @@ structure-function chain is [[n_sfpar]].
 
 The flag [[azimuthal_dependence]] tells whether the process setup is
 symmetric about the beam axis in the c.m.\ system.  This implies that
-there is no transversal beam polarization.  The flag [[lab_is_cm_frame]] is
+there is no transversal beam polarization.  The flag [[lab_is_cm]] is
 obvious.
 <<Process config: public>>=
   public :: process_beam_config_t
@@ -7389,7 +7377,7 @@ obvious.
      type(sf_config_t), dimension(:), allocatable :: sf
      type(sf_channel_t), dimension(:), allocatable :: sf_channel
      logical :: azimuthal_dependence = .false.
-     logical :: lab_is_cm_frame = .true.
+     logical :: lab_is_cm = .true.
      character(32) :: md5sum = ""
      logical :: sf_trace = .false.
      type(string_t) :: sf_trace_file
@@ -7415,7 +7403,7 @@ The [[verbose]] flag is passed to the beam-data writer.
        write (u, "(3x,A,L1)")  "Azimuthal dependence    = ", &
             object%azimuthal_dependence
        write (u, "(3x,A,L1)")  "Lab frame is c.m. frame = ", &
-            object%lab_is_cm_frame
+            object%lab_is_cm
        if (object%md5sum /= "") then
           write (u, "(3x,A,A,A)")  "MD5 sum (beams/strf) = '", &
                object%md5sum, "'"
@@ -7460,7 +7448,7 @@ structure-function data.
     class(model_data_t), intent(in), target :: model
     call beam_config%data%init_structure (beam_structure, &
          sqrts, model, decay_rest_frame)
-    beam_config%lab_is_cm_frame = beam_config%data%cm_frame ()
+    beam_config%lab_is_cm = beam_config%data%lab_is_cm
   end subroutine process_beam_config_init_beam_structure
 
 @ %def process_beam_config_init_beam_structure
@@ -7516,7 +7504,7 @@ The beam data itself are initialized for the particle at rest.
        call beam_config%data%init_decay (flv_in, &
             rest_frame = rest_frame)
     end if
-    beam_config%lab_is_cm_frame = beam_config%data%cm_frame ()
+    beam_config%lab_is_cm = beam_config%data%lab_is_cm
   end subroutine process_beam_config_init_decay
 
 @ %def process_beam_config_init_decay
@@ -7863,7 +7851,7 @@ configuration finalizer may include closing an open scratch file.
     call component%phs_config%configure (sqrts, &
          azimuthal_dependence = beam_config%azimuthal_dependence, &
          sqrts_fixed = no_strfun, &
-         cm_frame = beam_config%lab_is_cm_frame .and. no_strfun, &
+         lab_is_cm = beam_config%lab_is_cm .and. no_strfun, &
          rebuild = rebuild, ignore_mismatch = ignore_mismatch, &
          nlo_type = nlo_type, &
          subdir = subdir)
@@ -10592,6 +10580,8 @@ not have to be the case when different components are generated at LO})
     generator%is_massive = pcm%get_mass_info (1)
     generator%singular_jacobian = yorn
     if (present (mode)) generator%mode = mode
+    call generator%set_xi_and_y_bounds (pcm%settings%fks_template%xi_min, &
+         pcm%settings%fks_template%y_max)
   end subroutine pcm_nlo_setup_phs_generator
 
 @ %def pcm_nlo_setup_phs_generator
@@ -10998,11 +10988,11 @@ object and the squared matrix-element collector.
   procedure :: compute_sqme_virt => pcm_instance_nlo_compute_sqme_virt
 <<Pcm: procedures>>=
   subroutine pcm_instance_nlo_compute_sqme_virt (pcm_instance, p, &
-         alpha_coupling, separate_alrs, sqme_virt)
+         alpha_coupling, separate_uborns, sqme_virt)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: alpha_coupling
-    logical, intent(in) :: separate_alrs
+    logical, intent(in) :: separate_uborns
     real(default), dimension(:), allocatable, intent(inout) :: sqme_virt
     type(vector4_t), dimension(:), allocatable :: pp
     associate (virtual => pcm_instance%virtual)
@@ -11014,14 +11004,14 @@ object and the squared matrix-element collector.
        end if
        select type (config => pcm_instance%config)
        type is (pcm_nlo_t)
-          if (separate_alrs) then
+          if (separate_uborns) then
              allocate (sqme_virt (config%get_n_flv_born ()))
           else
              allocate (sqme_virt (1))
           end if
           sqme_virt = zero
           call virtual%evaluate (config%region_data, &
-               alpha_coupling, pp, separate_alrs, sqme_virt)
+               alpha_coupling, pp, separate_uborns, sqme_virt)
        end select
     end associate
   end subroutine pcm_instance_nlo_compute_sqme_virt
@@ -11032,14 +11022,14 @@ object and the squared matrix-element collector.
   procedure :: compute_sqme_mismatch => pcm_instance_nlo_compute_sqme_mismatch
 <<Pcm: procedures>>=
   subroutine pcm_instance_nlo_compute_sqme_mismatch (pcm_instance, &
-           alpha_s, separate_alrs, sqme_mism)
+           alpha_s, separate_uborns, sqme_mism)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     real(default), intent(in) :: alpha_s
-    logical, intent(in) :: separate_alrs
+    logical, intent(in) :: separate_uborns
     real(default), dimension(:), allocatable, intent(inout) :: sqme_mism
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
-       if (separate_alrs) then
+       if (separate_uborns) then
           allocate (sqme_mism (config%get_n_flv_born ()))
        else
           allocate (sqme_mism (1))
@@ -11055,21 +11045,21 @@ object and the squared matrix-element collector.
   procedure :: compute_sqme_dglap_remnant => pcm_instance_nlo_compute_sqme_dglap_remnant
 <<Pcm: procedures>>=
   subroutine pcm_instance_nlo_compute_sqme_dglap_remnant (pcm_instance, &
-            alpha_s, separate_alrs, sqme_dglap)
+            alpha_s, separate_uborns, sqme_dglap)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     real(default), intent(in) :: alpha_s
-    logical, intent(in) :: separate_alrs
+    logical, intent(in) :: separate_uborns
     real(default), dimension(:), allocatable, intent(inout) :: sqme_dglap
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
-       if (separate_alrs) then
+       if (separate_uborns) then
           allocate (sqme_dglap (config%get_n_flv_born ()))
        else
           allocate (sqme_dglap (1))
        end if
     end select
     sqme_dglap = zero
-    call pcm_instance%dglap_remnant%evaluate (alpha_s, separate_alrs, sqme_dglap)
+    call pcm_instance%dglap_remnant%evaluate (alpha_s, separate_uborns, sqme_dglap)
   end subroutine pcm_instance_nlo_compute_sqme_dglap_remnant
 
 @ %def pcm_instance_nlo_compute_sqme_dglap_remnant
@@ -11441,10 +11431,6 @@ parameter arrays for the selected channel.
          call k%phs%get_outgoing_momenta (p(k%n_in + 1 :))
          k%phs_factor = k%phs%get_overall_factor ()
          success = .true.
-         if (k%only_cm_frame) then
-            if (.not. k%lab_is_cm_frame()) &
-               call k%boost_to_cm_frame (p)
-         end if
       else
          k%phs_factor = 0
          success = .false.
@@ -11602,26 +11588,15 @@ current [[sf_chain]] to their source.  This is a side effect.
 @ Check wether the phase space is configured in the center-of-mass frame.
 Relevant for using the proper momenta input for BLHA matrix elements.
 <<Kinematics: kinematics: TBP>>=
-  procedure :: lab_is_cm_frame => kinematics_lab_is_cm_frame
+  procedure :: lab_is_cm => kinematics_lab_is_cm
 <<Kinematics: procedures>>=
-  function kinematics_lab_is_cm_frame (k) result (cm_frame)
-     logical :: cm_frame
+  function kinematics_lab_is_cm (k) result (lab_is_cm)
+     logical :: lab_is_cm
      class(kinematics_t), intent(in) :: k
-     cm_frame = k%phs%config%cm_frame
-  end function kinematics_lab_is_cm_frame
+     lab_is_cm = k%phs%config%lab_is_cm
+  end function kinematics_lab_is_cm
 
-@ %def kinematics_lab_is_cm_frame
-@ Boost to center-of-mass frame
-<<Kinematics: kinematics: TBP>>=
-  procedure :: boost_to_cm_frame => kinematics_boost_to_cm_frame
-<<Kinematics: procedures>>=
-  subroutine kinematics_boost_to_cm_frame (k, p)
-     class(kinematics_t), intent(in) :: k
-     type(vector4_t), intent(inout), dimension(:) :: p
-     p = inverse (k%phs%lt_cm_to_lab) * p
-  end subroutine kinematics_boost_to_cm_frame
-
-@ %def kinematics_boost_to_cm_frame
+@ %def kinematics_lab_is_cm
 @
 <<Kinematics: kinematics: TBP>>=
   procedure :: modify_momenta_for_subtraction => kinematics_modify_momenta_for_subtraction
@@ -11697,7 +11672,7 @@ Relevant for using the proper momenta input for BLHA matrix elements.
        else
           p_born = p_in
        end if
-       if (.not. k%phs%is_cm_frame () .and. .not. k%threshold) then
+       if (.not. k%phs%lab_is_cm () .and. .not. k%threshold) then
             p_born = inverse (k%phs%lt_cm_to_lab) * p_born
        end if
        call phs%compute_xi_max (p_born, k%threshold)
@@ -11890,9 +11865,6 @@ to fulfill their signature.
      class(pcm_instance_t), pointer :: pcm_instance => null ()
      integer :: nlo_type = BORN
      integer, dimension(:), allocatable :: same_kinematics
-     type(qn_index_map_t) :: connected_qn_index
-     type(qn_index_map_t) :: hard_qn_index
-     type(qn_index_map_t) :: sf_qn_index
    contains
    <<Instances: term instance: TBP>>
   end type term_instance_t
@@ -12132,25 +12104,10 @@ relevant for a NLO algorithm.
     call term%connected%setup_var_list &
          (process%get_var_list_ptr (), beam_config%data)
 
-    select type (core)
-    class is (prc_external_t)
-       select type (pcm_instance => term%pcm_instance)
-       type is (pcm_instance_nlo_t)
-          associate (is_born => .not. (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction ()))
-            ! Does connected%trace never have any helicity qn?
-            call setup_qn_index (term%connected_qn_index, term%connected%trace, pcm_instance, &
-                 n_sub = n_sub, is_born = is_born, is_polarized = .false.)
-            call setup_qn_index (term%hard_qn_index, term%int_hard, pcm_instance, &
-                 n_sub = n_sub, is_born = is_born, is_polarized = core%includes_polarization ())
-          end associate
-       class default
-          call term%connected_qn_index%init (term%connected%trace)
-          call term%hard_qn_index%init (term%int_hard)
-       end select
-    class default
-       call term%connected_qn_index%init (term%connected%trace)
-       call term%hard_qn_index%init (term%int_hard)
-    end select
+    ! Does connected%trace never have any helicity qn?
+    call term%init_interaction_qn_index (core, term%connected%trace, n_sub, &
+         is_polarized = .false.)
+    call term%init_interaction_qn_index (core, term%int_hard, n_sub)
     if (requires_extended_sf) then
        select type (config => term%pcm_instance%config)
        type is (pcm_nlo_t)
@@ -12165,7 +12122,7 @@ relevant for a NLO algorithm.
           call flv_pdf(:, :n_flv_born)%init (flv_born(:n_in, :))
           call flv_pdf(:, n_flv_born + 1:n_flv_total)%init (flv_real(:n_in, :))
           call qn_pdf%init (flv_pdf)
-          call term%sf_qn_index%init_sf (sf_chain_int, qn_pdf, n_flv_born, n_flv_real)
+          call sf_chain_int%init_qn_index (qn_pdf, n_flv_born, n_flv_real)
        end select
     end if
   contains
@@ -12215,42 +12172,39 @@ relevant for a NLO algorithm.
 
 @ %def term_instance_init
 @ Setup index mapping from state matrix to index pair [[i_flv]], [[i_sub]].
-<<Instances: term instance init: procedures>>=
-  subroutine setup_qn_index (qn_index, int, pcm_instance, n_sub, is_born, is_polarized)
-    type(qn_index_map_t), intent(out) :: qn_index
-    class(interaction_t), intent(in) :: int
-    class(pcm_instance_t), intent(in) :: pcm_instance
+<<Instances: public>>=
+  public :: setup_interaction_qn_index
+<<Instances: procedures>>=
+  subroutine setup_interaction_qn_index (int, data, qn_config, n_sub, is_polarized)
+    class(interaction_t), intent(inout) :: int
+    class(process_constants_t), intent(in) :: data
+    type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_config
     integer, intent(in) :: n_sub
-    logical, intent(in) :: is_born
     logical, intent(in) :: is_polarized
     integer :: i
-    type(quantum_numbers_t), dimension(:, :), allocatable :: qn_config
     type(quantum_numbers_t), dimension(:, :), allocatable :: qn_hel
-    select type (config => pcm_instance%config)
-    type is (pcm_nlo_t)
-       qn_config = config%get_qn (is_born)
-    end select
     if (is_polarized) then
-       ! term%config%data from higher scope
-       call setup_qn_hel (int, term%config%data, qn_hel)
-       call qn_index%init (int, qn_config, n_sub, qn_hel)
-       call qn_index%set_helicity_flip (.true.)
+       call setup_interaction_qn_hel (int, data, qn_hel)
+       call int%init_qn_index (qn_config, n_sub, qn_hel)
+       call int%set_qn_index_helicity_flip (.true.)
     else
-       call qn_index%init (int, qn_config, n_sub)
+       call int%init_qn_index (qn_config, n_sub)
     end if
-  end subroutine setup_qn_index
+  end subroutine setup_interaction_qn_index
 
-@ %def setup_qn_index
-@ Setup beam polarisation quantum numbers, iff beam polarisation is required.
+@ %def setup_interaction_qn_index
+@ Setup beam polarisation quantum numbers, if beam polarisation is required.
 
 We retrieve the full helicity information from [[term%config%data]] and reduce
 the information only to the inital state. Afterwards, we uniquify the initial
-state polarization by a applying a index (hash) table.
+state polarization by a applying an index (hash) table.
 
 The helicity information is fed into an array of quantum numbers to assign
 flavor, helicity and subtraction indices correctly to their matrix element.
-<<Instances: term instance init: procedures>>=
-   subroutine setup_qn_hel (int, data, qn_hel)
+<<Instances: public>>=
+  public :: setup_interaction_qn_hel
+<<Instances: procedures>>=
+   subroutine setup_interaction_qn_hel (int, data, qn_hel)
      class(interaction_t), intent(in) :: int
      class(process_constants_t), intent(in) :: data
      type(quantum_numbers_t), dimension(:, :), allocatable, intent(out) :: qn_hel
@@ -12283,9 +12237,48 @@ flavor, helicity and subtraction indices correctly to their matrix element.
           call qn_hel(:, j)%init (hel)
        end do
      end associate
-   end subroutine setup_qn_hel
+   end subroutine setup_interaction_qn_hel
 
-@ %def setup_qn_hel
+@ %def setup_interaction_qn_hel
+@
+<<Instances: term instance: TBP>>=
+  procedure :: init_interaction_qn_index => term_instance_init_interaction_qn_index
+<<Instances: procedures>>=
+  subroutine term_instance_init_interaction_qn_index (term, core, int, n_sub, is_polarized)
+    class(term_instance_t), intent(inout), target :: term
+    class(prc_core_t), intent(in) :: core
+    class(interaction_t), intent(inout) :: int
+    integer, intent(in) :: n_sub
+    logical, intent(in), optional :: is_polarized
+    logical :: polarized
+    type(quantum_numbers_t), dimension(:, :), allocatable :: qn_config
+    select type (core)
+    class is (prc_external_t)
+       select type (pcm_instance => term%pcm_instance)
+       type is (pcm_instance_nlo_t)
+          associate (is_born => .not. (term%nlo_type == NLO_REAL .and. &
+                  .not. term%is_subtraction ()))
+             select type (config => pcm_instance%config)
+             type is (pcm_nlo_t)
+                qn_config = config%get_qn (is_born)
+             end select
+             if (present (is_polarized)) then
+                polarized = is_polarized
+             else
+                polarized = core%includes_polarization ()
+             end if
+             call setup_interaction_qn_index (int, term%config%data, &
+                  qn_config, n_sub, polarized)
+          end associate
+       class default
+          call int%init_qn_index ()
+       end select
+    class default
+       call int%init_qn_index ()
+    end select
+  end subroutine term_instance_init_interaction_qn_index
+
+@ %def term_instance_init_interaction_qn_index
 @
 <<Instances: term instance: TBP>>=
   procedure :: init_from_process => term_instance_init_from_process
@@ -12689,7 +12682,7 @@ stored in the kinematics subobject to their source.  This is a side effect.
        n_amps = term%connected%trace%get_n_matrix_elements ()
        do i_amp = 1, n_amps
           sqme = real (term%connected%trace%get_matrix_element ( &
-               term%connected_qn_index%get_index (i_amp, i_sub = 0)))
+               term%connected%trace%get_qn_index (i_amp, i_sub = 0)))
           if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
           select type (pcm => term%pcm_instance%config)
           type is (pcm_nlo_t)
@@ -12848,6 +12841,8 @@ The quantum numbers mask of the incoming particle
         call mask%set_sub (1)
         call connected%matrix%reduce_state_matrix (mask, keep_order = .true.)
      end if
+     call term%init_interaction_qn_index (core, connected%matrix, n_sub = 0, &
+          is_polarized = .false.)
      call connected%setup_connected_flows (isolated)
      call connected%setup_state_flv (isolated%get_n_out ())
    end subroutine setup_connected
@@ -12984,12 +12979,13 @@ the threshold computation where the process is well-defined and fixed.
          allocate (sqme (term%get_n_sub_color ()), source = zero)
          do i_sub = 1, term%get_n_sub_color ()
             sqme(i_sub) = real(term%connected%trace%get_matrix_element ( &
-                 term%connected_qn_index%get_index (i_flv, i_sub = i_sub + n_offset)), default)
+                 term%connected%trace%get_qn_index (i_flv, i_sub = i_sub + n_offset)), &
+                 default)
          end do
          call blha_color_c_fill_offdiag (pcm%region_data%n_legs_born, &
               sqme, sqme_color_c)
          call blha_color_c_fill_diag (real(term%connected%trace%get_matrix_element ( &
-              term%connected_qn_index%get_index (i_flv, i_sub = 0)), default), &
+              term%connected%trace%get_qn_index (i_flv, i_sub = 0)), default), &
               pcm%region_data%get_flv_states_born (i_flv), &
               sqme_color_c)
       end if
@@ -13076,7 +13072,7 @@ it is only available after the [[fks_regions]] have been created.
           type is (prc_openloops_t)
              select type (config => pcm_instance%config)
              type is (pcm_nlo_t)
-                n_flv = term%connected_qn_index%get_n_flv ()
+                n_flv = term%connected%trace%get_qn_index_n_flv ()
                 n_sub_color = term%get_n_sub_color ()
                 n_sub_spin = term%get_n_sub_spin ()
                 n_offset = 0; if (config%has_pdfs) n_offset = n_beams_rescaled
@@ -13085,7 +13081,7 @@ it is only available after the [[fks_regions]] have been created.
                    allocate (sqme_spin_c_all(n_sub_spin))
                    do i_sub = 1, n_sub_spin
                       sqme_spin_c_all(i_sub) = real(term%connected%trace%get_matrix_element &
-                           (term%connected_qn_index%get_index (i_flv, &
+                           (term%connected%trace%get_qn_index (i_flv, &
                            i_sub = i_sub + n_offset + n_sub_color)), default)
                    end do
                    do i_emitter = 1, config%region_data%n_emitters
@@ -13148,10 +13144,10 @@ it is only available after the [[fks_regions]] have been created.
              else
                 call pcm_instance%set_radiation_event ()
                 emitter = term%k_term%emitter; i_phs = term%k_term%i_phs
-                do i = 1, term%connected_qn_index%get_n_flv ()
+                do i = 1, term%connected%trace%get_qn_index_n_flv ()
                    pcm_instance%real_sub%sqme_real_non_sub (i, i_phs) = &
                      real (term%connected%trace%get_matrix_element ( &
-                     term%connected_qn_index%get_index (i)))
+                     term%connected%trace%get_qn_index (i)))
                 end do
                 call pcm_instance%real_sub%compute (emitter, i_phs, alpha_s_sub, &
                      alpha_qed_sub, term%connected%has_matrix, sqme)
@@ -13221,13 +13217,13 @@ it is only available after the [[fks_regions]] have been created.
            select type (pcm_instance => term%pcm_instance)
            type is (pcm_instance_nlo_t)
               associate (virtual => pcm_instance%virtual)
-                do i_flv = 1, term%connected_qn_index%get_n_flv ()
+                do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
                    virtual%sqme_born(i_flv) = &
                         real (term%connected%trace%get_matrix_element ( &
-                        term%connected_qn_index%get_index (i_flv, i_sub = 0)))
+                        term%connected%trace%get_qn_index (i_flv, i_sub = 0)))
                    virtual%sqme_virt_fin(i_flv) = &
                         real (term%connected%trace%get_matrix_element ( &
-                        term%connected_qn_index%get_index (i_flv, i_sub = 1)))
+                        term%connected%trace%get_qn_index (i_flv, i_sub = 1)))
                 end do
               end associate
            end select
@@ -13450,7 +13446,11 @@ method may modify the [[core_state]] workspace object.
     class(prc_core_t), intent(in), pointer :: core
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction")
-    term%p_hard = term%int_hard%get_momenta ()
+    if (term%k_term%only_cm_frame .and. (.not. term%k_term%lab_is_cm())) then 
+         term%p_hard = term%get_boost_to_cms () * term%int_hard%get_momenta ()
+    else
+         term%p_hard = term%int_hard%get_momenta ()
+    end if
     select type (core)
     class is (prc_external_t)
        call term%evaluate_interaction_userdef (core)
@@ -13597,8 +13597,8 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
          "term_instance_evaluate_interaction_userdef_tree")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
-    n_flv = term%hard_qn_index%get_n_flv ()
-    n_hel = term%hard_qn_index%get_n_hel ()
+    n_flv = term%int_hard%get_qn_index_n_flv ()
+    n_hel = term%int_hard%get_qn_index_n_hel ()
     n_sub_color = term%get_n_sub_color ()
     n_sub_spin = term%get_n_sub_spin ()
     do i_flv = 1, n_flv
@@ -13609,7 +13609,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
              call core%compute_sqme (i_flv, i_hel, term%p_hard, term%ren_scale, &
                   sqme, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
-             associate (i_int => term%hard_qn_index%get_index (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
+             associate (i_int => term%int_hard%get_qn_index (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
                term%amp(i_int) = cmplx (sqme, 0, default)
              end associate
           end select
@@ -13618,8 +13618,8 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
                (term%is_subtraction () .or. term%nlo_type == NLO_DGLAP)) then
              n_pdf_off = n_pdf_off + n_beams_rescaled
              do i_sub = 1, n_pdf_off
-                term%amp(term%hard_qn_index%get_index (i_flv, i_hel, i_sub)) = &
-                     term%amp(term%hard_qn_index%get_index (i_flv, i_hel, i_sub = 0))
+                term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub)) = &
+                     term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub = 0))
              end do
           end if
           if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
@@ -13636,7 +13636,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
                 call term%pcm_instance%set_bad_point (bad_point)
              end select
              do i_sub = 1, n_sub_color
-                i_color_c = term%hard_qn_index%get_index &
+                i_color_c = term%int_hard%get_qn_index &
                      (i_flv, i_hel, i_sub + n_pdf_off)
                 term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
              end do
@@ -13664,7 +13664,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
                       end do
                    end select
                    do i_sub = 1, n_sub_spin
-                      i_spin_c = term%hard_qn_index%get_index (i_flv, i_hel, &
+                      i_spin_c = term%int_hard%get_qn_index (i_flv, i_hel, &
                            i_sub + n_pdf_off + n_sub_color)
                       term%amp(i_spin_c) = cmplx &
                            (sqme_spin_c(i_sub), 0, default)
@@ -13695,9 +13695,9 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
          "term_instance_evaluate_interaction_userdef_loop")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
-    n_flv = term%hard_qn_index%get_n_flv ()
-    n_hel = term%hard_qn_index%get_n_hel ()
-    n_sub = term%hard_qn_index%get_n_sub ()
+    n_flv = term%int_hard%get_qn_index_n_flv ()
+    n_hel = term%int_hard%get_qn_index_n_hel ()
+    n_sub = term%int_hard%get_qn_index_n_sub ()
     i_virt = 1
     do i_flv = 1, n_flv
        do i_hel = 1, n_hel
@@ -13709,8 +13709,8 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
                   sqme_virt, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
           end select
-          associate (i_born => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = 0), &
-               i_loop => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = i_virt))
+          associate (i_born => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = 0), &
+               i_loop => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = i_virt))
             term%amp(i_loop) = cmplx (sqme_virt(3), 0, default)
             term%amp(i_born) = cmplx (sqme_virt(4), 0, default)
           end associate
@@ -13723,7 +13723,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
                      sqme_color_c, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
                 do i_sub = 1 + i_virt, n_sub
-                   i_color_c = term%hard_qn_index%get_index &
+                   i_color_c = term%int_hard%get_qn_index &
                         (i_flv, i_hel = i_hel, i_sub = i_sub)
                    ! Index shift: i_sub - i_virt
                    term%amp(i_color_c) = &
@@ -13734,7 +13734,7 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
                      term%p_hard, term%ren_scale, sqme_color_c, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
                 do i_sub = 1 + i_virt, n_sub
-                   i_color_c = term%hard_qn_index%get_index &
+                   i_color_c = term%int_hard%get_qn_index &
                         (i_flv, i_hel = i_hel, i_sub = i_sub)
                    ! Index shift: i_sub - i_virt
                    term%amp(i_color_c) = &
@@ -14537,7 +14537,6 @@ selected MCI parameter set.
     associate (same_kinematics => instance%term(i_term)%same_kinematics)
        do i = 1, size (same_kinematics)
           i_term_same = same_kinematics(i)
-          if (i_term_same /= i_term) then
              instance%term(i_term_same)%p_seed = instance%term(i_term)%p_seed
              associate (phs => instance%term(i_term_same)%k_term%phs)
                 call phs%set_lorentz_transformation &
@@ -14545,10 +14544,11 @@ selected MCI parameter set.
                 select type (phs)
                 type is (phs_fks_t)
                    call phs%set_momenta (instance%term(i_term_same)%p_seed)
-                   call phs%set_reference_frames (.false.)
+                   if (i_term_same /= i_term) then
+                      call phs%set_reference_frames (.false.)
+                   end if
                 end select
              end associate
-          end if
           instance%term(i_term_same)%k_term%new_seed = .false.
        end do
     end associate
@@ -14755,7 +14755,7 @@ not the c.m.\ frame, otherwise those beams would be fixed anyway.
   subroutine process_instance_recover_beam_momenta (instance, i_term)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: i_term
-    if (.not. instance%process%lab_is_cm_frame ()) then
+    if (.not. instance%process%lab_is_cm ()) then
        if (instance%evaluation_status >= STAT_EFF_KINEMATICS) then
           call instance%term(i_term)%return_beam_momenta ()
        end if
@@ -15253,8 +15253,8 @@ terms, iterating over all active process components.
     real(default) :: sqme
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
-       do i_flv = 1, term%connected_qn_index%get_n_flv ()
-          ii_flv = term%connected_qn_index%get_index (i_flv, i_sub = 0)
+       do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
+          ii_flv = term%connected%trace%get_qn_index (i_flv, i_sub = 0)
           sqme = real (term%connected%trace%get_matrix_element (ii_flv))
           select case (term%nlo_type)
           case (NLO_REAL)
@@ -15305,14 +15305,14 @@ these cases as well, however.
                    i_born = reg_data%regions(alr)%uborn_index
                    i_real = reg_data%regions(alr)%real_index
                    factor_born = sf_chain_int%get_matrix_element &
-                        (term%sf_qn_index%get_sf_index_born (i_born, i_sub = 0))
+                        (sf_chain_int%get_sf_qn_index_born (i_born, i_sub = 0))
                    factor_real = sf_chain_int%get_matrix_element &
-                        (term%sf_qn_index%get_sf_index_real (i_real, i_sub = em))
+                        (sf_chain_int%get_sf_qn_index_real (i_real, i_sub = em))
                    call set_factor (pcm_instance, alr, em, factor_born, factor_real)
                    if (em == 0) then
                       do em = 1, 2
                          factor_real = sf_chain_int%get_matrix_element &
-                              (term%sf_qn_index%get_sf_index_real (i_real, i_sub = em))
+                              (sf_chain_int%get_sf_qn_index_real (i_real, i_sub = em))
                          call set_factor (pcm_instance, alr, em, factor_born, factor_real)
                       end do
                    end if
@@ -15495,10 +15495,6 @@ to supply an external $\alpha_s$.
           call term%evaluate_expressions ()
           call term%evaluate_interaction (core)
           call term%evaluate_trace ()
-          !!! TODO (VR 2020-05-08) check the (unnecessary) line below and delete it:
-          pcm%real_sub%sqme_born (1) = &
-               real (term%connected%trace%get_matrix_element (1))
-          !!! !!! !!!
           if (term%is_subtraction ()) then
              call term%set_sf_factors (has_pdfs)
              select type (config => term%pcm_instance%config)
@@ -16378,16 +16374,16 @@ and directly set the coupling value that comes together with a particle set.
 @ %def process_instance_get_boost_to_cms
 @
 <<Instances: process instance: TBP>>=
-  procedure :: is_cm_frame => process_instance_is_cm_frame
+  procedure :: lab_is_cm => process_instance_lab_is_cm
 <<Instances: procedures>>=
-  function process_instance_is_cm_frame (instance, i_term) result (cm_frame)
-    logical :: cm_frame
+  function process_instance_lab_is_cm (instance, i_term) result (lab_is_cm)
+    logical :: lab_is_cm
     class(process_instance_t), intent(in) :: instance
     integer, intent(in) :: i_term
-    cm_frame = instance%term(i_term)%k_term%phs%is_cm_frame ()
-  end function process_instance_is_cm_frame
+    lab_is_cm = instance%term(i_term)%k_term%phs%lab_is_cm ()
+  end function process_instance_lab_is_cm
 
-@ %def protcess_instance_is_cm_frame
+@ %def process_instance_lab_is_cm
 @
 The [[pacify]] subroutine has the purpose of setting numbers to zero
 which are (by comparing with a [[tolerance]] parameter) considered

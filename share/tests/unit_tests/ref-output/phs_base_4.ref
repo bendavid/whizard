@@ -20,13 +20,13 @@
    n_channel = 0
    sqrts     =  0.000000000000E+00
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
    MD5 sum (process)    = 'test_process_data_m6sum_12345678'
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = 'A9899F2FBC674C9446C6EE7A65E4F936'
+   MD5 sum (phs config) = 'ADDB6A5999650C3367FD7151481039DE'
 
 * Modify model parameter
 
@@ -43,12 +43,12 @@
    n_channel = 0
    sqrts     =  0.000000000000E+00
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
    MD5 sum (process)    = 'test_process_data_m6sum_12345678'
    MD5 sum (model par)  = '0607E53E39F805915025CAFFAF57245A'
-   MD5 sum (phs config) = 'FB46749C3C251180577C0A2970A3FF29'
+   MD5 sum (phs config) = 'AF4164F1AB528649D7AC550EC94DAC41'
 
 * Test output end: phs_base_4

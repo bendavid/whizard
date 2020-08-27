@@ -1414,7 +1414,6 @@ $\alpha_s^\text{rad}$ is still larger than the true $\alpha_s$.
      integer :: size_grid_xi = 0
      integer :: size_grid_y = 0
      integer :: upper_bound_func = UBF_SIMPLE
-     logical :: rebuild_grids = .false.
      logical :: test_sudakov = .false.
      logical :: disable_sudakov = .false.
      logical :: singular_jacobian = .false.
@@ -1446,8 +1445,6 @@ used to decide which ubf object is allocated.
     settings%n_init = &
          var_list%get_ival (var_str ("powheg_grid_sampling_points"))
     settings%lambda = var_list%get_rval (var_str ("powheg_lambda"))
-    settings%rebuild_grids = &
-         var_list%get_lval (var_str ("?powheg_rebuild_grids"))
     settings%singular_jacobian = &
          var_list%get_lval (var_str ("?powheg_use_singular_jacobian"))
     settings%test_sudakov = &
@@ -1515,7 +1512,7 @@ functions.
   type :: process_deps_t
      real(default) :: lambda2_gen, sqrts
      integer :: n_alr
-     logical :: cm_frame = .true.
+     logical :: lab_is_cm = .true.
      type(phs_identifier_t), dimension(:), allocatable :: phs_identifiers
      integer, dimension(:), allocatable :: alr_to_i_phs
      integer :: i_born
@@ -2741,7 +2738,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
   subroutine powheg_matching_first_event (matching)
     class(powheg_matching_t),  intent(inout), target :: matching
     associate (instance => matching%process_instance)
-       matching%process_deps%cm_frame = instance%is_cm_frame (1)
+       matching%process_deps%lab_is_cm = instance%lab_is_cm (1)
     end associate
     call matching%setup_grids ()
   end subroutine powheg_matching_first_event
@@ -2761,37 +2758,6 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
 @ %def powheg_matching_after_shower
 @
 \subsubsection{Output}
-<<POWHEG matching: powheg matching: TBP>>=
-  procedure :: display_grid_startup_message => &
-                      powheg_display_grid_startup_message
-<<POWHEG matching: procedures>>=
-  subroutine powheg_display_grid_startup_message (powheg)
-    class(powheg_matching_t), intent(in) :: powheg
-    real(default) :: points_per_cell
-    write (msg_buffer, "(A,A,A)") "POWHEG: Generating grid for process '", &
-                               char (powheg%process_name), "'"
-    call msg_message ()
-    associate (settings => powheg%settings)
-       write (msg_buffer, "(A,I10)") "Number of xi-points: ", &
-                                      settings%size_grid_xi
-       call msg_message ()
-       write (msg_buffer, "(A,I10)") "Number of y-points: ", &
-                                      settings%size_grid_y
-       call msg_message ()
-       write (msg_buffer, "(A,I10,A)") "Using ", settings%n_init , &
-                                       " sampling points"
-       call msg_message ()
-       points_per_cell =  settings%n_init*one / &
-                          (settings%size_grid_xi * settings%size_grid_y)
-       write (msg_buffer, "(A,F10.2,A)") "Average: ", points_per_cell, &
-                                        " points per cell"
-       call msg_message ()
-       call msg_message ("Progress:")
-    end associate
-  end subroutine powheg_display_grid_startup_message
-
-@ %def powheg_display_grid_startup_message
-@
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: write => powheg_write
 <<POWHEG matching: procedures>>=
@@ -2846,17 +2812,18 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
 @ %def powheg_matching_final
 @
 \subsubsection{Initialization and Finalization}
+Setup the POWHEG grids. As they are filled during integration using the POWHEG hook,
+we can load them from file here.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: setup_grids => powheg_matching_setup_grids
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_setup_grids (matching)
     class(powheg_matching_t), intent(inout), target :: matching
     call matching%prepare_for_events ()
-    if (matching%requires_new_grids ()) then
-       call matching%fill_grids ()
-       call matching%save_grids ()
-    else
+    if (matching%check_grids ()) then
        call matching%load_grids ()
+    else
+       call msg_fatal ("POWHEG: POWHEG grids are invalid.")
     end if
     call matching%grid%compute_and_write_mean_and_max ()
     call matching%import_norms_from_grid ()
@@ -2940,7 +2907,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     real(default) :: sqme_born
 
     sqme_born = powheg%process_instance%get_sqme (powheg%process_deps%i_born)
-    if (.not. powheg%process_deps%cm_frame) then
+    if (.not. powheg%process_deps%lab_is_cm) then
        lt_lab_to_cms = powheg%process_instance%get_boost_to_cms (1)
        call powheg%update_event_deps (sqme_born, p_born, lt_lab_to_cms)
     else
@@ -2987,7 +2954,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     type(lorentz_transformation_t) :: lt_cms_to_lab
     integer, intent(in) :: i_phs
     associate (event_deps => powheg%event_deps)
-       if (powheg%process_deps%cm_frame) then
+       if (powheg%process_deps%lab_is_cm) then
           event_deps%p_real_lab%phs_point(i_phs) = event_deps%p_real_cms%phs_point(i_phs)
        else
           lt_cms_to_lab = powheg%process_instance%get_boost_to_lab (1)
@@ -3094,169 +3061,6 @@ Jacobian.
 
 @ %def powheg_matching_set_scale
 @
-For each underlying Born $f_b$, there is a number of radiation regions.
-A radiation region rr may correspond multiple $\alpha_r$s.  The phase
-space only depends upon the radiation region kinematics rr and not on
-the specific $\alpha_r$.  $\alpha_r$ can be picked in the set
-$\{\alpha_r|f_b,\text{rr}\}$ proportional to their $R_{\alpha_r}$.  For
-now, we simplify things though and just work with the $\alpha_r$.
-
-The following is valid for one underlying Born.
-<<POWHEG matching: powheg matching: TBP>>=
-  procedure :: fill_grids => powheg_matching_fill_grids
-<<POWHEG matching: procedures>>=
-  subroutine powheg_matching_fill_grids (powheg)
-    class(powheg_matching_t), intent(inout) :: powheg
-    real(default), dimension(3) :: radiation_variables
-    real(default) :: f_alr, xi, y, norm, real_me, ubf
-    integer :: alr
-    integer :: n, n_points
-    real(default) :: alpha_s
-    if (debug_on) call msg_debug (D_MATCHING, "powheg_fill_grids")
-    call powheg%display_grid_startup_message()
-    n_points = powheg%settings%n_init
-    if (debug_on) call msg_debug (D_MATCHING, "n_points", n_points)
-    EVALUATE_GRID_POINTS: do n = 1, n_points
-       if (signal_is_pending ())  return
-       call powheg%prepare_momenta_for_fill_grids (radiation_variables)
-       do alr = 1, powheg%process_deps%n_alr
-          call powheg%generate_xi_and_y_for_grids &
-               (radiation_variables, alr, xi, y)
-          associate (s => powheg%sudakov(alr)%s)
-             alpha_s = s%alpha_s (s%kt2(xi, y), use_correct=.true.)
-             ubf = s%upper_bound_func (xi, y, alpha_s)
-          end associate
-          real_me = powheg%compute_sqme_real (alr, alpha_s)
-          norm = real_me / (powheg%event_deps%sqme_born * ubf)
-          f_alr = (one * alr) / powheg%process_deps%n_alr - tiny_07
-          call powheg%grid%update_maxima &
-             ([radiation_variables(I_XI:I_Y), f_alr], norm)
-          call msg_show_progress (n, n_points)
-          if (debug2_active (D_MATCHING))  call show_vars ()
-       end do
-    end do EVALUATE_GRID_POINTS
-
-  contains
-
-    subroutine show_vars ()
-      if (norm > 1E5_default) then
-         if (debug_on) call msg_debug2 (D_MATCHING, "alr", alr)
-         if (debug_on) call msg_debug2 (D_MATCHING, "f_alr", f_alr)
-         if (debug_on) call msg_debug2 (D_MATCHING, "radiation_variables(1)", &
-              radiation_variables(1))
-         if (debug_on) call msg_debug2 (D_MATCHING, "radiation_variables(2)", &
-              radiation_variables(2))
-         if (debug_on) call msg_debug2 (D_MATCHING, "radiation_variables(3)", &
-              radiation_variables(3))
-         if (debug_on) call msg_debug2 (D_MATCHING, "xi", xi)
-         if (debug_on) call msg_debug2 (D_MATCHING, "y", y)
-         if (debug_on) call msg_debug2 (D_MATCHING, "powheg%sudakov(alr)%s%kt2(xi,y)", &
-              powheg%sudakov(alr)%s%kt2(xi,y))
-         if (debug_on) call msg_debug2 (D_MATCHING, "powheg%event_deps%sqme_born", &
-              powheg%event_deps%sqme_born)
-         if (debug_on) call msg_debug2 (D_MATCHING, "alpha_s", alpha_s)
-         if (debug_on) call msg_debug2 (D_MATCHING, "real_me", real_me)
-         if (debug_on) call msg_debug2 (D_MATCHING, "ubf", ubf)
-         if (debug_on) call msg_debug2 (D_MATCHING, "norm", norm)
-         if (debug_on) call msg_debug2 (D_MATCHING, "")
-      end if
-    end subroutine show_vars
-
-  end subroutine powheg_matching_fill_grids
-
-@ %def powheg_matching_fill_grids
-@
-<<POWHEG matching: powheg matching: TBP>>=
-  procedure :: generate_xi_and_y_for_grids => powheg_matching_generate_xi_and_y_for_grids
-<<POWHEG matching: procedures>>=
-  subroutine powheg_matching_generate_xi_and_y_for_grids (powheg, &
-     radiation_randoms, alr, xi, y)
-    class(powheg_matching_t), intent(inout) :: powheg
-    integer, intent(in) :: alr
-    real(default), dimension(:), intent(in) :: radiation_randoms
-    real(default), intent(out) :: xi, y
-    integer :: emitter, i_phs
-    select type (pcm => powheg%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       associate (fks => powheg%phs_fks_generator)
-          i_phs = powheg%process_deps%alr_to_i_phs (alr)
-          emitter = powheg%process_deps%phs_identifiers(i_phs)%emitter
-          associate (generator => powheg%phs_fks_generator)
-             call generator%prepare_generation (radiation_randoms, &
-                  i_phs, emitter, powheg%event_deps%p_born_cms%phs_point(1)%p, &
-                  powheg%process_deps%phs_identifiers)
-             call generator%generate_fsr (emitter, i_phs, &
-                  powheg%event_deps%p_born_cms%phs_point(1)%p, &
-                  powheg%event_deps%p_real_cms%phs_point(i_phs)%p)
-             call generator%get_radiation_variables (i_phs, xi, y)
-          end associate
-          call powheg%boost_preal_to_lab_frame (i_phs)
-          call powheg%copy_momenta ()
-       end associate
-     end select
-  end subroutine powheg_matching_generate_xi_and_y_for_grids
-
-@ %def powheg_matching_generate_xi_and_y_for_grids
-@
-<<POWHEG matching: powheg matching: TBP>>=
-  procedure :: prepare_momenta_for_fill_grids => powheg_matching_prepare_momenta_for_fill_grids
-<<POWHEG matching: procedures>>=
-  subroutine powheg_matching_prepare_momenta_for_fill_grids (powheg, &
-     radiation_randoms)
-    real(default), dimension(3), intent(out) :: radiation_randoms
-    class(powheg_matching_t), intent(inout) :: powheg
-    integer :: alr, i_phs, emitter
-    select type (pcm => powheg%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       associate ( &
-            fks => powheg%phs_fks_generator, &
-            process => powheg%process_instance%process)
-          do
-             call powheg%process_instance%generate_weighted_event (1)
-             call powheg%update (pcm%get_momenta (i_phs = 1, &
-                born_phsp = .true., cms = .false.))
-             call powheg%rng%generate (radiation_randoms)
-             do alr = 1, powheg%process_deps%n_alr
-                i_phs = powheg%process_deps%alr_to_i_phs (alr)
-                emitter = powheg%sudakov(alr)%s%associated_emitter ()
-                call fks%prepare_generation (radiation_randoms, i_phs, &
-                   emitter, powheg%event_deps%p_born_lab%get_momenta(1), &
-                   powheg%process_deps%phs_identifiers)
-                call powheg%update_sudakovs (alr, i_phs, &
-                     fks%real_kinematics%y(i_phs))
-             end do
-             if (powheg%above_pt2_min ()) exit
-          end do
-       end associate
-    end select
-  end subroutine powheg_matching_prepare_momenta_for_fill_grids
-
-@ %def powheg_matching_prepare_momenta_for_fill_grids
-@
-<<POWHEG matching: powheg matching: TBP>>=
-  procedure :: above_pt2_min => powheg_matching_above_pt2_min
-<<POWHEG matching: procedures>>=
-  function powheg_matching_above_pt2_min (powheg) result (above)
-    logical :: above
-    class(powheg_matching_t), intent(in) :: powheg
-    integer :: alr, i_phs
-    real(default) :: xi, y
-    above = .true.
-    select type (pcm => powheg%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       associate (fks => powheg%phs_fks_generator)
-         do alr = 1, powheg%process_deps%n_alr
-            i_phs = powheg%process_deps%alr_to_i_phs(alr)
-            call fks%get_radiation_variables (i_phs, xi, y)
-            above = powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min
-            if (.not. above) exit
-         end do
-       end associate
-    end select
-  end function powheg_matching_above_pt2_min
-
-@ %def powheg_matching_above_pt2_min
-@
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: update_sudakovs => powheg_matching_update_sudakovs
 <<POWHEG matching: procedures>>=
@@ -3327,23 +3131,22 @@ The following is valid for one underlying Born.
 @ %def powheg_matching_load_grids
 @
 <<POWHEG matching: powheg matching: TBP>>=
-  procedure :: requires_new_grids => powheg_matching_requires_new_grids
+  procedure :: check_grids => powheg_matching_check_grids
 <<POWHEG matching: procedures>>=
-  function powheg_matching_requires_new_grids (powheg) result (requires)
-    logical :: requires
+  function powheg_matching_check_grids (powheg) result (ok)
+    logical :: ok
     class(powheg_matching_t), intent(in) :: powheg
     type(string_t) :: filename, n_points
     n_points = str (powheg%settings%n_init)
     filename = powheg%process_name // "_" // n_points // ".pg"
-    requires = .not. os_file_exist (filename) .or. &
-         powheg%settings%rebuild_grids .or. &
-         .not. verify_points_for_grid (char (filename), &
+    ok = os_file_exist (filename) .and. &
+          verify_points_for_grid (char (filename), &
               [powheg%settings%size_grid_xi, &
                powheg%settings%size_grid_y, &
                powheg%process_deps%n_alr])
-  end function powheg_matching_requires_new_grids
+  end function powheg_matching_check_grids
 
-@ %def powheg_matching_requires_new_grids
+@ %def powheg_matching_check_grids
 @ By keeping the radiation with the largest [[pt2]], we are effectively
 implementing the highest bid procedure. This means that we generate
 values $(f_B)$
@@ -3751,14 +3554,14 @@ in [[xi]] and [[y]].
      call hook%powheg%init (var_list, hook%process_name)
      hook%powheg%qcd = instance%get_qcd ()
      call hook%powheg%connect (instance)
-     hook%powheg%process_deps%cm_frame = &
-          hook%powheg%process_instance%is_cm_frame (1)
+     hook%powheg%process_deps%lab_is_cm = &
+          hook%powheg%process_instance%lab_is_cm (1)
      call hook%powheg%prepare_for_events ()
    end subroutine powheg_matching_hook_init
 
 @ %def powheg_matching_hook_init
-@ We save the filled grid to file, such that in can be retrieved later on.
-The hook object will be deallocated, when the instance gets deallocated.
+@ We save the filled grid to file, such that it can be retrieved later on.
+The hook object will be deallocated when the instance gets deallocated.
 <<POWHEG matching: powheg matching hook: TBP>>=
   procedure :: final => powheg_matching_hook_final
 <<POWHEG matching: procedures>>=

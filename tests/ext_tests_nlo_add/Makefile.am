@@ -75,7 +75,7 @@ SUFFIXES = .sh .run
 	elif test -f $(top_srcdir)/share/tests/ext_tests_nlo_add/$*.sin; then \
 	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_nlo_add/$*|g' $< > $@; \
 	fi
-	$(SED) 's|@python_bin@|$(PYTHON_BIN)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
+	$(SED) 's|@python_bin@|$(PYTHON)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	$(SED) 's|@share_dir@|$(top_srcdir)/share/tests|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	@chmod +x $@
 

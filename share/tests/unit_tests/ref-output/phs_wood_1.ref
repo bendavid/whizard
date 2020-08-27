@@ -30,14 +30,14 @@ process phs_wood_1
    n_channel = 1
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
  Phase-space / structure-function channels:
    1: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = 'F6F16712F638817A2846747A0F6DBBB5'
+   MD5 sum (phs config) = '320BC6064451D2A9E0F56B48C5A374B6'
  Phase-space configuration parameters:
    sqrts         =  1.000000000000E+03
    m_threshold_s =  5.000000000000E+01

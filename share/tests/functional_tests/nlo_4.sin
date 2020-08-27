@@ -1,5 +1,6 @@
 # SINDARIN input for WHIZARD self-test
-# Testing complete NLO-calculation using dummy-output for virtual matrix elements
+# Testing complete NLO calculation of ee -> t tbar
+# using dummy-output for virtual matrix elements
 # without cuts in the combined-integration mode and producing an NLO event 
 
 model = "SM"

@@ -4,6 +4,17 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_alpha+
 
+2020-08-27
+	Major revision of NLO distributions and events for
+	   processes with structure functions:
+	- Use parton momenta/flavors (instead of beams) for events
+	- Bug fix for Lorentz boosts and Lorentz frames of momenta
+	- Bug fix: apply cuts to virtual NLO component in correct frame
+	- Correctly assign ISR radiation momenta in data structures
+	- Refactoring on quantum numbers for NLO event data structures
+	- Functional tests for hadron collider NLO distributions
+	- many minor bug fixes regarding NLO hadron collider physics
+
 2020-08-11
 	Bug fix for linking problem with OpenMPI
 

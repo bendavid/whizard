@@ -1,6 +1,8 @@
 # SINDARIN input for WHIZARD self-test
-# Testing the integration of NLO QCD corrections
-# to e+e- -> jjj constrained to the real component.
+# Testing the integration of real NLO QCD corrections
+# to e+e- -> jjj including the simulation of events
+# with strong cuts applied to provoke events
+# failing the cuts in different combinations.
 
 ?logging = true
 ?openmp_logging = false
@@ -40,6 +42,9 @@ alias jet = u:U:d:D:s:S:gl
 $exclude_gauge_splittings = "c:b:t"
 
 $method = "openloops"
+alpha_power = 2
+alphas_power = 1
+
 ?use_vamp_equivalences = false
 $integration_method = "vamp2"
 $rng_method = "rng_stream"
@@ -48,15 +53,41 @@ openmp_num_threads = 1
 jet_algorithm = antikt_algorithm
 jet_r = 0.5
 
-alpha_power = 2
-alphas_power = 1
-seed = 8131
-sqrts = 1 TeV
-scale = mZ
+seed = 1558
+sqrts = 500 TeV
+
 cuts = let subevt @clustered_jets = cluster [jet] in
-       let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+       let subevt @pt_selected = select if Pt > 50 GeV [@clustered_jets] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
        count [@eta_selected] >= 3
 
+scale = let int njet = count [jet] in
+        if njet == 3 then
+           (eval Pt [extract index 1 [jet]]
+           +eval Pt [extract index 2 [jet]]
+           +eval Pt [extract index 3 [jet]]) / 2
+        else
+           (eval Pt [extract index 1 [jet]]
+           +eval Pt [extract index 2 [jet]]
+           +eval Pt [extract index 3 [jet]]
+           +eval Pt [extract index 4 [jet]]) / 2
+        endif
+
+
 process openloops_12_p1 = e1, E1 => jet, jet, jet { nlo_calculation = real }
 integrate (openloops_12_p1) { iterations = 1:100:"gw" }
+
+n_events = 10
+$sample_normalization = "sigma"
+?unweighted = false
+?negative_weights = true
+?keep_failed_events = true
+?fixed_order_nlo_events = true
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+?write_raw = false
+
+simulate(openloops_12_p1)

@@ -13,7 +13,7 @@ with methods for construction and evaluation.
 
 A simple implementation:
 \begin{description}
-\item[phs\_1none]
+\item[phs\_none]
   This implements a non-functional dummy module for the phase space.
   A process which uses this module cannot be integrated.  The purpose
   of this module is to provide a placeholder for processes which do
@@ -543,7 +543,7 @@ parameters.  (It does not depend on the QCD setup.)
      integer :: n_channel = 0
      real(default) :: sqrts = 0
      logical :: sqrts_fixed = .true.
-     logical :: cm_frame = .true.
+     logical :: lab_is_cm = .true.
      logical :: azimuthal_dependence = .false.
      integer, dimension(:), allocatable :: dim_flat
      logical :: provides_equivalences = .false.
@@ -599,7 +599,7 @@ contents and an interface for the actual write method.
     write (u, "(3x,A,I0)")  "n_channel = ", object%n_channel
     write (u, "(3x,A," // FMT_19 // ")")  "sqrts     = ", object%sqrts
     write (u, "(3x,A,L1)")  "s_fixed   = ", object%sqrts_fixed
-    write (u, "(3x,A,L1)")  "cm_frame  = ", object%cm_frame
+    write (u, "(3x,A,L1)")  "lab_is_cm = ", object%lab_is_cm
     write (u, "(3x,A,L1)")  "azim.dep. = ", object%azimuthal_dependence
     if (allocated (object%dim_flat)) then
        write (u, "(3x,A,I0)")  "flat dim. = ", object%dim_flat
@@ -700,13 +700,13 @@ array accordingly.
 <<PHS base: interfaces>>=
   abstract interface
      subroutine phs_config_configure (phs_config, sqrts, &
-          sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+          sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, ignore_mismatch, &
           nlo_type, subdir)
        import
        class(phs_config_t), intent(inout) :: phs_config
        real(default), intent(in) :: sqrts
        logical, intent(in), optional :: sqrts_fixed
-       logical, intent(in), optional :: cm_frame
+       logical, intent(in), optional :: lab_is_cm
        logical, intent(in), optional :: azimuthal_dependence
        logical, intent(in), optional :: rebuild
        logical, intent(in), optional :: ignore_mismatch
@@ -993,7 +993,7 @@ decides to drop irrelevant channels.
           call vector4_write (object%q(i), u)
        end do
     end if
-    if (object%p_defined .and. .not. object%config%cm_frame) then
+    if (object%p_defined .and. .not. object%config%lab_is_cm) then
        write (u, "(1x,A)")  "Transformation c.m -> lab frame"
        call lorentz_transformation_write (object%lt_cm_to_lab, u)
     end if
@@ -1092,7 +1092,7 @@ the flight direction, without rotation.
     type(lorentz_transformation_t) :: lt0
     integer :: i
     phs%p = p
-    if (phs%config%cm_frame) then
+    if (phs%config%lab_is_cm) then
        phs%sqrts_hat = phs%config%sqrts
        phs%p = p
        phs%lt_cm_to_lab = identity
@@ -1118,7 +1118,7 @@ the flight direction, without rotation.
 
 @ %def phs_set_incoming_momenta
 @ Set outgoing momenta.  Assume that array shapes match.  The incoming
-momenta must be known, so can apply the Lorentz transformation from
+momenta must be known, so we can apply the Lorentz transformation from
 c.m.\ to lab (inverse) to the momenta.
 <<PHS base: phs: TBP>>=
   procedure :: set_outgoing_momenta => phs_set_outgoing_momenta
@@ -1128,7 +1128,7 @@ c.m.\ to lab (inverse) to the momenta.
     type(vector4_t), dimension(:), intent(in) :: q
     integer :: i
     if (phs%p_defined) then
-       if (phs%config%cm_frame) then
+       if (phs%config%lab_is_cm) then
           phs%q = q
        else
           phs%q = inverse (phs%lt_cm_to_lab) * q
@@ -1147,7 +1147,7 @@ necessary.
     class(phs_t), intent(in) :: phs
     type(vector4_t), dimension(:), intent(out) :: q
     if (phs%p_defined .and. phs%q_defined) then
-       if (phs%config%cm_frame) then
+       if (phs%config%lab_is_cm) then
           q = phs%q
        else
           q = phs%lt_cm_to_lab * phs%q
@@ -1160,15 +1160,15 @@ necessary.
 @ %def phs_get_outgoing_momenta
 @
 <<PHS base: phs: TBP>>=
-  procedure :: is_cm_frame => phs_is_cm_frame
+  procedure :: lab_is_cm => phs_lab_is_cm
 <<PHS base: procedures>>=
-  function phs_is_cm_frame (phs) result (cm_frame)
-    logical :: cm_frame
+  function phs_lab_is_cm (phs) result (lab_is_cm)
+    logical :: lab_is_cm
     class(phs_t), intent(in) :: phs
-    cm_frame = phs%config%cm_frame
-  end function phs_is_cm_frame
+    lab_is_cm = phs%config%lab_is_cm
+  end function phs_lab_is_cm
 
-@ %def phs_is_cm_frame
+@ %def phs_lab_is_cm
 @
 <<PHS base: phs: TBP>>=
   procedure :: get_n_tot => phs_get_n_tot
@@ -1591,7 +1591,7 @@ This is a trivial implementation of the [[phs_config_t]] configuration object.
   end subroutine phs_test_config_final
 
 @ %def phs_test_config_final
-@ The [[cm_frame]] parameter is not tested here; we defer this to the
+@ The [[lab_is_cm]] parameter is not tested here; we defer this to the
 [[phs_single]] implementation.
 <<PHS base: test auxiliary>>=
   subroutine phs_test_config_write (object, unit, include_id)
@@ -1605,12 +1605,12 @@ This is a trivial implementation of the [[phs_config_t]] configuration object.
   end subroutine phs_test_config_write
 
   subroutine phs_test_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, &
+       sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, &
        ignore_mismatch, nlo_type, subdir)
     class(phs_test_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
-    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: lab_is_cm
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
@@ -1624,8 +1624,8 @@ This is a trivial implementation of the [[phs_config_t]] configuration object.
     if (present (sqrts_fixed)) then
        phs_config%sqrts_fixed = sqrts_fixed
     end if
-    if (present (cm_frame)) then
-       phs_config%cm_frame = cm_frame
+    if (present (lab_is_cm)) then
+       phs_config%lab_is_cm = lab_is_cm
     end if
     if (present (azimuthal_dependence)) then
        phs_config%azimuthal_dependence = azimuthal_dependence
@@ -2265,12 +2265,12 @@ Nothing to configure, but we provide the type and methods.
   procedure :: configure => phs_none_config_configure
 <<PHS none: procedures>>=
   subroutine phs_none_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, ignore_mismatch, &
        nlo_type, subdir)
     class(phs_none_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
-    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: lab_is_cm
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
@@ -2566,12 +2566,12 @@ second parameter is the azimuthal angle, which may be a flat dimension.
   procedure :: configure => phs_single_config_configure
 <<PHS single: procedures>>=
   subroutine phs_single_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, ignore_mismatch, &
        nlo_type, subdir)
     class(phs_single_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
-    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: lab_is_cm
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
@@ -2584,7 +2584,7 @@ second parameter is the azimuthal angle, which may be a flat dimension.
        phs_config%n_par = 2
        phs_config%sqrts = sqrts
        if (present (sqrts_fixed))  phs_config%sqrts_fixed = sqrts_fixed
-       if (present (cm_frame))  phs_config%cm_frame = cm_frame
+       if (present (lab_is_cm))  phs_config%lab_is_cm = lab_is_cm
        if (present (azimuthal_dependence)) then
           phs_config%azimuthal_dependence = azimuthal_dependence
           if (.not. azimuthal_dependence) then
@@ -3064,7 +3064,7 @@ numerical noise.
     call phs_data%init (process_data, model)
 
     sqrts = 1000._default
-    call phs_data%configure (sqrts, cm_frame=.false., sqrts_fixed=.false.)
+    call phs_data%configure (sqrts, lab_is_cm=.false., sqrts_fixed=.false.)
 
     call phs_data%write (u)
 
@@ -3331,12 +3331,12 @@ end module phs_rambo
   procedure :: configure => phs_rambo_config_configure
 <<PHS rambo: procedures>>=
   subroutine phs_rambo_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, ignore_mismatch, &
        nlo_type, subdir)
     class(phs_rambo_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
-    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: lab_is_cm
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
@@ -3351,7 +3351,7 @@ end module phs_rambo
     phs_config%n_par = 3 * phs_config%n_out - 4
     phs_config%sqrts = sqrts
     if (present (sqrts_fixed))  phs_config%sqrts_fixed = sqrts_fixed
-    if (present (cm_frame))  phs_config%cm_frame = cm_frame
+    if (present (lab_is_cm))  phs_config%lab_is_cm = lab_is_cm
     if (allocated (phs_config%channel))  deallocate (phs_config%channel)
     allocate (phs_config%channel (1))
     call phs_config%compute_md5sum ()
@@ -3915,7 +3915,7 @@ numerical noise.
     call phs_data%init (process_data, model)
 
     sqrts = 1000._default
-    call phs_data%configure (sqrts, cm_frame=.false., sqrts_fixed=.false.)
+    call phs_data%configure (sqrts, lab_is_cm=.false., sqrts_fixed=.false.)
 
     call phs_data%write (u)
 
@@ -14284,12 +14284,12 @@ reuse an existing file even if it does not match the current setup.
   procedure :: configure => phs_wood_config_configure
 <<PHS wood: procedures>>=
   subroutine phs_wood_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, ignore_mismatch, &
        nlo_type, subdir)
     class(phs_wood_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
-    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: lab_is_cm
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
@@ -14308,8 +14308,8 @@ reuse an existing file even if it does not match the current setup.
     phs_config%par%sqrts = sqrts
     if (present (sqrts_fixed)) &
          phs_config%sqrts_fixed = sqrts_fixed
-    if (present (cm_frame)) &
-         phs_config%cm_frame = cm_frame
+    if (present (lab_is_cm)) &
+         phs_config%lab_is_cm = lab_is_cm
     if (present (azimuthal_dependence)) &
          phs_config%azimuthal_dependence = azimuthal_dependence
     if (present (rebuild)) then
@@ -14373,7 +14373,7 @@ reuse an existing file even if it does not match the current setup.
     end if
     if (ok) then
        call phs_forest_set_flavors (phs_config%forest, phs_config%flv(:,1))
-       variable_limits = .not. phs_config%cm_frame
+       variable_limits = .not. phs_config%lab_is_cm
        call phs_forest_set_parameters &
             (phs_config%forest, phs_config%mapping_defaults, variable_limits)
        call phs_forest_setup_prt_combinations (phs_config%forest)
@@ -16473,12 +16473,12 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
   procedure :: configure => phs_fks_config_configure
 <<phs fks: procedures>>=
   subroutine phs_fks_config_configure (phs_config, sqrts, &
-        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, &
+        sqrts_fixed, lab_is_cm, azimuthal_dependence, rebuild, &
         ignore_mismatch, nlo_type, subdir)
     class(phs_fks_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
-    logical, intent(in), optional :: cm_frame
+    logical, intent(in), optional :: lab_is_cm
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
@@ -16609,7 +16609,7 @@ be assured that Born flavors are used for this.
     phs_config%sqrts_fixed = phs_cfg_born%sqrts_fixed
     phs_config%azimuthal_dependence = phs_cfg_born%azimuthal_dependence
     phs_config%provides_chains = phs_cfg_born%provides_chains
-    phs_config%cm_frame = phs_cfg_born%cm_frame
+    phs_config%lab_is_cm = phs_cfg_born%lab_is_cm
     phs_config%vis_channels = phs_cfg_born%vis_channels
     allocate (phs_config%chain (size (phs_cfg_born%chain)))
     phs_config%chain = phs_cfg_born%chain
@@ -16791,8 +16791,8 @@ phase-space points with [[p_real(emitter) = 0]].
     type(real_kinematics_t), pointer :: real_kinematics => null()
     type(isr_kinematics_t), pointer :: isr_kinematics => null()
     integer :: n_in
-    real(default) :: xi_min = tiny_07
-    real(default) :: y_max = one
+    real(default) :: xi_min
+    real(default) :: y_max
     real(default) :: sqrts
     real(default) :: E_gluon
     real(default) :: mrec2
@@ -17254,7 +17254,7 @@ calculated from the Born momenta.
        p(1:phs%config%n_in) = phs%phs_wood_t%p
        p(phs%config%n_in + 1 : ) = phs%phs_wood_t%q
     end select
-    if (.not. phs%config%cm_frame)  p = phs%lt_cm_to_lab * p
+    if (.not. phs%config%lab_is_cm)  p = phs%lt_cm_to_lab * p
   end subroutine phs_fks_get_born_momenta
 
 @ %def phs_fks_get_born_momenta
@@ -17323,7 +17323,7 @@ calculated from the Born momenta.
           p_born = phs%get_onshell_projected_momenta ()
        else
           p_born = phs%p_born_tot
-       if (.not. phs%is_cm_frame ()) &
+       if (.not. phs%lab_is_cm ()) &
             p_born = inverse (phs%lt_cm_to_lab) * p_born
        end if
        call phs%generator%generate_radiation_variables &
@@ -17387,7 +17387,7 @@ in the center-of-mass and lab frame.
     logical, intent(in) :: is_cms
     type(lorentz_transformation_t) :: lt
     associate (real_kinematics => phs%generator%real_kinematics)
-       if (phs%config%cm_frame) then
+       if (phs%config%lab_is_cm) then
           real_kinematics%p_born_cms%phs_point(1)%p = phs%p_born_tot
           real_kinematics%p_born_lab%phs_point(1)%p = phs%p_born_tot
        else
@@ -17870,7 +17870,7 @@ $\xi$.
                xi_y_phi, no_jacobians)
        end if
        generator%real_kinematics%p_real_cms%phs_point(i_phs)%p = p_real
-       if (.not. phs%config%cm_frame)  p_real = phs%lt_cm_to_lab * p_real
+       if (.not. phs%config%lab_is_cm)  p_real = phs%lt_cm_to_lab * p_real
        generator%real_kinematics%p_real_lab%phs_point(i_phs)%p = p_real
     end associate
   end subroutine phs_fks_generate_fsr
@@ -18241,7 +18241,7 @@ momentum vanishes. Thus we define
           allocate (p_work (1:generator%real_kinematics%p_born_cms%get_n_particles()), &
                source = generator%real_kinematics%p_born_cms%phs_point(1)%p)
           call generator%generate_isr_fixed_beam_energy (i_phs, p_work, p_real)
-          phs%config%cm_frame = .true.
+          phs%config%lab_is_cm = .true.
        case (2)
           select case (generator%isr_kinematics%isr_mode)
           case (SQRTS_FIXED)
@@ -18255,7 +18255,7 @@ momentum vanishes. Thus we define
           end select
        end select
        generator%real_kinematics%p_real_lab%phs_point(i_phs)%p = p_real
-       if (.not. phs%config%cm_frame) then
+       if (.not. phs%config%lab_is_cm) then
           sqrts_hat = (p_real(1) + p_real(2))**1
           p0 = p_real(1) + p_real(2)
           lt = boost (p0, sqrts_hat)
@@ -18399,13 +18399,33 @@ with $\Lambda$.
   end subroutine phs_fks_generator_generate_isr_factorized
 
 @ %def phs_fks_generator_generate_isr_factorized
-@ Computes the ISR kinematics for the real component and in a combined integration,
-overwrites the collinear ISR kinematics for the DGLAP remnant.
+@ Construction of the real momenta [[p_real]] in case of ISR.
+Follows the discussion in [0709.2092] sec. 5.1.
+The sequence of Lorentz boosts required to construct [[p_real]] from [[p_born]] is as follows:
+\begin{enumerate}
+	\item[\labelitemii] We construct the IS momenta of [[p_real]] from the Born momenta via rescaling:
+  [[p_real(1:2)]] $= \frac{x}{\overline{x}} \cdot$ [[p_born(1:2)]].
+  If the Born momenta are imported in the lab frame, these will define the real lab frame.
+  \item[\labelitemii] We construct the momentum of the radiated particle in the real CMS:
+  $k_{n+1} = \frac{s \xi}{2} \cdot (1, \sin(\theta) \sin(\phi), \sin(\theta) \cos(\phi), \cos(\theta))$
+  \setcounter{enumi}{-1}
+  \item We first boost the momentum of the radiated particle from the real CMS to the real
+  lab frame determined from [[p_real(1:2)]].
+  \item We initialize the non-radiated real FS momenta by a longitudinal boost of [[p_born]]
+  to a system with zero rapidity, i.e. zero longitudinal momenum. This is $\mathbb{B}_L$.
+  \item We boost these momenta in a transverse direction to compensate the transverse momentum
+  of the radiation.
+  This is $\mathbb{B}_T$. Note: we switched $\mathbb{B}_T$ and $\mathbb{B}^{-1}_T$ in Eq. (5.16) and
+  their definition w.r.t. [0709.2092].
+  \item We restore longitudinal momentum conservation by applying the inverse boost of $\mathbb{B}_L$
+  to all non-radiated real FS momenta.
+\end{enumerate}
+This way, all components of [[p_real]] are constructed in the real Lab frame.
 <<phs fks: phs fks generator: TBP>>=
   procedure :: generate_isr => phs_fks_generator_generate_isr
 <<phs fks: procedures>>=
   subroutine phs_fks_generator_generate_isr (generator, i_phs, p_born, p_real)
-    !!! Important: Import momenta in the lab frame
+    !!! Important: Import Born momenta in the lab frame
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: i_phs
     type(vector4_t), intent(in) , dimension(:) :: p_born
@@ -18450,7 +18470,7 @@ overwrites the collinear ISR kinematics for the DGLAP remnant.
     generator%isr_kinematics%z(I_PLUS) = (one - xi_plus)
     generator%isr_kinematics%z(I_MINUS) = (one - xi_minus)
 
-    !!! Create radiation momentum
+    !!! Create radiation momentum in the real CMS
     sqrts_real = generator%isr_kinematics%sqrts_born / sqrt (one - xi)
     k0_np1 = sqrts_real * xi / two
     p_real(nlegreal)%p(0) = k0_np1
@@ -18458,6 +18478,7 @@ overwrites the collinear ISR kinematics for the DGLAP remnant.
     p_real(nlegreal)%p(2) = k0_np1 * sqrt (one - y**2) * cos(phi)
     p_real(nlegreal)%p(3) = k0_np1 * y
 
+    !!! Boosts the radiation from real CMS to the real LAB frame
     call get_boost_parameters (p_real, beta_gamma, beta_vec)
     lambda_longit = create_longitudinal_boost (beta_gamma, beta_vec, inverse = .true.)
     p_real(nlegreal) = lambda_longit * p_real(nlegreal)
@@ -18472,7 +18493,7 @@ overwrites the collinear ISR kinematics for the DGLAP remnant.
     lambda_longit_inv = create_longitudinal_boost (beta_gamma, beta_vec, inverse = .true.)
     forall (i = 3 : nlegborn)  p_real(i) = lambda_longit_inv * p_real(i)
 
-    !!! Compute jacobians
+    !!! Compute Jacobians
     associate (jac => generator%real_kinematics%jac(i_phs))
        !!! Additional 1 / (1 - xi) factor because in the real jacobian,
        !!! there is s_real in the numerator
@@ -18565,11 +18586,15 @@ overwrites the collinear ISR kinematics for the DGLAP remnant.
 <<phs fks: phs fks generator: TBP>>=
   procedure :: set_xi_and_y_bounds => phs_fks_generator_set_xi_and_y_bounds
 <<phs fks: procedures>>=
-  subroutine phs_fks_generator_set_xi_and_y_bounds (generator, xi_min, y_max)
+  subroutine phs_fks_generator_set_xi_and_y_bounds (generator, fks_xi_min, fks_y_max)
     class(phs_fks_generator_t), intent(inout) :: generator
-    real(default), intent(in) :: xi_min, y_max
-    generator%xi_min = xi_min
-    generator%y_max = y_max
+    real(default), intent(in), optional :: fks_xi_min, fks_y_max
+    real(default) :: xi_min, y_max
+    xi_min = zero; y_max = one
+    if (present (fks_xi_min)) xi_min = fks_xi_min
+    if (present (fks_y_max)) y_max = fks_y_max
+    generator%xi_min = min (one, max (xi_min, tiny_07))
+    generator%y_max = min (abs (y_max), one)
   end subroutine phs_fks_generator_set_xi_and_y_bounds
 
 @ %def phs_fks_generator_set_xi_and_y_bounds
@@ -18975,14 +19000,15 @@ overwrites the collinear ISR kinematics for the DGLAP remnant.
     type(resonance_contributors_t), intent(in), dimension(:), optional :: contributors
     integer, intent(in), optional :: i_con
     call generator%generate_radiation_variables (r_in, p_born, phs_identifiers)
-    call generator%compute_xi_ref_momenta (p_born, contributors)
+    call generator%compute_xi_ref_momenta &
+              (generator%real_kinematics%p_born_lab%phs_point(1)%p, contributors)
     call generator%compute_xi_max (emitter, i_phs, p_born, &
          generator%real_kinematics%xi_max(i_phs), i_con = i_con)
   end subroutine phs_fks_generator_prepare_generation
 
 @ %def phs_fks_generator_prepare_generation
 @ Get [[xi]] and [[y]] from an external routine (e.g. [[powheg]]) and
-generate an FSR phase space. Note that the flag [[supply\_xi\_max]] is
+generate an FSR phase space. Note that the flag [[supply_xi_max]] is
 set to [[.false.]] because it is assumed that the upper bound on [[xi]]
 has already been taken into account during its generation.
 <<phs fks: phs fks generator: TBP>>=
@@ -19063,7 +19089,7 @@ has already been taken into account during its generation.
   subroutine phs_fks_compute_isr_kinematics (phs, r)
     class(phs_fks_t), intent(inout) :: phs
     real(default), intent(in) :: r
-    if (.not. phs%config%cm_frame) then
+    if (.not. phs%config%lab_is_cm) then
        call phs%generator%compute_isr_kinematics (r, phs%lt_cm_to_lab * phs%phs_wood_t%p)
     else
        call phs%generator%compute_isr_kinematics (r, phs%phs_wood_t%p)
@@ -19415,6 +19441,7 @@ end module phs_fks_uti
     allocate (generator%isr_kinematics)
     generator%n_in = 2
     generator%isr_kinematics%isr_mode = SQRTS_FIXED
+    call generator%set_xi_and_y_bounds ()
 
     call generator%set_sqrts_hat (sqrts)
 
@@ -19514,7 +19541,7 @@ end module phs_fks_uti
     call generator%set_isr_kinematics (p_born)
     generator%n_in = 2
     generator%isr_kinematics%isr_mode = SQRTS_VAR
-
+    call generator%set_xi_and_y_bounds ()
     write (u, "(A)") "* Use four-particle phase space containing: "
     call vector4_write_set (p_born, u, testflag = .true., ultra = .true.)
     write (u, "(A)") "***********************"
@@ -19599,6 +19626,7 @@ end module phs_fks_uti
     generator%n_in = 1
     allocate (generator%isr_kinematics)
     generator%isr_kinematics%isr_mode = SQRTS_FIXED
+    call generator%set_xi_and_y_bounds ()
 
     mB = 4.2_default
     mW = 80.376_default
@@ -19725,6 +19753,7 @@ end module phs_fks_uti
     allocate (generator%isr_kinematics)
     generator%n_in = 2
     generator%isr_kinematics%isr_mode = SQRTS_FIXED
+    call generator%set_xi_and_y_bounds ()
 
     call generator%set_sqrts_hat (sqrts)
 
@@ -19858,6 +19887,7 @@ end module phs_fks_uti
     generator%n_in = 2
     allocate (generator%isr_kinematics)
     generator%isr_kinematics%isr_mode = SQRTS_FIXED
+    call generator%set_xi_and_y_bounds ()
 
     mB = 4.2_default
     mW = 80.376_default
@@ -20036,6 +20066,7 @@ end module phs_fks_uti
     generator%n_in = 1
     allocate (generator%isr_kinematics)
     generator%isr_kinematics%isr_mode = SQRTS_FIXED
+    call generator%set_xi_and_y_bounds ()
 
     mB = 4.2_default
     mW = 80.376_default
@@ -20151,6 +20182,7 @@ end module phs_fks_uti
     generator%n_in = 2
     allocate (generator%isr_kinematics)
     generator%isr_kinematics%isr_mode = SQRTS_FIXED
+    call generator%set_xi_and_y_bounds ()
     generator%emitters(1) = 1; generator%emitters(2) = 2
     generator%sqrts = sqrts
 

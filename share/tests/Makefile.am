@@ -713,7 +713,6 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/nlo_1.ref \
     functional_tests/ref-output/nlo_2.ref \
     functional_tests/ref-output/nlo_6.ref \
-    functional_tests/ref-output/nlo_9.ref \
     functional_tests/ref-output/nlo_decay_1.ref \
     functional_tests/ref-output/observables_1.ref \
     functional_tests/ref-output/openloops_1.ref \
@@ -726,8 +725,6 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/openloops_9.ref \
     functional_tests/ref-output/openloops_10.ref \
     functional_tests/ref-output/openloops_11.ref \
-    functional_tests/ref-output/openloops_12.ref \
-    functional_tests/ref-output/openloops_13.ref \
     functional_tests/ref-output/pack_1.ref \
     functional_tests/ref-output/parton_shower_1.ref \
     functional_tests/ref-output/photon_isolation_1.ref \
@@ -865,6 +862,10 @@ REF_OUTPUT_FILES_BASE = \
     ext_tests_nlo/ref-output/nlo_pptttt.ref \
     ext_tests_nlo/ref-output/nlo_ppw.ref \
     ext_tests_nlo/ref-output/nlo_ppz.ref \
+    ext_tests_nlo/ref-output/nlo_ppzj_sim_1.ref \
+    ext_tests_nlo/ref-output/nlo_ppzj_sim_2.ref \
+    ext_tests_nlo/ref-output/nlo_ppzj_sim_3.ref \
+    ext_tests_nlo/ref-output/nlo_ppzj_sim_4.ref \
     ext_tests_nlo/ref-output/nlo_ppzw.ref \
     ext_tests_nlo/ref-output/nlo_ppzz.ref
 
@@ -914,8 +915,13 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/nlo_5.ref \
     functional_tests/ref-output-double/nlo_7.ref \
     functional_tests/ref-output-double/nlo_8.ref \
+    functional_tests/ref-output-double/nlo_9.ref \
+    functional_tests/ref-output-double/nlo_10.ref \
     functional_tests/ref-output-double/observables_2.ref \
     functional_tests/ref-output-double/openloops_3.ref \
+    functional_tests/ref-output-double/openloops_12.ref \
+    functional_tests/ref-output-double/openloops_13.ref \
+    functional_tests/ref-output-double/openloops_14.ref \
     functional_tests/ref-output-double/parton_shower_2.ref \
     functional_tests/ref-output-double/pdf_builtin.ref \
     functional_tests/ref-output-double/powheg_1.ref \
@@ -995,8 +1001,13 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/nlo_5.ref \
     functional_tests/ref-output-ext/nlo_7.ref \
     functional_tests/ref-output-ext/nlo_8.ref \
+    functional_tests/ref-output-ext/nlo_9.ref \
+    functional_tests/ref-output-ext/nlo_10.ref \
     functional_tests/ref-output-ext/observables_2.ref \
     functional_tests/ref-output-ext/openloops_3.ref \
+    functional_tests/ref-output-ext/openloops_12.ref \
+    functional_tests/ref-output-ext/openloops_13.ref \
+    functional_tests/ref-output-ext/openloops_14.ref \
     functional_tests/ref-output-ext/powheg_1.ref \
     functional_tests/ref-output-ext/pythia6_3.ref \
     functional_tests/ref-output-ext/pythia6_4.ref \
@@ -1032,8 +1043,13 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/nlo_5.ref \
     functional_tests/ref-output-quad/nlo_7.ref \
     functional_tests/ref-output-quad/nlo_8.ref \
+    functional_tests/ref-output-quad/nlo_9.ref \
+    functional_tests/ref-output-quad/nlo_10.ref \
     functional_tests/ref-output-quad/observables_2.ref \
     functional_tests/ref-output-quad/openloops_3.ref \
+    functional_tests/ref-output-quad/openloops_12.ref \
+    functional_tests/ref-output-quad/openloops_13.ref \
+    functional_tests/ref-output-quad/openloops_14.ref \
     functional_tests/ref-output-quad/powheg_1.ref \
     functional_tests/ref-output-quad/pythia6_3.ref \
     functional_tests/ref-output-quad/pythia6_4.ref \
@@ -1223,6 +1239,7 @@ MISC_TESTS_SIN = \
     functional_tests/nlo_7.sin \
     functional_tests/nlo_8.sin \
     functional_tests/nlo_9.sin \
+    functional_tests/nlo_10.sin \
     functional_tests/nlo_decay_1.sin \
     functional_tests/observables_1.sin \
     functional_tests/observables_2.sin \
@@ -1239,6 +1256,7 @@ MISC_TESTS_SIN = \
     functional_tests/openloops_11.sin \
     functional_tests/openloops_12.sin \
     functional_tests/openloops_13.sin \
+    functional_tests/openloops_14.sin \
     functional_tests/pack_1.sin \
     functional_tests/parton_shower_1.sin \
     functional_tests/parton_shower_2.sin \
@@ -1511,6 +1529,10 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_pptttt.sin \
     ext_tests_nlo/nlo_ppw.sin \
     ext_tests_nlo/nlo_ppz.sin \
+    ext_tests_nlo/nlo_ppzj_sim_1.sin \
+    ext_tests_nlo/nlo_ppzj_sim_2.sin \
+    ext_tests_nlo/nlo_ppzj_sim_3.sin \
+    ext_tests_nlo/nlo_ppzj_sim_4.sin \
     ext_tests_nlo/nlo_ppzw.sin \
     ext_tests_nlo/nlo_ppzz.sin \
     ext_tests_nlo/nlo_settings.sin

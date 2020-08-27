@@ -5902,12 +5902,12 @@ particles involved in the radiation process are massive or massless.
   procedure :: evaluate => virtual_evaluate
 <<virtual: procedures>>=
   subroutine virtual_evaluate (virt, reg_data, alpha_coupling, &
-         p_born, separate_alrs, sqme_virt)
+         p_born, separate_uborns, sqme_virt)
     class(virtual_t), intent(inout) :: virt
     type(region_data_t), intent(in) :: reg_data
     real(default), intent(in) :: alpha_coupling
     type(vector4_t), intent(in), dimension(:)  :: p_born
-    logical, intent(in) :: separate_alrs
+    logical, intent(in) :: separate_uborns
     real(default), dimension(:), intent(inout) :: sqme_virt
     real(default) :: s, s_o_Q2
     real(default), dimension(reg_data%n_flv_born) :: QB, BI
@@ -5924,7 +5924,7 @@ particles involved in the radiation process are massive or massless.
          call set_s_for_threshold ()
     s_o_Q2 = s / virt%es_scale2 * virt%settings%fks_template%xi_cut**2
     do i_flv = 1, reg_data%n_flv_born
-       if (separate_alrs) then
+       if (separate_uborns) then
           ii_flv = i_flv
        else
           ii_flv = 1
@@ -7290,19 +7290,20 @@ the splitting functions.
 @ Like in the context of [[coll_subtraction_compute_fsr]] we compute
 the quantity
 \begin{equation*}
-  \frac{J(\Phi_n,\xi,y,\phi)}{\xi} \left[(1-y)\xi^2\mathcal{R}^\alpha(\Phi_{n+1})\right]|_{y = 1},
+  \lim_{y\to\pm1}{\left\{\frac{J(\Phi_n,\xi,y,\phi)}{\xi}
+  \left[(1-y^2)\xi^2\mathcal{R}^\alpha(\Phi_{n+1})\right]\right\}},
 \end{equation*}
-and, additionally the anti-collinear case with $y = +1$, which, however,
-is completely analogous. Again, the Jacobian is proportional to $\xi$, so we
+where the $(1-y^2)$ accounts for both $y=\pm1$. Again, the Jacobian is proportional to $\xi$, so we
 drop the $J / \xi$ factor. Note that it is important to take into account this missing
 factor of $\xi$ in the computation of the Jacobian during phase-space generation
 both for fixed-beam and structure ISR. We consider only a $q \to qg$ splitting
 arguing that other splittings are identical in terms of the
 factors which cancel. It is given by
 \begin{equation*}
-  g^\alpha = \frac{8\pi\alpha_s}{-k_{\mathrm{em}}^2} C_F (1-y) \xi^2
-             \frac{1+z^2}{1-z} \mathcal{B}.
+  g^\alpha = \frac{8\pi\alpha_s}{-k_{\mathrm{em}}^2} C_F (1-y^2) \xi^2
+             \frac{1+z^2}{1-z} \mathcal{B},
 \end{equation*}
+where $g^\alpha$ is defined akin to the one for FSR in eq.~\ref{fks: sub: real}.
 Note the negative sign of $k_\mathrm{em}^2$ to compensate the negative
 virtuality of the initial-state emitter.
 For ISR, $z$ is defined with respect to the emitter energy entering the hard
@@ -7312,25 +7313,25 @@ interaction, i.e.
       1 - \frac{E_\mathrm{rad}}{E_\mathrm{beam}}.
 \end{equation*}
 Because $E_\mathrm{rad} = E_\mathrm{beam} \cdot \xi$, it is
-$z = 1 - \xi$. The factor $k_\mathrm{em}^2$ in the denonimator
-is rewritten as
+$z = 1 - \xi$, thus one factor of $\xi$ is cancelled by $(1-z)$ in the denominator of $g^\alpha$.
+The factor $k_\mathrm{em}^2$ in the denominator is rewritten as
 \begin{equation*}
   k_\mathrm{em}^2 = \left(p_\mathrm{beam} - p_\mathrm{rad}\right)^2
                   = - 2 p_\mathrm{beam} \cdot p_\mathrm{rad}
-                  = - 2 E_\mathrm{beam} E_\mathrm{rad} (1-y)
-                  = -2 E_\mathrm{beam}^2 (1-z) (1-y).
+                  = - 2 E_\mathrm{beam} E_\mathrm{rad} (1\pm y)
+                  = - 2 E_\mathrm{beam}^2 (1-z) (1\pm y),
 \end{equation*}
-This leads to the cancellation of the $(1-y)$ factors and one of
-the two factors of $\xi$ in the numerator. Further rewriting to
+where we used
 \begin{equation*}
-  E_\mathrm{beam} E_\mathrm{rad} = E_\mathrm{beam}^2 (1-z)
+  E_\mathrm{beam} E_\mathrm{rad} = E_\mathrm{beam}^2 (1-z).
 \end{equation*}
-cancels another factor of $\xi$. We thus end up with
+This leads to the cancellation of the corresponding $(1\pm y)$ factor in
+$(1-y^2)$, with the other factor becoming a simple factor of $2$, and
+the remaining factor of $\xi$ in the numerator. We thus end up with
 \begin{equation*}
-  g^\alpha = \frac{4\pi\alpha_s}{E_\mathrm{beam}^2} C_F \left(1 + z^2\right)\mathcal{B},
+  g^\alpha = \frac{8\pi\alpha_s}{E_\mathrm{beam}^2} C_F \left(1 + z^2\right)\mathcal{B},
 \end{equation*}
 which is soft-finite.
-Now what about this boosting to the other beam?
 
 Note that here in [[compute_isr]], [[sqme_born]] is supposed to be
 the squared Born matrix element convoluted with the real PDF.
@@ -7351,12 +7352,7 @@ the squared Born matrix element convoluted with the real PDF.
     integer, intent(in) :: isr_mode
     real(default) :: z, onemz, p02
     integer :: nlegs, flv_em, flv_rad
-    if (isr_mode == SQRTS_VAR .and. vector_set_is_cms (p_born, coll_sub%n_in)) then
-       call vector4_write_set (p_born, show_mass = .true., &
-            check_conservation = .true.)
-       call msg_fatal ("Collinear subtraction, ISR: Phase space point &
-            &must be in lab frame")
-    end if
+    !!! p_born must be in lab frame.
     nlegs = size (flst)
     flv_rad = flst(nlegs); flv_em = flst(emitter)
     !!! No need to pay attention to n_in = 1, because this case always has a
@@ -8332,12 +8328,18 @@ anti-collinear divergences.
   end subroutine real_subtraction_evaluate_subtraction_terms_isr
 
 @ %def real_subtraction_evaluate_subtraction_terms_isr
-@ This is basically the part of the real Jacobian corresponding to
+@ This is basically the global part of the real Jacobian corresponding to
 \begin{equation*}
   \frac{q^2}{8 (2\pi)^3}.
 \end{equation*}
 We interpret it as the additional phase space factor of the real component,
 to be more consistent with the evaluation of the Born phase space.
+
+We specifically use the Born center-of-mass energy here.
+The real center-of-mass energy is only different from the Born center-of-mass
+energy in case of ISR. The missing factor $\frac{1}{1 - \xi}$ for this
+conversion is supplied in [[apply_kinematic_factors_radiation]] and
+[[phs_fks_generator_generate_isr]].
 <<real subtraction: real subtraction: TBP>>=
   procedure :: get_phs_factor => real_subtraction_get_phs_factor
 <<real subtraction: procedures>>=
@@ -9499,13 +9501,17 @@ Explicitly, this means (see JHEP 06(2010)043, (4.11)-(4.12))
   \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & = \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - \log^2 (\xi_{\text{cut}}) \right)f(1) + \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
 \end{align}
 and the same of course for $\bar{x}_\ominus$. These two terms are stored in the [[plus_dist_remnant]] variable below.
+
+The option [[separate_uborns]] allows to compute the contribution of the DGLAP remnant
+separately for each underlying Born flavor structure. We need this option during
+event generation to generate counter events with a specific Born flavor structure.
 <<dglap remnant: dglap remnant: TBP>>=
   procedure :: evaluate => dglap_remnant_evaluate
 <<dglap remnant: procedures>>=
-  subroutine dglap_remnant_evaluate (dglap, alpha_s, separate_alrs, sqme_dglap)
+  subroutine dglap_remnant_evaluate (dglap, alpha_s, separate_uborns, sqme_dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
     real(default), intent(in) :: alpha_s
-    logical, intent(in) :: separate_alrs
+    logical, intent(in) :: separate_uborns
     real(default), intent(inout), dimension(:) :: sqme_dglap
     integer :: alr, emitter
     real(default) :: sqme_alr
@@ -9531,12 +9537,12 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
              if (evaluated(i_flv_born, i_flv_real, emitter)) cycle
              call evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
           end if
+          if (separate_uborns) then
+             sqme_dglap(i_flv_born) = sqme_dglap(i_flv_born) + alpha_s / twopi * sqme_alr
+          else
+             sqme_dglap(1) = sqme_dglap(1) + alpha_s / twopi * sqme_alr
+          end if
        end associate
-       if (separate_alrs) then
-          sqme_dglap(alr) = sqme_dglap(alr) + alpha_s / twopi * sqme_alr
-       else
-          sqme_dglap(1) = sqme_dglap(1) + alpha_s / twopi * sqme_alr
-       end if
     end do
 
   contains

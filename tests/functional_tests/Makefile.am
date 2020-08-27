@@ -74,7 +74,8 @@ TESTS_REQ_FASTJET = \
     nlo_7.run \
     nlo_8.run \
     openloops_12.run \
-    openloops_13.run
+    openloops_13.run \
+    openloops_14.run
 
 TESTS_REQ_OCAML = \
     libraries_1.run \
@@ -211,6 +212,7 @@ TESTS_REQ_OCAML = \
     nlo_5.run \
     nlo_6.run \
     nlo_9.run \
+    nlo_10.run \
     nlo_decay_1.run \
     real_partition_1.run \
     fks_res_1.run \

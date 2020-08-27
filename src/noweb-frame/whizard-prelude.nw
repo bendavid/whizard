@@ -3,7 +3,7 @@
 
 \documentclass[a4paper]{report}
 
-\usepackage{amsmath,dsfont}
+\usepackage{amsmath,amssymb,dsfont}
 
 \usepackage
   [bookmarks,bookmarksopen=true,bookmarksopenlevel=1,bookmarksnumbered=true]

@@ -1,9 +1,9 @@
 # SINDARIN input for WHIZARD self-test
-# Testing combined NLO calculation of pp -> ee
-# using dummy-output for the matrix elements
-# can be extended with simulating events
+# Testing separate NLO calculation for all components
+# of pp -> ee and the simulation of events for each
+# using dummy-output for the matrix elements.
 
-model = SM
+model = "SM"
 
 ?logging = true
 ?openmp_logging = false
@@ -44,12 +44,37 @@ scale = let int njet = count [jet] in
           sqrts
         endif
 
-?combined_nlo_integration = true
+?combined_nlo_integration = false
 
 ?use_vamp_equivalences = false
 
-process nlo_9_p1 = pr, pr => e1, E1 { nlo_calculation = full }
+seed = 3991
 
-seed = 8686
+n_events = 2
+$sample_normalization = "sigma"
+?unweighted = false
+?negative_weights = true
+?keep_failed_events = true
+?fixed_order_nlo_events = true
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+?write_raw = false
 
+process nlo_9_p1 = pr, pr => e1, E1 { nlo_calculation = born }
 integrate (nlo_9_p1) { iterations = 1:100 }
+simulate(nlo_9_p1)
+
+process nlo_9_p2 = pr, pr => e1, E1 { nlo_calculation = real }
+integrate (nlo_9_p2) { iterations = 1:100 }
+simulate(nlo_9_p2)
+
+process nlo_9_p3 = pr, pr => e1, E1 { nlo_calculation = virtual }
+integrate (nlo_9_p3) { iterations = 1:100 }
+simulate(nlo_9_p3)
+
+process nlo_9_p4 = pr, pr => e1, E1 { nlo_calculation = dglap }
+integrate (nlo_9_p4) { iterations = 1:100 }
+simulate(nlo_9_p4)
