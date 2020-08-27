@@ -75,6 +75,8 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/api_cc_3.ref \
     unit_tests/ref-output/api_cc_4.ref \
     unit_tests/ref-output/api_cc_5.ref \
+    unit_tests/ref-output/api_hepmc2_1.ref \
+    unit_tests/ref-output/api_hepmc2_cc_1.ref \
     unit_tests/ref-output/api_hepmc3_1.ref \
     unit_tests/ref-output/api_hepmc3_cc_1.ref \
     unit_tests/ref-output/api_lcio_1.ref \
