@@ -75,7 +75,7 @@ AC_DEFUN([AX_PYTHON_DEVEL],[
 	# Allow the use of a (user set) custom python version
 	#
 	AC_ARG_VAR([PYTHON_VERSION],[The installed Python
-		version to use, for example '2.3'. This string
+		version to use, for example '2.7'. This string
 		will be appended to the Python interpreter
 		canonical name.])
 

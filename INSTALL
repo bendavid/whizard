@@ -179,6 +179,7 @@ Fine tuning of the installation directories:
   --libexecdir=DIR       program executables [EPREFIX/libexec]
   --sysconfdir=DIR       read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR   modifiable architecture-independent data [PREFIX/com]
+  --runstatedir=DIR      modifiable per-process data [LOCALSTATEDIR/run]
   --localstatedir=DIR    modifiable single-machine data [PREFIX/var]
   --libdir=DIR           object code libraries [EPREFIX/lib]
   --includedir=DIR       C header files [PREFIX/include]
@@ -233,13 +234,17 @@ Optional Features:
   --disable-openmp        do not use OpenMP
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure	  compile Omega libraries impure [[no]]
-  --enable-fc-mpi         use OpenMPI/MPICH/Intel for the Fortran code [[no]]
+  --enable-fc-mpi         use OpenMPI/MPICH/Intel for the Fortran code
+                          (default is OpenMPI) [[no]]
   --disable-ocaml	  disable the OCaml parts, even if OCaml available
   			  [[no]]
+  --enable-python         enable PYTHON/Cython API for WHIZARD [[no]]
   --enable-default-UFO-dir=directory
                           Read precomputed model tables from this directory,
                           which will be populated by an administrator at
                           install time [default=$datadir/UFO, enabled].
+  --enable-recola         (experimental) enable Recola for NLO matrix elements
+                          [[no]]
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-lcio		  enable LCIO for binary event files [[yes]]
@@ -249,10 +254,7 @@ Optional Features:
   --enable-fastjet	  enable FastJet for handling event data [[no]]
   --enable-gosam	  (experimental) enable GoSAM for external NLO matrix elements
   			  [[no]]
-  --enable-openloops	  (experimental) enable OpenLoops for NLO matrix elements 
-  			  [[no]]
-  --enable-recola         (experimental) enable Recola for NLO matrix elements 
-  			  [[no]]			  
+  --enable-openloops	  enable OpenLoops for NLO matrix elements [[no]]
   --enable-looptools      enable LoopTools loop integral library [[no]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file
@@ -275,6 +277,8 @@ Optional Packages:
                           double are guaranteed to be provided by all
                           Fortran compilers.
   --with-mpi-lib=mpich|openmpi|intel   request an external MPI library.
+  --with-recola=dir	  assume the given directory for Recola
+  --with-rootsys          top of the ROOT installation directory
   --with-hepmc=dir        assume the given directory for HepMC
   --with-pythia8=dir      assume the given directory for PYTHIA8
   --with-fastjet=dir      assume the given directory for FastJet
@@ -285,7 +289,6 @@ Optional Packages:
   --with-ninja=dir        assume the given directory for Ninja
   --with-samurai=dir      assume the given directory for Samurai
   --with-openloops=dir    assume the given directory for OpenLoops  
-  --with-recola=dir	  assume the given directory for Recola
 
 Some influential environment variables:
   CC          C compiler command
@@ -305,7 +308,19 @@ Some influential environment variables:
   CXX         C++ compiler command
   CXXFLAGS    C++ compiler flags
   CXXCPP      C++ preprocessor
- 
+  PYTHON_VERSION
+              The installed Python version to use, for example '2.3'. This
+              string will be appended to the Python interpreter canonical
+              name.
+  PKG_CONFIG  path to pkg-config utility
+  PKG_CONFIG_PATH
+              directories to add to pkg-config's search path
+  PKG_CONFIG_LIBDIR
+              path overriding pkg-config's built-in search path
+  TIRPC_CFLAGS
+              C compiler flags for TIRPC, overriding pkg-config
+  TIRPC_LIBS  linker flags for TIRPC, overriding pkg-config
+
 #-------------------------------------------------------------
 # building from svn (developer version)
 #-------------------------------------------------------------

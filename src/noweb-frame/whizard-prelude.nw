@@ -48,12 +48,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{3.0.0 $alpha$}
-\def\WhizardDate{Jul 03 2020}
+\def\WhizardVersion{3.0.0 $beta$}
+\def\WhizardDate{Aug 30 2020}
 <<Version>>=
-3.0.0_alpha+
+3.0.0_beta
 <<Date>>=
-Jul 03 2020
+Aug 30 2020
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -72,9 +72,9 @@ Jul 03 2020
  \mbox{}
  with contributions from:
  Fabian Bach, Tim Barklow, Vincent Bettaque, Mikael Berggren,
- Hans-Werner Boschmann, Felix Braam, Simon Brass, Bijan Chokouf\'{e}
- Nejad, Christian Fleper, David Gordo Gomez, Akiya Miyamoto, Pascal
- Stienemeier, Moritz Prei{\ss}er, Vincent Rothe, Sebastian Schmidt,
+ Hans-Werner Boschmann, Felix Braam, Simon Brass, Pia Bredt,
+ Bijan Chokouf\'{e} Nejad, Christian Fleper, David Gordo Gomez, Akiya
+ Miyamoto, Moritz Prei{\ss}er, Vincent Rothe, Sebastian Schmidt,
  Marco Sekulla, So Young Shim, Christian Speckner, Pascal Stienemeier,
  Manuel Utsch, Christian Weiss, Daniel Wiesler, Zhijie Zhao
  \vspace{1cm}

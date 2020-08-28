@@ -6,7 +6,7 @@ AC_DEFUN([WO_PROG_OPENLOOPS],
 [dnl
 AC_ARG_ENABLE([openloops],
   [AS_HELP_STRING([--enable-openloops],
-     [(experimental) enable OpenLoops for NLO matrix elements [[no]]])],
+     [enable OpenLoops for NLO matrix elements [[no]]])],
   [], [enable_openloops="no"])
 
 AC_ARG_WITH([openloops],
