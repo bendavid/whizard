@@ -51,7 +51,7 @@
 \def\WhizardVersion{3.0.0 $beta$}
 \def\WhizardDate{Aug 30 2020}
 <<Version>>=
-3.0.0_beta
+3.0.0_beta+
 <<Date>>=
 Aug 30 2020
 @
