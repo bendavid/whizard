@@ -53,7 +53,7 @@ openmp_num_threads = 1
 jet_algorithm = antikt_algorithm
 jet_r = 0.5
 
-seed = 1558
+seed = 99
 sqrts = 500 TeV
 
 cuts = let subevt @clustered_jets = cluster [jet] in
