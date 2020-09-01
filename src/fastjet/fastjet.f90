@@ -6,12 +6,9 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
+!
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -126,6 +123,7 @@ module fastjet
      procedure :: init => cluster_sequence_init
      procedure :: final => cluster_sequence_final
      procedure :: inclusive_jets => cluster_sequence_inclusive_jets
+     procedure :: exclusive_jets => cluster_sequence_exclusive_jets
      procedure :: assign_jet_indices => cluster_sequence_assign_jet_indices
   end type cluster_sequence_t
 
@@ -329,6 +327,15 @@ module fastjet
   end interface
 
   interface
+     function cluster_sequence_get_exclusive_jets (cs, dcut) bind (C) result (jets)
+       import
+       type(c_ptr), intent(in), value :: cs
+       real(c_double), intent(in) :: dcut
+       type(c_ptr) :: jets
+     end function cluster_sequence_get_exclusive_jets
+  end interface
+
+  interface
      function cluster_sequence_get_jet_indices (cs, jets) bind (C) result (idx)
        import
        type(c_ptr), intent(in), value :: cs, jets
@@ -502,7 +509,6 @@ contains
     sorted_jets%cptr = pseudojet_vector_sorted_by_pt (jets%cptr)
   end function sorted_by_pt
 
-
   ! Procedures for jet definitions
   subroutine jet_definition_init (jet_def, jet_alg, r, p, jet_ycut)
     class(jet_definition_t), intent(out) :: jet_def
@@ -562,6 +568,14 @@ contains
     type(pseudojet_vector_t) :: jets
     jets%cptr = cluster_sequence_get_inclusive_jets (cs%cptr)
   end function cluster_sequence_inclusive_jets
+
+  function cluster_sequence_exclusive_jets (cs, dcut) result (jets)
+    class(cluster_sequence_t), intent(in) :: cs
+    type(pseudojet_vector_t) :: jets
+    real(default), intent(in) :: dcut
+    jets%cptr = cluster_sequence_get_exclusive_jets (cs%cptr, &
+         real (dcut, c_double))
+  end function cluster_sequence_exclusive_jets
 
   subroutine cluster_sequence_assign_jet_indices (cs, jets, idx)
     class(cluster_sequence_t), intent(in) :: cs

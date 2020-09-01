@@ -220,6 +220,7 @@ jet_algorithm = 999
 jet_r =  0.000000000000E+00
 jet_p =  0.000000000000E+00
 jet_ycut =  0.000000000000E+00
+jet_dcut =  0.000000000000E+00
 ?keep_flavors_when_clustering = false
 photon_iso_eps =  1.000000000000E+00
 photon_iso_n =  1.000000000000E+00

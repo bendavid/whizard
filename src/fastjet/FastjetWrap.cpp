@@ -140,6 +140,13 @@ extern "C" {
     return jets;
   }
 
+  vector<PseudoJet>* cluster_sequence_get_exclusive_jets (const ClusterSequence *cs,
+      const double dcut) {
+    vector<PseudoJet>* jets = new vector<PseudoJet>;
+    *jets = cs->exclusive_jets(dcut);
+    return jets;
+  }
+
   vector<int>* cluster_sequence_get_jet_indices (const ClusterSequence* cs,
       const vector<PseudoJet>* jets) {
     vector<int>* idx = new vector<int>;

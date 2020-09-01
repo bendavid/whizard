@@ -4923,6 +4923,16 @@ procedure with type [[V_NONE]].
          '\ttt{cambridge\_[for\_passive\_]algorithm}, \ttt{antikt\_algorithm}, ' // &
          '\newline \ttt{plugin\_algorithm}, \ttt{genkt\_[for\_passive\_]algorithm}, ' // &
          '\ttt{ee\_[gen]kt\_algorithm}, \ttt{jet\_p}, \newline\ttt{jet\_r})'))
+    call var_list%append_real (&
+         var_str ("jet_dcut"), 0._default, &
+         intrinsic = .true., &
+         description=var_str ('Value for the $d_{ij}$ separation measure used in ' // &
+         'the $e^+e^- k_T$ algorithms that are available via the interface ' // &
+         'to the \fastjet\ package.  (cf. also \ttt{cluster}, \ttt{combine}, ' // &
+         '\ttt{kt\_algorithm}, \ttt{jet\_algorithm}, ' // &
+         '\ttt{cambridge\_[for\_passive\_]algorithm}, \ttt{antikt\_algorithm}, ' // &
+         '\newline \ttt{plugin\_algorithm}, \ttt{genkt\_[for\_passive\_]algorithm}, ' // &
+         '\ttt{ee\_[gen]kt\_algorithm}, \ttt{jet\_p}, \newline\ttt{jet\_r})'))
     call var_list%append_log (&
          var_str ("?keep_flavors_when_clustering"), .false., &
          intrinsic = .true., &

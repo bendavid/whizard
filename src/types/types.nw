@@ -4180,12 +4180,14 @@ that have been constructed by FastJet and its interface.
 <<Subevents: public>>=
   public :: subevt_cluster
 <<Subevents: procedures>>=
-  subroutine subevt_cluster (subevt, pl1, mask1, jet_def, keep_jets)
+  subroutine subevt_cluster (subevt, pl1, dcut, mask1, jet_def, &
+       keep_jets, exclusive)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1
+    real(default), intent(in) :: dcut
     logical, dimension(:), intent(in) :: mask1
     type(jet_definition_t), intent(in) :: jet_def
-    logical, intent(in) :: keep_jets
+    logical, intent(in) :: keep_jets, exclusive
     integer, dimension(:), allocatable :: map, jet_index
     type(pseudojet_t), dimension(:), allocatable :: jet_in, jet_out
     type(pseudojet_vector_t) :: jv_in, jv_out
@@ -4200,7 +4202,11 @@ that have been constructed by FastJet and its interface.
     end do
     call jv_in%init (jet_in)
     call cs%init (jv_in, jet_def)
-    jv_out = cs%inclusive_jets ()
+    if (exclusive) then
+       jv_out = cs%exclusive_jets (dcut)
+    else
+       jv_out = cs%inclusive_jets ()
+    end if
     call cs%assign_jet_indices (jv_out, jet_index)
     allocate (jet_out (jv_out%size ()))
     jet_out = jv_out
