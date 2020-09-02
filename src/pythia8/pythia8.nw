@@ -1746,11 +1746,11 @@ end module pythia8_uti
 
     call lha%init ()
     call lha%set_init &
-         ([2212, 2212], [6500._default, 6500._default], 1, .true., .true.)
+         ([2212, 2212], [6500._default, 6500._default], 1, .false., .false.)
 
-    xsec = [1.0, 1.2, 1.4, 1.6, 1.8] * 1e3 ! fb
-    xerror = 0.05 * xsec
-    max_weight = 1e-3 * xsec
+    xsec = [1.0, 1.2, 1.4, 1.6, 1.8] * 1e3_default ! fb
+    xerror = 0.05_default * xsec
+    max_weight = 1e-3_default * xsec
     do i = 1, N_PROC
        call lha%set_process_parameters (process_id = i, &
             cross_section = xsec(i), error = xerror(i), &
