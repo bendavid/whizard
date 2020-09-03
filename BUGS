@@ -19,6 +19,10 @@ General:
 
 Known (recent) bugs:
 
+* WHIZARD 2 does not support Pythia 8.301+. If you want to use these
+  versions of Pythia 8 please use WHIZARD 3. Note that Pythia 8.301-2 and
+  contain a bug in their LHA interface, so you have to use Pythia 8.303+.
+
 * WHIZARD 2.8.3 exhibits a bug for UFO models containing Majorana fermions:
   no matrix element is generated. WHIZARD 2.8.4 solves this problem. There
   are still some wrong sign in interference terms for very complicated
