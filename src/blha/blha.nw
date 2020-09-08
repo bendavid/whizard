@@ -1757,6 +1757,49 @@ are requested (GoSam does not support polarized matrix elements).
   end function prc_blha_get_beam_helicities_array
 
 @ %def prc_blha_get_beam_helicities_array
+@ Setup an index mapping for flavor structures and helicities that give the same matrix
+element. The index mapping is according to the order of flavor structures known to the
+[[prc_core]] class. Overrides [[prc_core_set_equivalent_flv_hel_indices]].
+<<BLHA OLP interfaces: prc blha: TBP>>=
+  procedure :: set_equivalent_flv_hel_indices => prc_blha_set_equivalent_flv_hel_indices
+<<BLHA OLP interfaces: procedures>>=
+  subroutine prc_blha_set_equivalent_flv_hel_indices (object)
+    class(prc_blha_t), intent(inout) :: object
+    integer :: n_flv, n_hel
+    integer :: i_flv1, i_flv2, i_hel1, i_hel2
+    integer, dimension(:,:), allocatable :: amp_id
+    if (allocated (object%i_virt)) then
+       amp_id = object%i_virt
+    else
+       amp_id = object%i_tree
+    end if
+    n_flv = size (amp_id, dim=1)
+    n_hel = size (amp_id, dim=2)
+    if (.not. allocated (object%data%eqv_flv_index)) &
+         allocate (object%data%eqv_flv_index(n_flv))
+    if (.not. allocated (object%data%eqv_hel_index)) &
+         allocate (object%data%eqv_hel_index(n_hel))
+    if (size (object%data%eqv_flv_index) /= n_flv) &
+         call msg_bug ("BLHA Core: Size mismatch between eqv_flv_index and number of flavors.")
+    if (size (object%data%eqv_hel_index) /= n_hel) &
+         call msg_bug ("BLHA Core: Size mismatch between eqv_hel_index and number of helicities.")
+    do i_flv1 = 1, n_flv
+       do i_hel1 = 1, n_hel
+          FLV_LOOP: do i_flv2 = 1, i_flv1
+             do i_hel2 = 1, i_hel1
+                if (amp_id(i_flv2, i_hel2) == &
+                     amp_id(i_flv1, i_hel1)) then
+                   object%data%eqv_flv_index(i_flv1) = i_flv2
+                   object%data%eqv_hel_index(i_hel1) = i_hel2
+                   exit FLV_LOOP
+                end if
+             end do
+          end do FLV_LOOP
+       end do
+    end do
+  end subroutine prc_blha_set_equivalent_flv_hel_indices
+
+@ %def prc_blha_set_equivalent_flv_hel_indices
 @
 <<BLHA OLP interfaces: prc blha: TBP>>=
   procedure(prc_blha_init_driver), deferred :: &

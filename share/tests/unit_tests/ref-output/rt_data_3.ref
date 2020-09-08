@@ -418,6 +418,7 @@ $exclude_gauge_splittings = "c:b:t:e2:e3"
 ?nlo_cut_all_real_sqmes = false
 ?nlo_use_real_partition = false
 real_partition_scale =  1.000000000000E+01
+?nlo_reuse_amplitudes_fks = false
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
 ========================================================================
@@ -931,6 +932,7 @@ $exclude_gauge_splittings = "c:b:t:e2:e3"
 ?nlo_cut_all_real_sqmes = false
 ?nlo_use_real_partition = false
 real_partition_scale =  1.000000000000E+01
+?nlo_reuse_amplitudes_fks = false
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
 ========================================================================

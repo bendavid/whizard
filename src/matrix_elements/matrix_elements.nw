@@ -106,6 +106,8 @@ types, no type-bound procedures.
      logical, dimension(:,:), allocatable :: ghost_flag
      complex(default), dimension(:), allocatable :: color_factors
      integer, dimension(:,:), allocatable :: cf_index
+     integer, dimension(:), allocatable :: eqv_flv_index
+     integer, dimension(:), allocatable :: eqv_hel_index
   contains
   <<Process Constants: process constants: TBP>>
   end type process_constants_t

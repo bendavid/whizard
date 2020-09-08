@@ -1417,7 +1417,7 @@ table from the hard matrix element data.
   end subroutine isolated_state_setup_square_trace
 
 @ %def isolated_state_setup_square_trace
-@ Setup an identity-evaluator for the trace. This implies that [[me]]
+@ Set up an identity-evaluator for the trace. This implies that [[me]]
 is considered to be a squared amplitude, as for example for BLHA matrix
 elements.
 <<Parton states: isolated state: TBP>>=
@@ -1447,7 +1447,7 @@ elements.
   end subroutine isolated_state_setup_identity_trace
 
 @ %def isolated_state_setup_identity_trace
-@ Setup the evaluator for the transition matrix, exclusive in
+@ Set up the evaluator for the transition matrix, exclusive in
 helicities where this is requested.
 
 For all unstable final-state particles we keep polarization according to the
@@ -1554,7 +1554,7 @@ Helicity handling: see above.
 @ %def isolated_state_setup_square_flows
 @
 \subsection{Evaluator initialization: connected state}
-Setup a trace evaluator as a product of two evaluators (incoming state,
+Set up a trace evaluator as a product of two evaluators (incoming state,
 effective interaction).  In the result, all quantum numbers are summed over.
 
 If the optional [[int]] interaction is provided, use this for the
@@ -1626,7 +1626,7 @@ we have to not consider [[sub]] as a quantum number.
   end subroutine connected_state_setup_connected_trace
 
 @ %def connected_state_setup_connected_trace
-@ Setup a matrix evaluator as a product of two evaluators (incoming
+@ Set up a matrix evaluator as a product of two evaluators (incoming
 state, effective interation).  In the intermediate state, color and
 helicity is summed over.  In the final state, we keep the quantum
 numbers which are present in the original evaluators.
@@ -1656,7 +1656,7 @@ numbers which are present in the original evaluators.
   end subroutine connected_state_setup_connected_matrix
 
 @ %def connected_state_setup_connected_matrix
-@ Setup a matrix evaluator as a product of two evaluators (incoming
+@ Set up a matrix evaluator as a product of two evaluators (incoming
 state, effective interation).  In the intermediate state, only
 helicity is summed over.  In the final state, we keep the quantum
 numbers which are present in the original evaluators.
@@ -3895,32 +3895,118 @@ in a given position in the particle string coincide.
   procedure :: check_masses => process_check_masses
 <<Process: procedures>>=
   subroutine process_check_masses (process)
-       class(process_t), intent(in) :: process
-       type(flavor_t), dimension(:), allocatable :: flv
-       real(default), dimension(:), allocatable :: mass
-       integer :: i, j
-       integer :: i_component
-       class(prc_core_t), pointer :: core
-       do i = 1, process%get_n_terms ()
-          i_component = process%term(i)%i_component
-          if (.not. process%component(i_component)%active)  cycle
-          core => process%get_core_term (i)
-          associate (data => core%data)
-            allocate (flv (data%n_flv), mass (data%n_flv))
-            do j = 1, data%n_in + data%n_out
-               call flv%init (data%flv_state(j,:), process%config%model)
-               mass = flv%get_mass ()
-               if (any (.not. nearly_equal(mass, mass(1)))) then
-                  call msg_fatal ("Process '" // char (process%meta%id) // "': " &
-                       // "mass values in flavor combination do not coincide. ")
-               end if
-            end do
-            deallocate (flv, mass)
-          end associate
-       end do
-   end subroutine process_check_masses
+    class(process_t), intent(in) :: process
+    type(flavor_t), dimension(:), allocatable :: flv
+    real(default), dimension(:), allocatable :: mass
+    integer :: i, j
+    integer :: i_component
+    class(prc_core_t), pointer :: core
+    do i = 1, process%get_n_terms ()
+       i_component = process%term(i)%i_component
+       if (.not. process%component(i_component)%active)  cycle
+       core => process%get_core_term (i)
+       associate (data => core%data)
+         allocate (flv (data%n_flv), mass (data%n_flv))
+         do j = 1, data%n_in + data%n_out
+            call flv%init (data%flv_state(j,:), process%config%model)
+            mass = flv%get_mass ()
+            if (any (.not. nearly_equal(mass, mass(1)))) then
+               call msg_fatal ("Process '" // char (process%meta%id) // "': " &
+                    // "mass values in flavor combination do not coincide. ")
+            end if
+         end do
+         deallocate (flv, mass)
+       end associate
+    end do
+  end subroutine process_check_masses
 
 @ %def process_check_masses
+@ Set up index mapping for [[region_data]] for singular regions equivalent w.r.t.
+their amplitudes. Has to be called after [[region_data]] AND the [[core]] are fully
+set up. For processes with structure function, subprocesses which lead to the same
+amplitude for the hard interaction can differ if structure functions are applied.
+In this case we remap flavor structures to themselves if the eqvivalent hard interaction
+flavor structure has no identical initial state.
+<<Process: process: TBP>>=
+  procedure :: optimize_nlo_singular_regions => process_optimize_nlo_singular_regions
+<<Process: procedures>>=
+  subroutine process_optimize_nlo_singular_regions (process)
+    class(process_t), intent(inout) :: process
+    class(prc_core_t), pointer :: core, core_sub
+    integer, dimension(:), allocatable :: eqv_flv_index_born
+    integer, dimension(:), allocatable :: eqv_flv_index_real
+    integer, dimension(:,:), allocatable :: flv_born, flv_real
+    integer :: i_flv, i_flv2, n_in, i
+    integer :: i_component, i_core, i_core_sub
+    logical :: fetched_born, fetched_real
+    logical :: optimize
+    fetched_born = .false.; fetched_real = .false.
+    select type (pcm => process%pcm)
+    type is (pcm_nlo_t)
+       optimize = pcm%settings%reuse_amplitudes_fks
+       if (optimize) then
+          do i_component = 1, pcm%n_components
+             i_core = pcm%get_i_core(i_component)
+             core => process%get_core_ptr (i_core)
+             if (.not. core%data_known) cycle
+             associate (data => core%data)
+                if (pcm%nlo_type_core(i_core) == NLO_REAL .and. &
+                     .not. pcm%component_type(i_component) == COMP_SUB) then
+                   if (allocated (core%data%eqv_flv_index)) then
+                      eqv_flv_index_real = core%get_equivalent_flv_index ()
+                      fetched_real = .true.
+                   end if
+                   i_core_sub = pcm%get_i_core (pcm%i_sub)
+                   core_sub => process%get_core_ptr (i_core_sub)
+                   if (allocated (core_sub%data%eqv_flv_index)) then
+                      eqv_flv_index_born = core_sub%get_equivalent_flv_index ()
+                      fetched_born = .true.
+                   end if
+                   if (fetched_born .and. fetched_real) exit
+                end if
+             end associate
+          end do
+          if (.not. fetched_born .or. .not. fetched_real) then
+             call msg_warning('Failed to fetch flavor equivalence indices. &
+                  &Disabling singular region optimization')
+             optimize = .false.
+             eqv_flv_index_born = [(i, i = 1, pcm%region_data%n_flv_born)]
+             eqv_flv_index_real = [(i, i = 1, pcm%region_data%n_flv_real)]
+          end if
+          if (optimize .and. pcm%has_pdfs) then
+             flv_born = pcm%region_data%get_flv_states_born ()
+             flv_real = pcm%region_data%get_flv_states_real ()
+             n_in = pcm%region_data%n_in
+             do i_flv = 1, size (eqv_flv_index_born)
+                do i_flv2 = 1, i_flv
+                   if (any (flv_born(1:n_in, eqv_flv_index_born(i_flv)) /= &
+                        flv_born(1:n_in, i_flv))) then
+                      eqv_flv_index_born(i_flv) = i_flv
+                      exit
+                   end if
+                end do
+             end do
+             do i_flv = 1, size (eqv_flv_index_real)
+                do i_flv2 = 1, i_flv
+                   if (any (flv_real(1:n_in, eqv_flv_index_real(i_flv)) /= &
+                        flv_real(1:n_in, i_flv))) then
+                      eqv_flv_index_real(i_flv) = i_flv
+                      exit
+                   end if
+                end do
+             end do
+          end if
+       else
+          eqv_flv_index_born = [(i, i = 1, pcm%region_data%n_flv_born)]
+          eqv_flv_index_real = [(i, i = 1, pcm%region_data%n_flv_real)]
+       end if
+       pcm%region_data%eqv_flv_index_born = eqv_flv_index_born
+       pcm%region_data%eqv_flv_index_real = eqv_flv_index_real
+       call pcm%region_data%find_eqv_regions (optimize)
+    end select
+  end subroutine process_optimize_nlo_singular_regions
+
+@ %def process_optimize_nlo_singular_regions
 @ For some structure functions we need to get the list of initial
 state flavors.  This is a two-dimensional array.  The first index is
 the beam index, the second index is the component index.  Each array
@@ -9543,6 +9629,7 @@ external OLP (Born only, this case) for getting its matrix elements.
                  (core%data%flv_state, &
                  var_list, pcm%os_data, libname, model, i_core, .false.)
          end if
+         call core%set_equivalent_flv_hel_indices ()
        end associate
     end if
   end subroutine pcm_default_prepare_any_external_code
@@ -9998,6 +10085,7 @@ record.  We use the Born and real flavor-state tables as appropriate.
                  (core%data%flv_state, &
                  var_list, pcm%os_data, libname, model, i_core, .true.)
          end if
+         call core%set_equivalent_flv_hel_indices ()
        end associate
     end if
   end subroutine pcm_nlo_prepare_any_external_code
@@ -12171,7 +12259,7 @@ relevant for a NLO algorithm.
   end subroutine term_instance_init
 
 @ %def term_instance_init
-@ Setup index mapping from state matrix to index pair [[i_flv]], [[i_sub]].
+@ Set up index mapping from state matrix to index pair [[i_flv]], [[i_sub]].
 <<Instances: public>>=
   public :: setup_interaction_qn_index
 <<Instances: procedures>>=
@@ -12193,7 +12281,7 @@ relevant for a NLO algorithm.
   end subroutine setup_interaction_qn_index
 
 @ %def setup_interaction_qn_index
-@ Setup beam polarisation quantum numbers, if beam polarisation is required.
+@ Set up beam polarisation quantum numbers, if beam polarisation is required.
 
 We retrieve the full helicity information from [[term%config%data]] and reduce
 the information only to the inital state. Afterwards, we uniquify the initial
@@ -12428,7 +12516,7 @@ allocated explicitly.
   end subroutine term_instance_setup_fks_kinematics
 
 @ %def term_instance_setup_fks_kinematics
-@ Setup seed kinematics, starting from the MC parameter set given as
+@ Set up seed kinematics, starting from the MC parameter set given as
 argument.  As a result, the [[k_seed]] kinematics object is evaluated
 (except for the structure-function matrix-element evaluation, which we
 postpone until we know the factorization scale), and we have a valid
@@ -13057,7 +13145,7 @@ it is only available after the [[fks_regions]] have been created.
   subroutine term_instance_evaluate_spin_correlations (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
-    integer :: i_flv, i_hel, i_sub, i_emitter, emitter
+    integer :: i_flv, i_sub, i_emitter, emitter
     integer :: n_flv, n_sub_color, n_sub_spin, n_offset,i,j
     real(default), dimension(1:3, 1:3) :: sqme_spin_c
     real(default), dimension(:), allocatable :: sqme_spin_c_all
@@ -13180,71 +13268,71 @@ it is only available after the [[fks_regions]] have been created.
   procedure :: evaluate_sqme_virt => term_instance_evaluate_sqme_virt
 <<Instances: procedures>>=
   subroutine term_instance_evaluate_sqme_virt (term, alpha_s, alpha_qed)
-     class(term_instance_t), intent(inout) :: term
-     real(default), intent(in) :: alpha_s, alpha_qed
-     real(default) :: alpha_coupling
-     type(vector4_t), dimension(:), allocatable :: p_born
-     real(default), dimension(:), allocatable :: sqme_virt
-     integer :: i_flv
-     if (term%nlo_type /= NLO_VIRTUAL) call msg_fatal &
-        ("Trying to evaluate virtual matrix element with unsuited term_instance.")
-     if (debug2_active (D_VIRTUAL)) then
-        call msg_debug2 (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
-        print *, 'ren_scale: ', term%ren_scale
-        print *, 'fac_scale: ', term%fac_scale
-        print *, 'Ellis-Sexton scale:', term%es_scale
-     end if
-     select type (config => term%pcm_instance%config)
-     type is (pcm_nlo_t)
-        select type (pcm_instance => term%pcm_instance)
-        type is (pcm_instance_nlo_t)
-           select case (char (config%region_data%regions(1)%nlo_correction_type))
-           case ("QCD")
-             alpha_coupling = alpha_s
-             if (debug2_active (D_VIRTUAL)) print *, 'alpha_s: ', alpha_coupling
-           case ("EW")
-              alpha_coupling = alpha_qed
-              if (debug2_active (D_VIRTUAL)) print *, 'alpha_qed: ', alpha_coupling
-           end select
-           allocate (p_born (config%region_data%n_legs_born))
-           if (config%settings%factorization_mode == FACTORIZATION_THRESHOLD) then
-              p_born = pcm_instance%real_kinematics%p_born_onshell%get_momenta(1)
-           else
-              p_born = term%int_hard%get_momenta ()
-           end if
-           call pcm_instance%set_momenta_and_scales_virtual &
-                (p_born, term%ren_scale, term%fac_scale, term%es_scale)
-           select type (pcm_instance => term%pcm_instance)
-           type is (pcm_instance_nlo_t)
-              associate (virtual => pcm_instance%virtual)
-                do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
-                   virtual%sqme_born(i_flv) = &
-                        real (term%connected%trace%get_matrix_element ( &
-                        term%connected%trace%get_qn_index (i_flv, i_sub = 0)))
-                   virtual%sqme_virt_fin(i_flv) = &
-                        real (term%connected%trace%get_matrix_element ( &
-                        term%connected%trace%get_qn_index (i_flv, i_sub = 1)))
-                end do
-              end associate
-           end select
-           call pcm_instance%compute_sqme_virt (term%p_hard, alpha_coupling, &
-                term%connected%has_matrix, sqme_virt)
-           call term%connected%trace%set_only_matrix_element &
-                (1, cmplx (sum(sqme_virt), 0, default))
-           if (term%connected%has_matrix) &
-                call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
-                     config%get_qn (.true.), &
-                     remove_duplicates_from_int_array ( &
-                     config%region_data%get_flavor_indices (.true.)), &
-                     term%connected%matrix)
-           if (term%connected%has_flows) &
-                call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
-                     config%get_qn (.true.), &
-                     remove_duplicates_from_int_array ( &
-                     config%region_data%get_flavor_indices (.true.)), &
-                     term%connected%flows)
-        end select
-     end select
+    class(term_instance_t), intent(inout) :: term
+    real(default), intent(in) :: alpha_s, alpha_qed
+    real(default) :: alpha_coupling
+    type(vector4_t), dimension(:), allocatable :: p_born
+    real(default), dimension(:), allocatable :: sqme_virt
+    integer :: i_flv
+    if (term%nlo_type /= NLO_VIRTUAL) call msg_fatal &
+       ("Trying to evaluate virtual matrix element with unsuited term_instance.")
+    if (debug2_active (D_VIRTUAL)) then
+       call msg_debug2 (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
+       print *, 'ren_scale: ', term%ren_scale
+       print *, 'fac_scale: ', term%fac_scale
+       print *, 'Ellis-Sexton scale:', term%es_scale
+    end if
+    select type (config => term%pcm_instance%config)
+    type is (pcm_nlo_t)
+       select type (pcm_instance => term%pcm_instance)
+       type is (pcm_instance_nlo_t)
+          select case (char (config%region_data%regions(1)%nlo_correction_type))
+          case ("QCD")
+            alpha_coupling = alpha_s
+            if (debug2_active (D_VIRTUAL)) print *, 'alpha_s: ', alpha_coupling
+          case ("EW")
+             alpha_coupling = alpha_qed
+             if (debug2_active (D_VIRTUAL)) print *, 'alpha_qed: ', alpha_coupling
+          end select
+          allocate (p_born (config%region_data%n_legs_born))
+          if (config%settings%factorization_mode == FACTORIZATION_THRESHOLD) then
+             p_born = pcm_instance%real_kinematics%p_born_onshell%get_momenta(1)
+          else
+             p_born = term%int_hard%get_momenta ()
+          end if
+          call pcm_instance%set_momenta_and_scales_virtual &
+               (p_born, term%ren_scale, term%fac_scale, term%es_scale)
+          select type (pcm_instance => term%pcm_instance)
+          type is (pcm_instance_nlo_t)
+             associate (virtual => pcm_instance%virtual)
+               do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
+                  virtual%sqme_born(i_flv) = &
+                       real (term%connected%trace%get_matrix_element ( &
+                       term%connected%trace%get_qn_index (i_flv, i_sub = 0)))
+                  virtual%sqme_virt_fin(i_flv) = &
+                       real (term%connected%trace%get_matrix_element ( &
+                       term%connected%trace%get_qn_index (i_flv, i_sub = 1)))
+               end do
+             end associate
+          end select
+          call pcm_instance%compute_sqme_virt (term%p_hard, alpha_coupling, &
+               term%connected%has_matrix, sqme_virt)
+          call term%connected%trace%set_only_matrix_element &
+               (1, cmplx (sum(sqme_virt), 0, default))
+          if (term%connected%has_matrix) &
+               call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
+                    config%get_qn (.true.), &
+                    remove_duplicates_from_int_array ( &
+                    config%region_data%get_flavor_indices (.true.)), &
+                    term%connected%matrix)
+          if (term%connected%has_flows) &
+               call refill_evaluator (cmplx (sqme_virt * term%weight, 0, default), &
+                    config%get_qn (.true.), &
+                    remove_duplicates_from_int_array ( &
+                    config%region_data%get_flavor_indices (.true.)), &
+                    term%connected%flows)
+       end select
+    end select
   end subroutine term_instance_evaluate_sqme_virt
 
 @ %def term_instance_evaluate_sqme_virt
@@ -13446,7 +13534,7 @@ method may modify the [[core_state]] workspace object.
     class(prc_core_t), intent(in), pointer :: core
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction")
-    if (term%k_term%only_cm_frame .and. (.not. term%k_term%lab_is_cm())) then 
+    if (term%k_term%only_cm_frame .and. (.not. term%k_term%lab_is_cm())) then
          term%p_hard = term%get_boost_to_cms () * term%int_hard%get_momenta ()
     else
          term%p_hard = term%int_hard%get_momenta ()
@@ -13577,7 +13665,13 @@ from times before the method [[term_instance_set_sf_factors]] and these entries 
 not used anymore. However, eliminating these entries involves deeper changes in how
 the connection tables for the evaluator product are set up and should therefore be
 part of a larger refactoring of the interactions \& state matrices.
-The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elements.
+The next $n_{\text{born}}\times n_{sub_color}$ are color-correlated Born matrix elements,
+with then again the next $n_{\text{born}}\times n_{emitters}\times n_{sub_spin}$ being
+spin-correlated Born matrix elements.
+
+If two or more flavor structures would produce the same amplitude we only compute
+one and use the [[eqv_index]] determined by the [[prc_core]] and just copy the result
+to improve performance.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_interaction_userdef_tree &
      => term_instance_evaluate_interaction_userdef_tree
@@ -13590,9 +13684,11 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     real(default), dimension(:), allocatable :: sqme_spin_c
     real(default), dimension(6) :: sqme_spin_c_tmp
     integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off
-    integer :: i_flv, i_hel, i_sub, i_color_c, i_spin_c, i_emitter
-    integer :: emitter
+    integer :: i_flv, i_hel, i_sub, i_color_c, i_color_c_eqv, i_spin_c, i_spin_c_eqv
+    integer :: i_flv_eqv, i_hel_eqv
+    integer :: emitter, i_emitter
     logical :: bad_point, bp
+    logical, dimension(:,:), allocatable :: eqv_me_evaluated
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_tree")
     allocate (sqme_color_c (blha_result_array_size &
@@ -13601,76 +13697,117 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     n_hel = term%int_hard%get_qn_index_n_hel ()
     n_sub_color = term%get_n_sub_color ()
     n_sub_spin = term%get_n_sub_spin ()
+    allocate (eqv_me_evaluated(n_flv,n_hel))
+    eqv_me_evaluated = .false.
     do i_flv = 1, n_flv
        do i_hel = 1, n_hel
-          select type (core)
-          class is (prc_external_t)
-             call core%update_alpha_s (term%core_state, term%ren_scale)
-             call core%compute_sqme (i_flv, i_hel, term%p_hard, term%ren_scale, &
-                  sqme, bad_point)
-             call term%pcm_instance%set_bad_point (bad_point)
-             associate (i_int => term%int_hard%get_qn_index (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
-               term%amp(i_int) = cmplx (sqme, 0, default)
-             end associate
-          end select
-          n_pdf_off = 0
-          if (term%pcm_instance%config%has_pdfs .and. &
-               (term%is_subtraction () .or. term%nlo_type == NLO_DGLAP)) then
-             n_pdf_off = n_pdf_off + n_beams_rescaled
-             do i_sub = 1, n_pdf_off
-                term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub)) = &
-                     term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub = 0))
-             end do
-          end if
-          if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
-               term%nlo_type == NLO_MISMATCH) then
-             sqme_color_c = zero
+          i_flv_eqv = core%data%eqv_flv_index(i_flv)
+          i_hel_eqv = core%data%eqv_hel_index(i_hel)
+          if (.not. eqv_me_evaluated(i_flv_eqv, i_hel_eqv)) then
              select type (core)
-             class is (prc_blha_t)
-                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                     term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+             class is (prc_external_t)
+                call core%update_alpha_s (term%core_state, term%ren_scale)
+                call core%compute_sqme (i_flv, i_hel, term%p_hard, term%ren_scale, &
+                     sqme, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
-             class is (prc_recola_t)
-                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                     term%p_hard, term%ren_scale, sqme_color_c, bad_point)
-                call term%pcm_instance%set_bad_point (bad_point)
+                associate (i_int => term%int_hard%get_qn_index &
+                        (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
+                   term%amp(i_int) = cmplx (sqme, 0, default)
+                end associate
              end select
-             do i_sub = 1, n_sub_color
-                i_color_c = term%int_hard%get_qn_index &
-                     (i_flv, i_hel, i_sub + n_pdf_off)
-                term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
-             end do
-             if (n_sub_spin > 0) then
-                bad_point = .false.
-                allocate (sqme_spin_c(0))
+             n_pdf_off = 0
+             if (term%pcm_instance%config%has_pdfs .and. &
+                  (term%is_subtraction () .or. term%nlo_type == NLO_DGLAP)) then
+                n_pdf_off = n_pdf_off + n_beams_rescaled
+                do i_sub = 1, n_pdf_off
+                   term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub)) = &
+                        term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub = 0))
+                end do
+             end if
+             if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
+                  term%nlo_type == NLO_MISMATCH) then
+                sqme_color_c = zero
                 select type (core)
-                type is (prc_openloops_t)
-                   select type (config => term%pcm_instance%config)
-                   type is (pcm_nlo_t)
-                      do i_emitter = 1, config%region_data%n_emitters
-                         emitter = config%region_data%emitters(i_emitter)
-                         if (emitter > 0) then
-                            call core%compute_sqme_spin_c &
-                                 (i_flv, &
-                                 i_hel, &
-                                 emitter, &
-                                 term%p_hard, &
-                                 term%ren_scale, &
-                                 sqme_spin_c_tmp, &
-                                 bp)
-                            sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
-                            bad_point = bad_point .or. bp
-                         end if
+                class is (prc_blha_t)
+                   call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                        term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                   call term%pcm_instance%set_bad_point (bad_point)
+                class is (prc_recola_t)
+                   call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                        term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                   call term%pcm_instance%set_bad_point (bad_point)
+                end select
+                do i_sub = 1, n_sub_color
+                   i_color_c = term%int_hard%get_qn_index &
+                        (i_flv, i_hel, i_sub + n_pdf_off)
+                   term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
+                end do
+                if (n_sub_spin > 0) then
+                   bad_point = .false.
+                   allocate (sqme_spin_c(0))
+                   select type (core)
+                   type is (prc_openloops_t)
+                      select type (config => term%pcm_instance%config)
+                      type is (pcm_nlo_t)
+                         do i_emitter = 1, config%region_data%n_emitters
+                            emitter = config%region_data%emitters(i_emitter)
+                            if (emitter > 0) then
+                               call core%compute_sqme_spin_c &
+                                    (i_flv, &
+                                    i_hel, &
+                                    emitter, &
+                                    term%p_hard, &
+                                    term%ren_scale, &
+                                    sqme_spin_c_tmp, &
+                                    bp)
+                               sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
+                               bad_point = bad_point .or. bp
+                            end if
+                         end do
+                      end select
+                      do i_sub = 1, n_sub_spin
+                         i_spin_c = term%int_hard%get_qn_index (i_flv, i_hel, &
+                              i_sub + n_pdf_off + n_sub_color)
+                         term%amp(i_spin_c) = cmplx &
+                              (sqme_spin_c(i_sub), 0, default)
                       end do
                    end select
-                   do i_sub = 1, n_sub_spin
-                      i_spin_c = term%int_hard%get_qn_index (i_flv, i_hel, &
-                           i_sub + n_pdf_off + n_sub_color)
-                      term%amp(i_spin_c) = cmplx &
-                           (sqme_spin_c(i_sub), 0, default)
-                   end do
-                end select
-                deallocate (sqme_spin_c)
+                   deallocate (sqme_spin_c)
+                end if
+             end if
+             eqv_me_evaluated(i_flv_eqv, i_hel_eqv) = .true.
+          else
+             associate (i_int => term%int_hard%get_qn_index &
+                     (i_flv = i_flv, i_hel = i_hel, i_sub = 0), &
+                     i_int_eqv => term%int_hard%get_qn_index &
+                     (i_flv = i_flv_eqv, i_hel = i_hel_eqv, i_sub = 0))
+                term%amp(i_int) = term%amp(i_int_eqv)
+             end associate
+             n_pdf_off = 0
+             if (term%pcm_instance%config%has_pdfs .and. &
+                  (term%is_subtraction () .or. term%nlo_type == NLO_DGLAP)) then
+                n_pdf_off = n_pdf_off + n_beams_rescaled
+                do i_sub = 1, n_pdf_off
+                   term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub)) = &
+                        term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub = 0))
+                end do
+             end if
+             if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
+                  term%nlo_type == NLO_MISMATCH) then
+                do i_sub = 1, n_sub_color
+                   i_color_c = term%int_hard%get_qn_index &
+                        (i_flv, i_hel, i_sub + n_pdf_off)
+                   i_color_c_eqv = term%int_hard%get_qn_index &
+                        (i_flv_eqv, i_hel_eqv, i_sub + n_pdf_off)
+                   term%amp(i_color_c) = term%amp(i_color_c_eqv)
+                end do
+                do i_sub = 1, n_sub_spin
+                   i_spin_c = term%int_hard%get_qn_index (i_flv, i_hel, &
+                        i_sub + n_pdf_off + n_sub_color)
+                   i_spin_c_eqv = term%int_hard%get_qn_index (i_flv_eqv, i_hel_eqv, &
+                        i_sub + n_pdf_off + n_sub_color)
+                   term%amp(i_spin_c) = term%amp(i_spin_c_eqv)
+                end do
              end if
           end if
        end do
@@ -13678,7 +13815,16 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
   end subroutine term_instance_evaluate_interaction_userdef_tree
 
 @ %def term_instance_evaluate_interaction_userdef_tree
-@
+@ Same as for [[term_instance_evaluate_interaction_userdef_tree]], but
+for the integrated-subtraction and finite one-loop terms. We only need
+color-correlated Born matrix elements, but an additional entry per
+flavor structure for the finite one-loop contribution. We thus have
+$2+n_{sub_color}$ entries in the [[term%amp]] for each [[i_flv]] and
+[[i_hel]] combination.
+
+If two or more flavor structures would produce the same amplitude we only compute
+one and use the [[eqv_index]] determined by the [[prc_core]] and just copy the result
+to improve performance.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_interaction_userdef_loop &
      => term_instance_evaluate_interaction_userdef_loop
@@ -13687,10 +13833,12 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in) :: core
     integer :: n_hel, n_sub, n_flv
-    integer :: i, i_flv, i_hel, i_sub, i_virt, i_color_c
+    integer :: i, i_flv, i_hel, i_sub, i_virt, i_color_c, i_color_c_eqv
+    integer :: i_flv_eqv, i_hel_eqv
     real(default), dimension(4) :: sqme_virt
     real(default), dimension(:), allocatable :: sqme_color_c
     logical :: bad_point
+    logical, dimension(:,:), allocatable :: eqv_me_evaluated
     if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_loop")
     allocate (sqme_color_c (blha_result_array_size &
@@ -13698,50 +13846,75 @@ The next $n_{\text{born}}\times n_{sub}$ are color-correlated born matrix elemen
     n_flv = term%int_hard%get_qn_index_n_flv ()
     n_hel = term%int_hard%get_qn_index_n_hel ()
     n_sub = term%int_hard%get_qn_index_n_sub ()
+    allocate (eqv_me_evaluated(n_flv,n_hel))
+    eqv_me_evaluated = .false.
     i_virt = 1
     do i_flv = 1, n_flv
        do i_hel = 1, n_hel
-          select type (core)
-          class is (prc_external_t)
-             call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
-                  term%ren_scale, term%es_scale, &
-                  term%pcm_instance%config%blha_defaults%loop_method, &
-                  sqme_virt, bad_point)
-             call term%pcm_instance%set_bad_point (bad_point)
-          end select
-          associate (i_born => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = 0), &
-               i_loop => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = i_virt))
-            term%amp(i_loop) = cmplx (sqme_virt(3), 0, default)
-            term%amp(i_born) = cmplx (sqme_virt(4), 0, default)
-          end associate
-          select type (config => term%pcm_instance%config)
-          type is (pcm_nlo_t)
+          i_flv_eqv = core%data%eqv_flv_index(i_flv)
+          i_hel_eqv = core%data%eqv_hel_index(i_hel)
+          if (.not. eqv_me_evaluated(i_flv_eqv, i_hel_eqv)) then
              select type (core)
-             class is (prc_blha_t)
-                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                     term%p_hard, term%ren_scale, &
-                     sqme_color_c, bad_point)
+             class is (prc_external_t)
+                call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
+                     term%ren_scale, term%es_scale, &
+                     term%pcm_instance%config%blha_defaults%loop_method, &
+                     sqme_virt, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
-                do i_sub = 1 + i_virt, n_sub
-                   i_color_c = term%int_hard%get_qn_index &
-                        (i_flv, i_hel = i_hel, i_sub = i_sub)
-                   ! Index shift: i_sub - i_virt
-                   term%amp(i_color_c) = &
-                        cmplx (sqme_color_c(i_sub - i_virt), 0, default)
-                end do
-             type is (prc_recola_t)
-                call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                     term%p_hard, term%ren_scale, sqme_color_c, bad_point)
-                call term%pcm_instance%set_bad_point (bad_point)
-                do i_sub = 1 + i_virt, n_sub
-                   i_color_c = term%int_hard%get_qn_index &
-                        (i_flv, i_hel = i_hel, i_sub = i_sub)
-                   ! Index shift: i_sub - i_virt
-                   term%amp(i_color_c) = &
-                        cmplx (sqme_color_c(i_sub - i_virt), 0, default)
-                end do
              end select
-          end select
+             associate (i_born => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = 0), &
+                     i_loop => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = i_virt))
+                term%amp(i_loop) = cmplx (sqme_virt(3), 0, default)
+                term%amp(i_born) = cmplx (sqme_virt(4), 0, default)
+             end associate
+             select type (config => term%pcm_instance%config)
+             type is (pcm_nlo_t)
+                select type (core)
+                class is (prc_blha_t)
+                   call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                        term%p_hard, term%ren_scale, &
+                        sqme_color_c, bad_point)
+                   call term%pcm_instance%set_bad_point (bad_point)
+                   do i_sub = 1 + i_virt, n_sub
+                      i_color_c = term%int_hard%get_qn_index &
+                           (i_flv, i_hel = i_hel, i_sub = i_sub)
+                      ! Index shift: i_sub - i_virt
+                      term%amp(i_color_c) = &
+                           cmplx (sqme_color_c(i_sub - i_virt), 0, default)
+                   end do
+                type is (prc_recola_t)
+                   call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                        term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                   call term%pcm_instance%set_bad_point (bad_point)
+                   do i_sub = 1 + i_virt, n_sub
+                      i_color_c = term%int_hard%get_qn_index &
+                           (i_flv, i_hel = i_hel, i_sub = i_sub)
+                      ! Index shift: i_sub - i_virt
+                      term%amp(i_color_c) = &
+                           cmplx (sqme_color_c(i_sub - i_virt), 0, default)
+                   end do
+                end select
+             end select
+             eqv_me_evaluated(i_flv_eqv, i_hel_eqv) = .true.
+          else
+             associate (i_born => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = 0), &
+                     i_loop => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = i_virt), &
+                     i_born_eqv => term%int_hard%get_qn_index &
+                     (i_flv_eqv, i_hel = i_hel_eqv, i_sub = 0), &
+                     i_loop_eqv => term%int_hard%get_qn_index &
+                     (i_flv_eqv, i_hel = i_hel_eqv, i_sub = 1))
+                term%amp(i_loop) = term%amp(i_loop_eqv)
+                term%amp(i_born) = term%amp(i_born_eqv)
+             end associate
+             do i_sub = 1 + i_virt, n_sub
+                i_color_c = term%int_hard%get_qn_index &
+                     (i_flv, i_hel = i_hel, i_sub = i_sub)
+                i_color_c_eqv = term%int_hard%get_qn_index &
+                     (i_flv_eqv, i_hel = i_hel_eqv, i_sub = i_sub)
+                ! Index shift: i_sub - i_virt
+                term%amp(i_color_c) = term%amp(i_color_c_eqv)
+             end do
+          end if
        end do
     end do
   end subroutine term_instance_evaluate_interaction_userdef_loop

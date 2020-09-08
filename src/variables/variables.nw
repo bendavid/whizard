@@ -6173,6 +6173,14 @@ procedure with type [[V_NONE]].
          'finite part of the real subtraction terms in an NLO calculation, ' // &
          'e.g. in $e^+e^- \to ' // &
          't\bar tj$. (cf. also \ttt{?nlo\_use\_real\_partition})'))
+    call var_list%append_log (var_str ("?nlo_reuse_amplitudes_fks"), &
+         .false., intrinsic = .true., &
+         description=var_str ('Only compute real and virtual amplitudes for' // &
+         'subprocesses that give a different amplitude and reuse the result ' // &
+         'for equivalent subprocesses.' // &
+         'Might give a speed-up for some processes. Might' // &
+         'break others, especially in cases where resonance histories are needed. ' // &
+         'Experimental feature, use at your own risk!'))
   end subroutine var_list_set_nlo_defaults
 
 @ %def var_list_set_nlo_defaults

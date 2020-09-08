@@ -5816,6 +5816,7 @@ local changes to currently inactive models.
 
       call process%setup_terms (with_beams = intg%has_beam_pol)
       call process%check_masses ()
+      call process%optimize_nlo_singular_regions ()
 
       if (verb) then
          call process%write (screen = .true.)

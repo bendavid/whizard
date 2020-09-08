@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-09-08
+	Enable Openloops matrix element equivalences for optimization
+
 2020-09-02
 	Compatibility fix for PYTHIA v8.301+ interface
 

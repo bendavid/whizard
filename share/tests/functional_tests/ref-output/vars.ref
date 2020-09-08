@@ -238,6 +238,7 @@ seed = 2
 ?nlo_use_born_scale = false
 ?nlo_cut_all_real_sqmes = false
 ?nlo_use_real_partition = false
+?nlo_reuse_amplitudes_fks = false
 ?rebuild_library = true
 ?recompile_library = false
 ?rebuild_phase_space = true

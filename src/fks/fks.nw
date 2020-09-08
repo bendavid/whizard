@@ -804,6 +804,7 @@ emitter-radiation pairs. This is coped with using the linked list
     logical, dimension(:), allocatable :: colored
     real(default), dimension(:), allocatable :: charge
     real(default) :: prt_symm_fs = 1._default
+    integer :: eqv_index = 0
   contains
   <<fks regions: flv structure: TBP>>
   end type flv_structure_t
@@ -1539,6 +1540,7 @@ also be supplied by a symmetry factor, explained below.
     integer, dimension(:), allocatable :: i_reg_to_i_con
     logical :: pseudo_isr = .false.
     logical :: sc_required = .false.
+    integer :: eqv_index = 0
   contains
   <<fks regions: singular region: TBP>>
   end type singular_region_t
@@ -1815,8 +1817,35 @@ there is only a soft singularity if the radiated parton becomes soft.
        call msg_bug ("singular_region_assign: Trying to copy a singular region without allocated ftuples!")
     end if
   end subroutine singular_region_assign
-
 @ %def singular_region_assign
+@ Two singular regions match if they would produce the same amplitude.
+For this we have to check that their real and underlying Born flavor
+structures are equivalent, as determined by the [[prc_core]]. However,
+since there are more aspects of a singular region that make it unique,
+we have to check other attributes as well.
+<<fks regions: interfaces>>=
+  interface operator(.match.)
+     module procedure singular_region_match
+  end interface
+
+<<fks regions: procedures>>=
+  function singular_region_match (reg1, reg2) result (match)
+    type(singular_region_t), intent(in) :: reg1, reg2
+    logical :: match
+    match = all ([reg1%flst_real%eqv_index, reg2%flst_real%eqv_index] > 0)
+    match = match .and. (reg1%flst_real%eqv_index == reg2%flst_real%eqv_index)
+    match = match .and. (reg1%flst_uborn%eqv_index == reg2%flst_uborn%eqv_index)
+    match = match .and. (reg1%mult == reg2%mult)
+    match = match .and. (reg1%emitter == reg2%emitter)
+    match = match .and. (reg1%nregions == reg2%nregions)
+    match = match .and. (reg1%double_fsr .eqv. reg2%double_fsr)
+    match = match .and. (reg1%soft_divergence .eqv. reg2%soft_divergence)
+    match = match .and. (reg1%coll_divergence .eqv. reg2%coll_divergence)
+    match = match .and. (char (reg1%nlo_correction_type) == char (reg2%nlo_correction_type))
+    if (match) match = match .and. (all (reg1%ftuples == reg2%ftuples))
+  end function singular_region_match
+
+@ %def singular_region_match
 @
 <<fks regions: types>>=
   type :: resonance_mapping_t
@@ -2102,6 +2131,8 @@ $\sum_\alpha S_\alpha = 1$.
     type(singular_region_t), dimension(:), allocatable :: regions
     type(flv_structure_t), dimension(:), allocatable :: flv_born
     type(flv_structure_t), dimension(:), allocatable :: flv_real
+    integer, dimension(:), allocatable :: eqv_flv_index_born
+    integer, dimension(:), allocatable :: eqv_flv_index_real
     integer, dimension(:), allocatable :: emitters
     integer :: n_regions = 0
     integer :: n_emitters = 0
@@ -2899,6 +2930,44 @@ are therefore equivalent.
   end subroutine region_data_find_regions
 
 @ %def region_data_find_regions
+@ We transfer the mapping of flavor structures that lead to the same amplitude
+(with structure functions already accounted for!) to the Born and real
+[[flv_structure]] of each [[singular_region]].
+We then use this information, besides other data of each [[singular_region]],
+to determine which produce the same amplitude for the non-subtracted real
+and real subtraction terms and set up the equivalence index mapping for
+each region.
+<<fks regions: reg data: TBP>>=
+  procedure :: find_eqv_regions => region_data_find_eqv_regions
+<<fks regions: procedures>>=
+  subroutine region_data_find_eqv_regions (reg_data, optimize)
+    class(region_data_t), intent(inout) :: reg_data
+    logical, intent(in) :: optimize
+    integer :: n_reg, alr1, alr2
+    n_reg = reg_data%n_regions
+    if (optimize) then
+       do alr1 = 1, n_reg
+          reg_data%regions(alr1)%flst_uborn%eqv_index = &
+               reg_data%eqv_flv_index_born(reg_data%regions(alr1)%uborn_index)
+          reg_data%regions(alr1)%flst_real%eqv_index = &
+               reg_data%eqv_flv_index_real(reg_data%regions(alr1)%real_index)
+       end do
+       do alr1 = 1, n_reg
+          do alr2 = 1, alr1
+             if (reg_data%regions(alr2) .match. reg_data%regions(alr1)) then
+                reg_data%regions(alr1)%eqv_index = alr2
+                exit
+             end if
+          end do
+       end do
+    else
+       do alr1 = 1, n_reg
+          reg_data%regions(alr1)%eqv_index = alr1
+       end do
+    end if
+  end subroutine region_data_find_eqv_regions
+
+@ %def region_data_find_eqv_regions
 @ Creates singular regions according to table \ref{table:singular
 regions}. It scans all regions in table \ref{table:ftuples and
 flavors} and records the real flavor structures. If they are
@@ -5898,6 +5967,10 @@ and \ref{eqn:virt_Q_fsr}.
 The expressions for $\mathcal{I}_{ij}$ can be found in equations
 (\ref{I_00}), (\ref{I_mm}), (\ref{I_0m}), depending on whether the
 particles involved in the radiation process are massive or massless.
+
+If two or more flavor structures would produce the same amplitude we only compute
+one and use the [[eqv_index]] to copy the result to the others (if [[reuse_amplitudes_fks]]
+is true).
 <<virtual: virtual: TBP>>=
   procedure :: evaluate => virtual_evaluate
 <<virtual: procedures>>=
@@ -5909,10 +5982,17 @@ particles involved in the radiation process are massive or massless.
     type(vector4_t), intent(in), dimension(:)  :: p_born
     logical, intent(in) :: separate_uborns
     real(default), dimension(:), intent(inout) :: sqme_virt
+    integer, dimension(:), allocatable :: eqv_flv_index
+    real(default), dimension(:), allocatable :: sqme_virt_arr
     real(default) :: s, s_o_Q2
     real(default), dimension(reg_data%n_flv_born) :: QB, BI
     integer :: i_flv, ii_flv
+    logical, dimension(:), allocatable :: flv_evaluated
     QB = zero; BI = zero
+    allocate (flv_evaluated(reg_data%n_flv_born))
+    allocate (sqme_virt_arr(reg_data%n_flv_born))
+    sqme_virt_arr = zero
+    flv_evaluated = .false.
     if (virt%bad_point) return
     if (debug2_active (D_VIRTUAL)) then
        print *, 'Compute virtual component using alpha = ', alpha_coupling
@@ -5923,35 +6003,43 @@ particles involved in the radiation process are massive or massless.
     if (virt%settings%factorization_mode == FACTORIZATION_THRESHOLD) &
          call set_s_for_threshold ()
     s_o_Q2 = s / virt%es_scale2 * virt%settings%fks_template%xi_cut**2
+    eqv_flv_index = reg_data%eqv_flv_index_born
     do i_flv = 1, reg_data%n_flv_born
-       if (separate_uborns) then
-          ii_flv = i_flv
-       else
-          ii_flv = 1
-       end if
-       if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("OLP")) then
-          !!! A factor of alpha_coupling/twopi is assumed to be included in vfin
-          sqme_virt(ii_flv) = sqme_virt(ii_flv) + virt%sqme_virt_fin(i_flv)
-       end if
-       if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("Subtraction")) then
-          call virt%evaluate_initial_state (i_flv, QB)
-          call virt%compute_collinear_contribution (i_flv, p_born, sqrt(s), reg_data, QB)
-          select case (virt%settings%factorization_mode)
-          case (FACTORIZATION_THRESHOLD)
-             call virt%compute_eikonals_threshold (i_flv, p_born, s_o_Q2, QB, BI)
-          case default
-             call virt%compute_massive_self_eikonals (i_flv, p_born, s_o_Q2, reg_data, QB)
-             call virt%compute_eikonals (i_flv, p_born, s_o_Q2, reg_data, BI)
-          end select
-          if (debug2_active (D_VIRTUAL)) then
-             print *, 'Evaluate i_flv: ', i_flv
-             print *, 'sqme_born: ', virt%sqme_born (i_flv)
-             print *, 'Q * sqme_born: ', alpha_coupling / twopi * QB(i_flv)
-             print *, 'BI: ', alpha_coupling / twopi * BI(i_flv)
-             print *, 'vfin: ', virt%sqme_virt_fin (i_flv)
+       if (.not. flv_evaluated(eqv_flv_index(i_flv))) then
+          if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("OLP")) then
+             !!! A factor of alpha_coupling/twopi is assumed to be included in vfin
+             sqme_virt_arr(i_flv) = sqme_virt_arr(i_flv) + virt%sqme_virt_fin(i_flv)
           end if
-          sqme_virt(ii_flv) = &
-               sqme_virt(ii_flv) + alpha_coupling / twopi * (QB(i_flv) + BI(i_flv))
+          if (virt%selection == var_str ("Full") .or. &
+               virt%selection == var_str ("Subtraction")) then
+             call virt%evaluate_initial_state (i_flv, QB)
+             call virt%compute_collinear_contribution (i_flv, p_born, sqrt(s), reg_data, QB)
+             select case (virt%settings%factorization_mode)
+             case (FACTORIZATION_THRESHOLD)
+                call virt%compute_eikonals_threshold (i_flv, p_born, s_o_Q2, QB, BI)
+             case default
+                call virt%compute_massive_self_eikonals (i_flv, p_born, s_o_Q2, reg_data, QB)
+                call virt%compute_eikonals (i_flv, p_born, s_o_Q2, reg_data, BI)
+             end select
+             if (debug2_active (D_VIRTUAL)) then
+                print *, 'Evaluate i_flv: ', i_flv
+                print *, 'sqme_born: ', virt%sqme_born (i_flv)
+                print *, 'Q * sqme_born: ', alpha_coupling / twopi * QB(i_flv)
+                print *, 'BI: ', alpha_coupling / twopi * BI(i_flv)
+                print *, 'vfin: ', virt%sqme_virt_fin (i_flv)
+             end if
+             sqme_virt_arr(i_flv) = &
+                  sqme_virt_arr(i_flv) + alpha_coupling / twopi * (QB(i_flv) + BI(i_flv))
+          end if
+          if (.not. (debug_active (D_VIRTUAL) .or. &
+               debug2_active (D_VIRTUAL))) flv_evaluated(eqv_flv_index(i_flv)) = .true.
+       else
+          sqme_virt_arr(i_flv) = sqme_virt_arr(eqv_flv_index(i_flv))
+       end if
+       if (separate_uborns) then
+          sqme_virt(i_flv) = sqme_virt(i_flv) + sqme_virt_arr(i_flv)
+       else
+          sqme_virt(1) = sqme_virt(1) + sqme_virt_arr(i_flv)
        end if
     end do
     if (debug2_active (D_VIRTUAL)) then
@@ -7538,6 +7626,10 @@ turns out to be equal to
   \end{split}
 \end{equation}
 This formula is implemented in \texttt{compute\_sqme\_real\_fin}
+
+If two or more singular regions would produce the same amplitude we only compute
+one and use the [[eqv_index]] to copy the result to the others (if [[reuse_amplitudes_fks]]
+is true).
 <<real subtraction: real subtraction: TBP>>=
   procedure :: compute => real_subtraction_compute
 <<real subtraction: procedures>>=
@@ -7547,40 +7639,55 @@ This formula is implemented in \texttt{compute\_sqme\_real\_fin}
     integer, intent(in) :: emitter, i_phs
     logical, intent(in) :: separate_alrs
     real(default), intent(inout), dimension(:) :: sqme
+    real(default), dimension(:), allocatable :: sqme_alr_arr
     real(default), intent(in) :: alpha_s, alpha_qed
     real(default) :: sqme_alr, alpha_coupling
     integer :: alr, i_con, i_res, this_emitter
     logical :: same_emitter
+    logical, dimension(:), allocatable :: alr_evaluated
+    allocate (alr_evaluated(rsub%reg_data%n_regions))
+    allocate (sqme_alr_arr(rsub%reg_data%n_regions))
+    sqme_alr_arr = zero
+    alr_evaluated = .false.
     do alr = 1, rsub%reg_data%n_regions
-       if (allocated (rsub%selected_alr)) then
-          if (.not. any (rsub%selected_alr == alr)) cycle
-       end if
-       sqme_alr = zero
-       if (emitter > rsub%isr_kinematics%n_in) then
-          same_emitter = emitter == rsub%reg_data%regions(alr)%emitter
-       else
-          same_emitter = rsub%reg_data%regions(alr)%emitter <= rsub%isr_kinematics%n_in
-       end if
-       select case (char(rsub%reg_data%regions(alr)%nlo_correction_type))
-       case ("QCD")
-          alpha_coupling = alpha_s
-       case ("EW")
-          alpha_coupling = alpha_qed
-       end select
-       if (same_emitter .and. i_phs == rsub%real_kinematics%alr_to_i_phs (alr)) then
-          i_res = rsub%get_i_res (alr)
-          this_emitter = rsub%reg_data%regions(alr)%emitter
-          sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, &
-               alpha_coupling)
-          if (rsub%purpose == INTEGRATION .or. rsub%purpose == FIXED_ORDER_EVENTS) then
-             i_con = rsub%get_i_contributor (alr)
-             sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
+       if (.not. alr_evaluated(rsub%reg_data%regions(alr)%eqv_index)) then
+          if (allocated (rsub%selected_alr)) then
+             if (.not. any (rsub%selected_alr == alr)) cycle
           end if
+          sqme_alr = zero
+          if (emitter > rsub%isr_kinematics%n_in) then
+             same_emitter = emitter == rsub%reg_data%regions(alr)%emitter
+          else
+             same_emitter = rsub%reg_data%regions(alr)%emitter <= rsub%isr_kinematics%n_in
+          end if
+          select case (char(rsub%reg_data%regions(alr)%nlo_correction_type))
+          case ("QCD")
+             alpha_coupling = alpha_s
+          case ("EW")
+             alpha_coupling = alpha_qed
+          end select
+          if (same_emitter .and. i_phs == rsub%real_kinematics%alr_to_i_phs (alr)) then
+             i_res = rsub%get_i_res (alr)
+             this_emitter = rsub%reg_data%regions(alr)%emitter
+             sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, &
+                  alpha_coupling)
+             if (rsub%purpose == INTEGRATION .or. rsub%purpose == FIXED_ORDER_EVENTS) then
+                i_con = rsub%get_i_contributor (alr)
+                sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
+             end if
+          end if
+          sqme_alr_arr(alr) = sqme_alr_arr(alr) + sqme_alr
+          if (.not. (debug_active (D_SUBTRACTION) .or. debug2_active (D_SUBTRACTION))) then
+             if (.not. allocated (rsub%selected_alr)) &
+                  alr_evaluated(rsub%reg_data%regions(alr)%eqv_index) = .true.
+          end if
+       else
+          sqme_alr_arr(alr) = sqme_alr_arr(rsub%reg_data%regions(alr)%eqv_index)
        end if
        if (separate_alrs) then
-          sqme(alr) = sqme(alr) + sqme_alr
+          sqme(alr) = sqme(alr) + sqme_alr_arr(alr)
        else
-          sqme(1) = sqme(1) + sqme_alr
+          sqme(1) = sqme(1) + sqme_alr_arr(alr)
        end if
     end do
     if (debug_on) then
@@ -9194,6 +9301,7 @@ end module nlo_data
      logical :: use_born_scale = .false.
      logical :: cut_all_real_sqmes = .false.
      type(string_t) :: nlo_correction_type
+     logical :: reuse_amplitudes_fks = .false.
   contains
   <<nlo data: nlo settings: TBP>>
   end type nlo_settings_t
@@ -9231,6 +9339,7 @@ procedure :: init => nlo_settings_init
     nlo_settings%cut_all_real_sqmes = &
          var_list%get_lval (var_str ("?nlo_cut_all_real_sqmes"))
     nlo_settings%nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
+    nlo_settings%reuse_amplitudes_fks = var_list%get_lval (var_str ('?nlo_reuse_amplitudes_fks'))
   contains
     subroutine setup_alr_selection ()
       type(string_t) :: alr_selection
