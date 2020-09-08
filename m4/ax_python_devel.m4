@@ -82,7 +82,7 @@ AC_DEFUN([AX_PYTHON_DEVEL],[
 	AC_PATH_PROG([PYTHON],[python[$PYTHON_VERSION]])
 
 	AM_CONDITIONAL([PYTHON_AVAILABLE],
-	   [test -z "$PYTHON"])	
+	   [test -n "$PYTHON"])	
 	if test -z "$PYTHON"; then
 	   AC_MSG_NOTICE([error: Cannot find python$PYTHON_VERSION in your system path])
 	   AC_MSG_NOTICE([error: disabling all python tests and interfaces])
