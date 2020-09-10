@@ -26,6 +26,11 @@
    become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
 let pcompare = compare
 
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
+
 (* \thocwmodulesection{Quantum Numbers} *)
 
 type t =
@@ -156,15 +161,21 @@ module type Flow =
     type factor = power list
     val factor : t -> t -> factor
     val zero : factor
+    module Test : Test
   end
 
 module Flow : Flow = 
   struct
 
+    (* All [int]s are non-zero! *)
     type color =
-      | Lines of int * int
+      | N of int
+      | N_bar of int
+      | SUN of int * int
+      | Singlet
       | Ghost
 
+    (* Incoming and outgoing, since we need to cross the incoming states. *)
     type t = color list * color list
 
     let rank cflow =
@@ -176,11 +187,17 @@ module Flow : Flow =
       Ghost
 
     let of_list = function
-      | [c1; c2] -> Lines (c1, c2)
+      | [0; 0] -> Singlet
+      | [c; 0] -> N c
+      | [0; c] -> N_bar c
+      | [c1; c2] -> SUN (c1, c2)
       | _ -> invalid_arg "Color.Flow.of_list: num_lines != 2"
 
     let to_list = function
-      | Lines (c1, c2) -> [c1; c2]
+      | N c -> [c; 0]
+      | N_bar c -> [0; c]
+      | SUN (c1, c2) -> [c1; c2]
+      | Singlet -> [0; 0]
       | Ghost -> [0; 0]
 
     let to_lists (cfin, cfout) =
@@ -193,7 +210,7 @@ module Flow : Flow =
       List.map to_list cfout
 
     let ghost_flag = function
-      | Lines _ -> false
+      | N _ | N_bar _ | SUN (_, _) | Singlet -> false
       | Ghost -> true
 
     let ghost_flags (cfin, cfout) =
@@ -224,7 +241,10 @@ module Flow : Flow =
       | Mismatch
 
     let conjugate = function
-      | Lines (c1, c2) -> Lines (-c2, -c1)
+      | N c -> N_bar (-c)
+      | N_bar c -> N (-c)
+      | SUN (c1, c2) -> SUN (-c2, -c1)
+      | Singlet -> Singlet
       | Ghost -> Ghost
 
     let cross_in (cin, cout) =
@@ -240,25 +260,91 @@ module Flow : Flow =
       let to_string = string_of_int
     end)
 
-    let square f1 f2 =
-      let rec square' acc f1' f2' =
+(* Match lines in the color flows [f1] and [f2] after crossing the
+   incoming states.  This will be used to compute squared diagrams
+   in [square] and [square2] below. *)
+
+    let match_lines match1 match2 f1 f2 =
+      let rec match_lines' acc f1' f2' =
         match f1', f2' with
+
+        (* If we encounter an empty list, we're done --- unless the
+           lengths don't match (which should never happen!): *)
         | [], [] -> Square (List.rev acc)
-        | _, [] | [], _ -> Mismatch
-        | Ghost :: rest1, Ghost :: rest2 ->
-            square' acc rest1 rest2
-        | Lines (0, 0) :: rest1, Lines (0, 0) :: rest2 ->
-            square' acc rest1 rest2
-        | Lines (0, c1') :: rest1, Lines (0, c2') :: rest2 ->
-            square' ((c1', c2') :: acc) rest1 rest2
-        | Lines (c1, 0) :: rest1, Lines (c2, 0) :: rest2 ->
-            square' ((c1, c2) :: acc) rest1 rest2
-        | Lines (0, _) :: _, _ | _ , Lines (0, _) :: _
-        | Lines (_, 0) :: _, _ | _, Lines (_, 0) :: _ -> Mismatch
-        | Lines (_, _) :: _, Ghost :: _ | Ghost :: _, Lines (_, _) :: _ -> Mismatch
-        | Lines (c1, c1') :: rest1, Lines (c2, c2') :: rest2 ->
-            square' ((c1', c2') :: (c1, c2) :: acc) rest1 rest2 in
-      square' [] (cross_out f1) (cross_out f2)
+        | _ :: _, [] | [], _ :: _ -> Mismatch
+
+        (* Handle matching \ldots *)
+        | Ghost :: rest1, Ghost :: rest2
+        | Singlet :: rest1, Singlet :: rest2 ->
+           match_lines' acc rest1 rest2
+
+        (* \ldots{} and mismatched ghosts and singlet gluons: *)
+        | Ghost :: _, Singlet :: _
+        | Singlet :: _, Ghost :: _ ->
+           Mismatch
+
+        (* Ghosts and singlet gluons can't match anything else *)
+        | (Ghost | Singlet) :: _, (N _ | N_bar _ | SUN (_, _)) :: _
+        | (N _ | N_bar _ | SUN (_, _)) :: _, (Ghost | Singlet) :: _ ->
+           Mismatch
+
+        (* Handle matching \ldots *)
+        | N_bar c1 :: rest1, N_bar c2 :: rest2
+        | N c1 :: rest1, N c2 :: rest2 ->
+           match_lines' (match1 c1 c2 acc) rest1 rest2
+
+        (* \ldots{} and mismatched $N$ or $\bar N$ states: *)
+        | N _ :: _, N_bar _ :: _
+        | N_bar _ :: _, N _ :: _ ->
+           Mismatch
+
+        (* The $N$ and $\bar N$ don't match non-singlet gluons: *)
+        | (N _ | N_bar _) :: _, SUN (_, _) :: _
+        | SUN (_, _) :: _, (N _ | N_bar _) :: _ ->
+           Mismatch
+
+        (* Now we're down to non-singlet gluons: *)
+        | SUN (c1, c1') :: rest1, SUN (c2, c2') :: rest2 ->
+           match_lines' (match2 c1 c1' c2 c2' acc) rest1 rest2 in
+
+      match_lines' [] (cross_out f1) (cross_out f2)
+
+(* NB: in WHIZARD versions before 3.0, the code for [match_lines]
+   contained a bug in the pattern matching of [Singlet], [N], [N_bar]
+   and [SUN] states, because they all were represented as
+   [SUN (c1, c2)], only distinguished by the numeric conditions
+   [c1 = 0] and/or [c2 = 0].
+   This prevented the use of exhaustiveness checking and introduced a
+   subtle dependence on the pattern order. *)
+
+    let square f1 f2 =
+      match_lines
+        (fun c1 c2 pairs -> (c1, c2) :: pairs)
+        (fun c1 c1' c2 c2' pairs -> (c1', c2') :: (c1, c2) :: pairs)
+        f1 f2
+
+(*i
+    let square f1 f2 =
+      let ll2s ll =
+        String.concat "; "
+          (List.map (ThoList.to_string string_of_int) ll)
+      and lp2s lp =
+        String.concat "; "
+          (List.map
+             (fun (c1, c2) ->
+               string_of_int c1 ^ ", " ^ string_of_int c2)
+             lp) in
+      Printf.eprintf
+        "square ([%s], [%s]) ([%s], [%s]) = "
+        (ll2s (in_to_lists f1)) (ll2s (out_to_lists f1))
+        (ll2s (in_to_lists f2)) (ll2s (out_to_lists f2));
+      let res = square f1 f2 in
+      begin match res with
+      | Mismatch -> Printf.eprintf "Mismatch!\n"
+      | Square f12 -> Printf.eprintf "Square [%s]\n" (lp2s f12)
+      end;
+      res
+i*)
 
 (* In addition to counting closed color loops, we also need to count closed
    gluon loops.  Fortunately, we can use the same algorithm on a different
@@ -272,23 +358,10 @@ module Flow : Flow =
     end)
 
     let square2 f1 f2 =
-      let rec square2' acc f1' f2' =
-        match f1', f2' with
-        | [], [] -> Square (List.rev acc)
-        | _, [] | [], _ -> Mismatch
-        | Ghost :: rest1, Ghost :: rest2 ->
-            square2' acc rest1 rest2
-        | Lines (0, 0) :: rest1, Lines (0, 0) :: rest2 ->
-            square2' acc rest1 rest2
-        | Lines (0, _) :: rest1, Lines (0, _) :: rest2
-        | Lines (_, 0) :: rest1, Lines (_, 0) :: rest2 ->
-            square2' acc rest1 rest2
-        | Lines (0, _) :: _, _ | _ , Lines (0, _) :: _
-        | Lines (_, 0) :: _, _ | _, Lines (_, 0) :: _ -> Mismatch
-        | Lines (_, _) :: _, Ghost :: _ | Ghost :: _, Lines (_, _) :: _ -> Mismatch
-        | Lines (c1, c1') :: rest1, Lines (c2, c2') :: rest2 ->
-            square2' (((c1, c1'), (c2, c2')) :: acc) rest1 rest2 in
-      square2' [] (cross_out f1) (cross_out f2)
+      match_lines
+        (fun c1 c2 pairs -> pairs)
+        (fun c1 c1' c2 c2' pairs -> ((c1, c1'), (c2, c2')) :: pairs)
+        f1 f2
 
 (* $\ocwlowerid{int\_power}: n\, p \to n^p$
    for integers is missing from [Pervasives]! *)
@@ -336,6 +409,55 @@ module Flow : Flow =
                 power = power + power2 })
             (ThoList.range 0 num_cycles2)
 
+    module Test : Test =
+      struct
+
+        open OUnit
+
+        let suite_square =
+          "square" >:::
+
+            [ "square ([], []) ([], [])" >::
+                (fun () ->
+	          assert_equal (Square []) (square ([], []) ([], [])));
+
+              "square ([3], [3; 0]) ([3], [3; 0])" >::
+                (fun () ->
+	          assert_equal
+                    (Square [(-1, -1); (1, 1)])
+                    (square
+                       ([N 1], [N 1; Singlet])
+                       ([N 1], [N 1; Singlet])));
+
+              "square ([0], [3; -3]) ([0], [3; -3])" >::
+                (fun () ->
+	          assert_equal
+                    (Square [(1, 1); (-1, -1)])
+                    (square
+                       ([Singlet], [N 1; N_bar (-1)])
+                       ([Singlet], [N 1; N_bar (-1)])));
+ 
+              "square ([3], [3; 0]) ([0], [3; -3])" >::
+                (fun () ->
+	          assert_equal
+                    Mismatch
+                    (square
+                       ([N 1], [N 1; Singlet])
+                       ([Singlet], [N 1; N_bar (-1)])));
+
+              "square ([3; 8], [3]) ([3; 8], [3])" >::
+                (fun () ->
+	          assert_equal
+                    (Square [-1, -1; 1, 1; -2, -2; 2, 2])
+                    (square
+                       ([N 1; SUN (2, -1)], [N 2])
+                       ([N 1; SUN (2, -1)], [N 2]))) ]
+
+        let suite =
+          "Color.Flow" >:::
+	    [suite_square]
+
+      end
   end
 
 (* later: *)
@@ -365,11 +487,6 @@ module General_Flow =
 
 module Q = Algebra.Q
 module QC = Algebra.QC
-
-module type Test =
-  sig
-    val suite : OUnit.test
-  end
 
 module type Arrow =
   sig
