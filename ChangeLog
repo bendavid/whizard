@@ -4,6 +4,11 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+##################################################################
+
+2020-09-16
+	RELEASE: version 2.8.5
+
 2020-09-11
 	Bug fix for H->tau tau transverse polarization with PYTHIA6
 	   (thanks to Junping Tian / Akiya Miyamoto)
