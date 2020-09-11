@@ -68364,29 +68364,30 @@ C...  call pylist (2)
           
 C... If Parent is Higgs (IORIG=25,35,36), another tau is boosted and rotate.
 C... Only Higgs to tau pair decay
-        IF(KFORIG.EQ.25.OR.KFORIG.EQ.35.OR.KFORIG.EQ.36) THEN
-          ITFOUND=0
-          IF (.NOT.(K(IORIG,4).EQ.0.OR.K(IORIG,5).EQ.0)) THEN
-             DO 60210 J=K(IORIG,4), K(IORIG,5)
-                IF( ABS(K(J,2)).EQ.15 ) THEN
-                   ITFOUND=ITFOUND+1
-                   IF( ITFOUND.GT.3 ) THEN
-                      PRINT *,'%%Fatal error in PYDCAY after PYTAUD,'
-                      PRINT *,'call: Higgs has >2 tau daughters.'
-                      STOP
-                   ENDIF
-                   CALL PYROBO(J,J,THETAU,PHITAU,0D0,0D0,0D0)
-                   CALL PYROBO(J,J,0D0,0D0,DBETAU(1),
-     &                  DBETAU(2),DBETAU(3))
-                ENDIF
-60210        CONTINUE
-          ENDIF
+C... Fix Akiya Miyamoto for transversely polarized taus.
+C        IF(KFORIG.EQ.25.OR.KFORIG.EQ.35.OR.KFORIG.EQ.36) THEN
+C          ITFOUND=0
+C          IF (.NOT.(K(IORIG,4).EQ.0.OR.K(IORIG,5).EQ.0)) THEN
+C             DO 60210 J=K(IORIG,4), K(IORIG,5)
+C                IF( ABS(K(J,2)).EQ.15 ) THEN
+C                   ITFOUND=ITFOUND+1
+C                   IF( ITFOUND.GT.3 ) THEN
+C                      PRINT *,'%%Fatal error in PYDCAY after PYTAUD,'
+C                      PRINT *,'call: Higgs has >2 tau daughters.'
+C                      STOP
+C                   ENDIF
+C                   CALL PYROBO(J,J,THETAU,PHITAU,0D0,0D0,0D0)
+C                   CALL PYROBO(J,J,0D0,0D0,DBETAU(1),
+C     &                  DBETAU(2),DBETAU(3))
+C                ENDIF
+C60210        CONTINUE
+C          ENDIF
 C     ... In the case of single tau decay, copy momentum before PYTAUD
-        ELSE
+C        ELSE
           DO 211 J=1,4
             P(ITAU,J)=PTAU(J)
  211     CONTINUE
-      ENDIF
+C      ENDIF
 C...Skip past ordinary tau decay treatment.
           MMAT=0
           MBST=0

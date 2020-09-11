@@ -4,6 +4,16 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-09-11
+	Bug fix for H->tau tau transverse polarization with PYTHIA6
+	   (thanks to Junping Tian / Akiya Miyamoto)
+
+2020-09-09
+	Fix a long standing bug (since 2.0) in the calculation of color
+	factors when particles of different color were combined in a
+	particle class.  NB: O'Mega never produced a wrong number,
+	it only declared all processes as invalid.
+
 2020-09-08
 	Enable Openloops matrix element equivalences for optimization
 
