@@ -5940,7 +5940,7 @@ procedure with type [[V_NONE]].
          description = var_str ('Real positive paramter for the Ellis-Sexton scale' // &
          '$\mathcal{Q}$ used both in the finite one-loop contribution provided by' // &
          'the OLP and in the virtual counter terms. The NLO cross section is' // &
-         'independend of $\mathcal{Q}$. Therefore, this allows for debugging of' // &
+         'independent of $\mathcal{Q}$. Therefore, this allows for debugging of' // &
          'the implemention of the virtual counter terms. As the default' // &
          '$\mathcal{Q} = \mu_{\rm{R}}$ is chosen. So far, setting this parameter' // &
          'only works for OpenLoops2, otherwise the default behaviour is invoked.'))
@@ -5984,16 +5984,17 @@ procedure with type [[V_NONE]].
          ' flavor structures. The default is \ttt{false}.'))
     call var_list%append_real (var_str ("fks_xi_cut"), &
          1.0_default, intrinsic = .true., &
-         description = var_str ('Real paramter for the FKS ' // &
+         description = var_str ('(Experimental) Real paramter for the FKS ' // &
          'phase space that applies a cut to $\xi$ variable with $0 < \xi_{\text{cut}}' // &
          '\leq \xi_{\text{max}}$. The dependence on the parameter vanishes between ' // &
-         'real subtraction and integrated subtraction term.'))
+         'real subtraction and integrated subtraction term. Could thus be used for debugging. ' // &
+         'This is not implemented properly, use at your own risk!'))
     call var_list%append_real (var_str ("fks_delta_o"), &
          2._default, intrinsic = .true., &
          description = var_str ('Real paramter for the FKS ' // &
          'phase space that applies a cut to the $y$ variable with $0 < \delta_o \leq 2$. ' // &
          'The dependence on the parameter vanishes between real subtraction and integrated ' // &
-         'subtraction term.'))
+         'subtraction term. For debugging purposes.'))
     call var_list%append_real (var_str ("fks_delta_i"), &
          2._default, intrinsic = .true., &
          description = var_str ('Real paramter for the FKS ' // &
@@ -6001,7 +6002,7 @@ procedure with type [[V_NONE]].
          '$0 < \delta_{\mathrm{I}} \leq 2$ '// &
          'for initial state singularities only. ' // &
          'The dependence on the parameter vanishes between real subtraction and integrated ' // &
-         'subtraction term.'))
+         'subtraction term. For debugging purposes.'))
     call var_list%append_string (var_str ("$fks_mapping_type"), &
          var_str ("default"), intrinsic = .true., &
          description=var_str ('Sets the FKS mapping type. Possible values ' // &

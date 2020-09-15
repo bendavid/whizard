@@ -8059,18 +8059,20 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
 @ For final state radiation, the subtraction remnant cross section is
 \begin{equation}
   \sigma_{\text{remn}} = \left(\sigma_{\text{soft}} - \sigma_{\text{soft-coll}}\right)
-      \log (\xi_{\text{max}}\xi_{\text{cut}})) \cdot \tilde{\xi}.
+      \log (\xi_{\text{max}}) \cdot \frac{\tilde{\xi}}{\xi_{\text{cut}}}.
 \end{equation}
-There is only one factor of $\log (\xi_{\text{max}}\xi_{\text{cut}})$ for both limits
+There is only one factor of $\log (\xi_{\text{max}})$ for both limits
 as $\xi_{\text{max}}$ does not depend on $y$ in the case of FSR.
 We use the already computed [[sqme_soft]] and [[sqme_cs]] with a factor of
-$\tilde{\xi}$ which we have to compensate.
+$\tilde{\xi}$ which we have to compensate. We also need a factor $1/\xi_{\text{cut}}$ here
+to assure that the cross section is independent of this free cutoff parameter.
+However, it still remains to be motivated analytically.
 <<real subtraction: real subtraction evaluate region fsr: procedures>>=
   function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde) result (sqme_remn)
     real(default) :: sqme_remn
     real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
     if (debug_on) call msg_debug (D_SUBTRACTION, "compute_sqme_remnant_fsr")
-    sqme_remn = (sqme_soft - sqme_cs) * log (xi_max * xi_cut) * xi_tilde
+    sqme_remn = (sqme_soft - sqme_cs) * log (xi_max) * xi_tilde / xi_cut
   end function compute_sqme_remnant_fsr
 
 @ %def compute_sqme_remnant_fsr
@@ -8194,6 +8196,9 @@ So we need to use the unrescaled $\overline{x}_\oplus,\overline{x}_\ominus$ here
 Factors of $\frac{1}{2}$ and $\frac{1}{\tilde{\xi}}$
 are already included in the matrix elements from [[apply_kinematic_factors_subtraction_isr]].
 We keep the former and remove the latter by multiplying with $\tilde{\xi}$.
+The factor $1/\xi_{\text{cut}}$ is probably needed to assure that the cross section is
+independent of this free cutoff parameter in analogy to the FSR case.
+However, it still remains to be motivated analytically and to be validated.
 <<real subtraction: evaluate region isr: procedures>>=
   function compute_sqme_remnant_isr (isr_mode, sqme_soft, sqme_cs_plus, sqme_cs_minus, &
      isr_kinematics, real_kinematics, i_phs, xi_cut) result (sqme_remn)
@@ -8217,9 +8222,10 @@ We keep the former and remove the latter by multiplying with $\tilde{\xi}$.
        xi_max_plus = real_kinematics%xi_max (i_phs)
        xi_max_minus = real_kinematics%xi_max (i_phs)
     end select
-    sqme_remn = log (xi_max * xi_cut) * xi_tilde * sqme_soft &
-              - log (xi_max_plus * xi_cut) * xi_tilde * sqme_cs_plus &
-              - log (xi_max_minus * xi_cut) * xi_tilde * sqme_cs_minus
+    sqme_remn = log (xi_max) * xi_tilde * sqme_soft &
+         - log (xi_max_plus) * xi_tilde * sqme_cs_plus &
+         - log (xi_max_minus) * xi_tilde * sqme_cs_minus
+    sqme_remn = sqme_remn / xi_cut
   end function compute_sqme_remnant_isr
 
 @ %def compute_sqme_remnant_isr
