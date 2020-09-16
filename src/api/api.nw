@@ -1517,7 +1517,7 @@ object.
        call show_lcio_event (lcio_event)
        write (u, "(A,I0)")  "Event #", idx
        write (u, "(2x,A,1x,I0)")  "n_particles =", npt
-       call lcio_event_final (lcio_event)
+       call lcio_event_final (lcio_event, .true.)
     end do
     call sample%close ()
     

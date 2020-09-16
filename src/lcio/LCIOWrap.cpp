@@ -115,15 +115,8 @@ extern "C" void lcio_set_process_name ( LCEventImpl* evt, char* name ) {
   evt->parameters().setValue ( "processName", name );
 }
 
-extern "C" LCEvent* read_lcio_event ( LCReader* lcRdr) {
-  LCEvent* evt;
-  if ((evt = lcRdr->readNextEvent ()) != 0) {    
-    return evt;
-  }
-  else
-    {
-      return NULL;
-    }  
+extern "C" EVENT::LCEvent* read_lcio_event ( IO::LCReader* lcRdr) {
+  return lcRdr->readNextEvent ();
 }
 
 // dump the event to the screen
@@ -235,8 +228,13 @@ extern "C" std::ostream& printMCParticles
         for(  int index = 0 ; index < nParticles ; index++){
 	  char buff[215];
 	  MCParticle* part =  static_cast<MCParticle*>( col->getElementAt( index ) ) ;
+#if LCIO_VERSION_GE (2, 13)
+	  int part_id = part->id() - 1;
+#else
+	  int part_id = part->id();
+#endif
 	  sprintf(buff, "[%8.8d]%5d|%10d|% 1.2e,% 1.2e,% 1.2e|% 1.2e| %1d |%s|% 1.2e,% 1.2e,% 1.2e|% 1.2e,% 1.2e,% 1.2e|% 1.2e|% 1.2e|% 1.2e,% 1.2e,% 1.2e|  (%d, %d)   | [",
-		  part->id(), index, part->getPDG(),
+		  part_id, index, part->getPDG(),
 	          part->getMomentum()[0], part->getMomentum()[1], 
 	          part->getMomentum()[2], part->getEnergy(),
 		  part->getGeneratorStatus(),
@@ -537,6 +535,7 @@ extern "C" int lcio_get_n_events ( LCReader* lcRdr ) {
 
 extern "C" void lcio_reader_delete ( LCReader* lcRdr ) {
   lcRdr->close();
+  delete lcRdr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -556,7 +555,7 @@ extern "C" void run_header_set_simstring
   runHdr->parameters().setValue ( "SimulationProgram", simstring );
 }
 
-extern "C" bool read_run_header ( LCReader* lcRdr , LCRunHeader* runHdr ) {  
+extern "C" bool read_run_header ( LCReader* lcRdr , LCRunHeader* runHdr ) {
   return ((runHdr = lcRdr->readNextRunHeader ()) != 0);
 }  
 

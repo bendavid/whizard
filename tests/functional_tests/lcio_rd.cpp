@@ -189,8 +189,12 @@ void printMCParticles(const EVENT::LCCollection* col ) {
   for(  int index = 0 ; index < nParticles ; index++){
     
     MCParticle* part =  dynamic_cast<MCParticle*>( col->getElementAt( index ) ) ;
-    
+
+#if LCIO_VERSION_GE (2, 13)
+    printf("[%8.8d]", part->id() - 1);
+#else
     printf("[%8.8d]", part->id() );
+#endif
     printf("%5d|"   , index );
     printf("%10d|" , part->getPDG() );
     printf("% 1.2e,% 1.2e,% 1.2e|" , 

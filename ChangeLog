@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-09-16
+	Bug fix enables reading LCIO events with LCIO v2.15+
+
 ##################################################################
 
 2020-09-16

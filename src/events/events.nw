@@ -10245,10 +10245,11 @@ be on the safe side.
 <<LCIO interface: public>>=
   public :: lcio_event_final
 <<LCIO interface: procedures>>=
-  subroutine lcio_event_final (evt)
+  subroutine lcio_event_final (evt, delete)
     type(lcio_event_t), intent(inout) :: evt
+    logical, intent(in) :: delete
     if (c_associated (evt%obj)) then
-       call lcio_event_delete (evt%obj)
+       if (delete)  call lcio_event_delete (evt%obj)
        evt%obj = c_null_ptr
        evt%lccoll%obj = c_null_ptr
     end if
@@ -11546,7 +11547,7 @@ end module lcio_interface_uti
 
     ! Wrapup
     ! call pol%final ()
-    call lcio_event_final (evt)
+    call lcio_event_final (evt, .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: lcio_interface_1"
@@ -16905,8 +16906,9 @@ event files.
           call lcio_event_set_alt_weight (eio%lcio_event, weight, i)
        end do
        call lcio_event_write (eio%lcio_writer, eio%lcio_event)
-       call maybe_transfer_event_to_handle (eio%lcio_event, event_handle)
-       call lcio_event_final (eio%lcio_event)
+       call maybe_transfer_event_to_handle (eio%lcio_event, &
+            event_handle, .true.)
+       call lcio_event_final (eio%lcio_event, .true.)
     else
        call eio%write ()
        call msg_fatal ("LCIO file is not open for writing")
@@ -16961,8 +16963,9 @@ event files.
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
-    call maybe_transfer_event_to_handle (eio%lcio_event, event_handle)
-    call lcio_event_final (eio%lcio_event)
+    call maybe_transfer_event_to_handle (eio%lcio_event, &
+         event_handle, .false.)
+    call lcio_event_final (eio%lcio_event, .false.)
   end subroutine eio_lcio_input_event
 
 @ %def eio_lcio_input_i_prc
@@ -16973,13 +16976,14 @@ type, do not destroy the event but transfer it to the handle (i.e., the
 enclosed C pointer).  Nullify the original pointer, so the event does not get
 destroyed.
 <<EIO LCIO: procedures>>=
-  subroutine maybe_transfer_event_to_handle (lcio_event, event_handle)
+  subroutine maybe_transfer_event_to_handle (lcio_event, event_handle, delete)
     type(lcio_event_t), intent(inout) :: lcio_event
     class(event_handle_t), intent(inout), optional :: event_handle
+    logical, intent(in) :: delete
     if (present (event_handle)) then
        select type (event_handle)
        type is (lcio_event_t)
-          call lcio_event_final (event_handle)  ! just in case
+          call lcio_event_final (event_handle, delete)  ! just in case
           event_handle = lcio_event
 call show_lcio_event (event_handle)
           call lcio_event_nullify (lcio_event) ! avoid destructor call
@@ -17149,7 +17153,7 @@ We test the implementation of all I/O methods.
        call lcio_event_from_particle_set &
             (eio%lcio_event,  pset_ptr)
        call write_lcio_event (eio%lcio_event, var_str ("test_file.slcio"))
-       call lcio_event_final (eio%lcio_event)
+       call lcio_event_final (eio%lcio_event, .true.)
     end select
 
     write (u, "(A)")

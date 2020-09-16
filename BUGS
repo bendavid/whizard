@@ -19,6 +19,9 @@ General:
 
 Known (recent) bugs:
 
+* WHIZARD 2.8.5/3.0.0beta and earlier do not support reading LCIO events
+  with LCIO versions 2.15 and newer due to a bug in the LCIO interface.
+
 * WHIZARD 2.8.4 and earlier do not support Pythia 8.301+. If you want to use
   these versions of Pythia 8 please use WHIZARD 2.8.5 or 3. Note that
   Pythia 8.301-2 and contain a bug in their LHA interface, so you have to use
