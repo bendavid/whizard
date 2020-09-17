@@ -22,6 +22,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+module type Test =
+  sig
+    val suite : OUnit.test
+  end
+
 (* \thocwmodulesection{Quantum Numbers} *)
 
 (* Color is not necessarily the~$\textrm{SU}(3)$ of QCD.  Conceptually,
@@ -69,6 +74,8 @@ module type Flow =
     val factor : t -> t -> factor
     val zero : factor
 
+    module Test : Test
+
   end
 
 module Flow : Flow
@@ -80,11 +87,6 @@ module Flow : Flow
      here.  This will simplify the colorizer at the price of
      some complexity in [UFO] or here.
    \end{dubious} *)
-
-module type Test =
-  sig
-    val suite : OUnit.test
-  end
 
 module type Arrow =
   sig

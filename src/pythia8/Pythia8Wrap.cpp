@@ -19,9 +19,15 @@ extern "C" {
     delete pythia;
   }
 
+#if PYTHIA_VERSION_INTEGER > 8300
+  bool pythia8_set_lhaup_ptr (Pythia* pythia, LHAupWhizard* whizard_lha) {
+    return pythia->setLHAupPtr ((LHAupPtr)whizard_lha);
+  }
+#else
   bool pythia8_set_lhaup_ptr (Pythia* pythia, LHAupWhizard* whizard_lha) {
     return pythia->setLHAupPtr (whizard_lha);
   }
+#endif
 
   bool pythia8_set_rndm_engine_ptr (Pythia* pythia, void* rndm) {
     WhizardRndm* whizard_rndm = new WhizardRndm (rndm);

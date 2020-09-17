@@ -188,6 +188,7 @@ let suite =
      Algebra.Q.Test.suite;
      Algebra.QC.Test.suite;
      Algebra.Laurent.Test.suite;
+     Color.Flow.Test.suite;
      Color.Arrow.Test.suite;
      Color.Birdtracks.Test.suite;
      Color.SU3.Test.suite;
