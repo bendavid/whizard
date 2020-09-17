@@ -25044,6 +25044,7 @@ Test module, followed by the corresponding implementation module.
 
 module commands_ut
   use unit_tests
+  use system_dependencies, only: MPOST_AVAILABLE
   use commands_uti
 
 <<Standard module head>>
@@ -25076,7 +25077,6 @@ module commands_uti
     use slha_interface
     use rt_data
     use event_base, only: generic_event_t, event_callback_t
-
     use commands
 
 <<Standard module head>>
@@ -27063,9 +27063,11 @@ Write accumulated analysis data to file.
 \subsubsection{Compile Analysis}
 Write accumulated analysis data to file and compile.
 <<Commands: execute tests>>=
-  call test (commands_23, "commands_23", &
-       "compile analysis", &
-       u, results)
+  if (MPOST_AVAILABLE) then
+     call test (commands_23, "commands_23", &
+          "compile analysis", &
+          u, results)
+  end if
 <<Commands: test declarations>>=
   public :: commands_23
 <<Commands: tests>>=

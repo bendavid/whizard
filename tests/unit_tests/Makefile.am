@@ -33,6 +33,7 @@ WHIZARD_CC_TEST_DRIVER = run_whizard_cc_test.sh
 
 UNIT_TESTS = \
     analysis.run \
+    commands.run \
     pdg_arrays.run \
     expressions.run \
     beams.run \
@@ -146,9 +147,6 @@ UNIT_TESTS = \
 
 XFAIL_UNIT_TESTS =
 
-UNIT_TESTS_REQ_GAMELAN = \
-    commands.run
-
 UNIT_TESTS_REQ_EV_ANA = \
     phs_wood_vis.run \
     prc_omega_diags.run \
@@ -192,7 +190,6 @@ UNIT_TESTS_REQ_LHAPDF6 = \
 
 TEST_DRIVERS_RUN = \
     $(UNIT_TESTS) \
-    $(UNIT_TESTS_REQ_GAMELAN) \
     $(UNIT_TESTS_REQ_HEPMC2) \
     $(UNIT_TESTS_REQ_HEPMC3) \
     $(UNIT_TESTS_REQ_LCIO) \
@@ -209,7 +206,6 @@ TESTS =
 XFAIL_TESTS =
 TESTS_SRC =
 
-UNIT_TESTS += $(UNIT_TESTS_REQ_GAMELAN)
 UNIT_TESTS += $(UNIT_TESTS_REQ_FASTJET)
 UNIT_TESTS += $(UNIT_TESTS_REQ_HEPMC2)
 UNIT_TESTS += $(UNIT_TESTS_REQ_HEPMC3)
@@ -291,7 +287,7 @@ sps1ap_decays.slha: $(top_builddir)/share/susy/sps1ap_decays.slha
 WT_OCAML_NATIVE_EXT=opt
 
 if MPOST_AVAILABLE
-$(UNIT_TESTS_REQ_GAMELAN): gamelan.sty
+commands.run: gamelan.sty
 gamelan.sty: $(top_builddir)/src/gamelan/gamelan.sty
 	cp $< $@
 
@@ -319,7 +315,6 @@ BUILT_SOURCES = \
     FASTJET_FLAG \
     LHAPDF5_FLAG \
     LHAPDF6_FLAG \
-    GAMELAN_FLAG \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
     RECOLA_FLAG \
@@ -362,11 +357,6 @@ endif
 
 LHAPDF6_FLAG:
 if LHAPDF6_AVAILABLE
-	touch $@
-endif
-
-GAMELAN_FLAG:
-if MPOST_AVAILABLE
 	touch $@
 endif
 
@@ -426,7 +416,7 @@ clean-macosx:
 ## Remove generated files
 clean-local: clean-macosx
 	rm -f gamelan.sty
-	rm -f TESTFLAG GAMELAN_FLAG 
+	rm -f TESTFLAG 
 	rm -f OCAML_FLAG FASTJET_FLAG HEPMC2_FLAG HEPMC3_FLAG LCIO_FLAG 
 	rm -f RECOLA_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG 
 	rm -f LHAPDF5_FLAG LHAPDF6_FLAG STATIC_FLAG static_1.exe

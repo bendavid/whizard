@@ -323,6 +323,8 @@ module system_dependencies
      RTLD_LOCAL  = @RTLD_LOCAL_VALUE@
 
   ! Misc
+  logical, parameter :: MPOST_AVAILABLE = @MPOST_AVAILABLE_FLAG@
+
   logical, parameter :: LHAPDF5_AVAILABLE = @LHAPDF5_AVAILABLE_FLAG@
   logical, parameter :: LHAPDF6_AVAILABLE = @LHAPDF6_AVAILABLE_FLAG@
   logical, parameter :: HEPMC2_AVAILABLE = @HEPMC2_AVAILABLE_FLAG@
