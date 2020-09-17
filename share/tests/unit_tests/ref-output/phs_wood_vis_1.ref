@@ -30,7 +30,7 @@ process phs_wood_vis_1
    n_channel = 5
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
@@ -41,7 +41,7 @@ process phs_wood_vis_1
    4: 1
    5: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '045E3E7356956FD5A76F2664725DB1D9'
+   MD5 sum (phs config) = 'A67482026D0AEC48A9362CB710A0D2E6'
  Phase-space configuration parameters:
    sqrts         =  1.000000000000E+03
    m_threshold_s =  5.000000000000E+01

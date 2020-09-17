@@ -8,7 +8,7 @@ if test -f OCAML_FLAG; then
     echo "STHDHEP file contents:" > ${s}_hep.log
     ./stdhep_rd ${s}_p.ev4.hep 3 >> ${s}_hep.log
     mv ${s}_hep.log ${s}_hep.log.tmp
-    cat ${s}_hep.log.tmp | sed -e 's/total blocks.*/total blocks: [...]/' -e 's/WHIZARD 2.*/WHIZARD [version]/' -e 's/date: .*/date: [...]/' > ${s}_hep.log
+    cat ${s}_hep.log.tmp | sed -e 's/total blocks.*/total blocks: [...]/' -e 's/WHIZARD 3.*/WHIZARD [version]/' -e 's/date: .*/date: [...]/' > ${s}_hep.log
     diff ref-output/$s.ref ${s}_hep.log
 else
     echo "|=============================================================================|"

@@ -18,7 +18,7 @@
    n_channel = 1
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
@@ -27,7 +27,7 @@
      = 1 (1x 2+)
      = 1 (1x 2-)
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = 'E92F4710EE341C31239D6CC4ADC28EFA'
+   MD5 sum (phs config) = '04C771C8A3077E31994BE90AF4EBD9FA'
  Phase-space configuration parameters:
    sqrts         =  1.000000000000E+03
    m_threshold_s =  5.000000000000E+01

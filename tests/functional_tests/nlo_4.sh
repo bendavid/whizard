@@ -1,5 +1,6 @@
 #!/bin/sh
-# Testing complete NLO-calculation using dummy-output for virtual matrix elements
+# Testing complete NLO calculation of ee -> t tbar
+# using dummy-output for virtual matrix elements
 # in the combined-integration mode and producing an NLO event
 echo "Running script $0"
 if test -f OCAML_FLAG; then

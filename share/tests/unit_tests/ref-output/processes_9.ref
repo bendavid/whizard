@@ -54,7 +54,7 @@
    n_channel = 2
    sqrts     =  1.000000000000E+03
    s_fixed   = F
-   cm_frame  = F
+   lab_is_cm = F
    azim.dep. = F
  Flavor combinations:
    1: s s s s
@@ -62,7 +62,7 @@
    1: 1
    2: 2
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '27989844FF5822B986F99779DA9D9AD7'
+   MD5 sum (phs config) = 'CCFBBDD732507EB7602AE92D57F4AA1C'
 ========================================================================
  Process term configuration:
 ------------------------------------------------------------------------

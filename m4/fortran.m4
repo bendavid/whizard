@@ -889,7 +889,7 @@ if test "x$enable_fc_mpi" = "xyes"; then
 		wo_cv_openmpi_major_version=[`echo $wo_cv_openmpi_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
 	  ])
 	  MPI_VERSION=$wo_cv_openmpi_version
-	  FCFLAGS_MPI="-lmpi"
+	  FCFLAGS_MPI="-lmpi -lmpi_usempif08"
 	else
 	  enable_fc_mpi="no"
 	fi

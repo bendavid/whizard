@@ -429,6 +429,8 @@ Diagnostics areas:
        string = "qft"
     case (D_BEAMS)
        string = "beams"
+    case (D_REAL)
+       string = "real"
     case (D_ALL)
        string = "all"
     case default
@@ -1048,7 +1050,7 @@ should always be hidden behind [[if (debug_on)]], since they can
 significantly slow down the program.
 <<debug guard>>=
 if (.not. debug_on)  call msg_bug ("msg_debug called with debug_on=.false.")
-@ 
+@
 The [[debug_on]] flag is provided by the [[debug_master]] module, and
 we can assume that it is a compile-time parameter.
 <<Diagnostics: public>>=

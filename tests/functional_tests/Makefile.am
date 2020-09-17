@@ -71,8 +71,11 @@ XFAIL_TESTS_DEFAULT =
 TESTS_REQ_FASTJET = \
     analyze_4.run \
     bjet_cluster.run \
+    nlo_7.run \
+    nlo_8.run \
     openloops_12.run \
-    openloops_13.run
+    openloops_13.run \
+    openloops_14.run
 
 TESTS_REQ_OCAML = \
     libraries_1.run \
@@ -208,6 +211,8 @@ TESTS_REQ_OCAML = \
     nlo_4.run \
     nlo_5.run \
     nlo_6.run \
+    nlo_9.run \
+    nlo_10.run \
     nlo_decay_1.run \
     real_partition_1.run \
     fks_res_1.run \
@@ -396,7 +401,7 @@ TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
 
 ########################################################################
 
-TESTS = 
+TESTS =
 XFAIL_TESTS =
 TESTS_SRC =
 
@@ -478,15 +483,15 @@ static_2.exe.sin: $(top_builddir)/share/tests/functional_tests/static_2.exe.sin
 
 susyhit.run: susyhit.in
 
-model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
-	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT)
-tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FC_MODULE_EXT)
+model_test.run: tdefs.$(FCMOD) tglue.$(FCMOD) \
+	threeshl.$(FCMOD) tscript.$(FCMOD)
+tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FCMOD)
 	cp $< $@
-tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FC_MODULE_EXT)
+tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FCMOD)
 	cp $< $@
-tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FC_MODULE_EXT)
+tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FCMOD)
 	cp $< $@
-threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EXT)
+threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FCMOD)
 	cp $< $@
 
 WT_OCAML_NATIVE_EXT=opt
@@ -548,7 +553,7 @@ $(top_builddir)/src/gamelan/gamelan.sty:
 	$(MAKE) -C $(top_builddir)/src/gamelan gamelan.sty
 endif
 
-noinst_PROGRAMS = 
+noinst_PROGRAMS =
 
 if OCAML_AVAILABLE
 noinst_PROGRAMS += resonances_1_count
@@ -785,12 +790,12 @@ clean-local: clean-macosx
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG MPI_FLAG RECOLA_FLAG
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC2_FLAG HEPMC3_FLAG
-	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG 
-	rm -f LHAPDF5_FLAG LHAPDF6_FLAG 
+	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG
+	rm -f LHAPDF5_FLAG LHAPDF6_FLAG
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out *_check.out ufo_5_test.slha
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *.f90 *.f90.in *.c *.$(FCMOD) *.o *.la
 	rm -f *_count.out
 	rm -f *_digest.out
 	rm -f *.makefile
@@ -804,11 +809,11 @@ clean-local: clean-macosx
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -rf pack_1.1 pack_1.2 pack_1.3 pack_1.4
 	rm -rf pack_1.1.tgz pack_1.2.tgz pack_1.3.tgz pack_1.4.tgz
-	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]
+	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9]
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
-	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
-	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
+	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
+	rm -f slhaspectrum.in suspect2.out suspect2_lha.out
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -rf job_id_3_x.8001 job_id_4_x.8001
 	rm -rf ufo_1_SM ufo_2_SM ufo_3_models ufo_4_models ufo_5_SM ufo_6_MSSM

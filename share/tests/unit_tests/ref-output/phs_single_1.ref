@@ -13,7 +13,7 @@
    n_channel = 1
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
    flat dim. = 2
  Flavor combinations:
@@ -21,6 +21,6 @@
  Phase-space / structure-function channels:
    1: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '37BE117D459A7C7A48F56449689456FB'
+   MD5 sum (phs config) = '22EA4692CD7F739F336627055ADF5C4B'
 
 * Test output end: phs_single_1

@@ -9,7 +9,7 @@ subroutine fastjet_print_banner () bind (C)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop         
+  stop
 end subroutine fastjet_print_banner
 
 function new_pseudojet (px, py, pz, e) bind (C) result (j)
@@ -20,7 +20,7 @@ function new_pseudojet (px, py, pz, e) bind (C) result (j)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function new_pseudojet
 
 subroutine pseudojet_delete (j) bind (C)
@@ -29,7 +29,7 @@ subroutine pseudojet_delete (j) bind (C)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end subroutine pseudojet_delete
 
 function pseudojet_get_e (j) bind (C) result (p)
@@ -40,7 +40,7 @@ function pseudojet_get_e (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_e
 
 function pseudojet_get_px (j) bind (C) result (p)
@@ -51,7 +51,7 @@ function pseudojet_get_px (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_px
 
 function pseudojet_get_py (j) bind (C) result (p)
@@ -62,7 +62,7 @@ function pseudojet_get_py (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_py
 
 function pseudojet_get_pz (j) bind (C) result (p)
@@ -73,7 +73,7 @@ function pseudojet_get_pz (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_pz
 
 function pseudojet_get_perp (j) bind (C) result (p)
@@ -84,7 +84,7 @@ function pseudojet_get_perp (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_perp
 
 function pseudojet_get_rap (j) bind (C) result (p)
@@ -95,7 +95,7 @@ function pseudojet_get_rap (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_rap
 
 function pseudojet_get_phi (j) bind (C) result (p)
@@ -106,7 +106,7 @@ function pseudojet_get_phi (j) bind (C) result (p)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_phi
 
 function pseudojet_get_constituents (j) bind (C) result (cv)
@@ -117,7 +117,7 @@ function pseudojet_get_constituents (j) bind (C) result (cv)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_get_constituents
 
 function pseudojet_contains (j, p) bind (C) result (flag)
@@ -128,7 +128,7 @@ function pseudojet_contains (j, p) bind (C) result (flag)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_contains
 
 function new_pseudojet_vector (j, n) bind (C) result (jv)
@@ -140,7 +140,7 @@ function new_pseudojet_vector (j, n) bind (C) result (jv)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function new_pseudojet_vector
 
 subroutine pseudojet_vector_delete (jv) bind (C)
@@ -149,7 +149,7 @@ subroutine pseudojet_vector_delete (jv) bind (C)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end subroutine pseudojet_vector_delete
 
 function pseudojet_vector_get_size (jv) bind (C) result (n)
@@ -160,7 +160,7 @@ function pseudojet_vector_get_size (jv) bind (C) result (n)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_vector_get_size
 
 function pseudojet_vector_get_jet (jv, i) bind (C) result (cptr)
@@ -172,7 +172,7 @@ function pseudojet_vector_get_jet (jv, i) bind (C) result (cptr)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_vector_get_jet
 
 function pseudojet_vector_sorted_by_pt (jets) bind (C) result (sorted_jets)
@@ -183,7 +183,7 @@ function pseudojet_vector_sorted_by_pt (jets) bind (C) result (sorted_jets)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function pseudojet_vector_sorted_by_pt
 
 function new_jet_definition (jet_alg, r, jet_ycut) bind (C) result (jet_def)
@@ -196,7 +196,7 @@ function new_jet_definition (jet_alg, r, jet_ycut) bind (C) result (jet_def)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function new_jet_definition
 
 subroutine jet_definition_delete (jet_def) bind (C)
@@ -205,7 +205,7 @@ subroutine jet_definition_delete (jet_def) bind (C)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end subroutine jet_definition_delete
 
 function jet_definition_get_description (jet_def) bind (C) result (str)
@@ -216,7 +216,7 @@ function jet_definition_get_description (jet_def) bind (C) result (str)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function jet_definition_get_description
 
 function new_cluster_sequence (jv, jet_def) bind (C) result (cs)
@@ -228,7 +228,7 @@ function new_cluster_sequence (jv, jet_def) bind (C) result (cs)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function new_cluster_sequence
 
 subroutine cluster_sequence_delete (cs) bind (C)
@@ -237,7 +237,7 @@ subroutine cluster_sequence_delete (cs) bind (C)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end subroutine cluster_sequence_delete
 
 function cluster_sequence_get_inclusive_jets (cs) bind (C) result (jets)
@@ -248,8 +248,20 @@ function cluster_sequence_get_inclusive_jets (cs) bind (C) result (jets)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function cluster_sequence_get_inclusive_jets
+
+function cluster_sequence_get_exclusive_jets (cs, dcut) bind (C) result (jets)
+  use iso_c_binding
+  type(c_ptr), intent(in), value :: cs
+  real(c_double), intent(in) :: dcut
+  type(c_ptr) :: jets
+  jets = c_null_ptr
+  write (0, "(A)")  "**************************************************************"
+  write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "**************************************************************"
+  stop
+end function cluster_sequence_get_exclusive_jets
 
 function cluster_sequence_get_jet_indices (cs, jv) bind (C) result (idx)
   use iso_c_binding
@@ -258,7 +270,7 @@ function cluster_sequence_get_jet_indices (cs, jv) bind (C) result (idx)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function cluster_sequence_get_jet_indices
 
 function int_vector_get (iv, i) bind (C) result (j)
@@ -269,7 +281,7 @@ function int_vector_get (iv, i) bind (C) result (j)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end function int_vector_get
 
 subroutine int_vector_delete (iv) bind (C)
@@ -278,7 +290,5 @@ subroutine int_vector_delete (iv) bind (C)
   write (0, "(A)")  "**************************************************************"
   write (0, "(A)")  "*** FastJet: Error: library not linked, WHIZARD terminates ***"
   write (0, "(A)")  "**************************************************************"
-  stop           
+  stop
 end subroutine int_vector_delete
-
-  

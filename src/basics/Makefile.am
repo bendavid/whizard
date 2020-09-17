@@ -37,8 +37,16 @@ libbasics_la_SOURCES = \
   io_units.f90 \
   constants.f90
 
+# Modules and installation
 # Dump module names into file Modules
-libbasics_Modules = ${nodist_libbasics_la_SOURCES:.f90=} ${libbasics_la_SOURCES:.f90=} 
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${nodist_libbasics_la_SOURCES:.f90=.$(FCMOD)} \
+  ${libbasics_la_SOURCES:.f90=.$(FCMOD)}
+
+libbasics_Modules = \
+  ${nodist_libbasics_la_SOURCES:.f90=} \
+  ${libbasics_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libbasics_Modules); do \
           echo $$module >> $@.new; \
@@ -51,17 +59,9 @@ Modules: Makefile
 BUILT_SOURCES = Modules
 
 
-## Install the modules used by generated matrix element code
-execmoddir = $(pkglibdir)/mod/basics
-nodist_execmod_HEADERS = \
-  kinds.$(FC_MODULE_EXT) \
-  iso_varying_string.$(FC_MODULE_EXT) \
-  io_units.$(FC_MODULE_EXT) \
-  constants.$(FC_MODULE_EXT)
-
-SUFFIXES = .lo .$(FC_MODULE_EXT)
+SUFFIXES = .lo .$(FCMOD)
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -95,7 +95,7 @@ endif
 .PHONY: clean-noweb
 
 clean-local: clean-noweb
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

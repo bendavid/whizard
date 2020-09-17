@@ -449,7 +449,7 @@ alternate values.
     event%excess_prc = excess
     event%excess_prc_known = .true.
   end subroutine generic_event_set_excess_prc
-  
+
   subroutine generic_event_set_n_dropped (event, n_dropped)
     class(generic_event_t), intent(inout) :: event
     integer, intent(in) :: n_dropped
@@ -571,7 +571,7 @@ therefore this is a deferred method.
   procedure (generic_event_set_index), deferred :: set_index
   procedure (generic_event_handler), deferred :: reset_index
   procedure (generic_event_increment_index), deferred :: increment_index
-@ 
+@
 <<Event base: interfaces>>=
   abstract interface
      subroutine generic_event_set_index (event, index)
@@ -936,6 +936,35 @@ if desired.
 
 @ %def event_callback_nop_write
 @ %def event_callback_nop
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Event Handle}
+This module defines an abstract base type that allows us to communicate any
+type of event record within the program.  The concrete extensions are expected
+to consist of pointers, such as the C pointers for HepMC or LCIO events, so
+the communication object is a very light-weight one.
+<<[[event_handles.f90]]>>=
+<<File header>>
+
+module event_handles
+  
+<<Standard module head>>
+
+<<Event handle: public>>
+
+<<Event handle: types>>
+
+end module event_handles
+@ %def event_handles
+@
+There is only one abstract type.
+<<Event handle: public>>=
+  public :: event_handle_t
+<<Event handle: types>>=
+  type, abstract :: event_handle_t
+  end type event_handle_t
+  
+@ %def event_handle_t
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Event Sample Data}
@@ -1356,6 +1385,7 @@ module eio_base
   use diagnostics
   use model_data
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
 
 <<Standard module head>>
@@ -1595,12 +1625,14 @@ that have not passed.
   procedure (eio_output), deferred :: output
 <<EIO base: interfaces>>=
   abstract interface
-     subroutine eio_output (eio, event, i_prc, reading, passed, pacify)
+     subroutine eio_output &
+          (eio, event, i_prc, reading, passed, pacify, event_handle)
        import
        class(eio_t), intent(inout) :: eio
        class(generic_event_t), intent(in), target :: event
        integer, intent(in) :: i_prc
        logical, intent(in), optional :: reading, passed, pacify
+       class(event_handle_t), intent(inout), optional :: event_handle
      end subroutine eio_output
   end interface
 
@@ -1629,11 +1661,12 @@ requires, negative for EOF and positive for error.
   end interface
 
   abstract interface
-     subroutine eio_input_event (eio, event, iostat)
+     subroutine eio_input_event (eio, event, iostat, event_handle)
        import
        class(eio_t), intent(inout) :: eio
        class(generic_event_t), intent(inout), target :: event
        integer, intent(out) :: iostat
+       class(event_handle_t), intent(inout), optional :: event_handle
      end subroutine eio_input_event
   end interface
 
@@ -1686,6 +1719,7 @@ module eio_base_uti
   use model_data
   use particles
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
 
   use eio_base
@@ -1873,10 +1907,12 @@ event.
 <<EIO base: eio test: TBP>>=
   procedure :: output => eio_test_output
 <<EIO base: test auxiliary>>=
-  subroutine eio_test_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_test_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_test_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     integer, intent(in) :: i_prc
     type(particle_set_t), pointer :: pset
     type(particle_t) :: prt
@@ -1905,10 +1941,11 @@ event.  For the test case, we do not actually modify the current event.
     iostat = 0
   end subroutine eio_test_input_i_prc
 
-  subroutine eio_test_input_event (eio, event, iostat)
+  subroutine eio_test_input_event (eio, event, iostat, event_handle)
     class(eio_test_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     eio%event_i = eio%event_i + 1
     iostat = 0
   end subroutine eio_test_input_event
@@ -2034,6 +2071,7 @@ module eio_direct
   use particles, only: particle_set_t
   use model_data, only: model_data_t
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
 
@@ -2124,7 +2162,7 @@ Output.
   end subroutine eio_direct_init_out
 
 @ %def eio_direct_init_out
-@ 
+@
 <<EIO direct: eio direct: TBP>>=
   procedure :: init_in => eio_direct_init_in
 <<EIO direct: procedures>>=
@@ -2155,11 +2193,13 @@ Output.
 <<EIO direct: eio direct: TBP>>=
   procedure :: output => eio_direct_output
 <<EIO direct: procedures>>=
-  subroutine eio_direct_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_direct_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_direct_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     type(particle_set_t), pointer :: pset_ptr
     call eio%pset%final ()
     if (event%has_index ()) then
@@ -2196,10 +2236,11 @@ Output.
     iostat = 0
   end subroutine eio_direct_input_i_prc
 
-  subroutine eio_direct_input_event (eio, event, iostat)
+  subroutine eio_direct_input_event (eio, event, iostat, event_handle)
     class(eio_direct_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     call event%select (eio%i_mci, eio%i_term, eio%channel)
     if (eio%has_event_index ()) then
        call event%set_index (eio%get_event_index ())
@@ -2335,12 +2376,12 @@ Build the contained particle set from scratch.
     eio%i_evt = index
     eio%i_evt_set = .true.
   end subroutine eio_direct_set_event_index
-  
+
   subroutine eio_direct_reset_event_index (eio)
     class(eio_direct_t), intent(inout) :: eio
     eio%i_evt_set = .false.
   end subroutine eio_direct_reset_event_index
-  
+
 @ %def eio_direct_set_event_index
 @ %def eio_direct_reset_event_index
 @ Set the selection indices.  This is supposed to select the [[i_prc]],
@@ -2612,6 +2653,7 @@ module eio_checkpoints
   use diagnostics
   use cputime
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
 
@@ -2752,11 +2794,13 @@ of the current status.
 <<EIO checkpoints: eio checkpoints: TBP>>=
   procedure :: output => eio_checkpoints_output
 <<EIO checkpoints: procedures>>=
-  subroutine eio_checkpoints_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_checkpoints_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_checkpoints_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     logical :: rd
     rd = .false.;  if (present (reading))  rd = reading
     if (eio%active) then
@@ -2848,10 +2892,11 @@ of the current status.
     iostat = 1
   end subroutine eio_checkpoints_input_i_prc
 
-  subroutine eio_checkpoints_input_event (eio, event, iostat)
+  subroutine eio_checkpoints_input_event (eio, event, iostat, event_handle)
     class(eio_checkpoints_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     call msg_bug ("Event checkpoints: event input not supported")
     iostat = 1
   end subroutine eio_checkpoints_input_event
@@ -3025,6 +3070,7 @@ module eio_callback
   use diagnostics
   use cputime
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
 
@@ -3148,11 +3194,13 @@ procedure if the counter hits the interval.
 <<EIO callback: eio callback: TBP>>=
   procedure :: output => eio_callback_output
 <<EIO callback: procedures>>=
-  subroutine eio_callback_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_callback_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_callback_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     eio%i_evt = eio%i_evt + 1
     if (eio%n_interval > 0) then
        eio%i_interval = eio%i_interval + 1
@@ -3178,10 +3226,11 @@ procedure if the counter hits the interval.
     iostat = 1
   end subroutine eio_callback_input_i_prc
 
-  subroutine eio_callback_input_event (eio, event, iostat)
+  subroutine eio_callback_input_event (eio, event, iostat, event_handle)
     class(eio_callback_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     call msg_bug ("Event callback: event input not supported")
     iostat = 1
   end subroutine eio_callback_input_event
@@ -3216,6 +3265,7 @@ module eio_weights
   use io_units
   use diagnostics
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
 
@@ -3364,11 +3414,13 @@ Don't write the file if the [[passed]] flag is set and false.
 <<EIO weights: eio weights: TBP>>=
   procedure :: output => eio_weights_output
 <<EIO weights: procedures>>=
-  subroutine eio_weights_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_weights_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_weights_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     integer :: n_alt, i
     real(default) :: weight, sqme_ref, sqme_prc
     logical :: evt_pacify, evt_passed
@@ -3420,10 +3472,11 @@ Don't write the file if the [[passed]] flag is set and false.
     iostat = 1
   end subroutine eio_weights_input_i_prc
 
-  subroutine eio_weights_input_event (eio, event, iostat)
+  subroutine eio_weights_input_event (eio, event, iostat, event_handle)
     class(eio_weights_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     call msg_bug ("Weight stream: event input not supported")
     iostat = 1
   end subroutine eio_weights_input_event
@@ -3733,6 +3786,7 @@ module eio_dump
   use io_units
   use diagnostics
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
 
@@ -3915,11 +3969,13 @@ and to screen (if requested).
 <<EIO dump: eio dump: TBP>>=
   procedure :: output => eio_dump_output
 <<EIO dump: procedures>>=
-  subroutine eio_dump_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_dump_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_dump_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     character(len=7) :: fmt
     eio%count = eio%count + 1
     if (present (pacify)) then
@@ -4024,10 +4080,11 @@ and to screen (if requested).
     iostat = 1
   end subroutine eio_dump_input_i_prc
 
-  subroutine eio_dump_input_event (eio, event, iostat)
+  subroutine eio_dump_input_event (eio, event, iostat, event_handle)
     class(eio_dump_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     call msg_bug ("Dump stream: event input not supported")
     iostat = 1
   end subroutine eio_dump_input_event
@@ -4139,7 +4196,7 @@ We test the implementation of all I/O methods.
     end select
 
     i_prc = 42
-    
+
     call eio%init_out (var_str (""))
 
     call event%generate (1, [0._default, 0._default])
@@ -4189,6 +4246,7 @@ module eio_ascii
   use io_units
   use diagnostics
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
   use hep_common
@@ -4462,8 +4520,8 @@ that are not covered by the HEPRUP definition.
          action = "write", status = "replace")
     select type (eio)
     type is (eio_ascii_lha_t)
-       call heprup_init &
-            (data%pdg_beam, &
+       call heprup_init( &
+            data%pdg_beam, &
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
@@ -4476,8 +4534,8 @@ that are not covered by the HEPRUP definition.
        end do
        call heprup_write_ascii (eio%unit)
     type is (eio_ascii_lha_verb_t)
-       call heprup_init &
-            (data%pdg_beam, &
+       call heprup_init( &
+            data%pdg_beam, &
             data%energy_beam, &
             n_processes = data%n_proc, &
             unweighted = data%unweighted, &
@@ -4594,11 +4652,13 @@ for debugging purposes.
 <<EIO ascii: eio ascii: TBP>>=
   procedure :: output => eio_ascii_output
 <<EIO ascii: procedures>>=
-  subroutine eio_ascii_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_ascii_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_ascii_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     if (present (passed)) then
        if (.not. passed) then
           select type (eio)
@@ -4694,10 +4754,11 @@ for debugging purposes.
     iostat = 1
   end subroutine eio_ascii_input_i_prc
 
-  subroutine eio_ascii_input_event (eio, event, iostat)
+  subroutine eio_ascii_input_event (eio, event, iostat, event_handle)
     class(eio_ascii_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     call msg_bug ("ASCII: event input not supported")
     iostat = 1
   end subroutine eio_ascii_input_event
@@ -7538,6 +7599,7 @@ module hepmc_interface
   use colors
   use helicities
   use polarizations
+  use event_handles, only: event_handle_t
 
 <<Standard module head>>
 
@@ -8442,7 +8504,7 @@ an event container.
        integer(c_int) :: size
        type(c_ptr), value :: v_obj
      end function gen_vertex_particles_out_size
-  end interface  
+  end interface
   interface
      function gen_particle_get_n_parents (p_obj) result (size) bind(C)
        import
@@ -8476,7 +8538,7 @@ an event container.
     type(hepmc_vertex_t), intent(in) :: v
     n_out = gen_vertex_particles_out_size (v%obj)
   end function hepmc_vertex_get_n_out
-  
+
   function hepmc_particle_get_parents (p) result (n_p)
     integer :: n_p
     type(hepmc_particle_t), intent(in) :: p
@@ -8850,12 +8912,15 @@ the particle which is owned by the vertex.)
 \subsection{GenEvent}
 The main object of HepMC is a GenEvent.  The object is filled by
 GenVertex objects, which in turn contain GenParticle objects.
+
+This is an extension of the abstract [[event_handle_t]], so we can use the
+according communicator features.
 <<HepMC interface: public>>=
   public :: hepmc_event_t
 <<HepMC interface: types>>=
-  type :: hepmc_event_t
+  type, extends (event_handle_t) :: hepmc_event_t
      private
-     type(c_ptr) :: obj
+     type(c_ptr) :: obj = c_null_ptr
   end type hepmc_event_t
 
 @ %def hepmc_event_t
@@ -8893,15 +8958,43 @@ The Fortran version has initializer form.
      end subroutine gen_event_delete
   end interface
 @ %def gen_event_delete
+@ Finalize: use the HepMC destructor.  Also nullify the pointer explicitly, to
+be on the safe side.
 <<HepMC interface: public>>=
   public :: hepmc_event_final
 <<HepMC interface: procedures>>=
   subroutine hepmc_event_final (evt)
     type(hepmc_event_t), intent(inout) :: evt
-    call gen_event_delete (evt%obj)
+    if (c_associated (evt%obj)) then
+       call gen_event_delete (evt%obj)
+       evt%obj = c_null_ptr
+    end if
   end subroutine hepmc_event_final
 
 @ %def hepmc_event_final
+@ Nullify: do not call the destructor, just nullify the C pointer.  There
+should be another pointer associated with the object.
+<<HepMC interface: public>>=
+  public :: hepmc_event_nullify
+<<HepMC interface: procedures>>=
+  subroutine hepmc_event_nullify (evt)
+    type(hepmc_event_t), intent(inout) :: evt
+    evt%obj = c_null_ptr
+  end subroutine hepmc_event_nullify
+
+@ %def hepmc_event_nullify
+@ Return the actual object as a C pointer.  For use in the native C++
+interface only.
+<<HepMC interface: public>>=
+  public :: hepmc_event_get_c_ptr
+<<HepMC interface: procedures>>=
+  function hepmc_event_get_c_ptr (evt) result (p)
+    type(hepmc_event_t), intent(in) :: evt
+    type(c_ptr) :: p
+    p = evt%obj
+  end function hepmc_event_get_c_ptr
+  
+@ %def hepmc_event_get_c_ptr
 @ Screen output.  Printing to file is possible in principle (using a
 C++ output channel), by allowing an argument.  Printing to an open
 Fortran unit is obviously not possible.
@@ -9520,7 +9613,7 @@ the particle which is owned by the vertex.)
     n_tot = gen_event_get_n_particles (evt%obj)
     if (n > n_tot .or. n < 1) then
        prt%obj = c_null_ptr
-       call msg_error ("HepMC interface called for wrong particle ID.")       
+       call msg_error ("HepMC interface called for wrong particle ID.")
     else
        prt%obj = gen_event_get_nth_particle (evt%obj, nth)
     end if
@@ -9625,7 +9718,13 @@ the file is done by the constructor, closing by the destructor.
        type(c_ptr), value :: io_obj, evt_obj
      end subroutine io_gen_event_write_event
   end interface
-@ %def io_gen_event_write_event
+  interface
+     subroutine io_gen_event_write_event_hepmc2 (io_obj, evt_obj) bind(C)
+       import
+       type(c_ptr), value :: io_obj, evt_obj
+     end subroutine io_gen_event_write_event_hepmc2
+  end interface
+@ %def io_gen_event_write_event io_gen_event_write_event_hepmc2
 <<HepMC interface: public>>=
   public :: hepmc_iostream_write_event
 <<HepMC interface: procedures>>=
@@ -9931,6 +10030,7 @@ module lcio_interface
   use colors
   use helicities
   use polarizations
+  use event_handles, only: event_handle_t
 
 <<Standard module head>>
 
@@ -10039,7 +10139,7 @@ MCParticle objects, which are set as LCCollection.
 <<LCIO interface: types>>=
   type :: lccollection_t
      private
-     type(c_ptr) :: obj
+     type(c_ptr) :: obj = c_null_ptr
   end type lccollection_t
 
 @ %def lccollection_t
@@ -10054,9 +10154,9 @@ MCParticle objects, which are set as LCCollection.
 <<LCIO interface: public>>=
   public :: lcio_event_t
 <<LCIO interface: types>>=
-  type :: lcio_event_t
+  type, extends (event_handle_t) :: lcio_event_t
      private
-     type(c_ptr) :: obj
+     type(c_ptr) :: obj = c_null_ptr
      type(lccollection_t) :: lccoll
   end type lcio_event_t
 
@@ -10140,16 +10240,46 @@ The Fortran version has initializer form.
   end subroutine write_lcio_event
 
 @ %def write_lcio_event
-@
+@ Finalize: use the LCIO destructor.  Also nullify the pointer explicitly, to
+be on the safe side.
 <<LCIO interface: public>>=
   public :: lcio_event_final
 <<LCIO interface: procedures>>=
-  subroutine lcio_event_final (evt)
+  subroutine lcio_event_final (evt, delete)
     type(lcio_event_t), intent(inout) :: evt
-    call lcio_event_delete (evt%obj)
+    logical, intent(in) :: delete
+    if (c_associated (evt%obj)) then
+       if (delete)  call lcio_event_delete (evt%obj)
+       evt%obj = c_null_ptr
+       evt%lccoll%obj = c_null_ptr
+    end if
   end subroutine lcio_event_final
 
 @ %def lcio_event_final
+@ Nullify: do not call the destructor, just nullify the C pointer.  There
+should be another pointer associated with the object.
+<<LCIO interface: public>>=
+  public :: lcio_event_nullify
+<<LCIO interface: procedures>>=
+  subroutine lcio_event_nullify (evt)
+    type(lcio_event_t), intent(inout) :: evt
+    evt%obj = c_null_ptr
+    evt%lccoll%obj = c_null_ptr
+  end subroutine lcio_event_nullify
+
+@ %def lcio_event_nullify
+@ Return the actual object as a C pointer.  For use in the native C++
+interface only.
+<<LCIO interface: public>>=
+  public :: lcio_event_get_c_ptr
+<<LCIO interface: procedures>>=
+  function lcio_event_get_c_ptr (evt) result (p)
+    type(lcio_event_t), intent(in) :: evt
+    type(c_ptr) :: p
+    p = evt%obj
+  end function lcio_event_get_c_ptr
+  
+@ %def lcio_event_get_c_ptr
 @
 <<LCIO interface: interfaces>>=
   interface
@@ -11417,7 +11547,7 @@ end module lcio_interface_uti
 
     ! Wrapup
     ! call pol%final ()
-    call lcio_event_final (evt)
+    call lcio_event_final (evt, .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: lcio_interface_1"
@@ -11870,7 +12000,7 @@ then define an incoming particle as
     integer, dimension(:), allocatable :: barcode, n_parents
     integer :: n_tot, n_beam, i, bc
     n_tot = hepmc_event_get_n_particles(evt)
-    allocate (barcode (n_tot))    
+    allocate (barcode (n_tot))
     if (HEPMC2_AVAILABLE) then
        call hepmc_event_particle_iterator_init (it, evt)
        do i = 1, n_tot
@@ -12536,6 +12666,7 @@ module eio_lhef
   use os_interface
   use xml
   use event_base
+  use event_handles, only: event_handle_t
   use eio_data
   use eio_base
   use hep_common
@@ -13055,11 +13186,13 @@ squared matrix element, then the particle set.
 <<EIO LHEF: eio lhef: TBP>>=
   procedure :: output => eio_lhef_output
 <<EIO LHEF: procedures>>=
-  subroutine eio_lhef_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_lhef_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     integer :: u
     u = given_output_unit (eio%unit);  if (u < 0)  return
     if (present (passed)) then
@@ -13165,10 +13298,11 @@ LHEF format does not support event indices.
 <<EIO LHEF: eio lhef: TBP>>=
   procedure :: input_event => eio_lhef_input_event
 <<EIO LHEF: procedures>>=
-  subroutine eio_lhef_input_event (eio, event, iostat)
+  subroutine eio_lhef_input_event (eio, event, iostat, event_handle)
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     type(string_t) :: s
     logical :: closing
     iostat = 0
@@ -14465,6 +14599,7 @@ module eio_stdhep
   use string_utils
   use diagnostics
   use event_base
+  use event_handles, only: event_handle_t
   use hep_common
   use hep_events
   use eio_data
@@ -14790,11 +14925,13 @@ squared matrix element, then the particle set.
 <<EIO stdhep: eio stdhep: TBP>>=
   procedure :: output => eio_stdhep_output
 <<EIO stdhep: procedures>>=
-  subroutine eio_stdhep_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_stdhep_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_stdhep_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     if (present (passed)) then
        if (.not. passed)  return
     end if
@@ -14880,10 +15017,11 @@ incremented to count the current event sample.
     end subroutine err_index
   end subroutine eio_stdhep_input_i_prc
 
-  subroutine eio_stdhep_input_event (eio, event, iostat)
+  subroutine eio_stdhep_input_event (eio, event, iostat, event_handle)
     class(eio_stdhep_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     iostat = 0
     call event%reset_contents ()
     call event%select (1, 1, 1)
@@ -15540,6 +15678,7 @@ module eio_hepmc
   use particles
   use model_data
   use event_base
+  use event_handles, only: event_handle_t
   use hep_events
   use eio_data
   use eio_base
@@ -15799,14 +15938,20 @@ event files.
 moment, we set [[alpha_qed]] always to -1. There should be methods for
 the handling of $\alpha$ in [[me_methods]] in the same way as for
 $\alpha_s$.
+
+If an [[event_handle]] is in the argument list, and it is of the correct HepMC
+type, do not destroy the event but transfer it there (i.e., the enclosed C
+pointer).
 <<EIO HepMC: eio hepmc: TBP>>=
   procedure :: output => eio_hepmc_output
 <<EIO HepMC: procedures>>=
-  subroutine eio_hepmc_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_hepmc_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_hepmc_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     type(particle_set_t), pointer :: pset_ptr
     if (present (passed)) then
        if (.not. passed)  return
@@ -15837,6 +15982,7 @@ $\alpha_s$.
        end if
        call hepmc_iostream_write_event (eio%iostream, &
             eio%hepmc_event, eio%hepmc3_mode)
+       call maybe_transfer_event_to_handle (eio%hepmc_event, event_handle)
        call hepmc_event_final (eio%hepmc_event)
     else
        call eio%write ()
@@ -15881,10 +16027,11 @@ $\alpha_s$.
     end subroutine err_index
   end subroutine eio_hepmc_input_i_prc
 
-  subroutine eio_hepmc_input_event (eio, event, iostat)
+  subroutine eio_hepmc_input_event (eio, event, iostat, event_handle)
     class(eio_hepmc_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     iostat = 0
     call event%reset_contents ()
     call event%select (1, 1, 1)
@@ -15893,11 +16040,32 @@ $\alpha_s$.
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
+    call maybe_transfer_event_to_handle (eio%hepmc_event, event_handle)
     call hepmc_event_final (eio%hepmc_event)
   end subroutine eio_hepmc_input_event
 
 @ %def eio_hepmc_input_i_prc
 @ %def eio_hepmc_input_event
+@
+If an [[event_handle]] is in the argument list, and it is of the correct HepMC
+type, do not destroy the event but transfer it to the handle (i.e., the
+enclosed C pointer).  Nullify the original pointer, so the event does not get
+destroyed.
+<<EIO HepMC: procedures>>=
+  subroutine maybe_transfer_event_to_handle (hepmc_event, event_handle)
+    type(hepmc_event_t), intent(inout) :: hepmc_event
+    class(event_handle_t), intent(inout), optional :: event_handle
+    if (present (event_handle)) then
+       select type (event_handle)
+       type is (hepmc_event_t)
+          call hepmc_event_final (event_handle)  ! just in case
+          event_handle = hepmc_event
+          call hepmc_event_nullify (hepmc_event) ! avoid destructor call
+       end select
+    end if
+  end subroutine maybe_transfer_event_to_handle
+
+@ %def transfer_event_to_handle
 @
 <<EIO HepMC: eio hepmc: TBP>>=
   procedure :: skip => eio_hepmc_skip
@@ -16185,7 +16353,7 @@ We test the implementation of all I/O methods.
        write (u_file, "(A)")  "P 2 0 25 0.0000000000000000e+00 &
             &0.0000000000000000e+00 -4.8412291827592713e+02 &
             &5.0000000000000000e+02 1.2499999999999989e+02 3"
-       write (u_file, "(A)")  "V -1 0 [1,2]"  
+       write (u_file, "(A)")  "V -1 0 [1,2]"
        write (u_file, "(A)")  "P 3 -1 25 -1.4960220911365536e+02 &
             &-4.6042825611414656e+02 0.0000000000000000e+00 &
             &5.0000000000000000e+02 1.2500000000000000e+02 1"
@@ -16240,7 +16408,7 @@ We test the implementation of all I/O methods.
        write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
             " with ID = ", eio%proc_num_id(i_prc)
     end select
-    
+
     call eio%input_event (event, iostat)
 
     call event%write (u)
@@ -16431,6 +16599,7 @@ module eio_lcio
   use diagnostics
   use particles
   use event_base
+  use event_handles, only: event_handle_t
   use hep_events
   use eio_data
   use eio_base
@@ -16690,11 +16859,13 @@ event files.
 <<EIO LCIO: eio lcio: TBP>>=
   procedure :: output => eio_lcio_output
 <<EIO LCIO: procedures>>=
-  subroutine eio_lcio_output (eio, event, i_prc, reading, passed, pacify)
+  subroutine eio_lcio_output &
+       (eio, event, i_prc, reading, passed, pacify, event_handle)
     class(eio_lcio_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
+    class(event_handle_t), intent(inout), optional :: event_handle
     type(particle_set_t), pointer :: pset_ptr
     real(default) :: sqme_prc, weight
     integer :: i
@@ -16735,7 +16906,9 @@ event files.
           call lcio_event_set_alt_weight (eio%lcio_event, weight, i)
        end do
        call lcio_event_write (eio%lcio_writer, eio%lcio_event)
-       call lcio_event_final (eio%lcio_event)
+       call maybe_transfer_event_to_handle (eio%lcio_event, &
+            event_handle, .true.)
+       call lcio_event_final (eio%lcio_event, .true.)
     else
        call eio%write ()
        call msg_fatal ("LCIO file is not open for writing")
@@ -16777,10 +16950,11 @@ event files.
     end subroutine err_index
   end subroutine eio_lcio_input_i_prc
 
-  subroutine eio_lcio_input_event (eio, event, iostat)
+  subroutine eio_lcio_input_event (eio, event, iostat, event_handle)
     class(eio_lcio_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    class(event_handle_t), intent(inout), optional :: event_handle
     iostat = 0
     call event%reset_contents ()
     call event%select (1, 1, 1)
@@ -16789,11 +16963,35 @@ event files.
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
-    call lcio_event_final (eio%lcio_event)
+    call maybe_transfer_event_to_handle (eio%lcio_event, &
+         event_handle, .false.)
+    call lcio_event_final (eio%lcio_event, .false.)
   end subroutine eio_lcio_input_event
 
 @ %def eio_lcio_input_i_prc
 @ %def eio_lcio_input_event
+@
+If an [[event_handle]] is in the argument list, and it is of the correct HepMC
+type, do not destroy the event but transfer it to the handle (i.e., the
+enclosed C pointer).  Nullify the original pointer, so the event does not get
+destroyed.
+<<EIO LCIO: procedures>>=
+  subroutine maybe_transfer_event_to_handle (lcio_event, event_handle, delete)
+    type(lcio_event_t), intent(inout) :: lcio_event
+    class(event_handle_t), intent(inout), optional :: event_handle
+    logical, intent(in) :: delete
+    if (present (event_handle)) then
+       select type (event_handle)
+       type is (lcio_event_t)
+          call lcio_event_final (event_handle, delete)  ! just in case
+          event_handle = lcio_event
+call show_lcio_event (event_handle)
+          call lcio_event_nullify (lcio_event) ! avoid destructor call
+       end select
+    end if
+  end subroutine maybe_transfer_event_to_handle
+
+@ %def transfer_event_to_handle
 @
 <<EIO LCIO: eio lcio: TBP>>=
   procedure :: skip => eio_lcio_skip
@@ -16955,7 +17153,7 @@ We test the implementation of all I/O methods.
        call lcio_event_from_particle_set &
             (eio%lcio_event,  pset_ptr)
        call write_lcio_event (eio%lcio_event, var_str ("test_file.slcio"))
-       call lcio_event_final (eio%lcio_event)
+       call lcio_event_final (eio%lcio_event, .true.)
     end select
 
     write (u, "(A)")

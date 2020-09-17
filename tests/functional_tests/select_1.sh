@@ -5,7 +5,7 @@ if test -f OCAML_FLAG; then
     ./run_whizard.sh @script@ --no-logging
     script=`basename @script@`
     mv $script.log $script.log.tmp
-    cat $script.log.tmp | sed -e 's/WHIZARD 2.*$/WHIZARD [version]/' > $script.log
+    cat $script.log.tmp | sed -e 's/WHIZARD 3.*$/WHIZARD [version]/' > $script.log
     rm -f $script.log.tmp
     echo "Contents of ${script}a.dat:" >> $script.log
     cat ${script}a.dat >> $script.log

@@ -57,7 +57,7 @@ SOURCE_FILES = \
     constants.f90 kinematics.f90 coordinates.f90
 
 # Fortran90 module files are generated at the same time as object files
-.$(OBJEXT).$(FC_MODULE_EXT):
+.$(OBJEXT).$(FCMOD):
 	@:
 #	touch $@
 
@@ -101,7 +101,7 @@ tao_test.f90: tao_random_numbers.nw
 
 clean-local:
 	rm -f $(EXTRA_PROGRAMS)
-	rm -f *.$(FC_MODULE_EXT) *.g90
+	rm -f *.$(FCMOD) *.g90
 	rm -f *.mod tmp.tao *.d *.grid *.grids
 if FC_SUBMODULES
 	-rm -f *.smod

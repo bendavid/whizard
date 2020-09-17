@@ -35,7 +35,7 @@ weight = 2
 
  Event sample properties:
    MD5 sum (proc)   = '0B2DE50F19EBF15A744DDBDF7D7FE4CF'
-   MD5 sum (config) = '64084026865679451CDA8B1F6B3B529D'
+   MD5 sum (config) = 'E0C2E3B51429E99975FD1A64F37853B2'
    unweighted       = F
    negative weights = F
    normalization    = 'sigma'
@@ -53,7 +53,7 @@ weight = 2
 * Generate an event
 
 ========================================================================
- Event sample: ''
+ Event sample: 'simulation_10p'
    Processes    = 1
    Alt.wgts     = 1
    Unweighted   = F
@@ -72,7 +72,7 @@ weight = 2
    Sim. valid   = T
    Ev.file ver. = 2
    MD5 sum (proc)   = '0B2DE50F19EBF15A744DDBDF7D7FE4CF'
-   MD5 sum (config) = '64084026865679451CDA8B1F6B3B529D'
+   MD5 sum (config) = 'E0C2E3B51429E99975FD1A64F37853B2'
    Events requested  = 1
    Event index       = 1
    Events total      = 1

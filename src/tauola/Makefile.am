@@ -31,7 +31,12 @@ libtauola_interface_la_SOURCES = \
    hepev4_aux.f90 \
    tauola_interface.f90
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libtauola_interface_la_SOURCES:.f90=.$(FCMOD)}
+
 libtauola_interface_Modules = ${libtauola_interface_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libtauola_interface_Modules); do \
@@ -91,9 +96,9 @@ Makefile.depend: $(libtauola_interface_la_SOURCES)
 
 DISTCLEANFILES += Makefile.depend
 
-SUFFIXES = .lo .$(FC_MODULE_EXT)
+SUFFIXES = .lo .$(FCMOD)
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -129,8 +134,8 @@ endif
 AM_FCFLAGS += -I../basics -I../utilities -I../system -I../expr_base -I../combinatorics -I../parsing -I../physics -I../qft -I../types -I../fastjet -I../particles -I../events -I../variables
 
 MODULES= \
-  tauola_interface.$(FC_MODULE_EXT) \
-  hepev4_aux.$(FC_MODULE_EXT)
+  tauola_interface.$(FCMOD) \
+  hepev4_aux.$(FCMOD)
 
 ########################################################################
 ## Non-standard cleanup tasks

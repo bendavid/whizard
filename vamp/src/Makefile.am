@@ -45,21 +45,22 @@ NOWEB_SOURCE_FILES = \
 SOURCE_FILES = $(NOWEB_SOURCE_FILES)
 
 MODULE_FILES = \
-  divisions.$(FC_MODULE_EXT) \
-  vamp.$(FC_MODULE_EXT) \
-  kinds.$(FC_MODULE_EXT) \
-  exceptions.$(FC_MODULE_EXT) \
-  tao_random_numbers.$(FC_MODULE_EXT) \
-  tao52_random_numbers.$(FC_MODULE_EXT) \
-  specfun.$(FC_MODULE_EXT) \
-  vamp_stat.$(FC_MODULE_EXT) \
-  histograms.$(FC_MODULE_EXT) \
-  utils.$(FC_MODULE_EXT) \
-  linalg.$(FC_MODULE_EXT) \
-  products.$(FC_MODULE_EXT) \
+  divisions.$(FCMOD) \
+  vamp.$(FCMOD) \
+  kinds.$(FCMOD) \
+  exceptions.$(FCMOD) \
+  tao_random_numbers.$(FCMOD) \
+  tao52_random_numbers.$(FCMOD) \
+  specfun.$(FCMOD) \
+  vamp_stat.$(FCMOD) \
+  histograms.$(FCMOD) \
+  utils.$(FCMOD) \
+  linalg.$(FCMOD) \
+  products.$(FCMOD) \
   $(modules_extra) \
-  # vamp_grid.$(FC_MODULE_EXT) \
-  # vamp_equivalences.$(FC_MODULE_EXT)
+  vamp_grid_type.$(FCMOD) \
+  vamp_rest.$(FCMOD) \
+  vamp_equivalences.$(FCMOD)
 
 NOWEB_FILES = \
     prelude.nw postlude.nw \
@@ -71,24 +72,29 @@ NOWEB_FILES = \
     vampi.nw mpi90.nw vamp_test.nw vamp_test0.nw \
     application.nw sample.nw
 
-moduleexecincludedir = $(pkgincludedir)/../vamp
-# if FC_MPI
-# lib_LTLIBRARIES = libvamp.la libvampi.la
-# libvamp_la_SOURCES = $(SOURCE_FILES)
-# libvampi_la_SOURCES = mpi90.f90 vampi.f90
-# nodist_moduleexecinclude_DATA = $(MODULE_FILES) # mpi90.$(FC_MODULE_EXT) vampi.$(FC_MODULE_EXT)
-# else !FC_MPI
+# Modules and installation
+# Install twice: once for vamp
+execvampmoddir = $(fmoddir)/vamp
+nodist_execvampmod_HEADERS = $(MODULE_FILES)
+
+# Once for whizard
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = $(MODULE_FILES)
+
 lib_LTLIBRARIES = libvamp.la
 libvamp_la_SOURCES = $(SOURCE_FILES)
-nodist_moduleexecinclude_DATA = $(MODULE_FILES)
-# endif !FC_MPI
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) iso_fortran_env_stub.f90
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
+
+# Explicit dependencies
+vamp_grid_type.$(FCMOD): vamp.lo
+vamp_rest.$(FCMOD): vamp.lo
+vamp_equivalences.$(FCMOD): vamp.lo
 
 ########################################################################
 # Fortran Compilers
@@ -116,7 +122,7 @@ endif
 NOTANGLE_IT = \
   $(NOTANGLE) -R'[[$(@F)]]' $(srcdir)/prelude.nw $^ | $(CPIF) $@
 
-SUFFIXES = .nw .lo .$(FC_MODULE_EXT) 
+SUFFIXES = .nw .lo .$(FCMOD) 
 
 .nw.f90:
 	$(NOTANGLE_IT)
@@ -165,7 +171,7 @@ endif
 
 ## Remove F90 module files
 clean-local: clean-noweb
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

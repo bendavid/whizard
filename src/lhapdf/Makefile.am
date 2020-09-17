@@ -37,6 +37,19 @@ libLHAPDFWrap_dummy_la_SOURCES = \
    LHAPDFWrap_dummy.f90 lhapdf.f90
 endif
 
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  lhapdf.$(FCMOD)
+
+SUFFIXES = .lo .$(FCMOD)
+
+# Fortran90 module files are generated at the same time as object files
+.lo.$(FCMOD):
+        @:
+#       touch $@
+
 AM_FCFLAGS =
 
 ########################################################################
@@ -60,12 +73,13 @@ endif
 ########################################################################
 ## Explicit dependencies
 
-lhapdf.lo: ../basics/kinds.$(FC_MODULE_EXT)
+lhapdf.lo: ../basics/kinds.$(FCMOD)
+lhapdf.$(FCMOD): lhapdf.lo
 
 AM_FCFLAGS += -I../basics
 
 MODULES= \
-  lhapdf.$(FC_MODULE_EXT)
+  lhapdf.$(FCMOD)
 
 ########################################################################
 ## Non-standard cleanup tasks

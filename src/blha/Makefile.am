@@ -63,7 +63,14 @@ libblha_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = blha.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libblha_la_SOURCES:.f90=.$(FCMOD)} \
+  blha_olp_interfaces.$(FCMOD) \
+  blha_config.$(FCMOD)
+
 libblha_Modules = $(nodist_libblha_la_SOURCES:.f90=) $(libblha_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libblha_Modules); do \
@@ -138,7 +145,7 @@ Makefile.depend: $(nodist_libblha_la_SOURCES) $(libblha_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -216,7 +223,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f blha.stamp blha.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

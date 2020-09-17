@@ -959,7 +959,7 @@ clean-macosx:
 .PHONY: clean-macosx
 
 clean-local: clean-macosx
-	rm -f a.out gmon.out *.$(FC_MODULE_EXT) \
+	rm -f a.out gmon.out *.$(FCMOD) \
 		*.o *.cmi *.cmo *.cmx amplitude_*.f90 \
 		$(EXTRA_PROGRAMS) ects.f90 ward.f90 ward_UFO.f90 \
 		fermi.f90 fermi_UFO.f90 compare_*.f90 \

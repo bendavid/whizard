@@ -15,7 +15,7 @@
 
    md5sum_process    = "                                "
    md5sum_model_par  = "34AE44487D84198697E1368F11F2C8D8"
-   md5sum_phs_config = "FF12FF0C5CF18AB3E0301E7460E0852D"
+   md5sum_phs_config = "502BAD4B6E3F6FD799BE2232D45AD244"
    sqrts         =  1.000000000000E+03
    m_threshold_s =  5.000000000000E+01
    m_threshold_t =  1.000000000000E+02

@@ -9,7 +9,7 @@ if test -f OCAML_FLAG; then
     echo "STDHEP EV4 version:" >> $script.log
     ./stdhep_rd ${script}_p1.ev4.hep 1 >> ${script}.log
     mv ${script}.log ${script}.log.tmp    
-    cat ${script}.log.tmp | sed -e 's/total blocks.*/total blocks: [...]/' -e 's/WHIZARD 2.*/WHIZARD [version]/' -e 's/date: .*/date: [...]/' > ${script}.log
+    cat ${script}.log.tmp | sed -e 's/total blocks.*/total blocks: [...]/' -e 's/WHIZARD 3.*/WHIZARD [version]/' -e 's/date: .*/date: [...]/' > ${script}.log
     diff ref-output/${script}.ref ${script}.log
 else
     echo "|=============================================================================|"

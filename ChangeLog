@@ -2,22 +2,57 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.8.5
+	Version 3.0.0_beta+
+
+2020-09-16
+	Bug fix enables reading LCIO events with LCIO v2.15+
+
+##################################################################
 
 2020-09-16
 	RELEASE: version 2.8.5
 
 2020-09-11
-        Bug fix for H->tau tau transverse polarization with PYTHIA6
-           (thanks to Junping Tian / Akiya Miyamoto)
+	Bug fix for H->tau tau transverse polarization with PYTHIA6
+	   (thanks to Junping Tian / Akiya Miyamoto)
 
 2020-09-09
 	Fix a long standing bug (since 2.0) in the calculation of color
 	factors when particles of different color were combined in a
 	particle class.  NB: O'Mega never produced a wrong number,
+	it only declared all processes as invalid.
+
+2020-09-08
+	Enable Openloops matrix element equivalences for optimization
 
 2020-09-02
 	Compatibility fix for PYTHIA v8.301+ interface
+
+2020-09-01
+	Support exclusive jet clustering in ee for Fastjet interface
+
+##################################################################
+
+2020-08-30
+	RELEASE: version 3.0.0_beta
+
+2020-08-27
+	Major revision of NLO distributions and events for
+	   processes with structure functions:
+	- Use parton momenta/flavors (instead of beams) for events
+	- Bug fix for Lorentz boosts and Lorentz frames of momenta
+	- Bug fix: apply cuts to virtual NLO component in correct frame
+	- Correctly assign ISR radiation momenta in data structures
+	- Refactoring on quantum numbers for NLO event data structures
+	- Functional tests for hadron collider NLO distributions
+	- many minor bug fixes regarding NLO hadron collider physics
+
+2020-08-11
+	Bug fix for linking problem with OpenMPI
+
+2020-08-07
+	New WHIZARD API: WHIZARD can be externally linked as a
+	  library, added examples for Fortran, C, C++ programs
 
 ##################################################################
 
@@ -26,6 +61,22 @@ Use svn log to see detailed changes.
 
 2020-07-07
 	Bug fix: steering of UFO Majorana models from WHIZARD
+
+##################################################################
+
+2020-07-06
+	Combined integration also for hadron collider processes at NLO
+
+2020-07-05
+	Bug fix: correctly steer e+e- FastJet clustering algorithms
+	Major revision of NLO differential distributions and events:
+	- Correctly assign quantum numbers to NLO fixed-order events
+	- Correctly assign weights to NLO fixed-order events for
+	     combined simulation
+	- Cut all NLO fixed-order subevents in event groups individually
+	- Only allow "sigma" normalization for NLO fixed-order events
+	- Use correct PDF setup for NLO counter events
+	- Several technical fixes and updates of the NLO testsuite
 
 ##################################################################
 
@@ -77,7 +128,7 @@ Use svn log to see detailed changes.
 ##################################################################
 
 2020-03-03
-        RELEASE: version 3.0.0_alpha
+	RELEASE: version 3.0.0_alpha
 
 2020-02-25
 	Bug fix: Scale and alphas can be retrieved from internal event format to

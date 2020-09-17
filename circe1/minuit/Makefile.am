@@ -50,7 +50,7 @@ libminuit_la_SOURCES = $(FC_SOURCES) $(C_SOURCES)
 EXTRA_DIST = $(FC_SOURCES) $(C_SOURCES) 
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 
 AM_FFLAGS = 
@@ -73,7 +73,7 @@ endif
 
 ## Remove FC module files
 clean-local: 
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 
 ## Remove backup files
 maintainer-clean-backup:

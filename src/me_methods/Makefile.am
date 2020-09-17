@@ -47,7 +47,12 @@ libme_methods_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = me_methods.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libme_methods_la_SOURCES:.f90=.$(FCMOD)}
+
 libme_methods_Modules = \
   ${libme_methods_la_SOURCES:.f90=}\
   ${libme_methods_ut_la_SOURCES:.f90=}
@@ -118,7 +123,7 @@ Makefile.depend: $(libme_methods_la_SOURCES) $(libme_methods_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -191,7 +196,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f me_methods.stamp me_methods.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

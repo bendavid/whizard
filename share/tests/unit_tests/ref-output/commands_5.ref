@@ -112,7 +112,7 @@ iterations = 1:1000
    Method              = unit_test
    Process variant     = test_me
    MD5 sum (def)       = '89AB129528453722C5C82B6BF69E65C5'
-   MD5 sum (phs)       = '031DF17D70BC1A3E35F0A7A01467BE44'
+   MD5 sum (phs)       = '0552A8743C6E8C64D956DFC7D94128E3'
  Referenced data:
    Terms                    = 1
    MC dataset               = 1
@@ -126,7 +126,7 @@ iterations = 1:1000
    n_channel = 1
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
    flat dim. = 2
  Flavor combinations:
@@ -134,7 +134,7 @@ iterations = 1:1000
  Phase-space / structure-function channels:
    1: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '031DF17D70BC1A3E35F0A7A01467BE44'
+   MD5 sum (phs config) = '0552A8743C6E8C64D956DFC7D94128E3'
 ========================================================================
  Process term configuration:
 ------------------------------------------------------------------------
@@ -187,7 +187,7 @@ iterations = 1:1000
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = '47EBA7EEAFCA3FE2B3C687729EFA34C5'
+   MD5 sum (components)  = 'D04F1F7300E53E86256542CE62966A70'
  Single-channel midpoint rule integrator:
    Integral             =  7.7464622036E+03
    Efficiency           =  9.6824583655E-01

@@ -13,14 +13,14 @@
    n_channel = 1
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
  Flavor combinations:
    1: s s s s
  Phase-space / structure-function channels:
    1: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '923E8E2955C1B349236549FE0165AB1F'
+   MD5 sum (phs config) = '1B14DB6976E3C1E5FBD5FB1B6EE324FE'
 
 * Initialize the phase-space instance
 

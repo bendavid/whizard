@@ -3850,6 +3850,7 @@ leafs are literal constants or named-parameter references.
      real(default), pointer :: jet_r => null ()
      real(default), pointer :: jet_p => null ()
      real(default), pointer :: jet_ycut => null ()
+     real(default), pointer :: jet_dcut => null ()
      real(default), pointer :: photon_iso_eps => null ()
      real(default), pointer :: photon_iso_n => null ()
      real(default), pointer :: photon_iso_r0 => null ()
@@ -5849,7 +5850,7 @@ test.
     integer :: n, i
     !!! Should not be initialized for every event
     type(jet_definition_t) :: jet_def
-    logical :: keep_jets
+    logical :: keep_jets, exclusive
     call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
     n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
@@ -5868,7 +5869,15 @@ test.
     else
        keep_jets = .false.
     end if
-    call subevt_cluster (subevt, en1%pval, mask1, jet_def, keep_jets)
+    exclusive = .false.
+    select case (en1%jet_algorithm)
+    case (ee_kt_algorithm)
+       exclusive = .true.
+    case (ee_genkt_algorithm)
+       if (en1%jet_r > Pi)  exclusive = .true.
+    end select
+    call subevt_cluster (subevt, en1%pval, en1%jet_dcut, mask1, &
+         jet_def, keep_jets, exclusive)
     call jet_def%final ()
   end subroutine cluster_p
 
@@ -9206,6 +9215,7 @@ list is augmented by the appropriate (unary/binary) observables.
           call var_list%get_rptr (var_str ("jet_r"), en1%jet_r)
           call var_list%get_rptr (var_str ("jet_p"), en1%jet_p)
           call var_list%get_rptr (var_str ("jet_ycut"), en1%jet_ycut)
+          call var_list%get_rptr (var_str ("jet_dcut"), en1%jet_dcut)
        case ("select")
           call eval_node_init_prt_fun_unary (en, en1, key, select_p)
        case ("extract")

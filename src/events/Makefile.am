@@ -34,6 +34,7 @@ check_LTLIBRARIES = libevents_ut.la
 
 libevents_la_SOURCES = \
   event_base.f90 \
+  event_handles.f90 \
   eio_data.f90 \
   eio_base.f90 \
   eio_direct.f90 \
@@ -70,7 +71,12 @@ libevents_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = events.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libevents_la_SOURCES:.f90=.$(FCMOD)}
+
 libevents_Modules = \
   ${libevents_la_SOURCES:.f90=} \
   ${libevents_ut_la_SOURCES:.f90=}
@@ -141,7 +147,7 @@ libevents_la_LIBADD = \
    ../../stdhep/libwo_stdhep.la
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -168,10 +174,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-#execmoddir = $(pkglibdir)/mod/events
-#nodist_execmod_HEADERS = \#
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -216,7 +218,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f events.stamp events.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

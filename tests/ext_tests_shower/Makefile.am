@@ -75,7 +75,7 @@ SUFFIXES = .sh .run
 	elif test -f $(top_srcdir)/share/tests/ext_tests_shower/$*.sin; then \
 	  $(SED) 's|@script@|$(top_srcdir)/share/tests/ext_tests_shower/$*|g' $< > $@; \
 	fi
-	$(SED) 's|@python_bin@|$(PYTHON_BIN)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
+	$(SED) 's|@python_bin@|$(PYTHON)|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	$(SED) 's|@share_dir@|$(top_srcdir)/share/tests|g' $@ >> "$@.tmp" && mv "$@.tmp" $@
 	@chmod +x $@
 
@@ -194,7 +194,7 @@ clean-local:
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *.f90 *.c *.$(FCMOD) *.o *.la
 	rm -f *.makefile
 	rm -rf err-output
 	rm -rf ref-output

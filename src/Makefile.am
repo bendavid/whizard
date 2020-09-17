@@ -48,7 +48,9 @@ SUBDIRS = \
   process_integration \
   matching \
   transforms \
-  whizard-core
+  whizard-core \
+  api \
+  main
 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -70,6 +72,7 @@ libwhizard_la_LDFLAGS = $(LIBRARY_VERSION)
 
 ## Collect the various partial libraries
 libwhizard_la_LIBADD = \
+  api/libapi.la \
   threshold/libthreshold.la \
   whizard-core/libwhizard_core.la \
   transforms/libtransforms.la \
@@ -168,11 +171,13 @@ endif
 ## -------------------------------------------------------------------
 ## WHIZARD unit-test library
 
-check_LTLIBRARIES = libwhizard_test.la
+check_LTLIBRARIES = libwhizard_ut.la
 
-libwhizard_test_la_SOURCES =
+libwhizard_ut_la_SOURCES =
 
-libwhizard_test_la_LIBADD = \
+libwhizard_ut_la_LIBADD = \
+  main/libwhizard_main_ut.la \
+  api/libapi_ut.la \
   threshold/libthreshold_ut.la \
   whizard-core/libwhizard_core_ut.la \
   transforms/libtransforms_ut.la \
@@ -200,6 +205,26 @@ libwhizard_test_la_LIBADD = \
   system/libsystem_ut.la
 
 ## -------------------------------------------------------------------
+## WHIZARD C API test library
+
+check_LTLIBRARIES += libwhizard_ut_c.la
+
+libwhizard_ut_c_la_SOURCES =
+
+libwhizard_ut_c_la_LIBADD = \
+  api/libapi_ut_c.la
+
+## -------------------------------------------------------------------
+## WHIZARD C++ API test library
+
+check_LTLIBRARIES += libwhizard_ut_cc.la
+
+libwhizard_ut_cc_la_SOURCES =
+
+libwhizard_ut_cc_la_LIBADD = \
+  api/libapi_ut_cc.la
+
+## -------------------------------------------------------------------
 ## O'Mega main library
 
 libomega_la_SOURCES =
@@ -210,7 +235,7 @@ libomega_la_LIBADD = \
 
 if RECOLA_AVAILABLE
 libwhizard_la_LIBADD += $(LDFLAGS_RECOLA)
-libwhizard_test_la_LIBADD += $(LDFLAGS_RECOLA)
+libwhizard_ut_la_LIBADD += $(LDFLAGS_RECOLA)
 endif
 
 ########################################################################
@@ -228,7 +253,7 @@ if IS_IFORT_DARWIN
 whizard_LDFLAGS =  $(AM_LDFLAGS) -static
 endif
 
-whizard_LDADD  = whizard-core/libwhizard_main.la
+whizard_LDADD = main/libwhizard_main.la
 whizard_LDADD += ./libwhizard.la
 whizard_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_LDADD += $(CXXLIBS)
@@ -241,7 +266,7 @@ whizard_LDADD += $(FASTJET_LIBS)
 whizard_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 ## -------------------------------------------------------------------
-## Build a standalone program for running the unit tests
+## Build a standalone program for running the Fortran unit tests
 
 check_PROGRAMS = whizard_ut
 
@@ -255,8 +280,7 @@ if IS_IFORT_DARWIN
 whizard_ut_LDFLAGS =  $(AM_LDFLAGS) -static
 endif
 
-whizard_ut_LDADD  = whizard-core/libwhizard_main_ut.la
-whizard_ut_LDADD += ./libwhizard_test.la
+whizard_ut_LDADD = ./libwhizard_ut.la
 whizard_ut_LDADD += ./libwhizard.la
 whizard_ut_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_ut_LDADD += $(CXXLIBS)
@@ -267,6 +291,52 @@ whizard_ut_LDADD += $(LDFLAGS_LCIO)
 whizard_ut_LDADD += $(LDFLAGS_HOPPET)
 whizard_ut_LDADD += $(FASTJET_LIBS)
 whizard_ut_LDADD += $(LDFLAGS_LOOPTOOLS)
+
+## -------------------------------------------------------------------
+## Build a standalone program for running the C interface test
+
+check_PROGRAMS += whizard_ut_c
+
+whizard_ut_c_SOURCES =
+
+if IS_IFORT_DARWIN
+whizard_ut_c_LDFLAGS =  $(AM_LDFLAGS) -static
+endif
+
+whizard_ut_c_LDADD = ./libwhizard_ut_c.la
+whizard_ut_c_LDADD += ./libwhizard.la
+whizard_ut_c_LDADD += prebuilt/libwhizard_prebuilt.la
+whizard_ut_c_LDADD += $(CXXLIBS)
+whizard_ut_c_LDADD += $(RPC_CFLAGS)
+whizard_ut_c_LDADD += $(LDFLAGS_LHAPDF)
+whizard_ut_c_LDADD += $(LDFLAGS_HEPMC)
+whizard_ut_c_LDADD += $(LDFLAGS_LCIO)
+whizard_ut_c_LDADD += $(LDFLAGS_HOPPET)
+whizard_ut_c_LDADD += $(FASTJET_LIBS)
+whizard_ut_c_LDADD += $(LDFLAGS_LOOPTOOLS)
+
+## -------------------------------------------------------------------
+## Build a standalone program for running the C++ interface test
+
+check_PROGRAMS += whizard_ut_cc
+
+whizard_ut_cc_SOURCES =
+
+if IS_IFORT_DARWIN
+whizard_ut_cc_LDFLAGS =  $(AM_LDFLAGS) -static
+endif
+
+whizard_ut_cc_LDADD = ./libwhizard_ut_cc.la
+whizard_ut_cc_LDADD += ./libwhizard.la
+whizard_ut_cc_LDADD += prebuilt/libwhizard_prebuilt.la
+whizard_ut_cc_LDADD += $(CXXLIBS)
+whizard_ut_cc_LDADD += $(RPC_CFLAGS)
+whizard_ut_cc_LDADD += $(LDFLAGS_LHAPDF)
+whizard_ut_cc_LDADD += $(LDFLAGS_HEPMC)
+whizard_ut_cc_LDADD += $(LDFLAGS_LCIO)
+whizard_ut_cc_LDADD += $(LDFLAGS_HOPPET)
+whizard_ut_cc_LDADD += $(FASTJET_LIBS)
+whizard_ut_cc_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 ########################################################################
 ## Default Fortran compiler options

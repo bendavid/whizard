@@ -120,7 +120,7 @@ model "Test"
    Method              = unit_test
    Process variant     = test_me
    MD5 sum (def)       = 'A87D12F2A6AC65A5D040A10548C83E83'
-   MD5 sum (phs)       = '0449C9E1A0A0BD43DC0DD15CDAFB6646'
+   MD5 sum (phs)       = '0D80CF623564959796D45ED14031B8AA'
  Referenced data:
    Terms                    = 1
    MC dataset               = 1
@@ -134,7 +134,7 @@ model "Test"
    n_channel = 1
    sqrts     =  1.000000000000E+03
    s_fixed   = T
-   cm_frame  = T
+   lab_is_cm = T
    azim.dep. = F
    flat dim. = 2
  Flavor combinations:
@@ -142,7 +142,7 @@ model "Test"
  Phase-space / structure-function channels:
    1: 1
    MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
-   MD5 sum (phs config) = '0449C9E1A0A0BD43DC0DD15CDAFB6646'
+   MD5 sum (phs config) = '0D80CF623564959796D45ED14031B8AA'
 ========================================================================
  Process term configuration:
 ------------------------------------------------------------------------
@@ -195,7 +195,7 @@ model "Test"
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = '951F788A07D22464806684E45658E41B'
+   MD5 sum (components)  = '3B31058AAE93B7F1182C6D991AB0630E'
  VAMP integrator:
    Integral             =  7.7464622036E+03
    Error                =  0.0000000000E+00
@@ -223,7 +223,7 @@ model "Test"
    adapt weights = F
    Results:  [it, calls, valid, integral, error, efficiency]
      1 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
- MD5 sum (including results) = 'DAC9F3F6707A454E7833F991AEF5F51A'
+ MD5 sum (including results) = 'E9237A3FFF580CD3C5CDA8B8CD0113BC'
  Call statistics (current run):
    total       = 800
    failed kin. = 0

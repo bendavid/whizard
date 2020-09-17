@@ -48,7 +48,12 @@ libtypes_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = types.nw
 
+# Modules and installation
 # Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${libtypes_la_SOURCES:.f90=.$(FCMOD)}
+
 libtypes_Modules = ${libtypes_la_SOURCES:.f90=} ${libtypes_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libtypes_Modules); do \
@@ -110,7 +115,7 @@ Makefile.depend: $(libtypes_la_SOURCES) $(libtypes_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -138,13 +143,9 @@ endif
 ########################################################################
 ## Non-standard targets and dependencies
 
-## Install the modules used by generated matrix element code
-#execmoddir = $(pkglibdir)/mod/types
-#nodist_execmod_HEADERS = \#
-
 ## Dependencies across directories and packages, if not automatically generated
 $(libtypes_la_OBJECTS): \
-  ../fastjet/fastjet.$(FC_MODULE_EXT)
+  ../fastjet/fastjet.$(FCMOD)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
@@ -189,7 +190,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f types.stamp types.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

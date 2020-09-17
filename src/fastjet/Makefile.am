@@ -39,6 +39,20 @@ libFastjetWrap_dummy_la_SOURCES = \
   cpp_strings.f90 fastjet.f90
 endif
 
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  cpp_strings.$(FCMOD) \
+  fastjet.$(FCMOD)
+
+SUFFIXES = .lo .$(FCMOD)
+
+# Fortran90 module files are generated at the same time as object files
+.lo.$(FCMOD):
+        @:
+#       touch $@
+
 AM_FCFLAGS =
 
 ########################################################################
@@ -64,14 +78,16 @@ endif
 
 fastjet.lo: cpp_strings.lo
 fastjet.lo: \
-  ../basics/kinds.$(FC_MODULE_EXT) \
-  ../physics/lorentz.$(FC_MODULE_EXT)
+  ../basics/kinds.$(FCMOD) \
+  ../physics/lorentz.$(FCMOD)
+cpp_strings.$(FCMOD): cpp_strings.lo
+fastjet.$(FCMOD): fastjet.lo
 
 AM_FCFLAGS += -I../basics -I../utilities -I../testing -I../system -I../physics
 
 MODULES= \
-  cpp_strings.$(FC_MODULE_EXT) \
-  fastjet.$(FC_MODULE_EXT)
+  cpp_strings.$(FCMOD) \
+  fastjet.$(FCMOD)
 
 ########################################################################
 ## Non-standard cleanup tasks

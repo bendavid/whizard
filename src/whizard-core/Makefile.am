@@ -39,7 +39,6 @@ COMMON_F90 = \
   compilations.f90 \
   event_streams.f90 \
   whizard.f90 \
-  cmdline_options.f90 \
   features.f90
 MPI_F90 = \
   integrations.f90_mpi \
@@ -98,42 +97,6 @@ libwhizard_core_ut_la_SOURCES = \
 EXTRA_libwhizard_core_la_SOURCES = whizard-c-interface.f90
 libwhizard_core_la_LIBADD = whizard-c-interface.lo
 
-## The main program makes up a library on its own.
-lib_LTLIBRARIES = libwhizard_main.la
-check_LTLIBRARIES += libwhizard_main_ut.la
-
-MPI_F90 += main.f90_mpi
-SERIAL_F90 += main.f90_serial
-
-nodist_libwhizard_main_la_SOURCES = \
-  main.f90
-
-DISTCLEANFILES += main.f90
-
-if FC_USE_MPI
-main.f90: main.f90_mpi
-	-cp -f $< $@
-else
-main.f90: main.f90_serial
-	-cp -f $< $@
-endif
-
-MPI_F90 += main_ut.f90_mpi
-SERIAL_F90 += main_ut.f90_serial
-
-nodist_libwhizard_main_ut_la_SOURCES = \
-  main_ut.f90
-
-DISTCLEANFILES += main_ut.f90
-
-if FC_USE_MPI
-main_ut.f90: main_ut.f90_mpi
-	-cp -f $< $@
-else
-main_ut.f90: main_ut.f90_serial
-	-cp -f $< $@
-endif
-
 EXTRA_DIST = \
   $(COMMON_F90) \
   $(SERIAL_F90) \
@@ -141,6 +104,28 @@ EXTRA_DIST = \
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = whizard.nw
+
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  ${nodist_libwhizard_core_la_SOURCES:.f90=.$(FCMOD)} \
+  ${libwhizard_core_la_SOURCES:.f90=.$(FCMOD)}
+
+libwhizard_core_Modules = \
+  ${libwhizard_core_la_SOURCES:.f90=} \
+  ${nodist_libwhizard_core_la_SOURCES:.f90=} \
+  ${libwhizard_core_ut_la_SOURCES:.f90=}
+Modules: Makefile
+	@for module in $(libwhizard_core_Modules); do \
+          echo $$module >> $@.new; \
+        done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+	else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories
@@ -184,8 +169,6 @@ $(module_lists):
 
 Module_dependencies.sed: $(nodist_libwhizard_core_la_SOURCES) \
   $(libwhizard_core_ut_la_SOURCES) \
-  $(nodist_libwhizard_main_la_SOURCES) \
-  $(nodist_libwhizard_main_ut_la_SOURCES) \
   $(EXTRA_libwhizard_core_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
@@ -210,9 +193,9 @@ DISTCLEANFILES += Module_dependencies.sed
 Makefile.depend: Module_dependencies.sed
 Makefile.depend: $(nodist_libwhizard_core_la_SOURCES) \
   $(libwhizard_core_ut_la_SOURCES) \
-  $(nodist_libwhizard_main_la_SOURCES) \
-  $(nodist_libwhizard_main_ut_la_SOURCES) \
   $(EXTRA_libwhizard_core_la_SOURCES)
+#  $(nodist_libwhizard_main_la_SOURCES) \
+#  $(nodist_libwhizard_main_ut_la_SOURCES) \
 	@rm -f $@
 	for src in $^; do \
 		module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -224,9 +207,9 @@ Makefile.depend: $(nodist_libwhizard_core_la_SOURCES) \
 
 DISTCLEANFILES += Makefile.depend
 
-SUFFIXES = .lo .$(FC_MODULE_EXT)
+SUFFIXES = .lo .$(FCMOD)
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -311,7 +294,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f whizard.stamp whizard.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -7206,7 +7206,7 @@ indentation.
   procedure :: write => state_matrix_write
 <<State matrices: procedures>>=
   subroutine state_matrix_write (state, unit, write_value_list, &
-	verbose, col_verbose, testflag)
+         verbose, col_verbose, testflag)
     class(state_matrix_t), intent(in) :: state
     logical, intent(in), optional :: write_value_list, verbose, col_verbose
     logical, intent(in), optional :: testflag
@@ -7221,11 +7221,11 @@ indentation.
     if (associated (state%root)) then
        if (allocated (state%me)) then
           call node_write_rec (state%root, state%me, verbose = verbose, &
-	       indent = 1, unit = u, col_verbose = col_verbose, &
+               indent = 1, unit = u, col_verbose = col_verbose, &
                testflag = testflag)
        else
           call node_write_rec (state%root, verbose = verbose, indent = 1, &
-	       unit = u, col_verbose = col_verbose, testflag = testflag)
+               unit = u, col_verbose = col_verbose, testflag = testflag)
        end if
     end if
     if (present (write_value_list)) then
@@ -8223,11 +8223,14 @@ that for each state, there is an array of counters.
     class(state_iterator_t), intent(inout) :: it
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     logical, intent(in), optional :: match_only_flavor
+    type(quantum_numbers_t), dimension(:), allocatable :: qn_hard, qn_tmp
     logical :: match_flv
     match_flv = .false.; if (present (match_only_flavor)) match_flv = .true.
     do while (it%is_valid ())
        if (match_flv) then
-          if (all (qn .fmatch. it%get_quantum_numbers ())) then
+          qn_tmp = it%get_quantum_numbers ()
+          qn_hard = pack (qn_tmp, qn_tmp%are_hard_process ())
+          if (all (qn .fmatch. qn_hard)) then
              return
           else
              call it%advance ()
@@ -8885,8 +8888,8 @@ If the optional [[correlated_state]] is provided, it is assigned the
 correlated density matrix for the selected flavor-color branch, so
 multi-particle spin correlations remain available even if they are
 dropped in the single-particle density matrices.  This should be
-done by the caller for the choice [[FM_CORRELATED_HELICITY]], which otherwise
-is handled as [[FM_IGNORE_HELICITY]].
+done by the caller for the choice [[FM_CORRELATED_HELICITY]], which
+otherwise is handled as [[FM_IGNORE_HELICITY]].
 
 The algorithm is as follows: First, we determine the normalization by
 summing over all diagonal matrix elements.  In a second scan, we
@@ -9989,8 +9992,8 @@ contains
 end module interactions
 @ %def interactions
 @ Given an ordered list of quantum numbers (without any subtraction index) map
-these list to a state matrix, such that each list index corresponds to index of a set of
-quantum numbers in the state matrix, hence, the matrix element.
+this list to a state matrix, such that each list index corresponds to an
+index of a set of quantum numbers in the state matrix, hence, the matrix element.
 
 The (unphysical) subtraction index is not a genuine quantum number and as
 such handled specially.
@@ -10017,11 +10020,35 @@ we retrieve from the interaction.
 
 We consider helicity matrix elements only, when [[qn_hel]] is allocated.
 Else the helicity index is handled trivially as [[1]].
+
+For the rescaling of the structure functions in the real subtraction
+and DGLAP components we need a mapping (initialized by [[qn_index_map_init_sf]])
+from the real and born flavor structure indices to the structure function chain
+interaction matrix element with the correct initial state quantum numbers. This is stored
+in [[sf_index_born]] and [[sf_index_real]]. The array [[index]] is only needed for the
+initialisation of the Born and real index arrays and is therefore deallocated again.
 <<Interactions: qn index map: TBP>>=
-  generic :: init => qn_index_map_init
-  procedure, private :: qn_index_map_init
+  generic :: init => init_trivial, &
+                     init_involved, &
+                     init_sf
+  procedure, private :: init_trivial => qn_index_map_init_trivial
+  procedure, private :: init_involved => qn_index_map_init_involved
+  procedure, private :: init_sf => qn_index_map_init_sf
 <<Interactions: procedures>>=
-  subroutine qn_index_map_init (self, int, qn_flv, n_sub, qn_hel)
+  subroutine qn_index_map_init_trivial (self, int)
+    class(qn_index_map_t), intent(out) :: self
+    class(interaction_t), intent(in) :: int
+    integer :: qn
+    self%n_flv = int%get_n_matrix_elements ()
+    self%n_hel = 1
+    self%n_sub = 0
+    allocate (self%index(self%n_flv, self%n_hel, 0:self%n_sub), source = 0)
+    do qn = 1, self%n_flv
+       self%index(qn, 1, 0) = qn
+    end do
+  end subroutine qn_index_map_init_trivial
+
+  subroutine qn_index_map_init_involved (self, int, qn_flv, n_sub, qn_hel)
     class(qn_index_map_t), intent(out) :: self
     type(interaction_t), intent(in) :: int
     type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_flv
@@ -10118,28 +10145,42 @@ Else the helicity index is handled trivially as [[1]].
          call msg_bug ("[find_sub_index] could not find sub in qn.")
       end if
     end function find_sub_index
-  end subroutine qn_index_map_init
+  end subroutine qn_index_map_init_involved
 
-@ %def qn_index_map_init
-@ Construct a trivial mapping.
-<<Interactions: qn index map: TBP>>=
-  generic :: init => qn_index_map_init_trivial
-  procedure, private :: qn_index_map_init_trivial
-<<Interactions: procedures>>=
-  subroutine qn_index_map_init_trivial (self, int)
+  subroutine qn_index_map_init_sf (self, int, qn_flv, n_flv_born, n_flv_real)
     class(qn_index_map_t), intent(out) :: self
-    class(interaction_t), intent(in) :: int
-    integer :: qn
-    self%n_flv = int%get_n_matrix_elements ()
-    self%n_hel = 1
-    self%n_sub = 0
-    allocate (self%index(self%n_flv, self%n_hel, 0:self%n_sub), source = 0)
-    do qn = 1, self%n_flv
-       self%index(qn, 1, 0) = qn
+    type(interaction_t), intent(in) :: int
+    integer, intent(in) :: n_flv_born, n_flv_real
+    type(quantum_numbers_t), dimension(:,:), intent(in) :: qn_flv
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn_int
+    type(quantum_numbers_t), dimension(:), allocatable :: qn_int_tmp
+    integer :: i, i_sub, n_flv, n_hard
+    n_flv = int%get_n_matrix_elements ()
+    qn_int_tmp = int%get_quantum_numbers (1, by_me_index = .true.)
+    n_hard = count (qn_int_tmp%are_hard_process ())
+    allocate (qn_int(n_hard, n_flv))
+    do i = 1, n_flv
+       qn_int_tmp = int%get_quantum_numbers (i, by_me_index = .true.)
+       qn_int(:, i) = pack (qn_int_tmp, qn_int_tmp%are_hard_process ())
     end do
-  end subroutine qn_index_map_init_trivial
+    call self%init (int, qn_int, int%get_n_sub ())
+    allocate (self%sf_index_born(n_flv_born, 0:self%n_sub))
+    allocate (self%sf_index_real(n_flv_real, 0:self%n_sub))
+    do i_sub = 0, self%n_sub
+       do i = 1, n_flv_born
+          self%sf_index_born(i, i_sub) = self%get_index_by_qn (qn_flv(:,i), i_sub)
+       end do
+       do i = 1, n_flv_real
+          self%sf_index_real(i, i_sub) = &
+               self%get_index_by_qn (qn_flv(:,n_flv_born + i), i_sub)
+       end do
+    end do
+    deallocate (self%index)
+  end subroutine qn_index_map_init_sf
 
 @ %def qn_index_map_init_trivial
+@ %def qn_index_map_init_involved
+@ %def qn_index_map_init_sf
 @ Write the index map to unit.
 <<Interactions: qn index map: TBP>>=
   procedure :: write => qn_index_map_write
@@ -10280,47 +10321,6 @@ index (latter ranging from 0 to [[n_sub]]) to the (interaction) matrix element.
   end function qn_index_map_get_n_sub
 
 @ %def qn_index_map_get_n_sub
-@ For the rescaling of the structure functions in the real subtraction
-and DGLAP components we need a mapping from the real and born flavor structure
-indices to the structure function chain interaction matrix element with the
-correct initial state quantum numbers. This is stored in [[sf_index_born]]
-and [[sf_index_real]]. The array [[index]] is only needed for the initialisation
-of the Born and real index arrays and is therefore deallocated again.
-<<Interactions: qn index map: TBP>>=
-  procedure :: init_sf => qn_index_map_init_sf
-<<Interactions: procedures>>=
-  subroutine qn_index_map_init_sf (self, int, qn_flv, n_flv_born, n_flv_real)
-    class(qn_index_map_t), intent(out) :: self
-    type(interaction_t), intent(in) :: int
-    integer, intent(in) :: n_flv_born, n_flv_real
-    type(quantum_numbers_t), dimension(:,:), intent(in) :: qn_flv
-    type(quantum_numbers_t), dimension(:,:), allocatable :: qn_int
-    type(quantum_numbers_t), dimension(:), allocatable :: qn_int_tmp
-    integer :: i, i_sub, n_flv, n_hard
-    n_flv = int%get_n_matrix_elements ()
-    qn_int_tmp = int%get_quantum_numbers (1, by_me_index = .true.)
-    n_hard = count (qn_int_tmp%are_hard_process ())
-    allocate (qn_int(n_hard, n_flv))
-    do i = 1, n_flv
-       qn_int_tmp = int%get_quantum_numbers (i, by_me_index = .true.)
-       qn_int(:, i) = pack (qn_int_tmp, qn_int_tmp%are_hard_process ())
-    end do
-    call self%init (int, qn_int, int%get_n_sub ())
-    allocate (self%sf_index_born(n_flv_born, 0:self%n_sub))
-    allocate (self%sf_index_real(n_flv_real, 0:self%n_sub))
-    do i_sub = 0, self%n_sub
-       do i = 1, n_flv_born
-          self%sf_index_born(i, i_sub) = self%get_index_by_qn (qn_flv(:,i), i_sub)
-       end do
-       do i = 1, n_flv_real
-          self%sf_index_real(i, i_sub) = &
-               self%get_index_by_qn (qn_flv(:,n_flv_born + i), i_sub)
-       end do
-    end do
-    deallocate (self%index)
-  end subroutine qn_index_map_init_sf
-
-@ %def qn_index_map_init_sf
 @ Gets the index for the matrix element corresponding to a set of quantum numbers.
 So far, it ignores helicity (and color) indices.
 <<Interactions: qn index map: TBP>>=
@@ -10339,7 +10339,8 @@ So far, it ignores helicity (and color) indices.
           return
        end if
     end do
-    call msg_bug ("[qn_index_map_get_index] The index for the given quantum &
+    call self%write ()
+    call msg_bug ("[qn_index_map_get_index_by_qn] The index for the given quantum &
          & numbers could not be retrieved.")
   end function qn_index_map_get_index_by_qn
 
@@ -10609,6 +10610,7 @@ identifies links in printout.
      integer, dimension(:), allocatable :: hel_lock
      logical :: update_state_matrix = .false.
      logical :: update_values = .false.
+     type(qn_index_map_t) :: qn_index
    contains
    <<Interactions: interaction: TBP>>
   end type interaction_t
@@ -10684,6 +10686,102 @@ virtual particles.
   end subroutine interaction_init
 
 @ %def interaction_init
+@
+<<Interactions: interaction: TBP>>=
+  generic :: init_qn_index => init_qn_index_trivial, &
+                              init_qn_index_involved, &
+                              init_qn_index_sf
+  procedure :: init_qn_index_trivial => interaction_init_qn_index_trivial
+  procedure :: init_qn_index_involved => interaction_init_qn_index_involved
+  procedure :: init_qn_index_sf => interaction_init_qn_index_sf
+<<Interactions: procedures>>=
+  subroutine interaction_init_qn_index_trivial (int)
+    class(interaction_t), intent(inout) :: int
+    call int%qn_index%init (int)
+  end subroutine interaction_init_qn_index_trivial
+
+  subroutine interaction_init_qn_index_involved (int, qn_flv, n_sub, qn_hel)
+    class(interaction_t), intent(inout) :: int
+    type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_flv
+    integer, intent(in) :: n_sub
+    type(quantum_numbers_t), dimension(:, :), intent(in), optional :: qn_hel
+    call int%qn_index%init (int, qn_flv, n_sub, qn_hel)
+  end subroutine interaction_init_qn_index_involved
+
+  subroutine interaction_init_qn_index_sf (int, qn_flv, n_flv_born, n_flv_real)
+    class(interaction_t), intent(inout) :: int
+    integer, intent(in) :: n_flv_born, n_flv_real
+    type(quantum_numbers_t), dimension(:,:), intent(in) :: qn_flv
+    call int%qn_index%init (int, qn_flv, n_flv_born, n_flv_real)
+  end subroutine interaction_init_qn_index_sf
+
+@ %def interaction_init_qn_index_trivial
+@ %def interaction_init_qn_index
+@ %def interaction_init_qn_index_sf
+@
+<<Interactions: interaction: TBP>>=
+  procedure :: set_qn_index_helicity_flip => interaction_set_qn_index_helicity_flip
+<<Interactions: procedures>>=
+  subroutine interaction_set_qn_index_helicity_flip (int, yorn)
+    class(interaction_t), intent(inout) :: int
+    logical, intent(in) :: yorn
+    call int%qn_index%set_helicity_flip (yorn)
+  end subroutine interaction_set_qn_index_helicity_flip
+
+@ %def interaction_get_qn_index_n_flv
+@
+<<Interactions: interaction: TBP>>=
+  procedure :: get_qn_index => interaction_get_qn_index
+  procedure :: get_sf_qn_index_born => interaction_get_sf_qn_index_born
+  procedure :: get_sf_qn_index_real => interaction_get_sf_qn_index_real
+<<Interactions: procedures>>=
+  integer function interaction_get_qn_index (int, i_flv, i_hel, i_sub) result (index)
+    class(interaction_t), intent(in) :: int
+    integer, intent(in) :: i_flv
+    integer, intent(in), optional :: i_hel
+    integer, intent(in), optional :: i_sub
+    index = int%qn_index%get_index (i_flv, i_hel, i_sub)
+  end function interaction_get_qn_index
+
+  integer function interaction_get_sf_qn_index_born (int, i_born, i_sub) result (index)
+    class(interaction_t), intent(in) :: int
+    integer, intent(in) :: i_born, i_sub
+    index = int%qn_index%get_sf_index_born (i_born, i_sub)
+  end function interaction_get_sf_qn_index_born
+
+  integer function interaction_get_sf_qn_index_real (int, i_real, i_sub) result (index)
+    class(interaction_t), intent(in) :: int
+    integer, intent(in) :: i_real, i_sub
+    index = int%qn_index%get_sf_index_real (i_real, i_sub)
+  end function interaction_get_sf_qn_index_real
+
+@ %def interaction_get_qn_index
+@ %def interaction_get_sf_qn_index_born
+@ %def interaction_get_sf_qn_index_real
+@
+<<Interactions: interaction: TBP>>=
+  procedure :: get_qn_index_n_flv => interaction_get_qn_index_n_flv
+  procedure :: get_qn_index_n_hel => interaction_get_qn_index_n_hel
+  procedure :: get_qn_index_n_sub => interaction_get_qn_index_n_sub
+<<Interactions: procedures>>=
+  integer function interaction_get_qn_index_n_flv (int) result (index)
+    class(interaction_t), intent(in) :: int
+    index = int%qn_index%get_n_flv ()
+  end function interaction_get_qn_index_n_flv
+
+  integer function interaction_get_qn_index_n_hel (int) result (index)
+    class(interaction_t), intent(in) :: int
+    index = int%qn_index%get_n_hel ()
+  end function interaction_get_qn_index_n_hel
+
+  integer function interaction_get_qn_index_n_sub (int) result (index)
+    class(interaction_t), intent(in) :: int
+    index = int%qn_index%get_n_sub ()
+  end function interaction_get_qn_index_n_sub
+
+@ %def interaction_get_qn_index_n_flv
+@ %def interaction_get_qn_index_n_hel
+@ %def interaction_get_qn_index_n_sub
 @ Set or create a unique tag for the interaction.  Without
 interaction, reset the tag counter.
 <<Interactions: procedures>>=
@@ -11469,7 +11567,7 @@ c=conjugate first factor; f=include weighting factor.
 @ %def interaction_evaluate_square_c
 @ %def interaction_evaluate_sum
 @ %def interaction_evaluate_me_sum
-@ Tag quantum numbers of the state matrix als part of the hard process, according
+@ Tag quantum numbers of the state matrix as part of the hard process, according
 to the indices specified in [[tag]]. If no [[tag]] is given, all quantum numbers are
 tagged as part of the hard process.
 <<Interactions: interaction: TBP>>=
@@ -12241,7 +12339,7 @@ determined if we have two linked interactions.  We assume that
 interest are stored within [[int2]].  A connection is found if either the
 source is [[int1]], or the (ultimate)
 source of a particle within [[int2]] coincides with the (ultimate) source of a
-aparticle within [[int1]].  The result is an array of
+particle within [[int1]].  The result is an array of
 index pairs.
 
 To make things simple, we scan the interaction twice,
@@ -14550,14 +14648,24 @@ interaction also in the case where its color indices coincide.
       type(pairing_array_t), dimension(:), intent(out), allocatable :: pa
       integer, dimension(:), intent(in) :: me_index, result_index
       integer, dimension(:), allocatable :: n_entries
-      integer :: n_matrix_elements, r, i
+      integer :: n_matrix_elements, r, i, k
+      !!! The result indices of the appended color contracted states
+      !!! start counting from 1 again. For the pairing array, we currently
+      !!! only take the first part of ascending indices into account
+      !!! excluding the color contracted states.
       n_matrix_elements = size (me_index)
-      allocate (pa (n_matrix_elements))
-      allocate (n_entries (n_matrix_elements))
+      k = 0
+      do i = 1, n_matrix_elements
+         r = result_index(i)
+         if (r < i) exit
+         k = r
+      end do
+      allocate (pa (k))
+      allocate (n_entries (k))
       n_entries = 1
       call pairing_array_init &
            (pa, n_entries, has_i2=.false., has_factor=.false.)
-      do i = 1, n_matrix_elements
+      do i = 1, k
          r = result_index(i)
          pa(r)%i1(1) = me_index(i)
       end do

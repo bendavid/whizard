@@ -414,8 +414,8 @@ These are, unfortunately, not part of Fortran.
 
 @ %def upper_case lower_case
 @
-\subsection{C-compatible Output}
-Convert a FORTRAN string into a zero terminated C string.
+\subsection{C-Fortran String Conversion}
+Convert a FORTRAN string to a null-terminated C string.
 <<String utils: public>>=
   public :: string_f2c
 <<String utils: interfaces>>=
@@ -436,6 +436,57 @@ Convert a FORTRAN string into a zero terminated C string.
   end function string_f2c_var_str
 
 @ %def string_f2c
+@ The same task done by a subroutine, analogous to the C [[strcpy]] function.
+We append a null char and copy the characters to the output string, given by a
+character array -- which is equal to a [[c_char]] character string by the rule
+of sequence association.
+
+Note: Just like with the [[strcpy]] function, there is no bounds check.
+<<String utils: public>>=
+  public :: strcpy_f2c
+<<String utils: procedures>>=
+  subroutine strcpy_f2c (fstring, cstring)
+    character(*), intent(in) :: fstring
+    character(c_char), dimension(*), intent(inout) :: cstring
+    
+    integer :: i
+
+    do i = 1, len (fstring)
+       cstring(i) = fstring(i:i)
+    end do
+    cstring(len(fstring)+1) = c_null_char
+    
+  end subroutine strcpy_f2c
+
+@ %def strcpy_f2c
+@ Convert a null-terminated C string to a Fortran string.  The C-string
+argument is sequence-associated to a one-dimensional array of C characters,
+where we do not know the dimension.
+
+To convert this to a [[string_t]] object, we need to assign it or to wrap it
+by another [[var_str]] conversion.
+<<String utils: public>>=
+  public :: string_c2f
+<<String utils: procedures>>=
+  function string_c2f (cstring) result (fstring)
+    character(c_char), dimension(*), intent(in) :: cstring
+    character(:), allocatable :: fstring
+    
+    integer :: i, n
+    
+    n = 0
+    do while (cstring(n+1) /= c_null_char)
+       n = n + 1
+    end do
+    
+    allocate (character(n) :: fstring)
+    do i = 1, n
+       fstring(i:i) = cstring(i)
+    end do
+
+  end function string_c2f
+
+@ %def string_c2f
 @
 \subsection{Number Conversion}
 Create a string from a number.  We use fixed format for the reals
@@ -1179,6 +1230,28 @@ adaption to specific use cases but have reasonable defaults.
   end function abs2
 
 @ %def abs2
+@ Remove element with [[index]] from array
+<<Numeric utils: public>>=
+  public:: remove_array_element
+  interface remove_array_element
+     module procedure remove_array_element_logical
+  end interface
+@
+<<Numeric utils: procedures>>=
+  function remove_array_element_logical (array, index) result (array_reduced)
+    logical, intent(in), dimension(:) :: array
+    integer, intent(in) :: index
+    logical, dimension(:), allocatable :: array_reduced
+    integer :: i
+    allocate (array_reduced(0))
+    do i = 1, size (array)
+       if (i /= index) then
+          array_reduced = [array_reduced, [array(i)]]
+       end if
+    end do
+  end function remove_array_element_logical
+
+@ %def remove_array_element
 @ Remove all duplicates from an array of signed integers and returns an
 unordered array of remaining elements.
 This method does not really fit into this module. It could be part of a

@@ -1204,7 +1204,7 @@ system, and the pair of c.m.\ momenta.
      type(flavor_t), dimension(:), allocatable :: flv
      real(default), dimension(:), allocatable :: mass
      type(pmatrix_t), dimension(:), allocatable :: pmatrix
-     logical :: lab_is_cm_frame = .true.
+     logical :: lab_is_cm = .true.
      type(vector4_t), dimension(:), allocatable :: p_cm
      type(vector4_t), dimension(:), allocatable :: p
      type(lorentz_transformation_t), allocatable  :: L_cm_to_lab
@@ -1412,17 +1412,6 @@ parameters.
   end function beam_data_get_sqrts
 
 @ %def beam_data_get_sqrts
-@ Return true if the lab and c.m.\ frame are specified as identical.
-<<Beams: beam data: TBP>>=
-  procedure :: cm_frame => beam_data_cm_frame
-<<Beams: procedures>>=
-  function beam_data_cm_frame (beam_data) result (flag)
-    class(beam_data_t), intent(in) :: beam_data
-    logical :: flag
-    flag = beam_data%lab_is_cm_frame
-  end function beam_data_cm_frame
-
-@ %def beam_data_cm_frame
 @ Return the polarization in case it is just two degrees
 <<Beams: beam data: TBP>>=
   procedure :: get_polarization => beam_data_get_polarization
@@ -1552,7 +1541,7 @@ momenta coincide.
     real(default), dimension(size(flv)) :: E, p
     call beam_data_init (beam_data, size (flv))
     beam_data%sqrts = sqrts
-    beam_data%lab_is_cm_frame = .true.
+    beam_data%lab_is_cm = .true.
     select case (beam_data%n)
     case (1)
        E = sqrts;  p = 0
@@ -1596,7 +1585,7 @@ particular, include it in the MD5 sum.
     p = vector4_moving (e, p3)
     p0 = sum (p)
     beam_data%p = p
-    beam_data%lab_is_cm_frame = .false.
+    beam_data%lab_is_cm = .false.
     beam_data%sqrts = p0 ** 1
     L_boost = boost (p0, beam_data%sqrts)
     allocate (p_cm_rot (beam_data%n))
@@ -1692,7 +1681,7 @@ c.m.\ momentum coincide.
     else
        call beam_data%init_sqrts (m(1), flv, smatrix, pol_f)
     end if
-    if (present (rest_frame))  beam_data%lab_is_cm_frame = rest_frame
+    if (present (rest_frame))  beam_data%lab_is_cm = rest_frame
   end subroutine beam_data_init_decay
 
 @ %def beam_data_init_decay

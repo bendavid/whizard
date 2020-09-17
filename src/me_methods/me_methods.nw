@@ -290,6 +290,51 @@ process-specific workspace.
   end function prc_core_get_alpha_qed
 
 @ %def prc_core_get_alpha_qed
+@
+Setup an index mapping for flavor structures and helicities that give the same matrix
+element. The index mapping is according to the order of flavor structures known to the
+[[prc_core]] class. This procedure here acts as a fallback in case there is no overridden
+procedure in the [[prc_core]] extension.
+<<Prc core: process core: TBP>>=
+  procedure :: set_equivalent_flv_hel_indices => prc_core_set_equivalent_flv_hel_indices
+<<Prc core: procedures>>=
+  subroutine prc_core_set_equivalent_flv_hel_indices (object)
+    class(prc_core_t), intent(inout) :: object
+    integer :: i, n_flv, n_hel
+    n_flv = object%data%n_flv
+    n_hel = object%data%n_hel
+    if (.not. allocated (object%data%eqv_flv_index)) &
+         allocate (object%data%eqv_flv_index(n_flv))
+    if (.not. allocated (object%data%eqv_hel_index)) &
+         allocate (object%data%eqv_hel_index(n_hel))
+    if (size (object%data%eqv_flv_index) /= n_flv) &
+         call msg_bug ("BLHA Core: Size mismatch between eqv_flv_index and number of flavors.")
+    if (size (object%data%eqv_hel_index) /= n_hel) &
+         call msg_bug ("BLHA Core: Size mismatch between eqv_hel_index and number of helicities.")
+    object%data%eqv_flv_index = [(i, i = 1, n_flv)]
+    object%data%eqv_hel_index = [(i, i = 1, n_hel)]
+  end subroutine prc_core_set_equivalent_flv_hel_indices
+
+@ %def prc_core_set_equivalent_flv_hel_indices
+@ Get the index mappings for flavor and helicity mappings set up in
+[[prc_core_get_equivalent_flv_index]] or any overriding variation.
+<<Prc core: process core: TBP>>=
+  procedure :: get_equivalent_flv_index => prc_core_get_equivalent_flv_index
+  procedure :: get_equivalent_hel_index => prc_core_get_equivalent_hel_index
+<<Prc core: procedures>>=
+  function prc_core_get_equivalent_flv_index (object) result (eqv_flv_index)
+    class(prc_core_t), intent(in) :: object
+    integer, dimension(:), allocatable :: eqv_flv_index
+    eqv_flv_index = object%data%eqv_flv_index
+  end function prc_core_get_equivalent_flv_index
+
+  function prc_core_get_equivalent_hel_index (object) result (eqv_hel_index)
+    class(prc_core_t), intent(in) :: object
+    integer, dimension(:), allocatable :: eqv_hel_index
+    eqv_hel_index = object%data%eqv_hel_index
+  end function prc_core_get_equivalent_hel_index
+
+@ %def prc_core_get_equivalent_flv_index prc_core_get_equivalent_hel_index
 @ Allocate the workspace associated to a process component.  The default is
 that there is no workspace, so we do nothing.  A type extension may override
 this and allocate a workspace object of appropriate type, which can be used in

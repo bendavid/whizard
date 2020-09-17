@@ -47,15 +47,21 @@ libwo_recola_ut_la_SOURCES = \
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = recola.nw
 
+# Modules and installation
 # Dump module names into file Modules
-#libwo_recola_Modules = ${libwo_recola_la_SOURCES:.f90=} ${libwo_recola_ut_la_SOURCES:.f90=}
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  recola_wrapper.$(FCMOD) prc_recola.$(FCMOD)
+
 libwo_recola_Modules = prc_recola recola_wrapper \
 		    prc_recola_uti prc_recola_ut
 
 if RECOLA_AVAILABLE
-  prc_recola.lo: recola_wrapper.lo
+  prc_recola.lo prc_recola.$(FCMOD): recola_wrapper.lo
+  recola_wrapper.$(FCMOD): recola_wrapper.lo
 else
-  prc_recola.lo: recola_wrapper_dummy.lo
+  prc_recola.lo prc_recola.$(FCMOD): recola_wrapper_dummy.lo
+  recola_wrapper.$(FCMOD): recola_wrapper_dummy.lo
 endif
 
 Modules: Makefile
@@ -123,9 +129,10 @@ Makefile.depend: $(libwo_recola_la_SOURCES) ${libwo_recola_ut_la_SOURCES}
 
 DISTCLEANFILES += Makefile.depend 
 
+### Disabled, explicit rule above
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
-	@:
+#.lo.$(FCMOD):#
+#	@:
 #	touch $@
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../me_methods -I../variables -I../beams -I../lhapdf -I../pdf_builtin -I../fastjet 
@@ -198,7 +205,7 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f recola.stamp recola.tmp
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -36,15 +36,32 @@ libpdf_builtin_la_SOURCES = \
 	ct10pdf.f90 CJpdf.f90 ct14pdf.f90
 
 $(libpdf_builtin_la_OBJECTS): \
-	../basics/kinds.$(FC_MODULE_EXT) \
-	../basics/iso_varying_string.$(FC_MODULE_EXT) \
-	../basics/io_units.$(FC_MODULE_EXT) \
-	../utilities/format_utils.$(FC_MODULE_EXT) \
-	../system/diagnostics.$(FC_MODULE_EXT)
+	../basics/kinds.$(FCMOD) \
+	../basics/iso_varying_string.$(FCMOD) \
+	../basics/io_units.$(FCMOD) \
+	../utilities/format_utils.$(FCMOD) \
+	../system/diagnostics.$(FCMOD)
+
+# Modules and installation
+# Dump module names into file Modules
+execmoddir = $(fmoddir)/whizard
+nodist_execmod_HEADERS = \
+  pdf_builtin.$(FCMOD) \
+  cteq6pdf.$(FCMOD) \
+  cj_pdf.$(FCMOD) \
+  mrst2004qed.$(FCMOD) \
+  mstwpdf.$(FCMOD) \
+  ct10pdf.$(FCMOD) \
+  ct14pdf.$(FCMOD)
+
+SUFFIXES = .lo .$(FCMOD)
+
+# Fortran90 module files are generated at the same time as object files
+.lo.$(FCMOD):
+        @:
+#       touch $@
 
 AM_FCFLAGS = -I../basics -I../utilities -I../system
-
-pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pdf.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -65,11 +82,24 @@ AM_FCFLAGS += $(FCFLAGS_MPI)
 endif
 
 ########################################################################
+## Explicit dependencies
+
+pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pdf.lo
+
+pdf_builtin.$(FCMOD): pdf_builtin.lo
+cteq6pdf.$(FCMOD): cteq6pdf.lo
+cj_pdf.$(FCMOD): CJpdf.lo
+mrst2004qed.$(FCMOD): mrst2004qed.lo
+mstwpdf.$(FCMOD): mstwpdf.lo
+ct10pdf.$(FCMOD): ct10pdf.lo
+ct14pdf.$(FCMOD): ct14pdf.lo
+
+########################################################################
 ## Non-standard cleanup tasks
 
 ## Remove F90 module files
 clean-local:
-	-rm -f *.$(FC_MODULE_EXT)
+	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

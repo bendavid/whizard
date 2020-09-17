@@ -63,6 +63,10 @@ TESTS_EXTENDED = \
 	nlo_eettzjj.run \
 	nlo_eettzz.run \
 	nlo_ppz.run \
+	nlo_ppzj_sim_1.run \
+	nlo_ppzj_sim_2.run \
+	nlo_ppzj_sim_3.run \
+	nlo_ppzj_sim_4.run \
 	nlo_ppw.run \
 	nlo_ppzz.run \
 	nlo_ppzw.run \
@@ -136,6 +140,10 @@ nlo_ppw.run: nlo_settings.sin
 nlo_ppzz.run: nlo_settings.sin
 nlo_ppzw.run: nlo_settings.sin
 nlo_pptttt.run: nlo_settings.sin
+nlo_ppzj_sim_1.run: nlo_settings.sin
+nlo_ppzj_sim_2.run: nlo_settings.sin
+nlo_ppzj_sim_3.run: nlo_settings.sin
+nlo_ppzj_sim_4.run: nlo_settings.sin
 nlo_settings.sin: $(top_builddir)/share/tests/ext_tests_nlo/nlo_settings.sin
 	cp $< $@
 
@@ -262,7 +270,7 @@ clean-local:
 	rm -f static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la *.f90.in
+	rm -f *.f90 *.c *.$(FCMOD) *.o *.la *.f90.in
 	rm -f *.makefile
 	rm -rf ref-output
 	rm -f *.sin *.hbc

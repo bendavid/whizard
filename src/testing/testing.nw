@@ -79,7 +79,7 @@ Here is the entry:
 @ %def test_result_t test_results_t
 @ Add a test result.
 <<Tests: test results: TBP>>=
-  procedure, private :: add => test_results_add
+  procedure :: add => test_results_add
 <<Tests: procedures>>=
   subroutine test_results_add (list, name, description, success)
     class(test_results_t), intent(inout) :: list
@@ -150,6 +150,33 @@ Here is the entry:
   end subroutine test_results_report
 
 @ %def test_results_report
+@ Return the number of successful/failed/total tests..
+<<Tests: test results: TBP>>=
+  procedure :: get_n_pass => test_results_get_n_pass
+  procedure :: get_n_fail => test_results_get_n_fail
+  procedure :: get_n_total => test_results_get_n_total
+<<Tests: procedures>>=
+  function test_results_get_n_pass (list) result (n)
+    class(test_results_t), intent(in) :: list
+    integer :: n
+    n = list%n_success
+  end function test_results_get_n_pass
+
+  function test_results_get_n_fail (list) result (n)
+    class(test_results_t), intent(in) :: list
+    integer :: n
+    n = list%n_failure
+  end function test_results_get_n_fail
+
+  function test_results_get_n_total (list) result (n)
+    class(test_results_t), intent(in) :: list
+    integer :: n
+    n = list%n_success + list%n_failure
+  end function test_results_get_n_total
+
+@ %def test_results_get_n_pass
+@ %def test_results_get_n_fail
+@ %def test_results_get_n_total
 @ Delete the list.
 <<Tests: test results: TBP>>=
   procedure, private :: final => test_results_final
@@ -205,6 +232,9 @@ declaring the actual test routines.
 
 @ %def unit_test
 @ The test routine can print to screen and, optionally, to a logging unit.
+This driver runs the test given as an argument, directing its output to a
+scratch file which is then checked against a ref file.  Only if it differs, it
+is copied to an err file.
 
 NB: We call [[fatal_force_crash]] to produce a deliberate crash with backtrace
 on any fatal error, if the runtime system does allow it.
@@ -218,22 +248,59 @@ This is not normal behavior, but should be useful if something goes wrong.
     character(*), intent(in) :: description
     integer, intent(in) :: u_log
     type(test_results_t), intent(inout) :: results
-    integer :: u_test, u_ref, u_err
-    logical :: exist
-    character(256) :: buffer1, buffer2
-    integer :: iostat1, iostat2
+    integer :: u_test
     logical :: success
-    write (*, "(A)", advance="no")  "Running test: " // name
-    write (u_log, "(A)")  "Test: " // name
+
+    call start_test (u_log, name)
+
     u_test = free_unit ()
-    open (u_test, status="scratch", action="readwrite")
+    open (unit = u_test, status="scratch", action="readwrite")
     call fatal_force_crash ()
     call test_proc (u_test)
     rewind (u_test)
+
+    call compare_test_results (u_test, u_log, name, success)
+    call results%add (name, description, success)
+    close (u_test)
+    
+  end subroutine test
+
+@ %def test
+@ Startup message.  We expose this, as well as the comparison routine, for
+re-use in external test programs.
+<<Tests: public>>=
+  public :: start_test
+<<Tests: procedures>>=
+  subroutine start_test (u_log, name)
+    integer, intent(in) :: u_log
+    character(*), intent(in) :: name
+
+    write (*, "(A)", advance="no")  "Running test: " // name
+    write (u_log, "(A)")  "Test: " // name
+    
+  end subroutine start_test
+  
+@ %def start_test 
+@ Do the actual comparison, given an open I/O unit [[u_test]].  In case of
+failure, copy the test results to an error file. 
+<<Tests: public>>=
+  public :: compare_test_results
+<<Tests: procedures>>=
+  subroutine compare_test_results (u_test, u_log, name, success)
+    integer, intent(in) :: u_test
+    integer, intent(in) :: u_log
+    character(*), intent(in) :: name
+    logical, intent(out) :: success
+    
+    integer :: u_ref, u_err
+    logical :: exist
+    character(256) :: buffer1, buffer2
+    integer :: iostat1, iostat2
+
     inquire (file=ref_prefix//name//ref, exist=exist)
     if (exist) then
-       u_ref = free_unit ()
-       open (u_ref, file=ref_prefix//name//ref, status="old", action="read")
+       open (newunit = u_ref, file=ref_prefix//name//ref, &
+            status="old", action="read")
        COMPARE_FILES: do
           read (u_test, "(A)", iostat=iostat1)  buffer1
           read (u_ref, "(A)", iostat=iostat2)  buffer2
@@ -261,8 +328,7 @@ This is not normal behavior, but should be useful if something goes wrong.
        write (*, "(A)") " ... failure.  See: " // err_prefix//name//err
        write (u_log, "(A)")  "  Failure."
        rewind (u_test)
-       u_err = free_unit ()
-       open (u_err, file=err_prefix//name//err, &
+       open (newunit = u_err, file=err_prefix//name//err, &
             action="write", status="replace")
        WRITE_OUTPUT: do
           read (u_test, "(A)", end=1) buffer1
@@ -270,8 +336,7 @@ This is not normal behavior, but should be useful if something goes wrong.
        end do WRITE_OUTPUT
 1      close (u_err)
     end if
-    close (u_test)
-    call results%add (name, description, success)
-  end subroutine test
 
-@ %def test
+  end subroutine compare_test_results
+
+@ %def compare_test_results

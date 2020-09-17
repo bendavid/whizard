@@ -35,7 +35,6 @@ SUBDIRS = \
   tests \
   examples \
   muli \
-  interfaces \
   SM_tt_threshold_data \
   gui
 
@@ -126,6 +125,9 @@ dist_examples_DATA = \
   examples/NLO_eettbar_OpenLoops.sin \
   examples/NLO_NLL_matched.sin \
   examples/LHC_VBS_likesign.sin \
+  examples/manual_api_example.c \
+  examples/manual_api_example.cc \
+  examples/manual_api_example.f90 \
   examples/DrellYanMatchingP.sin \
   examples/DrellYanMatchingW.sin \
   examples/DrellYanNoMatchingP.sin \

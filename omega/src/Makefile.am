@@ -30,8 +30,8 @@
 # Build the O'Mega Fortran library using libtool
 # (?use pkglib_ instead of lib_ to make the -rpath and *.lai business work ...)
 lib_LTLIBRARIES = libomega_core.la
-moduleexecincludedir = $(pkgincludedir)/../omega
-nodist_moduleexecinclude_DATA = $(OMEGALIB_MOD)
+execmoddir = $(fmoddir)/omega
+nodist_execmod_HEADERS = $(OMEGALIB_MOD)
 
 libomega_core_la_SOURCES = $(OMEGALIB_F90)
 
@@ -52,7 +52,7 @@ endif
 
 # Compiled interfaces and libraries for out-of-tree compilation of models
 if OCAML_AVAILABLE
-camllibdir = $(pkglibdir)/../omega/caml
+camllibdir = $(libdir)/omega/caml
 nodist_camllib_DATA = \
 	omega.cmi fusion.cmi targets.cmi coupling.cmi modeltools.cmi color.cmi \
 	options.cmi model.cmi \
@@ -108,10 +108,10 @@ endif
 
 MYPRECIOUS = $(OMEGA_DERIVED_CAML)
 
-SUFFIXES += .lo .$(FC_MODULE_EXT)
+SUFFIXES += .lo .$(FCMOD)
 
 # Fortran90 module files are generated at the same time as object files
-.lo.$(FC_MODULE_EXT):
+.lo.$(FCMOD):
 	@:
 #	touch $@
 
@@ -198,7 +198,7 @@ endif OCAML_AVAILABLE
 .PRECIOUS = $(MYPRECIOUS)
 
 clean-local:
-	rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FC_MODULE_EXT) \
+	rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FCMOD) \
 		$(OMEGA_DERIVED_CAML) omegalib.stamp
 if FC_SUBMODULES
 	-rm -f *.smod

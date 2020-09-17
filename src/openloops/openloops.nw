@@ -686,8 +686,9 @@ are requested.
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(out), dimension(16) :: sqme_spin_c
+    real(default), intent(out), dimension(6) :: sqme_spin_c
     logical, intent(out) :: bad_point
+    real(default), dimension(16) :: sqme_spin_c_tmp
     real(double), dimension(5*N_EXTERNAL) :: mom
     real(double) :: res
     real(double), dimension(16) :: res_munu
@@ -703,18 +704,26 @@ are requested.
           call driver%evaluate_spin_correlations_powheg &
                (object%i_spin_c(i_flv, i_hel), mom, em, res, res_munu)
        end select
-       sqme_spin_c = res_munu
+       sqme_spin_c_tmp = res_munu
        bad_point = .false.
        if (object%includes_polarization ()) &
-            sqme_spin_c = object%n_hel * sqme_spin_c
+            sqme_spin_c_tmp = object%n_hel * sqme_spin_c_tmp
        if (debug_on) then
-          if (sum(sqme_spin_c) == 0) then
+          if (sum(sqme_spin_c_tmp) == 0) then
              call msg_debug(D_SUBTRACTION,'Spin-correlated matrix elements provided by OpenLoops are zero!')
           end if
        end if
     else
-       sqme_spin_c = zero
+       sqme_spin_c_tmp = zero
     end if
+    !!! Using symmetry of the 4x4 matrix of spin correlated squared Born MEs and
+    !!! the fact that we multiply only with vectors with E=0. We thus store the
+    !!! upper triangle of the lower 3x3 matrix as columns in a 1-dim array
+    sqme_spin_c(1:2) = sqme_spin_c_tmp(6:7)
+    sqme_spin_c(3) = sqme_spin_c_tmp(11)
+    sqme_spin_c(4) = sqme_spin_c_tmp(8)
+    sqme_spin_c(5) = sqme_spin_c_tmp(12)
+    sqme_spin_c(6) = sqme_spin_c_tmp(16)
   end subroutine prc_openloops_compute_sqme_spin_c
 
 @ %def prc_openloops_compute_sqme_spin_c

@@ -4919,6 +4919,7 @@ possible, in particular if the squared matrix element is zero.
        do i = 1, n_tot
           qn(i,:) = qn_select(i)
        end do
+       is_valid = .true.
     end if
     if (keep_correlations .and. keep_virtual) then
        call particle_set%correlated_state%final ()
