@@ -1240,7 +1240,7 @@ As can be seen, \whizard\ will check for the \ROOT\ environment as
 well as whether \hepmcthree\ has been built with support for the
 \ROOT\ and \ttt{RootTree} writer classes. This is an easy option to
 use \whizard\ to write out \ROOT\ events. For more information see
-Sec.~\ref{sec:root}. 
+Sec.~\ref{sec:root}.
 
 %%%%%
 
@@ -5185,11 +5185,11 @@ which puts the width both in the $s$- and in the $t$-channel like diagrams.
 A third option is provided by the running width scheme
 \begin{quote}
   \begin{footnotesize}
-   \verb|$omega_flags = "-model:running_width"| 
+   \verb|$omega_flags = "-model:running_width"|
   \end{footnotesize},
 \end{quote}
 which applies the width only for $s$-channel like diagrams and multiplies it by a factor of $p^2 / M^2$.
-The additional $p^2$-dependent factor mimicks the momentum dependence of the imaginary part of a vacuum polarization for a particle decaying into massles decay products. 
+The additional $p^2$-dependent factor mimicks the momentum dependence of the imaginary part of a vacuum polarization for a particle decaying into massles decay products.
 It is noted that none of the above options preserves gauge invariance.
 
 For a gauge preserving approach (at least at tree level), \oMega\ provides the complex-mass scheme
@@ -5727,7 +5727,7 @@ It is also possible to specify beams for decaying particles, where
   \ttt{simulate (zee) \{ n\_events = 100 \} }
 \end{footnotesize}
 \end{quote}
-This would corresponds to a beam of $Z$ bosons with a momentum of 500
+This would correspond to a beam of $Z$ bosons with a momentum of 500
 GeV. Note, however, that \whizard\ will always do the integration of
 the particle width in the particle's rest frame, while the moving beam
 is then only taken into account for the frame of reference for the
@@ -6505,7 +6505,7 @@ correction, which can be chosen with \ttt{\$epa\_mode = log}. This
 corresponds to the simple formula:
 \begin{equation}
   f(x) = \frac{\alpha}{2\pi} \frac{1}{x} \, \log\frac{s}{m^2}
-  \qquad . 
+  \qquad .
 \end{equation}
 
 Examples for the application of the EPA in \whizard\ are:
@@ -8911,8 +8911,8 @@ to be installed for each individual process. This requires the file
 the following content:
 \begin{code}
    [OpenLoops]
-   process\_repositories=public, whizard\\
-   compile\_extra=1
+   process_repositories=public, whizard
+   compile_extra=1
 \end{code}
 The first line instructs \openloops\ to also look for process libraries
 in an additional lepton collider repository.  The second line triggers
@@ -9082,9 +9082,9 @@ Combined weighted, combined unweighted and separated weighted.
     added. Each born-like event is followed by $N_{\text{phs}}$
     associated events with real kinematics, i.e. events where one
     additional QCD particle is present. The corresponding real
-    matrix-elements $\mathcal{R}_\alpha$ form the weight of these events.
-    $N_{\text{phs}}$ the number of distinct phase spaces. Two phase spaces
-    are distinct if they share the same resonance history but have
+    matrix elements $\mathcal{R}_\alpha$ form the weight of these events.
+    $N_{\text{phs}}$ is the number of distinct phase spaces. Two phase spaces
+    are distinct if they have different resonance histories and/or have
     different emitters. So, two $\alpha_r$ can share the same phase
     space index.
 
@@ -9186,7 +9186,7 @@ The $p_T^{\text{min}}$ of Eq.~\eqref{eq:powheg} can be set with
 \ttt{powheg\_pt\_min}.  It sets the minimal scale for the \powheg\
 evolution and should be of order 1 GeV and set accordingly in the
 interfaced shower.  The maximal scale is currently given by \ttt{sqrts}
-but should in the future be changeable with \ttt{powheg\_pt\_min}.
+but should in the future be changeable with \ttt{powheg\_pt\_max}.
 
 Note that the \powheg\ event generation needs an additional grid for
 efficient event generation that is automatically generated during
@@ -11879,7 +11879,7 @@ hadronization routines. Note that by \pythia's default, when
 performing initial-state radiation multiple interactions are included
 and when performing the hadronization hadronic decays are included. If
 required, these additional steps have to be switched off using the
-corresponding arguments for \pythia's \ttt{PYGIVE} routine vie the
+corresponding arguments for \pythia's \ttt{PYGIVE} routine via the
 \ttt{\$ps\_PYTHIA\_PYGIVE} string.
 
 Note that from version 2.2.4 on the earlier flag
@@ -13136,7 +13136,7 @@ the \whizard\ features.  The \ttt{libwhizard} library provides an API, a
 well-defined set of procedures which can be called from a foreign main
 program.  The supported languages are Fortran, C, and C++.  Using the C API,
 any other language which supports linking against C libraries can also be
-interfaced. 
+interfaced.
 
 \subsection{Fortran main program}
 
@@ -13147,18 +13147,18 @@ must be performed:
   Configure, build and install \whizard\ as normal.
 \item
   Include code for accessing \whizard\ functionality in the user program.
-  The code should initialize 
+  The code should initialize
   \whizard, execute the intended commands, and finalize.  For an example, see
-  below. 
+  below.
 \item
   Compile the user program.   The user program must be
   compiled with the same Fortran compiler that has been used for the \whizard\
-  build. 
+  build.
 
   If necessary, specify an option that finds the
   installed \whizard\ module files.
   For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
-  should read 
+  should read
   \begin{code}
     -Iwhizard-path/lib/mod/whizard
   \end{code}
@@ -13166,7 +13166,7 @@ must be performed:
   Link the program (or compile-link in a single step).  If necessary, specify
   options that find the installed \whizard\ and \oMega\ libraries.  For
   instance, if \whizard\ has been installed in \ttt{whizard-path}, this should
-  read 
+  read
   \begin{code}
     -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega
   \end{code}
@@ -13175,7 +13175,7 @@ must be performed:
   Such an example compile-link could look like
   \begin{code}
     gfortran manual_example_api.f90 -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega
-  \end{code}  
+  \end{code}
 
   If \whizard\ has been compiled with a non-default Fortran compiler, you may
   have to explicitly link the appropriate Fortran run-time libraries.
@@ -13185,7 +13185,7 @@ must be performed:
   system. This library needs only be linked of the SunRPC library is
   not installed on the system.
 
-  If additional libraries such as  
+  If additional libraries such as
   \hepmc\ are enabled in the \whizard\ configuration, it may be necessary to
   provide extra options for linking those.
 
@@ -13198,7 +13198,7 @@ must be performed:
 \item
   Run the program.  If necessary, provide the path to the installed shared
   libraries.  For instance, if \whizard\ has been installed in
-  \ttt{whizard-path}, this should read 
+  \ttt{whizard-path}, this should read
   \begin{code}
     export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
   \end{code}
@@ -13227,13 +13227,13 @@ program main
   ! WHIZARD and event-sample objects
   type(whizard_api_t)    :: whizard
   type(simulation_api_t) :: sample
-    
+
   ! Local variables
   real(real64)   :: integral, error
   real(real64)   :: sqme, weight
   integer(int32) :: idx
   integer(int32) :: i, it_begin, it_end
-    
+
   ! Initialize WHIZARD, setting some global option
   call whizard%option ("model", "QED")
   call whizard%init ()
@@ -13252,7 +13252,7 @@ program main
   print 1, "error         =", error    / 1000, "pb"
 1 format (2x,A,1x,F5.1,1x,A)
 2 format (2x,A,1x,L1)
-    
+
   ! Settings for event generation
   call whizard%set_var ("$sample", "mupair_events")
   call whizard%set_var ("n_events", 2)
@@ -13273,7 +13273,7 @@ program main
 
   ! Finalize the event-sample object
   call sample%close ()
-   
+
   ! Finalize the WHIZARD object
   call whizard%final ()
 
@@ -13292,7 +13292,7 @@ You may \texttt{use} any other \whizard\ module in our program, all module
 files are part of the installation.  Be aware,
 however, that all other modules are considered internal.  Unless explictly
 mentioned in this manual, interfaces are
-not documented here and may change between versions.  
+not documented here and may change between versions.
 
 Changes to the \ttt{api} module, if any, will be documented here.
 
@@ -13315,7 +13315,7 @@ All keys and values are Fortran character strings.  The following options are
 available.  For all options, default values exist as listed in
 Sec.~\ref{sec:cmdline-options}.
 \begin{description}
-\item[\tt model] Model that should be preloaded. 
+\item[\tt model] Model that should be preloaded.
 \item[\tt library] Name of the library where matrix-element code should end up.
 \item[\tt logfile] Name of the logfile that \whizard\ will write.
 \item[\tt job\_id] Name of the current job; can be used for writing unique output
@@ -13348,12 +13348,12 @@ is complete, clean up by
 In the API, \whizard\ requires numeric data types according to the IEEE
 standard, which is available to Fortran in the \ttt{iso\_fortran\_env}
 intrinsic module.  Strictly speaking, integer data must have type \ttt{int32},
-and real data must have type \ttt{real64}.  
+and real data must have type \ttt{real64}.
 
 For most systems and default compiler settings, it
 is not really necessary to \ttt{use} the ISO module and its data types.
-Integers map to default Fortran \ttt{integer}, 
-and real values map to default Fortran \ttt{double precision}.  
+Integers map to default Fortran \ttt{integer},
+and real values map to default Fortran \ttt{double precision}.
 
 As an
 alternative, you may \ttt{use} the \whizard\ internal \ttt{kinds} module which
@@ -13371,7 +13371,7 @@ type:
 \end{quote}
 The name is a Fortran string which has to be equal to the name of the
 corresponding \sindarin\ variable, including any prefix character (\$ or ?).
-The value depends on the type of the \sindarin\ 
+The value depends on the type of the \sindarin\
 variable.
 
 To retrieve the current value of a variable:
@@ -13506,7 +13506,7 @@ are accessible:
   \end{quote}
   The \whizard\ module \ttt{hepmc\_interface} contains procedures which can
   work with this record.  A pointer to the actual C++ object can be retrieved
-  as a Fortran 
+  as a Fortran
   \ttt{c\_ptr} object as follows:
   \begin{quote}
     \tt
@@ -13531,14 +13531,14 @@ must be performed:
   Configure, build and install \whizard\ as normal.
 \item
   Include code for accessing \whizard\ functionality in the user program.
-  The code should initialize 
+  The code should initialize
   \whizard, execute the intended commands, and finalize.  For an example, see
-  below. 
+  below.
 \item
   Compile the user program with the option that finds the WHIZARD C/C++
   interface header file.
   For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
-  should read 
+  should read
   \begin{code}
     -Iwhizard-path/include
   \end{code}
@@ -13548,11 +13548,11 @@ must be performed:
   \whizard\ has been installed in a system path, this should work
   automatically.  If
   \whizard\ has been installed in a non-default \ttt{whizard-path}, these
-  are the options: 
+  are the options:
   \begin{code}
     -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega -ltirpc
   \end{code}
-  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}. 
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}.
 
   If \whizard\ has been compiled with a non-default Fortran compiler, you may
   have to explicitly link the appropriate Fortran run-time libraries.
@@ -13562,14 +13562,14 @@ must be performed:
   system. Cf. the corresponding remarks in the section for a
   \fortran\ main program.
 
-  If additional libraries such as  
+  If additional libraries such as
   \hepmc\ are enabled in the \whizard\ configuration, it may be necessary to
   provide extra options for linking those.
-  
+
 \item
   Run the program.  If necessary, provide the path to the installed shared
   libraries.  For instance, if \whizard\ has been installed in
-  \ttt{whizard-path}, this should read 
+  \ttt{whizard-path}, this should read
   \begin{code}
     export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
   \end{code}
@@ -13589,11 +13589,11 @@ In particular, the program can process generated events one-by-one.
 #include "whizard.h"
 
 int main( int argc, char* argv[] )
-{ 
+{
   /* WHIZARD and event-sample objects */
   void* wh;
   void* sample;
-    
+
   /* Local variables */
   double integral, error;
   double sqme, weight;
@@ -13612,12 +13612,12 @@ int main( int argc, char* argv[] )
 
   /* Generate matrix-element code, integrate and retrieve result */
   whizard_command( &wh, "integrate (mupair)" );
-  
+
   /* Print result */
   whizard_get_integration_result( &wh, "mupair", &integral, &error);
   printf( "  cross section = %5.1f pb\n", integral / 1000. );
   printf( "  error         = %5.1f pb\n", error / 1000. );
-    
+
   /* Settings for event generation */
   whizard_set_char( &wh, "$sample", "mupair_events" );
   whizard_set_int( &wh, "n_events", 2 );
@@ -13669,7 +13669,7 @@ cf.\ Sec.~\ref{sec:cmdline-options}.
   \tt  whizard\_option( \&wh, \textit{key}, \textit{value} );
 \end{quote}
 All keys and values are null-terminated C character strings.  The available
-options are 
+options are
 listed above in the Fortran interface documentation.
 
 \subsubsection{Initialization and finalization}
@@ -13765,7 +13765,7 @@ To start event generation for this sample, call
   \&\textit{it\_end} );
 \end{quote}
 where the two output variables (\ttt{int}) \ttt{\it it\_begin} and
-\ttt{\it it\_end} 
+\ttt{\it it\_end}
 provide the bounds for an event loop in the calling program.  (In serial mode,
 the bounds are equal to 1 and \ttt{n\_events}, respectively, but in an MPI
 parallel environment, they depend on the computing node.)
@@ -13817,14 +13817,14 @@ must be performed:
   Configure, build and install \whizard\ as normal.
 \item
   Include code for accessing \whizard\ functionality in the user program.
-  The code should initialize 
+  The code should initialize
   \whizard, execute the intended commands, and finalize.  For an example, see
-  below. 
+  below.
 \item
   Compile the user program with the option that finds the WHIZARD C/C++ interface
   header file.
   For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
-  should read 
+  should read
   \begin{code}
     -Iwhizard-path/include
   \end{code}
@@ -13834,26 +13834,26 @@ must be performed:
   \whizard\ has been installed in a system path, this should work
   automatically.  If
   \whizard\ has been installed in a non-default \ttt{whizard-path}, these
-  are the options: 
+  are the options:
   \begin{code}
     -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega -ltirpc
   \end{code}
-  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}. 
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}.
 
   If \whizard\ has been compiled with a non-default Fortran compiler, you may
   have to explicitly link the appropriate Fortran run-time libraries.
 
   The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
   functionality.  This
-  library should be present on the host system.  
+  library should be present on the host system.
 
-  If additional libraries such as  
+  If additional libraries such as
   \hepmc\ are enabled in the \whizard\ configuration, it may be necessary to
   provide extra options for linking those.
 \item
   Run the program.  If necessary, provide the path to the installed shared
   libraries.  For instance, if \whizard\ has been installed in
-  \ttt{whizard-path}, this should read 
+  \ttt{whizard-path}, this should read
   \begin{code}
     export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
   \end{code}
@@ -13874,40 +13874,40 @@ In particular, the program can process generated events one-by-one.
 #include "whizard.h"
 
 int main( int argc, char* argv[] )
-{ 
-  // WHIZARD and event-sample objects 
+{
+  // WHIZARD and event-sample objects
   Whizard* whizard;
   WhizardSample* sample;
-    
-  // Local variables 
+
+  // Local variables
   double integral, error;
   double sqme, weight;
   int idx;
   int it, it_begin, it_end;
 
-  // Initialize WHIZARD, setting some global option 
+  // Initialize WHIZARD, setting some global option
   whizard = new Whizard();
   whizard->option( "model", "QED" );
   whizard->init();
 
-  // Define a process, set some variables 
+  // Define a process, set some variables
   whizard->command( "process mupair = e1, E1 => e2, E2" );
   whizard->set_double( "sqrts", 10. );
   whizard->set_int( "seed", 0 );
 
-  // Generate matrix-element code, integrate and retrieve result 
+  // Generate matrix-element code, integrate and retrieve result
   whizard->command( "integrate (mupair)" );
-  
-  // Print result 
+
+  // Print result
   whizard->get_integration_result( "mupair", &integral, &error );
   printf( "  cross section = %5.1f pb\n", integral / 1000. );
   printf( "  error         = %5.1f pb\n", error / 1000. );
-    
-  // Settings for event generation 
+
+  // Settings for event generation
   whizard->set_string( "$sample", "mupair_events" );
   whizard->set_int( "n_events", 2 );
 
-  // Create an event-sample object and generate events 
+  // Create an event-sample object and generate events
   sample = whizard->new_sample( "mupair" );
   sample->open( &it_begin, &it_end );
   for (it=it_begin; it<=it_end; it++) {
@@ -13920,11 +13920,11 @@ int main( int argc, char* argv[] )
     printf( "  weight  = %10.3e\n", weight );
   }
 
-  // Finalize the event-sample object 
+  // Finalize the event-sample object
   sample->close();
   delete sample;
 
-  // Finalize the WHIZARD object 
+  // Finalize the WHIZARD object
   delete whizard;
 }
 \end{code}
@@ -14046,7 +14046,7 @@ To start event generation for this sample, call
   \&\textit{it\_end});
 \end{quote}
 where the two output variables (\ttt{int}) \ttt{\it it\_begin} and
-\ttt{\it it\_end} 
+\ttt{\it it\_end}
 provide the bounds for an event loop in the calling program.  (In serial mode,
 the bounds are equal to 1 and \ttt{n\_events}, respectively, but in an MPI
 parallel environment, they depend on the computing node.)
@@ -14087,7 +14087,7 @@ queried for specific event data.
 where the \ttt{\it value} is a variable of appropriate type (see above).
 
 Event data are stored in a format-specific way.  This may be a \hepmc\ or
-\lcio\ C++ event record. 
+\lcio\ C++ event record.
 
 For interfacing with the \hepmc\ event record, the appropriate declarations
 must be in place, e.g.,
@@ -18566,7 +18566,7 @@ respectively.
 %\cite{Buckley:2010ar}
 \bibitem{Buckley:2010ar}
 A.~Buckley, J.~Butterworth, L.~Lonnblad, D.~Grellscheid, H.~Hoeth, J.~Monk, H.~Schulz and F.~Siegert,
-{\em Rivet user manual}, 
+{\em Rivet user manual},
 Comput. Phys. Commun. \textbf{184}, 2803-2819 (2013)
 doi:10.1016/j.cpc.2013.05.021
 [arXiv:1003.0694 [hep-ph]].
@@ -18587,7 +18587,7 @@ doi:10.21468/SciPostPhys.8.2.026
 \bibitem{deFavereau:2013fsa}
 J.~de Favereau \textit{et al.} [DELPHES 3],
 {\em DELPHES 3, A modular framework for fast simulation of a generic
-  collider experiment}, 
+  collider experiment},
 JHEP \textbf{02}, 057 (2014)
 doi:10.1007/JHEP02(2014)057
 [arXiv:1307.6346 [hep-ex]]

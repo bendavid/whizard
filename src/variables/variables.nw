@@ -3638,7 +3638,7 @@ procedure with type [[V_NONE]].
           intrinsic=.true., &
           description=var_str ('Integer parameter that sets the number ' // &
           'of active quark flavors for the internal evolution for running ' // &
-          '$\alpha_s$ in \whizard: the default is \ttt{5}. (cf. also ' // &
+          '$\alpha_s$ in \whizard. (cf. also ' // &
           '\ttt{alphas\_is\_fixed}, \ttt{?alphas\_from\_lhapdf}, \ttt{?alphas\_from\_pdf\_builtin}, ' // &
           '\ttt{alphas\_order}, \ttt{?alphas\_from\_mz}, \newline ' // &
           '\ttt{?alphas\_from\_lambda\_qcd}, \ttt{lambda\_qcd})'))
@@ -6176,10 +6176,10 @@ procedure with type [[V_NONE]].
          't\bar tj$. (cf. also \ttt{?nlo\_use\_real\_partition})'))
     call var_list%append_log (var_str ("?nlo_reuse_amplitudes_fks"), &
          .false., intrinsic = .true., &
-         description=var_str ('Only compute real and virtual amplitudes for' // &
+         description=var_str ('Only compute real and virtual amplitudes for ' // &
          'subprocesses that give a different amplitude and reuse the result ' // &
-         'for equivalent subprocesses.' // &
-         'Might give a speed-up for some processes. Might' // &
+         'for equivalent subprocesses. ' // &
+         'Might give a speed-up for some processes. Might ' // &
          'break others, especially in cases where resonance histories are needed. ' // &
          'Experimental feature, use at your own risk!'))
   end subroutine var_list_set_nlo_defaults
