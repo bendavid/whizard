@@ -172,6 +172,7 @@ else
    if ${hepmcconfig} --rootIO | grep rootIO >/dev/null 2>&1; then
       hepmc3_root="yes"
       HEPMCROOTLIBS="`${hepmcconfig} --rootIO` -Wl,-rpath,$ROOTLIBDIR -L$ROOTLIBDIR $ROOTLIBS"
+      HEPMCROOTINCL="-I$ROOTINCDIR"
    else
       hepmc3_root="no"
    fi
@@ -192,7 +193,7 @@ using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
 
    AC_MSG_CHECKING([for HepMC3])
    if test "${hepmcok}" = "yes"; then
-      HEPMC_INCLUDES="--std=c++11 `${hepmcconfig} --cxxflags`"
+      HEPMC_INCLUDES="--std=c++11 `${hepmcconfig} --cxxflags` $HEPMCROOTINCL"
       LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs` $HEPMCROOTLIBS"
       AC_MSG_RESULT([yes])
       $1

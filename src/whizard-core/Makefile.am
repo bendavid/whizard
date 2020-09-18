@@ -93,10 +93,6 @@ libwhizard_core_ut_la_SOURCES = \
   simulations_uti.f90 simulations_ut.f90 \
   commands_uti.f90 commands_ut.f90
 
-# Adds the whizard-c-interface
-EXTRA_libwhizard_core_la_SOURCES = whizard-c-interface.f90
-libwhizard_core_la_LIBADD = whizard-c-interface.lo
-
 EXTRA_DIST = \
   $(COMMON_F90) \
   $(SERIAL_F90) \

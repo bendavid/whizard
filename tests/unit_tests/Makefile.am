@@ -278,22 +278,21 @@ cascades2_1.fds: $(top_srcdir)/share/tests/cascades2_1.fds
 cascades2_2.fds: $(top_srcdir)/share/tests/cascades2_2.fds
 	cp $< $@
 
-
-
-commands.run: sps1ap_decays.slha
-sps1ap_decays.slha: $(top_builddir)/share/susy/sps1ap_decays.slha
-	cp $< $@
-
 WT_OCAML_NATIVE_EXT=opt
 
 if MPOST_AVAILABLE
-commands.run: gamelan.sty
+commands.run: gamelan.sty sps1ap_decays.slha
 gamelan.sty: $(top_builddir)/src/gamelan/gamelan.sty
 	cp $< $@
 
 $(top_builddir)/src/gamelan/gamelan.sty:
 	$(MAKE) -C $(top_builddir)/src/gamelan gamelan.sty
+else
+commands.run: sps1ap_decays.slha
 endif
+
+sps1ap_decays.slha: $(top_builddir)/share/susy/sps1ap_decays.slha
+	cp $< $@
 
 if OCAML_AVAILABLE
 
