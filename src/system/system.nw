@@ -1870,10 +1870,14 @@ for linking. The default for the Fortran compiler on most systems is
      type(string_t) :: fc
      type(string_t) :: fcflags
      type(string_t) :: fcflags_pic
+     type(string_t) :: fclibs
      type(string_t) :: fc_src_ext
      type(string_t) :: cc
      type(string_t) :: cflags
      type(string_t) :: cflags_pic
+     type(string_t) :: cxx
+     type(string_t) :: cxxflags
+     type(string_t) :: cxxlibs
      type(string_t) :: obj_ext
      type(string_t) :: ld
      type(string_t) :: ldflags
@@ -1966,10 +1970,14 @@ necessary.
     os_data%fc             = DEFAULT_FC
     os_data%fcflags        = DEFAULT_FCFLAGS
     os_data%fcflags_pic    = DEFAULT_FCFLAGS_PIC
+    os_data%fclibs         = FCLIBS
     os_data%fc_src_ext     = DEFAULT_FC_SRC_EXT
     os_data%cc             = DEFAULT_CC
     os_data%cflags         = DEFAULT_CFLAGS
     os_data%cflags_pic     = DEFAULT_CFLAGS_PIC
+    os_data%cxx            = DEFAULT_CXX
+    os_data%cxxflags       = DEFAULT_CXXFLAGS
+    os_data%cxxlibs        = DEFAULT_CXXLIBS
     os_data%obj_ext        = DEFAULT_OBJ_EXT
     os_data%ld             = DEFAULT_LD
     os_data%ldflags        = DEFAULT_LDFLAGS
@@ -2134,10 +2142,14 @@ of each other.    %% Fooling Noweb Emacs mode: $
     write (u, *) "fc             = ", char (os_data%fc)
     write (u, *) "fcflags        = ", char (os_data%fcflags)
     write (u, *) "fcflags_pic    = ", char (os_data%fcflags_pic)
+    write (u, *) "fclibs         = ", char (os_data%fclibs)
     write (u, *) "fc_src_ext     = ", char (os_data%fc_src_ext)
     write (u, *) "cc             = ", char (os_data%cc)
     write (u, *) "cflags         = ", char (os_data%cflags)
     write (u, *) "cflags_pic     = ", char (os_data%cflags_pic)
+    write (u, *) "cxx            = ", char (os_data%cxx)
+    write (u, *) "cxxflags       = ", char (os_data%cxxflags)
+    write (u, *) "cxxlibs        = ", char (os_data%cxxlibs)
     write (u, *) "obj_ext        = ", char (os_data%obj_ext)
     write (u, *) "ld             = ", char (os_data%ld)
     write (u, *) "ldflags        = ", char (os_data%ldflags)

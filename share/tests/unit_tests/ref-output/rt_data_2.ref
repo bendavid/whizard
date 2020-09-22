@@ -407,6 +407,7 @@ real_partition_scale =  1.000000000000E+01
 ?nlo_reuse_amplitudes_fks = false
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
+$fclibs => "Fortran-libs"
 ========================================================================
 model "Test"
  ! md5sum = 'DB28187ADA60804A3CFC14A025DED784'

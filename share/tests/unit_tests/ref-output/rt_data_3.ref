@@ -29,6 +29,7 @@ colored* = PDG(6, -6)
 $model_name = "Test"
 $fc => "Local compiler"
 $fcflags => "Fortran-flags"
+$fclibs => "Fortran-libs"
 $integration_method = "midpoint"
 $phs_method = "single"
 $library_name = "library_2"
@@ -421,6 +422,7 @@ real_partition_scale =  1.000000000000E+01
 ?nlo_reuse_amplitudes_fks = false
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
+$fclibs => "Fortran-libs"
 ========================================================================
 model "Test"
  ! md5sum = 'DB28187ADA60804A3CFC14A025DED784'
@@ -935,6 +937,7 @@ real_partition_scale =  1.000000000000E+01
 ?nlo_reuse_amplitudes_fks = false
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
+$fclibs => "Fortran-libs"
 ========================================================================
 model "Test"
  ! md5sum = 'DB28187ADA60804A3CFC14A025DED784'

@@ -805,6 +805,7 @@ similar general system for all sorts of software, called
 
 
 \subsection{Tarball Distribution}
+\label{sec:tarballdistr}
 
 This is the recommended way of obtaining \whizard.  You may download
 the current stable distribution from the \whizard\ webpage,
@@ -894,11 +895,14 @@ where the complete source tree is located.  To update later to a new
 version, repeat these steps.  Each new version will unpack in a
 separate directory with the appropriate name.
 
+%%%%%
 
 \subsection{SVN Repository Version}
 
 If you want to install the latest development version, you have to
-check it out from the \whizard\ SVN repository.
+check it out from the \whizard\ SVN repository. Note that since a
+couple of years our development is now via a Git revision control
+system hosted at the University of Siegen, cf. the next subsection. 
 
 In addition to the prerequisites listed in the previous section, you
 need:
@@ -953,6 +957,37 @@ version. So now, run\footnote{At least, version
 \end{interaction}
 This will generate a \ttt{configure} script.
 
+%%%%%
+
+\subsection{Public Git Repository Version}
+
+Since a couple of years, development of \whizard\ is done by means of
+a Git revision system, hosted at the University of Siegen. There is a
+public mirror of that Git repository available at
+\begin{quote}
+  \url{https://gitlab.tp.nt.uni-siegen.de/whizard/public}
+\end{quote}
+Cloning via HTTPS brings the user to the same change as the SVN
+checkout from HepForge described in the previous subsection:
+\begin{quote}
+  git clone https://gitlab.tp.nt.uni-siegen.de/whizard/public.git
+\end{quote}
+The next steps are the same as described in the previous subsection.
+
+%%%%%
+
+\subsection{Nightly development snapshots}
+
+Nightly development snapshots that are pre-packaged in the same way
+as an official distribution are available from
+\begin{quote}
+  \url{https://whizard.tp.nt.uni-siegen.de/}
+\end{quote}
+Building \whizard\ works the way as described in
+Sec.~\ref{sec:tarballdistr}. 
+
+
+%%%%%
 
 \subsection{\label{sec:compilers}Fortran Compilers}
 
@@ -1333,6 +1368,10 @@ configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
 
+Note that when compiling on Darwin/macOS it might be necessary to
+set the option \ttt{--disable-auto-ptr} when compiling with
+\ttt{clang++}.
+
 %%%%%
 
 \subsection{STDHEP}
@@ -1658,6 +1697,43 @@ matrix elements are thereby switched off. Note that you can install
 such a built (e.g. on a batch system without \ocaml\ installation), but
 the try to build a distribution (all \ttt{make distxxx} targets) will fail.
 
+%%%%%%%%%%%
+
+\subsection{Building on Darwin/macOS}
+
+The easiest way to build \whizard\ on Darwin/macOS is to install the
+complete GNU compiler suite (\ttt{gcc/g++/gfortran}). This can be done
+with one of the code repositories like \ttt{MacPorts}, \ttt{HomeBrew}
+or \ttt{Fink}. In order to include \ROOT\ which natively should be
+built using the intrinsic \ttt{clang/clang++} for the graphics
+support, there is also the possibility to build external tools like
+\hepmcthree, \pythiaeight, \fastjet, and \lcio\ with \ttt{clang++},
+and set in the configure option for \whizard\ \ttt{C} and \ttt{C++}
+compiler accordingly:
+\begin{quote}
+  ../configure CC=clang CXX=clang++ [...]
+\end{quote}
+Note that \fastjet\ might need to be configured with the
+\ttt{--disable-auto-ptr} option when compiling with \ttt{clang++}
+and strict \ttt{C++17} standard.
+
+Since Darwin v10.11, the security measures of the new Darwin systems
+do not allow e.g. environment variables passed to subprocesses. This
+does not change anything for the installed WHIZARD, but the testsuite
+(make check) will not work before make install has been executed. make
+distcheck will not work on El Capitan. There is also the option to
+disable the System Integrity Protocol (SIP) of modern OSX by booting
+in Recovery Mode, open a terminal and type \ttt{csrutil
+disable}. However, we do not recommend to do so.
+
+%%%%%%%%%%%
+
+\subsection{Building on Windows}
+
+For Windows, from \ttt{Windows 10} onwards, there is the possibility
+to install and use an underlying Linux operating system,
+e.g. \ttt{Ubuntu}. Installation and usage of \whizard\ works then the
+same way as described above. 
 
 %%%%%%%%%%%
 
@@ -2480,8 +2556,8 @@ in a separate directory (not necessarily a subdirectory). Then the
 compilation will go through:
 \begin{footnotesize}
 \begin{Verbatim}[frame=single]
-$ zcat whizard-2.0.0.tar.gz | tar xf -
-$ cd whizard-2.0.0
+$ zcat whizard-3.0.0.tar.gz | tar xf -
+$ cd whizard-3.0.0
 $ mkdir _build
 $ cd _build
 $ ../configure FC=gfortran

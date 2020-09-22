@@ -249,9 +249,11 @@ AC_REQUIRE([AC_PROG_FC])
 case $host in
 *-darwin*)
   system_darwin="yes"
+  OS_IS_DARWIN=".true."
   ;;
 *)
   system_darwin="no"
+  OS_IS_DARWIN=".false."
   ;;
 esac
 case $FC_VENDOR in
@@ -277,6 +279,7 @@ Intel)
   AC_FC_LIBRARY_LDFLAGS()
   ;;
 esac
+AC_SUBST([OS_IS_DARWIN])
 AM_CONDITIONAL([IS_IFORT_DARWIN],
         [test "$system_darwin" = "yes" -a "$FC_VENDOR" = "Intel"])
 ])

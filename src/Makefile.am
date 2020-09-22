@@ -320,7 +320,10 @@ whizard_ut_c_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 check_PROGRAMS += whizard_ut_cc
 
+## A dummy source tells libtool that the C++ compiler is used for linking
+## Without dummy, libtool uses the C linker (default: ld)
 whizard_ut_cc_SOURCES =
+nodist_EXTRA_whizard_ut_cc_SOURCES = dummy_cc.cc
 
 if IS_IFORT_DARWIN
 whizard_ut_cc_LDFLAGS =  $(AM_LDFLAGS) -static

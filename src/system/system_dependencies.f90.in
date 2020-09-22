@@ -131,7 +131,6 @@ module system_dependencies
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
        "@BUILDDIR@/libtool"
 
-
   ! System paths
   ! These are used for the installed version
   character(*), parameter :: PREFIX = &
@@ -223,8 +222,12 @@ module system_dependencies
        ".@FC_SRC_EXT@"
   character(*), parameter :: DEFAULT_FC_PRECISION = &
        "@FC_PRECISION@"
+  character(*), parameter :: FCLIBS = &
+       "@FCLIBS@"
+
+  logical, parameter      :: OS_IS_DARWIN = @OS_IS_DARWIN@
   
-  ! Fortran compiler
+  ! C compiler
   character(*), parameter :: DEFAULT_CC = &
        "@CC@"
   character(*), parameter :: DEFAULT_CFLAGS = &
@@ -233,7 +236,15 @@ module system_dependencies
        "@CFLAGS_PIC@"
   logical, parameter :: CC_IS_GNU = @CC_IS_GNU@
   logical, parameter :: CC_HAS_QUADMATH = @CC_HAS_QUADMATH@
-  
+
+  ! C++ compiler
+  character(*), parameter :: DEFAULT_CXX = &
+       "@CXX@"
+  character(*), parameter :: DEFAULT_CXXFLAGS = &
+       "@CXXFLAGS@"
+  character(*), parameter :: DEFAULT_CXXLIBS = &
+       "@CXXLIBS@"
+
   ! Object files
   character(*), parameter :: DEFAULT_OBJ_EXT = &
        ".@OBJ_EXT@"

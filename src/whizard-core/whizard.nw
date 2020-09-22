@@ -936,13 +936,19 @@ their targets.
          description=var_str('This string variable gives the ' // &
          '\ttt{Fortran} compiler used within \whizard. It can ' // &
          'only be accessed, not set by the user. (cf. also ' // &
-         '\ttt{\$fcflags})'))
+         '\ttt{\$fcflags}, \ttt{\$fclibs})'))
     call local%var_list%append_string_ptr (var_str ("$fcflags"), &
          local%os_data%fcflags, known, intrinsic=.true., &
          description=var_str('This string variable gives the ' // &
          'compiler flags for the \ttt{Fortran} compiler used ' // &
          'within \whizard. It can only be accessed, not set by ' // &
-         'the user. (cf. also \ttt{\$fc})'))
+         'the user. (cf. also \ttt{\$fc}, \ttt{\$fclibs})'))
+    call local%var_list%append_string_ptr (var_str ("$fclibs"), &
+         local%os_data%fclibs, known, intrinsic=.true., &
+         description=var_str('This string variable gives the ' // &
+         'linked libraries for the \ttt{Fortran} compiler used ' // &
+         'within \whizard. It can only be accessed, not set by ' // &
+         'the user. (cf. also \ttt{\$fc}, \ttt{\$fcflags})'))
   end subroutine rt_data_init_pointer_variables
 
 @ %def rt_data_init_pointer_variables
@@ -2086,6 +2092,7 @@ them to some dummy values.
 
     global%os_data%fc = "Fortran-compiler"
     global%os_data%fcflags = "Fortran-flags"
+    global%os_data%fclibs = "Fortran-libs"
 
   end subroutine fix_system_dependencies
 
@@ -4528,6 +4535,7 @@ variables where the value may depend on the system and run environment.
 
     global%os_data%fc = "Fortran-compiler"
     global%os_data%fcflags = "Fortran-flags"
+    global%os_data%fclibs = "Fortran-libs"
 
     call global%write_libraries (u)
 
@@ -4618,6 +4626,7 @@ library.  The [[prepare_test_library]] contents are spelled out.
 
     global%os_data%fc = "Fortran-compiler"
     global%os_data%fcflags = "Fortran-flags"
+    global%os_data%fclibs = "Fortran-libs"
 
     call global%write_vars (u, [ &
          var_str ("$model_name"), &
@@ -4651,6 +4660,7 @@ module compilations
 <<Use strings>>
   use io_units
   use system_defs, only: TAB
+  use system_dependencies, only: OS_IS_DARWIN
   use diagnostics
   use os_interface
   use variables, only: var_list_t
@@ -4972,13 +4982,17 @@ write a subroutine which returns the names of the compiled libraries.
   procedure :: write_makefile => compilation_write_makefile
 <<Compilations: procedures>>=
   subroutine compilation_write_makefile &
-       (compilation, os_data, ext_libtag, verbose)
+       (compilation, os_data, ext_libtag, verbose, overwrite_os)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: verbose
+    logical, intent(in), optional :: overwrite_os
+    logical :: overwrite
     type(string_t), intent(in), optional :: ext_libtag
     type(string_t) :: file, ext_tag
     integer :: u, i
+    overwrite = .false.
+    if (present (overwrite_os))  overwrite = overwrite_os
     if (present (ext_libtag)) then
        ext_tag = ext_libtag
     else
@@ -4998,12 +5012,16 @@ write a subroutine which returns the names of the compiled libraries.
     write (u, "(A)") ""
     write (u, "(A)") "# Compiler"
     write (u, "(A)") "FC = " // char (os_data%fc)
+    write (u, "(A)") "CXX = " // char (os_data%cxx)
     write (u, "(A)") ""
     write (u, "(A)") "# Included libraries"
     write (u, "(A)") "FCINCL = " // char (os_data%whizard_includes)
     write (u, "(A)") ""
     write (u, "(A)") "# Compiler flags"
     write (u, "(A)") "FCFLAGS = " // char (os_data%fcflags)
+    write (u, "(A)") "FCLIBS = " // char (os_data%fclibs)
+    write (u, "(A)") "CXXFLAGS = " // char (os_data%cxxflags)
+    write (u, "(A)") "CXXLIBSS = " // char (os_data%cxxlibs)
     write (u, "(A)") "LDFLAGS = " // char (os_data%ldflags)
     write (u, "(A)") "LDFLAGS_STATIC = " // char (os_data%ldflags_static)
     write (u, "(A)") "LDFLAGS_HEPMC = " // char (os_data%ldflags_hepmc)
@@ -5016,10 +5034,18 @@ write a subroutine which returns the names of the compiled libraries.
     write (u, "(A)") "LIBTOOL = " // char (os_data%whizard_libtool)
     if (verbose) then
        write (u, "(A)") "FCOMPILE = $(LIBTOOL) --tag=FC --mode=compile"
-       write (u, "(A)") "LINK = $(LIBTOOL) --tag=FC --mode=link"
+       if (OS_IS_DARWIN .and. .not. overwrite) then
+          write (u, "(A)") "LINK = $(LIBTOOL) --tag=CXX --mode=link"
+       else
+          write (u, "(A)") "LINK = $(LIBTOOL) --tag=FC --mode=link"
+       end if
     else
        write (u, "(A)") "FCOMPILE = @$(LIBTOOL) --silent --tag=FC --mode=compile"
-       write (u, "(A)") "LINK = @$(LIBTOOL) --silent --tag=FC --mode=link"
+       if (OS_IS_DARWIN .and. .not. overwrite) then
+          write (u, "(A)") "LINK = @$(LIBTOOL) --silent --tag=CXX --mode=link"
+       else
+          write (u, "(A)") "LINK = @$(LIBTOOL) --silent --tag=FC --mode=link"
+       end if
     end if
     write (u, "(A)") ""
     write (u, "(A)") "# Compile commands (default)"
@@ -5048,13 +5074,26 @@ write a subroutine which returns the names of the compiled libraries.
     write (u, "(A)") "# Executable"
     write (u, "(A)") "$(EXE): $(DISP).lo $(LIBRARIES)"
     if (.not. verbose) then
-       write (u, "(A)")  TAB // '@echo  "  FCLD     " $@'
+       if (OS_IS_DARWIN .and. .not. overwrite) then
+          write (u, "(A)")  TAB // '@echo  "  CXXLD    " $@'
+       else
+          write (u, "(A)")  TAB // '@echo  "  FCLD     " $@'
+       end if
     end if
-    write (u, "(A)") TAB // "$(LINK) $(FC) -static $(FCFLAGS) \"
+    if (OS_IS_DARWIN .and. .not. overwrite) then
+       write (u, "(A)") TAB // "$(LINK) $(CXX) -static $(CXXFLAGS) \"
+    else
+       write (u, "(A)") TAB // "$(LINK) $(FC) -static $(FCFLAGS) \"
+    end if
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \"
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
     write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \"
-    write (u, "(A)") TAB // "   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC)" // char (ext_tag)
+    if (OS_IS_DARWIN .and. .not. overwrite) then
+       write (u, "(A)") TAB // "   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC) \"
+       write (u, "(A)") TAB // "   $(CXXLIBS) $(FCLIBS)" // char (ext_tag)
+    else
+       write (u, "(A)") TAB // "   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC)" // char (ext_tag)
+    end if
     write (u, "(A)") ""
     write (u, "(A)") "# Main targets"
     write (u, "(A)") "link: compile $(EXE)"
@@ -5366,8 +5405,12 @@ create driver files for a static executable.
 
     associate (os_data => global%os_data)
       os_data%fc = "fortran-compiler"
+      os_data%cxx = "c++-compiler"
       os_data%whizard_includes = "my-includes"
       os_data%fcflags = "my-fcflags"
+      os_data%fclibs = "my-fclibs"
+      os_data%cxxflags = "my-cxxflags"
+      os_data%cxxlibs = "my-cxxlibs"
       os_data%ldflags = "my-ldflags"
       os_data%ldflags_static = "my-ldflags-static"
       os_data%ldflags_hepmc = "my-ldflags-hepmc"
@@ -5378,7 +5421,8 @@ create driver files for a static executable.
       os_data%whizard_libtool = "my-libtool"
     end associate
 
-    call compilation%write_makefile (global%os_data, verbose = .true.)
+    call compilation%write_makefile &
+         (global%os_data, verbose = .true., overwrite_os = .true.)
 
     open (u_file, file = char (exename) // ".makefile", &
          status = "old", action = "read")
@@ -25655,6 +25699,7 @@ Open process libraries explicitly.
          .false., is_known = .true.)
     global%os_data%fc = "Fortran-compiler"
     global%os_data%fcflags = "Fortran-flags"
+    global%os_data%fclibs = "Fortran-libs"
 
     write (u, "(A)")
     write (u, "(A)")  "*  Input file"

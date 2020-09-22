@@ -539,6 +539,7 @@ real_partition_scale =  1.000000000000E+01
 ?nlo_reuse_amplitudes_fks = false
 $fc = Fortran-compiler
 $fcflags = Fortran-flags
+$fclibs = Fortran-libs
 ?rebuild_library = true
 ?recompile_library = false
 ?rebuild_phase_space = true

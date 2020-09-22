@@ -1,4 +1,5 @@
 int intrac_()
 {
-    return ((int) isatty(0));
+  int isatty(int fildes);
+  return ((int) isatty(0));
 }

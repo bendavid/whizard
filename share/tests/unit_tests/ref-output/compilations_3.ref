@@ -43,12 +43,16 @@ EXE = compilations_3
 
 # Compiler
 FC = fortran-compiler
+CXX = c++-compiler
 
 # Included libraries
 FCINCL = my-includes
 
 # Compiler flags
 FCFLAGS = my-fcflags
+FCLIBS = my-fclibs
+CXXFLAGS = my-cxxflags
+CXXLIBSS = my-cxxlibs
 LDFLAGS = my-ldflags
 LDFLAGS_STATIC = my-ldflags-static
 LDFLAGS_HEPMC = my-ldflags-hepmc

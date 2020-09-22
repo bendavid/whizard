@@ -336,6 +336,7 @@ $nlo_correction_type = "QCD"
 $exclude_gauge_splittings = "c:b:t:e2:e3"
 $fc => Fortran-compiler
 $fcflags => Fortran-flags
+$fclibs => Fortran-libs
 [user variable] $str = "foobar"
 [user variable] q = PDG(2)
 [user variable] q = PDG(2, 1, -2, -1)
