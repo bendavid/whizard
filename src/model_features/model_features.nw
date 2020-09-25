@@ -13334,7 +13334,7 @@ parsed and registered.
     do i = 1, size (block_name)
        block_name(i) = model%slha_block(i)%name
     end do
-    
+
   end subroutine model_get_custom_slha_blocks
   
 @ %def model_get_custom_slha_blocks
@@ -13354,7 +13354,14 @@ specifies a block name and an index array.
     integer, dimension(:), allocatable :: block_index
 
     node_block_name => node%get_sub_ptr (2)
-    block_name = node_block_name%get_string ()
+    select case (char (node_block_name%get_rule_key ()))
+    case ("block_name")
+       block_name = node_block_name%get_string ()
+    case ("QNUMBERS")
+       block_name = "QNUMBERS"
+    case default
+       block_name = node_block_name%get_string ()
+    end select
     n_index = node%get_n_sub () - 2
     allocate (block_index (n_index))
     node_index => node_block_name%get_next_ptr ()
@@ -15768,8 +15775,11 @@ parsing block names.
     call ifile_append (ifile, "SEQ slha = chunk*")
     call ifile_append (ifile, "ALT chunk = block_def | decay_def")
     call ifile_append (ifile, "SEQ block_def = " &
-         // "BLOCK block_spec '$' block_line*")
+         // "BLOCK blockgen '$' block_line*")
+    call ifile_append (ifile, "ALT blockgen = block_spec | q_spec")
     call ifile_append (ifile, "KEY BLOCK")
+    call ifile_append (ifile, "SEQ q_spec = QNUMBERS pdg_code")
+    call ifile_append (ifile, "KEY QNUMBERS")
     call ifile_append (ifile, "SEQ block_spec = block_name qvalue?")
     call ifile_append (ifile, "IDE block_name")
     call ifile_append (ifile, "SEQ qvalue = qname '=' real")
@@ -15837,6 +15847,7 @@ have to capitalize [[pn_block_name]].
     type(parse_node_t), pointer :: pn_block
     type(parse_tree_t), intent(in) :: parse_tree
     type(string_t), intent(in) :: block_name
+    type(string_t) :: block_def
     logical, intent(in) :: required
     type(parse_node_t), pointer :: pn_root, pn_block_spec, pn_block_name
     pn_root => parse_tree%get_root_ptr ()
@@ -15846,8 +15857,14 @@ have to capitalize [[pn_block_name]].
        case ("block_def")
           pn_block_spec => parse_node_get_sub_ptr (pn_block, 2)
           pn_block_name => parse_node_get_sub_ptr (pn_block_spec)
-          if (trim (adjustl (upper_case (parse_node_get_string &
-               (pn_block_name)))) == block_name) then
+          select case (char (pn_block_name%get_rule_key ()))
+          case ("block_name")
+             block_def = trim (adjustl (upper_case &
+                  (pn_block_name%get_string ())))
+          case ("QNUMBERS")
+             block_def = "QNUMBERS"
+          end select
+          if (block_def == block_name) then
              return
           end if
        end select
@@ -16857,7 +16874,12 @@ that is associated with that block name and index array, if it exists.
 
     pn_block_spec => parse_node_get_sub_ptr (pn_block, 2)
     pn_block_name => parse_node_get_sub_ptr (pn_block_spec)
-    block_name = trim (adjustl (upper_case (pn_block_name%get_string ())))
+    select case (char (parse_node_get_rule_key (pn_block_name)))
+    case ("block_name")
+       block_name = trim (adjustl (upper_case (pn_block_name%get_string ())))
+    case ("QNUMBERS")
+       block_name = "QNUMBERS"
+    end select
     call demangle_keywords (block_name)
     pn_data => pn_block%get_sub_ptr (4)
     HANDLE_LINES: do while (associated (pn_data))

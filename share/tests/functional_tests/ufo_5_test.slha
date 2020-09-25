@@ -9,4 +9,5 @@ BLOCK DECAY
    25     0.001            # WH
 BLOCK MASS
    25     230              # MH
-
+BLOCK QNUMBERS 666
+    1      0               ###
