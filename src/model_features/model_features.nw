@@ -13567,7 +13567,7 @@ expression syntax, so we exclude them here.
     call ifile_append (ifile, "SEQ particle_def = particle name_def " // &
          "prt_pdg prt_details")
     call ifile_append (ifile, "KEY particle")
-    call ifile_append (ifile, "INT prt_pdg")
+    call ifile_append (ifile, "SEQ prt_pdg = signed_int")
     call ifile_append (ifile, "ALT prt_details = prt_src | prt_properties")
     call ifile_append (ifile, "SEQ prt_src = like name_def prt_properties")
     call ifile_append (ifile, "KEY like")
@@ -13752,7 +13752,7 @@ contents of the file or the generated model object.
          ("particles", nd_particles, nd_prt, n_prt, nd_vertices)
     call find_block &
          ("vertices", nd_vertices, nd_vtx, n_vtx)
-
+    
     if (associated (nd_external_pars)) then
        lib_name = "external." // model_name
     else
@@ -13765,7 +13765,7 @@ contents of the file or the generated model object.
 
     n_par = 0
     call count_parameters (nd_par_def, n_parblock, n_par)
-
+    
     call model%init &
          (model_name, lib_name, os_data, n_par + n_ext, n_prt, n_vtx, ufo)
     model%md5sum = model_md5sum
@@ -14074,7 +14074,7 @@ external library.
     type(string_t), dimension(:), allocatable :: name
     type(field_data_t), pointer :: field, field_src
     longname = parse_node_get_string (parse_node_get_sub_ptr (node, 2))
-    pdg = parse_node_get_integer (parse_node_get_sub_ptr (node, 3))
+    pdg = read_frac (parse_node_get_sub_ptr (node, 3))
     field => model%get_field_ptr_by_index (i)
     call field%init (longname, pdg)
     nd_src => parse_node_get_sub_ptr (node, 4)
@@ -14181,11 +14181,12 @@ external library.
   end subroutine read_names
 
 @ %def read_names
+@ There is an optional argument for the base.
 <<Models: procedures>>=
   function read_frac (nd_frac, base) result (qn_type)
     integer :: qn_type
     type(parse_node_t), intent(in) :: nd_frac
-    integer, intent(in) :: base
+    integer, intent(in), optional :: base
     type(parse_node_t), pointer :: nd_num, nd_den
     integer :: num, den
     nd_num => parse_node_get_sub_ptr (nd_frac)
@@ -14205,13 +14206,22 @@ external library.
     else
        den = 1
     end if
-    if (den == 1) then
-       qn_type = sign (1 + abs (num) * base, num)
-    else if (den == base) then
-       qn_type = sign (abs (num) + 1, num)
+    if (present (base)) then
+       if (den == 1) then
+          qn_type = sign (1 + abs (num) * base, num)
+       else if (den == base) then
+          qn_type = sign (abs (num) + 1, num)
+       else
+          call parse_node_write_rec (nd_frac)
+          call msg_fatal (" Fractional quantum number: wrong denominator")
+       end if
     else
-       call parse_node_write_rec (nd_frac)
-       call msg_fatal (" Fractional quantum number: wrong denominator")
+       if (den == 1) then
+          qn_type = num
+       else
+          call parse_node_write_rec (nd_frac)
+          call msg_fatal (" Wrong type: no fraction expected")
+       end if
     end if
   end function read_frac
 

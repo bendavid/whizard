@@ -2150,7 +2150,7 @@ an error if the PDG code is zero, this yields just a null pointer.
     end if
     pdg_abs = abs (pdg)
     do i = 1, size (model%field)
-       if (model%field(i)%get_pdg () == pdg_abs) then
+       if (abs(model%field(i)%get_pdg ()) == pdg_abs) then
           ptr => model%field(i)
           return
        end if

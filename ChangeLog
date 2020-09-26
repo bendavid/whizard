@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-09-26
+	Support for negative PDG particles from certain UFO models
+
 2020-09-24
 	Allow for QNUMBERS blocks in BSM SLHA files
 
