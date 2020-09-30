@@ -180,6 +180,7 @@ let suite =
      ThoList_Unit_Tests.suite;
      ThoList.Test.suite;
      ThoArray.Test.suite;
+     ThoString.Test.suite;
      Partial.Test.suite;
      Permutation_Test_Using_Lists.suite;
      Permutation_Test_Using_Arrays.suite;

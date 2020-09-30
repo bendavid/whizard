@@ -58,3 +58,10 @@ val lowercase : string -> string
 
 (* Ignore the case in comparisons. *)
 val compare_caseless :  string -> string -> int
+
+(* Match the regular expression
+   \texttt{\lbrack A-Za-z\rbrack\lbrack A-Za-z0-9\_\rbrack*} *)
+val valid_fortran_id : string -> bool
+
+module Test : sig val suite : OUnit.test end
+

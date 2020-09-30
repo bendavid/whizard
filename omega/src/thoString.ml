@@ -114,3 +114,74 @@ let lowercase = String.lowercase
 
 let compare_caseless s1 s2 =
   String.compare (lowercase s1) (lowercase s2)
+
+let is_alpha c =
+  ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+
+let is_numeric c =
+  '0' <= c && c <= '9'
+
+let is_alphanum c =
+  is_alpha c || is_numeric c || c = '_'
+
+let valid_fortran_id s =
+  let rec valid_fortran_id' n =
+    if n < 0 then
+      false
+    else if n = 0 then
+      is_alpha s.[0]
+    else if is_alphanum s.[n] then
+      valid_fortran_id' (pred n)
+    else
+      false in
+  valid_fortran_id' (pred (String.length s))
+
+module Test =
+  struct
+
+    open OUnit
+
+    let fortran_empty =
+      "empty" >::
+	(fun () -> assert_equal false (valid_fortran_id ""))
+
+    let fortran_digit =
+      "0" >::
+	(fun () -> assert_equal false (valid_fortran_id "0"))
+
+    let fortran_digit_alpha =
+      "0abc" >::
+	(fun () -> assert_equal false (valid_fortran_id "0abc"))
+
+    let fortran_underscore =
+      "_" >::
+	(fun () -> assert_equal false (valid_fortran_id "_"))
+
+    let fortran_underscore_alpha =
+      "_ABC" >::
+	(fun () -> assert_equal false (valid_fortran_id "_ABC"))
+
+    let fortran_questionmark =
+      "A?C" >::
+	(fun () -> assert_equal false (valid_fortran_id "A?C"))
+
+    let fortran_valid =
+      "A_xyz_0_" >::
+	(fun () -> assert_equal true (valid_fortran_id "A_xyz_0_"))
+
+    let suite_fortran =
+      "compare" >:::
+        [fortran_empty;
+         fortran_digit;
+         fortran_digit_alpha;
+         fortran_underscore;
+         fortran_underscore_alpha;
+         fortran_questionmark;
+         fortran_valid]
+
+    let suite =
+      "ThoString" >:::
+	[suite_fortran]
+
+  end
+

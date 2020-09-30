@@ -376,11 +376,25 @@ let optional_handler attribs query name default =
   with
   | Not_found -> default
 
+(* The UFO paper~\cite{Degrande:2011ua} is not clear on the question
+   whether the \texttt{name} attribute of an instance
+   must match its Python name.
+   While the examples appear to imply this, there are examples of
+   UFO files in the wild that violate this constraint. *)
+
 let warn_symbol_name file symbol name =
   if name <> symbol then
     Printf.eprintf
-      "UFO: warning: symbol '%s' <> name '%s' in %s.py: expect errors!\n"
+      "UFO: warning: symbol '%s' <> name '%s' in %s.py: \
+       while legal in UFO, it is unusual and can cause problems!\n"
       symbol name file
+
+let valid_fortran_id kind name =
+  if not (ThoString.valid_fortran_id name) then
+    invalid_arg
+      (Printf.sprintf
+         "fatal UFO error: the %s `%s' is not a valid fortran id!"
+         kind name)
 
 let map_to_alist map =
   SMap.fold (fun key value acc -> (key, value) :: acc) map []
@@ -648,6 +662,7 @@ module UFO_Coupling : UFO_Coupling =
            required_handler "coupling" symbol attribs query name in
          let name = required string_attrib "name" in
          warn_symbol_name "couplings" symbol name;
+         valid_fortran_id "coupling" name;
 	 SMap.add symbol
            { name;
 	     value = UFOx.Expr.of_string (required string_attrib "value");
@@ -708,8 +723,14 @@ module Coupling_Order : Coupling_Order =
 module type Lorentz_UFO =
   sig
 
+    (* If the \texttt{name} attribute of a \texttt{Lorentz} object
+       does \emph{not} match the the name of the object, we need the
+       latter for weeding out unused Lorentz structures (see
+       [Vertex.contains] below).  Therefore, we keep it around. *)
+
     type t = private
       { name : string;
+        symbol : string;
 	spins : int list;
 	structure : UFOx.Lorentz.t }
 
@@ -723,6 +744,7 @@ module Lorentz_UFO : Lorentz_UFO =
 
     type t =
       { name : string;
+        symbol : string;
 	spins : int list;
 	structure : UFOx.Lorentz.t }
 
@@ -742,8 +764,10 @@ module Lorentz_UFO : Lorentz_UFO =
            required_handler "lorentz" symbol attribs query name in
          let name = required string_attrib "name" in
          warn_symbol_name "lorentz" symbol name;
+         valid_fortran_id "lorentz" symbol;
 	 SMap.add symbol
 	   { name;
+	     symbol;
 	     spins = required integer_list_attrib "spins";
 	     structure =
 	       UFOx.Lorentz.of_string (required string_attrib "structure") } map
@@ -1036,6 +1060,7 @@ module Parameter : Parameter =
            required_handler "particle" symbol attribs query name in
          let name = required string_attrib "name" in
          warn_symbol_name "parameters" symbol name;
+         valid_fortran_id "parameter" name;
 	 (SMap.add symbol
 	    { name;
 	      nature = nature_of_string (required string_attrib "nature");
@@ -1427,7 +1452,7 @@ module Lorentz : Lorentz =
 
     let contained lorentz vertex =
       List.exists
-        (fun lcc1 -> lcc1.Vertex.lorentz = lorentz.Lorentz_UFO.name)
+        (fun lcc1 -> lcc1.Vertex.lorentz = lorentz.Lorentz_UFO.symbol)
         vertex.Vertex.lcc
 
     (* Find all vertices in with the Lorentz structure [lorentz] is
@@ -1483,6 +1508,11 @@ module Lorentz : Lorentz =
          None
       | Ambiguous _ -> invalid_arg "UFO.Lorentz.of_lorentz_tensor: Ambiguous"
 
+    (* NB: if the \texttt{name} attribute of a \texttt{Lorentz} object
+       does \emph{not} match the the name of the object, the former has
+       a better chance to correspond to a valid Fortran name.  Therefore
+       we use it. *)
+
     let of_lorentz_UFO particles vertices lorentz_UFO =
       SMap.fold
         (fun name l acc ->
@@ -1492,7 +1522,7 @@ module Lorentz : Lorentz =
           | Some structure ->
              SMap.add
                name
-               { name = l.Lorentz_UFO.name;
+               { name = l.Lorentz_UFO.symbol;
                  n = List.length l.Lorentz_UFO.spins;
 	         spins;
 	         structure;
