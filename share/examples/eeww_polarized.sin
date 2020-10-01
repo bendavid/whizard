@@ -41,57 +41,20 @@ n_events = 100000
 # Tell WHIZARD to retain the W polarization in the generated events
 polarized "W+", "W-"
 
-# Define title etc. as global variables, that will be used by PLOT
+# Define common description for all histograms below
 $description =
   "A WHIZARD 2.2 Example. $W$ pair production in polarized ILC beams at 200 GeV. Analysis for polarized $W$s."
 
-# Define histograms for all different final state helicies.
-
-histogram cta_mm_mm (-1, 1, 0.1) { $title = "Polarization: -1 -1 -1 -1" }
-histogram cta_pm_mm (-1, 1, 0.1) { $title = "Polarization: +1 -1 -1 -1" }
-histogram cta_mp_mm (-1, 1, 0.1) { $title = "Polarization: -1 +1 -1 -1" }
-histogram cta_pp_mm (-1, 1, 0.1) { $title = "Polarization: +1 +1 -1 -1" }
-
-histogram cta_mm_m0 (-1, 1, 0.1) { $title = "Polarization: -1 -1 -1 0" }
-histogram cta_pm_m0 (-1, 1, 0.1) { $title = "Polarization: +1 -1 -1 0" }
-histogram cta_mp_m0 (-1, 1, 0.1) { $title = "Polarization: -1 +1 -1 0" }
-histogram cta_pp_m0 (-1, 1, 0.1) { $title = "Polarization: +1 +1 -1 0" }
-
-histogram cta_mm_mp (-1, 1, 0.1) { $title = "Polarization: -1 -1 -1 +1" }
-histogram cta_pm_mp (-1, 1, 0.1) { $title = "Polarization: +1 -1 -1 +1" }
-histogram cta_mp_mp (-1, 1, 0.1) { $title = "Polarization: -1 +1 -1 +1" }
-histogram cta_pp_mp (-1, 1, 0.1) { $title = "Polarization: +1 +1 -1 +1" }
-
-histogram cta_mm_0p (-1, 1, 0.1) { $title = "Polarization: -1 -1 0 +1" }
-histogram cta_pm_0p (-1, 1, 0.1) { $title = "Polarization: +1 -1 0 +1" }
-histogram cta_mp_0p (-1, 1, 0.1) { $title = "Polarization: -1 +1 0 +1" }
-histogram cta_pp_0p (-1, 1, 0.1) { $title = "Polarization: +1 +1 0 +1" }
-
-histogram cta_mm_00 (-1, 1, 0.1) { $title = "Polarization: -1 -1 0 0" }
-histogram cta_pm_00 (-1, 1, 0.1) { $title = "Polarization: +1 -1 0 0" }
-histogram cta_mp_00 (-1, 1, 0.1) { $title = "Polarization: -1 +1 0 0" }
-histogram cta_pp_00 (-1, 1, 0.1) { $title = "Polarization: +1 +1 0 0" }
-
-histogram cta_mm_0m (-1, 1, 0.1) { $title = "Polarization: -1 -1 0 -1" }
-histogram cta_pm_0m (-1, 1, 0.1) { $title = "Polarization: +1 -1 0 -1" }
-histogram cta_mp_0m (-1, 1, 0.1) { $title = "Polarization: -1 +1 0 -1" }
-histogram cta_pp_0m (-1, 1, 0.1) { $title = "Polarization: +1 +1 0 -1" }
-
-histogram cta_mm_pm (-1, 1, 0.1) { $title = "Polarization: -1 -1 +1 -1" }
-histogram cta_pm_pm (-1, 1, 0.1) { $title = "Polarization: +1 -1 +1 -1" }
-histogram cta_mp_pm (-1, 1, 0.1) { $title = "Polarization: -1 +1 +1 -1" }
-histogram cta_pp_pm (-1, 1, 0.1) { $title = "Polarization: +1 +1 +1 -1" }
-
-histogram cta_mm_p0 (-1, 1, 0.1) { $title = "Polarization: -1 -1 +1 0" }
-histogram cta_pm_p0 (-1, 1, 0.1) { $title = "Polarization: +1 -1 +1 0" }
-histogram cta_mp_p0 (-1, 1, 0.1) { $title = "Polarization: -1 +1 +1 0" }
-histogram cta_pp_p0 (-1, 1, 0.1) { $title = "Polarization: +1 +1 +1 0" }
-
-histogram cta_mm_pp (-1, 1, 0.1) { $title = "Polarization: -1 -1 +1 +1" }
-histogram cta_pm_pp (-1, 1, 0.1) { $title = "Polarization: +1 -1 +1 +1" }
-histogram cta_mp_pp (-1, 1, 0.1) { $title = "Polarization: -1 +1 +1 +1" }
-histogram cta_pp_pp (-1, 1, 0.1) { $title = "Polarization: +1 +1 +1 +1" }
-
+# Define histograms for all final-state helicity combinations.
+histogram cta_mm (-1, 1, 0.1) { $title = "$WW$ polarization: -1 -1" }
+histogram cta_m0 (-1, 1, 0.1) { $title = "$WW$ polarization: -1  0" }
+histogram cta_mp (-1, 1, 0.1) { $title = "$WW$ polarization: -1 +1" }
+histogram cta_0m (-1, 1, 0.1) { $title = "$WW$ polarization:  0 -1" }
+histogram cta_00 (-1, 1, 0.1) { $title = "$WW$ polarization:  0  0" }
+histogram cta_0p (-1, 1, 0.1) { $title = "$WW$ polarization:  0 +1" }
+histogram cta_pm (-1, 1, 0.1) { $title = "$WW$ polarization: +1 -1" }
+histogram cta_p0 (-1, 1, 0.1) { $title = "$WW$ polarization: +1  0" }
+histogram cta_pp (-1, 1, 0.1) { $title = "$WW$ polarization: +1 +1" }
 
 
 # Loop over e+ / e- helicity
@@ -105,145 +68,44 @@ scan int hel_ep = (-1, 1) {
 
     # The analysis setup fills the different histograms
     analysis =
-      if (all Hel == -1 ["W+"] and all Hel == -1 ["W-"] ) then 
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_mm (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_mm (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_mm (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_mm (eval cos (Theta) ["W+"])
-	endif
-      endif; if (all Hel == -1 ["W+"] and all Hel ==  0 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_m0 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_m0 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_m0 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_m0 (eval cos (Theta) ["W+"])
-	endif
-      endif; if (all Hel == -1 ["W+"] and all Hel ==  1 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_mp (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_mp (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_mp (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_mp (eval cos (Theta) ["W+"])
-	endif
-      endif; if (all Hel ==  0 ["W+"] and all Hel == -1 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_0m (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_0m (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_0m (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_0m (eval cos (Theta) ["W+"])
-	endif
-      endif; if (all Hel ==  0 ["W+"] and all Hel ==  0 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_00 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_00 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_00 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_00 (eval cos (Theta) ["W+"])
-	endif
-      endif; if (all Hel ==  0 ["W+"] and all Hel ==  1 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_0p (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_0p (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_0p (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_0p (eval cos (Theta) ["W+"])
-  	endif
-      endif; if (all Hel ==  1 ["W+"] and all Hel == -1 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_pm (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_pm (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_pm (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_pm (eval cos (Theta) ["W+"])
-  	endif
-      endif; if (all Hel ==  1 ["W+"] and all Hel ==  0 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_p0 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_p0 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_p0 (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_p0 (eval cos (Theta) ["W+"])
-  	endif
-      endif; if (all Hel ==  1 ["W+"] and all Hel ==  1 ["W-"] ) then
-	if (all Hel == -1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_mm_pp (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == -1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
- 	      record cta_mp_pp (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == -1 [beam "e-"]) then
-              record cta_pm_pp (eval cos (Theta) ["W+"]) elsif
-	   (all Hel == +1 [beam "e+"] and
-	    all Hel == +1 [beam "e-"]) then
-	      record cta_pp_pp (eval cos (Theta) ["W+"])
-        endif
+      if (any Hel == -1 ["W+"] and any Hel == -1 ["W-"] ) then 
+         record cta_mm (eval cos (Theta) ["W+"])
+      elsif (any Hel == -1 ["W+"] and any Hel ==  0 ["W-"] ) then
+         record cta_m0 (eval cos (Theta) ["W+"])
+      elsif (any Hel == -1 ["W+"] and any Hel == +1 ["W-"] ) then
+         record cta_mp (eval cos (Theta) ["W+"])
+      elsif (any Hel ==  0 ["W+"] and any Hel == -1 ["W-"] ) then
+         record cta_0m (eval cos (Theta) ["W+"])
+      elsif (any Hel ==  0 ["W+"] and any Hel ==  0 ["W-"] ) then
+         record cta_00 (eval cos (Theta) ["W+"])
+      elsif (any Hel ==  0 ["W+"] and any Hel == +1 ["W-"] ) then
+         record cta_0p (eval cos (Theta) ["W+"])
+      elsif (any Hel == +1 ["W+"] and any Hel == -1 ["W-"] ) then
+         record cta_pm (eval cos (Theta) ["W+"])
+      elsif (any Hel == +1 ["W+"] and any Hel ==  0 ["W-"] ) then
+         record cta_p0 (eval cos (Theta) ["W+"])
+      elsif (any Hel == +1 ["W+"] and any Hel == +1 ["W-"] ) then
+         record cta_pp (eval cos (Theta) ["W+"])
       endif
 
     # Generate events (keep the helicity information). As this takes
     # some time, we request status information. The event sample has to 
     # be rebuilt as it is different for different initial state polarization.
+    $sample = sprintf "eeww%+d%+d" (hel_ep, hel_em)
+
+    # Generate a new event sample and fill histograms on the fly
     simulate (eeww) {
       ?rebuild_events = true
       ?polarized_events = true
       checkpoint = 10000
     }
+
+    # Generate a PDF document with all histograms for this e+/e- helicity
+    compile_analysis  { $out_file = $sample & ".dat" }
+
+    # Reset histograms
+    clear (analysis)
+
   }
 }
-
-# Write out the generated histograms in eeww_polarized.ps / eeww_polarized.pdf
-compile_analysis { $out_file = "eeww_polarized.dat" }
 
