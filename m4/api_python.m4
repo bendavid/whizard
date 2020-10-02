@@ -12,10 +12,7 @@ AC_ARG_ENABLE([python],
 
 if test "$enable_python" = "yes"; then
   AC_MSG_CHECKING([for PYTHON API])
-  AC_MSG_RESULT([(trying to enable)])
-  # ACX_CHECK_PYTHIA8()
-  #if test "$enable_python" = "yes"; then
-  #fi
+  AC_MSG_RESULT([(enabled)])
 else
   AC_MSG_CHECKING([for PYTHON API])
   AC_MSG_RESULT([(disabled)])

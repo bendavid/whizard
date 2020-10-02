@@ -54,7 +54,6 @@ EXTRA_DIST = \
   $(SERIAL_CC) \
   $(MPI_CC)
 
-
 libapi_la_SOURCES = \
   $(COMMON_F90) \
   api_cc.cc
@@ -309,7 +308,7 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.f90_mpi *.f90_serial *.c *.cc *.h
+	-rm -f *.f90 *.f90_mpi *.f90_serial *.c *.cc *.h *.cpp
 endif
 .PHONY: maintainer-clean-noweb
 
@@ -317,7 +316,7 @@ endif
 if NOWEB_AVAILABLE
 clean-noweb:
 	test "$(srcdir)" != "." && rm -f *.f90 *.f90_mpi *.f90_serial \
-	   *.c_mpi *.c_serial *.cc_mpi *.cc_serial *.c *.cc *.h || true
+	   *.c_mpi *.c_serial *.cc_mpi *.cc_serial *.c *.cc *.h *.cpp || true
 endif
 .PHONY: clean-noweb
 

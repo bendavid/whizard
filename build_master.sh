@@ -48,7 +48,7 @@ remove_tags () {
 
 case "$option" in
     WHIZARD)
-	sed -e "s/\#\#\#SUBDIRS\#\#\#/circe1 circe2 omega vamp mcfio stdhep tauola pythia6 src share tests scripts/g" -e "/\#\#\# ONLY_FULL/d" Makefile.am.in > Makefile.am.tmp1
+	sed -e "s/\#\#\#SUBDIRS\#\#\#/circe1 circe2 omega vamp mcfio stdhep tauola pythia6 src python share tests scripts/g" -e "/\#\#\# ONLY_FULL/d" Makefile.am.in > Makefile.am.tmp1
 	remove_tags ONLY_OMEGA Makefile.am.tmp1 Makefile.am.tmp2
 	rm -f Makefile.am.tmp1
 	mv -f Makefile.am.tmp2 Makefile.am

@@ -128,6 +128,8 @@ dist_examples_DATA = \
   examples/manual_api_example.c \
   examples/manual_api_example.cc \
   examples/manual_api_example.f90 \
+  examples/manual_api_example_1.py \
+  examples/manual_api_example_2.py \
   examples/DrellYanMatchingP.sin \
   examples/DrellYanMatchingW.sin \
   examples/DrellYanNoMatchingP.sin \

@@ -714,6 +714,14 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
 
 ###---------------------------------------------------------------------
+### Subdirectory python: WHIZARD's PYTHON/CYTHON interface
+
+AC_CONFIG_FILES([python/Makefile])
+AC_CONFIG_FILES([python/setup.py], [chmod u+x python/setup.py])
+AC_CONFIG_LINKS([python/whizard_python.pyx:python/whizard_python.pyx])
+AC_CONFIG_LINKS([python/cwhizard.pxd:python/cwhizard.pxd])
+
+###---------------------------------------------------------------------
 ### Subdirectory src/hepmc
 
 AC_CONFIG_FILES([src/hepmc/Makefile])

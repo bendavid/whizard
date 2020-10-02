@@ -795,7 +795,7 @@ Download this shell script, make it executable by
   chmod +x install-whizard-2.X.X.sh
 \end{interaction}
 and execute it. Note that this also involves compilation of the
-required \ttt{Fortran} compiler which takes 1-3 hours depending on
+required \fortran\ compiler which takes 1-3 hours depending on
 your system.
 \ttt{Darwin} operating systems (a.k.a. as \ttt{Mac OS X}) have a very
 similar general system for all sorts of software, called
@@ -1032,7 +1032,7 @@ version 5.3.0 or higher of the library is required\footnote{ Note that
   PDF sets which contain photons as partons are only supported with
   \whizard\ for \lhapdf\ version 5.7.1 or higher}. The \lhapdf\
 package has undergone a major rewriting from \fortran\ version 5
-to \ttt{C++} version 6. While still maintaining the interface for
+to \cpp\ version 6. While still maintaining the interface for
 the \lhapdf\ version 5 series, from version 2.2.2 of \whizard\ on, the
 new release series of \lhapdf, version 6.0 and higher, is also
 supported.
@@ -1049,7 +1049,7 @@ for version 5 and older, and install it.  The website contains
 comprehensive documentation on the configuring and installation
 procedure.  Make sure that you have downloaded and installed not just
 the package, but also the data sets. Note that \lhapdf\ version 5
-needs both a \fortran\ and a \ttt{C++} compiler.
+needs both a \fortran\ and a \cpp\ compiler.
 
 During \whizard\ configuration, \whizard\ looks for the script
 \ttt{lhapdf} (which is present in \lhapdf\ series 6) first, and then
@@ -1192,7 +1192,7 @@ as well as the newly designed version 3 (release 2019). The configure
 step can successfully recognize the two  different versions, the user
 do not have to specify which version is installed.
 
-\hepmc\ is a \ttt{C++} class library for handling collider scattering
+\hepmc\ is a \cpp\ class library for handling collider scattering
 events.  In particular, it provides a portable format for event files.
 If you want to use this format, you should link \whizard\ with \hepmc,
 otherwise you can skip this section.
@@ -1212,7 +1212,7 @@ able to read and write files in the \hepmc\ format.
 Detailed information on the installation and usage can be found on the
 \hepmc\ homepage. We give here only some brief details relevant for
 the usage with \whizard: For the compilation of HepMC one needs a
-\ttt{C++} compiler. Then the procedure is the same as for the
+\cpp\ compiler. Then the procedure is the same as for the
 \whizard\ package, namely configure HepMC:
 \begin{interaction}
   configure --with-momentum=GEV --with-length=MM --prefix=<install dir>
@@ -1285,7 +1285,7 @@ Sec.~\ref{sec:root}.
 \emph{NOTE: This is at the moment not yet supported, but merely a stub
 with the only purpose to be recognized by the build system.}
 
-\pythiaeight\ is a \ttt{C++} class library for handling hadronization,
+\pythiaeight\ is a \cpp\ class library for handling hadronization,
 showering and underlying event. If you want to use this feature (once it is
 fully supported in \whizard), you should link \whizard\ with \pythiaeight,
 otherwise you can skip this section.
@@ -1330,7 +1330,7 @@ configure: --------------------------------------------------------------
 \subsection{FastJet}
 \label{sec:fastjet}
 
-\fastjet\ is a \ttt{C++} class library for handling jet clustering.
+\fastjet\ is a \cpp\ class library for handling jet clustering.
 If you want to use this feature, you should link \whizard\ with \fastjet,
 otherwise you can skip this section.
 
@@ -1422,7 +1422,7 @@ configure: --------------------------------------------------------------
 \label{sec:lcio}
 
 
-\lcio\ is a \ttt{C++} class library for handling collider scattering
+\lcio\ is a \cpp\ class library for handling collider scattering
 events.  In particular, it provides a portable format for event files.
 If you want to use this format, you should link \whizard\ with \lcio,
 otherwise you can skip this section.
@@ -1438,7 +1438,7 @@ able to read and write files in the \lcio\ format.
 Detailed information on the installation and usage can be found on the
 \lcio\ homepage. We give here only some brief details relevant for
 the usage with \whizard: For the compilation of \lcio\ one needs a
-\ttt{C++} compiler. \lcio\ is based on \ttt{cmake}. For the
+\cpp\ compiler. \lcio\ is based on \ttt{cmake}. For the
 corresponding options please confer the \lcio\ manual.
 
 A \whizard\ configuration for \lcio\ looks like this:
@@ -1571,7 +1571,7 @@ The most important options are
   you need a compiler different from the standard compiler on the
   system, e.g., if the latter is too old.
 \item
-  \ttt{FCFLAGS} (variable): The flags to be given to the Fortran
+  \ttt{FCFLAGS} (variable): The flags to be given to the \fortran\
   compiler.  The main use is to control the level of optimization.
 \item
   \ttt{--prefix=\var{directory-name}}: Specify a non-default directory
@@ -1615,7 +1615,7 @@ The most important options are
 \end{itemize}
 
 Other flags that might help to work around possible problems are the
-flags for the $C$ and $C++$ compilers as well as the \ttt{Fortran77}
+flags for the $C$ and \cpp\  compilers as well as the \ttt{Fortran77}
 compiler, or the linker flags and additional libraries for the linking
 process.
 \begin{itemize}
@@ -1691,7 +1691,7 @@ full path!) as \ttt{FC} flag.
 It is possible to compile \whizard\ without the \ocaml\ parts of
 \oMega, namely by using the \ttt{--disable-omega} option of the
 configure. This will result in a built of \whizard\ with the \oMega\
-Fortran library, but without the binaries for the matrix element
+\fortran\ library, but without the binaries for the matrix element
 generation. All selftests (cf. \ref{sec:selftests}) requiring \oMega\
 matrix elements are thereby switched off. Note that you can install
 such a built (e.g. on a batch system without \ocaml\ installation), but
@@ -1803,10 +1803,10 @@ and reweighting factors, or data analysis without recourse to external
 packages.  This requires more flexibility.
 
 Instead of transferring control over data input to some generic
-scripting language like PERL or PYTHON (or even C++), which come with
-their own peculiarities and learning curves, we decided to unify data
-input and scripting in a dedicated steering language that is
-particularly adapted to the needs of Monte-Carlo integration,
+scripting language like \ttt{PERL} or \python\ (or even \cpp), which
+come with their own peculiarities and learning curves, we decided to
+unify data input and scripting in a dedicated steering language that
+is particularly adapted to the needs of Monte-Carlo integration,
 simulation, and simple analysis of the results.  Thus we discovered
 what everybody knew anyway: that W(h)izards communicate in \sindarin,
 Scripting INtegration, Data Analysis, Results display and INterfaces.
@@ -2320,7 +2320,7 @@ When running, \whizard\ can produce a set of auxiliary and output files:
 \item
   \textbf{Process compilation.}  Files that originate from generating and
   compiling process code.  If the default \oMega\ generator is used, these
-  files include Fortran source code as well as compiled libraries that are
+  files include \fortran\ source code as well as compiled libraries that are
   dynamically linked to the running executable.  The file names are derived
   from either the process-library name or the individual process names, as
   defined in the \sindarin\ input.  The default library name is
@@ -2492,16 +2492,16 @@ and reused on the remote machine, instead of generating new process code.
 
 In its default running mode, \whizard\ compiles process-specific matrix
 element code on the fly and dynamically links the resulting library.  On the
-computing server, this requires availability of the appropriate Fortran
+computing server, this requires availability of the appropriate \fortran\
 compiler, as well as the \ocaml\ compiler suite, and the dynamical linking
 feature.
 
 Since this may be unavailable or undesired, there is a possibility to
 distribute \whizard\ as a statically linked executable that contains a
-pre-compiled library of processes.  This removes the need for the Fortran
+pre-compiled library of processes.  This removes the need for the \fortran\
 compiler, the \ocaml\ system, and extra dynamic linking.  Any external
 libraries that are accessed (the \fortran\ runtime environment, and possibly
-some dynamically linked external libraries and/or the C++ runtime library,
+some dynamically linked external libraries and/or the \cpp\ runtime library,
 must still be available on the target system, binary-compatible.  Otherwise,
 there is no need for transferring the complete \whizard\ installation or
 process-code compilation data.
@@ -2948,8 +2948,8 @@ reasons led us to this choice:
   of \whizard~1.
 
   The usual way of dealing with this problem is to write analysis driver code
-  (often in \ttt{C++}), using external libraries for Lorentz algebra etc.  However,
-  the overhead of writing correct \ttt{C++} or \ttt{Fortran} greatly blows up problems
+  (often in \cpp, using external libraries for Lorentz algebra etc.  However,
+  the overhead of writing correct \cpp\ or \ttt{Fortran} greatly blows up problems
   that could be formulated in a few lines of text.
 \item
   While many problems lead to a repetitive workflow (process definition,
@@ -2969,7 +2969,7 @@ language.  Another candidate would be a popular scripting language such as
 PYTHON.
 
 We started to support interfaces for commonly used languages: prime
-examples for \ttt{C}, \ttt{C++}, and PYTHON are found in the
+examples for \ttt{C}, \cpp, and PYTHON are found in the
 \ttt{share/interfaces} subdirectory. However, introducing a
 special-purpose language has the three distinct
 advantages: First, it is compiled and executed by the very \ttt{Fortran} code that
@@ -3672,7 +3672,7 @@ The language supports the classical numeric types
 \sindarin\ supports arithmetic expressions similar to conventional
 languages.  In arithmetic expressions, the three numeric types can be
 mixed as appropriate.  The computation essentially follows the rules
-for mixed arithmetic in \ttt{Fortran}.  The arithmetic operators are
+for mixed arithmetic in \fortran.  The arithmetic operators are
 \verb|+|, \verb|-|, \verb|*|, \verb|/|, \verb|^|. Standard functions
 such as \ttt{sin}, \ttt{sqrt}, etc. are available.  See
 Sec.~\ref{sec:real} to Sec.~\ref{sec:complex}.
@@ -3854,7 +3854,7 @@ Real literals have their usual form, mantissa and, optionally, exponent:
 \ttt{2.345e-3}\quad \ttt{.890E-023}
 \end{center}
 Internally, real values are treated as double precision.  The values are read
-by the Fortran library, so details depend on its implementation.
+by the \fortran\ library, so details depend on its implementation.
 
 A special feature of \sindarin\ is that numerics (real and integer) can be
 immediately followed by a physical unit.  The supported units are presently
@@ -3892,7 +3892,7 @@ The arithmetic operators are
 with their obvious meaning and the usual precedence rules.
 
 \sindarin\ supports a bunch of standard numerical functions, mostly equivalent
-to their Fortran counterparts:
+to their \fortran\ counterparts:
 \begin{center}
   \ttt{abs}\quad \ttt{conjg}\quad \ttt{sgn}\quad \ttt{mod}\quad \ttt{modulo}
 \\
@@ -3903,7 +3903,7 @@ to their Fortran counterparts:
 \\
   \ttt{sinh}\quad \ttt{cosh}\quad \ttt{tanh}
 \end{center}
-(Unlike Fortran, the \ttt{sgn} function takes only one argument and returns
+(Unlike \fortran, the \ttt{sgn} function takes only one argument and returns
 $1.$, or $-1.$) The function argument is enclosed in brackets: \ttt{sqrt
   (2.)}, \ttt{tan (11.5 degree)}.
 
@@ -13210,13 +13210,13 @@ Alternatively, it is possible to link the libraries to a different main
 program of the user's choice.  The user program can take complete control of
 the \whizard\ features.  The \ttt{libwhizard} library provides an API, a
 well-defined set of procedures which can be called from a foreign main
-program.  The supported languages are Fortran, C, and C++.  Using the C API,
-any other language which supports linking against C libraries can also be
-interfaced.
+program.  The supported languages are \fortran, \ttt{C}, and \cpp.
+Using the C API, any other language which supports linking against C
+libraries can also be interfaced.
 
 \subsection{Fortran main program}
 
-To link a Fortran main program with the \whizard\ library, the following steps
+To link a \fortran\ main program with the \whizard\ library, the following steps
 must be performed:
 \begin{enumerate}
 \item
@@ -13228,7 +13228,7 @@ must be performed:
   below.
 \item
   Compile the user program.   The user program must be
-  compiled with the same Fortran compiler that has been used for the \whizard\
+  compiled with the same \fortran\ compiler that has been used for the \whizard\
   build.
 
   If necessary, specify an option that finds the
@@ -13253,8 +13253,8 @@ must be performed:
     gfortran manual_example_api.f90 -Lwhizard-path/lib -lwhizard -lwhizard_prebuilt -lomega
   \end{code}
 
-  If \whizard\ has been compiled with a non-default Fortran compiler, you may
-  have to explicitly link the appropriate Fortran run-time libraries.
+  If \whizard\ has been compiled with a non-default \fortran\ compiler, you may
+  have to explicitly link the appropriate \fortran\ run-time libraries.
 
   The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
   functionality.  This library should be present on the host
@@ -13355,7 +13355,7 @@ program main
 
 end program main
 \end{code}
-The API provides the following commands as Fortran subroutines.  Most of them
+The API provides the following commands as \fortran\ subroutines.  Most of them
 are used in the example above.
 
 \subsubsection{Module}
@@ -13387,7 +13387,7 @@ cf.\ Sec.~\ref{sec:cmdline-options}.
 \begin{quote}
   \tt call whizard\%option (\textit{key}, \textit{value})
 \end{quote}
-All keys and values are Fortran character strings.  The following options are
+All keys and values are \fortran\ character strings.  The following options are
 available.  For all options, default values exist as listed in
 Sec.~\ref{sec:cmdline-options}.
 \begin{description}
@@ -13422,14 +13422,14 @@ is complete, clean up by
 \subsubsection{Variables and values}
 
 In the API, \whizard\ requires numeric data types according to the IEEE
-standard, which is available to Fortran in the \ttt{iso\_fortran\_env}
+standard, which is available to \fortran\ in the \ttt{iso\_fortran\_env}
 intrinsic module.  Strictly speaking, integer data must have type \ttt{int32},
 and real data must have type \ttt{real64}.
 
 For most systems and default compiler settings, it
 is not really necessary to \ttt{use} the ISO module and its data types.
-Integers map to default Fortran \ttt{integer},
-and real values map to default Fortran \ttt{double precision}.
+Integers map to default \fortran\ \ttt{integer},
+and real values map to default \fortran\ \ttt{double precision}.
 
 As an
 alternative, you may \ttt{use} the \whizard\ internal \ttt{kinds} module which
@@ -13445,7 +13445,7 @@ type:
 \begin{quote}
   \tt call whizard\%set\_var (\textit{name}, \textit{value})
 \end{quote}
-The name is a Fortran string which has to be equal to the name of the
+The name is a \fortran\ string which has to be equal to the name of the
 corresponding \sindarin\ variable, including any prefix character (\$ or ?).
 The value depends on the type of the \sindarin\
 variable.
@@ -13463,7 +13463,7 @@ Any \sindarin\ command can be called via
 \begin{quote}
   \tt call whizard\%command (\textit{command})
 \end{quote}
-\ttt{\it command} is a Fortran character string, as it would appear
+\ttt{\it command} is a \fortran\ character string, as it would appear
 in a \sindarin\ script.
 
 This includes, in particular, the important commands \ttt{process},
@@ -13570,7 +13570,7 @@ are accessible:
   If the event format uses a COMMON block, event data is accessible
   via this COMMON block, which must be declared in the calling routine.
 \item
-  The \hepmc\ event format communicates via a C++ object.  In Fortran, there
+  The \hepmc\ event format communicates via a \cpp\ object.  In \fortran, there
   is a wrapper which has to be declared as
   \begin{quote}
     \tt type(hepmc\_event\_t) :: hepmc\_event
@@ -13581,8 +13581,8 @@ are accessible:
     \tt call sample\%next\_event (hepmc\_event)
   \end{quote}
   The \whizard\ module \ttt{hepmc\_interface} contains procedures which can
-  work with this record.  A pointer to the actual C++ object can be retrieved
-  as a Fortran
+  work with this record.  A pointer to the actual \cpp\ object can be retrieved
+  as a \fortran\
   \ttt{c\_ptr} object as follows:
   \begin{quote}
     \tt
@@ -13593,7 +13593,7 @@ are accessible:
     hepmc\_ptr = hepmc\_event\_get\_c\_ptr (hepmc\_event)
   \end{quote}
 \item
-  The \lcio\ event format also communicates via a C++ object.  The access
+  The \lcio\ event format also communicates via a \cpp\ object.  The access
   methods are entirely analogous, replacing \ttt{hepmc} by \ttt{lcio} in all
   calls and names.
 \end{enumerate}
@@ -13611,7 +13611,7 @@ must be performed:
   \whizard, execute the intended commands, and finalize.  For an example, see
   below.
 \item
-  Compile the user program with the option that finds the WHIZARD C/C++
+  Compile the user program with the option that finds the WHIZARD \ttt{C/C++}
   interface header file.
   For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
   should read
@@ -13630,8 +13630,8 @@ must be performed:
   \end{code}
   On some systems, you may have to replace \ttt{lib} by \ttt{lib64}.
 
-  If \whizard\ has been compiled with a non-default Fortran compiler, you may
-  have to explicitly link the appropriate Fortran run-time libraries.
+  If \whizard\ has been compiled with a non-default \fortran\ compiler, you may
+  have to explicitly link the appropriate \fortran\ run-time libraries.
 
   The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
   functionality.  This library should be present on the host
@@ -13746,7 +13746,7 @@ cf.\ Sec.~\ref{sec:cmdline-options}.
 \end{quote}
 All keys and values are null-terminated C character strings.  The available
 options are
-listed above in the Fortran interface documentation.
+listed above in the \fortran\ interface documentation.
 
 \subsubsection{Initialization and finalization}
 After options have been set, the system is initialized via
@@ -13882,11 +13882,11 @@ queried for specific event data.
 where the \ttt{\it value} is a variable of appropriate type (see above).
 
 Event data are stored in a format-specific way.  This may be a COMMON block,
-or a \hepmc\ or \lcio\ event record.  In the latter cases, cf.\ the C++ API
+or a \hepmc\ or \lcio\ event record.  In the latter cases, cf.\ the \cpp\ API
 below for access information.
 
 \subsection{C++ main program}
-To link a C++ main program with the \whizard\ library, the following steps
+To link a \cpp\ main program with the \whizard\ library, the following steps
 must be performed:
 \begin{enumerate}
 \item
@@ -13897,8 +13897,8 @@ must be performed:
   \whizard, execute the intended commands, and finalize.  For an example, see
   below.
 \item
-  Compile the user program with the option that finds the WHIZARD C/C++ interface
-  header file.
+  Compile the user program with the option that finds the WHIZARD
+  \ttt{C/C++} interface header file.
   For instance, if \whizard\ has been installed in \ttt{whizard-path}, this
   should read
   \begin{code}
@@ -13916,8 +13916,8 @@ must be performed:
   \end{code}
   On some systems, you may have to replace \ttt{lib} by \ttt{lib64}.
 
-  If \whizard\ has been compiled with a non-default Fortran compiler, you may
-  have to explicitly link the appropriate Fortran run-time libraries.
+  If \whizard\ has been compiled with a non-default \fortran\ compiler, you may
+  have to explicitly link the appropriate \fortran\ run-time libraries.
 
   The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
   functionality.  This
@@ -14030,8 +14030,8 @@ cf.\ Sec.~\ref{sec:cmdline-options}.
 \begin{quote}
   \tt  whizard->option( \textit{key}, \textit{value} );
 \end{quote}
-All keys and values are C++ strings.  The available options are
-listed above in the Fortran interface documentation.
+All keys and values are \cpp\ strings.  The available options are
+listed above in the \fortran\ interface documentation.
 
 \subsubsection{Initialization and finalization}
 After options have been set, the system is initialized via
@@ -14047,7 +14047,7 @@ correctly finalizes the \whizard\ workflow.
 In the API, \whizard\ requires numeric data types according to the IEEE
 standard.  Integers map to C \ttt{int}, and real values map to C
 \ttt{double}.  Logical values map to C \ttt{int} interpreted as \ttt{bool},
-and string values map to C++ \ttt{string}.
+and string values map to \cpp\ \ttt{string}.
 
 To set a \sindarin\ variable of appropriate type:
 \begin{quote}
@@ -14059,7 +14059,7 @@ To set a \sindarin\ variable of appropriate type:
   \\
   \tt whizard->set\_string ( \textit{name}, \textit{value} );
 \end{quote}
-\textit{name} is a C++ string value.  It must match the corresponding
+\textit{name} is a \cpp\ string value.  It must match the corresponding
 \sindarin\ variable name, including any prefix character (\$ or ?).
 \textit{value} is a \ttt{double/int/string}, respectively.
 
@@ -14081,7 +14081,7 @@ Any \sindarin\ command can be called via
 \begin{quote}
   \tt whizard->command( \textit{command} );
 \end{quote}
-\ttt{\it command} is a C++ string value that contains commands as they
+\ttt{\it command} is a \cpp\ string value that contains commands as they
 would appear in a \sindarin\ script.
 
 This includes, in particular, the important commands \ttt{process},
@@ -14163,7 +14163,7 @@ queried for specific event data.
 where the \ttt{\it value} is a variable of appropriate type (see above).
 
 Event data are stored in a format-specific way.  This may be a \hepmc\ or
-\lcio\ C++ event record.
+\lcio\ \cpp\ event record.
 
 For interfacing with the \hepmc\ event record, the appropriate declarations
 must be in place, e.g.,
@@ -14211,6 +14211,275 @@ an event has been processed, the event record should be deleted
 \begin{quote}
   \tt delete evt;
 \end{quote}
+
+
+\subsection{Python main program}
+To create a \python\ executable, \whizard\ provides a \ttt{Cython}
+interface that uses \cpp\ bindings to link a dynamic library which can
+then be loaded as a module via \python. Note that \whizard's
+\ttt{Cython}/\python\ interface only works with \python\ttt{v3}. Also
+make sure that you do not mix different \python\ versions when linking
+external programs which also provide \python\ interfaces like
+\hepmc\ or \lcio.
+
+To link a \python\ main program with the \whizard\ library, the following steps
+must be performed:
+\begin{enumerate}
+\item
+  Configure, build and install \whizard\ as normal.
+\item
+  Include code for accessing \whizard\ functionality in the user program.
+  The code should initialize
+  \whizard, execute the intended commands, and finalize.  For an example, see
+  below.
+\item
+  Run \python\ on the user program. Make sure that the operating
+  system finds the \whizard\ \python\ and library path.
+  If \whizard\ has been installed in a non-default \ttt{whizard-path}, these
+  are the options:
+  \begin{code}
+    export PYTHONPATH=whizard-path/lib/python/site-packages/:$PYTHONPATH
+  \end{code}
+
+  If necessary, provide the path to the installed shared
+  libraries.  For instance, if \whizard\ has been installed in
+  \ttt{whizard-path}, this should read
+  \begin{code}
+    export LD_LIBRARY_PATH="whizard-path/lib:$LD_LIBRARY_PATH"
+  \end{code}
+  On some systems, you may have to replace \ttt{lib} by \ttt{lib64}, as above.
+
+  The \whizard\ subsystem will work with input and output
+  files in the current working directory, unless asked to do otherwise.
+  
+\item
+  The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
+  functionality.  This
+  library should be present on the host system.
+
+\item
+  Run the program.  
+\end{enumerate}
+Below is an example program, similar to \whizard's internal unit-test
+suite for different external programming languages. The user program
+controls the \whizard\ workflow in the same way as a \sindarin\ script
+would do.  The commands are a mixture of \sindarin\ command 
+calls and functionality for passing information between the \whizard\
+subsystem and the host program.
+In particular, the program can process generated events one-by-one.
+\begin{code}
+import whizard
+
+wz = whizard.Whizard()
+
+wz.option("logfile", "whizard_1_py.log")
+wz.option("job_id", "whizard_1_py_ID")
+wz.option("library", "whizard_1_py_1_lib")
+wz.option("model", "QED")
+
+wz.init()
+
+wz.set_double("sqrts", 100)
+wz.set_int("n_events", 3)
+wz.set_bool("?unweighted", True)
+wz.set_string("$sample", "foobar")
+
+wz.set_int("seed", 0)
+
+wz.command("process whizard_1_py_1_p = e1, E1 => e2, E2")
+wz.command("iterations = 1:100")
+
+integral, error = wz.get_integration_result("whizard_1_py_1_p")
+print(integral, error)
+
+wz.command("integrate (whizard_1_py_1_p)")
+sqrts = wz.get_double("sqrts")
+print(f"sqrts  = {sqrts:5.1f} GeV")
+print(f"sigma   = integral:5.1f} pb")
+print(f"error    {error:5.1f} pb")
+
+sample = wz.new_sample("whizard_1_py_p1, whizard_1_py_p2, whizard_1_py_p3")
+it_begin, it_end = sample.open()
+for it in range(it_begin, it_end + 1):
+    sample.next_event()
+    idx = sample.get_event_index()
+    i_proc  = sample.get_process_index()
+    proc_id = sample.get_process_id()
+    f_scale = sample.get_fac_scale()
+    alpha_s = sample.get_alpha_s()
+    weight  = sample.get_weight()
+    sqme    = sample.get_sqme()
+    print(f"Event #{idx}")
+    print(f"  process #{i_proc}")
+    print(f"  proc_id = {proc_id}")
+    print(f"  f_scale = {f_scale:10.3e}")
+    print(f"  alpha_s = {f_scale:10.3e}")
+    print(f"  sqme    = {f_scale:10.3e}")
+    print(f"  weight  = {f_scale:10.3e}")
+
+sample.close()
+
+del(wz)      
+\end{code}
+
+\subsubsection{Python module import}
+There are no necessary headers here as all of this information has
+been automatically taken care by the \ttt{Cython} interface layer. The
+\whizard\ module needs to be imported by \python\:
+\begin{quote}
+  \tt import whizard
+\end{quote}
+
+\subsubsection{Master object}
+All functionality is accessed via a master API object which should be declared
+as follows:
+\begin{quote}
+  \tt wz = whizard.Whizard()
+\end{quote}
+The constructor takes no arguments.There should be only one master
+object.
+
+\subsubsection{Pre-Initialization options}
+Before initializing the API object, it is possible to provide options.  The
+available options mirror the command-line options of the stand-alone program,
+cf.\ Sec.~\ref{sec:cmdline-options}.
+\begin{quote}
+  \tt  wz.option( \textit{key}, \textit{value} );
+\end{quote}
+All keys and values are \python\ strings.  The available options are
+listed above in the \fortran\ interface documentation.
+
+\subsubsection{Initialization and finalization}
+After options have been set, the system is initialized via
+\begin{quote}
+  \tt wz.init()
+\end{quote}
+Once initialized, \whizard\ can execute commands as listed below.  When all
+is complete, delete the \whizard\ object.  This will call the destructor that
+correctly finalizes the \whizard\ workflow.
+
+\subsubsection{Variables and values}
+
+In the API, \whizard\ requires numeric data types according to the IEEE
+standard.  Integers map to \ttt{Python int}, and real values map to \ttt{Python
+double}.  Logical values map to \ttt{True} and \ttt{False},
+and string values map to \python\ strings.
+
+To set a \sindarin\ variable of appropriate type:
+\begin{quote}
+  \tt wz.>set\_int ( \textit{name}, \textit{value} );
+  \\   
+  \tt wz.>set\_double ( \textit{name}, \textit{value} );
+  \\   
+  \tt wz.>set\_bool ( \textit{name}, \textit{value} );
+  \\  
+  \tt wz.>set\_string ( \textit{name}, \textit{value} );
+\end{quote}
+\textit{name} is a \python\ string value.  It must match the corresponding
+\sindarin\ variable name, including any prefix character (\$ or ?).
+\textit{value} is a \ttt{double/int/string}, respectively.
+
+To retrieve the current value of a variable:
+\begin{quote}
+  \tt wz.get\_int ( \textit{name}, \textit{var} );
+  \\
+  \tt wz.get\_double ( \textit{name}, \textit{var} );
+  \\
+  \tt wz.get\_bool ( \textit{name}, \textit{var} );
+  \\
+  \tt wz.get\_string ( \textit{name}, \textit{var} );
+\end{quote}
+Here, \ttt{\it var} is a \python\ variable of appropriate type.  The
+functions return zero if the \sindarin\ variable has a known value.
+
+\subsubsection{Commands}
+Any \sindarin\ command can be called via
+\begin{quote}
+  \tt wz.command( \textit{command} );
+\end{quote}
+\ttt{\it command} is a \python\ string value that contains commands as they
+would appear in a \sindarin\ script.
+
+This includes, in particular, the important commands \ttt{process},
+\ttt{integrate}, and \ttt{simulate}.  You may also set variables that way.
+
+\subsubsection{Retrieving cross-section results}
+This call returns the results (integration and error) from a preceding
+integration run for the process \textit{process-name}:
+\begin{quote}
+  \tt wz.get\_integration\_result( "\textit{process-name}",
+  \textit{integral}, \textit{error} );
+\end{quote}
+\ttt{\it integral} and \ttt{\it error} are variables of type \ttt{double}.
+The function returns zero if the integration run was successful, so integral
+and error are meaningful.
+
+\subsubsection{Event-sample object}
+A \ttt{simulate} command will produce an event sample.  With the appropriate
+settings, the sample will be written to file in any chosen format, to be
+post-processed when it is complete.
+
+However, a possible purpose of using the \whizard\ API is to process events one-by-one
+when they are generated.  To this end, there is an event-sample handle, which
+can be declared in this way:
+\begin{quote}
+  \tt WhizardSample* {sample};
+\end{quote}
+An instance \ttt{\it sample} of this type is created by this factory method:
+\begin{quote}
+  \tt {sample} = wz.new\_sample( "\textit{process-name(s)}" );
+\end{quote}
+The command accepts a comma-separated list of process names which should be
+included in the event sample.
+
+To start event generation for this sample, call
+\begin{quote}
+  \tt \textit{it\_begin}, \textit{it\_end} = wz.sample\_open()
+\end{quote}
+where the two output variables (\ttt{int}) \ttt{\it it\_begin} and
+\ttt{\it it\_end}
+provide the bounds for an event loop in the calling program.  (In serial mode,
+the bounds are equal to 1 and \ttt{n\_events}, respectively, but in an MPI
+parallel environment, they depend on the computing node.)
+
+This command generates a new event, to be enclosed within an event loop:
+\begin{quote}
+  \tt sample.next\_event();
+\end{quote}
+The event will be available by format-specific access methods, see below.
+
+This command closes and deletes an event sample after the event loop has
+completed:
+\begin{quote}
+  \tt sample.close();
+\end{quote}
+
+\subsubsection{Retrieving event data}
+
+After a call to \ttt{sample.next\_event}, the sample object can be
+queried for specific event data.
+\begin{quote}
+  \tt value = sample.get\_event\_index();
+  \\
+  \tt value = sample.get\_process\_index();
+  \\
+  \tt value = sample.get\_process\_id();
+  \\
+  \tt value = sample.get\_sqrts();
+  \\
+  \tt value = sample.get\_fac\_scale();
+  \\
+  \tt value = sample.get\_alpha\_s();
+  \\
+  \tt value = sample.get\_sqme();
+  \\
+  \tt value = sample.get\_weight();
+\end{quote}
+where the \ttt{\it value} is a variable of appropriate type (see above).
+
+Event data are stored in a format-specific way.  This may be a \hepmc\ or
+\lcio\ \cpp\ event record, or some formats supported by
+\whizard\ intrinsically like LHEF etc.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -15861,7 +16130,7 @@ In this section, we describe how to use the {\em Universal FeynRules
 Output} (\UFO, \cite{Degrande:2011ua}) format for physics models
 inside \whizard. Please refer the manuals of e.g.~\FeynRules\ manual
 for details on how to generate a \UFO\ file for your favorite physics
-model. \UFO\ files are a collection of \ttt{Python} scripts that
+model. \UFO\ files are a collection of \python\ scripts that
 encode the particles, the couplings, the Lorentz structures, the
 decays, as well as parameters, vertices and propagators of the
 corresponding model. They reside in a directory of the exact name of
@@ -18641,7 +18910,7 @@ respectively.
 
 %\cite{Buckley:2010ar}
 \bibitem{Buckley:2010ar}
-A.~Buckley, J.~Butterworth, L.~Lonnblad, D.~Grellscheid, H.~Hoeth, J.~Monk, H.~Schulz and F.~Siegert,
+A.~Buckley, J.~Butterworth, L.~L\"onnblad, D.~Grellscheid, H.~Hoeth, J.~Monk, H.~Schulz and F.~Siegert,
 {\em Rivet user manual},
 Comput. Phys. Commun. \textbf{184}, 2803-2819 (2013)
 doi:10.1016/j.cpc.2013.05.021
@@ -18651,7 +18920,7 @@ doi:10.1016/j.cpc.2013.05.021
 \bibitem{Bierlich:2019rhm}
 C.~Bierlich, A.~Buckley, J.~Butterworth, C.~H.~Christensen, L.~Corpe,
 D.~Grellscheid, J.~F.~Grosse-Oetringhaus, C.~Gutschow,
-P.~Karczmarczyk, J.~Klein, L.~Lönnblad, C.~S.~Pollard, P.~Richardson,
+P.~Karczmarczyk, J.~Klein, L.~L\"onnblad, C.~S.~Pollard, P.~Richardson,
 H.~Schulz and F.~Siegert, 
 {\em Robust Independent Validation of Experiment and Theory: Rivet
   version 3}, 

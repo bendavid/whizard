@@ -83,7 +83,7 @@ a shallow copy of the master object.
    contains
    <<API: whizard api: TBP>>
   end type whizard_api_t
-  
+
 @ %def whizard_api_t
 @
 \subsection{Initialize and finalize}
@@ -97,7 +97,7 @@ appropriate types.
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: key
     character(*), intent(in) :: value
-    
+
     logical :: rebuild
 
     if (associated (whizard%master)) then
@@ -105,7 +105,7 @@ appropriate types.
             &extra option '" // key // "' ignored.")
        return
     end if
-    
+
     associate (options => whizard%options)
       select case (key)
       case ("model")
@@ -147,7 +147,7 @@ appropriate types.
     end associate
 
   end subroutine option
-  
+
 @ %def option
 @
 The initializer has to be called once.  It prepares all internal structure of
@@ -186,7 +186,7 @@ guarded against removal of a master object.
     else
        call msg_error ("WHIZARD: extra call to initializer is ignored")
     end if
-    
+
   end subroutine init
 
 @ %def init
@@ -207,7 +207,7 @@ guarded against removal of a master object.
     else
        call msg_error ("WHIZARD: extra call to finalizer is ignored")
     end if
-    
+
   end subroutine final
 
 @ %def final
@@ -220,9 +220,9 @@ TODO: finalizer disabled
 <<API: procedures>>=
   subroutine finalize (whizard)
     type(whizard_api_t), intent(inout), target :: whizard
-    
+
     if (associated (whizard%master))  call whizard%final ()
-    
+
   end subroutine finalize
 
 @ %def finalize
@@ -231,13 +231,13 @@ called at the beginning of each method:
 <<API: procedures>>=
   subroutine sanity_check (whizard)
     class(whizard_api_t), intent(in) :: whizard
-    
+
     if (.not. associated (whizard%master)) then
        call msg_fatal ("WHIZARD: method call without initialization")
     end if
-    
+
   end subroutine sanity_check
-  
+
 @ %def sanity_check
 @ The WHIZARD banner should be shown on screen, but only once -- even if the
 WHIZARD object is initialized and finalized more than once.  We record this in
@@ -262,50 +262,50 @@ Set and retrieve named Sindarin variables (from the global variable record).
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     real(real64), intent(in) :: value
-    
+
     call sanity_check (whizard)
     call whizard%master%global%set_real &
          (var_str (name), real (value, default), &
          verbose=.true., is_known=.true.)
-    
+
   end subroutine set_var_real64
-  
+
   subroutine set_var_int32 (whizard, name, value)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     integer(int32), intent(in) :: value
-    
+
     call sanity_check (whizard)
     call whizard%master%global%set_int &
          (var_str (name), int (value), &
          verbose=.true., is_known=.true.)
-    
+
   end subroutine set_var_int32
-  
+
   subroutine set_var_logical (whizard, name, value)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     logical, intent(in) :: value
-    
+
     call sanity_check (whizard)
     call whizard%master%global%set_log &
          (var_str (name), value, &
          verbose=.true., is_known=.true.)
-    
+
   end subroutine set_var_logical
-  
+
   subroutine set_var_character (whizard, name, value)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     character(*), intent(in) :: value
-    
+
     call sanity_check (whizard)
     call whizard%master%global%set_string &
          (var_str (name), var_str (value), &
          verbose=.true., is_known=.true.)
-    
+
   end subroutine set_var_character
-  
+
 @ %def set_var_real64
 @ %def set_var_int32
 @ %def set_var_logical
@@ -325,47 +325,47 @@ Set and retrieve named Sindarin variables (from the global variable record).
     character(*), intent(in) :: name
     real(real64), intent(out) :: value
     logical, intent(out), optional :: known
-    
+
     call sanity_check (whizard)
     value = whizard%master%global%get_rval (var_str (name))
     if (present (known)) &
          known = whizard%master%global%is_known (var_str (name))
-    
+
   end subroutine get_var_real64
-  
+
   subroutine get_var_int32 (whizard, name, value, known)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     integer(int32), intent(out) :: value
     logical, intent(out), optional :: known
-    
+
     call sanity_check (whizard)
     value = whizard%master%global%get_ival (var_str (name))
     if (present (known)) &
          known = whizard%master%global%is_known (var_str (name))
-    
+
   end subroutine get_var_int32
-  
+
   subroutine get_var_logical (whizard, name, value, known)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     logical, intent(out) :: value
     logical, intent(out), optional :: known
-    
+
     call sanity_check (whizard)
     value = whizard%master%global%get_lval (var_str (name))
     if (present (known)) &
          known = whizard%master%global%is_known (var_str (name))
-    
+
   end subroutine get_var_logical
-  
+
   subroutine get_var_character (whizard, name, value, known, strlen)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     character(:), allocatable, intent(out) :: value
     logical, intent(out), optional :: known
     integer, intent(in), optional :: strlen
-    
+
     call sanity_check (whizard)
     value = char (whizard%master%global%get_sval (var_str (name)))
     if (present (known)) &
@@ -373,19 +373,19 @@ Set and retrieve named Sindarin variables (from the global variable record).
     if (present (strlen)) then
        if (len (value) > strlen) value = value(1:strlen)
     end if
-   
+
   end subroutine get_var_character
-  
+
   function get_var_character_length (whizard, name) result (strlen)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: name
     integer :: strlen
-    
+
     call sanity_check (whizard)
     strlen = len (whizard%master%global%get_sval (var_str (name)))
-   
+
   end function get_var_character_length
-  
+
 @ %def get_var_real64
 @ %def get_var_int32
 @ %def get_var_logical
@@ -402,7 +402,7 @@ Convenience methods to retrieve process-integration results:
     real(real64), intent(out) :: integral
     real(real64), intent(out) :: error
     logical, intent(out), optional :: known
-    
+
     character(:), allocatable :: integral_var
     character(:), allocatable :: error_var
 
@@ -426,12 +426,12 @@ Interpret and execute Sindarin code given by a string.
   subroutine command (whizard, code)
     class(whizard_api_t), intent(inout) :: whizard
     character(*), intent(in) :: code
-    
+
     type(stream_t), target :: stream
     type(parse_tree_t) :: parse_tree
     type(parse_node_t), pointer :: pn_root
     type(command_list_t), target :: cmd_list
-    
+
     call sanity_check (whizard)
 
     call stream%init (var_str (code))
@@ -446,7 +446,7 @@ Interpret and execute Sindarin code given by a string.
     end if
     call stream%final ()
     call whizard%sindarin_lexer%clear ()
-    
+
   end subroutine command
 
 @ %def command
@@ -463,9 +463,9 @@ global model.
     class(whizard_api_t), intent(in) :: whizard
     integer(int32), intent(in) :: pdg
     character(:), allocatable :: string
-    
+
     type(flavor_t) :: flv
-    
+
     if (associated (whizard%master%global%model)) then
        call flv%init (int (pdg), whizard%master%global%model)
     end if
@@ -477,7 +477,7 @@ global model.
     class(whizard_api_t), intent(in) :: whizard
     integer(int32), dimension(:), intent(in) :: pdg
     character(:), allocatable :: string
-    
+
     integer :: i
 
     if (size (pdg) > 0) then
@@ -492,7 +492,7 @@ global model.
   end function flv_string_array
 
 @ %def flv_string
-@ 
+@
 \subsection{The event-sample API object}
 This object represents an event sample.  It allows the user to steer event
 generation, generate events one-by-one.  It also handles the configuration of
@@ -515,7 +515,7 @@ arguments.
    contains
    <<API: simulation api: TBP>>
   end type simulation_api_t
-     
+
 @ %def simulation_api_t
 @
 \subsubsection{Create a new sample}
@@ -540,7 +540,7 @@ Not supported: local options (cf.\ [[cmd_simulate]]), alternate environments.
     class(whizard_api_t), intent(in) :: whizard
     character(*), intent(in) :: proc_id_string
     type(simulation_api_t), intent(out) :: sample
-    
+
     integer :: i, n_events
     type(string_t), dimension(:), allocatable :: proc_id
 
@@ -563,7 +563,7 @@ Not supported: local options (cf.\ [[cmd_simulate]]), alternate environments.
     end if
 
   end subroutine new_sample
-  
+
 @ %def new_sample
 @
 \subsubsection{Finalizer}
@@ -577,21 +577,21 @@ TODO: finalizer disabled
 <<API: procedures>>=
   subroutine sample_final (sample)
     class(simulation_api_t), intent(inout) :: sample
-    
+
     call sample%esa%final ()
-    
+
     if (associated (sample%sim)) then
        call sample%sim%final ()
        deallocate (sample%sim)
     end if
-    
+
   end subroutine sample_final
-  
+
   subroutine sample_finalize (sample)
     type(simulation_api_t), intent(inout) :: sample
-    
+
     call sample%final ()
-    
+
   end subroutine sample_finalize
 
 @ %def sample_final
@@ -608,7 +608,7 @@ object.
     class(simulation_api_t), intent(inout) :: sample
     integer, intent(out) :: it_begin
     integer, intent(out) :: it_end
-    
+
     if (sample%sim%is_valid ()) then
        if (sample%esa%is_valid ()) then
           call sample%sim%before_first_event (it_begin, it_end, sample%esa)
@@ -618,9 +618,9 @@ object.
     end if
     sample%it_begin = it_begin
     sample%it_end = it_end
-   
+
   end subroutine sample_open
-  
+
 @ %def sample_open
 @ Generate (or read) a single event, using the current status of the
 [[sample]] object.
@@ -644,7 +644,7 @@ object.
     end if
 
   end subroutine sample_next_event
-  
+
 @ %def sample_next_event
 @ Finalize the event generation: collect statistics and close the event-stream
 array.  Then call the finalizer to close the event streams etc.
@@ -653,14 +653,14 @@ array.  Then call the finalizer to close the event streams etc.
 <<API: procedures>>=
   subroutine sample_close (sample)
     class(simulation_api_t), intent(inout) :: sample
-    
+
     if (sample%sim%is_valid ()) then
        call sample%sim%after_last_event (sample%it_begin, sample%it_end)
     end if
     call sample%final ()
-    
+
   end subroutine sample_close
-  
+
 @ %def sample_close
 @
 \subsubsection{Event data}
@@ -679,85 +679,85 @@ the [[sample]] object.
   subroutine sample_get_event_index (sample, i)
     class(simulation_api_t), intent(in) :: sample
     integer(int32), intent(out) :: i
-    
+
     i = sample%sim%get_event_index ()
-    
+
   end subroutine sample_get_event_index
-    
+
   subroutine sample_get_process_index (sample, i)
     class(simulation_api_t), intent(in) :: sample
     integer(int32), intent(out) :: i
-    
+
     i = sample%sim%get_process_index ()
-    
+
   end subroutine sample_get_process_index
-    
+
   subroutine sample_get_process_id (sample, proc_id)
     class(simulation_api_t), intent(in) :: sample
     character(:), allocatable, intent(out) :: proc_id
-    
+
     class(event_t), pointer :: event
 
     event => sample%sim%get_event_ptr ()
     proc_id = char (event%get_process_name ())
-    
+
   end subroutine sample_get_process_id
-    
+
   subroutine sample_get_sqrts (sample, sqrts)
     class(simulation_api_t), intent(in) :: sample
     real(real64), intent(out) :: sqrts
-    
+
     class(event_t), pointer :: event
 
     event => sample%sim%get_event_ptr ()
     sqrts = event%get_sqrts ()
 
   end subroutine sample_get_sqrts
-  
+
   subroutine sample_get_fac_scale (sample, fac_scale)
     class(simulation_api_t), intent(in) :: sample
     real(real64), intent(out) :: fac_scale
-    
+
     class(event_t), pointer :: event
 
     event => sample%sim%get_event_ptr ()
     fac_scale = event%get_fac_scale ()
 
   end subroutine sample_get_fac_scale
-  
+
   subroutine sample_get_alpha_s (sample, alpha_s)
     class(simulation_api_t), intent(in) :: sample
     real(real64), intent(out) :: alpha_s
-    
+
     class(event_t), pointer :: event
 
     event => sample%sim%get_event_ptr ()
     alpha_s = event%get_alpha_s ()
 
   end subroutine sample_get_alpha_s
-  
+
   subroutine sample_get_sqme (sample, sqme)
     class(simulation_api_t), intent(in) :: sample
     real(real64), intent(out) :: sqme
-    
+
     class(event_t), pointer :: event
 
     event => sample%sim%get_event_ptr ()
     sqme = event%get_sqme_prc ()
 
   end subroutine sample_get_sqme
-  
+
   subroutine sample_get_weight (sample, weight)
     class(simulation_api_t), intent(in) :: sample
     real(real64), intent(out) :: weight
-    
+
     class(event_t), pointer :: event
 
     event => sample%sim%get_event_ptr ()
     weight = event%get_weight_prc ()
 
   end subroutine sample_get_weight
-  
+
 @ %def sample_get_event_index
 @ %def sample_get_process_index
 @ %def sample_get_sqrts
@@ -839,7 +839,7 @@ Initialize and finalize \whizard\ master object.
     write (u, "(A)")  "* Test output: api_1"
     write (u, "(A)")  "*   Purpose:  call init/final"
     write (u, "(A)")
-    
+
     logfile = "api_1_log.out"
     call whizard%option ("logfile", logfile)
     call whizard%init ()
@@ -884,11 +884,11 @@ Set and get Sindarin-variable values.
     integer :: n_events
     real(real64) :: sqrts
     logical :: known
-    
+
     write (u, "(A)")  "* Test output: api_2"
     write (u, "(A)")  "*   Purpose:  access Sindarin variables"
     write (u, "(A)")
-    
+
     call whizard%option ("logfile", "api_2_log.out")
     call whizard%option ("job_id", "api_2_ID")
     call whizard%init ()
@@ -907,7 +907,7 @@ Set and get Sindarin-variable values.
     call whizard%get_var ("n_events", n_events)
     call whizard%get_var ("?unweighted", unweighted)
     call whizard%get_var ("$sample", sample)
-    
+
     write (u, "(A,1x,L1)")  "sqrts is known =", known
     write (u, "(A,1x,F5.1)")  "sqrts =", sqrts
     write (u, "(A,1x,A)")  "$job_id =", job_id
@@ -944,11 +944,11 @@ Execute Sindarin command.
     type(whizard_api_t) :: whizard
 
     character(:), allocatable :: model_name
-    
+
     write (u, "(A)")  "* Test output: api_3"
     write (u, "(A)")  "*   Purpose:  set model in advance and via Sindarin string"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QCD")
     call whizard%option ("logfile", "api_3_log.out")
     call whizard%init ()
@@ -984,11 +984,11 @@ Translate PDG (single or array) to \whizard\ flavor string.
     type(whizard_api_t) :: whizard
 
     character(:), allocatable :: flv_string
-    
+
     write (u, "(A)")  "* Test output: api_4"
     write (u, "(A)")  "*   Purpose:  translate PDG code(s) to flavor string"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QED")
     call whizard%option ("logfile", "api_4_log.out")
     call whizard%init ()
@@ -1020,11 +1020,11 @@ Declare a process and do an integration run, and retrieve the results.
 
     real(real64) :: sqrts, integral, error
     logical :: known
-    
+
     write (u, "(A)")  "* Test output: api_5"
     write (u, "(A)")  "*   Purpose:  integrate and retrieve results"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QED")
     call whizard%option ("library", "api_5_lib")
     call whizard%option ("logfile", "api_5_log.out")
@@ -1057,7 +1057,7 @@ Declare a process and do an integration run, and retrieve the results.
     write (u, 1)  "error         =", error / 1000, "pb"
 1   format (2x,A,1x,F5.1,1x,A)
 2   format (2x,A,1x,L1)
-    
+
     call whizard%final ()
 
     write (u, "(A)")
@@ -1081,7 +1081,7 @@ Declare a process and generate two events, one by one
 
     type(whizard_api_t) :: whizard
     type(simulation_api_t) :: sample
-    
+
     integer :: it_begin, it_end
     integer :: i
     integer(int32) :: idx
@@ -1091,7 +1091,7 @@ Declare a process and generate two events, one by one
     write (u, "(A)")  "* Test output: api_6"
     write (u, "(A)")  "*   Purpose:  generate events"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QED")
     call whizard%option ("library", "api_6_lib")
     call whizard%option ("logfile", "api_6_log.out")
@@ -1124,7 +1124,7 @@ Declare a process and generate two events, one by one
 3      format (2x,A,1x,ES10.3)
     end do
     call sample%close ()
-    
+
     call whizard%final ()
 
     write (u, "(A)")
@@ -1148,7 +1148,7 @@ Declare two processes and generate events in a mixed sample, one by one
 
     type(whizard_api_t) :: whizard
     type(simulation_api_t) :: sample
-    
+
     integer :: it_begin, it_end
     integer :: i
     integer(int32) :: idx
@@ -1163,7 +1163,7 @@ Declare two processes and generate events in a mixed sample, one by one
     write (u, "(A)")  "* Test output: api_7"
     write (u, "(A)")  "*   Purpose:  generate events"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QCD")
     call whizard%option ("library", "api_7_lib")
     call whizard%option ("logfile", "api_7_log.out")
@@ -1214,7 +1214,7 @@ Declare two processes and generate events in a mixed sample, one by one
 3      format (2x,A,1x,ES10.3)
     end do
     call sample%close ()
-    
+
     call whizard%final ()
 
     write (u, "(A)")
@@ -1245,11 +1245,11 @@ command line.
 
     character(:), allocatable :: pack_args
     character(:), allocatable :: unpack_args
-    
+
     write (u, "(A)")  "* Test output: api_8"
     write (u, "(A)")  "*   Purpose:  check pack/unpack options"
     write (u, "(A)")
-    
+
     logfile = "api_8_log.out"
     call whizard%option ("logfile", logfile)
     call whizard%option ("pack", "api_8_foo")
@@ -1354,7 +1354,7 @@ Declare a process and generate two events.  Access the events via an HepMC3
 
     type(whizard_api_t) :: whizard
     type(simulation_api_t) :: sample
-    
+
     integer :: it_begin, it_end
     integer :: i
     integer(int32) :: idx, npt
@@ -1364,7 +1364,7 @@ Declare a process and generate two events.  Access the events via an HepMC3
     write (u, "(A)")  "* Test output: api_hepmc_1"
     write (u, "(A)")  "*   Purpose:  generate events"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QED")
     call whizard%option ("library", "api_hepmc_1_lib")
     call whizard%option ("logfile", "api_hepmc_1_log.out")
@@ -1395,7 +1395,7 @@ Declare a process and generate two events.  Access the events via an HepMC3
        call hepmc_event_final (hepmc_event)
     end do
     call sample%close ()
-    
+
     call whizard%final ()
 
     write (u, "(A)")
@@ -1479,7 +1479,7 @@ object.
 
     type(whizard_api_t) :: whizard
     type(simulation_api_t) :: sample
-    
+
     integer :: it_begin, it_end
     integer :: i
     integer(int32) :: idx, npt
@@ -1489,7 +1489,7 @@ object.
     write (u, "(A)")  "* Test output: api_lcio_1"
     write (u, "(A)")  "*   Purpose:  generate events"
     write (u, "(A)")
-    
+
     call whizard%option ("model", "QED")
     call whizard%option ("library", "api_lcio_1_lib")
     call whizard%option ("logfile", "api_lcio_1_log.out")
@@ -1520,7 +1520,7 @@ object.
        call lcio_event_final (lcio_event, .true.)
     end do
     call sample%close ()
-    
+
     call whizard%final ()
 
     write (u, "(A)")
@@ -1607,7 +1607,7 @@ subroutine whizard_create (whizard_handle) bind (C)
 
   allocate (whizard)
   whizard_handle = c_loc (whizard)
-  
+
 end subroutine whizard_create
 
 @ %def whizard_create
@@ -1637,7 +1637,7 @@ subroutine whizard_option (whizard_handle, key, value) bind (C)
 end subroutine whizard_option
 
 @ %def whizard_option
-@ 
+@
 Initialize the \whizard\ object, after options have been set.
 <<C API: declarations>>=
 void whizard_init (void* wh);
@@ -1654,7 +1654,7 @@ subroutine whizard_init (whizard_handle) bind (C)
 
   call c_f_pointer (whizard_handle, whizard)
   call whizard%init ()
-  
+
 end subroutine whizard_init
 
 @ %def whizard_init
@@ -1678,7 +1678,7 @@ subroutine whizard_final (whizard_handle) bind (C)
   call c_f_pointer (whizard_handle, whizard)
   call whizard%final ()
   deallocate (whizard)
-  
+
 end subroutine whizard_final
 
 
@@ -1711,7 +1711,7 @@ subroutine whizard_set_double (whizard_handle, var, value) bind (C)
 
   call c_f_pointer (whizard_handle, whizard)
   call whizard%set_var (string_c2f (var), real (value, real64))
-  
+
 end subroutine whizard_set_double
 
 subroutine whizard_set_int (whizard_handle, var, value) bind (C)
@@ -1733,7 +1733,7 @@ subroutine whizard_set_int (whizard_handle, var, value) bind (C)
 
   call c_f_pointer (whizard_handle, whizard)
   call whizard%set_var (string_c2f (var), int (value, int32))
-  
+
 end subroutine whizard_set_int
 
 subroutine whizard_set_bool (whizard_handle, var, value) bind (C)
@@ -1754,7 +1754,7 @@ subroutine whizard_set_bool (whizard_handle, var, value) bind (C)
 
   call c_f_pointer (whizard_handle, whizard)
   call whizard%set_var (string_c2f (var), value /= 0)
-  
+
 end subroutine whizard_set_bool
 
 subroutine whizard_set_char (whizard_handle, var, value) bind (C)
@@ -1774,14 +1774,14 @@ subroutine whizard_set_char (whizard_handle, var, value) bind (C)
 
   call c_f_pointer (whizard_handle, whizard)
   call whizard%set_var (string_c2f (var), string_c2f (value))
-  
+
 end subroutine whizard_set_char
 
 @ %def whizard_set_double
 @ %def whizard_set_int
 @ %def whizard_set_bool
 @ %def whizard_set_char
-@ 
+@
 Retrieve the values of Sindarin variables.  The [[int]] return value is
 nonzero if the Sindarin value is unknown.
 
@@ -2097,7 +2097,7 @@ subroutine whizard_command (whizard_handle, cmd) bind (C)
 
   call c_f_pointer (whizard_handle, whizard)
   call whizard%command (string_c2f (cmd))
-  
+
 end subroutine whizard_command
 
 @ %def whizard_command
@@ -2174,7 +2174,7 @@ subroutine whizard_new_sample (whizard_handle, name, sample_handle) bind (C)
   allocate (sample)
   sample_handle = c_loc (sample)
   call whizard%new_sample (string_c2f (name), sample)
-  
+
 end subroutine whizard_new_sample
 
 @ %def whizard_new_sample
@@ -2204,7 +2204,7 @@ subroutine whizard_sample_open (sample_handle, it_begin, it_end) bind (C)
   call sample%open (it_b, it_e)
   it_begin = it_b
   it_end = it_e
-  
+
 end subroutine whizard_sample_open
 
 subroutine whizard_sample_next_event (sample_handle) bind (C)
@@ -2218,7 +2218,7 @@ subroutine whizard_sample_next_event (sample_handle) bind (C)
 
   call c_f_pointer (sample_handle, sample)
   call sample%next_event ()
-  
+
 end subroutine whizard_sample_next_event
 
 subroutine whizard_sample_close (sample_handle) bind (C)
@@ -2233,7 +2233,7 @@ subroutine whizard_sample_close (sample_handle) bind (C)
   call c_f_pointer (sample_handle, sample)
   call sample%close ()
   deallocate (sample)
-  
+
 end subroutine whizard_sample_close
 
 @ %def whizard_sample_open
@@ -2506,7 +2506,7 @@ end subroutine whizard_sample_get_sqme
 @ %def whizard_sample_get_alpha_s
 @ %def whizard_sample_get_weight
 @ %def whizard_sample_get_sqme
-@ 
+@
 \section{C API: Unit-Test Tools}
 The C/C++ interface is guarded by a unit-test suite which parallels the set of
 Fortran-API unit tests.  We want to handle all tests on the same footing.  We
@@ -2554,7 +2554,7 @@ is somewhat less sophistication because we only need this for one test suite.
 <<C API: tests>>
 
 int main( int argc, char* argv[] )
-{ 
+{
   int u_log;
   void* results;
   int n_fail;
@@ -2588,12 +2588,12 @@ Need the MPI header file.
 <<C API: MPI header>>=
 <<MPI: C API: MPI header>>=
 #include "mpi.h"
-@ 
+@
 Call MPI init before any MPI calls can occur
 <<C API: MPI init>>=
 <<MPI: C API: MPI init>>=
   MPI_Init( &argc, &argv );
-@ 
+@
 Call MPI finalize after all tests
 <<C API: MPI finalize>>=
 <<MPI: C API: MPI finalize>>=
@@ -2624,9 +2624,9 @@ This test does initialization and finalization, with basic options.
 
     fprintf (outfile, "* Initializing WHIZARD\n");
     whizard_init (&wh);
-    
+
     fprintf (outfile, "* Finalizing WHIZARD\n");
-    whizard_final (&wh); 
+    whizard_final (&wh);
 
     fprintf (outfile, "\n");
     fprintf (outfile, "* Test output end: api_c_1\n");
@@ -2645,7 +2645,7 @@ This test sets and retrieves values of Sindarin variables.
   void api_ut_c_2( int u_log, void* results ) {
 
     void* wh;
-    
+
     int err;
     char job_id[16];
     double sqrts;
@@ -2660,7 +2660,7 @@ This test sets and retrieves values of Sindarin variables.
     fprintf (outfile, "* Test output: api_c_2\n");
     fprintf (outfile, "*   Purpose:  access Sindarin variables\n");
     fprintf (outfile, "\n");
-    
+
     whizard_create (&wh);
     whizard_option (&wh, "logfile", "api_c_2_log.out");
     whizard_option (&wh, "job_id", "api_c_2_ID");
@@ -2722,7 +2722,7 @@ Use the flavor-string convenience translation.
   void api_ut_c_3( int u_log, void* results ) {
 
     void* wh;
-    
+
     #define NF 3
     #define CLEN 16
 
@@ -2739,7 +2739,7 @@ Use the flavor-string convenience translation.
     fprintf (outfile, "* Test output: api_c_3\n");
     fprintf (outfile, "*   Purpose:  translate PDG code(s) to flavor string\n");
     fprintf (outfile, "\n");
-    
+
     whizard_create (&wh);
     whizard_option (&wh, "logfile", "api_c_3_log.out");
     whizard_option (&wh, "model", "QED");
@@ -2770,7 +2770,7 @@ Compute integral and retrieve results.
   void api_ut_c_4( int u_log, void* results ) {
 
     void* wh;
-    
+
     int err;
     double sqrts;
     double integral;
@@ -2783,7 +2783,7 @@ Compute integral and retrieve results.
     fprintf (outfile, "* Test output: api_c_4\n");
     fprintf (outfile, "*   Purpose:  integrate and retrieve results\n");
     fprintf (outfile, "\n");
-    
+
     whizard_create (&wh);
     whizard_option (&wh, "logfile", "api_c_4_log.out");
     whizard_option (&wh, "library", "api_c_4_lib");
@@ -2814,7 +2814,7 @@ Compute integral and retrieve results.
     fprintf (outfile, "  sqrt(s)       = %5.1f GeV\n", sqrts);
     fprintf (outfile, "  cross section = %5.1f pb\n", integral / 1000.);
     fprintf (outfile, "  error         = %5.1f pb\n", error / 1000.);
-    
+
     whizard_final (&wh);
 
     fprintf (outfile, "\n");
@@ -2835,11 +2835,11 @@ Generate events and retrieve event data.
 
     void* wh;
     void* sample;
-    
+
     #define CLEN 16
 
     int it, it_begin, it_end;
-    
+
     int i_proc;
     char proc_id[CLEN];
     int idx;
@@ -2945,12 +2945,12 @@ subroutine whizard_ut_setup (ut_name, u_log, results_handle) bind (C)
 
   allocate (results)
   results_handle = c_loc (results)
-  
+
   u_log = free_unit ()
   open (unit = u_log, &
        file = "whizard_check." // string_c2f (ut_name) // ".log", &
        action = "write", status = "replace")
-  
+
 end subroutine whizard_ut_setup
 
 @ %def whizard_ut_setup
@@ -2965,7 +2965,7 @@ subroutine whizard_ut_wrapup (u_log, results_handle) bind (C)
   use iso_c_binding, only: c_ptr  !NODEP!
   use iso_c_binding, only: c_f_pointer  !NODEP!
   use unit_tests, only: test_results_t
-  
+
   implicit none
 
   integer(c_int), value :: u_log
@@ -2975,7 +2975,7 @@ subroutine whizard_ut_wrapup (u_log, results_handle) bind (C)
 
   call c_f_pointer (results_handle, results)
   call results%wrapup (output_unit)
-  
+
   close (u_log)
 
 end subroutine whizard_ut_wrapup
@@ -2994,7 +2994,7 @@ function whizard_ut_get_n_pass (results_handle) result (n_pass) bind (C)
   use iso_c_binding, only: c_ptr  !NODEP!
   use iso_c_binding, only: c_f_pointer  !NODEP!
   use unit_tests, only: test_results_t
-  
+
   implicit none
 
   type(c_ptr), intent(inout) :: results_handle
@@ -3004,7 +3004,7 @@ function whizard_ut_get_n_pass (results_handle) result (n_pass) bind (C)
 
   call c_f_pointer (results_handle, results)
   n_pass = results%get_n_pass ()
-  
+
 end function whizard_ut_get_n_pass
 
 function whizard_ut_get_n_fail (results_handle) result (n_fail) bind (C)
@@ -3012,7 +3012,7 @@ function whizard_ut_get_n_fail (results_handle) result (n_fail) bind (C)
   use iso_c_binding, only: c_ptr  !NODEP!
   use iso_c_binding, only: c_f_pointer  !NODEP!
   use unit_tests, only: test_results_t
-  
+
   implicit none
 
   type(c_ptr), intent(inout) :: results_handle
@@ -3022,7 +3022,7 @@ function whizard_ut_get_n_fail (results_handle) result (n_fail) bind (C)
 
   call c_f_pointer (results_handle, results)
   n_fail = results%get_n_fail ()
-  
+
 end function whizard_ut_get_n_fail
 
 function whizard_ut_get_n_total (results_handle) result (n_total) bind (C)
@@ -3030,7 +3030,7 @@ function whizard_ut_get_n_total (results_handle) result (n_total) bind (C)
   use iso_c_binding, only: c_ptr  !NODEP!
   use iso_c_binding, only: c_f_pointer  !NODEP!
   use unit_tests, only: test_results_t
-  
+
   implicit none
 
   type(c_ptr), intent(inout) :: results_handle
@@ -3040,7 +3040,7 @@ function whizard_ut_get_n_total (results_handle) result (n_total) bind (C)
 
   call c_f_pointer (results_handle, results)
   n_total = results%get_n_total ()
-  
+
 end function whizard_ut_get_n_total
 
 @ %def whizard_ut_get_n_pass
@@ -3081,7 +3081,7 @@ subroutine whizard_ut_end (u_log, name, description, results_handle) bind (C)
   use string_utils, only: string_c2f
   use unit_tests, only: compare_test_results
   use unit_tests, only: test_results_t
-  
+
   implicit none
 
   integer(c_int), value :: u_log
@@ -3131,7 +3131,7 @@ using namespace std;
 
 <<C++ API: WhizardSample: method implementations>>
 @ %def api_cc
-@ 
+@
 \subsubsection{Whizard class}
 <<C++ API: header for C++ interface classes>>=
 #include <string>
@@ -3145,10 +3145,10 @@ class Whizard {
 
  private:
   void* wh;
-  
+
  public:
 <<C++ API: Whizard: public methods>>
-  
+
 };
 
 @ %def Whizard
@@ -3310,19 +3310,19 @@ WhizardSample* Whizard::new_sample( const string name ) {
 };
 
 @ %def Whizard::new_sample
-@ 
+@
 \subsubsection{WhizardSample class}
 <<C++ API: header for C++ interface classes>>=
 class WhizardSample {
 
  private:
   void* sample;
-  
+
 <<C++ API: WhizardSample: private methods>>
 
  public:
 <<C++ API: WhizardSample: public methods>>
-  
+
 };
 
 @ %def WhizardSample
@@ -3422,7 +3422,7 @@ double WhizardSample::get_sqme() {
   whizard_sample_get_sqme( &sample, &sqme );
   return sqme;
 };
-  
+
 @ %def WhizardSample::get_event_index
 @ %def WhizardSample::get_process_index
 @ %def WhizardSample::get_process_id
@@ -3468,7 +3468,7 @@ void WhizardSample::next_event( lcio::LCEvent** evt ) {
 #endif
 
 @ %def WhizardSample::next_event
-@ 
+@
 \subsection{C++ API: class header for unit-test driver}
 Compared with the plain-C test driver, we can take a more advanced approach
 and define a class and class methods for the test-driver object.  This object
@@ -3488,12 +3488,12 @@ class WhizardCCTest {
   string name;
   int u_log;
   void* results;
-  
+
  public:
 <<C++ API: C++ unit-test driver: public methods>>
 
 };
-@ 
+@
 \subsection{C++ API: class implementation for unit-test driver}
 This is the corresponding implementation:
 <<[[whizard_ut.cc]]>>=
@@ -3508,7 +3508,7 @@ using namespace std;
 <<C++ API: C++ unit-test driver: method implementations>>
 
 @ %def whizard_ut.cc
-@ 
+@
 Constructor:
 <<C++ API: C++ unit-test driver: public methods>>=
   WhizardCCTest( const char* test_collection_name );
@@ -3526,7 +3526,7 @@ WhizardCCTest::WhizardCCTest( const char* test_collection_name ) {
 }
 
 @ %def WhizardCCTest
-@ 
+@
 Return status = number of failed tests:
 <<C++ API: C++ unit-test driver: public methods>>=
   int get_n_fail();
@@ -3571,14 +3571,14 @@ void WhizardCCTest::run_test( void (*f)(FILE*), const char* test_name, const cha
   outfile = fopen( &outfile_name[0], "w" );
 
   f( outfile );
-  
+
   fclose( outfile );
   whizard_ut_end( u_log, test_name, test_description, &results );
 
 }
 
-@ 
-@ 
+@
+@
 \subsection{C++ API: unit-test driver}
 We define a test driver which is analogous to the Fortran test driver.  There
 is somewhat less sophistication because we only need this for one test suite.
@@ -3610,7 +3610,7 @@ using namespace lcio;
 <<C++ API: tests>>
 
 int main( int argc, char* argv[] )
-{ 
+{
   int n_fail;
   WhizardCCTest* WTest;
 
@@ -3663,7 +3663,7 @@ void api_ut_cc_1( FILE* outfile ) {
   fprintf (outfile, "* Test output end: api_cc_1\n");
 
 }
-  
+
 @ %def api_ut_cc_1
 @
 \subsubsection{Variables}
@@ -3674,7 +3674,7 @@ This test sets and retrieves values of Sindarin variables.
   void api_ut_cc_2( FILE* outfile ) {
 
     Whizard* whizard;
-    
+
     int err;
     string* job_id;
     double sqrts;
@@ -3685,7 +3685,7 @@ This test sets and retrieves values of Sindarin variables.
     fprintf (outfile, "* Test output: api_cc_2\n");
     fprintf (outfile, "*   Purpose:  access Sindarin variables\n");
     fprintf (outfile, "\n");
-    
+
     whizard = new Whizard();
     whizard->option ("logfile", "api_cc_2_log.out");
     whizard->option ("job_id", "api_cc_2_ID");
@@ -3744,7 +3744,7 @@ Use the flavor-string convenience translation.
   void api_ut_cc_3( FILE* outfile ) {
 
     Whizard* whizard;
-    
+
     int err;
     int f = 11;
     vector<int> fa(3);
@@ -3757,7 +3757,7 @@ Use the flavor-string convenience translation.
     fprintf (outfile, "* Test output: api_cc_3\n");
     fprintf (outfile, "*   Purpose:  translate PDG code(s) to flavor string\n");
     fprintf (outfile, "\n");
-    
+
     whizard = new Whizard();
     whizard->option( "logfile", "api_c_3_log.out" );
     whizard->option( "model", "QED" );
@@ -3787,7 +3787,7 @@ Compute integral and retrieve results.
   void api_ut_cc_4( FILE* outfile ) {
 
     Whizard* whizard;
-    
+
     int err;
     double sqrts;
     double integral;
@@ -3796,7 +3796,7 @@ Compute integral and retrieve results.
     fprintf( outfile, "* Test output: api_cc_4\n" );
     fprintf( outfile, "*   Purpose:  integrate and retrieve results\n" );
     fprintf( outfile, "\n" );
-    
+
     whizard = new Whizard();
     whizard->option( "logfile", "api_cc_4_log.out" );
     whizard->option( "library", "api_cc_4_lib" );
@@ -3827,7 +3827,7 @@ Compute integral and retrieve results.
     fprintf( outfile, "  sqrt(s)       = %5.1f GeV\n", sqrts );
     fprintf( outfile, "  cross section = %5.1f pb\n", integral / 1000. );
     fprintf( outfile, "  error         = %5.1f pb\n", error / 1000. );
-    
+
     delete whizard;
 
     fprintf( outfile, "\n" );
@@ -3845,9 +3845,9 @@ Generate events and retrieve event data.
 
     Whizard* whizard;
     WhizardSample* sample;
-    
+
     int it, it_begin, it_end;
-    
+
     int i_proc;
     string* proc_id;
     int idx;
@@ -3924,7 +3924,7 @@ check if this is the case.
   WTest->run_test( &api_ut_hepmc3_cc_1, "api_hepmc3_cc_1", "HepMC3 interface" );
 #elif WHIZARD_WITH_HEPMC2
   WTest->run_test( &api_ut_hepmc2_cc_1, "api_hepmc2_cc_1", "HepMC2 interface" );
-#else  
+#else
   cout << "Skipping test: api_hepmc_cc_1 (HepMC2/3 unavailable)\n";
 #endif
 <<C++ API: tests>>=
@@ -3944,7 +3944,7 @@ check if this is the case.
     fprintf( outfile, "\n" );
 
     whizard = new Whizard();
-    
+
     whizard->option( "logfile", "api_hepmc3_cc_1.log.out" );
     whizard->option( "library", "api_hepmc3_cc_1_lib" );
     whizard->option( "model", "QED" );
@@ -4000,33 +4000,33 @@ check if this is the case.
     fprintf( outfile, "\n" );
 
     whizard = new Whizard();
-    
+
     whizard->option( "logfile", "api_hepmc2_cc_1.log.out" );
     whizard->option( "library", "api_hepmc2_cc_1_lib" );
     whizard->option( "model", "QED" );
     whizard->option( "rebuild", "T" );
-    
+
     whizard->init ();
-    
+
     whizard->command( "process api_hepmc2_cc_1_p = e1, E1 => e2, E2" );
-    
+
     whizard->set_double( "sqrts", 10. );
     whizard->command( "iterations = 1:100" );
     whizard->set_int( "seed", 0 );
     whizard->command( "integrate (api_hepmc2_cc_1_p)" );
-    
+
     whizard->set_bool( "?unweighted", 0 );
     whizard->set_string( "$sample", "api_hepmc2_cc_1_evt" );
     whizard->command( "sample_format = hepmc" );
     whizard->set_int( "n_events", 2 );
-    
+
     sample = whizard->new_sample( "api_hepmc2_cc_1_p" );
 
     sample->open( &it_begin, &it_end );
     for (it=it_begin; it<=it_end; it++) {
        npt = 0;
        sample->next_event( &evt );
-       idx = evt->event_number();       
+       idx = evt->event_number();
        for ( GenEvent::particle_iterator it = evt->particles_begin();
          it != evt->particles_end(); ++it )
          { npt++;
@@ -4072,28 +4072,28 @@ check if this is the case.
     fprintf( outfile, "* Test output: api_lcio_cc_1\n" );
     fprintf( outfile, "*   Purpose:  generate events\n" );
     fprintf( outfile, "\n" );
-    
+
     whizard = new Whizard();
-    
+
     whizard->option( "logfile", "api_lcio_cc_1.log.out" );
     whizard->option( "library", "api_lcio_cc_1_lib" );
     whizard->option( "model", "QED" );
     whizard->option( "rebuild", "T" );
-    
+
     whizard->init ();
-    
+
     whizard->command( "process api_lcio_cc_1_p = e1, E1 => e2, E2" );
-    
+
     whizard->set_double( "sqrts", 10. );
     whizard->command( "iterations = 1:100" );
     whizard->set_int( "seed", 0 );
     whizard->command( "integrate (api_lcio_cc_1_p)" );
-    
+
     whizard->set_bool( "?unweighted", 1 );
     whizard->set_string( "$sample", "api_lcio_cc_1_evt" );
     whizard->command( "sample_format = lcio" );
     whizard->set_int( "n_events", 2 );
-    
+
     sample = whizard->new_sample( "api_lcio_cc_1_p" );
 
     sample->open( &it_begin, &it_end );
@@ -4114,4 +4114,4 @@ check if this is the case.
 
   }
 #endif
-  
+@

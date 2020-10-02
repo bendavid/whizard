@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-10-02
+	Python/Cython layer for WHIZARD API
+
 2020-09-30
 	Allow mismatches of Python and name attributes in UFO models
 
