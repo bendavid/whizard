@@ -224,8 +224,6 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1          0     4.978E+02   2.90E+01    5.83    0.00    31.2
-| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  (  0.0000 +-   0.00000 ) %
 |=============================================================================|
 tolerance =  1.08344E+02
 | expect: success

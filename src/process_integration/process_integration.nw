@@ -4602,8 +4602,9 @@ nothing is done but just empty integration results appended.
   end subroutine process_generate_unweighted_event
 
 @ %def process_generate_unweighted_event
-@ Display the final results for the sum of all components.  (This is useful,
-obviously, only if there is more than one component.)
+@ Display the final results for the sum of all components. This is useful,
+obviously, only if there is more than one component and not if a combined
+integration of all components together has been performed.
 <<Process: process: TBP>>=
   procedure :: display_summed_results => process_display_summed_results
 <<Process: procedures>>=
@@ -4623,7 +4624,8 @@ obviously, only if there is more than one component.)
     select type (pcm => process%pcm)
     class is (pcm_nlo_t)
        !!! Check that Born integral is there
-       if (process%component_can_be_integrated (1)) then
+       if (.not. pcm%settings%combined_integration .and. &
+            process%component_can_be_integrated (1)) then
           call results%record_correction (process%get_correction (), &
                process%get_correction_error ())
        end if
@@ -4917,7 +4919,7 @@ Return the current integral and error obtained by the integrator [[i_mci]].
   end function process_get_efficiency_tot
 
 @ %def process_get_integral process_get_efficiency
-@ Let us call the ratio of the LO and the NLO result $\iota = I_{LO} / I_{NLO}$. Then
+@ Let us call the ratio of the NLO and the LO result $\iota = I_{NLO} / I_{LO}$. Then
 usual error propagation gives
 \begin{equation*}
   \sigma_{\iota}^2 = \left(\frac{\partial \iota}{\partial I_{LO}}\right)^2 \sigma_{I_{LO}}^2
@@ -4931,13 +4933,16 @@ usual error propagation gives
   function process_get_correction (process) result (ratio)
     real(default) :: ratio
     class(process_t), intent(in) :: process
-    integer :: i_mci
+    integer :: i_mci, i_component
     real(default) :: int_born, int_nlo
     int_nlo = zero
     int_born = process%mci_entry(1)%get_integral ()
-    do i_mci = 2, size (process%mci_entry)
-       if (process%component_can_be_integrated (i_mci)) &
+    i_mci = 2
+    do i_component = 2, size (process%component)
+       if (process%component_can_be_integrated (i_component)) then
           int_nlo = int_nlo + process%mci_entry(i_mci)%get_integral ()
+          i_mci = i_mci + 1
+       end if
     end do
     ratio = int_nlo / int_born * 100
   end function process_get_correction
@@ -4947,14 +4952,16 @@ usual error propagation gives
     class(process_t), intent(in) :: process
     real(default) :: int_born, sum_int_nlo
     real(default) :: err_born, err2
-    integer :: i_mci
+    integer :: i_mci, i_component
     sum_int_nlo = zero; err2 = zero
     int_born = process%mci_entry(1)%get_integral ()
     err_born = process%mci_entry(1)%get_error ()
-    do i_mci = 2, size (process%mci_entry)
-       if (process%component_can_be_integrated (i_mci)) then
+    i_mci = 2
+    do i_component = 2, size (process%component)
+       if (process%component_can_be_integrated (i_component)) then
           sum_int_nlo = sum_int_nlo + process%mci_entry(i_mci)%get_integral ()
           err2 = err2 + process%mci_entry(i_mci)%get_error()**2
+          i_mci = i_mci + 1
        end if
     end do
     error = sqrt (err2 / int_born**2 + sum_int_nlo**2 * err_born**2 / int_born**4) * 100
