@@ -5807,6 +5807,7 @@ local changes to currently inactive models.
     logical :: verb, initialize_only
     type(string_t) :: sf_string
     type(string_t) :: workspace
+    real(default) :: sqrts
 
     verb = .true.;  if (present (verbose))  verb = verbose
 
@@ -5875,9 +5876,14 @@ local changes to currently inactive models.
             call msg_fatal ("Integrate: 2 -> 1 process can't be handled &
                  &with fixed-energy beams")
          end if
+         if (local%beam_structure%asymmetric ()) then
+            sqrts = process%get_sqrts ()
+         else
+            sqrts = local%get_sqrts ()
+         end if
          call dispatch_sf_channels &
               (sf_channel, sf_string, sf_prop, phs_channel_collection, &
-              local%var_list, local%get_sqrts(), local%beam_structure)
+              local%var_list, sqrts, local%beam_structure)
          if (allocated (sf_channel)) then
             if (size (sf_channel) > 0) then
                call process%set_sf_channel (sf_channel)
