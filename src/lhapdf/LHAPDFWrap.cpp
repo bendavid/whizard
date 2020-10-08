@@ -45,9 +45,9 @@ extern "C" {
   }
     
   /// Get xfx values from current PDF, including an extra photon flavor
-  void lhapdf_evolvepdfphotonm (const LHAPDF::PDF* pdf, const double x, const double q, double* fxq, double photonfxq) {
+  void lhapdf_evolvepdfphotonm (const LHAPDF::PDF* pdf, const double x, const double q, double* fxq, double &photonfxq) {
     lhapdf_evolvepdfm (pdf, x, q, fxq);
-    photonfxq = pdf->xfxQ(22, x, q); 
+    photonfxq = pdf->xfxQ(22, x, q);
   }
     
   void lhapdf_evolvepdfpm (const LHAPDF::PDF* pdf, const double x, const double q, const double s, const int scheme, double fxq) {
