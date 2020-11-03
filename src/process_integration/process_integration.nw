@@ -12201,8 +12201,8 @@ relevant for a NLO algorithm.
 
     ! Does connected%trace never have any helicity qn?
     call term%init_interaction_qn_index (core, term%connected%trace, n_sub, &
-         is_polarized = .false.)
-    call term%init_interaction_qn_index (core, term%int_hard, n_sub)
+         process%get_model_ptr (), is_polarized = .false.)
+    call term%init_interaction_qn_index (core, term%int_hard, n_sub, process%get_model_ptr ())
     if (requires_extended_sf) then
        select type (config => term%pcm_instance%config)
        type is (pcm_nlo_t)
@@ -12339,16 +12339,26 @@ flavor, helicity and subtraction indices correctly to their matrix element.
 <<Instances: term instance: TBP>>=
   procedure :: init_interaction_qn_index => term_instance_init_interaction_qn_index
 <<Instances: procedures>>=
-  subroutine term_instance_init_interaction_qn_index (term, core, int, n_sub, is_polarized)
+  subroutine term_instance_init_interaction_qn_index (term, core, int, n_sub, &
+         model, is_polarized)
     class(term_instance_t), intent(inout), target :: term
     class(prc_core_t), intent(in) :: core
     class(interaction_t), intent(inout) :: int
     integer, intent(in) :: n_sub
+    class(model_data_t), intent(in) :: model
     logical, intent(in), optional :: is_polarized
     logical :: polarized
     type(quantum_numbers_t), dimension(:, :), allocatable :: qn_config
+    integer, dimension(:,:), allocatable :: flv_born
+    type(flavor_t), dimension(:), allocatable :: flv
+    integer :: i
     select type (core)
     class is (prc_external_t)
+       if (present (is_polarized)) then
+          polarized = is_polarized
+       else
+          polarized = core%includes_polarization ()
+       end if
        select type (pcm_instance => term%pcm_instance)
        type is (pcm_instance_nlo_t)
           associate (is_born => .not. (term%nlo_type == NLO_REAL .and. &
@@ -12357,16 +12367,19 @@ flavor, helicity and subtraction indices correctly to their matrix element.
              type is (pcm_nlo_t)
                 qn_config = config%get_qn (is_born)
              end select
-             if (present (is_polarized)) then
-                polarized = is_polarized
-             else
-                polarized = core%includes_polarization ()
-             end if
              call setup_interaction_qn_index (int, term%config%data, &
                   qn_config, n_sub, polarized)
           end associate
        class default
-          call int%init_qn_index ()
+          call term%config%data%get_flv_state (flv_born)
+          allocate (flv (size (flv_born, dim = 1)))
+          allocate (qn_config (size (flv_born, dim = 1), size (flv_born, dim = 2)))
+          do i = 1, core%data%n_flv
+             call flv%init (flv_born(:,i), model)
+             call qn_config(:, i)%init (flv)
+          end do
+          call setup_interaction_qn_index (int, term%config%data, &
+               qn_config, n_sub, polarized)
        end select
     class default
        call int%init_qn_index ()
@@ -12908,40 +12921,40 @@ The quantum numbers mask of the incoming particle
     mask_in = term%k_term%sf_chain%get_out_mask ()
     call setup_isolated (term%isolated, core, model, mask_in, term%config%col)
     call setup_connected (term%connected, term%isolated, term%nlo_type)
- contains
-   subroutine setup_isolated (isolated, core, model, mask, color)
-     type(isolated_state_t), intent(inout), target :: isolated
-     class(prc_core_t), intent(in) :: core
-     class(model_data_t), intent(in), target :: model
-     type(quantum_numbers_mask_t), intent(in), dimension(:) :: mask
-     integer, intent(in), dimension(:) :: color
-     call isolated%setup_square_matrix (core, model, mask, color)
-     call isolated%setup_square_flows (core, model, mask)
-   end subroutine setup_isolated
+  contains
+    subroutine setup_isolated (isolated, core, model, mask, color)
+      type(isolated_state_t), intent(inout), target :: isolated
+      class(prc_core_t), intent(in) :: core
+      class(model_data_t), intent(in), target :: model
+      type(quantum_numbers_mask_t), intent(in), dimension(:) :: mask
+      integer, intent(in), dimension(:) :: color
+      call isolated%setup_square_matrix (core, model, mask, color)
+      call isolated%setup_square_flows (core, model, mask)
+    end subroutine setup_isolated
 
-   subroutine setup_connected (connected, isolated, nlo_type)
-     type(connected_state_t), intent(inout), target :: connected
-     type(isolated_state_t), intent(in), target :: isolated
-     integer :: nlo_type
-     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
-     call connected%setup_connected_matrix (isolated)
-     if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL &
-         .and. term%config%i_term_global == term%config%i_sub) &
-         .or. term%nlo_type == NLO_DGLAP) then
-        !!! We don't care about the subtraction matrix elements in
-        !!! connected%matrix, because all entries there are supposed
-        !!! to be squared. To be able to match with flavor quantum numbers,
-        !!! we remove the subtraction quantum entries from the state matrix.
-        allocate (mask (connected%matrix%get_n_tot()))
-        call mask%set_sub (1)
-        call connected%matrix%reduce_state_matrix (mask, keep_order = .true.)
-     end if
-     call term%init_interaction_qn_index (core, connected%matrix, n_sub = 0, &
-          is_polarized = .false.)
-     call connected%setup_connected_flows (isolated)
-     call connected%setup_state_flv (isolated%get_n_out ())
-   end subroutine setup_connected
- end subroutine term_instance_setup_event_data
+    subroutine setup_connected (connected, isolated, nlo_type)
+      type(connected_state_t), intent(inout), target :: connected
+      type(isolated_state_t), intent(in), target :: isolated
+      integer :: nlo_type
+      type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
+      call connected%setup_connected_matrix (isolated)
+      if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL &
+           .and. term%config%i_term_global == term%config%i_sub) &
+           .or. term%nlo_type == NLO_DGLAP) then
+         !!! We don't care about the subtraction matrix elements in
+         !!! connected%matrix, because all entries there are supposed
+         !!! to be squared. To be able to match with flavor quantum numbers,
+         !!! we remove the subtraction quantum entries from the state matrix.
+         allocate (mask (connected%matrix%get_n_tot()))
+         call mask%set_sub (1)
+         call connected%matrix%reduce_state_matrix (mask, keep_order = .true.)
+      end if
+      call term%init_interaction_qn_index (core, connected%matrix, 0, model, &
+           is_polarized = .false.)
+      call connected%setup_connected_flows (isolated)
+      call connected%setup_state_flv (isolated%get_n_out ())
+    end subroutine setup_connected
+  end subroutine term_instance_setup_event_data
 
 @ %def term_instance_setup_event_data
 @ Color-correlated matrix elements should be obtained from
