@@ -55,7 +55,7 @@ integrate (zp_drell_yan) { iterations = 3:10000:"gw",6:20000 }
 
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.2 Example.
+  "A WHIZARD 3.0 Example.
    Cuts: $p_T^\ell\ge50 \textrm{ GeV}$, $M_{\ell\ell} \ge$800 GeV, 
          $|\eta(\ell)|\le2.5$
          \newline Using weighted events to produce smooth 

@@ -47,7 +47,7 @@ luminosity = 10
 
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.2 Example.
+  "A WHIZARD 3.0 Example.
    Charged current CC10 process from LEP 2."
 $y_label = "$N_{\textrm{events}}$"
 

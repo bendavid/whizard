@@ -55,7 +55,7 @@ integrate (enj) { iterations = 5:20000:"gw", 3:10000 }
  
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.2 Example. Cuts $p_T($visible$)\ge10 \textrm{ GeV}$."
+  "A WHIZARD 3.0 Example. Cuts $p_T($visible$)\ge10 \textrm{ GeV}$."
 $y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots

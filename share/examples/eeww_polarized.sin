@@ -43,7 +43,7 @@ polarized "W+", "W-"
 
 # Define common description for all histograms below
 $description =
-  "A WHIZARD 2.2 Example. $W$ pair production in polarized ILC beams at 200 GeV. Analysis for polarized $W$s."
+  "A WHIZARD 3.0 Example. $W$ pair production in polarized ILC beams at 200 GeV. Analysis for polarized $W$s."
 
 # Define histograms for all final-state helicity combinations.
 histogram cta_mm (-1, 1, 0.1) { $title = "$WW$ polarization: -1 -1" }

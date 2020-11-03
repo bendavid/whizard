@@ -67,7 +67,7 @@ integrate(nnbb,qqbb,bbbb,eebb,
 
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.2 Example. Light Higgs search at LEP. A 115 GeV pseudo-Higgs has been added. Luminosity enlarged by two orders of magnitude."
+  "A WHIZARD 3.0 Example. Light Higgs search at LEP. A 115 GeV pseudo-Higgs has been added. Luminosity enlarged by two orders of magnitude."
 $y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots
