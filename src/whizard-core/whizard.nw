@@ -11506,6 +11506,16 @@ switched off via some variable, it will be skipped.
 Regarding resonances/decays: these two transforms are currently mutually
 exclusive.  Resonance insertion will not be applied if there is an
 unstable particle in the game.
+
+The initial particle set is the output of the trivial transform; this
+has already been applied when the transforms listed here are
+encountered.  Each transform takes a particle set and produces a new
+one, with one exception: the decay module takes its input from the
+process object, ignoring the trivial transform.  (Reason: spin
+correlations.)  Therefore, the decay module must be first in line.
+
+Settings that we don't or can't support (yet) are rejected by the
+embedded call to [[event_transforms_check]].
 <<Simulations: entry: TBP>>=
   procedure, private :: setup_event_transforms &
        => entry_setup_event_transforms
@@ -11521,17 +11531,16 @@ unstable particle in the game.
     logical :: enable_fixed_order
     logical :: enable_shower
     character(len=7) :: sample_normalization
+
+    call event_transforms_check (entry, process, local)
     var_list => local%get_var_list_ptr ()
-    enable_isr_handler = local%get_lval (var_str ("?isr_handler"))
-    enable_epa_handler = local%get_lval (var_str ("?epa_handler"))
-    if (enable_isr_handler .or. enable_epa_handler) then
-       call dispatch_evt_isr_epa_handler (evt, local%var_list)
-       if (associated (evt))  call entry%import_transform (evt)
-    end if
+
     if (process%contains_unstable (local%model)) then
        call dispatch_evt_decay (evt, local%var_list)
        if (associated (evt))  call entry%import_transform (evt)
-    else if (entry%resonant_subprocess_set%is_active ()) then
+    end if
+
+    if (entry%resonant_subprocess_set%is_active ()) then
        call dispatch_evt_resonance (evt, local%var_list, &
             entry%resonant_subprocess_set%get_resonance_history_set (), &
             entry%resonant_subprocess_set%get_libname ())
@@ -11546,18 +11555,21 @@ unstable particle in the game.
           call entry%import_transform (evt)
        end if
     end if
+
     enable_fixed_order = local%get_lval (var_str ("?fixed_order_nlo_events"))
     if (enable_fixed_order) then
-       if (local%get_lval (var_str ("?unweighted"))) &
-          call msg_fatal ("NLO Fixed Order events have to be generated with &
-                          &?unweighted = false")
-       sample_normalization = local%get_sval (var_str ("$sample_normalization"))
-       if ( sample_normalization /= "sigma" .and. sample_normalization /= "auto" ) &
-          call msg_fatal ('For NLO Fixed Order events only $sample_normalization = &
-                          &"sigma" is supported.')
-       call dispatch_evt_nlo (evt, local%get_lval (var_str ("?keep_failed_events")))
+       call dispatch_evt_nlo &
+            (evt, local%get_lval (var_str ("?keep_failed_events")))
        call entry%import_transform (evt)
     end if
+
+    enable_isr_handler = local%get_lval (var_str ("?isr_handler"))
+    enable_epa_handler = local%get_lval (var_str ("?epa_handler"))
+    if (enable_isr_handler .or. enable_epa_handler) then
+       call dispatch_evt_isr_epa_handler (evt, local%var_list)
+       if (associated (evt))  call entry%import_transform (evt)
+    end if
+
     enable_shower = local%get_lval (var_str ("?allow_shower")) .and. &
             (local%get_lval (var_str ("?ps_isr_active")) &
             .or. local%get_lval (var_str ("?ps_fsr_active")) &
@@ -11571,13 +11583,59 @@ unstable particle in the game.
             process)
        call entry%import_transform (evt)
     end if
+
     if (local%get_lval (var_str ("?hadronization_active"))) then
        call dispatch_evt_hadrons (evt, var_list, local%fallback_model)
        call entry%import_transform (evt)
     end if
+
   end subroutine entry_setup_event_transforms
 
 @ %def entry_setup_event_transforms
+@
+This routine rejects all event-transform settings which we don't
+support at present.
+<<Simulations: procedures>>=
+  subroutine event_transforms_check (entry, process, local)
+    class(entry_t), intent(in) :: entry
+    type(process_t), intent(in), target :: process
+    type(rt_data_t), intent(in), target :: local
+
+    if (local%get_lval (var_str ("?fixed_order_nlo_events"))) then
+       if (local%get_lval (var_str ("?unweighted"))) then
+          call msg_fatal ("NLO fixed-order events have to be generated with &
+               &?unweighted = false")
+       end if
+       select case (char (local%get_sval (var_str ("$sample_normalization"))))
+       case ("sigma", "auto")
+       case default
+          call msg_fatal ("NLO fixed-order events: only &
+               &$sample_normalization = 'sigma' is supported.")
+       end select
+       if (process%contains_unstable (local%model)) then
+          call msg_fatal ("NLO fixed-order events: unstable final-state &
+               &particles not supported yet")
+       end if
+       if (entry%resonant_subprocess_set%is_active ()) then
+          call msg_fatal ("NLO fixed-order events: resonant subprocess &
+               &insertion not supported")
+       end if
+       if (local%get_lval (var_str ("?isr_handler")) &
+            .or. local%get_lval (var_str ("?epa_handler"))) then
+          call msg_fatal ("NLO fixed-order events: ISR handler for &
+               &photon-pT generation not supported yet")
+       end if
+    end if
+    
+    if (process%contains_unstable (local%model) &
+         .and. entry%resonant_subprocess_set%is_active ()) then
+       call msg_fatal ("Simulation: resonant subprocess insertion with &
+            &unstable final-state particles not supported")
+    end if
+
+  end subroutine event_transforms_check
+
+@ %def event_transforms_check
 @
 \subsubsection{Process/MCI selector}
 Compute weights.  The integral in the argument is the sum of integrals for

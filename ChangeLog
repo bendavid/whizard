@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-11-05
+	Bug fix for ISR handler not working with unstable particles
+
 2020-10-08
 	Bug fix in LHAPDF interface for photon PDFs
 
