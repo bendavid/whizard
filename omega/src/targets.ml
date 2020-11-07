@@ -6252,7 +6252,10 @@ i*)
     module CFlow = Color.Flow
 
     let num_color_flows amplitudes =
-      List.length (CF.color_flows amplitudes)
+      if !amp_triv then
+        1
+      else
+        List.length (CF.color_flows amplitudes)
 
     let num_color_indices_default = 2 (* Standard model *)
 
@@ -6407,42 +6410,58 @@ i*)
     i*)
 
     let print_color_flows_table tuples =
-      printf
-        "  @[<2>integer, dimension(n_cindex,n_prt,n_cflow), save%s :: table_color_flows"
-        protected; nl ();
-      match tuples with
-      | [] -> ()
-      | _ :: _ as tuples ->
-          ignore (List.fold_left (fun i tuple ->
-            begin match CFlow.to_lists tuple with
-            | [] -> ()
-            | cf1 :: cfn ->
-                printf "  @[<2>data table_color_flows(:,:,%4d) /" i;
-                printf "@ %s" (String.concat "," (List.map string_of_int cf1));
-                List.iter (function cf ->
-                  printf ",@  %s" (String.concat "," (List.map string_of_int cf))) cfn;
-                printf "@ /"; nl ()
-            end;
-            succ i) 1 tuples)
+      if !amp_triv then begin
+        printf
+          "  @[<2>integer, dimension(n_cindex,n_prt,n_cflow), save%s :: table_color_flows = 0"
+          protected; nl ();
+	end
+      else begin
+        printf
+          "  @[<2>integer, dimension(n_cindex,n_prt,n_cflow), save%s :: table_color_flows"
+          protected; nl ();
+      end;
+      if not !amp_triv then begin
+        match tuples with
+        | [] -> ()
+        | _ :: _ as tuples ->
+            ignore (List.fold_left (fun i tuple ->
+              begin match CFlow.to_lists tuple with
+              | [] -> ()
+              | cf1 :: cfn ->
+                  printf "  @[<2>data table_color_flows(:,:,%4d) /" i;
+                  printf "@ %s" (String.concat "," (List.map string_of_int cf1));
+                  List.iter (function cf ->
+                    printf ",@  %s" (String.concat "," (List.map string_of_int cf))) cfn;
+                  printf "@ /"; nl ()
+              end;
+              succ i) 1 tuples)
+      end
 
     let print_ghost_flags_table tuples =
-      printf
-        "  @[<2>logical, dimension(n_prt,n_cflow), save%s :: table_ghost_flags"
-        protected; nl ();
-      match tuples with
-      | [] -> ()
-      | _ ->
-          ignore (List.fold_left (fun i tuple ->
-            begin match CFlow.ghost_flags tuple with
-            | [] -> ()
-            | gf1 :: gfn ->
-                printf "  @[<2>data table_ghost_flags(:,%4d) /" i;
-                printf "@ %s" (if gf1 then "T" else "F");
-                List.iter (function gf -> printf ",@  %s" (if gf then "T" else "F")) gfn;
-                printf " /";
-                nl ()
-            end;
-            succ i) 1 tuples)
+      if !amp_triv then begin
+        printf
+          "  @[<2>logical, dimension(n_prt,n_cflow), save%s :: table_ghost_flags = F"
+          protected; nl ();
+	end
+      else begin
+        printf
+          "  @[<2>logical, dimension(n_prt,n_cflow), save%s :: table_ghost_flags"
+          protected; nl ();
+        match tuples with
+        | [] -> ()
+        | _ ->
+            ignore (List.fold_left (fun i tuple ->
+              begin match CFlow.ghost_flags tuple with
+              | [] -> ()
+              | gf1 :: gfn ->
+                  printf "  @[<2>data table_ghost_flags(:,%4d) /" i;
+                  printf "@ %s" (if gf1 then "T" else "F");
+                  List.iter (function gf -> printf ",@  %s" (if gf then "T" else "F")) gfn;
+                  printf " /";
+                  nl ()
+              end;
+              succ i) 1 tuples)
+      end
 
     let format_power_of x
         { Color.Flow.num = num; Color.Flow.den = den; Color.Flow.power = pwr } =
@@ -6544,22 +6563,24 @@ i*)
       printf "  @[<2>type(%s), dimension(n_cfactors), save%s ::"
         omega_color_factor_abbrev protected;
       printf "@ table_color_factors"; nl ();
-      let i = ref 1 in
-      if n_cflow > 0 then begin
-        for c1 = 0 to pred n_cflow do
-          for c2 = 0 to pred n_cflow do
-            match table.(c1).(c2) with
-            | [] -> ()
-            | cf ->
-                printf "  @[<2>real(kind=%s), parameter, private :: color_factor_%06d = %s"
-                  !kind !i (format_powers_of nc_parameter cf);
-                nl ();
-                printf "  @[<2>data table_color_factors(%6d) / %s(%d,%d,color_factor_%06d) /"
-                  !i omega_color_factor_abbrev (succ c1) (succ c2) !i;
-                incr i;
-                nl ();
+      if not !amp_triv then begin
+        let i = ref 1 in
+        if n_cflow > 0 then begin
+          for c1 = 0 to pred n_cflow do
+            for c2 = 0 to pred n_cflow do
+              match table.(c1).(c2) with
+              | [] -> ()
+              | cf ->
+                  printf "  @[<2>real(kind=%s), parameter, private :: color_factor_%06d = %s"
+                    !kind !i (format_powers_of nc_parameter cf);
+                  nl ();
+                  printf "  @[<2>data table_color_factors(%6d) / %s(%d,%d,color_factor_%06d) /"
+                    !i omega_color_factor_abbrev (succ c1) (succ c2) !i;
+                  incr i;
+                  nl ();
+            done
           done
-        done
+        end;
       end
 
     let print_color_tables amplitudes =
@@ -6602,19 +6623,26 @@ i*)
     i*)
 
     let print_flavor_color_table n_flv n_cflow table =
-      printf
-        "  @[<2>logical, dimension(n_flv, n_cflow), save%s :: @ flv_col_is_allowed"
+      if !amp_triv then begin
+        printf
+          "  @[<2>logical, dimension(n_flv, n_cflow), save%s :: @ flv_col_is_allowed = T"
         protected; nl ();
-      if n_flv > 0 then begin
-        for c = 0 to pred n_cflow do
-          printf
-            "  @[<2>data flv_col_is_allowed(:,%4d) /" (succ c);
-          printf "@ %s" (option_to_logical table.(0).(c));
-          for f = 1 to pred n_flv do
-            printf ",@ %s" (option_to_logical table.(f).(c))
+	end
+      else begin
+        printf
+          "  @[<2>logical, dimension(n_flv, n_cflow), save%s :: @ flv_col_is_allowed"
+        protected; nl ();
+        if n_flv > 0 then begin
+          for c = 0 to pred n_cflow do
+            printf
+              "  @[<2>data flv_col_is_allowed(:,%4d) /" (succ c);
+            printf "@ %s" (option_to_logical table.(0).(c));
+            for f = 1 to pred n_flv do
+              printf ",@ %s" (option_to_logical table.(f).(c))
+            done;
+            printf "@ /"; nl ()
           done;
-          printf "@ /"; nl ()
-        done;
+	end;
       end
 
     let print_amplitude_table a =
@@ -6736,13 +6764,23 @@ i*)
       printf "  @[<5>"; if !fortran95 then printf "pure ";
       printf "function number_color_indices () result (n)"; nl ();
       printf "    integer :: n"; nl ();
-      printf "    n = size (table_color_flows, dim=1)"; nl ();
+      if !amp_triv then begin
+        printf "    n = n_cindex"; nl ();
+	end
+      else begin
+        printf "    n = size (table_color_flows, dim=1)"; nl ();
+      end;
       printf "  end function number_color_indices"; nl ();
       nl ();
       printf "  @[<5>"; if !fortran95 then printf "pure ";
       printf "function number_color_flows () result (n)"; nl ();
       printf "    integer :: n"; nl ();
-      printf "    n = size (table_color_flows, dim=3)"; nl ();
+      if !amp_triv then begin
+        printf "    n = n_cflow"; nl ();
+	end
+      else begin
+        printf "    n = size (table_color_flows, dim=3)"; nl ();
+      end;
       printf "  end function number_color_flows"; nl ();
       nl ();
       printf "  @[<5>"; if !fortran95 then printf "pure ";
@@ -6817,8 +6855,16 @@ i*)
       printf "function is_allowed (flv, hel, col) result (yorn)"; nl ();
       printf "    logical :: yorn"; nl ();
       printf "    integer, intent(in) :: flv, hel, col"; nl ();
-      printf "    yorn = hel_is_allowed(hel) .and. ";
-      printf "flv_col_is_allowed(flv,col)"; nl ();
+      if !amp_triv then begin
+         printf "    ! print *, 'inside is_allowed'"; nl ();
+      end;
+      if not !amp_triv then begin
+         printf "    yorn = hel_is_allowed(hel) .and. ";
+         printf "flv_col_is_allowed(flv,col)"; nl ();
+         end
+      else begin
+         printf "    yorn = .false."; nl ();
+      end;
       printf "  end function is_allowed"; nl ();
       nl ();
       printf "  @[<5>"; if !fortran95 then printf "pure ";
@@ -6916,13 +6962,15 @@ i*)
           done
 	done;
       end;
-      printf "!"; nl ();
-      printf "!   vanishing or redundant flavor combinations:"; nl ();
-      printf "!"; nl ();
-      List.iter (fun process ->
-        printf "!          %s" (process_sans_color_to_string process); nl ())
-        (CF.vanishing_flavors amplitudes);
-      printf "!"; nl ();
+      if not !amp_triv then begin
+         printf "!"; nl ();
+         printf "!   vanishing or redundant flavor combinations:"; nl ();
+         printf "!"; nl ();
+         List.iter (fun process ->
+           printf "!          %s" (process_sans_color_to_string process); nl ())
+           (CF.vanishing_flavors amplitudes);
+         printf "!"; nl ();
+      end;
       begin
         match CF.constraints amplitudes with
         | None -> ()
