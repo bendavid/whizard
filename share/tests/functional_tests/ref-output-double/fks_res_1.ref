@@ -176,7 +176,7 @@ n_events = 1
    Associated process: 'fks_res_1_p1'
    TAO random-number generator:
      seed  = 145620998
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
@@ -422,7 +422,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'fks_res_1_p1'
    TAO random-number generator:
      seed  = 145620998
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
@@ -669,7 +669,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'fks_res_1_p1'
    TAO random-number generator:
      seed  = 145620998
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:

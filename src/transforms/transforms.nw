@@ -9767,8 +9767,9 @@ module evt_nlo
   use constants
   use lorentz
   use diagnostics
+  use numeric_utils, only: nearly_equal
   use format_utils, only: write_separator
-  use physics_defs, only: NLO_REAL
+  use physics_defs, only: BORN, NLO_REAL
   use sm_qcd
   use model_data
   use interactions, only: interaction_t
@@ -10047,20 +10048,6 @@ object in the [[pcm_instance]].
   end function evt_nlo_get_i_term
 
 @ %def evt_nlo_get_i_term
-@
-<<Evt Nlo: evt nlo: TBP>>=
-  procedure :: copy_previous_particle_set => evt_nlo_copy_previous_particle_set
-<<Evt Nlo: procedures>>=
-  subroutine evt_nlo_copy_previous_particle_set (evt)
-    class(evt_nlo_t), intent(inout) :: evt
-    if (associated (evt%previous)) then
-       evt%particle_set = evt%previous%particle_set
-    else
-       call msg_fatal ("evt_nlo requires one preceeding evt_trivial!")
-    end if
-  end subroutine evt_nlo_copy_previous_particle_set
-
-@ %def evt_nlo_copy_previous_particle_set
 @ The event transform has a variable which counts the number of times it
 has already been called for one generation point. If this variable,
 [[i_evaluation]], is zero, this means that [[evt_nlo_generate_weighted]] is called
@@ -10511,14 +10498,33 @@ It should not be called for ISR as in this case, the Born CMS and the real CMS d
   end function evt_nlo_get_selected_quantum_numbers
 
 @ %def evt_nlo_get_selected_quantum_numbers
-@ Prepares a new event.
-Selects a Born flavor structure such that each possible flavor structure
-is as probable as its portion of the total sum of all Born-like squared
-matrix elements.
+@ Selects a flavor structure for Born subevents, such that each possible flavor
+structure is as probable as its portion of the sum of Born matrix elements over all flavors.
+For non-Born Born-like subevents, no Born matrix elements are available.
+We always choose [[i_flv = 1]] in this case.
+If all terms are active, i.e. in a full NLO calculation, the flavors of Born-like
+subevents will be distributed according to the Born matrix elements only, to avoid
+issues with matrix elements of different sign and assure a LO flavor distribution.
+
+Likewise, the real-like event flavors are distributed according to the real matrix elements.
+Here, we need to make sure to not mix matrix elements from different real terms and instead
+determine the flavor for each subevent based on just the matrix elements for one of the terms.
+The implementation below assumes that in the sequence of NLO terms, the Born term is immediately
+followed by all the real terms which are again followed by the subtraction, the virtual
+and the DGLAP term.
+
+Both flavor structures can be determined without
+correlation as the flavors will only become important for events to be matched to a
+parton shower and in this case we will only generate either a single Born-like or a
+single real-like event which are not part of an event group.
 
 In case all subevents failed the cuts, all [[sqme]]s were set to $0$ so
 we cannot determine the flavor in this way. In this case, we always choose
-[[i_flv = 1]].
+the first flavor structure given by the matrix-element generator with [[i_flv = 1]].
+
+Ideally, having to choose a particle set here would not be necessary as it is also
+chosen in [[particle_set_init_interaction]] which in the current approach is disabled
+by supplying [[qn_select]] explicitly based on the flavors chosen here.
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: prepare_new_event => evt_nlo_prepare_new_event
 <<Evt Nlo: procedures>>=
@@ -10528,23 +10534,43 @@ we cannot determine the flavor in this way. In this case, we always choose
     real(default) :: s, x
     real(default) :: sqme_total
     real(default), dimension(:), allocatable :: sqme_flv
-    integer :: i, i_flv, i_core
+    integer :: i, i_flv, i_core, emitter, n_in
+    logical, save :: warn_once = .true.
     class(prc_core_t), pointer :: core => null ()
     call evt%reset ()
-    if (evt%i_evaluation > 0) return
     call evt%rng%generate (x)
+    do i = 1, size (evt%process_instance%term)
+       associate (term => evt%process_instance%term(i))
+          if (evt%i_evaluation == 0) then
+             if (term%nlo_type == BORN) then
+                allocate (sqme_flv (term%config%data%n_flv))
+                exit
+             end if
+          else
+             if (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction()) then
+                allocate (sqme_flv (term%config%data%n_flv))
+                exit
+             end if
+          end if
+       end associate
+    end do
     sqme_total = zero
-    allocate (sqme_flv (evt%process_instance%term(1)%config%data%n_flv))
     sqme_flv = zero
     i_core = evt%process%get_i_core (i_term)
     core => evt%process%get_core_ptr (i_core)
     do i = 1, size (evt%process_instance%term)
        associate (term => evt%process_instance%term(i))
-          if (.not. (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction())) then
-             sqme_total = sqme_total + real (sum ( &
-                  term%connected%matrix%get_matrix_element ()))
-             !!! TODO: figure out why this select type is needed for prc_omega_t
+          if (i == evt%i_evaluation + 1 .and. (term%nlo_type == BORN .or. &
+               (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction())) ) then
+             sqme_total = sqme_total + real (sum ( term%connected%matrix%get_matrix_element ()))
+             !!! TODO (VR 2020-02-19) figure out why this select type is needed for prc_omega_t
              !!! For NLO and prc_omega_t the connected trace seems to be set up incorrectly!
+             !!! (PS 2020-11-05) This leads to real events of processes with structure functions
+             !!! having a wrong flavor distribution if computed with O'Mega.
+             !!! The flavor distributions are identical with and also without the special case
+             !!! for O'Mega and wrong in both cases.
+             !!! However, this case it is not critical as long as O'Mega does not provide matrix elements
+             !!! exclusive in coupling orders and is thus only rarely used for NLO applications anyways
              select type (core)
              class is (prc_external_t)
                 do i_flv = 1, size (sqme_flv)
@@ -10555,21 +10581,36 @@ we cannot determine the flavor in this way. In this case, we always choose
              class default
                 sqme_flv = sqme_flv &
                      + real (term%connected%matrix%get_matrix_element ())
+                emitter = evt%process_instance%term(i)%k_term%emitter
+                n_in = evt%process_instance%term(i)%k_term%n_in
+                if (warn_once .and. term%nlo_type == NLO_REAL .and. emitter <= n_in) then
+                   warn_once = .false.
+                   call msg_warning("evt_nlo_prepare_new_event: fNLO flavor&
+                        & distributions with O'Mega are wrong.")
+                end if
              end select
           end if
        end associate
     end do
+    if (debug2_active (D_TRANSFORMS)) then
+       if (.not. nearly_equal(sqme_total, sum (sqme_flv))) then
+          call msg_warning ("evt_nlo_prepare_new_event: &
+          &sum over flavored sqmes does not match total sqme.")
+       end if
+    end if
     !!! Need absolute values to take into account negative weights
     x = x * abs (sqme_total)
     s = abs (sqme_flv (1))
     evt%selected_i_flv = 1
-    do i_flv = 2, size (sqme_flv)
-       s = s + abs (sqme_flv (i_flv))
-       if (s > x) then
-          evt%selected_i_flv = i_flv
-          exit
-       end if
-    end do
+    if (s < x) then
+       do i_flv = 2, size (sqme_flv)
+          s = s + abs (sqme_flv (i_flv))
+          if (s > x) then
+             evt%selected_i_flv = i_flv
+             exit
+          end if
+       end do
+    end if
     if (debug2_active (D_TRANSFORMS)) then
        call msg_print_color ("Selected i_flv: ", COL_GREEN)
        print *, evt%selected_i_flv

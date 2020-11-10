@@ -525,7 +525,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'openloops_3_p2'
    TAO random-number generator:
      seed  = 218431493
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
@@ -719,7 +719,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'openloops_3_p2'
    TAO random-number generator:
      seed  = 218431493
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
@@ -914,7 +914,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'openloops_3_p2'
    TAO random-number generator:
      seed  = 218431493
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:

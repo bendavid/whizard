@@ -1391,7 +1391,7 @@ table from the hard matrix element data.
     class(isolated_state_t), intent(inout), target :: state
     class(prc_core_t), intent(in) :: core
     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask_in
-    !!! Actually need allocatable attribute here fore once because col might
+    !!! Actually need allocatable attribute here for once because col might
     !!! enter the subroutine non-allocated.
     integer, intent(in), dimension(:), allocatable :: col
     logical, intent(in) :: keep_fs_flavor
@@ -11212,10 +11212,10 @@ object and the squared matrix-element collector.
   procedure :: is_fixed_order_nlo_events &
        => pcm_instance_nlo_is_fixed_order_nlo_events
 <<Pcm: procedures>>=
-  function pcm_instance_nlo_is_fixed_order_nlo_events (pcm_instance) result (is_nlo)
-    logical :: is_nlo
+  function pcm_instance_nlo_is_fixed_order_nlo_events (pcm_instance) result (is_fnlo)
+    logical :: is_fnlo
     class(pcm_instance_nlo_t), intent(in) :: pcm_instance
-    is_nlo = pcm_instance%real_sub%purpose == FIXED_ORDER_EVENTS
+    is_fnlo = pcm_instance%real_sub%purpose == FIXED_ORDER_EVENTS
   end function pcm_instance_nlo_is_fixed_order_nlo_events
 
 @ %def pcm_instance_nlo_is_fixed_order_nlo_events
@@ -12906,7 +12906,8 @@ parse trees.
 @ %def term_instance_setup_expressions
 @ Prepare the extra evaluators that we need for processing events.
 
-The quantum numbers mask of the incoming particle
+The matrix elements we get from OpenLoops and GoSam are already squared
+and summed over color and helicity. They should not be squared again.
 <<Instances: term instance: TBP>>=
   procedure :: setup_event_data => term_instance_setup_event_data
 <<Instances: procedures>>=
@@ -12928,7 +12929,14 @@ The quantum numbers mask of the incoming particle
       class(model_data_t), intent(in), target :: model
       type(quantum_numbers_mask_t), intent(in), dimension(:) :: mask
       integer, intent(in), dimension(:) :: color
-      call isolated%setup_square_matrix (core, model, mask, color)
+      select type (core)
+      class is (prc_blha_t)
+         call isolated%matrix%init_identity(isolated%int_eff)
+         isolated%has_matrix = .true.
+      class default
+         call isolated%setup_square_matrix (core, model, mask, color)
+      end select
+      !!! TODO (PS-09-10-20) We should not square the flows if they come from BLHA either
       call isolated%setup_square_flows (core, model, mask)
     end subroutine setup_isolated
 

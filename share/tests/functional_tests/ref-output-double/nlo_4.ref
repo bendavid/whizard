@@ -155,7 +155,7 @@ Contents of nlo_4_p1.debug:
    Associated process: 'nlo_4_p1'
    TAO random-number generator:
      seed  = 145620995
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
@@ -349,7 +349,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'nlo_4_p1'
    TAO random-number generator:
      seed  = 145620995
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
@@ -544,7 +544,7 @@ event_excess* =>  0.00000E+00
    Associated process: 'nlo_4_p1'
    TAO random-number generator:
      seed  = 145620995
-     calls = 7
+     calls = 9
    Number of tries = 0
 ------------------------------------------------------------------------
  Particle set:
