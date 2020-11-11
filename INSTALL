@@ -249,6 +249,7 @@ Optional Features:
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-lcio		  enable LCIO for binary event files [[yes]]
   --enable-pythia6        enable internal PYTHIA6 for hadronization [[yes]]
+  --enable-pythia6_eh     PYTHIA6 patches for high-energy eh collisions [[no]
   --enable-pythia8        enable PYTHIA8 for shower and hadronization [[no]]
   --enable-hoppet         enable HOPPET for b quark pdf matching [[no]]  
   --enable-fastjet	  enable FastJet for handling event data [[no]]

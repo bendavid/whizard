@@ -261,6 +261,11 @@ fi
 echo "--------------------------------------------------------------"
 if test "$PYTHIA6_AVAILABLE_FLAG" = ".true." ; then
    echo "PYTHIA6 (parton showering & hadronization) :   yes, v6.427"
+   if test "$PYTHIA6_EH_AVAILABLE_FLAG" = "yes" ; then
+      echo "        (settings for eh collisions)       :   yes"
+   else
+      echo "        (settings for eh collisions)       :   no"
+   fi
    echo "TAUOLA (tau decays)                        :   yes"
 else
    echo "PYTHIA6 (parton showering & hadronization) :   no"

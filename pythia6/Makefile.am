@@ -41,15 +41,19 @@ AM_FFLAGS += -dcfuns -w
 AM_FCFLAGS += -dcfuns -w
 endif
 
+if PYTHIA6_IS_EH
+AM_FFLAGS += -DPYTHIA6_EH
+endif
+
 noinst_LTLIBRARIES = libpythia6_wo.la
 
 if LHAPDF5_AVAILABLE
-libpythia6_wo_la_SOURCES = pythia.f
+libpythia6_wo_la_SOURCES = pythia.F
 else
 if LHAPDF6_AVAILABLE
-libpythia6_wo_la_SOURCES = pythia.f
+libpythia6_wo_la_SOURCES = pythia.F
 else
-libpythia6_wo_la_SOURCES = pythia.f pythia_pdf.f
+libpythia6_wo_la_SOURCES = pythia.F pythia_pdf.f
 endif
 endif	
 

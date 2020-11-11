@@ -1279,11 +1279,37 @@ Sec.~\ref{sec:root}.
 
 %%%%%
 
+\subsection{PYTHIA6}
+\label{sec:pythia6_conf}
+
+The \whizard\ package ships with the final version of the old
+\pythiasix\ release series, v6.427. This is no longer maintained, but
+many analyses are still set up for this shower and hadronization tool,
+so \whizard\ offers the possibility of backwards compatibility here.
+\begin{quote}
+configure: --------------------------------------------------------------
+configure: --- SHOWERS PYTHIA6 PYTHIA8 MPI ---
+configure: 
+checking whether we want to enable PYTHIA6... yes
+checking for PYTHIA6... (enabled)
+checking for PYTHIA6 eh settings... (disabled)
+\end{quote}
+\whizard\ automatically compiles \pythiasix, it has not to be
+specifically enabled by the user.
+
+In order to properly use \pythiasix\ for high-energy electron-hadron
+collisions which allow much further forward regions to be explored as
+old experiments like HERA, there is a special switch to enable those
+specific settings for $eh$-colliders:
+\begin{quote}
+  \ttt{--enable-pythia6\_ep}
+\end{quote}
+Those settings have been provided by~\cite{UtaKlein}.
+
+%%%%%
+
 \subsection{PYTHIA8}
 \label{sec:pythia8}
-
-\emph{NOTE: This is at the moment not yet supported, but merely a stub
-with the only purpose to be recognized by the build system.}
 
 \pythiaeight\ is a \cpp\ class library for handling hadronization,
 showering and underlying event. If you want to use this feature (once it is
@@ -18566,6 +18592,9 @@ respectively.
 \bibitem{PeskinSchroeder}
   M.E. Peskin, D.V.Schroeder, {\em An Introduction to Quantum Field
     Theory}, Addison-Wesley Publishing Co., 1995.
+
+\bibitem{UtaKlein}
+  U. Klein, O. Fischer, {\em private communications}.
 
 \bibitem{stdhep}
   L.~Garren, {\em StdHep, Monte Carlo Standardization at FNAL},

@@ -20496,11 +20496,14 @@ C...Iterate change of initiator momentum to get energy right.
           PEEX=PEEX+P(I,4)
           PEMV=PEMV+V(I,1)*P(I,3)/P(I,4)
   300   CONTINUE
+C...Modifications by Uta Klein for high-energy eh collisions
+#ifndef PYTHIA6_EH
         IF(ABS(PEMV).LT.1D-10) THEN
           MINT(51)=1
           MINT(57)=MINT(57)+1
           RETURN
         ENDIF
+#endif
         PZCH=-PEEX/PEMV
         P(N+1,3)=P(N+1,3)+PZCH
         P(N+1,4)=SQRT(P(N+1,5)**2+P(N+1,1)**2+P(N+1,2)**2+P(N+1,3)**2)
@@ -20513,11 +20516,14 @@ C...Iterate change of initiator momentum to get energy right.
 C...Modify momenta in event record.
         HBE=2D0*(P(N+1,4)+P(LQBG,4))*(P(N+1,3)-P(LQBG,3))/
      &  ((P(N+1,4)+P(LQBG,4))**2+(P(N+1,3)-P(LQBG,3))**2)
+C...Modifications by Uta Klein for high-energy eh collisions
+#ifndef PYTHIA6_EH
         IF(ABS(HBE).GE.1D0) THEN
           MINT(51)=1
           MINT(57)=MINT(57)+1
           RETURN
         ENDIF
+#endif
         I=MINT(83)+5-LESD
         CALL PYROBO(I,I,0D0,0D0,0D0,0D0,HBE)
         DO 330 I=N+1,NCOP
@@ -20551,6 +20557,8 @@ C...Check minimum invariant mass of remnant system(s).
         PMIN(JT)=SQRT(PMIN(JT)**2+P(MINT(83)+JT+2,1)**2+
      &  P(MINT(83)+JT+2,2)**2)
   340 CONTINUE
+C...Modifications by Uta Klein for high-energy eh collisions
+#ifndef PYTHIA6_EH
       IF(PMIN(0)+PMIN(1)+PMIN(2).GT.VINT(1).OR.(MINT(45).GE.2.AND.
      &PMIN(1).GT.PSYS(1,4)).OR.(MINT(46).GE.2.AND.PMIN(2).GT.
      &PSYS(2,4))) THEN
@@ -20558,7 +20566,8 @@ C...Check minimum invariant mass of remnant system(s).
         MINT(57)=MINT(57)+1
         RETURN
       ENDIF
- 
+#endif
+
 C...Loop over two remnants; skip if none there.
       I=NS
       DO 410 JT=1,2
@@ -20800,11 +20809,11 @@ C...Construct longitudinal boosts.
       DPMTR=PMS(IR)
       DPMTL=PMS(IL)
       DSQLAM=SQRT(MAX(0D0,(DPMTB-DPMTR-DPMTL)**2-4D0*DPMTR*DPMTL))
-      IF(DSQLAM.LE.1D-6*DPMTB) THEN
-        MINT(51)=1
-        MINT(57)=MINT(57)+1
-        RETURN
-      ENDIF
+C      IF(DSQLAM.LE.1D-6*DPMTB) THEN
+C        MINT(51)=1
+C        MINT(57)=MINT(57)+1
+C        RETURN
+C      ENDIF
       DSQSGN=SIGN(1D0,PSYS(IR,3)*PSYS(IL,4)-PSYS(IL,3)*PSYS(IR,4))
       DRKR=(DPMTB+DPMTR-DPMTL+DSQLAM*DSQSGN)/
      &(2D0*(PSYS(IR,4)+PSYS(IR,3))*PNB)
@@ -20858,11 +20867,11 @@ C...Final check that energy-momentum conservation worked.
         PZSUM=PZSUM+P(I,3)
   500 CONTINUE
       PDEV=ABS(PESUM-VINT(1))+ABS(PZSUM)
-      IF(PDEV.GT.1D-4*VINT(1)) THEN
-        MINT(51)=1
-        MINT(57)=MINT(57)+1
-        RETURN
-      ENDIF
+C      IF(PDEV.GT.1D-4*VINT(1)) THEN
+C        MINT(51)=1
+C        MINT(57)=MINT(57)+1
+C        RETURN
+C      ENDIF
  
 C...Calculate rotation and boost from overall CM frame to
 C...hadronic CM frame in leptoproduction.
