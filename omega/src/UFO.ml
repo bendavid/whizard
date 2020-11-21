@@ -189,30 +189,30 @@ let name_to_string ?strip name =
 let name_attrib ?strip name attribs =
   match find_attrib name attribs with
   | S.Name n -> name_to_string ?strip n
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.name_attrib: " ^ name)
 
 let integer_attrib name attribs =
   match find_attrib name attribs with
   | S.Integer i -> i
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.integer_attrib: " ^ name)
 
 let charge_attrib name attribs =
   match find_attrib name attribs with
   | S.Integer i -> Q_Integer i
   | S.Fraction (n, d) -> Q_Fraction (n, d)
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.charge_attrib: " ^ name)
 
 let string_attrib name attribs =
   match find_attrib name attribs with
   | S.String s -> s
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.string_attrib: " ^ name)
 
 let boolean_attrib name attribs =
   try
     match ThoString.lowercase (name_attrib name attribs) with
     | "true" -> true
     | "false" -> false
-    | _ -> invalid_arg name
+    | _ -> invalid_arg ("UFO.boolean_attrib: " ^ name)
   with
   | Not_found -> false
 
@@ -303,39 +303,39 @@ let value_attrib name attribs =
   | S.Float x -> Float x
   | S.String s -> Expr (UFOx.Expr.of_string s)
   | S.Name n -> Name n
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.value_attrib: " ^ name)
 
 let string_list_attrib name attribs =
   match find_attrib name attribs with
   | S.String_List l -> l
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.string_list_attrib: " ^ name)
 
 let name_list_attrib ~strip name attribs =
   match find_attrib name attribs with
   | S.Name_List l -> List.map (name_to_string ~strip) l
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.name_list_attrib: " ^ name)
 
 let integer_list_attrib name attribs =
   match find_attrib name attribs with
   | S.Integer_List l -> l
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.integer_list_attrib: " ^ name)
 
 let order_dictionary_attrib name attribs =
   match find_attrib name attribs with
   | S.Order_Dictionary d -> d
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.order_dictionary_attrib: " ^ name)
 
 let coupling_dictionary_attrib ~strip name attribs =
   match find_attrib name attribs with
   | S.Coupling_Dictionary d ->
      List.map (fun (i, j, c) -> (i, j, name_to_string ~strip c)) d
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.coupling_dictionary_attrib: " ^ name)
 
 let decay_dictionary_attrib name attribs =
   match find_attrib name attribs with
   | S.Decay_Dictionary d ->
      List.map (fun (p, w) -> (List.map List.hd p, w)) d
-  | _ -> invalid_arg name
+  | _ -> invalid_arg ("UFO.decay_dictionary_attrib: " ^ name)
 
 (*i The following doesn't typecheck in applications, even with
     type annotations ...
@@ -433,7 +433,7 @@ module type Particle =
 	charge : charge;
 	ghost_number : int;
 	lepton_number : int;
-	y : int;
+	y : charge;
 	goldstone : bool;
 	propagating : bool;   (* NOT HANDLED YET! *)
 	line : string option; (* NOT HANDLED YET! *)
@@ -470,7 +470,7 @@ module Particle : Particle =
 	charge : charge;
 	ghost_number : int;
 	lepton_number : int;
-	y : int;
+	y : charge;
 	goldstone : bool;
 	propagating : bool;  (* NOT HANDLED YET! *)
 	line : string option; (* NOT HANDLED YET! *)
@@ -481,7 +481,7 @@ module Particle : Particle =
 	"particle: %s => [pdg = %d, name = '%s'/'%s', \
                           spin = %s, color = %s, \
                           mass = %s, width = %s,%s \
-                          Q = %s, G = %d, L = %d, Y = %d, \
+                          Q = %s, G = %d, L = %d, Y = %s, \
                           TeX = '%s'/'%s'%s]"
 	symbol p.pdg_code p.name p.antiname
 	(UFOx.Lorentz.rep_to_string p.spin)
@@ -491,7 +491,8 @@ module Particle : Particle =
          | None -> ""
          | Some p -> " propagator = " ^ p ^ ",")
 	(charge_to_string p.charge)
-	p.ghost_number p.lepton_number p.y
+	p.ghost_number p.lepton_number
+        (charge_to_string p.y)
 	p.texname p.antitexname
 	(if p.goldstone then ", GB" else "")
 
@@ -554,7 +555,7 @@ module Particle : Particle =
 	     (* The optional attributes per UFO docs. *)
              ghost_number = optional integer_attrib "GhostNumber" 0;
 	     lepton_number = optional integer_attrib "LeptonNumber" 0;
-	     y = optional integer_attrib "Y" 0;
+	     y = optional charge_attrib "Y" (Q_Integer 0);
 	     goldstone = optional boolean_attrib "goldstone" false;
 	     propagating = optional boolean_attrib "propagating" true;
 	     line =
