@@ -275,7 +275,7 @@ but before evaluating expressions.
 
 @ %def subevt_expr_link_var_list
 @ Compile the selection expression.  If there is no expression, the build
-method won't allocate the expression object.
+method will not allocate the expression object.
 <<Subevt expr: subevt expr: TBP>>=
   procedure :: setup_selection => subevt_expr_setup_selection
 <<Subevt expr: procedures>>=
@@ -2228,7 +2228,7 @@ end module parton_states_uti
        call state%set_matrix_element (i_allowed_states(i), me(i))
     end do
 
-    !!! Don't forget the color factor
+    !!! Do not forget the color factor
     me_check_tot = 3._default * me_check_tot
     me_check_1 = 3._default * me_check_1
     me_check_2 = 3._default * me_check_2
@@ -3705,8 +3705,8 @@ recorded in the [[meta]] block.  Delegate to the [[pcm]].
     if (process%is_nlo_calculation ()) then
        i_sub = process%component(1)%config%get_associated_subtraction ()
        subtraction_method = process%component(i_sub)%config%get_me_method ()
-       if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_setup_terms: ", &
-            subtraction_method)
+       if (debug_on) call msg_debug2 &
+            (D_PROCESS_INTEGRATION, "process_setup_terms: ", subtraction_method)
     end if
 
     do i = 1, n_components
@@ -7364,7 +7364,7 @@ there.
             (id, meta%component_description)
        allocate (meta%active (meta%n_components), source = .true.)
     else
-       call msg_fatal ("Process library doesn't contain process '" &
+       call msg_fatal ("Process library does not contain process '" &
             // char (id) // "'")
     end if
     if (.not. lib%is_active ()) then
@@ -10708,7 +10708,6 @@ object and the squared matrix-element collector.
   public :: pcm_instance_nlo_t
 <<Pcm: types>>=
   type, extends (pcm_instance_t) :: pcm_instance_nlo_t
-     logical :: use_internal_color_correlation = .true.
      type(real_kinematics_t), pointer :: real_kinematics => null ()
      type(isr_kinematics_t), pointer :: isr_kinematics => null ()
      type(real_subtraction_t) :: real_sub
@@ -12126,29 +12125,36 @@ relevant for a NLO algorithm.
     select type (phs => term%k_term%phs)
       type is (phs_wood_t)
          if (me_already_squared) then
-            call term%isolated%setup_identity_trace (core, mask_in, .true., .false.)
+            call term%isolated%setup_identity_trace &
+                 (core, mask_in, .true., .false.)
          else
-            call term%isolated%setup_square_trace (core, mask_in, term%config%col, .false.)
+            call term%isolated%setup_square_trace &
+                 (core, mask_in, term%config%col, .false.)
          end if
       type is (phs_fks_t)
          select case (phs%mode)
          case (PHS_MODE_ADDITIONAL_PARTICLE)
             if (me_already_squared) then
-               call term%isolated%setup_identity_trace (core, mask_in, .true., .false.)
+               call term%isolated%setup_identity_trace &
+                    (core, mask_in, .true., .false.)
             else
                keep_fs_flavors = term%config%data%n_flv > 1
-               call term%isolated%setup_square_trace (core, mask_in, term%config%col, &
+               call term%isolated%setup_square_trace &
+                    (core, mask_in, term%config%col, &
                     keep_fs_flavors)
             end if
          case (PHS_MODE_COLLINEAR_REMNANT)
             if (me_already_squared) then
-               call term%isolated%setup_identity_trace (core, mask_in, .true., .false.)
+               call term%isolated%setup_identity_trace &
+                    (core, mask_in, .true., .false.)
             else
-               call term%isolated%setup_square_trace (core, mask_in, term%config%col, .false.)
+               call term%isolated%setup_square_trace &
+                    (core, mask_in, term%config%col, .false.)
             end if
          end select
       class default
-         call term%isolated%setup_square_trace (core, mask_in, term%config%col, .false.)
+         call term%isolated%setup_square_trace &
+              (core, mask_in, term%config%col, .false.)
     end select
     if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL .and. &
          term%config%i_term_global == term%config%i_sub) .or. &
@@ -12949,7 +12955,7 @@ and summed over color and helicity. They should not be squared again.
       if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL &
            .and. term%config%i_term_global == term%config%i_sub) &
            .or. term%nlo_type == NLO_DGLAP) then
-         !!! We don't care about the subtraction matrix elements in
+         !!! We do not care about the subtraction matrix elements in
          !!! connected%matrix, because all entries there are supposed
          !!! to be squared. To be able to match with flavor quantum numbers,
          !!! we remove the subtraction quantum entries from the state matrix.
@@ -13248,6 +13254,11 @@ it is only available after the [[fks_regions]] have been created.
           sqme = zero
           select type (phs => term%k_term%phs)
           type is (phs_fks_t)
+             if (pcm_instance%config%has_pdfs .and. &
+                  config%settings%use_internal_color_correlations) then
+                call msg_fatal ("Color correlations for proton processes " // &
+                     "so far only supported by OpenLoops.")
+             end if
              call pcm_instance%set_real_and_isr_kinematics &
                   (phs%phs_identifiers, term%k_term%phs%get_sqrts ())
              if (term%k_term%emitter < 0) then
@@ -15386,7 +15397,8 @@ terms, iterating over all active process components.
                        term%nlo_type == NLO_DGLAP) &
                        call term%set_sf_factors (has_pdfs)
                   if (term%nlo_type > BORN) then
-                     if (.not. (term%nlo_type == NLO_REAL .and. term%k_term%emitter >= 0)) then
+                     if (.not. (term%nlo_type == NLO_REAL .and. &
+                          term%k_term%emitter >= 0)) then
                         select type (config => term%pcm_instance%config)
                         type is (pcm_nlo_t)
                            if (char (config%settings%nlo_correction_type) == "QCD" .or. &

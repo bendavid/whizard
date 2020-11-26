@@ -6512,7 +6512,6 @@ module integrations_uti
   use ifiles
   use lexers
   use parser
-  use io_units
   use flavors
   use interactions, only: reset_interaction_counter
   use phs_forests
