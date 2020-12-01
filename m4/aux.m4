@@ -280,6 +280,11 @@ if test "$HEPMC_AVAILABLE_FLAG" = "yes" ; then
 else
    echo "HepMC (event format):   no"
 fi
+if test "$HDF5_AVAILABLE_FLAG" = "yes" ; then
+   echo "HDF5 (binary format):   yes, v$HDF5_VERSION"
+else
+   echo "HDF5 (binary format):   no"
+fi
 if test "$LCIO_AVAILABLE_FLAG" = "yes" ; then
    echo "LCIO (event format) :   yes, v$LCIO_VERSION"
 else

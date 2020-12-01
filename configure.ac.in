@@ -616,6 +616,13 @@ WO_CONFIGURE_SECTION([LCIO])
 WO_PROG_LCIO()
 
 ###---------------------------------------------------------------------
+### HDF5 (for events, grids etc.)
+
+WO_CONFIGURE_SECTION([HDF5])
+
+WO_PROG_HDF5(1.8.0,no)
+
+###---------------------------------------------------------------------
 ### PYTHIA6, PYTHIA8 etc
 
 WO_CONFIGURE_SECTION([SHOWERS PYTHIA6 PYTHIA8 MPI])
