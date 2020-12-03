@@ -1001,6 +1001,11 @@ i*)
       pp_divide ~indent:4 ff (); i*)
       printf "%s" (Buffer.contents decl_buf);
       pp_divide ~indent:4 ff ();
+      printf "    if (g == 0) then"; nl ();
+      printf "      call set_zero (%s)" wfs.(0).name; nl ();
+      printf "      return"; nl ();
+      printf "    end if"; nl ();
+      pp_divide ~indent:4 ff ();
       printf "%s" (Buffer.contents eval_buf);
       printf "  end function %s@]" name; nl ();
       Buffer.reset decl_buf;

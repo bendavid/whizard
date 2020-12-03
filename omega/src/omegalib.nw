@@ -36,7 +36,7 @@ module omega_spinors
   implicit none
   private
   public :: operator (*), operator (+), operator (-)
-  public :: abs
+  public :: abs, set_zero
   <<[[intrinsic :: abs]]>>
   type, public :: conjspinor
      ! private (omegalib needs access, but DON'T TOUCH IT!)
@@ -88,6 +88,24 @@ pure function conjspinor_spinor (psibar, psi) result (psibarpsi)
 end function conjspinor_spinor
 @
 \subsection{Spinor Vector Space}
+<<Declaration of operations for spinors>>=
+interface set_zero
+  module procedure set_zero_spinor, set_zero_conjspinor
+end interface
+private :: set_zero_spinor, set_zero_conjspinor
+@
+<<Implementation of operations for spinors>>=
+elemental subroutine set_zero_spinor (x)
+  type(spinor), intent(out) :: x
+  x%a = 0
+end subroutine set_zero_spinor
+@
+<<Implementation of operations for spinors>>=
+elemental subroutine set_zero_conjspinor (x)
+  type(conjspinor), intent(out) :: x
+  x%a = 0
+end subroutine set_zero_conjspinor
+@
 \subsubsection{Scalar Multiplication}
 <<Declaration of operations for spinors>>=
 interface operator (*)
@@ -340,7 +358,7 @@ module omega_bispinors
   implicit none
   private
   public :: operator (*), operator (+), operator (-)
-  public :: abs
+  public :: abs, set_zero
   type, public :: bispinor
      ! private (omegalib needs access, but DON'T TOUCH IT!)
      complex(kind=default), dimension(4) :: a
@@ -374,6 +392,18 @@ pure function spinor_product (psil, psir) result (psilpsir)
 end function spinor_product
 @
 \subsection{Spinor Vector Space}
+<<Declaration of operations for bispinors>>=
+interface set_zero
+  module procedure set_zero_bispinor
+end interface
+private :: set_zero_bispinor
+@
+<<Implementation of operations for bispinors>>=
+elemental subroutine set_zero_bispinor (x)
+  type(bispinor), intent(out) :: x
+  x%a = 0
+end subroutine set_zero_bispinor
+@
 \subsubsection{Scalar Multiplication}
 <<Declaration of operations for bispinors>>=
 interface operator (*)
@@ -542,7 +572,7 @@ module omega_vectorspinors
   implicit none
   private
   public :: operator (*), operator (+), operator (-)
-  public :: abs
+  public :: abs, set_zero
   type, public :: vectorspinor
      ! private (omegalib needs access, but DON'T TOUCH IT!)
      type(bispinor), dimension(4) :: psi
@@ -573,6 +603,18 @@ pure function vspinor_product (psil, psir) result (psilpsir)
 end function vspinor_product
 @
 \subsection{Vectorspinor Vector Space}
+<<Declaration of operations for vectorspinors>>=
+interface set_zero
+  module procedure set_zero_vectorspinor
+end interface
+private :: set_zero_vectorspinor
+@
+<<Implementation of operations for vectorspinors>>=
+elemental subroutine set_zero_vectorspinor (x)
+  type(vectorspinor), intent(out) :: x
+  call set_zero (x%psi)
+end subroutine set_zero_vectorspinor
+@
 \subsubsection{Scalar Multiplication}
 <<Declaration of operations for vectorspinors>>=
 interface operator (*)
@@ -827,7 +869,7 @@ module omega_vectors
   private
   public :: assignment (=), operator(==)
   public :: operator (*), operator (+), operator (-), operator (.wedge.)
-  public :: abs, conjg
+  public :: abs, conjg, set_zero
   public :: random_momentum
   <<[[intrinsic :: abs]]>>
   <<[[intrinsic :: conjg]]>>
@@ -1082,6 +1124,47 @@ pure function vector_wedge_vector (x, y) result (t2)
 end function vector_wedge_vector
 @
 \subsection{Vector Space}
+<<Declaration of operations for vectors>>=
+interface set_zero
+  module procedure set_zero_vector, set_zero_momentum, &
+    set_zero_tensor2odd, set_zero_real, set_zero_complex
+end interface
+private :: set_zero_vector, set_zero_momentum, set_zero_tensor2odd
+@
+<<Implementation of operations for vectors>>=
+elemental subroutine set_zero_vector (x)
+  type(vector), intent(out) :: x
+  x%t = 0
+  x%x = 0
+end subroutine set_zero_vector
+@
+<<Implementation of operations for vectors>>=
+elemental subroutine set_zero_momentum (x)
+  type(momentum), intent(out) :: x
+  x%t = 0
+  x%x = 0
+end subroutine set_zero_momentum
+@
+<<Implementation of operations for vectors>>=
+elemental subroutine set_zero_tensor2odd (x)
+  type(tensor2odd), intent(out) :: x
+  x%e = 0
+  x%b = 0
+end subroutine set_zero_tensor2odd
+@
+Doesn't really belong here, but there is no better place \ldots
+<<Implementation of operations for vectors>>=
+elemental subroutine set_zero_real (x)
+  real(kind=default), intent(out) :: x
+  x = 0
+end subroutine set_zero_real
+@
+<<Implementation of operations for vectors>>=
+elemental subroutine set_zero_complex (x)
+  complex(kind=default), intent(out) :: x
+  x = 0
+end subroutine set_zero_complex
+@
 \subsubsection{Scalar Multiplication}
 <<Declaration of operations for vectors>>=
 interface operator (*)
@@ -2010,7 +2093,7 @@ module omega_tensors
   private
   public :: operator (*), operator (+), operator (-), &
        operator (.tprod.)
-  public :: abs, conjg
+  public :: abs, conjg, set_zero
   <<[[intrinsic :: abs]]>>
   <<[[intrinsic :: conjg]]>>
   type, public :: tensor
@@ -2024,6 +2107,18 @@ contains
 end module omega_tensors
 @
 \subsection{Vector Space}
+<<Declaration of operations for tensors>>=
+interface set_zero
+  module procedure set_zero_tensor
+end interface
+private :: set_zero_tensor
+@
+<<Implementation of operations for tensors>>=
+elemental subroutine set_zero_tensor (x)
+  type(tensor), intent(out) :: x
+  x%t = 0
+end subroutine set_zero_tensor
+@
 \subsubsection{Scalar Multliplication}
 <<Declaration of operations for tensors>>=
 interface operator (*)

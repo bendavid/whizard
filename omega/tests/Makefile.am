@@ -746,6 +746,49 @@ amplitude_benchmark_v1.o amplitude_benchmark_v2.o \
 
 ########################################################################
 
+EXTRA_PROGRAMS += benchmark_UFO_SMEFT
+
+run_benchmark_UFO_SMEFT: benchmark_UFO_SMEFT
+	./benchmark_UFO_SMEFT
+
+# NB: This is NOT portable ...
+UFO_SMEFT = /home/ohl/physics/SMEFT_mW_UFO/
+
+BENCHMARK_UFO_SMEFT_PROCESS = -scatter "e+ e- -> W+ W- Z"
+
+benchmark_UFO_SMEFT_SOURCES = benchmark_UFO_SMEFT.f90
+nodist_benchmark_UFO_SMEFT_SOURCES = \
+	amplitude_benchmark_UFO_SMEFT.f90 \
+	amplitude_benchmark_UFO_SMEFT_opt.f90 \
+	parameters_UFO_SMEFT.f90
+
+benchmark_UFO_SMEFT_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+amplitude_benchmark_UFO_SMEFT.f90: $(OMEGA_UFO) Makefile
+	$(OMEGA_UFO) -model:UFO_dir $(UFO_SMEFT) -model:exec \
+	-target:module amplitude_benchmark_UFO_SMEFT \
+	-target:parameter_module parameters_UFO_SMEFT \
+	$(BENCHMARK_UFO_SMEFT_PROCESS) | $(SED) 's/g == 0/.false./' > $@
+
+amplitude_benchmark_UFO_SMEFT_opt.f90: $(OMEGA_UFO) Makefile
+	$(OMEGA_UFO) -model:UFO_dir $(UFO_SMEFT) -model:exec \
+	-target:module amplitude_benchmark_UFO_SMEFT_opt \
+	-target:parameter_module parameters_UFO_SMEFT \
+	$(BENCHMARK_UFO_SMEFT_PROCESS) > $@
+
+benchmark_UFO_SMEFT.o: \
+	amplitude_benchmark_UFO_SMEFT.o amplitude_benchmark_UFO_SMEFT_opt.o
+
+benchmark_UFO_SMEFT.o: parameters_QCD.o
+amplitude_benchmark_UFO_SMEFT.o amplitude_benchmark_UFO_SMEFT_opt.o: \
+	parameters_QCD.o
+
+parameters_UFO_SMEFT.f90: $(OMEGA_UFO)
+	$(OMEGA_UFO) -model:UFO_dir $(UFO_SMEFT) -model:exec \
+	-target:parameter_module parameters_UFO_SMEFT -params > $@
+
+########################################################################
+
 if OCAML_AVAILABLE
 
 TESTS += vertex_unit
@@ -966,6 +1009,7 @@ clean-local: clean-macosx
 		parameters_SM_UFO.f90 keystones_omegalib.f90 keystones_UFO.f90 \
 		keystones_UFO_bispinors.f90 keystones_omegalib_bispinors.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
+		parameters_UFO_SMEFT.f90 \
 		*.hbc *wrappers.f90 cascade phase_space \
 		output.rcl recola.log
 	rm -fr  output_cll
