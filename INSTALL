@@ -103,6 +103,15 @@ WHIZARD:
 
 MAC OS X:
 
+There was a big leap from macOS Catalina to macOS Big Sur, with
+the change from Darwin19 to Darwin20 as well as from macOS version
+number 10.15.x to 11.0.x. This enforced a patch for libtool-based
+packages regarding the correct treatment of linking shared libraries.
+We patched this for WHIZARD 3.0.0. This also applies to the 
+gcc/g++/gfortran compiler suite on macOS Big Sur (or later),
+as this issue was fixed only for 11.0 of the compiler suite and
+backported to 8.5, 9.4 and 10.3 of gcc.
+
 WHIZARD has been tested and partially developed under MAC OSX 
 The single pass linker of OSX forces to
 explicitly include static C++ libraries when externally linking

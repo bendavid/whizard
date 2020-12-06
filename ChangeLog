@@ -4,6 +4,13 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2020-12-06
+	Patch for macOS Big Sur shared library handling due to libtool;
+	   the patch also demands gcc/gfortran 11.0/10.3/9.4/8.5
+
+2020-12-04
+	O'Mega only inserts non-vanishing couplings from UFO models
+
 2020-11-21
 	Bug fix for fractional hypercharges in UFO models
 

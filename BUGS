@@ -48,6 +48,14 @@ Known (recent) bugs:
 
 Compilers and OS specialties:
 
+* macOS Darwin >= 20.1:
+  The libtool support for macOS Big Sur (darwin 20.1+) needed to be updated
+  in order to treat shared libraries correctly. This affected also the
+  gcc/gfortran/g++ compiler suite, so on macOS Big Sur, WHIZARD versions older
+  than 3.0.0 do not work, and WHIZARD will only work with gcc/g++/gfortran
+  compiler versions 8.5, 9.4, 10.3, and 11.1 or newer (in the corresponding
+  sub-series).
+
 * MAC OS X Darwin >= 10.11:
   The security measures of the new Darwin systems do not allow e.g.
   environment variables passed to subprocesses. This does not change
