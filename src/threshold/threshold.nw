@@ -9759,11 +9759,11 @@ where the variables are from.
        if (vec_type == AXIAL) then
           contrib_from_potential = - CF * ps%mpole / (two * ps%p) * &
                (imago * ps%mpole * v / ps%p + &
-               (ps%mpole**2 * v**2 + (ps%p)**2 / (4 *Pi * (ps%p)**2) * ( &
+               (ps%mpole**2 * v**2 + (ps%p)**2) / (4 *Pi * (ps%p)**2) * ( &
                (log (- ps%mpole * v - ps%p))**2 - &
                (log (- ps%mpole * v + ps%p))**2 + &
                (log (ps%mpole * v - ps%p))**2 - &
-               (log (ps%mpole * v + ps%p))**2 )))
+               (log (ps%mpole * v + ps%p))**2 ))
        else
           contrib_from_potential = imago * CF * ps%mpole * &
                log ((ps%p + ps%mpole * v) / &
