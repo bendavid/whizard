@@ -5841,6 +5841,17 @@ one that is stored in the process object.
   end function process_get_sqrts
 
 @ %def process_get_sqrts
+@ The lab-frame beam energy/energies..
+<<Process: process: TBP>>=
+  procedure :: get_energy => process_get_energy
+<<Process: procedures>>=
+  function process_get_energy (process) result (e)
+    class(process_t), intent(in) :: process
+    real(default), dimension(:), allocatable :: e
+    e = process%beam_config%data%get_energy ()
+  end function process_get_energy
+
+@ %def process_get_energy
 @ The beam polarization in case of simple degrees.
 <<Process: process: TBP>>=
   procedure :: get_polarization => process_get_polarization
@@ -10753,16 +10764,16 @@ object and the squared matrix-element collector.
   procedure :: init_config => pcm_instance_nlo_init_config
 <<Pcm: procedures>>=
   subroutine pcm_instance_nlo_init_config (pcm_instance, active_components, &
-     nlo_types, sqrts, i_real_fin, model)
+     nlo_types, energy, i_real_fin, model)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     logical, intent(in), dimension(:) :: active_components
     integer, intent(in), dimension(:) :: nlo_types
-    real(default), intent(in) :: sqrts
+    real(default), intent(in), dimension(:) :: energy
     integer, intent(in) :: i_real_fin
     class(model_data_t), intent(in) :: model
     integer :: i_component
     if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "pcm_instance_nlo_init_config")
-    call pcm_instance%init_real_and_isr_kinematics (sqrts)
+    call pcm_instance%init_real_and_isr_kinematics (energy)
     select type (pcm => pcm_instance%config)
     type is (pcm_nlo_t)
        do i_component = 1, size (active_components)
@@ -10804,9 +10815,9 @@ object and the squared matrix-element collector.
   procedure :: init_real_and_isr_kinematics => &
        pcm_instance_nlo_init_real_and_isr_kinematics
 <<Pcm: procedures>>=
-  subroutine pcm_instance_nlo_init_real_and_isr_kinematics (pcm_instance, sqrts)
+  subroutine pcm_instance_nlo_init_real_and_isr_kinematics (pcm_instance, energy)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
-    real(default) :: sqrts
+    real(default), dimension(:), intent(in) :: energy
     integer :: n_contr
     allocate (pcm_instance%real_kinematics)
     allocate (pcm_instance%isr_kinematics)
@@ -10829,7 +10840,7 @@ object and the squared matrix-element collector.
           pcm_instance%isr_kinematics%n_in = region_data%n_in
        end associate
     end select
-    pcm_instance%isr_kinematics%beam_energy = sqrts / two
+    pcm_instance%isr_kinematics%beam_energy = energy
   end subroutine pcm_instance_nlo_init_real_and_isr_kinematics
 
 @ %def pcm_instance_nlo_init_real_and_isr_kinematics
@@ -14487,8 +14498,8 @@ to subobject of [[instance]].
        select type (pcm_instance => instance%pcm)
        type is (pcm_instance_nlo_t)
           call pcm_instance%init_config (process%component_can_be_integrated (), &
-               process%get_nlo_type_component (), process%get_sqrts (), i_real_fin, &
-               process%get_model_ptr ())
+               process%get_nlo_type_component (), process%get_energy (), &
+               i_real_fin, process%get_model_ptr ())
        end select
     end select
     allocate (instance%term (process%get_n_terms ()))

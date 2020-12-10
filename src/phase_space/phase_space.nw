@@ -15827,13 +15827,44 @@ phase spaces.
     real(default), dimension(2) :: x = one
     real(default), dimension(2) :: z = zero
     real(default) :: sqrts_born = zero
-    real(default) :: beam_energy = zero
+    real(default), dimension(:), allocatable :: beam_energy
     real(default) :: fac_scale = zero
     real(default), dimension(2) :: jacobian = one
     integer :: isr_mode = SQRTS_FIXED
+  contains
+  <<phs fks: isr kinematics: TBP>>
   end type isr_kinematics_t
 
 @ %def type isr_kinematics_t
+@
+<<phs fks: isr kinematics: TBP>>=
+  procedure :: write => isr_kinematics_write
+<<phs fks: procedures>>=
+  subroutine isr_kinematics_write (isr, unit)
+    class(isr_kinematics_t), intent(in) :: isr
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit); if (u < 0) return
+    write (u,"(A)") "ISR kinematics: "
+    write (u,"(A," // FMT_17 // ",1X)") "x(+):         ", isr%x(1)
+    write (u,"(A," // FMT_17 // ",1X)") "x(-):         ", isr%x(2)
+    write (u,"(A," // FMT_17 // ",1X)") "z(+):         ", isr%z(1)
+    write (u,"(A," // FMT_17 // ",1X)") "z(-):         ", isr%z(2)
+    write (u,"(A," // FMT_17 // ",1X)") "sqrts (Born): ", isr%sqrts_born
+    if (allocated (isr%beam_energy)) then
+       do i = 1, size (isr%beam_energy)
+          write (u,"(A," // FMT_17 // ",1X)") "Beam energy:  ", &
+               isr%beam_energy(i)
+       end do
+    end if
+    write (u,"(A," // FMT_17 // ",1X)") "Fac. scale:   ", isr%fac_scale
+    do i = 1, 2
+       write (u,"(A," // FMT_17 // ",1X)") "Jacobian:     ", isr%jacobian(i)
+    end do
+    write (u,"(A,I0,1X)") "ISR mode:     ", isr%isr_mode
+  end subroutine isr_kinematics_write
+
+@ %def isr_kinematics_write
 @
 <<phs fks: public>>=
   public :: phs_point_set_t
@@ -16843,7 +16874,7 @@ phase-space points with [[p_real(emitter) = 0]].
 
     associate (isr_kinematics => generator%isr_kinematics)
        do em = 1, 2
-          isr_kinematics%x(em) = p(em)%p(0) / isr_kinematics%beam_energy
+          isr_kinematics%x(em) = p(em)%p(0) / isr_kinematics%beam_energy(em)
           isr_kinematics%z(em) = one - (one - isr_kinematics%x(em)) * r
           isr_kinematics%jacobian(em) =  one - isr_kinematics%x(em)
        end do
@@ -17000,7 +17031,6 @@ channel with an emitter.
     type(vector4_t), dimension(:), allocatable :: q_real
     type(vector4_t), dimension(:), allocatable :: p_born_tot
     type(phs_fks_generator_t) :: generator
-    logical :: perform_generation = .true.
     real(default) :: r_isr
     type(phs_identifier_t), dimension(:), allocatable :: phs_identifiers
   contains
@@ -17141,21 +17171,19 @@ calculated from the Born momenta.
     phs%q_defined = phs%phs_wood_t%q_defined
     if (.not. phs%q_defined) return
 
-    if (phs%perform_generation) then
-       select case (phs%mode)
-       case (PHS_MODE_ADDITIONAL_PARTICLE)
-          n_in = phs%config%n_in
-          phs%p_born = phs%phs_wood_t%p
-          phs%q_born = phs%phs_wood_t%q
-          phs%p_born_tot (1: n_in) = phs%p_born
-          phs%p_born_tot (n_in + 1 :) = phs%q_born
-          call phs%set_reference_frames (.true.)
-          call phs%set_isr_kinematics (.true.)
-       case (PHS_MODE_COLLINEAR_REMNANT)
-          call phs%compute_isr_kinematics (r_in(phs%n_r_born + 1))
-          phs%r_isr = r_in(phs%n_r_born + 1)
-       end select
-    end if
+    select case (phs%mode)
+    case (PHS_MODE_ADDITIONAL_PARTICLE)
+       n_in = phs%config%n_in
+       phs%p_born = phs%phs_wood_t%p
+       phs%q_born = phs%phs_wood_t%q
+       phs%p_born_tot (1: n_in) = phs%p_born
+       phs%p_born_tot (n_in + 1 :) = phs%q_born
+       call phs%set_reference_frames (.true.)
+       call phs%set_isr_kinematics (.true.)
+    case (PHS_MODE_COLLINEAR_REMNANT)
+       call phs%compute_isr_kinematics (r_in(phs%n_r_born + 1))
+       phs%r_isr = r_in(phs%n_r_born + 1)
+    end select
   end subroutine phs_fks_evaluate_selected_channel
 
 @ %def phs_fks_evaluate_selected_channel
@@ -17376,9 +17404,9 @@ calculated from the Born momenta.
   end subroutine phs_fks_compute_cms_energy
 
 @ %def phs_fks_compute_cms_energy
-@ When initial-state radiation is involved, either due to beamnstrahlung or
-QCD corrections, it is important to have access to both the phase space points
-in the center-of-mass and lab frame.
+@ When initial-state radiation is involved, either due to beamstrahlung or
+QCD/QED corrections, it is important to have access to both the phase
+space points in the center-of-mass and lab frame.
 <<phs fks: phs fks: TBP>>=
   procedure :: set_reference_frames => phs_fks_set_reference_frames
 <<phs fks: procedures>>=
@@ -18294,9 +18322,11 @@ about the same azimuthal and polar angles as in the Born system.
 Finally, the momenta are boosted out of the rest frame by multiplying
 with $\Lambda$.
 <<phs fks: phs fks generator: TBP>>=
-  procedure :: generate_isr_fixed_beam_energy => phs_fks_generator_generate_isr_fixed_beam_energy
+  procedure :: generate_isr_fixed_beam_energy => &
+       phs_fks_generator_generate_isr_fixed_beam_energy
 <<phs fks: procedures>>=
-  subroutine phs_fks_generator_generate_isr_fixed_beam_energy (generator, i_phs, p_born, p_real)
+  subroutine phs_fks_generator_generate_isr_fixed_beam_energy &
+       (generator, i_phs, p_born, p_real)
      class(phs_fks_generator_t), intent(inout) :: generator
      integer, intent(in) :: i_phs
      type(vector4_t), intent(in), dimension(:) :: p_born
@@ -18598,15 +18628,25 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
   end subroutine phs_fks_generator_set_xi_and_y_bounds
 
 @ %def phs_fks_generator_set_xi_and_y_bounds
-@ Sets [[x]] in the generator's [[isr_kinematics]] to be used in unit tests.
+@ Sets [[x]] in the [[isr_kinematics]] of the generator.
 <<phs fks: phs fks generator: TBP>>=
   procedure :: set_isr_kinematics => phs_fks_generator_set_isr_kinematics
 <<phs fks: procedures>>=
   subroutine phs_fks_generator_set_isr_kinematics (generator, p)
     class(phs_fks_generator_t), intent(inout) :: generator
     type(vector4_t), dimension(2), intent(in) :: p
-
-    generator%isr_kinematics%x = p%p(0) / generator%isr_kinematics%beam_energy
+    if (allocated (generator%isr_kinematics%beam_energy)) then
+       select case (size (generator%isr_kinematics%beam_energy))
+       case (1)
+          generator%isr_kinematics%x = p%p(0) / &
+               generator%isr_kinematics%beam_energy(1)
+       case (2)
+          generator%isr_kinematics%x = p%p(0) / &
+               generator%isr_kinematics%beam_energy
+       end select
+    else
+       generator%isr_kinematics%x = 0
+    end if
   end subroutine phs_fks_generator_set_isr_kinematics
 
 @ %def phs_fks_generator_set_isr_kinematics
@@ -19536,6 +19576,7 @@ end module phs_fks_uti
     allocate (generator%isr_kinematics)
     generator%emitters(1) = 1; generator%emitters(2) = 2
     generator%sqrts = sqrts_hadronic
+    allocate (generator%isr_kinematics%beam_energy(2))
     generator%isr_kinematics%beam_energy = sqrts_hadronic / two
     call generator%set_sqrts_hat (sqrts_hadronic)
     call generator%set_isr_kinematics (p_born)
