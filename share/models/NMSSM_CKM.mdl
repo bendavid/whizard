@@ -186,15 +186,15 @@ parameter mv_12  = 0            # chargino mixing matrix
 parameter mv_21  = 0            # chargino mixing matrix
 parameter mv_22  = 1            # chargino mixing matrix
 	
-parameter vckm11 = 0.97383      # Vud
-parameter vckm12 = 0.2272       # Vus
-parameter vckm13 = 0.00396      # Vub
-parameter vckm21 = -0.2271	# Vcd
-parameter vckm22 = 0.97296      # Vcs
-parameter vckm23 = 0.04221      # Vcb
-parameter vckm31 = 0.00814      # Vtd
-parameter vckm32 = -0.04161     # Vts
-parameter vckm33 = 0.99910      # Vtb	
+parameter vckm11 = 0.97401      # Vud
+parameter vckm12 = 0.22650      # Vus
+parameter vckm13 = 0.00361      # Vub
+parameter vckm21 = -0.22636	# Vcd
+parameter vckm22 = 0.97320      # Vcs
+parameter vckm23 = 0.04053      # Vcb
+parameter vckm31 = 0.00854      # Vtd
+parameter vckm32 = -0.03978     # Vts
+parameter vckm33 = 0.999172     # Vtb
 
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)

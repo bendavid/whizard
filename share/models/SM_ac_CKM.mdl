@@ -24,16 +24,16 @@ parameter wW       = 2.049        # W-boson width
 parameter wH       = 0.004143     # Higgs width  
 parameter xi0      = 0       	  # R_xi parameter for Z-boson
 parameter xipm     = 0		  # R_xi parameter for W-boson
-# Here are the values from PDG 2006
-parameter vckm11   = 0.97383      # Vud
-parameter vckm12   = 0.2272       # Vus
-parameter vckm13   = 0.00396      # Vub
-parameter vckm21   = -0.2271      # Vcd
-parameter vckm22   = 0.97296      # Vcs
-parameter vckm23   = 0.04221      # Vcb
-parameter vckm31   = 0.00814      # Vtd
-parameter vckm32   = -0.04161     # Vts
-parameter vckm33   = 0.99910      # Vtb
+# Here are the values from PDG 2020
+parameter vckm11 = 0.97401      # Vud
+parameter vckm12 = 0.22650      # Vus
+parameter vckm13 = 0.00361      # Vub
+parameter vckm21 = -0.22636     # Vcd
+parameter vckm22 = 0.97320      # Vcs
+parameter vckm23 = 0.04053      # Vcb
+parameter vckm31 = 0.00854      # Vtd
+parameter vckm32 = -0.03978     # Vts
+parameter vckm33 = 0.999172     # Vtb
 parameter a4       = 0            # Coefficient of L4      
 parameter a5       = 0            # Coefficient of L5
 parameter a6       = 0            # Coefficient of L6      
