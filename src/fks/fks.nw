@@ -8597,10 +8597,11 @@ Be aware that this approach will not work for $pe$ collisions.
     subroutine check_me_consistency ()
       real(default) ::  sqme_sum
       if (debug_on) call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
-      sqme_sum = rsub%sqme_born_spin_c(1,1,emitter,i_born) &
+      sqme_sum = &
+               - rsub%sqme_born_spin_c(1,1,emitter,i_born) &
                - rsub%sqme_born_spin_c(2,2,emitter,i_born) &
                - rsub%sqme_born_spin_c(3,3,emitter,i_born)
-      if (.not. nearly_equal (sqme_sum, -rsub%sqme_born(i_born), 0.0001_default)) then
+      if (.not. nearly_equal (sqme_sum, -rsub%sqme_born(i_born))) then
          print *, 'Spin-correlated matrix elements are not consistent: '
          print *, 'emitter: ', emitter
          print *, 'g^{mu,nu} B_{mu,nu}: ', -sqme_sum
