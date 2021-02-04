@@ -146,6 +146,9 @@ AC_SUBST([PKGTEXDIR])
 ### Parent location of installed .mod files
 ### To be used in Fortran source
 FMODDIR=$prefix/lib/mod
+case $FMODDIR in
+NONE*) FMODDIR="\${prefix}/lib/mod" ;;
+esac
 AC_SUBST([FMODDIR])
 
 ### To be used in Makefile.am

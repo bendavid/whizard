@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2021-02-04
+	Bug fix if user does not set a prefix at configuration
+
 2020-12-10
 	Generalize NLO calculations to non-CMS lab frames
 
