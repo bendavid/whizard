@@ -33,7 +33,7 @@ These are the implementation modules:
   Auxiliary output format.  The only purpose is to execute a callback
   procedure, so we have a hook for external access during event output.
 \item[eio\_weights]
-  Print some event summary data, no details.  The main use if for
+  Print some event summary data, no details.  The main use is for
   testing purposes.
 \item[eio\_dump]
   Dump the contents of WHIZARD's [[particle_set]] internal record,

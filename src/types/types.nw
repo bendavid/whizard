@@ -5102,7 +5102,7 @@ sums which are necessary for proper averaging.
   end subroutine observable_clear
 
 @ %def observable_clear
-@ Record a a value.  Always successful for observables.
+@ Record a value.  Always successful for observables.
 <<Analysis: interfaces>>=
   interface observable_record_value
      module procedure observable_record_value_unweighted
@@ -5128,7 +5128,7 @@ sums which are necessary for proper averaging.
     logical, intent(out), optional :: success
     obs%sum_values = obs%sum_values + value * weight
     obs%sum_squared_values = obs%sum_squared_values + value**2 * weight
-    obs%sum_weights = obs%sum_weights + abs (weight)
+    obs%sum_weights = obs%sum_weights + weight
     obs%sum_squared_weights = obs%sum_squared_weights + weight**2
     obs%count = obs%count + 1
     if (present (success))  success = .true.
@@ -5389,7 +5389,7 @@ sums which are necessary for proper averaging.
        w = weight
        if (present (excess))  e = excess
     end if
-    bin%sum_weights = bin%sum_weights + abs (w)
+    bin%sum_weights = bin%sum_weights + w
     bin%sum_squared_weights = bin%sum_squared_weights + w ** 2
     if (present (excess)) &
          bin%sum_excess_weights = bin%sum_excess_weights + abs (e)

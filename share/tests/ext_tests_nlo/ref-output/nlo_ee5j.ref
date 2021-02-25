@@ -36,7 +36,6 @@ seed = 8131
 sqrts =  1.000000000000E+03
 jet_algorithm = 2
 jet_r =  5.000000000000E-01
-?use_vamp_equivalences = false
 $integration_method = "vamp2"
 $rng_method = "rng_stream"
 | End of included 'nlo_settings.sin'
@@ -102,21 +101,22 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 | ------------------------------------------------------------------------
 | Phase space: 104 channels, 11 dimensions
 | Phase space: found 104 channels, collected in 3 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 672 equivalences between channels.
 | Phase space: wood
 | Phase space: 104 channels, 14 dimensions
 | Phase space: found 104 channels, collected in 3 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 672 equivalences between channels.
 | Phase space: wood
 | Phase space: 104 channels, 11 dimensions
 | Phase space: found 104 channels, collected in 3 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 672 equivalences between channels.
 | Phase space: wood
 | Applying user-defined cuts.
 | Using user-defined general scale.
 | Starting integration for process 'nlo_ee5j_p1' part 'born'
 | Integrate: iterations = 1:1040:"gw"
 | Integrator: 3 chains, 104 channels, 11 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 1040 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -131,6 +131,7 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 | Starting integration for process 'nlo_ee5j_p1' part 'real'
 | Integrate: iterations = 1:1040:"gw"
 | Integrator: 3 chains, 104 channels, 14 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 1040 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -145,6 +146,7 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 | Starting integration for process 'nlo_ee5j_p1' part 'virtual'
 | Integrate: iterations = 1:1040:"gw"
 | Integrator: 3 chains, 104 channels, 11 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 1040 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

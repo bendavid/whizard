@@ -334,10 +334,16 @@ contains
     adim6wwwwdwdpw = (e**3)/(sinthw**3) * vev**2 * &
          (0.5_default * c6dpw/(lambdac6**2) + 2.0_default * c6dw/(lambdac6**2))
     adim6wwzzw = 6.0_default * costhw**2 * e/sinthw * c6w/(lambdac6**2) 
-    adim6wwzzdwdpw = 0.5_default * (costhw**2 * e**3 / sinthw**3 +  &
+!!! Recalculated WK 2018-09-13: sign flip
+    adim6wwzzdwdpw = -0.5_default * (costhw**2 * e**3 / sinthw**3 +  &
          e**3 / sinthw) * vev**2 * c6dpw/(lambdac6**2) &
          + (2.0_default * costhw**2 * e**3 / sinthw**3 + e**3 / sinthw) * &
          vev**2 *c6dw/(lambdac6**2) 
+!!! Original version
+!     adim6wwzzdwdpw = 0.5_default * (costhw**2 * e**3 / sinthw**3 +  &
+!          e**3 / sinthw) * vev**2 * c6dpw/(lambdac6**2) &
+!          + (2.0_default * costhw**2 * e**3 / sinthw**3 + e**3 / sinthw) * &
+!          vev**2 *c6dw/(lambdac6**2) 
     adim6hhaa = 4.0_default * costhw**2 * c6pb/(lambdac6**2)
     adim6hhzzd = (costhw**2 * e / sinthw + e * sinthw ) * c6dw/(lambdac6**2) &
          + (costhw * e + sinthw**2 * e/costhw) *c6db/(lambdac6**2)

@@ -36,7 +36,6 @@ seed = 8131
 sqrts =  1.000000000000E+03
 jet_algorithm = 2
 jet_r =  5.000000000000E-01
-?use_vamp_equivalences = false
 $integration_method = "vamp2"
 $rng_method = "rng_stream"
 | End of included 'nlo_settings.sin'
@@ -97,21 +96,22 @@ alphas_power = 0
 | ------------------------------------------------------------------------
 | Phase space: 3 channels, 5 dimensions
 | Phase space: found 3 channels, collected in 1 grove.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 3 equivalences between channels.
 | Phase space: wood
 | Phase space: 3 channels, 8 dimensions
 | Phase space: found 3 channels, collected in 1 grove.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 3 equivalences between channels.
 | Phase space: wood
 | Phase space: 3 channels, 5 dimensions
 | Phase space: found 3 channels, collected in 1 grove.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 3 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'nlo_eetth_p1' part 'born'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 3 channels, 5 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -126,6 +126,7 @@ Warning: No cuts have been defined.
 | Starting integration for process 'nlo_eetth_p1' part 'real'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 3 channels, 8 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -140,6 +141,7 @@ Warning: No cuts have been defined.
 | Starting integration for process 'nlo_eetth_p1' part 'virtual'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 3 channels, 5 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

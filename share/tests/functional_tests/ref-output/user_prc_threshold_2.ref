@@ -2,6 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
+?use_vamp_equivalences = false
 openmp_num_threads = 1
 | Switching to model 'SM_tt_threshold'
 SM_tt_threshold.sqrtsmin =>  3.50000E+02
@@ -31,9 +32,6 @@ SM_tt_threshold.alphas =>  1.18000E-01
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 ?alphas_from_lambda_qcd = false
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_p1'
 SM_tt_threshold.top_helicity_selection =>  3.00000E+00
 seed = 0
@@ -80,7 +78,7 @@ sqrts =  3.43000E+02
 | ------------------------------------------------------------------------
 | Phase space: 60 channels, 8 dimensions
 | Phase space: found 60 channels, collected in 24 groves.
-| Phase space: Using 70 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 60 channels, 11 dimensions
 | Phase space: found 60 channels, collected in 24 groves.
@@ -88,7 +86,7 @@ sqrts =  3.43000E+02
 | Phase space: wood
 | Phase space: 60 channels, 8 dimensions
 | Phase space: found 60 channels, collected in 24 groves.
-| Phase space: Using 70 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -138,7 +136,7 @@ sqrts =  3.45000E+02
 | ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
-| Phase space: Using 71 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 61 channels, 11 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
@@ -146,7 +144,7 @@ sqrts =  3.45000E+02
 | Phase space: wood
 | Phase space: 61 channels, 8 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
-| Phase space: Using 71 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -168,6 +166,6 @@ Warning: No cuts have been defined.
 |=============================================================================|
    1          0    -9.432E+00   2.26E+00   24.00    0.00     0.0
 |=============================================================================|
-| There were no errors and    3 warning(s).
+| There were no errors and    2 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

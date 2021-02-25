@@ -3696,32 +3696,78 @@ pure function a_aww_W (g, v1, k1, v2, k2, v3, k3) result (vout)
   type(vector), intent(in) :: v1, v2, v3
   type(momentum), intent(in) :: k1, k2, k3
   type(vector) :: vout
-  vout = g * (v1*((-(k2+k3)*v2)*(k2*v3) + (-(k2+k3)*v3)*(k3*v2)) &
-       +v2*((-((k2-k3)*v1)*(k1+k2+k3)*v3) - (k1*v3)*(k2*v1) &
-       + ((k1+k2+k3)*v1)*(k2*v3)) &
-       +v3*(((k2-k3)*v1)*((k1+k2+k3)*v2) - (k1*v2)*(k3*v1) &
-       + ((k1+k2+k3)*v1)*(k3*v2)) &
-       +(v1*v2)*(((2*k1+k2+k3)*v3)*k2 - (k2*v3)*k1 -(k1*v3)*k3) &
-       +(v1*v3)*(((2*k1+k2+k3)*v2)*k3 - (k3*v2)*k1 - (k1*v2)*k3) &
-       +(v2*v3)*((-(k1+k2+k3)*v1)*(k2+k3) + ((k2+k3)*v1)*k1) &
-       +(-(k1+k2+k3)*k3 +k1*k2)*((v1*v3)*v2 - (v2*v3)*v1) &
-       +(-(k1+k2+k3)*k2 + k1*k3)*((v1*v2)*v3 - (v2*v3)*v1))
+!!! Recalculated WK 2018-08-24
+  type(momentum) :: k4
+  k4 = -(k1+k2+k3)
+!!! negative sign (-g) causes expected gauge cancellation
+  vout = (-g) * ( &
+       + (k1*v3)*(k3*v2)*v1 - (k3*v2)*(v1*v3)*k1 &
+       - (k1*k3)*(v2*v3)*v1 + (k3*v1)*(v2*v3)*k1 &
+       - (k1*v3)*(v1*v2)*k3 + (k1*v2)*(v1*v3)*k3 &
+       + (k1*k3)*(v1*v2)*v3 - (k3*v1)*(k1*v2)*v3 &
+       + (k3*v2)*(k4*v3)*v1 - (k3*v2)*(k4*v1)*v3 &
+       - (k3*k4)*(v2*v3)*v1 + (k4*v1)*(v2*v3)*k3 &
+       - (k3*v1)*(k4*v3)*v2 + (k3*v1)*(k4*v2)*v3 &
+       + (k3*k4)*(v1*v3)*v2 - (k4*v2)*(v1*v3)*k3 &
+       + (k1*v2)*(k2*v3)*v1 - (k2*v3)*(v1*v2)*k1 &
+       - (k1*k2)*(v2*v3)*v1 + (k2*v1)*(v2*v3)*k1 &
+       - (k1*v2)*(v1*v3)*k2 + (k1*v3)*(v1*v2)*k2 &
+       + (k1*k2)*(v1*v3)*v2 - (k2*v1)*(k1*v3)*v2 &
+       + (k2*v3)*(k4*v2)*v1 - (k2*v3)*(k4*v1)*v2 &
+       - (k2*k4)*(v2*v3)*v1 + (k4*v1)*(v2*v3)*k2 &
+       - (k2*v1)*(k4*v2)*v3 + (k2*v1)*(k4*v3)*v2 &
+       + (k2*k4)*(v1*v2)*v3 - (k4*v3)*(v1*v2)*k2 &
+       )
+!!! Original Version
+!   vout = g * (v1*((-(k2+k3)*v2)*(k2*v3) + (-(k2+k3)*v3)*(k3*v2)) &
+!        +v2*((-((k2-k3)*v1)*(k1+k2+k3)*v3) - (k1*v3)*(k2*v1) &
+!        + ((k1+k2+k3)*v1)*(k2*v3)) &
+!        +v3*(((k2-k3)*v1)*((k1+k2+k3)*v2) - (k1*v2)*(k3*v1) &
+!        + ((k1+k2+k3)*v1)*(k3*v2)) &
+!        +(v1*v2)*(((2*k1+k2+k3)*v3)*k2 - (k2*v3)*k1 -(k1*v3)*k3) &
+!        +(v1*v3)*(((2*k1+k2+k3)*v2)*k3 - (k3*v2)*k1 - (k1*v2)*k3) &
+!        +(v2*v3)*((-(k1+k2+k3)*v1)*(k2+k3) + ((k2+k3)*v1)*k1) &
+!        +(-(k1+k2+k3)*k3 +k1*k2)*((v1*v3)*v2 - (v2*v3)*v1) &
+!        +(-(k1+k2+k3)*k2 + k1*k3)*((v1*v2)*v3 - (v2*v3)*v1))
 end function a_aww_W
 pure function w_aaw_W (g, v1, k1, v2, k2, v3, k3) result (vout)
   complex(kind=default), intent(in) :: g
   type(vector), intent(in) :: v1, v2, v3
   type(momentum), intent(in) :: k1, k2, k3
   type(vector) :: vout
-  vout = g * (v1*((k1*v3)*(-(k1+k2+2*k3)*v2) + (k2*v3)*((k1+k2+k3)*v2) &
-       + (k1*v2)*((k1+k2+k3)*v3)) &
-       + v2*(((k1-k2)*v3)*((k1+k2+k3)*v1) - (k2*v3)*(k3*v1) &
-       + (k2*v1)*((k1+k2+k3)*v3)) &
-       + v3*((k1*v2)*(-(k1+k2)*v1) + (k2*v1)*(-(k1+k2)*v2)) &
-       + (v1*v2)*((k1+k2)*(-(k1+k2+k3)*v3) + k3*((k1+k2)*v3))&
-       + (v1*v3)*(-k2*(k3*v2) - k3*(k1*v2) + k1*((k1+k2+2*k3)*v2)) &
-       + (v2*v3)*(-k1*(k3*v1) - k3*(k2*v1) + k2*((k1+k2+2*k3)*v1)) &
-       + (-k2*(k1+k2+k3) + k1*k3)*(v1*(v2*v3) - v3*(v1*v2)) &
-       + (-k1*(k1+k2+k3) + k2*k3)*(v2*(v1*v3) - v3*(v1*v2)) )
+!!! Recalculated WK 2018-08-25
+  type(momentum) :: k4
+  k4 = -(k1+k2+k3)
+!!! negative sign (-g) causes expected gauge cancellation
+  vout = (-g) * ( &
+       + (k3*v1)*(k1*v2)*v3 - (k1*v2)*(v3*v1)*k3 &
+       - (k3*k1)*(v2*v1)*v3 + (k1*v3)*(v2*v1)*k3 &
+       - (k3*v1)*(v3*v2)*k1 + (k3*v2)*(v3*v1)*k1 &
+       + (k3*k1)*(v3*v2)*v1 - (k1*v3)*(k3*v2)*v1 &
+       + (k1*v2)*(k4*v1)*v3 - (k1*v2)*(k4*v3)*v1 &
+       - (k1*k4)*(v2*v1)*v3 + (k4*v3)*(v2*v1)*k1 &
+       - (k1*v3)*(k4*v1)*v2 + (k1*v3)*(k4*v2)*v1 &
+       + (k1*k4)*(v3*v1)*v2 - (k4*v2)*(v3*v1)*k1 &
+       + (k3*v2)*(k2*v1)*v3 - (k2*v1)*(v3*v2)*k3 &
+       - (k3*k2)*(v2*v1)*v3 + (k2*v3)*(v2*v1)*k3 &
+       - (k3*v2)*(v3*v1)*k2 + (k3*v1)*(v3*v2)*k2 &
+       + (k3*k2)*(v3*v1)*v2 - (k2*v3)*(k3*v1)*v2 &
+       + (k2*v1)*(k4*v2)*v3 - (k2*v1)*(k4*v3)*v2 &
+       - (k2*k4)*(v2*v1)*v3 + (k4*v3)*(v2*v1)*k2 &
+       - (k2*v3)*(k4*v2)*v1 + (k2*v3)*(k4*v1)*v2 &
+       + (k2*k4)*(v3*v2)*v1 - (k4*v1)*(v3*v2)*k2 &
+       )
+!!! Original Version
+!   vout = g * (v1*((k1*v3)*(-(k1+k2+2*k3)*v2) + (k2*v3)*((k1+k2+k3)*v2) &
+!        + (k1*v2)*((k1+k2+k3)*v3)) &
+!        + v2*(((k1-k2)*v3)*((k1+k2+k3)*v1) - (k2*v3)*(k3*v1) &
+!        + (k2*v1)*((k1+k2+k3)*v3)) &
+!        + v3*((k1*v2)*(-(k1+k2)*v1) + (k2*v1)*(-(k1+k2)*v2)) &
+!        + (v1*v2)*((k1+k2)*(-(k1+k2+k3)*v3) + k3*((k1+k2)*v3))&
+!        + (v1*v3)*(-k2*(k3*v2) - k3*(k1*v2) + k1*((k1+k2+2*k3)*v2)) &
+!        + (v2*v3)*(-k1*(k3*v1) - k3*(k2*v1) + k2*((k1+k2+2*k3)*v1)) &
+!        + (-k2*(k1+k2+k3) + k1*k3)*(v1*(v2*v3) - v3*(v1*v2)) &
+!        + (-k1*(k1+k2+k3) + k2*k3)*(v2*(v1*v3) - v3*(v1*v2)) )
 end function w_aaw_W
 <<Declaration of couplings>>=
 public :: h_hww_D, w_hhw_D, h_hww_DP, w_hhw_DP, h_hvv_PB, v_hhv_PB

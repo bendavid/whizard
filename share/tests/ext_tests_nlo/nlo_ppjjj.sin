@@ -42,7 +42,6 @@ scale = let subevt @clustered_jets = cluster [jet] in
         endif
 
 ?combined_nlo_integration = false
-?use_vamp_equivalences = false
 
 mult_call_real = 5
 relative_error_goal = 0.009

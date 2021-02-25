@@ -19,7 +19,6 @@ $rng_method = "rng_stream"
 $integration_method = "vamp2"
 sqrts =  1.30000E+04
 ?combined_nlo_integration = true
-?use_vamp_equivalences = false
 seed = 4466
 $restrictions = "!W+:W-"
 | Process library 'nlo_ppzj_sim_4_lib': recorded process 'nlo_ppzj_sim_4_p1'
@@ -82,19 +81,19 @@ $restrictions = "!W+:W-"
 | ------------------------------------------------------------------------
 | Phase space: 5 channels, 5 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 9 equivalences between channels.
 | Phase space: wood
 | Phase space: 5 channels, 5 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 9 equivalences between channels.
 | Phase space: wood
 | Phase space: 5 channels, 5 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 9 equivalences between channels.
 | Phase space: wood
 | Phase space: 5 channels, 5 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
-| Phase space: no equivalences between channels used.
+| Phase space: Using 9 equivalences between channels.
 | Phase space: wood
 | Beam structure: pdf_builtin, none => none, pdf_builtin
 | Beam structure: 1 channels, 2 dimensions
@@ -103,6 +102,7 @@ $restrictions = "!W+:W-"
 | Starting integration for process 'nlo_ppzj_sim_4_p1'
 | Integrate: iterations = 1:100
 | Integrator: 2 chains, 5 channels, 7 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

@@ -7527,6 +7527,7 @@ provided by the phase-space module.  Here, we translate this into the
     integer, dimension(:), allocatable :: perm, mode
     integer :: n_channels, n_dim, n_equivalences
     integer :: c, i, j, left, right
+    integer :: n_dim_perm
     n_channels = mci%n_channel
     n_dim = mci%n_dim
     n_equivalences = 0
@@ -7537,8 +7538,8 @@ provided by the phase-space module.  Here, we translate this into the
          n_equivalences, n_channels, n_dim)
     allocate (perm (n_dim))
     allocate (mode (n_dim))
-    perm(1:dim_offset) = [(i, i = 1, dim_offset)]
-    mode(1:dim_offset) = VEQ_IDENTITY
+    perm = [(i, i = 1, n_dim)]
+    mode = VEQ_IDENTITY
     c = 1
     j = 0
     do i = 1, n_equivalences
@@ -7551,8 +7552,9 @@ provided by the phase-space module.  Here, we translate this into the
        associate (eq => channel(c)%eq(j))
          left = c
          right = eq%c
-         perm(dim_offset+1:) = eq%perm + dim_offset
-         mode(dim_offset+1:) = eq%mode
+         n_dim_perm = size (eq%perm)
+         perm(dim_offset + 1:dim_offset + n_dim_perm) = eq%perm + dim_offset
+         mode(dim_offset + 1:dim_offset + n_dim_perm) = eq%mode
          call vamp_equivalence_set (mci%equivalences, &
               i, left, right, perm, mode)
        end associate
@@ -12147,6 +12149,7 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
     integer, dimension(:), allocatable :: perm, mode
     integer :: n_channels, n_dim, n_equivalences
     integer :: c, i, j, dest, src
+    integer :: n_dim_perm
     n_channels = mci%n_channel
     n_dim = mci%n_dim
     n_equivalences = 0
@@ -12157,8 +12160,8 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
          n_eqv = n_equivalences, n_channel = n_channels, n_dim = n_dim)
     allocate (perm (n_dim))
     allocate (mode (n_dim))
-    perm(1:dim_offset) = [(i, i = 1, dim_offset)]
-    mode(1:dim_offset) = 0
+    perm = [(i, i = 1, n_dim)]
+    mode = 0
     c = 1
     j = 0
     do i = 1, n_equivalences
@@ -12171,8 +12174,9 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
        associate (eq => channel(c)%eq(j))
          dest = c
          src = eq%c
-         perm(dim_offset+1:) = eq%perm + dim_offset
-         mode(dim_offset+1:) = eq%mode
+         n_dim_perm = size (eq%perm)
+         perm(dim_offset+1:n_dim_perm) = eq%perm + dim_offset
+         mode(dim_offset+1:n_dim_perm) = eq%mode
          call mci%equivalences%set_equivalence &
               (i, dest, src, perm, mode)
        end associate
@@ -13043,7 +13047,7 @@ done by the VAMP2 function. We retrieve the information.
 @ %def mci_vamp2_instance_record_integrand
 @ \subsubsection{Event simulation}
 In contrast to VAMP, we reset only counters
-and set the safety factor, which will then will be applied each time a event is
+and set the safety factor, which will then will be applied each time an event is
 generated. In that way we do not rescale the actual values in the integrator,
 but more the current value!
 <<MCI vamp2: mci vamp2 instance: TBP>>=
@@ -13837,15 +13841,11 @@ Allocate an integrator according to the variable [[$integration_method]].
     grid_par%stratified = &
          var_list%get_lval (var_str ("?stratified"))
     select case (char (var_list%get_sval (var_str ("$phs_method"))))
-    case default
-       if (.not. dispatch_nlo) then
-          grid_par%use_vamp_equivalences = &
-               var_list%get_lval (var_str ("?use_vamp_equivalences"))
-       else
-          grid_par%use_vamp_equivalences = .false.
-       end if
     case ("rambo")
        grid_par%use_vamp_equivalences = .false.
+    case default
+       grid_par%use_vamp_equivalences = &
+       var_list%get_lval (var_str ("?use_vamp_equivalences"))
     end select
     grid_par%channel_weights_power = &
          var_list%get_rval (var_str ("channel_weights_power"))
@@ -13887,15 +13887,11 @@ Allocate an integrator according to the variable [[$integration_method]].
     mci_vamp2_config%stratified = &
          var_list%get_lval (var_str ("?stratified"))
     select case (char (var_list%get_sval (var_str ("$phs_method"))))
-    case default
-       if (.not. dispatch_nlo) then
-          mci_vamp2_config%equivalences = &
-               var_list%get_lval (var_str ("?use_vamp_equivalences"))
-       else
-          mci_vamp2_config%equivalences = .false.
-       end if
     case ("rambo")
        mci_vamp2_config%equivalences = .false.
+    case default
+       mci_vamp2_config%equivalences = &
+          var_list%get_lval (var_str ("?use_vamp_equivalences"))
     end select
     mci_vamp2_config%accuracy_goal = &
          var_list%get_rval (var_str ("accuracy_goal"))

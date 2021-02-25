@@ -53,7 +53,6 @@ scale = let int njet = count [jet] in
         endif
 
 ?combined_nlo_integration = true
-?use_vamp_equivalences = false
 
 seed = 4466
 

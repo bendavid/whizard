@@ -18252,7 +18252,6 @@ on into an object (the pcm?).
     logical :: nlo, combined, powheg
     logical :: case_lo_but_any_other
     logical :: case_nlo_powheg_but_not_combined
-    logical :: vamp_equivalences_enabled
     logical :: fixed_order_nlo_events
     var_list => local%get_var_list_ptr ()
     nlo = local%nlo_fixed_order
@@ -18295,12 +18294,6 @@ on into an object (the pcm?).
                call msg_warning ("mult_call_real, mult_call_virt and mult_call_dglap", &
                [var_str (" will be ignored because of ?combined_nlo_integration = true. ")])
             end if
-    vamp_equivalences_enabled = var_list%get_lval &
-         (var_str ('?use_vamp_equivalences'))
-    if (nlo .and. vamp_equivalences_enabled) &
-         call msg_warning ("You have not disabled VAMP equivalences. ", &
-              [var_str ("   Note that they are automatically switched off "), &
-               var_str ("   for NLO calculations.")])
   end subroutine check_nlo_options
 
 @ %def check_nlo_options

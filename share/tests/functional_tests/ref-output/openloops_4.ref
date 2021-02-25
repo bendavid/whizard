@@ -3,6 +3,7 @@
 ?integration_timer = false
 ?pacify = true
 openmp_num_threads = 1
+?use_vamp_equivalences = false
 ?openloops_use_cms = false
 SM.mW =>  7.00000E+01
 SM.mZ =>  9.00000E+01
@@ -27,9 +28,6 @@ tolerance =  1.00000E-03
 $born_me_method = "omega"
 $real_tree_me_method = "omega"
 $correlation_me_method = "omega"
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'openloops_4_lib': recorded process 'openloops_4_omomom'
 seed = 0
 | Integrate: current process library needs compilation
@@ -73,7 +71,7 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -81,7 +79,7 @@ seed = 0
 | Phase space: wood
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -135,9 +133,6 @@ error(openloops_4_omomom) =  1.10105E+02
 $born_me_method = "openloops"
 $real_tree_me_method = "omega"
 $correlation_me_method = "omega"
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'openloops_4_lib': unloading
 | Process library 'openloops_4_lib': open
 | Process library 'openloops_4_lib': recorded process 'openloops_4_olomom'
@@ -187,7 +182,7 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -195,7 +190,7 @@ seed = 0
 | Phase space: wood
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -249,9 +244,6 @@ error(openloops_4_olomom) =  1.10105E+02
 $born_me_method = "omega"
 $real_tree_me_method = "openloops"
 $correlation_me_method = "omega"
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'openloops_4_lib': unloading
 | Process library 'openloops_4_lib': open
 | Process library 'openloops_4_lib': recorded process 'openloops_4_omolom'
@@ -301,7 +293,7 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -309,7 +301,7 @@ seed = 0
 | Phase space: wood
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -363,9 +355,6 @@ error(openloops_4_omolom) =  1.10105E+02
 $born_me_method = "omega"
 $real_tree_me_method = "omega"
 $correlation_me_method = "openloops"
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'openloops_4_lib': unloading
 | Process library 'openloops_4_lib': open
 | Process library 'openloops_4_lib': recorded process 'openloops_4_omomol'
@@ -415,7 +404,7 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -423,7 +412,7 @@ seed = 0
 | Phase space: wood
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -477,9 +466,6 @@ error(openloops_4_omomol) =  1.10105E+02
 $born_me_method = "openloops"
 $real_tree_me_method = "openloops"
 $correlation_me_method = "openloops"
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'openloops_4_lib': unloading
 | Process library 'openloops_4_lib': open
 | Process library 'openloops_4_lib': recorded process 'openloops_4_ololol'
@@ -537,7 +523,7 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -545,7 +531,7 @@ seed = 0
 | Phase space: wood
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -613,9 +599,6 @@ SM_tt_threshold.ms =>  0.00000E+00
 ?alphas_from_mz = false
 ?alphas_from_lambda_qcd = false
 SM_tt_threshold.alphas =>  2.00000E-01
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'openloops_4_lib': unloading
 | Process library 'openloops_4_lib': open
 | Process library 'openloops_4_lib': recorded process 'openloops_4_threshold'
@@ -673,7 +656,7 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 2 channels, 5 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -681,7 +664,7 @@ seed = 0
 | Phase space: wood
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
@@ -734,6 +717,6 @@ error(openloops_4_threshold) =  1.10105E+02
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 5
-| There were no errors and   12 warning(s).
+| There were no errors and    6 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

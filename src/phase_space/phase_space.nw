@@ -16527,8 +16527,6 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
           phs_config%n_par = phs_config%n_par + 1
        end select
     end if
-!!! Channel equivalences not accessible yet
-    phs_config%provides_equivalences = .false.
     call phs_config%compute_md5sum ()
   end subroutine phs_fks_config_configure
 
@@ -16642,6 +16640,7 @@ be assured that Born flavors are used for this.
     phs_config%provides_chains = phs_cfg_born%provides_chains
     phs_config%lab_is_cm = phs_cfg_born%lab_is_cm
     phs_config%vis_channels = phs_cfg_born%vis_channels
+    phs_config%provides_equivalences = phs_cfg_born%provides_equivalences
     allocate (phs_config%chain (size (phs_cfg_born%chain)))
     phs_config%chain = phs_cfg_born%chain
     phs_config%model => phs_cfg_born%model
@@ -20368,7 +20367,13 @@ Allocate a phase-space object according to the variable [[$phs_method]].
           call msg_warning ("Visualizing phase space channels not " // &
               "available for method 'rambo'.")
     case ("fks")
-      allocate (phs_fks_config_t :: phs)
+       allocate (phs_fks_config_t :: phs)
+       if (use_equivalences) then
+          select type (phs)
+          type is (phs_fks_config_t)
+             call phs%enable_equivalences ()
+          end select
+       end if
     case ("wood", "default", "fast_wood")
        call dispatch_wood ()
     case default

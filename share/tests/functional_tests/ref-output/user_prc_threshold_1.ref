@@ -2,6 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
+?use_vamp_equivalences = false
 openmp_num_threads = 1
 | Switching to model 'SM_tt_threshold'
 SM_tt_threshold.sqrtsmin =>  3.50000E+02
@@ -72,13 +73,12 @@ $restrictions = "3+5~t && 4+6~tbar"
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
-| Phase space: Using 15 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p1'
 | Integrate: iterations = 1:200
 | Integrator: 6 chains, 15 channels, 8 dimensions
-| Integrator: Using VAMP channel equivalences
 | Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
@@ -136,13 +136,12 @@ seed = 0
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
-| Phase space: Using 1 equivalence between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p2'
 | Integrate: iterations = 1:200
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: Using VAMP channel equivalences
 | Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
@@ -202,13 +201,12 @@ $method = "threshold"
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
-| Phase space: Using 1 equivalence between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p5'
 | Integrate: iterations = 1:200
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: Using VAMP channel equivalences
 | Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
@@ -226,9 +224,6 @@ $loop_me_method = "threshold"
 $correlation_me_method = "threshold"
 $real_tree_me_method = "threshold"
 $restrictions = "3+5~t && 4+6~tbar"
-Warning: You have not disabled VAMP equivalences.
-   Note that they are automatically switched off
-   for NLO calculations.
 | Process library 'user_prc_threshold_1_lib': unloading
 | Process library 'user_prc_threshold_1_lib': open
 | Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_p6'
@@ -312,7 +307,7 @@ Warning: You have not disabled VAMP equivalences.
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
-| Phase space: Using 15 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 | Phase space: 15 channels, 11 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
@@ -320,7 +315,7 @@ Warning: You have not disabled VAMP equivalences.
 | Phase space: wood
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
-| Phase space: Using 15 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p6' part 'born'
@@ -400,13 +395,12 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
-| Phase space: Using 15 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_sig_thr'
 | Integrate: iterations = 1:200
 | Integrator: 6 chains, 15 channels, 8 dimensions
-| Integrator: Using VAMP channel equivalences
 | Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
@@ -473,13 +467,12 @@ SM_tt_threshold.offshell_strategy =>  2.00000E+00
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
-| Phase space: Using 15 equivalences between channels.
+| Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_factorized'
 | Integrate: iterations = 1:200
 | Integrator: 6 chains, 15 channels, 8 dimensions
-| Integrator: Using VAMP channel equivalences
 | Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
@@ -493,6 +486,6 @@ tolerance =  2.79506E+01
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 4
-| There were no errors and    7 warning(s).
+| There were no errors and    6 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
