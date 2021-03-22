@@ -1,5 +1,6 @@
 dnl autoconf macros for OCaml
 dnl
+dnl JR changed obsolete macro into AS_HELP_STRING
 dnl JR added check for ocaml binary
 dnl JR added check for ocamlcp
 dnl JR added check for ocamlweb
@@ -18,7 +19,7 @@ dnl For documentation, please read the ocaml.m4 man page.
 AC_DEFUN([AC_PROG_OCAML],
 [dnl
 AC_ARG_ENABLE([ocaml],		
-  [AC_HELP_STRING([--disable-ocaml],
+  [AS_HELP_STRING([--disable-ocaml],
     [disable the OCaml parts, even if OCaml available [[no]]])])
   if test "$enable_ocaml" != "no"; then
      # checking for ocamlc

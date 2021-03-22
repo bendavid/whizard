@@ -5,7 +5,7 @@ dnl
 AC_DEFUN([WO_PROG_NOWEB],
 [dnl
 AC_ARG_ENABLE([noweb],
-  [AC_HELP_STRING([--disable-noweb],
+  [AS_HELP_STRING([--disable-noweb],
     [disable the noweb programs, even if available [[no]]])])
 if test "$enable_noweb" != "no"; then
 AC_PATH_PROG([NOTANGLE], [notangle])
@@ -23,7 +23,7 @@ AC_MSG_ERROR([**************************************])
 fi
 fi
 AC_ARG_ENABLE([noweb-force],
-  [AC_HELP_STRING([--disable-noweb-force],
+  [AS_HELP_STRING([--disable-noweb-force],
     [force to disable the noweb programs, even if available, which is for distribution testing purposes only. The default never has any effect. [[no]]])])
 if test "$enable_noweb_force" = "no"; then
 AC_MSG_WARN([**************************************************])

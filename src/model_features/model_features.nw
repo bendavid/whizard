@@ -13381,7 +13381,7 @@ specifies a block name and an index array.
        i_block = model%n_slha_block
     end if
     associate (b => model%slha_block(i_block))
-      call add_shla_block_entry (b, block_index, i_par)
+      call add_slha_block_entry (b, block_index, i_par)
     end associate
     model%par(i_par)%block_name = block_name
     model%par(i_par)%block_index = block_index
@@ -13419,7 +13419,7 @@ size if necessary
 pointer-target relation between an index array within the SLHA block and a
 parameter-data record.  We increase the entry array as needed.
 <<Models: procedures>>=
-  subroutine add_shla_block_entry (b, block_index, i_par)
+  subroutine add_slha_block_entry (b, block_index, i_par)
     type(slha_block_t), intent(inout) :: b
     integer, dimension(:), intent(in) :: block_index
     integer, intent(in) :: i_par
@@ -13440,7 +13440,7 @@ parameter-data record.  We increase the entry array as needed.
       b%entry(:size (entry_tmp)) = entry_tmp(:)
     end subroutine grow
     
-  end subroutine add_shla_block_entry
+  end subroutine add_slha_block_entry
 
 @ %def add_slha_block_entry
 @

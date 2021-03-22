@@ -23194,7 +23194,7 @@ scan over reals.
      integer :: i_step = 0
    contains
    <<Commands: range int: TBP>>
-end type range_int_t
+  end type range_int_t
 
   type, extends (range_t) :: range_real_t
      real(default) :: r_beg = 0
@@ -23205,7 +23205,7 @@ end type range_int_t
      real(default) :: lr_step = 0
    contains
    <<Commands: range real: TBP>>
-end type range_real_t
+  end type range_real_t
 
 @ %def range_int_t range_real_t
 @ Finalize the allocated dummy node.  The other nodes are just pointers.

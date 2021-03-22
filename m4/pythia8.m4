@@ -46,7 +46,7 @@ AC_DEFUN([ACX_CHECK_PYTHIA8],
 [
 dnl ckeck if a directory is specified for PYTHIA8
 AC_ARG_WITH(pythia8,
-            [AC_HELP_STRING([--with-pythia8=dir], 
+            [AS_HELP_STRING([--with-pythia8=dir],
                             [assume the given directory for PYTHIA8])])
 
 dnl search for the pythia8-config script
