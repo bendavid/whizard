@@ -601,6 +601,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/vegas_4.ref \
     unit_tests/ref-output/vegas_5.ref \
     unit_tests/ref-output/vegas_6.ref \
+    unit_tests/ref-output/vegas_7.ref \
     unit_tests/ref-output/whizard_lha_1.ref \
     unit_tests/ref-output/xml_1.ref \
     unit_tests/ref-output/xml_2.ref \

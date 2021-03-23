@@ -1177,12 +1177,23 @@ smallest representable value of a default real.
 The problem becomes very annoying in the multi-channel formualae where have to
 look up via binary search the corresponding probability of [[x]] and if the
 width is zero, the point will be neglected.
+
+Another issue arises when [[NaN]]s appear during sampling.
+A single [[NaN]] may spoil the complete adaption as the refinement depends on all weights for a single axis, c.f. [[vegas_grid_resize]] for the details of the mechanism.
+Therefore, if we find a single (or more) [[NaN]]s in the distribution of an axis, then we won't adapt that specific axis by setting the weights to one.
+Hence, we skip the adaption for parts of the grid, where [[NaN]] appeared during evaluation.
 <<vegas: vegas refine grid: procedures>>=
-  subroutine average_distribution (n_bins, d, alpha, w)
+subroutine average_distribution (n_bins, d, alpha, w)
+    !! use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     integer, intent(in) :: n_bins
     real(default), dimension(:), intent(inout) :: d
     real(default), intent(in) :: alpha
     real(default), dimension(n_bins), intent(out) :: w
+    !! Non-portable and compiler-flag sensistive test, may replace with ieee_is_nan
+    if (any (d /= d)) then
+       w = 1.0_default
+       return
+    end if
     if (n_bins > 2) then
        d(1) = (d(1) + d(2)) / 2.0_default
        d(2:n_bins - 1) = (d(1:n_bins - 2) + d(2:n_bins - 1) + d(3:n_bins)) /&
@@ -2653,6 +2664,106 @@ file and start with fresh grid.
 
 @ %def vegas_6
 @
+\subsubsection{Numeric stability}
+\label{sec:numeric-stability}
+
+We wrap a previous testing function to produce a single [[NaN]].
+<<vegas: test types>>=
+  type, extends (vegas_test_func_t) :: vegas_nan_test_func_t
+    private
+    logical :: evaluate_to_nan = .true.
+   contains
+   <<vegas: vegas nan test func: TBP>>
+  end type vegas_nan_test_func_t
+
+@ %def vegas_nan_test_func_t
+@ Evaluate the integrand.
+<<vegas: vegas nan test func: TBP>>=
+  procedure, public :: evaluate => vegas_nan_test_func_evaluate
+<<vegas: tests>>=
+  real(default) function vegas_nan_test_func_evaluate (self, x) result (f)
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    class(vegas_nan_test_func_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    if (self%evaluate_to_nan) then
+        f = ieee_value(1.0_default, ieee_quiet_nan)
+        self%evaluate_to_nan = .false.
+    else
+        f = self%vegas_test_func_t%evaluate (x)
+    end if
+  end function vegas_nan_test_func_evaluate
+
+@ %def vegas_test_func_evaluate
+
+Initialise the VEGAS MC integrator. Run a integration pass and insert a single
+[[NaN]] that leads to a [[NaN]] result. However, the integration grid will be
+fine.
+
+Proceed with a second pass, and get the correct result.
+<<vegas: execute tests>>=
+  call test (vegas_7, "vegas_7", "VEGAS NaN stability test", u, results)
+<<vegas: test declaration>>=
+  public :: vegas_7
+<<vegas: tests>>=
+  subroutine vegas_7 (u)
+    integer, intent(in) :: u
+    type(vegas_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vegas_func_t), allocatable :: func
+    real(default), dimension(3), parameter :: x_lower = 0., &
+         x_upper = pi
+    real(default) :: result, abserr
+
+    write (u, "(A)") "* Test output: vegas_1"
+    write (u, "(A)") "*   Purpose: initialise the VEGAS MC integrator and the grid"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_dim = 3"
+    write (u, "(A)")
+
+    allocate (vegas_nan_test_func_t :: func)
+    mc_integrator = vegas_t (3)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (10000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (2000)
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vegas_7
+
+@ %def vegas_7
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{VAMP2}
