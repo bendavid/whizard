@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2021-04-04
+	Support for UFO extensions in SMEFTSim 3.0
+
 2021-02-25
 	Enable VAMP and VAMP2 channel equivalences for NLO integrations
 
