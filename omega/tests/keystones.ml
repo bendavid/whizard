@@ -361,19 +361,28 @@ let keystones_of_ufo_vertex { v_tag; v_spins } =
 
 let keystones_of_propagator { p_tag; p_omega; p_spins } =
   let s0, s1 = p_spins in
-  let keystone omega s =
-    match omega, s1 with
-    | _, (Scalar|Tensor_2) | false, _ ->
+  let keystone omega name =
+    match omega, s1, name with
+    | _, (Scalar|Tensor_2), _
+    | false, _, _ ->
        { bra = (s0, 0);
-         name = s;
+         name;
          args = [P (1); M (0); M (1); F (s1, 1) ] }
-    | _, Vector ->
+    | _, Vector, "pr_gauge" ->
        { bra = (s0, 0);
-         name = s;
+         name;
+         args = [P (1); V ("42.0_default"); F (s1, 1) ] }
+    | _, Vector, "pr_rxi" ->
+       { bra = (s0, 0);
+         name;
+         args = [P (1); M (0); M (1); V ("42.0_default"); F (s1, 1) ] }
+    | _, Vector, _ ->
+       { bra = (s0, 0);
+         name;
          args = [P (1); F (s1, 1) ] }
-    | true, _ ->
+    | true, _, _ ->
        { bra = (s0, 0);
-         name = s;
+         name;
          args = [P (1); M (0); M (1); V (".false."); F (s1, 1) ] } in
   { tag = p_tag;
     keystones = [keystone false ("pr_U_" ^ p_tag); keystone true p_omega] }
@@ -407,6 +416,7 @@ let fusions ff ?(omega_module="omega95") module_name vertices propagators =
   UFO_targets.Fortran.eps4_g4_g44_decl std_formatter ();
   UFO_targets.Fortran.eps4_g4_g44_init std_formatter ();
   printf "contains"; nl ();
+  UFO_targets.Fortran.inner_product_functions std_formatter ();
   List.iter
     (fun v ->
       let tensor = UFO_Lorentz.parse (Array.to_list v.v_spins) v.v_tensor in
@@ -417,7 +427,8 @@ let fusions ff ?(omega_module="omega95") module_name vertices propagators =
   List.iter
     (fun p ->
       UFO_targets.Fortran.propagator
-        std_formatter p.p_tag p.p_spins
+        std_formatter p.p_tag
+        "parameters" p.p_propagator.UFO.Propagator.variables p.p_spins
         p.p_propagator.UFO.Propagator.numerator
         p.p_propagator.UFO.Propagator.denominator)
     propagators;

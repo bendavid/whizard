@@ -87,13 +87,22 @@ val map_atom : ('a -> 'b) -> 'a term -> 'b term
 
 (* A contraction consists of a (possibly empty) product of
    Dirac strings and a (possibly empty) product of Lorentz
-   tensors with a rational coefficient. *)
+   tensors with a rational coefficient.
+   The [denominator] is required for the poorly documented
+   propagator extensions.  The type [atom linear] is
+   a [list] and an empty list is interpreted as~$1$. *)
+(* \begin{dubious}
+     The [denominator] is a [contraction list] to allow code reuse,
+     though a [(A.scalar list * A.scalar list * QC.t) list] would
+     suffice.
+   \end{dubious} *)
 type contraction = (* [private] *)
   { coeff : Algebra.QC.t;
     dirac : dirac_string term list;
     vector : UFOx.Lorentz_Atom.vector term list;
     scalar : UFOx.Lorentz_Atom.scalar list;
-    inverse : UFOx.Lorentz_Atom.scalar list }
+    inverse : UFOx.Lorentz_Atom.scalar list;
+    denominator : contraction list }
 
 (* A sum of [contraction]s. *)
 type t = contraction list
@@ -106,7 +115,7 @@ val charge_conjugate : int * int -> t -> t
 
 (* [parse spins lorentz] uses the [spins] to parse the
    UFO [lorentz] structure as a list of [contraction]s. *)
-val parse : Coupling.lorentz list -> UFOx.Lorentz.t -> t
+val parse : ?allow_denominator:bool -> Coupling.lorentz list -> UFOx.Lorentz.t -> t
 
 (* [map_indices f lorentz] applies the map [f] to the free
    indices in [lorentz]. *)

@@ -28,12 +28,17 @@ exception Syntax_Error of string * Lexing.position * Lexing.position
 
 type name = string list
 
+type string_atom =
+  | Macro of name
+  | Literal of string
+
 type value =
   | Name of name
   | Integer of int
   | Float of float
   | Fraction of int * int
   | String of string
+  | String_Expr of string_atom list
   | Empty_List
   | Name_List of name list
   | Integer_List of int list
@@ -52,5 +57,10 @@ type declaration =
     attribs : attrib list }
 
 type t = declaration list
+
+(* A macro expansion is encoded as a special [declaration], with
+   [kind = "$"] and a single attribute.  There should not never
+   be the risk of a name clash.  *)
+val macro : string -> value -> declaration
 
 val to_strings : t -> string list

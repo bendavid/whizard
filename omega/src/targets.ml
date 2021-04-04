@@ -2364,9 +2364,9 @@ i*)
            sprintf "%d.0_%s" c !kind
       | Float x ->
          if x < 0. then
-           sprintf "(%g_%s)" x !kind
+           "(" ^ string_of_float x ^ "_" ^ !kind ^ ")"
          else
-           sprintf "%g_%s" x !kind
+           string_of_float x ^ "_" ^ !kind
       | _ -> invalid_arg "format_constant"
 
     let rec eval_parameter' = function
@@ -2395,7 +2395,12 @@ i*)
       | Rec x ->
           printf "@, (1.0_%s / " !kind; eval_parameter' x; printf ")"
       | Pow (x, n) ->
-          printf "@,("; eval_parameter' x; printf "**%d" n; printf ")"
+         printf "@,("; eval_parameter' x; 
+         if n < 0 then
+           printf "**(%d)" n
+         else
+           printf "**%d" n;
+         printf ")"
       | PowX (x, y) ->
           printf "@,("; eval_parameter' x;
            printf "**"; eval_parameter' y; printf ")"
@@ -2417,6 +2422,7 @@ i*)
       | Log10 x -> printf "@,log10 ("; eval_parameter' x; printf ")"
       | Conj (Integer _ | Float _ as x) -> eval_parameter' x
       | Conj x -> printf "@,cconjg ("; eval_parameter' x; printf ")"
+      | Abs x -> printf "@,abs ("; eval_parameter' x; printf ")"
 
     let strip_single_tag = function
       | Real x -> x
@@ -2477,7 +2483,7 @@ i*)
       | Sin e | Cos e | Tan e | Cot e
       | Asin e | Acos e | Atan e
       | Sinh e | Cosh e | Tanh e
-      | Conj e ->
+      | Conj e | Abs e ->
          depends_on params e
       | Atan2 (e1, e2) ->
          depends_on params e1 || depends_on params e2
@@ -7530,7 +7536,7 @@ i*)
          and fortran_module = Fermions.use_module in
          use_modules := name :: !use_modules;
          UFO.Targets.Fortran.lorentz_module
-           ~only ~name ~fortran_module
+           ~only ~name ~fortran_module ~parameter_module:!parameter_module
            (Format_Fortran.formatter_of_out_channel oc) ()
       | None -> ()
       end;

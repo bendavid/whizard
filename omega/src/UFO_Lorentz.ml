@@ -404,7 +404,8 @@ type contraction =
     dirac : dirac_string term list;
     vector : A.vector term list;
     scalar : A.scalar list;
-    inverse : A.scalar list }
+    inverse : A.scalar list;
+    denominator : contraction list }
 
 let fermion_lines_of_contraction contraction =
   List.sort
@@ -416,9 +417,13 @@ let map_indices_contraction f c =
     dirac = List.map (map_term f (map_indices_dirac f)) c.dirac;
     vector = List.map (map_term f (A.map_indices_vector f)) c.vector;
     scalar = c.scalar;
-    inverse = c.inverse }
+    inverse = c.inverse;
+    denominator = c.denominator }
 
 type t = contraction list
+
+let dummy =
+  []
 
 let rec charge_conjugate_dirac (bra, ket as fermion_line) = function
   | [] -> []
@@ -554,13 +559,13 @@ let classify_dirac atom =
   { indices = indices_of_dirac_string atom;
     atom }
 
-let contraction_of_lorentz_atoms (atoms, coeff) =
+let contraction_of_lorentz_atoms denominator (atoms, coeff) =
   let dirac_atoms, vector_atoms, scalar, inverse = split_atoms atoms in
   let dirac =
     List.map classify_dirac (dirac_strings_of_dirac_atoms dirac_atoms)
   and vector =
     List.map classify_vector vector_atoms in
-  { coeff; dirac; vector; scalar; inverse }
+  { coeff; dirac; vector; scalar; inverse; denominator }
 
 type redundancy =
   | Trace of int
@@ -673,23 +678,45 @@ let rec compress_metrics c =
          dirac = c.dirac;
          vector = vector';
          scalar = c.scalar;
-         inverse = c.inverse }
+         inverse = c.inverse;
+         denominator = c.denominator }
   | Some (Replace (mu, nu)), vector' ->
      compress_metrics
        { coeff = c.coeff;
          dirac = substitute_index_dirac mu nu c.dirac;
          vector = substitute_index_vector mu nu vector';
          scalar = c.scalar;
-         inverse = c.inverse }
+         inverse = c.inverse;
+         denominator = c.denominator }
 
-let dummy =
-  []
+let compress_denominator = function
+  | [([], q)] as denominator -> if QC.is_unit q then [] else denominator
+  | denominator -> denominator
 
-let parse1 spins atom =
-  compress_metrics (contraction_of_lorentz_atoms atom)
+let parse1 spins denominator atom =
+  compress_metrics (contraction_of_lorentz_atoms denominator atom)
 
-let parse spins l =
-  List.map (parse1 spins) l
+let parse ?(allow_denominator=false) spins = function
+  | UFOx.Lorentz.Linear l -> List.map (parse1 spins []) l
+  | UFOx.Lorentz.Ratios r ->
+     ThoList.flatmap
+       (fun (numerator, denominator) ->
+         match compress_denominator denominator with
+         | [] -> List.map (parse1 spins []) numerator
+         | d ->
+            if allow_denominator then
+              let parsed_denominator =
+                List.map
+                  (parse1 [Coupling.Scalar; Coupling.Scalar] [])
+                  denominator in
+              List.map (parse1 spins parsed_denominator) numerator
+            else
+              invalid_arg
+                (Printf.sprintf
+                   "UFO_Lorentz.parse: denominator %s in %s not allowed here!"
+                    (UFOx.Lorentz.to_string (UFOx.Lorentz.Linear d))
+                    (UFOx.Lorentz.to_string (UFOx.Lorentz.Ratios r))))
+       r
 
 let i2s = UFOx.Index.to_string
 
@@ -723,8 +750,12 @@ let dirac_string_to_string ds =
 let scalar_to_string = function
   | A.Mass _ -> "m"
   | A.Width _ -> "w"
+  | A.P2 i -> Printf.sprintf "p%d**2" i
+  | A.P12 (i, j) -> Printf.sprintf "p%d*p%d" i j
+  | A.Variable s -> s
+  | A.Coeff c -> UFOx.Value.to_string c
 
-let contraction_to_string c =
+let rec contraction_to_string c =
   String.concat
     " * "
     (List.concat
@@ -738,15 +769,18 @@ let contraction_to_string c =
     (match c.inverse with
      | [] -> ""
      | inverse ->
-        " / (" ^ String.concat "*" (List.map scalar_to_string inverse) ^ ")")
+        " / (" ^ String.concat "*" (List.map scalar_to_string inverse) ^ ")") ^
+    (match c.denominator with
+     | [] -> ""
+     | denominator -> " / (" ^ to_string denominator ^ ")")
+  
+and to_string contractions =
+  String.concat " + " (List.map contraction_to_string contractions)
 
 let fermion_lines_to_string fermion_lines =
   ThoList.to_string
     (fun (bra, ket) -> Printf.sprintf "%s->%s" (i2s bra) (i2s ket))
     fermion_lines
-
-let to_string contractions =
-  String.concat " + " (List.map contraction_to_string contractions)
 
 module type Test =
   sig

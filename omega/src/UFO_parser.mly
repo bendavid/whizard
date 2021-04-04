@@ -71,9 +71,8 @@ declaration:
  | ID EQUAL name LPAREN attributes RPAREN { { U.name = $1;
 					      U.kind = $3;
 					      U.attribs = $5 } }
- | ID EQUAL STRING                        { { U.name = $1;
-					      U.kind = ["$"; $3]; (* HACK! *)
-					      U.attribs = [] } }
+ | ID EQUAL STRING                        { U.macro $1 (U.String $3) }
+ | ID EQUAL string_expr                   { U.macro $1 (U.String_Expr $3) }
 ;
 
 name:
@@ -96,7 +95,8 @@ value:
  | INT         { U.Integer $1 }
  | INT DIV INT { U.Fraction ($1, $3) }
  | FLOAT       { U.Float $1 }
- | STRING      { U.String $1 }
+ | string      { U.String $1 }
+ | string_expr { U.String_Expr $1 }
  | name        { U.Name $1 }
 ;
 
@@ -123,9 +123,34 @@ integers:
  | INT COMMA integers { $1 :: $3 }
 ;
 
+/* We demand that a [U.String_Expr] contains no adjacent literal strings.
+   Instead, they are concatenated already in the parser.
+   Note that a [U.String_Expr] must have at least two elements:
+   singletons are parsed as [U.Name] or [U.String] instead. */
+
+string_expr:
+ | literal_string_expr { $1 }
+ | macro_string_expr   { $1 }
+;
+
+literal_string_expr:
+ | string PLUS name              { [U.Literal $1; U.Macro $3] }
+ | string PLUS macro_string_expr { U.Literal $1 :: $3 }
+;
+
+macro_string_expr:
+ | name PLUS string              { [U.Macro $1; U.Literal $3] }
+ | name PLUS string_expr         { U.Macro $1 :: $3 }
+;
+
 strings:
- | STRING               { [$1] }
- | STRING COMMA strings { $1 :: $3 }
+ | string               { [$1] }
+ | string COMMA strings { $1 :: $3 }
+;
+
+string:
+ | STRING             { $1 }
+ | string PLUS STRING { $1 ^ $3 }
 ;
 
 orders:

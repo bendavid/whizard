@@ -779,9 +779,9 @@ amplitude_benchmark_UFO_SMEFT_opt.f90: $(OMEGA_UFO) Makefile
 benchmark_UFO_SMEFT.o: \
 	amplitude_benchmark_UFO_SMEFT.o amplitude_benchmark_UFO_SMEFT_opt.o
 
-benchmark_UFO_SMEFT.o: parameters_QCD.o
+benchmark_UFO_SMEFT.o: parameters_UFO_SMEFT.o
 amplitude_benchmark_UFO_SMEFT.o amplitude_benchmark_UFO_SMEFT_opt.o: \
-	parameters_QCD.o
+	parameters_UFO_SMEFT.o
 
 parameters_UFO_SMEFT.f90: $(OMEGA_UFO)
 	$(OMEGA_UFO) -model:UFO_dir $(UFO_SMEFT) -model:exec \
@@ -922,7 +922,7 @@ keystones_UFO_bispinors_generate.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 
 keystones.cmx: keystones.ml keystones.cmi
 keystones.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
-keystones.cmi: keystones.mli
+keystones.cmi: keystones.mli $(OMEGA_CORE)
 
 endif
 

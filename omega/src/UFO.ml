@@ -144,7 +144,8 @@ module Files : Files =
 	vertices = parse "vertices";
 	lorentz = parse "lorentz";
 	parameters = parse "parameters";
-	propagators = (try parse "propagators" with _ -> []);
+	propagators = parse "propagators";
+        (* [(try parse "propagators" with _ -> []);] *)
 	decays = (try parse "decays" with _ -> []) }
 
   end
@@ -206,6 +207,13 @@ let string_attrib name attribs =
   match find_attrib name attribs with
   | S.String s -> s
   | _ -> invalid_arg ("UFO.string_attrib: " ^ name)
+
+let string_expr_attrib name attribs =
+  match find_attrib name attribs with
+  | S.Name n -> [S.Macro n]
+  | S.String s -> [S.Literal s]
+  | S.String_Expr e -> e
+  | _ -> invalid_arg ("UFO.string_expr_attrib: " ^ name)
 
 let boolean_attrib name attribs =
   try
@@ -562,7 +570,7 @@ module Particle : Particle =
                (try Some (name_attrib "line" attribs) with _ -> None);
 	     (* Undocumented extensions. *)
              propagator =
-               (try Some (name_attrib "propagator" attribs) with _ -> None);
+               (try Some (name_attrib ~strip:"Prop" "propagator" attribs) with _ -> None);
              (* O'Mega extensions. *)
              is_anti = false } map
       | [ "anti"; p ], [] ->
@@ -1093,6 +1101,61 @@ module Parameter : Parameter =
 
   end
 
+(* Macros are encoded as a special [S.declaration] with
+   [S.kind = "$"].  This is slightly hackish, but general enough
+   and the overhead of a special union type is probably not worth
+   the effort.  *)
+
+module type Macro =
+  sig
+    type t
+    val empty : t
+
+    (* The domains and codomains are still a bit too much ad hoc,
+       but it does the job. *)
+    val define : t -> string -> S.value -> t
+    val expand_string : t -> string -> S.value
+    val expand_expr : t -> S.string_atom list -> string
+
+    (* Only for documentation: *)
+    val expand_atom : t -> S.string_atom -> string
+  end
+
+module Macro : Macro =
+  struct
+
+    type t = S.value SMap.t
+
+    let empty = SMap.empty
+
+    let define macros name expansion =
+      SMap.add name expansion macros
+
+    let expand_string macros name =
+      SMap.find name macros
+
+    let rec expand_atom macros = function
+      | S.Literal s -> s
+      | S.Macro [name] ->
+         begin
+           try
+             begin match SMap.find name macros with
+             | S.String s -> s
+             | S.String_Expr expr -> expand_expr macros expr
+             | _ -> invalid_arg ("expand_atom: not a string: " ^ name)
+             end
+           with
+           | Not_found -> invalid_arg ("expand_atom: not found: " ^ name)
+         end
+      | S.Macro [] -> invalid_arg "expand_atom: empty"
+      | S.Macro name ->
+         invalid_arg ("expand_atom: compound name: " ^ String.concat "." name)
+
+    and expand_expr macros expr =
+      String.concat "" (List.map (expand_atom macros) expr)
+
+  end
+
 module type Propagator_UFO =
   sig
 
@@ -1151,13 +1214,6 @@ module Propagator_UFO : Propagator_UFO =
                    num_or_den symbol msg fixed)
          end
 
-    (* The parser will turn [foo = "bar"] into [foo = "bar"."$"],
-       which will be interpreted as a macro definition
-       for [foo] expanding to ["bar"].   The dollar is used to
-       distinguish it from an empty attribute list.  This
-       could also be implemented with a union type for the
-       declarations.  *)
-
     let of_file1 (macros, map) d =
       let symbol = d.S.name in
       match d.S.kind, d.S.attribs with
@@ -1168,26 +1224,42 @@ module Propagator_UFO : Propagator_UFO =
            optional_handler attribs query name default in
         let name = required string_attrib "name" in
          warn_symbol_name "propagators" symbol name;
-         let num_string = required string_attrib "numerator"
+         let num_string_expr = required string_expr_attrib "numerator"
          and den_string =
 	   begin match optional find_attrib "denominator"
                                 (S.String default_denominator) with
 	   | S.String s -> s
-	   | S.Name [n] -> SMap.find n macros
+	   | S.Name [n] ->
+              begin match Macro.expand_string macros n with
+              | S.String s -> s
+              | _ -> invalid_arg "Propagator.denominator"
+              end
 	   | _ -> invalid_arg "Propagator.denominator: "
 	   end in
+         let num_string = Macro.expand_expr macros num_string_expr in
          let numerator =
            of_string_with_error_correction symbol "numerator" num_string
          and denominator =
            of_string_with_error_correction symbol "denominator" den_string in
 	 (macros, SMap.add symbol { name; numerator; denominator } map)
-      | [ "$"; s ], [] ->
-	 (SMap.add symbol s macros, map)
+      | [ "$" ], [ macro ] ->
+         begin match macro.S.a_value with
+         | S.String _ as s ->
+            (Macro.define macros symbol s, map);
+         | S.String_Expr expr ->
+            let expanded = S.String (Macro.expand_expr macros expr) in
+            (Macro.define macros symbol expanded, map)
+         | _ -> invalid_arg ("Propagator:of_file: not a string " ^ symbol)
+         end
+      | [ "$" ], [] ->
+         invalid_arg ("Propagator:of_file: empty declaration " ^ symbol)
+      | [ "$" ], _ ->
+         invalid_arg ("Propagator:of_file: multiple declaration " ^ symbol)
       | _ -> invalid_arg ("Propagator:of_file: " ^ name_to_string d.S.kind)
        
     let of_file propagators =
       let _, propagators' =
-	List.fold_left of_file1 (SMap.empty, SMap.empty) propagators in
+	List.fold_left of_file1 (Macro.empty, SMap.empty) propagators in
       propagators'
 
   end
@@ -1344,7 +1416,8 @@ module type Lorentz =
         n : int;
 	spins : spins;
 	structure : UFO_Lorentz.t;
-        fermion_lines : Coupling.fermion_lines }
+        fermion_lines : Coupling.fermion_lines;
+        variables : string list }
 
     val all_charge_conjugates : t -> t list
     val permute : P.t -> t -> t
@@ -1398,7 +1471,8 @@ module Lorentz : Lorentz =
         n : int;
 	spins : spins;
 	structure : UFO_Lorentz.t;
-        fermion_lines : Coupling.fermion_lines }
+        fermion_lines : Coupling.fermion_lines;
+        variables : string list }
 
     (* Add one charge conjugated fermion lines. *)
     let charge_conjugate1 l (bra, ket as fermion_line) =
@@ -1406,7 +1480,8 @@ module Lorentz : Lorentz =
         n = l.n;
         spins = l.spins;
         structure = UFO_Lorentz.charge_conjugate fermion_line l.structure;
-        fermion_lines = l.fermion_lines }
+        fermion_lines = l.fermion_lines;
+        variables = l.variables }
 
     (* Add several charge conjugated fermion lines. *)
     let charge_conjugate l fermion_lines =
@@ -1442,7 +1517,8 @@ module Lorentz : Lorentz =
         n = l.n;
         spins = permute_spins p l.spins;
         structure;
-        fermion_lines }
+        fermion_lines;
+        variables = l.variables }
 
     let omega_lorentz_reps n alist =
       let reps = Array.make n Coupling.Scalar in
@@ -1527,7 +1603,8 @@ module Lorentz : Lorentz =
                  n = List.length l.Lorentz_UFO.spins;
 	         spins;
 	         structure;
-                 fermion_lines = UFO_Lorentz.fermion_lines structure }
+                 fermion_lines = UFO_Lorentz.fermion_lines structure;
+                 variables = UFOx.Lorentz.variables l.Lorentz_UFO.structure }
                acc)
         lorentz_UFO SMap.empty
 
@@ -1559,7 +1636,8 @@ module type Propagator =
       { name : string;
         spins : Coupling.lorentz * Coupling.lorentz;
 	numerator : UFO_Lorentz.t;
-	denominator : UFO_Lorentz.t }
+	denominator : UFO_Lorentz.t;
+        variables : string list }
 
     val of_propagator_UFO : ?majorana:bool -> Propagator_UFO.t -> t
     val of_propagators_UFO : ?majorana:bool -> Propagator_UFO.t SMap.t -> t SMap.t
@@ -1577,7 +1655,8 @@ module Propagator : Propagator =
       { name : string;
         spins : Coupling.lorentz * Coupling.lorentz;
 	numerator : UFO_Lorentz.t;
-	denominator : UFO_Lorentz.t }
+	denominator : UFO_Lorentz.t;
+	variables : string list }
 
     let lorentz_rep_at rep_classes i =
       try
@@ -1617,6 +1696,12 @@ module Propagator : Propagator =
       | Coupling.Spinor | Coupling.ConjSpinor -> Coupling.Majorana
       | s -> s
 
+    let string_list_union l1 l2 =
+      Sets.String.elements
+        (Sets.String.union
+           (Sets.String.of_list l1)
+           (Sets.String.of_list l2))
+
     (* In the current conventions, the factor of~$i$ is not included: *)
     let of_propagator_UFO ?(majorana=false) p =
       let numerator = canonicalize_51_52 p.Propagator_UFO.numerator in
@@ -1625,7 +1710,7 @@ module Propagator : Propagator =
       and spin2 = lorentz_rep_at lorentz_reps 2 in
       let numerator_sans_i =
         if !divide_propagators_by_i then
-          UFOx.Lorentz.map_coef (fun q -> Algebra.QC.div q imaginary) numerator
+          UFOx.Lorentz.map_coeff (fun q -> Algebra.QC.div q imaginary) numerator
         else
           numerator in
       { name = p.Propagator_UFO.name;
@@ -1634,8 +1719,13 @@ module Propagator : Propagator =
             (force_majorana spin1, force_majorana spin2)
           else
             (spin1, spin2);
-        numerator = UFO_Lorentz.parse [spin1; spin2] numerator_sans_i;
-        denominator = UFO_Lorentz.parse scalars p.Propagator_UFO.denominator }
+        numerator =
+          UFO_Lorentz.parse ~allow_denominator:true [spin1; spin2] numerator_sans_i;
+        denominator = UFO_Lorentz.parse scalars p.Propagator_UFO.denominator;
+        variables =
+          string_list_union
+            (UFOx.Lorentz.variables p.Propagator_UFO.denominator)
+            (UFOx.Lorentz.variables numerator_sans_i) }
 
     let of_propagators_UFO ?majorana propagators_UFO =
       SMap.fold
@@ -1654,7 +1744,8 @@ module Propagator : Propagator =
       { name = p.name;
         spins = (snd p.spins, fst p.spins);
         numerator = UFO_Lorentz.map_indices transpose_positions p.numerator;
-        denominator = p.denominator }
+        denominator = p.denominator;
+        variables = p.variables }
 
     let to_string symbol p =
       Printf.sprintf
@@ -2007,9 +2098,16 @@ module Model =
       let l = lcc.Vertex.lorentz in
       let s = Array.to_list (spin_multiplet model l)
       and fl = (SMap.find l model.lorentz).Lorentz.fermion_lines
-      and c = name (coupling_of_symbol model lcc.Vertex.coupling)
-      and col = translate_color model p lcc.Vertex.color in
-      (Array.to_list p, Coupling.UFO (QC.unit, l, s, fl, col), c)
+      and c = name (coupling_of_symbol model lcc.Vertex.coupling) in
+      match lcc.Vertex.color with
+      | UFOx.Color.Linear color ->
+         let col = translate_color model p color in
+         (Array.to_list p, Coupling.UFO (QC.unit, l, s, fl, col), c)
+      | UFOx.Color.Ratios _ as color ->
+         invalid_arg
+           ("UFO.Model.translate_coupling: invalid color structure" ^
+              UFOx.Color.to_string color)
+        
 
     let translate_coupling model p lcc =
       List.map (translate_coupling_1 model p) lcc
@@ -2704,7 +2802,8 @@ module type Fortran_Target =
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val lorentz_module :
-      ?only:SSet.t -> ?name:string -> ?fortran_module:string ->
+      ?only:SSet.t -> ?name:string ->
+      ?fortran_module:string -> ?parameter_module:string ->
       Format_Fortran.formatter -> unit -> unit
 
   end
@@ -2721,20 +2820,24 @@ module Targets =
 
         let lorentz_functions ff fusions () =
           List.iter
-            (fun (name, s, l) -> UFO_targets.Fortran.lorentz ff name s l)
+            (fun (name, s, l) ->
+              UFO_targets.Fortran.lorentz ff name s l)
             fusions
 
-        let propagator_functions ff propagators () =
+        let propagator_functions ff parameter_module propagators () =
           List.iter
             (fun (name, p) ->
               UFO_targets.Fortran.propagator
-                ff name p.Propagator.spins
+                ff name
+                parameter_module p.Propagator.variables
+                p.Propagator.spins
                 p.Propagator.numerator p.Propagator.denominator)
             propagators
 
         let lorentz_module
               ?only ?(name="omega_amplitude_ufo")
-              ?(fortran_module="omega95") ff () =
+              ?(fortran_module="omega95")
+              ?(parameter_module="parameter_module") ff () =
           let printf fmt = fprintf ff fmt
           and nl = pp_newline ff in
           printf "module %s" name; nl ();
@@ -2753,8 +2856,9 @@ module Targets =
           UFO_targets.Fortran.eps4_g4_g44_decl ff ();
           UFO_targets.Fortran.eps4_g4_g44_init ff ();
           printf "contains"; nl ();
+          UFO_targets.Fortran.inner_product_functions ff ();
           lorentz_functions ff fusions ();
-          propagator_functions ff propagators ();
+          propagator_functions ff parameter_module propagators ();
           printf "end module %s" name; nl ();
           pp_flush ff ()
 

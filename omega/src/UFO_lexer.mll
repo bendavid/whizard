@@ -53,7 +53,7 @@ let not_crlf = [^'\r' '\n']
 rule token = parse
     white             { token lexbuf }     (* skip blanks *)
   | '#' not_crlf*      { token lexbuf }     (* skip comments *)
-  | crlf+              { new_line lexbuf; token lexbuf }
+  | crlf               { new_line lexbuf; token lexbuf }
   | "from" not_crlf*   { token lexbuf }     (* skip imports *)
   | "import" not_crlf* { token lexbuf }     (* skip imports (for now) *)
   | "try:" not_crlf*   { token lexbuf }     (* skip imports (for now) *)

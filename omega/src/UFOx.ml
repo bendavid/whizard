@@ -102,6 +102,295 @@ module Expr =
 
   end
 
+module Value =
+  struct
+
+    module S = UFOx_syntax
+    module Q = Algebra.Q
+
+    type builtin =
+      | Sqrt
+      | Exp | Log | Log10
+      | Sin | Asin
+      | Cos | Acos
+      | Tan | Atan
+      | Sinh | Asinh
+      | Cosh | Acosh
+      | Tanh | Atanh
+      | Sec | Asec
+      | Csc | Acsc
+      | Conj | Abs
+
+    let builtin_to_string = function
+      | Sqrt -> "sqrt"
+      | Exp -> "exp"
+      | Log -> "log"
+      | Log10 -> "log10"
+      | Sin -> "sin"
+      | Cos -> "cos"
+      | Tan -> "tan"
+      | Asin -> "asin"
+      | Acos -> "acos"
+      | Atan -> "atan"
+      | Sinh -> "sinh"
+      | Cosh -> "cosh"
+      | Tanh -> "tanh"
+      | Asinh -> "asinh"
+      | Acosh -> "acosh"
+      | Atanh -> "atanh"
+      | Sec -> "sec"
+      | Csc -> "csc"
+      | Asec -> "asec"
+      | Acsc -> "acsc"
+      | Conj -> "conjg"
+      | Abs -> "abs"
+
+    let builtin_of_string = function
+      | "cmath.sqrt" -> Sqrt
+      | "cmath.exp" -> Exp
+      | "cmath.log" -> Log
+      | "cmath.log10" -> Log10
+      | "cmath.sin" -> Sin
+      | "cmath.cos" -> Cos
+      | "cmath.tan" -> Tan
+      | "cmath.asin" -> Asin
+      | "cmath.acos" -> Acos
+      | "cmath.atan" -> Atan
+      | "cmath.sinh" -> Sinh
+      | "cmath.cosh" -> Cosh
+      | "cmath.tanh" -> Tanh
+      | "cmath.asinh" -> Asinh
+      | "cmath.acosh" -> Acosh
+      | "cmath.atanh" -> Atanh
+      | "sec" -> Sec
+      | "csc" -> Csc
+      | "asec" -> Asec
+      | "acsc" -> Acsc
+      | "complexconjugate" -> Conj
+      | "abs" -> Abs
+      | name -> failwith ("UFOx.Value: unsupported function: " ^ name)
+
+    type t =
+      | Integer of int
+      | Rational of Q.t
+      | Real of float
+      | Complex of float * float
+      | Variable of string
+      | Sum of t list
+      | Difference of t * t
+      | Product of t list
+      | Quotient of t * t
+      | Power of t * t
+      | Application of builtin * t list
+
+    let rec to_string = function
+      | Integer i -> string_of_int i
+      | Rational q -> Q.to_string q
+      | Real x -> string_of_float x
+      | Complex (0.0, 1.0) -> "I"
+      | Complex (0.0, -1.0) -> "-I"
+      | Complex (0.0, i) -> string_of_float i ^ "*I"
+      | Complex (r, 1.0) -> string_of_float r ^ "+I"
+      | Complex (r, -1.0) -> string_of_float r ^ "-I"
+      | Complex (r, i) ->
+         string_of_float r ^ (if i < 0.0 then "-" else "+") ^
+           string_of_float (abs_float i) ^ "*I"
+      | Variable s -> s
+      | Sum [] -> "0"
+      | Sum [e] -> to_string e
+      | Sum es -> "(" ^ String.concat "+" (List.map maybe_parentheses es) ^ ")"
+      | Difference (e1, e2) -> to_string e1 ^ "-" ^ maybe_parentheses e2
+      | Product [] -> "1"
+      | Product ((Integer (-1) | Real (-1.)) :: es) ->
+         "-" ^ maybe_parentheses (Product es)
+      | Product es -> String.concat "*" (List.map maybe_parentheses es)
+      | Quotient (e1, e2) -> to_string e1 ^ "/" ^ maybe_parentheses e2
+      | Power ((Integer i as e), Integer p) ->
+         if p < 0 then
+           maybe_parentheses (Real (float_of_int i)) ^
+             "^(" ^ string_of_int p ^ ")"
+         else if p = 0 then
+           "1"
+         else if p <= 4 then
+           maybe_parentheses e ^ "^" ^ string_of_int p
+         else
+           maybe_parentheses (Real (float_of_int i)) ^
+             "^" ^ string_of_int p
+      | Power (e1, e2) ->
+         maybe_parentheses e1 ^ "^" ^ maybe_parentheses e2
+      | Application (f, [Integer i]) ->
+         to_string (Application (f, [Real (float i)]))
+      | Application (f, es) ->
+	 builtin_to_string f ^
+	   "(" ^ String.concat "," (List.map to_string es) ^ ")"
+
+    and maybe_parentheses = function
+      | Integer i as e ->
+         if i < 0 then
+           "(" ^ to_string e ^ ")"
+         else
+           to_string e     
+      | Real x as e ->
+         if x < 0.0 then
+           "(" ^ to_string e ^ ")"
+         else
+           to_string e
+      | Complex (x, 0.0) -> to_string (Real x)
+      | Complex (0.0, 1.0) -> "I"
+      | Variable _ | Power (_, _) | Application (_, _) as e -> to_string e
+      | Sum [e] -> to_string e
+      | Product [e] -> maybe_parentheses e
+      | e -> "(" ^ to_string e ^ ")"
+
+    let rec to_coupling atom = function
+      | Integer i -> Coupling.Integer i
+      | Rational q ->
+         let n, d = Q.to_ratio q in
+         Coupling.Quot (Coupling.Integer n, Coupling.Integer d)
+      | Real x -> Coupling.Float x
+      | Product es -> Coupling.Prod (List.map (to_coupling atom) es)
+      | Variable s -> Coupling.Atom (atom s)
+      | Complex (r, 0.0) -> Coupling.Float r
+      | Complex (0.0,  1.0) -> Coupling.I
+      | Complex (0.0, -1.0) -> Coupling.Prod [Coupling.I; Coupling.Integer (-1)]
+      | Complex (0.0, i) -> Coupling.Prod [Coupling.I; Coupling.Float i]
+      | Complex (r, 1.0) ->
+         Coupling.Sum [Coupling.Float r; Coupling.I]
+      | Complex (r, -1.0) ->
+         Coupling.Diff (Coupling.Float r, Coupling.I)
+      | Complex (r, i) ->
+         Coupling.Sum [Coupling.Float r;
+                       Coupling.Prod [Coupling.I; Coupling.Float i]]
+      | Sum es -> Coupling.Sum (List.map (to_coupling atom) es)
+      | Difference (e1, e2) ->
+         Coupling.Diff (to_coupling atom e1, to_coupling atom e2)
+      | Quotient (e1, e2) ->
+         Coupling.Quot (to_coupling atom e1, to_coupling atom e2)
+      | Power (e1, Integer e2) ->
+         Coupling.Pow (to_coupling atom e1, e2)
+      | Power (e1, e2) ->
+         Coupling.PowX (to_coupling atom e1, to_coupling atom e2)
+      | Application (f, [e]) -> apply1 (to_coupling atom e) f
+      | Application (f, []) ->
+         failwith
+           ("UFOx.Value.to_coupling:  " ^ builtin_to_string f ^
+              ": empty argument list")
+      | Application (f, _::_::_) ->
+         failwith
+           ("UFOx.Value.to_coupling: " ^ builtin_to_string f ^
+              ": more than one argument in list")
+
+    and apply1 e = function
+      | Sqrt -> Coupling.Sqrt e
+      | Exp -> Coupling.Exp e
+      | Log -> Coupling.Log e
+      | Log10 -> Coupling.Log10 e
+      | Sin -> Coupling.Sin e
+      | Cos -> Coupling.Cos e
+      | Tan -> Coupling.Tan e
+      | Asin -> Coupling.Asin e
+      | Acos -> Coupling.Acos e
+      | Atan -> Coupling.Atan e
+      | Sinh -> Coupling.Sinh e
+      | Cosh -> Coupling.Cosh e
+      | Tanh -> Coupling.Tanh e
+      | Sec -> Coupling.Quot (Coupling.Integer 1, Coupling.Cos e)
+      | Csc -> Coupling.Quot (Coupling.Integer 1, Coupling.Sin e)
+      | Asec -> Coupling.Acos (Coupling.Quot (Coupling.Integer 1, e))
+      | Acsc -> Coupling.Asin (Coupling.Quot (Coupling.Integer 1, e))
+      | Conj -> Coupling.Conj e
+      | Abs -> Coupling.Abs e
+      | (Asinh | Acosh | Atanh as f) ->
+         failwith
+           ("UFOx.Value.to_coupling: function `"
+            ^ builtin_to_string f ^ "' not supported yet!")
+
+    let compress terms = terms
+
+    let rec of_expr e =
+      compress (of_expr' e)
+
+    and of_expr' = function
+      | S.Integer i -> Integer i
+      | S.Float x -> Real x
+      | S.Variable "cmath.pi" -> Variable "pi"
+      | S.Quoted name ->
+	 invalid_arg ("UFOx.Value.of_expr: unexpected quoted variable '" ^
+			 name ^ "'")
+      | S.Variable name -> Variable name
+      | S.Sum (e1, e2) ->
+	 begin match of_expr e1, of_expr e2 with
+	 | (Integer 0 | Real 0.), e -> e
+	 | e, (Integer 0 | Real 0.) -> e
+	 | Sum e1, Sum e2 -> Sum (e1 @ e2)
+	 | e1, Sum e2 -> Sum (e1 :: e2)
+	 | Sum e1, e2 -> Sum (e2 :: e1)
+	 | e1, e2 -> Sum [e1; e2]
+	 end
+      | S.Difference (e1, e2) ->
+	 begin match of_expr e1, of_expr e2 with
+	 | e1, (Integer 0 | Real 0.) -> e1
+	 | e1, e2 -> Difference (e1, e2)
+         end
+      | S.Product (e1, e2) ->
+	 begin match of_expr e1, of_expr e2 with
+         | (Integer 0 | Real 0.), _ -> Integer 0
+         | _, (Integer 0 | Real 0.) -> Integer 0
+         | (Integer 1 | Real 1.), e -> e
+         | e, (Integer 1 | Real 1.) -> e
+	 | Product e1, Product e2 -> Product (e1 @ e2)
+	 | e1, Product e2 -> Product (e1 :: e2)
+	 | Product e1, e2 -> Product (e2 :: e1)
+	 | e1, e2 -> Product [e1; e2]
+	 end
+      | S.Quotient (e1, e2) ->
+         begin match of_expr e1, of_expr e2 with
+         | e1, (Integer 0 | Real 0.) ->
+            invalid_arg "UFOx.Value: divide by 0"
+         | e1, (Integer 1 | Real 1.) -> e1
+         | e1, e2 -> Quotient (e1, e2)
+         end
+      | S.Power (e, p) ->
+         begin match of_expr e, of_expr p with
+         | (Integer 0 | Real 0.), (Integer 0 | Real 0.) ->
+            invalid_arg "UFOx.Value: 0^0"
+         | _, (Integer 0 | Real 0.) -> Integer 1
+         | e, (Integer 1 | Real 1.) -> e
+	 | Integer e, Integer p ->
+            if p < 0 then
+              Power (Real (float_of_int e), Integer p)
+            else if p = 0 then
+              Integer 1
+            else if p <= 4 then
+              Power (Integer e, Integer p)
+            else
+              Power (Real (float_of_int e), Integer p)
+	 | e, p -> Power (e, p)
+         end
+      | S.Application ("complex", [r; i]) ->
+	 begin match of_expr r, of_expr i with
+	 | r, (Integer 0 | Real 0.0) -> r
+	 | Real r, Real i -> Complex (r, i)
+	 | Integer r, Real i -> Complex (float_of_int r, i)
+	 | Real r, Integer i -> Complex (r, float_of_int i)
+	 | Integer r, Integer i -> Complex (float_of_int r, float_of_int i)
+	 | _ -> invalid_arg "UFOx.Value: complex expects two numeric arguments"
+	 end
+      | S.Application ("complex", _) ->
+	 invalid_arg "UFOx.Value: complex expects two arguments"
+      | S.Application ("complexconjugate", [e]) ->
+	 Application (Conj, [of_expr e])
+      | S.Application ("complexconjugate", _) ->
+	 invalid_arg "UFOx.Value: complexconjugate expects single argument"
+      | S.Application ("cmath.sqrt", [e]) ->
+	 Application (Sqrt, [of_expr e])
+      | S.Application ("cmath.sqrt", _) ->
+	 invalid_arg "UFOx.Value: sqrt expects single argument"
+      | S.Application (name, args) ->
+	 Application (builtin_of_string name, List.map of_expr args)
+
+  end
+
 let positive integers =
   List.filter (fun (i, _) -> i > 0) integers
 
@@ -234,6 +523,10 @@ module type Atom =
     type t
     val map_indices : (int -> int) -> t -> t
     val rename_indices : (int -> int) -> t -> t
+    val contract_pair : t -> t -> t option
+    val variable : t -> string option
+    val scalar : t -> bool
+    val is_unit : t -> bool
     val invertible : t -> bool
     val invert : t -> t
     val of_expr : string -> UFOx_syntax.expr list -> t list
@@ -253,11 +546,16 @@ module type Atom =
 module type Tensor =
   sig
     type atom
-    type t = (atom list * Algebra.QC.t) list
+    type 'a linear = ('a list * Algebra.QC.t) list
+    type t =
+      | Linear of atom linear
+      | Ratios of (atom linear * atom linear) list
     val map_atoms : (atom -> atom) -> t -> t
     val map_indices : (int -> int) -> t -> t
     val rename_indices : (int -> int) -> t -> t
-    val map_coef : (Algebra.QC.t -> Algebra.QC.t) -> t -> t
+    val map_coeff : (Algebra.QC.t -> Algebra.QC.t) -> t -> t
+    val contract_pairs : t -> t
+    val variables : t -> string list
     val of_expr : UFOx_syntax.expr -> t
     val of_string : string -> t
     val of_strings : string list -> t
@@ -284,10 +582,75 @@ module Tensor (A : Atom) : Tensor
     module QC = Algebra.QC
 
     type atom = A.t
-    type t = (atom list * QC.t) list
+    type 'a linear = ('a list * Algebra.QC.t) list
+    type t =
+      | Linear of atom linear
+      | Ratios of (atom linear * atom linear) list
+
+    let term_to_string (tensors, c) =
+      if QC.is_null c then
+	""
+      else
+	match tensors with
+	| [] -> QC.to_string c
+	| tensors ->
+	   String.concat
+             "*" ((if QC.is_unit c then [] else [QC.to_string c]) @
+		    List.map A.to_string tensors)
+
+    let linear_to_string terms =
+      String.concat "" (List.map term_to_string terms)
+
+    let to_string = function
+      | Linear terms -> linear_to_string terms
+      | Ratios ratios ->
+         String.concat
+           " + "
+           (List.map
+              (fun (n, d) ->
+                Printf.sprintf "(%s)/(%s)"
+                  (linear_to_string n) (linear_to_string d)) ratios)
+
+    let variables_of_atoms atoms =
+      List.fold_left
+        (fun acc a ->
+          match A.variable a with
+          | None -> acc
+          | Some name -> Sets.String.add name acc)
+        Sets.String.empty atoms
+
+    let variables_of_linear linear =
+      List.fold_left
+        (fun acc (atoms, _) -> Sets.String.union (variables_of_atoms atoms) acc)
+        Sets.String.empty linear
+
+    let variables_set = function
+      | Linear linear -> variables_of_linear linear
+      | Ratios ratios ->
+         List.fold_left
+           (fun acc (numerator, denominator) ->
+             Sets.String.union
+               (variables_of_linear numerator)
+               (Sets.String.union (variables_of_linear denominator) acc))
+           Sets.String.empty ratios
+
+    let variables t =
+      Sets.String.elements (variables_set t)
+
+    let map_ratios f = function
+      | Linear n -> Linear (f n)
+      | Ratios ratios -> Ratios (List.map (fun (n, d) -> (f n, f d)) ratios)
+
+    let map_summands f t =
+      map_ratios (List.map f) t
+
+    let map_numerators f = function
+      | Linear n -> Linear (List.map f n)
+      | Ratios ratios ->
+         Ratios (List.map (fun (n, d) -> (List.map f n, d)) ratios)
 
     let map_atoms f t =
-      List.map (fun (atoms, q) -> (List.map f atoms, q)) t
+      map_summands (fun (atoms, q) -> (List.map f atoms, q)) t
 
     let map_indices f t =
       map_atoms (A.map_indices f) t
@@ -295,75 +658,151 @@ module Tensor (A : Atom) : Tensor
     let rename_indices f t =
       map_atoms (A.rename_indices f) t
 
-    let map_coef f t =
-      List.map (fun (atoms, q) -> (atoms, f q)) t
+    let map_coeff f t =
+      map_numerators (fun (atoms, q) -> (atoms, f q)) t
 
-    let multiply (t1, c1) (t2, c2) =
+    type result =
+      | Matched of atom list
+      | Unmatched of atom list
+
+    (* [contract_pair a rev_prefix suffix] returns
+       [Unmatched (a :: List.rev_append rev_prefix suffix] if
+       there is no match (as defined by [A.contract_pair]) and
+       [Matched] with the reduced list otherwise. *)
+    let rec contract_pair a rev_prefix = function
+      | [] -> Unmatched (a :: List.rev rev_prefix)
+      | a' :: suffix ->
+         begin match A.contract_pair a a' with
+         | None -> contract_pair a (a' :: rev_prefix) suffix
+         | Some a'' ->
+            if A.is_unit a'' then
+              Matched (List.rev_append rev_prefix suffix)
+            else
+              Matched (List.rev_append rev_prefix (a'' :: suffix))
+         end
+
+    (* Use [contract_pair] to find all pairs that match according
+       to [A.contract_pair]. *)
+    let rec contract_pairs1 = function
+      | ([] | [_] as t) -> t
+      | a :: t ->
+         begin match contract_pair a [] t with
+         | Unmatched ([]) -> []
+         | Unmatched (a' :: t') -> a' :: contract_pairs1 t'
+         | Matched t' -> contract_pairs1 t'
+         end
+
+    let contract_pairs t =
+      map_summands (fun (t', c) -> (contract_pairs1 t', c)) t
+
+    let add t1 t2 =
+      match t1, t2 with
+      | Linear l1, Linear l2 -> Linear (l1 @ l2)
+      | Ratios r, Linear l | Linear l, Ratios r ->
+         Ratios ((l, [([], QC.unit)]) :: r)
+      | Ratios r1, Ratios r2 -> Ratios (r1 @ r2)
+
+    let multiply1 (t1, c1) (t2, c2) =
       (List.sort compare (t1 @ t2), QC.mul c1 c2)
 
-    let compress terms =
-      List.map (fun (t, cs) -> (t, QC.sum cs)) (ThoList.factorize terms)
+    let multiply2 t1 t2 =
+      Product.list2 multiply1 t1 t2
+
+    let multiply t1 t2 =
+      match t1, t2 with
+      | Linear l1, Linear l2 -> Linear (multiply2 l1 l2)
+      | Ratios r, Linear l | Linear l, Ratios r ->
+         Ratios (List.map (fun (n, d) -> (multiply2 l n, d)) r)
+      | Ratios r1, Ratios r2 ->
+         Ratios (Product.list2
+                   (fun (n1, d1) (n2, d2) ->
+                     (multiply2 n1 n2, multiply2 d1 d2))
+                   r1 r2)
+
+    let rec power n t =
+      if n < 0 then
+        invalid_arg "UFOx.Tensor.power: n < 0"
+      else if n = 0 then
+        Linear [([], QC.unit)]
+      else if n = 1 then
+        t
+      else
+        multiply t (power (pred n) t)
+
+    let compress ratios =
+      map_ratios
+        (fun terms ->
+          List.map (fun (t, cs) -> (t, QC.sum cs)) (ThoList.factorize terms))
+        ratios
 
     let rec of_expr e =
-      compress (of_expr' e)
+      contract_pairs (compress (of_expr' e))
 
     and of_expr' = function
-      | S.Integer i -> [([], QC.make (Q.make i 1) Q.null)]
+      | S.Integer i -> Linear [([], QC.make (Q.make i 1) Q.null)]
       | S.Float _ -> invalid_arg "UFOx.Tensor.of_expr: unexpected float"
       | S.Quoted name ->
 	 invalid_arg ("UFOx.Tensor.of_expr: unexpected quoted variable '" ^
 			 name ^ "'")
       | S.Variable name ->
-	 invalid_arg ("UFOx.Tensor.of_expr: unexpected variable '" ^
-			 name ^ "'")
+         (* There should be a gatekeeper here or in [A.of_expr]: *)
+         Linear [(A.of_expr name [], QC.unit)]
       | S.Application ("complex", [re; im]) ->
          begin match of_expr re, of_expr im with
-         | [([], re)], [([], im)] ->
+         | Linear [([], re)], Linear [([], im)] ->
             if QC.is_real re && QC.is_real im then
-              [([], QC.make (QC.real re) (QC.real im))]
+              Linear [([], QC.make (QC.real re) (QC.real im))]
             else
 	      invalid_arg ("UFOx.Tensor.of_expr: argument of complex is complex")
          | _ ->
             invalid_arg "UFOx.Tensor.of_expr: unexpected argument of complex"
          end
-      | S.Application (name, args) -> [(A.of_expr name args, QC.unit)]
-      | S.Sum (e1, e2) ->
-	 of_expr e1 @ of_expr e2
+      | S.Application (name, args) ->
+         Linear [(A.of_expr name args, QC.unit)]
+      | S.Sum (e1, e2) -> add (of_expr e1) (of_expr e2)
       | S.Difference (e1, e2) ->
-	 of_expr e1 @ of_expr (S.Product (S.Integer (-1), e2))
-      | S.Product (e1, e2) -> Product.list2 multiply (of_expr e1) (of_expr e2)
+	 add (of_expr e1) (of_expr (S.Product (S.Integer (-1), e2)))
+      | S.Product (e1, e2) -> multiply (of_expr e1) (of_expr e2)
       | S.Quotient (n, d) ->
-	 begin match of_expr d with
-	 | [] -> failwith "UFOx.Tensor.of_expr: zero denominator"
-	 | [([], q)] -> List.map (fun (t, c) -> (t, QC.div c q)) (of_expr n)
-	 | [(invertibles, q)] ->
+	 begin match of_expr n, of_expr d with
+	 | n, Linear [] ->
+            invalid_arg "UFOx.Tensor.of_expr: zero denominator"
+	 | n, Linear [([], q)] -> map_coeff (fun c -> QC.div c q) n
+	 | n, Linear ([(invertibles, q)] as d) ->
             if List.for_all A.invertible invertibles then
               let inverses = List.map A.invert invertibles in
-	      List.map (fun (t, c) -> (inverses @ t, QC.div c q)) (of_expr n)
+              multiply (Linear [(inverses, QC.inv q)]) n
             else
-              failwith "UFOx.Tensor.of_expr: non-invertible denominator"
-	 | _ -> failwith "UFOx.Tensor.of_expr: illegal denominator"
+              multiply (Ratios [[([], QC.unit)], d]) n
+	 | n, (Linear d as d')->
+            if List.for_all (fun (t, _) -> List.for_all A.scalar t) d then
+              multiply (Ratios [[([], QC.unit)], d]) n
+            else
+              invalid_arg ("UFOx.Tensor.of_expr: non scalar denominator: " ^
+                             to_string d')
+         | n, (Ratios _ as d) ->
+            invalid_arg ("UFOx.Tensor.of_expr: illegal denominator: " ^
+                           to_string d)
 	 end
       | S.Power (e, p) ->
 	 begin match of_expr e, of_expr p with
-	 | [([], q)], [([], p)] ->
+	 | Linear [([], q)], Linear [([], p)] ->
 	    if QC.is_real p then
               let re_p = QC.real p in
 	      if Q.is_integer re_p then
-	        [([], QC.pow q (Q.to_integer re_p))]
+	        Linear [([], QC.pow q (Q.to_integer re_p))]
 	      else
-	        failwith "UFOx.Tensor.of_expr: rational power"
+	        invalid_arg "UFOx.Tensor.of_expr: rational power of number"
             else
-	      failwith "UFOx.Tensor.of_expr: complex power"
-	 | [([], q)], _ ->
-	    failwith "UFOx.Tensor.of_expr: non-numeric power"
-	 | t, [([], p)] ->
-            let qc = QC.sub p (QC.make (Q.make 2 1) Q.null) in
-            if QC.is_null qc then
-              Product.list2 multiply t t
+	      invalid_arg "UFOx.Tensor.of_expr: complex power of number"
+	 | Linear [([], q)], _ ->
+	    invalid_arg "UFOx.Tensor.of_expr: non-numeric power of number"
+	 | t, Linear [([], p)] ->
+            if QC.is_integer p then
+              power (Q.to_integer (QC.real p)) t
             else
-	      failwith "UFOx.Tensor.of_expr: only 2 as power of tensor allowed"
-	 | _ -> failwith "UFOx.Tensor.of_expr: power of tensor"
+	      invalid_arg "UFOx.Tensor.of_expr: non integer power of tensor"
+	 | _ -> invalid_arg "UFOx.Tensor.of_expr: non numeric power of tensor"
 	 end
 
     type r = A.r
@@ -373,10 +812,16 @@ module Tensor (A : Atom) : Tensor
     let rep_conjugate = A.rep_conjugate
     let rep_trivial = A.rep_trivial
 
+    let numerators = function
+      | Linear tensors -> tensors
+      | Ratios ratios -> ThoList.flatmap fst ratios
+
     let classify_indices' filter tensors =
-      ThoList.uniq
-	(List.sort compare
-	   (List.map (fun (t, c) -> filter (A.classify_indices t)) tensors))
+         ThoList.uniq
+	   (List.sort compare
+	      (List.map
+                 (fun (t, c) -> filter (A.classify_indices t))
+                 (numerators tensors)))
 
     (* NB: the number of summation indices is not guarateed to be
        the same!  Therefore it was foolish to try to check for
@@ -394,7 +839,7 @@ module Tensor (A : Atom) : Tensor
       (A.disambiguate_indices atoms, q)
 
     let disambiguate_indices tensors =
-      List.map disambiguate_indices1 tensors
+      map_ratios (List.map disambiguate_indices1) tensors
 
     let check_indices t =
       ignore (classify_indices t)
@@ -410,20 +855,6 @@ module Tensor (A : Atom) : Tensor
     let of_strings s =
       of_expr (Expr.of_strings s)
 
-    let term_to_string (tensors, c) =
-      if QC.is_null c then
-	""
-      else
-	match tensors with
-	| [] -> QC.to_string c
-	| tensors ->
-	   String.concat
-             "*" ((if QC.is_unit c then [] else [QC.to_string c]) @
-		    List.map A.to_string tensors)
-
-    let to_string terms =
-      String.concat "" (List.map term_to_string terms)
-      
     type r_omega = A.r_omega
     let omega = A.omega
 
@@ -449,6 +880,10 @@ module type Lorentz_Atom =
     type scalar = (* private *)
       | Mass of int
       | Width of int
+      | P2 of int
+      | P12 of int * int
+      | Variable of string
+      | Coeff of Value.t
 
     type t = (* private *)
       | Dirac of dirac
@@ -481,6 +916,10 @@ module Lorentz_Atom =
     type scalar =
       | Mass of int
       | Width of int
+      | P2 of int
+      | P12 of int * int
+      | Variable of string
+      | Coeff of Value.t
 
     type t =
       | Dirac of dirac
@@ -522,6 +961,10 @@ module Lorentz_Atom' : Atom
     let map_indices_scalar f = function
       | Mass i -> Mass (f i)
       | Width i -> Width (f i)
+      | P2 i -> P2 (f i)
+      | P12 (i, j) -> P12 (f i, f j)
+      | Variable s -> Variable s
+      | Coeff c -> Coeff c
 
     let map_indices f = function
       | Dirac d -> Dirac (map_indices_dirac f d)
@@ -538,15 +981,47 @@ module Lorentz_Atom' : Atom
     let rename_indices f atom =
       rename_indices2 f f atom
 
+    let contract_pair a1 a2 =
+      match a1, a2 with
+      | Vector (P (mu1, i1)), Vector (P (mu2, i2)) ->
+         if mu1 <= 0 && mu1 = mu2 then
+           if i1 = i2 then
+             Some (Scalar (P2 i1))
+           else
+             Some (Scalar (P12 (i1, i2)))
+         else
+           None
+      | Scalar s, Inverse s' | Inverse s, Scalar s' ->
+         if s = s' then
+           Some (Scalar (Coeff (Value.Integer 1)))
+         else
+           None
+      | _ -> None
+
+    let variable = function
+      | Scalar (Variable s) | Inverse (Variable s) -> Some s
+      | _ -> None
+
+    let scalar = function
+      | Dirac _ | Vector _ -> false
+      | Scalar _ | Inverse _ -> true
+
+    let is_unit = function
+      | Scalar (Coeff c) | Inverse (Coeff c) ->
+         begin match c with
+         | Value.Integer 1 -> true
+         | Value.Rational q -> Algebra.Q.is_unit q
+         | _ -> false
+         end
+      | _ -> false
+
+    let invertible = scalar
+
     let invert = function
       | Dirac _ -> invalid_arg "UFOx.Lorentz_Atom.invert Dirac"
       | Vector _ -> invalid_arg "UFOx.Lorentz_Atom.invert Vector"
       | Scalar s -> Inverse s
       | Inverse s -> Scalar s
-
-    let invertible = function
-      | Dirac _ | Vector _ -> false
-      | Scalar _ | Inverse _ -> true
 
     let i2s = Index.to_string
 
@@ -577,6 +1052,10 @@ module Lorentz_Atom' : Atom
     let scalar_to_string = function
       | Mass id -> Printf.sprintf "Mass(%d)" id
       | Width id -> Printf.sprintf "Width(%d)" id
+      | P2 id -> Printf.sprintf "P(%d)**2" id
+      | P12 (id1, id2) -> Printf.sprintf "P(%d)*P(%d)" id1 id2
+      | Variable s -> s
+      | Coeff c -> Value.to_string c
 
     let to_string = function
       | Dirac d -> dirac_to_string d
@@ -680,6 +1159,8 @@ module Lorentz_Atom' : Atom
       | "Width", [id] -> [Scalar (Width (integer_or_id id))]
       | "Width", _ ->
 	 invalid_arg "UFOx.Lorentz.of_expr: invalid arguments to Width()"
+      | name, [] ->
+         [Scalar (Variable name)]
       | name, _ ->
 	 invalid_arg ("UFOx.Lorentz.of_expr: invalid tensor '" ^ name ^ "'")
 
@@ -896,11 +1377,14 @@ module Color_Atom' : Atom
 
     let rename_indices = map_indices
 
+    let contract_pair _ _ = None
+    let variable _ = None
+    let scalar _ = false
+    let invertible _ = false
+    let is_unit _ = false
+
     let invert _ =
       invalid_arg "UFOx.Color_Atom.invert"
-
-    let invertible _ =
-      false
 
     let of_expr1 name args =
       match name, args with
@@ -1022,271 +1506,6 @@ module Color_Atom' : Atom
   end
 
 module Color = Tensor(Color_Atom')
-
-module Value =
-  struct
-
-    module S = UFOx_syntax
-    module Q = Algebra.Q
-
-    type builtin =
-      | Sqrt
-      | Exp | Log | Log10
-      | Sin | Asin
-      | Cos | Acos
-      | Tan | Atan
-      | Sinh | Asinh
-      | Cosh | Acosh
-      | Tanh | Atanh
-      | Sec | Asec
-      | Csc | Acsc
-      | Conj
-
-    let builtin_to_string = function
-      | Sqrt -> "sqrt"
-      | Exp -> "exp"
-      | Log -> "log"
-      | Log10 -> "log10"
-      | Sin -> "sin"
-      | Cos -> "cos"
-      | Tan -> "tan"
-      | Asin -> "asin"
-      | Acos -> "acos"
-      | Atan -> "atan"
-      | Sinh -> "sinh"
-      | Cosh -> "cosh"
-      | Tanh -> "tanh"
-      | Asinh -> "asinh"
-      | Acosh -> "acosh"
-      | Atanh -> "atanh"
-      | Sec -> "sec"
-      | Csc -> "csc"
-      | Asec -> "asec"
-      | Acsc -> "acsc"
-      | Conj -> "conjg"
-
-    let builtin_of_string = function
-      | "cmath.sqrt" -> Sqrt
-      | "cmath.exp" -> Exp
-      | "cmath.log" -> Log
-      | "cmath.log10" -> Log10
-      | "cmath.sin" -> Sin
-      | "cmath.cos" -> Cos
-      | "cmath.tan" -> Tan
-      | "cmath.asin" -> Asin
-      | "cmath.acos" -> Acos
-      | "cmath.atan" -> Atan
-      | "cmath.sinh" -> Sinh
-      | "cmath.cosh" -> Cosh
-      | "cmath.tanh" -> Tanh
-      | "cmath.asinh" -> Asinh
-      | "cmath.acosh" -> Acosh
-      | "cmath.atanh" -> Atanh
-      | "sec" -> Sec
-      | "csc" -> Csc
-      | "asec" -> Asec
-      | "acsc" -> Acsc
-      | "complexconjugate" -> Conj
-      | name -> failwith ("UFOx.Value: unsupported function: " ^ name)
-
-    type t =
-      | Integer of int
-      | Rational of Q.t
-      | Real of float
-      | Complex of float * float
-      | Variable of string
-      | Sum of t list
-      | Difference of t * t
-      | Product of t list
-      | Quotient of t * t
-      | Power of t * t
-      | Application of builtin * t list
-
-    let rec to_string = function
-      | Integer i -> string_of_int i
-      | Rational q -> Q.to_string q
-      | Real x -> string_of_float x
-      | Complex (0.0, 1.0) -> "I"
-      | Complex (0.0, -1.0) -> "-I"
-      | Complex (0.0, i) -> string_of_float i ^ "*I"
-      | Complex (r, 1.0) -> string_of_float r ^ "+I"
-      | Complex (r, -1.0) -> string_of_float r ^ "-I"
-      | Complex (r, i) ->
-         string_of_float r ^ (if i < 0.0 then "-" else "+") ^
-           string_of_float (abs_float i) ^ "*I"
-      | Variable s -> s
-      | Sum [] -> "0"
-      | Sum [e] -> to_string e
-      | Sum es -> "(" ^ String.concat "+" (List.map maybe_parentheses es) ^ ")"
-      | Difference (e1, e2) -> to_string e1 ^ "-" ^ maybe_parentheses e2
-      | Product [] -> "1"
-      | Product ((Integer (-1) | Real (-1.)) :: es) ->
-         "-" ^ maybe_parentheses (Product es)
-      | Product es -> String.concat "*" (List.map maybe_parentheses es)
-      | Quotient (e1, e2) -> to_string e1 ^ "/" ^ maybe_parentheses e2
-      | Power (e1, e2) -> maybe_parentheses e1 ^ "^" ^ maybe_parentheses e2
-      | Application (f, [Integer i]) ->
-         to_string (Application (f, [Real (float i)]))
-      | Application (f, es) ->
-	 builtin_to_string f ^
-	   "(" ^ String.concat "," (List.map to_string es) ^ ")"
-
-    and maybe_parentheses = function
-      | Integer i as e ->
-         if i < 0 then
-           "(" ^ to_string e ^ ")"
-         else
-           to_string e     
-      | Real x as e ->
-         if x < 0.0 then
-           "(" ^ to_string e ^ ")"
-         else
-           to_string e
-      | Complex (x, 0.0) -> to_string (Real x)
-      | Complex (0.0, 1.0) -> "I"
-      | Variable _ | Power (_, _) | Application (_, _) as e -> to_string e
-      | Sum [e] -> to_string e
-      | Product [e] -> maybe_parentheses e
-      | e -> "(" ^ to_string e ^ ")"
-
-    let rec to_coupling atom = function
-      | Integer i -> Coupling.Integer i
-      | Rational q ->
-         let n, d = Q.to_ratio q in
-         Coupling.Quot (Coupling.Integer n, Coupling.Integer d)
-      | Real x -> Coupling.Float x
-      | Product es -> Coupling.Prod (List.map (to_coupling atom) es)
-      | Variable s -> Coupling.Atom (atom s)
-      | Complex (r, 0.0) -> Coupling.Float r
-      | Complex (0.0,  1.0) -> Coupling.I
-      | Complex (0.0, -1.0) -> Coupling.Prod [Coupling.I; Coupling.Integer (-1)]
-      | Complex (0.0, i) -> Coupling.Prod [Coupling.I; Coupling.Float i]
-      | Complex (r, 1.0) ->
-         Coupling.Sum [Coupling.Float r; Coupling.I]
-      | Complex (r, -1.0) ->
-         Coupling.Diff (Coupling.Float r, Coupling.I)
-      | Complex (r, i) ->
-         Coupling.Sum [Coupling.Float r;
-                       Coupling.Prod [Coupling.I; Coupling.Float i]]
-      | Sum es -> Coupling.Sum (List.map (to_coupling atom) es)
-      | Difference (e1, e2) ->
-         Coupling.Diff (to_coupling atom e1, to_coupling atom e2)
-      | Quotient (e1, e2) ->
-         Coupling.Quot (to_coupling atom e1, to_coupling atom e2)
-      | Power (e1, Integer e2) ->
-         Coupling.Pow (to_coupling atom e1, e2)
-      | Power (e1, e2) ->
-         Coupling.PowX (to_coupling atom e1, to_coupling atom e2)
-      | Application (f, [e]) -> apply1 (to_coupling atom e) f
-      | Application (f, []) ->
-         failwith
-           ("UFOx.Value.to_coupling:  " ^ builtin_to_string f ^
-              ": empty argument list")
-      | Application (f, _::_::_) ->
-         failwith
-           ("UFOx.Value.to_coupling: " ^ builtin_to_string f ^
-              ": more than one argument in list")
-
-    and apply1 e = function
-      | Sqrt -> Coupling.Sqrt e
-      | Exp -> Coupling.Exp e
-      | Log -> Coupling.Log e
-      | Log10 -> Coupling.Log10 e
-      | Sin -> Coupling.Sin e
-      | Cos -> Coupling.Cos e
-      | Tan -> Coupling.Tan e
-      | Asin -> Coupling.Asin e
-      | Acos -> Coupling.Acos e
-      | Atan -> Coupling.Atan e
-      | Sinh -> Coupling.Sinh e
-      | Cosh -> Coupling.Cosh e
-      | Tanh -> Coupling.Tanh e
-      | Sec -> Coupling.Quot (Coupling.Integer 1, Coupling.Cos e)
-      | Csc -> Coupling.Quot (Coupling.Integer 1, Coupling.Sin e)
-      | Asec -> Coupling.Acos (Coupling.Quot (Coupling.Integer 1, e))
-      | Acsc -> Coupling.Asin (Coupling.Quot (Coupling.Integer 1, e))
-      | Conj -> Coupling.Conj e
-      | (Asinh | Acosh | Atanh as f) ->
-         failwith
-           ("UFOx.Value.to_coupling: function `"
-            ^ builtin_to_string f ^ "' not supported yet!")
-
-    let compress terms = terms
-
-    let rec of_expr e =
-      compress (of_expr' e)
-
-    and of_expr' = function
-      | S.Integer i -> Integer i
-      | S.Float x -> Real x
-      | S.Variable "cmath.pi" -> Variable "pi"
-      | S.Quoted name ->
-	 invalid_arg ("UFOx.Value.of_expr: unexpected quoted variable '" ^
-			 name ^ "'")
-      | S.Variable name -> Variable name
-      | S.Sum (e1, e2) ->
-	 begin match of_expr e1, of_expr e2 with
-	 | (Integer 0 | Real 0.), e -> e
-	 | e, (Integer 0 | Real 0.) -> e
-	 | Sum e1, Sum e2 -> Sum (e1 @ e2)
-	 | e1, Sum e2 -> Sum (e1 :: e2)
-	 | Sum e1, e2 -> Sum (e2 :: e1)
-	 | e1, e2 -> Sum [e1; e2]
-	 end
-      | S.Difference (e1, e2) ->
-	 begin match of_expr e1, of_expr e2 with
-	 | e1, (Integer 0 | Real 0.) -> e1
-	 | e1, e2 -> Difference (e1, e2)
-         end
-      | S.Product (e1, e2) ->
-	 begin match of_expr e1, of_expr e2 with
-         | (Integer 0 | Real 0.), _ -> Integer 0
-         | _, (Integer 0 | Real 0.) -> Integer 0
-         | (Integer 1 | Real 1.), e -> e
-         | e, (Integer 1 | Real 1.) -> e
-	 | Product e1, Product e2 -> Product (e1 @ e2)
-	 | e1, Product e2 -> Product (e1 :: e2)
-	 | Product e1, e2 -> Product (e2 :: e1)
-	 | e1, e2 -> Product [e1; e2]
-	 end
-      | S.Quotient (e1, e2) ->
-         begin match of_expr e1, of_expr e2 with
-         | e1, (Integer 0 | Real 0.) ->
-            invalid_arg "UFOx.Value: divide by 0"
-         | e1, (Integer 1 | Real 1.) -> e1
-         | e1, e2 -> Quotient (e1, e2)
-         end
-      | S.Power (e, p) ->
-         begin match of_expr e, of_expr p with
-         | (Integer 0 | Real 0.), (Integer 0 | Real 0.) ->
-            invalid_arg "UFOx.Value: 0^0"
-         | _, (Integer 0 | Real 0.) -> Integer 1
-         | e, (Integer 1 | Real 1.) -> e
-	 | e, p -> Power (e, p)
-         end
-      | S.Application ("complex", [r; i]) ->
-	 begin match of_expr r, of_expr i with
-	 | r, (Integer 0 | Real 0.0) -> r
-	 | Real r, Real i -> Complex (r, i)
-	 | Integer r, Real i -> Complex (float_of_int r, i)
-	 | Real r, Integer i -> Complex (r, float_of_int i)
-	 | Integer r, Integer i -> Complex (float_of_int r, float_of_int i)
-	 | _ -> invalid_arg "UFOx.Value: complex expects two numeric arguments"
-	 end
-      | S.Application ("complex", _) ->
-	 invalid_arg "UFOx.Value: complex expects two arguments"
-      | S.Application ("complexconjugate", [e]) ->
-	 Application (Conj, [of_expr e])
-      | S.Application ("complexconjugate", _) ->
-	 invalid_arg "UFOx.Value: complexconjugate expects single argument"
-      | S.Application ("cmath.sqrt", [e]) ->
-	 Application (Sqrt, [of_expr e])
-      | S.Application ("cmath.sqrt", _) ->
-	 invalid_arg "UFOx.Value: sqrt expects single argument"
-      | S.Application (name, args) ->
-	 Application (builtin_of_string name, List.map of_expr args)
-
-  end
 
 module type Test =
   sig

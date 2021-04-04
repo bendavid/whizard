@@ -32,11 +32,11 @@ module type T =
        will need to inspect the flavors, where the Lorentz structure
        is referenced. *)
     val lorentz :
-      Format_Fortran.formatter -> string -> Coupling.lorentz array ->
-      UFO_Lorentz.t -> unit
+      Format_Fortran.formatter -> string ->
+      Coupling.lorentz array -> UFO_Lorentz.t -> unit
 
     val propagator :
-      Format_Fortran.formatter -> string ->
+      Format_Fortran.formatter -> string -> string -> string list ->
       Coupling.lorentz * Coupling.lorentz ->
       UFO_Lorentz.t -> UFO_Lorentz.t -> unit
 
@@ -60,6 +60,7 @@ module type T =
 
     val eps4_g4_g44_decl : Format_Fortran.formatter -> unit -> unit
     val eps4_g4_g44_init : Format_Fortran.formatter -> unit -> unit
+    val inner_product_functions : Format_Fortran.formatter -> unit -> unit
 
     module type Test =
       sig

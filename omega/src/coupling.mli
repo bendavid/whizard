@@ -2700,6 +2700,7 @@ type 'a expr =
   | Log of 'a expr
   | Log10 of 'a expr
   | Conj of 'a expr
+  | Abs of 'a expr
 
 type 'a variable = Real of 'a | Complex of 'a
 type 'a variable_array = Real_Array of 'a | Complex_Array of 'a

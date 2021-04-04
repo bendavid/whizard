@@ -40,11 +40,11 @@ module type T =
        particles with the Lorentz representations [spins] as a
        (Fortran) function [name] to [formatter]. *)
     val lorentz :
-      Format_Fortran.formatter -> string -> Coupling.lorentz array ->
-      UFO_Lorentz.t -> unit
+      Format_Fortran.formatter -> string ->
+      Coupling.lorentz array -> UFO_Lorentz.t -> unit
 
     val propagator :
-      Format_Fortran.formatter -> string ->
+      Format_Fortran.formatter -> string -> string -> string list ->
       Coupling.lorentz * Coupling.lorentz ->
       UFO_Lorentz.t -> UFO_Lorentz.t -> unit
 
@@ -58,6 +58,7 @@ module type T =
 
     val eps4_g4_g44_decl : Format_Fortran.formatter -> unit -> unit
     val eps4_g4_g44_init : Format_Fortran.formatter -> unit -> unit
+    val inner_product_functions : Format_Fortran.formatter -> unit -> unit
 
     module type Test =
       sig
@@ -182,13 +183,13 @@ module Fortran : T =
        a summand in a sum. *)
     let format_rational_factor q =
       if Q.is_unit q then
-        "+"
+        "+ "
       else if Q.is_unit (Q.neg q) then
-        "-"
+        "- "
       else if Q.is_negative q then
-        "-" ^ format_rational (Q.neg q) ^ "*"
+        "- " ^ format_rational (Q.neg q) ^ "*"
       else
-        "+" ^ format_rational q ^ "*"
+        "+ " ^ format_rational q ^ "*"
 
     let format_complex_rational_factor cq =
       let real = QC.real cq
@@ -196,19 +197,19 @@ module Fortran : T =
       if Q.is_null imag then
         begin
           if Q.is_unit real then
-            "+"
+            "+ "
           else if Q.is_unit (Q.neg real) then
-            "-"
+            "- "
           else if Q.is_negative real then
-            "-" ^ format_rational (Q.neg real) ^ "*"
+            "- " ^ format_rational (Q.neg real) ^ "*"
           else
-            "+" ^ format_rational real ^ "*"
+            "+ " ^ format_rational real ^ "*"
         end
       else if Q.is_integer real && Q.is_integer imag then
-        Printf.sprintf "+(%d,%d)*" (Q.to_integer real) (Q.to_integer imag)
+        Printf.sprintf "+ (%d,%d)*" (Q.to_integer real) (Q.to_integer imag)
       else
         Printf.sprintf
-          "+cmplx(%s,%s,kind=default)*"
+          "+ cmplx(%s,%s,kind=default)*"
           (format_rational real) (format_rational imag)
 
     (* Append a formatted list of indices to [name]. *)
@@ -262,7 +263,7 @@ module Fortran : T =
         for j = 0 to 3 do
           if gamma.(i).(j) <> QC.null then
             printf
-              "@,%s%s%%a(%d)"
+              "@ %s%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
               ket.name (succ j)
         done;
@@ -292,7 +293,7 @@ module Fortran : T =
         for i = 0 to 3 do
           if gamma.(i).(j) <> QC.null then
             printf
-              "@,%s%s%%a(%d)"
+              "@ %s%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
               bra.name (succ i)
         done;
@@ -322,7 +323,7 @@ module Fortran : T =
         for j = 0 to 3 do
           if gamma.(i).(j) <> QC.null then
             printf
-              "@,%s%s%%a(%d)*%s%%a(%d)"
+              "@ %s%s%%a(%d)*%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
               bra.name (succ i) ket.name (succ j)
         done
@@ -680,6 +681,10 @@ i*)
          Printf.sprintf
            "%s(%s,%s)" (dsv_name dsv) index_spinor (format_indices indices)
 
+    let denominator_name = "denom_"
+    let mass_name = "m_"
+    let width_name = "w_"
+
     let format_tensor t =
       let indices = t.L.indices in
       match t.L.atom with
@@ -694,10 +699,19 @@ i*)
            Printf.sprintf "g44_(%s)" (format_indices [mu1; mu2])
          else
            failwith "format_tensor: compress_metrics has failed!"
-      | S (UFOx.Lorentz_Atom.Mass _) -> "m"
-      | S (UFOx.Lorentz_Atom.Width _) -> "w"
-      | Inv (UFOx.Lorentz_Atom.Mass _) -> "1/m"
-      | Inv (UFOx.Lorentz_Atom.Width _) -> "1/w"
+      | S (UFOx.Lorentz_Atom.Mass _) -> mass_name
+      | S (UFOx.Lorentz_Atom.Width _) -> width_name
+      | S (UFOx.Lorentz_Atom.P2 i) -> Printf.sprintf "g2_(p%d)" i
+      | S (UFOx.Lorentz_Atom.P12 (i, j)) -> Printf.sprintf "g12_(p%d,p%d)" i j
+      | Inv (UFOx.Lorentz_Atom.Mass _) -> "1/" ^ mass_name
+      | Inv (UFOx.Lorentz_Atom.Width _) -> "1/" ^ width_name
+      | Inv (UFOx.Lorentz_Atom.P2 i) -> Printf.sprintf "1/g2_(p%d)" i
+      | Inv (UFOx.Lorentz_Atom.P12 (i, j)) ->
+         Printf.sprintf "1/g12_(p%d,p%d)" i j
+      | S (UFOx.Lorentz_Atom.Variable s) -> s
+      | Inv (UFOx.Lorentz_Atom.Variable s) -> "1/" ^ s
+      | S (UFOx.Lorentz_Atom.Coeff c) -> UFOx.Value.to_string c
+      | Inv (UFOx.Lorentz_Atom.Coeff c) -> "1/(" ^ UFOx.Value.to_string c ^ ")"
 
     let rec multiply_tensors ~decl ~eval = function
       | [] -> fprintf eval "1";
@@ -705,6 +719,19 @@ i*)
       | t :: tensors ->
          fprintf eval "%s@,*" (format_tensor t);
          multiply_tensors ~decl ~eval tensors
+
+    let pseudo_wfs_for_denominator =
+      Array.init
+        2
+        (fun i ->
+          let ii = string_of_int i in
+          { pos = i;
+            spin = Coupling.Scalar;
+            name = denominator_name;
+            local_array = None;
+            momentum = "k" ^ ii;
+            momentum_array = "p" ^ ii;
+            fortran_type = fortran_type Coupling.Scalar })
 
     let contract_indices ~decl ~eval indent wf_indices wfs (fusion, contractees) =
       let printf fmt = fprintf eval fmt
@@ -737,49 +764,48 @@ i*)
         indent indices
         (fun indent ->
           printf "%*s@[<2>%s = %s" indent "" sum_var sum_var;
-          printf "@,%s" (format_complex_rational_factor fusion.L.coeff);
+          printf "@ %s" (format_complex_rational_factor fusion.L.coeff);
           List.iter (fun i -> printf "@,g4_(%s)*" (index_variable i)) indices;
           printf "@,(";
           multiply_tensors ~decl ~eval contractees;
-          printf ")@]");
+          printf ")";
+          begin match fusion.L.denominator with
+          | [] -> ()
+          | d -> printf " / %s" denominator_name
+          end;
+          printf "@]");
       printf "@]";
       nl ()
 
-    let external_wf_loop ~decl ~eval ~indent wfs (fusion, _ as contractees) =
-      pp_divide ~indent eval ();
-      fprintf eval "%*s! %s\n" indent "" (L.to_string [fusion]);
-      pp_divide ~indent eval ();
-      match wfs.(0).spin with
-      | Coupling.Scalar ->
-         contract_indices ~decl ~eval 2 [] wfs contractees
-      | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
-         let idx = index_spinor in
-         fprintf eval "%*s@[<2>do %s = 1, 4@]" indent "" idx; pp_newline eval ();
-         contract_indices ~decl ~eval 4 [idx] wfs contractees;
-         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
-      | Coupling.Vector | Coupling.Massive_Vector ->
-         let idx = index_variable 1 in
-         fprintf eval "%*s@[<2>do %s = 0, 3@]" indent "" idx; pp_newline eval ();
-         contract_indices ~decl ~eval 4 [idx] wfs contractees;
-         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
-      | Coupling.Tensor_2 ->
-         let idx1 = index_variable (UFOx.Index.pack 1 1)
-         and idx2 = index_variable (UFOx.Index.pack 1 2) in
-         fprintf eval "%*s@[<2>do %s = 0, 3@]" indent "" idx1;
-         pp_newline eval ();
-         fprintf eval "%*s@[<2>do %s = 0, 3@]" (indent + 2) "" idx2;
-         pp_newline eval ();
-         contract_indices ~decl ~eval 6 [idx1; idx2] wfs contractees;
-         fprintf eval "%*send do@]" (indent + 2) ""; pp_newline eval ();
-         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
-      | Coupling.Vectorspinor ->
-         failwith "external_wf_loop: Vectorspinor not supported yet!"
-      | Coupling.Maj_Ghost ->
-         failwith "external_wf_loop: unexpected Maj_Ghost"
-      | Coupling.Tensor_1 ->
-         failwith "external_wf_loop: unexpected Tensor_1"
-      | Coupling.BRS _ ->
-         failwith "external_wf_loop: unexpected BRS"
+    let scalar_expression1 ~decl ~eval fusion =
+      let printf fmt = fprintf eval fmt in
+      match fusion.L.dirac, fusion.L.vector with
+      | [], [] ->
+         let scalars =
+           List.map (fun t -> { L.atom = S t; L.indices = [] }) fusion.L.scalar
+         and inverses =
+           List.map (fun t -> { L.atom = Inv t; L.indices = [] }) fusion.L.inverse in
+         let contractees = scalars @ inverses in
+         printf "@ %s" (format_complex_rational_factor fusion.L.coeff);
+         multiply_tensors ~decl ~eval contractees
+      | _, [] ->
+         invalid_arg
+           "UFO_targets.Fortran.scalar_expression1: unexpected spinor indices"
+      | [], _ ->
+         invalid_arg
+           "UFO_targets.Fortran.scalar_expression1: unexpected vector indices"
+      | _, _ ->
+         invalid_arg
+           "UFO_targets.Fortran.scalar_expression1: unexpected indices"
+
+    let scalar_expression ~decl ~eval indent name fusions =
+      let printf fmt = fprintf eval fmt
+      and nl = pp_newline eval in
+      let sum_var = name in
+      printf "%*s@[<2>%s =" indent "" sum_var;
+      List.iter (scalar_expression1 ~decl ~eval) fusions;
+      printf "@]";
+      nl ()
 
     let local_vector_copies ~decl ~eval wfs =
       begin match wfs.(0).local_array with
@@ -901,32 +927,61 @@ i*)
          | _ ->
             failwith "UFO_targets.Fortran.local_name: unhandled spin"
 
-    let pseudo_wfs_for_denominator =
-      Array.init
-        2
-        (fun i ->
-          let ii = string_of_int i in
-          { pos = i;
-            spin = Coupling.Scalar;
-            name = "den";
-            local_array = None;
-            momentum = "k" ^ ii;
-            momentum_array = "p" ^ ii;
-            fortran_type = fortran_type Coupling.Scalar })
+    let external_wf_loop ~decl ~eval ~indent wfs (fusion, _ as contractees) =
+      pp_divide ~indent eval ();
+      fprintf eval "%*s! %s" indent "" (L.to_string [fusion]); pp_newline eval ();
+      pp_divide ~indent eval ();
+      begin match fusion.L.denominator with
+      | [] -> ()
+      | denominator ->
+         scalar_expression ~decl ~eval 4 denominator_name denominator
+      end;
+      match wfs.(0).spin with
+      | Coupling.Scalar ->
+         contract_indices ~decl ~eval 2 [] wfs contractees
+      | Coupling.Spinor | Coupling.ConjSpinor | Coupling.Majorana ->
+         let idx = index_spinor in
+         fprintf eval "%*s@[<2>do %s = 1, 4@]" indent "" idx; pp_newline eval ();
+         contract_indices ~decl ~eval 4 [idx] wfs contractees;
+         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
+      | Coupling.Vector | Coupling.Massive_Vector ->
+         let idx = index_variable 1 in
+         fprintf eval "%*s@[<2>do %s = 0, 3@]" indent "" idx; pp_newline eval ();
+         contract_indices ~decl ~eval 4 [idx] wfs contractees;
+         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
+      | Coupling.Tensor_2 ->
+         let idx1 = index_variable (UFOx.Index.pack 1 1)
+         and idx2 = index_variable (UFOx.Index.pack 1 2) in
+         fprintf eval "%*s@[<2>do %s = 0, 3@]" indent "" idx1;
+         pp_newline eval ();
+         fprintf eval "%*s@[<2>do %s = 0, 3@]" (indent + 2) "" idx2;
+         pp_newline eval ();
+         contract_indices ~decl ~eval 6 [idx1; idx2] wfs contractees;
+         fprintf eval "%*send do@]" (indent + 2) ""; pp_newline eval ();
+         fprintf eval "%*send do@]" indent ""; pp_newline eval ()
+      | Coupling.Vectorspinor ->
+         failwith "external_wf_loop: Vectorspinor not supported yet!"
+      | Coupling.Maj_Ghost ->
+         failwith "external_wf_loop: unexpected Maj_Ghost"
+      | Coupling.Tensor_1 ->
+         failwith "external_wf_loop: unexpected Tensor_1"
+      | Coupling.BRS _ ->
+         failwith "external_wf_loop: unexpected BRS"
 
     let fusions_to_fortran ~decl ~eval wfs ?(denominator=[]) ?coupling fusions =
       local_vector_copies ~decl ~eval wfs;
       local_momentum_copies ~decl ~eval wfs;
+      begin match denominator with
+      | [] -> ()
+      | _ ->
+         fprintf decl "    @[<2>complex(kind=default) :: %s@]" denominator_name;
+         pp_newline decl ()
+      end;
       let max_dsv, indices_used, contractions =
         List.fold_left
           (contractees_of_fusion ~decl ~eval wfs)
           (0, Sets.Int.empty, [])
           fusions in
-      let _, indices_used, denominator_contractions =
-        List.fold_left
-          (contractees_of_fusion ~decl ~eval pseudo_wfs_for_denominator)
-          (max_dsv, indices_used, [])
-          denominator in
       Sets.Int.iter
         (fun index ->
           fprintf decl "    @[<2>integer ::@ %s@]" (index_variable index);
@@ -944,22 +999,18 @@ i*)
       pp_newline eval ();
       List.iter (external_wf_loop ~decl ~eval ~indent:4 wfs) contractions;
       multiply_coupling_and_scalars eval coupling wfs;
-      begin match denominator_contractions with
+      begin match denominator with
       | [] -> ()
-      | contractions ->
-         fprintf decl "    @[<2>complex(kind=default) :: den@]";
-         pp_newline decl ();
+      | denominator ->
          pp_divide ~indent:4 eval ();
-         fprintf eval "    @[<2>den = 0@]"; pp_newline eval ();
-         List.iter
-           (external_wf_loop ~decl ~eval ~indent:4 pseudo_wfs_for_denominator)
-           contractions;
-         pp_divide ~indent:4 eval ();
-         fprintf eval "    @[<2>%s =@ %s / den@]" wfs0name wfs0name;
+         fprintf eval "%*s! %s" 4 "" (L.to_string denominator);
+         pp_newline eval ();
+         scalar_expression ~decl ~eval 4 denominator_name denominator;
+         fprintf eval
+           "    @[<2>%s =@ %s / %s@]" wfs0name wfs0name denominator_name;
          pp_newline eval ()
       end;
       return_vector eval wfs
-
 
     (* TODO: eventually, we should include the momentum among
        the arguments only if required.  But this can wait for
@@ -1012,18 +1063,34 @@ i*)
       Buffer.reset eval_buf;
       ()
 
-    let propagator ff name (bra_spin, ket_spin) numerator denominator =
+    let use_variables ff parameter_module variables =
+      let printf fmt = fprintf ff fmt
+      and nl = pp_newline ff in
+      match variables with
+      | [] -> ()
+      | v :: v_list ->
+         printf "    @[<2>use %s, only: %s" parameter_module v;
+         List.iter (fun s -> printf ", %s" s) v_list;
+         printf "@]"; nl ()
+
+    let propagator ff name parameter_module variables
+          (bra_spin, ket_spin) numerator denominator =
       let printf fmt = fprintf ff fmt
       and nl = pp_newline ff in
       let width = 80 in (* get this from the default formatter instead! *)
       let wf_name = spin_mnemonic ket_spin
       and wf_type = fortran_type ket_spin in
       let wfs = wf_table [| ket_spin; ket_spin |] in
-      printf "  @[<4>pure function pr_U_%s@ (k2, m, w, %s2)" name wf_name;
+      printf
+        "  @[<4>pure function pr_U_%s@ (k2, %s, %s, %s2)"
+        name mass_name width_name wf_name;
       printf " result (%s1)@]" wf_name; nl ();
+      use_variables ff parameter_module variables;
       printf "    %s :: %s1" wf_type wf_name; nl ();
       printf "    type(momentum), intent(in) :: k2"; nl ();
-      printf "    real(kind=default), intent(in) :: m, w"; nl ();
+      printf
+        "    real(kind=default), intent(in) :: %s, %s"
+        mass_name width_name; nl ();
       printf "    %s, intent(in) :: %s2" wf_type wf_name; nl ();
       let decl_buf = Buffer.create 1024
       and eval_buf = Buffer.create 1024 in
@@ -1262,6 +1329,20 @@ i*)
           done
         done
       done
+
+    let inner_product_functions ff () =
+      let printf fmt = fprintf ff fmt
+      and nl = pp_newline ff in
+      printf "  pure function g2_ (p) result (p2)"; nl();
+      printf "    real(kind=default), dimension(0:3), intent(in) :: p"; nl();
+      printf "    real(kind=default) :: p2"; nl();
+      printf "    p2 = p(0)*p(0) - p(1)*p(1) - p(2)*p(2) - p(3)*p(3)"; nl();
+      printf "  end function g2_"; nl();
+      printf "  pure function g12_ (p1, p2) result (p12)"; nl();
+      printf "    real(kind=default), dimension(0:3), intent(in) :: p1, p2"; nl();
+      printf "    real(kind=default) :: p12"; nl();
+      printf "    p12 = p1(0)*p2(0) - p1(1)*p2(1) - p1(2)*p2(2) - p1(3)*p2(3)"; nl();
+      printf "  end function g12_"; nl()
 
     module type Test =
       sig

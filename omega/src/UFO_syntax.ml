@@ -28,12 +28,17 @@ exception Syntax_Error of string * Lexing.position * Lexing.position
 
 type name = string list
 
+type string_atom =
+  | Macro of name
+  | Literal of string
+
 type value =
   | Name of name
   | Integer of int
   | Float of float
   | Fraction of int * int
   | String of string
+  | String_Expr of string_atom list
   | Empty_List
   | Name_List of name list
   | Integer_List of int list
@@ -52,6 +57,11 @@ type declaration =
     attribs : attrib list }
 
 type t = declaration list
+
+let macro name expansion =
+  { name;
+    kind = ["$"];
+    attribs = [ { a_name = name; a_value = expansion } ] }
 
 let to_strings declarations =
   []

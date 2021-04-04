@@ -317,6 +317,18 @@ let feynman_propagator =
     " - Metric(1, 2)",
     "P('mu', id) * P('mu', id)" )
 
+let gauge_propagator =
+  ( "gauge_propagator", "pr_gauge", (Vector, Vector),
+    " - Metric(1, 2) + (1 - 42) * P(1,id) * P(2,id) / " ^
+      "( P('mu', id) * P('mu', id) )",
+    "P('mu', id) * P('mu', id)" )
+
+let rxi_propagator =
+  ( "rxi_propagator", "pr_rxi", (Vector, Vector),
+    " - Metric(1, 2) + (1 - 42) * P(1,id) * P(2,id) / " ^
+      "( P('mu', id) * P('mu', id) - 42 * Mass(id)**2 )",
+    default_denominator )
+
 let unitarity_propagator =
   ( "unitarity", "pr_unitarity", (Massive_Vector, Massive_Vector),
     "- Metric(1, 2) + Metric(1,'mu')*P('mu', id)*P(2, id)/Mass(id)**2",
@@ -348,6 +360,8 @@ let propagators =
     [ scalar_propagator;
       spinor_propagator;
       feynman_propagator;
+      gauge_propagator;
+      rxi_propagator;
       unitarity_propagator;
       tensor_propagator;
       tensor_propagator_51_52 ]
@@ -361,5 +375,5 @@ let all_propagators = propagators @ conjugate_propagators
 
 let _ =
   generate_ufo
-    ~reps:10000 ~threshold:0.70 "fusions" vertices all_propagators;
+    ~reps:10000 ~threshold:0.70 "fusions_UFO" vertices all_propagators;
   exit 0

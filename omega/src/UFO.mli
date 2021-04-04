@@ -70,7 +70,8 @@ module type Fortran_Target =
       string -> string list -> string list -> Coupling.fusen -> unit
 
     val lorentz_module :
-      ?only:Sets.String.t -> ?name:string -> ?fortran_module:string ->
+      ?only:Sets.String.t -> ?name:string ->
+      ?fortran_module:string -> ?parameter_module:string ->
       Format_Fortran.formatter -> unit -> unit
 
   end
@@ -96,7 +97,8 @@ module Propagator :
       { name : string;
         spins : Coupling.lorentz * Coupling.lorentz;
 	numerator : UFO_Lorentz.t;
-	denominator : UFO_Lorentz.t }
+	denominator : UFO_Lorentz.t;
+        variables : string list }
     val of_propagator_UFO : ?majorana:bool -> Propagator_UFO.t -> t
     val transpose : t -> t
   end

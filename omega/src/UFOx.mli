@@ -34,8 +34,14 @@ module Expr :
     val functions : t -> Sets.String_Caseless.t
   end
 
-module type Index =
+module Value :
   sig
+    type t
+    val of_expr : Expr.t -> t
+    val to_string : t -> string
+    val to_coupling : (string -> 'b) -> t -> 'b Coupling.expr
+  end
+
     (* \begin{dubious}
          UFO represents rank-2 indices $(i,j)$ as $1000\cdot j + i$.
          This should be replaced by a proper union type eventually.
@@ -43,6 +49,8 @@ module type Index =
          [UFOx].  Therefore, we try a quick'n'dirty proof of principle
          first.
        \end{dubious} *)
+module type Index =
+  sig
     type t = int
                
     val position : t -> int
@@ -82,9 +90,20 @@ module type Tensor =
 
     type atom
 
-    (* A tensor is linear combination of products of [atom]s
-       with rational coefficients. *)
-    type t = (atom list * Algebra.QC.t) list
+    (* A tensor is a linear combination of products of [atom]s
+       with rational coefficients. The following could be refined
+       by introducing [scalar] atoms and restricting the denominators
+       to [(scalar list * Algebra.QC.t) list].  At the moment, this
+       restriction is implemented dynamically by [of_expr] and not
+       statically in the type system.
+       Polymorphic variants appear to be the right tool, either
+       directly or as phantom types.
+       However, this is certainly only \textit{nice-to-have}
+       and is not essential. *)
+    type 'a linear = ('a list * Algebra.QC.t) list
+    type t =
+      | Linear of atom linear
+      | Ratios of (atom linear * atom linear) list
 
     (* We might need to replace atoms if the syntax is not
        context free. *)
@@ -101,7 +120,17 @@ module type Tensor =
     val rename_indices : (int -> int) -> t -> t
 
     (* We need scale coefficients. *)
-    val map_coef : (Algebra.QC.t -> Algebra.QC.t) -> t -> t
+    val map_coeff : (Algebra.QC.t -> Algebra.QC.t) -> t -> t
+
+    (* Try to contract adjacent pairs of [atoms] as allowed
+       but [Atom.contract_pair].  This is not exhaustive, but
+       helps a lot with invariant squares of momenta in
+       applications of [Lorentz]. *)
+    val contract_pairs : t -> t
+
+    (* The list of variable referenced in the tensor expression,
+       that will need to be imported by the numerical code.  *)
+    val variables : t -> string list
 
     (* Parsing and unparsing.  Lists of [string]s are
        interpreted as sums. *)
@@ -132,6 +161,10 @@ module type Atom =
     type t
     val map_indices : (int -> int) -> t -> t
     val rename_indices : (int -> int) -> t -> t
+    val contract_pair : t -> t -> t option
+    val variable : t -> string option
+    val scalar : t -> bool
+    val is_unit : t -> bool
     val invertible : t -> bool
     val invert : t -> t
     val of_expr : string -> UFOx_syntax.expr list -> t list
@@ -168,6 +201,10 @@ module type Lorentz_Atom =
     type scalar = (* private *)
       | Mass of int
       | Width of int
+      | P2 of int
+      | P12 of int * int
+      | Variable of string
+      | Coeff of Value.t
 
     type t = (* private *)
       | Dirac of dirac
@@ -204,14 +241,6 @@ module Color_Atom : Color_Atom
 
 module Color : Tensor
   with type atom = Color_Atom.t and type r_omega = Color.t
-
-module Value :
-  sig
-    type t
-    val of_expr : Expr.t -> t
-    val to_string : t -> string
-    val to_coupling : (string -> 'b) -> t -> 'b Coupling.expr
-  end
 
 module type Test =
   sig
