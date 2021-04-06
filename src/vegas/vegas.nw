@@ -2701,7 +2701,8 @@ fine.
 
 Proceed with a second pass, and get the correct result.
 <<vegas: execute tests>>=
-  call test (vegas_7, "vegas_7", "VEGAS NaN stability test", u, results)
+  !!! Disabled for the moment as NAGFOR stops execution on NaNs as intended
+  ! call test (vegas_7, "vegas_7", "VEGAS NaN stability test", u, results)
 <<vegas: test declaration>>=
   public :: vegas_7
 <<vegas: tests>>=
@@ -2714,7 +2715,7 @@ Proceed with a second pass, and get the correct result.
          x_upper = pi
     real(default) :: result, abserr
 
-    write (u, "(A)") "* Test output: vegas_1"
+    write (u, "(A)") "* Test output: vegas_7"
     write (u, "(A)") "*   Purpose: initialise the VEGAS MC integrator and the grid"
     write (u, "(A)")
 

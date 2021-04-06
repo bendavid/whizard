@@ -1,4 +1,4 @@
-* Test output: vegas_1
+* Test output: vegas_7
 *   Purpose: initialise the VEGAS MC integrator and the grid
 
 * Initialise random number generator (default seed)
