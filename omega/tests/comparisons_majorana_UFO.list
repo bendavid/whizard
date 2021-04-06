@@ -4,23 +4,23 @@
 #     we compute with Fusion.Mixed23 or Fusion.Mixed23_Majorana
 ########################################################################
 #
-# ----------------------------------------------------------------------
-#       thr   abs_thr n     roots  model sign process ...
-# ----------------------------------------------------------------------
-eeee   	0.90  1E-11   1000  1000   SM  .true. scatter e- e- -> e- e-
-#eeea  	0.40  1E-11   1000  1000   SM  .true. scatter e- e- -> e- e- a
-#eeeaa 	0.90  1E-11   1000  1000   SM .false. scatter e- e- -> e- e- a a
-#eeeep 	0.80  1E-11   1000  1000   SM  .true. scatter e- e- -> e- e- e+ e-
-#eeeeep 0.80  1E-11   1000  1000   SM .false. scatter e- e- -> e- e- e+ e-
-aaep   	0.90  1E-11   1000  1000   SM .false. scatter a  a  -> e+ e-
-#aepep 	0.90  1E-11   1000  1000   SM  .true. scatter a  a  -> e+ e- e+ e-
-eaea   	0.90  1E-11   1000  1000   SM .false. scatter e- a  -> e- a
-epaa   	0.90  1E-11   1000  1000   SM  .true. scatter e+ e- -> a a
-epep   	0.65  1E-11   1000  1000   SM .false. scatter e+ e- -> e+ e-
-#pepa  	0.90  1E-11   1000  1000   SM .false. scatter e+ e- -> e+ e- a
-#pepaa 	0.90  1E-11   1000  1000   SM .false. scatter e+ e- -> e+ e- a a
-#pepep 	0.80  1E-11   1000  1000   SM .false. scatter e+ e- -> e+ e- e+ e-
-epvv   	0.90  1E-11   1000  1000   SM .false. scatter e+ e- -> ve~ ve
-epvva  	0.90  1E-11   1000  1000   SM .false. scatter e+ e- -> ve~ ve a
-vvep   	0.90  1E-11   1000  1000   SM .false. scatter ve~ ve -> e+ e-
-#vepa  	0.40  1E-11   1000  1000   SM .false. scatter ve~ ve -> e+ e- a
+# ---------------------------------------------------------------------
+#       thr   abs_thr n    roots  model sign process ...
+# ---------------------------------------------------------------------
+eeee   	0.90  1E-11   100  1000   SM  .true. scatter e- e- -> e- e-
+#eeea  	0.40  1E-11   100  1000   SM  .true. scatter e- e- -> e- e- a
+#eeeaa 	0.90  1E-11   100  1000   SM .false. scatter e- e- -> e- e- a a
+#eeeep 	0.80  1E-11   100  1000   SM  .true. scatter e- e- -> e- e- e+ e-
+#eeeeep 0.80  1E-11   100  1000   SM .false. scatter e- e- -> e- e- e+ e-
+aaep   	0.90  1E-11   100  1000   SM .false. scatter a  a  -> e+ e-
+#aepep 	0.90  1E-11   100  1000   SM  .true. scatter a  a  -> e+ e- e+ e-
+eaea   	0.90  1E-11   100  1000   SM .false. scatter e- a  -> e- a
+epaa   	0.90  1E-11   100  1000   SM  .true. scatter e+ e- -> a a
+epep   	0.65  1E-11   100  1000   SM .false. scatter e+ e- -> e+ e-
+#pepa  	0.90  1E-11   100  1000   SM .false. scatter e+ e- -> e+ e- a
+#pepaa 	0.90  1E-11   100  1000   SM .false. scatter e+ e- -> e+ e- a a
+#pepep 	0.80  1E-11   100  1000   SM .false. scatter e+ e- -> e+ e- e+ e-
+epvv   	0.90  1E-11   100  1000   SM .false. scatter e+ e- -> ve~ ve
+epvva  	0.90  1E-11   100  1000   SM .false. scatter e+ e- -> ve~ ve a
+vvep   	0.90  1E-11   100  1000   SM .false. scatter ve~ ve -> e+ e-
+#vepa  	0.40  1E-11   100  1000   SM .false. scatter ve~ ve -> e+ e- a

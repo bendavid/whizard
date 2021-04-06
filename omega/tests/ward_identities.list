@@ -2,91 +2,91 @@
 # ----------------------------------------------------------------------
 #      thr     n roots model i process ...
 # ----------------------------------------------------------------------
-eeaa   0.75 1000  1000   QED 3 scatter e+ e- -> A A
-eeaaa  0.75 1000  1000   QED 3 scatter e+ e- -> A A A
-eeaee  0.35 1000  1000   QED 3 scatter e+ e- -> A e+ e-
-aeae   0.35 1000  1000   QED 3 scatter A e+ -> A e+
-aeaea  0.35 1000  1000   QED 3 scatter A e+ -> A e+ A
+eeaa   0.75 100  1000   QED 3 scatter e+ e- -> A A
+eeaaa  0.75 100  1000   QED 3 scatter e+ e- -> A A A
+eeaee  0.35 100  1000   QED 3 scatter e+ e- -> A e+ e-
+aeae   0.35 100  1000   QED 3 scatter A e+ -> A e+
+aeaea  0.35 100  1000   QED 3 scatter A e+ -> A e+ A
 #
-uugg   0.70 1000  1000   QCD 3 scatter u ubar -> gl gl
-gggg   0.70 1000  1000   QCD 3 scatter gl gl -> gl gl
-uuguu  0.35  500  1000   QCD 3 scatter u ubar -> gl u ubar
-gugu   0.30 1000  1000   QCD 3 scatter gl u -> gl u
+uugg   0.70 100  1000   QCD 3 scatter u ubar -> gl gl
+gggg   0.70 100  1000   QCD 3 scatter gl gl -> gl gl
+uuguu  0.35  50  1000   QCD 3 scatter u ubar -> gl u ubar
+gugu   0.30 100  1000   QCD 3 scatter gl u -> gl u
 # numerical noise improves w/quad:
-uugguu 0.25  200  1000   QCD 3 scatter u ubar -> gl gl u ubar
+uugguu 0.25  50  1000   QCD 3 scatter u ubar -> gl gl u ubar
 #
-qqgg1  0.70 1000  1000   SYM 3 scatter q1 Q1 -> g1 g1
-ssgg1  0.70 1000  1000   SYM 3 scatter sq1 sQ1 -> g1 g1
-ppgg1  0.70 1000  1000   SYM 3 scatter phi phi -> g1 g1
-gggg1  0.70 1000  1000   SYM 3 scatter g1 g1 -> g1 g1
+qqgg1  0.70 100  1000   SYM 3 scatter q1 Q1 -> g1 g1
+ssgg1  0.70 100  1000   SYM 3 scatter sq1 sQ1 -> g1 g1
+ppgg1  0.70 100  1000   SYM 3 scatter phi phi -> g1 g1
+gggg1  0.70 100  1000   SYM 3 scatter g1 g1 -> g1 g1
 #
-ggtt   0.35 1000  1000   SM 1 scatter gl gl -> t tbar
-gtgt   0.35 1000  1000   SM 3 scatter gl t -> gl t
-ggtt_a 0.35 1000  1000   SM_top_anom 1 scatter gl gl -> t tbar
-gtgt_a 0.35 1000  1000   SM_top_anom 3 scatter gl t -> gl t
+ggtt   0.35 100  1000   SM 1 scatter gl gl -> t tbar
+gtgt   0.35 100  1000   SM 3 scatter gl t -> gl t
+ggtt_a 0.35 100  1000   SM_top_anom 1 scatter gl gl -> t tbar
+gtgt_a 0.35 100  1000   SM_top_anom 3 scatter gl t -> gl t
 #
-aatt   0.30 1000  1000   SM 3 scatter t tbar -> A A
-ttaa   0.30 1000  1000   SM 1 scatter A A -> t tbar
-tata   0.30 1000  1000   SM 3 scatter A t -> A t
-atat   0.30 1000  1000   SM 3 scatter A tbar -> A tbar
-aatt_a 0.30 1000  1000   SM_top_anom 3 scatter t tbar -> A A
-ttaa_a 0.30 1000  1000   SM_top_anom 1 scatter A A -> t tbar
-tata_a 0.30 1000  1000   SM_top_anom 3 scatter A t -> A t
-atat_a 0.30 1000  1000   SM_top_anom 3 scatter A tbar -> A tbar
+aatt   0.30 100  1000   SM 3 scatter t tbar -> A A
+ttaa   0.30 100  1000   SM 1 scatter A A -> t tbar
+tata   0.30 100  1000   SM 3 scatter A t -> A t
+atat   0.30 100  1000   SM 3 scatter A tbar -> A tbar
+aatt_a 0.30 100  1000   SM_top_anom 3 scatter t tbar -> A A
+ttaa_a 0.30 100  1000   SM_top_anom 1 scatter A A -> t tbar
+tata_a 0.30 100  1000   SM_top_anom 3 scatter A t -> A t
+atat_a 0.30 100  1000   SM_top_anom 3 scatter A tbar -> A tbar
 #
-#ttaz   0.30 1000  1000   SM 3 scatter t tbar -> A Z
-#aztt   0.30 1000  1000   SM 1 scatter A Z -> t tbar
-#tzta   0.30 1000  1000   SM 3 scatter Z t -> A t
-#ztat   0.30 1000  1000   SM 3 scatter Z tbar -> A tbar
-#ttaz_a 0.30 1000  1000   SM_top_anom 3 scatter t tbar -> A Z
-#aztt_a 0.30 1000  1000   SM_top_anom 1 scatter A Z -> t tbar
-#tzta_a 0.30 1000  1000   SM_top_anom 3 scatter Z t -> A t
-#ztat_a 0.30 1000  1000   SM_top_anom 3 scatter Z tbar -> A tbar
+#ttaz   0.30 100  1000   SM 3 scatter t tbar -> A Z
+#aztt   0.30 100  1000   SM 1 scatter A Z -> t tbar
+#tzta   0.30 100  1000   SM 3 scatter Z t -> A t
+#ztat   0.30 100  1000   SM 3 scatter Z tbar -> A tbar
+#ttaz_a 0.30 100  1000   SM_top_anom 3 scatter t tbar -> A Z
+#aztt_a 0.30 100  1000   SM_top_anom 1 scatter A Z -> t tbar
+#tzta_a 0.30 100  1000   SM_top_anom 3 scatter Z t -> A t
+#ztat_a 0.30 100  1000   SM_top_anom 3 scatter Z tbar -> A tbar
 #
-#ttza   0.30 1000  1000   SM 3 scatter t tbar -> Z A
-#zatt   0.30 1000  1000   SM 1 scatter Z A -> t tbar
-#tatz   0.30 1000  1000   SM 3 scatter A t -> Z t
-#atzt   0.30 1000  1000   SM 3 scatter A tbar -> Z tbar
-#ttza_a 0.30 1000  1000   SM_top_anom 3 scatter t tbar -> Z A
-#zatt_a 0.30 1000  1000   SM_top_anom 1 scatter Z A -> t tbar
-#tatz_a 0.30 1000  1000   SM_top_anom 3 scatter A t -> Z t
-#atzt_a 0.30 1000  1000   SM_top_anom 3 scatter A tbar -> Z tbar
+#ttza   0.30 100  1000   SM 3 scatter t tbar -> Z A
+#zatt   0.30 100  1000   SM 1 scatter Z A -> t tbar
+#tatz   0.30 100  1000   SM 3 scatter A t -> Z t
+#atzt   0.30 100  1000   SM 3 scatter A tbar -> Z tbar
+#ttza_a 0.30 100  1000   SM_top_anom 3 scatter t tbar -> Z A
+#zatt_a 0.30 100  1000   SM_top_anom 1 scatter Z A -> t tbar
+#tatz_a 0.30 100  1000   SM_top_anom 3 scatter A t -> Z t
+#atzt_a 0.30 100  1000   SM_top_anom 3 scatter A tbar -> Z tbar
 #
-#btwz   0.35 1000  1000   SM 4 scatter t bbar -> W+ Z
-#wbzt   0.35 1000  1000   SM 3 scatter W+ b -> Z t
-#btwz_a 0.35 1000  1000   SM_top_anom 4 scatter t bbar -> W+ Z
-#wbzt_a 0.35 1000  1000   SM_top_anom 3 scatter W+ b -> Z t
+#btwz   0.35 100  1000   SM 4 scatter t bbar -> W+ Z
+#wbzt   0.35 100  1000   SM 3 scatter W+ b -> Z t
+#btwz_a 0.35 100  1000   SM_top_anom 4 scatter t bbar -> W+ Z
+#wbzt_a 0.35 100  1000   SM_top_anom 3 scatter W+ b -> Z t
 #
-#tbwz   0.35 1000  1000   SM 4 scatter b tbar -> W- Z
-#wtzb   0.35 1000  1000   SM 3 scatter W- t -> Z b
-#tbwz_a 0.35 1000  1000   SM_top_anom 4 scatter b tbar -> W- Z
-#wtzb_a 0.35 1000  1000   SM_top_anom 3 scatter W- t -> Z b
+#tbwz   0.35 100  1000   SM 4 scatter b tbar -> W- Z
+#wtzb   0.35 100  1000   SM 3 scatter W- t -> Z b
+#tbwz_a 0.35 100  1000   SM_top_anom 4 scatter b tbar -> W- Z
+#wtzb_a 0.35 100  1000   SM_top_anom 3 scatter W- t -> Z b
 #
-#btwa   0.35 1000  1000   SM 4 scatter t bbar -> W+ A
-#wbat   0.35 1000  1000   SM 3 scatter W+ b -> A t
-#btwa_a 0.35 1000  1000   SM_top_anom 4 scatter t bbar -> W+ A
-#wbat_a 0.35 1000  1000   SM_top_anom 3 scatter W+ b -> A t
+#btwa   0.35 100  1000   SM 4 scatter t bbar -> W+ A
+#wbat   0.35 100  1000   SM 3 scatter W+ b -> A t
+#btwa_a 0.35 100  1000   SM_top_anom 4 scatter t bbar -> W+ A
+#wbat_a 0.35 100  1000   SM_top_anom 3 scatter W+ b -> A t
 #
-#tbaw   0.35 1000  1000   SM 3 scatter b tbar -> A W-
-#wtab   0.35 1000  1000   SM 3 scatter W- t -> A b
-#tbaw_a 0.35 1000  1000   SM_top_anom 3 scatter b tbar -> A W-
-#wtab_a 0.35 1000  1000   SM_top_anom 3 scatter W- t -> A b
+#tbaw   0.35 100  1000   SM 3 scatter b tbar -> A W-
+#wtab   0.35 100  1000   SM 3 scatter W- t -> A b
+#tbaw_a 0.35 100  1000   SM_top_anom 3 scatter b tbar -> A W-
+#wtab_a 0.35 100  1000   SM_top_anom 3 scatter W- t -> A b
 #
-#ttzz   0.30 1000  1000   SM 3 scatter t tbar -> Z Z
-#zztt   0.30 1000  1000   SM 1 scatter Z Z -> t tbar
-#tztz   0.30 1000  1000   SM 3 scatter Z t -> Z t
-#ztzt   0.30 1000  1000   SM 3 scatter Z tbar -> Z tbar
-#ttzz_a 0.30 1000  1000   SM_top_anom 3 scatter t tbar -> Z Z
-#zztt_a 0.30 1000  1000   SM_top_anom 1 scatter Z Z -> t tbar
-#tztz_a 0.30 1000  1000   SM_top_anom 3 scatter Z t -> Z t
-#ztzt_a 0.30 1000  1000   SM_top_anom 3 scatter Z tbar -> Z tbar
+#ttzz   0.30 100  1000   SM 3 scatter t tbar -> Z Z
+#zztt   0.30 100  1000   SM 1 scatter Z Z -> t tbar
+#tztz   0.30 100  1000   SM 3 scatter Z t -> Z t
+#ztzt   0.30 100  1000   SM 3 scatter Z tbar -> Z tbar
+#ttzz_a 0.30 100  1000   SM_top_anom 3 scatter t tbar -> Z Z
+#zztt_a 0.30 100  1000   SM_top_anom 1 scatter Z Z -> t tbar
+#tztz_a 0.30 100  1000   SM_top_anom 3 scatter Z t -> Z t
+#ztzt_a 0.30 100  1000   SM_top_anom 3 scatter Z tbar -> Z tbar
 #
-#wwtt   0.35 1000  1000   SM 3 scatter t tbar -> W+ W-
-#wtwt   0.35 1000  1000   SM 3 scatter W+ t -> W+ t
-#wwtt_a 0.35 1000  1000   SM_top_anom 3 scatter t tbar -> W+ W-
-#wtwt_a 0.35 1000  1000   SM_top_anom 3 scatter W+ t -> W+ t
+#wwtt   0.35 100  1000   SM 3 scatter t tbar -> W+ W-
+#wtwt   0.35 100  1000   SM 3 scatter W+ t -> W+ t
+#wwtt_a 0.35 100  1000   SM_top_anom 3 scatter t tbar -> W+ W-
+#wtwt_a 0.35 100  1000   SM_top_anom 3 scatter W+ t -> W+ t
 #
-#wwbb   0.35 1000  1000   SM 3 scatter b bbar -> W+ W-
-#wbwb   0.35 1000  1000   SM 3 scatter W+ b -> W+ b
-#wwbb_a 0.35 1000  1000   SM_top_anom 3 scatter b bbar -> W+ W-
-#wbwb_a 0.35 1000  1000   SM_top_anom 3 scatter W+ b -> W+ b
+#wwbb   0.35 100  1000   SM 3 scatter b bbar -> W+ W-
+#wbwb   0.35 100  1000   SM 3 scatter W+ b -> W+ b
+#wwbb_a 0.35 100  1000   SM_top_anom 3 scatter b bbar -> W+ W-
+#wbwb_a 0.35 100  1000   SM_top_anom 3 scatter W+ b -> W+ b

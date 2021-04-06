@@ -2,37 +2,37 @@
 #
 # Use `n` points for a fixed `roots` for the scattering `process` in their
 # respective `model`
-# ----------------------------------------------------------------------
-#         n       roots  model  process
-# ----------------------------------------------------------------------
-#4g       10000   1000   QCD    scatter gl gl -> gl gl
-#5g       5000    1000   QCD    scatter gl gl -> gl gl gl
-6g       2310    1000   QCD    scatter gl gl -> gl gl gl gl
-#7g       2310    1000   QCD    scatter gl gl -> gl gl gl gl gl
+# ---------------------------------------------------------------------
+#         n      roots  model  process
+# ---------------------------------------------------------------------
+#4g       1000   1000   QCD    scatter gl gl -> gl gl
+#5g        500   1000   QCD    scatter gl gl -> gl gl gl
+6g         231   1000   QCD    scatter gl gl -> gl gl gl gl
+#7g        231   1000   QCD    scatter gl gl -> gl gl gl gl gl
 
-#DY0j     10000   1000   SM     scatter u ubar -> e+ e-
-#DY1j     10000   1000   SM     scatter u ubar -> e+ e- u:ubar:gl
-#DY2j     10000   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl
-#DY3j     10000   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl
-#DY4j     2310    1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
-#DY5j     2310    1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
-#DY6j     210     1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
+#DY0j     1000   1000   SM     scatter u ubar -> e+ e-
+#DY1j     1000   1000   SM     scatter u ubar -> e+ e- u:ubar:gl
+#DY2j     1000   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl
+#DY3j     1000   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl
+#DY4j      231   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
+#DY5j      231   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
+#DY6j       21   1000   SM     scatter u ubar -> e+ e- u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
 
-#4jets    10000   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl
-#5jets    10000   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl
-#6jets    2310    1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
-#7jets    210     1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
+#4jets    1000   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl
+#5jets    1000   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl
+#6jets     231   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
+#7jets      21   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
 
-#ee2a     10000   1000   QED    scatter e+ e- -> A A
-#ee3a     10000   1000   QED    scatter e+ e- -> A A A
-#ee4a     10000   1000   QED    scatter e+ e- -> A A A A
-#ee5a     10000   1000   QED    scatter e+ e- -> A A A A A
-#ee6a     10000   1000   QED    scatter e+ e- -> A A A A A A
-#ee7a     5000    1000   QED    scatter e+ e- -> A A A A A A A
-#ee8a     2310    1000   QED    scatter e+ e- -> A A A A A A A A
-#ee9a     2310    1000   QED    scatter e+ e- -> A A A A A A A A A
-#ee10a    2310    1000   QED    scatter e+ e- -> A A A A A A A A A A
+#ee2a     1000   1000   QED    scatter e+ e- -> A A
+#ee3a     1000   1000   QED    scatter e+ e- -> A A A
+#ee4a     1000   1000   QED    scatter e+ e- -> A A A A
+#ee5a     1000   1000   QED    scatter e+ e- -> A A A A A
+#ee6a     1000   1000   QED    scatter e+ e- -> A A A A A A
+#ee7a      500   1000   QED    scatter e+ e- -> A A A A A A A
+#ee8a      231   1000   QED    scatter e+ e- -> A A A A A A A A
+#ee9a      231   1000   QED    scatter e+ e- -> A A A A A A A A A
+#ee10a     231   1000   QED    scatter e+ e- -> A A A A A A A A A A
 
 # Doesn't compile/link with gfortran or ifort, only possible with OVM
-#8g       210     1000   QCD    scatter gl gl -> gl gl gl gl gl gl
-#8jets    200     1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl
+#8g         21   1000   QCD    scatter gl gl -> gl gl gl gl gl gl
+#8jets      20   1000   QCD    scatter u:ubar:gl u:ubar:gl -> u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl u:ubar:gl

@@ -75,5 +75,5 @@ let vertices =
       List.map scalar_vector_current ["t"; "6D"; "6DP"] ]
 
 let _ =
-  Keystones.generate ~reps:10000 ~threshold:0.70 vertices;
+  Keystones.generate ~reps:1000 ~threshold:0.70 vertices;
   exit 0

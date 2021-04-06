@@ -375,5 +375,5 @@ let all_propagators = propagators @ conjugate_propagators
 
 let _ =
   generate_ufo
-    ~reps:10000 ~threshold:0.70 "fusions_UFO" vertices all_propagators;
+    ~reps:1000 ~threshold:0.70 "fusions_UFO" vertices all_propagators;
   exit 0

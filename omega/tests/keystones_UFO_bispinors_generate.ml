@@ -150,6 +150,6 @@ let propagators =
 
 let _ =
   generate_ufo
-    ~reps:10000 ~threshold:0.70 ~omega_module:"omega95_bispinors"
+    ~reps:1000 ~threshold:0.70 ~omega_module:"omega95_bispinors"
     "fusions_UFO_bispinors" vertices propagators;
   exit 0
