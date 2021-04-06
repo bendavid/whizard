@@ -843,15 +843,19 @@ AC_CONFIG_FILES([src/testing/Makefile])
 AC_CONFIG_FILES([src/system/Makefile])
 
 AC_CONFIG_FILES([src/system/system_dependencies.f90], [
-   maxlen=70
-   i=1
-   pat=""
-   while test ${i} -lt ${maxlen}; do pat="${pat}."; i=`expr ${i} + 1`; done
-   pat=${pat}[[^\"]]
-   pat="/^       \"${pat}/ s/${pat}/&\&\\
-       \&/g"
-   $SED "${pat}" < src/system/system_dependencies.f90 > \
-      src/system/system_dependencies.tmp
+# Be cautious: Special handling of brackets due to M4!
+# 1. Configure lines containing @VARIABLE@ must be indented by exactly 7 spaces
+#    to be split (^[[[:space:]]]\{7\}), the first non-space character has to
+#    be an double-quote (\"). and the line has to have at least 110 characters where the
+#    111th must not be a double quote, a whitespace, a slash or an ampersand ([^\" \/&]).
+# 2. Appeand each 110-wide character block (\(.\{110\}[[^\"]]\), refer to a block as \1)
+#    (without a trailing double-quote) with an ampersand, a literal newline character,
+#    seven white-spaces and another ampersand. Repeat with remaining pattern space (be greedy).
+# Note: The greedy options also allows us to parse the line beginning from each character
+#       again with the search pattern.
+   $SED "/^[[[:space:]]]\{7\}\".\{110,\}[[^\"]]/ s/\(.\{110\}[[^\" \/&]]\)/\1\&\\n       \&/g" \
+      < src/system/system_dependencies.f90 \
+      > src/system/system_dependencies.tmp
    mv -f src/system/system_dependencies.tmp src/system/system_dependencies.f90
 ])
 
