@@ -6,6 +6,7 @@ Use svn log to see detailed changes.
 
 2021-04-06
 	Bug fix for rare script failure in system_dependencies.f90.in
+	Kappa factor for quartic Higgs coupling in SM_ac(_CKM) model
 
 2021-04-04
 	Support for UFO extensions in SMEFTSim 3.0

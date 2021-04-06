@@ -44,6 +44,7 @@ parameter k5z      = 0            # anomalous TGC
 parameter l5a      = 0            # anomalous TGC
 parameter l5z      = 0            # anomalous TGC
 parameter fac_gh3  = 1 		  # gh3 / gh3_SM
+parameter fac_gh4  = 1 		  # gh4 / gh4_SM
 parameter fghgaga  = 1		  # ghgaga / ghgaga_SM
 parameter fghgaz   = 1		  # ghgaz / ghgaz_SM
 parameter lambda_h = 5.e3         # scale for anom. Higgs couplings

@@ -62,7 +62,7 @@ module parameters_sm_ac
 
 contains
   subroutine import_from_whizard (par_array, scheme)
-    real(default), dimension(52), intent(in) :: par_array
+    real(default), dimension(53), intent(in) :: par_array
     integer, intent(in) :: scheme
     type :: parameter_set
        real(default) :: gf
@@ -110,6 +110,7 @@ contains
        real(default) :: awz1
        real(default) :: awz2
        real(default) :: fac_gh3
+       real(default) :: fac_gh4
        real(default) :: fghgaga
        real(default) :: fghgaz
        real(default) :: lambdah
@@ -161,20 +162,21 @@ contains
     par%l5a     = par_array(36)
     par%l5z     = par_array(37)
     par%fac_gh3 = par_array(38)
-    par%fghgaga = par_array(39)
-    par%fghgaz  = par_array(40)
-    par%lambdah = par_array(41)
-    par%fw      = par_array(42)
-    par%fww     = par_array(43)
-    par%fb      = par_array(44)
-    par%fbb     = par_array(45)
-    par%v       = par_array(46)
-    par%cw      = par_array(47)
-    par%sw      = par_array(48)
-    par%ee      = par_array(49)
-    par%aZ      = par_array(50)
-    par%aWZ1    = par_array(51)
-    par%aWZ2    = par_array(52)
+    par%fac_gh4 = par_array(39)
+    par%fghgaga = par_array(40)
+    par%fghgaz  = par_array(41)
+    par%lambdah = par_array(42)
+    par%fw      = par_array(43)
+    par%fww     = par_array(44)
+    par%fb      = par_array(45)
+    par%fbb     = par_array(46)
+    par%v       = par_array(47)
+    par%cw      = par_array(48)
+    par%sw      = par_array(49)
+    par%ee      = par_array(50)
+    par%aZ      = par_array(51)
+    par%aWZ1    = par_array(52)
+    par%aWZ2    = par_array(53)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -247,7 +249,7 @@ contains
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
     gh3 = - par%fac_gh3 * 3 * mass(25)**2 / vev
-    gh4 = - 3 * mass(25)**2 / vev**2
+    gh4 = - par%fac_gh4 * 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx(0.0_default, 1.0_default, kind=default) * gs    
