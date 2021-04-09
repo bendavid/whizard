@@ -410,6 +410,7 @@ compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 if OCAML_AVAILABLE
 
 TESTS += compare_majorana compare_majorana_legacy compare_majorana_UFO
+# XFAIL_TESTS += compare_majorana_UFO
 EXTRA_PROGRAMS += compare_majorana compare_majorana_legacy compare_majorana_UFO
 EXTRA_DIST += compare_driver_majorana.sh compare_driver_majorana_UFO.sh
 EXTRA_DIST += comparisons_majorana.list comparisons_majorana_legacy.list \
@@ -488,7 +489,7 @@ endif
 
 parameters_SM_UFO.f90: $(OMEGA_UFO)
 	$(OMEGA_UFO) \
-	  -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ -model:exec \
+	  -model:UFO_dir $(OMEGA_UFO_PATH)/SM/ -model:exec \
 	  -target:parameter_module parameters_sm_ufo -params > $@
 endif
 
@@ -743,6 +744,45 @@ benchmark.o: \
 benchmark.o: parameters_QCD.o
 amplitude_benchmark_v1.o amplitude_benchmark_v2.o \
 	amplitude_benchmark_v3.o amplitude_benchmark_v4.o: parameters_QCD.o
+
+########################################################################
+
+EXTRA_PROGRAMS += benchmark_UFO_SM
+
+run_benchmark_UFO_SM: benchmark_UFO_SM
+	./benchmark_UFO_SM
+
+# NB: This IS portable ...
+UFO_SM = $(OMEGA_UFO_PATH)/SM/
+
+BENCHMARK_UFO_SM_PROCESS = -scatter "e+ e- -> W+ W- Z Z"
+
+benchmark_UFO_SM_SOURCES = \
+	benchmark_UFO_SM.f90 parameters_SM_from_UFO.f90
+nodist_benchmark_UFO_SM_SOURCES = \
+	amplitude_benchmark_UFO_SM.f90 \
+	amplitude_benchmark_UFO_SM_classic.f90 \
+	parameters_SM_UFO.f90
+
+benchmark_UFO_SM_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+amplitude_benchmark_UFO_SM_classic.f90: $(OMEGA_SM) Makefile
+	$(OMEGA_SM) -target:module amplitude_benchmark_UFO_SM_classic \
+	-target:parameter_module parameters_SM_from_UFO \
+	$(BENCHMARK_UFO_SM_PROCESS) > $@
+
+amplitude_benchmark_UFO_SM.f90: $(OMEGA_UFO) Makefile
+	$(OMEGA_UFO) -model:UFO_dir $(UFO_SM) -model:exec \
+	-target:module amplitude_benchmark_UFO_SM \
+	-target:parameter_module parameters_SM_UFO \
+	$(BENCHMARK_UFO_SM_PROCESS) > $@
+
+benchmark_UFO_SM.o: \
+	amplitude_benchmark_UFO_SM.o amplitude_benchmark_UFO_SM_classic.o
+
+benchmark_UFO_SM.o: parameters_SM_UFO.o parameters_SM_from_UFO.o 
+amplitude_benchmark_UFO_SM_classic.o: parameters_SM_from_UFO.o
+amplitude_benchmark_UFO_SM.o: parameters_SM_UFO.o
 
 ########################################################################
 

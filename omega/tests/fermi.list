@@ -11,7 +11,7 @@ eeeeaa 0.75   1E-11 100  1000    SM 3 4  -1 scatter e- e- -> e- e- A A
 eeeeaa 0.75   1E-11 100  1000    SM 5 6   1 scatter e- e- -> e- e- A A
 eeeeee 0.75   1E-11 100  1000    SM 3 4  -1 scatter e+ e- -> e+ e+ e- e-
 eeeeee 0.75   1E-11 100  1000    SM 5 6  -1 scatter e+ e- -> e+ e+ e- e-
-Seeee  0.70   1E-11 100  1000  MSSM 1 2  -1 scatter e- e- -> e- e-
+Seeee  0.65   1E-11 100  1000  MSSM 1 2  -1 scatter e- e- -> e- e-
 Seeee  0.75   1E-11 100  1000  MSSM 3 4  -1 scatter e- e- -> e- e-
 Seeeea 0.75   1E-11 100  1000  MSSM 3 4  -1 scatter e- e- -> e- e- A
 Seenn  0.75   1E-11 100  1000  MSSM 3 4  -1 scatter e+ e- -> neu1 neu1

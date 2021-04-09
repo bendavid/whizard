@@ -48,6 +48,7 @@ let vertices =
 
 let _ =
   Keystones.generate
-    ~reps:1000 ~threshold:0.70 ~omega_module:"omega95_bispinors"
+    ~reps:1000 ~threshold:0.70
+    ~program:"keystones_omegalib_bispinors" ~omega_module:"omega95_bispinors"
     vertices;
   exit 0

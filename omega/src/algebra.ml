@@ -268,14 +268,14 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
     let is_integer = test_real Q.is_integer
 
     let q_to_string q =
-      (if Q.is_positive q then "+" else "-") ^ Q.to_string (Q.abs q)
+      (if Q.is_negative q then "-" else " ") ^ Q.to_string (Q.abs q)
 
     let to_string z =
       if Q.is_null z.im then
         q_to_string z.re
       else if Q.is_null z.re then
         if Q.is_unit z.im then
-          "+I"
+          " I"
         else if Q.is_unit (Q.neg z.im) then
           "-I"
         else

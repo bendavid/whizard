@@ -23,6 +23,13 @@
 open Coupling
 open Keystones
 
+(* For testing Dirac equations \&c.~\ldots *)
+
+let pslash =
+  equivalent_tensors
+    [| ConjSpinor; Spinor |]
+    [ ("pslash", "P(-1,2)*Gamma(-1,1,2)") ]
+
 let qed =
   equivalent_tensors
     [| ConjSpinor; Vector; Spinor |]
@@ -258,7 +265,8 @@ let charge_conjugate_vv =
 let empty = { tag = "empty"; keystones = [ ] }
 
 let vertices =
-  [ (qed, vector_spinor_current "v");
+  [ (pslash, empty);
+    (qed, vector_spinor_current "v");
     (axial, vector_spinor_current "a");
     (left, vector_spinor_current "vl");
     (right, vector_spinor_current "vr");
@@ -375,5 +383,6 @@ let all_propagators = propagators @ conjugate_propagators
 
 let _ =
   generate_ufo
-    ~reps:1000 ~threshold:0.70 "fusions_UFO" vertices all_propagators;
+    ~reps:1000 ~threshold:0.70 ~program:"keystones_UFO"
+    "fusions_UFO" vertices all_propagators;
   exit 0

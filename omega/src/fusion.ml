@@ -103,25 +103,55 @@ module type Maker =
 
 module type Stat =
   sig
+
+    (* This will be [Model.T.flavor]. *)
     type flavor
+
+    (* A record of the fermion lines in the 1POW. *)
     type stat
+
+    (* Vertices with an odd number of fermion fields. *)
     exception Impossible
+
+    (* External lines. *)
     val stat : flavor -> int -> stat
+
+    (* [stat_fuse (Some flines) slist f] combines the fermion lines
+       in the elements of [slist] according to the connections listed
+       in [flines].
+       On the other hand, [stat_fuse None slist f] corresponds to
+       the legacy mode with \emph{at most} two fermions.
+       The resulting flavor [f] of the 1POW can be ignored for models
+       with only Dirac fermions, except for debugging, since
+       the direction of the arrows is unambiguous.
+       However, in the case of Majorana fermions and/or fermion number
+       violating interactions, the flavor [f] must be used. *)
     val stat_fuse :
       Coupling.fermion_lines option -> stat list -> flavor -> stat
+
+    (* Analogous to [stat_fuse], but for the finalizing keystone
+       instead of the 1POW.  *) 
     val stat_keystone :
       Coupling.fermion_lines option -> stat list -> flavor -> stat
+
+    (* Compute the sign corresponding to the fermion lines in
+       a 1POW or keystone. *)
     val stat_sign : stat -> int
-    (* debugging \ldots *)
+
+    (* Debugging and consistency checks \ldots *)
     val stat_to_string : stat -> string
     val equal : stat -> stat -> bool
-    val complete : stat -> bool
-  end
+    val saturated : stat -> bool
+
+end
 
 module type Stat_Maker = functor (M : Model.T) ->
   Stat with type flavor = M.flavor
 
 (* \thocwmodulesection{Dirac Fermions} *)
+
+let dirac_log silent logging = logging
+let dirac_log silent logging = silent
 
 exception Majorana
 
@@ -164,7 +194,7 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
          p1 = p2 && List.sort compare l1 = List.sort compare l2
       | _ -> false
 
-    let complete = function
+    let saturated = function
       | Boson _ -> true
       | _ -> false
 
@@ -198,28 +228,31 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_fuse_legacy_logging s1 s23__n f =
       let s = stat_fuse_legacy s1 s23__n f in
       Printf.eprintf
-        "Fusion.Stat_Dirac.stat_fuse_legacy: %s <- %s -> %s\n"
+        "stat_fuse_legacy: %s <- %s -> %s\n"
         (M.flavor_to_string f)
         (ThoList.to_string stat_to_string (s1 :: s23__n))
         (stat_to_string s);
       s
 
+    let stat_fuse_legacy =
+      dirac_log stat_fuse_legacy stat_fuse_legacy_logging
+
     module IMap = Map.Make (struct type t = int let compare = compare end)
 
     type partial =
-      { stat : stat;
-        fermions : int IMap.t;
-        antifermions : int IMap.t;
-        n : int }
+      { stat : stat (* the [stat] accumulated so far *);
+        fermions : int IMap.t (* a map from the indices in the vertex to open fermion lines *);
+        antifermions : int IMap.t (* a map from the indices in the vertex to open antifermion lines *);
+        n : int (* the number of incoming propagators *) }
 
     let partial_to_string p =
       Printf.sprintf
-        "{ %s, %s, %s, %d }"
+        "{ fermions=%s, antifermions=%s, state=%s, #=%d }"
         (ThoList.to_string
-           (fun (i, f) -> Printf.sprintf "%d@%d" i f)
+           (fun (i, f) -> Printf.sprintf "%d@%d" f i)
            (IMap.bindings p.fermions))
         (ThoList.to_string
-           (fun (i, f) -> Printf.sprintf "%d@%d" i f)
+           (fun (i, f) -> Printf.sprintf "%d@%d" f i)
            (IMap.bindings p.antifermions))
         (stat_to_string p.stat)
         p.n
@@ -288,13 +321,14 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     let match_fermion_line_logging p (i, j) =
       Printf.eprintf
-        "Fusion.Stat_Dirac.match_fermion_line %s (%d, %d)"
+        "match_fermion_line %s (%d, %d)"
         (partial_to_string p) i j;
       let p' = match_fermion_line p (i, j) in
       Printf.eprintf " >> %s\n" (partial_to_string p');
       p'
 
-    (* [let match_fermion_line = match_fermion_line_logging] *)
+    let match_fermion_line =
+      dirac_log match_fermion_line match_fermion_line_logging
 
     let match_fermion_lines flines s1 s23__n =
       let p = partial_of_slist (s1 :: s23__n) in
@@ -319,14 +353,14 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     let stat_fuse_new_logging flines s1 s23__n f =
       Printf.eprintf
-        "Fusion.Stat_Dirac.stat_fuse_new: \
-         connecting fermion lines %s in %s <- %s\n"
+        "stat_fuse_new: connecting fermion lines %s in %s <- %s\n"
         (UFO_Lorentz.fermion_lines_to_string flines)
         (M.flavor_to_string f)
         (ThoList.to_string stat_to_string (s1 :: s23__n));
       stat_fuse_new_checking flines s1 s23__n f
 
-    (* [let stat_fuse_new = stat_fuse_new_logging] *)
+    let stat_fuse_new =
+      dirac_log stat_fuse_new stat_fuse_new_logging
 
     let stat_fuse flines_opt slist f =
       match slist with
@@ -339,10 +373,13 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     let stat_fuse_logging flines_opt slist f =
       Printf.eprintf
-        "Fusion.Stat_Dirac.stat_fuse: %s <- %s\n"
+        "stat_fuse: %s <- %s\n"
         (M.flavor_to_string f)
         (ThoList.to_string stat_to_string slist);
       stat_fuse flines_opt slist f
+
+    let stat_fuse =
+      dirac_log stat_fuse stat_fuse_logging
 
     let stat_keystone_legacy s1 s23__n f =
       let s2 = List.hd s23__n
@@ -352,12 +389,15 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_keystone_legacy_logging s1 s23__n f =
       let s = stat_keystone_legacy s1 s23__n f in
       Printf.eprintf
-        "Fusion.Stat_Dirac.stat_keystone_legacy: %s (%s) %s -> %s\n"
+        "stat_keystone_legacy: %s (%s) %s -> %s\n"
         (stat_to_string s1)
         (M.flavor_to_string f)
         (ThoList.to_string stat_to_string s23__n)
         (stat_to_string s);
       s
+
+    let stat_keystone_legacy =
+      dirac_log stat_keystone_legacy stat_keystone_legacy_logging
 
     let stat_keystone flines_opt slist f =
       match slist with
@@ -371,7 +411,7 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
                the lines on one side of the keystone. *)
             let stat =
               stat_fuse_legacy s1 [stat_fuse_new flines s2 s34__n f] f in
-            if complete stat then
+            if saturated stat then
               stat
             else
               failwith
@@ -380,6 +420,18 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
                    (stat_to_string stat))
          end
 
+    let stat_keystone_logging flines_opt slist f =
+      let s = stat_keystone flines_opt slist f in
+      Printf.eprintf
+        "stat_keystone:        %s (%s) %s -> %s\n"
+        (stat_to_string (List.hd slist))
+        (M.flavor_to_string f)
+        (ThoList.to_string stat_to_string (List.tl slist))
+        (stat_to_string s);
+      s
+
+    let stat_keystone =
+      dirac_log stat_keystone stat_keystone_logging
 
 (* \begin{figure}
      \begin{displaymath}
@@ -1810,13 +1862,13 @@ i*)
                  "Fusion.stat_keystone: %s <> %s!"
                  (S.stat_to_string legacy)
                  (S.stat_to_string stat));
-          if not (S.complete legacy) then
+          if not (S.saturated legacy) then
             failwith
               (Printf.sprintf
                  "Fusion.stat_keystone: legacy incomplete: %s!"
                  (S.stat_to_string legacy))
         end;
-      if not (S.complete stat) then
+      if not (S.saturated stat) then
         failwith
           (Printf.sprintf
              "Fusion.stat_keystone: incomplete: %s!"
@@ -2577,10 +2629,14 @@ let force_legacy = false
 module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
   struct 
 
+    exception Impossible
+
     type flavor = M.flavor
 
+    (* \thocwmodulesubsection{Keeping Track of Fermion Lines} *)
+
     (* JRR's algorithm doesn't use lists of pairs representing
-       directed arrows as in [Stat._Dirac().stat] above, but a list
+       directed arrows as in [Stat_Dirac().stat] above, but a list
        of integers denoting the external leg a fermion line connects
        to: *)
     type stat =
@@ -2598,13 +2654,13 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
       let open Printf in
       let l2s = ThoList.to_string string_of_int in
       match s with
-      | Boson lines -> sprintf "B %s" (l2s lines)
-      | Fermion (p, lines) -> sprintf "F (%d, %s)" p (l2s lines)
-      | AntiFermion (p, lines) -> sprintf "A (%d, %s)" p (l2s lines)
-      | Majorana (p, lines) -> sprintf "M (%d, %s)" p (l2s lines)
+      | Boson lines -> sprintf "B%s" (l2s lines)
+      | Fermion (p, lines) -> sprintf "F(%d, %s)" p (l2s lines)
+      | AntiFermion (p, lines) -> sprintf "A(%d, %s)" p (l2s lines)
+      | Majorana (p, lines) -> sprintf "M(%d, %s)" p (l2s lines)
 
-    (* Writing a cases explicitely to allow exhaustiveness checking
-       is too tedious here.  *)
+    (* Writing all cases explicitely is tedious, but allows exhaustiveness
+       checking.  *)
     let equal s1 s2 =
       match s1, s2 with
       | Boson l1, Boson l2 ->
@@ -2613,12 +2669,17 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
       | Fermion (p1, l1), Fermion (p2, l2)
       | AntiFermion (p1, l1), AntiFermion (p2, l2) ->
          p1 = p2 && lines_equivalent l1 l2
-      | _ -> false
+      | Boson _, (Fermion _ | AntiFermion _ | Majorana _ )
+      | (Fermion _ | AntiFermion _ | Majorana _ ), Boson _
+      | Majorana _, (Fermion _ | AntiFermion _)
+      | (Fermion _ | AntiFermion _), Majorana _
+      | Fermion _ , AntiFermion _
+      | AntiFermion _ , Fermion _ -> false
 
     (* The final amplitude must not be fermionic! *)
-    let complete = function
+    let saturated = function
       | Boson _ -> true
-      | _ -> false
+      | Fermion _ | AntiFermion _ | Majorana _ -> false
 
     (* [stat f p] interprets the numeric fermion numbers of flavor [f]
        at external leg [p] at creates a leaf: *)
@@ -2630,8 +2691,8 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
       | 2 -> Majorana (p, [])
       | _ -> invalid_arg "Fusion.Stat_Majorana: invalid fermion number"
 
-(* In the formalism of~\cite{Denner:Majorana}, it does not matter to distinguish
-   spinors and conjugate spinors, it is only important to know in which direction
+(* The formalism of~\cite{Denner:Majorana} does not distinguish
+   spinors from conjugate spinors, it is only important to know in which direction
    a fermion line is calculated. So the sign is made by the calculation together
    with an aditional one due to the permuation of the pairs of endpoints of
    fermion lines in the direction they are calculated. We propose a
@@ -2643,9 +2704,9 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
    arrows in supersymmetric theories so we need transmutations from fermions 
    in antifermions and vice versa as well. *)   
 
-    exception Impossible
+    (* \thocwmodulesubsection{Merge Fermion Lines for Legacy Models with Implied Fermion Connections} *)
 
-    (* In old case with at most one fermion line, it was straight
+    (* In the legacy case with at most one fermion line, it was straight
        forward to determine the kind of outgoing line from the 
        corresponding flavor.  In the general case, it is not
        possible to maintain this constraint, when constructing
@@ -2672,23 +2733,30 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
     let constrain_stat_fusion s f =
       match s, M.lorentz f with
       | (Majorana (p, l) | Fermion (p, l) | AntiFermion (p, l)),
-        (Coupling.Majorana | Coupling.Vectorspinor) -> Majorana (p, l)
+        (Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost) ->
+         Majorana (p, l)
       | (Majorana (p, l) | Fermion (p, l) | AntiFermion (p, l)),
         Coupling.Spinor -> Fermion (p, l)
       | (Majorana (p, l) | Fermion (p, l) | AntiFermion (p, l)),
         Coupling.ConjSpinor -> AntiFermion (p, l)
-      | (Majorana _ | Fermion _ | AntiFermion _ as s), _ ->
+      | (Majorana _ | Fermion _ | AntiFermion _ as s),
+        (Coupling.Scalar | Coupling.Vector | Coupling.Massive_Vector
+         | Coupling.Tensor_1 | Coupling.Tensor_2 | Coupling.BRS _) ->
          invalid_arg
            (Printf.sprintf
               "Fusion.stat_fuse_pair_constrained: expected boson, got %s"
               (stat_to_string s))
       | Boson l as s,
-        (Coupling.Majorana | Coupling.Spinor | Coupling.ConjSpinor) ->
+        (Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost
+         | Coupling.Spinor | Coupling.ConjSpinor) ->
          invalid_arg
            (Printf.sprintf
               "Fusion.stat_fuse_pair_constrained: expected fermion, got %s"
               (stat_to_string s))
-      | Boson l, _ -> Boson l
+      | Boson l,
+        (Coupling.Scalar | Coupling.Vector | Coupling.Massive_Vector
+         | Coupling.Tensor_1 | Coupling.Tensor_2 | Coupling.BRS _) ->
+         Boson l
 
     let stat_fuse_pair_legacy f s1 s2 =
       stat_fuse_pair_unconstrained s1 s2
@@ -2719,6 +2787,7 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_fuse_legacy s1 s23__n f =
       List.fold_left (stat_fuse_pair_legacy f) s1 s23__n
 
+    (*i
     let stat_fuse_legacy' s1 s23__n f =
       match List.rev (s1 :: s23__n) with
       | s1 :: s23__n -> List.fold_left (stat_fuse_pair_legacy f) s1 s23__n
@@ -2726,6 +2795,7 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     let stat_fuse_legacy' s1 s23__n f =
       List.fold_right (stat_fuse_pair_legacy f) s23__n s1
+i*)
 
     let stat_fuse_legacy_logging s1 s23__n f =
       let stat = stat_fuse_legacy s1 s23__n f in
@@ -2739,6 +2809,8 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_fuse_legacy =
       majorana_log stat_fuse_legacy stat_fuse_legacy_logging
 
+    (* \thocwmodulesubsection{Merge Fermion Lines using Explicit Fermion Connections} *)
+
     (* We need to match the fermion lines in the incoming propagators
        using the connection information in the vertex.  This used to
        be trivial in the old omega, because there was at most one
@@ -2750,18 +2822,21 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
       try Some (IMap.find p map) with Not_found -> None
 
     (* Partially combined [stat]s of the incoming propagators and keeping
-       track of the fermion lines, while we're scanning them.  We will
+       track of the fermion lines, while we're scanning them. *)
+    type partial =
+      { stat : stat (* the [stat] accumulated so far *);
+        fermions : int IMap.t (* a map from the indices in the vertex to open (anti)fermion lines *);
+        n : int (* the number of incoming propagators *) }
+
+    (* We will
        perform two passes:
        \begin{enumerate}
          \item collect the saturated fermion lines in a [Boson], while
            building a map from the indices in the vertex to the open
            fermion lines
-         \item connect the open fermion lines using this map.
+         \item connect the open fermion lines using the [int -> int] map
+           [fermions].
        \end{enumerate} *)
-    type partial =
-      { stat : stat (* the [stat] accumulated so far *);
-        fermions : int IMap.t (* a map from the indices in the vertex to open fermion lines *);
-        n : int (* the number of incoming propagators *) }
 
     let empty_partial =
       { stat = Boson [];
@@ -2771,9 +2846,9 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
     (* Only for debugging: *)
     let partial_to_string p =
       Printf.sprintf
-        "{ %s, %s, %d }"
+        "{ fermions=%s, stat=%s, #=%d }"
         (ThoList.to_string
-           (fun (i, particle) -> Printf.sprintf "%d@%d" i particle)
+           (fun (i, particle) -> Printf.sprintf "%d@%d" particle i)
            (IMap.bindings p.fermions))
         (stat_to_string p.stat)
         p.n
@@ -2786,7 +2861,8 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
       | AntiFermion (n, l') -> AntiFermion (n, l @ l')
       | Majorana (n, l') -> Majorana (n, l @ l')
 
-    (* Single step of pass 1: collect the saturated fermion lines
+    (* Process one line in the first pass: add the saturated fermion lines
+       to the partial stat [p.stat]
        and add a pointer to an open fermion line in case of a fermion. *)
     let add_lines_to_partial p stat =
       let n = succ p.n in
@@ -2801,16 +2877,20 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
            n }
       | Fermion (p, l) ->
          invalid_arg
-           "Fusion.Stat_Majorana.add_lines_to_partial: unexpected Fermion"
+           "add_lines_to_partial: unexpected Fermion"
       | AntiFermion (p, l) ->
          invalid_arg
-           "Fusion.Stat_Majorana.add_lines_to_partial: unexpected AntiFermion"
+           "add_lines_to_partial: unexpected AntiFermion"
 
+    (* Do it for all lines: *)
     let partial_of_slist stat_list =
       List.fold_left add_lines_to_partial empty_partial stat_list
 
     let partial_of_rev_slist stat_list =
       List.fold_left add_lines_to_partial empty_partial (List.rev stat_list)
+
+    (* The building blocks for a single step of the second pass:
+       saturate a fermion line or pass it through. *)
 
     (* The indices [i] and [j] refer to incoming lines: add a saturated
        line to [p.stat] and remove the corresponding open lines from
@@ -2821,7 +2901,12 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
          { stat = add_lines [f'; f] p.stat;
            fermions = IMap.remove i (IMap.remove j p.fermions);
            n = p.n }
-        | _ -> invalid_arg "saturate_fermion_line: mismatch"
+      | Some _, None ->
+         invalid_arg "saturate_fermion_line: no open outgoing fermion line"
+      | None, Some _ ->
+         invalid_arg "saturate_fermion_line: no open incoming fermion line"
+      | None, None ->
+         invalid_arg "saturate_fermion_line: no open fermion lines"
 
     (* The index [i] refers to an incoming line: add the open line
        to [p.stat] and remove it from the map. *)
@@ -2831,37 +2916,36 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
          { stat = Majorana (f, l);
            fermions = IMap.remove i p.fermions;
            n = p.n }
-      | None, Boson l ->
-         invalid_arg "pass_through_fermion_line: mismatch"
-      | _, (Majorana _ | Fermion _ | AntiFermion _) ->
-         invalid_arg "pass_through_fermion_line: more than one open lines"
+      | Some _ , (Majorana _ | Fermion _ | AntiFermion _) ->
+         invalid_arg "pass_through_fermion_line: more than one open line"
+      | None, _ ->
+         invalid_arg "pass_through_fermion_line: expected fermion not found"
 
-    (* Single step of pass 2: saturate a fermion line or pass it through: *)
-
-    (* \begin{dubious}
-         Experimental: ignore the direction of the fermion line
-         in order to reproduce JRR's algorithm.
-       \end{dubious} *)
+    (* Ignoring the direction of the fermion line reproduces JRR's algorithm. *)
     let sort_pair (i, j) =
       if i < j then
         (i, j)
       else
         (j, i)
 
+    (* The index [p.n + 1] corresponds to the outgoing line: *)
+    let is_incoming p i =
+      i <= p.n
+
     let match_fermion_line p (i, j) =
       let i, j = sort_pair (i, j) in
-      if i <= p.n && j <= p.n then
+      if is_incoming p i && is_incoming p j then
         saturate_fermion_line p i j
-      else if i <= p.n then
+      else if is_incoming p i then
         pass_through_fermion_line p i
-      else if j <= p.n then
+      else if is_incoming p j then
         pass_through_fermion_line p j
       else
-        failwith "match_fermion_line: impossible"
+        failwith "match_fermion_line: both lines outgoing"
 
     let match_fermion_line_logging p (i, j) =
       Printf.eprintf
-        "match_fermion_line     %s (%d, %d)"
+        "match_fermion_line     %s [%d->%d]"
         (partial_to_string p) i j;
       let p' = match_fermion_line p (i, j) in
       Printf.eprintf " >> %s\n" (partial_to_string p');
@@ -2875,9 +2959,12 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
       List.fold_left match_fermion_line (partial_of_slist (s1 :: s23__n)) flines
 
     (* \ldots{} and keep only the [stat]. *)
-    let stat_fuse_new flines s1 s23__n f =
+    let stat_fuse_new flines s1 s23__n _ =
       (match_fermion_lines flines s1 s23__n).stat
 
+    (* If there is at most a single fermion line, we can compare [stat]
+       against the result of [stat_fuse_legacy] for checking
+       [stat_fuse_new] (admittedly, this case is rather trivial) \ldots *)
     let stat_fuse_new_check stat flines s1 s23__n f =
       if List.length flines < 2 then
         begin
@@ -2885,11 +2972,12 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
           if not (equal stat legacy) then
             failwith
               (Printf.sprintf
-                 "Fusion.Stat_Majorana.stat_fuse_new: %s <> %s!"
+                 "stat_fuse_new: %s <> %s!"
                  (stat_to_string stat)
                  (stat_to_string legacy))
         end
 
+    (* \ldots{} do it, but only when we are writing debugging output. *)
     let stat_fuse_new_logging flines s1 s23__n f =
       let stat = stat_fuse_new flines s1 s23__n f in
       Printf.eprintf
@@ -2904,14 +2992,17 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_fuse_new =
       majorana_log stat_fuse_new stat_fuse_new_logging
 
+    (* Use [stat_fuse_new], whenever fermion connections are
+       available.  NB: [Some []] is \emph{not} the same as [None]! *)
     let stat_fuse flines_opt slist f =
       match slist with
-      | [] -> invalid_arg "Fusion.Stat_Majorana.stat_fuse: empty"
+      | [] -> invalid_arg "stat_fuse: empty"
       | s1 :: s23__n ->
          constrain_stat_fusion
            (match flines_opt with
             | Some flines -> stat_fuse_new flines s1 s23__n f
-            | None -> stat_fuse_legacy s1 s23__n f) f
+            | None -> stat_fuse_legacy s1 s23__n f)
+           f
 
     let stat_fuse_logging flines_opt slist f =
       let stat = stat_fuse flines_opt slist f in
@@ -2924,6 +3015,8 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     let stat_fuse =
       majorana_log stat_fuse stat_fuse_logging
+
+    (* \thocwmodulesubsection{Final Step using Implied Fermion Connections} *)
 
     let stat_keystone_legacy s1 s23__n f =
       stat_fuse_legacy s1 s23__n f
@@ -2941,31 +3034,57 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_keystone_legacy =
       majorana_log stat_keystone_legacy stat_keystone_legacy_logging
 
-    let stat_keystone flines_opt slist f =
+    (* \thocwmodulesubsection{Final Step using Explicit Fermion Connections} *)
+
+    let stat_keystone_new flines slist f =
       match slist with
-      | [] -> invalid_arg "Fusion.Stat_Majorana.stat_keystone: empty"
-      | [s] -> invalid_arg "Fusion.Stat_Majorana.stat_keystone: singleton"
-      | s1 :: (s2 :: s34__n as s23__n) ->
-         begin match flines_opt with
-         | None -> stat_keystone_legacy s1 s23__n f
-         | Some flines ->
-            let stat =
-              stat_fuse_legacy s1 [stat_fuse_new flines s2 s34__n f] f
-            and legacy = stat_keystone_legacy s1 s23__n f in
-            if not (equal stat legacy) then
-              failwith
-                (Printf.sprintf
-                   "Fusion.Stat_Majorana.stat_keystone: %s <> %s!"
-                   (stat_to_string stat)
-                   (stat_to_string legacy));
-            if complete stat then
-              stat
-            else
-              failwith
-                (Printf.sprintf
-                   "Fusion.Stat_Majorana.stat_keystone: incomplete %s!"
-                   (stat_to_string stat))
+      | [] -> invalid_arg "stat_keystone: empty"
+      | [s] -> invalid_arg "stat_keystone: singleton"
+      | s1 :: s2 :: s34__n ->
+         let stat =
+           stat_fuse_pair_unconstrained s1 (stat_fuse_new flines s2 s34__n f) in
+         if saturated stat then
+           stat
+         else
+           failwith
+             (Printf.sprintf
+                "stat_keystone: incomplete %s!"
+                (stat_to_string stat))
+
+    let stat_keystone_new_check stat slist f =
+      match slist with
+      | [] -> invalid_arg "stat_keystone_check: empty"
+      | s1 :: s23__n ->
+         let legacy = stat_keystone_legacy s1 s23__n f in
+         if not (equal stat legacy) then
+           failwith
+             (Printf.sprintf
+                "stat_keystone_check: %s <> %s!"
+                (stat_to_string stat)
+                (stat_to_string legacy))
+
+    let stat_keystone flines_opt slist f =
+      match flines_opt with
+      | Some flines -> stat_keystone_new flines slist f
+      | None ->
+         begin match slist with
+         | [] -> invalid_arg "stat_keystone: empty"
+         | s1 :: s23__n -> stat_keystone_legacy s1 s23__n f
          end
+
+    let stat_keystone_logging flines_opt slist f =
+      let stat = stat_keystone flines_opt slist f in
+      Printf.eprintf
+        "stat_keystone:        %s (%s) %s -> %s\n"
+        (stat_to_string (List.hd slist))
+        (M.flavor_to_string f)
+        (ThoList.to_string stat_to_string (List.tl slist))
+        (stat_to_string stat);
+      stat_keystone_new_check stat slist f;
+      stat
+
+    let stat_keystone =
+      majorana_log stat_keystone stat_keystone_logging
 
     (* Force the legacy version w/o checking against the
        new implementation for comparing generated code
@@ -2982,6 +3101,8 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
         stat_keystone_legacy (List.hd slist) (List.tl slist) f
       else
         stat_keystone flines_opt slist f
+
+    (* \thocwmodulesubsection{Evaluate Signs from Fermion Permuations} *)
 
     let stat_sign = function
       | Boson lines -> sign_of_permutation lines

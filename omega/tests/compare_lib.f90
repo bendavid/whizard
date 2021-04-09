@@ -561,8 +561,11 @@ contains
              ! DETERMINE WHETHER OR NOT TO ACCEPT THIS EVENT
              w = weight / wtmax
              if (w > 1) then
-                print *, ' RAMBO WARNS: ESTIMATE FOR MAXIMUM WEIGHT =', &
-                         wtmax, '    EXCEEDED BY A FACTOR ', w
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! For the purpose of our tests, we can suppress this warning
+!               print *, ' RAMBO WARNS: ESTIMATE FOR MAXIMUM WEIGHT =', &
+!                        wtmax, '    EXCEEDED BY A FACTOR ', w
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 excessive_weights = excessive_weights + 1
              end if
              call tao_random_number (random_weight_double)

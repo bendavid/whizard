@@ -2244,6 +2244,9 @@ effective operators:
       | "A" -> G Ga | "Z" | "Z0" -> G Z
       | "W+" -> G Wp | "W-" -> G Wm
       | "H" -> O H
+      | "phi+" -> O Phip
+      | "phi0" -> O Phi0
+      | "phi-" -> O Phim
       | "Aux_t_ttGG0" -> O (Aux_top (2,1, 0,true,TTGG)) 
       | "Aux_ttGG0" -> O (Aux_top (2,1, 0,false,TTGG))
       | "Aux_t_tcGG0" -> O (Aux_top (2,1, 0,true,TCGG)) 

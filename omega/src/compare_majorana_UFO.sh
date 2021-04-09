@@ -41,5 +41,6 @@ if   grep -q 'integer, parameter :: n_prt = 0' omega_amplitude_dirac.f90; then
 elif grep -q 'integer, parameter :: n_prt = 0' omega_amplitude_majorana.f90; then
   echo "O'Mega Majorana empty: $mode $process" 1>&2;
 else
-  diff -u omega_amplitude_dirac.f90 omega_amplitude_majorana.f90
+  wdiff -n omega_amplitude_dirac.f90 omega_amplitude_majorana.f90 \
+    | colordiff --difftype=wdiff | sed 's/\({+\|+}\|\[-\|-\]\)//g'
 fi

@@ -25,17 +25,20 @@ open Keystones
 
 let qed =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Vector; Majorana |]
     [ ("qed", "Gamma(2,1,3)") ]
 
 let axial =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Vector; Majorana |]
     [ ("axial1", "Gamma5(1,-1)*Gamma(2,-1,3)");
       ("axial2", "-Gamma(2,1,-3)*Gamma5(-3,3)") ]
 
 let left =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Vector; Majorana |]
     [ ("left1", "(Identity(1,-1)+Gamma5(1,-1))*Gamma(2,-1,3)");
       ("left2", "2*ProjP(1,-1)*Gamma(2,-1,3)");
@@ -44,6 +47,7 @@ let left =
 
 let right =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Vector; Majorana |]
     [ ("right1", "(Identity(1,-1)-Gamma5(1,-1))*Gamma(2,-1,3)");
       ("right2", "2*ProjM(1,-1)*Gamma(2,-1,3)");
@@ -62,22 +66,26 @@ let vector_spinor_current tag =
 
 let scalar =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Scalar; Majorana |]
     [ ("scalar_current", "Identity(1,3)") ]
 
 let pseudo =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Scalar; Majorana |]
     [ ("pseudo_current", "Gamma5(1,3)") ]
 
 let left_scalar =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Scalar; Majorana |]
     [ ("left_scalar1", "Identity(1,3)-Gamma5(1,3)");
       ("left_scalar2", "2*ProjM(1,3)") ]
-
+ 
 let right_scalar =
   equivalent_tensors
+    ~fermion_lines:[(3, 1)]
     [| Majorana; Scalar; Majorana |]
     [ ("right_scalar1", "Identity(1,3)+Gamma5(1,3)");
       ("right_scalar2", "2*ProjP(1,3)") ]
@@ -148,8 +156,133 @@ let propagators =
     [ majorana_propagator;
       (* [gravitino_propagator] *) ]
 
+let mvm_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(3, 1)]
+    [| Majorana; Vector; Majorana |]
+    [ ("mvm", "Gamma(2,1,3)") ]
+
+let mvm_current omegalib_tag ufo_name =
+  { tag = omegalib_tag ^ "_mvm_current";
+    keystones =
+      [ { bra = (Majorana, 0);
+          name = "f_" ^ omegalib_tag ^ "f";
+          args = [G (0); F (Vector, 1); F (Majorana, 2)] };
+        { bra = (Majorana, 0);
+          name = ufo_name ^ "_p012";
+          args = [G (0); F (Vector, 1); P 1; F (Majorana, 2); P 2] };
+        { bra = (Majorana, 2);
+          name = ufo_name ^ "_p201";
+          args = [G (0); F (Majorana, 0); P 0; F (Vector, 1); P 1] };
+        { bra = (Vector, 1);
+          name = omegalib_tag ^ "_ff";
+          args = [G (0); F (Majorana, 0); F (Majorana, 2)] };
+        { bra = (Vector, 1);
+          name = ufo_name ^ "_p120";
+          args = [G (0); F (Majorana, 2); P 2; F (Majorana, 0); P 0] } ] }
+  
+let mmv_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(1, 2)]
+    [| Majorana; Majorana; Vector |]
+    [ ("mmv", "Gamma(3,2,1)") ]
+
+let mmv_current omegalib_tag ufo_name =
+  { tag = omegalib_tag ^ "_mmv_current";
+    keystones =
+      [ { bra = (Majorana, 1);
+          name = "f_" ^ omegalib_tag ^ "f";
+          args = [G (0); F (Vector, 2); F (Majorana, 0)] };
+        { bra = (Majorana, 1);
+          name = ufo_name ^ "_p120";
+          args = [G (0); F (Vector, 2); P 1; F (Majorana, 0); P 2] };
+        { bra = (Majorana, 0);
+          name = ufo_name ^ "_p012";
+          args = [G (0); F (Majorana, 1); P 0; F (Vector, 2); P 1] };
+        { bra = (Vector, 2);
+          name = omegalib_tag ^ "_ff";
+          args = [G (0); F (Majorana, 1); F (Majorana, 0)] };
+        { bra = (Vector, 2);
+          name = ufo_name ^ "_p201";
+          args = [G (0); F (Majorana, 0); P 2; F (Majorana, 1); P 0] } ] }
+  
+let vmm_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(2, 3)]
+    [| Vector; Majorana; Majorana |]
+    [ ("vmm", "Gamma(1,3,2)") ]
+
+let vmm_current omegalib_tag ufo_name =
+  { tag = omegalib_tag ^ "_vmm_current";
+    keystones =
+      [ { bra = (Majorana, 2);
+          name = "f_" ^ omegalib_tag ^ "f";
+          args = [G (0); F (Vector, 0); F (Majorana, 1)] };
+        { bra = (Majorana, 2);
+          name = ufo_name ^ "_p201";
+          args = [G (0); F (Vector, 0); P 1; F (Majorana, 1); P 2] };
+        { bra = (Majorana, 1);
+          name = ufo_name ^ "_p120";
+          args = [G (0); F (Majorana, 2); P 0; F (Vector, 0); P 1] };
+        { bra = (Vector, 0);
+          name = omegalib_tag ^ "_ff";
+          args = [G (0); F (Majorana, 2); F (Majorana, 1)] };
+        { bra = (Vector, 0);
+          name = ufo_name ^ "_p012";
+          args = [G (0); F (Majorana, 1); P 2; F (Majorana, 2); P 0] } ] }
+  
+let mam_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(3, 1)]
+    [| Majorana; Vector; Majorana |]
+    [ ("mam", "Gamma5(1,-1)*Gamma(2,-1,3)") ]
+
+let mma_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(1, 2)]
+    [| Majorana; Majorana; Vector |]
+    [ ("mma", "Gamma5(2,-1)*Gamma(3,-1,1)") ]
+
+let amm_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(2, 3)]
+    [| Vector; Majorana; Majorana |]
+    [ ("amm", "Gamma5(3,-1)*Gamma(1,-1,2)") ]
+
+let mvlm_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(3, 1)]
+    [| Majorana; Vector; Majorana |]
+    [ ("mvlm", "2*ProjP(1,-1)*Gamma(2,-1,3)") ]
+
+let mvrm_UFO =
+  equivalent_tensors
+    ~fermion_lines:[(3, 1)]
+    [| Majorana; Vector; Majorana |]
+    [ ("mvrm", "2*ProjM(1,-1)*Gamma(2,-1,3)") ]
+
+let only_fusions =
+  List.concat
+    [mvm_UFO; mmv_UFO; vmm_UFO;
+     mam_UFO; mma_UFO; amm_UFO;
+     mvlm_UFO;
+     mvrm_UFO]
+
+let propagators = []
+
+let vertices =
+  [([], mvm_current "v" "mvm");
+   ([], mmv_current "v" "mmv");
+   ([], vmm_current "v" "vmm");
+   ([], mvm_current "a" "mam");
+   ([], mmv_current "a" "mma");
+   ([], vmm_current "a" "amm");
+   ([], mvm_current "vl" "mvlm");
+   ([], mvm_current "vr" "mvrm")]
+
 let _ =
-  generate_ufo
-    ~reps:1000 ~threshold:0.70 ~omega_module:"omega95_bispinors"
-    "fusions_UFO_bispinors" vertices propagators;
+  generate_ufo_bispinors
+    ~reps:1000 ~threshold:0.70
+    ~program:"keystones_UFO_bispinors" ~omega_module:"omega95_bispinors"
+    ~only_fusions "fusions_UFO_bispinors" vertices propagators;
   exit 0

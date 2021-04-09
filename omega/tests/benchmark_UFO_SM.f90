@@ -28,16 +28,17 @@ program benchmark
 
   use kinds
   use constants
-  use amplitude_benchmark_UFO_SMEFT, only: new_event, &
+  use amplitude_benchmark_UFO_SM, only: new_event, &
        number_particles_in, number_particles_out
-  use amplitude_benchmark_UFO_SMEFT_opt, only: new_event_opt => new_event
+  use amplitude_benchmark_UFO_SM_classic, only: new_event_classic => new_event
 
-  use parameters_UFO_SMEFT, only: &
-       setup_parameters_UFO_SMEFT => setup_parameters
+  use parameters_SM_from_UFO, only: &
+       setup_parameters_classic => init_parameters
+  use parameters_SM_UFO, only: setup_parameters
 
   implicit none
 
-  integer, parameter :: NCALLS = 100
+  integer, parameter :: NCALLS = 500
   real(kind=double), parameter :: ROOTS = 1000
 
   real(kind=default), dimension(:,:), allocatable :: p
@@ -51,18 +52,18 @@ program benchmark
   call random_seed (put = seed)
   deallocate (seed)
   
-  call setup_parameters_UFO_SMEFT
-
+  call setup_parameters_classic
+  call setup_parameters
   allocate (p(0:3,number_particles_in()+number_particles_out()))
   call beams (roots, 0.0_default, 0.0_default, p(:,1), p(:,2))
 
   call cpu_time (wtime_start)
   do i = 1, NCALLS
      call massless_isotropic_decay (roots, p(:,3:))
-     call new_event_opt (p)
+     call new_event_classic (p)
   end do
   call cpu_time (wtime)
-  write (*, "(1X,A,F10.4,A)") "UFO SMEFT     optimized: " ,&
+  write (*, "(1X,A,F10.4,A)") "O'Mega SM  classic: " ,&
        1000 * (wtime - wtime_start) / NCALLS, ' milliseconds / evaluation'
 
   call cpu_time (wtime_start)
@@ -71,7 +72,7 @@ program benchmark
      call new_event (p)
   end do
   call cpu_time (wtime)
-  write (*, "(1X,A,F10.4,A)") "UFO SMEFT not optimized: " ,&
+  write (*, "(1X,A,F10.4,A)") "O'Mega SM from UFO: " ,&
        1000 * (wtime - wtime_start) / NCALLS, ' milliseconds / evaluation'
 
   deallocate (p)

@@ -1419,7 +1419,7 @@ module type Lorentz =
         fermion_lines : Coupling.fermion_lines;
         variables : string list }
 
-    val all_charge_conjugates : t -> t list
+    val required_charge_conjugates : t -> t list
     val permute : P.t -> t -> t
 
     val of_lorentz_UFO :
@@ -1475,8 +1475,8 @@ module Lorentz : Lorentz =
         variables : string list }
 
     (* Add one charge conjugated fermion lines. *)
-    let charge_conjugate1 l (bra, ket as fermion_line) =
-      { name = l.name ^ Printf.sprintf "_c%x%x" bra ket;
+    let charge_conjugate1 l (ket, bra as fermion_line) =
+      { name = l.name ^ Printf.sprintf "_c%x%x" ket bra;
         n = l.n;
         spins = l.spins;
         structure = UFO_Lorentz.charge_conjugate fermion_line l.structure;
@@ -1487,9 +1487,19 @@ module Lorentz : Lorentz =
     let charge_conjugate l fermion_lines =
       List.fold_left charge_conjugate1 l fermion_lines
 
-    (* Add all combinations of charge conjugated fermion lines. *)
+(*i
     let all_charge_conjugates l =
       List.map (charge_conjugate l) (ThoList.power l.fermion_lines)
+i*)
+
+    (* Add all combinations of charge conjugated fermion lines
+       that don't leave the fusion. *)
+    let required_charge_conjugates l =
+      let saturated_fermion_lines =
+        List.filter
+          (fun (ket, bra) -> ket != 1 && bra != 1)
+          l.fermion_lines in
+      List.map (charge_conjugate l) (ThoList.power saturated_fermion_lines)
 
     let permute_spins p = function
       | Unused -> Unused
@@ -2540,6 +2550,10 @@ i*)
          to permute first or to charge conjugate first?
        \end{dubious} *)
 
+    (* Here we alway generate \emph{all} charge conjugations, because
+       we treat \emph{all} fermions as Majorana fermion, if there
+       is at least one Majorana fermion in the model! *)
+
     let is_majorana = function
       | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
       | _ -> false
@@ -2566,7 +2580,7 @@ i*)
                    if ThoArray.exists is_majorana spins then
                      List.map
                        (name_spins_structure spins)
-                       (Lorentz.all_charge_conjugates l')
+                       (Lorentz.required_charge_conjugates l')
                      @ acc
                    else
                      name_spins_structure spins l' :: acc

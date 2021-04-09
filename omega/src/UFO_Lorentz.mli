@@ -39,6 +39,7 @@ type dirac = (* [private] *)
 type dirac_string = (* [private] *)
   { bra : int;
     ket : int;
+    conjugated : bool;
     gammas : dirac list }
 
 (* In the case of Majorana spinors, we have to insert charge conjugation
@@ -50,8 +51,8 @@ val minus : dirac_string -> dirac_string
 (* $\Gamma\to C\Gamma$: *)
 val cc_times : dirac_string -> dirac_string
 
-(* $\Gamma\to \Gamma C^{-1}$: *)
-val times_cc_inv : dirac_string -> dirac_string
+(* $\Gamma\to - \Gamma C$: *)
+val times_minus_cc : dirac_string -> dirac_string
 
 (* $\Gamma\to \Gamma^T$: *)
 val transpose : dirac_string -> dirac_string
@@ -62,13 +63,6 @@ val conjugate : dirac_string -> dirac_string
 (* $\Gamma\to C\Gamma^T C^{-1}$, i.\,e.~the composition of [conjugate]
    and [transpose]: *)
 val conjugate_transpose : dirac_string -> dirac_string
-
-(* \begin{dubious}
-     Careful: of the above, [transpose] is currently implemented
-     as [conjugate] to make the tests in~\texttt{keystones\_UFO\_bispinors}
-     work. This needs to be changed eventually!  [conjugate_transpose] is
-     the real thing, though.
-   \end{dubious} *)
 
 (* The Lorentz indices appearing in a term are either negative
    internal summation indices or positive external polarization

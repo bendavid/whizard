@@ -27,10 +27,15 @@
 module type T =
   sig
 
-    (* NB: The [spins : int list] argument is \emph{not} sufficient
+    (* [lorentz ff name spins lorentz] writes the Fortran code
+       implementing the fusion corresponding to the Lorentz
+       structure [lorentz] to [ff].
+       NB: The [spins : int list] element of [UFO.Lorentz.t]
+       from the UFO file is \emph{not} sufficient
        to determine the domain and codomain of the function.  We
-       will need to inspect the flavors, where the Lorentz structure
-       is referenced. *)
+       had to inspect the flavors, where the Lorentz structure
+       is referenced to heuristically compute the [spins]
+       as a [Coupling.lorentz array] . *)
     val lorentz :
       Format_Fortran.formatter -> string ->
       Coupling.lorentz array -> UFO_Lorentz.t -> unit

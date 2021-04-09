@@ -259,9 +259,9 @@ module Fortran : T =
       let dsv = Ket n in
       for i = 0 to 3 do
         let name = append_indices (dsv_name dsv) (succ i :: indices) in
-        printf "    @[<%d>%s = 0" (String.length name + 5) name;
+        printf "    @[<%d>%s = 0" (String.length name + 4) name;
         for j = 0 to 3 do
-          if gamma.(i).(j) <> QC.null then
+          if not (QC.is_null gamma.(i).(j)) then
             printf
               "@ %s%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
@@ -272,7 +272,7 @@ module Fortran : T =
       done;
       dsv
 
-    (* The same as [dirac_bra_to_fortran], but apply the Dirac matrix
+    (* The same as [dirac_ket_to_fortran], but apply the Dirac matrix
        [gamma] to [bra] from the right and return [Bra n]. *)
     let dirac_bra_to_fortran_decl ff n indices =
       let printf fmt = fprintf ff fmt
@@ -289,9 +289,9 @@ module Fortran : T =
       let dsv = Bra n in
       for j = 0 to 3 do
         let name = append_indices (dsv_name dsv) (succ j :: indices) in
-        printf "    @[<%d>%s = 0" (String.length name + 5) name;
+        printf "    @[<%d>%s = 0" (String.length name + 4) name;
         for i = 0 to 3 do
-          if gamma.(i).(j) <> QC.null then
+          if not (QC.is_null gamma.(i).(j)) then
             printf
               "@ %s%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
@@ -318,10 +318,10 @@ module Fortran : T =
       and nl = pp_newline ff in
       let dsv = Braket n in
       let name = append_indices (dsv_name dsv) indices in
-      printf "    @[<%d>%s = 0" (String.length name + 5) name;
+      printf "    @[<%d>%s = 0" (String.length name + 4) name;
       for i = 0 to 3 do
         for j = 0 to 3 do
-          if gamma.(i).(j) <> QC.null then
+          if not (QC.is_null gamma.(i).(j)) then
             printf
               "@ %s%s%%a(%d)*%s%%a(%d)"
               (format_complex_rational_factor gamma.(i).(j))
@@ -390,19 +390,34 @@ module Fortran : T =
 
     (* If the vertex is (suppressing the Lorentz indices of~$\phi_2$ and~$\Gamma$)
        \begin{equation}
-         \bar\psi_1 \Gamma\phi_2 \psi_3
-            = \Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \psi_{3,\beta}\,,
+       \label{eq:FVF-Vertex}
+         \bar\psi \Gamma\phi \psi
+            = \Gamma_{\alpha\beta} \bar\psi_{\alpha} \phi \psi_{\beta}
        \end{equation}
+       (cf.~[Coupling.FBF] in the hardcoded O'Mega models),
        then this is the version implemented by [fuse] below. *)
 
     let tho_print_dirac_current f c wf1 wf2 fusion =
       match fusion with
-      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
-      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta}$ *)
-      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
-      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta}$ *)
+      | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta}$ *)
+      | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta}$ *)
+      | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta}$ *)
+      | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta}$ *)
       | [1; 2] -> printf "f_f%s(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
       | [2; 1] -> printf "f_f%s(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
+      | _ -> ()
+
+    (* The corresponding UFO [fuse] exchanges the arguments in the case
+       of two fermions.  This is the natural choice for cyclic permutations. *)
+
+    let tho_print_FBF_current f c wf1 wf2 fusion =
+      match fusion with
+      | [3; 1] -> printf "f%sf_p120(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha}$ *)
+      | [1; 3] -> printf "f%sf_p120(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha}$ *)
+      | [2; 3] -> printf "f%sf_p012(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta}$ *)
+      | [3; 2] -> printf "f%sf_p012(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta}$ *)
+      | [1; 2] -> printf "f%sf_p201(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
+      | [2; 1] -> printf "f%sf_p201(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2$ *)
       | _ -> ()
 
     (* This is how JRR implemented
@@ -412,7 +427,7 @@ module Fortran : T =
        (see [Targets.Fortran_Majorana_Fermions.print_fermion_current])
        \begin{itemize}
          \item In the case of two fermions, the second wave
-           function [wf2] is always put into the right slot,
+           function [wf2] is always put into the second slot,
            as described in JRR's thesis.
            \label{pg:JRR-Fusions}
          \item In the case of a boson and a fermion, there is no
@@ -423,22 +438,22 @@ module Fortran : T =
     let jrr_print_majorana_current_S_P_A f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
-        $(C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+        $(C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
          C\Gamma $ *)
       | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
-        $(C\Gamma)_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta} \cong
+        $(C\Gamma)_{\alpha\beta} \psi_{1,\alpha} \bar\psi_{2,\beta} \cong
          C\Gamma = C\,C\Gamma^T C^{-1} $ *)
       | [2; 3] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $\Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
          \Gamma $ *)
       | [3; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
-        $\Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $\Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
          \Gamma $ *)
       | [1; 2] -> printf "f_%sf(%s,%s,%s)" f c wf2 wf1 (*
-        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+        $\Gamma_{\alpha\beta} \phi_1 \bar\psi_{2,\beta} \cong
          \Gamma = C\Gamma^T C^{-1} $ *)
       | [2; 1] -> printf "f_%sf(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+        $\Gamma_{\alpha\beta} \phi_1 \bar\psi_{2,\beta} \cong
          \Gamma = C\Gamma^T C^{-1} $ *)
       | _ -> ()
 
@@ -450,22 +465,22 @@ module Fortran : T =
     let jrr_print_majorana_current_V f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff( %s,%s,%s)" f c wf1 wf2 (*
-        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
           C\Gamma $ *)
       | [3; 1] -> printf "%s_ff(-%s,%s,%s)" f c wf1 wf2 (*
-        $-(C\Gamma)_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta}  \cong
+        $-(C\Gamma)_{\alpha\beta} \psi_{1,\alpha} \bar\psi_{2,\beta}  \cong
          -C\Gamma = C\,C\Gamma^T C^{-1} $ *)
       | [2; 3] -> printf "f_%sf( %s,%s,%s)" f c wf1 wf2 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
           \Gamma $ *)
       | [3; 2] -> printf "f_%sf( %s,%s,%s)" f c wf2 wf1 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
           \Gamma $ *)
       | [1; 2] -> printf "f_%sf(-%s,%s,%s)" f c wf2 wf1 (*
-        $-\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+        $-\Gamma_{\alpha\beta} \phi_1 \bar\psi_{2,\beta} \cong
          -\Gamma = C\Gamma^T C^{-1} $ *)
       | [2; 1] -> printf "f_%sf(-%s,%s,%s)" f c wf1 wf2 (*
-        $-\Gamma_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+        $-\Gamma_{\alpha\beta} \phi_1 \bar\psi_{2,\beta} \cong
          -\Gamma = C\Gamma^T C^{-1} $ *)
       | _ -> ()
 
@@ -476,22 +491,22 @@ module Fortran : T =
     let jrr_print_majorana_current f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff  (%s,%s,%s)" f c wf1 wf2 (*
-        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
           C\Gamma $ *)
       | [3; 1] -> printf "%s_ff_c(%s,%s,%s)" f c wf1 wf2 (*
-        $(C\Gamma')_{\alpha\beta} \psi_{3,\alpha} \bar\psi_{1,\beta} \cong
+        $(C\Gamma')_{\alpha\beta} \psi_{1,\alpha} \bar\psi_{2,\beta} \cong
          C\Gamma' = C\,C\Gamma^T C^{-1} $ *)
       | [2; 3] -> printf "f_%sf  (%s,%s,%s)" f c wf1 wf2 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
           \Gamma $ *)
       | [3; 2] -> printf "f_%sf  (%s,%s,%s)" f c wf2 wf1 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
           \Gamma $ *)
       | [1; 2] -> printf "f_%sf_c(%s,%s,%s)" f c wf2 wf1 (*
-        $\Gamma'_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+        $\Gamma'_{\alpha\beta} \phi_1 \bar\psi_{2,\beta} \cong
          \Gamma' = C\Gamma^T C^{-1} $ *)
       | [2; 1] -> printf "f_%sf_c(%s,%s,%s)" f c wf1 wf2 (*
-        $\Gamma'_{\alpha\beta} \phi_2 \bar\psi_{1,\beta} \cong
+        $\Gamma'_{\alpha\beta} \phi_1 \bar\psi_{2,\beta} \cong
          \Gamma' = C\Gamma^T C^{-1} $ *)
       | _ -> ()
 
@@ -500,24 +515,24 @@ module Fortran : T =
        \begin{equation}
           \Gamma^{\prime\,T}
             = \left(C\Gamma^T C^{-1}\right)^T
-            = \left(C^{-1}\right)^T \Gamma \left(C\right)^T 
+            = \left(C^{-1}\right)^T \Gamma C^T
             = C \Gamma C^{-1} 
        \end{equation}
        instead. *)
+
     let jrr_print_majorana_current_transposing f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff  (%s,%s,%s)" f c wf1 wf2 (*
-        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{3,\beta} \cong
+        $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
           C\Gamma $ *)
       | [3; 1] -> printf "%s_ff_c(%s,%s,%s)" f c wf2 wf1 (*
-        $(C\Gamma')^T_{\alpha\beta}
-           \bar\psi_{1,\alpha} \psi_{3,\beta}  \cong
+        $(C\Gamma')^T_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta}  \cong
          (C\Gamma')^T = - C\Gamma $ *)
       | [2; 3] -> printf "f_%sf  (%s,%s,%s)" f c wf1 wf2 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
           \Gamma $ *)
       | [3; 2] -> printf "f_%sf  (%s,%s,%s)" f c wf2 wf1 (*
-        $ \Gamma_{\alpha\beta} \phi_2 \psi_{3,\beta} \cong
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
           \Gamma $ *)
       | [1; 2] -> printf "f_f%s_c(%s,%s,%s)" f c wf1 wf2 (*
         $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
@@ -529,12 +544,108 @@ module Fortran : T =
 
     (* where we have used
        \begin{equation}
-         (C\Gamma')^T = \Gamma^{\prime,T}C^T = C\Gamma C^{-1} C^T = - C\Gamma\,.
+         (C\Gamma')^T = \Gamma^{\prime,T}C^T
+           = C\Gamma C^{-1} C^T = C\Gamma C^{-1} (-C) = - C\Gamma\,.
        \end{equation} *)
 
     (* This puts the arguments in the same slots as [tho_print_dirac_current]
        above and can be implemented by [fuse], iff we inject the proper
-       transformations in [dennerize] below. *)
+       transformations in [dennerize] below.
+       We notice that we do \emph{not} need the conjugated version for
+       all combinations, but only for the case of two fermions.
+       In the two cases of one column spinor~$\psi$, only the original
+       version appears and in the two cases of one row spinor~$\bar\psi$,
+       only the conjugated version appears. *)
+
+    (* Before we continue, we must however generalize from the
+       assumption~\eqref{eq:FVF-Vertex} that the fields in the
+       vertex are always ordered as in~[Coupling.FBF].  First,
+       even in this case the slots of the fermions must be exchanged
+       to accomodate the cyclic permutations. Therefore we exchange the
+       arguments of the [[1; 3]] and [[3; 1]] fusions. *)
+
+    let jrr_print_majorana_FBF f c wf1 wf2 fusion =
+      match fusion with (* [fline = (3, 1)] *)
+      | [3; 1] -> printf "f%sf_p120_c(%s,%s,%s)" f c wf1 wf2 (*
+        $(C\Gamma')^T_{\alpha\beta}
+          \psi_{1,\beta} \bar\psi_{2,\alpha}   \cong
+         (C\Gamma')^T = - C\Gamma $ *)
+      | [1; 3] -> printf "f%sf_p120  (%s,%s,%s)" f c wf2 wf1 (*
+        $ (C\Gamma)_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha} \cong
+          C\Gamma $ *)
+      | [2; 3] -> printf "f%sf_p012  (%s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
+          \Gamma $ *)
+      | [3; 2] -> printf "f%sf_p012  (%s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
+          \Gamma $ *)
+      | [1; 2] -> printf "f%sf_p201  (%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1}$ *)
+      | [2; 1] -> printf "f%sf_p201  (%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1} $ *)
+      | _ -> ()
+
+    (* The other two permutations: *)
+
+    let jrr_print_majorana_FFB f c wf1 wf2 fusion =
+      match fusion with (* [fline = (1, 2)] *)
+      | [3; 1] -> printf "ff%s_p120  (%s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
+          \Gamma $ *)
+      | [1; 3] -> printf "ff%s_p120  (%s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
+          \Gamma $ *)
+      | [2; 3] -> printf "ff%s_p012  (%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1}$ *)
+      | [3; 2] -> printf "ff%s_p012  (%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1} $ *)
+      | [1; 2] -> printf "ff%s_p201  (%s,%s,%s)" f c wf1 wf2 (*
+        $ (C\Gamma)_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha} \cong
+          C\Gamma $ *)
+      | [2; 1] -> printf "ff%s_p201_c(%s,%s,%s)" f c wf2 wf1 (*
+        $(C\Gamma')^T_{\alpha\beta}
+           \psi_{1,\beta} \bar\psi_{2,\alpha} \cong
+         (C\Gamma')^T = - C\Gamma $ *)
+      | _ -> ()
+
+    let jrr_print_majorana_BFF f c wf1 wf2 fusion =
+      match fusion with (* [fline = (2, 3)] *)
+      | [3; 1] -> printf "%sff_p120  (%s,%s,%s)" f c wf1 wf2 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1} $ *)
+      | [1; 3] -> printf "%sff_p120  (%s,%s,%s)" f c wf2 wf1 (*
+        $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
+         \Gamma^{\prime\,T} = C\Gamma C^{-1}$ *)
+      | [2; 3] -> printf "%sff_p012  (%s,%s,%s)" f c wf1 wf2 (*
+        $ (C\Gamma)_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha} \cong
+          C\Gamma $ *)
+      | [3; 2] -> printf "%sff_p012_c(%s,%s,%s)" f c wf2 wf1 (*
+        $(C\Gamma')^T_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha} \cong
+         (C\Gamma')^T = - C\Gamma $ *)
+      | [1; 2] -> printf "%sff_p201  (%s,%s,%s)" f c wf1 wf2 (*
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
+          \Gamma $ *)
+      | [2; 1] -> printf "%sff_p201  (%s,%s,%s)" f c wf2 wf1 (*
+        $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
+          \Gamma $ *)
+      | _ -> ()
+
+    (* \begin{dubious}
+         Now we want to test \emph{only} if the [fermion_line]
+         matches the inverted [fusion].  Why does [jrr_print_majorana_FBF]
+         differ from the others?  Must be a typo.
+       \end{dubious} *)
+
+    (* In the model, the necessary
+       information is provided as [Coupling.fermion_lines], encoded as
+       [(right,left)] in the usual direction of the lines.
+       E.\,g.~the case of~\eqref{eq:FVF-Vertex} is~[(3,1)].
+       Equivalent information is available
+       as~[(ket, bra)] in [UFO_Lorentz.dirac_string]. *)
 
     let is_majorana = function
       | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
@@ -558,14 +669,14 @@ module Fortran : T =
         else if atom.L.ket = 1 then
           (* We fuse one or more bosons with a bra like fermion:
              $\bar\chi \leftarrow \bar\chi\Gamma$. *)
-          (* $\Gamma\to C\Gamma C^{-1}$. *)
+          (* $\Gamma\to C \Gamma C^{-1}$. *)
           begin
             let atom = L.conjugate atom in
             printf "    ! conjugated for Majorana"; nl ();
             printf "    ! %s" (L.dirac_string_to_string atom); nl ();
             atom
           end
-        else if atom.L.ket < atom.L.bra then
+        else if not atom.L.conjugated then
           (* We fuse zero or more bosons with a sandwich of fermions.
              $\phi \leftarrow \bar\chi\gamma\chi$.*)
           (* Multiply by~$C$ from the left,
@@ -580,7 +691,7 @@ module Fortran : T =
           (* Transposed: multiply by~$-C$ from the left. *)
           begin
             let atom = L.minus (L.cc_times atom) in
-            printf "    ! multiplied by negative CC for Majorana"; nl ();
+            printf "    ! multiplied by -CC for Majorana"; nl ();
             printf "    ! %s" (L.dirac_string_to_string atom); nl ();
             atom
           end
@@ -1120,6 +1231,8 @@ i*)
       format_complex_rational_factor z ^ g
 
     (* As a prototypical example consider the vertex
+       \begin{subequations}
+       \label{eq:cyclic-UFO-fusions}
        \begin{equation}
          \bar\psi\fmslash{A}\psi =
             \tr\left(\psi\otimes\bar\psi\fmslash{A}\right)
@@ -1152,9 +1265,55 @@ i*)
        care of by [Fusions] and we can concentrate on
        injecting the wave functions into the correct slots. *)
 
+    (* The other possible cases are
+       \begin{equation}
+         \bar\psi\fmslash{A}\psi
+       \end{equation}
+       which would be encoded as \texttt{FVF} in a UFO file
+       \begin{center}
+         \begin{tabular}{lcl}
+           \texttt{F12}:&$\bar\psi_1 A_2 \to \bar\psi$&
+              \texttt{FVF\_p201(g,psibar1,p1,A2,p2)} \\
+           \texttt{F21}:&$A_1\bar\psi_2 \to \bar\psi$&
+              \texttt{FVF\_p201(g,psibar2,p2,A1,p1)} \\
+           \texttt{F23}:&$A_1\psi_2\to \psi$&
+              \texttt{FVF\_p012(g,A1,p1,psi2,p2)} \\
+           \texttt{F32}:&$\psi_1A_2\to \psi$&
+              \texttt{FVF\_p012(g,A2,p2,psi1,p1)} \\
+           \texttt{F31}:&$\psi_1\bar\psi_2\to A$&
+              \texttt{FVF\_p120(g,psi1,p1,psibar2,p2)} \\
+           \texttt{F13}:&$\bar\psi_1\psi_2\to A$&
+              \texttt{FVF\_p120(g,psi2,p2,psibar1,p1)}
+         \end{tabular}
+       \end{center}
+       and
+       \begin{equation}
+         \bar\psi\fmslash{A}\psi =
+            \tr\left(\fmslash{A}\psi\otimes\bar\psi\right)\,,
+       \end{equation}
+       corresponding to \texttt{VFF}
+       \begin{center}
+         \begin{tabular}{lcl}
+           \texttt{F12}:&$A_1\psi_2\to \psi$&
+              \texttt{VFF\_p201(g,A1,p1,psi2,p2)} \\
+           \texttt{F21}:&$\psi_1A_2\to \psi$&
+              \texttt{VFF\_p201(g,A2,p2,psi1,p1)} \\
+           \texttt{F23}:&$\psi_1\bar\psi_2\to A$&
+              \texttt{VFF\_p012(g,psi1,p1,psibar2,p2)} \\
+           \texttt{F32}:&$\bar\psi_1\psi_2\to A$&
+              \texttt{VFF\_p012(g,psi2,p2,psibar1,p1)} \\
+           \texttt{F31}:&$\bar\psi_1 A_2 \to \bar\psi$&
+              \texttt{VFF\_p120(g,psibar1,p1,A2,p2)} \\
+           \texttt{F13}:&$A_1\bar\psi_2 \to \bar\psi$&
+              \texttt{VFF\_p120(g,psibar2,p2,A1,p1)}
+         \end{tabular}
+       \end{center}
+       \end{subequations} *)
+
     (* \begin{dubious}
-          Eventually, we should use the reverted lists everywhere
-          to become a bit more efficient.
+         Once the Majorana code generation is fully debugged,
+         we should replace the lists by reverted lists everywhere
+         in order to become a bit more efficient.
        \end{dubious} *)
 
     module P = Permutation.Default
@@ -1274,6 +1433,14 @@ i*)
         (fusion_name v cyclic (charge_conjugations fl2)) g args_string;
       printf "%s(%s,%s)" (fusion_name v cyclic (charge_conjugations fl2)) g args_string
 i*)
+
+    let charge_conjugations fl2 =
+      ThoList.filtermap
+        (fun ((i, f), (i', f')) ->
+          match (i, f), (i', f') with
+          | _, (2, 3) -> Some (f, i)
+          | _ -> None)
+        fl2
 
     let fuse_majorana c v s fl g wfs ps fusion =
       let g = scale_coupling c g

@@ -20,12 +20,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-open Coupling
-
-type field = lorentz * int
+type field = Coupling.lorentz * int
 
 type argument =
   | G of int (* complex coupling *)
+  | N of int (* negative of complex coupling *)
   | M of int (* real mass (or width) *)
   | P of int (* momentum *)
   | F of field (* field *)
@@ -61,12 +60,12 @@ let check_indices field_list =
   ()
 
 let spin_to_string = function
-  | Scalar -> "Scalar"
-  | Spinor -> "Spinor"
-  | ConjSpinor -> "ConjSpinor"
-  | Majorana -> "Majorana"
-  | Vector | Massive_Vector -> "Vector"
-  | Tensor_2 -> "Tensor_2"
+  | Coupling.Scalar -> "Scalar"
+  | Coupling.Spinor -> "Spinor"
+  | Coupling.ConjSpinor -> "ConjSpinor"
+  | Coupling.Majorana -> "Majorana"
+  | Coupling.Vector | Coupling.Massive_Vector -> "Vector"
+  | Coupling.Tensor_2 -> "Tensor_2"
   | _ -> failwith "spin_to_string"
 
 let fields_to_string fields =
@@ -89,34 +88,38 @@ let check_fields ks_list =
 open Format_Fortran
 
 let spin_type = function
-  | Scalar -> "complex(kind=default)"
-  | Spinor -> "type(spinor)"
-  | ConjSpinor -> "type(conjspinor)"
-  | Majorana -> "type(bispinor)"
-  | Vector | Massive_Vector -> "type(vector)"
-  | Tensor_2 -> "type(tensor)"
+  | Coupling.Scalar -> "complex(kind=default)"
+  | Coupling.Spinor -> "type(spinor)"
+  | Coupling.ConjSpinor -> "type(conjspinor)"
+  | Coupling.Majorana -> "type(bispinor)"
+  | Coupling.Vector | Coupling.Massive_Vector -> "type(vector)"
+  | Coupling.Tensor_2 -> "type(tensor)"
   | _ -> failwith "spin_type"
 
 let type_arg = function
   | G _ -> Some "complex(kind=default)"
+  | N _ -> Some "complex(kind=default)"
   | M _ -> Some "real(kind=default)"
   | P _ -> Some "type(momentum)"
   | F (s, _) -> Some (spin_type s)
   | V _ -> None
 
 let spin_mnemonic = function
-  | Scalar -> "phi"
-  | Spinor -> "psi"
-  | ConjSpinor -> "psibar"
-  | Majorana -> "chi"
-  | Maj_Ghost -> "???"
-  | Vector -> "a"
-  | Massive_Vector -> "v"
-  | Tensor_2 -> "h"
+  | Coupling.Scalar -> "phi"
+  | Coupling.Spinor -> "psi"
+  | Coupling.ConjSpinor -> "psibar"
+  | Coupling.Majorana -> "chi"
+  | Coupling.Maj_Ghost -> "???"
+  | Coupling.Vector -> "a"
+  | Coupling.Massive_Vector -> "v"
+  | Coupling.Tensor_2 -> "h"
   | _ -> failwith "spin_mnemonic"
 
 let format_coupling i =
   Printf.sprintf "g%d" i
+
+let format_negative_coupling i =
+  Printf.sprintf "(-g%d)" i
 
 let format_momentum i =
   Printf.sprintf "p%d" i
@@ -127,8 +130,17 @@ let format_mass i =
 let format_field (s, i) =
   Printf.sprintf "%s%d" (spin_mnemonic s) i
 
+let format_declaration = function
+  | G i -> format_coupling i
+  | N i -> format_coupling i
+  | M i -> format_mass i
+  | P i -> format_momentum i
+  | F f -> format_field f
+  | V s -> s
+
 let format_arg = function
   | G i -> format_coupling i
+  | N i -> format_negative_coupling i
   | M i -> format_mass i
   | P i -> format_momentum i
   | F f -> format_field f
@@ -153,12 +165,12 @@ let keystone_to_fortran ff (ksv, { bra; name; args }) =
   and nl = pp_newline ff in
   printf "      @[<2>%s =@ " ksv;
   begin match bra with
-  | Spinor, _ ->
+  | Coupling.Spinor, _ ->
      fusion_to_fortran ff name args;
      printf "@ * %s" (format_field bra)
-  | Majorana, _ ->
+  | Coupling.Majorana, _ ->
      begin match args with
-     | _ :: F (Majorana, _) :: _ ->
+     | _ :: F (Coupling.Majorana, _) :: _ ->
         fusion_to_fortran ff name args;
         printf "@ * %s" (format_field bra)
      | _ ->
@@ -194,7 +206,7 @@ let keystones_to_subroutine ff { tag; keystones } =
     (fun a ->
       match type_arg a with
       | None -> ()
-      | Some t -> printf "    @[<2>%s :: %s@]" t (format_arg a); nl ())
+      | Some t -> printf "    @[<2>%s :: %s@]" t (format_declaration a); nl ())
     variables;
   let ks_list =
     List.map
@@ -240,11 +252,11 @@ let keystones_to_subroutine ff { tag; keystones } =
 
 let keystones_to_fortran
       ff ?(reps=1000) ?(threshold=0.85)
-      ?(omega_module="omega95")
+      ?(program="keystones_test") ?(omega_module="omega95")
       ?(modules=[]) vertices =
   let printf fmt = fprintf ff fmt
   and nl = pp_newline ff in
-  printf "program keystones_omegalib_demo"; nl ();
+  printf "program %s" program; nl ();
   List.iter
     (fun m -> printf "  use %s" m; nl ())
     ("kinds" :: "constants" :: omega_module ::
@@ -274,9 +286,9 @@ let keystones_to_fortran
   printf "  end if"; nl ();
   printf "contains"; nl ();
   List.iter (keystones_to_subroutine ff) vertices;
-  printf "end program keystones_omegalib_demo"; nl ()
+  printf "end program %s" program; nl ()
 
-let generate ?reps ?threshold ?omega_module ?modules vertices =
+let generate ?reps ?threshold ?program ?omega_module ?modules vertices =
   let my_name = Sys.argv.(0) in
   let verbose = ref false
   and cat = ref false
@@ -290,17 +302,18 @@ let generate ?reps ?threshold ?omega_module ?modules vertices =
     usage;
   if !cat then
     keystones_to_fortran
-      std_formatter ?reps ?threshold ?omega_module ?modules vertices
+      std_formatter ?reps ?threshold ?program ?omega_module ?modules vertices
 
 type ufo_vertex =
   { v_tag : string;
-    v_spins : lorentz array;
-    v_tensor : UFOx.Lorentz.t }
+    v_spins : Coupling.lorentz array;
+    v_tensor : UFO_Lorentz.t;
+    v_flines : Coupling.fermion_lines }
 
 type ufo_propagator =
   { p_tag : string;
     p_omega : string;
-    p_spins : lorentz * lorentz;
+    p_spins : Coupling.lorentz * Coupling.lorentz;
     p_propagator : UFO.Propagator.t }
 
 let transpose p =
@@ -309,10 +322,14 @@ let transpose p =
     p_spins = (snd p.p_spins, fst p.p_spins);
     p_propagator = UFO.Propagator.transpose p.p_propagator }
 
-let equivalent_tensors v_spins alternatives =
+let equivalent_tensors ?(fermion_lines=[]) v_spins alternatives =
   List.map
     (fun (v_tag, tensor) ->
-      { v_tag; v_spins; v_tensor = UFOx.Lorentz.of_string tensor })
+      let v_tensor =
+        UFO_Lorentz.parse
+          (Array.to_list v_spins)
+          (UFOx.Lorentz.of_string tensor) in
+      { v_tag; v_spins; v_tensor; v_flines = fermion_lines })
     alternatives
 
 module P = Permutation.Default
@@ -323,23 +340,76 @@ let permute_spins p s = P.array p s
    Note that we apply the \emph{inverse} permutation to
    the indices in order to match the permutation of the
    particles/spins. *)
-let permute_structure n p l =
+
+(* The following is copied from [UFO.Lorentz.permute].
+   We can't simply call it, because the types [UFO.Lorentz.t]
+   and [vertex] differ.
+   This should be changed to make sure that we're also
+   testing [UFO.Lorentz.permute], but note
+   that only the ["_p" ^ permutation] naming convention
+   and the simultaneous exchange of indices in Lorentz structures
+   and fermion lines is relevant for applications! *)
+let permute_structure n p (l, f) =
   let permuted = P.array (P.inverse p) (Array.init n succ) in
   let permute_index i =
     if i > 0 then
-      permuted.(pred i)
+      UFOx.Index.map_position (fun pos -> permuted.(pred pos)) i
     else
       i in
-  UFOx.Lorentz.map_indices permute_index l
+  (UFO_Lorentz.map_indices permute_index l,
+   UFO_Lorentz.map_fermion_lines permute_index f)
 
 let permute_vertex n v p =
-  { v_tag = v.v_tag ^ "_p" ^ P.to_string p;
+  let v_tensor, v_flines = permute_structure n p (v.v_tensor, v.v_flines) in
+  { v_tag = v.v_tag ^ "_p" ^ P.to_string (P.inverse p);
     v_spins = permute_spins p v.v_spins;
-    v_tensor = permute_structure n p v.v_tensor }
+    v_tensor;
+    v_flines }
 
 let vertex_permutations v =
   let n = Array.length v.v_spins in
   List.map (permute_vertex n v) (P.cyclic n)
+
+(* The following is mostly copied from
+   [UFO.Lorentz.all_charge_conjugates].
+   We can't simply call it, because the types [UFO.Lorentz.t]
+   and [vertex] differ.
+   This should be changed to make sure that we're also
+   testing [UFO.Lorentz.all_charge_conjugates], but note
+   that only [UFO_Lorentz.charge_conjugate] and the ["_c%x%x"]
+   naming convention is relevant for applications!
+   Note also that we're \emph{only} charge conjugating
+   fermion lines involving Majoranas. *)
+let charge_conjugate1 v (bra, ket as fermion_line) =
+  { v_tag = v.v_tag ^ Printf.sprintf "_c%x%x" bra ket;
+    v_spins = v.v_spins;
+    v_tensor = UFO_Lorentz.charge_conjugate fermion_line v.v_tensor;
+    v_flines = v.v_flines }
+
+let charge_conjugate l fermion_lines =
+  List.fold_left charge_conjugate1 l fermion_lines
+
+let is_majorana = function
+  | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
+  | _ -> false
+
+let is_majorana_fline v_spins (bra, ket) =
+  is_majorana v_spins.(pred bra) || is_majorana v_spins.(pred ket)
+
+(*i
+let all_charge_conjugates l =
+  List.map
+    (charge_conjugate l)
+    (ThoList.power (List.filter (is_majorana_fline l.v_spins) l.v_flines))
+i*)
+
+let required_charge_conjugates l =
+  let saturated_fermion_lines =
+    List.filter (fun (bra, ket) -> bra != 1 && ket != 1) l.v_flines in
+  List.map
+    (charge_conjugate l)
+    (ThoList.power
+       (List.filter (is_majorana_fline l.v_spins) saturated_fermion_lines))
 
 let keystones_of_ufo_vertex { v_tag; v_spins } =
   { tag = v_tag;
@@ -353,7 +423,7 @@ let keystones_of_ufo_vertex { v_tag; v_spins } =
           | [] -> invalid_arg "keystones_of_ufo_vertex"
           | bra :: args ->
              { bra;
-               name = v_tag ^ "_p" ^ P.to_string p;
+               name = v_tag ^ "_p" ^ P.to_string (P.inverse p);
                args =
                  G (0) ::
                    (ThoList.flatmap (fun (s, i) -> [ F (s, i); P (i) ]) args) })
@@ -363,20 +433,20 @@ let keystones_of_propagator { p_tag; p_omega; p_spins } =
   let s0, s1 = p_spins in
   let keystone omega name =
     match omega, s1, name with
-    | _, (Scalar|Tensor_2), _
+    | _, (Coupling.Scalar|Coupling.Tensor_2), _
     | false, _, _ ->
        { bra = (s0, 0);
          name;
          args = [P (1); M (0); M (1); F (s1, 1) ] }
-    | _, Vector, "pr_gauge" ->
+    | _, Coupling.Vector, "pr_gauge" ->
        { bra = (s0, 0);
          name;
          args = [P (1); V ("42.0_default"); F (s1, 1) ] }
-    | _, Vector, "pr_rxi" ->
+    | _, Coupling.Vector, "pr_rxi" ->
        { bra = (s0, 0);
          name;
          args = [P (1); M (0); M (1); V ("42.0_default"); F (s1, 1) ] }
-    | _, Vector, _ ->
+    | _, Coupling.Vector, _ ->
        { bra = (s0, 0);
          name;
          args = [P (1); F (s1, 1) ] }
@@ -406,7 +476,10 @@ let fusions ff ?(omega_module="omega95") module_name vertices propagators =
   printf "  use %s" omega_module; nl ();
   printf "  implicit none"; nl ();
   printf "  private"; nl ();
-  let permuted_vertices = ThoList.flatmap vertex_permutations vertices in
+  let permuted_vertices =
+    ThoList.flatmap
+      required_charge_conjugates
+      (ThoList.flatmap vertex_permutations vertices) in
   List.iter
     (fun v -> printf "  public :: %s" v.v_tag; nl ())
     permuted_vertices;
@@ -419,10 +492,9 @@ let fusions ff ?(omega_module="omega95") module_name vertices propagators =
   UFO_targets.Fortran.inner_product_functions std_formatter ();
   List.iter
     (fun v ->
-      let tensor = UFO_Lorentz.parse (Array.to_list v.v_spins) v.v_tensor in
       printf "  ! %s" (String.make 68 '='); nl ();
-      printf "  ! %s" (UFO_Lorentz.to_string tensor); nl ();
-      UFO_targets.Fortran.lorentz std_formatter v.v_tag v.v_spins tensor)
+      printf "  ! %s" (UFO_Lorentz.to_string v.v_tensor); nl ();
+      UFO_targets.Fortran.lorentz std_formatter v.v_tag v.v_spins v.v_tensor)
     permuted_vertices;
   List.iter
     (fun p ->
@@ -434,11 +506,25 @@ let fusions ff ?(omega_module="omega95") module_name vertices propagators =
     propagators;
   printf "end module %s" module_name; nl ()
 
-let generate_ufo ?omega_module ?reps ?threshold module_name vertices propagators =
+let generate_ufo ?program ?omega_module ?reps ?threshold
+      ?(only_fusions=[]) module_name vertices propagators =
   fusions
     ?omega_module std_formatter module_name
-    (ThoList.flatmap fst vertices) propagators;
+    (only_fusions @ ThoList.flatmap fst vertices) propagators;
   generate
-    ?reps ?threshold ?omega_module ~modules:[module_name]
+    ?reps ?threshold ?program ?omega_module ~modules:[module_name]
+    (List.map merge vertices @ List.map keystones_of_propagator propagators)
+
+(* \begin{dubious}
+     placeholder:
+   \end{dubious} *)
+
+let generate_ufo_bispinors ?program ?omega_module ?reps ?threshold
+      ?(only_fusions=[]) module_name vertices propagators =
+  fusions
+    ?omega_module std_formatter module_name
+    (only_fusions @ ThoList.flatmap fst vertices) propagators;
+  generate
+    ?reps ?threshold ?program ?omega_module ~modules:[module_name]
     (List.map merge vertices @ List.map keystones_of_propagator propagators)
 

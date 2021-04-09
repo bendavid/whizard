@@ -891,6 +891,7 @@ module type Lorentz_Atom =
       | Scalar of scalar
       | Inverse of scalar
 
+    val map_indices_scalar : (int -> int) -> scalar -> scalar
     val map_indices_vector : (int -> int) -> vector -> vector
     val rename_indices_vector : (int -> int) -> vector -> vector
 
@@ -926,6 +927,13 @@ module Lorentz_Atom =
       | Vector of vector
       | Scalar of scalar
       | Inverse of scalar
+
+    let map_indices_scalar f = function
+      | Mass i -> Mass (f i)
+      | Width i -> Width (f i)
+      | P2 i -> P2 (f i)
+      | P12 (i, j) -> P12 (f i, f j)
+      | (Variable _ | Coeff _ as s) -> s
 
     let map_indices_vector f = function
       | Epsilon (mu, nu, ka, la) -> Epsilon (f mu, f nu, f ka, f la)

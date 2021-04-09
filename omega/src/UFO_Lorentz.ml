@@ -61,46 +61,49 @@ let map_indices_gamma f = function
 type dirac_string =
   { bra : int;
     ket : int;
+    conjugated : bool;
     gammas : dirac list }
 
 let map_indices_dirac f d =
   { bra = f d.bra;
     ket = f d.ket;
+    conjugated = d.conjugated;
     gammas = List.map (map_indices_gamma f) d.gammas }
 
-(*
-   Implementation of Dirac couplings using
-   \texttt{conjspinor\_spinor}
+let toggle_conjugated ds =
+  { ds with conjugated = not ds.conjugated }
+
+let flip_bra_ket ds =
+  { ds with bra = ds.ket; ket = ds.bra }
+
+(* The implementation of couplings for Dirac spinors in
+   \texttt{omega\_spinors} uses
+   \texttt{conjspinor\_spinor} which is a straightforward
+   positive inner product
    \begin{equation}
        \text{\texttt{psibar0 * psi1}}
-     = \sum_\alpha \bar\psi_{0,\alpha} \psi_{1,\alpha}
      = \bar\psi_0\psi_1
+     = \sum_\alpha \bar\psi_{0,\alpha} \psi_{1,\alpha}\,.
    \end{equation}
-   JRR's implementation of Majorana couplings using
-   \texttt{spinor\_product}
+   Note that~the row spinor~$\bar\psi_0$ is the actual argument,
+   it is \emph{not} conjugated and multplied by~$\gamma_0$!
+   In contrast, JRR's implementation of couplings for Majorana spinors uses
+   \texttt{spinor\_product} in \texttt{omega\_bispinors}
    \begin{equation}
-       \text{\texttt{chibar0 * chi1}}
-     = \sum_{\alpha} \bar\chi_{0,\alpha} (C^T\chi_1)_\beta
-     = \sum_{\alpha} (C\bar\chi_0^T)_\alpha \chi_{1,\alpha}
-     = (C\bar\chi_0^T)^T \chi_1
-     = \tilde\chi_0^T\chi_1
+       \text{\texttt{chi0 * chi1}} = \chi_0^T C\chi_1
    \end{equation}
-   with charge conjugation\footnote{%
-     In detail, to make sure we understand all phases
-     \begin{multline}
-         \bar{\tilde\chi}
-       = \tilde\chi^\dagger\gamma_0
-       = \left(C\bar\chi^T\right)^\dagger\gamma_0
-       = \left(C(\chi^\dagger\gamma_0)^T\right)^\dagger\gamma_0
-       = \left(C\gamma_0^T{\chi^\dagger}^T\right)^\dagger\gamma_0
-       = \left(C\gamma_0^T{\chi^T}^\dagger\right)^\dagger\gamma_0
-       = {\chi^T} {\gamma_0^T}^\dagger C^\dagger\gamma_0 \\
-       = {\chi^T} {\gamma_0^\dagger}^T C^{-1}\gamma_0
-       = {\chi^T} {\gamma_0}^T C^{-1}\gamma_0
-       = {\chi^T} C^{-1} C {\gamma_0}^T C^{-1}\gamma_0
-       = - {\chi^T} C^{-1} \gamma_0 \gamma_0
-       = - {\chi^T} C^{-1}\,.
-     \end{multline}}
+   with a charge antisymmetric and unitary conjugation matrix:
+   $C^{-1}=C^\dagger$ and~$C^T=-C$.  This product is obviously
+   antisymmetric:
+   \begin{equation}
+      \text{\texttt{chi0 * chi1}}
+        = \chi_0^T C\chi_1
+        = \chi_1^T C^T\chi_0
+        = - \chi_1^T C\chi_0
+        = \text{\texttt{- chi1 * chi0}}\,.
+   \end{equation} *)
+
+(*i
    \begin{subequations}
    \begin{align}
      \tilde\chi &= C\bar\chi^T \\
@@ -115,8 +118,8 @@ let map_indices_dirac f d =
        = \tilde\chi_0^T C\Gamma \chi_1\phi
    \end{equation}
    using~$C^{-1}=C^\dagger$, $C^T=-C$ and the representation
-   dependent~$C^2=-1$ that holds in all our representation(s).
-   Analoguously
+   dependent~$C^2=-\mathbf{1}$ that holds in all our representation(s).
+   Analogously
    \begin{multline}
      \bar\chi_0 \Gamma \chi_1\phi
        = \left(\bar\chi_0 \Gamma \chi_1\right)^T \phi
@@ -127,47 +130,49 @@ let map_indices_dirac f d =
        = - \chi_1^T \Gamma^T C^T \tilde\chi_0 \phi
        = - \chi_1^T (C\Gamma)^T \tilde\chi_0 \phi
    \end{multline}
- *)
+i*)
 
 (* In the following, we assume to be in a realization
-   with~$C^{-1}=-C=C^T$: *)
+   with~$C^{-1}=-C$, i.\,e.~$C^2=-\mathbf{1}$: *)
 let inv_C = [Minus; C]
 
 (* In JRR's implementation of Majorana fermions
-   (see~\pageref{pg:JRR-Fusions}),
+   (see page~\pageref{pg:JRR-Fusions}),
    \emph{all} fermion-boson fusions are realized with the
-   \texttt{f\_}$b$\texttt{f(g,phi,chi)} functions, where
-   $b\in\{\text{\texttt{v}},\text{\texttt{a}},\ldots\}$.
+   \texttt{f\_}$\phi$\texttt{f(g,phi,chi)} functions, where
+   $\phi\in\{\text{\texttt{v}},\text{\texttt{a}},\ldots\}$.
    This is different from the original Dirac implementation, where
-   \emph{both} \texttt{f\_}$b$\texttt{f(g,phi,psi)}
-   and \texttt{f\_f}$b$\texttt{(g,psibar,phi)} are used. *)
-
-(* However, the latter plays nicer with the permutations in the UFO
-   version of [fuse].  Therefore, we want to automatically map
-   \texttt{f\_}$b$\texttt{f(g,phi,chi)} to
-   \texttt{f\_f}$b$\texttt{(g,chi,phi)} by an appropriate
+   \emph{both} \texttt{f\_}$\phi$\texttt{f(g,phi,psi)}
+   and \texttt{f\_f}$\phi$\texttt{(g,psibar,phi)} are used.
+   However, the latter plays nicer with the permutations in the UFO
+   version of [fuse].  Therefore, we can attempt to automatically map
+   \texttt{f\_}$\phi$\texttt{f(g,phi,chi)} to
+   \texttt{f\_f}$\phi$\texttt{(g,chi,phi)} by an appropriate
    transformation of the $\gamma$-matrices involved. *)
 
 (* Starting from
    \begin{equation}
-     \text{\texttt{f\_}$b$\texttt{f(g,phi,chi)}}
-        \cong
-     \chi'_\alpha =
-       \sum_{\mu,\beta} \phi_\mu \Gamma^\mu_{\alpha\beta}\chi_\beta
+     \text{\texttt{f\_}$\phi$\texttt{f(g,phi,chi)}}
+      =  \Gamma_\phi^\mu\chi
    \end{equation}
-   with~$\Gamma$ an appropriate product of $\gamma$-matrices, we obtain
+   where~$\Gamma_\phi$ is the contraction of the bosonic field~$\phi$ with
+   the appropriate product of $\gamma$-matrices, we obtain a condition on
+   the corresponding matrix~$\tilde\Gamma_\phi$ that appears
+   in~\texttt{f\_f}$\phi$:
    \begin{equation}
-     \text{\texttt{f\_f}$b$\texttt{(g,chi,phi)}}
-        \cong
-     \chi'_\alpha
-       = \sum_{\mu,\beta} \phi_\mu \chi_\beta\tilde\Gamma^\mu_{\beta\alpha}
-       = \sum_{\mu,\beta} \phi_\mu
-           \left(\tilde\Gamma^\mu\right)^T_{\alpha\beta} \chi_\beta
+   \label{eq:Gamma-tilde}
+     \text{\texttt{f\_f}$\phi$\texttt{(g,chi,phi)}}
+       = \chi^T\tilde\Gamma_\phi^\mu
+       = \left((\tilde\Gamma_\phi)^T \chi\right)^T
+       \stackrel{!}{=} \left(\Gamma_\phi\chi\right)^T\,.
    \end{equation}
-   and we should require $\tilde\Gamma=\Gamma^T$. *)
+   This amounts to requiring $\tilde\Gamma=\Gamma^T$, as one might have
+   expected.  Below we will see that this is \emph{not} the correct
+   approach. *)
 
-(* We can now use the standard charge conjugation matrix relations
+(* In any case, we can use the standard charge conjugation matrix relations
    \begin{subequations}
+   \label{eq:transpose-gamma}
      \begin{align}
        \mathbf{1}^T           &= \mathbf{1} \\
        \gamma_\mu^T           &= - C\gamma_\mu C^{-1} \\
@@ -188,6 +193,7 @@ let inv_C = [Minus; C]
    to obtain the same result, of course.}
 
    \begin{subequations}
+   \label{eq:transpose-gamma'}
      \begin{align}
        \gamma_\pm^T
          &= (\mathbf{1}\pm\gamma_5)^T
@@ -205,44 +211,58 @@ let inv_C = [Minus; C]
       C^T = - C\,.
    \end{equation} *)
 
+(* The implementation starts from transposing
+   a single factor using~\eqref{eq:transpose-gamma}
+   and~\eqref{eq:transpose-gamma'}: *)
 let transpose1 = function
   | (Gamma5 | ProjM | ProjP as g) -> [C; g] @ inv_C
   | (Gamma _ | Sigma (_, _) as g) -> [Minus] @ [C; g] @ inv_C
   | C -> [Minus; C]
   | Minus -> [Minus]
 
+(* In general, this will leave more than one [Minus] in the result
+   and we can pull these out:  *)
 let rec collect_signs_rev (negative, acc) = function
   | [] -> (negative, acc)
   | Minus :: g_list -> collect_signs_rev (not negative, acc) g_list
   | g :: g_list -> collect_signs_rev (negative, g :: acc) g_list
 
+(* Also, there will be products~$CC$ inside the result, these can be
+   canceled, since we assume~$C^2=-\mathbf{1}$:  *)
 let rec compress_ccs_rev (negative, acc) = function
   | [] -> (negative, acc)
   | C :: C :: g_list -> compress_ccs_rev (not negative, acc) g_list
   | g :: g_list -> compress_ccs_rev (negative, g :: acc) g_list
 
+(* Compose [collect_signs_rev] and [compress_ccs_rev].  The two list
+   reversals will cancel. *)
 let compress_signs g_list =
   let negative, g_list_rev = collect_signs_rev (false, []) g_list in
   match compress_ccs_rev (negative, []) g_list_rev with
   | true, g_list -> Minus :: g_list
   | false, g_list -> g_list
 
+(* Transpose all factors in reverse order and clean up: *)
 let transpose d =
   { d with
     gammas = compress_signs (ThoList.rev_flatmap transpose1 d.gammas) }
 
-(* Regarding the tests in \texttt{keystones\_UFO\_bispinors}, we observe%
+(* We can also easily flip the sign: *)
+let minus d =
+  { d with gammas = compress_signs (Minus :: d.gammas) }
+
+(*i
    \footnote{In components:
    \begin{subequations}
    \begin{align}
-     \text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
+     \text{\texttt{chi0 * f\_}$\phi$\texttt{f(g,phi1,chi2)}}
         &\cong
      \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
         C_{\alpha\alpha'}\chi_{0,\alpha'} \Gamma^\mu_{\alpha\beta}\chi_{2,\beta}
      = \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
         \chi_{0,\alpha'} C^T_{\alpha'\alpha}
              \Gamma^\mu_{\alpha\beta}\chi_{2,\beta} \\
-     \text{\texttt{f\_f}$b$\texttt{(g,chi0,phi1) * chi2}}
+     \text{\texttt{f\_f}$\phi$\texttt{(g,chi0,phi1) * chi2}}
         &\cong
       \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
         C_{\alpha\alpha'}\chi_{0,\beta}
@@ -250,7 +270,7 @@ let transpose d =
      =\sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
          \chi_{0,\beta} \tilde\Gamma^\mu_{\beta\alpha'}
         C^T_{\alpha'\alpha}\chi_{2,\alpha} \\
-     \text{\texttt{chi2 * f\_f}$b$\texttt{(g,chi0,phi1)}}
+     \text{\texttt{chi2 * f\_f}$\phi$\texttt{(g,chi0,phi1)}}
         &\cong
       \sum_{\mu,\alpha,\alpha',\beta} \phi_{1,\mu}
         C_{\alpha\alpha'} \chi_{2,\alpha'} \chi_{0,\beta}
@@ -260,37 +280,159 @@ let transpose d =
           \tilde\Gamma^\mu_{\beta\alpha} C_{\alpha\alpha'} \chi_{2,\alpha'}
    \end{align}
    \end{subequations}}
+i*)
+  
+(* Also in \texttt{omega\_spinors}
+   \begin{equation}
+     \text{$\phi$\texttt{\_ff(g,psibar1,psi2)}}
+       = \bar\psi_1 \Gamma_\phi\psi_2\,,
+   \end{equation}
+   while in \texttt{omega\_bispinors}
+   \begin{equation}
+     \text{$\phi$\texttt{\_ff(g,chi1,chi2)}}
+       = \chi_1^T C\Gamma_\phi\chi_2\,.
+   \end{equation}
+   The latter has mixed symmetry, depending on the $\gamma$-matrices
+   in~$\Gamma_\phi$ according to~\eqref{eq:transpose-gamma}
+   and~\eqref{eq:transpose-gamma'}
+   \begin{equation}
+     \text{$\phi$\texttt{\_ff(g,chi2,chi1)}}
+       = \chi_2^T C\Gamma_{\phi}\chi_1
+       = \chi_1^T \Gamma^T_{\phi} C^T\chi_2
+       = - \chi_1^T \Gamma^T_{\phi} C\chi_2
+       = \pm \chi_1^T C \Gamma_{\phi} C^{-1} C\chi_2
+       = \pm \chi_1^T C \Gamma_{\phi} \chi_2\,.
+   \end{equation} *)
+
+(* \thocwmodulesection{Testing for Self-Consistency Numerically} *)
+
+(* In the tests \texttt{keystones\_omegalib} and \texttt{keystones\_UFO},
+   we check that the vertex~$\bar\psi_0\Gamma_{\phi_1}\psi_2$ can be
+   expressed in three ways, which must all agree.
+   In the case of \texttt{keystones\_omegalib}, the equivalences are
    \begin{subequations}
    \begin{align}
-     \text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
-       &\cong
-     \phi_1^\mu (C\chi_0)^T \Gamma_\mu \chi_2
-     = \phi_1^\mu \chi_0^T C^T\Gamma_\mu\chi_2 \\
-     \text{\texttt{f\_f}$b$\texttt{(g,chi0,phi1) * chi2}}
-       &\cong
-       \phi_1^\mu (C(\chi_0^T\tilde\Gamma_\mu)^T)^T \chi_2
-     = \phi_1 (C\tilde\Gamma_\mu^T\chi_0)^T \chi_2
-     = \phi_1 \chi_0^T \tilde\Gamma_\mu C^T \chi_2 \\
-     \text{\texttt{chi2 * f\_f}$b$\texttt{(g,chi0,phi1)}}
-       &\cong
-      \phi_1^\mu (C\chi_2)^T (\chi_0^T\tilde\Gamma_\mu)^T
-     =\phi_1^\mu  \chi_0^T\tilde\Gamma_\mu C\chi_2
+     \text{\texttt{psibar0 * f\_$\phi$f(g,phi1,psi2)}}
+       &= \bar\psi_0 \Gamma_{\phi_1} \psi_2 \\
+     \text{\texttt{f\_f$\phi$(g,psibar0,phi1) * psi2}}
+       &= \bar\psi_0 \Gamma_{\phi_1} \psi_2 \\
+     \text{\texttt{phi1 * $\phi$\_ff(g,psibar0,psi2)}}
+       &= \bar\psi_0 \Gamma_{\phi_1} \psi_2 \,.
    \end{align}
    \end{subequations}
-   The natural
-   condition~$\text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
-    = \text{\texttt{f\_f}$b$\texttt{(g,chi0,phi1) * chi2}}$
-   can be satisfied with
+   In the case of \texttt{keystones\_UFO}, we use cyclic permutations
+   to match the use in [UFO_targets], as described in the table
+   following~\eqref{eq:cyclic-UFO-fusions}
+   \begin{subequations}
+   \begin{align}
+     \text{\texttt{psibar0 * f$\phi$f\_p012(g,phi1,psi2)}}
+       &= \bar\psi_0 \Gamma_{\phi_1} \psi_2 \\
+     \text{\texttt{f$\phi$f\_p201(g,psibar0,phi1) * psi2}}
+       &= \bar\psi_0 \Gamma_{\phi_1} \psi_2 \\
+     \text{\texttt{phi1 * f$\phi$f\_p120(g,psi2,psibar0)}}
+       &= \tr \left( \Gamma_{\phi_1} \psi_2\otimes\bar\psi_0 \right)
+        = \bar\psi_0 \Gamma_{\phi_1} \psi_2 \,.
+   \end{align}
+   \end{subequations}
+   In both cases, there is no ambiguity regarding the position of spinors
+   and conjugate spinors, since the inner product
+   \texttt{conjspinor\_spinor} is not symmetrical.
+
+   Note that, from the point of view of permutations, the  notation
+   $\tr(\Gamma \psi'\otimes\bar\psi)$ is more natural than the
+   equivalent $\bar\psi\Gamma\psi'$ that inspired the
+   $\phi{\texttt{\_ff}}$ functions in the \texttt{omegalib} more
+   than 20 years ago. *)
+
+(* We would like to perform the same tests in
+   \texttt{keystones\_omegalib\_bispinors} and
+   \texttt{keystones\_UFO\_bispinors}, but now we have to be more
+   careful in positioning the Majorana spinors, because we can not
+   rely on the Fortran type system to catch cofusions of
+   \texttt{spinor} and \texttt{conjspinor} fields.  In addition,
+   we must make sure to insert charge conjugation matrices in the
+   proper places~\cite{Denner:Majorana}.
+
+   Regarding the tests in \texttt{keystones\_omegalib\_bispinors}, we
+   observe
+   \begin{subequations}
+   \begin{align}
+     \text{\texttt{chi0 * f\_}$\phi$\texttt{f(g,phi1,chi2)}}
+       &= \chi_0^T C \Gamma_{\phi_1} \chi_2 \\
+     \text{\texttt{phi1 * $\phi$\texttt{\_ff}(g,chi0,chi2)}}
+       &= \chi_0^T C \Gamma_{\phi_1} \chi_2
+   \end{align}
+   \end{subequations}
+   and
+   \begin{subequations}
+   \begin{align}
+     \text{\texttt{chi2 * f\_f}$\phi$\texttt{(g,chi0,phi1)}}
+       &= \chi_2^T C (\chi_0^T\tilde\Gamma_{\phi_1}^\mu)^T
+        = \chi_2^T C (\tilde\Gamma_{\phi_1}^\mu)^T \chi_0
+        = \chi_2^T C \Gamma_{\phi_1} \chi_0 \\
+     \text{\texttt{phi1 * $\phi$\texttt{\_ff}(g,chi2,chi0)}}
+       &= \chi_2^T C \Gamma_{\phi_1} \chi_0\,,
+   \end{align}
+   \end{subequations}
+   while
+   \begin{align}
+     \text{\texttt{f\_f}$\phi$\texttt{(g,chi0,phi1) * chi2}}
+       &= \chi_0^T\tilde\Gamma_{\phi_1} C\chi_2
+        = \chi_0^T\Gamma_{\phi_1}^T C\chi_2
+        = (\Gamma_{\phi_1}\chi_0)^T C\chi_2
+   \end{align}
+   is different.  JRR solved this problem by abandoning
+   \texttt{f\_f$\phi$} altogether and using
+   \texttt{$\phi$\_ff} only in the form
+   \texttt{$\phi$\_ff(g,chi0,chi2)}.
+   Turning to the tests in \texttt{keystones\_UFO\_bispinors}, it would
+   be convenient to be able to use
+   \begin{subequations}
+   \begin{align}
+     \text{\texttt{chi0 * f$\phi$f\_p012(g,phi1,chi2)}}
+       &= \chi_0^T C \Gamma_{\phi_1}^{012} \chi_2 \\
+     \text{\texttt{f$\phi$f\_p201(g,chi0,phi1) * chi2}}
+       &= \chi_0^T \Gamma_{\phi_1}^{201} C \chi_2 \\
+     \text{\texttt{phi1 * f$\phi$f\_p120(g,chi2,chi0)}}
+       &= \tr \left( \Gamma_{\phi_1}^{120} \chi_2 \otimes \chi_0^T \right)
+        = \chi_0^T \Gamma_{\phi_1}^{120} \chi_2
+        = \chi_2^T (\Gamma_{\phi_1}^{120})^T \chi_0 \,,
+   \end{align}
+   \end{subequations}
+   where~$\Gamma^{012}=\Gamma$ is the string of $\gamma$-matrices
+   as written in the Lagrangian.  Obviously, we should require
    \begin{equation}
-      C^T \Gamma_\mu = \tilde\Gamma_\mu C^T\,,
+     \Gamma^{120} = C \Gamma^{012} = C \Gamma
+   \end{equation}
+   as expected from \texttt{omega\_bispinors}. *)
+
+let cc_times d =
+  { d with gammas = compress_signs (C :: d.gammas) }
+
+(* For~$\Gamma^{201}$ we must require\footnote{%
+     Note that we don't get anything new, if we reverse the scalar product
+     \begin{equation*}
+       \text{\texttt{chi2 * f$\phi$f\_p201(g,chi0,phi1)}}
+         = \chi_2^T C (\chi_0^T \Gamma_{\phi_1}^{201})^T
+         = \chi_0^T \Gamma_{\phi_1}^{201} C^T \chi_2\,.
+     \end{equation*}
+     We would find the condition
+     \begin{equation*}
+       - \Gamma^{201} C = \Gamma^{201} C^T = C \Gamma
+     \end{equation*}
+     i.\,e.~only a sign
+     \begin{equation*}
+        \Gamma^{201} = - C \Gamma C^{-1} \not= \Gamma^T \,,
+     \end{equation*}
+     as was to be expected from the antisymmetry of \texttt{spinor\_product},
+     of course.}
+   \begin{equation}
+     \Gamma^{201} C = C \Gamma^{012} = C \Gamma
    \end{equation}
    i.\,e.
    \begin{equation}
-      \tilde\Gamma_\mu = C \Gamma_\mu C^{-1}\,.
-   \end{equation}
-   This is \emph{not} compatible with with~$\tilde\Gamma_\mu=\Gamma^T_\mu$,
-   but we can make this work for the \texttt{keystones\_UFO\_bispinors}
-   tests with *)
+      \Gamma^{201} = C \Gamma C^{-1} \not= \Gamma^T \,.
+   \end{equation} *)
 
 let conjugate d =
   { d with gammas = compress_signs (C :: d.gammas @ inv_C) }
@@ -298,35 +440,15 @@ let conjugate d =
 let conjugate_transpose d =
   conjugate (transpose d)
 
-(* The alternative
-   condition~$\text{\texttt{chi0 * f\_}$b$\texttt{f(g,phi1,chi2)}}
-    = \text{\texttt{chi2 * f\_f}$b$\texttt{(g,chi0,phi1)}}$
-   would require
-   \begin{equation}
-      C^T \Gamma_\mu = \tilde\Gamma_\mu C\,,
-   \end{equation}
-   i.\,e.
-   \begin{equation}
-      \tilde\Gamma_\mu = C \Gamma_\mu C = - C \Gamma_\mu C^{-1}\,.
-   \end{equation}  *)
+let times_minus_cc d =
+  { d with gammas = compress_signs (d.gammas @ [Minus; C]) }
 
-(* \begin{dubious}
-     Now make also the fusions work in
-     \texttt{fermi\_UFO} and \texttt{compare\_majorana\_UFO}?
-   \end{dubious} *)
-
-let minus d =
-  { d with gammas = compress_signs (Minus :: d.gammas) }
-
-let cc_times d =
-  { d with gammas = compress_signs (C :: d.gammas) }
-
-let times_cc_inv d =
-  { d with gammas = compress_signs (d.gammas @ inv_C) }
+(* \thocwmodulesection{From Dirac Strings to $4\times4$ Matrices} *)
 
 (* [dirac_string bind ds] applies the mapping [bind] to the indices
    of $\gamma_\mu$ and~$\sigma_{\mu\nu}$ and multiplies the resulting
    matrices in order using complex rational arithmetic. *)
+
 module type To_Matrix =
   sig
     val dirac_string : (int -> int) -> dirac_string -> D.t
@@ -399,6 +521,11 @@ let classify_indices ilist =
         invalid_arg "classify_indices")
     ilist
 
+(* Recursions on this type only stop when we come across an
+   empty [denominator].  In practice, this is no problem
+   (we never construct values that recurse more than once),
+   but it would be cleaner to use polymorphic variants as
+   suggested for [UFOx.Tensor.t]. *)
 type contraction =
   { coeff : QC.t;
     dirac : dirac_string term list;
@@ -412,24 +539,24 @@ let fermion_lines_of_contraction contraction =
     compare
     (List.map (fun term -> (term.atom.ket, term.atom.bra)) contraction.dirac)
 
-let map_indices_contraction f c =
+let rec map_indices_contraction f c =
   { coeff = c.coeff;
     dirac = List.map (map_term f (map_indices_dirac f)) c.dirac;
     vector = List.map (map_term f (A.map_indices_vector f)) c.vector;
-    scalar = c.scalar;
-    inverse = c.inverse;
-    denominator = c.denominator }
+    scalar = List.map (A.map_indices_scalar f) c.scalar;
+    inverse = List.map (A.map_indices_scalar f) c.inverse;
+    denominator = List.map (map_indices_contraction f) c.denominator }
 
 type t = contraction list
 
 let dummy =
   []
 
-let rec charge_conjugate_dirac (bra, ket as fermion_line) = function
+let rec charge_conjugate_dirac (ket, bra as fermion_line) = function
   | [] -> []
   | dirac :: dirac_list  ->
      if dirac.atom.bra = bra && dirac.atom.ket = ket then
-       map_atom conjugate dirac :: dirac_list
+       map_atom toggle_conjugated dirac :: dirac_list
      else
        dirac :: charge_conjugate_dirac fermion_line dirac_list
 
@@ -480,7 +607,8 @@ let rec scan_for_dirac_string stack = function
        if j > 0 then
          (* That's an atomic Dirac string.  Collect
             all atoms for further processing.  *)
-         (Some { bra = i; ket = j; gammas = dirac_of_atom atom},
+         (Some { bra = i; ket = j; conjugated = false;
+                 gammas = dirac_of_atom atom },
           List.rev_append stack atoms)
        else
          (* That's the start of a new Dirac string.  Search
@@ -508,7 +636,7 @@ and collect_dirac_string i j rev_ds stack = function
        if j' > 0 then
          (* Found the conclusion.  Collect
             all atoms on the [stack] for further processing.  *)
-         (Some { bra = i; ket = j';
+         (Some { bra = i; ket = j'; conjugated = false;
                  gammas = List.rev_append rev_ds (dirac_of_atom atom)},
           List.rev_append stack atoms)
        else
@@ -779,7 +907,7 @@ and to_string contractions =
 
 let fermion_lines_to_string fermion_lines =
   ThoList.to_string
-    (fun (bra, ket) -> Printf.sprintf "%s->%s" (i2s bra) (i2s ket))
+    (fun (ket, bra) -> Printf.sprintf "%s->%s" (i2s ket) (i2s bra))
     fermion_lines
 
 module type Test =
@@ -793,7 +921,7 @@ module Test : Test =
     open OUnit
 
     let braket gammas =
-      { bra = 11; ket = 22; gammas }
+      { bra = 11; ket = 22; conjugated = false; gammas }
 
     let assert_transpose gt g =
       assert_equal ~printer:dirac_string_to_string

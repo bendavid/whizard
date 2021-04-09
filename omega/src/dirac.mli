@@ -64,8 +64,13 @@ module type T =
     val conj : t -> t
     val product : t list -> t
 
+    (* Toplevel *)
+    val pp : Format.formatter -> t -> unit
+
     (* Unit tests *)
     val test_suite : OUnit.test
   end
 
 module Chiral : T
+module Dirac : T
+module Majorana : T

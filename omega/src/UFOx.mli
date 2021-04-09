@@ -212,6 +212,7 @@ module type Lorentz_Atom =
       | Scalar of scalar
       | Inverse of scalar
 
+    val map_indices_scalar : (int -> int) -> scalar -> scalar
     val map_indices_vector : (int -> int) -> vector -> vector
     val rename_indices_vector : (int -> int) -> vector -> vector
 

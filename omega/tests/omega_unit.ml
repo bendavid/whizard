@@ -198,7 +198,9 @@ let suite =
      UFO_Lorentz.Test.suite;
      UFO.Test.suite;
      Format_Fortran.Test.suite;
-     Dirac.Chiral.test_suite]
+     Dirac.Chiral.test_suite;
+     Dirac.Dirac.test_suite;
+     Dirac.Majorana.test_suite]
 
 let _ =
   ignore
