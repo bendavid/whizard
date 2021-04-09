@@ -30,7 +30,7 @@ Known (recent) bugs:
 * WHIZARD 2.8.3 exhibits a bug for UFO models containing Majorana fermions:
   no matrix element is generated. WHIZARD 2.8.4 solves this problem. There
   are still some wrong sign in interference terms for very complicated
-  processes.
+  processes. They are fixed with version 3.0.0.
 
 * WHIZARD 2.8.1 and earlier does not compile with OCaml versions 4.08.0
   and newer due to a deletion of a deprecated feature in the OCaml language.
