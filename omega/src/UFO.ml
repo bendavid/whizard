@@ -2544,12 +2544,6 @@ i*)
          (this could become impractical for too many fermions at
          a vertex, but shouldn't matter in real life). *)
 
-    (* \begin{dubious}
-         To be decided: is it better (in the sense of
-         \emph{easier to understand}, not efficiency)
-         to permute first or to charge conjugate first?
-       \end{dubious} *)
-
     (* Here we alway generate \emph{all} charge conjugations, because
        we treat \emph{all} fermions as Majorana fermion, if there
        is at least one Majorana fermion in the model! *)

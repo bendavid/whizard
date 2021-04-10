@@ -447,6 +447,7 @@ nodist_compare_majorana_UFO_SOURCES = compare_majorana_UFO.f90
 compare_majorana_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 compare_majorana.o compare_majorana_legacy.o compare_majorana_UFO.o: $(COMPARE_LIB_O)
+compare_majorana_UFO.o: parameters_SM_UFO.o
 
 endif
 
@@ -536,7 +537,7 @@ fermi_UFO_SOURCES = $(FERMI_UFO_LIB_F90)
 nodist_fermi_UFO_SOURCES = fermi_UFO.f90 parameters_SM_UFO.f90
 fermi_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
-fermi_UFO.o: $(FERMI_UFO_LIB_O)
+fermi_UFO.o: $(FERMI_UFO_LIB_O) parameters_SM_UFO.o
 
 endif
 endif
@@ -583,7 +584,7 @@ ward_UFO_SOURCES = $(WARD_UFO_LIB_F90)
 nodist_ward_UFO_SOURCES = ward_UFO.f90 parameters_SM_UFO.f90
 ward_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
-ward_UFO.o: $(WARD_UFO_LIB_O)
+ward_UFO.o: $(WARD_UFO_LIB_O) parameters_SM_UFO.o
 
 endif
 

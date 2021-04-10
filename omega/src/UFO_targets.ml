@@ -634,12 +634,6 @@ module Fortran : T =
           \Gamma $ *)
       | _ -> ()
 
-    (* \begin{dubious}
-         Now we want to test \emph{only} if the [fermion_line]
-         matches the inverted [fusion].  Why does [jrr_print_majorana_FBF]
-         differ from the others?  Must be a typo.
-       \end{dubious} *)
-
     (* In the model, the necessary
        information is provided as [Coupling.fermion_lines], encoded as
        [(right,left)] in the usual direction of the lines.
@@ -1385,7 +1379,7 @@ i*)
 
     (* \begin{dubious}
          TODO: this needs more more work for the fully
-         general case.
+         general case with 4-fermion operators involving Majoranas.
        \end{dubious} *)
     let charge_conjugations fl2 =
       ThoList.filtermap
