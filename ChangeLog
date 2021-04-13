@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2021-04-13
+	Bug fix for displaced vertices with HepMC2/3 event format
+
 2021-04-08
 	Correct Lorentz statistics for UFO model with Majorana fermions
 

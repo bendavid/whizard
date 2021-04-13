@@ -11833,8 +11833,8 @@ helicity) could be set.
     do i = 1, n_tot
        if (v_to(i) /= 0 .or. v_from(i) /= 0) then
           call particle_to_hepmc (particle_set%prt(i), hprt(i))
-          if (v_to(i) /= 0) then
-             vtx(v_to(i)) = particle_set%prt(i)%get_vertex ()
+          if (v_from(i) /= 0) then
+             vtx(v_from(i)) = particle_set%prt(i)%get_vertex ()
           end if
        end if
     end do
