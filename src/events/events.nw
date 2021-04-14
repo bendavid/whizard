@@ -11780,11 +11780,12 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
     case (PRT_BEAM)
        hepmc_status = 4
     case (PRT_RESONANT)
-       if (abs(prt%get_pdg()) == 13 .or. &
-            abs(prt%get_pdg()) == 15) then
-          hepmc_status = 2
+       hepmc_status = 2
+    case (PRT_BEAM_REMNANT)
+       if (prt%get_n_children () == 0) then
+          hepmc_status = 1
        else
-          hepmc_status = 11
+          hepmc_status = 3
        end if
     case default
        hepmc_status = 3
