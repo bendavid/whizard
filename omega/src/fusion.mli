@@ -258,7 +258,7 @@ module Nary_Majorana : functor (B : Tuple.Bound) -> Maker
    be responsible for this.  *)
 
 module Helac : functor (B : Tuple.Bound) -> Maker
-(* [module Helac_Majorana : functor (B : Tuple.Bound) -> Maker] *)
+module Helac_Majorana : functor (B : Tuple.Bound) -> Maker
 
 (* \thocwmodulesection{Multiple Amplitudes} *)
 

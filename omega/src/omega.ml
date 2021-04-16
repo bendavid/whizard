@@ -70,15 +70,20 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
 
 (* For the phase space, we need asymmetric DAGs.
 
-   HACK: since we will not use this to compute amplitudes, there's
+   Since we will not use this to compute amplitudes, there's
    no need to supply the proper statistics module and we may
-   assume Dirac fermions.
+   always use Majorana fermions to be as general as possible.
+   In principle, we could expose in [Fusion.T] the [Fusion.Stat_Maker]
+   used by [Fusion_Maker] to construct it, but that is just not
+   worth the effort.
 
-   HACK: for the phase space, we should be able to work on the
-   uncolored model. *)
+   \begin{dubious}
+     For the phase space, we should be able to work on the
+     uncolored model.
+   \end{dubious} *)
 
     module PHS =
-      Fusion.Helac(struct let max_arity () = pred (M.max_degree ()) end)(P)(M)
+      Fusion.Helac_Majorana(struct let max_arity () = pred (M.max_degree ()) end)(P)(M)
 
 (* Form a ['a list] from a ['a option array], containing
    the elements that are not [None] in order. *)
