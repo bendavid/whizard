@@ -1244,11 +1244,7 @@ structure if the particle at position \texttt{emitter} is removed
        flv%massive(i) = flavor%get_mass () > 0
        flv%colored(i) = &
             is_quark (flv%flst(i)) .or. is_gluon (flv%flst(i))
-       if (flavor%is_antiparticle ()) then
-          flv%charge(i) = -flavor%get_charge ()
-       else
-          flv%charge(i) = flavor%get_charge ()
-       end if
+       flv%charge(i) = flavor%get_charge ()
     end do
   end subroutine flv_structure_init_mass_color_and_charge
 
@@ -2845,20 +2841,20 @@ are therefore equivalent.
       type(flv_structure_t) :: flst_alr_tmp
       type(ftuple_t) :: current_ftuple
       integer :: leg1, leg2
-      logical :: valid1, valid2
+      logical :: valid
       associate (flv_born => reg_data%flv_born(i_born), &
               flv_real => reg_data%flv_real(i_real))
          do leg1 = reg_data%n_in + 1, n_legreal
             do leg2 = leg1 + 1, n_legreal
-               valid1 = flv_real%valid_pair(leg1, leg2, flv_born, model)
-               valid2 = flv_real%valid_pair(leg2, leg1, flv_born, model)
-               if (valid1 .or. valid2) then
-                  if(valid1) then
-                     flst_alr_tmp = create_alr (flv_real, &
-                          reg_data%n_in, leg1, leg2)
-                  else
+               valid = flv_real%valid_pair(leg1, leg2, flv_born, model)
+               if (valid) then
+                  if (is_vector(flv_real%flst(leg1)) .and. &
+                     is_fermion(flv_real%flst(leg2))) then
                      flst_alr_tmp = create_alr (flv_real, &
                           reg_data%n_in, leg2, leg1)
+                  else
+                     flst_alr_tmp = create_alr (flv_real, &
+                          reg_data%n_in, leg1, leg2)
                   end if
                   flst_alr = [flst_alr, flst_alr_tmp]
                   emitters = [emitters, n_legreal - 1]
@@ -5723,7 +5719,7 @@ module virtual
   use diagnostics
   use pdg_arrays
   use models
-  use model_data, only: model_data_t
+  use model_data, only: model_data_t, field_data_t
   use physics_defs
   use sm_physics
   use lorentz
@@ -5845,16 +5841,19 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
     integer, intent(in) :: nf_input
     type(string_t), intent(in) :: nlo_corr_type
     class(model_data_t), intent(in) :: model
-    integer :: i_part, i_flv
-    real(default) :: nf, CA_factor
+    type(field_data_t), pointer :: field
+    integer :: i_part, i_flv, pdg
+    real(default) :: nf, CA_factor, TR_sum
     real(default), dimension(:,:), allocatable :: CF_factor, TR_factor
     type(flavor_t) :: flv
     allocate (CF_factor (size (flv_born, 1), size (flv_born, 2)), &
          TR_factor (size (flv_born, 1), size (flv_born, 2)))
+    TR_sum = 0
     select case (char (nlo_corr_type))
     case ("QCD")
        CA_factor = CA; CF_factor = CF; TR_factor = TR
        nf = real(nf_input, default)
+       TR_sum = nf * TR
     case ("EW")
        CA_factor = zero
        do i_flv = 1, size (flv_born, 2)
@@ -5862,19 +5861,28 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
              call flv%init (flv_born(i_part, i_flv), model)
              CF_factor(i_part, i_flv) = (flv%get_charge ())**2
              TR_factor(i_part, i_flv) = (flv%get_charge ())**2
+             if (is_quark (flv_born (i_part, i_flv))) &
+                  TR_factor(i_part, i_flv) = NC * TR_factor(i_part, i_flv)
           end do
        end do
-       ! TODO vincent_r fixed nf needs replacement  !!! for testing only, needs dynamical treatment!
-       nf = real(4, default)
+       do pdg = 1, nf_input
+          field => model%get_field_ptr (pdg)
+          TR_sum = TR_sum + NC*field%get_charge()**2
+       end do
+       do pdg = 11, 15, 2
+          field => model%get_field_ptr (pdg)
+          if (field%get_mass() > 0) exit
+          TR_sum = TR_sum + field%get_charge()**2
+       end do
     end select
     do i_flv = 1, size (flv_born, 2)
        do i_part = 1, size (flv_born, 1)
           if (is_corresponding_vector (flv_born(i_part, i_flv), nlo_corr_type)) then
              virt%gamma_0(i_part, i_flv) = 11._default / 6._default * CA_factor &
-                  - two / three * TR_factor(i_part, i_flv) * nf
+                  - two / three * TR_sum
              virt%gamma_p(i_part, i_flv) = (67._default / 9._default &
                   - two * pi**2 / three) * CA_factor &
-                  - 23._default / 9._default * TR_factor(i_part, i_flv) * nf
+                  - 23._default / 9._default * TR_sum
              virt%c_flv(i_part, i_flv) = CA_factor
           else if (is_corresponding_fermion (flv_born(i_part, i_flv), nlo_corr_type)) then
              virt%gamma_0(i_part, i_flv) = 1.5_default * CF_factor(i_part, i_flv)
@@ -7949,7 +7957,7 @@ or the soft-collinear limits. Used for debug purposes if [[?test_anti_coll_limit
           count_alr = .false.
        end if
 
-       if (is_gluon (rsub%reg_data%regions(alr)%flst_real%flst(rsub%reg_data%n_legs_real))) then
+       if (is_massless_vector (rsub%reg_data%regions(alr)%flst_real%flst(rsub%reg_data%n_legs_real))) then
           xi_tilde = rsub%real_kinematics%xi_tilde
           is_soft = xi_tilde < soft_threshold
        else
@@ -8661,10 +8669,12 @@ equivalent to those used by POWHEG.
     real(default), intent(in) :: alpha_coupling
     real(default) :: xi, xi_max
     real(default) :: mom_times_sqme_spin_c
+    real(default) :: N_col
     integer :: i_con
     real(default) :: pfr
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_coll = zero
+      N_col = 1
       if (sregion%has_collinear_divergence ()) then
          xi = rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs)
          if (rsub%sub_coll%use_resonance_mappings) then
@@ -8684,9 +8694,10 @@ equivalent to those used by POWHEG.
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "EW") then
+               if (is_quark (sregion%flst_real%flst(size(sregion%flst_real%flst)))) N_col = 3
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(em)**2, &
-                    TR = sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
+                    TR = N_col*sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
             end if
             sqme_coll = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
@@ -8697,9 +8708,10 @@ equivalent to those used by POWHEG.
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "EW") then
+               if (is_quark (sregion%flst_real%flst(sregion%emitter))) N_col = 3
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(sregion%emitter)**2, &
-                    TR = sregion%flst_real%charge(sregion%emitter)**2)
+                    TR = N_col*sregion%flst_real%charge(sregion%emitter)**2)
             end if
             sqme_coll = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta (i_con), &
@@ -8735,9 +8747,11 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
     integer, intent(in) :: alr, em, i_phs
     real(default), intent(in) :: alpha_coupling
     real(default) :: mom_times_sqme_spin_c
+    real(default) :: N_col
     integer :: i_con, em_pdf
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_cs = zero
+      N_col = 1
       if (sregion%has_collinear_divergence ()) then
          if (rsub%sub_coll%use_resonance_mappings) then
             i_con = rsub%reg_data%alr_to_i_contributor (alr)
@@ -8750,9 +8764,10 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "EW") then
+               if (is_quark (sregion%flst_real%flst(size(sregion%flst_real%flst)))) N_col = 3
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(em)**2, &
-                    TR = sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
+                    TR = N_col*sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
             end if
             sqme_cs = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
@@ -8763,9 +8778,10 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "EW") then
+               if (is_quark (sregion%flst_real%flst(sregion%emitter))) N_col = 3
                call rsub%sub_coll%set_parameters (CA = zero, &
                     CF = sregion%flst_real%charge(sregion%emitter)**2, &
-                    TR = sregion%flst_real%charge(sregion%emitter)**2)
+                    TR = N_col*sregion%flst_real%charge(sregion%emitter)**2)
             end if
             sqme_cs = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta(i_con), &
@@ -9580,6 +9596,7 @@ end module dglap_remnant
      type(nlo_settings_t), pointer :: settings => null ()
      type(region_data_t), pointer :: reg_data => null ()
      type(isr_kinematics_t), pointer :: isr_kinematics => null ()
+     real(default) :: CA = 0, CF = 0, TR = 0
      real(default), dimension(:), allocatable :: sqme_born
      real(default), dimension(:,:), allocatable :: sf_factors
    contains
@@ -9608,6 +9625,18 @@ end module dglap_remnant
   end subroutine dglap_remnant_init
 
 @ %def dglap_remnant_init
+<<dglap remnant: dglap remnant: TBP>>=
+  procedure :: set_parameters => dglap_remnant_set_parameters
+<<dglap remnant: procedures>>=
+  subroutine dglap_remnant_set_parameters (dglap, CA, CF, TR)
+    class(dglap_remnant_t), intent(inout) :: dglap
+    real(default), intent(in) :: CA, CF, TR
+    dglap%CA = CA
+    dglap%CF = CF
+    dglap%TR = TR
+end subroutine dglap_remnant_set_parameters
+
+@ %def dglap_remnant_set_parameters
 @ Evaluates formula \ref{eqn:sigma-in-p-final}. Note that, as also in the case for the
 real subtraction, we have to take into account an additional term, occuring because the
 integral the plus distribution is evaluated over is not constrained on the interval $[0,1]$.
@@ -9624,9 +9653,9 @@ event generation to generate counter events with a specific Born flavor structur
 <<dglap remnant: dglap remnant: TBP>>=
   procedure :: evaluate => dglap_remnant_evaluate
 <<dglap remnant: procedures>>=
-  subroutine dglap_remnant_evaluate (dglap, alpha_s, separate_uborns, sqme_dglap)
+  subroutine dglap_remnant_evaluate (dglap, alpha_coupling, separate_uborns, sqme_dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     logical, intent(in) :: separate_uborns
     real(default), intent(inout), dimension(:) :: sqme_dglap
     integer :: alr, emitter
@@ -9639,6 +9668,9 @@ event generation to generate counter events with a specific Born flavor structur
          dglap%reg_data%n_in))
     evaluated = .false.
     do alr = 1, dglap%reg_data%n_regions
+       if (allocated (dglap%settings%selected_alr)) then
+          if (.not. any (dglap%settings%selected_alr == alr)) cycle
+       end if
        sqme_alr = zero
        emitter = dglap%reg_data%regions(alr)%emitter
        if (emitter > dglap%reg_data%n_in) cycle
@@ -9654,9 +9686,9 @@ event generation to generate counter events with a specific Born flavor structur
              call evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
           end if
           if (separate_uborns) then
-             sqme_dglap(i_flv_born) = sqme_dglap(i_flv_born) + alpha_s / twopi * sqme_alr
+             sqme_dglap(i_flv_born) = sqme_dglap(i_flv_born) + alpha_coupling / twopi * sqme_alr
           else
-             sqme_dglap(1) = sqme_dglap(1) + alpha_s / twopi * sqme_alr
+             sqme_dglap(1) = sqme_dglap(1) + alpha_coupling / twopi * sqme_alr
           end if
        end associate
     end do
@@ -9677,25 +9709,25 @@ event generation to generate counter events with a specific Born flavor structur
   function p_hat_gtogg (z)
     real(default) :: p_hat_gtogg
   <<p variables>>
-    p_hat_gtogg = two * CA * (z + onemz**2 / z + z * onemz**2)
+    p_hat_gtogg = two * dglap%CA * (z + onemz**2 / z + z * onemz**2)
   end function p_hat_gtogg
 
   function p_hat_gtoqq (z)
     real(default) :: p_hat_gtoqq
   <<p variables>>
-    p_hat_gtoqq = CF * onemz / z * (one + onemz**2)
+    p_hat_gtoqq = dglap%CF * onemz / z * (one + onemz**2)
   end function p_hat_gtoqq
 
   function p_hat_qtogq (z)
     real(default) :: p_hat_qtogq
   <<p variables>>
-    p_hat_qtogq = TR * (onemz - two * z * onemz**2)
+    p_hat_qtogq = dglap%TR * (onemz - two * z * onemz**2)
   end function p_hat_qtogq
 
   function p_hat_qtoqg (z)
     real(default) :: p_hat_qtoqg
     real(default), intent(in) :: z
-    p_hat_qtoqg = CF * (one + z**2)
+    p_hat_qtoqg = dglap%CF * (one + z**2)
   end function p_hat_qtoqg
 
 @ %def p_hat_qtoqg, p_hat_qtogq, p_hat_gtoqq, p_hat_gtogg
@@ -9717,19 +9749,19 @@ event generation to generate counter events with a specific Born flavor structur
   function p_derived_gtoqq (z)
     real(default) :: p_derived_gtoqq
     real(default), intent(in) :: z
-    p_derived_gtoqq = -CF * z
+    p_derived_gtoqq = -dglap%CF * z
   end function p_derived_gtoqq
 
   function p_derived_qtogq (z)
     real(default) :: p_derived_qtogq
   <<p variables>>
-    p_derived_qtogq = -two * TR * z * onemz
+    p_derived_qtogq = -two * dglap%TR * z * onemz
   end function p_derived_qtogq
 
   function p_derived_qtoqg (z)
     real(default) :: p_derived_qtoqg
   <<p variables>>
-    p_derived_qtoqg = -CF * onemz
+    p_derived_qtoqg = -dglap%CF * onemz
   end function p_derived_qtoqg
 
 @ %def p_derived_gtogg, p_derived_gtoqq, p_derived_qtogq, p_derived_qtoqg
@@ -9743,11 +9775,21 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
   real(default) :: factor, factor_soft, plus_dist_remnant
   real(default) :: xb, onemz
   real(default) :: sqme_scaled
-  integer :: flv_em, flv_rad
+  real(default) :: charge_rad2, charge_em2
+  integer :: flv_em, flv_rad, N_col
+  N_col = 1
   associate (template => dglap%settings%fks_template)
      z = dglap%isr_kinematics%z(emitter)
      flv_rad = dglap%reg_data%regions(alr)%flst_real%flst(dglap%reg_data%n_legs_real)
      flv_em = dglap%reg_data%regions(alr)%flst_real%flst(emitter)
+     charge_rad2 = dglap%reg_data%regions(alr)%flst_real%charge(dglap%reg_data%n_legs_real)**2
+     charge_em2 = dglap%reg_data%regions(alr)%flst_real%charge(emitter)**2
+     if (dglap%reg_data%regions(alr)%nlo_correction_type == "QCD") then
+        call dglap%set_parameters (CA = CA, CF = CF, TR = TR)
+     else if (dglap%reg_data%regions(alr)%nlo_correction_type == "EW") then
+        if (is_quark(flv_rad)) N_col = NC
+        call dglap%set_parameters (CA = zero, CF = charge_em2, TR = N_col*charge_rad2)
+     end if
      jac = dglap%isr_kinematics%jacobian(emitter)
      onemz = one - z
      factor = log (sb * template%delta_i / two / z / fac_scale2) / &

@@ -16779,6 +16779,7 @@ be assured that Born flavors are used for this.
   real(default), parameter :: xi_tilde_test_coll = 0.5_default
   real(default), parameter :: y_test_soft = 0.5_default
   real(default), parameter :: y_test_coll = 0.9999999_default
+  !!! for testing EW singularities: y_test_coll = 0.99999999_default
 
 @
 @ Very soft or collinear phase-space points can become a problem for
@@ -16796,6 +16797,7 @@ leads to all phase space points beeing discarded by this routine.
     logical :: valid
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), parameter :: tolerance = 1E-7_default
+    !!! for testing EW singularities: tolerance = 5E-9_default
     integer :: i, j
     valid = .true.
     do i = 1, size (p)
@@ -19115,9 +19117,9 @@ has already been taken into account during its generation.
             "kinematics associated with this generator"
     end if
     call write_separator (u)
-    write (u, "(A," // FMT_17 // ",1X)") "sqrts: ", generator%sqrts
-    write (u, "(A," // FMT_17 // ",1X)") "E_gluon: ", generator%E_gluon
-    write (u, "(A," // FMT_17 // ",1X)") "mrec2: ", generator%mrec2
+    write (u, "(A," // FMT_17 // ",1X)") "sqrts     : ", generator%sqrts
+    write (u, "(A," // FMT_17 // ",1X)") "E_gluon   : ", generator%E_gluon
+    write (u, "(A," // FMT_17 // ",1X)") "mrec2     : ", generator%mrec2
   end subroutine phs_fks_generator_write
 
 @ %def phs_fks_generator_write

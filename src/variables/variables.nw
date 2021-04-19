@@ -5996,20 +5996,21 @@ procedure with type [[V_NONE]].
          ' flavor structures. The default is \ttt{false}.'))
     call var_list%append_real (var_str ("fks_xi_cut"), &
          1.0_default, intrinsic = .true., &
-         description = var_str ('(Experimental) Real paramter for the FKS ' // &
+         description = var_str ('(Experimental) Real parameter for the FKS ' // &
          'phase space that applies a cut to $\xi$ variable with $0 < \xi_{\text{cut}}' // &
          '\leq \xi_{\text{max}}$. The dependence on the parameter vanishes between ' // &
          'real subtraction and integrated subtraction term. Could thus be used for debugging. ' // &
          'This is not implemented properly, use at your own risk!'))
     call var_list%append_real (var_str ("fks_delta_o"), &
          2._default, intrinsic = .true., &
-         description = var_str ('Real paramter for the FKS ' // &
-         'phase space that applies a cut to the $y$ variable with $0 < \delta_o \leq 2$. ' // &
+         description = var_str ('Real parameter for the FKS ' // &
+         'phase space that applies a cut to the $y$ variable with $0 < \delta_o \leq 2$ ' // &
+         'for final state singularities only. ' // &
          'The dependence on the parameter vanishes between real subtraction and integrated ' // &
          'subtraction term. For debugging purposes.'))
     call var_list%append_real (var_str ("fks_delta_i"), &
          2._default, intrinsic = .true., &
-         description = var_str ('Real paramter for the FKS ' // &
+         description = var_str ('Real parameter for the FKS ' // &
          'phase space that applies a cut to the $y$ variable with ' // &
          '$0 < \delta_{\mathrm{I}} \leq 2$ '// &
          'for initial state singularities only. ' // &
