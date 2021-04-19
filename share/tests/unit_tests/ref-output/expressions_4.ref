@@ -213,11 +213,12 @@ Syntax table:
  SEQUENCE    <maybe_else_pexpr> = <else_pexpr>?
  SEQUENCE    <elsif_pexpr> = elsif <lexpr> then <pexpr>
  SEQUENCE    <else_pexpr> = else <pexpr>
- ALTERNATIVE <prt_function> = <join_fun> | <combine_fun> | <collect_fun> | <cluster_fun> | <select_fun> | <extract_fun> | <sort_fun> | <select_b_jet_fun> | <select_non_b_jet_fun> | <select_c_jet_fun> | <select_light_jet_fun>
+ ALTERNATIVE <prt_function> = <join_fun> | <combine_fun> | <collect_fun> | <cluster_fun> | <photon_reco_fun> | <select_fun> | <extract_fun> | <sort_fun> | <select_b_jet_fun> | <select_non_b_jet_fun> | <select_c_jet_fun> | <select_light_jet_fun>
  SEQUENCE    <join_fun> = <join_clause> <pargs2>
  SEQUENCE    <combine_fun> = <combine_clause> <pargs2>
  SEQUENCE    <collect_fun> = <collect_clause> <pargs1>
  SEQUENCE    <cluster_fun> = <cluster_clause> <pargs1>
+ SEQUENCE    <photon_reco_fun> = <photon_reco_clause> <pargs1>
  SEQUENCE    <select_fun> = <select_clause> <pargs1>
  SEQUENCE    <extract_fun> = <extract_clause> <pargs1>
  SEQUENCE    <sort_fun> = <sort_clause> <pargs1>
@@ -229,6 +230,7 @@ Syntax table:
  SEQUENCE    <combine_clause> = combine <condition>?
  SEQUENCE    <collect_clause> = collect <condition>?
  SEQUENCE    <cluster_clause> = cluster <condition>?
+ SEQUENCE    <photon_reco_clause> = photon_recombination <condition>?
  SEQUENCE    <select_clause> = select <condition>?
  SEQUENCE    <extract_clause> = extract <position>?
  SEQUENCE    <sort_clause> = sort <criterion>?
@@ -240,6 +242,7 @@ Syntax table:
  KEYWORD     combine
  KEYWORD     collect
  KEYWORD     cluster
+ KEYWORD     photon_recombination
  KEYWORD     select
  SEQUENCE    <condition> = if <lexpr>
  KEYWORD     extract

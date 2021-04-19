@@ -3854,6 +3854,7 @@ leafs are literal constants or named-parameter references.
      real(default), pointer :: photon_iso_eps => null ()
      real(default), pointer :: photon_iso_n => null ()
      real(default), pointer :: photon_iso_r0 => null ()
+     real(default), pointer :: photon_rec_r0 => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      procedure(unary_log),  nopass, pointer :: op1_log  => null ()
@@ -6382,6 +6383,60 @@ ignored.
   end function no_pp
 
 @ %def all_pp any_pp no_pp
+@ Recombine photons with the particles of the first argument.  If [[en0]] is present,
+create a mask which is true only for those particles that pass the test.
+<<Eval trees: procedures>>=
+  subroutine photon_recombination_pp (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(in) :: en2
+    type(eval_node_t), intent(inout), optional :: en0
+    logical, dimension(:), allocatable :: mask1
+    type(prt_t), dimension(:), allocatable :: prt_gam0
+    type(prt_t) :: prt
+    integer :: n1, i
+    real(default) :: reco_r0
+    logical :: keep_flv
+    reco_r0 = en1%photon_rec_r0
+    n1 = subevt_get_length (en1%pval)
+    if (n1 > 1) then 
+       call msg_fatal ("Photon recombination is supported " // &
+            "only for single photons.")
+    end if
+    allocate (prt_gam0 (n1), mask1 (n1))
+    do i = 1, n1
+       prt_gam0(i) = subevt_get_prt (en1%pval, i)
+    end do
+    if (present (en0)) then
+       do i = 1, n1
+          en0%index = i
+          en0%prt1 = prt_gam0(i)
+          if (.not. prt_is_photon (en0%prt1)) &
+               call msg_fatal ("Photon recombination can only " // &
+               "be applied to photons.")
+          call eval_node_evaluate (en0)
+          mask1(i) = en0%lval
+       end do
+    else
+       mask1 = .true.
+    end if
+    do i = 1, subevt_get_length (en2%pval)
+       if (.not. prt_is_recombinable (subevt_get_prt (en2%pval, i))) then
+          call msg_fatal ("Only charged leptons and QCD partons " //&
+               "can be recombined with photons")
+       end if
+    end do
+    if (associated (en1%var_list)) then
+       keep_flv = en1%var_list%get_lval &
+            (var_str("?keep_flavors_when_recombining"))
+    else
+       keep_flv = .false.
+    end if
+    call subevt_recombine &
+         (subevt,en2%pval, prt_gam0(1), mask1(1), reco_r0, keep_flv)
+  end subroutine photon_recombination_pp
+
+@ %def photon_recombination_pp
 The conditional restriction encoded in the [[eval_node_t]] [[en_0]] is
 applied only to the photons from [[en1]], not to the objects being
 isolated from in [[en2]].
@@ -9153,7 +9208,7 @@ array.
     case ("join_fun", "combine_fun", "collect_fun", "cluster_fun", &
           "select_fun", "extract_fun", "sort_fun", "select_b_jet_fun", &
           "select_non_bjet_fun", "select_c_jet_fun", &
-          "select_light_jet_fun")
+          "select_light_jet_fun", "photon_reco_fun")
        call eval_node_compile_prt_function (en, pn, var_list)
     case default
        call parse_node_mismatch &
@@ -9171,10 +9226,12 @@ array.
 @
 \subsubsection{Particle functions}
 This combines the treatment of 'join', 'combine', 'collect', 'cluster',
-'select', and 'extract' which all have the same syntax.  The one or two
-argument nodes are allocated.  If there is a condition, the condition
-node is also allocated as a logical expression, for which the variable
-list is augmented by the appropriate (unary/binary) observables.
+'select', and 'extract', as well as the functions for $b$, $c$ and
+light jet selection and photon recombnation which all have the same
+syntax.  The one or two argument nodes are allocated.  If there is a
+condition, the condition node is also allocated as a logical
+expression, for which the variable list is augmented by the
+appropriate (unary/binary) observables.
 <<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_prt_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -9247,6 +9304,11 @@ list is augmented by the appropriate (unary/binary) observables.
           call eval_node_init_prt_fun_binary (en, en1, en2, key, select_pp)
        case ("sort")
           call eval_node_init_prt_fun_binary (en, en1, en2, key, sort_pp)
+       case ("photon_recombination")
+          en1%var_list => var_list
+          call eval_node_init_prt_fun_binary &
+               (en, en1, en2, key, photon_recombination_pp)
+          call var_list%get_rptr (var_str ("photon_rec_r0"), en1%photon_rec_r0)
        case default
           call msg_bug (" Binary particle function '" // char (key) // &
                "' undefined")
@@ -10708,6 +10770,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ else_pexpr = else pexpr")
     call ifile_append (ifile, "ALT prt_function = " // &
          "join_fun | combine_fun | collect_fun | cluster_fun | " // &
+         "photon_reco_fun | " // &
          "select_fun | extract_fun | sort_fun | " // &
          "select_b_jet_fun | select_non_b_jet_fun | " // &
          "select_c_jet_fun | select_light_jet_fun")
@@ -10715,6 +10778,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ combine_fun = combine_clause pargs2")
     call ifile_append (ifile, "SEQ collect_fun = collect_clause pargs1")
     call ifile_append (ifile, "SEQ cluster_fun = cluster_clause pargs1")
+    call ifile_append (ifile, "SEQ photon_reco_fun = photon_reco_clause pargs1")
     call ifile_append (ifile, "SEQ select_fun = select_clause pargs1")
     call ifile_append (ifile, "SEQ extract_fun = extract_clause pargs1")
     call ifile_append (ifile, "SEQ sort_fun = sort_clause pargs1")
@@ -10730,6 +10794,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ combine_clause = combine condition?")
     call ifile_append (ifile, "SEQ collect_clause = collect condition?")
     call ifile_append (ifile, "SEQ cluster_clause = cluster condition?")
+    call ifile_append (ifile, "SEQ photon_reco_clause = photon_recombination condition?")
     call ifile_append (ifile, "SEQ select_clause = select condition?")
     call ifile_append (ifile, "SEQ extract_clause = extract position?")
     call ifile_append (ifile, "SEQ sort_clause = sort criterion?")
@@ -10745,6 +10810,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "KEY combine")
     call ifile_append (ifile, "KEY collect")
     call ifile_append (ifile, "KEY cluster")
+    call ifile_append (ifile, "KEY photon_recombination")
     call ifile_append (ifile, "KEY select")
     call ifile_append (ifile, "SEQ condition = if lexpr")
     call ifile_append (ifile, "KEY extract")

@@ -179,6 +179,7 @@ seed = 2
 [undefined] ?draw_symbols = [unknown logical]
 ?analysis_file_only = false
 ?keep_flavors_when_clustering = false
+?keep_flavors_when_recombining = true
 ?sample_pacify = false
 ?sample_select = true
 ?read_raw = true

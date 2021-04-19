@@ -2981,7 +2981,7 @@ procedure with type [[V_NONE]].
     call var_list%set_phase_space_defaults ()
     call var_list%set_gamelan_defaults ()
     call var_list%set_clustering_defaults ()
-    call var_list%set_isolation_defaults ()
+    call var_list%set_isolation_recomb_defaults ()
     call var_list%set_eio_defaults ()
     call var_list%set_shower_defaults ()
     call var_list%set_hadronization_defaults ()
@@ -4944,11 +4944,12 @@ procedure with type [[V_NONE]].
   end subroutine var_list_set_clustering_defaults
 
 @ %def var_list_set_clustering_defaults
-@ Frixione isolation parameters and all that:
+@ Frixione isolation and photon recombination parameters and all that:
 <<Variables: var list: TBP>>=
-  procedure :: set_isolation_defaults => var_list_set_isolation_defaults
+  procedure :: set_isolation_recomb_defaults => &
+       var_list_set_isolation_recomb_defaults
 <<Variables: procedures>>=
-  subroutine var_list_set_isolation_defaults (var_list)
+  subroutine var_list_set_isolation_recomb_defaults (var_list)
     class(var_list_t), intent(inout) :: var_list
     call var_list%append_real (var_str ("photon_iso_eps"), 1._default, &
          intrinsic=.true., &
@@ -4965,9 +4966,20 @@ procedure with type [[V_NONE]].
          description=var_str ('Photon isolation parameter $R_0^\gamma$ ' // &
          '(isolation cone radius) from hep-ph/9801442 (cf. also ' // &
          '\ttt{photon\_iso\_eps}, \ttt{photon\_iso\_n})'))
-  end subroutine var_list_set_isolation_defaults
+    call var_list%append_real (var_str ("photon_rec_r0"), 0.1_default, &
+         intrinsic=.true., &
+         description=var_str ('Photon recombination parameter $R_0^\gamma$ ' // &
+         'for photon recombination in NLO EW calculations'))
+    call var_list%append_log (&
+         var_str ("?keep_flavors_when_recombining"), .true., &
+         intrinsic = .true., &
+         description=var_str ('The logical variable \ttt{?keep\_flavors\_when\_recombining ' // &
+         '= true/false} specifies whether the flavor of a particle should be ' // &
+         'kept during \ttt{photon\_recombination} when a jet/lepton consists of one lepton/quark ' // &
+         'and zero or more photons (cf. also \ttt{photon\_recombination}).'))
+  end subroutine var_list_set_isolation_recomb_defaults
 
-@ %def var_list_set_isolation_defaults
+@ %def var_list_set_isolation_recomb_defaults
 <<Variables: var list: TBP>>=
   procedure :: set_eio_defaults => var_list_set_eio_defaults
 <<Variables: procedures>>=

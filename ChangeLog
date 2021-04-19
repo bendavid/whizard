@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0_beta+
 
+2021-04-19
+	Photon recombination implemented
+
 2021-04-14
 	Bug fix for vertices/status codes with HepMC2/3 event format
 

@@ -616,8 +616,13 @@ interfaces for QCD environments (BLHA/HOPPET).
 The following tables shows some of the major steps (physics
 implementation and/or technical improvements) in the development
 of \whizard (we break the table into logical and temporal blocks of
-\whizard\ development):
+\whizard\ development).
 
+\newpage
+
+{
+{\bf \whizard\ \texttt{1}}, first line of development, ca. 1998-2010:
+\nopagebreak[4]
 \begin{center}
 \begin{tabular}{|l|l|l|}\hline
   0.99 & 08/1999 & Beta version \\\hline
@@ -643,6 +648,14 @@ of \whizard (we break the table into logical and temporal blocks of
   1.97 & 05/2011 & Manual for version 1 completed. \\\hline\hline
 \end{tabular}
 \end{center}
+}
+
+\vspace{2cm}
+
+{
+{\bf \whizard\ \texttt{2.0-2.2}}: first major refactoring and early new
+release, ca. 2007-2015:
+\nopagebreak[4]
 \begin{center}
 \begin{tabular}{|l|l|l|}\hline
   2.0.0 & 04/2010 & Major refactoring: automake setup; dynamic
@@ -672,6 +685,14 @@ of \whizard (we break the table into logical and temporal blocks of
   \\\hline
 \end{tabular}
 \end{center}
+}
+
+\newpage
+
+{
+{\bf \whizard\ \texttt{2.3-2.8}}, completion of refactoring, continuous
+development, ca. 2015-2020:
+\nopagebreak[4]
 \begin{center}
 \begin{tabular}{|l|l|l|}\hline
   2.3.0 & 07/2016 & NLO: resonance mappings for FKS subtraction; \\
@@ -714,12 +735,29 @@ of \whizard (we break the table into logical and temporal blocks of
   \\\hline\hline
 \end{tabular}
 \end{center}
+}
+
+\vspace{2cm}
+
+{
+{\bf \whizard\ \texttt{3.0}} and onwards, the NLO series:
+\nopagebreak[4]
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+  3.0.0 & 04/2020 & NLO QCD automation \& UFO Majorana support
+  released
+  \\\hline\hline
+\end{tabular}
+\end{center}
+}
 
 \vspace{.5cm}
 
 For a detailed overview over the historical development of the code
 confer the \ttt{ChangeLog} file and the commit messages in our
 revision control system repository.
+
+\newpage
 
 %%%%%
 
@@ -4392,6 +4430,38 @@ like this:
   cuts = let subevt @jets = cluster [jet] in
          let subevt @iso = join [@jets, A:e2:E2]
          photon_isolation [A, @iso]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+
+\subsubsection{photon\_recombination}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{photon\_recombination [\textit{photons}, \textit{particles}]} \\
+  \ttt{photon\_recombination if \textit{condition}} [\textit{photons}, \textit{particles}]
+\end{footnotesize}
+\end{quote}
+This function, which maps subevents into other subevents, is used for
+electroweak (and mixed coupling) higher order calculations. It takes
+the selection of \texttt{photons} (for the moment, \whizard\ restricts
+this to one explicit photon in final state) and recombines it with the
+closest particle from \texttt{particles} in $R$-distance, if the
+$R$-distance is smaller than the parameter set by
+\texttt{photon\_rec\_r0}. Otherwise the \texttt{particles} subevent
+is left unchanged. The logical variable
+\texttt{?keep\_flavors\_when\_recombining} determines whether
+\whizard\ keeps the flavor of the particle with which the photon is
+recombined into the pseudoparticle, the default being \texttt{true}.
+An example for photon recombination is shown here:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  alias lep = e1:e2:e3:E1:E2:E3
+  process eevv = e1, E1 => A, lep, lep, lep, lep
+  photon_rec_r0 = 0.15
+  cuts = let subevt @reco =
+         photon_recombination if abs (Eta) < 2.5 [A, lep] in
+         ....
 \end{verbatim}
 \end{footnotesize}
 \end{quote}

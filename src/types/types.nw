@@ -3159,6 +3159,18 @@ is not set.
 
 @ %def prt_is_clustered
 <<Subevents: public>>=
+  public :: prt_is_recombinable
+<<Subevents: procedures>>=
+  elemental function prt_is_recombinable (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt_is_parton (prt) .or. &
+           abs(prt%pdg) == TOP_Q .or. &
+           prt_is_lepton (prt)
+  end function prt_is_recombinable
+
+@ %def prt_is_recombinable
+<<Subevents: public>>=
   public :: prt_is_photon
 <<Subevents: procedures>>=
   elemental function prt_is_photon (prt) result (flag)
@@ -3183,7 +3195,7 @@ We do not take the top quark into account here.
            prt%pdg == GLUON
   end function prt_is_parton
   
-@ %def prt_is_photon
+@ %def prt_is_parton
 <<Subevents: public>>=
   public :: prt_is_lepton
 <<Subevents: procedures>>=
@@ -4286,6 +4298,46 @@ that have been constructed by FastJet and its interface.
   end subroutine subevt_cluster
 
 @ %def subevt_cluster
+@ Do recombination.
+<<Subevents: public>>=
+  public :: subevt_recombine
+<<Subevents: procedures>>=
+  subroutine subevt_recombine (subevt, pl, prt, mask1, reco_r0, keep_flv)
+    type(subevt_t), intent(inout) :: subevt
+    type(subevt_t), intent(in) :: pl
+    type(prt_t), intent(in) :: prt
+    logical, intent(in) :: mask1, keep_flv
+    real(default), intent(in) :: reco_r0
+    real(default), dimension(:), allocatable :: del_rij
+    integer, dimension(:), allocatable :: i_sortr
+    type(prt_t) :: prt_comb
+    logical :: ok
+    integer :: i, n, pdg_orig
+    n = subevt_get_length (pl)
+    allocate (del_rij (n), i_sortr (n))
+    do i = 1, n
+      del_rij(i) = eta_phi_distance(prt_get_momentum (prt), &
+            prt_get_momentum (subevt%prt(i)))
+    end do
+    i_sortr = order (del_rij)
+    do i = 1, n
+       if (i == i_sortr(n)) then
+          if (del_rij (i_sortr (n)) <= reco_r0 .and. mask1) then
+             pdg_orig = prt_get_pdg (subevt%prt (i_sortr (n)))
+             call prt_combine (prt_comb, prt, subevt%prt(i_sortr (n)), ok)
+             if (ok) then
+                subevt%prt(i_sortr (n)) = prt_comb
+                if (keep_flv)  call prt_set_pdg &
+                     (subevt%prt(i_sortr (n)), pdg_orig)
+             end if
+          end if
+       else
+          subevt%prt(i) = pl%prt(i)
+       end if
+    end do
+  end subroutine subevt_recombine
+
+@ %def subevt_recombine
 @ Return a list of all particles for which the mask is true.
 <<Subevents: public>>=
   public :: subevt_select
