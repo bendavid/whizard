@@ -68309,7 +68309,8 @@ C...If tau -> tau + gamma then add gamma energy and loop.
           ENDIF
           GOTO 120
  
-        ELSEIF(IABS(K(IMTAU,2)).GT.100) THEN
+        ELSEIF(IABS(K(IMTAU,2)).GT.100 .AND.
+     &     IABS(K(IMTAU,2)).LT.1000000) THEN
 C...If coming from weak decay of hadron then W is not stored in record,
 C...but can be reconstructed by adding neutrino momentum.
           KFORIG=-ISIGN(24,K(ITAU,2))
