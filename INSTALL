@@ -24,12 +24,12 @@ where X.X is the current version (and sub-version) number.
 Prerequisites are:
 
  - Make
- - Objective Caml compiler (version 4.02.3 or higher)
- - Fortran 2003/2008 compiler
+ - Objective Caml compiler (version 4.05.0 or higher)
+ - Fortran 2003/2008/2018 compiler
  - C/C++ (for PYTHIA8/FastJet/HepMC/LHAPDF/LCIO interfaces)
 
 The Objective Caml (OCaml) compiler is available from 
-http://pauillac.inria.fr/ocaml/
+https://ocaml.org
 
 #-------------------------------------------------------------
 #  Specific problems with some FORTRAN compilers

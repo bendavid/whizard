@@ -50,9 +50,6 @@ AC_ARG_ENABLE([ocaml],
         AC_SUBST([OCAMLINTEGERVERSION])
         AC_SUBST([OCAMLLIB])
    
-        AM_CONDITIONAL([OCAML_304],
-   	[test $OCAMLINTEGERVERSION -ge 304000])
-   
         # checking for ocamlopt
         AC_PATH_TOOL([OCAMLOPT],[ocamlopt],[no])
         OCAMLBEST=byte
@@ -116,8 +113,6 @@ AC_ARG_ENABLE([ocaml],
    
      # checking for ocamlbuild
      AC_PATH_TOOL([OCAMLBUILD],[ocamlbuild],[no])
-  else	
-     AM_CONDITIONAL([OCAML_304], false)
   fi
   AM_CONDITIONAL([OCAML_AVAILABLE],
      [test "$enable_ocaml" != "no"])

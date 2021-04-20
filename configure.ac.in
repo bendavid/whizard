@@ -480,14 +480,14 @@ WO_FC_SET_MPI()
 
 ########################################################################
 ###---------------------------------------------------------------------
-### O'Caml
+### OCaml
 
 WO_CONFIGURE_SECTION([Objective Caml checks])
 
 ### Check for ocamlc and its relatives
 AC_PROG_OCAML()
 if test "$enable_ocaml" != "no"; then
-   AC_OCAML_VERSION_CHECK(402003)
+   AC_OCAML_VERSION_CHECK(405000)
    AC_PROG_OCAMLLEX()
    AC_PROG_OCAMLYACC()
    AC_PROG_OCAMLCP()
@@ -501,7 +501,7 @@ if test "$enable_ocaml" != "no"; then
    AM_CONDITIONAL([OCAMLDEP_AVAILABLE],[test "$OCAMLDEP" != "no"])
    AC_PATH_PROGS([OCAMLDEFUN],[ocamldefun],[no])
 else
-   AC_MSG_NOTICE([WARNING: O'Caml and O'Mega matrix elements disabled by request!])
+   AC_MSG_NOTICE([WARNING: OCaml and O'Mega matrix elements disabled by request!])
    AM_CONDITIONAL([OCAMLWEB_AVAILABLE],[false])
    AM_CONDITIONAL([OCAMLDOT_AVAILABLE],[false])
    AM_CONDITIONAL([OCAMLDEP_AVAILABLE],[false])

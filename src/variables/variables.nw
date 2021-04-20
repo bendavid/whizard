@@ -3977,17 +3977,6 @@ procedure with type [[V_NONE]].
           description=var_str ('Flag that sets advancing in the \ttt{printf} ' // &
           'output commands, i.e. continuous printing with no line feed ' // &
           'etc. (cf. also \ttt{printf})'))
-     !!! JRR: WK please check (#542)
-!     call var_list%append_log (var_str ("?out_custom"), .false., &
-!           intrinsic=.true.)
-!     call var_list%append_string (var_str ("$out_comment"), var_str ("# "), &
-!           intrinsic=.true.)
-!     call var_list%append_log (var_str ("?out_header"), .true., &
-!           intrinsic=.true.)
-!     call var_list%append_log (var_str ("?out_yerr"), .true., &
-!           intrinsic=.true.)
-!     call var_list%append_log (var_str ("?out_xerr"), .true., &
-!           intrinsic=.true.)
     call var_list%append_int (var_str ("real_range"), &
          range (real_specimen), intrinsic = .true., locked = .true., &
          description=var_str ('This integer gives the decimal exponent ' // &

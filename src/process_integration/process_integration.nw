@@ -13163,7 +13163,7 @@ the threshold computation where the process is well-defined and fixed.
       real(default), intent(in) :: sqme_born
       real(default), dimension(:,:), intent(inout) :: sqme_charge_c
       integer :: n_legs_born, i, j
-      integer, dimension(:), allocatable :: sigma
+      real(default), dimension(:), allocatable :: sigma
       real(default), dimension(:), allocatable :: Q
       n_legs_born = pcm%region_data%n_legs_born
       associate (flv_born => pcm%region_data%flv_born(i_flv))

@@ -5,6 +5,7 @@ Use svn log to see detailed changes.
 	Version 3.0.0_beta+
 
 2021-04-20
+	Minimal required OCaml version is now 4.05.0.
 	Bug fix for tau polarization from stau decays
 
 2021-04-19

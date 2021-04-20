@@ -36,7 +36,7 @@ libtoolexeclibdir = $(pkglibdir)
 nodist_libtoolexeclib_SCRIPTS = libtool
 
 ## Extra files in the distribution
-dist_noinst_DATA = BUGS EXTENSIONS test-driver
+dist_noinst_DATA = BUGS test-driver
 
 ## Use the same compiler and compiler flags for distcheck
 DISTCHECK_CONFIGURE_FLAGS = F77=$(F77) F77FLAGS="$(F77FLAGS)" FC=$(FC) \

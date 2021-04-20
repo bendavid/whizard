@@ -21571,15 +21571,9 @@ parameters and macros for custom data processing are disabled.
     type(string_t), intent(out), optional :: data_file
     type(string_t) :: defaultfile, file
     integer :: i
-    logical :: keep_open !, custom, header, columns
-    type(string_t) :: extension !, comment_prefix, separator
-!!! JRR: WK please check (#542)
-!     integer :: type
-!     type(ifile_t) :: ifile
-    logical :: one_file !, has_writer
-!     type(analysis_iterator_t) :: iterator
-!     type(rt_data_t), target :: sandbox
-!     type(command_list_t) :: writer
+    logical :: keep_open
+    type(string_t) :: extension
+    logical :: one_file
     defaultfile = var_list%get_sval (var_str ("$out_file"))
     if (present (data_file)) then
        if (defaultfile == "" .or. defaultfile == ".") then
@@ -21628,22 +21622,6 @@ parameters and macros for custom data processing are disabled.
                // char (file) // "'")
        end if
     end if
-
-!!! JRR: WK please check. Custom data output. Ticket #542
-!     if (present (data_file)) then
-!        custom = .false.
-!     else
-!        custom = var_list%get_lval (&
-!            var_str ("?out_custom"))
-!     end if
-!     comment_prefix = var_list%get_sval (&
-!          var_str ("$out_comment"))
-!     header = var_list%get_lval (&
-!          var_str ("?out_header"))
-!     write_yerr = var_list%get_lval (&
-!          var_str ("?out_yerr"))
-!     write_xerr = var_list%get_lval (&
-!          var_str ("?out_xerr"))
 
     call get_analysis_tags (tag, id, var_list)
     do i = 1, size (tag)
