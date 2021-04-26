@@ -2,7 +2,10 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 3.0.0_beta+
+	Version 3.0.0
+
+2021-04-27
+	RELEASE: version 3.0.0
 
 2021-04-20
 	Minimal required OCaml version is now 4.05.0.

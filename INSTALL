@@ -25,7 +25,7 @@ Prerequisites are:
 
  - Make
  - Objective Caml compiler (version 4.05.0 or higher)
- - Fortran 2003/2008/2018 compiler
+ - Fortran 2008/2018 compiler
  - C/C++ (for PYTHIA8/FastJet/HepMC/LHAPDF/LCIO interfaces)
 
 The Objective Caml (OCaml) compiler is available from 
@@ -78,7 +78,7 @@ WHIZARD:
    Available from: http://hepmc.web.cern.ch/hepmc
 
 -- LCIO for the corresponding file standard.
-   Available from: http://lcio.desy.de/
+   Available from: https://github.com/iLCSoft/LCIO
 
 -- Other external programs like PYTHIA and HERWIG for parton
    showering and hadronization can be included in a standard
@@ -257,6 +257,7 @@ Optional Features:
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-lcio		  enable LCIO for binary event files [[yes]]
+  --enable-hdf5           build WHIZARD with HDF5 support [[yes]]
   --enable-pythia6        enable internal PYTHIA6 for hadronization [[yes]]
   --enable-pythia6_eh     PYTHIA6 patches for high-energy eh collisions [[no]
   --enable-pythia8        enable PYTHIA8 for shower and hadronization [[no]]
@@ -290,6 +291,8 @@ Optional Packages:
   --with-recola=dir	  assume the given directory for Recola
   --with-rootsys          top of the ROOT installation directory
   --with-hepmc=dir        assume the given directory for HepMC
+  --with-hdf5=DIR         root directory of HDF5 installation (default =
+                          HDF5_DIR)
   --with-pythia8=dir      assume the given directory for PYTHIA8
   --with-fastjet=dir      assume the given directory for FastJet
   --with-gosam=dir        assume the given directory for GoSam
@@ -330,6 +333,7 @@ Some influential environment variables:
   TIRPC_CFLAGS
               C compiler flags for TIRPC, overriding pkg-config
   TIRPC_LIBS  linker flags for TIRPC, overriding pkg-config
+  HDF5_DIR    root directory of HDF5 installation
 
 #-------------------------------------------------------------
 # building from svn (developer version)

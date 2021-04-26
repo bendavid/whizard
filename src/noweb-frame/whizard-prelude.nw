@@ -49,11 +49,11 @@
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \def\WhizardVersion{3.0.0 $beta$}
-\def\WhizardDate{Aug 30 2020}
+\def\WhizardDate{Apr 27 2021}
 <<Version>>=
-3.0.0_beta+
+3.0.0
 <<Date>>=
-Aug 30 2020
+Apr 27 2021
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
