@@ -62,10 +62,6 @@ AC_MSG_NOTICE([Date:         $PACKAGE_DATE])
 AC_MSG_NOTICE([Status:       $PACKAGE_STATUS])
 AC_MSG_NOTICE([**************************************************************])
 
-### Dump Package version and date to file 'VERSION'
-echo "$PACKAGE_STRING ($PACKAGE_STATUS) $PACKAGE_DATE" \
-  > VERSION
-
 ########################################################################
 ###---------------------------------------------------------------------
 ### shared library versioning (not the same as the package version!)
