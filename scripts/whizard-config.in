@@ -1,8 +1,6 @@
 #!/bin/sh
 
-# $Id: whizard-config.in 2022 2010-03-07 20:36:24Z cnspeckn $
-#
-# Give information on the build-time WHIZARD 2 configuration.
+# Give information on the build-time WHIZARD 3 configuration.
 #
 ########################################################################
 #
@@ -10,7 +8,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -71,7 +70,7 @@ while test -n "$1"; do
          echo "@FCFLAGS_PIC@ @FCFLAGS@ @FCFLAGS_OPENMP@"
          ;;
       "--fcmodext")
-         echo "@FC_MODULE_EXT@"
+         echo "@FCMOD@"
          ;;
       *)
          usage

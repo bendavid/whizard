@@ -1,5 +1,3 @@
-# $Id: whizard-setup.sh.in 1986 2010-03-04 16:34:20Z cnspeckn $
-#
 # source this file to set up environment variables for an
 # installed WHIZARD in Bourne(-compatible) shells
 #
@@ -9,7 +7,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
