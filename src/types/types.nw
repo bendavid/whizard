@@ -4317,14 +4317,15 @@ that have been constructed by FastJet and its interface.
     allocate (del_rij (n), i_sortr (n))
     do i = 1, n
       del_rij(i) = eta_phi_distance(prt_get_momentum (prt), &
-            prt_get_momentum (subevt%prt(i)))
+            prt_get_momentum (pl%prt(i)))
     end do
     i_sortr = order (del_rij)
+    call subevt_reset (subevt, pl%n_active)
     do i = 1, n
        if (i == i_sortr(n)) then
           if (del_rij (i_sortr (n)) <= reco_r0 .and. mask1) then
-             pdg_orig = prt_get_pdg (subevt%prt (i_sortr (n)))
-             call prt_combine (prt_comb, prt, subevt%prt(i_sortr (n)), ok)
+             pdg_orig = prt_get_pdg (pl%prt (i_sortr (n)))
+             call prt_combine (prt_comb, prt, pl%prt(i_sortr (n)), ok)
              if (ok) then
                 subevt%prt(i_sortr (n)) = prt_comb
                 if (keep_flv)  call prt_set_pdg &
