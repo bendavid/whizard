@@ -27,6 +27,7 @@ wo_fc_grep_PGF95=`$GREP 'pgf95' conftest.log | head -1`
 wo_fc_grep_PGFORTRAN=`$GREP 'pgfortran' conftest.log | head -1`
 wo_fc_grep_PGHPF=`$GREP 'pghpf' conftest.log | head -1`
 wo_fc_grep_FLANG=`$GREP 'clang version' conftest.log | head -1`
+wo_fc_grep_NVIDIA=`$GREP 'nvfortran' conftest.log | head -1`
 wo_fc_grep_default=`cat conftest.log | head -1`
 
 if test -n "$wo_fc_grep_GFORTRAN"; then
@@ -51,6 +52,8 @@ elif test -n "$wo_fc_grep_PGHPF"; then
   wo_cv_fc_id_string=$wo_fc_grep_PGHPF
 elif test -n "$wo_fc_grep_FLANG"; then
   wo_cv_fc_id_string=$wo_fc_grep_FLANG
+elif test -n "$wo_fc_grep_NVIDIA"; then
+  wo_cv_fc_id_string=$wo_fc_grep_NVIDIA
 else
   wo_cv_fc_id_string=$wo_fc_grep_default
 fi
@@ -85,6 +88,8 @@ elif test -n "$wo_fc_grep_PGHPF"; then
   wo_cv_fc_vendor="PGI"
 elif test -n "$wo_fc_grep_FLANG"; then
   wo_cv_fc_vendor="flang"
+elif test -n "$wo_fc_grep_NVIDIA"; then
+  wo_cv_fc_vendor="NVIDIA"
 else
   wo_cv_fc_vendor="unknown"
 fi
@@ -124,6 +129,9 @@ PGI)
   ;;
 flang)
  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*clang version \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
+  ;;
+NVIDIA)
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/^[0-9]\{2\}//g;s/32.*\|64.*//g'`]
   ;;
 *)
   wo_cv_fc_version="unknown"
@@ -722,6 +730,11 @@ Intel)
   wo_cv_fc_openmp_header="use :: omp_lib !NODEP!"
   ;;
 PGI)
+  wo_cv_fc_openmp="yes"
+  wo_cv_fcflags_openmp="-mp"
+  wo_cv_fc_openmp_header=""
+  ;;
+NVIDIA)
   wo_cv_fc_openmp="yes"
   wo_cv_fcflags_openmp="-mp"
   wo_cv_fc_openmp_header=""

@@ -4386,6 +4386,12 @@ m4_if([$1], [CXX], [
 	    _LT_TAGVAR(lt_prog_compiler_pic, $1)='-fpic'
 	    _LT_TAGVAR(lt_prog_compiler_static, $1)='-Bstatic'
 	    ;;
+	  nvcc* | nvc++*)
+	    # NVIDIA Group C++ compiler
+	    _LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,'
+	    _LT_TAGVAR(lt_prog_compiler_pic, $1)='-fPIC'
+	    _LT_TAGVAR(lt_prog_compiler_static, $1)='-Bstatic'
+	    ;;
 	  cxx*)
 	    # Compaq C++
 	    # Make sure the PIC flag is empty.  It appears that all Alpha
@@ -4735,6 +4741,12 @@ m4_if([$1], [CXX], [
 	# which looks to be a dead project)
 	_LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,'
 	_LT_TAGVAR(lt_prog_compiler_pic, $1)='-fpic'
+	_LT_TAGVAR(lt_prog_compiler_static, $1)='-Bstatic'
+        ;;
+      nvcc* | nvc | nvc++ | nvfortran*)
+        # NVIDIA Group compilers
+	_LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,'
+	_LT_TAGVAR(lt_prog_compiler_pic, $1)='-fPIC'
 	_LT_TAGVAR(lt_prog_compiler_static, $1)='-Bstatic'
         ;;
       ccc*)
