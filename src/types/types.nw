@@ -4322,14 +4322,14 @@ that have been constructed by FastJet and its interface.
     i_sortr = order (del_rij)
     call subevt_reset (subevt, pl%n_active)
     do i = 1, n
-       if (i == i_sortr(n)) then
-          if (del_rij (i_sortr (n)) <= reco_r0 .and. mask1) then
-             pdg_orig = prt_get_pdg (pl%prt (i_sortr (n)))
-             call prt_combine (prt_comb, prt, pl%prt(i_sortr (n)), ok)
+       if (i == i_sortr(1)) then
+          if (del_rij (i_sortr (1)) <= reco_r0 .and. mask1) then
+             pdg_orig = prt_get_pdg (pl%prt (i_sortr (1)))
+             call prt_combine (prt_comb, prt, pl%prt(i_sortr (1)), ok)
              if (ok) then
-                subevt%prt(i_sortr (n)) = prt_comb
+                subevt%prt(i_sortr (1)) = prt_comb
                 if (keep_flv)  call prt_set_pdg &
-                     (subevt%prt(i_sortr (n)), pdg_orig)
+                     (subevt%prt(i_sortr (1)), pdg_orig)
              end if
           end if
        else

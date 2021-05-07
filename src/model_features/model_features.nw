@@ -6399,41 +6399,45 @@ create a mask which is true only for those particles that pass the test.
     logical :: keep_flv
     reco_r0 = en1%photon_rec_r0
     n1 = subevt_get_length (en1%pval)
-    if (n1 > 1) then 
-       call msg_fatal ("Photon recombination is supported " // &
-            "only for single photons.")
-    end if
-    allocate (prt_gam0 (n1), mask1 (n1))
-    do i = 1, n1
-       prt_gam0(i) = subevt_get_prt (en1%pval, i)
-    end do
-    if (present (en0)) then
-       do i = 1, n1
-          en0%index = i
-          en0%prt1 = prt_gam0(i)
-          if (.not. prt_is_photon (en0%prt1)) &
-               call msg_fatal ("Photon recombination can only " // &
-               "be applied to photons.")
-          call eval_node_evaluate (en0)
-          mask1(i) = en0%lval
-       end do
+    if (n1 == 0) then
+       subevt = en2%pval
     else
-       mask1 = .true.
-    end if
-    do i = 1, subevt_get_length (en2%pval)
-       if (.not. prt_is_recombinable (subevt_get_prt (en2%pval, i))) then
-          call msg_fatal ("Only charged leptons and QCD partons " //&
-               "can be recombined with photons")
+       if (n1 > 1) then
+          call msg_fatal ("Photon recombination is supported " // &
+               "only for single photons.")
        end if
-    end do
-    if (associated (en1%var_list)) then
-       keep_flv = en1%var_list%get_lval &
-            (var_str("?keep_flavors_when_recombining"))
-    else
-       keep_flv = .false.
+       allocate (prt_gam0 (n1), mask1 (n1))
+       do i = 1, n1
+          prt_gam0(i) = subevt_get_prt (en1%pval, i)
+       end do
+       if (present (en0)) then
+          do i = 1, n1
+             en0%index = i
+             en0%prt1 = prt_gam0(i)
+             if (.not. prt_is_photon (en0%prt1)) &
+                  call msg_fatal ("Photon recombination can only " // &
+                  "be applied to photons.")
+             call eval_node_evaluate (en0)
+             mask1(i) = en0%lval
+          end do
+       else
+          mask1 = .true.
+       end if
+       do i = 1, subevt_get_length (en2%pval)
+          if (.not. prt_is_recombinable (subevt_get_prt (en2%pval, i))) then
+             call msg_fatal ("Only charged leptons and QCD partons " //&
+                  "can be recombined with photons")
+          end if
+       end do
+       if (associated (en1%var_list)) then
+          keep_flv = en1%var_list%get_lval &
+               (var_str("?keep_flavors_when_recombining"))
+       else
+          keep_flv = .false.
+       end if
+       call subevt_recombine &
+            (subevt, en2%pval, prt_gam0(1), mask1(1), reco_r0, keep_flv)
     end if
-    call subevt_recombine &
-         (subevt,en2%pval, prt_gam0(1), mask1(1), reco_r0, keep_flv)
   end subroutine photon_recombination_pp
 
 @ %def photon_recombination_pp
