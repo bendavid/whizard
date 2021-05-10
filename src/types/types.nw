@@ -4331,6 +4331,8 @@ that have been constructed by FastJet and its interface.
                 if (keep_flv)  call prt_set_pdg &
                      (subevt%prt(i_sortr (1)), pdg_orig)
              end if
+          else
+             subevt%prt(i) = pl%prt(i)
           end if
        else
           subevt%prt(i) = pl%prt(i)
